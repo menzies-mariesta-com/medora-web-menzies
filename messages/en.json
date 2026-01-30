@@ -1,0 +1,6 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"heka": "Heka",
+	"login": "Login",
+	"sign_up": "Sign Up"
+}
