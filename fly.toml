@@ -1,16 +1,23 @@
-app = "heka"
-primary_region = "sin"
+# fly.toml app configuration file generated for heka on 2026-01-30T13:10:10+06:30
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'heka'
+primary_region = 'sin'
+
+[build]
 
 [http_service]
-auto_start_machines = true
-auto_stop_machines = true
-force_https = true
-internal_port = 5_173
-min_machines_running = 0
-processes = [ "app" ]
+  internal_port = 5173
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-cpu_kind = "shared"
-cpus = 1
-memory = "1gb"
-memory_mb = 1_024
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
