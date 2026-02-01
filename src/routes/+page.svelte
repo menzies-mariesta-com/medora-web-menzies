@@ -10,5 +10,3 @@
 	// 	routerUtil.goToRoute(WebRoutesEnum.WELCOME);
 	// });
 </script>
-
-hello
