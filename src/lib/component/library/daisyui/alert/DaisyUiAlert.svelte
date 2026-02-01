@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		LucideCircleCheck,
-		LucideInfo,
-		LucideTriangleAlert,
-		LucideCircleX
-	} from '@lucide/svelte';
+	import LucideCircleCheck from '$lib/component/library/lucide/LucideCircleCheck.svelte';
+	import LucideInfo from '$lib/component/library/lucide/LucideInfo.svelte';
+	import LucideTriangleAlert from '$lib/component/library/lucide/LucideTriangleAlert.svelte';
+	import LucideCircleX from '$lib/component/library/lucide/LucideCircleX.svelte';
 
 	let {
 		type = StatusColorEnum.INFO,
@@ -25,10 +23,7 @@
 		[StatusColorEnum.ERROR]: 'd-alert-error'
 	};
 
-	const iconMap: Record<
-		StatusColorEnum,
-		typeof LucideCircleCheck
-	> = {
+	const iconMap: Record<StatusColorEnum, typeof LucideCircleCheck> = {
 		[StatusColorEnum.SUCCESS]: LucideCircleCheck,
 		[StatusColorEnum.INFO]: LucideInfo,
 		[StatusColorEnum.WARNING]: LucideTriangleAlert,
@@ -39,10 +34,7 @@
 	const Icon = iconMap[type];
 </script>
 
-<div
-	role="alert"
-	class="{alertClass} flex items-center shadow-lg"
->
+<div role="alert" class="{alertClass} flex items-center shadow-lg">
 	<Icon />
 	<div class="text-black">
 		{message}
