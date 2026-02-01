@@ -1,0 +1,19 @@
+import type { Snippet } from 'svelte';
+import type { DialogVariantEnum } from '../enum/dialog.enum';
+
+export interface DialogSlotProps {
+	confirm: (data?: unknown) => void;
+	cancel: () => void;
+}
+
+export interface DialogInterface {
+	id: number;
+	title?: string;
+	message?: string;
+	variant?: DialogVariantEnum;
+	children?: Snippet<[DialogSlotProps]>;
+	onClose?: () => void;
+	onConfirm?: (data?: unknown) => void;
+	onCancel?: () => void;
+	_resolve?: (result: { confirmed: boolean; data?: unknown }) => void;
+}

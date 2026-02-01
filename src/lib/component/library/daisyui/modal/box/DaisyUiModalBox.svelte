@@ -1,14 +1,21 @@
 <script lang="ts">
-	let { groupName, className, children } = $props<{
-        groupName: string;
+	let { className, onClose, children } = $props<{
 		className?: string;
+		onClose?: () => void;
 		children: () => void;
 	}>();
 </script>
 
 <div class="d-modal-box {className}">
-    <div>
-      <label for="{groupName}" class="d-btn d-btn-sm d-btn-circle d-btn-ghost absolute right-2 top-2">✕</label>
-    </div>
-    {@render children()}
-  </div>
+	<div>
+		<button
+			type="button"
+			class="d-btn d-btn-sm d-btn-circle d-btn-ghost absolute right-2 top-2"
+			onclick={() => onClose?.()}
+			aria-label="Close"
+		>
+			✕
+		</button>
+	</div>
+	{@render children()}
+</div>
