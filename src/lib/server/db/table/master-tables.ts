@@ -39,6 +39,7 @@ export const countryTable = pgTable('country', {
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
 	imgUrl: text('img_url'),
+	language: varchar('language', { length: 128 }),
 	countryCallingCode: varchar('country_calling_code', { length: 128 }),
 	statusId: integer('status_id').references(() => statusTable.id),
 	...timestamps,
