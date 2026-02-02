@@ -4,13 +4,14 @@ import type {
 	DialogSlotProps
 } from '$lib/model/interface/dialog.interface';
 import { DialogState } from '$lib/state/dialog.state.svelte';
-import type { Snippet } from 'svelte';
+import type { Component, Snippet } from 'svelte';
 
 export interface DialogOpenOptions {
 	title?: string;
 	message?: string;
 	variant?: DialogVariantEnum;
 	children?: Snippet<[DialogSlotProps]>;
+	component?: Component<DialogSlotProps>;
 	onClose?: () => void;
 	onConfirm?: (data?: unknown) => void;
 	onCancel?: () => void;
@@ -29,6 +30,7 @@ export class DialogService {
 				message: options.message,
 				variant: options.variant ?? DialogVariantEnum.ALERT,
 				children: options.children,
+				component: options.component,
 				onClose: options.onClose,
 				onConfirm: options.onConfirm,
 				onCancel: options.onCancel,

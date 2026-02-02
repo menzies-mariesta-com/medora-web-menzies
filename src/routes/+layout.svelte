@@ -10,6 +10,8 @@
 	import { DialogState } from '$lib/state/dialog.state.svelte';
 	import { ToastState } from '$lib/state/toast.state.svelte';
 	import './layout.css';
+	import GQuickTool from '$lib/component/global/GQuickTool.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
 </script>
@@ -17,11 +19,15 @@
 <!-- Head -->
 <svelte:head>
 	<title>
+		{m.heka()}
 	</title>
 </svelte:head>
 
 <!-- Root Body -->
 {@render children()}
+
+<!-- Floating Action Button -->
+<GQuickTool />
 
 <!-- Toast Component (Learn Toast Service To Use) -->
 {#if ToastState.length > 0}
@@ -40,9 +46,20 @@
 		onClose={() => dialogService.close()}
 	>
 		<DaisyUiModalBox onClose={() => dialogService.close()}>
-			{#if DialogState.current.children}
+			{#if DialogState.current.component}
 				{#if DialogState.current.title}
-					<h3 class="d-font-bold d-text-lg">
+					<h3 class="mb-5 text-lg font-bold">
+						{DialogState.current.title}
+					</h3>
+				{/if}
+				{@const DialogContent = DialogState.current.component}
+				<DialogContent
+					confirm={(data) => dialogService.confirm(data)}
+					cancel={() => dialogService.cancel()}
+				/>
+			{:else if DialogState.current.children}
+				{#if DialogState.current.title}
+					<h3 class="text-lg font-bold">
 						{DialogState.current.title}
 					</h3>
 				{/if}
@@ -52,7 +69,7 @@
 				})}
 			{:else}
 				{#if DialogState.current.title}
-					<h3 class="d-font-bold d-text-lg">
+					<h3 class="text-lg font-bold">
 						{DialogState.current.title}
 					</h3>
 				{/if}
