@@ -1,0 +1,87 @@
+import { query, command } from '$app/server';
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
+import type { CitySchema, CitySchemaInsert } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/status.enum';
+import { count, eq } from 'drizzle-orm';
+
+// get all
+export const getCity = query(async (): Promise<CitySchema[]> => {
+	const data = await db.select().from(table.cityTable);
+	return data;
+});
+
+// get count
+export const getCityCount = query(async (): Promise<number> => {
+	const [row] = await db.select({ count: count() }).from(table.cityTable);
+	return row?.count ?? 0;
+});
+
+// get one
+export const getCityById = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<CitySchema | null> => {
+		const [row] = await db
+			.select()
+			.from(table.cityTable)
+			.where(eq(table.cityTable.id, id));
+		return row ?? null;
+	}
+);
+
+// create
+export const createCity = command(
+	'unchecked' as const,
+	async (payload: { name: string; code?: string; stateId?: number; statusId?: number }): Promise<CitySchema> => {
+		const [row] = await db
+			.insert(table.cityTable)
+			.values({ name: payload.name, code: payload.code, stateId: payload.stateId, statusId: payload.statusId })
+			.returning();
+		if (!row) throw new Error('Insert failed');
+		getCity().refresh();
+		return row;
+	}
+);
+
+// update
+export const updateCity = command(
+	'unchecked' as const,
+	async (payload: {
+		id: number;
+		name?: string;
+		code?: string;
+		stateId?: number;
+		statusId?: number;
+	}): Promise<CitySchema> => {
+		const { id, ...rest } = payload;
+		const [row] = await db
+			.update(table.cityTable)
+			.set(rest as Partial<CitySchemaInsert>)
+			.where(eq(table.cityTable.id, id))
+			.returning();
+		if (!row) throw new Error('Update failed');
+		getCity().refresh();
+		return row;
+	}
+);
+
+// delete (soft: set status to DELETED)
+export const deleteCity = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await db
+			.update(table.cityTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.cityTable.id, id));
+		getCity().refresh();
+	}
+);
+
+// delete complete (hard)
+export const deleteCityComplete = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await db.delete(table.cityTable).where(eq(table.cityTable.id, id));
+		getCity().refresh();
+	}
+);
