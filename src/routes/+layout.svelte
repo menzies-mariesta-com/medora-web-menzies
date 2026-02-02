@@ -4,7 +4,6 @@
 	import DaisyUiModalBox from '$lib/component/library/daisyui/modal/box/DaisyUiModalBox.svelte';
 	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiToast from '$lib/component/library/daisyui/toast/DaisyUiToast.svelte';
-	import { m } from '$lib/paraglide/messages';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -18,7 +17,6 @@
 <!-- Head -->
 <svelte:head>
 	<title>
-		{m.heka()}
 	</title>
 </svelte:head>
 

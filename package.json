@@ -56,6 +56,8 @@
 		"vitest-browser-svelte": "^2.0.2"
 	},
 	"dependencies": {
-		"@neondatabase/serverless": "^1.0.2"
+		"@neondatabase/serverless": "^1.0.2",
+		"pnpm": "^10.28.2",
+		"uuidv7": "^1.1.0"
 	}
 }
