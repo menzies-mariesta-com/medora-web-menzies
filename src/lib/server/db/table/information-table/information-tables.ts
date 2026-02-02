@@ -10,7 +10,7 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import { bloodTypeTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, statusTable } from './master-tables';
+import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable } from '../master-table/master-tables';
 
 const timestamps = {
 	created_at: timestamp('created_at', {
@@ -42,6 +42,9 @@ export const hospitalTable = pgTable('hospital', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
+	cityId: integer('city_id').references(() => cityTable.id),
+	stateId: integer('state_id').references(() => stateTable.id),
+	countryId: integer('country_id').references(() => countryTable.id),
 	statusId: integer('status_id').references(() => statusTable.id),
 	...timestamps,
 });
@@ -122,6 +125,9 @@ export const staffTable = pgTable('staff', {
 	remark: text('remark'),
 	identityNo: varchar('identity_no', { length: 128 }),
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
+	cityId: integer('city_id').references(() => cityTable.id),
+	stateId: integer('state_id').references(() => stateTable.id),
+	countryId: integer('country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => marialStatusTable.id),
 	specializationId: integer('specialization_id').references(() => specializationTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),

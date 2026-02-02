@@ -1,0 +1,81 @@
+import { query, command } from '$app/server';
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
+import type { GenderSchema, GenderSchemaInsert } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/status.enum';
+import { count, eq } from 'drizzle-orm';
+
+// get all
+export const getGender = query(async (): Promise<GenderSchema[]> => {
+	const data = await db.select().from(table.genderTable);
+	return data;
+});
+
+// get count
+export const getGenderCount = query(async (): Promise<number> => {
+	const [row] = await db.select({ count: count() }).from(table.genderTable);
+	return row?.count ?? 0;
+});
+
+// get one
+export const getGenderById = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<GenderSchema | null> => {
+		const [row] = await db
+			.select()
+			.from(table.genderTable)
+			.where(eq(table.genderTable.id, id));
+		return row ?? null;
+	}
+);
+
+// create
+export const createGender = command(
+	'unchecked' as const,
+	async (payload: { name: string; statusId?: number | null }): Promise<GenderSchema> => {
+		const [row] = await db
+			.insert(table.genderTable)
+			.values({ name: payload.name, statusId: payload.statusId })
+			.returning();
+		if (!row) throw new Error('Insert failed');
+		getGender().refresh();
+		return row;
+	}
+);
+
+// update
+export const updateGender = command(
+	'unchecked' as const,
+	async (payload: { id: number; name?: string; statusId?: number | null }): Promise<GenderSchema> => {
+		const { id, ...rest } = payload;
+		const [row] = await db
+			.update(table.genderTable)
+			.set(rest as Partial<GenderSchemaInsert>)
+			.where(eq(table.genderTable.id, id))
+			.returning();
+		if (!row) throw new Error('Update failed');
+		getGender().refresh();
+		return row;
+	}
+);
+
+// delete (soft: set status to DELETED)
+export const deleteGender = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await db
+			.update(table.genderTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.genderTable.id, id));
+		getGender().refresh();
+	}
+);
+
+// delete complete (hard)
+export const deleteGenderComplete = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await db.delete(table.genderTable).where(eq(table.genderTable.id, id));
+		getGender().refresh();
+	}
+);
