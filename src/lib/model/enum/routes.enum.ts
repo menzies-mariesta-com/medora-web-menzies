@@ -5,6 +5,7 @@ export enum WebRoutesEnum {
 	ONBOARDING = "/onboarding",
 	LOGIN = "/auth/login",
 	SIGNUP = "/auth/signup",
+	FORGET_PASSWORD = "/auth/forget-password",
 	PLUGIN = "/plugin",
 
 	// private
