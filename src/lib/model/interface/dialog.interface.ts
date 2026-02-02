@@ -1,4 +1,4 @@
-import type { Snippet } from 'svelte';
+import type { Component, Snippet } from 'svelte';
 import type { DialogVariantEnum } from '../enum/dialog.enum';
 
 export interface DialogSlotProps {
@@ -12,6 +12,7 @@ export interface DialogInterface {
 	message?: string;
 	variant?: DialogVariantEnum;
 	children?: Snippet<[DialogSlotProps]>;
+	component?: Component<DialogSlotProps>;
 	onClose?: () => void;
 	onConfirm?: (data?: unknown) => void;
 	onCancel?: () => void;
