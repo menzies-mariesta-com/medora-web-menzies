@@ -15,18 +15,17 @@
 	let { children } = $props();
 </script>
 
+<!-- Head -->
 <svelte:head>
 	<title>
 		{m.heka()}
 	</title>
 </svelte:head>
 
-<div class="my-web">
-	<div class="my-main">
-		{@render children()}
-	</div>
-</div>
+<!-- Root Body -->
+{@render children()}
 
+<!-- Toast Component (Learn Toast Service To Use) -->
 {#if ToastState.length > 0}
 	<DaisyUiToast className="d-toast-bottom d-toast-end">
 		{#each ToastState as toast (toast.id)}
@@ -35,6 +34,7 @@
 	</DaisyUiToast>
 {/if}
 
+<!-- Dialog component (Learn Dialog service to use) -->
 {#if DialogState.current}
 	<DaisyUiModal
 		groupName="dialog-modal"
@@ -44,7 +44,9 @@
 		<DaisyUiModalBox onClose={() => dialogService.close()}>
 			{#if DialogState.current.children}
 				{#if DialogState.current.title}
-					<h3 class="d-font-bold d-text-lg">{DialogState.current.title}</h3>
+					<h3 class="d-font-bold d-text-lg">
+						{DialogState.current.title}
+					</h3>
 				{/if}
 				{@render DialogState.current.children({
 					confirm: (data) => dialogService.confirm(data),
@@ -52,7 +54,9 @@
 				})}
 			{:else}
 				{#if DialogState.current.title}
-					<h3 class="d-font-bold d-text-lg">{DialogState.current.title}</h3>
+					<h3 class="d-font-bold d-text-lg">
+						{DialogState.current.title}
+					</h3>
 				{/if}
 				<p>{DialogState.current.message}</p>
 				<div class="d-modal-action">
@@ -86,6 +90,7 @@
 	</DaisyUiModal>
 {/if}
 
+<!-- Language -->
 <div style="display:none">
 	{#each locales as locale}
 		<a href={localizeHref(page.url.pathname, { locale })}>
