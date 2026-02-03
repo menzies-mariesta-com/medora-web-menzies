@@ -12,8 +12,22 @@
 	import './layout.css';
 	import GQuickTool from '$lib/component/global/GQuickTool.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
+	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	let { children } = $props();
+
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	// loading data
+	const localStorageUtil = new LocalStorageUtil();
+	const themeTool = new ThemeTool(localStorageUtil);
+
+	lifeCycleUtil.onMount(() => {
+		// set data
+		themeTool.getTheme();
+	});
 </script>
 
 <!-- Head -->
