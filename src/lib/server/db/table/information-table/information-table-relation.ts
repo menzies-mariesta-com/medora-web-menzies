@@ -25,6 +25,7 @@ import {
 	stateTable,
 	statusTable,
 } from '../master-table/master-table';
+import { userTable } from '../auth-table/auth-table';
 
 // Information table relations (alphabetical)
 export const departmentTableRelations = relations(departmentTable, ({ one, many }) => ({
@@ -85,6 +86,7 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	state: one(stateTable),
 	country: one(countryTable),
 	role: one(roleTable),
+	user: one(userTable),
 	specialization: one(specializationTable),
 	hospitals: many(staffHospitalTable),
 	departments: many(staffDepartmentTable),

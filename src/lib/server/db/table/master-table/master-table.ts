@@ -1,15 +1,14 @@
-import { StatusEnum } from '$lib/model/enum/status.enum';
 import { sql } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 const timestamps = {
-	created_at: timestamp('created_at', {
+	createdAt: timestamp('created_at', {
 		withTimezone: true,
 		mode: 'string',
 	})
 		.notNull()
 		.defaultNow(),
-	updated_at: timestamp('updated_at', {
+	updatedAt: timestamp('updated_at', {
 		withTimezone: true,
 		mode: 'string',
 	})
@@ -42,7 +41,7 @@ export const countryTable = pgTable('country', {
 	imgUrl: text('img_url').notNull(),
 	language: varchar('language', { length: 128 }).notNull(),
 	countryCallingCode: varchar('country_calling_code', { length: 128 }).notNull(),
-	statusId: integer('status_id').references(() => statusTable.id).notNull().$default(() => StatusEnum.ACTIVE),
+	statusId: integer('status_id').references(() => statusTable.id).notNull(),
 	...timestamps,
 });
 
