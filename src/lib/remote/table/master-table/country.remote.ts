@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { CountrySchema, CountrySchemaInsert } from '$lib/server/db/schema-type';
+import type { CountrySchema, CountrySchemaInsert, CountrySchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,24 +32,10 @@ export const getCountryById = query(
 // create
 export const createCountry = command(
 	'unchecked' as const,
-	async (payload: {
-		name: string;
-		code?: string;
-		imgUrl?: string | null;
-		language?: string | null;
-		countryCallingCode?: string | null;
-		statusId?: number | null;
-	}): Promise<CountrySchema> => {
+	async (payload: CountrySchemaInsert): Promise<CountrySchema> => {
 		const [row] = await db
 			.insert(table.countryTable)
-			.values({
-				name: payload.name,
-				code: payload.code,
-				imgUrl: payload.imgUrl,
-				language: payload.language,
-				countryCallingCode: payload.countryCallingCode,
-				statusId: payload.statusId
-			})
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getCountry().refresh();
@@ -63,16 +49,16 @@ export const updateCountry = command(
 	async (payload: {
 		id: number;
 		name?: string;
-		code?: string | null;
-		imgUrl?: string | null;
-		language?: string | null;
-		countryCallingCode?: string | null;
-		statusId?: number | null;
+		code?: string;
+		imgUrl?: string;
+		language?: string;
+		countryCallingCode?: string;
+		statusId?: number;
 	}): Promise<CountrySchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.countryTable)
-			.set(rest as Partial<CountrySchemaInsert>)
+			.set(rest as CountrySchemaUpdate)
 			.where(eq(table.countryTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
