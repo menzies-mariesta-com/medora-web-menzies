@@ -3,33 +3,40 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiFieldset from '$lib/component/library/daisyui/fieldset/DaisyUiFieldset.svelte';
+	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
-	import { CountryCodeData } from '$lib/model/data/country-code.data';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { getCountry } from '$lib/remote/table/master-table/country.remote';
+	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
-	import { StringUtil } from '$lib/util/string.util.svelte';
+	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 
 	const passwordTool = new PasswordTool();
 
+	let countryData = await getCountry();
+	let genderData = await getGender();
+
+	let selectedCountryId = $state('');
+	let selectedGenderId = $state('');
 	let isPasswordVisible = $state(false);
-	
 </script>
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
 		<DaisyUiFieldset
-			fieldsetLegend="SIGN UP"
-			fieldsetLegendClassName="my-ft-h1"
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
 		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
 			<!-- first name -->
 			<section id="first-name-input">
 				<DaisyUiInputField
@@ -57,20 +64,21 @@
 				/>
 			</section>
 
-			<!-- Region -->
-			<section id="last-name-input">
+			<!-- Country -->
+			<section id="country-input">
 				<DaisyUiSelect
-					optionHeader="Select a Region ..."
+					bind:value={selectedCountryId}
+					optionHeader="Select a Country ..."
 					className="bg-base-200"
 				>
-					{#each CountryCodeData as data}
-						<option class="gap-5">
+					{#each countryData as data}
+						<option value={String(data.id)} class="gap-5">
 							<DaisyUiAvatar
-								src={data.image}
+								src={data.imgUrl}
 								alt={data.name}
 								className="w-5"
 							/>
-							{StringUtil.countryName(data.name)}
+							{data.name}
 							[ {data.code.toUpperCase()} ]
 						</option>
 					{/each}
@@ -81,12 +89,13 @@
 			<section id="phone-number-input">
 				<DaisyUiJoin>
 					<DaisyUiSelect
+						bind:value={selectedCountryId}
 						className="max-w-20 bg-base-200"
 						optionHeader="Select a Country code"
 					>
-						{#each CountryCodeData as data}
-							<option class="gap-5">
-								{data.phone}
+						{#each countryData as data}
+							<option value={String(data.id)} class="gap-5">
+								{data.countryCallingCode}
 							</option>
 						{/each}
 					</DaisyUiSelect>
@@ -107,29 +116,20 @@
 				/>
 			</section>
 
-			<!-- gender -->
-			<DaisyUiFieldset
-				fieldsetLegend="Gender"
-				className="border-base-300 rounded-box w-full border p-4"
-			>
-				<section
-					id="gender-check"
-					class="flex items-center justify-between align-middle"
+			<!-- Gender -->
+			<section id="gender-type-input">
+				<DaisyUiSelect
+					bind:value={selectedGenderId}
+					optionHeader="Select Gender ..."
+					className="bg-base-200"
 				>
-					<div class="flex items-center gap-3">
-						<DaisyUiCheckbox />
-						<DaisyUiLabel forText="male">Male</DaisyUiLabel>
-					</div>
-					<div class="flex items-center gap-3">
-						<DaisyUiCheckbox />
-						<DaisyUiLabel forText="female">Female</DaisyUiLabel>
-					</div>
-					<div class="flex items-center gap-3">
-						<DaisyUiCheckbox />
-						<DaisyUiLabel forText="other">Other</DaisyUiLabel>
-					</div>
-				</section>
-			</DaisyUiFieldset>
+					{#each genderData as data}
+						<option value={String(data.id)} class="gap-5">
+							{data.name}
+						</option>
+					{/each}
+				</DaisyUiSelect>
+			</section>
 
 			<!-- password -->
 			<section id="password">

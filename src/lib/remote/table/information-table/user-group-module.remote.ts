@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { UserGroupModuleSchema, UserGroupModuleSchemaInsert } from '$lib/server/db/schema-type';
+import type { UserGroupModuleSchema, UserGroupModuleSchemaInsert, UserGroupModuleSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getUserGroupModuleById = query(
 // create
 export const createUserGroupModule = command(
 	'unchecked' as const,
-	async (payload: { userGroupId?: number | null; moduleId?: number | null }): Promise<UserGroupModuleSchema> => {
+	async (payload: UserGroupModuleSchemaInsert): Promise<UserGroupModuleSchema> => {
 		const [row] = await db
 			.insert(table.userGroupModuleTable)
-			.values({ userGroupId: payload.userGroupId, moduleId: payload.moduleId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getUserGroupModule().refresh();
@@ -53,7 +53,7 @@ export const updateUserGroupModule = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.userGroupModuleTable)
-			.set(rest as Partial<UserGroupModuleSchemaInsert>)
+			.set(rest as UserGroupModuleSchemaUpdate)
 			.where(eq(table.userGroupModuleTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

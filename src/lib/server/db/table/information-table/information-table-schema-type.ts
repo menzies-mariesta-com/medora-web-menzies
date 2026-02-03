@@ -13,7 +13,7 @@ import type {
 	userGroupModuleTable,
 	userGroupPageTable,
 	userGroupTable,
-} from './information-tables';
+} from './information-table';
 
 // Information Tables (alphabetical)
 export type DepartmentSchema = InferSelectModel<typeof departmentTable>;
