@@ -10,16 +10,17 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
+import { userTable } from '../auth-table/auth-table';
 import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable } from '../master-table/master-table';
 
 const timestamps = {
-	created_at: timestamp('created_at', {
+	createdAt: timestamp('created_at', {
 		withTimezone: true,
 		mode: 'string',
 	})
 		.notNull()
 		.defaultNow(),
-	updated_at: timestamp('updated_at', {
+	updatedAt: timestamp('updated_at', {
 		withTimezone: true,
 		mode: 'string',
 	})
@@ -112,13 +113,16 @@ export const staffTable = pgTable('staff', {
 	id: uuid('id')
 		.primaryKey()
 		.$defaultFn(() => uuidv7()),
+	/** Links this staff to Better Auth user (1:1). */
+	userId: text('user_id')
+		.unique()
+		.notNull()
+		.references(() => userTable.id, { onDelete: 'cascade' }),
 	firstName: varchar('first_name', { length: 512 }),
 	middleName: varchar('middle_name', { length: 512 }),
 	lastName: varchar('last_name', { length: 512 }),
 	phonePrimary: varchar('phone_primary', { length: 128 }),
 	phoneSecondary: varchar('phone_secondary', { length: 128 }),
-	email: varchar('email', { length: 512 }),
-	password: varchar('password', { length: 512 }),
 	dateOfBirth: date('date_of_birth'),
 	photoPath: text('photo_path'),
 	address: text('address'),

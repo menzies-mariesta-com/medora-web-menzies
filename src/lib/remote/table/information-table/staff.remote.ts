@@ -5,6 +5,7 @@ import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/ser
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
+
 // get all
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	const data = await db.select().from(table.staffTable);
@@ -45,7 +46,8 @@ export const getStaffByIdWithRelations = query(
 				hospitals: { with: { hospital: true } },
 				departments: { with: { department: true } },
 				roles: { with: { role: true } },
-				userGroups: { with: { userGroup: true } }
+				userGroups: { with: { userGroup: true } },
+				
 			}
 		});
 	}
@@ -69,10 +71,32 @@ export const getStaffById = query(
 	}
 );
 
-// create
+export const getStaffByUserId = query(
+	'unchecked' as const,
+	async ({ userId }: { userId: string }): Promise<StaffSchema | null> => {
+		const [row] = await db
+			.select()
+			.from(table.staffTable)
+			.where(eq(table.staffTable.userId, userId));
+		return row ?? null;
+	}
+);
+
+// create with uniqueness check on userId (1:1 with Better Auth user)
 export const createStaff = command(
 	'unchecked' as const,
 	async (payload: StaffSchemaInsert): Promise<StaffSchema> => {
+		// Ensure userId is present and non-null for the 1:1 link
+		if (!payload.userId) {
+			throw new Error('userId is required to create staff profile');
+		}
+
+		// Enforce 1:1 constraint: a user can only have one staff profile
+		const existing = await getStaffByUserId({ userId: payload.userId });
+		if (existing) {
+			throw new Error('Staff profile already exists');
+		}
+
 		const [row] = await db
 			.insert(table.staffTable)
 			.values(payload)
