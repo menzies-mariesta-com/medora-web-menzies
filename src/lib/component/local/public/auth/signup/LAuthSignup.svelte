@@ -5,6 +5,7 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiFieldset from '$lib/component/library/daisyui/fieldset/DaisyUiFieldset.svelte';
+	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
@@ -17,6 +18,7 @@
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
 	import { createStaff } from '$lib/remote/table/information-table/staff.remote';
+	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 
 	const passwordTool = new PasswordTool();
 
@@ -97,17 +99,23 @@
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
-		<form onsubmit={handleSubmit}>
-			<DaisyUiFieldset
-			fieldsetLegend="SIGN UP"
-			fieldsetLegendClassName="my-ft-h1"
+    <form onsubmit={handleSubmit}>
+		<DaisyUiFieldset
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-			>
-				{#if errorMessage}
-					<section class="text-error text-sm" role="alert">
-						{errorMessage}
-					</section>
-				{/if}
+		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
+			<!-- first name -->
+			<section id="first-name-input">
+				<DaisyUiInputField
+					inputType="text"
+					inputPlaceholderText="First Name"
+					className="w-full"
+				/>
+			</section>
 
 				<!-- first name -->
 				<section id="first-name-input">
