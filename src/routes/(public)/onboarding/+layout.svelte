@@ -1,5 +1,5 @@
 <script lang="ts">
-	import GPublicOnboardingFooterbar from '$lib/component/global/public/onboarding/GPublicOnboardingFooterbar.svelte';
+	import GPublicOnboardingFooterBar from '$lib/component/global/public/onboarding/GPublicOnboardingFooterBar.svelte';
 	import GPublicOnboardingNavbar from '$lib/component/global/public/onboarding/GPublicOnboardingNavbar.svelte';
 
 	let { children } = $props();
@@ -10,5 +10,5 @@
 	<div class="my-main">
 		{@render children?.()}
 	</div>
-	<GPublicOnboardingFooterbar />
+	<GPublicOnboardingFooterBar />
 </div>

@@ -9,10 +9,22 @@
 
 	const languageTool = new LanguageTool();
 
-	let currentLanguage: LanguageEnum = languageTool.getLanguage();
+	let currentLanguage: LanguageEnum = $state(
+		languageTool.getLanguage()
+	);
+
+	function handleConfirm() {
+		confirm({
+			language: currentLanguage
+		});
+	}
 </script>
 
-<DaisyUiSelect optionHeader="Select Language" className="w-full">
+<DaisyUiSelect
+	optionHeader="Select Language"
+	className="w-full"
+	bind:value={currentLanguage}
+>
 	{#each Object.values(LanguageEnum) as lang}
 		{#if lang === currentLanguage}
 			<option value={lang} selected>{lang}</option>
@@ -27,7 +39,7 @@
 		Cancel
 	</DaisyUiButton>
 	<DaisyUiButton
-		onClick={() => confirm()}
+		onClick={() => handleConfirm()}
 		className="d-btn d-btn-primary"
 	>
 		OK

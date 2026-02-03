@@ -11,11 +11,22 @@
 	const localStorageUtil = new LocalStorageUtil();
 	const themeTool = new ThemeTool(localStorageUtil);
 
-	let currentTheme: ThemeEnum =
-		themeTool.getTheme() ?? ThemeEnum.LIGHT;
+	let currentTheme: ThemeEnum = $state(
+		themeTool.getTheme() ?? ThemeEnum.LIGHT
+	);
+
+	function handleConfirm() {
+		confirm({
+			theme: currentTheme
+		});
+	}
 </script>
 
-<DaisyUiSelect optionHeader="Select Theme" className="w-full">
+<DaisyUiSelect
+	optionHeader="Select Theme"
+	className="w-full"
+	bind:value={currentTheme}
+>
 	{#each Object.values(ThemeEnum) as theme}
 		{#if theme === currentTheme}
 			<option value={theme} selected>{theme}</option>
@@ -30,7 +41,7 @@
 		Cancel
 	</DaisyUiButton>
 	<DaisyUiButton
-		onClick={() => confirm()}
+		onClick={() => handleConfirm()}
 		className="d-btn d-btn-primary"
 	>
 		OK

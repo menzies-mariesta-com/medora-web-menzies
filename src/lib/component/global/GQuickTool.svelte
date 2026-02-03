@@ -9,12 +9,23 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ChangeThemeModal from '../snippet/modal/ChangeThemeModal.svelte';
 	import ChangeLanguageModal from '$lib/component/snippet/modal/ChangeLanguageModal.svelte';
+	import { LanguageEnum } from '$lib/model/enum/language.enum';
+	import { LanguageTool } from '$lib/tool/language.tool.svelte';
+	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
+	import type { ThemeEnum } from '$lib/model/enum/theme.enum';
+	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
+
+	const languageTool = new LanguageTool();
+	const localStorageUtil = new LocalStorageUtil();
+	const themeTool = new ThemeTool(localStorageUtil);
 
 	function openLanguageDialog() {
 		dialogService.open({
 			title: 'Change Language',
 			component: ChangeLanguageModal,
-			onConfirm: () => {}
+			onConfirm: (data?: any) => {
+				languageTool.changeLanguage(data.language as LanguageEnum);
+			}
 		});
 	}
 
@@ -22,7 +33,9 @@
 		dialogService.open({
 			title: 'Change Theme',
 			component: ChangeThemeModal,
-			onConfirm: () => {}
+			onConfirm: (data?: any) => {
+				themeTool.setTheme(data.theme as ThemeEnum);
+			}
 		});
 	}
 
