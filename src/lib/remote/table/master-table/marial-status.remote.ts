@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { MarialStatusSchema, MarialStatusSchemaInsert } from '$lib/server/db/schema-type';
+import type { MarialStatusSchema, MarialStatusSchemaInsert, MarialStatusSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getMarialStatusById = query(
 // create
 export const createMarialStatus = command(
 	'unchecked' as const,
-	async (payload: { name: string }): Promise<MarialStatusSchema> => {
+	async (payload: MarialStatusSchemaInsert): Promise<MarialStatusSchema> => {
 		const [row] = await db
 			.insert(table.marialStatusTable)
-			.values({ name: payload.name })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getMarialStatus().refresh();
@@ -49,7 +49,7 @@ export const updateMarialStatus = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.marialStatusTable)
-			.set(rest as Partial<MarialStatusSchemaInsert>)
+			.set(rest as MarialStatusSchemaUpdate)
 			.where(eq(table.marialStatusTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

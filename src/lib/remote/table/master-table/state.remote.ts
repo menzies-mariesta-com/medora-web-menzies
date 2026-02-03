@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StateSchema, StateSchemaInsert } from '$lib/server/db/schema-type';
+import type { StateSchema, StateSchemaInsert, StateSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,20 +32,10 @@ export const getStateById = query(
 // create
 export const createState = command(
 	'unchecked' as const,
-	async (payload: {
-		name: string;
-		code?: string | null;
-		countryId?: number | null;
-		statusId?: number | null;
-	}): Promise<StateSchema> => {
+	async (payload: StateSchemaInsert): Promise<StateSchema> => {
 		const [row] = await db
 			.insert(table.stateTable)
-			.values({
-				name: payload.name,
-				code: payload.code,
-				countryId: payload.countryId,
-				statusId: payload.statusId
-			})
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getState().refresh();
@@ -66,7 +56,7 @@ export const updateState = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.stateTable)
-			.set(rest as Partial<StateSchemaInsert>)
+			.set(rest as StateSchemaUpdate)
 			.where(eq(table.stateTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { UserGroupPageSchema, UserGroupPageSchemaInsert } from '$lib/server/db/schema-type';
+import type { UserGroupPageSchema, UserGroupPageSchemaInsert, UserGroupPageSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getUserGroupPageById = query(
 // create
 export const createUserGroupPage = command(
 	'unchecked' as const,
-	async (payload: { userGroupId?: number | null; pageId?: number | null }): Promise<UserGroupPageSchema> => {
+	async (payload: UserGroupPageSchemaInsert): Promise<UserGroupPageSchema> => {
 		const [row] = await db
 			.insert(table.userGroupPageTable)
-			.values({ userGroupId: payload.userGroupId, pageId: payload.pageId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getUserGroupPage().refresh();
@@ -53,7 +53,7 @@ export const updateUserGroupPage = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.userGroupPageTable)
-			.set(rest as Partial<UserGroupPageSchemaInsert>)
+			.set(rest as UserGroupPageSchemaUpdate)
 			.where(eq(table.userGroupPageTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

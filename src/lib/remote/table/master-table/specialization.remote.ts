@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { SpecializationSchema, SpecializationSchemaInsert } from '$lib/server/db/schema-type';
+import type { SpecializationSchema, SpecializationSchemaInsert, SpecializationSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getSpecializationById = query(
 // create
 export const createSpecialization = command(
 	'unchecked' as const,
-	async (payload: { name: string }): Promise<SpecializationSchema> => {
+	async (payload: SpecializationSchemaInsert): Promise<SpecializationSchema> => {
 		const [row] = await db
 			.insert(table.specializationTable)
-			.values({ name: payload.name })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getSpecialization().refresh();
@@ -49,7 +49,7 @@ export const updateSpecialization = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.specializationTable)
-			.set(rest as Partial<SpecializationSchemaInsert>)
+			.set(rest as SpecializationSchemaUpdate)
 			.where(eq(table.specializationTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

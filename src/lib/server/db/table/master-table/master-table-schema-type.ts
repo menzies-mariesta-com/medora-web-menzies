@@ -9,7 +9,7 @@ import type {
 	specializationTable,
 	stateTable,
 	statusTable,
-} from './master-tables';
+} from './master-table';
 
 // Master Tables (alphabetical)
 export type BloodTypeSchema = InferSelectModel<typeof bloodTypeTable>;

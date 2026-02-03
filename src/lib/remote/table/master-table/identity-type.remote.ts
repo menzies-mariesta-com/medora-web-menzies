@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { IdentityTypeSchema, IdentityTypeSchemaInsert } from '$lib/server/db/schema-type';
+import type { IdentityTypeSchema, IdentityTypeSchemaInsert, IdentityTypeSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getIdentityTypeById = query(
 // create
 export const createIdentityType = command(
 	'unchecked' as const,
-	async (payload: { name: string }): Promise<IdentityTypeSchema> => {
+	async (payload: IdentityTypeSchemaInsert): Promise<IdentityTypeSchema> => {
 		const [row] = await db
 			.insert(table.identityTypeTable)
-			.values({ name: payload.name })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getIdentityType().refresh();
@@ -49,7 +49,7 @@ export const updateIdentityType = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.identityTypeTable)
-			.set(rest as Partial<IdentityTypeSchemaInsert>)
+			.set(rest as IdentityTypeSchemaUpdate)
 			.where(eq(table.identityTypeTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

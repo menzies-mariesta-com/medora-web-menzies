@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StaffSchema, StaffSchemaInsert } from '$lib/server/db/schema-type';
+import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -72,29 +72,10 @@ export const getStaffById = query(
 // create
 export const createStaff = command(
 	'unchecked' as const,
-	async (payload: Partial<StaffSchemaInsert> & { firstName: string }): Promise<StaffSchema> => {
+	async (payload: StaffSchemaInsert): Promise<StaffSchema> => {
 		const [row] = await db
 			.insert(table.staffTable)
-			.values({
-				firstName: payload.firstName,
-				middleName: payload.middleName,
-				lastName: payload.lastName,
-				phonePrimary: payload.phonePrimary,
-				phoneSecondary: payload.phoneSecondary,
-				email: payload.email,
-				password: payload.password,
-				dateOfBirth: payload.dateOfBirth,
-				photoPath: payload.photoPath,
-				address: payload.address,
-				remark: payload.remark,
-				identityNo: payload.identityNo,
-				identityTypeId: payload.identityTypeId,
-				maritalStatusId: payload.maritalStatusId,
-				specializationId: payload.specializationId,
-				genderId: payload.genderId,
-				bloodTypeId: payload.bloodTypeId,
-				statusId: payload.statusId
-			})
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStaff().refresh();
@@ -105,11 +86,11 @@ export const createStaff = command(
 // update
 export const updateStaff = command(
 	'unchecked' as const,
-	async (payload: { id: string } & Partial<StaffSchemaInsert>): Promise<StaffSchema> => {
+	async (payload: { id: string } & StaffSchemaUpdate): Promise<StaffSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.staffTable)
-			.set(rest as Partial<StaffSchemaInsert>)
+			.set(rest as StaffSchemaUpdate)
 			.where(eq(table.staffTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

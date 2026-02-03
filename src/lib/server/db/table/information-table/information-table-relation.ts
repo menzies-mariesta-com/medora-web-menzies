@@ -13,7 +13,7 @@ import {
 	userGroupModuleTable,
 	userGroupPageTable,
 	userGroupTable,
-} from './information-tables';
+} from './information-table';
 import {
 	bloodTypeTable,
 	cityTable,
@@ -24,7 +24,7 @@ import {
 	specializationTable,
 	stateTable,
 	statusTable,
-} from '../master-table/master-tables';
+} from '../master-table/master-table';
 
 // Information table relations (alphabetical)
 export const departmentTableRelations = relations(departmentTable, ({ one, many }) => ({

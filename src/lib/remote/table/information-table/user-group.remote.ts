@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { UserGroupSchema, UserGroupSchemaInsert } from '$lib/server/db/schema-type';
+import type { UserGroupSchema, UserGroupSchemaInsert, UserGroupSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,10 +32,10 @@ export const getUserGroupById = query(
 // create
 export const createUserGroup = command(
 	'unchecked' as const,
-	async (payload: { name: string; statusId?: number | null }): Promise<UserGroupSchema> => {
+	async (payload: UserGroupSchemaInsert): Promise<UserGroupSchema> => {
 		const [row] = await db
 			.insert(table.userGroupTable)
-			.values({ name: payload.name, statusId: payload.statusId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getUserGroup().refresh();
@@ -50,7 +50,7 @@ export const updateUserGroup = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.userGroupTable)
-			.set(rest as Partial<UserGroupSchemaInsert>)
+			.set(rest as UserGroupSchemaUpdate)
 			.where(eq(table.userGroupTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

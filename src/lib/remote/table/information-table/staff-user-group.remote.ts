@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StaffUserGroupSchema, StaffUserGroupSchemaInsert } from '$lib/server/db/schema-type';
+import type { StaffUserGroupSchema, StaffUserGroupSchemaInsert, StaffUserGroupSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getStaffUserGroupById = query(
 // create
 export const createStaffUserGroup = command(
 	'unchecked' as const,
-	async (payload: { staffId: string; userGroupId: number }): Promise<StaffUserGroupSchema> => {
+	async (payload: StaffUserGroupSchemaInsert): Promise<StaffUserGroupSchema> => {
 		const [row] = await db
 			.insert(table.staffUserGroupTable)
-			.values({ staffId: payload.staffId, userGroupId: payload.userGroupId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStaffUserGroup().refresh();
@@ -53,7 +53,7 @@ export const updateStaffUserGroup = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.staffUserGroupTable)
-			.set(rest as Partial<StaffUserGroupSchemaInsert>)
+			.set(rest as StaffUserGroupSchemaUpdate)
 			.where(eq(table.staffUserGroupTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
