@@ -11,6 +11,7 @@
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
+	import DaisyUiValidatorHint from '$lib/component/library/daisyui/validator/DaisyUiValidatorHint.svelte';
 
 	let isPasswordVisible = $state(false);
 
@@ -29,13 +30,15 @@
 					<img src={HekaLogo} alt="" class="w-42" />
 				</DaisyUiLink>
 			</DaisyUiFieldsetLegend>
+
 			<!-- username -->
 			<section id="username-input">
 				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Username"
-					className="w-full"
+					inputType="email"
+					inputPlaceholderText="Email"
+					className="w-full d-validator"
 				/>
+				<DaisyUiValidatorHint>helo</DaisyUiValidatorHint>
 			</section>
 
 			<!-- password -->
