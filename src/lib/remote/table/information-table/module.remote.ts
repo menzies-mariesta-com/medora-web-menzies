@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { ModuleSchema, ModuleSchemaInsert } from '$lib/server/db/schema-type';
+import type { ModuleSchema, ModuleSchemaInsert, ModuleSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,10 +32,10 @@ export const getModuleById = query(
 // create
 export const createModule = command(
 	'unchecked' as const,
-	async (payload: { name: string; icon?: string | null; statusId: number }): Promise<ModuleSchema> => {
+	async (payload: ModuleSchemaInsert): Promise<ModuleSchema> => {
 		const [row] = await db
 			.insert(table.moduleTable)
-			.values({ name: payload.name, icon: payload.icon, statusId: payload.statusId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getModule().refresh();
@@ -55,7 +55,7 @@ export const updateModule = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.moduleTable)
-			.set(rest as Partial<ModuleSchemaInsert>)
+			.set(rest as ModuleSchemaUpdate)
 			.where(eq(table.moduleTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

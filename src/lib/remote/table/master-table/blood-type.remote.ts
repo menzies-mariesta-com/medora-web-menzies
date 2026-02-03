@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { BloodTypeSchema, BloodTypeSchemaInsert } from '$lib/server/db/schema-type';
+import type { BloodTypeSchema, BloodTypeSchemaInsert, BloodTypeSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,10 +32,10 @@ export const getBloodTypeById = query(
 // create
 export const createBloodType = command(
   'unchecked' as const,
-  async (payload: { name: string; }): Promise<BloodTypeSchema> => {
+  async (payload: BloodTypeSchemaInsert): Promise<BloodTypeSchema> => {
     const [row] = await db
       .insert(table.bloodTypeTable)
-      .values({ name: payload.name })
+      .values(payload)
       .returning();
     if (!row) throw new Error('Insert failed');
     getBloodType().refresh();
@@ -54,7 +54,7 @@ export const updateBloodType = command(
     const { id, ...rest } = payload;
     const [row] = await db
       .update(table.bloodTypeTable)
-      .set(rest as Partial<BloodTypeSchemaInsert>)
+      .set(rest as BloodTypeSchemaUpdate)
       .where(eq(table.bloodTypeTable.id, id))
       .returning();
     if (!row) throw new Error('Update failed');

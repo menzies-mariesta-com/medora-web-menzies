@@ -1,3 +1,4 @@
+import { StatusEnum } from '$lib/model/enum/status.enum';
 import { sql } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
@@ -35,13 +36,13 @@ export const cityTable = pgTable('city', {
 });
 
 export const countryTable = pgTable('country', {
-	id: serial('id').primaryKey(),
-	name: varchar('name', { length: 512 }),
-	code: varchar('code', { length: 128 }),
-	imgUrl: text('img_url'),
-	language: varchar('language', { length: 128 }),
-	countryCallingCode: varchar('country_calling_code', { length: 128 }),
-	statusId: integer('status_id').references(() => statusTable.id),
+	id: serial('id').primaryKey().notNull(),
+	name: varchar('name', { length: 512 }).notNull(),
+	code: varchar('code', { length: 128 }).notNull(),
+	imgUrl: text('img_url').notNull(),
+	language: varchar('language', { length: 128 }).notNull(),
+	countryCallingCode: varchar('country_calling_code', { length: 128 }).notNull(),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().$default(() => StatusEnum.ACTIVE),
 	...timestamps,
 });
 
