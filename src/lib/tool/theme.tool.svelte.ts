@@ -4,7 +4,7 @@ import { ThemeEnum } from '$lib/model/enum/theme.enum';
 import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 
 export class ThemeTool {
-	constructor(private localStorageUtil: LocalStorageUtil) {}
+	constructor(private localStorageUtil: LocalStorageUtil) { }
 
 	/**
 	 * Check if theme is stored
@@ -16,7 +16,7 @@ export class ThemeTool {
 	/**
 	 * Get the current theme
 	 */
-	getTheme(): ThemeEnum | null {
+	getTheme(): ThemeEnum {
 		const value = this.localStorageUtil.getItem<string>(
 			LocalStorageEnum.THEME
 		);
