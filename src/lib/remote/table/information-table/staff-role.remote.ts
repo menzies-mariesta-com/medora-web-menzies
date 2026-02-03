@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StaffRoleSchema, StaffRoleSchemaInsert } from '$lib/server/db/schema-type';
+import type { StaffRoleSchema, StaffRoleSchemaInsert, StaffRoleSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getStaffRoleById = query(
 // create
 export const createStaffRole = command(
 	'unchecked' as const,
-	async (payload: { staffId: string; roleId: number }): Promise<StaffRoleSchema> => {
+	async (payload: StaffRoleSchemaInsert): Promise<StaffRoleSchema> => {
 		const [row] = await db
 			.insert(table.staffRoleTable)
-			.values({ staffId: payload.staffId, roleId: payload.roleId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStaffRole().refresh();
@@ -49,7 +49,7 @@ export const updateStaffRole = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.staffRoleTable)
-			.set(rest as Partial<StaffRoleSchemaInsert>)
+			.set(rest as StaffRoleSchemaUpdate)
 			.where(eq(table.staffRoleTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

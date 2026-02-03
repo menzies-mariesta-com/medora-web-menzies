@@ -7,7 +7,7 @@ import {
 	roleTable,
 	staffTable,
 	userGroupTable,
-} from '../information-table/information-tables';
+} from '../information-table/information-table';
 import {
 	bloodTypeTable,
 	cityTable,
@@ -18,7 +18,7 @@ import {
 	specializationTable,
 	stateTable,
 	statusTable,
-} from './master-tables';
+} from './master-table';
 
 // Master table relations (alphabetical)
 export const bloodTypeTableRelations = relations(bloodTypeTable, ({ one, many }) => ({

@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StatusSchema, StatusSchemaInsert } from '$lib/server/db/schema-type';
+import type { StatusSchema, StatusSchemaInsert, StatusSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -31,10 +31,10 @@ export const getStatusById = query(
 // create
 export const createStatus = command(
 	'unchecked' as const,
-	async (payload: { name: string }): Promise<StatusSchema> => {
+	async (payload: StatusSchemaInsert): Promise<StatusSchema> => {
 		const [row] = await db
 			.insert(table.statusTable)
-			.values({ name: payload.name })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStatus().refresh();
@@ -49,7 +49,7 @@ export const updateStatus = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.statusTable)
-			.set(rest as Partial<StatusSchemaInsert>)
+			.set(rest as StatusSchemaUpdate)
 			.where(eq(table.statusTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

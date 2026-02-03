@@ -3,11 +3,9 @@
 		children: () => void;
 		className?: string;
 		fieldsetLegend?: string;
-		fieldsetLegendImage?: string;
-		fieldsetLegendClassName?: string;
 	}>();
 </script>
 
-<fieldset class="d-fieldset {className}">
-	{@render children()}
-</fieldset>
+<legend class="d-fieldset-legend {className}	"
+	>{@render children?.()}</legend
+>

@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { PageSchema, PageSchemaInsert } from '$lib/server/db/schema-type';
+import type { PageSchema, PageSchemaInsert, PageSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,20 +32,10 @@ export const getPageById = query(
 // create
 export const createPage = command(
 	'unchecked' as const,
-	async (payload: {
-		name: string;
-		icon?: string | null;
-		moduleId?: number | null;
-		statusId?: number | null;
-	}): Promise<PageSchema> => {
+	async (payload: PageSchemaInsert): Promise<PageSchema> => {
 		const [row] = await db
 			.insert(table.pageTable)
-			.values({
-				name: payload.name,
-				icon: payload.icon,
-				moduleId: payload.moduleId,
-				statusId: payload.statusId
-			})
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getPage().refresh();
@@ -66,7 +56,7 @@ export const updatePage = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.pageTable)
-			.set(rest as Partial<PageSchemaInsert>)
+			.set(rest as PageSchemaUpdate)
 			.where(eq(table.pageTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { CitySchema, CitySchemaInsert } from '$lib/server/db/schema-type';
+import type { CitySchema, CitySchemaInsert, CitySchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,10 +32,10 @@ export const getCityById = query(
 // create
 export const createCity = command(
 	'unchecked' as const,
-	async (payload: { name: string; code?: string; stateId?: number; statusId?: number }): Promise<CitySchema> => {
+	async (payload: CitySchemaInsert): Promise<CitySchema> => {
 		const [row] = await db
 			.insert(table.cityTable)
-			.values({ name: payload.name, code: payload.code, stateId: payload.stateId, statusId: payload.statusId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getCity().refresh();
@@ -56,7 +56,7 @@ export const updateCity = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.cityTable)
-			.set(rest as Partial<CitySchemaInsert>)
+			.set(rest as CitySchemaUpdate)
 			.where(eq(table.cityTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
