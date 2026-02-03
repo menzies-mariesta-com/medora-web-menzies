@@ -52,6 +52,17 @@ export type StaffSchema = InferSelectModel<typeof staffTable>;
 export type StaffSchemaInsert = InferInsertModel<typeof staffTable>;
 export type StaffSchemaUpdate = Partial<StaffSchemaInsert>;
 
+/** Payload for creating a staff profile linked to a Better Auth user (used by createMyStaffProfile). */
+export type CreateStaffProfilePayload = {
+	firstName?: string;
+	middleName?: string;
+	lastName?: string;
+	email?: string;
+	phonePrimary?: string;
+	countryId?: string | number;
+	genderId?: string | number;
+};
+
 export type StaffUserGroupSchema = InferSelectModel<typeof staffUserGroupTable>;
 export type StaffUserGroupSchemaInsert = InferInsertModel<typeof staffUserGroupTable>;
 export type StaffUserGroupSchemaUpdate = Partial<StaffUserGroupSchemaInsert>;
