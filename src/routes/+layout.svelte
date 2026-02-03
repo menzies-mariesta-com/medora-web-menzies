@@ -15,6 +15,7 @@
 	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
 	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 
 	let { children } = $props();
 
@@ -35,6 +36,7 @@
 	<title>
 		{m.heka()}
 	</title>
+	<link rel="icon" type="image/x-icon" href={HekaLogo} />
 </svelte:head>
 
 <!-- Root Body -->

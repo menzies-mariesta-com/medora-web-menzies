@@ -4,6 +4,7 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiFieldset from '$lib/component/library/daisyui/fieldset/DaisyUiFieldset.svelte';
+	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
@@ -14,25 +15,28 @@
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
+	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 
 	const passwordTool = new PasswordTool();
 
 	let countryData = await getCountry();
 	let genderData = await getGender();
-	
+
 	let selectedCountryId = $state('');
 	let selectedGenderId = $state('');
 	let isPasswordVisible = $state(false);
-	
 </script>
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
 		<DaisyUiFieldset
-			fieldsetLegend="SIGN UP"
-			fieldsetLegendClassName="my-ft-h1"
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
 		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
 			<!-- first name -->
 			<section id="first-name-input">
 				<DaisyUiInputField

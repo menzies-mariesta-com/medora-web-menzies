@@ -9,6 +9,8 @@
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 
 	let isPasswordVisible = $state(false);
 
@@ -20,10 +22,13 @@
 <DaisyUiCard className="w-full max-w-md ">
 	<DaisyUiCardBody>
 		<DaisyUiFieldset
-			fieldsetLegend="LOGIN"
-			fieldsetLegendClassName="my-ft-h1"
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
 		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
 			<!-- username -->
 			<section id="username-input">
 				<DaisyUiInputField
