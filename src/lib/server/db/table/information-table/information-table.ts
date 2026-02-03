@@ -10,7 +10,7 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable } from '../master-table/master-tables';
+import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable } from '../master-table/master-table';
 
 const timestamps = {
 	created_at: timestamp('created_at', {

@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { DepartmentSchema, DepartmentSchemaInsert } from '$lib/server/db/schema-type';
+import type { DepartmentSchema, DepartmentSchemaInsert, DepartmentSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,20 +32,10 @@ export const getDepartmentById = query(
 // create
 export const createDepartment = command(
 	'unchecked' as const,
-	async (payload: {
-		name: string;
-		code?: string | null;
-		hospitalId?: number | null;
-		statusId?: number | null;
-	}): Promise<DepartmentSchema> => {
+	async (payload: DepartmentSchemaInsert): Promise<DepartmentSchema> => {
 		const [row] = await db
 			.insert(table.departmentTable)
-			.values({
-				name: payload.name,
-				code: payload.code,
-				hospitalId: payload.hospitalId,
-				statusId: payload.statusId
-			})
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getDepartment().refresh();
@@ -66,7 +56,7 @@ export const updateDepartment = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.departmentTable)
-			.set(rest as Partial<DepartmentSchemaInsert>)
+			.set(rest as DepartmentSchemaUpdate)
 			.where(eq(table.departmentTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

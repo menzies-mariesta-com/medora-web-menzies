@@ -1,7 +1,7 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { GenderSchema, GenderSchemaInsert } from '$lib/server/db/schema-type';
+import type { GenderSchema, GenderSchemaInsert, GenderSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/status.enum';
 import { count, eq } from 'drizzle-orm';
 
@@ -32,10 +32,10 @@ export const getGenderById = query(
 // create
 export const createGender = command(
 	'unchecked' as const,
-	async (payload: { name: string; statusId?: number | null }): Promise<GenderSchema> => {
+	async (payload: GenderSchemaInsert): Promise<GenderSchema> => {
 		const [row] = await db
 			.insert(table.genderTable)
-			.values({ name: payload.name, statusId: payload.statusId })
+			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getGender().refresh();
@@ -50,7 +50,7 @@ export const updateGender = command(
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.genderTable)
-			.set(rest as Partial<GenderSchemaInsert>)
+			.set(rest as GenderSchemaUpdate)
 			.where(eq(table.genderTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
