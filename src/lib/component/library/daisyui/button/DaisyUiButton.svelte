@@ -1,12 +1,13 @@
 <script lang="ts">
-	let { className, onClick, children } = $props<{
+	let { className, type = 'button', onClick, disabled, children } = $props<{
 		className?: string;
-
-		onClick: () => void;
+		type?: 'button' | 'submit' | 'reset';
+		onClick?: () => void;
+		disabled?: boolean;
 		children?: () => void;
 	}>();
 </script>
 
-<button class="d-btn {className}" onclick={onClick}>
+<button class="d-btn {className}" type={type} onclick={onClick} {disabled}>
 	{@render children?.()}
 </button>

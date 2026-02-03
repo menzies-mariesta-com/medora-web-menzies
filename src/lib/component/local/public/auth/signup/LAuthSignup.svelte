@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+	import { goto } from '$app/navigation';
 	import DaisyUiAvatar from '$lib/component/library/daisyui/avatar/DaisyUiAvatar.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -10,55 +11,133 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
+	import { authClient } from '$lib/auth-client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
+	import { createStaff } from '$lib/remote/table/information-table/staff.remote';
 
 	const passwordTool = new PasswordTool();
 
 	let countryData = await getCountry();
 	let genderData = await getGender();
-	
+
 	let selectedCountryId = $state('');
 	let selectedGenderId = $state('');
 	let isPasswordVisible = $state(false);
-	
+	let isLoading = $state(false);
+	let errorMessage = $state('');
+
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const form = e.currentTarget as HTMLFormElement;
+		const fd = new FormData(form);
+		const firstName = (fd.get('firstName') as string)?.trim();
+		const middleName = (fd.get('middleName') as string)?.trim();
+		const lastName = (fd.get('lastName') as string)?.trim();
+		const email = (fd.get('email') as string)?.trim();
+		const password = fd.get('password') as string;
+		const confirmPassword = fd.get('confirmPassword') as string;
+
+		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
+
+		if (!email || !password) {
+			errorMessage = 'Email and password are required.';
+			return;
+		}
+		if (password.length < 8) {
+			errorMessage = 'Password must be at least 8 characters.';
+			return;
+		}
+		if (password !== confirmPassword) {
+			errorMessage = 'Passwords do not match.';
+			return;
+		}
+
+		errorMessage = '';
+		isLoading = true;
+		const { data, error } = await authClient.signUp.email({
+			name: name || email,
+			email,
+			password,
+			callbackURL: WebRoutesEnum.DEFAULT
+		});
+		if (error) {
+			isLoading = false;
+			errorMessage = error.message ?? 'Sign up failed. Please try again.';
+			return;
+		}
+		// Create staff profile linked to the new user (1:1) via remote
+		if (data?.user) {
+			try {
+				await createStaff({
+					userId: data.user.id,
+					firstName,
+					middleName,
+					lastName,
+					email,
+					countryId: selectedCountryId || undefined,
+					genderId: selectedGenderId || undefined,
+					phonePrimary: (fd.get('phonePrimary') as string) || undefined
+				});
+			} catch (err) {
+				errorMessage =
+					err instanceof Error ? err.message : 'Profile could not be created.';
+				isLoading = false;
+				return;
+			}
+		}
+		isLoading = false;
+		if (data) {
+			await goto(WebRoutesEnum.DEFAULT);
+		}
+	}
 </script>
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
-		<DaisyUiFieldset
+		<form onsubmit={handleSubmit}>
+			<DaisyUiFieldset
 			fieldsetLegend="SIGN UP"
 			fieldsetLegendClassName="my-ft-h1"
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-		>
-			<!-- first name -->
-			<section id="first-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="First Name"
-					className="w-full"
-				/>
-			</section>
+			>
+				{#if errorMessage}
+					<section class="text-error text-sm" role="alert">
+						{errorMessage}
+					</section>
+				{/if}
 
-			<!-- last name -->
-			<section id="middle-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Middle Name"
-					className="w-full"
-				/>
-			</section>
+				<!-- first name -->
+				<section id="first-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="First Name"
+						nameText="firstName"
+						className="w-full"
+					/>
+				</section>
 
-			<!-- end name -->
-			<section id="last-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Last Name"
-					className="w-full"
-				/>
-			</section>
+				<!-- middle name -->
+				<section id="middle-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="Middle Name"
+						nameText="middleName"
+						className="w-full"
+					/>
+				</section>
+
+				<!-- last name -->
+				<section id="last-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="Last Name"
+						nameText="lastName"
+						className="w-full"
+					/>
+				</section>
 
 			<!-- Country -->
 			<section id="country-input">
@@ -98,19 +177,21 @@
 					<DaisyUiInputField
 						inputType="text"
 						inputPlaceholderText="Phone Number ( Primary )"
+						nameText="phonePrimary"
 						className="w-full"
 					/>
 				</DaisyUiJoin>
 			</section>
 
-			<!-- email -->
-			<section id="email-input">
-				<DaisyUiInputField
-					inputType="email"
-					inputPlaceholderText="Email"
-					className="w-full"
-				/>
-			</section>
+				<!-- email -->
+				<section id="email-input">
+					<DaisyUiInputField
+						inputType="email"
+						inputPlaceholderText="Email"
+						nameText="email"
+						className="w-full"
+					/>
+				</section>
 
 			<!-- Gender -->
 			<section id="gender-type-input">
@@ -127,42 +208,46 @@
 				</DaisyUiSelect>
 			</section>
 
-			<!-- password -->
-			<section id="password">
-				<DaisyUiJoin className="w-full">
+				<!-- password -->
+				<section id="password">
+					<DaisyUiJoin className="w-full">
+						<DaisyUiInputField
+							inputType={isPasswordVisible ? 'text' : 'password'}
+							inputPlaceholderText="Password"
+							nameText="password"
+						/>
+						<DaisyUiButton
+							type="button"
+							onClick={() =>
+								(isPasswordVisible =
+									passwordTool.toggleVisibility(isPasswordVisible))}
+						>
+							{#if isPasswordVisible}
+								<LucideEye />
+							{:else}
+								<LucideEyeOff />
+							{/if}
+						</DaisyUiButton>
+					</DaisyUiJoin>
+				</section>
+
+				<!-- confirm password -->
+				<section id="confirm-password">
 					<DaisyUiInputField
-						inputType={isPasswordVisible ? 'text' : 'password'}
-						inputPlaceholderText="Password"
+						inputType="password"
+						inputPlaceholderText="Confirm Password"
+						nameText="confirmPassword"
 					/>
-					<DaisyUiButton
-						onClick={() =>
-							(isPasswordVisible =
-								passwordTool.toggleVisibility(isPasswordVisible))}
-					>
-						{#if isPasswordVisible}
-							<LucideEye />
-						{:else}
-							<LucideEyeOff />
-						{/if}
-					</DaisyUiButton>
-				</DaisyUiJoin>
-			</section>
+				</section>
 
-			<!-- confirm password -->
-			<section id="confirm-password">
-				<DaisyUiInputField
-					inputType="password"
-					inputPlaceholderText="Confirm Password"
-				/>
-			</section>
-
-			<!-- sign up button -->
-			<DaisyUiButton
-				onClick={() => console.log('Login clicked')}
-				className="d-btn-primary w-full"
-			>
-				Sign Up
-			</DaisyUiButton>
+				<!-- sign up button -->
+				<DaisyUiButton
+					type="submit"
+					className="d-btn-primary w-full"
+					disabled={isLoading}
+				>
+					{isLoading ? 'Signing up…' : 'Sign Up'}
+				</DaisyUiButton>
 
 			<!-- external links -->
 			<div class="my-ft-small flex flex-col gap-3">
@@ -181,6 +266,7 @@
 					</DaisyUiLink>
 				</div>
 			</div>
-		</DaisyUiFieldset>
+			</DaisyUiFieldset>
+		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
