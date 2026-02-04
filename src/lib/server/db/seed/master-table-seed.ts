@@ -27,10 +27,10 @@ export async function seedMasterTables() {
 	await db.execute(sql`
 		INSERT INTO status (id, name)
 		VALUES 
-			(1, 'Active'),
-			(2, 'Inactive'),
-			(3, 'Pending'),
-			(4, 'Deleted')
+			(1, 'active'),
+			(2, 'inactive'),
+			(3, 'pending'),
+			(4, 'deleted')
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
@@ -143,6 +143,105 @@ export async function seedMasterTables() {
 	`);
 
 	console.log('Seeded: blood_type');
+
+	// 10. Craft Groups
+	await db.execute(sql`
+		INSERT INTO craft_group (id, name, status_id)
+		VALUES
+			(1, 'GP', 1),
+			(2, 'Admin', 1),
+			(3, 'Aesthetic Clinic', 1),
+			(4, 'Anaesthesia', 1),
+			(5, 'Anaesthesiology', 1),
+			(6, 'Behavior Science', 1),
+			(7, 'Behavioural Health Sciences', 1),
+			(8, 'Cardio', 1),
+			(9, 'Dental', 1),
+			(10, 'Emergency', 1),
+			(11, 'Endoscopy', 1),
+			(12, 'ENT', 1),
+			(13, 'Gastroenterologist', 1),
+			(14, 'General Surgery', 1),
+			(15, 'Haemodialysis Center', 1),
+			(16, 'Hepatology', 1),
+			(17, 'Information Technology', 1),
+			(18, 'Internal Medicine', 1),
+			(19, 'Laboratory', 1),
+			(20, 'Maxilofacial Clinic', 1),
+			(21, 'Medical Record', 1),
+			(22, 'Nephrology', 1),
+			(23, 'Neuro-Science', 1),
+			(24, 'Neurosurgery', 1),
+			(25, 'Obstetrics & Gynaecology', 1),
+			(26, 'Oncology', 1),
+			(27, 'Opthalmology', 1),
+			(28, 'Orthopaedics', 1),
+			(29, 'Paediatrics', 1),
+			(30, 'Paediatrics Cardiology', 1),
+			(31, 'Pathology & Microbiology', 1),
+			(32, 'Physical Therapy and Rehabilitation', 1),
+			(33, 'Plastic Sugery', 1),
+			(34, 'Plastic, Reconstructive and Asthetic Surgery', 1),
+			(35, 'Pulmonology', 1),
+			(36, 'Radiology', 1),
+			(37, 'Rehabilitation Medicine', 1),
+			(38, 'Speech Language Pathology', 1),
+			(39, 'Urology', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: craft_group');
+
+	// 11. Staff Types
+	await db.execute(sql`
+		INSERT INTO staff_type (id, name, code, status_id)
+		VALUES
+			(1, 'Full Time', 'FULL_TIME', 1),
+			(2, 'Part Time', 'PART_TIME', 1),
+			(3, 'Contract', 'CONTRACT', 1),
+			(4, 'Locum', 'LOCUM', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: staff_type');
+
+	// 12. Titles
+	await db.execute(sql`
+		INSERT INTO title (id, name, status_id)
+		VALUES
+			(1, 'Dr.', 1),
+			(2, 'Mr', 1),
+			(3, 'Mrs.', 1),
+			(4, 'Ms.', 1),
+			(5, 'Baby', 1),
+			(6, 'Prof.', 1),
+			(7, 'Asst. Prof.', 1),
+			(8, 'Daw', 1),
+			(9, 'Ko', 1),
+			(10, 'Ma', 1),
+			(11, 'Mg', 1),
+			(12, 'U', 1),
+			(13, 'Prof. Dr.', 1),
+			(14, 'Asso. Prof', 1),
+			(15, 'RN.', 1),
+			(16, 'Prof. Col', 1),
+			(17, 'MW', 1),
+			(18, 'Rector Prof', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: title');
+	
+	// 13. Departments
+	await db.execute(sql`
+		INSERT INTO department (id, name, code, status_id)
+		VALUES 
+			(1, 'Emergency', 'em', 1),
+			(2, 'Cardiology', 'card', 1),
+			(3, 'Pediatrics', 'ped', 1)
+		ON CONFLICT (id) DO NOTHING;
+		`);
+	console.log('Seeded: department')
 
 	console.log('Master tables seeding completed.');
 }

@@ -45,8 +45,9 @@ export const countryTableRelations = relations(countryTable, ({ one, many }) => 
 	staffs: many(staffTable),
 }));
 
-export const craftGroupTableRelations = relations(craftGroupTable, ({ one }) => ({
+export const craftGroupTableRelations = relations(craftGroupTable, ({ one, many }) => ({
 	status: one(statusTable),
+	specializations: many(specializationTable),
 }));
 
 export const departmentTableRelations = relations(departmentTable, ({ one, many }) => ({
@@ -68,7 +69,8 @@ export const marialStatusTableRelations = relations(marialStatusTable, ({ many }
 	staffs: many(staffTable),
 }));
 
-export const specializationTableRelations = relations(specializationTable, ({ many }) => ({
+export const specializationTableRelations = relations(specializationTable, ({ one, many }) => ({
+	craftGroup: one(craftGroupTable),
 	staffs: many(staffTable),
 }));
 
