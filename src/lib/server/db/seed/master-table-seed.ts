@@ -38,7 +38,7 @@ export async function seedMasterTables() {
 
 	// 2. Countries
 	await db.execute(sql`
-		INSERT INTO country (id, name, code, img_url, country_calling_code, language, status_id)
+		INSERT INTO country (id, name, code, image_url, country_calling_code, language, status_id)
 		VALUES ${sql.join(
 			CountryCodeData.map((c) =>
 				// name: formatted with StringUtil.countryName
