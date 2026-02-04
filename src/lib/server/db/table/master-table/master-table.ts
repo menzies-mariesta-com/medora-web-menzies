@@ -52,6 +52,14 @@ export const craftGroupTable = pgTable('craft_group', {
 	...timestamps,
 });
 
+export const departmentTable = pgTable('department', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	code: varchar('code', { length: 128 }),
+	statusId: integer('status_id').references(() => statusTable.id),
+	...timestamps,
+});
+
 export const genderTable = pgTable('gender', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
@@ -95,6 +103,14 @@ export const stateTable = pgTable('state', {
 export const titleTable = pgTable('title', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id),
+	...timestamps,
+});
+
+export const staffTypeTable = pgTable('staff_type', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	code: varchar('code', { length: 128 }),
 	statusId: integer('status_id').references(() => statusTable.id),
 	...timestamps,
 });
