@@ -82,6 +82,7 @@ export const marialStatusTable = pgTable('marial_status', {
 export const specializationTable = pgTable('specialization', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
+	craftGroupId: integer('craft_group_id').references(() => craftGroupTable.id),
 	...timestamps,
 });
 
