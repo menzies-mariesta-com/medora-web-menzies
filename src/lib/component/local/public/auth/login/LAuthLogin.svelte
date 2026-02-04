@@ -55,15 +55,23 @@
 
 <DaisyUiCard className="w-full max-w-md ">
 	<DaisyUiCardBody>
-		<form onsubmit={handleSubmit}>
-			<DaisyUiFieldset
-				className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-			>
-				<DaisyUiFieldsetLegend>
-					<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
-						<img src={HekaLogo} alt="" class="w-42" />
-					</DaisyUiLink>
-				</DaisyUiFieldsetLegend>
+    <form onsubmit={handleSubmit}>
+		<DaisyUiFieldset
+			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
+		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
+			<!-- username -->
+			<section id="username-input">
+				<DaisyUiInputField
+					inputType="text"
+					inputPlaceholderText="Username"
+					className="w-full"
+				/>
+			</section>
 
 				<!-- email -->
 				<section id="email-input">
@@ -83,10 +91,7 @@
 							inputPlaceholderText="Password"
 							nameText="password"
 						/>
-						<DaisyUiButton
-							type="button"
-							onClick={togglePasswordVisibility}
-						>
+						<DaisyUiButton type="button" onClick={togglePasswordVisibility}>
 							{#if isPasswordVisible}
 								<LucideEye />
 							{:else}
@@ -105,23 +110,23 @@
 					{isLoading ? 'Signing in…' : 'Login'}
 				</DaisyUiButton>
 
-				<!-- external links -->
-				<div class="my-ft-small flex flex-col gap-3">
-					<div id="signup">
-						do not have an account? <DaisyUiLink
-							href={WebRoutesEnum.SIGNUP}
-							className="d-link-info">Signup</DaisyUiLink
-						>
-					</div>
-					<div id="forget-password">
-						forget your password? <DaisyUiLink
-							href={WebRoutesEnum.FORGET_PASSWORD}
-							className="d-link-info"
-						>
-							Reset Password
-						</DaisyUiLink>
-					</div>
+			<!-- external links -->
+			<div class="my-ft-small flex flex-col gap-3">
+				<div id="signup">
+					do not have an account? <DaisyUiLink
+						href={WebRoutesEnum.SIGNUP}
+						className="d-link-info">Signup</DaisyUiLink
+					>
 				</div>
+				<div id="forget-password">
+					forget your password? <DaisyUiLink
+						href={WebRoutesEnum.FORGET_PASSWORD}
+						className="d-link-info"
+					>
+						Reset Password
+					</DaisyUiLink>
+				</div>
+			</div>
 			</DaisyUiFieldset>
 		</form>
 	</DaisyUiCardBody>
