@@ -42,10 +42,7 @@
 		const password = fd.get('password') as string;
 		const confirmPassword = fd.get('confirmPassword') as string;
 
-		const name =
-			[firstName, middleName, lastName].filter(Boolean).join(' ') ||
-			firstName ||
-			email;
+		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
 
 		if (!email || !password) {
 			errorMessage = 'Email and password are required.';
@@ -70,8 +67,7 @@
 		});
 		if (error) {
 			isLoading = false;
-			errorMessage =
-				error.message ?? 'Sign up failed. Please try again.';
+			errorMessage = error.message ?? 'Sign up failed. Please try again.';
 			return;
 		}
 		// Create staff profile linked to the new user (1:1) via remote
@@ -85,14 +81,11 @@
 					email,
 					countryId: selectedCountryId || undefined,
 					genderId: selectedGenderId || undefined,
-					phonePrimary:
-						(fd.get('phonePrimary') as string) || undefined
+					phonePrimary: (fd.get('phonePrimary') as string) || undefined
 				});
 			} catch (err) {
 				errorMessage =
-					err instanceof Error
-						? err.message
-						: 'Profile could not be created.';
+					err instanceof Error ? err.message : 'Profile could not be created.';
 				isLoading = false;
 				return;
 			}
@@ -106,15 +99,23 @@
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
-		<form onsubmit={handleSubmit}>
-			<DaisyUiFieldset
-				className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-			>
-				<DaisyUiFieldsetLegend>
-					<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
-						<img src={HekaLogo} alt="" class="w-42" />
-					</DaisyUiLink>
-				</DaisyUiFieldsetLegend>
+    <form onsubmit={handleSubmit}>
+		<DaisyUiFieldset
+			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
+		>
+			<DaisyUiFieldsetLegend>
+				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+					<img src={HekaLogo} alt="" class="w-42" />
+				</DaisyUiLink>
+			</DaisyUiFieldsetLegend>
+			<!-- first name -->
+			<section id="first-name-input">
+				<DaisyUiInputField
+					inputType="text"
+					inputPlaceholderText="First Name"
+					className="w-full"
+				/>
+			</section>
 
 				<!-- first name -->
 				<section id="first-name-input">
@@ -146,49 +147,49 @@
 					/>
 				</section>
 
-				<!-- Country -->
-				<section id="country-input">
+			<!-- Country -->
+			<section id="country-input">
+				<DaisyUiSelect
+					bind:value={selectedCountryId}
+					optionHeader="Select a Country ..."
+					className="bg-base-200"
+				>
+					{#each countryData as data}
+						<option value={String(data.id)} class="gap-5">
+							<DaisyUiAvatar
+								src={data.imgUrl}
+								alt={data.name}
+								className="w-5"
+							/>
+							{data.name}
+							[ {data.code.toUpperCase()} ]
+						</option>
+					{/each}
+				</DaisyUiSelect>
+			</section>
+
+			<!-- phone number -->
+			<section id="phone-number-input">
+				<DaisyUiJoin>
 					<DaisyUiSelect
 						bind:value={selectedCountryId}
-						optionHeader="Select a Country ..."
-						className="bg-base-200"
+						className="max-w-20 bg-base-200"
+						optionHeader="Select a Country code"
 					>
 						{#each countryData as data}
 							<option value={String(data.id)} class="gap-5">
-								<DaisyUiAvatar
-									src={data.imgUrl}
-									alt={data.name}
-									className="w-5"
-								/>
-								{data.name}
-								[ {data.code.toUpperCase()} ]
+								{data.countryCallingCode}
 							</option>
 						{/each}
 					</DaisyUiSelect>
-				</section>
-
-				<!-- phone number -->
-				<section id="phone-number-input">
-					<DaisyUiJoin>
-						<DaisyUiSelect
-							bind:value={selectedCountryId}
-							className="max-w-20 bg-base-200"
-							optionHeader="Select a Country code"
-						>
-							{#each countryData as data}
-								<option value={String(data.id)} class="gap-5">
-									{data.countryCallingCode}
-								</option>
-							{/each}
-						</DaisyUiSelect>
-						<DaisyUiInputField
-							inputType="text"
-							inputPlaceholderText="Phone Number ( Primary )"
-							nameText="phonePrimary"
-							className="w-full"
-						/>
-					</DaisyUiJoin>
-				</section>
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="Phone Number ( Primary )"
+						nameText="phonePrimary"
+						className="w-full"
+					/>
+				</DaisyUiJoin>
+			</section>
 
 				<!-- email -->
 				<section id="email-input">
@@ -200,20 +201,20 @@
 					/>
 				</section>
 
-				<!-- Gender -->
-				<section id="gender-type-input">
-					<DaisyUiSelect
-						bind:value={selectedGenderId}
-						optionHeader="Select Gender ..."
-						className="bg-base-200"
-					>
-						{#each genderData as data}
-							<option value={String(data.id)} class="gap-5">
-								{data.name}
-							</option>
-						{/each}
-					</DaisyUiSelect>
-				</section>
+			<!-- Gender -->
+			<section id="gender-type-input">
+				<DaisyUiSelect
+					bind:value={selectedGenderId}
+					optionHeader="Select Gender ..."
+					className="bg-base-200"
+				>
+					{#each genderData as data}
+						<option value={String(data.id)} class="gap-5">
+							{data.name}
+						</option>
+					{/each}
+				</DaisyUiSelect>
+			</section>
 
 				<!-- password -->
 				<section id="password">
@@ -256,23 +257,23 @@
 					{isLoading ? 'Signing up…' : 'Sign Up'}
 				</DaisyUiButton>
 
-				<!-- external links -->
-				<div class="my-ft-small flex flex-col gap-3">
-					<div id="login">
-						already have an account? <DaisyUiLink
-							href={WebRoutesEnum.LOGIN}
-							className="d-link-info">Login</DaisyUiLink
-						>
-					</div>
-					<div id="forget-password">
-						forget your password? <DaisyUiLink
-							href={WebRoutesEnum.FORGET_PASSWORD}
-							className="d-link-info"
-						>
-							Reset Password
-						</DaisyUiLink>
-					</div>
+			<!-- external links -->
+			<div class="my-ft-small flex flex-col gap-3">
+				<div id="login">
+					already have an account? <DaisyUiLink
+						href={WebRoutesEnum.LOGIN}
+						className="d-link-info">Login</DaisyUiLink
+					>
 				</div>
+				<div id="forget-password">
+					forget your password? <DaisyUiLink
+						href={WebRoutesEnum.FORGET_PASSWORD}
+						className="d-link-info"
+					>
+						Reset Password
+					</DaisyUiLink>
+				</div>
+			</div>
 			</DaisyUiFieldset>
 		</form>
 	</DaisyUiCardBody>
