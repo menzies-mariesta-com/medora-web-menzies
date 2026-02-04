@@ -1,6 +1,5 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
-	departmentTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
@@ -16,10 +15,6 @@ import type {
 } from './information-table';
 
 // Information Tables (alphabetical)
-export type DepartmentSchema = InferSelectModel<typeof departmentTable>;
-export type DepartmentSchemaInsert = InferInsertModel<typeof departmentTable>;
-export type DepartmentSchemaUpdate = Partial<DepartmentSchemaInsert>;
-
 export type HospitalSchema = InferSelectModel<typeof hospitalTable>;
 export type HospitalSchemaInsert = InferInsertModel<typeof hospitalTable>;
 export type HospitalSchemaUpdate = Partial<HospitalSchemaInsert>;

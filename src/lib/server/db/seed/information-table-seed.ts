@@ -10,10 +10,11 @@ const client = neon(process.env.DATABASE_URL);
 const db = drizzle(client);
 
 /** Fixed UUID for seed staff so we can reference it in staff_hospital, staff_department, etc. */
-const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
+// const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
 
 /**
  * Seed information/business tables with sample data.
+ * 
  * Run after master-table-seed. Inserts in FK-safe order.
  *
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
@@ -21,172 +22,70 @@ const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
 export async function seedInformationTables() {
 	console.log('Seeding information tables...');
 
-	// 1. Hospitals (depends: status)
+	// 1. Modules (depends: status)
 	await db.execute(sql`
-		INSERT INTO hospital (id, name, code, status_id)
+		INSERT INTO module (id, name, image_url, sequence_no, status_id)
 		VALUES 
-			(1, 'Yangon General Hospital', 'YGH', 1),
-			(2, 'Mandalay General Hospital', 'MGH', 1),
-			(3, 'Naypyidaw Medical Center', 'NMC', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: hospital');
-
-	// 2. Departments (depends: hospital, status)
-	await db.execute(sql`
-		INSERT INTO department (id, name, code, hospital_id, status_id)
-		VALUES 
-			(1, 'Emergency', 'EM', 1, 1),
-			(2, 'Outpatient', 'OPD', 1, 1),
-			(3, 'Cardiology', 'CARD', 1, 1),
-			(4, 'Pediatrics', 'PED', 1, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: department');
-
-	// 3. Modules (depends: status)
-	await db.execute(sql`
-		INSERT INTO module (id, name, icon, status_id)
-		VALUES 
-			(1, 'Dashboard', 'layout-dashboard', 1),
-			(2, 'Patients', 'users', 1),
-			(3, 'Appointments', 'calendar', 1),
-			(4, 'Settings', 'settings', 1)
+			(1, 'dashboard', 'layout-dashboard.svg', 1, 1),
+			(2, 'patient', 'users.svg', 2, 1),
+			(3, 'appointment', 'calendar.svg', 3, 1),
+			(4, 'settings', 'settings.svg', 4, 1),
+			(5, 'administration', 'administration.svg', 5, 1),
+			(6, 'report', 'report.svg', 6, 1),
+			(7, 'billing', 'billing.svg', 7, 1),
+			(8, 'CPOE', 'cpoe.svg', 8, 1),
+			(9, 'pharmacy', 'pharmacy.svg', 9, 1),
+			(10, 'medical_record', 'medical-record.svg', 10, 1),
+			(11, 'inventory', 'inventory.svg', 11, 1),
+			(12, 'nursing', 'nursing.svg', 12, 1),
+			(13, 'emergency', 'emergency.svg', 13, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: module');
 
-	// 4. Pages (depends: module, status)
-	await db.execute(sql`
-		INSERT INTO page (id, name, icon, module_id, status_id)
-		VALUES 
-			(1, 'Overview', 'bar-chart', 1, 1),
-			(2, 'Patient List', 'list', 2, 1),
-			(3, 'New Patient', 'user-plus', 2, 1),
-			(4, 'Appointment List', 'calendar-days', 3, 1),
-			(5, 'Profile', 'user', 4, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: page');
-
-	// 5. Roles (depends: status)
-	await db.execute(sql`
-		INSERT INTO role (id, name, status_id)
-		VALUES 
-			(1, 'Admin', 1),
-			(2, 'Doctor', 1),
-			(3, 'Nurse', 1),
-			(4, 'Receptionist', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: role');
-
-	// 6. User groups (depends: status)
+	// 2. Modules (depends: status)
 	await db.execute(sql`
 		INSERT INTO user_group (id, name, status_id)
 		VALUES 
-			(1, 'Administrators', 1),
-			(2, 'Doctors', 1),
-			(3, 'Nursing', 1)
+			(1, 'administration',  1),
+			(2, 'doctor',  1),
+			(3, 'nursing',  1),
+			(4, 'cashier',  1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: user_group');
+	console.log('Seeded: module');
 
-	// 7. Staff (depends: identity_type, marial_status, specialization, gender, blood_type, status)
+	// 3. Departments
 	await db.execute(sql`
-		INSERT INTO staff (
-			id, first_name, last_name, email, phone_primary,
-			identity_type_id, marital_status_id, specialization_id, gender_id, blood_type_id, status_id
-		)
-		VALUES (
-			${SEED_STAFF_ID}::uuid,
-			'John',
-			'Doe',
-			'john.doe@hospital.mm',
-			'+959123456789',
-			1,
-			1,
-			1,
-			1,
-			7,
-			1
-		)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff');
-
-	// 8. Staff–Hospital (depends: staff, hospital) – one staff linked to all 3 hospitals
-	await db.execute(sql`
-		INSERT INTO staff_hospital (id, staff_id, hospital_id)
+		INSERT INTO department (id, name, code, status_id)
 		VALUES 
-			(1, ${SEED_STAFF_ID}::uuid, 1),
-			(2, ${SEED_STAFF_ID}::uuid, 2),
-			(3, ${SEED_STAFF_ID}::uuid, 3)
+			(1, 'emergency', 'em', 1),
+			(2, 'cardiology', 'card', 1),
+			(3, 'pediatrics', 'ped')
 		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_hospital');
+		`);
+	console.log('Seeded: department')
 
-	// 9. Staff–Department (depends: staff, department) – one staff linked to all 4 departments
+	// 4. Page
 	await db.execute(sql`
-		INSERT INTO staff_department (id, staff_id, department_id)
-		VALUES 
-			(1, ${SEED_STAFF_ID}::uuid, 1),
-			(2, ${SEED_STAFF_ID}::uuid, 2),
-			(3, ${SEED_STAFF_ID}::uuid, 3),
-			(4, ${SEED_STAFF_ID}::uuid, 4)
+		INSERT INTO page (id, name, icon, module_id)
+		VALUES
+			(1, 'registration', 5)
 		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_department');
+		`)
+	console.log('Seeded: page')
 
-	// 10. Staff–Role (depends: staff, role)
+	// 5. Role
 	await db.execute(sql`
-		INSERT INTO staff_role (id, staff_id, role_id)
-		VALUES (1, ${SEED_STAFF_ID}::uuid, 2)
+		INSERT INTO role (id, name, status_id)
+		VALUES
+			(1, 'admin', 1),
+			(2, 'doctor', 1),
+			(3, 'nurse', 1),
+			(4, 'receptionist', 1)
 		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_role');
-
-	// 11. Staff–User group (depends: staff, user_group)
-	await db.execute(sql`
-		INSERT INTO staff_user_group (id, staff_id, user_group_id)
-		VALUES (1, ${SEED_STAFF_ID}::uuid, 2)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_user_group');
-
-	// 12. User group–Module (depends: user_group, module)
-	await db.execute(sql`
-		INSERT INTO user_group_module (id, user_group_id, module_id)
-		VALUES 
-			(1, 1, 1),
-			(2, 1, 2),
-			(3, 1, 3),
-			(4, 1, 4),
-			(5, 2, 1),
-			(6, 2, 2),
-			(7, 2, 3)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group_module');
-
-	// 13. User group–Page (depends: user_group, page)
-	await db.execute(sql`
-		INSERT INTO user_group_page (id, user_group_id, page_id)
-		VALUES 
-			(1, 1, 1),
-			(2, 1, 2),
-			(3, 1, 3),
-			(4, 1, 4),
-			(5, 1, 5),
-			(6, 2, 1),
-			(7, 2, 2),
-			(8, 2, 3),
-			(9, 2, 4)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group_page');
-
-	console.log('Information tables seeding completed.');
+		`)
+	console.log('Seeded: role')
 }
 
 seedInformationTables()

@@ -1,10 +1,11 @@
 import { relations } from 'drizzle-orm';
 import {
-	departmentTable,
+	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
 	roleTable,
+	staffDepartmentTable,
 	staffTable,
 	statusTaggingTable,
 	statusTaggingTypeTable,
@@ -15,56 +16,67 @@ import {
 	cityTable,
 	countryTable,
 	craftGroupTable,
+	departmentTable,
 	genderTable,
 	identityTypeTable,
 	marialStatusTable,
 	specializationTable,
 	stateTable,
+	staffTypeTable,
 	statusTable,
 	titleTable,
 } from './master-table';
 
 // Master table relations (alphabetical)
 export const bloodTypeTableRelations = relations(bloodTypeTable, ({ one, many }) => ({
-	staff: many(staffTable),
+	staffs: many(staffTable),
 	status: one(statusTable),
 }));
 
-export const cityTableRelations = relations(cityTable, ({ one }) => ({
+export const cityTableRelations = relations(cityTable, ({ one, many }) => ({
 	status: one(statusTable),
 	state: one(stateTable),
+	staffs: many(staffTable),
 }));
 
 export const countryTableRelations = relations(countryTable, ({ one, many }) => ({
 	status: one(statusTable),
 	states: many(stateTable),
+	staffs: many(staffTable),
 }));
 
 export const craftGroupTableRelations = relations(craftGroupTable, ({ one }) => ({
 	status: one(statusTable),
 }));
 
+export const departmentTableRelations = relations(departmentTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staffDepartments: many(staffDepartmentTable),
+	hospitalDepartments: many(hospitalDepartmentTable),
+}));
+
 export const genderTableRelations = relations(genderTable, ({ one, many }) => ({
 	status: one(statusTable),
-	staff: many(staffTable),
+	staffs: many(staffTable),
 }));
 
 export const identityTypeTableRelations = relations(identityTypeTable, ({ many }) => ({
-	staff: many(staffTable),
+	staffs: many(staffTable),
 }));
 
 export const marialStatusTableRelations = relations(marialStatusTable, ({ many }) => ({
-	staff: many(staffTable),
+	staffs: many(staffTable),
 }));
 
 export const specializationTableRelations = relations(specializationTable, ({ many }) => ({
-	staff: many(staffTable),
+	staffs: many(staffTable),
 }));
 
 export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
 	status: one(statusTable),
 	country: one(countryTable),
 	cities: many(cityTable),
+	staffs: many(staffTable),
 }));
 
 export const statusTableRelations = relations(statusTable, ({ many }) => ({
@@ -76,7 +88,8 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	roles: many(roleTable),
 	hospitals: many(hospitalTable),
 	departments: many(departmentTable),
-	staff: many(staffTable),
+	staffs: many(staffTable),
+	staffTypes: many(staffTypeTable),
 	cities: many(cityTable),
 	states: many(stateTable),
 	countries: many(countryTable),
@@ -88,5 +101,10 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 
 export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
 	status: one(statusTable),
-	staff: many(staffTable),
+	staffs: many(staffTable),
+}));
+
+export const staffTypeTableRelations = relations(staffTypeTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staffs: many(staffTable),
 }));
