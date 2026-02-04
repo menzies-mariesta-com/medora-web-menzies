@@ -14,6 +14,7 @@ const db = drizzle(client);
 
 /**
  * Seed information/business tables with sample data.
+ * 
  * Run after master-table-seed. Inserts in FK-safe order.
  *
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
