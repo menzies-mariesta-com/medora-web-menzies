@@ -9,6 +9,8 @@ export enum WebRoutesEnum {
 	PLUGIN = "/plugin",
 
 	// private
+	HEKA = "/heka",
+	HEKA_HOME = "/heka/home"
 }
 
 export enum ServerRoutesEnum {
