@@ -1,7 +1,7 @@
 import { SvelteDate } from 'svelte/reactivity';
 
 export class DateTimeUtil {
-	constructor() {}
+	constructor() { }
 	getCurrentDateTime(): string {
 		return new SvelteDate().toISOString();
 	}
@@ -70,6 +70,10 @@ export class DateTimeUtil {
 
 	getYear(date: Date): number {
 		return date.getFullYear();
+	}
+
+	getCurrentYear(): number {
+		return new Date().getFullYear();
 	}
 
 	getDaysInMonth(year: number, month: number): number {
@@ -189,7 +193,7 @@ export class DateTimeUtil {
 		const yearStart = new SvelteDate(clonedDate.getFullYear(), 0, 1);
 		return Math.ceil(
 			((clonedDate.getTime() - yearStart.getTime()) / 86400000 + 1) /
-				7
+			7
 		);
 	}
 	getQuarter(date: Date): number {
