@@ -12,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -31,15 +31,6 @@ const timestamps = {
 } as const;
 
 // Information Tables (alphabetical) - business/transactional data
-export const departmentTable = pgTable('department', {
-	id: serial('id').primaryKey(),
-	name: varchar('name', { length: 512 }),
-	code: varchar('code', { length: 128 }),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
-	statusId: integer('status_id').references(() => statusTable.id),
-	...timestamps,
-});
-
 export const hospitalTable = pgTable('hospital', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
@@ -48,6 +39,13 @@ export const hospitalTable = pgTable('hospital', {
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
 	statusId: integer('status_id').references(() => statusTable.id),
+	...timestamps,
+});
+
+export const hospitalDepartmentTable = pgTable('hospital_department', {
+	id: serial('id').primaryKey(),
+	hospitalId: integer('hospital_id').references(() => hospitalTable.id).notNull(),
+	departmentId: integer('department_id').references(() => departmentTable.id).notNull(),
 	...timestamps,
 });
 
@@ -132,6 +130,7 @@ export const staffTable = pgTable('staff', {
 	identityNo: varchar('identity_no', { length: 128 }),
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
 	titleId: integer('title_id').references(() => titleTable.id),
+	staffTypeId: integer('staff_type_id').references(() => staffTypeTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
