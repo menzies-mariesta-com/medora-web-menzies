@@ -38,9 +38,16 @@ export const countryTable = pgTable('country', {
 	id: serial('id').primaryKey().notNull(),
 	name: varchar('name', { length: 512 }).notNull(),
 	code: varchar('code', { length: 128 }).notNull(),
-	imgUrl: text('img_url').notNull(),
+	imageUrl: text('image_url').notNull(),
 	language: varchar('language', { length: 128 }).notNull(),
 	countryCallingCode: varchar('country_calling_code', { length: 128 }).notNull(),
+	statusId: integer('status_id').references(() => statusTable.id).notNull(),
+	...timestamps,
+});
+
+export const craftGroupTable = pgTable('craft_group', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }).notNull(),
 	statusId: integer('status_id').references(() => statusTable.id).notNull(),
 	...timestamps,
 });
@@ -81,6 +88,13 @@ export const stateTable = pgTable('state', {
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
 	countryId: integer('country_id').references(() => countryTable.id),
+	statusId: integer('status_id').references(() => statusTable.id),
+	...timestamps,
+});
+
+export const titleTable = pgTable('title', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id),
 	...timestamps,
 });

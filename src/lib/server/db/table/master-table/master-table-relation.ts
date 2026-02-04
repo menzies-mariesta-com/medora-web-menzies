@@ -6,18 +6,22 @@ import {
 	pageTable,
 	roleTable,
 	staffTable,
+	statusTaggingTable,
+	statusTaggingTypeTable,
 	userGroupTable,
 } from '../information-table/information-table';
 import {
 	bloodTypeTable,
 	cityTable,
 	countryTable,
+	craftGroupTable,
 	genderTable,
 	identityTypeTable,
 	marialStatusTable,
 	specializationTable,
 	stateTable,
 	statusTable,
+	titleTable,
 } from './master-table';
 
 // Master table relations (alphabetical)
@@ -34,6 +38,10 @@ export const cityTableRelations = relations(cityTable, ({ one }) => ({
 export const countryTableRelations = relations(countryTable, ({ one, many }) => ({
 	status: one(statusTable),
 	states: many(stateTable),
+}));
+
+export const craftGroupTableRelations = relations(craftGroupTable, ({ one }) => ({
+	status: one(statusTable),
 }));
 
 export const genderTableRelations = relations(genderTable, ({ one, many }) => ({
@@ -60,6 +68,7 @@ export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
 }));
 
 export const statusTableRelations = relations(statusTable, ({ many }) => ({
+	bloodTypes: many(bloodTypeTable),
 	modules: many(moduleTable),
 	pages: many(pageTable),
 	genders: many(genderTable),
@@ -71,4 +80,13 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	cities: many(cityTable),
 	states: many(stateTable),
 	countries: many(countryTable),
+	titles: many(titleTable),
+	statusTaggings: many(statusTaggingTable),
+	statusTaggingTypes: many(statusTaggingTypeTable),
+	craftGroups: many(craftGroupTable),
+}));
+
+export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staff: many(staffTable),
 }));

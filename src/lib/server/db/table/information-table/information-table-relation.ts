@@ -7,10 +7,10 @@ import {
 	roleTable,
 	staffDepartmentTable,
 	staffHospitalTable,
-	staffRoleTable,
 	staffTable,
 	staffUserGroupTable,
-	userGroupModuleTable,
+	statusTaggingTable,
+	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
 } from './information-table';
@@ -24,6 +24,7 @@ import {
 	specializationTable,
 	stateTable,
 	statusTable,
+	titleTable,
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -39,6 +40,7 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	city: one(cityTable),
 	state: one(stateTable),
 	country: one(countryTable),
+	userGroups: many(userGroupTable),
 	departments: many(departmentTable),
 	staff: many(staffHospitalTable),
 }));
@@ -46,7 +48,6 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 export const moduleTableRelations = relations(moduleTable, ({ one, many }) => ({
 	status: one(statusTable),
 	pages: many(pageTable),
-	userGroupModules: many(userGroupModuleTable),
 }));
 
 export const pageTableRelations = relations(pageTable, ({ one, many }) => ({
@@ -57,8 +58,6 @@ export const pageTableRelations = relations(pageTable, ({ one, many }) => ({
 
 export const roleTableRelations = relations(roleTable, ({ one, many }) => ({
 	status: one(statusTable),
-	staff: many(staffTable),
-	staffRoles: many(staffRoleTable),
 }));
 
 export const staffDepartmentTableRelations = relations(staffDepartmentTable, ({ one }) => ({
@@ -71,11 +70,6 @@ export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one 
 	hospital: one(hospitalTable),
 }));
 
-export const staffRoleTableRelations = relations(staffRoleTable, ({ one }) => ({
-	staff: one(staffTable),
-	role: one(roleTable),
-}));
-
 export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	bloodType: one(bloodTypeTable),
 	identityType: one(identityTypeTable),
@@ -85,13 +79,12 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	city: one(cityTable),
 	state: one(stateTable),
 	country: one(countryTable),
-	role: one(roleTable),
 	user: one(userTable),
+	title: one(titleTable),
 	specialization: one(specializationTable),
 	hospitals: many(staffHospitalTable),
 	departments: many(staffDepartmentTable),
 	userGroups: many(staffUserGroupTable),
-	roles: many(staffRoleTable),
 }));
 
 export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ one }) => ({
@@ -99,9 +92,14 @@ export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ on
 	userGroup: one(userGroupTable),
 }));
 
-export const userGroupModuleTableRelations = relations(userGroupModuleTable, ({ one }) => ({
-	userGroup: one(userGroupTable),
-	module: one(moduleTable),
+export const statusTaggingTableRelations = relations(statusTaggingTable, ({ one }) => ({
+	statusTaggingType: one(statusTaggingTypeTable),
+	status: one(statusTable),
+}));
+
+export const statusTaggingTypeTableRelations = relations(statusTaggingTypeTable, ({ one, many }) => ({
+	statusTagging: many(statusTaggingTable),
+	status: one(statusTable),
 }));
 
 export const userGroupPageTableRelations = relations(userGroupPageTable, ({ one }) => ({
@@ -111,7 +109,7 @@ export const userGroupPageTableRelations = relations(userGroupPageTable, ({ one 
 
 export const userGroupTableRelations = relations(userGroupTable, ({ one, many }) => ({
 	status: one(statusTable),
-	modules: many(userGroupModuleTable),
+	hospital: one(hospitalTable),
 	pages: many(userGroupPageTable),
 	staff: many(staffUserGroupTable),
 }));

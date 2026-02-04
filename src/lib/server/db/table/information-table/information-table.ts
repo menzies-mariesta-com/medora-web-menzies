@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
 	date,
+	foreignKey,
 	integer,
 	pgTable,
 	serial,
@@ -11,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -53,21 +54,32 @@ export const hospitalTable = pgTable('hospital', {
 export const moduleTable = pgTable('module', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
-	icon: text('icon'),
+	imageUrl: text('image_url'),
+	sequenceNo: integer('sequence_no'),
 	statusId: integer('status_id')
 		.notNull()
 		.references(() => statusTable.id),
 	...timestamps,
 });
 
-export const pageTable = pgTable('page', {
-	id: serial('id').primaryKey(),
-	name: varchar('name', { length: 512 }),
-	icon: text('icon'),
-	moduleId: integer('module_id').references(() => moduleTable.id),
-	statusId: integer('status_id').references(() => statusTable.id),
-	...timestamps,
-});
+export const pageTable = pgTable(
+	'page',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }),
+		parentId: integer('parent_id'),
+		imageUrl: text('image_url'),
+		moduleId: integer('module_id').references(() => moduleTable.id),
+		statusId: integer('status_id').references(() => statusTable.id),
+		...timestamps,
+	},
+	(self) => [
+		foreignKey({
+			columns: [self.parentId],
+			foreignColumns: [self.id],
+		}),
+	],
+);
 
 export const roleTable = pgTable('role', {
 	id: serial('id').primaryKey(),
@@ -98,17 +110,6 @@ export const staffHospitalTable = pgTable('staff_hospital', {
 	...timestamps,
 });
 
-export const staffRoleTable = pgTable('staff_role', {
-	id: serial('id').primaryKey(),
-	staffId: uuid('staff_id')
-		.notNull()
-		.references(() => staffTable.id),
-	roleId: integer('role_id')
-		.notNull()
-		.references(() => roleTable.id),
-	...timestamps,
-});
-
 export const staffTable = pgTable('staff', {
 	id: uuid('id')
 		.primaryKey()
@@ -121,14 +122,16 @@ export const staffTable = pgTable('staff', {
 	firstName: varchar('first_name', { length: 512 }),
 	middleName: varchar('middle_name', { length: 512 }),
 	lastName: varchar('last_name', { length: 512 }),
+	code: varchar('code', { length: 512 }),
 	phonePrimary: varchar('phone_primary', { length: 128 }),
 	phoneSecondary: varchar('phone_secondary', { length: 128 }),
 	dateOfBirth: date('date_of_birth'),
-	photoPath: text('photo_path'),
+	filePath: text('file_path'),
 	address: text('address'),
 	remark: text('remark'),
 	identityNo: varchar('identity_no', { length: 128 }),
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
+	titleId: integer('title_id').references(() => titleTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
@@ -140,7 +143,6 @@ export const staffTable = pgTable('staff', {
 	//staffHospitalTable
 	//staffDepartmentTable
 	//staffUserGroupTable
-	//staffRoleTable
 	...timestamps,
 });
 
@@ -155,10 +157,20 @@ export const staffUserGroupTable = pgTable('staff_user_group', {
 	...timestamps,
 });
 
-export const userGroupModuleTable = pgTable('user_group_module', {
+export const statusTaggingTable = pgTable('status_tagging', {
 	id: serial('id').primaryKey(),
-	userGroupId: integer('user_group_id').references(() => userGroupTable.id),
-	moduleId: integer('module_id').references(() => moduleTable.id),
+	name: varchar('name', { length: 512 }),
+	code: varchar('code', { length: 128 }),
+	sequenceNo: integer('sequence_no'),
+	statusTaggingTypeId: integer('status_tagging_type_id').references(() => statusTaggingTypeTable.id),
+	statusId: integer('status_id').references(() => statusTable.id),
+	...timestamps,
+});
+
+export const statusTaggingTypeTable = pgTable('status_tagging_type', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id),
 	...timestamps,
 });
 
@@ -173,7 +185,7 @@ export const userGroupTable = pgTable('user_group', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id),
-	//userGroupModuleTable
+	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
 	//userGroupPageTable
 	...timestamps,
 });
