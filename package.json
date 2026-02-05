@@ -35,6 +35,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^24",
+		"@types/nodemailer": "^7.0.9",
 		"@vitest/browser-playwright": "^4.0.18",
 		"daisyui": "^5.5.14",
 		"drizzle-kit": "^0.31.8",
@@ -62,6 +63,7 @@
 		"@neondatabase/serverless": "^1.0.2",
 		"argon2": "^0.44.0",
 		"better-auth": "^1.4.18",
+		"nodemailer": "^8.0.0",
 		"uuidv7": "^1.1.0",
 		"zod": "^4.3.6"
 	}
