@@ -9,13 +9,6 @@
 
 	let { children } = $props();
 
-	const lifeCycleUtil = new LifeCycleUtil();
-	const routerUtil = new RouterUtil();
-
-	lifeCycleUtil.onMount(() => {
-		routerUtil.goToRoute(WebRoutesEnum.HEKA_HOME);
-	});
-
 	// ignore typing, just use `any[]`
 	const fullPageData = (await getPageWithRelations()) as any[];
 
@@ -37,10 +30,10 @@
 	function buildPageTree(
 		pages: any[],
 		parentId: number | null = null
-	) {
+	): any {
 		return pages
 			.filter((p) => p.parentId === parentId)
-			.map((p) => ({
+			.map((p: any) => ({
 				...p,
 				children: buildPageTree(pages, p.id)
 			}));
