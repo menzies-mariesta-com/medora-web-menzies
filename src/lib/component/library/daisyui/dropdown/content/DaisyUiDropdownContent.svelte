@@ -6,7 +6,7 @@
 </script>
 
 <ul
-	class="d-dropdown-content d-menu z-1 w-52 rounded-box bg-base-100 p-2 shadow-sm {className}"
+	class="d-dropdown-content d-menu z-1 w-52 rounded-box p-2 shadow-sm {className}"
 >
 	{@render children()}
 </ul>

@@ -29,6 +29,16 @@ export const getPageById = query(
 	}
 );
 
+// get all with related data (module, status, etc.)
+export const getPageWithRelations = query(async () => {
+	return db.query.pageTable.findMany({
+		with: {
+			module: true,
+			status: true,
+		},
+	});
+});
+
 // create
 export const createPage = command(
 	'unchecked' as const,
