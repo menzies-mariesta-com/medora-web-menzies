@@ -19,17 +19,19 @@
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
 	import { createStaff } from '$lib/remote/table/information-table/staff.remote';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
 	const passwordTool = new PasswordTool();
+	const toastService = new ToastService();
 
-	let countryData = await getCountry();
-	let genderData = await getGender();
+let countryData = await getCountry();
+let genderData = await getGender();
 
-	let selectedCountryId = $state('');
-	let selectedGenderId = $state('');
-	let isPasswordVisible = $state(false);
-	let isLoading = $state(false);
-	let errorMessage = $state('');
+let selectedCountryId = $state('');
+let selectedGenderId = $state('');
+let isPasswordVisible = $state(false);
+let isLoading = $state(false);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -39,60 +41,82 @@
 		const middleName = (fd.get('middleName') as string)?.trim();
 		const lastName = (fd.get('lastName') as string)?.trim();
 		const email = (fd.get('email') as string)?.trim();
+		const phonePrimary = (fd.get('phonePrimary') as string)?.trim();
 		const password = fd.get('password') as string;
 		const confirmPassword = fd.get('confirmPassword') as string;
 
 		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
 
+		if (!firstName) {
+			toastService.addToast('First name is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!lastName) {
+			toastService.addToast('Last name is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!selectedCountryId) {
+			toastService.addToast('Country is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!phonePrimary) {
+			toastService.addToast('Primary phone number is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!selectedGenderId) {
+			toastService.addToast('Gender is required.', StatusColorEnum.ERROR);
+			return;
+		}
 		if (!email || !password) {
-			errorMessage = 'Email and password are required.';
+			toastService.addToast('Email and password are required.', StatusColorEnum.ERROR);
 			return;
 		}
 		if (password.length < 8) {
-			errorMessage = 'Password must be at least 8 characters.';
+			toastService.addToast('Password must be at least 8 characters.', StatusColorEnum.ERROR);
 			return;
 		}
 		if (password !== confirmPassword) {
-			errorMessage = 'Passwords do not match.';
+			toastService.addToast('Passwords do not match.', StatusColorEnum.ERROR);
 			return;
 		}
-
-		errorMessage = '';
 		isLoading = true;
 		const { data, error } = await authClient.signUp.email({
 			name: name || email,
 			email,
 			password,
-			callbackURL: WebRoutesEnum.DEFAULT
+			callbackURL: WebRoutesEnum.HEKA_HOME
 		});
 		if (error) {
 			isLoading = false;
-			errorMessage = error.message ?? 'Sign up failed. Please try again.';
+			toastService.addToast(error.message ?? 'Sign up failed. Please try again.', StatusColorEnum.ERROR);
 			return;
 		}
 		// Create staff profile linked to the new user (1:1) via remote
 		if (data?.user) {
+			const countryId = selectedCountryId ? Number(selectedCountryId) : undefined;
+			const genderId = selectedGenderId ? Number(selectedGenderId) : undefined;
+
 			try {
 				await createStaff({
 					userId: data.user.id,
 					firstName,
 					middleName,
 					lastName,
-					email,
-					countryId: selectedCountryId || undefined,
-					genderId: selectedGenderId || undefined,
+					countryId,
+					genderId,
 					phonePrimary: (fd.get('phonePrimary') as string) || undefined
 				});
 			} catch (err) {
-				errorMessage =
+				const message =
 					err instanceof Error ? err.message : 'Profile could not be created.';
+				toastService.addToast(message, StatusColorEnum.ERROR);
 				isLoading = false;
 				return;
 			}
 		}
 		isLoading = false;
 		if (data) {
-			await goto(WebRoutesEnum.DEFAULT);
+			await goto(WebRoutesEnum.HEKA_HOME);
 		}
 	}
 </script>
@@ -109,15 +133,6 @@
 				</DaisyUiLink>
 			</DaisyUiFieldsetLegend>
 			<!-- first name -->
-			<section id="first-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="First Name"
-					className="w-full"
-				/>
-			</section>
-
-				<!-- first name -->
 				<section id="first-name-input">
 					<DaisyUiInputField
 						inputType="text"
@@ -157,7 +172,7 @@
 					{#each countryData as data}
 						<option value={String(data.id)} class="gap-5">
 							<DaisyUiAvatar
-								src={data.imgUrl}
+								src={data.imageUrl}
 								alt={data.name}
 								className="w-5"
 							/>
