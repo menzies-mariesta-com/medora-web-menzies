@@ -83,6 +83,7 @@ export const staffDepartmentTableRelations = relations(staffDepartmentTable, ({ 
 
 export const staffDetailTableRelations = relations(staffDetailTable, ({ one }) => ({
 	staff: one(staffTable),
+	bloodType: one(bloodTypeTable),
 	status: one(statusTable),
 }));
 
@@ -92,7 +93,6 @@ export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one 
 }));
 
 export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
-	bloodType: one(bloodTypeTable),
 	identityType: one(identityTypeTable),
 	maritalStatus: one(maritalStatusTable),
 	gender: one(genderTable),
