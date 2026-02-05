@@ -91,6 +91,7 @@ export const staffDetailTable = pgTable('staff_detail', {
 	signatureText: text('signature_text'),
 	designation: varchar('designation', { length: 512 }),
 	education: varchar('education', { length: 512 }),
+	bloodTypeId: integer('blood_type_id').references(() => bloodTypeTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
@@ -149,7 +150,6 @@ export const staffTable = pgTable('staff', {
 	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
 	specializationId: integer('specialization_id').references(() => specializationTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),
-	bloodTypeId: integer('blood_type_id').references(() => bloodTypeTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	//staffHospitalTable
 	//staffDepartmentTable
