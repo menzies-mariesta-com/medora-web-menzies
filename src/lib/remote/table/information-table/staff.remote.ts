@@ -16,7 +16,6 @@ export const getStaff = query(async (): Promise<StaffSchema[]> => {
 export const getStaffWithRelations = query(async () => {
 	return db.query.staffTable.findMany({
 		with: {
-			bloodType: true,
 			gender: true,
 			identityType: true,
 			maritalStatus: true,
@@ -36,16 +35,14 @@ export const getStaffByIdWithRelations = query(
 		return db.query.staffTable.findFirst({
 			where: (staff, { eq }) => eq(staff.id, id),
 			with: {
-				bloodType: true,
 				gender: true,
 				identityType: true,
 				maritalStatus: true,
 				specialization: true,
 				status: true,
-				hospitals: { with: { hospital: true } },
-				departments: { with: { department: true } },
-				roles: { with: { role: true } },
-				userGroups: { with: { userGroup: true } },
+				staffHospitals: { with: { hospital: true } },
+				staffDepartments: { with: { department: true } },
+				staffUserGroups: { with: { userGroup: true } },
 
 			}
 		});
