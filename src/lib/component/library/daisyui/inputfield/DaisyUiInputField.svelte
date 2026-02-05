@@ -14,6 +14,7 @@
 		rawStyle,
 		checked,
 		hidden,
+		disabled,
 		onClick
 	} = $props<{
 		id?: string;
@@ -30,6 +31,7 @@
 		rawStyle?: boolean;
 		checked?: boolean;
 		hidden?: boolean;
+		disabled?: boolean;
 		onClick?: () => void;
 	}>();
 </script>
@@ -51,6 +53,7 @@
 		onclick={onClick}
 		{checked}
 		{hidden}
+		{disabled}
 	/>
 {:else}
 	<input
@@ -68,6 +71,7 @@
 		aria-label={ariaLabel}
 		{checked}
 		{hidden}
+		{disabled}
 		onclick={onClick}
 	/>
 {/if}

@@ -3,7 +3,7 @@ import { page } from '$app/state';
 import { SvelteURL } from 'svelte/reactivity';
 
 export class RouterUtil {
-	constructor() {}
+	constructor() { }
 
 	/**
 	 * Navigate to an internal route
@@ -12,6 +12,11 @@ export class RouterUtil {
 	goToRoute(path: string): void {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto(path);
+	}
+
+	replaceRoute(path: string): void {
+		goto(path, { replaceState: true })
+
 	}
 
 	/**
