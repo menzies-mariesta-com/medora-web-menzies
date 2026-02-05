@@ -20,9 +20,13 @@ import {
 	genderTable,
 	identityTypeTable,
 	marialStatusTable,
+	nationalityTable,
+	positionTable,
+	postalCodeTable,
 	specializationTable,
+	staffEmploymentTypeTable,
+	staffShiftTypeTable,
 	stateTable,
-	staffTypeTable,
 	statusTable,
 	titleTable,
 } from './master-table';
@@ -36,6 +40,7 @@ export const bloodTypeTableRelations = relations(bloodTypeTable, ({ one, many })
 export const cityTableRelations = relations(cityTable, ({ one, many }) => ({
 	status: one(statusTable),
 	state: one(stateTable),
+	postalCodes: many(postalCodeTable),
 	staffs: many(staffTable),
 }));
 
@@ -91,7 +96,10 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	hospitals: many(hospitalTable),
 	departments: many(departmentTable),
 	staffs: many(staffTable),
-	staffTypes: many(staffTypeTable),
+	staffEmploymentTypes: many(staffEmploymentTypeTable),
+	staffShiftTypes: many(staffShiftTypeTable),
+	nationalities: many(nationalityTable),
+	positions: many(positionTable),
 	cities: many(cityTable),
 	states: many(stateTable),
 	countries: many(countryTable),
@@ -106,7 +114,27 @@ export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
 	staffs: many(staffTable),
 }));
 
-export const staffTypeTableRelations = relations(staffTypeTable, ({ one, many }) => ({
+export const staffEmploymentTypeTableRelations = relations(staffEmploymentTypeTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staffs: many(staffTable),
+}));
+
+export const staffShiftTypeTableRelations = relations(staffShiftTypeTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staffs: many(staffTable),
+}));
+
+export const postalCodeTableRelations = relations(postalCodeTable, ({ one }) => ({
+	status: one(statusTable),
+	city: one(cityTable),
+}));
+
+export const nationalityTableRelations = relations(nationalityTable, ({ one, many }) => ({
+	status: one(statusTable),
+	staffs: many(staffTable),
+}));
+
+export const positionTableRelations = relations(positionTable, ({ one, many }) => ({
 	status: one(statusTable),
 	staffs: many(staffTable),
 }));
