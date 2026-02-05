@@ -6,13 +6,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getStaffDepartment = query(async (): Promise<StaffDepartmentSchema[]> => {
-	const data = await db.select().from(table.staffDepartmentTable);
+	const data = await db.select().from(table.craftGroupTable);
 	return data;
 });
 
 // get count
 export const getStaffDepartmentCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.staffDepartmentTable);
+	const [row] = await db.select({ count: count() }).from(table.craftGroupTable);
 	return row?.count ?? 0;
 });
 
@@ -22,8 +22,8 @@ export const getStaffDepartmentById = query(
 	async ({ id }: { id: number }): Promise<StaffDepartmentSchema | null> => {
 		const [row] = await db
 			.select()
-			.from(table.staffDepartmentTable)
-			.where(eq(table.staffDepartmentTable.id, id));
+			.from(table.craftGroupTable)
+			.where(eq(table.craftGroupTable.id, id));
 		return row ?? null;
 	}
 );
@@ -33,7 +33,7 @@ export const createStaffDepartment = command(
 	'unchecked' as const,
 	async (payload: StaffDepartmentSchemaInsert): Promise<StaffDepartmentSchema> => {
 		const [row] = await db
-			.insert(table.staffDepartmentTable)
+			.insert(table.craftGroupTable)
 			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
@@ -52,9 +52,9 @@ export const updateStaffDepartment = command(
 	}): Promise<StaffDepartmentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await db
-			.update(table.staffDepartmentTable)
+			.update(table.craftGroupTable)
 			.set(rest as StaffDepartmentSchemaUpdate)
-			.where(eq(table.staffDepartmentTable.id, id))
+			.where(eq(table.craftGroupTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getStaffDepartment().refresh();
@@ -66,7 +66,7 @@ export const updateStaffDepartment = command(
 export const deleteStaffDepartment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.staffDepartmentTable).where(eq(table.staffDepartmentTable.id, id));
+		await db.delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
 		getStaffDepartment().refresh();
 	}
 );
@@ -75,7 +75,7 @@ export const deleteStaffDepartment = command(
 export const deleteStaffDepartmentComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.staffDepartmentTable).where(eq(table.staffDepartmentTable.id, id));
+		await db.delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
 		getStaffDepartment().refresh();
 	}
 );
