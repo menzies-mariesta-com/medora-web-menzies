@@ -7,6 +7,6 @@
 	const routerUtil = new RouterUtil();
 
 	lifeCycleUtil.onMount(() => {
-		routerUtil.goToRoute(WebRoutesEnum.ONBOARDING);
+		routerUtil.goToRoute(WebRoutesEnum.LOGIN);
 	});
 </script>
