@@ -5,7 +5,7 @@ import type {
 	countryTable,
 	genderTable,
 	identityTypeTable,
-	marialStatusTable,
+	maritalStatusTable,
 	specializationTable,
 	stateTable,
 	statusTable,
@@ -32,9 +32,9 @@ export type IdentityTypeSchema = InferSelectModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaInsert = InferInsertModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaUpdate = Partial<IdentityTypeSchemaInsert>;
 
-export type MarialStatusSchema = InferSelectModel<typeof marialStatusTable>;
-export type MarialStatusSchemaInsert = InferInsertModel<typeof marialStatusTable>;
-export type MarialStatusSchemaUpdate = Partial<MarialStatusSchemaInsert>;
+export type maritalStatusSchema = InferSelectModel<typeof maritalStatusTable>;
+export type maritalStatusSchemaInsert = InferInsertModel<typeof maritalStatusTable>;
+export type maritalStatusSchemaUpdate = Partial<maritalStatusSchemaInsert>;
 
 export type SpecializationSchema = InferSelectModel<typeof specializationTable>;
 export type SpecializationSchemaInsert = InferInsertModel<typeof specializationTable>;

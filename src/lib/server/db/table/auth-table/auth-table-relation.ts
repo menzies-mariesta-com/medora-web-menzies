@@ -1,11 +1,13 @@
 import { relations } from 'drizzle-orm';
 import {
   accountTable,
+  roleTable,
   sessionTable,
   userTable,
   verificationTable
 } from './auth-table';
 import { staffTable } from '../information-table/information-table';
+import { statusTable } from '../master-table/master-table';
 
 // Auth table relations
 
@@ -16,7 +18,8 @@ export const userTableRollbackRelations = relations(userTable, ({ one, many }) =
   staff: one(staffTable, {
     fields: [userTable.id],
     references: [staffTable.userId]
-  })
+  }),
+  role: one(roleTable),
 }));
 
 export const sessionTableRelations = relations(sessionTable, ({ one }) => ({
@@ -34,3 +37,8 @@ export const accountTableRelations = relations(accountTable, ({ one }) => ({
 }));
 
 export const verificationTableRelations = relations(verificationTable, () => ({}));
+
+export const roleTableRelations = relations(roleTable, ({ one, many }) => ({
+  status: one(statusTable),
+  users: many(userTable),
+}));
