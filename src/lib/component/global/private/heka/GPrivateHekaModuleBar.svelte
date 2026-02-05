@@ -12,8 +12,12 @@
 	import LucideUser from '$lib/component/library/lucide/LucideUser.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import LucidePanelTopOpen from '$lib/component/library/lucide/LucidePanelTopOpen.svelte';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 
 	let { moduleList, pageList } = $props();
+	console.log('page ist', pageList);
+
+	const routerUtil = new RouterUtil();
 
 	let isNavbarVisible = $state(true);
 
@@ -81,7 +85,10 @@
 				className="max-w-screen max-h-screen bg-accent/10 flex gap-2"
 			>
 				{#each pageList.filter((p: any) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
-					<DaisyUiButton>{p.name}</DaisyUiButton>
+					<DaisyUiButton
+						onClick={() => routerUtil.goToRoute(p.page_url)}
+						>{p.name}</DaisyUiButton
+					>
 				{/each}
 			</DaisyUiDropdownContent>
 		</DaisyUiDropdown>
