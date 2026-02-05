@@ -44,6 +44,6 @@ seedAuthTables()
 		process.exit(0);
 	})
 	.catch((error) => {
-		console.error('Error while seeding master tables:', error);
+		console.error('Error while seeding auth tables:', error);
 		process.exit(1);
 	});
