@@ -68,9 +68,12 @@ export async function seedMasterTables() {
 	await db.execute(sql`
 		INSERT INTO city (id, name, code, state_id, status_id)
 		VALUES 
-			(1, 'Yangon', 'YGN', 1, 1),
-			(2, 'Mandalay', 'MDY', 2, 1),
-			(3, 'Naypyidaw', 'NPT', 3, 1)
+			(1, 'Insein', 'isn', 1, 1),
+			(2, 'Hlaingthaya', 'hty', 1, 1),
+			(3, 'Ahlone', 'ahl', 1, 1),
+			(4, 'Bahan', 'bhn', 1, 1),
+			(5, 'Amarapura', 'amr', 2, 1),
+			(6, 'DetKhiNaThiRi', 'dkn', 3, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
@@ -100,9 +103,9 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: identity_type');
 
-	// 7. Marital / Marial Status
+	// 7. Marital / marital Status
 	await db.execute(sql`
-		INSERT INTO marial_status (id, name)
+		INSERT INTO marital_status (id, name)
 		VALUES 
 			(1, 'Single'),
 			(2, 'Married'),
@@ -111,7 +114,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: marial_status');
+	console.log('Seeded: marital_status');
 
 	// 10. Craft Groups
 	await db.execute(sql`
@@ -252,7 +255,34 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: blood_type');
 
-	// 11. Staff Employment Types (formerly staff_type)
+	// 10. Nationalities
+	await db.execute(sql`
+		INSERT INTO nationality (id, name, status_id)
+		VALUES
+			(1, 'Myanmar', 1),
+			(2, 'Thailand', 1),
+			(3, 'Singapore', 1),
+			(4, 'Malaysia', 1),
+			(5, 'Indonesia', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: nationality');
+
+	// 11. Staff Types (legacy category)
+	await db.execute(sql`
+		INSERT INTO staff_type (id, name, code, status_id)
+		VALUES
+			(1, 'Clinical', 'CLINICAL', 1),
+			(2, 'Non-Clinical', 'NON_CLINICAL', 1),
+			(3, 'Administrative', 'ADMIN', 1),
+			(4, 'Support', 'SUPPORT', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: staff_type');
+
+	// 12. Staff Employment Types (formerly staff_type)
 	await db.execute(sql`
 		INSERT INTO staff_employment_type (id, name, code, status_id)
 		VALUES
@@ -265,7 +295,7 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: staff_employment_type');
 
-	// 12. Titles
+	// 13. Titles
 	await db.execute(sql`
 		INSERT INTO title (id, name, status_id)
 		VALUES
@@ -292,7 +322,7 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: title');
 	
-	// 13. Departments
+	// 14. Departments
 	await db.execute(sql`
 		INSERT INTO department (id, name, code, status_id)
 		VALUES 
@@ -301,7 +331,21 @@ export async function seedMasterTables() {
 			(3, 'Pediatrics', 'ped', 1)
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: department')
+	console.log('Seeded: department');
+	
+	// 15. Postal Codes
+	await db.execute(sql`
+		INSERT INTO postal_code (id, value, city_id, status_id)
+		VALUES 
+			(1, 11011, 1, 1),
+			(2, 11401, 2, 1),
+			(3, 11121, 3, 1),
+			(4, 11201, 4, 1),
+			(5, 05062, 5, 1),
+			(6, 15011, 6, 1)
+		ON CONFLICT (id) DO NOTHING;
+		`);
+	console.log('Seeded: postal_code');
 
 	console.log('Master tables seeding completed.');
 }
