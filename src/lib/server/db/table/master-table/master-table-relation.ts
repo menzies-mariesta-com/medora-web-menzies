@@ -4,8 +4,8 @@ import {
 	hospitalTable,
 	moduleTable,
 	pageTable,
-	roleTable,
 	staffDepartmentTable,
+	staffDetailTable,
 	staffTable,
 	statusTaggingTable,
 	statusTaggingTypeTable,
@@ -19,13 +19,14 @@ import {
 	departmentTable,
 	genderTable,
 	identityTypeTable,
-	marialStatusTable,
+	maritalStatusTable,
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
 	specializationTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
+	staffTypeTable,
 	stateTable,
 	statusTable,
 	titleTable,
@@ -70,7 +71,7 @@ export const identityTypeTableRelations = relations(identityTypeTable, ({ many }
 	staffs: many(staffTable),
 }));
 
-export const marialStatusTableRelations = relations(marialStatusTable, ({ many }) => ({
+export const maritalStatusTableRelations = relations(maritalStatusTable, ({ many }) => ({
 	staffs: many(staffTable),
 }));
 
@@ -92,7 +93,6 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	pages: many(pageTable),
 	genders: many(genderTable),
 	userGroups: many(userGroupTable),
-	roles: many(roleTable),
 	hospitals: many(hospitalTable),
 	departments: many(departmentTable),
 	staffs: many(staffTable),
@@ -107,6 +107,7 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	statusTaggings: many(statusTaggingTable),
 	statusTaggingTypes: many(statusTaggingTypeTable),
 	craftGroups: many(craftGroupTable),
+	staffDetails: many(staffDetailTable),
 }));
 
 export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
@@ -119,9 +120,13 @@ export const staffEmploymentTypeTableRelations = relations(staffEmploymentTypeTa
 	staffs: many(staffTable),
 }));
 
-export const staffShiftTypeTableRelations = relations(staffShiftTypeTable, ({ one, many }) => ({
+export const staffTypeTableRelations = relations(staffTypeTable, ({ one, many }) => ({
 	status: one(statusTable),
 	staffs: many(staffTable),
+}));
+
+export const staffShiftTypeTableRelations = relations(staffShiftTypeTable, ({ one }) => ({
+	status: one(statusTable),
 }));
 
 export const postalCodeTableRelations = relations(postalCodeTable, ({ one }) => ({

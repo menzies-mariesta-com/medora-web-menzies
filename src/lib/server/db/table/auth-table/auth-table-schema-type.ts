@@ -3,7 +3,8 @@ import type {
   userTable,
   sessionTable,
   accountTable,
-  verificationTable
+  verificationTable,
+  roleTable
 } from './auth-table';
 
 // Auth tables
@@ -23,3 +24,7 @@ export type AccountSchemaUpdate = Partial<AccountSchemaInsert>;
 export type VerificationSchema = InferSelectModel<typeof verificationTable>;
 export type VerificationSchemaInsert = InferInsertModel<typeof verificationTable>;
 export type VerificationSchemaUpdate = Partial<VerificationSchemaInsert>;
+
+export type RoleSchema = InferSelectModel<typeof roleTable>;
+export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;
+export type RoleSchemaUpdate = Partial<RoleSchemaInsert>;

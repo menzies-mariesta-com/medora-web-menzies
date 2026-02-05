@@ -3,7 +3,6 @@ import type {
 	hospitalTable,
 	moduleTable,
 	pageTable,
-	roleTable,
 	staffDepartmentTable,
 	staffHospitalTable,
 	staffTable,
@@ -26,10 +25,6 @@ export type ModuleSchemaUpdate = Partial<ModuleSchemaInsert>;
 export type PageSchema = InferSelectModel<typeof pageTable>;
 export type PageSchemaInsert = InferInsertModel<typeof pageTable>;
 export type PageSchemaUpdate = Partial<PageSchemaInsert>;
-
-export type RoleSchema = InferSelectModel<typeof roleTable>;
-export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;
-export type RoleSchemaUpdate = Partial<RoleSchemaInsert>;
 
 export type StaffDepartmentSchema = InferSelectModel<typeof staffDepartmentTable>;
 export type StaffDepartmentSchemaInsert = InferInsertModel<typeof staffDepartmentTable>;

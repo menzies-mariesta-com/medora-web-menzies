@@ -1,4 +1,4 @@
-import { StatusEnum } from '../../../../model/enum/status.enum';
+import { StatusEnum } from '../../../../model/enum/db-link';
 import { sql } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
@@ -75,7 +75,7 @@ export const identityTypeTable = pgTable('identity_type', {
 	...timestamps,
 });
 
-export const marialStatusTable = pgTable('marial_status', {
+export const maritalStatusTable = pgTable('marital_status', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
@@ -136,6 +136,14 @@ export const staffEmploymentTypeTable = pgTable('staff_employment_type', {
 });
 
 export const staffShiftTypeTable = pgTable('staff_shift_type', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	code: varchar('code', { length: 128 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+export const staffTypeTable = pgTable('staff_type', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
