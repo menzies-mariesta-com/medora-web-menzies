@@ -3,10 +3,12 @@ import type {
 	bloodTypeTable,
 	cityTable,
 	countryTable,
+	craftGroupTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
 	specializationTable,
+	staffTypeTable,
 	stateTable,
 	statusTable,
 } from './master-table';
@@ -47,3 +49,11 @@ export type StateSchemaUpdate = Partial<StateSchemaInsert>;
 export type StatusSchema = InferSelectModel<typeof statusTable>;
 export type StatusSchemaInsert = InferInsertModel<typeof statusTable>;
 export type StatusSchemaUpdate = Partial<StatusSchemaInsert>;
+
+export type CraftGroupSchema = InferSelectModel<typeof craftGroupTable>;
+export type CraftGroupSchemaInsert = InferInsertModel<typeof craftGroupTable>;
+export type CraftGroupSchemaUpdate = Partial<CraftGroupSchemaInsert>;
+
+export type StaffTypeSchema = InferSelectModel<typeof staffTypeTable>;
+export type StaffTypeSchemaInsert = InferInsertModel<typeof staffTypeTable>;
+export type StaffTypeSchemaUpdate = Partial<StaffTypeSchemaInsert>;

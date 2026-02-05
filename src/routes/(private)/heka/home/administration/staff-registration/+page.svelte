@@ -10,14 +10,12 @@
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import { getDepartment } from '$lib/remote/table/information-table/department.remote';
-	import { getCraftGroup } from '$lib/remote/table/master-table/craft-group.remote';
+	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
 
 	const staffTypeData = await getStaffType();
 	const departmentData = await getDepartment();
-	const craftGroupData = await getCraftGroup();
-
-	console.log(craftGroupData)
+	const specializationData = await getSpecialization();
 </script>
 
 <DaisyUiCard>
@@ -143,10 +141,10 @@
 
 				<div class="flex items-center">
 					<DaisyUiLabel forText="date-of-birth" className="w-36 "
-						>Craft Group</DaisyUiLabel
+						>Specialization</DaisyUiLabel
 					>
 					<DaisyUiSelect optionHeader="Select a department ...">
-						{#each craftGroupData as data}
+						{#each specializationData as data}
 							<option value={data.id}>{data.name}</option>
 						{/each}
 					</DaisyUiSelect>
