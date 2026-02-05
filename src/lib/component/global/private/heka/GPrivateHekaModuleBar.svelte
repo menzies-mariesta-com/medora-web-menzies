@@ -13,11 +13,16 @@
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import LucidePanelTopOpen from '$lib/component/library/lucide/LucidePanelTopOpen.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import DaisyUiNavbarCenter from '$lib/component/library/daisyui/navbar/center/DaisyUiNavbarCenter.svelte';
+	import { page } from '$app/state';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	let { moduleList, pageList } = $props();
-	console.log('page ist', pageList);
 
 	const routerUtil = new RouterUtil();
+
+	let pageLocator = StringUtil.urlToTitleLast(page.url.pathname, 2);
 
 	let isNavbarVisible = $state(true);
 
@@ -31,6 +36,14 @@
 		<DaisyUiNavbarStart className="gap-3">
 			<img src={HekaLogo} alt="Heka Logo" class="w-20" />
 		</DaisyUiNavbarStart>
+		<DaisyUiNavbarCenter>
+			<DaisyUiInputField
+				inputType="text"
+				value={pageLocator}
+				disabled
+				className="d-btn-primary w-full"
+			/>
+		</DaisyUiNavbarCenter>
 		<DaisyUiNavbarEnd className="gap-3">
 			<DaisyUiTooltip
 				tooltipText="Notification"
@@ -86,7 +99,7 @@
 			>
 				{#each pageList.filter((p: any) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 					<DaisyUiButton
-						onClick={() => routerUtil.goToRoute(p.page_url)}
+						onClick={() => routerUtil.replaceRoute(p.pageUrl)}
 						>{p.name}</DaisyUiButton
 					>
 				{/each}
