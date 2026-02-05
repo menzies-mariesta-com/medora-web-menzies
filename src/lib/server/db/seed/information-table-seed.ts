@@ -24,21 +24,21 @@ export async function seedInformationTables() {
 
 	// 1. Modules (depends: status)
 	await db.execute(sql`
-		INSERT INTO module (id, name, image_url, sequence_no, status_id)
+		INSERT INTO module (id, name, image_url, sequence_no, status_id, module_url)
 		VALUES 
-			(1, 'Dashboard', 'layout-dashboard.svg', 1, 1),
-			(2, 'Patient', 'users.svg', 2, 1),
-			(3, 'Appointment', 'calendar.svg', 3, 1),
-			(4, 'Settings', 'settings.svg', 4, 1),
-			(5, 'Administration', 'administration.svg', 5, 1),
-			(6, 'Report', 'report.svg', 6, 1),
-			(7, 'Billing', 'billing.svg', 7, 1),
-			(8, 'CPOE', 'cpoe.svg', 8, 1),
-			(9, 'Pharmacy', 'pharmacy.svg', 9, 1),
-			(10, 'Medical Record', 'medical-record.svg', 10, 1),
-			(11, 'Inventory', 'inventory.svg', 11, 1),
-			(12, 'Nursing', 'nursing.svg', 12, 1),
-			(13, 'Emergency', 'emergency.svg', 13, 1)
+			(1, 'Dashboard', 'layout-dashboard.svg', 1, 1, 'heka/home/dashboard'),
+			(2, 'Patient', 'users.svg', 2, 1, 'heka/home/patient'),
+			(3, 'Appointment', 'calendar.svg', 3, 1, 'heka/home/appointment'),
+			(4, 'Settings', 'settings.svg', 4, 1, 'heka/home/settings'),
+			(5, 'Administration', 'administration.svg', 5, 1, 'heka/home/administration'),
+			(6, 'Report', 'report.svg', 6, 1, 'heka/home/report'),
+			(7, 'Billing', 'billing.svg', 7, 1, 'heka/home/billing'),
+			(8, 'CPOE', 'cpoe.svg', 8, 1, 'heka/home/cpoe'),
+			(9, 'Pharmacy', 'pharmacy.svg', 9, 1, 'heka/home/pharmacy'),
+			(10, 'Medical Record', 'medical-record.svg', 10, 1, 'heka/home/medical-record'),
+			(11, 'Inventory', 'inventory.svg', 11, 1, 'heka/home/inventory'),
+			(12, 'Nursing', 'nursing.svg', 12, 1, 'heka/home/nursing'),
+			(13, 'Emergency', 'emergency.svg', 13, 1, 'heka/home/emergency')
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: module');
@@ -66,28 +66,29 @@ export async function seedInformationTables() {
 
 	// 4. Page (depends: module, status)
 	await db.execute(sql`
-		INSERT INTO page (id, name, module_id, status_id, parent_id)
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
-			(1, 'Audit Trail(EMR)', 5, 1, null),
-			(2, 'Payer Info', 5, 1, null),
-			(3, 'Master Setup', 5, 1, null),
-			(4, 'Employee Profile', 5, 1, null),
-			(5, 'Facility Tagging', 5, 1, null),
-			(6, 'Corporate Master', 5, 1, null),
-			(7, 'Color Legends', 5, 1, null),
-			(8, 'Roles and Permissions', 5, 1, null),
-			(9, 'Holidays', 5, 1, null),
-			(10, 'Change Password', 5, 1, null),
-			(11, 'Visit Type', 5, 1, null),
-			(12, 'Company Wise Editable Service Setup', 5, 1, null),
-			(13, 'Currency Master', 5, 1, null),
-			(14, 'Merge Patient Details', 5, 1, null),
-			(15, 'Payer', 5, 1, 2),
-			(16, 'Insurance Category', 5, 1, 2),
-			(17, 'Network', 5, 1, 2),
-			(18, 'Network Details', 5, 1, 2),
-			(19, 'Pricing Cash', 5, 1, 2),
-			(20, 'Pricing Credit', 5, 1, 2)
+			(1, 'Audit Trail(EMR)', 5, 1, null, 'heka/home/administration/audit-trail', 1),
+			(2, 'Payer Info', 5, 1, null, 'heka/home/administration/payer-info', 2),
+			(3, 'Master Setup', 5, 1, null, 'heka/home/administration/master-setup', 3),
+			(4, 'Employee Profile', 5, 1, null, 'heka/home/administration/employee-profile', 4),
+			(5, 'Facility Tagging', 5, 1, null, 'heka/home/administration/facility-tagging', 5),
+			(6, 'Corporate Master', 5, 1, null, 'heka/home/administration/corporate-master', 6),
+			(7, 'Color Legends', 5, 1, null, 'heka/home/administration/color-legends', 7),
+			(8, 'Roles and Permissions', 5, 1, null, 'heka/home/administration/roles-and-permissions', 8),
+			(9, 'Holidays', 5, 1, null, 'heka/home/administration/holidays', 9),
+			(10, 'Change Password', 5, 1, null, 'heka/home/administration/change-password', 10),
+			(11, 'Visit Type', 5, 1, null, 'heka/home/administration/visit-type', 11),
+			(12, 'Company Wise Editable Service Setup', 5, 1, null, 'heka/home/administration/company-wise-editable-service-setup', 12),
+			(13, 'Currency Master', 5, 1, null, 'heka/home/administration/currency-master', 13),
+			(14, 'Merge Patient Details', 5, 1, null, 'heka/home/administration/merge-patient-details', 14),
+			(15, 'Payer', 5, 1, 2, 'heka/home/administration/payer', 15),
+			(16, 'Insurance Category', 5, 1, 2, 'heka/home/administration/payer-info/insurance-category', 16),
+			(17, 'Network', 5, 1, 2, 'heka/home/administration/payer-info/network', 17),
+			(18, 'Network Details', 5, 1, 2, 'heka/home/administration/payer-info/network-details', 18),
+			(19, 'Pricing Cash', 5, 1, 2, 'heka/home/administration/payer-info/pricing-cash', 19),
+			(20, 'Pricing Credit', 5, 1, 2, 'heka/home/administration/payer-info/pricing-credit', 20),
+			(21, 'Staff Registration', 5, 1, null, 'heka/home/administration/staff-registration', 21)
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: page')
