@@ -12,6 +12,7 @@ import type {
 	userGroupPageTable,
 	userGroupTable,
 } from './information-table';
+import type { StatusSchema } from '../../schema-type';
 
 // Information Tables (alphabetical)
 export type HospitalSchema = InferSelectModel<typeof hospitalTable>;

@@ -57,8 +57,16 @@ export const moduleTableRelations = relations(moduleTable, ({ one, many }) => ({
 }));
 
 export const pageTableRelations = relations(pageTable, ({ one, many }) => ({
-	module: one(moduleTable),
-	status: one(statusTable),
+	// Explicitly specify relation fields to avoid ambiguity when resolving
+	// relations like "pageTable.module" in Drizzle.
+	module: one(moduleTable, {
+		fields: [pageTable.moduleId],
+		references: [moduleTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [pageTable.statusId],
+		references: [statusTable.id],
+	}),
 	parent: one(pageTable, {
 		fields: [pageTable.parentId],
 		references: [pageTable.id],
