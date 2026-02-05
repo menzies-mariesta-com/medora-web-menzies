@@ -11,8 +11,9 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
+import { StatusEnum } from '../../../../model/enum/status.enum';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, marialStatusTable, specializationTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, marialStatusTable, nationalityTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -38,7 +39,7 @@ export const hospitalTable = pgTable('hospital', {
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
 
@@ -53,6 +54,7 @@ export const moduleTable = pgTable('module', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	imageUrl: text('image_url'),
+	moduleUrl: text('module_url'),
 	sequenceNo: integer('sequence_no'),
 	statusId: integer('status_id')
 		.notNull()
@@ -67,8 +69,10 @@ export const pageTable = pgTable(
 		name: varchar('name', { length: 512 }),
 		parentId: integer('parent_id'),
 		imageUrl: text('image_url'),
+		pageUrl: text('page_url'),
+		sequenceNo: integer('sequence_no'),
 		moduleId: integer('module_id').references(() => moduleTable.id),
-		statusId: integer('status_id').references(() => statusTable.id),
+		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 		...timestamps,
 	},
 	(self) => [
@@ -82,7 +86,7 @@ export const pageTable = pgTable(
 export const roleTable = pgTable('role', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
 
@@ -124,21 +128,23 @@ export const staffTable = pgTable('staff', {
 	phonePrimary: varchar('phone_primary', { length: 128 }),
 	phoneSecondary: varchar('phone_secondary', { length: 128 }),
 	dateOfBirth: date('date_of_birth'),
-	filePath: text('file_path'),
+	photoUrl: text('photo_url'),
 	address: text('address'),
 	remark: text('remark'),
 	identityNo: varchar('identity_no', { length: 128 }),
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
 	titleId: integer('title_id').references(() => titleTable.id),
-	staffTypeId: integer('staff_type_id').references(() => staffTypeTable.id),
+	staffEmploymentTypeId: integer('staff_employment_type_id').references(() => staffEmploymentTypeTable.id),
+	staffShiftTypeId: integer('staff_shift_type_id').references(() => staffShiftTypeTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => marialStatusTable.id),
+	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
 	specializationId: integer('specialization_id').references(() => specializationTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),
 	bloodTypeId: integer('blood_type_id').references(() => bloodTypeTable.id),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	//staffHospitalTable
 	//staffDepartmentTable
 	//staffUserGroupTable
@@ -162,14 +168,14 @@ export const statusTaggingTable = pgTable('status_tagging', {
 	code: varchar('code', { length: 128 }),
 	sequenceNo: integer('sequence_no'),
 	statusTaggingTypeId: integer('status_tagging_type_id').references(() => statusTaggingTypeTable.id),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
 
 export const statusTaggingTypeTable = pgTable('status_tagging_type', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
 
@@ -183,7 +189,7 @@ export const userGroupPageTable = pgTable('user_group_page', {
 export const userGroupTable = pgTable('user_group', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
-	statusId: integer('status_id').references(() => statusTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
 	//userGroupPageTable
 	...timestamps,

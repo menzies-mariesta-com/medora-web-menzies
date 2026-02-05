@@ -113,37 +113,6 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: marial_status');
 
-	// 8. Specializations (for doctors / staff)
-	await db.execute(sql`
-		INSERT INTO specialization (id, name)
-		VALUES 
-			(1, 'General Practitioner'),
-			(2, 'Cardiology'),
-			(3, 'Neurology'),
-			(4, 'Pediatrics'),
-			(5, 'Orthopedics')
-		ON CONFLICT (id) DO NOTHING;
-	`);
-
-	console.log('Seeded: specialization');
-
-	// 9. Blood Types
-	await db.execute(sql`
-		INSERT INTO blood_type (id, name, status_id)
-		VALUES 
-			(1, 'A+', 1),
-			(2, 'A-', 1),
-			(3, 'B+', 1),
-			(4, 'B-', 1),
-			(5, 'AB+', 1),
-			(6, 'AB-', 1),
-			(7, 'O+', 1),
-			(8, 'O-', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-
-	console.log('Seeded: blood_type');
-
 	// 10. Craft Groups
 	await db.execute(sql`
 		INSERT INTO craft_group (id, name, status_id)
@@ -192,9 +161,100 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: craft_group');
 
-	// 11. Staff Types
+	// 8. Specializations (for doctors / staff) – each linked to craft_group_id
 	await db.execute(sql`
-		INSERT INTO staff_type (id, name, code, status_id)
+		INSERT INTO specialization (id, name, craft_group_id, status_id)
+		VALUES 
+			(1, 'GP', 1, 1),
+			(2, 'Aesthetic and Dermatology', 3, 1),
+			(3, 'Anaesthesiology', 4, 1),
+			(4, 'Psychology', 6, 1),
+			(5, 'Aesthetic and Dermatology', 6, 1),
+			(6, 'Nutritional Medicine', 6, 1),
+			(7, 'Rehabilitation Medicine', 6, 1),
+			(8, 'Counselling Services', 6, 1),
+			(9, 'Cardiac Surgery', 8, 1),
+			(10, 'Cardiology', 8, 1),
+			(11, 'Vascular', 8, 1),
+			(12, 'Dental', 9, 1),
+			(13, 'Endocrinology', 12, 1),
+			(14, 'ENT', 12, 1),
+			(15, 'Gastroenterologic Surgery', 13, 1),
+			(16, 'Gastroenterologist', 13, 1),
+			(17, 'General Surgery', 14, 1),
+			(18, 'Cardiac Surgery', 14, 1),
+			(19, 'Paediatrics Surgery', 14, 1),
+			(20, 'Breast Surgery', 14, 1),
+			(21, 'Aesthetic and Dermatology', 14, 1),
+			(22, 'Hand Surgery', 14, 1),
+			(23, 'Plastic and Maxillofacial Surgery', 14, 1),
+			(24, 'HEPATOBILIARY & PANCREATIC SURGERY', 14, 1),
+			(25, 'Haematology', 15, 1),
+			(26, 'HEPATOBILIARY & PANCREATIC SURGERY', 16, 1),
+			(27, 'Hepatology', 16, 1),
+			(28, 'Internal Medicine', 18, 1),
+			(29, 'Rheumatology', 18, 1),
+			(30, 'Endocrinology', 18, 1),
+			(31, 'Pulmonology', 18, 1),
+			(32, 'Haematology', 18, 1),
+			(33, 'Chest', 18, 1),
+			(34, 'Gastroenterologist', 18, 1),
+			(35, 'Aesthetic and Dermatology', 18, 1),
+			(36, 'Neurology', 18, 1),
+			(37, 'Cardiology', 18, 1),
+			(38, 'Obstetrics & Gynaecology', 18, 1),
+			(39, 'Infectious Disease', 18, 1),
+			(40, 'Maxillofacial', 20, 1),
+			(41, 'Plastic and Maxillofacial Surgery', 20, 1),
+			(42, 'Nephrology', 22, 1),
+			(43, 'Neuro Surgery', 23, 1),
+			(44, 'Neurology', 23, 1),
+			(45, 'Neurology', 25, 1),
+			(46, 'Medical Oncology', 26, 1),
+			(47, 'Opthalmology', 27, 1),
+			(48, 'Orthopaedics', 28, 1),
+			(49, 'Paediatrics', 29, 1),
+			(50, 'Paediatrics Surgery', 29, 1),
+			(51, 'Paediatrics Cardiology', 30, 1),
+			(52, 'Pathology', 31, 1),
+			(53, 'Microbiology', 31, 1),
+			(54, 'Aesthetic and Dermatology', 32, 1),
+			(55, 'Plastic and Maxillofacial Surgery', 33, 1),
+			(56, 'Aesthetic and Dermatology', 34, 1),
+			(57, 'Plastic and Maxillofacial Surgery', 34, 1),
+			(58, 'Maxillofacial', 34, 1),
+			(59, 'Pulmonology', 35, 1),
+			(60, 'Radiology', 36, 1),
+			(61, 'Interventional Radiology', 36, 1),
+			(62, 'Rehabilitation Medicine', 37, 1),
+			(63, 'Speech Pathology', 38, 1),
+			(64, 'Urology', 39, 1),
+			(65, 'Neuro Surgery', 39, 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: specialization');
+
+	// 9. Blood Types
+	await db.execute(sql`
+		INSERT INTO blood_type (id, name, status_id)
+		VALUES 
+			(1, 'A+', 1),
+			(2, 'A-', 1),
+			(3, 'B+', 1),
+			(4, 'B-', 1),
+			(5, 'AB+', 1),
+			(6, 'AB-', 1),
+			(7, 'O+', 1),
+			(8, 'O-', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: blood_type');
+
+	// 11. Staff Employment Types (formerly staff_type)
+	await db.execute(sql`
+		INSERT INTO staff_employment_type (id, name, code, status_id)
 		VALUES
 			(1, 'Full Time', 'FULL_TIME', 1),
 			(2, 'Part Time', 'PART_TIME', 1),
@@ -203,7 +263,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: staff_type');
+	console.log('Seeded: staff_employment_type');
 
 	// 12. Titles
 	await db.execute(sql`
