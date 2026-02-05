@@ -39,7 +39,7 @@
 		const { data, error } = await authClient.signIn.email({
 			email,
 			password,
-			callbackURL: WebRoutesEnum.DEFAULT
+			callbackURL: WebRoutesEnum.HEKA_HOME
 		});
 		isLoading = false;
 
@@ -48,7 +48,7 @@
 			return;
 		}
 		if (data) {
-			await goto(WebRoutesEnum.DEFAULT);
+			await goto(WebRoutesEnum.HEKA_HOME);
 		}
 	}
 </script>

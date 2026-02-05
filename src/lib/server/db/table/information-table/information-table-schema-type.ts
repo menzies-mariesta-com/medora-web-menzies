@@ -13,6 +13,7 @@ import type {
 	userGroupPageTable,
 	userGroupTable,
 } from './information-table';
+import type { StatusSchema } from '../../schema-type';
 
 // Information Tables (alphabetical)
 export type HospitalSchema = InferSelectModel<typeof hospitalTable>;
@@ -26,6 +27,7 @@ export type ModuleSchemaUpdate = Partial<ModuleSchemaInsert>;
 export type PageSchema = InferSelectModel<typeof pageTable>;
 export type PageSchemaInsert = InferInsertModel<typeof pageTable>;
 export type PageSchemaUpdate = Partial<PageSchemaInsert>;
+
 
 export type RoleSchema = InferSelectModel<typeof roleTable>;
 export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;
