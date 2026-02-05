@@ -13,10 +13,14 @@
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
+
+	const toastService = new ToastService();
+	
 	let isPasswordVisible = $state(false);
 	let isLoading = $state(false);
-	let errorMessage = $state('');
 
 	function togglePasswordVisibility() {
 		isPasswordVisible = !isPasswordVisible;
@@ -30,11 +34,9 @@
 		const password = fd.get('password') as string;
 
 		if (!email || !password) {
-			errorMessage = 'Email and password are required.';
+			toastService.addToast('Email and password are required.', StatusColorEnum.ERROR);
 			return;
 		}
-
-		errorMessage = '';
 		isLoading = true;
 		const { data, error } = await authClient.signIn.email({
 			email,
@@ -44,7 +46,7 @@
 		isLoading = false;
 
 		if (error) {
-			errorMessage = error.message ?? 'Invalid email or password.';
+			toastService.addToast(error.message ?? 'Invalid email or password.', StatusColorEnum.ERROR);
 			return;
 		}
 		if (data) {
@@ -64,15 +66,7 @@
 					<img src={HekaLogo} alt="" class="w-42" />
 				</DaisyUiLink>
 			</DaisyUiFieldsetLegend>
-			<!-- username -->
-			<section id="username-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Username"
-					className="w-full"
-				/>
-			</section>
-
+			
 				<!-- email -->
 				<section id="email-input">
 					<DaisyUiInputField

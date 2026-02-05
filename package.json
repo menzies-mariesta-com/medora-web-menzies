@@ -19,7 +19,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "npm run db:seed:auth && npm run db:seed:master && npm run db:seed:information",
+		"db:seed": "npm run db:seed:master && npm run db:seed:auth && npm run db:seed:information",
 		"db:seed:auth": "npx tsx src/lib/server/db/seed/auth-table-seed.ts",
 		"db:seed:master": "npx tsx src/lib/server/db/seed/master-table-seed.ts",
 		"db:seed:information": "npx tsx src/lib/server/db/seed/information-table-seed.ts"
