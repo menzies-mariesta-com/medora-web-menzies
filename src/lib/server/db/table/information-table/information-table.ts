@@ -11,9 +11,9 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import { StatusEnum } from '../../../../model/enum/status.enum';
+import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, marialStatusTable, nationalityTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -83,9 +83,14 @@ export const pageTable = pgTable(
 	],
 );
 
-export const roleTable = pgTable('role', {
+export const staffDetailTable = pgTable('staff_detail', {
 	id: serial('id').primaryKey(),
-	name: varchar('name', { length: 512 }),
+	licenseNo: varchar('license_no', { length: 512 }),
+	licenseExpiryDate: date('license_expiry_date'),
+	signatureImageUrl: text('signature_image_url'),
+	signatureText: text('signature_text'),
+	designation: varchar('designation', { length: 512 }),
+	education: varchar('education', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
@@ -135,11 +140,12 @@ export const staffTable = pgTable('staff', {
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
 	titleId: integer('title_id').references(() => titleTable.id),
 	staffEmploymentTypeId: integer('staff_employment_type_id').references(() => staffEmploymentTypeTable.id),
-	staffShiftTypeId: integer('staff_shift_type_id').references(() => staffShiftTypeTable.id),
+	staffTypeId: integer('staff_type_id').references(() => staffTypeTable.id),
+	staffDetailId: integer('staff_detail_id').references(() => staffDetailTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
-	maritalStatusId: integer('marital_status_id').references(() => marialStatusTable.id),
+	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
 	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
 	specializationId: integer('specialization_id').references(() => specializationTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),

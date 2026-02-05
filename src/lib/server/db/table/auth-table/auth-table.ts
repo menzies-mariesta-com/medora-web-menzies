@@ -1,12 +1,16 @@
 import { sql } from 'drizzle-orm';
 import {
 	boolean,
+	integer,
 	pgTable,
+	serial,
 	text,
 	timestamp,
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
+import { statusTable } from '../master-table/master-table';
+import { StatusEnum } from '../../../../model/enum/db-link';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -34,6 +38,7 @@ export const userTable = pgTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
+	roleId: integer('role_id').references(() => roleTable.id),
 	...timestamps,
 });
 
@@ -86,9 +91,17 @@ export const verificationTable = pgTable('verification', {
 	...timestamps,
 });
 
+export const roleTable = pgTable('role', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
 export const authSchema = {
 	user: userTable,
 	session: sessionTable,
 	account: accountTable,
-	verification: verificationTable
+	verification: verificationTable,
+	role: roleTable,
 };

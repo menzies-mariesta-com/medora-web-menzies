@@ -4,8 +4,8 @@ import {
 	hospitalTable,
 	moduleTable,
 	pageTable,
-	roleTable,
 	staffDepartmentTable,
+	staffDetailTable,
 	staffHospitalTable,
 	staffTable,
 	staffUserGroupTable,
@@ -21,13 +21,14 @@ import {
 	departmentTable,
 	genderTable,
 	identityTypeTable,
-	marialStatusTable,
+	maritalStatusTable,
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
 	specializationTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
+	staffTypeTable,
 	stateTable,
 	statusTable,
 	titleTable,
@@ -75,13 +76,14 @@ export const pageTableRelations = relations(pageTable, ({ one, many }) => ({
 	userGroupPages: many(userGroupPageTable),
 }));
 
-export const roleTableRelations = relations(roleTable, ({ one }) => ({
-	status: one(statusTable),
-}));
-
 export const staffDepartmentTableRelations = relations(staffDepartmentTable, ({ one }) => ({
 	staff: one(staffTable),
 	department: one(departmentTable),
+}));
+
+export const staffDetailTableRelations = relations(staffDetailTable, ({ one }) => ({
+	staff: one(staffTable),
+	status: one(statusTable),
 }));
 
 export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one }) => ({
@@ -92,7 +94,7 @@ export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one 
 export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	bloodType: one(bloodTypeTable),
 	identityType: one(identityTypeTable),
-	maritalStatus: one(marialStatusTable),
+	maritalStatus: one(maritalStatusTable),
 	gender: one(genderTable),
 	status: one(statusTable),
 	city: one(cityTable),
@@ -101,11 +103,12 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	user: one(userTable),
 	title: one(titleTable),
 	staffEmploymentType: one(staffEmploymentTypeTable),
-	staffShiftType: one(staffShiftTypeTable),
+	staffType: one(staffTypeTable),
 	nationality: one(nationalityTable),
 	position: one(positionTable),
 	postalCode: one(postalCodeTable),
 	specialization: one(specializationTable),
+	staffDetail: one(staffDetailTable),
 	staffHospitals: many(staffHospitalTable),
 	staffDepartments: many(staffDepartmentTable),
 	staffUserGroups: many(staffUserGroupTable),
