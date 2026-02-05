@@ -3,8 +3,29 @@
 	import LucideCopyright from '$lib/component/library/lucide/LucideCopyright.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	let time = $state('');
+
+	function updateTime() {
+		const now = new Date();
+
+		const h = String(now.getHours()).padStart(2, '0'); // 24hr
+		const m = String(now.getMinutes()).padStart(2, '0');
+		const s = String(now.getSeconds()).padStart(2, '0');
+
+		time = `${h}:${m}:${s}`;
+	}
+
+	lifeCycleUtil.onMount(() => {
+		updateTime();
+		const interval = setInterval(updateTime, 1000);
+
+		return () => clearInterval(interval);
+	});
 </script>
 
 <DaisyUiFooter
@@ -18,18 +39,9 @@
 
 	<div id="time">
 		<span class="d-countdown">
-			<span style="--d-value:10;" aria-live="polite" aria-label="10"
-				>10</span
-			>
-			h
-			<span style="--d-value:24;" aria-live="polite" aria-label="24"
-				>24</span
-			>
-			m
-			<span style="--d-value:59;" aria-live="polite" aria-label="59"
-				>59</span
-			>
-			s
+			<span style="--d-value:{time.split(':')[0]}"></span> h
+			<span style="--d-value:{time.split(':')[1]}"></span> m
+			<span style="--d-value:{time.split(':')[2]}"></span> s
 		</span>
 	</div>
 
