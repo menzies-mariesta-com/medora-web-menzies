@@ -15,6 +15,6 @@
 </script>
 
 <select class="d-select {className}" bind:value {disabled}>
-	<option disabled value="">{optionHeader}</option>
+	<option value="" selected>{optionHeader}</option>
 	{@render children?.()}
 </select>

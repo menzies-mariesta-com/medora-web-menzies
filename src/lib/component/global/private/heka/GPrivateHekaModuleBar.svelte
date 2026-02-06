@@ -99,6 +99,7 @@
 			>
 				{#each pageList.filter((p: any) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 					<DaisyUiButton
+						className="justify-start"
 						onClick={() => routerUtil.replaceRoute(p.pageUrl)}
 						>{p.name}</DaisyUiButton
 					>
