@@ -9,7 +9,7 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import { getDepartment } from '$lib/remote/table/information-table/department.remote';
+	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
 	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
 

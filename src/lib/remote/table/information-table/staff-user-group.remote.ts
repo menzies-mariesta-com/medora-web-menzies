@@ -16,6 +16,16 @@ export const getStaffUserGroupCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+// get all with relations
+export const getStaffUserGroupWithRelations = query(async () => {
+	return db.query.staffUserGroupTable.findMany({
+		with: {
+			staff: true,
+			userGroup: true,
+		},
+	});
+});
+
 // get one
 export const getStaffUserGroupById = query(
 	'unchecked' as const,
