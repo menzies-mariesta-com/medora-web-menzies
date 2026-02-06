@@ -1,8 +1,8 @@
 <script lang="ts">
-	let { className, checked } = $props<{
+	let { className, checked = $bindable() } = $props<{
 		className?: string;
 		checked?: boolean;
 	}>();
 </script>
 
-<input type="checkbox" {checked} class="d-checkbox {className}" />
+<input type="checkbox" bind:checked class="d-checkbox {className}" />

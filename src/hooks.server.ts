@@ -17,7 +17,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = session.user;
 		// Load staff linked to this user (1:1)
 		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
-		console.log(staff);
 		// event.locals.staff = staff ?? null;
 	}
 
