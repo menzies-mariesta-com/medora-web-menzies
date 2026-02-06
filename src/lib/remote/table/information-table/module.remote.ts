@@ -17,6 +17,30 @@ export const getModuleCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+// get all with relations
+export const getModuleWithRelations = query(async () => {
+	return db.query.moduleTable.findMany({
+		with: {
+			status: true,
+			pages: true,
+		},
+	});
+});
+
+// get one with relations
+export const getModuleByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.moduleTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				pages: true,
+			},
+		});
+	}
+);
+
 // get one
 export const getModuleById = query(
 	'unchecked' as const,

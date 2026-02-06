@@ -13,7 +13,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -148,6 +148,8 @@ export const staffTable = pgTable('staff', {
 	countryId: integer('country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
 	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
+	positionId: integer('position_id').references(() => positionTable.id),
+	postalCodeId: integer('postal_code_id').references(() => postalCodeTable.id),
 	specializationId: integer('specialization_id').references(() => specializationTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),

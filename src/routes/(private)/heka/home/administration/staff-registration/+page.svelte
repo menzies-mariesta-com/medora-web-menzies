@@ -11,15 +11,15 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import { getDepartment } from '$lib/remote/table/information-table/department.remote';
+
+	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
+	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
+	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
 	import { getUserGroup } from '$lib/remote/table/information-table/user-group.remote';
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
 	import { getmaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
-	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
-	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
-
 	const staffTypeData = await getStaffType();
 	const departmentData = await getDepartment();
 	const specializationData = await getSpecialization();
