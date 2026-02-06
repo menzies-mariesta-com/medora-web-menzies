@@ -1,4 +1,5 @@
 import { query, command } from '$app/server';
+import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
@@ -185,6 +186,7 @@ export const createStaffWithUser = command(
 		email: string;
 		name: string;
 		// Staff fields (only include fields that exist in staffTable)
+		code?: string;
 		firstName?: string;
 		middleName?: string;
 		lastName?: string;
@@ -224,7 +226,8 @@ export const createStaffWithUser = command(
 			.where(eq(userTable.email, payload.email))
 			.limit(1);
 		if (existingUser.length > 0) {
-			throw new Error('User with this email already exists');
+			// Use SvelteKit HttpError so the message survives serialization
+			throw error(400, 'Staff with this email already exists');
 		}
 
 		// Generate random password
@@ -243,7 +246,7 @@ export const createStaffWithUser = command(
 			})
 			.returning();
 
-		if (!user) throw new Error('Failed to create user');
+		if (!user) throw error(400, 'Failed to create staff.');
 
 		// Create account for Better Auth email/password
 		await db.insert(accountTable).values({
