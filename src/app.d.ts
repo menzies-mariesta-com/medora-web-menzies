@@ -1,6 +1,12 @@
+/// <reference types="vite/client" />
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { Session, User } from 'better-auth';
+
+declare module '*?raw' {
+	const text: string;
+	export default text;
+}
 import type { StaffSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
 
 declare global {

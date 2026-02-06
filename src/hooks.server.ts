@@ -1,7 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { eq } from 'drizzle-orm';
-import { auth } from '$lib/auth';
+import { auth } from '$lib/auth/server';
 import { db } from '$lib/server/db';
 import { staffTable } from '$lib/server/db/table/information-table/information-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
@@ -17,7 +17,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = session.user;
 		// Load staff linked to this user (1:1)
 		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
-		console.log(staff);
 		// event.locals.staff = staff ?? null;
 	}
 

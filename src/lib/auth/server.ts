@@ -10,6 +10,8 @@ import {
 	userTable,
 	verificationTable
 } from '$lib/server/db/table/auth-table/auth-table';
+import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
+import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 
 const passwordHashUtil = new PasswordHashUtil();
@@ -30,6 +32,15 @@ export const auth = betterAuth({
 			hash: (password) => passwordHashUtil.hash(password),
 			verify: ({ password, hash }) =>
 				passwordHashUtil.verify({ password, hash })
+		},
+		sendResetPassword: async ({ user, url }) => {
+			const { html, plainText } = renderResetPasswordEmail({ url });
+			void sendEmailServer({
+				to: user.email,
+				subject: 'Reset your password',
+				message: plainText,
+				html
+			});
 		}
 	},
 	advanced: {
