@@ -17,6 +17,8 @@
 	import { page } from '$app/state';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 
 	let { moduleList, pageList } = $props();
 
@@ -49,9 +51,16 @@
 				tooltipText="Notification"
 				className="d-tooltip-left"
 			>
-				<DaisyUiButton className="d-btn-circle">
-					<LucideBell />
-				</DaisyUiButton>
+				<DaisyUiDropdown className="d-dropdown-bottom d-dropdown-end">
+					<DaisyUiDropdownButton>
+						<LucideBell />
+					</DaisyUiDropdownButton>
+					<DaisyUiDropdownContent>
+						<DaisyUiCard>
+							<DaisyUiCardBody>Hello</DaisyUiCardBody>
+						</DaisyUiCard>
+					</DaisyUiDropdownContent>
+				</DaisyUiDropdown>
 			</DaisyUiTooltip>
 			<DaisyUiTooltip
 				tooltipText="Account"
