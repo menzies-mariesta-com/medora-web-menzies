@@ -9,11 +9,12 @@
 		minLength,
 		maxlength,
 		nameText,
-		value,
+		value = $bindable(),
 		ariaLabel,
 		rawStyle,
 		checked,
 		hidden,
+		disabled,
 		onClick
 	} = $props<{
 		id?: string;
@@ -30,6 +31,7 @@
 		rawStyle?: boolean;
 		checked?: boolean;
 		hidden?: boolean;
+		disabled?: boolean;
 		onClick?: () => void;
 	}>();
 </script>
@@ -46,11 +48,12 @@
 		maxlength={maxlength ?? 50}
 		title={inputTitle}
 		name={nameText}
-		{value}
+		bind:value
 		aria-label={ariaLabel}
 		onclick={onClick}
 		{checked}
 		{hidden}
+		{disabled}
 	/>
 {:else}
 	<input
@@ -64,10 +67,11 @@
 		maxlength={maxlength ?? 50}
 		title={inputTitle}
 		name={nameText}
-		{value}
+		bind:value
 		aria-label={ariaLabel}
 		{checked}
 		{hidden}
+		{disabled}
 		onclick={onClick}
 	/>
 {/if}

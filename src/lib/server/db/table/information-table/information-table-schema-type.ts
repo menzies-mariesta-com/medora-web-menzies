@@ -1,24 +1,25 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
-	departmentTable,
+	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
-	roleTable,
+	staffDetailTable,
 	staffDepartmentTable,
 	staffHospitalTable,
-	staffRoleTable,
 	staffTable,
 	staffUserGroupTable,
-	userGroupModuleTable,
+	statusTaggingTable,
+	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
 } from './information-table';
+import type { StatusSchema } from '../master-table/master-table-schema-type';
 
 // Information Tables (alphabetical)
-export type DepartmentSchema = InferSelectModel<typeof departmentTable>;
-export type DepartmentSchemaInsert = InferInsertModel<typeof departmentTable>;
-export type DepartmentSchemaUpdate = Partial<DepartmentSchemaInsert>;
+export type HospitalDepartmentSchema = InferSelectModel<typeof hospitalDepartmentTable>;
+export type HospitalDepartmentSchemaInsert = InferInsertModel<typeof hospitalDepartmentTable>;
+export type HospitalDepartmentSchemaUpdate = Partial<HospitalDepartmentSchemaInsert>;
 
 export type HospitalSchema = InferSelectModel<typeof hospitalTable>;
 export type HospitalSchemaInsert = InferInsertModel<typeof hospitalTable>;
@@ -32,9 +33,9 @@ export type PageSchema = InferSelectModel<typeof pageTable>;
 export type PageSchemaInsert = InferInsertModel<typeof pageTable>;
 export type PageSchemaUpdate = Partial<PageSchemaInsert>;
 
-export type RoleSchema = InferSelectModel<typeof roleTable>;
-export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;
-export type RoleSchemaUpdate = Partial<RoleSchemaInsert>;
+export type StaffDetailSchema = InferSelectModel<typeof staffDetailTable>;
+export type StaffDetailSchemaInsert = InferInsertModel<typeof staffDetailTable>;
+export type StaffDetailSchemaUpdate = Partial<StaffDetailSchemaInsert>;
 
 export type StaffDepartmentSchema = InferSelectModel<typeof staffDepartmentTable>;
 export type StaffDepartmentSchemaInsert = InferInsertModel<typeof staffDepartmentTable>;
@@ -44,10 +45,6 @@ export type StaffHospitalSchema = InferSelectModel<typeof staffHospitalTable>;
 export type StaffHospitalSchemaInsert = InferInsertModel<typeof staffHospitalTable>;
 export type StaffHospitalSchemaUpdate = Partial<StaffHospitalSchemaInsert>;
 
-export type StaffRoleSchema = InferSelectModel<typeof staffRoleTable>;
-export type StaffRoleSchemaInsert = InferInsertModel<typeof staffRoleTable>;
-export type StaffRoleSchemaUpdate = Partial<StaffRoleSchemaInsert>;
-
 export type StaffSchema = InferSelectModel<typeof staffTable>;
 export type StaffSchemaInsert = InferInsertModel<typeof staffTable>;
 export type StaffSchemaUpdate = Partial<StaffSchemaInsert>;
@@ -56,9 +53,13 @@ export type StaffUserGroupSchema = InferSelectModel<typeof staffUserGroupTable>;
 export type StaffUserGroupSchemaInsert = InferInsertModel<typeof staffUserGroupTable>;
 export type StaffUserGroupSchemaUpdate = Partial<StaffUserGroupSchemaInsert>;
 
-export type UserGroupModuleSchema = InferSelectModel<typeof userGroupModuleTable>;
-export type UserGroupModuleSchemaInsert = InferInsertModel<typeof userGroupModuleTable>;
-export type UserGroupModuleSchemaUpdate = Partial<UserGroupModuleSchemaInsert>;
+export type StatusTaggingSchema = InferSelectModel<typeof statusTaggingTable>;
+export type StatusTaggingSchemaInsert = InferInsertModel<typeof statusTaggingTable>;
+export type StatusTaggingSchemaUpdate = Partial<StatusTaggingSchemaInsert>;
+
+export type StatusTaggingTypeSchema = InferSelectModel<typeof statusTaggingTypeTable>;
+export type StatusTaggingTypeSchemaInsert = InferInsertModel<typeof statusTaggingTypeTable>;
+export type StatusTaggingTypeSchemaUpdate = Partial<StatusTaggingTypeSchemaInsert>;
 
 export type UserGroupPageSchema = InferSelectModel<typeof userGroupPageTable>;
 export type UserGroupPageSchemaInsert = InferInsertModel<typeof userGroupPageTable>;

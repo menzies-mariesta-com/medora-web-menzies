@@ -16,6 +16,16 @@ export const getStaffDepartmentCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+// get all with relations
+export const getStaffDepartmentWithRelations = query(async () => {
+	return db.query.staffDepartmentTable.findMany({
+		with: {
+			staff: true,
+			department: true,
+		},
+	});
+});
+
 // get one
 export const getStaffDepartmentById = query(
 	'unchecked' as const,

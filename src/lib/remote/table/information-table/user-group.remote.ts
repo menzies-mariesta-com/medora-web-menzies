@@ -2,7 +2,7 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { UserGroupSchema, UserGroupSchemaInsert, UserGroupSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -16,6 +16,32 @@ export const getUserGroupCount = query(async (): Promise<number> => {
 	const [row] = await db.select({ count: count() }).from(table.userGroupTable);
 	return row?.count ?? 0;
 });
+
+// get all with relations
+export const getUserGroupWithRelations = query(async () => {
+	return db.query.userGroupTable.findMany({
+		with: {
+			status: true,
+			hospital: true,
+			userGroupPages: { with: { page: true } },
+		},
+	});
+});
+
+// get one with relations
+export const getUserGroupByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.userGroupTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				hospital: true,
+				userGroupPages: { with: { page: true } },
+			},
+		});
+	}
+);
 
 // get one
 export const getUserGroupById = query(

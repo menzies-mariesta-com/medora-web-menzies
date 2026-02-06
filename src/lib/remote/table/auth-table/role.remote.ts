@@ -2,13 +2,22 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { RoleSchema, RoleSchemaInsert, RoleSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getRole = query(async (): Promise<RoleSchema[]> => {
 	const data = await db.select().from(table.roleTable);
 	return data;
+});
+
+// get all with relations
+export const getRoleWithRelations = query(async () => {
+	return db.query.roleTable.findMany({
+		with: {
+			status: true,
+		},
+	});
 });
 
 // get count

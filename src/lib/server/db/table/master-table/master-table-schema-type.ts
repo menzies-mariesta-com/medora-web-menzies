@@ -3,12 +3,21 @@ import type {
 	bloodTypeTable,
 	cityTable,
 	countryTable,
+	craftGroupTable,
+	departmentTable,
 	genderTable,
 	identityTypeTable,
-	marialStatusTable,
+	maritalStatusTable,
+	nationalityTable,
+	positionTable,
+	postalCodeTable,
 	specializationTable,
+	staffEmploymentTypeTable,
+	staffShiftTypeTable,
+	staffTypeTable,
 	stateTable,
 	statusTable,
+	titleTable,
 } from './master-table';
 
 // Master Tables (alphabetical)
@@ -24,6 +33,10 @@ export type CountrySchema = InferSelectModel<typeof countryTable>;
 export type CountrySchemaInsert = InferInsertModel<typeof countryTable>;
 export type CountrySchemaUpdate = Partial<CountrySchemaInsert>;
 
+export type DepartmentSchema = InferSelectModel<typeof departmentTable>;
+export type DepartmentSchemaInsert = InferInsertModel<typeof departmentTable>;
+export type DepartmentSchemaUpdate = Partial<DepartmentSchemaInsert>;
+
 export type GenderSchema = InferSelectModel<typeof genderTable>;
 export type GenderSchemaInsert = InferInsertModel<typeof genderTable>;
 export type GenderSchemaUpdate = Partial<GenderSchemaInsert>;
@@ -32,9 +45,21 @@ export type IdentityTypeSchema = InferSelectModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaInsert = InferInsertModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaUpdate = Partial<IdentityTypeSchemaInsert>;
 
-export type MarialStatusSchema = InferSelectModel<typeof marialStatusTable>;
-export type MarialStatusSchemaInsert = InferInsertModel<typeof marialStatusTable>;
-export type MarialStatusSchemaUpdate = Partial<MarialStatusSchemaInsert>;
+export type MaritalStatusSchema = InferSelectModel<typeof maritalStatusTable>;
+export type MaritalStatusSchemaInsert = InferInsertModel<typeof maritalStatusTable>;
+export type MaritalStatusSchemaUpdate = Partial<MaritalStatusSchemaInsert>;
+
+export type NationalitySchema = InferSelectModel<typeof nationalityTable>;
+export type NationalitySchemaInsert = InferInsertModel<typeof nationalityTable>;
+export type NationalitySchemaUpdate = Partial<NationalitySchemaInsert>;
+
+export type PositionSchema = InferSelectModel<typeof positionTable>;
+export type PositionSchemaInsert = InferInsertModel<typeof positionTable>;
+export type PositionSchemaUpdate = Partial<PositionSchemaInsert>;
+
+export type PostalCodeSchema = InferSelectModel<typeof postalCodeTable>;
+export type PostalCodeSchemaInsert = InferInsertModel<typeof postalCodeTable>;
+export type PostalCodeSchemaUpdate = Partial<PostalCodeSchemaInsert>;
 
 export type SpecializationSchema = InferSelectModel<typeof specializationTable>;
 export type SpecializationSchemaInsert = InferInsertModel<typeof specializationTable>;
@@ -47,3 +72,23 @@ export type StateSchemaUpdate = Partial<StateSchemaInsert>;
 export type StatusSchema = InferSelectModel<typeof statusTable>;
 export type StatusSchemaInsert = InferInsertModel<typeof statusTable>;
 export type StatusSchemaUpdate = Partial<StatusSchemaInsert>;
+
+export type CraftGroupSchema = InferSelectModel<typeof craftGroupTable>;
+export type CraftGroupSchemaInsert = InferInsertModel<typeof craftGroupTable>;
+export type CraftGroupSchemaUpdate = Partial<CraftGroupSchemaInsert>;
+
+export type StaffEmploymentTypeSchema = InferSelectModel<typeof staffEmploymentTypeTable>;
+export type StaffEmploymentTypeSchemaInsert = InferInsertModel<typeof staffEmploymentTypeTable>;
+export type StaffEmploymentTypeSchemaUpdate = Partial<StaffEmploymentTypeSchemaInsert>;
+
+export type StaffShiftTypeSchema = InferSelectModel<typeof staffShiftTypeTable>;
+export type StaffShiftTypeSchemaInsert = InferInsertModel<typeof staffShiftTypeTable>;
+export type StaffShiftTypeSchemaUpdate = Partial<StaffShiftTypeSchemaInsert>;
+
+export type StaffTypeSchema = InferSelectModel<typeof staffTypeTable>;
+export type StaffTypeSchemaInsert = InferInsertModel<typeof staffTypeTable>;
+export type StaffTypeSchemaUpdate = Partial<StaffTypeSchemaInsert>;
+
+export type TitleSchema = InferSelectModel<typeof titleTable>;
+export type TitleSchemaInsert = InferInsertModel<typeof titleTable>;
+export type TitleSchemaUpdate = Partial<TitleSchemaInsert>;

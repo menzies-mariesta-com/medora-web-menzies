@@ -2,7 +2,7 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { HospitalSchema, HospitalSchemaInsert, HospitalSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -16,6 +16,36 @@ export const getHospitalCount = query(async (): Promise<number> => {
 	const [row] = await db.select({ count: count() }).from(table.hospitalTable);
 	return row?.count ?? 0;
 });
+
+// get all with relations
+export const getHospitalWithRelations = query(async () => {
+	return db.query.hospitalTable.findMany({
+		with: {
+			status: true,
+			city: true,
+			state: true,
+			country: true,
+			hospitalDepartments: { with: { department: true } },
+		},
+	});
+});
+
+// get one with relations
+export const getHospitalByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.hospitalTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				city: true,
+				state: true,
+				country: true,
+				hospitalDepartments: { with: { department: true } },
+			},
+		});
+	}
+);
 
 // get one
 export const getHospitalById = query(

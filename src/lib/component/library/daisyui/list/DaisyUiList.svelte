@@ -5,6 +5,6 @@
 	}>();
 </script>
 
-<ul class="d-list bg-base-200 rounded-box shadow-md {className}">
-  {@render children()}
+<ul class="d-list rounded-box shadow-md {className}">
+	{@render children()}
 </ul>
