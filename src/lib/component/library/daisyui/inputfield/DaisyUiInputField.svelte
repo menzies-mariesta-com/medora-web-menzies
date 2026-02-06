@@ -15,6 +15,7 @@
 		checked,
 		hidden,
 		disabled,
+		required,
 		onClick
 	} = $props<{
 		id?: string;
@@ -32,6 +33,7 @@
 		checked?: boolean;
 		hidden?: boolean;
 		disabled?: boolean;
+		required?: boolean;
 		onClick?: () => void;
 	}>();
 </script>
@@ -41,7 +43,6 @@
 		{id}
 		class={className}
 		type={inputType}
-		required
 		placeholder={inputPlaceholderText}
 		pattern={inputPattern}
 		minlength={minLength ?? 1}
@@ -51,6 +52,7 @@
 		bind:value
 		aria-label={ariaLabel}
 		onclick={onClick}
+		{required}
 		{checked}
 		{hidden}
 		{disabled}
@@ -60,7 +62,6 @@
 		{id}
 		class="d-input {className}"
 		type={inputType}
-		required
 		placeholder={inputPlaceholderText}
 		pattern={inputPattern}
 		minlength={minLength ?? 1}
@@ -69,6 +70,7 @@
 		name={nameText}
 		bind:value
 		aria-label={ariaLabel}
+		{required}
 		{checked}
 		{hidden}
 		{disabled}
