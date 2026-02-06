@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+	import { goto } from '$app/navigation';
 	import DaisyUiAvatar from '$lib/component/library/daisyui/avatar/DaisyUiAvatar.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -15,9 +16,16 @@
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
+	import { createStaff } from '$lib/remote/table/information-table/staff.remote';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import ResetPasswordModal from '$lib/component/snippet/modal/ResetPasswordModal.svelte';
+	import { authClient } from '$lib/auth/client';
 
 	const passwordTool = new PasswordTool();
+	const toastService = new ToastService();
 
 	let countryData = await getCountry();
 	let genderData = await getGender();
@@ -25,10 +33,106 @@
 	let selectedCountryId = $state('');
 	let selectedGenderId = $state('');
 	let isPasswordVisible = $state(false);
+	let isLoading = $state(false);
+
+	function openResetPasswordModal() {
+		dialogService.open({
+			title: 'Forgot Password',
+			component: ResetPasswordModal
+		});
+	}
+
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const form = e.currentTarget as HTMLFormElement;
+		const fd = new FormData(form);
+		const firstName = (fd.get('firstName') as string)?.trim();
+		const middleName = (fd.get('middleName') as string)?.trim();
+		const lastName = (fd.get('lastName') as string)?.trim();
+		const email = (fd.get('email') as string)?.trim();
+		const phonePrimary = (fd.get('phonePrimary') as string)?.trim();
+		const password = fd.get('password') as string;
+		const confirmPassword = fd.get('confirmPassword') as string;
+
+		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
+
+		if (!firstName) {
+			toastService.addToast('First name is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!lastName) {
+			toastService.addToast('Last name is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!selectedCountryId) {
+			toastService.addToast('Country is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!phonePrimary) {
+			toastService.addToast('Primary phone number is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!selectedGenderId) {
+			toastService.addToast('Gender is required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!email || !password) {
+			toastService.addToast('Email and password are required.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (password.length < 8) {
+			toastService.addToast('Password must be at least 8 characters.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (password !== confirmPassword) {
+			toastService.addToast('Passwords do not match.', StatusColorEnum.ERROR);
+			return;
+		}
+		isLoading = true;
+		const { data, error } = await authClient.signUp.email({
+			name: name || email,
+			email,
+			password,
+			callbackURL: WebRoutesEnum.HEKA_HOME
+		});
+		if (error) {
+			isLoading = false;
+			toastService.addToast(error.message ?? 'Sign up failed. Please try again.', StatusColorEnum.ERROR);
+			return;
+		}
+		// Create staff profile linked to the new user (1:1) via remote
+		if (data?.user) {
+			const countryId = selectedCountryId ? Number(selectedCountryId) : undefined;
+			const genderId = selectedGenderId ? Number(selectedGenderId) : undefined;
+
+			try {
+				await createStaff({
+					userId: data.user.id,
+					firstName,
+					middleName,
+					lastName,
+					countryId,
+					genderId,
+					phonePrimary: (fd.get('phonePrimary') as string) || undefined
+				});
+			} catch (err) {
+				const message =
+					err instanceof Error ? err.message : 'Profile could not be created.';
+				toastService.addToast(message, StatusColorEnum.ERROR);
+				isLoading = false;
+				return;
+			}
+		}
+		isLoading = false;
+		if (data) {
+			await goto(WebRoutesEnum.HEKA_HOME);
+		}
+	}
 </script>
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
+    <form onsubmit={handleSubmit}>
 		<DaisyUiFieldset
 			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
 		>
@@ -38,31 +142,34 @@
 				</DaisyUiLink>
 			</DaisyUiFieldsetLegend>
 			<!-- first name -->
-			<section id="first-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="First Name"
-					className="w-full"
-				/>
-			</section>
+				<section id="first-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="First Name"
+						nameText="firstName"
+						className="w-full"
+					/>
+				</section>
 
-			<!-- last name -->
-			<section id="middle-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Middle Name"
-					className="w-full"
-				/>
-			</section>
+				<!-- middle name -->
+				<section id="middle-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="Middle Name"
+						nameText="middleName"
+						className="w-full"
+					/>
+				</section>
 
-			<!-- end name -->
-			<section id="last-name-input">
-				<DaisyUiInputField
-					inputType="text"
-					inputPlaceholderText="Last Name"
-					className="w-full"
-				/>
-			</section>
+				<!-- last name -->
+				<section id="last-name-input">
+					<DaisyUiInputField
+						inputType="text"
+						inputPlaceholderText="Last Name"
+						nameText="lastName"
+						className="w-full"
+					/>
+				</section>
 
 			<!-- Country -->
 			<section id="country-input">
@@ -74,7 +181,7 @@
 					{#each countryData as data}
 						<option value={String(data.id)} class="gap-5">
 							<DaisyUiAvatar
-								src={data.imgUrl}
+								src={data.imageUrl}
 								alt={data.name}
 								className="w-5"
 							/>
@@ -102,19 +209,21 @@
 					<DaisyUiInputField
 						inputType="text"
 						inputPlaceholderText="Phone Number ( Primary )"
+						nameText="phonePrimary"
 						className="w-full"
 					/>
 				</DaisyUiJoin>
 			</section>
 
-			<!-- email -->
-			<section id="email-input">
-				<DaisyUiInputField
-					inputType="email"
-					inputPlaceholderText="Email"
-					className="w-full"
-				/>
-			</section>
+				<!-- email -->
+				<section id="email-input">
+					<DaisyUiInputField
+						inputType="email"
+						inputPlaceholderText="Email"
+						nameText="email"
+						className="w-full"
+					/>
+				</section>
 
 			<!-- Gender -->
 			<section id="gender-type-input">
@@ -131,42 +240,46 @@
 				</DaisyUiSelect>
 			</section>
 
-			<!-- password -->
-			<section id="password">
-				<DaisyUiJoin className="w-full">
+				<!-- password -->
+				<section id="password">
+					<DaisyUiJoin className="w-full">
+						<DaisyUiInputField
+							inputType={isPasswordVisible ? 'text' : 'password'}
+							inputPlaceholderText="Password"
+							nameText="password"
+						/>
+						<DaisyUiButton
+							type="button"
+							onClick={() =>
+								(isPasswordVisible =
+									passwordTool.toggleVisibility(isPasswordVisible))}
+						>
+							{#if isPasswordVisible}
+								<LucideEye />
+							{:else}
+								<LucideEyeOff />
+							{/if}
+						</DaisyUiButton>
+					</DaisyUiJoin>
+				</section>
+
+				<!-- confirm password -->
+				<section id="confirm-password">
 					<DaisyUiInputField
-						inputType={isPasswordVisible ? 'text' : 'password'}
-						inputPlaceholderText="Password"
+						inputType="password"
+						inputPlaceholderText="Confirm Password"
+						nameText="confirmPassword"
 					/>
-					<DaisyUiButton
-						onClick={() =>
-							(isPasswordVisible =
-								passwordTool.toggleVisibility(isPasswordVisible))}
-					>
-						{#if isPasswordVisible}
-							<LucideEye />
-						{:else}
-							<LucideEyeOff />
-						{/if}
-					</DaisyUiButton>
-				</DaisyUiJoin>
-			</section>
+				</section>
 
-			<!-- confirm password -->
-			<section id="confirm-password">
-				<DaisyUiInputField
-					inputType="password"
-					inputPlaceholderText="Confirm Password"
-				/>
-			</section>
-
-			<!-- sign up button -->
-			<DaisyUiButton
-				onClick={() => console.log('Login clicked')}
-				className="d-btn-primary w-full"
-			>
-				Sign Up
-			</DaisyUiButton>
+				<!-- sign up button -->
+				<DaisyUiButton
+					type="submit"
+					className="d-btn-primary w-full"
+					disabled={isLoading}
+				>
+					{isLoading ? 'Signing up…' : 'Sign Up'}
+				</DaisyUiButton>
 
 			<!-- external links -->
 			<div class="my-ft-small flex flex-col gap-3">
@@ -178,13 +291,14 @@
 				</div>
 				<div id="forget-password">
 					forget your password? <DaisyUiLink
-						href={WebRoutesEnum.FORGET_PASSWORD}
+						onClick={openResetPasswordModal}
 						className="d-link-info"
 					>
 						Reset Password
 					</DaisyUiLink>
 				</div>
 			</div>
-		</DaisyUiFieldset>
+			</DaisyUiFieldset>
+		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>

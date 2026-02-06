@@ -47,7 +47,7 @@
 
 <!-- Toast Component (Learn Toast Service To Use) -->
 {#if ToastState.length > 0}
-	<DaisyUiToast className="d-toast-bottom d-toast-end">
+	<DaisyUiToast className="d-toast-top d-toast-end">
 		{#each ToastState as toast (toast.id)}
 			<DaisyUiAlert type={toast.type} message={toast.message} />
 		{/each}

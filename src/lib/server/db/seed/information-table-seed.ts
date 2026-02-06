@@ -10,10 +10,11 @@ const client = neon(process.env.DATABASE_URL);
 const db = drizzle(client);
 
 /** Fixed UUID for seed staff so we can reference it in staff_hospital, staff_department, etc. */
-const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
+// const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
 
 /**
  * Seed information/business tables with sample data.
+ * 
  * Run after master-table-seed. Inserts in FK-safe order.
  *
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
@@ -21,172 +22,90 @@ const SEED_STAFF_ID = '01900000-0000-7000-8000-000000000001';
 export async function seedInformationTables() {
 	console.log('Seeding information tables...');
 
-	// 1. Hospitals (depends: status)
+	// 1. Modules (depends: status)
 	await db.execute(sql`
-		INSERT INTO hospital (id, name, code, status_id)
+		INSERT INTO module (id, name, image_url, sequence_no, status_id, module_url)
 		VALUES 
-			(1, 'Yangon General Hospital', 'YGH', 1),
-			(2, 'Mandalay General Hospital', 'MGH', 1),
-			(3, 'Naypyidaw Medical Center', 'NMC', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: hospital');
-
-	// 2. Departments (depends: hospital, status)
-	await db.execute(sql`
-		INSERT INTO department (id, name, code, hospital_id, status_id)
-		VALUES 
-			(1, 'Emergency', 'EM', 1, 1),
-			(2, 'Outpatient', 'OPD', 1, 1),
-			(3, 'Cardiology', 'CARD', 1, 1),
-			(4, 'Pediatrics', 'PED', 1, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: department');
-
-	// 3. Modules (depends: status)
-	await db.execute(sql`
-		INSERT INTO module (id, name, icon, status_id)
-		VALUES 
-			(1, 'Dashboard', 'layout-dashboard', 1),
-			(2, 'Patients', 'users', 1),
-			(3, 'Appointments', 'calendar', 1),
-			(4, 'Settings', 'settings', 1)
+			(1, 'Dashboard', 'layout-dashboard.svg', 1, 1, '/heka/home/dashboard'),
+			(2, 'Patient', 'users.svg', 2, 1, '/heka/home/patient'),
+			(3, 'Appointment', 'calendar.svg', 3, 1, '/heka/home/appointment'),
+			(4, 'Settings', 'settings.svg', 4, 1, '/heka/home/settings'),
+			(5, 'Administration', 'administration.svg', 5, 1, '/heka/home/administration'),
+			(6, 'Report', 'report.svg', 6, 1, '/heka/home/report'),
+			(7, 'Billing', 'billing.svg', 7, 1, '/heka/home/billing'),
+			(8, 'CPOE', 'cpoe.svg', 8, 1, '/heka/home/cpoe'),
+			(9, 'Pharmacy', 'pharmacy.svg', 9, 1, '/heka/home/pharmacy'),
+			(10, 'Medical Record', 'medical-record.svg', 10, 1, '/heka/home/medical-record'),
+			(11, 'Inventory', 'inventory.svg', 11, 1, '/heka/home/inventory'),
+			(12, 'Nursing', 'nursing.svg', 12, 1, '/heka/home/nursing'),
+			(13, 'Emergency', 'emergency.svg', 13, 1, '/heka/home/emergency')
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: module');
 
-	// 4. Pages (depends: module, status)
+	// 2. Hospital (depends: status)
 	await db.execute(sql`
-		INSERT INTO page (id, name, icon, module_id, status_id)
+		INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
 		VALUES 
-			(1, 'Overview', 'bar-chart', 1, 1),
-			(2, 'Patient List', 'list', 2, 1),
-			(3, 'New Patient', 'user-plus', 2, 1),
-			(4, 'Appointment List', 'calendar-days', 3, 1),
-			(5, 'Profile', 'user', 4, 1)
+			(1, 'Mari', 'mr', 1, 1, 118, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: page');
+	console.log('Seeded: user_group');
 
-	// 5. Roles (depends: status)
+	// 2. User Groups (depends: status)
+	await db.execute(sql`
+		INSERT INTO user_group (id, name, status_id, hospital_id)
+		VALUES 
+			(1, 'Administration',  1, 1),
+			(2, 'Doctor',  1, 1),
+			(3, 'Nursing',  1, 1),
+			(4, 'Cashier',  1, 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: user_group');
+
+	// 4. Page (depends: module, status)
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(1, 'Audit Trail(EMR)', 5, 1, null, '/heka/home/administration/audit-trail', 1),
+			(2, 'Payer Info', 5, 1, null, '/heka/home/administration/payer-info', 2),
+			(3, 'Master Setup', 5, 1, null, '/heka/home/administration/master-setup', 3),
+			(4, 'Employee Profile', 5, 1, null, '/heka/home/administration/employee-profile', 4),
+			(5, 'Facility Tagging', 5, 1, null, '/heka/home/administration/facility-tagging', 5),
+			(6, 'Corporate Master', 5, 1, null, '/heka/home/administration/corporate-master', 6),
+			(7, 'Color Legends', 5, 1, null, '/heka/home/administration/color-legends', 7),
+			(8, 'Roles and Permissions', 5, 1, null, '/heka/home/administration/roles-and-permissions', 8),
+			(9, 'Holidays', 5, 1, null, '/heka/home/administration/holidays', 9),
+			(10, 'Change Password', 5, 1, null, '/heka/home/administration/change-password', 10),
+			(11, 'Visit Type', 5, 1, null, '/heka/home/administration/visit-type', 11),
+			(12, 'Company Wise Editable Service Setup', 5, 1, null, '/heka/home/administration/company-wise-editable-service-setup', 12),
+			(13, 'Currency Master', 5, 1, null, '/heka/home/administration/currency-master', 13),
+			(14, 'Merge Patient Details', 5, 1, null, '/heka/home/administration/merge-patient-details', 14),
+			(15, 'Payer', 5, 1, 2, '/heka/home/administration/payer', 15),
+			(16, 'Insurance Category', 5, 1, 2, '/heka/home/administration/payer-info/insurance-category', 16),
+			(17, 'Network', 5, 1, 2, '/heka/home/administration/payer-info/network', 17),
+			(18, 'Network Details', 5, 1, 2, '/heka/home/administration/payer-info/network-details', 18),
+			(19, 'Pricing Cash', 5, 1, 2, '/heka/home/administration/payer-info/pricing-cash', 19),
+			(20, 'Pricing Credit', 5, 1, 2, '/heka/home/administration/payer-info/pricing-credit', 20),
+			(21, 'Staff Registration', 5, 1, null, '/heka/home/administration/staff-registration', 21),
+			(22, 'Registration', 2, 1, null, '/heka/home/patient/registration', 1),
+			(23, 'Attachment', 2, 1, null, '/heka/home/patient/attachment', 2)
+		ON CONFLICT (id) DO NOTHING;
+		`)
+	console.log('Seeded: page')
+
+	// 5. Role
 	await db.execute(sql`
 		INSERT INTO role (id, name, status_id)
-		VALUES 
+		VALUES
 			(1, 'Admin', 1),
 			(2, 'Doctor', 1),
 			(3, 'Nurse', 1),
 			(4, 'Receptionist', 1)
 		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: role');
-
-	// 6. User groups (depends: status)
-	await db.execute(sql`
-		INSERT INTO user_group (id, name, status_id)
-		VALUES 
-			(1, 'Administrators', 1),
-			(2, 'Doctors', 1),
-			(3, 'Nursing', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group');
-
-	// 7. Staff (depends: identity_type, marial_status, specialization, gender, blood_type, status)
-	await db.execute(sql`
-		INSERT INTO staff (
-			id, first_name, last_name, email, phone_primary,
-			identity_type_id, marital_status_id, specialization_id, gender_id, blood_type_id, status_id
-		)
-		VALUES (
-			${SEED_STAFF_ID}::uuid,
-			'John',
-			'Doe',
-			'john.doe@hospital.mm',
-			'+959123456789',
-			1,
-			1,
-			1,
-			1,
-			7,
-			1
-		)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff');
-
-	// 8. Staff–Hospital (depends: staff, hospital) – one staff linked to all 3 hospitals
-	await db.execute(sql`
-		INSERT INTO staff_hospital (id, staff_id, hospital_id)
-		VALUES 
-			(1, ${SEED_STAFF_ID}::uuid, 1),
-			(2, ${SEED_STAFF_ID}::uuid, 2),
-			(3, ${SEED_STAFF_ID}::uuid, 3)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_hospital');
-
-	// 9. Staff–Department (depends: staff, department) – one staff linked to all 4 departments
-	await db.execute(sql`
-		INSERT INTO staff_department (id, staff_id, department_id)
-		VALUES 
-			(1, ${SEED_STAFF_ID}::uuid, 1),
-			(2, ${SEED_STAFF_ID}::uuid, 2),
-			(3, ${SEED_STAFF_ID}::uuid, 3),
-			(4, ${SEED_STAFF_ID}::uuid, 4)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_department');
-
-	// 10. Staff–Role (depends: staff, role)
-	await db.execute(sql`
-		INSERT INTO staff_role (id, staff_id, role_id)
-		VALUES (1, ${SEED_STAFF_ID}::uuid, 2)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_role');
-
-	// 11. Staff–User group (depends: staff, user_group)
-	await db.execute(sql`
-		INSERT INTO staff_user_group (id, staff_id, user_group_id)
-		VALUES (1, ${SEED_STAFF_ID}::uuid, 2)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: staff_user_group');
-
-	// 12. User group–Module (depends: user_group, module)
-	await db.execute(sql`
-		INSERT INTO user_group_module (id, user_group_id, module_id)
-		VALUES 
-			(1, 1, 1),
-			(2, 1, 2),
-			(3, 1, 3),
-			(4, 1, 4),
-			(5, 2, 1),
-			(6, 2, 2),
-			(7, 2, 3)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group_module');
-
-	// 13. User group–Page (depends: user_group, page)
-	await db.execute(sql`
-		INSERT INTO user_group_page (id, user_group_id, page_id)
-		VALUES 
-			(1, 1, 1),
-			(2, 1, 2),
-			(3, 1, 3),
-			(4, 1, 4),
-			(5, 1, 5),
-			(6, 2, 1),
-			(7, 2, 2),
-			(8, 2, 3),
-			(9, 2, 4)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group_page');
-
-	console.log('Information tables seeding completed.');
+		`)
+	console.log('Seeded: role')
 }
 
 seedInformationTables()

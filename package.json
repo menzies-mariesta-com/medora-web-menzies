@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "npm run paraglide && vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -15,15 +15,23 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
+		"paraglide": "paraglide-js compile --outdir ./src/lib/paraglide",
+		"paraglide:watch": "paraglide-js compile --watch --outdir ./src/lib/paraglide",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"db:seed": "npm run db:seed:master && npm run db:seed:auth && npm run db:seed:information",
+		"db:seed:auth": "npx tsx src/lib/server/db/seed/auth-table-seed.ts",
+		"db:seed:master": "npx tsx src/lib/server/db/seed/master-table-seed.ts",
+		"db:seed:information": "npx tsx src/lib/server/db/seed/information-table-seed.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",
 		"@eslint/js": "^9.39.2",
 		"@inlang/paraglide-js": "^2.9.1",
+		"@inlang/plugin-m-function-matcher": "^2.2.0",
+		"@inlang/plugin-message-format": "^4.2.0",
 		"@playwright/test": "^1.58.0",
 		"@sveltejs/adapter-node": "^5.5.2",
 		"@sveltejs/kit": "^2.50.1",
@@ -32,6 +40,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^24",
+		"@types/nodemailer": "^7.0.9",
 		"@vitest/browser-playwright": "^4.0.18",
 		"daisyui": "^5.5.14",
 		"drizzle-kit": "^0.31.8",
@@ -57,8 +66,11 @@
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",
+		"@tigrisdata/storage": "^2.12.1",
 		"argon2": "^0.44.0",
 		"better-auth": "^1.4.18",
+		"cally": "^0.9.1",
+		"nodemailer": "^8.0.0",
 		"uuidv7": "^1.1.0",
 		"zod": "^4.3.6"
 	}

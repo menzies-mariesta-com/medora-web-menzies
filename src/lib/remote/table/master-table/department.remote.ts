@@ -1,8 +1,12 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { DepartmentSchema, DepartmentSchemaInsert, DepartmentSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import type {
+	DepartmentSchema,
+	DepartmentSchemaInsert,
+	DepartmentSchemaUpdate,
+} from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -46,13 +50,7 @@ export const createDepartment = command(
 // update
 export const updateDepartment = command(
 	'unchecked' as const,
-	async (payload: {
-		id: number;
-		name?: string | null;
-		code?: string | null;
-		hospitalId?: number | null;
-		statusId?: number | null;
-	}): Promise<DepartmentSchema> => {
+	async (payload: { id: number; name?: string | null; code?: string | null; statusId?: number | null }): Promise<DepartmentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.departmentTable)

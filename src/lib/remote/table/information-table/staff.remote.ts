@@ -2,8 +2,15 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
+import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { createStaffDetail } from './staff-detail.remote';
+import { createStaffDepartment } from './staff-department.remote';
+import { createStaffUserGroup } from './staff-user-group.remote';
+import { uuidv7 } from 'uuidv7';
+import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
+
 
 // get all
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
@@ -11,42 +18,60 @@ export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	return data;
 });
 
-// get all with many-to-many relations (hospitals, departments, roles, userGroups) and master lookups
+// get all with many-to-many relations and master lookups
 export const getStaffWithRelations = query(async () => {
 	return db.query.staffTable.findMany({
 		with: {
-			bloodType: true,
 			gender: true,
 			identityType: true,
 			maritalStatus: true,
 			specialization: true,
 			status: true,
-			hospitals: { with: { hospital: true } },
-			departments: { with: { department: true } },
-			roles: { with: { role: true } },
-			userGroups: { with: { userGroup: true } }
-		}
+			staffDetail: { with: { bloodType: true, status: true } },
+			city: true,
+			country: true,
+			nationality: true,
+			position: true,
+			postalCode: true,
+			staffEmploymentType: true,
+			staffType: true,
+			state: true,
+			title: true,
+			user: true,
+			staffHospitals: { with: { hospital: true } },
+			staffDepartments: { with: { department: true } },
+			staffUserGroups: { with: { userGroup: true } },
+		},
 	});
 });
 
 // get one with relations
-export const getStaffByIdWithRelations = query(
+export const getStaffByUserIdWithRelations = query(
 	'unchecked' as const,
-	async ({ id }: { id: string }) => {
+	async ({ userId }: { userId: string }) => {
 		return db.query.staffTable.findFirst({
-			where: (staff, { eq }) => eq(staff.id, id),
+			where: (staffTable, funcs) => funcs.eq(staffTable.userId, userId),
 			with: {
-				bloodType: true,
 				gender: true,
 				identityType: true,
 				maritalStatus: true,
 				specialization: true,
 				status: true,
-				hospitals: { with: { hospital: true } },
-				departments: { with: { department: true } },
-				roles: { with: { role: true } },
-				userGroups: { with: { userGroup: true } }
-			}
+				staffDetail: { with: { bloodType: true, status: true } },
+				city: true,
+				country: true,
+				nationality: true,
+				position: true,
+				postalCode: true,
+				staffEmploymentType: true,
+				staffType: true,
+				state: true,
+				title: true,
+				user: true,
+				staffHospitals: { with: { hospital: true } },
+				staffDepartments: { with: { department: true } },
+				staffUserGroups: { with: { userGroup: true } },
+			},
 		});
 	}
 );
@@ -69,10 +94,32 @@ export const getStaffById = query(
 	}
 );
 
-// create
+export const getStaffByUserId = query(
+	'unchecked' as const,
+	async ({ userId }: { userId: string }): Promise<StaffSchema | null> => {
+		const [row] = await db
+			.select()
+			.from(table.staffTable)
+			.where(eq(table.staffTable.userId, userId));
+		return row ?? null;
+	}
+);
+
+// create with uniqueness check on userId (1:1 with Better Auth user)
 export const createStaff = command(
 	'unchecked' as const,
 	async (payload: StaffSchemaInsert): Promise<StaffSchema> => {
+		// Ensure userId is present and non-null for the 1:1 link
+		if (!payload.userId) {
+			throw new Error('userId is required to create staff profile');
+		}
+
+		// Enforce 1:1 constraint: a user can only have one staff profile
+		const existing = await getStaffByUserId({ userId: payload.userId });
+		if (existing) {
+			throw new Error('Staff profile already exists');
+		}
+
 		const [row] = await db
 			.insert(table.staffTable)
 			.values(payload)
@@ -117,5 +164,154 @@ export const deleteStaffComplete = command(
 	async ({ id }: { id: string }): Promise<void> => {
 		await db.delete(table.staffTable).where(eq(table.staffTable.id, id));
 		getStaff().refresh();
+	}
+);
+
+// Generate random password
+function generateRandomPassword(length: number = 16): string {
+	const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+	let password = '';
+	for (let i = 0; i < length; i++) {
+		password += charset.charAt(Math.floor(Math.random() * charset.length));
+	}
+	return password;
+}
+
+// Create staff with user (Better Auth)
+export const createStaffWithUser = command(
+	'unchecked' as const,
+	async (payload: {
+		// User fields
+		email: string;
+		name: string;
+		// Staff fields (only include fields that exist in staffTable)
+		firstName?: string;
+		middleName?: string;
+		lastName?: string;
+		phonePrimary?: string;
+		phoneSecondary?: string;
+		dateOfBirth?: string;
+		address?: string;
+		remark?: string;
+		identityNo?: string;
+		titleId?: number;
+		genderId?: number;
+		maritalStatusId?: number;
+		staffEmploymentTypeId?: number;
+		staffTypeId?: number;
+		education?: string;
+		designation?: string;
+		departmentId?: number;
+		specializationId?: number;
+		countryId?: number;
+		stateId?: number;
+		cityId?: number;
+		postalCodeId?: number;
+		identityTypeId?: number;
+		joinDate?: string;
+		resignDate?: string;
+		isActive?: boolean;
+		isSuperAdmin?: boolean;
+		isLocked?: boolean;
+		userGroupIds?: number[];
+	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
+		const passwordHashUtil = new PasswordHashUtil();
+
+		// Check if email already exists
+		const existingUser = await db
+			.select()
+			.from(userTable)
+			.where(eq(userTable.email, payload.email))
+			.limit(1);
+		if (existingUser.length > 0) {
+			throw new Error('User with this email already exists');
+		}
+
+		// Generate random password
+		const generatedPassword = generateRandomPassword(16);
+		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+
+		// Create user
+		const userId = uuidv7();
+		const [user] = await db
+			.insert(userTable)
+			.values({
+				id: userId,
+				name: payload.name,
+				email: payload.email,
+				emailVerified: false
+			})
+			.returning();
+
+		if (!user) throw new Error('Failed to create user');
+
+		// Create account for Better Auth email/password
+		await db.insert(accountTable).values({
+			id: uuidv7(),
+			userId: user.id,
+			accountId: payload.email,
+			providerId: 'credential',
+			password: hashedPassword
+		});
+
+		// Create staff detail if education or designation provided
+		let staffDetailId: number | undefined;
+		if (payload.education || payload.designation) {
+			const staffDetail = await createStaffDetail({
+				education: payload.education,
+				designation: payload.designation
+			});
+			staffDetailId = staffDetail.id;
+		}
+
+		// Prepare staff payload (only include fields that exist in staffTable)
+		const staffPayload: StaffSchemaInsert = {
+			userId: user.id,
+			firstName: payload.firstName,
+			middleName: payload.middleName,
+			lastName: payload.lastName,
+			phonePrimary: payload.phonePrimary,
+			phoneSecondary: payload.phoneSecondary,
+			dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth).toISOString().split('T')[0] : undefined,
+			address: payload.address,
+			remark: payload.remark,
+			identityNo: payload.identityNo,
+			titleId: payload.titleId ? Number(payload.titleId) : undefined,
+			genderId: payload.genderId ? Number(payload.genderId) : undefined,
+			maritalStatusId: payload.maritalStatusId ? Number(payload.maritalStatusId) : undefined,
+			staffEmploymentTypeId: payload.staffEmploymentTypeId ? Number(payload.staffEmploymentTypeId) : undefined,
+			staffTypeId: payload.staffTypeId ? Number(payload.staffTypeId) : undefined,
+			staffDetailId,
+			cityId: payload.cityId ? Number(payload.cityId) : undefined,
+			stateId: payload.stateId ? Number(payload.stateId) : undefined,
+			countryId: payload.countryId ? Number(payload.countryId) : undefined,
+			postalCodeId: payload.postalCodeId ? Number(payload.postalCodeId) : undefined,
+			identityTypeId: payload.identityTypeId ? Number(payload.identityTypeId) : undefined,
+			specializationId: payload.specializationId ? Number(payload.specializationId) : undefined,
+			statusId: payload.isActive === false ? StatusEnum.INACTIVE : StatusEnum.ACTIVE
+		};
+
+		// Create staff
+		const staff = await createStaff(staffPayload);
+
+		// Create staff departments
+		if (payload.departmentId) {
+			await createStaffDepartment({
+				staffId: staff.id,
+				departmentId: Number(payload.departmentId)
+			});
+		}
+
+		// Create staff user groups
+		if (payload.userGroupIds && payload.userGroupIds.length > 0) {
+			for (const userGroupId of payload.userGroupIds) {
+				await createStaffUserGroup({
+					staffId: staff.id,
+					userGroupId: Number(userGroupId)
+				});
+			}
+		}
+
+		return { staff, userId: user.id, generatedPassword };
 	}
 );

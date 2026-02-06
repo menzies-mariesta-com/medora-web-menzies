@@ -1,9 +1,10 @@
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
+import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { SvelteURL } from 'svelte/reactivity';
 
 export class RouterUtil {
-	constructor() {}
+	constructor() { }
 
 	/**
 	 * Navigate to an internal route
@@ -12,6 +13,11 @@ export class RouterUtil {
 	goToRoute(path: string): void {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		goto(path);
+	}
+
+	replaceRoute(path: string): void {
+		goto(path, { replaceState: true })
+
 	}
 
 	/**
@@ -55,5 +61,10 @@ export class RouterUtil {
 	 */
 	goBackRoute(): void {
 		window.history.back();
+	}
+
+	getResetRedirectUrl(): string {
+		if (typeof window === 'undefined') return '';
+		return `${window.location.origin}${WebRoutesEnum.RESET_PASSWORD}`;
 	}
 }

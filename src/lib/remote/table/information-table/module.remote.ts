@@ -2,7 +2,7 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ModuleSchema, ModuleSchemaInsert, ModuleSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -16,6 +16,30 @@ export const getModuleCount = query(async (): Promise<number> => {
 	const [row] = await db.select({ count: count() }).from(table.moduleTable);
 	return row?.count ?? 0;
 });
+
+// get all with relations
+export const getModuleWithRelations = query(async () => {
+	return db.query.moduleTable.findMany({
+		with: {
+			status: true,
+			pages: true,
+		},
+	});
+});
+
+// get one with relations
+export const getModuleByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.moduleTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				pages: true,
+			},
+		});
+	}
+);
 
 // get one
 export const getModuleById = query(

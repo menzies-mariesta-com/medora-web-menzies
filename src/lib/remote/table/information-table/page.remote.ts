@@ -2,7 +2,7 @@ import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { PageSchema, PageSchemaInsert, PageSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/status.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -28,6 +28,16 @@ export const getPageById = query(
 		return row ?? null;
 	}
 );
+
+// get all with related data (module, status, etc.)
+export const getPageWithRelations = query(async () => {
+	return db.query.pageTable.findMany({
+		with: {
+			module: true,
+			status: true,
+		},
+	});
+});
 
 // create
 export const createPage = command(
