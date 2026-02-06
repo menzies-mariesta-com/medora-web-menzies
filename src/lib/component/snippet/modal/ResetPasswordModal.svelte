@@ -1,7 +1,6 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import { authClient } from '$lib/auth/client';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
