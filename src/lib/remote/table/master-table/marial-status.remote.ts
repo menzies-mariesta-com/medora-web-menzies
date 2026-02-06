@@ -5,19 +5,19 @@ import type { MaritalStatusSchema, MaritalStatusSchemaInsert, MaritalStatusSchem
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getmaritalStatus = query(async (): Promise<MaritalStatusSchema[]> => {
+export const getMaritalStatus = query(async (): Promise<MaritalStatusSchema[]> => {
 	const data = await db.select().from(table.maritalStatusTable);
 	return data;
 });
 
 // get count
-export const getmaritalStatusCount = query(async (): Promise<number> => {
+export const getMaritalStatusCount = query(async (): Promise<number> => {
 	const [row] = await db.select({ count: count() }).from(table.maritalStatusTable);
 	return row?.count ?? 0;
 });
 
 // get one
-export const getmaritalStatusById = query(
+export const getMaritalStatusById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<MaritalStatusSchema | null> => {
 		const [row] = await db
@@ -29,7 +29,7 @@ export const getmaritalStatusById = query(
 );
 
 // create
-export const createmaritalStatus = command(
+export const createMaritalStatus = command(
 	'unchecked' as const,
 	async (payload: MaritalStatusSchemaInsert): Promise<MaritalStatusSchema> => {
 		const [row] = await db
@@ -37,13 +37,13 @@ export const createmaritalStatus = command(
 			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
-		getmaritalStatus().refresh();
+		getMaritalStatus().refresh();
 		return row;
 	}
 );
 
 // update
-export const updatemaritalStatus = command(
+export const updateMaritalStatus = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<MaritalStatusSchema> => {
 		const { id, ...rest } = payload;
@@ -53,25 +53,25 @@ export const updatemaritalStatus = command(
 			.where(eq(table.maritalStatusTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
-		getmaritalStatus().refresh();
+		getMaritalStatus().refresh();
 		return row;
 	}
 );
 
 // delete (no status_id: hard delete)
-export const deletemaritalStatus = command(
+export const deleteMaritalStatus = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await db.delete(table.maritalStatusTable).where(eq(table.maritalStatusTable.id, id));
-		getmaritalStatus().refresh();
+		getMaritalStatus().refresh();
 	}
 );
 
 // delete complete (hard)
-export const deletemaritalStatusComplete = command(
+export const deleteMaritalStatusComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await db.delete(table.maritalStatusTable).where(eq(table.maritalStatusTable.id, id));
-		getmaritalStatus().refresh();
+		getMaritalStatus().refresh();
 	}
 );

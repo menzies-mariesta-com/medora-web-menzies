@@ -13,7 +13,7 @@
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
-	import { getmaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
+	import { getMaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
 	import { getState } from '$lib/remote/table/master-table/state.remote';
@@ -43,7 +43,10 @@
 	import LAdministrationStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationThirdColumn.svelte';
 	import LAdministrationStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationMoreInfo.svelte';
 	import LAdministrationStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationPermissions.svelte';
+	import { authClient } from '$lib/auth/client';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 
+	let routerUtil = new RouterUtil();
 	// data list
 	let titleData: TitleSchema[] = $state([]);
 	let staffTypeData: StaffTypeSchema[] = $state([]);
@@ -187,7 +190,7 @@
 		departmentData = await getDepartment();
 		specializationData = await getSpecialization();
 		genderData = await getGender();
-		maritalStatusData = await getmaritalStatus();
+		maritalStatusData = await getMaritalStatus();
 		countryData = await getCountry();
 		identityTypeData = await getIdentityType();
 		userGroupData = await getUserGroup();
@@ -319,6 +322,24 @@
 			toastService.addToast(
 				`Staff created successfully!`,
 				StatusColorEnum.SUCCESS
+			);
+			
+			const { error } = await authClient.requestPasswordReset({
+				email: selectedEmail.trim(),
+				redirectTo: routerUtil.getResetRedirectUrl(),
+			});
+
+			if (error) {
+				toastService.addToast(
+					error.message ?? 'Failed to send reset link.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			
+			toastService.addToast(
+				'A password reset email has been sent to this staff member.',
+				StatusColorEnum.INFO
 			);
 
 			// Reset form
