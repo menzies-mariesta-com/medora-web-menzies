@@ -45,9 +45,9 @@ export type IdentityTypeSchema = InferSelectModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaInsert = InferInsertModel<typeof identityTypeTable>;
 export type IdentityTypeSchemaUpdate = Partial<IdentityTypeSchemaInsert>;
 
-export type maritalStatusSchema = InferSelectModel<typeof maritalStatusTable>;
-export type maritalStatusSchemaInsert = InferInsertModel<typeof maritalStatusTable>;
-export type maritalStatusSchemaUpdate = Partial<maritalStatusSchemaInsert>;
+export type MaritalStatusSchema = InferSelectModel<typeof maritalStatusTable>;
+export type MaritalStatusSchemaInsert = InferInsertModel<typeof maritalStatusTable>;
+export type MaritalStatusSchemaUpdate = Partial<MaritalStatusSchemaInsert>;
 
 export type NationalitySchema = InferSelectModel<typeof nationalityTable>;
 export type NationalitySchemaInsert = InferInsertModel<typeof nationalityTable>;
