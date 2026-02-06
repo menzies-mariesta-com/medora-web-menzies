@@ -17,6 +17,32 @@ export const getUserGroupCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+// get all with relations
+export const getUserGroupWithRelations = query(async () => {
+	return db.query.userGroupTable.findMany({
+		with: {
+			status: true,
+			hospital: true,
+			userGroupPages: { with: { page: true } },
+		},
+	});
+});
+
+// get one with relations
+export const getUserGroupByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.userGroupTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				hospital: true,
+				userGroupPages: { with: { page: true } },
+			},
+		});
+	}
+);
+
 // get one
 export const getUserGroupById = query(
 	'unchecked' as const,
