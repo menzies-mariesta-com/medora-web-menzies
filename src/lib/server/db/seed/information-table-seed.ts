@@ -88,7 +88,9 @@ export async function seedInformationTables() {
 			(18, 'Network Details', 5, 1, 2, '/heka/home/administration/payer-info/network-details', 18),
 			(19, 'Pricing Cash', 5, 1, 2, '/heka/home/administration/payer-info/pricing-cash', 19),
 			(20, 'Pricing Credit', 5, 1, 2, '/heka/home/administration/payer-info/pricing-credit', 20),
-			(21, 'Staff Registration', 5, 1, null, '/heka/home/administration/staff-registration', 21)
+			(21, 'Staff Registration', 5, 1, null, '/heka/home/administration/staff-registration', 21),
+			(22, 'Registration', 2, 1, null, '/heka/home/patient/registration', 1),
+			(23, 'Attachment', 2, 1, null, '/heka/home/patient/attachment', 2)
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: page')
