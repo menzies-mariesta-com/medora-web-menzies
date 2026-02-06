@@ -5,18 +5,15 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const toastService = new ToastService();
+	const routerUtil = new RouterUtil();
 
 	let email = $state('');
 	let isLoading = $state(false);
-
-	function getResetRedirectUrl(): string {
-		if (typeof window === 'undefined') return '';
-		return `${window.location.origin}${WebRoutesEnum.RESET_PASSWORD}`;
-	}
 
 	async function handleConfirm() {
 		const trimmed = email.trim();
@@ -27,7 +24,7 @@
 		isLoading = true;
 		const { error } = await authClient.requestPasswordReset({
 			email: trimmed,
-			redirectTo: getResetRedirectUrl()
+			redirectTo: routerUtil.getResetRedirectUrl(),
 		});
 		isLoading = false;
 
