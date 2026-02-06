@@ -4,13 +4,7 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
-	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 
 	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
@@ -20,403 +14,469 @@
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
 	import { getmaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
-	const staffTypeData = await getStaffType();
-	const departmentData = await getDepartment();
-	const specializationData = await getSpecialization();
-	const genderData = await getGender();
-	const maritalStatusData = await getmaritalStatus();
-	const countryData = await getCountry();
-	const identityTypeData = await getIdentityType();
-	const userGroupData = await getUserGroup();
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
+	import { getState } from '$lib/remote/table/master-table/state.remote';
+	import { getCity } from '$lib/remote/table/master-table/city.remote';
+	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+	import type {
+		CitySchema,
+		CountrySchema,
+		DepartmentSchema,
+		GenderSchema,
+		IdentityTypeSchema,
+		MaritalStatusSchema,
+		PostalCodeSchema,
+		SpecializationSchema,
+		StaffEmploymentTypeSchema,
+		StaffTypeSchema,
+		StateSchema,
+		TitleSchema,
+		UserGroupSchema
+	} from '$lib/server/db/schema-type';
+	import { getTitle } from '$lib/remote/table/master-table/title.remote';
+	import { createStaffWithUser } from '$lib/remote/table/information-table/staff.remote';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationFirstColumn.svelte';
+	import LAdministrationStaffRegistrationSecondColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationSecondColumn.svelte';
+	import LAdministrationStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationThirdColumn.svelte';
+	import LAdministrationStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationMoreInfo.svelte';
+	import LAdministrationStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationPermissions.svelte';
+
+	// data list
+	let titleData: TitleSchema[] = $state([]);
+	let staffTypeData: StaffTypeSchema[] = $state([]);
+	let departmentData: DepartmentSchema[] = $state([]);
+	let specializationData: SpecializationSchema[] = $state([]);
+	let genderData: GenderSchema[] = $state([]);
+	let maritalStatusData: MaritalStatusSchema[] = $state([]);
+	let countryData: CountrySchema[] = $state([]);
+	let identityTypeData: IdentityTypeSchema[] = $state([]);
+	let userGroupData: UserGroupSchema[] = $state([]);
+	let staffEmploymentTypeData: StaffEmploymentTypeSchema[] = $state(
+		[]
+	);
+	let stateData: StateSchema[] = $state([]);
+	let cityData: CitySchema[] = $state([]);
+	let postalCodeData: PostalCodeSchema[] = $state([]);
+
+	// select value list
+	let selectedTitleId: string = $state('');
+	let selectedFirstName: string = $state('');
+	let selectedMiddleName: string = $state('');
+	let selectedLastName: string = $state('');
+	let selectedEmail: string = $state('');
+	let selectedGenderId: string = $state('');
+	let selectedMaritalStatusId: string = $state('');
+	let selectedPhoneCountryId: string = $state('');
+	let selectedPhone: string = $state('');
+	let selectedPhoneSecondaryCountryId: string = $state('');
+	let selectedPhoneSecondary: string = $state('');
+	let selectedStaffEmploymentTypeId: string = $state('');
+	let selectedEducation: string = $state('');
+	let selectedDesignation: string = $state('');
+	let selectedDepartmentId: string = $state('');
+	let selectedSpecializationId: string = $state('');
+	let selectedCountryId: string = $state('');
+	let selectedStateId: string = $state('');
+	let selectedCityId: string = $state('');
+	let selectedPostalCodeId: string = $state('');
+	let selectedStaffTypeId: string = $state('');
+	let selectedIdentityTypeId: string = $state('');
+	let selectedIdentityNumber: string = $state('');
+	let selectedDateOfBirth: string = $state('');
+	let selectedJoinDate: string = $state('');
+	let selectedResignDate: string = $state('');
+	let selectedAddress: string = $state('');
+	let selectedRemark: string = $state('');
+	let selectedUserGroups: number[] = $state([]);
+	let isActive: boolean = $state(true);
+	let isSuperAdmin: boolean = $state(false);
+	let isLocked: boolean = $state(false);
+
+	// Get selected objects from IDs
+	let selectedCountry = $derived(
+		countryData.find((c) => String(c.id) === selectedCountryId) ||
+			({} as CountrySchema)
+	);
+	let selectedState = $derived(
+		stateData.find((s) => String(s.id) === selectedStateId) ||
+			({} as StateSchema)
+	);
+	let selectedCity = $derived(
+		cityData.find((c) => String(c.id) === selectedCityId) ||
+			({} as CitySchema)
+	);
+	let selectedPostalCode = $derived(
+		postalCodeData.find(
+			(p) => String(p.id) === selectedPostalCodeId
+		) || ({} as PostalCodeSchema)
+	);
+
+	// Filtered data based on selections
+	let filteredStateData = $derived(
+		selectedCountry?.id
+			? stateData.filter(
+					(state) => state.countryId === selectedCountry.id
+				)
+			: []
+	);
+	let filteredCityData = $derived(
+		selectedState?.id
+			? cityData.filter((city) => city.stateId === selectedState.id)
+			: []
+	);
+	let filteredPostalCodeData = $derived(
+		selectedCity?.id
+			? postalCodeData.filter(
+					(postalCode) => postalCode.cityId === selectedCity.id
+				)
+			: []
+	);
+
+	// Reset dependent fields when parent changes
+	$effect(() => {
+		if (selectedCountryId) {
+			if (
+				!selectedCountry?.id ||
+				(selectedStateId &&
+					selectedState?.countryId !== selectedCountry.id)
+			) {
+				selectedStateId = '';
+				selectedCityId = '';
+				selectedPostalCodeId = '';
+			}
+		}
+	});
+
+	$effect(() => {
+		if (selectedStateId) {
+			if (
+				!selectedState?.id ||
+				(selectedCityId && selectedCity?.stateId !== selectedState.id)
+			) {
+				selectedCityId = '';
+				selectedPostalCodeId = '';
+			}
+		}
+	});
+
+	$effect(() => {
+		if (selectedCityId) {
+			if (
+				!selectedCity?.id ||
+				(selectedPostalCodeId &&
+					selectedPostalCode?.cityId !== selectedCity.id)
+			) {
+				selectedPostalCodeId = '';
+			}
+		}
+	});
+
+	// constructor
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	lifeCycleUtil.onMount(() => {
+		fetchInitialFieldData();
+	});
+
+	async function fetchInitialFieldData() {
+		titleData = await getTitle();
+		staffTypeData = await getStaffType();
+		departmentData = await getDepartment();
+		specializationData = await getSpecialization();
+		genderData = await getGender();
+		maritalStatusData = await getmaritalStatus();
+		countryData = await getCountry();
+		identityTypeData = await getIdentityType();
+		userGroupData = await getUserGroup();
+		staffEmploymentTypeData = await getStaffEmploymentType();
+		stateData = await getState();
+		cityData = await getCity();
+		postalCodeData = await getPostalCode();
+	}
+
+	const toastService = new ToastService();
+	let isLoading = $state(false);
+
+	async function handleOnSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const form = e.currentTarget as HTMLFormElement;
+		const fd = new FormData(form);
+
+		// Validation
+		if (!selectedEmail?.trim()) {
+			toastService.addToast(
+				'Email is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (!selectedFirstName?.trim()) {
+			toastService.addToast(
+				'First name is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (!selectedLastName?.trim()) {
+			toastService.addToast(
+				'Last name is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
+		// Build full name
+		const fullName =
+			[selectedFirstName, selectedMiddleName, selectedLastName]
+				.filter(Boolean)
+				.join(' ') || selectedFirstName;
+
+		// Build phone numbers with country codes
+		let phonePrimary: string | undefined;
+		if (selectedPhoneCountryId && selectedPhone) {
+			const country = countryData.find(
+				(c) => String(c.id) === selectedPhoneCountryId
+			);
+			phonePrimary = country
+				? `${country.countryCallingCode}${selectedPhone}`
+				: selectedPhone;
+		}
+
+		let phoneSecondary: string | undefined;
+		if (selectedPhoneSecondaryCountryId && selectedPhoneSecondary) {
+			const country = countryData.find(
+				(c) => String(c.id) === selectedPhoneSecondaryCountryId
+			);
+			phoneSecondary = country
+				? `${country.countryCallingCode}${selectedPhoneSecondary}`
+				: selectedPhoneSecondary;
+		}
+
+		isLoading = true;
+		try {
+			const result = await createStaffWithUser({
+				email: selectedEmail.trim(),
+				name: fullName,
+				firstName: selectedFirstName.trim(),
+				middleName: selectedMiddleName.trim() || undefined,
+				lastName: selectedLastName.trim(),
+				phonePrimary,
+				phoneSecondary: phoneSecondary || undefined,
+				dateOfBirth: selectedDateOfBirth || undefined,
+				address: selectedAddress || undefined,
+				remark: selectedRemark || undefined,
+				identityNo: selectedIdentityNumber.trim() || undefined,
+				titleId: selectedTitleId
+					? Number(selectedTitleId)
+					: undefined,
+				genderId: selectedGenderId
+					? Number(selectedGenderId)
+					: undefined,
+				maritalStatusId: selectedMaritalStatusId
+					? Number(selectedMaritalStatusId)
+					: undefined,
+				staffEmploymentTypeId: selectedStaffEmploymentTypeId
+					? Number(selectedStaffEmploymentTypeId)
+					: undefined,
+				staffTypeId: selectedStaffTypeId
+					? Number(selectedStaffTypeId)
+					: undefined,
+				education: selectedEducation.trim() || undefined,
+				designation: selectedDesignation.trim() || undefined,
+				departmentId: selectedDepartmentId
+					? Number(selectedDepartmentId)
+					: undefined,
+				specializationId: selectedSpecializationId
+					? Number(selectedSpecializationId)
+					: undefined,
+				countryId: selectedCountryId
+					? Number(selectedCountryId)
+					: undefined,
+				stateId: selectedStateId
+					? Number(selectedStateId)
+					: undefined,
+				cityId: selectedCityId ? Number(selectedCityId) : undefined,
+				postalCodeId: selectedPostalCodeId
+					? Number(selectedPostalCodeId)
+					: undefined,
+				identityTypeId: selectedIdentityTypeId
+					? Number(selectedIdentityTypeId)
+					: undefined,
+				joinDate: selectedJoinDate || undefined,
+				resignDate: selectedResignDate || undefined,
+				isActive,
+				isSuperAdmin,
+				isLocked,
+				userGroupIds:
+					selectedUserGroups.length > 0
+						? selectedUserGroups
+						: undefined
+			});
+
+			toastService.addToast(
+				`Staff created successfully!`,
+				StatusColorEnum.SUCCESS
+			);
+
+			// Reset form
+			selectedTitleId = '';
+			selectedFirstName = '';
+			selectedMiddleName = '';
+			selectedLastName = '';
+			selectedEmail = '';
+			selectedGenderId = '';
+			selectedMaritalStatusId = '';
+			selectedPhoneCountryId = '';
+			selectedPhone = '';
+			selectedPhoneSecondaryCountryId = '';
+			selectedPhoneSecondary = '';
+			selectedStaffEmploymentTypeId = '';
+			selectedEducation = '';
+			selectedDesignation = '';
+			selectedDepartmentId = '';
+			selectedSpecializationId = '';
+			selectedCountryId = '';
+			selectedStateId = '';
+			selectedCityId = '';
+			selectedPostalCodeId = '';
+			selectedStaffTypeId = '';
+			selectedIdentityTypeId = '';
+			selectedIdentityNumber = '';
+			selectedDateOfBirth = '';
+			selectedJoinDate = '';
+			selectedResignDate = '';
+			selectedAddress = '';
+			selectedRemark = '';
+			selectedUserGroups = [];
+			isActive = true;
+			isSuperAdmin = false;
+			isLocked = false;
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Failed to create staff. Please try again.';
+			toastService.addToast(message, StatusColorEnum.ERROR);
+		} finally {
+			isLoading = false;
+		}
+	}
 </script>
 
 <DaisyUiCard>
 	<DaisyUiCardBody>
-		<DaisyUiCardBodyTitle className="mb-5"
-			>Profile Details</DaisyUiCardBodyTitle
-		>
-
-		<!-- Profile + Main form grid: responsive -->
-		<div
-			class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
-		>
-			<!-- Profile block: centered on mobile, then fixed width on lg+ -->
+		<form onsubmit={handleOnSubmit}>
+			<DaisyUiCardBodyTitle className="mb-5"
+				>Profile Details</DaisyUiCardBodyTitle
+			>
+			<!-- Profile + Main form grid: responsive -->
 			<div
-				class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
+				class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
 			>
-				<DaisyUiSkeleton
-					className="size-28 rounded-full sm:size-32 lg:size-36"
-				/>
-				<div class="flex flex-col gap-2">
-					<DaisyUiButton className="d-btn-error d-btn-sm"
-						>Remove</DaisyUiButton
-					>
-				</div>
-			</div>
-
-			<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
-			<div
-				class="grid min-w-0 flex-1 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
-			>
-				<!-- Column 1 -->
-				<div class="flex flex-col gap-4">
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel forText="title" className="shrink-0 sm:w-36"
-							>Title</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="first-name"
-							className="shrink-0 sm:w-36">First Name</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="middle-name"
-							className="shrink-0 sm:w-36">Middle Name</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="last-name"
-							className="shrink-0 sm:w-36">Last Name</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel forText="email" className="shrink-0 sm:w-36"
-							>Email</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="email" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="gender"
-							className="shrink-0 sm:w-36">Gender</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect optionHeader="Select a gender ...">
-								{#each genderData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="marital-status"
-							className="shrink-0 sm:w-36"
-							>Marital Status</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect
-								optionHeader="Select a marital status ..."
-							>
-								{#each maritalStatusData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-				</div>
-
-				<!-- Column 2 -->
-				<div class="flex flex-col gap-4">
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel forText="phone" className="shrink-0 sm:w-36"
-							>Phone</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="tel" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="phone-secondary"
-							className="shrink-0 sm:w-36"
-							>Phone (Secondary)</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="date-of-birth"
-							className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="staff-type"
-							className="shrink-0 sm:w-36">Staff Type</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect optionHeader="Select a staff type ...">
-								{#each staffTypeData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="employment-type"
-							className="shrink-0 sm:w-36"
-							>Employment Type</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="education"
-							className="shrink-0 sm:w-36">Education</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="designation"
-							className="shrink-0 sm:w-36">Designation</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-				</div>
-
-				<!-- Column 3 -->
-				<div class="flex flex-col gap-4">
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="department"
-							className="shrink-0 sm:w-36">Department</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect optionHeader="Select a department ...">
-								{#each departmentData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="specialization"
-							className="shrink-0 sm:w-36"
-							>Specialization</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect
-								optionHeader="Select a specialization ..."
-							>
-								{#each specializationData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="country"
-							className="shrink-0 sm:w-36">Country</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiSelect optionHeader="Select a country ...">
-								{#each countryData as data}
-									<option value={data.id}>{data.name}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="identity-type"
-							className="shrink-0 sm:w-36">Identity Type</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiJoin>
-								<DaisyUiSelect
-									optionHeader="Select an identity type ..."
-								>
-									{#each identityTypeData as data}
-										<option value={data.id}>{data.name}</option>
-									{/each}
-								</DaisyUiSelect>
-								<DaisyUiInputField inputType="text" />
-							</DaisyUiJoin>
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel forText="state" className="shrink-0 sm:w-36"
-							>State</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel forText="city" className="shrink-0 sm:w-36"
-							>City</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel
-							forText="postal-code"
-							className="shrink-0 sm:w-36">Postal Code</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField inputType="text" />
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- More Info: 1 col mobile, 2 cols md+ -->
-		<div
-			id="more-info"
-			class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6"
-		>
-			<div class="flex flex-col gap-2">
-				<DaisyUiLabel forText="address">Address</DaisyUiLabel>
-				<DaisyUiTextarea className="w-full min-h-24 resize-y" />
-			</div>
-			<div class="flex flex-col gap-2">
-				<DaisyUiLabel forText="remark">Remark</DaisyUiLabel>
-				<DaisyUiTextarea className="w-full min-h-24 resize-y" />
-			</div>
-		</div>
-
-		<!-- Permissions: stack on mobile, row on md+ -->
-		<div
-			id="permissions"
-			class="mt-6 flex flex-col gap-6 md:flex-row md:flex-wrap md:items-start md:gap-8"
-		>
-			<div class="min-w-0 flex-1 md:min-w-56">
-				<DaisyUiLabel className="mb-2 block">User Group</DaisyUiLabel>
+				<!-- Profile block: centered on mobile, then fixed width on lg+ -->
 				<div
-					class="flex max-h-32 flex-col gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3"
+					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 				>
-					{#each userGroupData as data}
-						<label class="flex cursor-pointer items-center gap-2">
-							<DaisyUiCheckbox checked={false} />
-							<span class="text-sm">{data.name}</span>
-						</label>
-					{/each}
-				</div>
-			</div>
-			<div class="flex flex-col gap-4">
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="join-date"
-						className="shrink-0 sm:w-36">Join Date</DaisyUiLabel
-					>
-					<div class="min-w-0 flex-1">
-						<DaisyUiInputField inputType="text" />
+					<DaisyUiSkeleton
+						className="size-28 rounded-full sm:size-32 lg:size-36"
+					/>
+					<div class="flex flex-col gap-2">
+						<DaisyUiButton className="d-btn-error d-btn-sm"
+							>Remove</DaisyUiButton
+						>
 					</div>
 				</div>
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="resign-date"
-						className="shrink-0 sm:w-36">Resign Date</DaisyUiLabel
-					>
-					<div class="min-w-0 flex-1">
-						<DaisyUiInputField inputType="text" />
-					</div>
-				</div>
-			</div>
-			<div class="flex flex-col gap-3">
-				<label class="flex cursor-pointer items-center gap-2">
-					<DaisyUiCheckbox checked={true} />
-					<span>Active</span>
-				</label>
-				<label class="flex cursor-pointer items-center gap-2">
-					<DaisyUiCheckbox checked={false} />
-					<span>Super Admin</span>
-				</label>
-				<label class="flex cursor-pointer items-center gap-2">
-					<DaisyUiCheckbox checked={false} />
-					<span>Lock</span>
-				</label>
-			</div>
-		</div>
 
-		<!-- Action Buttons -->
-		<DaisyUiCardBodyAction className="mt-6">
-			<DaisyUiButton className="d-btn-wide d-btn-primary"
-				>Save</DaisyUiButton
-			>
-		</DaisyUiCardBodyAction>
+				<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
+				<div
+					class="grid min-w-0 flex-1 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+				>
+					<!-- Column 1 -->
+					<LAdministrationStaffRegistrationFirstColumn
+						{titleData}
+						{genderData}
+						{maritalStatusData}
+						bind:selectedTitleId
+						bind:selectedFirstName
+						bind:selectedMiddleName
+						bind:selectedLastName
+						bind:selectedEmail
+						bind:selectedGenderId
+						bind:selectedMaritalStatusId
+					/>
+
+					<!-- Column 2 -->
+					<LAdministrationStaffRegistrationSecondColumn
+						{countryData}
+						{staffTypeData}
+						{staffEmploymentTypeData}
+						bind:selectedPhoneCountryId
+						bind:selectedPhone
+						bind:selectedPhoneSecondaryCountryId
+						bind:selectedPhoneSecondary
+						bind:selectedDateOfBirth
+						bind:selectedStaffTypeId
+						bind:selectedStaffEmploymentTypeId
+						bind:selectedEducation
+						bind:selectedDesignation
+					/>
+
+					<!-- Column 3 -->
+					<LAdministrationStaffRegistrationThirdColumn
+						{countryData}
+						{stateData}
+						{cityData}
+						{postalCodeData}
+						{departmentData}
+						{specializationData}
+						{identityTypeData}
+						{filteredStateData}
+						{filteredCityData}
+						{filteredPostalCodeData}
+						{selectedCountry}
+						{selectedState}
+						{selectedCity}
+						bind:selectedCountryId
+						bind:selectedStateId
+						bind:selectedCityId
+						bind:selectedPostalCodeId
+						bind:selectedDepartmentId
+						bind:selectedSpecializationId
+						bind:selectedIdentityTypeId
+						bind:selectedIdentityNumber
+					/>
+				</div>
+			</div>
+
+			<!-- More Info: 1 col mobile, 2 cols md+ -->
+			<LAdministrationStaffRegistrationMoreInfo
+				bind:selectedAddress
+				bind:selectedRemark
+			/>
+
+			<!-- Permissions: stack on mobile, row on md+ -->
+			<LAdministrationStaffRegistrationPermissions
+				{userGroupData}
+				bind:selectedUserGroups
+				bind:selectedJoinDate
+				bind:selectedResignDate
+				bind:isActive
+				bind:isSuperAdmin
+				bind:isLocked
+			/>
+
+			<!-- Action Buttons -->
+			<DaisyUiCardBodyAction className="mt-6">
+				<DaisyUiButton
+					type="submit"
+					className="d-btn-wide d-btn-primary"
+					disabled={isLoading}
+					>{isLoading ? 'Saving...' : 'Save'}</DaisyUiButton
+				>
+			</DaisyUiCardBodyAction>
+		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
