@@ -1,11 +1,11 @@
 import { query, command } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { maritalStatusSchema, maritalStatusSchemaInsert, maritalStatusSchemaUpdate } from '$lib/server/db/schema-type';
+import type { MaritalStatusSchema, MaritalStatusSchemaInsert, MaritalStatusSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getmaritalStatus = query(async (): Promise<maritalStatusSchema[]> => {
+export const getmaritalStatus = query(async (): Promise<MaritalStatusSchema[]> => {
 	const data = await db.select().from(table.maritalStatusTable);
 	return data;
 });
@@ -19,7 +19,7 @@ export const getmaritalStatusCount = query(async (): Promise<number> => {
 // get one
 export const getmaritalStatusById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<maritalStatusSchema | null> => {
+	async ({ id }: { id: number }): Promise<MaritalStatusSchema | null> => {
 		const [row] = await db
 			.select()
 			.from(table.maritalStatusTable)
@@ -31,7 +31,7 @@ export const getmaritalStatusById = query(
 // create
 export const createmaritalStatus = command(
 	'unchecked' as const,
-	async (payload: maritalStatusSchemaInsert): Promise<maritalStatusSchema> => {
+	async (payload: MaritalStatusSchemaInsert): Promise<MaritalStatusSchema> => {
 		const [row] = await db
 			.insert(table.maritalStatusTable)
 			.values(payload)
@@ -45,11 +45,11 @@ export const createmaritalStatus = command(
 // update
 export const updatemaritalStatus = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string }): Promise<maritalStatusSchema> => {
+	async (payload: { id: number; name?: string }): Promise<MaritalStatusSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await db
 			.update(table.maritalStatusTable)
-			.set(rest as maritalStatusSchemaUpdate)
+			.set(rest as MaritalStatusSchemaUpdate)
 			.where(eq(table.maritalStatusTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

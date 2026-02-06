@@ -9,7 +9,7 @@
 		minLength,
 		maxlength,
 		nameText,
-		value,
+		value = $bindable(),
 		ariaLabel,
 		rawStyle,
 		checked,
@@ -48,7 +48,7 @@
 		maxlength={maxlength ?? 50}
 		title={inputTitle}
 		name={nameText}
-		{value}
+		bind:value
 		aria-label={ariaLabel}
 		onclick={onClick}
 		{checked}
@@ -67,7 +67,7 @@
 		maxlength={maxlength ?? 50}
 		title={inputTitle}
 		name={nameText}
-		{value}
+		bind:value
 		aria-label={ariaLabel}
 		{checked}
 		{hidden}
