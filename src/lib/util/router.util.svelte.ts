@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
+import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { SvelteURL } from 'svelte/reactivity';
 
 export class RouterUtil {
@@ -60,5 +61,10 @@ export class RouterUtil {
 	 */
 	goBackRoute(): void {
 		window.history.back();
+	}
+
+	getResetRedirectUrl(): string {
+		if (typeof window === 'undefined') return '';
+		return `${window.location.origin}${WebRoutesEnum.RESET_PASSWORD}`;
 	}
 }
