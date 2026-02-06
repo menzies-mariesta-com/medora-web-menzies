@@ -10,7 +10,8 @@ export enum WebRoutesEnum {
 
 	// private
 	HEKA = "/heka",
-	HEKA_HOME = "/heka/home"
+	HEKA_HOME = "/heka/home",
+	HEKA_NOTIFICATION = "/heka/notification"
 }
 
 export enum ServerRoutesEnum {
