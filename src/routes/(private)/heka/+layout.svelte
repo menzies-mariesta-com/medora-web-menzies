@@ -2,9 +2,6 @@
 	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
 	import GPrivateHekaModuleBar from '$lib/component/global/private/heka/GPrivateHekaModuleBar.svelte';
 	import GPrivateHekaNavbar from '$lib/component/global/private/heka/GPrivateHekaNavbar.svelte';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPageWithRelations } from '$lib/remote/table/information-table/page.remote';
 
 	let { children } = $props();

@@ -28,7 +28,7 @@
 	class="mt-6 flex flex-col gap-6 md:flex-row md:flex-wrap md:items-start md:gap-8"
 >
 	<div class="min-w-0 flex-1 md:min-w-56">
-		<DaisyUiLabel className="mb-2 block">User Group</DaisyUiLabel>
+		<DaisyUiLabel className="mb-2 block">User Group <span class="text-error">*</span></DaisyUiLabel>
 		<div
 			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 sm:grid-cols-2"
 		>

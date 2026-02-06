@@ -17,7 +17,7 @@ import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 const passwordHashUtil = new PasswordHashUtil();
 
 export const auth = betterAuth({
-	database: drizzleAdapter(db, {
+	database: drizzleAdapter(db!, {
 		provider: 'pg',
 		schema: {
 			user: userTable,

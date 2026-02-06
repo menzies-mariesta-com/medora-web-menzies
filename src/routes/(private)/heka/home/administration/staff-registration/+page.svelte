@@ -45,8 +45,10 @@
 	import LAdministrationStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationPermissions.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 
 	let routerUtil = new RouterUtil();
+	const dateTimeUtil = new DateTimeUtil();
 	// data list
 	let titleData: TitleSchema[] = $state([]);
 	let staffTypeData: StaffTypeSchema[] = $state([]);
@@ -66,6 +68,7 @@
 
 	// select value list
 	let selectedTitleId: string = $state('');
+	let selectedStaffCode: string = $state('');
 	let selectedFirstName: string = $state('');
 	let selectedMiddleName: string = $state('');
 	let selectedLastName: string = $state('');
@@ -89,7 +92,7 @@
 	let selectedIdentityTypeId: string = $state('');
 	let selectedIdentityNumber: string = $state('');
 	let selectedDateOfBirth: string = $state('');
-	let selectedJoinDate: string = $state('');
+	let selectedJoinDate: string = $state(dateTimeUtil.getTodayDateString());
 	let selectedResignDate: string = $state('');
 	let selectedAddress: string = $state('');
 	let selectedRemark: string = $state('');
@@ -209,13 +212,6 @@
 		const fd = new FormData(form);
 
 		// Validation
-		if (!selectedEmail?.trim()) {
-			toastService.addToast(
-				'Email is required.',
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
 		if (!selectedFirstName?.trim()) {
 			toastService.addToast(
 				'First name is required.',
@@ -223,9 +219,23 @@
 			);
 			return;
 		}
-		if (!selectedLastName?.trim()) {
+		if (!selectedEmail?.trim()) {
 			toastService.addToast(
-				'Last name is required.',
+				'Email is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (!selectedStaffEmploymentTypeId) {
+			toastService.addToast(
+				'Employment Type is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (selectedUserGroups.length === 0) {
+			toastService.addToast(
+				'At Least One User Group is required',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -263,6 +273,7 @@
 			const result = await createStaffWithUser({
 				email: selectedEmail.trim(),
 				name: fullName,
+				code: selectedStaffCode.trim(),
 				firstName: selectedFirstName.trim(),
 				middleName: selectedMiddleName.trim() || undefined,
 				lastName: selectedLastName.trim(),
@@ -338,11 +349,12 @@
 			}
 			
 			toastService.addToast(
-				'A password reset email has been sent to this staff member.',
+				'Reset password email has been sent to the staff.',
 				StatusColorEnum.INFO
 			);
 
 			// Reset form
+			selectedStaffCode = '';
 			selectedTitleId = '';
 			selectedFirstName = '';
 			selectedMiddleName = '';
@@ -367,7 +379,7 @@
 			selectedIdentityTypeId = '';
 			selectedIdentityNumber = '';
 			selectedDateOfBirth = '';
-			selectedJoinDate = '';
+			selectedJoinDate = dateTimeUtil.getTodayDateString();
 			selectedResignDate = '';
 			selectedAddress = '';
 			selectedRemark = '';
@@ -376,10 +388,24 @@
 			isSuperAdmin = false;
 			isLocked = false;
 		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Failed to create staff. Please try again.';
+			let message: string | null = null;
+
+			if (error && typeof error === 'object') {
+				const errAny = error as any;
+
+				// SvelteKit remote `command` wraps server errors in HttpError,
+				// with the original message living at `error.body.message`.
+				if (errAny.body && typeof errAny.body.message === 'string') {
+					message = errAny.body.message;
+				} else if (typeof errAny.message === 'string') {
+					message = errAny.message;
+				}
+			}
+
+			if (!message) {
+				message = 'Failed to create staff. Please try again.';
+			}
+
 			toastService.addToast(message, StatusColorEnum.ERROR);
 		} finally {
 			isLoading = false;
@@ -420,6 +446,7 @@
 						{titleData}
 						{genderData}
 						{maritalStatusData}
+						bind:selectedStaffCode
 						bind:selectedTitleId
 						bind:selectedFirstName
 						bind:selectedMiddleName

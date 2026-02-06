@@ -103,7 +103,7 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="employment-type" className="shrink-0 sm:w-36">Employment Type</DaisyUiLabel>
+		<DaisyUiLabel forText="employment-type" className="shrink-0 sm:w-36">Employment Type <span class="text-error">*</span></DaisyUiLabel>
 		<div class="min-w-0 flex-1">
 			<DaisyUiSelect
 				bind:value={selectedStaffEmploymentTypeId}
