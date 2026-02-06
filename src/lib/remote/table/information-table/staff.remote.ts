@@ -12,7 +12,7 @@ export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	return data;
 });
 
-// get all with many-to-many relations (hospitals, departments, roles, userGroups) and master lookups
+// get all with many-to-many relations and master lookups
 export const getStaffWithRelations = query(async () => {
 	return db.query.staffTable.findMany({
 		with: {
@@ -21,30 +21,51 @@ export const getStaffWithRelations = query(async () => {
 			maritalStatus: true,
 			specialization: true,
 			status: true,
+			staffDetail: { with: { bloodType: true, status: true } },
+			city: true,
+			country: true,
+			nationality: true,
+			position: true,
+			postalCode: true,
+			staffEmploymentType: true,
+			staffType: true,
+			state: true,
+			title: true,
+			user: true,
 			staffHospitals: { with: { hospital: true } },
 			staffDepartments: { with: { department: true } },
-			staffUserGroups: { with: { userGroup: true } }
-		}
+			staffUserGroups: { with: { userGroup: true } },
+		},
 	});
 });
 
 // get one with relations
-export const getStaffByIdWithRelations = query(
+export const getStaffByUserIdWithRelations = query(
 	'unchecked' as const,
-	async ({ id }: { id: string }) => {
+	async ({ userId }: { userId: string }) => {
 		return db.query.staffTable.findFirst({
-			where: (staff, { eq }) => eq(staff.id, id),
+			where: (staffTable, funcs) => funcs.eq(staffTable.userId, userId),
 			with: {
 				gender: true,
 				identityType: true,
 				maritalStatus: true,
 				specialization: true,
 				status: true,
+				staffDetail: { with: { bloodType: true, status: true } },
+				city: true,
+				country: true,
+				nationality: true,
+				position: true,
+				postalCode: true,
+				staffEmploymentType: true,
+				staffType: true,
+				state: true,
+				title: true,
+				user: true,
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
 				staffUserGroups: { with: { userGroup: true } },
-
-			}
+			},
 		});
 	}
 );

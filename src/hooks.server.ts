@@ -6,6 +6,7 @@ import { db } from '$lib/server/db';
 import { staffTable } from '$lib/server/db/table/information-table/information-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { getStaff, getStaffByUserIdWithRelations, getStaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({
@@ -15,12 +16,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
 		// Load staff linked to this user (1:1)
-		const [staff] = await db
-			.select()
-			.from(staffTable)
-			.where(eq(staffTable.userId, session.user.id))
-			.limit(1);
-		event.locals.staff = staff ?? null;
+		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
+		console.log(staff);
+		// event.locals.staff = staff ?? null;
 	}
 
 	return svelteKitHandler({

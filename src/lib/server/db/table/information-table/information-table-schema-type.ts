@@ -1,8 +1,10 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
+	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
+	staffDetailTable,
 	staffDepartmentTable,
 	staffHospitalTable,
 	staffTable,
@@ -12,9 +14,13 @@ import type {
 	userGroupPageTable,
 	userGroupTable,
 } from './information-table';
-import type { StatusSchema } from '../../schema-type';
+import type { StatusSchema } from '../master-table/master-table-schema-type';
 
 // Information Tables (alphabetical)
+export type HospitalDepartmentSchema = InferSelectModel<typeof hospitalDepartmentTable>;
+export type HospitalDepartmentSchemaInsert = InferInsertModel<typeof hospitalDepartmentTable>;
+export type HospitalDepartmentSchemaUpdate = Partial<HospitalDepartmentSchemaInsert>;
+
 export type HospitalSchema = InferSelectModel<typeof hospitalTable>;
 export type HospitalSchemaInsert = InferInsertModel<typeof hospitalTable>;
 export type HospitalSchemaUpdate = Partial<HospitalSchemaInsert>;
@@ -26,6 +32,10 @@ export type ModuleSchemaUpdate = Partial<ModuleSchemaInsert>;
 export type PageSchema = InferSelectModel<typeof pageTable>;
 export type PageSchemaInsert = InferInsertModel<typeof pageTable>;
 export type PageSchemaUpdate = Partial<PageSchemaInsert>;
+
+export type StaffDetailSchema = InferSelectModel<typeof staffDetailTable>;
+export type StaffDetailSchemaInsert = InferInsertModel<typeof staffDetailTable>;
+export type StaffDetailSchemaUpdate = Partial<StaffDetailSchemaInsert>;
 
 export type StaffDepartmentSchema = InferSelectModel<typeof staffDepartmentTable>;
 export type StaffDepartmentSchemaInsert = InferInsertModel<typeof staffDepartmentTable>;

@@ -19,7 +19,10 @@ export const userTableRollbackRelations = relations(userTable, ({ one, many }) =
     fields: [userTable.id],
     references: [staffTable.userId]
   }),
-  role: one(roleTable),
+  role: one(roleTable, {
+    fields: [userTable.roleId],
+    references: [roleTable.id],
+  }),
 }));
 
 export const sessionTableRelations = relations(sessionTable, ({ one }) => ({
@@ -39,6 +42,9 @@ export const accountTableRelations = relations(accountTable, ({ one }) => ({
 export const verificationTableRelations = relations(verificationTable, () => ({}));
 
 export const roleTableRelations = relations(roleTable, ({ one, many }) => ({
-  status: one(statusTable),
+  status: one(statusTable, {
+    fields: [roleTable.statusId],
+    references: [statusTable.id],
+  }),
   users: many(userTable),
 }));

@@ -17,6 +17,36 @@ export const getHospitalCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+// get all with relations
+export const getHospitalWithRelations = query(async () => {
+	return db.query.hospitalTable.findMany({
+		with: {
+			status: true,
+			city: true,
+			state: true,
+			country: true,
+			hospitalDepartments: { with: { department: true } },
+		},
+	});
+});
+
+// get one with relations
+export const getHospitalByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return db.query.hospitalTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				city: true,
+				state: true,
+				country: true,
+				hospitalDepartments: { with: { department: true } },
+			},
+		});
+	}
+);
+
 // get one
 export const getHospitalById = query(
 	'unchecked' as const,
