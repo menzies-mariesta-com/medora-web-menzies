@@ -12,7 +12,6 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
-	import { authClient } from '$lib/auth-client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
@@ -21,17 +20,27 @@
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import ResetPasswordModal from '$lib/component/snippet/modal/ResetPasswordModal.svelte';
+	import { authClient } from '$lib/auth/client';
 
 	const passwordTool = new PasswordTool();
 	const toastService = new ToastService();
 
-let countryData = await getCountry();
-let genderData = await getGender();
+	let countryData = await getCountry();
+	let genderData = await getGender();
 
-let selectedCountryId = $state('');
-let selectedGenderId = $state('');
-let isPasswordVisible = $state(false);
-let isLoading = $state(false);
+	let selectedCountryId = $state('');
+	let selectedGenderId = $state('');
+	let isPasswordVisible = $state(false);
+	let isLoading = $state(false);
+
+	function openResetPasswordModal() {
+		dialogService.open({
+			title: 'Forgot Password',
+			component: ResetPasswordModal
+		});
+	}
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -282,7 +291,7 @@ let isLoading = $state(false);
 				</div>
 				<div id="forget-password">
 					forget your password? <DaisyUiLink
-						href={WebRoutesEnum.FORGET_PASSWORD}
+						onClick={openResetPasswordModal}
 						className="d-link-info"
 					>
 						Reset Password

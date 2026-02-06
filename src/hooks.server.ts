@@ -1,7 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { eq } from 'drizzle-orm';
-import { auth } from '$lib/auth';
+import { auth } from '$lib/auth/server';
 import { db } from '$lib/server/db';
 import { staffTable } from '$lib/server/db/table/information-table/information-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';

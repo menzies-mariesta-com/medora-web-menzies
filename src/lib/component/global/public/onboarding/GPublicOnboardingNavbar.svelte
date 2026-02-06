@@ -3,7 +3,7 @@
 	import DaisyUiNavbar from '$lib/component/library/daisyui/navbar/DaisyUiNavbar.svelte';
 	import DaisyUiNavbarEnd from '$lib/component/library/daisyui/navbar/end/DaisyUiNavbarEnd.svelte';
 	import DaisyUiNavbarStart from '$lib/component/library/daisyui/navbar/start/DaisyUiNavbarStart.svelte';
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
