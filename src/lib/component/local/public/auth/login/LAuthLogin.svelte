@@ -9,15 +9,23 @@
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
-	import { authClient } from '$lib/auth-client';
+	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import ResetPasswordModal from '$lib/component/snippet/modal/ResetPasswordModal.svelte';
 
 	const toastService = new ToastService();
+
+	function openResetPasswordModal() {
+		dialogService.open({
+			title: 'Forgot Password',
+			component: ResetPasswordModal
+		});
+	}
 	
 	let isPasswordVisible = $state(false);
 	let isLoading = $state(false);
@@ -107,14 +115,14 @@
 			<!-- external links -->
 			<div class="my-ft-small flex flex-col gap-3">
 				<div id="signup">
-					do not have an account? <DaisyUiLink
+					Do Not Have an Account? <DaisyUiLink
 						href={WebRoutesEnum.SIGNUP}
 						className="d-link-info">Signup</DaisyUiLink
 					>
 				</div>
 				<div id="forget-password">
-					forget your password? <DaisyUiLink
-						href={WebRoutesEnum.FORGET_PASSWORD}
+					Forget Your Password? <DaisyUiLink
+						onClick={openResetPasswordModal}
 						className="d-link-info"
 					>
 						Reset Password
