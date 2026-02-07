@@ -20,12 +20,14 @@
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
 	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
 	import type {
+	BloodTypeSchema,
 		CitySchema,
 		CountrySchema,
 		DepartmentSchema,
 		GenderSchema,
 		IdentityTypeSchema,
 		MaritalStatusSchema,
+		NationalitySchema,
 		PostalCodeSchema,
 		SpecializationSchema,
 		StaffEmploymentTypeSchema,
@@ -46,6 +48,8 @@
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
+	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -57,6 +61,7 @@
 	let genderData: GenderSchema[] = $state([]);
 	let maritalStatusData: MaritalStatusSchema[] = $state([]);
 	let countryData: CountrySchema[] = $state([]);
+	let bloodTypeData: BloodTypeSchema[] = $state([]);
 	let identityTypeData: IdentityTypeSchema[] = $state([]);
 	let userGroupData: UserGroupSchema[] = $state([]);
 	let staffEmploymentTypeData: StaffEmploymentTypeSchema[] = $state(
@@ -65,6 +70,7 @@
 	let stateData: StateSchema[] = $state([]);
 	let cityData: CitySchema[] = $state([]);
 	let postalCodeData: PostalCodeSchema[] = $state([]);
+	let nationalityData: NationalitySchema[] = $state([]);
 
 	// select value list
 	let selectedTitleId: string = $state('');
@@ -96,6 +102,8 @@
 	let selectedResignDate: string = $state('');
 	let selectedAddress: string = $state('');
 	let selectedRemark: string = $state('');
+	let selectedBloodTypeId: string = $state('');
+	let selectedNationalityId: string = $state('');
 	let selectedUserGroups: number[] = $state([]);
 	let isActive: boolean = $state(true);
 	let isSuperAdmin: boolean = $state(false);
@@ -201,6 +209,8 @@
 		stateData = await getState();
 		cityData = await getCity();
 		postalCodeData = await getPostalCode();
+		bloodTypeData = await getBloodType();
+		nationalityData = await getNationality();
 	}
 
 	const toastService = new ToastService();
@@ -459,6 +469,7 @@
 					<!-- Column 2 -->
 					<LAdministrationStaffRegistrationSecondColumn
 						{countryData}
+						{bloodTypeData}
 						{staffTypeData}
 						{staffEmploymentTypeData}
 						bind:selectedPhoneCountryId
@@ -470,6 +481,7 @@
 						bind:selectedStaffEmploymentTypeId
 						bind:selectedEducation
 						bind:selectedDesignation
+						bind:selectedBloodTypeId
 					/>
 
 					<!-- Column 3 -->
@@ -477,6 +489,7 @@
 						{countryData}
 						{stateData}
 						{cityData}
+						{nationalityData}
 						{postalCodeData}
 						{departmentData}
 						{specializationData}
@@ -495,6 +508,7 @@
 						bind:selectedSpecializationId
 						bind:selectedIdentityTypeId
 						bind:selectedIdentityNumber
+						bind:selectedNationalityId
 					/>
 				</div>
 			</div>
