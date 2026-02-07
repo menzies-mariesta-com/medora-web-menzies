@@ -97,6 +97,9 @@
 	let isActive: boolean = $state(true);
 	let isSuperAdmin: boolean = $state(false);
 	let isLocked: boolean = $state(false);
+	let photoUrl: string = $state('');
+	let photoUploading: boolean = $state(false);
+	let photoInputEl: HTMLInputElement | undefined = $state();
 
 	// Get selected objects from IDs
 	let selectedCountry = $derived(
@@ -203,6 +206,41 @@
 	const toastService = new ToastService();
 	let isLoading = $state(false);
 
+	async function handlePhotoChange(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+		if (!allowed.includes(file.type)) {
+			toastService.addToast('Please choose a JPEG, PNG, WebP or GIF image.', StatusColorEnum.ERROR);
+			return;
+		}
+		if (file.size > 5 * 1024 * 1024) {
+			toastService.addToast('Image must be 5MB or smaller.', StatusColorEnum.ERROR);
+			return;
+		}
+		photoUploading = true;
+		try {
+			const fd = new FormData();
+			fd.set('photo', file);
+			const res = await fetch('/api/upload/staff-photo', { method: 'POST', body: fd });
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				toastService.addToast(data.error ?? 'Upload failed.', StatusColorEnum.ERROR);
+				return;
+			}
+			if (data.url) photoUrl = data.url;
+		} finally {
+			photoUploading = false;
+			input.value = '';
+		}
+	}
+
+	function handleRemovePhoto() {
+		photoUrl = '';
+		if (photoInputEl) photoInputEl.value = '';
+	}
+
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		const form = e.currentTarget as HTMLFormElement;
@@ -269,6 +307,7 @@
 				phonePrimary,
 				phoneSecondary: phoneSecondary || undefined,
 				dateOfBirth: selectedDateOfBirth || undefined,
+				photoUrl: photoUrl || undefined,
 				address: selectedAddress || undefined,
 				remark: selectedRemark || undefined,
 				identityNo: selectedIdentityNumber.trim() || undefined,
@@ -375,6 +414,8 @@
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
+			photoUrl = '';
+			if (photoInputEl) photoInputEl.value = '';
 		} catch (error) {
 			const message =
 				error instanceof Error
@@ -397,17 +438,55 @@
 			<div
 				class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
 			>
-				<!-- Profile block: centered on mobile, then fixed width on lg+ -->
+				<!-- Profile block: photo upload + preview -->
 				<div
 					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 				>
-					<DaisyUiSkeleton
-						className="size-28 rounded-full sm:size-32 lg:size-36"
+					<input
+						type="file"
+						accept="image/jpeg,image/png,image/webp,image/gif"
+						class="hidden"
+						bind:this={photoInputEl}
+						onchange={handlePhotoChange}
 					/>
+					<button
+						type="button"
+						class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full overflow-hidden flex items-center justify-center bg-base-300 text-base-content/50 size-28 sm:size-32 lg:size-36 shrink-0"
+						onclick={() => photoInputEl?.click()}
+						disabled={photoUploading}
+						title="Upload photo"
+					>
+						{#if photoUploading}
+							<span class="text-xs">Uploading…</span>
+						{:else if photoUrl}
+							<img
+								src={photoUrl}
+								alt="Staff profile"
+								class="size-full object-cover"
+							/>
+						{:else}
+							<DaisyUiSkeleton
+								className="size-full rounded-full"
+							/>
+						{/if}
+					</button>
 					<div class="flex flex-col gap-2">
-						<DaisyUiButton className="d-btn-error d-btn-sm"
-							>Remove</DaisyUiButton
+						<DaisyUiButton
+							type="button"
+							className="d-btn-primary d-btn-sm"
+							onClick={() => photoInputEl?.click()}
+							disabled={photoUploading}
 						>
+							{photoUrl ? 'Change photo' : 'Upload photo'}
+						</DaisyUiButton>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-error d-btn-sm"
+							onClick={handleRemovePhoto}
+							disabled={!photoUrl}
+						>
+							Remove
+						</DaisyUiButton>
 					</div>
 				</div>
 

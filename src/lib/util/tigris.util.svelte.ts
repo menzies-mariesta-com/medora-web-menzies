@@ -140,10 +140,17 @@ export class TigrisUtil {
 	 */
 	static getDefaultConfig(): TigrisStorageConfig {
 		return {
-			bucket: process.env.TIGRIS_STORAGE_BUCKET,
-			accessKeyId: process.env.TIGRIS_STORAGE_ACCESS_KEY_ID,
-			secretAccessKey: process.env.TIGRIS_STORAGE_SECRET_ACCESS_KEY,
-			endpoint: process.env.TIGRIS_STORAGE_ENDPOINT
+			bucket:
+				process.env.TIGRIS_STORAGE_BUCKET ?? process.env.TIGRIS_BUCKET,
+			accessKeyId:
+				process.env.TIGRIS_STORAGE_ACCESS_KEY_ID ??
+				process.env.TIGRIS_ACCESS_KEY,
+			secretAccessKey:
+				process.env.TIGRIS_STORAGE_SECRET_ACCESS_KEY ??
+				process.env.TIGRIS_SECRET_KEY,
+			endpoint:
+				process.env.TIGRIS_STORAGE_ENDPOINT ??
+				process.env.TIGRIS_FLY_ENDPOINT
 		};
 	}
 

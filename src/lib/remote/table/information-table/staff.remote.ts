@@ -214,6 +214,7 @@ export const createStaffWithUser = command(
 		isSuperAdmin?: boolean;
 		isLocked?: boolean;
 		userGroupIds?: number[];
+		photoUrl?: string;
 	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -273,6 +274,7 @@ export const createStaffWithUser = command(
 			phonePrimary: payload.phonePrimary,
 			phoneSecondary: payload.phoneSecondary,
 			dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth).toISOString().split('T')[0] : undefined,
+			photoUrl: payload.photoUrl ?? undefined,
 			address: payload.address,
 			remark: payload.remark,
 			identityNo: payload.identityNo,
