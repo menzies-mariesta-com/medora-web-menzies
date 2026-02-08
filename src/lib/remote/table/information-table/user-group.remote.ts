@@ -3,6 +3,8 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { UserGroupSchema, UserGroupSchemaInsert, UserGroupSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -16,6 +18,26 @@ export const getUserGroupCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.userGroupTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getUserGroupPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<UserGroupSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.userGroupTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.userGroupTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get all with relations
 export const getUserGroupWithRelations = query(async () => {
