@@ -1,18 +1,18 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { SpecializationSchema, SpecializationSchemaInsert, SpecializationSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getSpecialization = query(async (): Promise<SpecializationSchema[]> => {
-	const data = await db.select().from(table.specializationTable);
+	const data = await ensureDb().select().from(table.specializationTable);
 	return data;
 });
 
 // get count
 export const getSpecializationCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.specializationTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.specializationTable);
 	return row?.count ?? 0;
 });
 
@@ -20,7 +20,7 @@ export const getSpecializationCount = query(async (): Promise<number> => {
 export const getSpecializationById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<SpecializationSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.specializationTable)
 			.where(eq(table.specializationTable.id, id));
@@ -32,7 +32,7 @@ export const getSpecializationById = query(
 export const createSpecialization = command(
 	'unchecked' as const,
 	async (payload: SpecializationSchemaInsert): Promise<SpecializationSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.specializationTable)
 			.values(payload)
 			.returning();
@@ -47,7 +47,7 @@ export const updateSpecialization = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<SpecializationSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.specializationTable)
 			.set(rest as SpecializationSchemaUpdate)
 			.where(eq(table.specializationTable.id, id))
@@ -62,7 +62,7 @@ export const updateSpecialization = command(
 export const deleteSpecialization = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.specializationTable).where(eq(table.specializationTable.id, id));
+		await ensureDb().delete(table.specializationTable).where(eq(table.specializationTable.id, id));
 		getSpecialization().refresh();
 	}
 );
@@ -71,7 +71,7 @@ export const deleteSpecialization = command(
 export const deleteSpecializationComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.specializationTable).where(eq(table.specializationTable.id, id));
+		await ensureDb().delete(table.specializationTable).where(eq(table.specializationTable.id, id));
 		getSpecialization().refresh();
 	}
 );

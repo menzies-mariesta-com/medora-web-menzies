@@ -1,5 +1,6 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { error } from '@sveltejs/kit';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -14,13 +15,13 @@ import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-ta
 
 // get all
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
-	const data = await db.select().from(table.staffTable);
+	const data = await ensureDb().select().from(table.staffTable);
 	return data;
 });
 
 // get all with many-to-many relations and master lookups
 export const getStaffWithRelations = query(async () => {
-	return db.query.staffTable.findMany({
+	return ensureDb().query.staffTable.findMany({
 		with: {
 			gender: true,
 			identityType: true,
@@ -49,7 +50,7 @@ export const getStaffWithRelations = query(async () => {
 export const getStaffByUserIdWithRelations = query(
 	'unchecked' as const,
 	async ({ userId }: { userId: string }) => {
-		return db.query.staffTable.findFirst({
+		return ensureDb().query.staffTable.findFirst({
 			where: (staffTable, funcs) => funcs.eq(staffTable.userId, userId),
 			with: {
 				gender: true,
@@ -78,7 +79,7 @@ export const getStaffByUserIdWithRelations = query(
 
 // get count
 export const getStaffCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.staffTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.staffTable);
 	return row?.count ?? 0;
 });
 
@@ -86,7 +87,7 @@ export const getStaffCount = query(async (): Promise<number> => {
 export const getStaffById = query(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<StaffSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTable)
 			.where(eq(table.staffTable.id, id));
@@ -97,7 +98,7 @@ export const getStaffById = query(
 export const getStaffByUserId = query(
 	'unchecked' as const,
 	async ({ userId }: { userId: string }): Promise<StaffSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTable)
 			.where(eq(table.staffTable.userId, userId));
@@ -120,7 +121,7 @@ export const createStaff = command(
 			throw new Error('Staff profile already exists');
 		}
 
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.staffTable)
 			.values(payload)
 			.returning();
@@ -135,7 +136,7 @@ export const updateStaff = command(
 	'unchecked' as const,
 	async (payload: { id: string } & StaffSchemaUpdate): Promise<StaffSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.staffTable)
 			.set(rest as StaffSchemaUpdate)
 			.where(eq(table.staffTable.id, id))
@@ -150,7 +151,7 @@ export const updateStaff = command(
 export const deleteStaff = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.staffTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.staffTable.id, id));
@@ -162,7 +163,7 @@ export const deleteStaff = command(
 export const deleteStaffComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
-		await db.delete(table.staffTable).where(eq(table.staffTable.id, id));
+		await ensureDb().delete(table.staffTable).where(eq(table.staffTable.id, id));
 		getStaff().refresh();
 	}
 );
@@ -185,6 +186,7 @@ export const createStaffWithUser = command(
 		email: string;
 		name: string;
 		// Staff fields (only include fields that exist in staffTable)
+		code?: string;
 		firstName?: string;
 		middleName?: string;
 		lastName?: string;
@@ -219,13 +221,14 @@ export const createStaffWithUser = command(
 		const passwordHashUtil = new PasswordHashUtil();
 
 		// Check if email already exists
-		const existingUser = await db
+		const existingUser = await ensureDb()
 			.select()
 			.from(userTable)
 			.where(eq(userTable.email, payload.email))
 			.limit(1);
 		if (existingUser.length > 0) {
-			throw new Error('User with this email already exists');
+			// Use SvelteKit HttpError so the message survives serialization
+			throw error(400, 'Staff with this email already exists');
 		}
 
 		// Generate random password
@@ -234,7 +237,7 @@ export const createStaffWithUser = command(
 
 		// Create user
 		const userId = uuidv7();
-		const [user] = await db
+		const [user] = await ensureDb()
 			.insert(userTable)
 			.values({
 				id: userId,
@@ -244,10 +247,10 @@ export const createStaffWithUser = command(
 			})
 			.returning();
 
-		if (!user) throw new Error('Failed to create user');
+		if (!user) throw error(400, 'Failed to create staff.');
 
 		// Create account for Better Auth email/password
-		await db.insert(accountTable).values({
+		await ensureDb().insert(accountTable).values({
 			id: uuidv7(),
 			userId: user.id,
 			accountId: payload.email,

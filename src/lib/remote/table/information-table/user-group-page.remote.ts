@@ -1,18 +1,18 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { UserGroupPageSchema, UserGroupPageSchemaInsert, UserGroupPageSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getUserGroupPage = query(async (): Promise<UserGroupPageSchema[]> => {
-	const data = await db.select().from(table.userGroupPageTable);
+	const data = await ensureDb().select().from(table.userGroupPageTable);
 	return data;
 });
 
 // get count
 export const getUserGroupPageCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.userGroupPageTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.userGroupPageTable);
 	return row?.count ?? 0;
 });
 
@@ -20,7 +20,7 @@ export const getUserGroupPageCount = query(async (): Promise<number> => {
 export const getUserGroupPageById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<UserGroupPageSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.userGroupPageTable)
 			.where(eq(table.userGroupPageTable.id, id));
@@ -32,7 +32,7 @@ export const getUserGroupPageById = query(
 export const createUserGroupPage = command(
 	'unchecked' as const,
 	async (payload: UserGroupPageSchemaInsert): Promise<UserGroupPageSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.userGroupPageTable)
 			.values(payload)
 			.returning();
@@ -51,7 +51,7 @@ export const updateUserGroupPage = command(
 		pageId?: number | null;
 	}): Promise<UserGroupPageSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.userGroupPageTable)
 			.set(rest as UserGroupPageSchemaUpdate)
 			.where(eq(table.userGroupPageTable.id, id))
@@ -66,7 +66,7 @@ export const updateUserGroupPage = command(
 export const deleteUserGroupPage = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.userGroupPageTable).where(eq(table.userGroupPageTable.id, id));
+		await ensureDb().delete(table.userGroupPageTable).where(eq(table.userGroupPageTable.id, id));
 		getUserGroupPage().refresh();
 	}
 );
@@ -75,7 +75,7 @@ export const deleteUserGroupPage = command(
 export const deleteUserGroupPageComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.userGroupPageTable).where(eq(table.userGroupPageTable.id, id));
+		await ensureDb().delete(table.userGroupPageTable).where(eq(table.userGroupPageTable.id, id));
 		getUserGroupPage().refresh();
 	}
 );
