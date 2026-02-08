@@ -2,37 +2,44 @@
 	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
 	import GPrivateHekaModuleBar from '$lib/component/global/private/heka/GPrivateHekaModuleBar.svelte';
 	import GPrivateHekaNavbar from '$lib/component/global/private/heka/GPrivateHekaNavbar.svelte';
-	import { getPageWithRelations } from '$lib/remote/table/information-table/page.remote';
+	import {
+		getPageWithRelations,
+		type PageWithRelations,
+	} from '$lib/remote/table/information-table/page.remote';
+	import type { PageSchema } from '$lib/server/db/schema-type';
 
 	let { children } = $props();
 
-	// ignore typing, just use `any[]`
-	const fullPageData = (await getPageWithRelations()) as any[];
+	const fullPageData: PageWithRelations[] = await getPageWithRelations();
 
 	// unique module objects by module.id
 	const uniqueModuleData = Array.from(
 		new Map(
 			fullPageData
-				.filter((p) => p.module) // keep only items that have module
+				.filter((p): p is PageWithRelations & { module: NonNullable<PageWithRelations['module']> } =>
+					p.module != null
+				)
 				.map((p) => [p.module.id, p.module])
 		).values()
 	);
 
 	// plain page objects (without module/status)
-	const pageData = fullPageData.map(
-		({ module, status, ...page }) => page
+	const pageData: PageSchema[] = fullPageData.map(
+		({ module: _module, status: _status, ...page }) => page
 	);
 
 	// page array with nested children (based on parentId)
+	type PageTreeItem = PageSchema & { children: PageTreeItem[] };
+
 	function buildPageTree(
-		pages: any[],
+		pages: PageSchema[],
 		parentId: number | null = null
-	): any {
+	): PageTreeItem[] {
 		return pages
 			.filter((p) => p.parentId === parentId)
-			.map((p: any) => ({
+			.map((p) => ({
 				...p,
-				children: buildPageTree(pages, p.id)
+				children: buildPageTree(pages, p.id),
 			}));
 	}
 

@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	StaffDetailSchema,
@@ -11,13 +11,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getStaffDetail = query(async (): Promise<StaffDetailSchema[]> => {
-	const data = await db.select().from(table.staffDetailTable);
+	const data = await ensureDb().select().from(table.staffDetailTable);
 	return data;
 });
 
 // get all with relations
 export const getStaffDetailWithRelations = query(async () => {
-	return db.query.staffDetailTable.findMany({
+	return ensureDb().query.staffDetailTable.findMany({
 		with: {
 			bloodType: true,
 			status: true,
@@ -27,7 +27,7 @@ export const getStaffDetailWithRelations = query(async () => {
 
 // get count
 export const getStaffDetailCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.staffDetailTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.staffDetailTable);
 	return row?.count ?? 0;
 });
 
@@ -35,7 +35,7 @@ export const getStaffDetailCount = query(async (): Promise<number> => {
 export const getStaffDetailById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StaffDetailSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.staffDetailTable)
 			.where(eq(table.staffDetailTable.id, id));
@@ -47,7 +47,7 @@ export const getStaffDetailById = query(
 export const getStaffDetailByIdWithRelations = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }) => {
-		return db.query.staffDetailTable.findFirst({
+		return ensureDb().query.staffDetailTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				bloodType: true,
@@ -61,7 +61,7 @@ export const getStaffDetailByIdWithRelations = query(
 export const createStaffDetail = command(
 	'unchecked' as const,
 	async (payload: StaffDetailSchemaInsert): Promise<StaffDetailSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.staffDetailTable)
 			.values(payload)
 			.returning();
@@ -76,7 +76,7 @@ export const updateStaffDetail = command(
 	'unchecked' as const,
 	async (payload: { id: number } & StaffDetailSchemaUpdate): Promise<StaffDetailSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.staffDetailTable)
 			.set(rest as StaffDetailSchemaUpdate)
 			.where(eq(table.staffDetailTable.id, id))
@@ -91,7 +91,7 @@ export const updateStaffDetail = command(
 export const deleteStaffDetail = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.staffDetailTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.staffDetailTable.id, id));
@@ -103,7 +103,7 @@ export const deleteStaffDetail = command(
 export const deleteStaffDetailComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.staffDetailTable).where(eq(table.staffDetailTable.id, id));
+		await ensureDb().delete(table.staffDetailTable).where(eq(table.staffDetailTable.id, id));
 		getStaffDetail().refresh();
 	}
 );

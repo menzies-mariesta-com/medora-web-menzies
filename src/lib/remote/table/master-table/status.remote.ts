@@ -1,18 +1,18 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StatusSchema, StatusSchemaInsert, StatusSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getStatus = query(async (): Promise<StatusSchema[]> => {
-	const data = await db.select().from(table.statusTable);
+	const data = await ensureDb().select().from(table.statusTable);
 	return data;
 });
 
 // get count
 export const getStatusCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.statusTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.statusTable);
 	return row?.count ?? 0;
 });
 
@@ -20,7 +20,7 @@ export const getStatusCount = query(async (): Promise<number> => {
 export const getStatusById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StatusSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.statusTable)
 			.where(eq(table.statusTable.id, id));
@@ -32,7 +32,7 @@ export const getStatusById = query(
 export const createStatus = command(
 	'unchecked' as const,
 	async (payload: StatusSchemaInsert): Promise<StatusSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.statusTable)
 			.values(payload)
 			.returning();
@@ -47,7 +47,7 @@ export const updateStatus = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<StatusSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.statusTable)
 			.set(rest as StatusSchemaUpdate)
 			.where(eq(table.statusTable.id, id))
@@ -62,7 +62,7 @@ export const updateStatus = command(
 export const deleteStatus = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.statusTable).where(eq(table.statusTable.id, id));
+		await ensureDb().delete(table.statusTable).where(eq(table.statusTable.id, id));
 		getStatus().refresh();
 	}
 );
@@ -71,7 +71,7 @@ export const deleteStatus = command(
 export const deleteStatusComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.statusTable).where(eq(table.statusTable.id, id));
+		await ensureDb().delete(table.statusTable).where(eq(table.statusTable.id, id));
 		getStatus().refresh();
 	}
 );

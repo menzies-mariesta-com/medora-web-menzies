@@ -1,18 +1,18 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { IdentityTypeSchema, IdentityTypeSchemaInsert, IdentityTypeSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getIdentityType = query(async (): Promise<IdentityTypeSchema[]> => {
-	const data = await db.select().from(table.identityTypeTable);
+	const data = await ensureDb().select().from(table.identityTypeTable);
 	return data;
 });
 
 // get count
 export const getIdentityTypeCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.identityTypeTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.identityTypeTable);
 	return row?.count ?? 0;
 });
 
@@ -20,7 +20,7 @@ export const getIdentityTypeCount = query(async (): Promise<number> => {
 export const getIdentityTypeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<IdentityTypeSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.identityTypeTable)
 			.where(eq(table.identityTypeTable.id, id));
@@ -32,7 +32,7 @@ export const getIdentityTypeById = query(
 export const createIdentityType = command(
 	'unchecked' as const,
 	async (payload: IdentityTypeSchemaInsert): Promise<IdentityTypeSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.identityTypeTable)
 			.values(payload)
 			.returning();
@@ -47,7 +47,7 @@ export const updateIdentityType = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<IdentityTypeSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.identityTypeTable)
 			.set(rest as IdentityTypeSchemaUpdate)
 			.where(eq(table.identityTypeTable.id, id))
@@ -62,7 +62,7 @@ export const updateIdentityType = command(
 export const deleteIdentityType = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.identityTypeTable).where(eq(table.identityTypeTable.id, id));
+		await ensureDb().delete(table.identityTypeTable).where(eq(table.identityTypeTable.id, id));
 		getIdentityType().refresh();
 	}
 );
@@ -71,7 +71,7 @@ export const deleteIdentityType = command(
 export const deleteIdentityTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.identityTypeTable).where(eq(table.identityTypeTable.id, id));
+		await ensureDb().delete(table.identityTypeTable).where(eq(table.identityTypeTable.id, id));
 		getIdentityType().refresh();
 	}
 );
