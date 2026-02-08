@@ -66,7 +66,7 @@
 	</DaisyUiNavbar>
 {/if}
 
-<DaisyUiNavbar className="flex border-t border-neutral/32 gap-3 ">
+<DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
 			tooltipText="close top panel"
@@ -92,20 +92,25 @@
 			</DaisyUiButton>
 		</DaisyUiTooltip>
 	{/if}
-	{#each moduleList as m (m.id)}
-		<DaisyUiDropdown>
-			<DaisyUiDropdownButton>{m?.name}</DaisyUiDropdownButton>
-			<DaisyUiDropdownContent
-				className="max-w-screen max-h-screen bg-accent/10 flex gap-2"
-			>
-				{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
-					<DaisyUiButton
-						className="justify-start"
-						onClick={() => routerUtil.replaceRoute(p.pageUrl)}
-						>{p.name}</DaisyUiButton
+	<div class="flex flex-1 flex-wrap gap-3">
+		{#each moduleList as m (m.id)}
+			<div>
+				<DaisyUiDropdown>
+					<DaisyUiDropdownButton>{m?.name}</DaisyUiDropdownButton>
+					<DaisyUiDropdownContent
+						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50"
 					>
-				{/each}
-			</DaisyUiDropdownContent>
-		</DaisyUiDropdown>
-	{/each}
+						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
+							<DaisyUiButton
+								className="w-full min-w-0 justify-start truncate text-left"
+								onClick={() => p.pageUrl != null && routerUtil.replaceRoute(p.pageUrl)}
+							>
+								{p.name}
+							</DaisyUiButton>
+						{/each}
+					</DaisyUiDropdownContent>
+				</DaisyUiDropdown>
+			</div>
+		{/each}
+	</div>
 </DaisyUiNavbar>
