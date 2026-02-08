@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { CitySchema, CitySchemaInsert, CitySchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getCity = query(async (): Promise<CitySchema[]> => {
-	const data = await db.select().from(table.cityTable);
+	const data = await ensureDb().select().from(table.cityTable);
 	return data;
 });
 
 // get count
 export const getCityCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.cityTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.cityTable);
 	return row?.count ?? 0;
 });
 
@@ -21,7 +21,7 @@ export const getCityCount = query(async (): Promise<number> => {
 export const getCityById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<CitySchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.cityTable)
 			.where(eq(table.cityTable.id, id));
@@ -33,7 +33,7 @@ export const getCityById = query(
 export const createCity = command(
 	'unchecked' as const,
 	async (payload: CitySchemaInsert): Promise<CitySchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.cityTable)
 			.values(payload)
 			.returning();
@@ -54,7 +54,7 @@ export const updateCity = command(
 		statusId?: number;
 	}): Promise<CitySchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.cityTable)
 			.set(rest as CitySchemaUpdate)
 			.where(eq(table.cityTable.id, id))
@@ -69,7 +69,7 @@ export const updateCity = command(
 export const deleteCity = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.cityTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.cityTable.id, id));
@@ -81,7 +81,7 @@ export const deleteCity = command(
 export const deleteCityComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.cityTable).where(eq(table.cityTable.id, id));
+		await ensureDb().delete(table.cityTable).where(eq(table.cityTable.id, id));
 		getCity().refresh();
 	}
 );

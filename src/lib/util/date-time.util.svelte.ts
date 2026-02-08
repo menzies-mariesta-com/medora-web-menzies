@@ -234,6 +234,16 @@ export class DateTimeUtil {
 	isSameYear(date1: Date, date2: Date): boolean {
 		return date1.getFullYear() === date2.getFullYear();
 	}
+
+	/**
+	 * Returns today's date in `YYYY-MM-DD` format, suitable for `<input type="date">`.
+	 */
+	getTodayDateString(): string {
+		const today = new SvelteDate();
+		const { year, month, day } = this.getDateComponents(today);
+		return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+	}
+
 	toISOStringWithoutMillis(date: Date): string {
 		return date.toISOString().split('.')[0] + 'Z';
 	}

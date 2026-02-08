@@ -92,8 +92,9 @@
 							inputType={isPasswordVisible ? 'text' : 'password'}
 							inputPlaceholderText="Password"
 							nameText="password"
+							className="d-join-item"
 						/>
-						<DaisyUiButton type="button" onClick={togglePasswordVisibility}>
+						<DaisyUiButton className="d-join-item" type="button" onClick={togglePasswordVisibility}>
 							{#if isPasswordVisible}
 								<LucideEye />
 							{:else}
