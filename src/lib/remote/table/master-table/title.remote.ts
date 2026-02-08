@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { TitleSchema, TitleSchemaInsert, TitleSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getTitle = query(async (): Promise<TitleSchema[]> => {
-	const data = await db.select().from(table.titleTable);
+	const data = await ensureDb().select().from(table.titleTable);
 	return data;
 });
 
 // get count
 export const getTitleCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.titleTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.titleTable);
 	return row?.count ?? 0;
 });
 
@@ -21,7 +21,7 @@ export const getTitleCount = query(async (): Promise<number> => {
 export const getTitleById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<TitleSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.titleTable)
 			.where(eq(table.titleTable.id, id));
@@ -33,7 +33,7 @@ export const getTitleById = query(
 export const createTitle = command(
 	'unchecked' as const,
 	async (payload: TitleSchemaInsert): Promise<TitleSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.titleTable)
 			.values(payload)
 			.returning();
@@ -48,7 +48,7 @@ export const updateTitle = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<TitleSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.titleTable)
 			.set(rest as TitleSchemaUpdate)
 			.where(eq(table.titleTable.id, id))
@@ -63,7 +63,7 @@ export const updateTitle = command(
 export const deleteTitle = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.titleTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.titleTable.id, id));
@@ -75,7 +75,7 @@ export const deleteTitle = command(
 export const deleteTitleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.titleTable).where(eq(table.titleTable.id, id));
+		await ensureDb().delete(table.titleTable).where(eq(table.titleTable.id, id));
 		getTitle().refresh();
 	}
 );

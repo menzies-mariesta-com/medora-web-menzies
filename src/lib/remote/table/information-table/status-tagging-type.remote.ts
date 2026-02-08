@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	StatusTaggingTypeSchema,
@@ -11,13 +11,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getStatusTaggingType = query(async (): Promise<StatusTaggingTypeSchema[]> => {
-	const data = await db.select().from(table.statusTaggingTypeTable);
+	const data = await ensureDb().select().from(table.statusTaggingTypeTable);
 	return data;
 });
 
 // get all with relations
 export const getStatusTaggingTypeWithRelations = query(async () => {
-	return db.query.statusTaggingTypeTable.findMany({
+	return ensureDb().query.statusTaggingTypeTable.findMany({
 		with: {
 			status: true,
 		},
@@ -26,7 +26,7 @@ export const getStatusTaggingTypeWithRelations = query(async () => {
 
 // get count
 export const getStatusTaggingTypeCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.statusTaggingTypeTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.statusTaggingTypeTable);
 	return row?.count ?? 0;
 });
 
@@ -34,7 +34,7 @@ export const getStatusTaggingTypeCount = query(async (): Promise<number> => {
 export const getStatusTaggingTypeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StatusTaggingTypeSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.statusTaggingTypeTable)
 			.where(eq(table.statusTaggingTypeTable.id, id));
@@ -46,7 +46,7 @@ export const getStatusTaggingTypeById = query(
 export const createStatusTaggingType = command(
 	'unchecked' as const,
 	async (payload: StatusTaggingTypeSchemaInsert): Promise<StatusTaggingTypeSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.statusTaggingTypeTable)
 			.values(payload)
 			.returning();
@@ -61,7 +61,7 @@ export const updateStatusTaggingType = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<StatusTaggingTypeSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.statusTaggingTypeTable)
 			.set(rest as StatusTaggingTypeSchemaUpdate)
 			.where(eq(table.statusTaggingTypeTable.id, id))
@@ -76,7 +76,7 @@ export const updateStatusTaggingType = command(
 export const deleteStatusTaggingType = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.statusTaggingTypeTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.statusTaggingTypeTable.id, id));
@@ -88,7 +88,7 @@ export const deleteStatusTaggingType = command(
 export const deleteStatusTaggingTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.statusTaggingTypeTable).where(eq(table.statusTaggingTypeTable.id, id));
+		await ensureDb().delete(table.statusTaggingTypeTable).where(eq(table.statusTaggingTypeTable.id, id));
 		getStatusTaggingType().refresh();
 	}
 );

@@ -20,12 +20,14 @@
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
 	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
 	import type {
+	BloodTypeSchema,
 		CitySchema,
 		CountrySchema,
 		DepartmentSchema,
 		GenderSchema,
 		IdentityTypeSchema,
 		MaritalStatusSchema,
+		NationalitySchema,
 		PostalCodeSchema,
 		SpecializationSchema,
 		StaffEmploymentTypeSchema,
@@ -45,8 +47,12 @@
 	import LAdministrationStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationPermissions.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
+	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
 
 	let routerUtil = new RouterUtil();
+	const dateTimeUtil = new DateTimeUtil();
 	// data list
 	let titleData: TitleSchema[] = $state([]);
 	let staffTypeData: StaffTypeSchema[] = $state([]);
@@ -55,6 +61,7 @@
 	let genderData: GenderSchema[] = $state([]);
 	let maritalStatusData: MaritalStatusSchema[] = $state([]);
 	let countryData: CountrySchema[] = $state([]);
+	let bloodTypeData: BloodTypeSchema[] = $state([]);
 	let identityTypeData: IdentityTypeSchema[] = $state([]);
 	let userGroupData: UserGroupSchema[] = $state([]);
 	let staffEmploymentTypeData: StaffEmploymentTypeSchema[] = $state(
@@ -63,9 +70,11 @@
 	let stateData: StateSchema[] = $state([]);
 	let cityData: CitySchema[] = $state([]);
 	let postalCodeData: PostalCodeSchema[] = $state([]);
+	let nationalityData: NationalitySchema[] = $state([]);
 
 	// select value list
 	let selectedTitleId: string = $state('');
+	let selectedStaffCode: string = $state('');
 	let selectedFirstName: string = $state('');
 	let selectedMiddleName: string = $state('');
 	let selectedLastName: string = $state('');
@@ -89,10 +98,12 @@
 	let selectedIdentityTypeId: string = $state('');
 	let selectedIdentityNumber: string = $state('');
 	let selectedDateOfBirth: string = $state('');
-	let selectedJoinDate: string = $state('');
+	let selectedJoinDate: string = $state(dateTimeUtil.getTodayDateString());
 	let selectedResignDate: string = $state('');
 	let selectedAddress: string = $state('');
 	let selectedRemark: string = $state('');
+	let selectedBloodTypeId: string = $state('');
+	let selectedNationalityId: string = $state('');
 	let selectedUserGroups: number[] = $state([]);
 	let isActive: boolean = $state(true);
 	let isSuperAdmin: boolean = $state(false);
@@ -201,6 +212,8 @@
 		stateData = await getState();
 		cityData = await getCity();
 		postalCodeData = await getPostalCode();
+		bloodTypeData = await getBloodType();
+		nationalityData = await getNationality();
 	}
 
 	const toastService = new ToastService();
@@ -247,13 +260,6 @@
 		const fd = new FormData(form);
 
 		// Validation
-		if (!selectedEmail?.trim()) {
-			toastService.addToast(
-				'Email is required.',
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
 		if (!selectedFirstName?.trim()) {
 			toastService.addToast(
 				'First name is required.',
@@ -261,9 +267,23 @@
 			);
 			return;
 		}
-		if (!selectedLastName?.trim()) {
+		if (!selectedEmail?.trim()) {
 			toastService.addToast(
-				'Last name is required.',
+				'Email is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (!selectedStaffEmploymentTypeId) {
+			toastService.addToast(
+				'Employment Type is required.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (selectedUserGroups.length === 0) {
+			toastService.addToast(
+				'At Least One User Group is required',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -301,6 +321,7 @@
 			const result = await createStaffWithUser({
 				email: selectedEmail.trim(),
 				name: fullName,
+				code: selectedStaffCode.trim(),
 				firstName: selectedFirstName.trim(),
 				middleName: selectedMiddleName.trim() || undefined,
 				lastName: selectedLastName.trim(),
@@ -377,11 +398,12 @@
 			}
 			
 			toastService.addToast(
-				'A password reset email has been sent to this staff member.',
+				'Reset password email has been sent to the staff.',
 				StatusColorEnum.INFO
 			);
 
 			// Reset form
+			selectedStaffCode = '';
 			selectedTitleId = '';
 			selectedFirstName = '';
 			selectedMiddleName = '';
@@ -406,7 +428,7 @@
 			selectedIdentityTypeId = '';
 			selectedIdentityNumber = '';
 			selectedDateOfBirth = '';
-			selectedJoinDate = '';
+			selectedJoinDate = dateTimeUtil.getTodayDateString();
 			selectedResignDate = '';
 			selectedAddress = '';
 			selectedRemark = '';
@@ -414,13 +436,28 @@
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
-			photoUrl = '';
+      photoUrl = '';
 			if (photoInputEl) photoInputEl.value = '';
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Failed to create staff. Please try again.';
+		} catch (error: unknown) {
+			let message: string | null = null;
+
+			if (error && typeof error === 'object') {
+				const err = error as { message?: string; body?: { message?: string } };
+
+				// SvelteKit remote `command` wraps server errors in HttpError,
+				// with the original message living at `error.body.message`.
+				if (err.body && typeof err.body.message === 'string') {
+					message = err.body.message;
+				} else if (typeof err.message === 'string') {
+					message = err.message;
+				}
+			}
+
+			if (!message) {
+				message = 'Failed to create staff. Please try again.';
+			}
+
+		
 			toastService.addToast(message, StatusColorEnum.ERROR);
 		} finally {
 			isLoading = false;
@@ -499,6 +536,7 @@
 						{titleData}
 						{genderData}
 						{maritalStatusData}
+						bind:selectedStaffCode
 						bind:selectedTitleId
 						bind:selectedFirstName
 						bind:selectedMiddleName
@@ -511,6 +549,7 @@
 					<!-- Column 2 -->
 					<LAdministrationStaffRegistrationSecondColumn
 						{countryData}
+						{bloodTypeData}
 						{staffTypeData}
 						{staffEmploymentTypeData}
 						bind:selectedPhoneCountryId
@@ -522,6 +561,7 @@
 						bind:selectedStaffEmploymentTypeId
 						bind:selectedEducation
 						bind:selectedDesignation
+						bind:selectedBloodTypeId
 					/>
 
 					<!-- Column 3 -->
@@ -529,6 +569,7 @@
 						{countryData}
 						{stateData}
 						{cityData}
+						{nationalityData}
 						{postalCodeData}
 						{departmentData}
 						{specializationData}
@@ -547,6 +588,7 @@
 						bind:selectedSpecializationId
 						bind:selectedIdentityTypeId
 						bind:selectedIdentityNumber
+						bind:selectedNationalityId
 					/>
 				</div>
 			</div>

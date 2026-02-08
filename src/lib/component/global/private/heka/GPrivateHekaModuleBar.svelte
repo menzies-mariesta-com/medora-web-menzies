@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { ModuleSchema, PageSchema } from '$lib/server/db/schema-type';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDropdownButton from '$lib/component/library/daisyui/dropdown/button/DaisyUiDropdownButton.svelte';
 	import DaisyUiDropdownContent from '$lib/component/library/daisyui/dropdown/content/DaisyUiDropdownContent.svelte';
@@ -18,7 +19,7 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
-	let { moduleList, pageList } = $props();
+	let { moduleList, pageList }: { moduleList: ModuleSchema[]; pageList: PageSchema[] } = $props();
 
 	const routerUtil = new RouterUtil();
 
@@ -97,7 +98,7 @@
 			<DaisyUiDropdownContent
 				className="max-w-screen max-h-screen bg-accent/10 flex gap-2"
 			>
-				{#each pageList.filter((p: any) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
+				{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 					<DaisyUiButton
 						className="justify-start"
 						onClick={() => routerUtil.replaceRoute(p.pageUrl)}

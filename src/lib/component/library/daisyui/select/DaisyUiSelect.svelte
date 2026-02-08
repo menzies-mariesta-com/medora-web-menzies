@@ -9,7 +9,7 @@
 		children?: () => void;
 		className?: string;
 		optionHeader?: string;
-		value?: any;
+		value?: string;
 		disabled?: boolean;
 	}>();
 </script>

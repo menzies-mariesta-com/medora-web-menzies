@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { GenderSchema, GenderSchemaInsert, GenderSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getGender = query(async (): Promise<GenderSchema[]> => {
-	const data = await db.select().from(table.genderTable);
+	const data = await ensureDb().select().from(table.genderTable);
 	return data;
 });
 
 // get count
 export const getGenderCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.genderTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.genderTable);
 	return row?.count ?? 0;
 });
 
@@ -21,7 +21,7 @@ export const getGenderCount = query(async (): Promise<number> => {
 export const getGenderById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<GenderSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.genderTable)
 			.where(eq(table.genderTable.id, id));
@@ -33,7 +33,7 @@ export const getGenderById = query(
 export const createGender = command(
 	'unchecked' as const,
 	async (payload: GenderSchemaInsert): Promise<GenderSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.genderTable)
 			.values(payload)
 			.returning();
@@ -48,7 +48,7 @@ export const updateGender = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string; statusId?: number | null }): Promise<GenderSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.genderTable)
 			.set(rest as GenderSchemaUpdate)
 			.where(eq(table.genderTable.id, id))
@@ -63,7 +63,7 @@ export const updateGender = command(
 export const deleteGender = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.genderTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.genderTable.id, id));
@@ -75,7 +75,7 @@ export const deleteGender = command(
 export const deleteGenderComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.genderTable).where(eq(table.genderTable.id, id));
+		await ensureDb().delete(table.genderTable).where(eq(table.genderTable.id, id));
 		getGender().refresh();
 	}
 );
