@@ -5,6 +5,8 @@ import type {
 	UserSchema,
 	UserSchemaUpdate
 } from '$lib/server/db/table/auth-table/auth-table-schema-type';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -18,6 +20,26 @@ export const getUserCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.userTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getUserPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<UserSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.userTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.userTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get one
 export const getUserById = query(

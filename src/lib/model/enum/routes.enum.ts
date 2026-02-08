@@ -10,7 +10,12 @@ export enum WebRoutesEnum {
 
 	// private
 	HEKA = "/heka",
-	HEKA_HOME = "/heka/home"
+	HEKA_HOME = "/heka/home",
+	HEKA_HOME_ADMINISTRATION = "/heka/home/administration",
+	HEKA_HOME_ADMINISTRATION_STAFF = "/heka/home/administration/staff",
+	HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION = "/heka/home/administration/staff/registration",
+	HEKA_HOME_ADMINISTRATION_STAFF_LIST = "/heka/home/administration/staff/list",
+	HEKA_HOME_PATIENT = "/heka/home/patient",
 }
 
 export enum ServerRoutesEnum {
