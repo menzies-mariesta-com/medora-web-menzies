@@ -48,6 +48,7 @@
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
 	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
 
@@ -497,7 +498,7 @@
 							<span class="text-xs">Uploading…</span>
 						{:else if photoUrl}
 							<img
-								src={photoUrl}
+								src={getStaffPhotoDisplayUrl(photoUrl) ?? photoUrl}
 								alt="Staff profile"
 								class="size-full object-cover"
 							/>
