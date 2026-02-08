@@ -139,6 +139,9 @@ export class TigrisUtil {
 	 * Callers can still override via the `config` option on each method.
 	 */
 	static getDefaultConfig(): TigrisStorageConfig {
+		// SDK expects TIGRIS_STORAGE_ACCESS_KEY_ID / TIGRIS_STORAGE_SECRET_ACCESS_KEY;
+		// also support short names TIGRIS_ACCESS_KEY / TIGRIS_SECRET_KEY.
+		// If secret contains + or spaces, quote it in .env: TIGRIS_SECRET_KEY="tsec_..."
 		return {
 			bucket:
 				process.env.TIGRIS_STORAGE_BUCKET ?? process.env.TIGRIS_BUCKET,
@@ -149,8 +152,7 @@ export class TigrisUtil {
 				process.env.TIGRIS_STORAGE_SECRET_ACCESS_KEY ??
 				process.env.TIGRIS_SECRET_KEY,
 			endpoint:
-				process.env.TIGRIS_STORAGE_ENDPOINT ??
-				process.env.TIGRIS_FLY_ENDPOINT
+				process.env.TIGRIS_STORAGE_ENDPOINT ?? 'https://t3.storage.dev'
 		};
 	}
 

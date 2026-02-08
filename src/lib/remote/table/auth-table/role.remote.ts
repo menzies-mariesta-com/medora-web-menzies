@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { RoleSchema, RoleSchemaInsert, RoleSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getRole = query(async (): Promise<RoleSchema[]> => {
-	const data = await db.select().from(table.roleTable);
+	const data = await ensureDb().select().from(table.roleTable);
 	return data;
 });
 
 // get all with relations
 export const getRoleWithRelations = query(async () => {
-	return db.query.roleTable.findMany({
+	return ensureDb().query.roleTable.findMany({
 		with: {
 			status: true,
 		},
@@ -22,7 +22,7 @@ export const getRoleWithRelations = query(async () => {
 
 // get count
 export const getRoleCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.roleTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.roleTable);
 	return row?.count ?? 0;
 });
 
@@ -30,7 +30,7 @@ export const getRoleCount = query(async (): Promise<number> => {
 export const getRoleById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<RoleSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.roleTable)
 			.where(eq(table.roleTable.id, id));
@@ -42,7 +42,7 @@ export const getRoleById = query(
 export const createRole = command(
 	'unchecked' as const,
 	async (payload: RoleSchemaInsert): Promise<RoleSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.roleTable)
 			.values(payload)
 			.returning();
@@ -57,7 +57,7 @@ export const updateRole = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<RoleSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.roleTable)
 			.set(rest as RoleSchemaUpdate)
 			.where(eq(table.roleTable.id, id))
@@ -72,7 +72,7 @@ export const updateRole = command(
 export const deleteRole = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.roleTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.roleTable.id, id));
@@ -84,7 +84,7 @@ export const deleteRole = command(
 export const deleteRoleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.roleTable).where(eq(table.roleTable.id, id));
+		await ensureDb().delete(table.roleTable).where(eq(table.roleTable.id, id));
 		getRole().refresh();
 	}
 );

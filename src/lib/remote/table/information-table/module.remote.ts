@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ModuleSchema, ModuleSchemaInsert, ModuleSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,19 +7,19 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getModule = query(async (): Promise<ModuleSchema[]> => {
-	const data = await db.select().from(table.moduleTable);
+	const data = await ensureDb().select().from(table.moduleTable);
 	return data;
 });
 
 // get count
 export const getModuleCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.moduleTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.moduleTable);
 	return row?.count ?? 0;
 });
 
 // get all with relations
 export const getModuleWithRelations = query(async () => {
-	return db.query.moduleTable.findMany({
+	return ensureDb().query.moduleTable.findMany({
 		with: {
 			status: true,
 			pages: true,
@@ -31,7 +31,7 @@ export const getModuleWithRelations = query(async () => {
 export const getModuleByIdWithRelations = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }) => {
-		return db.query.moduleTable.findFirst({
+		return ensureDb().query.moduleTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				status: true,
@@ -45,7 +45,7 @@ export const getModuleByIdWithRelations = query(
 export const getModuleById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<ModuleSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.moduleTable)
 			.where(eq(table.moduleTable.id, id));
@@ -57,7 +57,7 @@ export const getModuleById = query(
 export const createModule = command(
 	'unchecked' as const,
 	async (payload: ModuleSchemaInsert): Promise<ModuleSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.moduleTable)
 			.values(payload)
 			.returning();
@@ -77,7 +77,7 @@ export const updateModule = command(
 		statusId?: number;
 	}): Promise<ModuleSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.moduleTable)
 			.set(rest as ModuleSchemaUpdate)
 			.where(eq(table.moduleTable.id, id))
@@ -92,7 +92,7 @@ export const updateModule = command(
 export const deleteModule = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.moduleTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.moduleTable.id, id));
@@ -104,7 +104,7 @@ export const deleteModule = command(
 export const deleteModuleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.moduleTable).where(eq(table.moduleTable.id, id));
+		await ensureDb().delete(table.moduleTable).where(eq(table.moduleTable.id, id));
 		getModule().refresh();
 	}
 );

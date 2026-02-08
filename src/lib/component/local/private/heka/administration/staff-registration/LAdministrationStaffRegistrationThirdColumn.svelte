@@ -8,6 +8,7 @@
 		CountrySchema,
 		DepartmentSchema,
 		IdentityTypeSchema,
+		NationalitySchema,
 		PostalCodeSchema,
 		SpecializationSchema,
 		StateSchema
@@ -18,6 +19,7 @@
 		stateData,
 		cityData,
 		postalCodeData,
+		nationalityData,
 		departmentData,
 		specializationData,
 		identityTypeData,
@@ -34,11 +36,13 @@
 		selectedDepartmentId = $bindable(),
 		selectedSpecializationId = $bindable(),
 		selectedIdentityTypeId = $bindable(),
-		selectedIdentityNumber = $bindable()
+		selectedIdentityNumber = $bindable(),
+		selectedNationalityId = $bindable(),
 	} = $props<{
 		countryData: CountrySchema[];
 		stateData: StateSchema[];
 		cityData: CitySchema[];
+		nationalityData: NationalitySchema[];
 		postalCodeData: PostalCodeSchema[];
 		departmentData: DepartmentSchema[];
 		specializationData: SpecializationSchema[];
@@ -57,13 +61,14 @@
 		selectedSpecializationId?: string;
 		selectedIdentityTypeId?: string;
 		selectedIdentityNumber?: string;
+		selectedNationalityId?: string;
 	}>();
 </script>
 
 <div class="flex flex-col gap-4">
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="country" className="shrink-0 sm:w-36">Country</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect bind:value={selectedCountryId} optionHeader="Select a country ...">
 				{#each countryData as data (data.id)}
 					<option value={String(data.id)}>{data.name}</option>
@@ -73,7 +78,7 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="state" className="shrink-0 sm:w-36">State</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect
 				bind:value={selectedStateId}
 				optionHeader="Select a state ..."
@@ -87,7 +92,7 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="city" className="shrink-0 sm:w-36">City</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect
 				bind:value={selectedCityId}
 				optionHeader="Select a city ..."
@@ -101,7 +106,7 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="postal-code" className="shrink-0 sm:w-36">Postal Code</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect
 				bind:value={selectedPostalCodeId}
 				optionHeader="Select a postal code ..."
@@ -115,7 +120,7 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="department" className="shrink-0 sm:w-36">Department</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect bind:value={selectedDepartmentId} optionHeader="Select a department ...">
 				{#each departmentData as data (data.id)}
 					<option value={String(data.id)}>{data.name}</option>
@@ -125,7 +130,7 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="specialization" className="shrink-0 sm:w-36">Specialization</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<div class="max-w-80 flex-1">
 			<DaisyUiSelect
 				bind:value={selectedSpecializationId}
 				optionHeader="Select a specialization ..."
@@ -137,19 +142,33 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="identity-type" className="shrink-0 sm:w-36">Identity Type</DaisyUiLabel>
-		<div class="min-w-0 flex-1">
+		<DaisyUiLabel forText="identity-type" className="shrink-0 sm:w-36">Identity</DaisyUiLabel>
+		<div class="max-w-80 flex-1">
 			<DaisyUiJoin>
 				<DaisyUiSelect
 					bind:value={selectedIdentityTypeId}
 					optionHeader="Select an identity type ..."
+					className="d-join-item"
 				>
 					{#each identityTypeData as data (data.id)}
 						<option value={String(data.id)}>{data.name}</option>
 					{/each}
 				</DaisyUiSelect>
-				<DaisyUiInputField bind:value={selectedIdentityNumber} inputType="text" />
+				<DaisyUiInputField bind:value={selectedIdentityNumber} inputType="text" className="d-join-item" />
 			</DaisyUiJoin>
+		</div>
+	</div>
+	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+		<DaisyUiLabel forText="nationality" className="shrink-0 sm:w-36">Nationality</DaisyUiLabel>
+		<div class="max-w-80 flex-1">
+			<DaisyUiSelect
+				bind:value={selectedNationalityId}
+				optionHeader="Select a nationality ..."
+			>
+				{#each nationalityData as data (data.id)}
+					<option value={String(data.id)}>{data.name}</option>
+				{/each}
+			</DaisyUiSelect>
 		</div>
 	</div>
 </div>

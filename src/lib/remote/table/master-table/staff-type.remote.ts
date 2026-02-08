@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffTypeSchema, StaffTypeSchemaInsert, StaffTypeSchemaUpdate } from '$lib/server/db/schema-type';
 
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getStaffType = query(async (): Promise<StaffTypeSchema[]> => {
-  const data = await db.select().from(table.staffTypeTable);
+  const data = await ensureDb().select().from(table.staffTypeTable);
   return data;
 });
 
 // get count
 export const getStaffTypeCount = query(async (): Promise<number> => {
-  const [row] = await db.select({ count: count() }).from(table.staffTypeTable);
+  const [row] = await ensureDb().select({ count: count() }).from(table.staffTypeTable);
   return row?.count ?? 0;
 });
 
@@ -21,7 +21,7 @@ export const getStaffTypeCount = query(async (): Promise<number> => {
 export const getStaffTypeById = query(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<StaffTypeSchema | null> => {
-    const [row] = await db
+    const [row] = await ensureDb()
       .select()
       .from(table.staffTypeTable)
       .where(eq(table.staffTypeTable.id, id));
@@ -33,7 +33,7 @@ export const getStaffTypeById = query(
 export const createStaffType = command(
   'unchecked' as const,
   async (payload: StaffTypeSchemaInsert): Promise<StaffTypeSchema> => {
-    const [row] = await db
+    const [row] = await ensureDb()
       .insert(table.staffTypeTable)
       .values(payload)
       .returning();
@@ -48,7 +48,7 @@ export const updateStaffType = command(
   'unchecked' as const,
   async (payload: { id: number; name?: string }): Promise<StaffTypeSchema> => {
     const { id, ...rest } = payload;
-    const [row] = await db
+    const [row] = await ensureDb()
       .update(table.staffTypeTable)
       .set(rest as StaffTypeSchemaUpdate)
       .where(eq(table.staffTypeTable.id, id))
@@ -63,7 +63,7 @@ export const updateStaffType = command(
 export const deleteStaffType = command(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<void> => {
-    await db.delete(table.staffTypeTable).where(eq(table.staffTypeTable.id, id));
+    await ensureDb().delete(table.staffTypeTable).where(eq(table.staffTypeTable.id, id));
     getStaffType().refresh();
   }
 );
@@ -72,7 +72,7 @@ export const deleteStaffType = command(
 export const deleteStaffTypeComplete = command(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<void> => {
-    await db.delete(table.staffTypeTable).where(eq(table.staffTypeTable.id, id));
+    await ensureDb().delete(table.staffTypeTable).where(eq(table.staffTypeTable.id, id));
     getStaffType().refresh();
   }
 );

@@ -1,18 +1,18 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { CraftGroupSchema, CraftGroupSchemaInsert, CraftGroupSchemaUpdate } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getCraftGroup = query(async (): Promise<CraftGroupSchema[]> => {
-  const data = await db.select().from(table.craftGroupTable);
+  const data = await ensureDb().select().from(table.craftGroupTable);
   return data;
 });
 
 // get count
 export const getCraftGroupCount = query(async (): Promise<number> => {
-  const [row] = await db.select({ count: count() }).from(table.craftGroupTable);
+  const [row] = await ensureDb().select({ count: count() }).from(table.craftGroupTable);
   return row?.count ?? 0;
 });
 
@@ -20,7 +20,7 @@ export const getCraftGroupCount = query(async (): Promise<number> => {
 export const getCraftGroupById = query(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<CraftGroupSchema | null> => {
-    const [row] = await db
+    const [row] = await ensureDb()
       .select()
       .from(table.craftGroupTable)
       .where(eq(table.craftGroupTable.id, id));
@@ -32,7 +32,7 @@ export const getCraftGroupById = query(
 export const createCraftGroup = command(
   'unchecked' as const,
   async (payload: CraftGroupSchemaInsert): Promise<CraftGroupSchema> => {
-    const [row] = await db
+    const [row] = await ensureDb()
       .insert(table.craftGroupTable)
       .values(payload)
       .returning();
@@ -47,7 +47,7 @@ export const updateCraftGroup = command(
   'unchecked' as const,
   async (payload: { id: number; name?: string }): Promise<CraftGroupSchema> => {
     const { id, ...rest } = payload;
-    const [row] = await db
+    const [row] = await ensureDb()
       .update(table.craftGroupTable)
       .set(rest as CraftGroupSchemaUpdate)
       .where(eq(table.craftGroupTable.id, id))
@@ -62,7 +62,7 @@ export const updateCraftGroup = command(
 export const deleteCraftGroup = command(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<void> => {
-    await db.delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
+    await ensureDb().delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
     getCraftGroup().refresh();
   }
 );
@@ -71,7 +71,7 @@ export const deleteCraftGroup = command(
 export const deleteCraftGroupComplete = command(
   'unchecked' as const,
   async ({ id }: { id: number }): Promise<void> => {
-    await db.delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
+    await ensureDb().delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
     getCraftGroup().refresh();
   }
 );

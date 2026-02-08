@@ -24,11 +24,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 		const ext = type === 'image/jpeg' ? 'jpg' : type.split('/')[1] || 'bin';
 		const path = `staff-photos/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-		const result = await TigrisUtil.upload(path, file, {
+		await TigrisUtil.upload(path, file, {
 			contentType: type,
 			access: 'public'
 		});
-		return json({ url: result.url });
+		// Return proxy URL so images load with our server's get permission (no public bucket required)
+		return json({ url: `/api/staff-photo/${path}` });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Upload failed';
 		return json({ error: message }, { status: 500 });
