@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	PostalCodeSchema,
@@ -11,13 +11,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getPostalCode = query(async (): Promise<PostalCodeSchema[]> => {
-	const data = await db.select().from(table.postalCodeTable);
+	const data = await ensureDb().select().from(table.postalCodeTable);
 	return data;
 });
 
 // get count
 export const getPostalCodeCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.postalCodeTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.postalCodeTable);
 	return row?.count ?? 0;
 });
 
@@ -25,7 +25,7 @@ export const getPostalCodeCount = query(async (): Promise<number> => {
 export const getPostalCodeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<PostalCodeSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.postalCodeTable)
 			.where(eq(table.postalCodeTable.id, id));
@@ -37,7 +37,7 @@ export const getPostalCodeById = query(
 export const createPostalCode = command(
 	'unchecked' as const,
 	async (payload: PostalCodeSchemaInsert): Promise<PostalCodeSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.postalCodeTable)
 			.values(payload)
 			.returning();
@@ -57,7 +57,7 @@ export const updatePostalCode = command(
 		statusId?: number | null;
 	}): Promise<PostalCodeSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.postalCodeTable)
 			.set(rest as PostalCodeSchemaUpdate)
 			.where(eq(table.postalCodeTable.id, id))
@@ -72,7 +72,7 @@ export const updatePostalCode = command(
 export const deletePostalCode = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.postalCodeTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.postalCodeTable.id, id));
@@ -84,7 +84,7 @@ export const deletePostalCode = command(
 export const deletePostalCodeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.postalCodeTable).where(eq(table.postalCodeTable.id, id));
+		await ensureDb().delete(table.postalCodeTable).where(eq(table.postalCodeTable.id, id));
 		getPostalCode().refresh();
 	}
 );

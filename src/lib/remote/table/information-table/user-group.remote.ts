@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { UserGroupSchema, UserGroupSchemaInsert, UserGroupSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,19 +7,19 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getUserGroup = query(async (): Promise<UserGroupSchema[]> => {
-	const data = await db.select().from(table.userGroupTable);
+	const data = await ensureDb().select().from(table.userGroupTable);
 	return data;
 });
 
 // get count
 export const getUserGroupCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.userGroupTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.userGroupTable);
 	return row?.count ?? 0;
 });
 
 // get all with relations
 export const getUserGroupWithRelations = query(async () => {
-	return db.query.userGroupTable.findMany({
+	return ensureDb().query.userGroupTable.findMany({
 		with: {
 			status: true,
 			hospital: true,
@@ -32,7 +32,7 @@ export const getUserGroupWithRelations = query(async () => {
 export const getUserGroupByIdWithRelations = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }) => {
-		return db.query.userGroupTable.findFirst({
+		return ensureDb().query.userGroupTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				status: true,
@@ -47,7 +47,7 @@ export const getUserGroupByIdWithRelations = query(
 export const getUserGroupById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<UserGroupSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.userGroupTable)
 			.where(eq(table.userGroupTable.id, id));
@@ -59,7 +59,7 @@ export const getUserGroupById = query(
 export const createUserGroup = command(
 	'unchecked' as const,
 	async (payload: UserGroupSchemaInsert): Promise<UserGroupSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.userGroupTable)
 			.values(payload)
 			.returning();
@@ -74,7 +74,7 @@ export const updateUserGroup = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<UserGroupSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.userGroupTable)
 			.set(rest as UserGroupSchemaUpdate)
 			.where(eq(table.userGroupTable.id, id))
@@ -89,7 +89,7 @@ export const updateUserGroup = command(
 export const deleteUserGroup = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.userGroupTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.userGroupTable.id, id));
@@ -101,7 +101,7 @@ export const deleteUserGroup = command(
 export const deleteUserGroupComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.userGroupTable).where(eq(table.userGroupTable.id, id));
+		await ensureDb().delete(table.userGroupTable).where(eq(table.userGroupTable.id, id));
 		getUserGroup().refresh();
 	}
 );

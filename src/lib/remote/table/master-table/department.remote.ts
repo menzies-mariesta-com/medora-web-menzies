@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	DepartmentSchema,
@@ -11,13 +11,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getDepartment = query(async (): Promise<DepartmentSchema[]> => {
-	const data = await db.select().from(table.departmentTable);
+	const data = await ensureDb().select().from(table.departmentTable);
 	return data;
 });
 
 // get count
 export const getDepartmentCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.departmentTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.departmentTable);
 	return row?.count ?? 0;
 });
 
@@ -25,7 +25,7 @@ export const getDepartmentCount = query(async (): Promise<number> => {
 export const getDepartmentById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<DepartmentSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.departmentTable)
 			.where(eq(table.departmentTable.id, id));
@@ -37,7 +37,7 @@ export const getDepartmentById = query(
 export const createDepartment = command(
 	'unchecked' as const,
 	async (payload: DepartmentSchemaInsert): Promise<DepartmentSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.departmentTable)
 			.values(payload)
 			.returning();
@@ -52,7 +52,7 @@ export const updateDepartment = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; code?: string | null; statusId?: number | null }): Promise<DepartmentSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.departmentTable)
 			.set(rest as DepartmentSchemaUpdate)
 			.where(eq(table.departmentTable.id, id))
@@ -67,7 +67,7 @@ export const updateDepartment = command(
 export const deleteDepartment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.departmentTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.departmentTable.id, id));
@@ -79,7 +79,7 @@ export const deleteDepartment = command(
 export const deleteDepartmentComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.departmentTable).where(eq(table.departmentTable.id, id));
+		await ensureDb().delete(table.departmentTable).where(eq(table.departmentTable.id, id));
 		getDepartment().refresh();
 	}
 );

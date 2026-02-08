@@ -397,18 +397,18 @@
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
-		} catch (error) {
+		} catch (error: unknown) {
 			let message: string | null = null;
 
 			if (error && typeof error === 'object') {
-				const errAny = error as any;
+				const err = error as { message?: string; body?: { message?: string } };
 
 				// SvelteKit remote `command` wraps server errors in HttpError,
 				// with the original message living at `error.body.message`.
-				if (errAny.body && typeof errAny.body.message === 'string') {
-					message = errAny.body.message;
-				} else if (typeof errAny.message === 'string') {
-					message = errAny.message;
+				if (err.body && typeof err.body.message === 'string') {
+					message = err.body.message;
+				} else if (typeof err.message === 'string') {
+					message = err.message;
 				}
 			}
 

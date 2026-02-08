@@ -23,8 +23,8 @@
 		dialogService.open({
 			title: 'Change Language',
 			component: ChangeLanguageModal,
-			onConfirm: (data?: any) => {
-				languageTool.changeLanguage(data.language as LanguageEnum);
+			onConfirm: (data?: { language: LanguageEnum }) => {
+				if (data?.language) languageTool.changeLanguage(data.language);
 			}
 		});
 	}
@@ -33,8 +33,8 @@
 		dialogService.open({
 			title: 'Change Theme',
 			component: ChangeThemeModal,
-			onConfirm: (data?: any) => {
-				themeTool.setTheme(data.theme as ThemeEnum);
+			onConfirm: (data?: { theme: ThemeEnum }) => {
+				if (data?.theme) themeTool.setTheme(data.theme);
 			}
 		});
 	}

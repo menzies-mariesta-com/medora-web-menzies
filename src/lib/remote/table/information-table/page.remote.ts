@@ -1,19 +1,30 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { PageSchema, PageSchemaInsert, PageSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	ModuleSchema,
+	PageSchema,
+	PageSchemaInsert,
+	PageSchemaUpdate,
+} from '$lib/server/db/schema-type';
+import type { StatusSchema } from '$lib/server/db/table/master-table/master-table-schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq } from 'drizzle-orm';
 
+export type PageWithRelations = PageSchema & {
+	module: ModuleSchema | null;
+	status: StatusSchema | null;
+};
+
 // get all
 export const getPage = query(async (): Promise<PageSchema[]> => {
-	const data = await db.select().from(table.pageTable);
+	const data = await ensureDb().select().from(table.pageTable);
 	return data;
 });
 
 // get count
 export const getPageCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.pageTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.pageTable);
 	return row?.count ?? 0;
 });
 
@@ -21,7 +32,7 @@ export const getPageCount = query(async (): Promise<number> => {
 export const getPageById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<PageSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.pageTable)
 			.where(eq(table.pageTable.id, id));
@@ -30,20 +41,21 @@ export const getPageById = query(
 );
 
 // get all with related data (module, status, etc.)
-export const getPageWithRelations = query(async () => {
-	return db.query.pageTable.findMany({
-		with: {
-			module: true,
-			status: true,
-		},
-	});
-});
+export const getPageWithRelations = query(
+	async (): Promise<PageWithRelations[]> =>
+		ensureDb().query.pageTable.findMany({
+			with: {
+				module: true,
+				status: true,
+			},
+		}) as Promise<PageWithRelations[]>
+);
 
 // create
 export const createPage = command(
 	'unchecked' as const,
 	async (payload: PageSchemaInsert): Promise<PageSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.pageTable)
 			.values(payload)
 			.returning();
@@ -64,7 +76,7 @@ export const updatePage = command(
 		statusId?: number | null;
 	}): Promise<PageSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.pageTable)
 			.set(rest as PageSchemaUpdate)
 			.where(eq(table.pageTable.id, id))
@@ -79,7 +91,7 @@ export const updatePage = command(
 export const deletePage = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.pageTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.pageTable.id, id));
@@ -91,7 +103,7 @@ export const deletePage = command(
 export const deletePageComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.pageTable).where(eq(table.pageTable.id, id));
+		await ensureDb().delete(table.pageTable).where(eq(table.pageTable.id, id));
 		getPage().refresh();
 	}
 );

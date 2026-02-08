@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
@@ -30,21 +31,25 @@
 	<div class="min-w-0 flex-1 md:min-w-56">
 		<DaisyUiLabel className="mb-2 block">User Group <span class="text-error">*</span></DaisyUiLabel>
 		<div
-			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 sm:grid-cols-2"
+			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-3 xl:grid-cols-4"
 		>
 			{#each userGroupData as data (data.id)}
 				{@const isChecked = selectedUserGroups.includes(data.id)}
 				{@const toggleUserGroup = () => {
 					if (isChecked) {
-						selectedUserGroups = selectedUserGroups.filter((id) => id !== data.id);
+						selectedUserGroups = selectedUserGroups.filter((id: number) => id !== data.id);
 					} else {
 						selectedUserGroups = [...selectedUserGroups, data.id];
 					}
 				}}
-				<label class="flex cursor-pointer items-center gap-2" onclick={toggleUserGroup}>
+				<DaisyUiButton
+					type="button"
+					className="cursor-pointer flex justify-start"
+					onClick={toggleUserGroup}
+				>
 					<DaisyUiCheckbox checked={isChecked} />
 					<span class="text-sm">{data.name}</span>
-				</label>
+				</DaisyUiButton>
 			{/each}
 		</div>
 	</div>

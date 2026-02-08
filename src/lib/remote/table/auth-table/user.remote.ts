@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	UserSchema,
@@ -9,13 +9,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getUser = query(async (): Promise<UserSchema[]> => {
-	const data = await db.select().from(table.userTable);
+	const data = await ensureDb().select().from(table.userTable);
 	return data;
 });
 
 // get count
 export const getUserCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.userTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.userTable);
 	return row?.count ?? 0;
 });
 
@@ -23,7 +23,7 @@ export const getUserCount = query(async (): Promise<number> => {
 export const getUserById = query(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<UserSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.userTable)
 			.where(eq(table.userTable.id, id));
@@ -33,7 +33,7 @@ export const getUserById = query(
 
 // get all with linked staff profile (1:1 via staff.userId)
 export const getUserWithStaff = query(async () => {
-	return db.query.userTable.findMany({
+	return ensureDb().query.userTable.findMany({
 		with: {
 			staff: true
 		}
@@ -44,7 +44,7 @@ export const getUserWithStaff = query(async () => {
 export const getUserByIdWithStaff = query(
 	'unchecked' as const,
 	async ({ id }: { id: string }) => {
-		return db.query.userTable.findFirst({
+		return ensureDb().query.userTable.findFirst({
 			where: (user, { eq }) => eq(user.id, id),
 			with: {
 				staff: true
@@ -58,7 +58,7 @@ export const updateUser = command(
 	'unchecked' as const,
 	async (payload: { id: string } & UserSchemaUpdate): Promise<UserSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.userTable)
 			.set(rest as UserSchemaUpdate)
 			.where(eq(table.userTable.id, id))
@@ -73,7 +73,7 @@ export const updateUser = command(
 export const deleteUser = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
-		await db.delete(table.userTable).where(eq(table.userTable.id, id));
+		await ensureDb().delete(table.userTable).where(eq(table.userTable.id, id));
 		getUser().refresh();
 	}
 );

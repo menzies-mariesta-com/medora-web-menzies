@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	HospitalDepartmentSchema,
@@ -10,13 +10,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getHospitalDepartment = query(async (): Promise<HospitalDepartmentSchema[]> => {
-	const data = await db.select().from(table.hospitalDepartmentTable);
+	const data = await ensureDb().select().from(table.hospitalDepartmentTable);
 	return data;
 });
 
 // get all with relations
 export const getHospitalDepartmentWithRelations = query(async () => {
-	return db.query.hospitalDepartmentTable.findMany({
+	return ensureDb().query.hospitalDepartmentTable.findMany({
 		with: {
 			hospital: true,
 			department: true,
@@ -26,7 +26,7 @@ export const getHospitalDepartmentWithRelations = query(async () => {
 
 // get count
 export const getHospitalDepartmentCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.hospitalDepartmentTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.hospitalDepartmentTable);
 	return row?.count ?? 0;
 });
 
@@ -34,7 +34,7 @@ export const getHospitalDepartmentCount = query(async (): Promise<number> => {
 export const getHospitalDepartmentById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<HospitalDepartmentSchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.hospitalDepartmentTable)
 			.where(eq(table.hospitalDepartmentTable.id, id));
@@ -46,7 +46,7 @@ export const getHospitalDepartmentById = query(
 export const getHospitalDepartmentByIdWithRelations = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }) => {
-		return db.query.hospitalDepartmentTable.findFirst({
+		return ensureDb().query.hospitalDepartmentTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				hospital: true,
@@ -60,7 +60,7 @@ export const getHospitalDepartmentByIdWithRelations = query(
 export const createHospitalDepartment = command(
 	'unchecked' as const,
 	async (payload: HospitalDepartmentSchemaInsert): Promise<HospitalDepartmentSchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.hospitalDepartmentTable)
 			.values(payload)
 			.returning();
@@ -79,7 +79,7 @@ export const updateHospitalDepartment = command(
 		departmentId?: number;
 	}): Promise<HospitalDepartmentSchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.hospitalDepartmentTable)
 			.set(rest as HospitalDepartmentSchemaUpdate)
 			.where(eq(table.hospitalDepartmentTable.id, id))
@@ -94,7 +94,7 @@ export const updateHospitalDepartment = command(
 export const deleteHospitalDepartment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.hospitalDepartmentTable).where(eq(table.hospitalDepartmentTable.id, id));
+		await ensureDb().delete(table.hospitalDepartmentTable).where(eq(table.hospitalDepartmentTable.id, id));
 		getHospitalDepartment().refresh();
 	}
 );

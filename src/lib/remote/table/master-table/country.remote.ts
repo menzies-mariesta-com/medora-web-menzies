@@ -1,5 +1,5 @@
 import { query, command } from '$app/server';
-import { db } from '$lib/server/db';
+import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { CountrySchema, CountrySchemaInsert, CountrySchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -7,13 +7,13 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getCountry = query(async (): Promise<CountrySchema[]> => {
-	const data = await db.select().from(table.countryTable);
+	const data = await ensureDb().select().from(table.countryTable);
 	return data;
 });
 
 // get count
 export const getCountryCount = query(async (): Promise<number> => {
-	const [row] = await db.select({ count: count() }).from(table.countryTable);
+	const [row] = await ensureDb().select({ count: count() }).from(table.countryTable);
 	return row?.count ?? 0;
 });
 
@@ -21,7 +21,7 @@ export const getCountryCount = query(async (): Promise<number> => {
 export const getCountryById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<CountrySchema | null> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.select()
 			.from(table.countryTable)
 			.where(eq(table.countryTable.id, id));
@@ -33,7 +33,7 @@ export const getCountryById = query(
 export const createCountry = command(
 	'unchecked' as const,
 	async (payload: CountrySchemaInsert): Promise<CountrySchema> => {
-		const [row] = await db
+		const [row] = await ensureDb()
 			.insert(table.countryTable)
 			.values(payload)
 			.returning();
@@ -56,7 +56,7 @@ export const updateCountry = command(
 		statusId?: number;
 	}): Promise<CountrySchema> => {
 		const { id, ...rest } = payload;
-		const [row] = await db
+		const [row] = await ensureDb()
 			.update(table.countryTable)
 			.set(rest as CountrySchemaUpdate)
 			.where(eq(table.countryTable.id, id))
@@ -71,7 +71,7 @@ export const updateCountry = command(
 export const deleteCountry = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db
+		await ensureDb()
 			.update(table.countryTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.countryTable.id, id));
@@ -83,7 +83,7 @@ export const deleteCountry = command(
 export const deleteCountryComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await db.delete(table.countryTable).where(eq(table.countryTable.id, id));
+		await ensureDb().delete(table.countryTable).where(eq(table.countryTable.id, id));
 		getCountry().refresh();
 	}
 );
