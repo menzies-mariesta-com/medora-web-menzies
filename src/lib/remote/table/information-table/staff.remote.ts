@@ -239,6 +239,10 @@ export const createStaffWithUser = command(
 		isLocked?: boolean;
 		userGroupIds?: number[];
 		photoUrl?: string;
+		licenseNo?: string;
+		licenseExpiryDate?: string;
+		signatureImageUrl?: string;
+		signatureText?: string;
 	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -280,12 +284,25 @@ export const createStaffWithUser = command(
 			password: hashedPassword
 		});
 
-		// Create staff detail if education or designation provided
+		// Create staff detail if any detail field provided
+		const hasDetail =
+			payload.education ||
+			payload.designation ||
+			payload.licenseNo ||
+			payload.licenseExpiryDate ||
+			payload.signatureImageUrl ||
+			payload.signatureText;
 		let staffDetailId: number | undefined;
-		if (payload.education || payload.designation) {
+		if (hasDetail) {
 			const staffDetail = await createStaffDetail({
 				education: payload.education,
-				designation: payload.designation
+				designation: payload.designation,
+				licenseNo: payload.licenseNo,
+				licenseExpiryDate: payload.licenseExpiryDate
+					? new Date(payload.licenseExpiryDate).toISOString().split('T')[0]
+					: undefined,
+				signatureImageUrl: payload.signatureImageUrl,
+				signatureText: payload.signatureText
 			});
 			staffDetailId = staffDetail.id;
 		}
