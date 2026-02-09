@@ -4,6 +4,11 @@ import {
 	hospitalTable,
 	moduleTable,
 	pageTable,
+	patientAllergies,
+	patientAttachmentTable,
+	patientInsurance,
+	patientTable,
+	insuranceTable,
 	staffDepartmentTable,
 	staffDetailTable,
 	staffHospitalTable,
@@ -15,7 +20,6 @@ import {
 	userGroupTable,
 } from './information-table';
 import {
-	bloodTypeTable,
 	cityTable,
 	countryTable,
 	departmentTable,
@@ -27,6 +31,7 @@ import {
 	postalCodeTable,
 	specializationTable,
 	staffEmploymentTypeTable,
+	bloodTypeTable,
 	staffShiftTypeTable,
 	staffTypeTable,
 	stateTable,
@@ -254,4 +259,78 @@ export const userGroupTableRelations = relations(userGroupTable, ({ one, many })
 	staff: many(staffUserGroupTable),
 	userGroupPages: many(userGroupPageTable),
 	staffUserGroups: many(staffUserGroupTable),
+}));
+
+export const patientTableRelations = relations(patientTable, ({ one, many }) => ({
+	user: one(userTable, {
+		fields: [patientTable.userId],
+		references: [userTable.id],
+	}),
+	maritalStatus: one(maritalStatusTable, {
+		fields: [patientTable.maritalStatusId],
+		references: [maritalStatusTable.id],
+	}),
+	gender: one(genderTable, {
+		fields: [patientTable.genderId],
+		references: [genderTable.id],
+	}),
+	identityType: one(identityTypeTable, {
+		fields: [patientTable.identityTypeId],
+		references: [identityTypeTable.id],
+	}),
+	bloodType: one(bloodTypeTable, {
+		fields: [patientTable.bloodTypeId],
+		references: [bloodTypeTable.id],
+	}),
+	city: one(cityTable, {
+		fields: [patientTable.cityId],
+		references: [cityTable.id],
+	}),
+	state: one(stateTable, {
+		fields: [patientTable.stateId],
+		references: [stateTable.id],
+	}),
+	country: one(countryTable, {
+		fields: [patientTable.countryId],
+		references: [countryTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [patientTable.statusId],
+		references: [statusTable.id],
+	}),
+	attachments: many(patientAttachmentTable),
+	insurances: many(patientInsurance),
+	allergies: many(patientAllergies),
+}));
+
+export const patientAttachmentTableRelations = relations(
+	patientAttachmentTable,
+	({ one }) => ({
+		patient: one(patientTable, {
+			fields: [patientAttachmentTable.patientId],
+			references: [patientTable.id],
+		}),
+	}),
+);
+
+export const insuranceTableRelations = relations(insuranceTable, ({ many }) => ({
+	patientInsurances: many(patientInsurance),
+}));
+
+export const patientInsuranceTableRelations = relations(patientInsurance, ({ one }) => ({
+	patient: one(patientTable, {
+		fields: [patientInsurance.patientId],
+		references: [patientTable.id],
+	}),
+	insurance: one(insuranceTable, {
+		fields: [patientInsurance.insuranceId],
+		references: [insuranceTable.id],
+	}),
+}));
+
+export const patientAllergiesTableRelations = relations(patientAllergies, ({ one }) => ({
+	patient: one(patientTable, {
+		fields: [patientAllergies.patientId],
+		references: [patientTable.id],
+	}),
 }));
