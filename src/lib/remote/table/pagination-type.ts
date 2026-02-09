@@ -12,6 +12,8 @@ export type PaginatedResult<T> = {
 export type PaginationParams = {
 	page?: number;
 	pageSize?: number;
+	/** Optional search term for list endpoints (e.g. staff list). */
+	search?: string;
 };
 
 const DEFAULT_PAGE = 1;
