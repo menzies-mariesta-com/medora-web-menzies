@@ -20,7 +20,7 @@
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
 	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
 	import type {
-	BloodTypeSchema,
+		BloodTypeSchema,
 		CitySchema,
 		CountrySchema,
 		DepartmentSchema,
@@ -40,17 +40,17 @@
 	import { createStaffWithUser } from '$lib/remote/table/information-table/staff.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationFirstColumn.svelte';
-	import LAdministrationStaffRegistrationSecondColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationSecondColumn.svelte';
-	import LAdministrationStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationThirdColumn.svelte';
-	import LAdministrationStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationMoreInfo.svelte';
-	import LAdministrationStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff-registration/LAdministrationStaffRegistrationPermissions.svelte';
+	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
 	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
+	import LStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationThirdColumn.svelte';
+	import LStaffRegistrationSecondColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationSecondColumn.svelte';
+	import LStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
+	import LStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -99,7 +99,9 @@
 	let selectedIdentityTypeId: string = $state('');
 	let selectedIdentityNumber: string = $state('');
 	let selectedDateOfBirth: string = $state('');
-	let selectedJoinDate: string = $state(dateTimeUtil.getTodayDateString());
+	let selectedJoinDate: string = $state(
+		dateTimeUtil.getTodayDateString()
+	);
 	let selectedResignDate: string = $state('');
 	let selectedAddress: string = $state('');
 	let selectedRemark: string = $state('');
@@ -224,23 +226,40 @@
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-		const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+		const allowed = [
+			'image/jpeg',
+			'image/png',
+			'image/webp',
+			'image/gif'
+		];
 		if (!allowed.includes(file.type)) {
-			toastService.addToast('Please choose a JPEG, PNG, WebP or GIF image.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please choose a JPEG, PNG, WebP or GIF image.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (file.size > 5 * 1024 * 1024) {
-			toastService.addToast('Image must be 5MB or smaller.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Image must be 5MB or smaller.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		photoUploading = true;
 		try {
 			const fd = new FormData();
 			fd.set('photo', file);
-			const res = await fetch('/api/upload/staff-photo', { method: 'POST', body: fd });
+			const res = await fetch('/api/upload/staff-photo', {
+				method: 'POST',
+				body: fd
+			});
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
-				toastService.addToast(data.error ?? 'Upload failed.', StatusColorEnum.ERROR);
+				toastService.addToast(
+					data.error ?? 'Upload failed.',
+					StatusColorEnum.ERROR
+				);
 				return;
 			}
 			if (data.url) photoUrl = data.url;
@@ -384,10 +403,10 @@
 				`Staff created successfully!`,
 				StatusColorEnum.SUCCESS
 			);
-			
+
 			const { error } = await authClient.requestPasswordReset({
 				email: selectedEmail.trim(),
-				redirectTo: routerUtil.getResetRedirectUrl(),
+				redirectTo: routerUtil.getResetRedirectUrl()
 			});
 
 			if (error) {
@@ -397,7 +416,7 @@
 				);
 				return;
 			}
-			
+
 			toastService.addToast(
 				'Reset password email has been sent to the staff.',
 				StatusColorEnum.INFO
@@ -437,13 +456,16 @@
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
-      photoUrl = '';
+			photoUrl = '';
 			if (photoInputEl) photoInputEl.value = '';
 		} catch (error: unknown) {
 			let message: string | null = null;
 
 			if (error && typeof error === 'object') {
-				const err = error as { message?: string; body?: { message?: string } };
+				const err = error as {
+					message?: string;
+					body?: { message?: string };
+				};
 
 				// SvelteKit remote `command` wraps server errors in HttpError,
 				// with the original message living at `error.body.message`.
@@ -458,7 +480,6 @@
 				message = 'Failed to create staff. Please try again.';
 			}
 
-		
 			toastService.addToast(message, StatusColorEnum.ERROR);
 		} finally {
 			isLoading = false;
@@ -489,7 +510,7 @@
 					/>
 					<button
 						type="button"
-						class="focus:outline-none focus:ring-2 focus:ring-primary rounded-full overflow-hidden flex items-center justify-center bg-base-300 text-base-content/50 size-28 sm:size-32 lg:size-36 shrink-0"
+						class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
 						onclick={() => photoInputEl?.click()}
 						disabled={photoUploading}
 						title="Upload photo"
@@ -503,9 +524,7 @@
 								class="size-full object-cover"
 							/>
 						{:else}
-							<DaisyUiSkeleton
-								className="size-full rounded-full"
-							/>
+							<DaisyUiSkeleton className="size-full rounded-full" />
 						{/if}
 					</button>
 					<div class="flex flex-col gap-2">
@@ -548,7 +567,7 @@
 					/>
 
 					<!-- Column 2 -->
-					<LAdministrationStaffRegistrationSecondColumn
+					<LStaffRegistrationSecondColumn
 						{countryData}
 						{bloodTypeData}
 						{staffTypeData}
@@ -566,7 +585,7 @@
 					/>
 
 					<!-- Column 3 -->
-					<LAdministrationStaffRegistrationThirdColumn
+					<LStaffRegistrationThirdColumn
 						{countryData}
 						{stateData}
 						{cityData}
@@ -595,13 +614,13 @@
 			</div>
 
 			<!-- More Info: 1 col mobile, 2 cols md+ -->
-			<LAdministrationStaffRegistrationMoreInfo
+			<LStaffRegistrationMoreInfo
 				bind:selectedAddress
 				bind:selectedRemark
 			/>
 
 			<!-- Permissions: stack on mobile, row on md+ -->
-			<LAdministrationStaffRegistrationPermissions
+			<LStaffRegistrationPermissions
 				{userGroupData}
 				bind:selectedUserGroups
 				bind:selectedJoinDate

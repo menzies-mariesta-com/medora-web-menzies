@@ -4,6 +4,8 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
@@ -82,6 +84,26 @@ export const getStaffCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.staffTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getStaffPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<StaffSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.staffTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.staffTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get one
 export const getStaffById = query(

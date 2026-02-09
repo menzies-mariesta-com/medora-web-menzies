@@ -2,6 +2,8 @@ import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffHospitalSchema, StaffHospitalSchemaInsert, StaffHospitalSchemaUpdate } from '$lib/server/db/schema-type';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -15,6 +17,26 @@ export const getStaffHospitalCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.staffHospitalTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getStaffHospitalPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<StaffHospitalSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.staffHospitalTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.staffHospitalTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get all with relations
 export const getStaffHospitalWithRelations = query(async () => {
