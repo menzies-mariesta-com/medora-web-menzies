@@ -7,6 +7,8 @@ import type {
 	StaffShiftTypeSchemaUpdate,
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -20,6 +22,26 @@ export const getStaffShiftTypeCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.staffShiftTypeTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getStaffShiftTypePaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<StaffShiftTypeSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.staffShiftTypeTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.staffShiftTypeTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get one
 export const getStaffShiftTypeById = query(
