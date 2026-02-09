@@ -9,8 +9,14 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import {
 		getStaffPaginated,
-		deleteStaff
+		deleteStaff,
+		getStaffByIdWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { DeleteStaffConfirmState } from '$lib/state/delete-staff-confirm.state.svelte';
+	import DeleteStaffConfirmModal from '$lib/component/snippet/modal/DeleteStaffConfirmModal.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import type { StaffSchema } from '$lib/server/db/schema-type';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
@@ -27,6 +33,7 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const routerUtil = new RouterUtil();
+	const toastService = new ToastService();
 
 	let staffResult = $state<PaginatedResult<StaffSchema> | null>(null);
 	let currentPage = $state(1);
@@ -87,14 +94,25 @@
 	}
 
 	async function handleDelete(staffId: string) {
-		if (!confirm('Are you sure you want to delete this staff?'))
-			return;
 		try {
-			await deleteStaff({ id: staffId });
-			await fetchStaff();
+			const staff = await getStaffByIdWithRelations({ id: staffId });
+			const staffEmail =
+				(staff as { user?: { email?: string } })?.user?.email ?? '(no email)';
+			DeleteStaffConfirmState.pending = { id: staffId, email: staffEmail };
+			const result = await dialogService.open({
+				title: 'Delete staff',
+				component: DeleteStaffConfirmModal
+			});
+			if (result.confirmed && typeof result.data === 'string') {
+				await deleteStaff({ id: result.data });
+				await fetchStaff();
+				toastService.addToast('Staff deleted.', StatusColorEnum.SUCCESS);
+			}
 		} catch (err) {
 			console.error(err);
-			alert('Failed to delete staff.');
+			toastService.addToast('Failed to delete staff.', StatusColorEnum.ERROR);
+		} finally {
+			DeleteStaffConfirmState.pending = null;
 		}
 	}
 
