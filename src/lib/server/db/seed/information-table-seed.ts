@@ -84,9 +84,9 @@ export async function seedInformationTables() {
 			-- Patient Module
 			-- patient pages
 			(2, 'Patient', 2, 1, null, '/heka/home/patient', 1),
-			(200001, 'Patient Registration', 2, 1, 2, '/heka/home/patient/registration', 1),
-			(200002, 'Patient List', 2, 1, 2, '/heka/home/patient/list', 2),
-			(200003, 'Patient Attachment', 2, 1, 2, '/heka/home/patient/attachment', 3)
+			(200001, 'Patient Registration', 2, 1, null, '/heka/home/patient/registration', 1),
+			(200002, 'Patient List', 2, 1, null, '/heka/home/patient/list', 2),
+			(200003, 'Patient Attachment', 2, 1, null, '/heka/home/patient/attachment', 3)
 
 
 		ON CONFLICT (id) DO NOTHING;
