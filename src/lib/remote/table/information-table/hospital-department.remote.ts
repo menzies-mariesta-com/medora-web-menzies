@@ -6,6 +6,8 @@ import type {
 	HospitalDepartmentSchemaInsert,
 	HospitalDepartmentSchemaUpdate,
 } from '$lib/server/db/schema-type';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
@@ -29,6 +31,26 @@ export const getHospitalDepartmentCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb().select({ count: count() }).from(table.hospitalDepartmentTable);
 	return row?.count ?? 0;
 });
+
+// get paginated
+export const getHospitalDepartmentPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<HospitalDepartmentSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.hospitalDepartmentTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.hospitalDepartmentTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
 
 // get one
 export const getHospitalDepartmentById = query(

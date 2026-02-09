@@ -24,21 +24,21 @@ export async function seedInformationTables() {
 
 	// 1. Modules (depends: status)
 	await db.execute(sql`
-		INSERT INTO module (id, name, image_url, sequence_no, status_id, module_url)
+		INSERT INTO module (id, name, sequence_no, status_id, module_url, image_url)
 		VALUES 
-			(1, 'Dashboard', 'layout-dashboard.svg', 1, 1, '/heka/home/dashboard'),
-			(2, 'Patient', 'users.svg', 2, 1, '/heka/home/patient'),
-			(3, 'Appointment', 'calendar.svg', 3, 1, '/heka/home/appointment'),
-			(4, 'Settings', 'settings.svg', 4, 1, '/heka/home/settings'),
-			(5, 'Administration', 'administration.svg', 5, 1, '/heka/home/administration'),
-			(6, 'Report', 'report.svg', 6, 1, '/heka/home/report'),
-			(7, 'Billing', 'billing.svg', 7, 1, '/heka/home/billing'),
-			(8, 'CPOE', 'cpoe.svg', 8, 1, '/heka/home/cpoe'),
-			(9, 'Pharmacy', 'pharmacy.svg', 9, 1, '/heka/home/pharmacy'),
-			(10, 'Medical Record', 'medical-record.svg', 10, 1, '/heka/home/medical-record'),
-			(11, 'Inventory', 'inventory.svg', 11, 1, '/heka/home/inventory'),
-			(12, 'Nursing', 'nursing.svg', 12, 1, '/heka/home/nursing'),
-			(13, 'Emergency', 'emergency.svg', 13, 1, '/heka/home/emergency')
+			(1, 'Administration', 1, 1, '/heka/home/administration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-star-icon lucide-user-star"><path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/><path d="M8 15H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>'),
+			(2, 'Patient', 2, 1, '/heka/home/patient', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round-icon lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>')
+			-- (1, 'Dashboard', 'layout-dashboard.svg', 1, 1, '/heka/home/dashboard'),
+			-- (3, 'Appointment', 'calendar.svg', 3, 1, '/heka/home/appointment'),
+			-- (4, 'Settings', 'settings.svg', 4, 1, '/heka/home/settings'),
+			-- (6, 'Report', 'report.svg', 6, 1, '/heka/home/report'),
+			-- (7, 'Billing', 'billing.svg', 7, 1, '/heka/home/billing'),
+			-- (8, 'CPOE', 'cpoe.svg', 8, 1, '/heka/home/cpoe'),
+			-- (9, 'Pharmacy', 'pharmacy.svg', 9, 1, '/heka/home/pharmacy'),
+			-- (10, 'Medical Record', 'medical-record.svg', 10, 1, '/heka/home/medical-record'),
+			-- (11, 'Inventory', 'inventory.svg', 11, 1, '/heka/home/inventory'),
+			-- (12, 'Nursing', 'nursing.svg', 12, 1, '/heka/home/nursing'),
+			-- (13, 'Emergency', 'emergency.svg', 13, 1, '/heka/home/emergency')
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: module');
@@ -68,29 +68,27 @@ export async function seedInformationTables() {
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
-			(1, 'Audit Trail(EMR)', 5, 1, null, '/heka/home/administration/audit-trail', 1),
-			(2, 'Payer Info', 5, 1, null, '/heka/home/administration/payer-info', 2),
-			(3, 'Master Setup', 5, 1, null, '/heka/home/administration/master-setup', 3),
-			(4, 'Employee Profile', 5, 1, null, '/heka/home/administration/employee-profile', 4),
-			(5, 'Facility Tagging', 5, 1, null, '/heka/home/administration/facility-tagging', 5),
-			(6, 'Corporate Master', 5, 1, null, '/heka/home/administration/corporate-master', 6),
-			(7, 'Color Legends', 5, 1, null, '/heka/home/administration/color-legends', 7),
-			(8, 'Roles and Permissions', 5, 1, null, '/heka/home/administration/roles-and-permissions', 8),
-			(9, 'Holidays', 5, 1, null, '/heka/home/administration/holidays', 9),
-			(10, 'Change Password', 5, 1, null, '/heka/home/administration/change-password', 10),
-			(11, 'Visit Type', 5, 1, null, '/heka/home/administration/visit-type', 11),
-			(12, 'Company Wise Editable Service Setup', 5, 1, null, '/heka/home/administration/company-wise-editable-service-setup', 12),
-			(13, 'Currency Master', 5, 1, null, '/heka/home/administration/currency-master', 13),
-			(14, 'Merge Patient Details', 5, 1, null, '/heka/home/administration/merge-patient-details', 14),
-			(15, 'Payer', 5, 1, 2, '/heka/home/administration/payer', 15),
-			(16, 'Insurance Category', 5, 1, 2, '/heka/home/administration/payer-info/insurance-category', 16),
-			(17, 'Network', 5, 1, 2, '/heka/home/administration/payer-info/network', 17),
-			(18, 'Network Details', 5, 1, 2, '/heka/home/administration/payer-info/network-details', 18),
-			(19, 'Pricing Cash', 5, 1, 2, '/heka/home/administration/payer-info/pricing-cash', 19),
-			(20, 'Pricing Credit', 5, 1, 2, '/heka/home/administration/payer-info/pricing-credit', 20),
-			(21, 'Staff Registration', 5, 1, null, '/heka/home/administration/staff-registration', 21),
-			(22, 'Registration', 2, 1, null, '/heka/home/patient/registration', 1),
-			(23, 'Attachment', 2, 1, null, '/heka/home/patient/attachment', 2)
+			-- Parent Page Id (1 -> 100000)
+			-- Child Page Id (1 -> 100001)
+			-- Child Page Id (1 -> 100002)
+			-- Parent Page Id (2 -> 200000)
+			-- Child Page Id (2 -> 200001)
+
+			-- Administration Module
+			-- staff pages
+			(1, 'Staff', 1, 1, null, '/heka/home/administration/staff', 1),
+			(100001, 'Staff Registration', 1, 1, 1, '/heka/home/administration/staff/registration', 1),
+			(100002, 'Staff List', 1, 1, 1, '/heka/home/administration/staff/list', 2),
+
+			
+			-- Patient Module
+			-- patient pages
+			(2, 'Patient', 2, 1, null, '/heka/home/patient', 1),
+			(200001, 'Patient Registration', 2, 1, 2, '/heka/home/patient/registration', 1),
+			(200002, 'Patient List', 2, 1, 2, '/heka/home/patient/list', 2),
+			(200003, 'Patient Attachment', 2, 1, 2, '/heka/home/patient/attachment', 3)
+
+
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: page')
