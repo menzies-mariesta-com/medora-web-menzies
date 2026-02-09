@@ -6,7 +6,7 @@ import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/ser
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, or, ilike } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
@@ -85,15 +85,32 @@ export const getStaffCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+// get paginated (optional search on firstName, lastName, code, phonePrimary)
 export const getStaffPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<StaffSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const searchTerm = params?.search?.trim();
+		const pattern = searchTerm ? `%${searchTerm}%` : null;
+		const searchCondition =
+			pattern &&
+			or(
+				ilike(table.staffTable.firstName, pattern),
+				ilike(table.staffTable.lastName, pattern),
+				ilike(table.staffTable.code, pattern),
+				ilike(table.staffTable.phonePrimary, pattern)
+			);
+
+		const baseQuery = ensureDb().select().from(table.staffTable);
+		const countQuery = ensureDb().select({ count: count() }).from(table.staffTable);
+
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.staffTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.staffTable),
+			searchCondition
+				? baseQuery.where(searchCondition).limit(limit).offset(offset)
+				: baseQuery.limit(limit).offset(offset),
+			searchCondition ? countQuery.where(searchCondition) : countQuery
 		]);
+
 		const total = countResult[0]?.count ?? 0;
 		return {
 			data,

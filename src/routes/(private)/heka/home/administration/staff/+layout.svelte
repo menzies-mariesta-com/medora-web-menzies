@@ -7,7 +7,9 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
-	const currentPath = $derived(page.url.pathname.replace(/\/$/, '') || '/');
+	const currentPath = $derived(
+		page.url.pathname.replace(/\/$/, '') || '/'
+	);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
@@ -24,7 +26,8 @@
 					role="tab"
 					class="staff-subnav-tab"
 					class:active={pathMatches(sub.pageUrl)}
-					onclick={() => sub.pageUrl && routerUtil.replaceRoute(sub.pageUrl)}
+					onclick={() =>
+						sub.pageUrl && routerUtil.replaceRoute(sub.pageUrl)}
 				>
 					{sub.name ?? 'Untitled'}
 				</button>
@@ -77,6 +80,6 @@
 		display: block;
 		flex: 1;
 		min-height: 0;
-		padding: 1rem 0;
+		padding: 0;
 	}
 </style>

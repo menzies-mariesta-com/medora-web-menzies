@@ -12,5 +12,3 @@
 		if (first?.pageUrl) routerUtil.replaceRoute(first.pageUrl);
 	});
 </script>
-
-<h1>Staff</h1>
