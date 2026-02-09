@@ -37,20 +37,25 @@
 		UserGroupSchema
 	} from '$lib/server/db/schema-type';
 	import { getTitle } from '$lib/remote/table/master-table/title.remote';
-	import { createStaffWithUser } from '$lib/remote/table/information-table/staff.remote';
+	import {
+		createStaffWithUser,
+		updateStaff
+	} from '$lib/remote/table/information-table/staff.remote';
+	import { createStaffDetail, updateStaffDetail } from '$lib/remote/table/information-table/staff-detail.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
-	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
 	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
 	import LStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationThirdColumn.svelte';
 	import LStaffRegistrationSecondColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationSecondColumn.svelte';
 	import LStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
 	import LStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
+	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -111,9 +116,20 @@
 	let isActive: boolean = $state(true);
 	let isSuperAdmin: boolean = $state(false);
 	let isLocked: boolean = $state(false);
-	let photoUrl: string = $state('');
+	let photoFile: File | null = $state(null);
+	let photoPreviewUrl: string = $state('');
 	let photoUploading: boolean = $state(false);
 	let photoInputEl: HTMLInputElement | undefined = $state();
+	let licenseAndSignatureModalOpen = $state(false);
+	let selectedLicenseNo: string = $state('');
+	let selectedLicenseExpiryDate: string = $state('');
+	let signatureFile: File | null = $state(null);
+	let selectedSignatureImageUrl: string = $state('');
+	let selectedSignatureText: string = $state('');
+
+	function showLicenseAndSignatureModal() {
+		licenseAndSignatureModalOpen = true;
+	}
 
 	// Get selected objects from IDs
 	let selectedCountry = $derived(
@@ -222,7 +238,7 @@
 	const toastService = new ToastService();
 	let isLoading = $state(false);
 
-	async function handlePhotoChange(e: Event) {
+	function handlePhotoChange(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
@@ -246,31 +262,16 @@
 			);
 			return;
 		}
-		photoUploading = true;
-		try {
-			const fd = new FormData();
-			fd.set('photo', file);
-			const res = await fetch('/api/upload/staff-photo', {
-				method: 'POST',
-				body: fd
-			});
-			const data = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				toastService.addToast(
-					data.error ?? 'Upload failed.',
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-			if (data.url) photoUrl = data.url;
-		} finally {
-			photoUploading = false;
-			input.value = '';
-		}
+		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+		photoPreviewUrl = URL.createObjectURL(file);
+		photoFile = file;
+		input.value = '';
 	}
 
 	function handleRemovePhoto() {
-		photoUrl = '';
+		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+		photoPreviewUrl = '';
+		photoFile = null;
 		if (photoInputEl) photoInputEl.value = '';
 	}
 
@@ -338,6 +339,7 @@
 
 		isLoading = true;
 		try {
+			// 1. Create staff first (without photo/signature image URLs)
 			const result = await createStaffWithUser({
 				email: selectedEmail.trim(),
 				name: fullName,
@@ -348,7 +350,6 @@
 				phonePrimary,
 				phoneSecondary: phoneSecondary || undefined,
 				dateOfBirth: selectedDateOfBirth || undefined,
-				photoUrl: photoUrl || undefined,
 				address: selectedAddress || undefined,
 				remark: selectedRemark || undefined,
 				identityNo: selectedIdentityNumber.trim() || undefined,
@@ -396,8 +397,73 @@
 				userGroupIds:
 					selectedUserGroups.length > 0
 						? selectedUserGroups
-						: undefined
+						: undefined,
+				licenseNo: selectedLicenseNo.trim() || undefined,
+				licenseExpiryDate: selectedLicenseExpiryDate || undefined,
+				signatureText: selectedSignatureText.trim() || undefined
 			});
+
+			const { staff } = result;
+
+			// 2. Upload profile photo and update staff
+			if (photoFile) {
+				photoUploading = true;
+				try {
+					const fd = new FormData();
+					fd.set('photo', photoFile);
+					const res = await fetch('/api/upload/staff-photo', {
+						method: 'POST',
+						body: fd
+					});
+					const data = await res.json().catch(() => ({}));
+					if (!res.ok) {
+						toastService.addToast(
+							data.error ?? 'Photo upload failed.',
+							StatusColorEnum.ERROR
+						);
+						return;
+					}
+					if (data.url) {
+						await updateStaff({ id: staff.id, photoUrl: data.url });
+					}
+				} finally {
+					photoUploading = false;
+				}
+			}
+
+			// 3. Upload signature image and update staff detail
+			if (signatureFile) {
+				const fd = new FormData();
+				fd.set('signature', signatureFile);
+				const res = await fetch('/api/upload/staff-signature', {
+					method: 'POST',
+					body: fd
+				});
+				const data = await res.json().catch(() => ({}));
+				if (!res.ok) {
+					toastService.addToast(
+						data.error ?? 'Signature upload failed.',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
+				if (data.url) {
+					if (staff.staffDetailId) {
+						await updateStaffDetail({
+							id: staff.staffDetailId,
+							signatureImageUrl: data.url
+						});
+					} else {
+						const detail = await createStaffDetail({
+							signatureImageUrl: data.url
+						});
+						await updateStaff({
+							id: staff.id,
+							staffDetailId: detail.id
+						});
+					}
+				}
+			}
 
 			toastService.addToast(
 				`Staff created successfully!`,
@@ -456,8 +522,16 @@
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
-			photoUrl = '';
+			if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+			photoPreviewUrl = '';
+			photoFile = null;
 			if (photoInputEl) photoInputEl.value = '';
+			licenseAndSignatureModalOpen = false;
+			selectedLicenseNo = '';
+			selectedLicenseExpiryDate = '';
+			signatureFile = null;
+			selectedSignatureImageUrl = '';
+			selectedSignatureText = '';
 		} catch (error: unknown) {
 			let message: string | null = null;
 
@@ -513,13 +587,13 @@
 						class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
 						onclick={() => photoInputEl?.click()}
 						disabled={photoUploading}
-						title="Upload photo"
+						title="Choose photo (uploaded when you save)"
 					>
 						{#if photoUploading}
 							<span class="text-xs">Uploading…</span>
-						{:else if photoUrl}
+						{:else if photoPreviewUrl}
 							<img
-								src={getStaffPhotoDisplayUrl(photoUrl) ?? photoUrl}
+								src={photoPreviewUrl}
 								alt="Staff profile"
 								class="size-full object-cover"
 							/>
@@ -534,18 +608,34 @@
 							onClick={() => photoInputEl?.click()}
 							disabled={photoUploading}
 						>
-							{photoUrl ? 'Change photo' : 'Upload photo'}
+							{photoFile ? 'Change photo' : 'Choose photo'}
 						</DaisyUiButton>
 						<DaisyUiButton
 							type="button"
 							className="d-btn-error d-btn-sm"
 							onClick={handleRemovePhoto}
-							disabled={!photoUrl}
+							disabled={!photoFile}
 						>
 							Remove
 						</DaisyUiButton>
+						<DaisyUiDivider position="horizontal" className="text-xs">More Detail</DaisyUiDivider>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-outline d-btn-sm"
+							onClick={showLicenseAndSignatureModal}
+						>
+							License &amp; Signature
+						</DaisyUiButton>
 					</div>
 				</div>
+
+				<LStaffRegistrationLicenseAndSignatureModal
+					bind:open={licenseAndSignatureModalOpen}
+					bind:licenseNo={selectedLicenseNo}
+					bind:licenseExpiryDate={selectedLicenseExpiryDate}
+					bind:signatureFile
+					bind:signatureText={selectedSignatureText}
+				/>
 
 				<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
 				<div

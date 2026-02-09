@@ -1,5 +1,8 @@
 <script lang="ts">
-	import type { ModuleSchema, PageSchema } from '$lib/server/db/schema-type';
+	import type {
+		ModuleSchema,
+		PageSchema
+	} from '$lib/server/db/schema-type';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDropdownButton from '$lib/component/library/daisyui/dropdown/button/DaisyUiDropdownButton.svelte';
 	import DaisyUiDropdownContent from '$lib/component/library/daisyui/dropdown/content/DaisyUiDropdownContent.svelte';
@@ -19,11 +22,17 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
-	let { moduleList, pageList }: { moduleList: ModuleSchema[]; pageList: PageSchema[] } = $props();
+	let {
+		moduleList,
+		pageList
+	}: { moduleList: ModuleSchema[]; pageList: PageSchema[] } =
+		$props();
 
 	const routerUtil = new RouterUtil();
 
-	let pageLocator = StringUtil.urlToTitleLast(page.url.pathname, 2);
+	let pageLocator = $derived(
+		StringUtil.urlToTitleLast(page.url.pathname, 2)
+	);
 
 	let isNavbarVisible = $state(true);
 
@@ -66,6 +75,12 @@
 	</DaisyUiNavbar>
 {/if}
 
+<!-- navbar end -->
+
+
+
+<!-- module bar start  -->
+
 <DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
@@ -103,7 +118,9 @@
 						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 							<DaisyUiButton
 								className="w-full min-w-0 justify-start truncate text-left"
-								onClick={() => p.pageUrl != null && routerUtil.replaceRoute(p.pageUrl)}
+								onClick={() =>
+									p.pageUrl != null &&
+									routerUtil.replaceRoute(p.pageUrl)}
 							>
 								{p.name}
 							</DaisyUiButton>

@@ -1,9 +1,10 @@
 <script lang="ts">
-	let { placeholder, className, value = $bindable() } = $props<{
+	let { id, placeholder, className, value = $bindable() } = $props<{
+		id?: string;
 		placeholder?: string;
 		className?: string;
 		value?: string;
 	}>();
 </script>
 
-<textarea class="d-textarea {className}" {placeholder} bind:value></textarea>
+<textarea id="{id}" class="d-textarea {className}" {placeholder} bind:value></textarea>
