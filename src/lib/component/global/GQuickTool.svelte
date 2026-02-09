@@ -7,34 +7,39 @@
 	import LucideMessageCircleQuestionMark from '../library/lucide/LucideMessageCircleQuestionMark.svelte';
 	import LucidePalette from '../library/lucide/LucidePalette.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import ChangeThemeModal from '../snippet/modal/ChangeThemeModal.svelte';
 	import ChangeLanguageModal from '$lib/component/snippet/modal/ChangeLanguageModal.svelte';
 	import { LanguageEnum } from '$lib/model/enum/language.enum';
 	import { LanguageTool } from '$lib/tool/language.tool.svelte';
 	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
 	import type { ThemeEnum } from '$lib/model/enum/theme.enum';
 	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
+	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
+	import type { FontEnum } from '$lib/model/enum/font.enum';
+	import { FontTool } from '$lib/tool/font.tool.svelte';
 
 	const languageTool = new LanguageTool();
 	const localStorageUtil = new LocalStorageUtil();
 	const themeTool = new ThemeTool(localStorageUtil);
+	const fontTool = new FontTool(localStorageUtil);
 
 	function openLanguageDialog() {
 		dialogService.open({
 			title: 'Change Language',
 			component: ChangeLanguageModal,
 			onConfirm: (data?: { language: LanguageEnum }) => {
-				if (data?.language) languageTool.changeLanguage(data.language);
+				if (data?.language)
+					languageTool.changeLanguage(data.language);
 			}
 		});
 	}
 
 	function openThemeSettings() {
 		dialogService.open({
-			title: 'Change Theme',
-			component: ChangeThemeModal,
-			onConfirm: (data?: { theme: ThemeEnum }) => {
+			title: 'Change Appearance',
+			component: ChangeAppearanceModal,
+			onConfirm: (data?: { theme: ThemeEnum; font: FontEnum }) => {
 				if (data?.theme) themeTool.setTheme(data.theme);
+				if (data?.font) fontTool.setFont(data.font);
 			}
 		});
 	}

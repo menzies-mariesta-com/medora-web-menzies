@@ -16,6 +16,7 @@
 	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import { FontTool } from '$lib/tool/font.tool.svelte';
 
 	let { children } = $props();
 
@@ -24,10 +25,12 @@
 	// loading data
 	const localStorageUtil = new LocalStorageUtil();
 	const themeTool = new ThemeTool(localStorageUtil);
+	const fontTool = new FontTool(localStorageUtil);
 
 	lifeCycleUtil.onMount(() => {
 		// set data
 		themeTool.getTheme();
+		fontTool.getFont();
 	});
 </script>
 
