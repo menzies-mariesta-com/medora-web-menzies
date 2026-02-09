@@ -39,9 +39,20 @@
 	import { getTitle } from '$lib/remote/table/master-table/title.remote';
 	import {
 		createStaffWithUser,
-		updateStaff
+		updateStaff,
+		getStaffByIdWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
+	import { page } from '$app/state';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { createStaffDetail, updateStaffDetail } from '$lib/remote/table/information-table/staff-detail.remote';
+	import {
+		createStaffDepartment,
+		deleteStaffDepartment
+	} from '$lib/remote/table/information-table/staff-department.remote';
+	import {
+		createStaffUserGroup,
+		deleteStaffUserGroup
+	} from '$lib/remote/table/information-table/staff-user-group.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
@@ -56,6 +67,7 @@
 	import LStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
 	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
+	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -126,6 +138,12 @@
 	let signatureFile: File | null = $state(null);
 	let selectedSignatureImageUrl: string = $state('');
 	let selectedSignatureText: string = $state('');
+
+	const viewId = $derived(page.url.searchParams.get('view'));
+	const editId = $derived(page.url.searchParams.get('edit'));
+	const isViewMode = $derived(!!viewId);
+	const isEditMode = $derived(!!editId);
+	let staffEditId = $state<string | null>(null);
 
 	function showLicenseAndSignatureModal() {
 		licenseAndSignatureModalOpen = true;
@@ -212,10 +230,87 @@
 
 	// constructor
 	const lifeCycleUtil = new LifeCycleUtil();
+	let lastLoadedStaffId: string | null = $state(null);
 
 	lifeCycleUtil.onMount(() => {
+		console.log('[registration] mounted', page.url.href, 'view', page.url.searchParams.get('view'), 'edit', page.url.searchParams.get('edit'));
 		fetchInitialFieldData();
 	});
+
+	// When URL has ?view= or ?edit= and dropdowns are ready, load staff into form (reacts to URL change)
+	$effect(() => {
+		const id = viewId || editId;
+		console.log('registration id', id);
+		if (!id || typeof id !== 'string') {
+			lastLoadedStaffId = null;
+			return;
+		}
+		if (titleData.length === 0) return;
+		if (lastLoadedStaffId === id) return;
+		lastLoadedStaffId = id;
+		loadStaffIntoForm(id);
+	});
+
+	async function loadStaffIntoForm(id: string) {
+		const staff = await getStaffByIdWithRelations({ id });
+		if (!staff) return;
+		staffEditId = editId ? id : null;
+		selectedStaffCode = staff.code ?? '';
+		selectedTitleId = staff.titleId != null ? String(staff.titleId) : '';
+		selectedFirstName = staff.firstName ?? '';
+		selectedMiddleName = staff.middleName ?? '';
+		selectedLastName = staff.lastName ?? '';
+		selectedEmail = (staff as { user?: { email?: string } }).user?.email ?? '';
+		selectedGenderId = staff.genderId != null ? String(staff.genderId) : '';
+		selectedMaritalStatusId = staff.maritalStatusId != null ? String(staff.maritalStatusId) : '';
+		// Phone: try to match country code
+		const phonePrimary = staff.phonePrimary ?? '';
+		const phoneSecondary = staff.phoneSecondary ?? '';
+		const matchPrimary = countryData.find((c) => c.countryCallingCode && phonePrimary.startsWith(c.countryCallingCode));
+		if (matchPrimary) {
+			selectedPhoneCountryId = String(matchPrimary.id);
+			selectedPhone = phonePrimary.slice(matchPrimary.countryCallingCode?.length ?? 0).trim();
+		} else {
+			selectedPhoneCountryId = '';
+			selectedPhone = phonePrimary;
+		}
+		const matchSecondary = countryData.find((c) => c.countryCallingCode && phoneSecondary.startsWith(c.countryCallingCode));
+		if (matchSecondary) {
+			selectedPhoneSecondaryCountryId = String(matchSecondary.id);
+			selectedPhoneSecondary = phoneSecondary.slice(matchSecondary.countryCallingCode?.length ?? 0).trim();
+		} else {
+			selectedPhoneSecondaryCountryId = '';
+			selectedPhoneSecondary = phoneSecondary;
+		}
+		selectedStaffEmploymentTypeId = staff.staffEmploymentTypeId != null ? String(staff.staffEmploymentTypeId) : '';
+		selectedEducation = (staff as { staffDetail?: { education?: string } }).staffDetail?.education ?? '';
+		selectedDesignation = (staff as { staffDetail?: { designation?: string } }).staffDetail?.designation ?? '';
+		selectedDepartmentId = (staff as { staffDepartments?: { departmentId: number }[] }).staffDepartments?.[0]?.departmentId != null ? String((staff as { staffDepartments: { departmentId: number }[] }).staffDepartments[0].departmentId) : '';
+		selectedSpecializationId = staff.specializationId != null ? String(staff.specializationId) : '';
+		selectedCountryId = staff.countryId != null ? String(staff.countryId) : '';
+		selectedStateId = staff.stateId != null ? String(staff.stateId) : '';
+		selectedCityId = staff.cityId != null ? String(staff.cityId) : '';
+		selectedPostalCodeId = staff.postalCodeId != null ? String(staff.postalCodeId) : '';
+		selectedStaffTypeId = staff.staffTypeId != null ? String(staff.staffTypeId) : '';
+		selectedIdentityTypeId = staff.identityTypeId != null ? String(staff.identityTypeId) : '';
+		selectedIdentityNumber = staff.identityNo ?? '';
+		selectedNationalityId = staff.nationalityId != null ? String(staff.nationalityId) : '';
+		selectedDateOfBirth = staff.dateOfBirth ? (typeof staff.dateOfBirth === 'string' ? staff.dateOfBirth : new Date(staff.dateOfBirth).toISOString().slice(0, 10)) : '';
+		selectedAddress = staff.address ?? '';
+		selectedRemark = staff.remark ?? '';
+		selectedBloodTypeId = (staff as { staffDetail?: { bloodTypeId?: number } }).staffDetail?.bloodTypeId != null ? String((staff as { staffDetail: { bloodTypeId: number } }).staffDetail.bloodTypeId) : '';
+		selectedUserGroups = ((staff as { staffUserGroups?: { userGroupId: number }[] }).staffUserGroups ?? []).map((ug) => ug.userGroupId);
+		isActive = staff.statusId === StatusEnum.ACTIVE;
+		const detail = (staff as { staffDetail?: { licenseNo?: string; licenseExpiryDate?: string | Date; signatureImageUrl?: string; signatureText?: string } }).staffDetail;
+		selectedLicenseNo = detail?.licenseNo ?? '';
+		selectedLicenseExpiryDate = detail?.licenseExpiryDate ? (typeof detail.licenseExpiryDate === 'string' ? detail.licenseExpiryDate : new Date(detail.licenseExpiryDate).toISOString().slice(0, 10)) : '';
+		selectedSignatureImageUrl = detail?.signatureImageUrl ?? '';
+		selectedSignatureText = detail?.signatureText ?? '';
+		photoPreviewUrl = getStaffPhotoDisplayUrl(staff.photoUrl) ?? staff.photoUrl ?? '';
+		// Join/resign dates if we have them on staff - extend schema if needed
+		selectedJoinDate = dateTimeUtil.getTodayDateString();
+		selectedResignDate = '';
+	}
 
 	async function fetchInitialFieldData() {
 		titleData = await getTitle();
@@ -233,6 +328,12 @@
 		postalCodeData = await getPostalCode();
 		bloodTypeData = await getBloodType();
 		nationalityData = await getNationality();
+		// Load staff when view/edit id is in URL (effect also handles URL changes; this covers initial mount with params)
+		const id = viewId || editId;
+		if (id && typeof id === 'string') {
+			lastLoadedStaffId = id;
+			await loadStaffIntoForm(id);
+		}
 	}
 
 	const toastService = new ToastService();
@@ -339,6 +440,108 @@
 
 		isLoading = true;
 		try {
+			if (staffEditId) {
+				// --- EDIT MODE: update existing staff ---
+				const staff = await getStaffByIdWithRelations({ id: staffEditId });
+				if (!staff) {
+					toastService.addToast('Staff not found.', StatusColorEnum.ERROR);
+					isLoading = false;
+					return;
+				}
+				const statusId = isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
+				await updateStaff({
+					id: staffEditId,
+					firstName: selectedFirstName.trim(),
+					middleName: selectedMiddleName.trim() || undefined,
+					lastName: selectedLastName.trim(),
+					code: selectedStaffCode.trim() || undefined,
+					phonePrimary: phonePrimary || undefined,
+					phoneSecondary: phoneSecondary || undefined,
+					dateOfBirth: selectedDateOfBirth || undefined,
+					address: selectedAddress || undefined,
+					remark: selectedRemark || undefined,
+					identityNo: selectedIdentityNumber.trim() || undefined,
+					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
+					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+					maritalStatusId: selectedMaritalStatusId ? Number(selectedMaritalStatusId) : undefined,
+					staffEmploymentTypeId: selectedStaffEmploymentTypeId ? Number(selectedStaffEmploymentTypeId) : undefined,
+					staffTypeId: selectedStaffTypeId ? Number(selectedStaffTypeId) : undefined,
+					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
+					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					cityId: selectedCityId ? Number(selectedCityId) : undefined,
+					postalCodeId: selectedPostalCodeId ? Number(selectedPostalCodeId) : undefined,
+					nationalityId: selectedNationalityId ? Number(selectedNationalityId) : undefined,
+					identityTypeId: selectedIdentityTypeId ? Number(selectedIdentityTypeId) : undefined,
+					specializationId: selectedSpecializationId ? Number(selectedSpecializationId) : undefined,
+					statusId
+				});
+				const existingDetail = (staff as { staffDetail?: { id: number } }).staffDetail;
+				let staffDetailId: number | undefined = existingDetail?.id;
+				if (existingDetail?.id) {
+					await updateStaffDetail({
+						id: existingDetail.id,
+						education: selectedEducation.trim() || undefined,
+						designation: selectedDesignation.trim() || undefined,
+						licenseNo: selectedLicenseNo.trim() || undefined,
+						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
+						signatureText: selectedSignatureText.trim() || undefined
+					});
+				} else if (selectedEducation || selectedDesignation || selectedLicenseNo || selectedSignatureText) {
+					const newDetail = await createStaffDetail({
+						education: selectedEducation.trim() || undefined,
+						designation: selectedDesignation.trim() || undefined,
+						licenseNo: selectedLicenseNo.trim() || undefined,
+						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
+						signatureText: selectedSignatureText.trim() || undefined
+					});
+					staffDetailId = newDetail.id;
+					await updateStaff({ id: staffEditId, staffDetailId: newDetail.id });
+				}
+				const staffDepts = (staff as { staffDepartments?: { id: number }[] }).staffDepartments ?? [];
+				for (const sd of staffDepts) {
+					await deleteStaffDepartment({ id: sd.id });
+				}
+				if (selectedDepartmentId) {
+					await createStaffDepartment({
+						staffId: staffEditId,
+						departmentId: Number(selectedDepartmentId)
+					});
+				}
+				const staffUGs = (staff as { staffUserGroups?: { id: number }[] }).staffUserGroups ?? [];
+				for (const sug of staffUGs) {
+					await deleteStaffUserGroup({ id: sug.id });
+				}
+				for (const ugId of selectedUserGroups) {
+					await createStaffUserGroup({ staffId: staffEditId, userGroupId: ugId });
+				}
+				if (photoFile) {
+					photoUploading = true;
+					try {
+						const fd = new FormData();
+						fd.set('photo', photoFile);
+						const res = await fetch('/api/upload/staff-photo', { method: 'POST', body: fd });
+						const data = await res.json().catch(() => ({}));
+						if (res.ok && data.url) {
+							await updateStaff({ id: staffEditId, photoUrl: data.url });
+						}
+					} finally {
+						photoUploading = false;
+					}
+				}
+				if (signatureFile && staffDetailId) {
+					const fd = new FormData();
+					fd.set('signature', signatureFile);
+					const res = await fetch('/api/upload/staff-signature', { method: 'POST', body: fd });
+					const data = await res.json().catch(() => ({}));
+					if (res.ok && data.url) {
+						await updateStaffDetail({ id: staffDetailId, signatureImageUrl: data.url });
+					}
+				}
+				toastService.addToast('Staff updated successfully.', StatusColorEnum.SUCCESS);
+				isLoading = false;
+				return;
+			}
+
 			// 1. Create staff first (without photo/signature image URLs)
 			const result = await createStaffWithUser({
 				email: selectedEmail.trim(),
@@ -564,6 +767,7 @@
 <DaisyUiCard>
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
+			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
 			<DaisyUiCardBodyTitle className="mb-5"
 				>Profile Details</DaisyUiCardBodyTitle
 			>
@@ -720,15 +924,19 @@
 				bind:isLocked
 			/>
 
-			<!-- Action Buttons -->
-			<DaisyUiCardBodyAction className="mt-6">
-				<DaisyUiButton
-					type="submit"
-					className="d-btn-wide d-btn-primary"
-					disabled={isLoading}
-					>{isLoading ? 'Saving...' : 'Save'}</DaisyUiButton
-				>
-			</DaisyUiCardBodyAction>
+			<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
+			{#if !isViewMode}
+				<DaisyUiCardBodyAction className="mt-6">
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
+						disabled={isLoading}
+					>
+						{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
+					</DaisyUiButton>
+				</DaisyUiCardBodyAction>
+			{/if}
+			</fieldset>
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
