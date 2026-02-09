@@ -6,7 +6,7 @@ import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/ser
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq, or, ilike } from 'drizzle-orm';
+import { count, eq, or, ilike, ne, and } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
@@ -101,14 +101,30 @@ export const getStaffPaginated = query(
 				ilike(table.staffTable.phonePrimary, pattern)
 			);
 
-		const baseQuery = ensureDb().select().from(table.staffTable);
-		const countQuery = ensureDb().select({ count: count() }).from(table.staffTable);
+		// Exclude soft-deleted staff
+		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+
+		const baseQuery = ensureDb()
+			.select()
+			.from(table.staffTable)
+			.where(
+				searchCondition
+					? and(notDeletedCondition, searchCondition)
+					: notDeletedCondition
+			);
+
+		const countQuery = ensureDb()
+			.select({ count: count() })
+			.from(table.staffTable)
+			.where(
+				searchCondition
+					? and(notDeletedCondition, searchCondition)
+					: notDeletedCondition
+			);
 
 		const [data, countResult] = await Promise.all([
-			searchCondition
-				? baseQuery.where(searchCondition).limit(limit).offset(offset)
-				: baseQuery.limit(limit).offset(offset),
-			searchCondition ? countQuery.where(searchCondition) : countQuery
+			baseQuery.limit(limit).offset(offset),
+			countQuery
 		]);
 
 		const total = countResult[0]?.count ?? 0;
@@ -131,6 +147,37 @@ export const getStaffById = query(
 			.from(table.staffTable)
 			.where(eq(table.staffTable.id, id));
 		return row ?? null;
+	}
+);
+
+// get one with relations (for view/edit form)
+export const getStaffByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: string }) => {
+		return ensureDb().query.staffTable.findFirst({
+			where: (staffTable, funcs) => funcs.eq(staffTable.id, id),
+			with: {
+				gender: true,
+				identityType: true,
+				maritalStatus: true,
+				specialization: true,
+				status: true,
+				staffDetail: { with: { bloodType: true, status: true } },
+				city: true,
+				country: true,
+				nationality: true,
+				position: true,
+				postalCode: true,
+				staffEmploymentType: true,
+				staffType: true,
+				state: true,
+				title: true,
+				user: true,
+				staffHospitals: { with: { hospital: true } },
+				staffDepartments: { with: { department: true } },
+				staffUserGroups: { with: { userGroup: true } },
+			},
+		});
 	}
 );
 
