@@ -13,7 +13,8 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffShiftTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
+import { m } from '$lib/paraglide/messages';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -202,3 +203,75 @@ export const userGroupTable = pgTable('user_group', {
 	//userGroupPageTable
 	...timestamps,
 });
+
+export const patientTable = pgTable('patient', {
+	id: uuid('id')
+		.primaryKey()
+		.$defaultFn(() => uuidv7()),
+	code: varchar('code', { length: 512 }),
+	registrationNo: varchar('registration_no', { length: 512 }),
+	firstName: varchar('first_name', { length: 512 }),
+	middleName: varchar('middle_name', { length: 512 }),
+	lastName: varchar('last_name', { length: 512 }),
+	userId: text('user_id')
+		.unique()
+		.notNull()
+		.references(() => userTable.id, { onDelete: 'cascade' }),
+	phonePrimary: varchar('phone_primary', { length: 128 }),
+	phoneSecondary: varchar('phone_secondary', { length: 128 }),
+	identityNo: varchar('identity_no', { length: 128 }),
+	dateOfBirth: date('date_of_birth'),
+	guardian_name: varchar('guardian_name', { length: 512 }),
+	guardian_phone: varchar('guardian_phone', { length: 128 }),
+	photo_path: text('photo_path'),
+	address: text('address'),
+	remarks: text('remarks'),
+	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
+	genderId: integer('gender_id').references(() => genderTable.id),
+	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
+	bloodTypeId: integer('blood_type_id').references(() => bloodTypeTable.id),
+	cityId: integer('city_id').references(() => cityTable.id),
+	stateId: integer('state_id').references(() => stateTable.id),
+	countryId: integer('country_id').references(() => countryTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamp,
+})
+
+export const patientAttachmentTable = pgTable('patient_attachment', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	filePath: text('file_path'),
+	description: text('description'),
+	...timestamp,
+})
+
+export const insuranceTable = pgTable('insurance_table', {
+	id: uuid('id')
+		.primaryKey()
+		.$defaultFn(() => uuidv7()),
+	name: text('name'),
+	...timestamp,
+
+})
+
+export const patientInsurance = pgTable('patient_insurance', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	insuranceId: uuid('insurance_id')
+		.notNull()
+		.references(() => insuranceTable.id),
+	...timestamp,
+})
+
+export const patientAllergies = pgTable('patient_allergies', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	description: text('description'),
+	...timestamp,
+})
