@@ -1,4 +1,5 @@
 import { query, command } from '$app/server';
+import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -10,6 +11,9 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
+import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { uuidv7 } from 'uuidv7';
+import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
 
 // get all
 export const getPatient = query(async (): Promise<PatientSchema[]> => {
@@ -147,6 +151,133 @@ export const deletePatientComplete = command(
 	async ({ id }: { id: string }): Promise<void> => {
 		await ensureDb().delete(table.patientTable).where(eq(table.patientTable.id, id));
 		getPatient().refresh();
+	}
+);
+
+// Generate random password (mirrors staff.remote)
+function generateRandomPassword(length: number = 16): string {
+	const charset =
+		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+	let password = '';
+	for (let i = 0; i < length; i++) {
+		password += charset.charAt(Math.floor(Math.random() * charset.length));
+	}
+	return password;
+}
+
+// Create patient with Better Auth user (email/password)
+export const createPatientWithUser = command(
+	'unchecked' as const,
+	async (payload: {
+		// User fields
+		email: string;
+		name: string;
+		// Patient fields (only include fields that exist in patientTable)
+		code?: string;
+		registrationNo?: string;
+		firstName?: string;
+		middleName?: string;
+		lastName?: string;
+		phonePrimary?: string;
+		phoneSecondary?: string;
+		identityNo?: string;
+		dateOfBirth?: string;
+		guardian_name?: string;
+		guardian_phone?: string;
+		photo_path?: string;
+		address?: string;
+		remarks?: string;
+		maritalStatusId?: number;
+		genderId?: number;
+		identityTypeId?: number;
+		bloodTypeId?: number;
+		cityId?: number;
+		stateId?: number;
+		countryId?: number;
+		isActive?: boolean;
+	}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
+		const passwordHashUtil = new PasswordHashUtil();
+
+		// Ensure email is unique
+		const existingUser = await ensureDb()
+			.select()
+			.from(userTable)
+			.where(eq(userTable.email, payload.email))
+			.limit(1);
+		if (existingUser.length > 0) {
+			throw error(400, 'Patient with this email already exists');
+		}
+
+		// Generate random password for Better Auth user
+		const generatedPassword = generateRandomPassword(16);
+		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+
+		// Create user
+		const userId = uuidv7();
+		const [user] = await ensureDb()
+			.insert(userTable)
+			.values({
+				id: userId,
+				name: payload.name,
+				email: payload.email,
+				emailVerified: false,
+			})
+			.returning();
+
+		if (!user) throw error(400, 'Failed to create patient user.');
+
+		// Create Better Auth account (email/password)
+		await ensureDb().insert(accountTable).values({
+			id: uuidv7(),
+			userId: user.id,
+			accountId: payload.email,
+			providerId: 'credential',
+			password: hashedPassword,
+		});
+
+		// Prepare patient payload (only fields that exist in patientTable)
+		const patientPayload: PatientSchemaInsert = {
+			userId: user.id,
+			code: payload.code,
+			registrationNo: payload.registrationNo,
+			firstName: payload.firstName,
+			middleName: payload.middleName,
+			lastName: payload.lastName,
+			phonePrimary: payload.phonePrimary,
+			phoneSecondary: payload.phoneSecondary,
+			identityNo: payload.identityNo,
+			dateOfBirth: payload.dateOfBirth
+				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
+				: undefined,
+			guardian_name: payload.guardian_name,
+			guardian_phone: payload.guardian_phone,
+			photo_path: payload.photo_path,
+			address: payload.address,
+			remarks: payload.remarks,
+			maritalStatusId: payload.maritalStatusId
+				? Number(payload.maritalStatusId)
+				: undefined,
+			genderId: payload.genderId ? Number(payload.genderId) : undefined,
+			identityTypeId: payload.identityTypeId
+				? Number(payload.identityTypeId)
+				: undefined,
+			bloodTypeId: payload.bloodTypeId ? Number(payload.bloodTypeId) : undefined,
+			cityId: payload.cityId ? Number(payload.cityId) : undefined,
+			stateId: payload.stateId ? Number(payload.stateId) : undefined,
+			countryId: payload.countryId ? Number(payload.countryId) : undefined,
+			statusId: payload.isActive === false ? StatusEnum.INACTIVE : StatusEnum.ACTIVE,
+		};
+
+		const [patient] = await ensureDb()
+			.insert(table.patientTable)
+			.values(patientPayload)
+			.returning();
+
+		if (!patient) throw error(400, 'Failed to create patient.');
+
+		getPatient().refresh();
+
+		return { patient, userId: user.id, generatedPassword };
 	}
 );
 
