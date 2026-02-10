@@ -13,6 +13,11 @@ import type {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
+	patientTable,
+	patientAttachmentTable,
+	insuranceTable,
+	patientInsurance,
+	patientAllergies,
 } from './information-table';
 import type { StatusSchema } from '../master-table/master-table-schema-type';
 
@@ -68,3 +73,23 @@ export type UserGroupPageSchemaUpdate = Partial<UserGroupPageSchemaInsert>;
 export type UserGroupSchema = InferSelectModel<typeof userGroupTable>;
 export type UserGroupSchemaInsert = InferInsertModel<typeof userGroupTable>;
 export type UserGroupSchemaUpdate = Partial<UserGroupSchemaInsert>;
+
+export type PatientSchema = InferSelectModel<typeof patientTable>;
+export type PatientSchemaInsert = InferInsertModel<typeof patientTable>;
+export type PatientSchemaUpdate = Partial<PatientSchemaInsert>;
+
+export type PatientAttachmentSchema = InferSelectModel<typeof patientAttachmentTable>;
+export type PatientAttachmentSchemaInsert = InferInsertModel<typeof patientAttachmentTable>;
+export type PatientAttachmentSchemaUpdate = Partial<PatientAttachmentSchemaInsert>;
+
+export type InsuranceSchema = InferSelectModel<typeof insuranceTable>;
+export type InsuranceSchemaInsert = InferInsertModel<typeof insuranceTable>;
+export type InsuranceSchemaUpdate = Partial<InsuranceSchemaInsert>;
+
+export type PatientInsuranceSchema = InferSelectModel<typeof patientInsurance>;
+export type PatientInsuranceSchemaInsert = InferInsertModel<typeof patientInsurance>;
+export type PatientInsuranceSchemaUpdate = Partial<PatientInsuranceSchemaInsert>;
+
+export type PatientAllergiesSchema = InferSelectModel<typeof patientAllergies>;
+export type PatientAllergiesSchemaInsert = InferInsertModel<typeof patientAllergies>;
+export type PatientAllergiesSchemaUpdate = Partial<PatientAllergiesSchemaInsert>;
