@@ -2,10 +2,12 @@ import type { StatusColorEnum } from '$lib/model/enum/color.enum';
 import type { ToastInterface } from '$lib/model/interface/toast.interface';
 import { ToastState } from '$lib/state/toast.state.svelte';
 
+let nextToastId = 1;
+
 export class ToastService {
     addToast(message: string, type: StatusColorEnum) {
         const newToast: ToastInterface = {
-            id: Date.now(),
+            id: nextToastId++,
             message,
             type
         };
