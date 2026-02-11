@@ -7,13 +7,19 @@ import type {
 	PatientSchemaInsert,
 	PatientSchemaUpdate,
 } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ilike, ne, or } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
+
+
+
+export type PatientWithRelations = NonNullable<
+	Awaited<ReturnType<typeof getPatientByIdWithRelations>>
+>;
 
 // get all
 export const getPatient = query(async (): Promise<PatientSchema[]> => {
@@ -47,15 +53,55 @@ export const getPatientCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+// get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
 export const getPatientPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<PatientSchema>> => {
+	async (params?: PaginationParams): Promise<PaginatedResult<PatientWithRelations>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const searchTerm = params?.search?.trim();
+		const pattern = searchTerm ? `%${searchTerm}%` : null;
+		const searchCondition =
+			pattern &&
+			or(
+				ilike(table.patientTable.firstName, pattern),
+				ilike(table.patientTable.lastName, pattern),
+				ilike(table.patientTable.code, pattern),
+				ilike(table.patientTable.phonePrimary, pattern)
+			);
+
+		const notDeletedCondition = ne(table.patientTable.statusId, StatusEnum.DELETED);
+		const whereExpr = searchCondition
+			? and(notDeletedCondition, searchCondition)
+			: notDeletedCondition;
+
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.patientTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.patientTable),
+			ensureDb().query.patientTable.findMany({
+				where: whereExpr,
+				with: {
+					user: true,
+					title: true,
+					religion: true,
+					maritalStatus: true,
+					gender: true,
+					identityType: true,
+					bloodType: true,
+					city: true,
+					state: true,
+					country: true,
+					status: true,
+					attachments: true,
+					insurances: { with: { insurance: true } },
+					allergies: true,
+				},
+				limit,
+				offset
+			}),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.patientTable)
+				.where(whereExpr)
 		]);
+
 		const total = countResult[0]?.count ?? 0;
 		return {
 			data,
@@ -87,6 +133,8 @@ export const getPatientByIdWithRelations = query(
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				user: true,
+				title: true,
+				religion: true,
 				maritalStatus: true,
 				gender: true,
 				identityType: true,
@@ -186,6 +234,7 @@ export const createPatientWithUser = command(
 		dateOfBirth?: string;
 		guardian_name?: string;
 		guardian_phone?: string;
+		guardianPhoneCountryId?: number;
 		photo_path?: string;
 		address?: string;
 		remark?: string;
@@ -198,8 +247,9 @@ export const createPatientWithUser = command(
 		countryId?: number;
 		postalCodeId?: number;
 		nationalityId?: number;
-		religion?: string;
+		religionId?: number;
 		isActive?: boolean;
+		nameMasking?: boolean;
 	}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -258,6 +308,9 @@ export const createPatientWithUser = command(
 				: undefined,
 			guardian_name: payload.guardian_name,
 			guardian_phone: payload.guardian_phone,
+			guardianPhoneCountryId: payload.guardianPhoneCountryId
+				? Number(payload.guardianPhoneCountryId)
+				: undefined,
 			photo_path: payload.photo_path,
 			address: payload.address,
 			remark: payload.remark,
@@ -274,8 +327,9 @@ export const createPatientWithUser = command(
 			countryId: payload.countryId ? Number(payload.countryId) : undefined,
 			postalCodeId: payload.postalCodeId ? Number(payload.postalCodeId) : undefined,
 			nationalityId: payload.nationalityId ? Number(payload.nationalityId) : undefined,
-			religion: payload.religion?.trim() || undefined,
+			religionId: payload.religionId ? Number(payload.religionId) : undefined,
 			statusId: payload.isActive === false ? StatusEnum.INACTIVE : StatusEnum.ACTIVE,
+			nameMasking: payload.nameMasking === true ? YesNoEnum.YES : YesNoEnum.NO,
 		};
 
 		const [patient] = await ensureDb()

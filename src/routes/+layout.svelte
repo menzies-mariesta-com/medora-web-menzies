@@ -52,8 +52,8 @@
 	<GQuickTool />
 {/if}
 
-<!-- Toast Component (Learn Toast Service To Use) -->
-{#if ToastState.length > 0}
+<!-- Toast Component when no dialog is open (Learn Toast Service To Use) -->
+{#if ToastState.length > 0 && !DialogState.current}
 	<DaisyUiToast className="d-toast-top d-toast-end">
 		{#each ToastState as toast (toast.id)}
 			<DaisyUiAlert type={toast.type} message={toast.message} />
@@ -87,6 +87,14 @@
 					})}
 				{/if}
 			</div>
+			<!-- Toasts inside dialog so they appear above attachment/dialog content (top layer) -->
+			{#if ToastState.length > 0}
+				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
+					{#each ToastState as toast (toast.id)}
+						<DaisyUiAlert type={toast.type} message={toast.message} />
+					{/each}
+				</DaisyUiToast>
+			{/if}
 		</DaisyUiModal>
 	{:else}
 		<DaisyUiModal
@@ -94,6 +102,13 @@
 			open={true}
 			onClose={() => dialogService.close()}
 		>
+			{#if ToastState.length > 0}
+				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
+					{#each ToastState as toast (toast.id)}
+						<DaisyUiAlert type={toast.type} message={toast.message} />
+					{/each}
+				</DaisyUiToast>
+			{/if}
 			<DaisyUiModalBox onClose={() => dialogService.close()}>
 			{#if DialogState.current.component}
 				{#if DialogState.current.title}
