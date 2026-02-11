@@ -87,6 +87,11 @@ export async function seedInformationTables() {
 			(200001, 'Patient Registration', 2, 1, 2, '/heka/home/registration/patient/registration', 1),
 			(200002, 'Patient List', 2, 1, 2, '/heka/home/registration/patient/list', 2),
 
+			-- Administration Module
+			-- schedule
+			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
+			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/staff/registration', 1)
+
 
 		ON CONFLICT (id) DO NOTHING;
 		`)
