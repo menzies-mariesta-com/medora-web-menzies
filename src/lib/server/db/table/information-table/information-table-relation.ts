@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+	doctorScheduleTable,
 	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
@@ -38,6 +39,7 @@ import {
 	statusTable,
 	titleTable,
 	religionTable,
+	weekdayTable,
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -61,7 +63,8 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	}),
 	userGroups: many(userGroupTable),
 	hospitalDepartments: many(hospitalDepartmentTable),
-	staffHospitals:many(staffHospitalTable),
+	staffHospitals: many(staffHospitalTable),
+	doctorSchedules: many(doctorScheduleTable),
 }));
 
 export const hospitalDepartmentTableRelations = relations(hospitalDepartmentTable, ({ one }) => ({
@@ -122,6 +125,25 @@ export const staffDetailTableRelations = relations(staffDetailTable, ({ one }) =
 	staff: one(staffTable),
 	status: one(statusTable, {
 		fields: [staffDetailTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
+
+export const doctorScheduleTableRelations = relations(doctorScheduleTable, ({ one }) => ({
+	doctor: one(staffTable, {
+		fields: [doctorScheduleTable.doctorId],
+		references: [staffTable.id],
+	}),
+	hospital: one(hospitalTable, {
+		fields: [doctorScheduleTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	weekday: one(weekdayTable, {
+		fields: [doctorScheduleTable.weekdayId],
+		references: [weekdayTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [doctorScheduleTable.statusId],
 		references: [statusTable.id],
 	}),
 }));
@@ -213,6 +235,7 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	staffHospitals: many(staffHospitalTable),
 	staffDepartments: many(staffDepartmentTable),
 	staffUserGroups: many(staffUserGroupTable),
+	doctorSchedules: many(doctorScheduleTable),
 }));
 
 export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ one }) => ({
@@ -379,3 +402,5 @@ export const patientAllergyTableRelations = relations(patientAllergyTable, ({ on
 		references: [statusTable.id],
 	}),
 }));
+
+
