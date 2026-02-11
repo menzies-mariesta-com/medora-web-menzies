@@ -1,5 +1,4 @@
 <script lang="ts">
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import type {
@@ -7,6 +6,7 @@
 		CountrySchema,
 		NationalitySchema,
 		PostalCodeSchema,
+		ReligionSchema,
 		StateSchema
 	} from '$lib/server/db/schema-type';
 
@@ -16,6 +16,7 @@
 		cityData,
 		postalCodeData,
 		nationalityData,
+		religionData,
 		filteredStateData,
 		filteredCityData,
 		filteredPostalCodeData,
@@ -27,13 +28,14 @@
 		selectedCityId = $bindable(),
 		selectedPostalCodeId = $bindable(),
 		selectedNationalityId = $bindable(),
-		religion = $bindable()
+		selectedReligionId = $bindable()
 	} = $props<{
 		countryData: CountrySchema[];
 		stateData: StateSchema[];
 		cityData: CitySchema[];
 		postalCodeData: PostalCodeSchema[];
 		nationalityData: NationalitySchema[];
+		religionData: ReligionSchema[];
 		filteredStateData: StateSchema[];
 		filteredCityData: CitySchema[];
 		filteredPostalCodeData: PostalCodeSchema[];
@@ -45,7 +47,7 @@
 		selectedCityId?: string;
 		selectedPostalCodeId?: string;
 		selectedNationalityId?: string;
-		religion?: string;
+		selectedReligionId?: string;
 	}>();
 </script>
 
@@ -115,7 +117,11 @@
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="religion" className="shrink-0 sm:w-36">Religion</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
-			<DaisyUiInputField bind:value={religion} inputType="text" />
+			<DaisyUiSelect bind:value={selectedReligionId} optionHeader="Select a religion ...">
+				{#each religionData as data (data.id)}
+					<option value={String(data.id)}>{data.name}</option>
+				{/each}
+			</DaisyUiSelect>
 		</div>
 	</div>
 </div>

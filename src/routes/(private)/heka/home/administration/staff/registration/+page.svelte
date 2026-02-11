@@ -18,7 +18,8 @@
 	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
 	import { getState } from '$lib/remote/table/master-table/state.remote';
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+import { browser } from '$app/environment';
 	import type {
 		BloodTypeSchema,
 		CitySchema,
@@ -66,6 +67,7 @@
 	import LStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
 	import LStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
 	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 
@@ -396,6 +398,7 @@
 
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
+	if (!browser) return;
 		const form = e.currentTarget as HTMLFormElement;
 		const fd = new FormData(form);
 
@@ -790,61 +793,65 @@
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
 			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
-			<DaisyUiCardBodyTitle className="mb-5"
-				>Profile Details</DaisyUiCardBodyTitle
-			>
-			<!-- Profile + Main form grid: responsive -->
+				<DaisyUiCardBodyTitle className="mb-5"
+					>Profile Details</DaisyUiCardBodyTitle
+				>
+			</fieldset>
+			<!-- Flex row: profile column (License & Signature button outside disabled fieldset) + form grid -->
 			<div
 				class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
 			>
-				<!-- Profile block: photo upload + preview -->
+				<!-- Profile block: photo + Choose/Remove/Divider in fieldset; License & Signature button outside so it stays clickable in view mode -->
 				<div
 					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 				>
-					<input
-						type="file"
-						accept="image/jpeg,image/png,image/webp,image/gif"
-						class="hidden"
-						bind:this={photoInputEl}
-						onchange={handlePhotoChange}
-					/>
-					<button
-						type="button"
-						class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
-						onclick={() => photoInputEl?.click()}
-						disabled={photoUploading}
-						title="Choose photo (uploaded when you save)"
-					>
-						{#if photoUploading}
-							<span class="text-xs">Uploading…</span>
-						{:else if photoPreviewUrl}
-							<img
-								src={photoPreviewUrl}
-								alt="Staff profile"
-								class="size-full object-cover"
-							/>
-						{:else}
-							<DaisyUiSkeleton className="size-full rounded-full" />
-						{/if}
-					</button>
-					<div class="flex flex-col gap-2">
-						<DaisyUiButton
+					<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
+						<DaisyUiFileInput
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							className="hidden"
+							bind:inputEl={photoInputEl}
+							onchange={handlePhotoChange}
+						/>
+						<button
 							type="button"
-							className="d-btn-primary d-btn-sm"
-							onClick={() => photoInputEl?.click()}
+							class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
+							onclick={() => photoInputEl?.click()}
 							disabled={photoUploading}
+							title="Choose photo (uploaded when you save)"
 						>
-							{photoFile ? 'Change photo' : 'Choose photo'}
-						</DaisyUiButton>
-						<DaisyUiButton
-							type="button"
-							className="d-btn-error d-btn-sm"
-							onClick={handleRemovePhoto}
-							disabled={!photoFile}
-						>
-							Remove
-						</DaisyUiButton>
-						<DaisyUiDivider position="horizontal" className="text-xs">More Detail</DaisyUiDivider>
+							{#if photoUploading}
+								<span class="text-xs">Uploading…</span>
+							{:else if photoPreviewUrl}
+								<img
+									src={photoPreviewUrl}
+									alt="Staff profile"
+									class="size-full object-cover"
+								/>
+							{:else}
+								<DaisyUiSkeleton className="size-full rounded-full" />
+							{/if}
+						</button>
+						<div class="flex flex-col gap-2">
+							<DaisyUiButton
+								type="button"
+								className="d-btn-primary d-btn-sm"
+								onClick={() => photoInputEl?.click()}
+								disabled={photoUploading}
+							>
+								{photoFile ? 'Change photo' : 'Choose photo'}
+							</DaisyUiButton>
+							<DaisyUiButton
+								type="button"
+								className="d-btn-error d-btn-sm"
+								onClick={handleRemovePhoto}
+								disabled={!photoFile}
+							>
+								Remove
+							</DaisyUiButton>
+							<DaisyUiDivider position="horizontal" className="text-xs">More Detail</DaisyUiDivider>
+						</div>
+					</fieldset>
+					<div class="flex flex-col gap-2">
 						<DaisyUiButton
 							type="button"
 							className="d-btn-outline d-btn-sm"
@@ -855,17 +862,10 @@
 					</div>
 				</div>
 
-				<LStaffRegistrationLicenseAndSignatureModal
-					bind:open={licenseAndSignatureModalOpen}
-					bind:licenseNo={selectedLicenseNo}
-					bind:licenseExpiryDate={selectedLicenseExpiryDate}
-					bind:signatureFile
-					bind:signatureText={selectedSignatureText}
-				/>
-
 				<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
+				<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex-1">
 				<div
-					class="grid min-w-0 flex-1 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+					class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
 				>
 					<!-- Column 1 -->
 					<LAdministrationStaffRegistrationFirstColumn
@@ -927,38 +927,48 @@
 						bind:selectedNationalityId
 					/>
 				</div>
+				</fieldset>
 			</div>
 
-			<!-- More Info: 1 col mobile, 2 cols md+ -->
-			<LStaffRegistrationMoreInfo
-				bind:selectedAddress
-				bind:selectedRemark
-			/>
+			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
+				<!-- More Info: 1 col mobile, 2 cols md+ -->
+				<LStaffRegistrationMoreInfo
+					bind:selectedAddress
+					bind:selectedRemark
+				/>
 
-			<!-- Permissions: stack on mobile, row on md+ -->
-			<LStaffRegistrationPermissions
-				{userGroupData}
-				bind:selectedUserGroups
-				bind:selectedJoinDate
-				bind:selectedResignDate
-				bind:isActive
-				bind:isSuperAdmin
-				bind:isLocked
-			/>
+				<!-- Permissions: stack on mobile, row on md+ -->
+				<LStaffRegistrationPermissions
+					{userGroupData}
+					bind:selectedUserGroups
+					bind:selectedJoinDate
+					bind:selectedResignDate
+					bind:isActive
+					bind:isSuperAdmin
+					bind:isLocked
+				/>
 
-			<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
-			{#if !isViewMode}
-				<DaisyUiCardBodyAction className="mt-6">
-					<DaisyUiButton
-						type="submit"
-						className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
-						disabled={isLoading}
-					>
-						{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
-					</DaisyUiButton>
-				</DaisyUiCardBodyAction>
-			{/if}
+				<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
+				{#if !isViewMode}
+					<DaisyUiCardBodyAction className="mt-6">
+						<DaisyUiButton
+							type="submit"
+							className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
+							disabled={isLoading}
+						>
+							{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
+						</DaisyUiButton>
+					</DaisyUiCardBodyAction>
+				{/if}
 			</fieldset>
+			<LStaffRegistrationLicenseAndSignatureModal
+				bind:open={licenseAndSignatureModalOpen}
+				bind:licenseNo={selectedLicenseNo}
+				bind:licenseExpiryDate={selectedLicenseExpiryDate}
+				bind:signatureFile
+				bind:signatureText={selectedSignatureText}
+				viewOnly={isViewMode}
+			/>
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>

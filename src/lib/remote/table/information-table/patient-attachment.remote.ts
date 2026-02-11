@@ -79,6 +79,22 @@ export const getPatientAttachmentById = query(
 	}
 );
 
+// get by patient
+export const getPatientAttachmentByPatientId = query(
+	'unchecked' as const,
+	async ({
+		patientId,
+	}: {
+		patientId: string;
+	}): Promise<PatientAttachmentSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.patientAttachmentTable)
+			.where(eq(table.patientAttachmentTable.patientId, patientId))
+			.orderBy(table.patientAttachmentTable.id);
+	}
+);
+
 // create
 export const createPatientAttachment = command(
 	'unchecked' as const,

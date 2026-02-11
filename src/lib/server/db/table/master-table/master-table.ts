@@ -106,7 +106,7 @@ export const postalCodeTable = pgTable('postal_code', {
 
 export const religionTable = pgTable('religion', {
 	id: serial('id').primaryKey(),
-	name: varchar('name', {length: 512}),
+	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 })
@@ -164,3 +164,11 @@ export const titleTable = pgTable('title', {
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
+
+
+export const weekdayTable = pgTable('weekday', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps
+})

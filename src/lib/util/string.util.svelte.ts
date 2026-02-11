@@ -1,3 +1,6 @@
+import { YesNoEnum } from "$lib/model/enum/db-link";
+import type { PatientWithRelations } from "$lib/remote/table/information-table/patient.remote";
+
 export class StringUtil {
   /**
    * snake_case / kebab-case → spaces
@@ -88,6 +91,17 @@ export class StringUtil {
 
     return parts.join(' ');
   }
+
+	static patientDisplayName(patient: PatientWithRelations): string {
+		const nameMasking = (patient as { nameMasking?: number }).nameMasking;
+		if (nameMasking === YesNoEnum.YES) return '***';
+		return StringUtil.fullNameWithTitle(
+			patient.title?.name,
+			patient.firstName,
+			patient.middleName,
+			patient.lastName
+		);
+	}
 
   // =========================================================
   // 🔥 NEW URL HELPERS

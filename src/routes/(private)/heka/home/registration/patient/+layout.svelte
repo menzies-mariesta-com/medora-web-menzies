@@ -7,11 +7,12 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
-	console.log(subPages);
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
@@ -22,7 +23,6 @@
 {#if isEmbed}
 	{@render children()}
 {:else if subPages.length > 0}
-{console.log(subPages)}
 	<div class="patient-subnav-wrapper">
 		<nav role="tablist" class="patient-subnav-tabs">
 			{#each subPages as sub (sub.id)}
@@ -88,4 +88,3 @@
 		padding: 0;
 	}
 </style>
-

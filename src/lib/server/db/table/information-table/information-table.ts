@@ -8,12 +8,13 @@ import {
 	text,
 	timestamp,
 	uuid,
+	time,
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, weekdayTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -224,10 +225,11 @@ export const patientTable = pgTable('patient', {
 	dateOfBirth: date('date_of_birth'),
 	guardian_name: varchar('guardian_name', { length: 512 }),
 	guardian_phone: varchar('guardian_phone', { length: 128 }),
+	guardianPhoneCountryId: integer('guardian_phone_country_id').references(() => countryTable.id),
 	photo_path: text('photo_path'),
 	address: text('address'),
 	remark: text('remark'),
-	masking: integer('masking').notNull().default(YesNoEnum.NO),
+	nameMasking: integer('name_masking').notNull().default(YesNoEnum.NO),
 	phonePrimaryCountryId: integer('phone_primary_country_id').references(() => countryTable.id),
 	phoneSecondaryCountryId: integer('phone_secondary_country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
@@ -241,7 +243,7 @@ export const patientTable = pgTable('patient', {
 	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
 	religionId: integer('religion_id').references(() => religionTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 })
 
 export const patientAttachmentTable = pgTable('patient_attachment', {
@@ -252,7 +254,7 @@ export const patientAttachmentTable = pgTable('patient_attachment', {
 	fileUrl: text('file_url'),
 	description: text('description'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 })
 
 export const insuranceTable = pgTable('insurance_table', {
@@ -261,7 +263,7 @@ export const insuranceTable = pgTable('insurance_table', {
 		.$defaultFn(() => uuidv7()),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 
 })
 
@@ -273,7 +275,7 @@ export const patientInsurance = pgTable('patient_insurance', {
 	insuranceId: uuid('insurance_id')
 		.notNull()
 		.references(() => insuranceTable.id),
-	...timestamp,
+	...timestamps,
 })
 
 export const patientAllergyTable = pgTable('patient_allergies', {
@@ -283,5 +285,20 @@ export const patientAllergyTable = pgTable('patient_allergies', {
 		.references(() => patientTable.id),
 	description: text('description'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
+})
+
+export const doctorScheduleTable = pgTable('doctor_schedule', {
+	id: serial('id').primaryKey(),
+	staffId: uuid('staff_id')
+		.notNull()
+		.references(() => staffTable.id),
+	hospitalId: serial('hospital_id').notNull().references(() => hospitalTable.id),
+	weekdayId: serial('weekday_id').notNull().references(() => weekdayTable.id),
+	fromDate: date('from_date'),
+	toDate: date('to_date'),
+	fromShiftTime: time('from_shift_time'),
+	toShiftTime: time('to_shift_time'),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
 })
