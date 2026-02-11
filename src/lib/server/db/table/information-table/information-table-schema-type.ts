@@ -17,7 +17,7 @@ import type {
 	patientAttachmentTable,
 	insuranceTable,
 	patientInsurance,
-	patientAllergies,
+	patientAllergyTable,
 } from './information-table';
 import type { StatusSchema } from '../master-table/master-table-schema-type';
 
@@ -90,6 +90,6 @@ export type PatientInsuranceSchema = InferSelectModel<typeof patientInsurance>;
 export type PatientInsuranceSchemaInsert = InferInsertModel<typeof patientInsurance>;
 export type PatientInsuranceSchemaUpdate = Partial<PatientInsuranceSchemaInsert>;
 
-export type PatientAllergiesSchema = InferSelectModel<typeof patientAllergies>;
-export type PatientAllergiesSchemaInsert = InferInsertModel<typeof patientAllergies>;
+export type PatientAllergiesSchema = InferSelectModel<typeof patientAllergyTable>;
+export type PatientAllergiesSchemaInsert = InferInsertModel<typeof patientAllergyTable>;
 export type PatientAllergiesSchemaUpdate = Partial<PatientAllergiesSchemaInsert>;

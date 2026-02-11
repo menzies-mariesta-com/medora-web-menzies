@@ -38,6 +38,58 @@ export class StringUtil {
   }
 
   // =========================================================
+  // Name helpers
+  // =========================================================
+
+  /**
+   * Build full name from parts:
+   * first + (space + middle?) + (space + last?)
+   */
+  static fullName(
+    firstName?: string | null,
+    middleName?: string | null,
+    lastName?: string | null
+  ): string {
+    const parts: string[] = [];
+
+    if (firstName && firstName.trim()) {
+      parts.push(firstName.trim());
+    }
+    if (middleName && middleName.trim()) {
+      parts.push(middleName.trim());
+    }
+    if (lastName && lastName.trim()) {
+      parts.push(lastName.trim());
+    }
+
+    return parts.join(' ');
+  }
+
+  static fullNameWithTitle(
+    titleName?: string | null,
+    firstName?: string | null,
+    middleName?: string | null,
+    lastName?: string | null
+  ): string {
+    const parts: string[] = [];
+
+    if (titleName && titleName.trim()) {
+      parts.push(titleName.trim());
+    }
+    if (firstName && firstName.trim()) {
+      parts.push(firstName.trim());
+    }
+    if (middleName && middleName.trim()) {
+      parts.push(middleName.trim());
+    }
+    if (lastName && lastName.trim()) {
+      parts.push(lastName.trim());
+    }
+
+    return parts.join(' ');
+  }
+
+  // =========================================================
   // 🔥 NEW URL HELPERS
   // =========================================================
 
