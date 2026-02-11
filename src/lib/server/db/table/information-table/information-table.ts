@@ -290,7 +290,7 @@ export const patientAllergyTable = pgTable('patient_allergies', {
 
 export const doctorScheduleTable = pgTable('doctor_schedule', {
 	id: serial('id').primaryKey(),
-	doctorId: uuid('doctor_id')
+	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
 	hospitalId: serial('hospital_id').notNull().references(() => hospitalTable.id),

@@ -131,7 +131,7 @@ export const staffDetailTableRelations = relations(staffDetailTable, ({ one }) =
 
 export const doctorScheduleTableRelations = relations(doctorScheduleTable, ({ one }) => ({
 	doctor: one(staffTable, {
-		fields: [doctorScheduleTable.doctorId],
+		fields: [doctorScheduleTable.staffId],
 		references: [staffTable.id],
 	}),
 	hospital: one(hospitalTable, {

@@ -10,7 +10,9 @@
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
@@ -86,4 +88,3 @@
 		padding: 0;
 	}
 </style>
-
