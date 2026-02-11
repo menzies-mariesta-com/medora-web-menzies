@@ -40,13 +40,13 @@ export async function seedMasterTables() {
 	await db.execute(sql`
 		INSERT INTO country (id, name, code, image_url, country_calling_code, language, status_id)
 		VALUES ${sql.join(
-			CountryCodeData.map((c) =>
-				// name: formatted with StringUtil.countryName
-				// code: kept in lowercase as in source data
-				sql`(${c.id}, ${StringUtil.countryName(c.name)}, ${c.code}, ${c.image}, ${c.phone}, ${c.language}, 1)`
-			),
-			sql`, `
-		)}
+		CountryCodeData.map((c) =>
+			// name: formatted with StringUtil.countryName
+			// code: kept in lowercase as in source data
+			sql`(${c.id}, ${StringUtil.countryName(c.name)}, ${c.code}, ${c.image}, ${c.phone}, ${c.language}, 1)`
+		),
+		sql`, `
+	)}
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
@@ -920,7 +920,7 @@ export async function seedMasterTables() {
 	`);
 
 	console.log('Seeded: title');
-	
+
 	// 14. Departments
 	await db.execute(sql`
 		INSERT INTO department (id, name, code, status_id)
@@ -931,7 +931,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	console.log('Seeded: department');
-	
+
 	// 15. Postal Codes
 	await db.execute(sql`
 		INSERT INTO postal_code (id, value, city_id, status_id)
@@ -1476,6 +1476,22 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	console.log('Seeded: postal_code');
+
+	// 14. Weekday
+	await db.execute(sql`
+		INSERT INTO weekday (id, name)
+		VALUES
+			(1, 'Sunday'),
+			(2, 'Monday'),
+			(3, 'Tuesday'),
+			(4, 'Wednesday'),
+			(5, 'Thursday'),
+			(6, 'Friday'),
+			(7, 'Saturday')
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: staff_employment_type');
 
 	console.log('Master tables seeding completed.');
 }
