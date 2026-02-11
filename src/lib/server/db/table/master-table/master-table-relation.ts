@@ -4,6 +4,7 @@ import {
 	hospitalTable,
 	moduleTable,
 	pageTable,
+	patientTable,
 	staffDepartmentTable,
 	staffDetailTable,
 	staffTable,
@@ -23,6 +24,7 @@ import {
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
+	religionTable,
 	specializationTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
@@ -35,6 +37,7 @@ import {
 // Master table relations (alphabetical)
 export const bloodTypeTableRelations = relations(bloodTypeTable, ({ one, many }) => ({
 	staffs: many(staffTable),
+	patients: many(patientTable),
 	status: one(statusTable, {
 		fields: [bloodTypeTable.statusId],
 		references: [statusTable.id],
@@ -52,6 +55,7 @@ export const cityTableRelations = relations(cityTable, ({ one, many }) => ({
 	}),
 	postalCodes: many(postalCodeTable),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const countryTableRelations = relations(countryTable, ({ one, many }) => ({
@@ -61,6 +65,7 @@ export const countryTableRelations = relations(countryTable, ({ one, many }) => 
 	}),
 	states: many(stateTable),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const craftGroupTableRelations = relations(craftGroupTable, ({ one, many }) => ({
@@ -78,6 +83,7 @@ export const departmentTableRelations = relations(departmentTable, ({ one, many 
 	}),
 	staffDepartments: many(staffDepartmentTable),
 	hospitalDepartments: many(hospitalDepartmentTable),
+	staffs: many(staffTable),
 }));
 
 export const genderTableRelations = relations(genderTable, ({ one, many }) => ({
@@ -86,17 +92,32 @@ export const genderTableRelations = relations(genderTable, ({ one, many }) => ({
 		references: [statusTable.id],
 	}),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
-export const identityTypeTableRelations = relations(identityTypeTable, ({ many }) => ({
+export const identityTypeTableRelations = relations(identityTypeTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [identityTypeTable.statusId],
+		references: [statusTable.id],
+	}),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
-export const maritalStatusTableRelations = relations(maritalStatusTable, ({ many }) => ({
+export const maritalStatusTableRelations = relations(maritalStatusTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [maritalStatusTable.statusId],
+		references: [statusTable.id],
+	}),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const specializationTableRelations = relations(specializationTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [specializationTable.statusId],
+		references: [statusTable.id],
+	}),
 	craftGroup: one(craftGroupTable, {
 		fields: [specializationTable.craftGroupId],
 		references: [craftGroupTable.id],
@@ -115,6 +136,7 @@ export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
 	}),
 	cities: many(cityTable),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const statusTableRelations = relations(statusTable, ({ many }) => ({
@@ -129,6 +151,7 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	staffEmploymentTypes: many(staffEmploymentTypeTable),
 	staffShiftTypes: many(staffShiftTypeTable),
 	nationalities: many(nationalityTable),
+	religions: many(religionTable),
 	positions: many(positionTable),
 	cities: many(cityTable),
 	states: many(stateTable),
@@ -138,6 +161,7 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	statusTaggingTypes: many(statusTaggingTypeTable),
 	craftGroups: many(craftGroupTable),
 	staffDetails: many(staffDetailTable),
+	patients: many(patientTable),
 }));
 
 export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
@@ -146,6 +170,7 @@ export const titleTableRelations = relations(titleTable, ({ one, many }) => ({
 		references: [statusTable.id],
 	}),
 	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const staffEmploymentTypeTableRelations = relations(staffEmploymentTypeTable, ({ one, many }) => ({
@@ -164,14 +189,15 @@ export const staffTypeTableRelations = relations(staffTypeTable, ({ one, many })
 	staffs: many(staffTable),
 }));
 
-export const staffShiftTypeTableRelations = relations(staffShiftTypeTable, ({ one }) => ({
+export const staffShiftTypeTableRelations = relations(staffShiftTypeTable, ({ one, many }) => ({
 	status: one(statusTable, {
 		fields: [staffShiftTypeTable.statusId],
 		references: [statusTable.id],
 	}),
+	staffs: many(staffTable),
 }));
 
-export const postalCodeTableRelations = relations(postalCodeTable, ({ one }) => ({
+export const postalCodeTableRelations = relations(postalCodeTable, ({ one, many }) => ({
 	status: one(statusTable, {
 		fields: [postalCodeTable.statusId],
 		references: [statusTable.id],
@@ -180,6 +206,8 @@ export const postalCodeTableRelations = relations(postalCodeTable, ({ one }) => 
 		fields: [postalCodeTable.cityId],
 		references: [cityTable.id],
 	}),
+	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const nationalityTableRelations = relations(nationalityTable, ({ one, many }) => ({
@@ -188,6 +216,16 @@ export const nationalityTableRelations = relations(nationalityTable, ({ one, man
 		references: [statusTable.id],
 	}),
 	staffs: many(staffTable),
+	patients: many(patientTable),
+}));
+
+export const religionTableRelations = relations(religionTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [religionTable.statusId],
+		references: [statusTable.id],
+	}),
+	staffs: many(staffTable),
+	patients: many(patientTable),
 }));
 
 export const positionTableRelations = relations(positionTable, ({ one, many }) => ({

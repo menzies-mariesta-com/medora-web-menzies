@@ -18,7 +18,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { StaffSchema } from '$lib/server/db/schema-type';
+	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
@@ -28,16 +28,16 @@
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { page } from '$app/state';
+	import LStaffListViewEditModal from '$lib/component/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
-	const routerUtil = new RouterUtil();
 	const toastService = new ToastService();
 
-	let staffResult = $state<PaginatedResult<StaffSchema> | null>(null);
+	let staffResult = $state<PaginatedResult<StaffWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state(5);
+	let filterPageSize = $state('5');
 	let searchInput = $state('');
 	let isLoading = $state(false);
 
@@ -83,7 +83,6 @@
 	});
 
 	function handlePageSizeChange() {
-		filterPageSize = Number(filterPageSize) || 10;
 		currentPage = 1;
 		fetchStaff();
 	}
@@ -138,24 +137,39 @@
 
 	const STAFF_COLUMN_COUNT = 30;
 
+	type StaffDialogMode = 'view' | 'edit';
+	let staffDialog = $state<{ mode: StaffDialogMode; staffId: string } | null>(null);
+
+	const registrationPath = $derived(
+		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
+	);
+	const staffDialogIframeSrc = $derived(
+		staffDialog
+			? `${registrationPath}?${staffDialog.mode}=${staffDialog.staffId}&embed=1`
+			: ''
+	);
+
 	function viewData(id: string) {
-		routerUtil.goToRoute(
-			`${WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION}?view=${id}`
-		);
+		staffDialog = { mode: 'view', staffId: id };
 	}
 
 	function editData(id: string) {
-		routerUtil.goToRoute(
-			`${WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION}?edit=${id}`
-		);
+		staffDialog = { mode: 'edit', staffId: id };
+	}
+
+	function closeStaffDialog() {
+		staffDialog = null;
 	}
 </script>
 
-<div class="mb-2 flex justify-between">
-	<p class="text-sm whitespace-nowrap opacity-80">
+<div
+	class="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between"
+>
+	<p class="order-1 text-sm opacity-80 md:order-none">
 		{#if total > 0}
-			{@const start = (currentPage - 1) * filterPageSize + 1}
-			{@const end = Math.min(currentPage * filterPageSize, total)}
+			{@const pageSize = Number(filterPageSize) || 10}
+			{@const start = (currentPage - 1) * pageSize + 1}
+			{@const end = Math.min(currentPage * pageSize, total)}
 			Showing <span class="text-success">{start}–{end}</span> of
 			<span class="text-error">{total}</span> staff
 		{:else}
@@ -163,7 +177,7 @@
 		{/if}
 	</p>
 
-	<div class="flex gap-5">
+	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
 		<div class="staff-list-search-form">
 			<DaisyUiInputField
 				inputPlaceholderText="name, code, phone..."
@@ -184,7 +198,7 @@
 		</DaisyUiTooltip>
 	</div>
 
-	<div class="flex items-center gap-2 whitespace-nowrap">
+	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
 		<span class="text-sm">per page</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
@@ -201,7 +215,7 @@
 	</div>
 
 	{#if staffResult !== null}
-		<div>
+		<div class="order-4 w-full md:order-none md:w-auto md:justify-end">
 			<DaisyUiPagination>
 				<DaisyUiPaginationItem
 					onClick={() => goToPage(currentPage - 1)}
@@ -231,51 +245,43 @@
 </div>
 
 {#if isLoading && !staffResult}
+<div class="flex justify-center items-center">
 	<DaisyUiLoading className="d-loading-xl" />
+</div>
 {:else}
-	<div class="h-screen overflow-x-auto">
+	<div class="overflow-auto max-h-[calc(100vh-18rem)]">
 		<DaisyUiTable
-			className="d-table d-table-zebra d-table-sm d-table-pin-rows d-table-pin-cols"
+			className="d-table d-table-zebra d-table-sm"
 		>
 			<DaisyUiTableHeader>
-				<tr>
-					<th>Actions</th>
-					<th>Id</th>
-					<th>First name</th>
-					<th>Middle name</th>
-					<th>Last name</th>
-					<th>Phone primary</th>
-					<th>Phone secondary</th>
-					<th>Date of birth</th>
-					<th>Address</th>
-					<th>Remark</th>
-					<th>Identity no</th>
-					<th>Identity type id</th>
-					<th>Title id</th>
-					<th>Employment type id</th>
-					<th>Staff type id</th>
-					<th>Staff detail id</th>
-					<th>City id</th>
-					<th>State id</th>
-					<th>Country id</th>
-					<th>Marital status id</th>
-					<th>Nationality id</th>
-					<th>Position id</th>
-					<th>Postal code id</th>
-					<th>Specialization id</th>
-					<th>Gender id</th>
-					<th>Status id</th>
-					<th>Photo URL</th>
-					<th>User id</th>
-					<th>Created at</th>
-					<th>Updated at</th>
+				<tr class="sticky top-0 z-3 bg-base-200">
+					<th class="sticky left-0 z-2 bg-base-200 w-16 min-w-[4rem]">
+						Actions
+					</th>
+					<th class="sticky left-[4.75rem] top-0 z-2 bg-base-200 w-32 min-w-[8rem]">
+						Staff Code
+					</th>
+					<th class="w-64 min-w-[16rem]">Name</th>
+					<th class="w-64 min-w-[16rem]">Identity</th>
+					<th class="w-40 min-w-[10rem]">Phone primary</th>
+					<th class="w-40 min-w-[10rem]">Phone secondary</th>
+					<th class="w-36 min-w-[9rem]">Date of birth</th>
+					<th class="w-56 min-w-[14rem]">Employment Type</th>
+					<th class="w-40 min-w-[10rem]">Staff Type</th>
+					<th class="w-48 min-w-[12rem]">Specialization</th>
+					<th class="w-40 min-w-[10rem]">Marital status</th>
+					<th class="w-40 min-w-[10rem]">Nationality</th>
+					<th class="w-32 min-w-[8rem]">Gender</th>
+					<th class="w-32 min-w-[8rem]">Status</th>
+					<th class="w-40 min-w-[10rem]">Created at</th>
+					<th class="w-40 min-w-[10rem]">Updated at</th>
 				</tr>
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
 				{#each staffList as staff (staff.id)}
 					<tr class="hover:bg-info/30">
-						<td>
-							<div class="flex flex-col gap-1">
+						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
+							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText="view data"
 									className="d-tooltip-ghost d-tooltip-right"
@@ -312,43 +318,44 @@
 								</DaisyUiTooltip>
 							</div>
 						</td>
-						<td class="staff-list-cell-truncate">{staff.id ?? '—'}</td
-						>
-						<td>{staff.firstName ?? '—'}</td>
-						<td>{staff.middleName ?? '—'}</td>
-						<td>{staff.lastName ?? '—'}</td>
-						<td>{staff.phonePrimary ?? '—'}</td>
-						<td>{staff.phoneSecondary ?? '—'}</td>
-						<td>{formatDate(staff.dateOfBirth)}</td>
-						<td class="staff-list-cell-wrap"
-							>{staff.address ?? '—'}</td
-						>
-						<td class="staff-list-cell-wrap">{staff.remark ?? '—'}</td
-						>
-						<td>{staff.identityNo ?? '—'}</td>
-						<td>{staff.identityTypeId ?? '—'}</td>
-						<td>{staff.titleId ?? '—'}</td>
-						<td>{staff.staffEmploymentTypeId ?? '—'}</td>
-						<td>{staff.staffTypeId ?? '—'}</td>
-						<td>{staff.staffDetailId ?? '—'}</td>
-						<td>{staff.cityId ?? '—'}</td>
-						<td>{staff.stateId ?? '—'}</td>
-						<td>{staff.countryId ?? '—'}</td>
-						<td>{staff.maritalStatusId ?? '—'}</td>
-						<td>{staff.nationalityId ?? '—'}</td>
-						<td>{staff.positionId ?? '—'}</td>
-						<td>{staff.postalCodeId ?? '—'}</td>
-						<td>{staff.specializationId ?? '—'}</td>
-						<td>{staff.genderId ?? '—'}</td>
-						<td>{staff.statusId ?? '—'}</td>
-						<td class="staff-list-cell-truncate"
-							>{staff.photoUrl ? 'Yes' : '—'}</td
-						>
-						<td class="staff-list-cell-truncate"
-							>{staff.userId ?? '—'}</td
-						>
-						<td>{formatDateTime(staff.createdAt)}</td>
-						<td>{formatDateTime(staff.updatedAt)}</td>
+						<td class="sticky left-[4.75rem] z-2 bg-base-100 w-32 min-w-[8rem]">
+							{staff.code ?? '—'}
+						</td>
+						<td class="w-64 min-w-[16rem]">
+							{StringUtil.fullNameWithTitle(
+								staff.title?.name,
+								staff.firstName,
+								staff.middleName,
+								staff.lastName
+							)}
+						</td>
+						<td class="w-64 min-w-[16rem]">
+							({staff.identityType?.name ?? '—'}){staff.identityNo}
+						</td>
+						<td class="w-40 min-w-[10rem]">{staff.phonePrimary ?? '—'}</td>
+						<td class="w-40 min-w-[10rem]">{staff.phoneSecondary ?? '—'}</td>
+						<td class="w-36 min-w-[9rem]">{formatDate(staff.dateOfBirth)}</td>
+						<td class="w-56 min-w-[14rem]">
+							{staff.staffEmploymentType?.name ?? '—'}
+						</td>
+						<td class="w-40 min-w-[10rem]">{staff.staffType?.name ?? '—'}</td>
+						<td class="w-48 min-w-[12rem]">
+							{staff.specialization?.name ?? '—'}
+						</td>
+						<td class="w-40 min-w-[10rem]">
+							{staff.maritalStatus?.name ?? '—'}
+						</td>
+						<td class="w-40 min-w-[10rem]">
+							{staff.nationality?.name ?? '—'}
+						</td>
+						<td class="w-32 min-w-[8rem]">{staff.gender?.name ?? '—'}</td>
+						<td class="w-32 min-w-[8rem]">{staff.status?.name ?? '—'}</td>
+						<td class="w-40 min-w-[10rem]">
+							{formatDateTime(staff.createdAt)}
+						</td>
+						<td class="w-40 min-w-[10rem]">
+							{formatDateTime(staff.updatedAt)}
+						</td>
 					</tr>
 				{:else}
 					<tr>
@@ -361,4 +368,13 @@
 			</DaisyUiTableBody>
 		</DaisyUiTable>
 	</div>
+{/if}
+
+<!-- Full-screen view/edit staff dialog -->
+{#if staffDialog}
+	<LStaffListViewEditModal
+		{staffDialog}
+		{staffDialogIframeSrc}
+		{closeStaffDialog}
+	/>
 {/if}

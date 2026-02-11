@@ -10,6 +10,7 @@ export interface DialogOpenOptions {
 	title?: string;
 	message?: string;
 	variant?: DialogVariantEnum;
+	fullScreen?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps>;
 	onClose?: () => void;
@@ -29,6 +30,7 @@ export class DialogService {
 				title: options.title,
 				message: options.message,
 				variant: options.variant ?? DialogVariantEnum.ALERT,
+				fullScreen: options.fullScreen,
 				children: options.children,
 				component: options.component,
 				onClose: options.onClose,
