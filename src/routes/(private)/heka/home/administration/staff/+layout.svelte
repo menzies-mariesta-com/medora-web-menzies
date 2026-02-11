@@ -21,7 +21,6 @@
 {#if isEmbed}
 	{@render children()}
 {:else if subPages.length > 0}
-{console.log(subPages)}
 	<div class="staff-subnav-wrapper">
 		<nav role="tablist" class="staff-subnav-tabs">
 			{#each subPages as sub (sub.id)}

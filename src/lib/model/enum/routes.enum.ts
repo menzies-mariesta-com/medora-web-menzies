@@ -19,7 +19,6 @@ export enum WebRoutesEnum {
 	HEKA_HOME_REGISTRATION_PATIENT = "/heka/home/registration/patient",
 	HEKA_HOME_REGISTRATION_PATIENT_REGISTRATION = "/heka/home/registration/patient/registration",
 	HEKA_HOME_REGISTRATION_PATIENT_LIST = "/heka/home/registration/patient/list",
-	HEKA_HOME_REGISTRATION_PATIENT_ATTACHMENT = "/heka/home/registration/patient/attachment",
 }
 
 export enum ServerRoutesEnum {
