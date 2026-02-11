@@ -258,10 +258,10 @@
 		>
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-30 bg-base-200 w-16 min-w-[4rem]">
+					<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">
 						Actions
 					</th>
-					<th class="sticky left-[4.75rem] top-0 z-2 bg-base-200 w-32 min-w-[8rem]">
+					<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-32 min-w-[8rem]">
 						Patient Code
 					</th>
 					<th class="w-64 min-w-[16rem]">Name</th>
@@ -277,8 +277,8 @@
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
 				{#each patientList as patient (patient.id)}
-					<tr class="hover:bg-info/30">
-						<td class="sticky left-0 z-30 bg-base-100 w-16 min-w-[4rem]">
+					<tr class="hover:bg-info/30 z-0">
+						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText="view data"
@@ -316,7 +316,7 @@
 								</DaisyUiTooltip>
 							</div>
 						</td>
-						<td class="sticky left-[4.75rem] z-2 bg-base-100 w-32 min-w-[8rem]">
+						<td class="sticky left-[4.75rem] z-1 bg-base-100 w-32 min-w-[8rem]">
 							{patient.code ?? '—'}
 						</td>
 						<td class="w-64 min-w-[16rem]">
