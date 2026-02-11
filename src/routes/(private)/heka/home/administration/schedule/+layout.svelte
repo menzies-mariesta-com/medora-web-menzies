@@ -10,9 +10,7 @@
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
-	const isEmbed = $derived(
-		page.url.searchParams.get('embed') === '1'
-	);
+	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
@@ -23,13 +21,13 @@
 {#if isEmbed}
 	{@render children()}
 {:else if subPages.length > 0}
-	<div class="patient-subnav-wrapper">
-		<nav role="tablist" class="patient-subnav-tabs">
+	<div class="staff-subnav-wrapper">
+		<nav role="tablist" class="staff-subnav-tabs">
 			{#each subPages as sub (sub.id)}
 				<button
 					type="button"
 					role="tab"
-					class="patient-subnav-tab"
+					class="staff-subnav-tab"
 					class:active={pathMatches(sub.pageUrl)}
 					onclick={() =>
 						sub.pageUrl && routerUtil.replaceRoute(sub.pageUrl)}
@@ -38,7 +36,7 @@
 				</button>
 			{/each}
 		</nav>
-		<div class="patient-subnav-content">
+		<div class="staff-subnav-content">
 			{@render children()}
 		</div>
 	</div>
@@ -47,13 +45,13 @@
 {/if}
 
 <style>
-	.patient-subnav-wrapper {
+	.staff-subnav-wrapper {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
 		min-height: 0;
 	}
-	.patient-subnav-tabs {
+	.staff-subnav-tabs {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.25rem;
@@ -61,7 +59,7 @@
 		padding-bottom: 0;
 		margin-bottom: 1rem;
 	}
-	.patient-subnav-tab {
+	.staff-subnav-tab {
 		appearance: none;
 		background: transparent;
 		border: none;
@@ -73,15 +71,15 @@
 		cursor: pointer;
 		opacity: 0.7;
 	}
-	.patient-subnav-tab:hover {
+	.staff-subnav-tab:hover {
 		opacity: 1;
 	}
-	.patient-subnav-tab.active {
+	.staff-subnav-tab.active {
 		opacity: 1;
 		border-bottom-color: var(--color-primary, #570df8);
 		font-weight: 600;
 	}
-	.patient-subnav-content {
+	.staff-subnav-content {
 		display: block;
 		flex: 1;
 		min-height: 0;
