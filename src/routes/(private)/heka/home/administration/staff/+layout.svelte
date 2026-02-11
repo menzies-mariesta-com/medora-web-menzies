@@ -10,6 +10,7 @@
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
+	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';
@@ -17,7 +18,10 @@
 	}
 </script>
 
-{#if subPages.length > 0}
+{#if isEmbed}
+	{@render children()}
+{:else if subPages.length > 0}
+{console.log(subPages)}
 	<div class="staff-subnav-wrapper">
 		<nav role="tablist" class="staff-subnav-tabs">
 			{#each subPages as sub (sub.id)}

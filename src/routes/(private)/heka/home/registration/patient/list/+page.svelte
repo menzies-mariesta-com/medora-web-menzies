@@ -130,13 +130,13 @@
 
 	function viewData(id: string) {
 		routerUtil.goToRoute(
-			`${WebRoutesEnum.HEKA_HOME_PATIENT_REGISTRATION}?view=${id}`,
+			`${WebRoutesEnum.HEKA_HOME_REGISTRATION_PATIENT_REGISTRATION}?view=${id}`,
 		);
 	}
 
 	function editData(id: string) {
 		routerUtil.goToRoute(
-			`${WebRoutesEnum.HEKA_HOME_PATIENT_REGISTRATION}?edit=${id}`,
+			`${WebRoutesEnum.HEKA_HOME_REGISTRATION_PATIENT_REGISTRATION}?edit=${id}`,
 		);
 	}
 </script>
@@ -232,7 +232,7 @@
 					<th>Actions</th>
 					<th>Id</th>
 					<th>Code</th>
-					<th>Registration no</th>
+					<th>Title</th>
 					<th>First name</th>
 					<th>Middle name</th>
 					<th>Last name</th>
@@ -242,7 +242,7 @@
 					<th>Guardian name</th>
 					<th>Guardian phone</th>
 					<th>Address</th>
-					<th>Remarks</th>
+					<th>Remark</th>
 					<th>Status id</th>
 					<th>User id</th>
 					<th>Created at</th>
@@ -292,7 +292,7 @@
 						</td>
 						<td class="staff-list-cell-truncate">{patient.id ?? '—'}</td>
 						<td>{patient.code ?? '—'}</td>
-						<td>{patient.registrationNo ?? '—'}</td>
+						<td>{patient.titleId ?? '—'}</td>
 						<td>{patient.firstName ?? '—'}</td>
 						<td>{patient.middleName ?? '—'}</td>
 						<td>{patient.lastName ?? '—'}</td>
@@ -305,7 +305,7 @@
 							{patient.address ?? '—'}
 						</td>
 						<td class="staff-list-cell-wrap">
-							{patient.remarks ?? '—'}
+							{patient.remark ?? '—'}
 						</td>
 						<td>{patient.statusId ?? '—'}</td>
 						<td class="staff-list-cell-truncate">

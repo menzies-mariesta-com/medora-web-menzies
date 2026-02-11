@@ -13,14 +13,14 @@ import { count, eq } from 'drizzle-orm';
 // get all
 export const getPatientAllergies = query(
 	async (): Promise<PatientAllergiesSchema[]> => {
-		const data = await ensureDb().select().from(table.patientAllergies);
+		const data = await ensureDb().select().from(table.patientAllergyTable);
 		return data;
 	}
 );
 
 // get all with relations
 export const getPatientAllergiesWithRelations = query(async () => {
-	return ensureDb().query.patientAllergies.findMany({
+	return ensureDb().query.patientAllergyTable.findMany({
 		with: {
 			patient: true,
 		},
@@ -31,7 +31,7 @@ export const getPatientAllergiesWithRelations = query(async () => {
 export const getPatientAllergiesCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.patientAllergies);
+		.from(table.patientAllergyTable);
 	return row?.count ?? 0;
 });
 
@@ -45,10 +45,10 @@ export const getPatientAllergiesPaginated = query(
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
-				.from(table.patientAllergies)
+				.from(table.patientAllergyTable)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.patientAllergies),
+			ensureDb().select({ count: count() }).from(table.patientAllergyTable),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -71,8 +71,8 @@ export const getPatientAllergiesById = query(
 	}): Promise<PatientAllergiesSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
-			.from(table.patientAllergies)
-			.where(eq(table.patientAllergies.id, id));
+			.from(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id));
 		return row ?? null;
 	}
 );
@@ -84,7 +84,7 @@ export const createPatientAllergies = command(
 		payload: PatientAllergiesSchemaInsert,
 	): Promise<PatientAllergiesSchema> => {
 		const [row] = await ensureDb()
-			.insert(table.patientAllergies)
+			.insert(table.patientAllergyTable)
 			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
@@ -101,9 +101,9 @@ export const updatePatientAllergies = command(
 	): Promise<PatientAllergiesSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
-			.update(table.patientAllergies)
+			.update(table.patientAllergyTable)
 			.set(rest as PatientAllergiesSchemaUpdate)
-			.where(eq(table.patientAllergies.id, id))
+			.where(eq(table.patientAllergyTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getPatientAllergies().refresh();
@@ -116,8 +116,8 @@ export const deletePatientAllergies = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.patientAllergies)
-			.where(eq(table.patientAllergies.id, id));
+			.delete(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id));
 		getPatientAllergies().refresh();
 	}
 );
@@ -127,8 +127,8 @@ export const deletePatientAllergiesComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.patientAllergies)
-			.where(eq(table.patientAllergies.id, id));
+			.delete(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id));
 		getPatientAllergies().refresh();
 	}
 );

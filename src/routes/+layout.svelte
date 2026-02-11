@@ -27,6 +27,8 @@
 	const themeTool = new ThemeTool(localStorageUtil);
 	const fontTool = new FontTool(localStorageUtil);
 
+	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+
 	lifeCycleUtil.onMount(() => {
 		// set data
 		themeTool.getTheme();
@@ -46,7 +48,9 @@
 {@render children()}
 
 <!-- Floating Action Button -->
-<GQuickTool />
+{#if !isEmbed}
+	<GQuickTool />
+{/if}
 
 <!-- Toast Component (Learn Toast Service To Use) -->
 {#if ToastState.length > 0}
@@ -59,12 +63,38 @@
 
 <!-- Dialog component (Learn Dialog service to use) -->
 {#if DialogState.current}
-	<DaisyUiModal
-		groupName="dialog-modal"
-		open={true}
-		onClose={() => dialogService.close()}
-	>
-		<DaisyUiModalBox onClose={() => dialogService.close()}>
+	{#if DialogState.current.fullScreen}
+		<DaisyUiModal
+			groupName="dialog-modal"
+			open={true}
+			onClose={() => dialogService.close()}
+			className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
+		>
+			<div
+				class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+				role="document"
+			>
+				{#if DialogState.current.component}
+					{@const DialogContent = DialogState.current.component}
+					<DialogContent
+						confirm={(data) => dialogService.confirm(data)}
+						cancel={() => dialogService.cancel()}
+					/>
+				{:else if DialogState.current.children}
+					{@render DialogState.current.children({
+						confirm: (data) => dialogService.confirm(data),
+						cancel: () => dialogService.cancel()
+					})}
+				{/if}
+			</div>
+		</DaisyUiModal>
+	{:else}
+		<DaisyUiModal
+			groupName="dialog-modal"
+			open={true}
+			onClose={() => dialogService.close()}
+		>
+			<DaisyUiModalBox onClose={() => dialogService.close()}>
 			{#if DialogState.current.component}
 				{#if DialogState.current.title}
 					<h3 class="mb-5 text-lg font-bold">
@@ -121,7 +151,8 @@
 				</div>
 			{/if}
 		</DaisyUiModalBox>
-	</DaisyUiModal>
+		</DaisyUiModal>
+	{/if}
 {/if}
 
 <!-- Language -->
