@@ -14,6 +14,10 @@ import { createStaffUserGroup } from './staff-user-group.remote';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
 
+// Reusable type for a single staff row with all relations
+export type StaffWithRelations = NonNullable<
+	Awaited<ReturnType<typeof getStaffByIdWithRelations>>
+>;
 
 // get all (no relations)
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
@@ -47,11 +51,6 @@ export const getStaffWithRelations = query(async () => {
 		},
 	});
 });
-
-// Reusable type for a single staff row with all relations
-export type StaffWithRelations = NonNullable<
-	Awaited<ReturnType<typeof getStaffByIdWithRelations>>
->;
 
 // get one with relations
 export const getStaffByUserIdWithRelations = query(
