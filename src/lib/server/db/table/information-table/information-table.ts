@@ -300,5 +300,5 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 	fromShiftTime: time('from_shift_time'),
 	toShiftTime: time('to_shift_time'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamps
+	...timestamps,
 })

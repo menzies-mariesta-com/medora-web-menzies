@@ -1,5 +1,8 @@
 <script lang="ts">
-	let { isActive = $bindable() } = $props<{ isActive?: boolean }>();
+	let {
+		isActive = $bindable(),
+		nameMasking = $bindable()
+	} = $props<{ isActive?: boolean; nameMasking?: boolean }>();
 </script>
 
 <div class="mt-6 flex flex-wrap items-center gap-4">
@@ -11,6 +14,14 @@
 				bind:checked={isActive}
 			/>
 			<span class="text-sm">Active</span>
+		</label>
+		<label class="flex cursor-pointer items-center gap-2">
+			<input
+				type="checkbox"
+				class="d-checkbox d-checkbox-primary"
+				bind:checked={nameMasking}
+			/>
+			<span class="text-sm">Name Masking</span>
 		</label>
 	</div>
 </div>
