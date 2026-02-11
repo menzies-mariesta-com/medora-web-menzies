@@ -11,6 +11,7 @@ import type {
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
+	religionTable,
 	specializationTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
@@ -19,6 +20,7 @@ import type {
 	statusTable,
 	titleTable,
 } from './master-table';
+import type { Infer } from 'zod';
 
 // Master Tables (alphabetical)
 export type BloodTypeSchema = InferSelectModel<typeof bloodTypeTable>;
@@ -92,3 +94,7 @@ export type StaffTypeSchemaUpdate = Partial<StaffTypeSchemaInsert>;
 export type TitleSchema = InferSelectModel<typeof titleTable>;
 export type TitleSchemaInsert = InferInsertModel<typeof titleTable>;
 export type TitleSchemaUpdate = Partial<TitleSchemaInsert>;
+
+export type ReligionSchema = InferSelectModel<typeof religionTable>;
+export type ReligionSchemaInsert = InferInsertModel<typeof religionTable>;
+export type ReligionSchemaUpdate = Partial<ReligionSchemaInsert>;

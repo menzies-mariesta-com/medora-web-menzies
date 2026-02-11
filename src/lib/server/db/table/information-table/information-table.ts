@@ -11,10 +11,9 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import { StatusEnum } from '../../../../model/enum/db-link';
+import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable } from '../master-table/master-table';
-import { m } from '$lib/paraglide/messages';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -134,6 +133,8 @@ export const staffTable = pgTable('staff', {
 	code: varchar('code', { length: 512 }),
 	phonePrimary: varchar('phone_primary', { length: 128 }),
 	phoneSecondary: varchar('phone_secondary', { length: 128 }),
+	phonePrimaryCountryId: integer('phone_primary_country_id').references(() => countryTable.id),
+	phoneSecondaryCountryId: integer('phone_secondary_country_id').references(() => countryTable.id),
 	dateOfBirth: date('date_of_birth'),
 	photoUrl: text('photo_url'),
 	address: text('address'),
@@ -209,7 +210,7 @@ export const patientTable = pgTable('patient', {
 		.primaryKey()
 		.$defaultFn(() => uuidv7()),
 	code: varchar('code', { length: 512 }),
-	registrationNo: varchar('registration_no', { length: 512 }),
+	titleId: integer('title_id').references(() => titleTable.id),
 	firstName: varchar('first_name', { length: 512 }),
 	middleName: varchar('middle_name', { length: 512 }),
 	lastName: varchar('last_name', { length: 512 }),
@@ -225,7 +226,10 @@ export const patientTable = pgTable('patient', {
 	guardian_phone: varchar('guardian_phone', { length: 128 }),
 	photo_path: text('photo_path'),
 	address: text('address'),
-	remarks: text('remarks'),
+	remark: text('remark'),
+	masking: integer('masking').notNull().default(YesNoEnum.NO),
+	phonePrimaryCountryId: integer('phone_primary_country_id').references(() => countryTable.id),
+	phoneSecondaryCountryId: integer('phone_secondary_country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
 	genderId: integer('gender_id').references(() => genderTable.id),
 	identityTypeId: integer('identity_type_id').references(() => identityTypeTable.id),
@@ -233,6 +237,9 @@ export const patientTable = pgTable('patient', {
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
+	postalCodeId: integer('postal_code_id').references(() => postalCodeTable.id),
+	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
+	religionId: integer('religion_id').references(() => religionTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamp,
 })
@@ -242,8 +249,9 @@ export const patientAttachmentTable = pgTable('patient_attachment', {
 	patientId: uuid('patient_id')
 		.notNull()
 		.references(() => patientTable.id),
-	filePath: text('file_path'),
+	fileUrl: text('file_url'),
 	description: text('description'),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamp,
 })
 
@@ -251,7 +259,8 @@ export const insuranceTable = pgTable('insurance_table', {
 	id: uuid('id')
 		.primaryKey()
 		.$defaultFn(() => uuidv7()),
-	name: text('name'),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamp,
 
 })
@@ -267,11 +276,12 @@ export const patientInsurance = pgTable('patient_insurance', {
 	...timestamp,
 })
 
-export const patientAllergies = pgTable('patient_allergies', {
+export const patientAllergyTable = pgTable('patient_allergies', {
 	id: serial('id').primaryKey(),
 	patientId: uuid('patient_id')
 		.notNull()
 		.references(() => patientTable.id),
 	description: text('description'),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamp,
 })

@@ -4,21 +4,25 @@
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCardBodyAction from '$lib/component/library/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { page } from '$app/state';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
 	import { getPatient } from '$lib/remote/table/information-table/patient.remote';
 	import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
 
-	import type {
-		PatientSchema,
-	} from '$lib/server/db/schema-type';
+	import type { PatientSchema } from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+
+	const embeddedPatientId = $derived(page.url.searchParams.get('patientId'));
+	const isEmbeddedSinglePatient = $derived(!!embeddedPatientId);
 
 	let patients: PatientSchema[] = $state([]);
 	let isLoadingPatients = $state(false);
@@ -39,7 +43,11 @@
 	}
 
 	lifeCycleUtil.onMount(() => {
-		fetchPatients();
+		fetchPatients().then(() => {
+			if (embeddedPatientId) {
+				selectedPatientId = embeddedPatientId;
+			}
+		});
 	});
 
 	function formatPatientLabel(p: PatientSchema): string {
@@ -47,6 +55,10 @@
 		const code = p.code ? ` (${p.code})` : '';
 		return name || p.id + code;
 	}
+
+	const optionHeaderPatient = $derived(
+		isLoadingPatients ? 'Loading patients…' : 'Select a patient …'
+	);
 
 	function handleFileChange(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -86,7 +98,7 @@
 
 			await createPatientAttachment({
 				patientId: selectedPatientId,
-				filePath: data.url,
+				fileUrl: data.url,
 				description: description.trim() || undefined,
 			});
 			toastService.addToast(
@@ -118,58 +130,76 @@
 
 <DaisyUiCard>
 	<DaisyUiCardBody>
-		<form onsubmit={handleOnSubmit} class="space-y-6 max-w-2xl">
-			<DaisyUiCardBodyTitle className="mb-2">
+		<form onsubmit={handleOnSubmit} class="max-w-2xl">
+			<DaisyUiCardBodyTitle className="mb-5">
 				Patient Attachment
 			</DaisyUiCardBodyTitle>
 
-			<div class="space-y-4">
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm opacity-80">
-						Patient
-					</span>
-					<DaisyUiSelect
-						className="w-full"
-						bind:value={selectedPatientId}
-						disabled={isLoadingPatients}
-						optionHeader={isLoadingPatients ? 'Loading patients…' : 'Select patient'}
-					>
-						{#each patients as p (p.id)}
-							<option value={p.id}>{formatPatientLabel(p)}</option>
-						{/each}
-					</DaisyUiSelect>
-				</label>
+			<div class="flex flex-col gap-4">
+				{#if isEmbeddedSinglePatient}
+					<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+						<DaisyUiLabel className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
+						<div class="max-w-80 flex-1">
+							<p class="truncate text-sm font-medium">
+								{#if patients.length > 0}
+									{@const p = patients.find((p) => p.id === embeddedPatientId)}
+									{p ? formatPatientLabel(p) : embeddedPatientId}
+								{:else}
+									Loading…
+								{/if}
+							</p>
+						</div>
+					</div>
+				{:else}
+					<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+						<DaisyUiLabel forText="patient" className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
+						<div class="max-w-80 flex-1">
+							<DaisyUiSelect
+								className="w-full"
+								bind:value={selectedPatientId}
+								disabled={isLoadingPatients}
+								optionHeader={optionHeaderPatient}
+							>
+								{#each patients as p (p.id)}
+									<option value={p.id}>{formatPatientLabel(p)}</option>
+								{/each}
+							</DaisyUiSelect>
+						</div>
+					</div>
+				{/if}
 
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm opacity-80">
-						File attachment
-					</span>
-					<input
-						type="file"
-						class="file-input file-input-bordered w-full max-w-xs"
-						bind:this={attachmentInputEl}
-						onchange={handleFileChange}
-					/>
-					{#if attachmentFile}
-						<span class="mt-1 text-xs opacity-80">
-							Selected: {attachmentFile.name}
-						</span>
-					{/if}
-				</label>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="attachment-file" className="shrink-0 sm:w-36">File attachment</DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<input
+							id="attachment-file"
+							type="file"
+							class="file-input file-input-bordered w-full max-w-xs"
+							bind:this={attachmentInputEl}
+							onchange={handleFileChange}
+						/>
+						{#if attachmentFile}
+							<span class="mt-1 block text-xs opacity-80">
+								Selected: {attachmentFile.name}
+							</span>
+						{/if}
+					</div>
+				</div>
 
-				<label class="form-control w-full">
-					<span class="label-text mb-1 text-sm opacity-80">
-						Description
-					</span>
-					<textarea
-						class="d-textarea h-24 w-full"
-						placeholder="Optional description"
-						bind:value={description}
-					></textarea>
-				</label>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+					<DaisyUiLabel forText="attachment-description" className="shrink-0 sm:w-36 pt-1">Description</DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<DaisyUiTextarea
+							id="attachment-description"
+							bind:value={description}
+							placeholder="Optional description"
+							className="w-full min-h-24 resize-y"
+						/>
+					</div>
+				</div>
 			</div>
 
-			<DaisyUiCardBodyAction className="mt-4">
+			<DaisyUiCardBodyAction className="mt-6">
 				<DaisyUiButton
 					type="submit"
 					className="d-btn-primary d-btn-wide"

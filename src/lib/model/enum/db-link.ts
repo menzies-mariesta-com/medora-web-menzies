@@ -10,3 +10,8 @@ export enum RoleEnum {
     OWNER = 2,
     STAFF = 3,
 };
+
+export enum YesNoEnum {
+    YES = 1,
+    NO = 0,
+};

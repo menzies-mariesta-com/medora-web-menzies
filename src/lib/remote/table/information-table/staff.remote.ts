@@ -15,13 +15,13 @@ import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
 
 
-// get all
+// get all (no relations)
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	const data = await ensureDb().select().from(table.staffTable);
 	return data;
 });
 
-// get all with many-to-many relations and master lookups
+// get all with many-to-many relations and master lookups (no pagination)
 export const getStaffWithRelations = query(async () => {
 	return ensureDb().query.staffTable.findMany({
 		with: {
@@ -47,6 +47,11 @@ export const getStaffWithRelations = query(async () => {
 		},
 	});
 });
+
+// Reusable type for a single staff row with all relations
+export type StaffWithRelations = NonNullable<
+	Awaited<ReturnType<typeof getStaffByIdWithRelations>>
+>;
 
 // get one with relations
 export const getStaffByUserIdWithRelations = query(
@@ -85,10 +90,10 @@ export const getStaffCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated (optional search on firstName, lastName, code, phonePrimary)
+// get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
 export const getStaffPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffSchema>> => {
+	async (params?: PaginationParams): Promise<PaginatedResult<StaffWithRelations>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
 		const searchTerm = params?.search?.trim();
 		const pattern = searchTerm ? `%${searchTerm}%` : null;
@@ -104,27 +109,41 @@ export const getStaffPaginated = query(
 		// Exclude soft-deleted staff
 		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
 
-		const baseQuery = ensureDb()
-			.select()
-			.from(table.staffTable)
-			.where(
-				searchCondition
-					? and(notDeletedCondition, searchCondition)
-					: notDeletedCondition
-			);
-
-		const countQuery = ensureDb()
-			.select({ count: count() })
-			.from(table.staffTable)
-			.where(
-				searchCondition
-					? and(notDeletedCondition, searchCondition)
-					: notDeletedCondition
-			);
+		const whereExpr = searchCondition
+			? and(notDeletedCondition, searchCondition)
+			: notDeletedCondition;
 
 		const [data, countResult] = await Promise.all([
-			baseQuery.limit(limit).offset(offset),
-			countQuery
+			ensureDb().query.staffTable.findMany({
+				where: whereExpr,
+				with: {
+					gender: true,
+					identityType: true,
+					maritalStatus: true,
+					specialization: true,
+					status: true,
+					staffDetail: { with: { bloodType: true, status: true } },
+					city: true,
+					country: true,
+					nationality: true,
+					position: true,
+					postalCode: true,
+					staffEmploymentType: true,
+					staffType: true,
+					state: true,
+					title: true,
+					user: true,
+					staffHospitals: { with: { hospital: true } },
+					staffDepartments: { with: { department: true } },
+					staffUserGroups: { with: { userGroup: true } },
+				},
+				limit,
+				offset
+			}),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffTable)
+				.where(whereExpr)
 		]);
 
 		const total = countResult[0]?.count ?? 0;
@@ -278,6 +297,8 @@ export const createStaffWithUser = command(
 		lastName?: string;
 		phonePrimary?: string;
 		phoneSecondary?: string;
+		phonePrimaryCountryId?: number;
+		phoneSecondaryCountryId?: number;
 		dateOfBirth?: string;
 		address?: string;
 		remark?: string;
@@ -379,6 +400,8 @@ export const createStaffWithUser = command(
 			lastName: payload.lastName,
 			phonePrimary: payload.phonePrimary,
 			phoneSecondary: payload.phoneSecondary,
+			phonePrimaryCountryId: payload.phonePrimaryCountryId ? Number(payload.phonePrimaryCountryId) : undefined,
+			phoneSecondaryCountryId: payload.phoneSecondaryCountryId ? Number(payload.phoneSecondaryCountryId) : undefined,
 			dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth).toISOString().split('T')[0] : undefined,
 			photoUrl: payload.photoUrl ?? undefined,
 			address: payload.address,

@@ -113,7 +113,7 @@
 				<DaisyUiDropdown>
 					<DaisyUiDropdownButton>{m?.name}</DaisyUiDropdownButton>
 					<DaisyUiDropdownContent
-						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50"
+						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50 z-100"
 					>
 						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 							<DaisyUiButton
