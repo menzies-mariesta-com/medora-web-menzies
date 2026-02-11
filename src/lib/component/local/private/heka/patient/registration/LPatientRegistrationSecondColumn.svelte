@@ -17,6 +17,7 @@
 		selectedPhone = $bindable(),
 		selectedPhoneSecondaryCountryId = $bindable(),
 		selectedPhoneSecondary = $bindable(),
+		selectedGuardianPhoneCountryId = $bindable(),
 		selectedIdentityTypeId = $bindable(),
 		identityNo = $bindable(),
 		dateOfBirth = $bindable(),
@@ -32,6 +33,7 @@
 		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;
 		selectedPhoneSecondary?: string;
+		selectedGuardianPhoneCountryId?: string;
 		selectedIdentityTypeId?: string;
 		identityNo?: string;
 		dateOfBirth?: string;
@@ -119,7 +121,20 @@
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="guardian-phone" className="shrink-0 sm:w-36">Guardian Phone</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
-			<DaisyUiInputField bind:value={guardianPhone} inputType="tel" />
+			<DaisyUiJoin>
+				<DaisyUiSelect
+					bind:value={selectedGuardianPhoneCountryId}
+					optionHeader="Select country code ..."
+					className="min-w-20 d-join-item"
+				>
+					{#each countryData as data (data.id)}
+						<option value={String(data.id)} class="gap-5"
+							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
+						>
+					{/each}
+				</DaisyUiSelect>
+				<DaisyUiInputField bind:value={guardianPhone} inputType="tel" className="d-join-item" />
+			</DaisyUiJoin>
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">

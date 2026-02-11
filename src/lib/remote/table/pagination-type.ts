@@ -14,6 +14,8 @@ export type PaginationParams = {
 	pageSize?: number;
 	/** Optional search term for list endpoints (e.g. staff list). */
 	search?: string;
+	/** Optional cache-busting key; when set, bypasses client cache (e.g. after edit). */
+	_t?: number;
 };
 
 const DEFAULT_PAGE = 1;

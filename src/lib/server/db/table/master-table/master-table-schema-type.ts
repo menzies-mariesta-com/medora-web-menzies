@@ -19,6 +19,7 @@ import type {
 	stateTable,
 	statusTable,
 	titleTable,
+	weekdayTable,
 } from './master-table';
 import type { Infer } from 'zod';
 
@@ -98,3 +99,7 @@ export type TitleSchemaUpdate = Partial<TitleSchemaInsert>;
 export type ReligionSchema = InferSelectModel<typeof religionTable>;
 export type ReligionSchemaInsert = InferInsertModel<typeof religionTable>;
 export type ReligionSchemaUpdate = Partial<ReligionSchemaInsert>;
+
+export type WeekdaySchema = InferSelectModel<typeof weekdayTable>;
+export type WeekdaySchemaInsert = InferInsertModel<typeof weekdayTable>;
+export type WeekdaySchemaUpdate = Partial<WeekdaySchemaInsert>;

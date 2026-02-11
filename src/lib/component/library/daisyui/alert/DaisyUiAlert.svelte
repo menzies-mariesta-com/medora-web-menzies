@@ -34,7 +34,7 @@
 	const Icon = iconMap[type];
 </script>
 
-<div role="alert" class="{alertClass} flex items-center shadow-lg">
+<div role="alert" class="{alertClass} z-[9999] flex items-center shadow-lg">
 	<Icon />
 	<div class="text-black">
 		{message}
