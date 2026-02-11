@@ -104,6 +104,13 @@ export const postalCodeTable = pgTable('postal_code', {
 	...timestamps,
 });
 
+export const religionTable = pgTable('religion', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', {length: 512}),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+})
+
 export const specializationTable = pgTable('specialization', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
