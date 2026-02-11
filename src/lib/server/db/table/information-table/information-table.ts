@@ -224,10 +224,11 @@ export const patientTable = pgTable('patient', {
 	dateOfBirth: date('date_of_birth'),
 	guardian_name: varchar('guardian_name', { length: 512 }),
 	guardian_phone: varchar('guardian_phone', { length: 128 }),
+	guardianPhoneCountryId: integer('guardian_phone_country_id').references(() => countryTable.id),
 	photo_path: text('photo_path'),
 	address: text('address'),
 	remark: text('remark'),
-	masking: integer('masking').notNull().default(YesNoEnum.NO),
+	nameMasking: integer('name_masking').notNull().default(YesNoEnum.NO),
 	phonePrimaryCountryId: integer('phone_primary_country_id').references(() => countryTable.id),
 	phoneSecondaryCountryId: integer('phone_secondary_country_id').references(() => countryTable.id),
 	maritalStatusId: integer('marital_status_id').references(() => maritalStatusTable.id),
@@ -241,7 +242,7 @@ export const patientTable = pgTable('patient', {
 	nationalityId: integer('nationality_id').references(() => nationalityTable.id),
 	religionId: integer('religion_id').references(() => religionTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 })
 
 export const patientAttachmentTable = pgTable('patient_attachment', {
@@ -252,7 +253,7 @@ export const patientAttachmentTable = pgTable('patient_attachment', {
 	fileUrl: text('file_url'),
 	description: text('description'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 })
 
 export const insuranceTable = pgTable('insurance_table', {
@@ -261,7 +262,7 @@ export const insuranceTable = pgTable('insurance_table', {
 		.$defaultFn(() => uuidv7()),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 
 })
 
@@ -273,7 +274,7 @@ export const patientInsurance = pgTable('patient_insurance', {
 	insuranceId: uuid('insurance_id')
 		.notNull()
 		.references(() => insuranceTable.id),
-	...timestamp,
+	...timestamps,
 })
 
 export const patientAllergyTable = pgTable('patient_allergies', {
@@ -283,5 +284,5 @@ export const patientAllergyTable = pgTable('patient_allergies', {
 		.references(() => patientTable.id),
 	description: text('description'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamp,
+	...timestamps,
 })

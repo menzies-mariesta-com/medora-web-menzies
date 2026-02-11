@@ -7,6 +7,6 @@
 	}>();
 </script>
 
-<div class="d-tooltip {className}" data-tip={tooltipText}>
+<div class="d-tooltip {className} z-10" data-tip={tooltipText}>
 	{@render children()}
 </div>

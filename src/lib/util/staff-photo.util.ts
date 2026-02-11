@@ -37,3 +37,41 @@ export function getStaffSignatureDisplayUrl(url: string | null | undefined): str
 	}
 	return u;
 }
+
+/**
+ * Returns a URL suitable for displaying a patient profile photo (e.g. in img src).
+ * Uses patient-photos proxy path.
+ */
+export function getPatientPhotoDisplayUrl(url: string | null | undefined): string | undefined {
+	if (!url?.trim()) return undefined;
+	const u = url.trim();
+	if (u.startsWith('/')) return u;
+	try {
+		if (u.includes('t3.storage.dev')) {
+			const pathname = new URL(u).pathname;
+			return pathname ? `/api/patient-photo${pathname}` : u;
+		}
+	} catch {
+		// ignore invalid URL
+	}
+	return u;
+}
+
+/**
+ * Returns a URL suitable for viewing a patient attachment (open in new tab / download).
+ * Uses patient-attachments proxy path.
+ */
+export function getPatientAttachmentDisplayUrl(url: string | null | undefined): string | undefined {
+	if (!url?.trim()) return undefined;
+	const u = url.trim();
+	if (u.startsWith('/')) return u;
+	try {
+		if (u.includes('t3.storage.dev')) {
+			const pathname = new URL(u).pathname;
+			return pathname ? `/api/patient-attachment${pathname}` : u;
+		}
+	} catch {
+		// ignore invalid URL
+	}
+	return u;
+}
