@@ -8,12 +8,13 @@ import {
 	text,
 	timestamp,
 	uuid,
+	time,
 	varchar,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, weekdayTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -284,4 +285,19 @@ export const patientAllergyTable = pgTable('patient_allergies', {
 	description: text('description'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamp,
+})
+
+export const doctorScheduleTable = pgTable('doctor_schedule', {
+	id: serial('id').primaryKey(),
+	doctorId: uuid('doctor_id')
+		.notNull()
+		.references(() => staffTable.id),
+	hospitalId: serial('hospital_id').notNull().references(() => hospitalTable.id),
+	weekdayId: serial('weekday_id').notNull().references(() => weekdayTable.id),
+	fromDate: date('from_date'),
+	toDate: date('to_date'),
+	fromShiftTime: time('from_shift_time'),
+	toShiftTime: time('to_shift_time'),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamp
 })

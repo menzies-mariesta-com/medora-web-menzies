@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+	doctorScheduleTable,
 	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
@@ -32,6 +33,7 @@ import {
 	stateTable,
 	statusTable,
 	titleTable,
+	weekdayTable,
 } from './master-table';
 
 // Master table relations (alphabetical)
@@ -234,4 +236,12 @@ export const positionTableRelations = relations(positionTable, ({ one, many }) =
 		references: [statusTable.id],
 	}),
 	staffs: many(staffTable),
+}));
+
+export const weekdayTableRelations = relations(weekdayTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [weekdayTable.statusId],
+		references: [statusTable.id],
+	}),
+	doctorSchedules: many(doctorScheduleTable),
 }));
