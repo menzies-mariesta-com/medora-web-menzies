@@ -2,6 +2,7 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiModalBox from '$lib/component/library/daisyui/modal/box/DaisyUiModalBox.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
@@ -14,13 +15,15 @@
 		licenseNo = $bindable(''),
 		licenseExpiryDate = $bindable(''),
 		signatureFile = $bindable(null as File | null),
-		signatureText = $bindable('')
+		signatureText = $bindable(''),
+		viewOnly = false
 	} = $props<{
 		open?: boolean;
 		licenseNo?: string;
 		licenseExpiryDate?: string;
 		signatureFile?: File | null;
 		signatureText?: string;
+		viewOnly?: boolean;
 	}>();
 
 	const toastService = new ToastService();
@@ -84,81 +87,82 @@
 	>
 		<DaisyUiModalBox onClose={handleClose}>
 			<h3 class="mb-4 text-lg font-bold">License &amp; Signature</h3>
-			<div class="flex flex-col gap-4">
-				<div class="flex flex-col gap-2">
-					<DaisyUiLabel forText="license-no">License No</DaisyUiLabel>
-					<DaisyUiInputField
-						id="license-no"
-						bind:value={licenseNo}
-						inputType="text"
-						className="w-full"
-					/>
-				</div>
-				<div class="flex flex-col gap-2">
-					<DaisyUiLabel forText="license-expiry-date">License expiry date</DaisyUiLabel>
-					<DaisyUiInputField
-						id="license-expiry-date"
-						bind:value={licenseExpiryDate}
-						inputType="date"
-						className="w-full"
-					/>
-				</div>
-				<div class="flex flex-col gap-2">
-					<DaisyUiLabel forText="signature-image">Signature image</DaisyUiLabel>
-					<input
-						type="file"
-						accept="image/jpeg,image/png,image/webp,image/gif"
-						class="hidden"
-						bind:this={signatureInputEl}
-						onchange={handleSignatureChange}
-					/>
-					<div
-						class="flex flex-wrap justify-center items-center gap-5 rounded-lg border border-base-300 bg-base-200/50 p-3"
-					>
-						<button
-							type="button"
-							class="flex size-32 shrink-0 items-center justify-center overflow-hidden rounded border border-base-300 bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-40"
-							onclick={() => signatureInputEl?.click()}
-							title="Choose signature image (uploaded when you save)"
+			<fieldset disabled={viewOnly} class="border-0 p-0 m-0 min-w-0">
+				<div class="flex flex-col gap-4">
+					<div class="flex flex-col gap-2">
+						<DaisyUiLabel forText="license-no">License No</DaisyUiLabel>
+						<DaisyUiInputField
+							id="license-no"
+							bind:value={licenseNo}
+							inputType="text"
+							className="w-full"
+						/>
+					</div>
+					<div class="flex flex-col gap-2">
+						<DaisyUiLabel forText="license-expiry-date">License expiry date</DaisyUiLabel>
+						<DaisyUiInputField
+							id="license-expiry-date"
+							bind:value={licenseExpiryDate}
+							inputType="date"
+							className="w-full"
+						/>
+					</div>
+					<div class="flex flex-col gap-2">
+						<DaisyUiLabel forText="signature-image">Signature image</DaisyUiLabel>
+						<DaisyUiFileInput
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							className="hidden"
+							bind:inputEl={signatureInputEl}
+							onchange={handleSignatureChange}
+						/>
+						<div
+							class="flex flex-wrap justify-center items-center gap-5 rounded-lg border border-base-300 bg-base-200/50 p-3"
 						>
-							{#if signaturePreviewUrl}
-								<img
-									src={signaturePreviewUrl}
-									alt="Signature"
-									class="size-full object-contain"
-								/>
-							{:else}
-								<DaisyUiSkeleton className="size-full rounded" />
-							{/if}
-						</button>
-						<div class="flex flex-col gap-2">
-							<DaisyUiButton
+							<button
 								type="button"
-								className="d-btn-primary d-btn-sm"
-								onClick={() => signatureInputEl?.click()}
+								class="flex size-32 shrink-0 items-center justify-center overflow-hidden rounded border border-base-300 bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-40"
+								onclick={() => signatureInputEl?.click()}
+								title="Choose signature image (uploaded when you save)"
 							>
-								{signatureFile ? 'Change image' : 'Choose image'}
-							</DaisyUiButton>
-							<DaisyUiButton
-								type="button"
-								className="d-btn-error d-btn-sm"
-								onClick={handleRemoveSignature}
-								disabled={!signatureFile}
-							>
-								Remove
-							</DaisyUiButton>
+								{#if signaturePreviewUrl}
+									<img
+										src={signaturePreviewUrl}
+										alt="Signature"
+										class="size-full object-contain"
+									/>
+								{:else}
+									<DaisyUiSkeleton className="size-full rounded" />
+								{/if}
+							</button>
+							<div class="flex flex-col gap-2">
+								<DaisyUiButton
+									type="button"
+									className="d-btn-primary d-btn-sm"
+									onClick={() => signatureInputEl?.click()}
+								>
+									{signatureFile ? 'Change image' : 'Choose image'}
+								</DaisyUiButton>
+								<DaisyUiButton
+									type="button"
+									className="d-btn-error d-btn-sm"
+									onClick={handleRemoveSignature}
+									disabled={!signatureFile}
+								>
+									Remove
+								</DaisyUiButton>
+							</div>
 						</div>
 					</div>
+					<div class="flex flex-col gap-2">
+						<DaisyUiLabel forText="signature-text">Signature text</DaisyUiLabel>
+						<DaisyUiTextarea
+							id="signature-text"
+							bind:value={signatureText}
+							className="w-full min-h-20 resize-y"
+						/>
+					</div>
 				</div>
-				<div class="flex flex-col gap-2">
-					<DaisyUiLabel forText="signature-text">Signature text</DaisyUiLabel>
-					<DaisyUiTextarea
-						id="signature-text"
-						bind:value={signatureText}
-						className="w-full min-h-20 resize-y"
-					/>
-				</div>
-			</div>
+			</fieldset>
 			<div class="d-modal-action mt-5">
 				<DaisyUiButton
 					type="button"

@@ -7,7 +7,6 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
-	console.log(subPages);
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
@@ -22,7 +21,6 @@
 {#if isEmbed}
 	{@render children()}
 {:else if subPages.length > 0}
-{console.log(subPages)}
 	<div class="patient-subnav-wrapper">
 		<nav role="tablist" class="patient-subnav-tabs">
 			{#each subPages as sub (sub.id)}
