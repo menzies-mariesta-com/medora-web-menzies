@@ -14,6 +14,7 @@
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { browser } from '$app/environment';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
@@ -461,6 +462,11 @@ const currentPatientId = $derived(viewId || editId);
 			guardian_phone = country?.countryCallingCode
 				? `${country.countryCallingCode}${guardianPhone.trim()}`
 				: guardianPhone.trim();
+		}
+
+		// Client-only submission handler (uses FormData, fetch, etc.)
+		if (!browser) {
+			return;
 		}
 
 		isLoading = true;

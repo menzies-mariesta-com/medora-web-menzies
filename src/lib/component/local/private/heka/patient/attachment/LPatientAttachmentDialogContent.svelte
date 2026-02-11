@@ -22,8 +22,9 @@
 		getPatientAttachmentByPatientId,
 		deletePatientAttachmentComplete
 	} from '$lib/remote/table/information-table/patient-attachment.remote';
-	import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
-	import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
+import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
+import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
+import { browser } from '$app/environment';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 
 	/** Allowed MIME types for patient attachments (must match API). */
@@ -138,6 +139,7 @@
 
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
+		if (!browser) return;
 		if (!payload || !('patientId' in payload)) return;
 		if (attachmentFiles.length === 0) {
 			toastService.addToast('Please choose one or more files to upload.', StatusColorEnum.ERROR);
