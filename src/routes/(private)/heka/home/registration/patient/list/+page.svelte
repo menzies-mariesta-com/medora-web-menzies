@@ -22,17 +22,18 @@
 	import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
 	import LPatientListViewEditModal from '$lib/component/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
+	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
+	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
+	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
+	const stringUtil = new StringUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
@@ -134,17 +135,6 @@
 		} catch {
 			return '—';
 		}
-	}
-
-	function patientDisplayName(patient: PatientWithRelations): string {
-		const nameMasking = (patient as { nameMasking?: number }).nameMasking;
-		if (nameMasking === YesNoEnum.YES) return '***';
-		return StringUtil.fullNameWithTitle(
-			patient.title?.name,
-			patient.firstName,
-			patient.middleName,
-			patient.lastName
-		);
 	}
 
 	const PATIENT_COLUMN_COUNT = 12;
@@ -330,7 +320,7 @@
 							{patient.code ?? '—'}
 						</td>
 						<td class="w-64 min-w-[16rem]">
-							{patientDisplayName(patient)}
+							{StringUtil.patientDisplayName(patient)}
 						</td>
 						<td class="w-64 min-w-[16rem]">
 							({patient.identityType?.name ?? '—'}) {patient.identityNo ?? '—'}

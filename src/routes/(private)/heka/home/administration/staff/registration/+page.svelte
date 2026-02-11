@@ -18,7 +18,8 @@
 	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
 	import { getState } from '$lib/remote/table/master-table/state.remote';
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+import { browser } from '$app/environment';
 	import type {
 		BloodTypeSchema,
 		CitySchema,
@@ -397,6 +398,7 @@
 
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
+	if (!browser) return;
 		const form = e.currentTarget as HTMLFormElement;
 		const fd = new FormData(form);
 
