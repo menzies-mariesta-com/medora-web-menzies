@@ -124,7 +124,7 @@ import { browser } from '$app/environment';
 		];
 		PatientAttachmentDialogState.stagedAttachments = next;
 		toastService.addToast(
-			`Added ${attachmentFiles.length} file(s). They will be saved when you register the patient.`,
+			`Added ${attachmentFiles.length} file(s).`,
 			StatusColorEnum.SUCCESS
 		);
 		attachmentFiles = [];
@@ -303,18 +303,18 @@ import { browser } from '$app/environment';
 					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
 						Add files
 					</DaisyUiDivider>
-					<DaisyUiCard className="max-w-2xl shadow-sm">
-						<DaisyUiCardBody className="p-4">
-							<form onsubmit={handleStagingSubmit} class="flex flex-col gap-4">
+					<DaisyUiCard className="w-full shadow-sm">
+						<DaisyUiCardBody className="p-4 w-full">
+							<form onsubmit={handleStagingSubmit} class="flex flex-col flex-1 gap-4">
 								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel forText="attachment-files" className="shrink-0 sm:w-36">
+									<DaisyUiLabel forText="attachment-files" className="shrink-0 sm:w-1/3">
 										File(s)
 										<span class="text-base-content/60 font-normal"> (JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span>
 									</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
+									<div class="w-full sm:w-2/3">
 										<DaisyUiFileInput
 											id="attachment-files"
-											className="file-input file-input-bordered w-full max-w-xs"
+											className="file-input file-input-bordered w-full"
 											accept={ACCEPT_ATTACHMENT_TYPES}
 											multiple
 											bind:inputEl={attachmentInputEl}
@@ -330,10 +330,10 @@ import { browser } from '$app/environment';
 								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
 									<DaisyUiLabel
 										forText="attachment-description"
-										className="shrink-0 sm:w-36 pt-1"
+										className="shrink-0 sm:w-1/3 pt-1"
 										>Description (optional, for all)</DaisyUiLabel
 									>
-									<div class="max-w-80 flex-1">
+									<div class="w-full sm:w-2/3">
 										<DaisyUiTextarea
 											id="attachment-description"
 											bind:value={description}
@@ -342,7 +342,7 @@ import { browser } from '$app/environment';
 										/>
 									</div>
 								</div>
-								<div class="mt-2">
+								<div class="mt-2 flex flex-row justify-end">
 									<DaisyUiButton type="submit" className="d-btn-primary d-btn-wide">
 										Add to list
 									</DaisyUiButton>
@@ -416,12 +416,12 @@ import { browser } from '$app/environment';
 					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
 						Upload new
 					</DaisyUiDivider>
-					<DaisyUiCard className="max-w-2xl shadow-sm">
+					<DaisyUiCard className="w-full shadow-sm">
 						<DaisyUiCardBody className="p-4">
 							<form onsubmit={handleOnSubmit} class="flex flex-col gap-4">
 								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 									<DaisyUiLabel className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
+									<div class="flex-1">
 										<p class="truncate text-sm font-medium">
 											{payload.patientName || payload.patientId}
 										</p>
@@ -432,10 +432,10 @@ import { browser } from '$app/environment';
 										File(s)
 										<span class="text-base-content/60 font-normal"> (JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span>
 									</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
+									<div class="flex-1">
 										<DaisyUiFileInput
 											id="attachment-files-existing"
-											className="file-input file-input-bordered w-full max-w-xs"
+											className="file-input file-input-bordered w-full"
 											accept={ACCEPT_ATTACHMENT_TYPES}
 											multiple
 											bind:inputEl={attachmentInputEl}
@@ -454,7 +454,7 @@ import { browser } from '$app/environment';
 										className="shrink-0 sm:w-36 pt-1"
 										>Description (optional, for all)</DaisyUiLabel
 									>
-									<div class="max-w-80 flex-1">
+									<div class="flex-1">
 										<DaisyUiTextarea
 											id="attachment-description-existing"
 											bind:value={description}
