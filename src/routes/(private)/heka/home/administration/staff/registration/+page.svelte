@@ -263,24 +263,42 @@
 		selectedEmail = (staff as { user?: { email?: string } }).user?.email ?? '';
 		selectedGenderId = staff.genderId != null ? String(staff.genderId) : '';
 		selectedMaritalStatusId = staff.maritalStatusId != null ? String(staff.maritalStatusId) : '';
-		// Phone: try to match country code
+		// Phone: use phone_primary_country_id / phone_secondary_country_id when set, else parse from full number
 		const phonePrimary = staff.phonePrimary ?? '';
 		const phoneSecondary = staff.phoneSecondary ?? '';
-		const matchPrimary = countryData.find((c) => c.countryCallingCode && phonePrimary.startsWith(c.countryCallingCode));
-		if (matchPrimary) {
-			selectedPhoneCountryId = String(matchPrimary.id);
-			selectedPhone = phonePrimary.slice(matchPrimary.countryCallingCode?.length ?? 0).trim();
+		const staffPrimaryCountryId = (staff as { phonePrimaryCountryId?: number | null }).phonePrimaryCountryId;
+		const staffSecondaryCountryId = (staff as { phoneSecondaryCountryId?: number | null }).phoneSecondaryCountryId;
+		if (staffPrimaryCountryId != null) {
+			selectedPhoneCountryId = String(staffPrimaryCountryId);
+			const country = countryData.find((c) => c.id === staffPrimaryCountryId);
+			selectedPhone = country?.countryCallingCode && phonePrimary.startsWith(country.countryCallingCode)
+				? phonePrimary.slice(country.countryCallingCode.length).trim()
+				: phonePrimary;
 		} else {
-			selectedPhoneCountryId = '';
-			selectedPhone = phonePrimary;
+			const matchPrimary = countryData.find((c) => c.countryCallingCode && phonePrimary.startsWith(c.countryCallingCode));
+			if (matchPrimary) {
+				selectedPhoneCountryId = String(matchPrimary.id);
+				selectedPhone = phonePrimary.slice(matchPrimary.countryCallingCode?.length ?? 0).trim();
+			} else {
+				selectedPhoneCountryId = '';
+				selectedPhone = phonePrimary;
+			}
 		}
-		const matchSecondary = countryData.find((c) => c.countryCallingCode && phoneSecondary.startsWith(c.countryCallingCode));
-		if (matchSecondary) {
-			selectedPhoneSecondaryCountryId = String(matchSecondary.id);
-			selectedPhoneSecondary = phoneSecondary.slice(matchSecondary.countryCallingCode?.length ?? 0).trim();
+		if (staffSecondaryCountryId != null) {
+			selectedPhoneSecondaryCountryId = String(staffSecondaryCountryId);
+			const country = countryData.find((c) => c.id === staffSecondaryCountryId);
+			selectedPhoneSecondary = country?.countryCallingCode && phoneSecondary.startsWith(country.countryCallingCode)
+				? phoneSecondary.slice(country.countryCallingCode.length).trim()
+				: phoneSecondary;
 		} else {
-			selectedPhoneSecondaryCountryId = '';
-			selectedPhoneSecondary = phoneSecondary;
+			const matchSecondary = countryData.find((c) => c.countryCallingCode && phoneSecondary.startsWith(c.countryCallingCode));
+			if (matchSecondary) {
+				selectedPhoneSecondaryCountryId = String(matchSecondary.id);
+				selectedPhoneSecondary = phoneSecondary.slice(matchSecondary.countryCallingCode?.length ?? 0).trim();
+			} else {
+				selectedPhoneSecondaryCountryId = '';
+				selectedPhoneSecondary = phoneSecondary;
+			}
 		}
 		selectedStaffEmploymentTypeId = staff.staffEmploymentTypeId != null ? String(staff.staffEmploymentTypeId) : '';
 		selectedEducation = (staff as { staffDetail?: { education?: string } }).staffDetail?.education ?? '';
@@ -457,6 +475,8 @@
 					code: selectedStaffCode.trim() || undefined,
 					phonePrimary: phonePrimary || undefined,
 					phoneSecondary: phoneSecondary || undefined,
+					phonePrimaryCountryId: selectedPhoneCountryId ? Number(selectedPhoneCountryId) : undefined,
+					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId ? Number(selectedPhoneSecondaryCountryId) : undefined,
 					dateOfBirth: selectedDateOfBirth || undefined,
 					address: selectedAddress || undefined,
 					remark: selectedRemark || undefined,
@@ -552,6 +572,8 @@
 				lastName: selectedLastName.trim(),
 				phonePrimary,
 				phoneSecondary: phoneSecondary || undefined,
+				phonePrimaryCountryId: selectedPhoneCountryId ? Number(selectedPhoneCountryId) : undefined,
+				phoneSecondaryCountryId: selectedPhoneSecondaryCountryId ? Number(selectedPhoneSecondaryCountryId) : undefined,
 				dateOfBirth: selectedDateOfBirth || undefined,
 				address: selectedAddress || undefined,
 				remark: selectedRemark || undefined,

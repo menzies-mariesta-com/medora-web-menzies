@@ -7,6 +7,7 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
+	console.log(subPages);
 	const currentPath = $derived(
 		page.url.pathname.replace(/\/$/, '') || '/'
 	);
@@ -22,13 +23,13 @@
 	{@render children()}
 {:else if subPages.length > 0}
 {console.log(subPages)}
-	<div class="staff-subnav-wrapper">
-		<nav role="tablist" class="staff-subnav-tabs">
+	<div class="patient-subnav-wrapper">
+		<nav role="tablist" class="patient-subnav-tabs">
 			{#each subPages as sub (sub.id)}
 				<button
 					type="button"
 					role="tab"
-					class="staff-subnav-tab"
+					class="patient-subnav-tab"
 					class:active={pathMatches(sub.pageUrl)}
 					onclick={() =>
 						sub.pageUrl && routerUtil.replaceRoute(sub.pageUrl)}
@@ -37,7 +38,7 @@
 				</button>
 			{/each}
 		</nav>
-		<div class="staff-subnav-content">
+		<div class="patient-subnav-content">
 			{@render children()}
 		</div>
 	</div>
@@ -46,13 +47,13 @@
 {/if}
 
 <style>
-	.staff-subnav-wrapper {
+	.patient-subnav-wrapper {
 		display: flex;
 		flex-direction: column;
 		gap: 0;
 		min-height: 0;
 	}
-	.staff-subnav-tabs {
+	.patient-subnav-tabs {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.25rem;
@@ -60,7 +61,7 @@
 		padding-bottom: 0;
 		margin-bottom: 1rem;
 	}
-	.staff-subnav-tab {
+	.patient-subnav-tab {
 		appearance: none;
 		background: transparent;
 		border: none;
@@ -72,18 +73,19 @@
 		cursor: pointer;
 		opacity: 0.7;
 	}
-	.staff-subnav-tab:hover {
+	.patient-subnav-tab:hover {
 		opacity: 1;
 	}
-	.staff-subnav-tab.active {
+	.patient-subnav-tab.active {
 		opacity: 1;
 		border-bottom-color: var(--color-primary, #570df8);
 		font-weight: 600;
 	}
-	.staff-subnav-content {
+	.patient-subnav-content {
 		display: block;
 		flex: 1;
 		min-height: 0;
 		padding: 0;
 	}
 </style>
+

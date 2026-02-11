@@ -11,6 +11,7 @@ export interface DialogInterface {
 	title?: string;
 	message?: string;
 	variant?: DialogVariantEnum;
+	fullScreen?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps>;
 	onClose?: () => void;
