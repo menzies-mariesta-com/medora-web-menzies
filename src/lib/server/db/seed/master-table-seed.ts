@@ -872,10 +872,9 @@ export async function seedMasterTables() {
 	await db.execute(sql`
 		INSERT INTO staff_type (id, name, code, status_id)
 		VALUES
-			(1, 'Clinical', 'CLINICAL', 1),
-			(2, 'Non-Clinical', 'NON_CLINICAL', 1),
-			(3, 'Administrative', 'ADMIN', 1),
-			(4, 'Support', 'SUPPORT', 1)
+			(1, 'Nurse', 'NURSE', 1),
+			(2, 'Employee', 'EMPLOYEE', 1),
+			(3, 'Doctor', 'DOCTOR', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
