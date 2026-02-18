@@ -10,7 +10,7 @@ import type {
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike, ne, or } from 'drizzle-orm';
+import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
@@ -110,6 +110,128 @@ export const getPatientPaginated = query(
 			pageSize,
 			totalPages: Math.ceil(total / pageSize) || 1,
 		};
+	}
+);
+
+// Find potential duplicate patients using multiple criteria.
+// For any field that is filled in the form (name, father name, primary phone, identity),
+// that field becomes a REQUIRED filter (combined with AND).
+// Matching uses ILIKE for strings and excludes DELETED rows.
+// Optionally exclude a patient id (e.g. when editing).
+export const getDuplicatePatients = query(
+	'unchecked' as const,
+	async (params: {
+		titleId: number | null;
+		firstName: string;
+		middleName: string;
+		lastName: string;
+		fatherTitleId: number | null;
+		fatherName: string;
+		phonePrimary: string;
+		identityTypeId: number | null;
+		identityNo: string;
+		excludePatientId?: string | null;
+	}): Promise<PatientWithRelations[]> => {
+		const conditions = [
+			ne(table.patientTable.statusId, StatusEnum.DELETED)
+		];
+
+		if (params.excludePatientId?.trim()) {
+			conditions.push(
+				ne(table.patientTable.id, params.excludePatientId.trim())
+			);
+		}
+
+		const firstNameTrim = params.firstName.trim();
+		const middleNameTrim = (params.middleName ?? '').trim();
+		const lastNameTrim = (params.lastName ?? '').trim();
+		const fatherNameTrim = (params.fatherName ?? '').trim();
+		const phonePrimaryTrim = (params.phonePrimary ?? '').trim();
+		const identityNoTrim = (params.identityNo ?? '').trim();
+
+		// Full name: title + first + middle + last (using name parts only here)
+		const fullNameSearch = [firstNameTrim, middleNameTrim, lastNameTrim]
+			.filter(Boolean)
+			.join(' ')
+			.trim();
+		if (fullNameSearch) {
+			conditions.push(
+				ilike(
+					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+					`%${fullNameSearch}%`
+				)
+			);
+		}
+
+		// Father name (with title)
+		if (params.fatherTitleId != null) {
+			conditions.push(
+				eq(table.patientTable.fatherTitleId, params.fatherTitleId)
+			);
+		}
+		if (fatherNameTrim) {
+			conditions.push(
+				ilike(
+					table.patientTable.fatherName,
+					`%${fatherNameTrim}%`
+				)
+			);
+		}
+
+		// Primary phone (with country code)
+		if (phonePrimaryTrim) {
+			conditions.push(
+				ilike(
+					table.patientTable.phonePrimary,
+					`%${phonePrimaryTrim}%`
+				)
+			);
+		}
+
+		// Identity (type + number)
+		if (params.identityTypeId != null) {
+			conditions.push(
+				eq(
+					table.patientTable.identityTypeId,
+					params.identityTypeId
+				)
+			);
+		}
+		if (identityNoTrim) {
+			conditions.push(
+				ilike(
+					table.patientTable.identityNo,
+					`%${identityNoTrim}%`
+				)
+			);
+		}
+
+		// If no criteria at all, nothing to search
+		if (conditions.length <= 1) {
+			// only status != DELETED (and maybe excludePatientId) present
+			return [];
+		}
+
+		return ensureDb().query.patientTable.findMany({
+			where: and(...conditions),
+			with: {
+				user: true,
+				title: true,
+				fatherTitle: true,
+				religion: true,
+				maritalStatus: true,
+				gender: true,
+				identityType: true,
+				bloodType: true,
+				city: true,
+				state: true,
+				country: true,
+				status: true,
+				attachments: true,
+				insurances: { with: { insurance: true } },
+				allergies: true,
+			},
+		});
 	}
 );
 
@@ -232,10 +354,10 @@ export const createPatientWithUser = command(
 		phoneSecondaryCountryId?: number;
 		identityNo?: string;
 		dateOfBirth?: string;
-		guardian_name?: string;
-		guardian_phone?: string;
+		guardianName?: string;
+		guardianPhone?: string;
 		guardianPhoneCountryId?: number;
-		photo_path?: string;
+		photoPath?: string;
 		address?: string;
 		remark?: string;
 		maritalStatusId?: number;
@@ -306,12 +428,12 @@ export const createPatientWithUser = command(
 			dateOfBirth: payload.dateOfBirth
 				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
 				: undefined,
-			guardian_name: payload.guardian_name,
-			guardian_phone: payload.guardian_phone,
+			guardianName: payload.guardianName,
+			guardianPhone: payload.guardianPhone,
 			guardianPhoneCountryId: payload.guardianPhoneCountryId
 				? Number(payload.guardianPhoneCountryId)
 				: undefined,
-			photo_path: payload.photo_path,
+			photoPath: payload.photoPath,
 			address: payload.address,
 			remark: payload.remark,
 			maritalStatusId: payload.maritalStatusId

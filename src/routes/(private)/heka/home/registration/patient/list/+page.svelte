@@ -329,9 +329,9 @@
 						<td class="w-40 min-w-[10rem]">{patient.phoneSecondary ?? '—'}</td>
 						<td class="w-36 min-w-[9rem]">{formatDate(patient.dateOfBirth)}</td>
 						<td class="w-48 min-w-[12rem]">
-							{patient.guardian_name ?? '—'}
-							{#if patient.guardian_phone}
-								<span class="text-base-content/70"> · {patient.guardian_phone}</span>
+							{patient.guardianName ?? '—'}
+							{#if patient.guardianPhone}
+								<span class="text-base-content/70"> · {patient.guardianPhone}</span>
 							{/if}
 						</td>
 						<td class="w-32 min-w-[8rem]">{patient.status?.name ?? '—'}</td>
