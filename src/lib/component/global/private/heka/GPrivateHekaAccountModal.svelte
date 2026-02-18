@@ -1,0 +1,171 @@
+<script lang="ts">
+	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
+	import LucideLogOut from '$lib/component/library/lucide/LucideLogOut.svelte';
+	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
+	import LucideUserX from '$lib/component/library/lucide/LucideUserX.svelte';
+	import LucideArrowLeft from '$lib/component/library/lucide/LucideArrowLeft.svelte';
+	import { authClient } from '$lib/auth/client';
+	import { goto } from '$app/navigation';
+	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { updateStaff } from '$lib/remote/table/information-table/staff.remote';
+	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+
+	let {
+		open,
+		onClose,
+		staffId,
+		registrationEditUrl
+	} = $props<{
+		open: boolean;
+		onClose: () => void;
+		staffId: string | null;
+		registrationEditUrl: string;
+	}>();
+
+	const toastService = new ToastService();
+
+	type Screen = 'menu' | 'account-edit';
+	let screen = $state<Screen>('menu');
+
+	let showEditIframe = $derived(screen === 'account-edit' && !!staffId);
+	const iframeSrc = $derived(
+		staffId ? `${registrationEditUrl}?edit=${staffId}&embed=1` : ''
+	);
+
+	async function handleLogOut() {
+		onClose();
+		await authClient.signOut();
+		goto(WebRoutesEnum.LOGIN);
+	}
+
+	function openAccountSetting() {
+		if (staffId) {
+			screen = 'account-edit';
+		} else {
+			toastService.addToast(
+				'No staff profile linked to this account.',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
+	function backToMenu() {
+		screen = 'menu';
+	}
+
+	async function handleDeactivate() {
+		if (!staffId) {
+			toastService.addToast(
+				'No staff profile linked to this account.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		const result = await dialogService.open({
+			title: 'Deactivate account',
+			message:
+				'Are you sure you want to deactivate your account? You can contact an administrator to reactivate it.',
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (result.confirmed) {
+			try {
+				await updateStaff({ id: staffId, statusId: StatusEnum.INACTIVE });
+				toastService.addToast('Account deactivated.', StatusColorEnum.SUCCESS);
+				onClose();
+				await authClient.signOut();
+				goto(WebRoutesEnum.LOGIN);
+			} catch (err) {
+				console.error(err);
+				toastService.addToast('Failed to deactivate account.', StatusColorEnum.ERROR);
+			}
+		}
+	}
+
+	function handleClose() {
+		screen = 'menu';
+		onClose();
+	}
+</script>
+
+{#if open}
+	<DaisyUiModal
+		groupName="account-settings-modal"
+		open={true}
+		onClose={handleClose}
+		className={showEditIframe
+			? '!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]'
+			: ''}
+	>
+		{#if showEditIframe}
+			<div
+				class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+				role="document"
+			>
+				<div
+					class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm gap-2"
+						onClick={backToMenu}
+					>
+						<LucideArrowLeft className="size-5" />
+						Back
+					</DaisyUiButton>
+					<h2 class="text-lg font-semibold">Account setting</h2>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm d-btn-circle"
+						onClick={handleClose}
+					>
+						<LucideX className="size-5" />
+					</DaisyUiButton>
+				</div>
+				<iframe
+					title="Edit your profile"
+					class="flex-1 min-h-0 w-full border-0 rounded-b-box"
+					src={iframeSrc}
+				></iframe>
+			</div>
+		{:else}
+			<div class="d-modal-box max-w-md" role="document">
+				<div class="flex items-center justify-between border-b border-base-300 pb-3">
+					<h2 class="text-lg font-semibold">Account</h2>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm d-btn-circle"
+						onClick={handleClose}
+					>
+						<LucideX className="size-5" />
+					</DaisyUiButton>
+				</div>
+				<div class="mt-4 flex flex-col gap-2">
+					<DaisyUiButton
+						className="d-btn-ghost w-full justify-start gap-2"
+						onClick={handleLogOut}
+					>
+						<LucideLogOut className="size-5" />
+						Log out
+					</DaisyUiButton>
+					<DaisyUiButton
+						className="d-btn-ghost w-full justify-start gap-2"
+						onClick={openAccountSetting}
+					>
+						<LucideUserCog className="size-5" />
+						Account setting
+					</DaisyUiButton>
+					<DaisyUiButton
+						className="d-btn-ghost w-full justify-start gap-2 text-error"
+						onClick={handleDeactivate}
+					>
+						<LucideUserX className="size-5" />
+						Deactivate account
+					</DaisyUiButton>
+				</div>
+			</div>
+		{/if}
+	</DaisyUiModal>
+{/if}
