@@ -10,7 +10,7 @@
 		getPageData
 	} from '$lib/state/page.state.svelte';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	const fullPageData = await getPageWithRelations();
 	setPageData(fullPageData);
@@ -18,12 +18,21 @@
 	const uniqueModuleData = $derived(getUniqueModuleData());
 	const pageData = $derived(getPageData());
 	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const currentStaffId = $derived(data?.staff?.id ?? null);
+	const currentStaffPhotoUrl = $derived(
+		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ?? null
+	);
 </script>
 
 <div class="my-app">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
-		<GPrivateHekaModuleBar moduleList={uniqueModuleData} pageList={pageData} />
+		<GPrivateHekaModuleBar
+			moduleList={uniqueModuleData}
+			pageList={pageData}
+			staffId={currentStaffId}
+			staffPhotoUrl={currentStaffPhotoUrl}
+		/>
 	{/if}
 	<div class="my-main p-3" class:my-main-embed={isEmbed}>
 		{@render children?.()}

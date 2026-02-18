@@ -17,7 +17,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = session.user;
 		// Load staff linked to this user (1:1)
 		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
-		// event.locals.staff = staff ?? null;
+		event.locals.staff = staff ?? null;
 	}
 
 	return svelteKitHandler({
