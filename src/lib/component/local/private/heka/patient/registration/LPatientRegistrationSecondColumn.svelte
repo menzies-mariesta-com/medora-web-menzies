@@ -6,10 +6,14 @@
 	import type {
 		BloodTypeSchema,
 		CountrySchema,
-		IdentityTypeSchema
+		IdentityTypeSchema,
+
+		TitleSchema
+
 	} from '$lib/server/db/schema-type';
 
 	let {
+		titleData,
 		countryData,
 		identityTypeData,
 		bloodTypeData,
@@ -17,15 +21,19 @@
 		selectedPhone = $bindable(),
 		selectedPhoneSecondaryCountryId = $bindable(),
 		selectedPhoneSecondary = $bindable(),
+		selectedFatherTitleId = $bindable(),
+		selectedGuardianTitleId = $bindable(),
 		selectedGuardianPhoneCountryId = $bindable(),
 		selectedIdentityTypeId = $bindable(),
 		identityNo = $bindable(),
 		dateOfBirth = $bindable(),
 		dateOfBirthMax,
+		fatherName = $bindable(),
 		guardianName = $bindable(),
 		guardianPhone = $bindable(),
 		selectedBloodTypeId = $bindable()
 	} = $props<{
+		titleData: TitleSchema[];
 		countryData: CountrySchema[];
 		identityTypeData: IdentityTypeSchema[];
 		bloodTypeData: BloodTypeSchema[];
@@ -33,6 +41,9 @@
 		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;
 		selectedPhoneSecondary?: string;
+		selectedFatherTitleId?: string;
+		fatherName?: string;
+		selectedGuardianTitleId?: string;
 		selectedGuardianPhoneCountryId?: string;
 		selectedIdentityTypeId?: string;
 		identityNo?: string;
@@ -113,9 +124,37 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+		<DaisyUiLabel forText="guardian-name" className="shrink-0 sm:w-36">Father Name</DaisyUiLabel>
+		<div class="max-w-80 flex-1">
+			<DaisyUiJoin>
+				<DaisyUiSelect
+					bind:value={selectedFatherTitleId}
+					optionHeader="Select a title"
+					className="d-join-item"
+				>
+					{#each titleData as data (data.id)}
+						<option value={String(data.id)}>{data.name}</option>
+					{/each}
+				</DaisyUiSelect>
+				<DaisyUiInputField bind:value={fatherName} inputType="text" className="d-join-item"/>
+			</DaisyUiJoin>
+		</div>
+	</div>
+	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="guardian-name" className="shrink-0 sm:w-36">Guardian Name</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
-			<DaisyUiInputField bind:value={guardianName} inputType="text" />
+			<DaisyUiJoin>
+				<DaisyUiSelect
+					bind:value={selectedGuardianTitleId}
+					optionHeader="Select a title"
+					className="d-join-item"
+				>
+					{#each titleData as data (data.id)}
+						<option value={String(data.id)}>{data.name}</option>
+					{/each}
+				</DaisyUiSelect>
+				<DaisyUiInputField bind:value={guardianName} inputType="text" className="d-join-item"/>
+			</DaisyUiJoin>
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
