@@ -42,7 +42,8 @@
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
 
-	const registrationEditUrl = WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
+	const registrationEditUrl =
+		WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
 
 	let accountModalOpen = $state(false);
 
@@ -77,7 +78,7 @@
 				inputType="text"
 				value={pageLocator}
 				disabled
-				className="d-btn-primary w-full"
+				className="d-btn-primary w-96 text-center"
 			/>
 		</DaisyUiNavbarCenter>
 		<DaisyUiNavbarEnd className="gap-3">
@@ -120,8 +121,6 @@
 
 <!-- navbar end -->
 
-
-
 <!-- module bar start  -->
 
 <DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
@@ -154,7 +153,9 @@
 		{#each moduleList as m (m.id)}
 			<div>
 				<DaisyUiDropdown>
-					<DaisyUiDropdownButton>{m?.name}</DaisyUiDropdownButton>
+					<DaisyUiDropdownButton>
+						{m?.name}
+					</DaisyUiDropdownButton>
 					<DaisyUiDropdownContent
 						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50 z-100"
 					>

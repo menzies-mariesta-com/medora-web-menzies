@@ -10,19 +10,15 @@
 	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-import {
-	createDoctorSchedule,
-	getDoctorSchedule,
-	updateDoctorSchedule
-} from '$lib/remote/table/information-table/doctor-schedule.remote';
 	import {
-		getStaff,
-		getStaffByIdWithRelations,
-		getStaffWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
+		createDoctorSchedule,
+		getDoctorSchedule,
+		updateDoctorSchedule
+	} from '$lib/remote/table/information-table/doctor-schedule.remote';
+	import { getDoctorStaffList } from '$lib/remote/table/information-table/staff.remote';
 	import { getWeekday } from '$lib/remote/table/master-table/weekday.remote';
-import { StatusColorEnum } from '$lib/model/enum/color.enum';
-import { StatusEnum } from '$lib/model/enum/db-link';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
@@ -30,15 +26,17 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 
-	const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
+	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 	const MINUTES = ['00', '15', '30', '45'];
 	const AM_PM = ['AM', 'PM'] as const;
 
-	const [DAYS, STAFF_LIST] = await Promise.all([
+	const [DAYS, DOCTOR_STAFF_LIST] = await Promise.all([
 		getWeekday(),
-		getStaffWithRelations()
+		getDoctorStaffList()
 	]);
 
 	const toastService = new ToastService();
@@ -53,55 +51,61 @@ import { dialogService } from '$lib/service/dialog.service.svelte';
 		toAmPm: (typeof AM_PM)[number];
 	};
 
-type DoctorScheduleGroup = {
-	key: string;
-	fromDate: string | null;
-	toDate: string | null;
-	scheduleIds: number[];
-};
+	type DoctorScheduleGroup = {
+		key: string;
+		fromDate: string | null;
+		toDate: string | null;
+		scheduleIds: number[];
+	};
 
-let staffId = $state('');
-const selectedStaff = $derived(
-	STAFF_LIST.find((s) => s.id === staffId) ?? null
-);
-let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
-const scheduleGroups = $derived<DoctorScheduleGroup[]>(
-	Object.values(
-		doctorSchedules.reduce((acc, s) => {
-			const key = `${s.fromDate ?? ''}__${s.toDate ?? ''}`;
-			let group = acc[key];
-			if (!group) {
-				group = {
-					key,
-					fromDate: s.fromDate ?? null,
-					toDate: s.toDate ?? null,
-					scheduleIds: []
-				};
-				acc[key] = group;
-			}
-			group.scheduleIds.push(s.id);
-			return acc;
-		}, {} as Record<string, DoctorScheduleGroup>)
-	)
-);
-let fromDate = $state('');
-let toDate = $state('');
-let slotTimingMinutes = $state('15');
-let noEndDate = $state(false);
-let editingGroupKey = $state<string | null>(null);
-$effect(() => {
-	if (noEndDate) toDate = '';
-});
-$effect(() => {
-	void loadDoctorSchedules();
-});
+	let staffId = $state('');
+	const selectedStaff = $derived(
+		DOCTOR_STAFF_LIST.find((s) => s.id === staffId) ?? null
+	);
+	const selectedStaffPhotoUrl = $derived(
+		selectedStaff ? getStaffPhotoDisplayUrl(selectedStaff.photoUrl) : undefined
+	);
+	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
+	const scheduleGroups = $derived<DoctorScheduleGroup[]>(
+		Object.values(
+			doctorSchedules.reduce(
+				(acc, s) => {
+					const key = `${s.fromDate ?? ''}__${s.toDate ?? ''}`;
+					let group = acc[key];
+					if (!group) {
+						group = {
+							key,
+							fromDate: s.fromDate ?? null,
+							toDate: s.toDate ?? null,
+							scheduleIds: []
+						};
+						acc[key] = group;
+					}
+					group.scheduleIds.push(s.id);
+					return acc;
+				},
+				{} as Record<string, DoctorScheduleGroup>
+			)
+		)
+	);
+	let fromDate = $state('');
+	let toDate = $state('');
+	let slotTimingMinutes = $state('15');
+	let noEndDate = $state(false);
+	let editingGroupKey = $state<string | null>(null);
+	$effect(() => {
+		if (noEndDate) toDate = '';
+	});
+	$effect(() => {
+		void loadDoctorSchedules();
+	});
 	let daySchedules = $state<DaySchedule[]>(
 		DAYS.map(() => ({
 			checked: false,
-			fromHour: '9',
+			fromHour: '0',
 			fromMin: '00',
 			fromAmPm: 'AM' as const,
-			toHour: '5',
+			toHour: '0',
 			toMin: '00',
 			toAmPm: 'PM' as const
 		}))
@@ -115,97 +119,110 @@ $effect(() => {
 			return;
 		}
 		const all = await getDoctorSchedule();
-	doctorSchedules = all.filter(
-		(s) =>
-			s.staffId === id &&
-			s.statusId !== StatusEnum.INACTIVE &&
-			s.statusId !== StatusEnum.DELETED
-	);
+		doctorSchedules = all.filter(
+			(s) =>
+				s.staffId === id &&
+				s.statusId !== StatusEnum.INACTIVE &&
+				s.statusId !== StatusEnum.DELETED
+		);
 	}
 
-function parseTimeTo12h(time: string | null): {
-	hour: string;
-	min: string;
-	amPm: (typeof AM_PM)[number];
-} {
-	if (!time) {
-		return { hour: '9', min: '00', amPm: 'AM' };
-	}
-	const [hStr, mStr] = time.split(':');
-	let h = Number(hStr) || 0;
-	const amPm: (typeof AM_PM)[number] = h >= 12 ? 'PM' : 'AM';
-	h = h % 12;
-	if (h === 0) h = 12;
-	return {
-		hour: String(h),
-		min: (mStr ?? '00').padStart(2, '0'),
-		amPm
-	};
-}
-
-async function handleEditGroup(group: DoctorScheduleGroup) {
-	editingGroupKey = group.key;
-	fromDate = group.fromDate ?? '';
-	toDate = group.toDate ?? '';
-	noEndDate = group.toDate == null;
-
-	// reset day schedules
-	daySchedules = DAYS.map(() => ({
-		checked: false,
-		fromHour: '9',
-		fromMin: '00',
-		fromAmPm: 'AM',
-		toHour: '5',
-		toMin: '00',
-		toAmPm: 'PM'
-	}));
-
-	const groupSchedules = doctorSchedules.filter((s) =>
-		group.scheduleIds.includes(s.id)
-	);
-
-	for (const s of groupSchedules) {
-		const idx = DAYS.findIndex((d) => d.id === s.weekdayId);
-		if (idx === -1) continue;
-		const fromT = parseTimeTo12h(s.fromShiftTime as string | null);
-		const toT = parseTimeTo12h(s.toShiftTime as string | null);
-		daySchedules[idx] = {
-			checked: true,
-			fromHour: fromT.hour,
-			fromMin: fromT.min,
-			fromAmPm: fromT.amPm,
-			toHour: toT.hour,
-			toMin: toT.min,
-			toAmPm: toT.amPm
+	function parseTimeTo12h(time: string | null): {
+		hour: string;
+		min: string;
+		amPm: (typeof AM_PM)[number];
+	} {
+		if (!time) {
+			return { hour: '0', min: '00', amPm: 'AM' };
+		}
+		const [hStr, mStr] = time.split(':');
+		let h = Number(hStr) || 0;
+		const amPm: (typeof AM_PM)[number] = h >= 12 ? 'PM' : 'AM';
+		h = h % 12;
+		if (h === 0) h = 12;
+		return {
+			hour: String(h),
+			min: (mStr ?? '00').padStart(2, '0'),
+			amPm
 		};
 	}
-}
 
-async function handleDeleteSchedule(group: DoctorScheduleGroup) {
-	try {
-		const result = await dialogService.open({
-			title: 'Inactivate schedule',
-			message: 'Are you sure you want to inactivate this schedule?',
-			variant: 'confirm'
-		} as any);
-		if (!result?.confirmed) {
-			return;
-		}
+	async function handleEditGroup(group: DoctorScheduleGroup) {
+		editingGroupKey = group.key;
+		fromDate = group.fromDate ?? '';
+		toDate = group.toDate ?? '';
+		noEndDate = group.toDate == null;
+
+		// reset day schedules
+		daySchedules = DAYS.map(() => ({
+			checked: false,
+			fromHour: '0',
+			fromMin: '00',
+			fromAmPm: 'AM',
+			toHour: '0',
+			toMin: '00',
+			toAmPm: 'PM'
+		}));
+
 		const groupSchedules = doctorSchedules.filter((s) =>
 			group.scheduleIds.includes(s.id)
 		);
+
+		// Replace array so Svelte reactivity picks up the new hour/minute values
+		let next = [...daySchedules];
 		for (const s of groupSchedules) {
-			await updateDoctorSchedule({ id: s.id, statusId: StatusEnum.INACTIVE });
+			const idx = DAYS.findIndex(
+				(d) => Number(d.id) === Number(s.weekdayId)
+			);
+			if (idx === -1) continue;
+			const fromT = parseTimeTo12h(s.fromShiftTime as string | null);
+			const toT = parseTimeTo12h(s.toShiftTime as string | null);
+			next[idx] = {
+				checked: true,
+				fromHour: fromT.hour,
+				fromMin: fromT.min,
+				fromAmPm: fromT.amPm,
+				toHour: toT.hour,
+				toMin: toT.min,
+				toAmPm: toT.amPm
+			};
 		}
-		await loadDoctorSchedules();
-		toastService.addToast('Schedule inactivated.', StatusColorEnum.SUCCESS);
-	} catch (e) {
-		toastService.addToast(
-			e instanceof Error ? e.message : 'Failed to inactivate schedule.',
-			StatusColorEnum.ERROR
-		);
+		daySchedules = next;
 	}
-}
+
+	async function handleDeleteSchedule(group: DoctorScheduleGroup) {
+		try {
+			const result = await dialogService.open({
+				title: 'Inactivate schedule',
+				message: 'Are you sure you want to inactivate this schedule?',
+				variant: 'confirm'
+			} as any);
+			if (!result?.confirmed) {
+				return;
+			}
+			const groupSchedules = doctorSchedules.filter((s) =>
+				group.scheduleIds.includes(s.id)
+			);
+			for (const s of groupSchedules) {
+				await updateDoctorSchedule({
+					id: s.id,
+					statusId: StatusEnum.INACTIVE
+				});
+			}
+			await loadDoctorSchedules();
+			toastService.addToast(
+				'Schedule inactivated.',
+				StatusColorEnum.SUCCESS
+			);
+		} catch (e) {
+			toastService.addToast(
+				e instanceof Error
+					? e.message
+					: 'Failed to inactivate schedule.',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
 
 	function toTime24(
 		hour: string,
@@ -226,7 +243,7 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 			);
 			return;
 		}
-	const hospitalId = 1;
+		const hospitalId = 1;
 		if (!fromDate?.trim()) {
 			toastService.addToast(
 				'Please enter From date.',
@@ -246,18 +263,17 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 		}
 
 		isSaving = true;
+		const wasEditing = editingGroupKey !== null;
 		try {
-			const isEditing = editingGroupKey !== null;
-
-			if (isEditing) {
-				const [origFromRaw, origToRaw] = (editingGroupKey as string).split(
-					'__'
-				);
+			if (wasEditing) {
+				const [origFromRaw, origToRaw] = (
+					editingGroupKey as string
+				).split('__');
 				const origFrom = origFromRaw || null;
 				const origTo = origToRaw || null;
 				const existingGroup = doctorSchedules.filter(
 					(s) =>
-						s.staffId === staffId.trim() &&
+						String(s.staffId) === staffId.trim() &&
 						(s.fromDate ?? null) === origFrom &&
 						(s.toDate ?? null) === origTo
 				);
@@ -292,9 +308,8 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 				});
 			}
 			editingGroupKey = null;
-			await loadDoctorSchedules();
 			toastService.addToast(
-				isEditing
+				wasEditing
 					? 'Schedule updated.'
 					: `Saved ${checkedIndices.length} schedule row(s).`,
 				StatusColorEnum.SUCCESS
@@ -303,13 +318,19 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 			toastService.addToast(
 				e instanceof Error
 					? e.message
-					: editingGroupKey
+					: wasEditing
 						? 'Failed to update schedule.'
 						: 'Failed to save schedule.',
 				StatusColorEnum.ERROR
 			);
 		} finally {
 			isSaving = false;
+		}
+		// Refetch after button is no longer loading so UI stays responsive
+		try {
+			await loadDoctorSchedules();
+		} catch {
+			// ignore refetch errors; save already succeeded
 		}
 	}
 </script>
@@ -333,7 +354,7 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 								bind:value={staffId}
 								className="w-[14rem] min-w-[14rem]"
 							>
-								{#each STAFF_LIST as staff (staff.id)}
+								{#each DOCTOR_STAFF_LIST as staff (staff.id)}
 									<option value={staff.id}>
 										{StringUtil.fullNameWithTitle(
 											staff.title?.name,
@@ -347,7 +368,7 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 						</div>
 					</div>
 
-			<!-- Row 2: From | To (same row) -->
+					<!-- Row 2: From | To (same row) -->
 					<div class="flex flex-wrap items-start gap-x-10 gap-y-4">
 						<div class="flex items-center gap-3">
 							<p class="min-w-[4.5rem]">
@@ -396,9 +417,17 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 									Doctor Scheduled Date
 								</h1>
 								<div class="flex gap-5 text-left">
-									<DaisyUiSkeleton
-										className="w-24 h-24 rounded-full"
-									/>
+									{#if selectedStaffPhotoUrl}
+										<img
+											src={selectedStaffPhotoUrl}
+											alt=""
+											class="h-24 w-24 rounded-full object-cover"
+										/>
+									{:else}
+										<DaisyUiSkeleton
+											className="h-24 w-24 rounded-full"
+										/>
+									{/if}
 									{#if selectedStaff}
 										<div class="flex flex-col">
 											<h2 class="mt-3 text-lg font-semibold">
@@ -428,7 +457,7 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 											</tr>
 										</DaisyUiTableHeader>
 										<DaisyUiTableBody className="">
-										{#if scheduleGroups.length === 0}
+											{#if scheduleGroups.length === 0}
 												<tr>
 													<td
 														colspan="3"
@@ -453,7 +482,8 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 															>
 																<DaisyUiButton
 																	className=" d-btn-ghost d-btn-sm d-btn-accent"
-																	onClick={() => handleEditGroup(group)}
+																	onClick={() =>
+																		handleEditGroup(group)}
 																>
 																	<LucidePencil className="size-5" />
 																</DaisyUiButton>
@@ -464,7 +494,8 @@ async function handleDeleteSchedule(group: DoctorScheduleGroup) {
 															>
 																<DaisyUiButton
 																	className="d-btn-ghost d-btn-sm d-btn-error"
-																	onClick={() => handleDeleteSchedule(group)}
+																	onClick={() =>
+																		handleDeleteSchedule(group)}
 																>
 																	<LucideTrash2 className="size-5 " />
 																</DaisyUiButton>
