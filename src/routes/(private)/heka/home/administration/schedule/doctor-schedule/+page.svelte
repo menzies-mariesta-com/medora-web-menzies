@@ -34,6 +34,9 @@
 	const MINUTES = ['00', '15', '30', '45'];
 	const AM_PM = ['AM', 'PM'] as const;
 
+	/** Slot timing options in minutes (for calendar time blocks). */
+	const SLOT_TIMING_OPTIONS = [5, 10, 15, 20, 30, 60];
+
 	const [DAYS, DOCTOR_STAFF_LIST] = await Promise.all([
 		getWeekday(),
 		getDoctorStaffList()
@@ -90,7 +93,7 @@
 	);
 	let fromDate = $state('');
 	let toDate = $state('');
-	let slotTimingMinutes = $state('15');
+	let slotTimingMinutes = $state('15'); // one of SLOT_TIMING_OPTIONS (5,10,15,20,30,60); saved as slot_duration_minutes
 	let noEndDate = $state(false);
 	let editingGroupKey = $state<string | null>(null);
 	$effect(() => {
@@ -167,6 +170,13 @@
 		const groupSchedules = doctorSchedules.filter((s) =>
 			group.scheduleIds.includes(s.id)
 		);
+		const firstInGroup = groupSchedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
+		const savedMins = firstInGroup?.slotDurationMinutes;
+		if (savedMins != null && savedMins > 0) {
+			slotTimingMinutes = SLOT_TIMING_OPTIONS.includes(savedMins)
+				? String(savedMins)
+				: String(SLOT_TIMING_OPTIONS[0] ?? 15);
+		}
 
 		// Replace array so Svelte reactivity picks up the new hour/minute values
 		let next = [...daySchedules];
@@ -513,19 +523,22 @@
 				</DaisyUiCard>
 			</div>
 
-			<!-- Row 2: Slot Timing -->
+			<!-- Row 2: Slot Timing (minutes per calendar block; saved to doctor_schedule.slot_duration_minutes) -->
 			<div class="flex flex-wrap items-center gap-x-8 gap-y-4">
 				<div class="flex items-center gap-2">
 					<p>
 						Slot Timing
 						<span class="text-error">*</span>
 					</p>
-					<DaisyUiInputField
-						inputType="number"
+					<DaisyUiSelect
 						bind:value={slotTimingMinutes}
-						className="d-input-sm w-20 text-center"
-					/>
-					<span class="text-base-content/70">min</span>
+						optionHeader="Select minutes …"
+						className="d-select-sm w-24"
+					>
+						{#each SLOT_TIMING_OPTIONS as mins (mins)}
+							<option value={String(mins)}>{mins} min</option>
+						{/each}
+					</DaisyUiSelect>
 				</div>
 			</div>
 

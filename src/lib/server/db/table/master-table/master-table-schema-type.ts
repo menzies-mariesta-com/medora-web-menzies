@@ -11,6 +11,7 @@ import type {
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
+	referTypeTable,
 	religionTable,
 	specializationTable,
 	staffEmploymentTypeTable,
@@ -95,6 +96,10 @@ export type StaffTypeSchemaUpdate = Partial<StaffTypeSchemaInsert>;
 export type TitleSchema = InferSelectModel<typeof titleTable>;
 export type TitleSchemaInsert = InferInsertModel<typeof titleTable>;
 export type TitleSchemaUpdate = Partial<TitleSchemaInsert>;
+
+export type ReferTypeSchema = InferSelectModel<typeof referTypeTable>;
+export type ReferTypeSchemaInsert = InferInsertModel<typeof referTypeTable>;
+export type ReferTypeSchemaUpdate = Partial<ReferTypeSchemaInsert>;
 
 export type ReligionSchema = InferSelectModel<typeof religionTable>;
 export type ReligionSchemaInsert = InferInsertModel<typeof religionTable>;
