@@ -1,6 +1,8 @@
 import { relations } from 'drizzle-orm';
 import {
+	appointmentTable,
 	doctorScheduleTable,
+	externalReferTable,
 	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
@@ -25,6 +27,7 @@ import {
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
+	referTypeTable,
 	religionTable,
 	specializationTable,
 	staffEmploymentTypeTable,
@@ -153,6 +156,7 @@ export const statusTableRelations = relations(statusTable, ({ many }) => ({
 	staffEmploymentTypes: many(staffEmploymentTypeTable),
 	staffShiftTypes: many(staffShiftTypeTable),
 	nationalities: many(nationalityTable),
+	referTypes: many(referTypeTable),
 	religions: many(religionTable),
 	positions: many(positionTable),
 	cities: many(cityTable),
@@ -219,6 +223,15 @@ export const nationalityTableRelations = relations(nationalityTable, ({ one, man
 	}),
 	staffs: many(staffTable),
 	patients: many(patientTable),
+}));
+
+export const referTypeTableRelations = relations(referTypeTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [referTypeTable.statusId],
+		references: [statusTable.id],
+	}),
+	externalRefers: many(externalReferTable),
+	appointments: many(appointmentTable),
 }));
 
 export const religionTableRelations = relations(religionTable, ({ one, many }) => ({

@@ -17,7 +17,9 @@ import type {
 	insuranceTable,
 	patientInsurance,
 	patientAllergyTable,
+	appointmentTable,
 	doctorScheduleTable,
+	externalReferTable,
 	patientTable,
 } from './information-table';
 import type { StatusSchema } from '../master-table/master-table-schema-type';
@@ -98,3 +100,11 @@ export type PatientAllergiesSchemaUpdate = Partial<PatientAllergiesSchemaInsert>
 export type DoctorScheduleSchema = InferSelectModel<typeof doctorScheduleTable>;
 export type DoctorScheduleSchemaInsert = InferInsertModel<typeof doctorScheduleTable>;
 export type DoctorScheduleSchemaUpdate = Partial<DoctorScheduleSchemaInsert>;
+
+export type ExternalReferSchema = InferSelectModel<typeof externalReferTable>;
+export type ExternalReferSchemaInsert = InferInsertModel<typeof externalReferTable>;
+export type ExternalReferSchemaUpdate = Partial<ExternalReferSchemaInsert>;
+
+export type AppointmentSchema = InferSelectModel<typeof appointmentTable>;
+export type AppointmentSchemaInsert = InferInsertModel<typeof appointmentTable>;
+export type AppointmentSchemaUpdate = Partial<AppointmentSchemaInsert>;

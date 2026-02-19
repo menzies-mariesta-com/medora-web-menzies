@@ -1,0 +1,121 @@
+import { query, command } from '$app/server';
+import { ensureDb } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
+import type {
+	ExternalReferSchema,
+	ExternalReferSchemaInsert,
+	ExternalReferSchemaUpdate,
+} from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
+import { count, eq } from 'drizzle-orm';
+
+// get all
+export const getExternalRefer = query(async (): Promise<ExternalReferSchema[]> => {
+	const data = await ensureDb().select().from(table.externalReferTable);
+	return data;
+});
+
+// get count
+export const getExternalReferCount = query(async (): Promise<number> => {
+	const [row] = await ensureDb().select({ count: count() }).from(table.externalReferTable);
+	return row?.count ?? 0;
+});
+
+// get paginated
+export const getExternalReferPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<ExternalReferSchema>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const [data, countResult] = await Promise.all([
+			ensureDb().select().from(table.externalReferTable).limit(limit).offset(offset),
+			ensureDb().select({ count: count() }).from(table.externalReferTable),
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1,
+		};
+	}
+);
+
+// get all with relations
+export const getExternalReferWithRelations = query(async () => {
+	return ensureDb().query.externalReferTable.findMany({
+		with: {
+			referType: true,
+			hospital: true,
+			country: true,
+			state: true,
+			city: true,
+			status: true,
+		},
+	});
+});
+
+// get one
+export const getExternalReferById = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<ExternalReferSchema | null> => {
+		const [row] = await ensureDb()
+			.select()
+			.from(table.externalReferTable)
+			.where(eq(table.externalReferTable.id, id));
+		return row ?? null;
+	}
+);
+
+// create
+export const createExternalRefer = command(
+	'unchecked' as const,
+	async (payload: ExternalReferSchemaInsert): Promise<ExternalReferSchema> => {
+		const [row] = await ensureDb()
+			.insert(table.externalReferTable)
+			.values(payload)
+			.returning();
+		if (!row) throw new Error('Insert failed');
+		getExternalRefer().refresh();
+		return row;
+	}
+);
+
+// update
+export const updateExternalRefer = command(
+	'unchecked' as const,
+	async (payload: ExternalReferSchemaUpdate & { id: number }): Promise<ExternalReferSchema> => {
+		const { id, ...rest } = payload;
+		const [row] = await ensureDb()
+			.update(table.externalReferTable)
+			.set(rest as ExternalReferSchemaUpdate)
+			.where(eq(table.externalReferTable.id, id))
+			.returning();
+		if (!row) throw new Error('Update failed');
+		getExternalRefer().refresh();
+		return row;
+	}
+);
+
+// delete (soft: set status to DELETED)
+export const deleteExternalRefer = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await ensureDb()
+			.update(table.externalReferTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.externalReferTable.id, id));
+		getExternalRefer().refresh();
+	}
+);
+
+// delete complete (hard)
+export const deleteExternalReferComplete = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<void> => {
+		await ensureDb().delete(table.externalReferTable).where(eq(table.externalReferTable.id, id));
+		getExternalRefer().refresh();
+	}
+);
