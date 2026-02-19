@@ -2,6 +2,7 @@
 	import LDoctorAppointmentCalendar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
 	import LDoctorAppointmentProfileBar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
 	import LDoctorAppointmentStatistics from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
+	import { getAppointment } from '$lib/remote/table/information-table/appointment.remote';
 	import { getDoctorSchedule } from '$lib/remote/table/information-table/doctor-schedule.remote';
 	import {
 		getDoctorStaffList,
@@ -15,8 +16,10 @@
 
 	let doctorList = $state<StaffWithRelations[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
+	let appointments = $state<Awaited<ReturnType<typeof getAppointment>>>([]);
 	let selectDate = $state(new Date().toISOString().slice(0, 10));
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
+	let timeFormat = $state<'24h' | '12h'>('24h');
 	let selectedDoctorId = $state('');
 
 	const dateTimeUtil = new DateTimeUtil();
@@ -60,6 +63,44 @@
 		);
 	});
 
+	/** Default interval for time column when doctor has no schedule. Always show full 24h grid. */
+	const DEFAULT_SLOT_DURATION_MINUTES = 15;
+
+	/** Slot duration (minutes) for calendar time column. From doctor schedule when present, else default so time column always shows full day. */
+	const slotDurationMinutes = $derived.by(() => {
+		const schedules = doctorSchedules.filter(
+			(s) =>
+				String(s.staffId) === selectedDoctorId &&
+				s.statusId !== StatusEnum.INACTIVE &&
+				s.statusId !== StatusEnum.DELETED
+		);
+		const first = schedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
+		const mins = first?.slotDurationMinutes;
+		if (mins != null && mins >= 1 && mins <= 60) return mins;
+		return DEFAULT_SLOT_DURATION_MINUTES;
+	});
+
+	/** Appointments for selected doctor in visible date range → calendar highlights with bg-primary and patient name. */
+	const appointmentSlots = $derived.by(() => {
+		const dateSet = new Set(visibleDates);
+		return appointments
+			.filter(
+				(a) =>
+					String(a.staffId) === selectedDoctorId &&
+					a.statusId !== StatusEnum.DELETED &&
+					a.appointmentDate != null &&
+					dateSet.has(String(a.appointmentDate).slice(0, 10))
+			)
+			.map((a) => ({
+				appointmentId: a.id,
+				date: String(a.appointmentDate).slice(0, 10),
+				startTime: String(a.fromTime ?? '').trim(),
+				endTime: String(a.toTime ?? '').trim(),
+				patientName: a.patientName?.trim() ?? ''
+			}))
+			.filter((s) => s.startTime && s.endTime);
+	});
+
 	/** Expand doctor schedules into (date, startTime, endTime) slots for visible dates. WeekdayId 1=Sun, 7=Sat. */
 	const scheduleSlots = $derived.by(() => {
 		const slots: { date: string; startTime: string; endTime: string }[] = [];
@@ -95,6 +136,7 @@
 		const id = selectedDoctorId.trim();
 		if (!id) {
 			doctorSchedules = [];
+			appointments = [];
 			return;
 		}
 		getDoctorSchedule().then((all) => {
@@ -105,6 +147,9 @@
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
+		getAppointment().then((all) => {
+			appointments = all;
+		});
 	});
 </script>
 
@@ -114,6 +159,7 @@
 			{doctorList}
 			bind:selectedDoctorId
 			bind:viewBy
+			bind:timeFormat
 			onDateChange={(date) => {
 				selectDate = date;
 			}}
@@ -123,8 +169,15 @@
 		<LDoctorAppointmentCalendar
 			{selectDate}
 			{viewBy}
+			{timeFormat}
 			selectedDoctorName={selectedDoctorName}
+			selectedDoctorId={selectedDoctorId}
 			{scheduleSlots}
+			{appointmentSlots}
+			{slotDurationMinutes}
+			onAppointmentCreated={async () => {
+				appointments = await getAppointment();
+			}}
 		/>
 		<LDoctorAppointmentStatistics />
 	</div>
