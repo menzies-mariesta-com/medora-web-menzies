@@ -62,7 +62,8 @@ import { page } from '$app/state';
 import { dialogService } from '$lib/service/dialog.service.svelte';
 import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
 import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
-import LPatientDuplicateModal from '$lib/component/local/private/heka/patient/registration/LPatientDuplicateModal.svelte';
+import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
+	import LPatientCheckDuplicateDialogContent from '$lib/component/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
 
 const lifeCycleUtil = new LifeCycleUtil();
 const dateTimeUtil = new DateTimeUtil();
@@ -196,8 +197,6 @@ const currentPatientId = $derived(viewId || editId);
 	let photoUploading: boolean = $state(false);
 	let photoInputEl: HTMLInputElement | undefined = $state();
 
-	let duplicateModalOpen = $state(false);
-	let duplicateResults = $state<PatientWithRelations[]>([]);
 	let duplicateCheckLoading = $state(false);
 
 	async function fetchLookups() {
@@ -410,11 +409,19 @@ const currentPatientId = $derived(viewId || editId);
 				identityNo: identityNo.trim(),
 				excludePatientId: currentPatientId ?? undefined
 			});
-			duplicateResults = list;
 			if (list.length === 0) {
 				toastService.addToast('No duplicate patients found.', StatusColorEnum.SUCCESS);
 			} else {
-				duplicateModalOpen = true;
+				PatientDuplicateModalState.duplicates = list;
+				const result = await dialogService.open({
+					title: 'Duplicate patients found',
+					fullScreen: true,
+					component: LPatientCheckDuplicateDialogContent
+				});
+				if (result.confirmed && result.data) {
+					handleSelectDuplicatePatient(result.data as PatientWithRelations);
+				}
+				PatientDuplicateModalState.duplicates = [];
 			}
 		} catch (err) {
 			console.error(err);
@@ -425,7 +432,6 @@ const currentPatientId = $derived(viewId || editId);
 	}
 
 	function handleSelectDuplicatePatient(patient: PatientWithRelations) {
-		duplicateModalOpen = false;
 		routerUtil.replaceRoute(
 			`${page.url.pathname}?edit=${patient.id}`
 		);
@@ -927,6 +933,9 @@ const currentPatientId = $derived(viewId || editId);
 						bind:selectedPostalCodeId
 						bind:selectedNationalityId
 						bind:selectedReligionId
+						{duplicateCheckLoading}
+						showCheckDuplicate={!currentPatientId}
+						onCheckDuplicate={checkDuplicate}
 					/>
 				</div>
 					</fieldset>
@@ -937,14 +946,6 @@ const currentPatientId = $derived(viewId || editId);
 
 				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
 					{#if !isViewMode}
-						<DaisyUiButton
-							type="button"
-							className="d-btn-outline d-btn-wide"
-							disabled={duplicateCheckLoading}
-							onClick={checkDuplicate}
-						>
-							{duplicateCheckLoading ? 'Checking...' : 'Check duplicate'}
-						</DaisyUiButton>
 						<DaisyUiButton
 							type="submit"
 							className="d-btn-primary d-btn-wide"
@@ -958,11 +959,4 @@ const currentPatientId = $derived(viewId || editId);
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
-
-<LPatientDuplicateModal
-	open={duplicateModalOpen}
-	duplicates={duplicateResults}
-	onClose={() => (duplicateModalOpen = false)}
-	onSelectPatient={handleSelectDuplicatePatient}
-/>
 

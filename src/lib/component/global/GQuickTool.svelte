@@ -24,7 +24,6 @@
 
 	function openLanguageDialog() {
 		dialogService.open({
-			title: 'Change Language',
 			component: ChangeLanguageModal,
 			onConfirm: (data?: { language: LanguageEnum }) => {
 				if (data?.language)
@@ -35,7 +34,6 @@
 
 	function openThemeSettings() {
 		dialogService.open({
-			title: 'Change Appearance',
 			component: ChangeAppearanceModal,
 			onConfirm: (data?: { theme: ThemeEnum; font: FontEnum }) => {
 				if (data?.theme) themeTool.setTheme(data.theme);

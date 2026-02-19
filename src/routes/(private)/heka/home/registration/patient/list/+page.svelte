@@ -101,7 +101,6 @@
 				(patient as { user?: { email?: string } })?.user?.email ?? '(no email)';
 			DeletePatientConfirmState.pending = { id: patientId, email: patientEmail };
 			const result = await dialogService.open({
-				title: 'Delete patient',
 				component: DeletePatientConfirmModal
 			});
 			if (result.confirmed && typeof result.data === 'string') {

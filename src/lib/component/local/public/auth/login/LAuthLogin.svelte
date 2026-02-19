@@ -22,7 +22,6 @@
 
 	function openResetPasswordModal() {
 		dialogService.open({
-			title: 'Forgot Password',
 			component: ResetPasswordModal
 		});
 	}
