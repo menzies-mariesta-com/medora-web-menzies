@@ -27,7 +27,9 @@ export async function seedInformationTables() {
 		INSERT INTO module (id, name, sequence_no, status_id, module_url, image_url)
 		VALUES 
 			(1, 'Administration', 1, 1, '/heka/home/administration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-star-icon lucide-user-star"><path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/><path d="M8 15H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>'),
-			(2, 'Registration', 2, 1, '/heka/home/registration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round-icon lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>')
+			(2, 'Registration', 2, 1, '/heka/home/registration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round-icon lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>'),
+			(3, 'Appointment', 2, 1, '/heka/home/appointment', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-clock-icon lucide-clipboard-clock"><path d="M16 14v2.2l1.6 1"/><path d="M16 4h2a2 2 0 0 1 2 2v.832"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h2"/><circle cx="16" cy="16" r="6"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>')
+			
 			-- (1, 'Dashboard', 'layout-dashboard.svg', 1, 1, '/heka/home/dashboard'),
 			-- (3, 'Appointment', 'calendar.svg', 3, 1, '/heka/home/appointment'),
 			-- (4, 'Settings', 'settings.svg', 4, 1, '/heka/home/settings'),
@@ -47,7 +49,7 @@ export async function seedInformationTables() {
 	await db.execute(sql`
 		INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
 		VALUES 
-			(1, 'Mari', 'mr', 1, 1, 118, 1)
+			(1, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: user_group');
@@ -90,7 +92,11 @@ export async function seedInformationTables() {
 			-- Administration Module
 			-- schedule
 			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
-			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1)
+			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
+
+			-- Appointment Module
+			-- doctor appointments
+			(4, 'Doctor Appointment', 3, 1, null, '/heka/home/appointment/doctor-appointment', 1)
 
 
 		ON CONFLICT (id) DO NOTHING;
