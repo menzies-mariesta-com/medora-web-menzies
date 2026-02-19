@@ -24,8 +24,16 @@
 	} from '$lib/remote/table/information-table/patient-attachment.remote';
 import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
 import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
+import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 import { browser } from '$app/environment';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
+
+	const dateTimeUtil = new DateTimeUtil();
+	function formatAttachmentDateTime(value: string | Date | null | undefined): string {
+		if (value == null) return '';
+		const date = typeof value === 'string' ? dateTimeUtil.parseDate(value) : value;
+		return date ? dateTimeUtil.formatDateTime(date, 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '';
+	}
 
 	/** Allowed MIME types for patient attachments (must match API). */
 	const ACCEPT_ATTACHMENT_TYPES =
@@ -448,6 +456,9 @@ import { browser } from '$app/environment';
 											{fileNameFromUrl(att.fileUrl)}
 											{#if att.description}
 												<span class="text-base-content/70"> – {att.description}</span>
+											{/if}
+											{#if att.createdAt}
+												<span class="text-base-content/70"> – {formatAttachmentDateTime(att.createdAt)}</span>
 											{/if}
 										</span>
 										<div class="flex shrink-0 items-center gap-1">
