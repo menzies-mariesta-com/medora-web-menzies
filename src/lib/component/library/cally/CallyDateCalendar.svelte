@@ -57,6 +57,14 @@
 	}
 </script>
 
+<!-- example usage  -->
+<!-- <CallyDateCalendar
+	bind:value={selectedDate}
+	onChange={handleCalendarChange}
+	showOutsideDays={true}
+	className="w-full rounded-box border border-base-300 bg-base-100 shadow-lg"
+/> -->
+
 {#if callyLoaded}
 	<calendar-date
 		class="d-cally {className}"

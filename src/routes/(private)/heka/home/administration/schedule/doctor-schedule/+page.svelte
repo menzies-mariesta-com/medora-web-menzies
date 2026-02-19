@@ -15,12 +15,7 @@
 		getDoctorSchedule,
 		updateDoctorSchedule
 	} from '$lib/remote/table/information-table/doctor-schedule.remote';
-	import {
-		getDoctorStaffList,
-		getStaff,
-		getStaffByIdWithRelations,
-		getStaffWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
+	import { getDoctorStaffList } from '$lib/remote/table/information-table/staff.remote';
 	import { getWeekday } from '$lib/remote/table/master-table/weekday.remote';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -32,8 +27,10 @@
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 
-	const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
+	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 	const MINUTES = ['00', '15', '30', '45'];
 	const AM_PM = ['AM', 'PM'] as const;
 
@@ -64,6 +61,9 @@
 	let staffId = $state('');
 	const selectedStaff = $derived(
 		DOCTOR_STAFF_LIST.find((s) => s.id === staffId) ?? null
+	);
+	const selectedStaffPhotoUrl = $derived(
+		selectedStaff ? getStaffPhotoDisplayUrl(selectedStaff.photoUrl) : undefined
 	);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
 	const scheduleGroups = $derived<DoctorScheduleGroup[]>(
@@ -102,10 +102,10 @@
 	let daySchedules = $state<DaySchedule[]>(
 		DAYS.map(() => ({
 			checked: false,
-			fromHour: '9',
+			fromHour: '0',
 			fromMin: '00',
 			fromAmPm: 'AM' as const,
-			toHour: '5',
+			toHour: '0',
 			toMin: '00',
 			toAmPm: 'PM' as const
 		}))
@@ -133,7 +133,7 @@
 		amPm: (typeof AM_PM)[number];
 	} {
 		if (!time) {
-			return { hour: '9', min: '00', amPm: 'AM' };
+			return { hour: '0', min: '00', amPm: 'AM' };
 		}
 		const [hStr, mStr] = time.split(':');
 		let h = Number(hStr) || 0;
@@ -156,10 +156,10 @@
 		// reset day schedules
 		daySchedules = DAYS.map(() => ({
 			checked: false,
-			fromHour: '9',
+			fromHour: '0',
 			fromMin: '00',
 			fromAmPm: 'AM',
-			toHour: '5',
+			toHour: '0',
 			toMin: '00',
 			toAmPm: 'PM'
 		}));
@@ -168,12 +168,16 @@
 			group.scheduleIds.includes(s.id)
 		);
 
+		// Replace array so Svelte reactivity picks up the new hour/minute values
+		let next = [...daySchedules];
 		for (const s of groupSchedules) {
-			const idx = DAYS.findIndex((d) => d.id === s.weekdayId);
+			const idx = DAYS.findIndex(
+				(d) => Number(d.id) === Number(s.weekdayId)
+			);
 			if (idx === -1) continue;
 			const fromT = parseTimeTo12h(s.fromShiftTime as string | null);
 			const toT = parseTimeTo12h(s.toShiftTime as string | null);
-			daySchedules[idx] = {
+			next[idx] = {
 				checked: true,
 				fromHour: fromT.hour,
 				fromMin: fromT.min,
@@ -183,6 +187,7 @@
 				toAmPm: toT.amPm
 			};
 		}
+		daySchedules = next;
 	}
 
 	async function handleDeleteSchedule(group: DoctorScheduleGroup) {
@@ -258,10 +263,9 @@
 		}
 
 		isSaving = true;
+		const wasEditing = editingGroupKey !== null;
 		try {
-			const isEditing = editingGroupKey !== null;
-
-			if (isEditing) {
+			if (wasEditing) {
 				const [origFromRaw, origToRaw] = (
 					editingGroupKey as string
 				).split('__');
@@ -269,7 +273,7 @@
 				const origTo = origToRaw || null;
 				const existingGroup = doctorSchedules.filter(
 					(s) =>
-						s.staffId === staffId.trim() &&
+						String(s.staffId) === staffId.trim() &&
 						(s.fromDate ?? null) === origFrom &&
 						(s.toDate ?? null) === origTo
 				);
@@ -304,9 +308,8 @@
 				});
 			}
 			editingGroupKey = null;
-			await loadDoctorSchedules();
 			toastService.addToast(
-				isEditing
+				wasEditing
 					? 'Schedule updated.'
 					: `Saved ${checkedIndices.length} schedule row(s).`,
 				StatusColorEnum.SUCCESS
@@ -315,13 +318,19 @@
 			toastService.addToast(
 				e instanceof Error
 					? e.message
-					: editingGroupKey
+					: wasEditing
 						? 'Failed to update schedule.'
 						: 'Failed to save schedule.',
 				StatusColorEnum.ERROR
 			);
 		} finally {
 			isSaving = false;
+		}
+		// Refetch after button is no longer loading so UI stays responsive
+		try {
+			await loadDoctorSchedules();
+		} catch {
+			// ignore refetch errors; save already succeeded
 		}
 	}
 </script>
@@ -408,9 +417,17 @@
 									Doctor Scheduled Date
 								</h1>
 								<div class="flex gap-5 text-left">
-									<DaisyUiSkeleton
-										className="w-24 h-24 rounded-full"
-									/>
+									{#if selectedStaffPhotoUrl}
+										<img
+											src={selectedStaffPhotoUrl}
+											alt=""
+											class="h-24 w-24 rounded-full object-cover"
+										/>
+									{:else}
+										<DaisyUiSkeleton
+											className="h-24 w-24 rounded-full"
+										/>
+									{/if}
 									{#if selectedStaff}
 										<div class="flex flex-col">
 											<h2 class="mt-3 text-lg font-semibold">
