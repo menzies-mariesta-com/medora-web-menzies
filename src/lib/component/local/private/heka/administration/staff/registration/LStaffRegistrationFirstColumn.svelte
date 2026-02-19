@@ -16,7 +16,8 @@
 		selectedLastName = $bindable(),
 		selectedEmail = $bindable(),
 		selectedGenderId = $bindable(),
-		selectedMaritalStatusId = $bindable()
+		selectedMaritalStatusId = $bindable(),
+		emailDisabled = false
 	} = $props<{
 		titleData: TitleSchema[];
 		genderData: GenderSchema[];
@@ -29,6 +30,8 @@
 		selectedEmail?: string;
 		selectedGenderId?: string;
 		selectedMaritalStatusId?: string;
+		/** When true, email is read-only (e.g. when editing existing staff). */
+		emailDisabled?: boolean;
 	}>();
 </script>
 
@@ -70,8 +73,13 @@
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="email" className="shrink-0 sm:w-36">Email <span class="text-error">*</span></DaisyUiLabel>
 		<div class="max-w-80 flex-1">
-			<DaisyUiInputField bind:value={selectedEmail} inputType="email" className="d-validator" inputPlaceholderText="mail@site.com"
-			 />
+			<DaisyUiInputField
+				bind:value={selectedEmail}
+				inputType="email"
+				className="d-validator"
+				inputPlaceholderText="mail@site.com"
+				disabled={emailDisabled}
+			/>
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">

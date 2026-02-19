@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
 	import { authClient } from '$lib/auth/client';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -42,26 +43,39 @@
 	}
 </script>
 
-<input
-	type="email"
-	class="d-input w-full"
-	placeholder="Email"
-	name="email"
-	bind:value={email}
-	disabled={isLoading}
-	required
-	aria-label="Email"
-/>
+<div class="flex flex-col">
+	<div class="flex items-center justify-between border-b border-base-300 pb-4">
+		<h2 class="text-lg font-semibold">Forgot password</h2>
+		<DaisyUiButton
+			className="d-btn-ghost d-btn-sm d-btn-circle"
+			onClick={() => cancel()}
+		>
+			<LucideX className="size-5" />
+		</DaisyUiButton>
+	</div>
+	<div class="mt-4 flex flex-col gap-4">
+		<input
+			type="email"
+			class="d-input w-full"
+			placeholder="Email"
+			name="email"
+			bind:value={email}
+			disabled={isLoading}
+			required
+			aria-label="Email"
+		/>
 
-<div class="d-modal-action">
-	<DaisyUiButton className="d-btn" onClick={() => cancel()} disabled={isLoading}>
-		Cancel
-	</DaisyUiButton>
-	<DaisyUiButton
-		onClick={() => handleConfirm()}
-		className="d-btn d-btn-primary"
-		disabled={isLoading}
-	>
-		{isLoading ? 'Sending…' : 'Apply'}
-	</DaisyUiButton>
+		<div class="d-modal-action">
+			<DaisyUiButton className="d-btn" onClick={() => cancel()} disabled={isLoading}>
+				Cancel
+			</DaisyUiButton>
+			<DaisyUiButton
+				onClick={() => handleConfirm()}
+				className="d-btn d-btn-primary"
+				disabled={isLoading}
+			>
+				{isLoading ? 'Sending…' : 'Apply'}
+			</DaisyUiButton>
+		</div>
+	</div>
 </div>

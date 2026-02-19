@@ -872,6 +872,7 @@ import { browser } from '$app/environment';
 						{titleData}
 						{genderData}
 						{maritalStatusData}
+						emailDisabled={isEditMode}
 						bind:selectedStaffCode
 						bind:selectedTitleId
 						bind:selectedFirstName

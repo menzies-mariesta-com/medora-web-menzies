@@ -6,7 +6,7 @@ import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/ser
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq, or, ilike, ne, and } from 'drizzle-orm';
+import { count, eq, or, ilike, ne, and, inArray } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
@@ -24,6 +24,8 @@ export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	const data = await ensureDb().select().from(table.staffTable);
 	return data;
 });
+
+
 
 // get all with many-to-many relations and master lookups (no pagination)
 export const getStaffWithRelations = query(async () => {
@@ -49,6 +51,50 @@ export const getStaffWithRelations = query(async () => {
 			staffDepartments: { with: { department: true } },
 			staffUserGroups: { with: { userGroup: true } },
 		},
+	});
+});
+
+const staffWithRelationsWith = {
+	gender: true,
+	identityType: true,
+	maritalStatus: true,
+	specialization: true,
+	status: true,
+	staffDetail: { with: { bloodType: true, status: true } },
+	city: true,
+	country: true,
+	nationality: true,
+	position: true,
+	postalCode: true,
+	staffEmploymentType: true,
+	staffType: true,
+	state: true,
+	title: true,
+	user: true,
+	staffHospitals: { with: { hospital: true } },
+	staffDepartments: { with: { department: true } },
+	staffUserGroups: { with: { userGroup: true } },
+} as const;
+
+// get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted
+export const getDoctorStaffList = query(async (): Promise<StaffWithRelations[]> => {
+	const doctorStaffIds = await ensureDb()
+		.select({ id: table.staffTable.id })
+		.from(table.staffTable)
+		.where(
+			and(
+				// staffTypeId 3 => 'Doctor' (see staff_type master seed)
+				eq(table.staffTable.staffTypeId, 3),
+				ne(table.staffTable.statusId, StatusEnum.DELETED)
+			)
+		);
+
+	const ids = doctorStaffIds.map((r) => r.id);
+	if (ids.length === 0) return [];
+
+	return ensureDb().query.staffTable.findMany({
+		where: inArray(table.staffTable.id, ids),
+		with: staffWithRelationsWith
 	});
 });
 

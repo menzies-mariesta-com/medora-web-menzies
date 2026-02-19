@@ -100,7 +100,6 @@
 				(staff as { user?: { email?: string } })?.user?.email ?? '(no email)';
 			DeleteStaffConfirmState.pending = { id: staffId, email: staffEmail };
 			const result = await dialogService.open({
-				title: 'Delete staff',
 				component: DeleteStaffConfirmModal
 			});
 			if (result.confirmed && typeof result.data === 'string') {
