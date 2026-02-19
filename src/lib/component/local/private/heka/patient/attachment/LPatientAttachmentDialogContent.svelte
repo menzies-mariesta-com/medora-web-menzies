@@ -240,7 +240,7 @@ import { browser } from '$app/environment';
 				{#if isStaging}
 					Attachments – New patient
 				{:else if isExistingPatient}
-					Attachments – {payload.patientName ?? payload.patientId}
+					Attachments – {payload && 'patientId' in payload ? (payload.patientName ?? payload.patientId) : ''}
 				{:else}
 					Attachments
 				{/if}
@@ -249,7 +249,6 @@ import { browser } from '$app/environment';
 				type="button"
 				className="d-btn-ghost d-btn-sm d-btn-circle"
 				onClick={cancel}
-				aria-label="Close"
 			>
 				<LucideX className="size-5" />
 			</DaisyUiButton>
@@ -268,40 +267,9 @@ import { browser } from '$app/environment';
 						message="Add one or more files below. They will be saved when you complete patient registration."
 						className="mb-4"
 					/>
-					{#if stagedAttachments.length > 0}
-						<DaisyUiCard className="mb-4 shadow-sm">
-							<DaisyUiCardBody className="p-4">
-								<div class="flex items-center gap-2 mb-3">
-									<DaisyUiCardBodyTitle className="text-base m-0">Staged</DaisyUiCardBodyTitle>
-									<DaisyUiBadge className="d-badge-sm d-badge-primary">
-										{stagedAttachments.length}
-									</DaisyUiBadge>
-								</div>
-								<DaisyUiList className="gap-1">
-									{#each stagedAttachments as item, i}
-										<DaisyUiListRow className="flex items-center justify-between gap-2">
-											<span class="min-w-0 truncate text-sm" title={item.file.name}>
-												{item.file.name}
-												{#if item.description}
-													<span class="text-base-content/70"> – {item.description}</span>
-												{/if}
-											</span>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-ghost d-btn-xs d-btn-circle"
-												onClick={() => removeStaged(i)}
-												aria-label="Remove"
-											>
-												<LucideX className="size-4" />
-											</DaisyUiButton>
-										</DaisyUiListRow>
-									{/each}
-								</DaisyUiList>
-							</DaisyUiCardBody>
-						</DaisyUiCard>
-					{/if}
+					
 					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
-						Add files
+						Add Files
 					</DaisyUiDivider>
 					<DaisyUiCard className="w-full shadow-sm">
 						<DaisyUiCardBody className="p-4 w-full">
@@ -344,78 +312,49 @@ import { browser } from '$app/environment';
 								</div>
 								<div class="mt-2 flex flex-row justify-end">
 									<DaisyUiButton type="submit" className="d-btn-primary d-btn-wide">
-										Add to list
+										Add to List
 									</DaisyUiButton>
 								</div>
 							</form>
 						</DaisyUiCardBody>
 					</DaisyUiCard>
+					{#if stagedAttachments.length > 0}
+					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
+						Listed Files
+					</DaisyUiDivider>
+						<DaisyUiCard className="mb-4 shadow-sm">
+							<DaisyUiCardBody className="p-4">
+								<div class="flex items-center gap-2 mb-3">
+									<DaisyUiCardBodyTitle className="text-base m-0">Staged</DaisyUiCardBodyTitle>
+									<DaisyUiBadge className="d-badge-sm d-badge-primary">
+										{stagedAttachments.length}
+									</DaisyUiBadge>
+								</div>
+								<DaisyUiList className="gap-1">
+									{#each stagedAttachments as item, i}
+										<DaisyUiListRow className="flex items-center justify-between gap-2">
+											<span class="min-w-0 truncate text-sm" title={item.file.name}>
+												{item.file.name}
+												{#if item.description}
+													<span class="text-base-content/70"> – {item.description}</span>
+												{/if}
+											</span>
+											<DaisyUiButton
+												type="button"
+												className="d-btn-ghost d-btn-xs d-btn-circle"
+												onClick={() => removeStaged(i)}
+											>
+												<LucideX className="size-4" />
+											</DaisyUiButton>
+										</DaisyUiListRow>
+									{/each}
+								</DaisyUiList>
+							</DaisyUiCardBody>
+						</DaisyUiCard>
+					{/if}
 				{/if}
 			{:else if isExistingPatient}
-				{#if isLoadingExisting}
-					<div class="flex items-center gap-3 py-6">
-						<DaisyUiLoading className="d-loading-md text-primary" />
-						<span class="text-sm text-base-content/80">Loading attachments…</span>
-					</div>
-				{:else if existingAttachments.length === 0 && viewOnly}
-					<DaisyUiAlert
-						type={StatusColorEnum.INFO}
-						message="No attachments."
-						className="mb-4"
-					/>
-				{:else if existingAttachments.length > 0}
-					<DaisyUiCard className="mb-4 shadow-sm">
-						<DaisyUiCardBody className="p-4">
-							<div class="flex items-center gap-2 mb-3">
-								<DaisyUiCardBodyTitle className="text-base m-0">Existing</DaisyUiCardBodyTitle>
-								<DaisyUiBadge className="d-badge-sm d-badge-neutral">
-									{existingAttachments.length}
-								</DaisyUiBadge>
-							</div>
-							<DaisyUiList className="gap-1">
-								{#each existingAttachments as att (att.id)}
-									<DaisyUiListRow className="flex items-center justify-between gap-2">
-										<span class="min-w-0 flex-1 truncate text-sm" title={att.fileUrl ?? ''}>
-											{fileNameFromUrl(att.fileUrl)}
-											{#if att.description}
-												<span class="text-base-content/70"> – {att.description}</span>
-											{/if}
-										</span>
-										<div class="flex shrink-0 items-center gap-1">
-											{#if att.fileUrl}
-												<a
-													href={getPatientAttachmentDisplayUrl(att.fileUrl) ?? att.fileUrl}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="d-btn d-btn-ghost d-btn-xs d-btn-circle"
-													title="View file"
-													aria-label="View file"
-												>
-													<LucideEye className="size-4" />
-												</a>
-											{/if}
-											{#if !viewOnly}
-												<DaisyUiButton
-													type="button"
-													className="d-btn-ghost d-btn-xs d-btn-circle"
-													onClick={() => removeExisting(att)}
-													disabled={deletingId === att.id}
-													aria-label="Remove"
-												>
-													<LucideX className="size-4" />
-												</DaisyUiButton>
-											{/if}
-										</div>
-									</DaisyUiListRow>
-								{/each}
-							</DaisyUiList>
-						</DaisyUiCardBody>
-					</DaisyUiCard>
-				{/if}
-				{#if !viewOnly}
-					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
-						Upload new
-					</DaisyUiDivider>
+			{#if !viewOnly}
 					<DaisyUiCard className="w-full shadow-sm">
 						<DaisyUiCardBody className="p-4">
 							<form onsubmit={handleOnSubmit} class="flex flex-col gap-4">
@@ -423,7 +362,7 @@ import { browser } from '$app/environment';
 									<DaisyUiLabel className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
 									<div class="flex-1">
 										<p class="truncate text-sm font-medium">
-											{payload.patientName || payload.patientId}
+											{payload && 'patientId' in payload ? (payload.patientName || payload.patientId) : ''}
 										</p>
 									</div>
 								</div>
@@ -479,6 +418,69 @@ import { browser } from '$app/environment';
 						</DaisyUiCardBody>
 					</DaisyUiCard>
 				{/if}
+				{#if isLoadingExisting}
+					<div class="flex items-center gap-3 py-6">
+						<DaisyUiLoading className="d-loading-md text-primary" />
+						<span class="text-sm text-base-content/80">Loading attachments…</span>
+					</div>
+				{:else if existingAttachments.length === 0 && viewOnly}
+					<DaisyUiAlert
+						type={StatusColorEnum.INFO}
+						message="No attachments."
+						className="mb-4"
+					/>
+				{:else if existingAttachments.length > 0}
+					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
+						Existing Lists
+					</DaisyUiDivider>
+					<DaisyUiCard className="mb-4 shadow-sm">
+						<DaisyUiCardBody className="p-4">
+							<div class="flex items-center gap-2 mb-3">
+								<DaisyUiCardBodyTitle className="text-base m-0">Existing</DaisyUiCardBodyTitle>
+								<DaisyUiBadge className="d-badge-sm d-badge-neutral">
+									{existingAttachments.length}
+								</DaisyUiBadge>
+							</div>
+							<DaisyUiList className="gap-1">
+								{#each existingAttachments as att (att.id)}
+									<DaisyUiListRow className="flex items-center justify-between gap-2">
+										<span class="min-w-0 flex-1 truncate text-sm" title={att.fileUrl ?? ''}>
+											{fileNameFromUrl(att.fileUrl)}
+											{#if att.description}
+												<span class="text-base-content/70"> – {att.description}</span>
+											{/if}
+										</span>
+										<div class="flex shrink-0 items-center gap-1">
+											{#if att.fileUrl}
+												<a
+													href={getPatientAttachmentDisplayUrl(att.fileUrl) ?? att.fileUrl}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="d-btn d-btn-ghost d-btn-xs d-btn-circle"
+													title="View file"
+													aria-label="View file"
+												>
+													<LucideEye className="size-4" />
+												</a>
+											{/if}
+											{#if !viewOnly}
+												<DaisyUiButton
+													type="button"
+													className="d-btn-ghost d-btn-xs d-btn-circle"
+													onClick={() => removeExisting(att)}
+													disabled={deletingId === att.id}
+												>
+													<LucideX className="size-4" />
+												</DaisyUiButton>
+											{/if}
+										</div>
+									</DaisyUiListRow>
+								{/each}
+							</DaisyUiList>
+						</DaisyUiCardBody>
+					</DaisyUiCard>
+				{/if}
+				
 			{/if}
 		</div>
 	</div>

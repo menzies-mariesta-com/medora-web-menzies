@@ -56,7 +56,7 @@
 
 <!-- Toast Component when no dialog is open (Learn Toast Service To Use) -->
 {#if ToastState.length > 0 && !DialogState.current}
-	<DaisyUiToast className="d-toast-top d-toast-end">
+	<DaisyUiToast className="d-toast-top d-toast-end z-[9998]">
 		{#each ToastState as toast (toast.id)}
 			<DaisyUiAlert type={toast.type} message={toast.message} />
 		{/each}
@@ -111,13 +111,16 @@
 					{/each}
 				</DaisyUiToast>
 			{/if}
-			<DaisyUiModalBox onClose={() => dialogService.close()}>
-				{#if DialogState.current.component}
-					{#if DialogState.current.title}
-						<h3 class="mb-5 text-lg font-bold">
-							{DialogState.current.title}
-						</h3>
-					{/if}
+			<DaisyUiModalBox
+				onClose={() => dialogService.close()}
+				showCloseButton={!DialogState.current.component}
+			>
+			{#if DialogState.current.component}
+				{#if DialogState.current.title}
+					<h3 class="mb-5 text-lg font-bold">
+						{DialogState.current.title}
+					</h3>
+				{/if}
 					{@const DialogContent = DialogState.current.component}
 					<DialogContent
 						confirm={(data) => dialogService.confirm(data)}
