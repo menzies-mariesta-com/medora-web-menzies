@@ -13,12 +13,12 @@ import type {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
-	patientTable,
 	patientAttachmentTable,
 	insuranceTable,
 	patientInsurance,
 	patientAllergyTable,
 	doctorScheduleTable,
+	patientTable,
 } from './information-table';
 import type { StatusSchema } from '../master-table/master-table-schema-type';
 

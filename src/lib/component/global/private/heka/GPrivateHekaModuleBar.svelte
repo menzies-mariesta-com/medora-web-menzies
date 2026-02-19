@@ -21,12 +21,39 @@
 	import { page } from '$app/state';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
 
 	let {
 		moduleList,
-		pageList
-	}: { moduleList: ModuleSchema[]; pageList: PageSchema[] } =
-		$props();
+		pageList,
+		staffId = null,
+		staffPhotoUrl = null
+	}: {
+		moduleList: ModuleSchema[];
+		pageList: PageSchema[];
+		staffId?: string | null;
+		staffPhotoUrl?: string | null;
+	} = $props();
+
+	const profilePhotoDisplayUrl = $derived(
+		getStaffPhotoDisplayUrl(staffPhotoUrl)
+	);
+	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
+
+	const registrationEditUrl =
+		WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
+
+	let accountModalOpen = $state(false);
+
+	function openAccountModal() {
+		accountModalOpen = true;
+	}
+
+	function closeAccountModal() {
+		accountModalOpen = false;
+	}
 
 	const routerUtil = new RouterUtil();
 
@@ -51,7 +78,7 @@
 				inputType="text"
 				value={pageLocator}
 				disabled
-				className="d-btn-primary w-full"
+				className="d-btn-primary w-96 text-center"
 			/>
 		</DaisyUiNavbarCenter>
 		<DaisyUiNavbarEnd className="gap-3">
@@ -67,17 +94,32 @@
 				tooltipText="Account"
 				className="d-tooltip-left"
 			>
-				<DaisyUiButton className="d-btn-circle">
-					<LucideUser />
+				<DaisyUiButton
+					className="d-btn-circle overflow-hidden p-0"
+					onClick={openAccountModal}
+				>
+					{#if hasProfilePhoto}
+						<img
+							src={profilePhotoDisplayUrl}
+							alt="Profile"
+							class="size-full object-cover"
+						/>
+					{:else}
+						<LucideUser />
+					{/if}
 				</DaisyUiButton>
 			</DaisyUiTooltip>
 		</DaisyUiNavbarEnd>
 	</DaisyUiNavbar>
 {/if}
+	<AccountModal
+		open={accountModalOpen}
+		onClose={closeAccountModal}
+		staffId={staffId}
+		registrationEditUrl={registrationEditUrl}
+	/>
 
 <!-- navbar end -->
-
-
 
 <!-- module bar start  -->
 
@@ -111,7 +153,9 @@
 		{#each moduleList as m (m.id)}
 			<div>
 				<DaisyUiDropdown>
-					<DaisyUiDropdownButton>{m?.name}</DaisyUiDropdownButton>
+					<DaisyUiDropdownButton>
+						{m?.name}
+					</DaisyUiDropdownButton>
 					<DaisyUiDropdownContent
 						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50 z-100"
 					>

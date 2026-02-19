@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import type {
@@ -28,7 +29,10 @@
 		selectedCityId = $bindable(),
 		selectedPostalCodeId = $bindable(),
 		selectedNationalityId = $bindable(),
-		selectedReligionId = $bindable()
+		selectedReligionId = $bindable(),
+		duplicateCheckLoading = false,
+		showCheckDuplicate = false,
+		onCheckDuplicate
 	} = $props<{
 		countryData: CountrySchema[];
 		stateData: StateSchema[];
@@ -48,6 +52,9 @@
 		selectedPostalCodeId?: string;
 		selectedNationalityId?: string;
 		selectedReligionId?: string;
+		duplicateCheckLoading?: boolean;
+		showCheckDuplicate?: boolean;
+		onCheckDuplicate?: () => void;
 	}>();
 </script>
 
@@ -124,4 +131,16 @@
 			</DaisyUiSelect>
 		</div>
 	</div>
+	{#if showCheckDuplicate && onCheckDuplicate}
+	<div class="flex justify-entered">
+		<DaisyUiButton
+			type="button"
+			className="d-btn-outline d-btn-wide"
+			disabled={duplicateCheckLoading}
+			onClick={onCheckDuplicate}
+		>
+			{duplicateCheckLoading ? 'Checking...' : 'Check Duplicate'}
+		</DaisyUiButton>
+	</div>
+	{/if}
 </div>

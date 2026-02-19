@@ -48,8 +48,10 @@
 import {
 		createPatientWithUser,
 		updatePatient,
-		getPatientByIdWithRelations
+		getPatientByIdWithRelations,
+		getDuplicatePatients
 	} from '$lib/remote/table/information-table/patient.remote';
+import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
 import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
 import { authClient } from '$lib/auth/client';
 import { RouterUtil } from '$lib/util/router.util.svelte';
@@ -60,6 +62,8 @@ import { page } from '$app/state';
 import { dialogService } from '$lib/service/dialog.service.svelte';
 import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
 import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
+import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
+	import LPatientCheckDuplicateDialogContent from '$lib/component/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
 
 const lifeCycleUtil = new LifeCycleUtil();
 const dateTimeUtil = new DateTimeUtil();
@@ -94,18 +98,21 @@ const currentPatientId = $derived(viewId || editId);
 	let middleName: string = $state('');
 	let lastName: string = $state('');
 	let email: string = $state('');
-	let selectedPhoneCountryId: string = $state('');
-	let selectedPhone: string = $state('');
-	let selectedPhoneSecondaryCountryId: string = $state('');
-	let selectedPhoneSecondary: string = $state('');
-	let selectedGuardianPhoneCountryId: string = $state('');
 	let identityNo: string = $state('');
 	let dateOfBirth: string = $state('');
+	let fatherName: string = $state('');
 	let guardianName: string = $state('');
 	let guardianPhone: string = $state('');
 	let address: string = $state('');
 	let remark: string = $state('');
 
+	let selectedPhoneCountryId: string = $state('');
+	let selectedPhone: string = $state('');
+	let selectedPhoneSecondaryCountryId: string = $state('');
+	let selectedPhoneSecondary: string = $state('');
+	let selectedFatherTitleId: string = $state('');
+	let selectedGuardianPhoneCountryId: string = $state('');
+	let selectedGuardianTitleId: string = $state('');
 	let selectedGenderId: string = $state('');
 	let selectedMaritalStatusId: string = $state('');
 	let selectedIdentityTypeId: string = $state('');
@@ -190,6 +197,8 @@ const currentPatientId = $derived(viewId || editId);
 	let photoUploading: boolean = $state(false);
 	let photoInputEl: HTMLInputElement | undefined = $state();
 
+	let duplicateCheckLoading = $state(false);
+
 	async function fetchLookups() {
 		titleData = await getTitle();
 		genderData = await getGender();
@@ -222,35 +231,11 @@ const currentPatientId = $derived(viewId || editId);
 				? patient.dateOfBirth
 				: new Date(patient.dateOfBirth).toISOString().slice(0, 10))
 			: '';
-		guardianName = patient.guardian_name ?? '';
-		const guardianPhoneFull = patient.guardian_phone ?? '';
-		const patientGuardianCountryId = (
-			patient as { guardianPhoneCountryId?: number | null }
-		).guardianPhoneCountryId;
-		if (patientGuardianCountryId != null) {
-			selectedGuardianPhoneCountryId = String(patientGuardianCountryId);
-			const country = countryData.find((c) => c.id === patientGuardianCountryId);
-			guardianPhone =
-				country?.countryCallingCode &&
-				guardianPhoneFull.startsWith(country.countryCallingCode)
-					? guardianPhoneFull.slice(country.countryCallingCode.length).trim()
-					: guardianPhoneFull;
-		} else {
-			const matchGuardian = countryData.find(
-				(c) =>
-					c.countryCallingCode &&
-					guardianPhoneFull.startsWith(c.countryCallingCode)
-			);
-			if (matchGuardian) {
-				selectedGuardianPhoneCountryId = String(matchGuardian.id);
-				guardianPhone = guardianPhoneFull
-					.slice(matchGuardian.countryCallingCode?.length ?? 0)
-					.trim();
-			} else {
-				selectedGuardianPhoneCountryId = '';
-				guardianPhone = guardianPhoneFull;
-			}
-		}
+		selectedFatherTitleId = patient.fatherTitleId != null ? String(patient.fatherTitleId) : '';
+		fatherName = (patient as { fatherName?: string }).fatherName ?? '';
+		selectedGuardianTitleId = patient.guardianTitleId != null ? String(patient.guardianTitleId) : '';
+		guardianName = patient.guardianName ?? '';
+		selectedGuardianPhoneCountryId = patient.guardianPhoneCountryId != null ? String(patient.guardianPhoneCountryId) : '';
 		address = patient.address ?? '';
 		remark = patient.remark ?? '';
 		selectedReligionId = patient.religionId != null ? String(patient.religionId) : '';
@@ -328,8 +313,8 @@ const currentPatientId = $derived(viewId || editId);
 
 		photoPreviewUrl =
 			getPatientPhotoDisplayUrl(
-				(patient as { photo_path?: string }).photo_path
-			) ?? (patient as { photo_path?: string }).photo_path ?? '';
+				(patient as { photoPath?: string }).photoPath
+			) ?? (patient as { photoPath?: string }).photoPath ?? '';
 	}
 
 	let lastLoadedPatientId: string | null = $state(null);
@@ -396,6 +381,62 @@ const currentPatientId = $derived(viewId || editId);
 		if (photoInputEl) photoInputEl.value = '';
 	}
 
+	function buildPhonePrimary(): string {
+		if (!selectedPhoneCountryId || !selectedPhone?.trim()) return selectedPhone?.trim() ?? '';
+		const country = countryData.find((c) => String(c.id) === selectedPhoneCountryId);
+		return country?.countryCallingCode
+			? `${country.countryCallingCode}${selectedPhone.trim()}`
+			: selectedPhone.trim();
+	}
+
+	async function checkDuplicate() {
+		const phonePrimary = buildPhonePrimary();
+		if (!firstName?.trim()) {
+			toastService.addToast('Enter at least first name to check for duplicates.', StatusColorEnum.ERROR);
+			return;
+		}
+		duplicateCheckLoading = true;
+		try {
+			const list = await getDuplicatePatients({
+				titleId: selectedTitleId ? Number(selectedTitleId) : null,
+				firstName: firstName.trim(),
+				middleName: middleName.trim(),
+				lastName: lastName.trim(),
+				fatherTitleId: selectedFatherTitleId ? Number(selectedFatherTitleId) : null,
+				fatherName: fatherName.trim(),
+				phonePrimary,
+				identityTypeId: selectedIdentityTypeId ? Number(selectedIdentityTypeId) : null,
+				identityNo: identityNo.trim(),
+				excludePatientId: currentPatientId ?? undefined
+			});
+			if (list.length === 0) {
+				toastService.addToast('No duplicate patients found.', StatusColorEnum.SUCCESS);
+			} else {
+				PatientDuplicateModalState.duplicates = list;
+				const result = await dialogService.open({
+					title: 'Duplicate patients found',
+					fullScreen: true,
+					component: LPatientCheckDuplicateDialogContent
+				});
+				if (result.confirmed && result.data) {
+					handleSelectDuplicatePatient(result.data as PatientWithRelations);
+				}
+				PatientDuplicateModalState.duplicates = [];
+			}
+		} catch (err) {
+			console.error(err);
+			toastService.addToast('Failed to check for duplicates.', StatusColorEnum.ERROR);
+		} finally {
+			duplicateCheckLoading = false;
+		}
+	}
+
+	function handleSelectDuplicatePatient(patient: PatientWithRelations) {
+		routerUtil.replaceRoute(
+			`${page.url.pathname}?edit=${patient.id}`
+		);
+	}
+
 	async function goToPatientAttachment() {
 		const patientName =
 			[firstName, middleName, lastName].filter(Boolean).join(' ') || undefined;
@@ -454,12 +495,12 @@ const currentPatientId = $derived(viewId || editId);
 				? `${country.countryCallingCode}${selectedPhoneSecondary.trim()}`
 				: selectedPhoneSecondary.trim();
 		}
-		let guardian_phone: string | undefined;
+		let guardianPhone: string | undefined;
 		if (selectedGuardianPhoneCountryId && guardianPhone) {
 			const country = countryData.find(
 				(c) => String(c.id) === selectedGuardianPhoneCountryId
 			);
-			guardian_phone = country?.countryCallingCode
+			guardianPhone = country?.countryCallingCode
 				? `${country.countryCallingCode}${guardianPhone.trim()}`
 				: guardianPhone.trim();
 		}
@@ -490,8 +531,8 @@ const currentPatientId = $derived(viewId || editId);
 						: undefined,
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
-					guardian_name: guardianName.trim() || undefined,
-					guardian_phone,
+					guardianName: guardianName.trim() || undefined,
+					guardianPhone,
 					guardianPhoneCountryId: selectedGuardianPhoneCountryId
 						? Number(selectedGuardianPhoneCountryId)
 						: undefined,
@@ -539,7 +580,7 @@ const currentPatientId = $derived(viewId || editId);
 						} else if (data.url) {
 							await updatePatient({
 								id: currentPatientId,
-								photo_path: data.url
+								photoPath: data.url
 							});
 							photoPreviewUrl =
 								getPatientPhotoDisplayUrl(data.url) ?? data.url ?? '';
@@ -573,8 +614,10 @@ const currentPatientId = $derived(viewId || editId);
 						: undefined,
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
-					guardian_name: guardianName.trim() || undefined,
-					guardian_phone,
+					fatherTitleId: selectedFatherTitleId ? Number(selectedFatherTitleId) : undefined,
+					guardianTitleId: selectedGuardianTitleId ? Number(selectedGuardianTitleId) : undefined,
+					guardianName: guardianName.trim() || undefined,
+					guardianPhone,
 					guardianPhoneCountryId: selectedGuardianPhoneCountryId
 						? Number(selectedGuardianPhoneCountryId)
 						: undefined,
@@ -622,7 +665,7 @@ const currentPatientId = $derived(viewId || editId);
 								StatusColorEnum.ERROR
 							);
 						} else if (data.url) {
-							await updatePatient({ id: patient.id, photo_path: data.url });
+							await updatePatient({ id: patient.id, photoPath: data.url });
 							photoPreviewUrl =
 								getPatientPhotoDisplayUrl(data.url) ?? data.url ?? '';
 						}
@@ -703,6 +746,8 @@ const currentPatientId = $derived(viewId || editId);
 				selectedPhone = '';
 				selectedPhoneSecondaryCountryId = '';
 				selectedPhoneSecondary = '';
+				selectedFatherTitleId = '';
+				selectedGuardianTitleId = '';
 				selectedGuardianPhoneCountryId = '';
 				identityNo = '';
 				dateOfBirth = '';
@@ -849,6 +894,7 @@ const currentPatientId = $derived(viewId || editId);
 						bind:selectedMaritalStatusId
 					/>
 					<LPatientRegistrationSecondColumn
+						{titleData}
 						{countryData}
 						{identityTypeData}
 						{bloodTypeData}
@@ -856,6 +902,9 @@ const currentPatientId = $derived(viewId || editId);
 						bind:selectedPhone
 						bind:selectedPhoneSecondaryCountryId
 						bind:selectedPhoneSecondary
+						bind:selectedFatherTitleId
+						bind:fatherName
+						bind:selectedGuardianTitleId
 						bind:selectedGuardianPhoneCountryId
 						bind:selectedIdentityTypeId
 						bind:identityNo
@@ -884,6 +933,9 @@ const currentPatientId = $derived(viewId || editId);
 						bind:selectedPostalCodeId
 						bind:selectedNationalityId
 						bind:selectedReligionId
+						{duplicateCheckLoading}
+						showCheckDuplicate={!currentPatientId}
+						onCheckDuplicate={checkDuplicate}
 					/>
 				</div>
 					</fieldset>
@@ -892,7 +944,7 @@ const currentPatientId = $derived(viewId || editId);
 				<LPatientRegistrationMoreInfo bind:address bind:remark />
 				<LPatientRegistrationStatus bind:isActive bind:nameMasking />
 
-				<DaisyUiCardBodyAction className="mt-6">
+				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
 					{#if !isViewMode}
 						<DaisyUiButton
 							type="submit"
