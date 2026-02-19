@@ -57,7 +57,7 @@
 
 <div class="flex flex-col gap-4">
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="phone-primary" className="shrink-0 sm:w-36">Primary Phone</DaisyUiLabel>
+		<DaisyUiLabel forText="phone-primary" className="shrink-0 sm:w-36 font-bold">Primary Phone</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
 			<DaisyUiJoin>
 				<DaisyUiSelect
@@ -95,7 +95,7 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="identity" className="shrink-0 sm:w-36">Identity</DaisyUiLabel>
+		<DaisyUiLabel forText="identity" className="shrink-0 sm:w-36 font-bold">Identity</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
 			<DaisyUiJoin>
 				<DaisyUiSelect
@@ -124,7 +124,7 @@
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="guardian-name" className="shrink-0 sm:w-36">Father Name</DaisyUiLabel>
+		<DaisyUiLabel forText="guardian-name" className="shrink-0 sm:w-36 font-bold">Father Name</DaisyUiLabel>
 		<div class="max-w-80 flex-1">
 			<DaisyUiJoin>
 				<DaisyUiSelect
