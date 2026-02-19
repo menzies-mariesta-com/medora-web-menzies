@@ -897,7 +897,6 @@ const currentPatientId = $derived(viewId || editId);
 						{titleData}
 						{countryData}
 						{identityTypeData}
-						{bloodTypeData}
 						bind:selectedPhoneCountryId
 						bind:selectedPhone
 						bind:selectedPhoneSecondaryCountryId
@@ -912,10 +911,10 @@ const currentPatientId = $derived(viewId || editId);
 						dateOfBirthMax={dateTimeUtil.getTodayDateString()}
 						bind:guardianName
 						bind:guardianPhone
-						bind:selectedBloodTypeId
 					/>
 					<LPatientRegistrationThirdColumn
 						{countryData}
+						{bloodTypeData}
 						{stateData}
 						{cityData}
 						{postalCodeData}
@@ -928,6 +927,7 @@ const currentPatientId = $derived(viewId || editId);
 						{selectedState}
 						{selectedCity}
 						bind:selectedCountryId
+						bind:selectedBloodTypeId
 						bind:selectedStateId
 						bind:selectedCityId
 						bind:selectedPostalCodeId

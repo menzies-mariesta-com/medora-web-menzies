@@ -34,6 +34,10 @@
 	const MINUTES = ['00', '15', '30', '45'];
 	const AM_PM = ['AM', 'PM'] as const;
 
+	/** Slot timing: minutes per calendar block (0–60). */
+	const SLOT_TIMING_MIN = 0;
+	const SLOT_TIMING_MAX = 60;
+
 	const [DAYS, DOCTOR_STAFF_LIST] = await Promise.all([
 		getWeekday(),
 		getDoctorStaffList()
@@ -90,7 +94,7 @@
 	);
 	let fromDate = $state('');
 	let toDate = $state('');
-	let slotTimingMinutes = $state('15');
+	let slotTimingMinutes = $state('15'); // free text 0–60; saved as slot_duration_minutes
 	let noEndDate = $state(false);
 	let editingGroupKey = $state<string | null>(null);
 	$effect(() => {
@@ -167,6 +171,11 @@
 		const groupSchedules = doctorSchedules.filter((s) =>
 			group.scheduleIds.includes(s.id)
 		);
+		const firstInGroup = groupSchedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
+		const savedMins = firstInGroup?.slotDurationMinutes;
+		if (savedMins != null && savedMins >= SLOT_TIMING_MIN && savedMins <= SLOT_TIMING_MAX) {
+			slotTimingMinutes = String(savedMins);
+		}
 
 		// Replace array so Svelte reactivity picks up the new hour/minute values
 		let next = [...daySchedules];
@@ -262,6 +271,16 @@
 			return;
 		}
 
+		const slotStr = typeof slotTimingMinutes === 'string' ? slotTimingMinutes : String(slotTimingMinutes ?? '');
+		const parsedSlot = parseInt(slotStr.trim(), 10);
+		if (Number.isNaN(parsedSlot) || parsedSlot < SLOT_TIMING_MIN || parsedSlot > SLOT_TIMING_MAX) {
+			toastService.addToast(
+				`Slot timing must be a number between ${SLOT_TIMING_MIN} and ${SLOT_TIMING_MAX} (minutes).`,
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
 		isSaving = true;
 		const wasEditing = editingGroupKey !== null;
 		try {
@@ -304,7 +323,8 @@
 					fromDate: fromDate.trim() || null,
 					toDate: noEndDate ? null : toDate?.trim() || null,
 					fromShiftTime,
-					toShiftTime
+					toShiftTime,
+					slotDurationMinutes: parsedSlot
 				});
 			}
 			editingGroupKey = null;
@@ -513,19 +533,24 @@
 				</DaisyUiCard>
 			</div>
 
-			<!-- Row 2: Slot Timing -->
+			<!-- Row 2: Slot Timing (minutes per calendar block, 0–60; saved to doctor_schedule.slot_duration_minutes) -->
 			<div class="flex flex-wrap items-center gap-x-8 gap-y-4">
 				<div class="flex items-center gap-2">
 					<p>
 						Slot Timing
 						<span class="text-error">*</span>
 					</p>
-					<DaisyUiInputField
-						inputType="number"
+					<input
+						type="number"
+						min={SLOT_TIMING_MIN}
+						max={SLOT_TIMING_MAX}
+						step="1"
+						class="d-input d-input-sm w-24"
 						bind:value={slotTimingMinutes}
-						className="d-input-sm w-20 text-center"
+						placeholder="0–60"
+						aria-label="Slot timing in minutes"
 					/>
-					<span class="text-base-content/70">min</span>
+					<span class="text-sm opacity-70">min</span>
 				</div>
 			</div>
 
