@@ -16,7 +16,6 @@
 		titleData,
 		countryData,
 		identityTypeData,
-		bloodTypeData,
 		selectedPhoneCountryId = $bindable(),
 		selectedPhone = $bindable(),
 		selectedPhoneSecondaryCountryId = $bindable(),
@@ -30,13 +29,11 @@
 		dateOfBirthMax,
 		fatherName = $bindable(),
 		guardianName = $bindable(),
-		guardianPhone = $bindable(),
-		selectedBloodTypeId = $bindable()
+		guardianPhone = $bindable()
 	} = $props<{
 		titleData: TitleSchema[];
 		countryData: CountrySchema[];
 		identityTypeData: IdentityTypeSchema[];
-		bloodTypeData: BloodTypeSchema[];
 		selectedPhoneCountryId?: string;
 		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;
@@ -51,8 +48,90 @@
 		dateOfBirthMax?: string;
 		guardianName?: string;
 		guardianPhone?: string;
-		selectedBloodTypeId?: string;
 	}>();
+
+	let ageYear = $state('');
+	let ageMonth = $state('');
+	let ageDay = $state('');
+	let skipNextDobToAgeSync = $state(false);
+
+	function getAgeFromBirthDate(dob: string): { years: number; months: number; days: number } {
+		const birth = new Date(dob);
+		const today = new Date();
+		let years = today.getFullYear() - birth.getFullYear();
+		let months = today.getMonth() - birth.getMonth();
+		let days = today.getDate() - birth.getDate();
+		if (days < 0) {
+			months -= 1;
+			const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+			days += prevMonth.getDate();
+		}
+		if (months < 0) {
+			years -= 1;
+			months += 12;
+		}
+		return { years, months, days };
+	}
+
+	function getBirthDateFromAge(years: number, months: number, days: number): string {
+		const d = new Date();
+		d.setDate(d.getDate() - days);
+		d.setMonth(d.getMonth() - months);
+		d.setFullYear(d.getFullYear() - years);
+		return d.toISOString().slice(0, 10);
+	}
+
+	function syncAgeFromDateOfBirth(): void {
+		const dob = dateOfBirth ?? '';
+		if (!dob || dob.length < 10) {
+			ageYear = '';
+			ageMonth = '';
+			ageDay = '';
+			return;
+		}
+		const age = getAgeFromBirthDate(dob);
+		ageYear = String(age.years);
+		ageMonth = String(age.months);
+		ageDay = String(age.days);
+	}
+
+	// dateOfBirth → age: when user picks a date, fill age fields (skip when change came from age fields)
+	$effect(() => {
+		if (skipNextDobToAgeSync) {
+			skipNextDobToAgeSync = false;
+			return;
+		}
+		const dob = dateOfBirth ?? '';
+		if (!dob || dob.length < 10) {
+			ageYear = '';
+			ageMonth = '';
+			ageDay = '';
+			return;
+		}
+		syncAgeFromDateOfBirth();
+	});
+
+	// Age fields → date of birth: when user types age, compute and set date
+	$effect(() => {
+		const y = String(ageYear ?? '').trim();
+		if (!y) {
+			if ((dateOfBirth ?? '') !== '') {
+				dateOfBirth = '';
+			}
+			return;
+		}
+		const numY = Number(y);
+		const numM = ageMonth != null && ageMonth !== '' ? Math.min(11, Math.max(0, Number(ageMonth))) : 0;
+		const numD = ageDay != null && ageDay !== '' ? Math.max(0, Number(ageDay)) : 0;
+		const next = getBirthDateFromAge(numY, numM, numD);
+		if (next !== (dateOfBirth ?? '')) {
+			skipNextDobToAgeSync = true;
+			dateOfBirth = next;
+			ageYear = String(numY);
+			ageMonth = String(numM);
+			ageDay = String(numD);
+		}
+	});
 </script>
 
 <div class="flex flex-col gap-4">
@@ -113,14 +192,19 @@
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 		<DaisyUiLabel forText="date-of-birth" className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel>
-		<div class="max-w-80 flex-1">
-			<input
+		<div class="flex max-w-80 flex-1 flex-wrap items-center gap-2">
+			<DaisyUiInputField
 				id="date-of-birth"
-				type="date"
-				class="d-input w-full"
 				bind:value={dateOfBirth}
+				inputType="date"
+				className="shrink-0"
 				max={dateOfBirthMax}
 			/>
+			<DaisyUiJoin>
+				<DaisyUiInputField bind:value={ageYear} inputPlaceholderText="Age Year" inputType="number" className="d-join-item" />
+				<DaisyUiInputField bind:value={ageMonth} inputPlaceholderText="Age Month" inputType="number" className="d-join-item" />
+				<DaisyUiInputField bind:value={ageDay} inputPlaceholderText="Age Day" inputType="number" className="d-join-item" />
+			</DaisyUiJoin>
 		</div>
 	</div>
 	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
@@ -174,16 +258,6 @@
 				</DaisyUiSelect>
 				<DaisyUiInputField bind:value={guardianPhone} inputType="tel" className="d-join-item" />
 			</DaisyUiJoin>
-		</div>
-	</div>
-	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-		<DaisyUiLabel forText="blood-type" className="shrink-0 sm:w-36">Blood Type</DaisyUiLabel>
-		<div class="max-w-80 flex-1">
-			<DaisyUiSelect bind:value={selectedBloodTypeId} optionHeader="Select a blood type ...">
-				{#each bloodTypeData as data (data.id)}
-					<option value={String(data.id)}>{data.name}</option>
-				{/each}
-			</DaisyUiSelect>
 		</div>
 	</div>
 </div>
