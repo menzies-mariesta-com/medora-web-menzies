@@ -22,8 +22,8 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import GPrivateHekaAccountModal from '$lib/component/global/private/heka/GPrivateHekaAccountModal.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
 
 	let {
 		moduleList,
@@ -112,12 +112,12 @@
 		</DaisyUiNavbarEnd>
 	</DaisyUiNavbar>
 {/if}
-<GPrivateHekaAccountModal
-	open={accountModalOpen}
-	onClose={closeAccountModal}
-	{staffId}
-	{registrationEditUrl}
-/>
+	<AccountModal
+		open={accountModalOpen}
+		onClose={closeAccountModal}
+		staffId={staffId}
+		registrationEditUrl={registrationEditUrl}
+	/>
 
 <!-- navbar end -->
 
