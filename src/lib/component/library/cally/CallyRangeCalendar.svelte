@@ -38,7 +38,11 @@
 		/** Extra classes applied in addition to `d-cally` */
 		className?: string;
 		/** Optional callback fired when range changes */
-		onChange?: (payload: { from: string; to: string; raw: string }) => void;
+		onChange?: (payload: {
+			from: string;
+			to: string;
+			raw: string;
+		}) => void;
 	}>();
 
 	// Internal Cally value: "from/to"
@@ -75,6 +79,19 @@
 	}
 </script>
 
+<!-- example usage -->
+<!-- 
+<CallyRangeCalendar
+	bind:from={fromDate}
+	bind:to={toDate}
+	months={1}
+	showOutsideDays={true}
+	className="w-full rounded-box border border-base-300 bg-base-100 shadow-lg"
+	onChange={({ from, to }) => {
+		console.log('range changed', from, to);
+	}}
+/> -->
+
 {#if callyLoaded}
 	<calendar-range
 		class="d-cally {className}"
@@ -101,15 +118,15 @@
 		{/if}
 	</calendar-range>
 
-	<!-- simple legend (optional) -->
-	<div class="mt-3 flex justify-center gap-7 text-sm">
+	<!-- legend -->
+	<div class="flex justify-center gap-7">
 		<div class="flex items-center gap-2">
-			<span class="h-3 w-3 rounded-full bg-primary"></span>
-			Start
+			<span class="h-5 w-5 rounded-md bg-primary"></span>
+			current
 		</div>
 		<div class="flex items-center gap-2">
-			<span class="h-3 w-3 rounded-full bg-current"></span>
-			End
+			<span class="h-5 w-5 rounded-md bg-current"></span>
+			selected
 		</div>
 	</div>
 {:else}
@@ -138,4 +155,3 @@
 		height: 100%;
 	}
 </style>
-

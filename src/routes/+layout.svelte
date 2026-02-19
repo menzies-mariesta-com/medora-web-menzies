@@ -27,7 +27,9 @@
 	const themeTool = new ThemeTool(localStorageUtil);
 	const fontTool = new FontTool(localStorageUtil);
 
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
 
 	lifeCycleUtil.onMount(() => {
 		// set data
@@ -71,7 +73,7 @@
 			className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
 		>
 			<div
-				class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+				class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
 				role="document"
 			>
 				{#if DialogState.current.component}
@@ -110,62 +112,62 @@
 				</DaisyUiToast>
 			{/if}
 			<DaisyUiModalBox onClose={() => dialogService.close()}>
-			{#if DialogState.current.component}
-				{#if DialogState.current.title}
-					<h3 class="mb-5 text-lg font-bold">
-						{DialogState.current.title}
-					</h3>
-				{/if}
-				{@const DialogContent = DialogState.current.component}
-				<DialogContent
-					confirm={(data) => dialogService.confirm(data)}
-					cancel={() => dialogService.cancel()}
-				/>
-			{:else if DialogState.current.children}
-				{#if DialogState.current.title}
-					<h3 class="text-lg font-bold">
-						{DialogState.current.title}
-					</h3>
-				{/if}
-				{@render DialogState.current.children({
-					confirm: (data) => dialogService.confirm(data),
-					cancel: () => dialogService.cancel()
-				})}
-			{:else}
-				{#if DialogState.current.title}
-					<h3 class="text-lg font-bold">
-						{DialogState.current.title}
-					</h3>
-				{/if}
-				<p>{DialogState.current.message}</p>
-				<div class="d-modal-action">
-					{#if DialogState.current.variant === DialogVariantEnum.CONFIRM}
-						<button
-							type="button"
-							class="d-btn"
-							onclick={() => dialogService.cancel()}
-						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							class="d-btn d-btn-primary"
-							onclick={() => dialogService.confirm()}
-						>
-							OK
-						</button>
-					{:else}
-						<button
-							type="button"
-							class="d-btn d-btn-primary"
-							onclick={() => dialogService.close()}
-						>
-							OK
-						</button>
+				{#if DialogState.current.component}
+					{#if DialogState.current.title}
+						<h3 class="mb-5 text-lg font-bold">
+							{DialogState.current.title}
+						</h3>
 					{/if}
-				</div>
-			{/if}
-		</DaisyUiModalBox>
+					{@const DialogContent = DialogState.current.component}
+					<DialogContent
+						confirm={(data) => dialogService.confirm(data)}
+						cancel={() => dialogService.cancel()}
+					/>
+				{:else if DialogState.current.children}
+					{#if DialogState.current.title}
+						<h3 class="text-lg font-bold">
+							{DialogState.current.title}
+						</h3>
+					{/if}
+					{@render DialogState.current.children({
+						confirm: (data) => dialogService.confirm(data),
+						cancel: () => dialogService.cancel()
+					})}
+				{:else}
+					{#if DialogState.current.title}
+						<h3 class="text-lg font-bold">
+							{DialogState.current.title}
+						</h3>
+					{/if}
+					<p>{DialogState.current.message}</p>
+					<div class="d-modal-action">
+						{#if DialogState.current.variant === DialogVariantEnum.CONFIRM}
+							<button
+								type="button"
+								class="d-btn"
+								onclick={() => dialogService.cancel()}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="d-btn d-btn-primary"
+								onclick={() => dialogService.confirm()}
+							>
+								OK
+							</button>
+						{:else}
+							<button
+								type="button"
+								class="d-btn d-btn-primary"
+								onclick={() => dialogService.close()}
+							>
+								OK
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</DaisyUiModalBox>
 		</DaisyUiModal>
 	{/if}
 {/if}
