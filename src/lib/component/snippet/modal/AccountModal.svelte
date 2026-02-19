@@ -133,7 +133,7 @@
 			</div>
 		{:else}
 			<div class="d-modal-box max-w-md" role="document">
-				<div class="flex items-center justify-between border-b border-base-300 pb-3">
+				<div class="flex items-center justify-between border-b border-base-300 pb-4">
 					<h2 class="text-lg font-semibold">Account</h2>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm d-btn-circle"

@@ -338,6 +338,14 @@ export const patientTableRelations = relations(patientTable, ({ one, many }) => 
 		fields: [patientTable.phoneSecondaryCountryId],
 		references: [countryTable.id],
 	}),
+	fatherTitle: one(titleTable, {
+		fields: [patientTable.fatherTitleId],
+		references: [titleTable.id],
+	}),
+	guardianTitle: one(titleTable, {
+		fields: [patientTable.guardianTitleId],
+		references: [titleTable.id],
+	}),
 	guardianPhoneCountry: one(countryTable, {
 		fields: [patientTable.guardianPhoneCountryId],
 		references: [countryTable.id],
