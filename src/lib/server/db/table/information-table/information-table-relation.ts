@@ -1,6 +1,8 @@
 import { relations } from 'drizzle-orm';
 import {
+	appointmentTable,
 	doctorScheduleTable,
+	externalReferTable,
 	hospitalDepartmentTable,
 	hospitalTable,
 	moduleTable,
@@ -30,6 +32,7 @@ import {
 	nationalityTable,
 	positionTable,
 	postalCodeTable,
+	referTypeTable,
 	specializationTable,
 	staffEmploymentTypeTable,
 	bloodTypeTable,
@@ -65,6 +68,7 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	hospitalDepartments: many(hospitalDepartmentTable),
 	staffHospitals: many(staffHospitalTable),
 	doctorSchedules: many(doctorScheduleTable),
+	externalRefers: many(externalReferTable),
 }));
 
 export const hospitalDepartmentTableRelations = relations(hospitalDepartmentTable, ({ one }) => ({
@@ -144,6 +148,65 @@ export const doctorScheduleTableRelations = relations(doctorScheduleTable, ({ on
 	}),
 	status: one(statusTable, {
 		fields: [doctorScheduleTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
+
+export const externalReferTableRelations = relations(externalReferTable, ({ one, many }) => ({
+	referType: one(referTypeTable, {
+		fields: [externalReferTable.referTypeId],
+		references: [referTypeTable.id],
+	}),
+	hospital: one(hospitalTable, {
+		fields: [externalReferTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	country: one(countryTable, {
+		fields: [externalReferTable.countryId],
+		references: [countryTable.id],
+	}),
+	state: one(stateTable, {
+		fields: [externalReferTable.stateId],
+		references: [stateTable.id],
+	}),
+	city: one(cityTable, {
+		fields: [externalReferTable.cityId],
+		references: [cityTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [externalReferTable.statusId],
+		references: [statusTable.id],
+	}),
+	appointments: many(appointmentTable),
+}));
+
+export const appointmentTableRelations = relations(appointmentTable, ({ one }) => ({
+	patient: one(patientTable, {
+		fields: [appointmentTable.patientId],
+		references: [patientTable.id],
+	}),
+	staff: one(staffTable, {
+		fields: [appointmentTable.staffId],
+		references: [staffTable.id],
+	}),
+	patientTitle: one(titleTable, {
+		fields: [appointmentTable.patientTitleId],
+		references: [titleTable.id],
+	}),
+	referType: one(referTypeTable, {
+		fields: [appointmentTable.referTypeId],
+		references: [referTypeTable.id],
+	}),
+	externalRefer: one(externalReferTable, {
+		fields: [appointmentTable.externalReferId],
+		references: [externalReferTable.id],
+	}),
+	statusTagging: one(statusTaggingTable, {
+		fields: [appointmentTable.statusTaggingId],
+		references: [statusTaggingTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [appointmentTable.statusId],
 		references: [statusTable.id],
 	}),
 }));
@@ -236,6 +299,7 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	staffDepartments: many(staffDepartmentTable),
 	staffUserGroups: many(staffUserGroupTable),
 	doctorSchedules: many(doctorScheduleTable),
+	appointments: many(appointmentTable),
 }));
 
 export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ one }) => ({
@@ -249,7 +313,7 @@ export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ on
 	}),
 }));
 
-export const statusTaggingTableRelations = relations(statusTaggingTable, ({ one }) => ({
+export const statusTaggingTableRelations = relations(statusTaggingTable, ({ one, many }) => ({
 	statusTaggingType: one(statusTaggingTypeTable, {
 		fields: [statusTaggingTable.statusTaggingTypeId],
 		references: [statusTaggingTypeTable.id],
@@ -258,6 +322,7 @@ export const statusTaggingTableRelations = relations(statusTaggingTable, ({ one 
 		fields: [statusTaggingTable.statusId],
 		references: [statusTable.id],
 	}),
+	appointments: many(appointmentTable),
 }));
 
 export const statusTaggingTypeTableRelations = relations(statusTaggingTypeTable, ({ one, many }) => ({
@@ -369,6 +434,7 @@ export const patientTableRelations = relations(patientTable, ({ one, many }) => 
 	attachments: many(patientAttachmentTable),
 	insurances: many(patientInsurance),
 	allergies: many(patientAllergyTable),
+	appointments: many(appointmentTable),
 }));
 
 export const patientAttachmentTableRelations = relations(

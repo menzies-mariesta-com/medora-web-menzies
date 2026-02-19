@@ -14,7 +14,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, weekdayTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, weekdayTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -205,7 +205,6 @@ export const userGroupTable = pgTable('user_group', {
 	//userGroupPageTable
 	...timestamps,
 });
-
 export const patientTable = pgTable('patient', {
 	id: uuid('id')
 		.primaryKey()
@@ -302,6 +301,45 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 	toDate: date('to_date'),
 	fromShiftTime: time('from_shift_time'),
 	toShiftTime: time('to_shift_time'),
+	/** Slot duration in minutes (e.g. 10, 15, 20) for calendar time blocks. Saved from "Slot Timing" on create. */
+	slotDurationMinutes: integer('slot_duration_minutes').default(15),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+export const externalReferTable = pgTable('external_refer', {
+	id: serial('id').primaryKey(),
+	referTypeId: integer('refer_type_id').references(() => referTypeTable.id),
+	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	name: varchar('name', { length: 512 }),
+	address: text('address'),
+	countryId: integer('country_id').references(() => countryTable.id),
+	stateId: integer('state_id').references(() => stateTable.id),
+	cityId: integer('city_id').references(() => cityTable.id),
+	phone: varchar('phone', { length: 128 }),
+	email: varchar('email', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+export const appointmentTable = pgTable('appointment', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id').references(() => patientTable.id),
+	staffId: uuid('staff_id').references(() => staffTable.id),
+	appointmentDate: date('appointment_date'),
+	fromTime: time('from_time'),
+	toTime: time('to_time'),
+	patientTitleId: integer('patient_title_id').references(() => titleTable.id),
+	patientName: varchar('patient_name', { length: 512 }),
+	patientDateOfBirth: date('patient_date_of_birth'),
+	patientAgeYear: integer('patient_age_year'),
+	patientAgeMonth: integer('patient_age_month'),
+	patientAgeDay: integer('patient_age_day'),
+	appointmentPhone: varchar('appointment_phone', { length: 128 }),
+	appointmentEmail: varchar('appointment_email', { length: 512 }),
+	referTypeId: integer('refer_type_id').references(() => referTypeTable.id),
+	externalReferId: integer('external_refer_id').references(() => externalReferTable.id),
+	statusTaggingId: integer('status_tagging_id').references(() => statusTaggingTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 })

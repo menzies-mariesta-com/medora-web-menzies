@@ -8,6 +8,8 @@
 		inputTitle,
 		minLength,
 		maxlength,
+		min,
+		max,
 		nameText,
 		value = $bindable(),
 		ariaLabel,
@@ -26,6 +28,8 @@
 		inputTitle?: string;
 		minLength?: number;
 		maxlength?: number;
+		min?: string;
+		max?: string;
 		nameText?: string;
 		value?: string;
 		ariaLabel?: string;
@@ -47,6 +51,8 @@
 		pattern={inputPattern}
 		minlength={minLength ?? 1}
 		maxlength={maxlength ?? 50}
+		{min}
+		{max}
 		title={inputTitle}
 		name={nameText}
 		bind:value
@@ -66,6 +72,8 @@
 		pattern={inputPattern}
 		minlength={minLength ?? 1}
 		maxlength={maxlength ?? 50}
+		{min}
+		{max}
 		title={inputTitle}
 		name={nameText}
 		bind:value
