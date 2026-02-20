@@ -4,6 +4,7 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import MariFullEditor from '$lib/component/library/mari/text-editor/MariFullEditor.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -26,6 +27,8 @@
 
 		return () => clearInterval(interval);
 	});
+
+	
 </script>
 
 <DaisyUiFooter
@@ -47,3 +50,6 @@
 
 	<div id="version" class="mr-12">v0.0.1</div>
 </DaisyUiFooter>
+
+
+<MariFullEditor />

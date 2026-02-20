@@ -5,6 +5,6 @@
 	}>();
 </script>
 
-<div class="d-join !flex w-full min-w-0 {className}">
+<div class="d-join flex {className}">
 	{@render children()}
 </div>
