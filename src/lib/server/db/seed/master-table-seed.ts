@@ -1490,7 +1490,18 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: staff_employment_type');
+	console.log('Seeded: weekday');
+
+	// 15. Refer-Type
+	await db.execute(sql`
+		INSERT INTO refer_type (id, name)
+		VALUES
+			(1, 'Internal'),
+			(2, 'External')
+		ON CONFLICT (id) DO NOTHING;
+	`);
+
+	console.log('Seeded: refer-type');
 
 	console.log('Master tables seeding completed.');
 }

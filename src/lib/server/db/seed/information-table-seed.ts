@@ -82,6 +82,13 @@ export async function seedInformationTables() {
 			(100001, 'Staff Registration', 1, 1, 1, '/heka/home/administration/staff/registration', 1),
 			(100002, 'Staff List', 1, 1, 1, '/heka/home/administration/staff/list', 2),
 
+			-- schedule
+			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
+			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
+
+			-- external refer master
+			(5, 'External Refer Master', 1, 1, null, '/heka/home/administration/external-refer-master', 1),
+
 			
 			-- Registration Module
 			-- patient pages
@@ -90,9 +97,6 @@ export async function seedInformationTables() {
 			(200002, 'Patient List', 2, 1, 2, '/heka/home/registration/patient/list', 2),
 
 			-- Administration Module
-			-- schedule
-			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
-			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
 
 			-- Appointment Module
 			-- doctor appointments
