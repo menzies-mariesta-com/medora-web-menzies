@@ -15,3 +15,8 @@ export enum YesNoEnum {
     YES = 1,
     NO = 0,
 };
+
+export enum ReferTypeEnum {
+    EXTERNAL = 1,
+    INTERNAL = 2,
+};
