@@ -22,7 +22,6 @@ import type {
 	externalReferTable,
 	patientTable,
 } from './information-table';
-import type { StatusSchema } from '../master-table/master-table-schema-type';
 
 // Information Tables (alphabetical)
 export type HospitalDepartmentSchema = InferSelectModel<typeof hospitalDepartmentTable>;
