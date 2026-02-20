@@ -4,6 +4,7 @@ import {
 	doctorScheduleTable,
 	externalReferTable,
 	hospitalDepartmentTable,
+	hospitalPatientCodeCounterTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
@@ -66,10 +67,21 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	}),
 	userGroups: many(userGroupTable),
 	hospitalDepartments: many(hospitalDepartmentTable),
+	patientCodeCounter: one(hospitalPatientCodeCounterTable),
 	staffHospitals: many(staffHospitalTable),
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
 }));
+
+export const hospitalPatientCodeCounterTableRelations = relations(
+	hospitalPatientCodeCounterTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [hospitalPatientCodeCounterTable.hospitalId],
+			references: [hospitalTable.id],
+		}),
+	})
+);
 
 export const hospitalDepartmentTableRelations = relations(hospitalDepartmentTable, ({ one }) => ({
 	hospital: one(hospitalTable, {

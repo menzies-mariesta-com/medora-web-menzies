@@ -36,6 +36,7 @@
 		CitySchema,
 		CountrySchema,
 		GenderSchema,
+		HospitalSchema,
 		MaritalStatusSchema,
 		IdentityTypeSchema,
 		NationalitySchema,
@@ -51,6 +52,7 @@ import {
 		getPatientByIdWithRelations,
 		getDuplicatePatients
 	} from '$lib/remote/table/information-table/patient.remote';
+import { getHospital } from '$lib/remote/table/information-table/hospital.remote';
 import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
 import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
 import { authClient } from '$lib/auth/client';
@@ -90,9 +92,11 @@ const currentPatientId = $derived(viewId || editId);
 	let postalCodeData: PostalCodeSchema[] = $state([]);
 	let nationalityData: NationalitySchema[] = $state([]);
 	let religionData: ReligionSchema[] = $state([]);
+	let hospitalData: HospitalSchema[] = $state([]);
 
 	// Form state
 	let patientCode: string = $state('');
+	let selectedHospitalId: string = $state('');
 	let selectedTitleId: string = $state('');
 	let firstName: string = $state('');
 	let middleName: string = $state('');
@@ -211,6 +215,10 @@ const currentPatientId = $derived(viewId || editId);
 		postalCodeData = await getPostalCode();
 		nationalityData = await getNationality();
 		religionData = await getReligion();
+		hospitalData = await getHospital();
+		if (hospitalData.length > 0 && !selectedHospitalId) {
+			selectedHospitalId = String(hospitalData[0].id);
+		}
 	}
 
 	async function loadPatientIntoForm(id: string) {
@@ -510,6 +518,11 @@ const currentPatientId = $derived(viewId || editId);
 			return;
 		}
 
+		if (!currentPatientId && !selectedHospitalId) {
+			toastService.addToast('Please select a hospital.', StatusColorEnum.ERROR);
+			return;
+		}
+
 		isLoading = true;
 		try {
 			if (currentPatientId) {
@@ -595,11 +608,11 @@ const currentPatientId = $derived(viewId || editId);
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				// Create: new patient
+				// Create: new patient (code is generated on backend from selectedHospitalId)
 				const result = await createPatientWithUser({
 					email: email.trim(),
 					name: fullName,
-					code: patientCode.trim() || undefined,
+					hospitalId: selectedHospitalId ? Number(selectedHospitalId) : 0,
 					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
 					firstName: firstName.trim(),
 					middleName: middleName.trim() || undefined,
@@ -648,6 +661,7 @@ const currentPatientId = $derived(viewId || editId);
 				});
 
 				const { patient } = result;
+				patientCode = patient.code ?? '';
 
 				if (photoFile) {
 					photoUploading = true;
@@ -715,7 +729,7 @@ const currentPatientId = $derived(viewId || editId);
 				}
 
 				toastService.addToast(
-					'Patient created successfully.',
+					`Patient (${patientCode}) created successfully.`,
 					StatusColorEnum.SUCCESS
 				);
 
@@ -884,7 +898,9 @@ const currentPatientId = $derived(viewId || editId);
 						{titleData}
 						{genderData}
 						{maritalStatusData}
+						hospitalData={hospitalData}
 						bind:patientCode
+						bind:selectedHospitalId
 						bind:selectedTitleId
 						bind:firstName
 						bind:middleName
@@ -892,6 +908,7 @@ const currentPatientId = $derived(viewId || editId);
 						bind:email
 						bind:selectedGenderId
 						bind:selectedMaritalStatusId
+						showHospitalSelect={!currentPatientId}
 					/>
 					<LPatientRegistrationSecondColumn
 						{titleData}

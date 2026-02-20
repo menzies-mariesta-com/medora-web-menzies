@@ -52,9 +52,17 @@ export async function seedInformationTables() {
 			(1, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: user_group');
+	console.log('Seeded: hospital');
 
-	// 2. User Groups (depends: status)
+	// 2b. Hospital patient code counter (one row per hospital, start at 0 so first code is 1)
+	await db.execute(sql`
+		INSERT INTO hospital_patient_code_counter (hospital_id, last_number)
+		SELECT id, 0 FROM hospital
+		ON CONFLICT (hospital_id) DO NOTHING;
+	`);
+	console.log('Seeded: hospital_patient_code_counter');
+
+	// 3. User Groups (depends: status)
 	await db.execute(sql`
 		INSERT INTO user_group (id, name, status_id, hospital_id)
 		VALUES 
