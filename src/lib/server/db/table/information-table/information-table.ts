@@ -44,6 +44,18 @@ export const hospitalTable = pgTable('hospital', {
 	...timestamps,
 });
 
+/** Per-hospital atomic counter for patient codes (Hospital Code + number). Each hospital starts at 1. */
+export const hospitalPatientCodeCounterTable = pgTable(
+	'hospital_patient_code_counter',
+	{
+		hospitalId: integer('hospital_id')
+			.primaryKey()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		lastNumber: integer('last_number').notNull().default(0),
+		...timestamps,
+	}
+);
+
 export const hospitalDepartmentTable = pgTable('hospital_department', {
 	id: serial('id').primaryKey(),
 	hospitalId: integer('hospital_id').references(() => hospitalTable.id).notNull(),
