@@ -9,7 +9,7 @@ import type {
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, or, ilike, ne, and } from 'drizzle-orm';
 
 // get all
 export const getExternalRefer = query(async (): Promise<ExternalReferSchema[]> => {
@@ -23,14 +23,53 @@ export const getExternalReferCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+const externalReferWithRelationsWith = {
+	referType: true,
+	hospital: true,
+	title: true,
+	country: true,
+	phoneCountry: true,
+	state: true,
+	city: true,
+	postalCode: true,
+	status: true,
+} as const;
+
+export type ExternalReferWithRelations = NonNullable<
+	Awaited<ReturnType<typeof getExternalReferByIdWithRelations>>
+>;
+
+// get paginated with relations (optional search on name, address, phone, email)
 export const getExternalReferPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<ExternalReferSchema>> => {
+	async (params?: PaginationParams): Promise<PaginatedResult<ExternalReferWithRelations>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const searchTerm = params?.search?.trim();
+		const pattern = searchTerm ? `%${searchTerm}%` : null;
+		const searchCondition =
+			pattern &&
+			or(
+				ilike(table.externalReferTable.name, pattern),
+				ilike(table.externalReferTable.address, pattern),
+				ilike(table.externalReferTable.phone, pattern),
+				ilike(table.externalReferTable.email, pattern)
+			);
+		const notDeletedCondition = ne(table.externalReferTable.statusId, StatusEnum.DELETED);
+		const whereExpr = searchCondition
+			? and(notDeletedCondition, searchCondition)
+			: notDeletedCondition;
+
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.externalReferTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.externalReferTable),
+			ensureDb().query.externalReferTable.findMany({
+				where: whereExpr,
+				with: externalReferWithRelationsWith,
+				limit,
+				offset,
+			}),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.externalReferTable)
+				.where(whereExpr),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -49,9 +88,12 @@ export const getExternalReferWithRelations = query(async () => {
 		with: {
 			referType: true,
 			hospital: true,
+			title: true,
 			country: true,
+			phoneCountry: true,
 			state: true,
 			city: true,
+			postalCode: true,
 			status: true,
 		},
 	});
@@ -66,6 +108,17 @@ export const getExternalReferById = query(
 			.from(table.externalReferTable)
 			.where(eq(table.externalReferTable.id, id));
 		return row ?? null;
+	}
+);
+
+// get one with relations (for view/edit form)
+export const getExternalReferByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return ensureDb().query.externalReferTable.findFirst({
+			where: (t, funcs) => funcs.eq(t.id, id),
+			with: externalReferWithRelationsWith,
+		});
 	}
 );
 
