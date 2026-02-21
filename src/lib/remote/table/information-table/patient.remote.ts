@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
+	HospitalSchema,
 	PatientSchema,
 	PatientSchemaInsert,
 	PatientSchemaUpdate,
@@ -10,12 +11,11 @@ import type {
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, like, ne, or, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
-
-
+import { getHospitalById } from '$lib/remote/table/information-table/hospital.remote';
 
 export type PatientWithRelations = NonNullable<
 	Awaited<ReturnType<typeof getPatientByIdWithRelations>>
@@ -53,6 +53,29 @@ export const getPatientCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
+/**
+ * Returns next patient code for the given hospital: Hospital Code + next sequential number (e.g. "phh1", "phh2").
+ * Uses hospital_patient_code_counter for atomic, race-free numbering per hospital (each hospital starts at 1).
+ */
+export const getNextPatientCode = query(
+	'unchecked' as const,
+	async ({ hospitalId }: { hospitalId: number }): Promise<string> => {
+		const hospital = (await getHospitalById({ id: hospitalId })) as HospitalSchema | null;
+		const prefix = (hospital?.code?.trim() ?? String(hospitalId)).toUpperCase();
+		const counter = table.hospitalPatientCodeCounterTable;
+		const [row] = await ensureDb()
+			.insert(counter)
+			.values({ hospitalId, lastNumber: 1 })
+			.onConflictDoUpdate({
+				target: counter.hospitalId,
+				set: { lastNumber: sql`${counter.lastNumber} + 1` },
+			})
+			.returning({ lastNumber: counter.lastNumber });
+		const nextNumber = row?.lastNumber ?? 1;
+		return `${prefix}${String(nextNumber).padStart(8, '0')}`;
+	}
+);
+
 // get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
 export const getPatientPaginated = query(
 	'unchecked' as const,
@@ -70,9 +93,19 @@ export const getPatientPaginated = query(
 			);
 
 		const notDeletedCondition = ne(table.patientTable.statusId, StatusEnum.DELETED);
-		const whereExpr = searchCondition
+		let whereExpr = searchCondition
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
+
+		// When hospitalId is set, only patients whose code was issued by that hospital (code prefix = hospital code)
+		const hospitalId = params?.hospitalId;
+		if (hospitalId != null && Number.isInteger(hospitalId)) {
+			const hospital = await getHospitalById({ id: hospitalId });
+			const codePrefix = hospital?.code?.trim();
+			if (codePrefix) {
+				whereExpr = and(whereExpr, like(table.patientTable.code, `${codePrefix}%`));
+			}
+		}
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.patientTable.findMany({
@@ -342,8 +375,9 @@ export const createPatientWithUser = command(
 		// User fields
 		email: string;
 		name: string;
-		// Patient fields (only include fields that exist in patientTable)
-		code?: string;
+		// Required for backend-generated patient code (Hospital Code + number)
+		hospitalId: number;
+		// Patient fields (only include fields that exist in patientTable); code is generated on backend
 		titleId?: number;
 		firstName?: string;
 		middleName?: string;
@@ -352,6 +386,8 @@ export const createPatientWithUser = command(
 		phoneSecondary?: string;
 		phonePrimaryCountryId?: number;
 		phoneSecondaryCountryId?: number;
+		fatherTitleId?: number;
+		guardianTitleId?: number;
 		identityNo?: string;
 		dateOfBirth?: string;
 		guardianName?: string;
@@ -374,6 +410,10 @@ export const createPatientWithUser = command(
 		nameMasking?: boolean;
 	}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
+
+		if (!payload.hospitalId) {
+			throw error(400, 'Hospital is required to create a patient.');
+		}
 
 		// Ensure email is unique
 		const existingUser = await ensureDb()
@@ -412,10 +452,13 @@ export const createPatientWithUser = command(
 			password: hashedPassword,
 		});
 
+		// Generate patient code on backend (Hospital Code + next number per hospital)
+		const generatedCode = await getNextPatientCode({ hospitalId: payload.hospitalId });
+
 		// Prepare patient payload (only fields that exist in patientTable)
 		const patientPayload: PatientSchemaInsert = {
 			userId: user.id,
-			code: payload.code,
+			code: generatedCode,
 			titleId: payload.titleId ? Number(payload.titleId) : undefined,
 			firstName: payload.firstName,
 			middleName: payload.middleName,

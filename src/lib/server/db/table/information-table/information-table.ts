@@ -37,12 +37,35 @@ export const hospitalTable = pgTable('hospital', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
+	address: text('address'),
+	phone: varchar('phone', { length: 64 }),
+	phoneCountryId: integer('phone_country_id').references(() => countryTable.id),
+	email: varchar('email', { length: 256 }),
+	website: varchar('website', { length: 512 }),
+	/** One hospital belongs to one owner (user with role OWNER). One owner has many hospitals. */
+	ownerId: text('owner_id').references(() => userTable.id),
+	postalCodeId: integer('postal_code_id').references(() => postalCodeTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	countryId: integer('country_id').references(() => countryTable.id),
+	logoUrl: text('logo_url'),
+	description: text('description'),
+	establishedDate: date('established_date'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
+
+/** Per-hospital atomic counter for patient codes (Hospital Code + number). Each hospital starts at 1. */
+export const hospitalPatientCodeCounterTable = pgTable(
+	'hospital_patient_code_counter',
+	{
+		hospitalId: integer('hospital_id')
+			.primaryKey()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		lastNumber: integer('last_number').notNull().default(0),
+		...timestamps,
+	}
+);
 
 export const hospitalDepartmentTable = pgTable('hospital_department', {
 	id: serial('id').primaryKey(),
@@ -311,11 +334,14 @@ export const externalReferTable = pgTable('external_refer', {
 	id: serial('id').primaryKey(),
 	referTypeId: integer('refer_type_id').references(() => referTypeTable.id),
 	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	titleId: integer('title_id').references(() => titleTable.id),
 	name: varchar('name', { length: 512 }),
 	address: text('address'),
 	countryId: integer('country_id').references(() => countryTable.id),
 	stateId: integer('state_id').references(() => stateTable.id),
 	cityId: integer('city_id').references(() => cityTable.id),
+	postalCodeId: integer('postal_code_id').references(() => postalCodeTable.id),
+	phoneCountryId: integer('phone_country_id').references(() => countryTable.id),
 	phone: varchar('phone', { length: 128 }),
 	email: varchar('email', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),

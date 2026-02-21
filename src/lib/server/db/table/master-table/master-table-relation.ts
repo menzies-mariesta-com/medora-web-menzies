@@ -214,6 +214,7 @@ export const postalCodeTableRelations = relations(postalCodeTable, ({ one, many 
 	}),
 	staffs: many(staffTable),
 	patients: many(patientTable),
+	hospitals: many(hospitalTable),
 }));
 
 export const nationalityTableRelations = relations(nationalityTable, ({ one, many }) => ({

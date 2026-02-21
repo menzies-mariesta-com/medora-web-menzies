@@ -50,13 +50,27 @@ function normPath(path: string | null | undefined): string {
 }
 
 /**
+ * Normalize current URL path for matching against DB pageUrl.
+ * DB stores /heka/home/...; real URL is /heka/hospital/:id/home/...
+ * So we rewrite pathname to the "logical" path for comparison.
+ */
+export function pathnameForPageMatch(): string {
+	const path = normPath(page.url.pathname);
+	const match = path.match(/^\/heka\/hospital\/([^/]+)\/home(\/.*)?$/);
+	if (match) {
+		return `/heka/home${match[2] ?? ''}`;
+	}
+	return path;
+}
+
+/**
  * The page that represents the current "section" (whose children are the sub-tabs).
  * When we're on a child URL (e.g. /staff/registration), use the longest strict prefix
  * so we get Staff, not Registration. When we're on the section index (e.g. /staff), use exact match.
  * Use in reactive context, e.g. $derived(getCurrentParentPage()).
  */
 export function getCurrentParentPage(): PageSchema | null {
-	const path = normPath(page.url.pathname);
+	const path = normPath(pathnameForPageMatch());
 	const data = getPageData();
 	// 1. Longest strict prefix: we're under /staff/registration → parent is Staff
 	let best: PageSchema | null = null;

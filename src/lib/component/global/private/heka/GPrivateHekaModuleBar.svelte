@@ -21,16 +21,21 @@
 	import { page } from '$app/state';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import {
+		WebRoutesEnum,
+		hekaHospitalPageUrl
+	} from '$lib/model/enum/routes.enum';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
 
 	let {
+		hospitalId = null,
 		moduleList,
 		pageList,
 		staffId = null,
 		staffPhotoUrl = null
 	}: {
+		hospitalId?: string | null;
 		moduleList: ModuleSchema[];
 		pageList: PageSchema[];
 		staffId?: string | null;
@@ -42,8 +47,14 @@
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
 
-	const registrationEditUrl =
-		WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
+	const registrationEditUrl = $derived(
+		hospitalId
+			? hekaHospitalPageUrl(
+					hospitalId,
+					WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION
+				)
+			: WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION
+	);
 
 	let accountModalOpen = $state(false);
 
@@ -162,9 +173,13 @@
 						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 							<DaisyUiButton
 								className="w-full min-w-0 justify-start truncate text-left"
-								onClick={() =>
-									p.pageUrl != null &&
-									routerUtil.replaceRoute(p.pageUrl)}
+								onClick={() => {
+									const url =
+										hospitalId && p.pageUrl != null
+											? hekaHospitalPageUrl(hospitalId, p.pageUrl)
+											: p.pageUrl;
+									if (url != null) routerUtil.replaceRoute(url);
+								}}
 							>
 								{p.name}
 							</DaisyUiButton>

@@ -1,6 +1,8 @@
 import { query, command } from '$app/server';
+import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { accountTable, userTable } from '$lib/server/db/table/auth-table/auth-table';
 import type {
 	UserSchema,
 	UserSchemaUpdate
@@ -8,6 +10,9 @@ import type {
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
+import { uuidv7 } from 'uuidv7';
+import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { RoleEnum } from '$lib/model/enum/db-link';
 
 // get all
 export const getUser = query(async (): Promise<UserSchema[]> => {
@@ -72,6 +77,65 @@ export const getUserByIdWithStaff = query(
 				staff: true
 			}
 		});
+	}
+);
+
+// get users by role (e.g. OWNER for system admin management)
+export const getUsersByRole = query(
+	'unchecked' as const,
+	async ({ roleId }: { roleId: number }): Promise<UserSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.userTable)
+			.where(eq(table.userTable.roleId, roleId));
+	}
+);
+
+function generateRandomPassword(length: number = 16): string {
+	const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+	let password = '';
+	for (let i = 0; i < length; i++) {
+		password += charset.charAt(Math.floor(Math.random() * charset.length));
+	}
+	return password;
+}
+
+// create owner (user with role OWNER + credential account); no password — send reset email after
+export const createOwner = command(
+	'unchecked' as const,
+	async (payload: { name: string; email: string }): Promise<UserSchema> => {
+		const passwordHashUtil = new PasswordHashUtil();
+		const existing = await ensureDb()
+			.select()
+			.from(userTable)
+			.where(eq(userTable.email, payload.email))
+			.limit(1);
+		if (existing.length > 0) {
+			throw error(400, 'A user with this email already exists.');
+		}
+		const generatedPassword = generateRandomPassword(16);
+		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+		const userId = uuidv7();
+		const [user] = await ensureDb()
+			.insert(userTable)
+			.values({
+				id: userId,
+				name: payload.name.trim(),
+				email: payload.email.trim(),
+				emailVerified: false,
+				roleId: RoleEnum.OWNER
+			})
+			.returning();
+		if (!user) throw error(400, 'Failed to create owner.');
+		await ensureDb().insert(accountTable).values({
+			id: uuidv7(),
+			userId: user.id,
+			accountId: payload.email.trim(),
+			providerId: 'credential',
+			password: hashedPassword
+		});
+		getUser().refresh();
+		return user;
 	}
 );
 

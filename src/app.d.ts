@@ -17,6 +17,10 @@ declare global {
 			user?: User | null;
 			/** Staff record linked to the logged-in user (1:1). */
 			staff?: StaffSchema | null;
+			/** User's role id (from user.role_id). Used for STAFF vs OWNER/SYSTEM_ADMIN. */
+			userRoleId?: number | null;
+			/** When user is STAFF, only these hospital ids are allowed; else null = all. */
+			allowedHospitalIds?: number[] | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

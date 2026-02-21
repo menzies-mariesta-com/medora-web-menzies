@@ -4,6 +4,7 @@ import {
 	doctorScheduleTable,
 	externalReferTable,
 	hospitalDepartmentTable,
+	hospitalPatientCodeCounterTable,
 	hospitalTable,
 	moduleTable,
 	pageTable,
@@ -48,6 +49,10 @@ import { userTable } from '../auth-table/auth-table';
 
 // Information table relations (alphabetical)
 export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) => ({
+	owner: one(userTable, {
+		fields: [hospitalTable.ownerId],
+		references: [userTable.id],
+	}),
 	status: one(statusTable, {
 		fields: [hospitalTable.statusId],
 		references: [statusTable.id],
@@ -64,12 +69,31 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 		fields: [hospitalTable.countryId],
 		references: [countryTable.id],
 	}),
+	phoneCountry: one(countryTable, {
+		fields: [hospitalTable.phoneCountryId],
+		references: [countryTable.id],
+	}),
+	postalCode: one(postalCodeTable, {
+		fields: [hospitalTable.postalCodeId],
+		references: [postalCodeTable.id],
+	}),
 	userGroups: many(userGroupTable),
 	hospitalDepartments: many(hospitalDepartmentTable),
+	patientCodeCounter: one(hospitalPatientCodeCounterTable),
 	staffHospitals: many(staffHospitalTable),
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
 }));
+
+export const hospitalPatientCodeCounterTableRelations = relations(
+	hospitalPatientCodeCounterTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [hospitalPatientCodeCounterTable.hospitalId],
+			references: [hospitalTable.id],
+		}),
+	})
+);
 
 export const hospitalDepartmentTableRelations = relations(hospitalDepartmentTable, ({ one }) => ({
 	hospital: one(hospitalTable, {
@@ -161,8 +185,16 @@ export const externalReferTableRelations = relations(externalReferTable, ({ one,
 		fields: [externalReferTable.hospitalId],
 		references: [hospitalTable.id],
 	}),
+	title: one(titleTable, {
+		fields: [externalReferTable.titleId],
+		references: [titleTable.id],
+	}),
 	country: one(countryTable, {
 		fields: [externalReferTable.countryId],
+		references: [countryTable.id],
+	}),
+	phoneCountry: one(countryTable, {
+		fields: [externalReferTable.phoneCountryId],
 		references: [countryTable.id],
 	}),
 	state: one(stateTable, {
@@ -172,6 +204,10 @@ export const externalReferTableRelations = relations(externalReferTable, ({ one,
 	city: one(cityTable, {
 		fields: [externalReferTable.cityId],
 		references: [cityTable.id],
+	}),
+	postalCode: one(postalCodeTable, {
+		fields: [externalReferTable.postalCodeId],
+		references: [postalCodeTable.id],
 	}),
 	status: one(statusTable, {
 		fields: [externalReferTable.statusId],
