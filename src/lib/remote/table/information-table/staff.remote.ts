@@ -6,11 +6,12 @@ import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/ser
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq, or, ilike, ne, and, inArray } from 'drizzle-orm';
+import { count, eq, or, ilike, ne, and, inArray, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
 import { createStaffUserGroup } from './staff-user-group.remote';
+import { createStaffHospital } from './staff-hospital.remote';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
 
@@ -76,27 +77,36 @@ const staffWithRelationsWith = {
 	staffUserGroups: { with: { userGroup: true } },
 } as const;
 
-// get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted
-export const getDoctorStaffList = query(async (): Promise<StaffWithRelations[]> => {
-	const doctorStaffIds = await ensureDb()
-		.select({ id: table.staffTable.id })
-		.from(table.staffTable)
-		.where(
-			and(
-				// staffTypeId 3 => 'Doctor' (see staff_type master seed)
-				eq(table.staffTable.staffTypeId, 3),
-				ne(table.staffTable.statusId, StatusEnum.DELETED)
-			)
+// get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted. Optional hospitalId limits to doctors assigned to that hospital.
+export const getDoctorStaffList = query(
+	'unchecked' as const,
+	async (params?: { hospitalId?: number }): Promise<StaffWithRelations[]> => {
+		const hospitalId = params?.hospitalId;
+		const hospitalCondition =
+			hospitalId != null && Number.isInteger(hospitalId)
+				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
+				: undefined;
+
+		const baseCondition = and(
+			eq(table.staffTable.staffTypeId, 3),
+			ne(table.staffTable.statusId, StatusEnum.DELETED)
 		);
+		const whereCondition = hospitalCondition ? and(baseCondition, hospitalCondition) : baseCondition;
 
-	const ids = doctorStaffIds.map((r) => r.id);
-	if (ids.length === 0) return [];
+		const doctorStaffIds = await ensureDb()
+			.select({ id: table.staffTable.id })
+			.from(table.staffTable)
+			.where(whereCondition);
 
-	return ensureDb().query.staffTable.findMany({
-		where: inArray(table.staffTable.id, ids),
-		with: staffWithRelationsWith
-	});
-});
+		const ids = doctorStaffIds.map((r) => r.id);
+		if (ids.length === 0) return [];
+
+		return ensureDb().query.staffTable.findMany({
+			where: inArray(table.staffTable.id, ids),
+			with: staffWithRelationsWith
+		});
+	}
+);
 
 // get one with relations
 export const getStaffByUserIdWithRelations = query(
@@ -154,9 +164,15 @@ export const getStaffPaginated = query(
 		// Exclude soft-deleted staff
 		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
 
-		const whereExpr = searchCondition
-			? and(notDeletedCondition, searchCondition)
-			: notDeletedCondition;
+		// When hospitalId is set, only staff assigned to that hospital (via staff_hospital)
+		const hospitalId = params?.hospitalId;
+		const hospitalCondition =
+			hospitalId != null && Number.isInteger(hospitalId)
+				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
+				: undefined;
+
+		let whereExpr = searchCondition ? and(notDeletedCondition, searchCondition) : notDeletedCondition;
+		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.staffTable.findMany({
@@ -373,6 +389,8 @@ export const createStaffWithUser = command(
 		licenseExpiryDate?: string;
 		signatureImageUrl?: string;
 		signatureText?: string;
+		/** When provided, assigns the new staff to this hospital (staff_hospital). */
+		hospitalId?: number;
 	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -486,6 +504,14 @@ export const createStaffWithUser = command(
 					userGroupId: Number(userGroupId)
 				});
 			}
+		}
+
+		// Assign staff to hospital when registering from a hospital context
+		if (payload.hospitalId != null && Number.isInteger(payload.hospitalId)) {
+			await createStaffHospital({
+				staffId: staff.id,
+				hospitalId: payload.hospitalId
+			});
 		}
 
 		return { staff, userId: user.id, generatedPassword };

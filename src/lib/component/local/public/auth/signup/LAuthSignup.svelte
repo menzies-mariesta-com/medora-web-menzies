@@ -92,7 +92,7 @@
 			name: name || email,
 			email,
 			password,
-			callbackURL: WebRoutesEnum.HEKA_HOME
+			callbackURL: WebRoutesEnum.HEKA_HOSPITAL
 		});
 		if (error) {
 			isLoading = false;
@@ -124,7 +124,7 @@
 		}
 		isLoading = false;
 		if (data) {
-			await goto(WebRoutesEnum.HEKA_HOME);
+			await goto(WebRoutesEnum.HEKA_HOSPITAL);
 		}
 	}
 </script>
