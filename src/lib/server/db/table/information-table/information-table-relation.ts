@@ -49,6 +49,10 @@ import { userTable } from '../auth-table/auth-table';
 
 // Information table relations (alphabetical)
 export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) => ({
+	owner: one(userTable, {
+		fields: [hospitalTable.ownerId],
+		references: [userTable.id],
+	}),
 	status: one(statusTable, {
 		fields: [hospitalTable.statusId],
 		references: [statusTable.id],
@@ -64,6 +68,14 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	country: one(countryTable, {
 		fields: [hospitalTable.countryId],
 		references: [countryTable.id],
+	}),
+	phoneCountry: one(countryTable, {
+		fields: [hospitalTable.phoneCountryId],
+		references: [countryTable.id],
+	}),
+	postalCode: one(postalCodeTable, {
+		fields: [hospitalTable.postalCodeId],
+		references: [postalCodeTable.id],
 	}),
 	userGroups: many(userGroupTable),
 	hospitalDepartments: many(hospitalDepartmentTable),

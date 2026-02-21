@@ -7,6 +7,6 @@
 	const routerUtil = new RouterUtil();
 
 	lifeCycleUtil.onMount(() => {
-		routerUtil.goToRoute(WebRoutesEnum.HEKA_HOME);
+		routerUtil.goToRoute(WebRoutesEnum.HEKA_HOSPITAL);
 	});
 </script>

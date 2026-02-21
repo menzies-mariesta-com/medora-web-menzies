@@ -48,7 +48,7 @@
 		const { data, error } = await authClient.signIn.email({
 			email,
 			password,
-			callbackURL: WebRoutesEnum.HEKA_HOME
+			callbackURL: WebRoutesEnum.HEKA_HOSPITAL
 		});
 		isLoading = false;
 
@@ -57,7 +57,7 @@
 			return;
 		}
 		if (data) {
-			await goto(WebRoutesEnum.HEKA_HOME);
+			await goto(WebRoutesEnum.HEKA_HOSPITAL);
 		}
 	}
 </script>

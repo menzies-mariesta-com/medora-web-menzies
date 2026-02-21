@@ -1,29 +1,20 @@
 import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 import type {
 	DialogInterface,
+	DialogOpenOptions,
 	DialogSlotProps
 } from '$lib/model/interface/dialog.interface';
 import { DialogState } from '$lib/state/dialog.state.svelte';
 import type { Component, Snippet } from 'svelte';
 
-export interface DialogOpenOptions {
-	title?: string;
-	message?: string;
-	variant?: DialogVariantEnum;
-	fullScreen?: boolean;
-	children?: Snippet<[DialogSlotProps]>;
-	component?: Component<DialogSlotProps>;
-	onClose?: () => void;
-	onConfirm?: (data?: unknown) => void;
-	onCancel?: () => void;
-}
+export type { DialogOpenOptions };
 
 export type DialogResult<T = unknown> =
 	| { confirmed: true; data?: T }
 	| { confirmed: false };
 
 export class DialogService {
-	open<T = unknown>(options: DialogOpenOptions): Promise<DialogResult<T>> {
+	open<T = unknown>(options: DialogOpenOptions<T>): Promise<DialogResult<T>> {
 		return new Promise((resolve) => {
 			const dialog: DialogInterface = {
 				id: Date.now(),
@@ -34,7 +25,7 @@ export class DialogService {
 				children: options.children,
 				component: options.component,
 				onClose: options.onClose,
-				onConfirm: options.onConfirm,
+				onConfirm: options.onConfirm as (data?: unknown) => void,
 				onCancel: options.onCancel,
 				_resolve: resolve as DialogInterface['_resolve']
 			};
