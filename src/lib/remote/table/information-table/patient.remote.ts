@@ -11,7 +11,7 @@ import type {
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, like, ne, or, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
@@ -93,9 +93,19 @@ export const getPatientPaginated = query(
 			);
 
 		const notDeletedCondition = ne(table.patientTable.statusId, StatusEnum.DELETED);
-		const whereExpr = searchCondition
+		let whereExpr = searchCondition
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
+
+		// When hospitalId is set, only patients whose code was issued by that hospital (code prefix = hospital code)
+		const hospitalId = params?.hospitalId;
+		if (hospitalId != null && Number.isInteger(hospitalId)) {
+			const hospital = await getHospitalById({ id: hospitalId });
+			const codePrefix = hospital?.code?.trim();
+			if (codePrefix) {
+				whereExpr = and(whereExpr, like(table.patientTable.code, `${codePrefix}%`));
+			}
+		}
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.patientTable.findMany({
