@@ -6,6 +6,18 @@ export interface DialogSlotProps {
 	cancel: () => void;
 }
 
+export interface DialogOpenOptions<T = unknown> {
+	title?: string;
+	message?: string;
+	variant?: DialogVariantEnum;
+	fullScreen?: boolean;
+	children?: Snippet<[DialogSlotProps]>;
+	component?: Component<DialogSlotProps>;
+	onClose?: () => void;
+	onConfirm?: (data?: T) => void;
+	onCancel?: () => void;
+}
+
 export interface DialogInterface {
 	id: number;
 	title?: string;

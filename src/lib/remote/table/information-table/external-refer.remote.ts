@@ -55,9 +55,14 @@ export const getExternalReferPaginated = query(
 				ilike(table.externalReferTable.email, pattern)
 			);
 		const notDeletedCondition = ne(table.externalReferTable.statusId, StatusEnum.DELETED);
-		const whereExpr = searchCondition
+		let whereExpr = searchCondition
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
+
+		const hospitalId = params?.hospitalId;
+		if (hospitalId != null && Number.isInteger(hospitalId)) {
+			whereExpr = and(whereExpr, eq(table.externalReferTable.hospitalId, hospitalId));
+		}
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.externalReferTable.findMany({

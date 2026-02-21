@@ -27,7 +27,7 @@
 
 	function getResetRedirectUrl(): string {
 		if (typeof window === 'undefined') return '';
-		return `${window.location.origin}${WebRoutesEnum.FORGET_PASSWORD}`;
+		return `${window.location.origin}${WebRoutesEnum.RESET_PASSWORD}`;
 	}
 
 	async function handleRequestReset(e: SubmitEvent) {
