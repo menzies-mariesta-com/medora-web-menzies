@@ -17,6 +17,8 @@
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
 	import { createStaff } from '$lib/remote/table/information-table/staff.remote';
+	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
+	import { RoleEnum } from '$lib/model/enum/db-link';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -99,12 +101,13 @@
 			toastService.addToast(error.message ?? 'Sign up failed. Please try again.', StatusColorEnum.ERROR);
 			return;
 		}
-		// Create staff profile linked to the new user (1:1) via remote
+		// Create staff profile linked to the new user (1:1) via remote; signup = OWNER role
 		if (data?.user) {
 			const countryId = selectedCountryId ? Number(selectedCountryId) : undefined;
 			const genderId = selectedGenderId ? Number(selectedGenderId) : undefined;
 
 			try {
+				await updateUser({ id: data.user.id, roleId: RoleEnum.OWNER });
 				await createStaff({
 					userId: data.user.id,
 					firstName,

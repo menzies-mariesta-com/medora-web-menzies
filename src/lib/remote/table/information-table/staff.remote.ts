@@ -3,7 +3,7 @@ import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq, or, ilike, ne, and, inArray, sql } from 'drizzle-orm';
@@ -409,7 +409,7 @@ export const createStaffWithUser = command(
 		const generatedPassword = generateRandomPassword(16);
 		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
 
-		// Create user
+		// Create user (hospital staff registration => STAFF role)
 		const userId = uuidv7();
 		const [user] = await ensureDb()
 			.insert(userTable)
@@ -417,7 +417,8 @@ export const createStaffWithUser = command(
 				id: userId,
 				name: payload.name,
 				email: payload.email,
-				emailVerified: false
+				emailVerified: false,
+				roleId: RoleEnum.STAFF
 			})
 			.returning();
 
