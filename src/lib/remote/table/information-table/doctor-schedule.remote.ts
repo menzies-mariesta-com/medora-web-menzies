@@ -9,13 +9,21 @@ import type {
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 
-// get all
-export const getDoctorSchedule = query(async (): Promise<DoctorScheduleSchema[]> => {
-	const data = await ensureDb().select().from(table.doctorScheduleTable);
-	return data;
-});
+// get all (optional hospitalId to scope to one hospital)
+export const getDoctorSchedule = query(
+	'unchecked' as const,
+	async (params?: { hospitalId?: number }): Promise<DoctorScheduleSchema[]> => {
+		if (params?.hospitalId != null && Number.isInteger(params.hospitalId)) {
+			return ensureDb()
+				.select()
+				.from(table.doctorScheduleTable)
+				.where(eq(table.doctorScheduleTable.hospitalId, params.hospitalId));
+		}
+		return ensureDb().select().from(table.doctorScheduleTable);
+	}
+);
 
 // get count
 export const getDoctorScheduleCount = query(async (): Promise<number> => {
@@ -43,17 +51,25 @@ export const getDoctorSchedulePaginated = query(
 	}
 );
 
-// get all with relations
-export const getDoctorScheduleWithRelations = query(async () => {
-	return ensureDb().query.doctorScheduleTable.findMany({
-		with: {
-			doctor: true,
-			hospital: true,
-			weekday: true,
-			status: true,
-		},
-	});
-});
+// get all with relations (optional hospitalId to scope to one hospital)
+export const getDoctorScheduleWithRelations = query(
+	'unchecked' as const,
+	async (params?: { hospitalId?: number }) => {
+		const hospitalId = params?.hospitalId;
+		return ensureDb().query.doctorScheduleTable.findMany({
+			...(hospitalId != null &&
+				Number.isInteger(hospitalId) && {
+					where: eq(table.doctorScheduleTable.hospitalId, hospitalId),
+				}),
+			with: {
+				doctor: true,
+				hospital: true,
+				weekday: true,
+				status: true,
+			},
+		});
+	}
+);
 
 // get one
 export const getDoctorScheduleById = query(

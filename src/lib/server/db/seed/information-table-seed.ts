@@ -52,9 +52,17 @@ export async function seedInformationTables() {
 			(1, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: user_group');
+	console.log('Seeded: hospital');
 
-	// 2. User Groups (depends: status)
+	// 2b. Hospital patient code counter (one row per hospital, start at 0 so first code is 1)
+	await db.execute(sql`
+		INSERT INTO hospital_patient_code_counter (hospital_id, last_number)
+		SELECT id, 0 FROM hospital
+		ON CONFLICT (hospital_id) DO NOTHING;
+	`);
+	console.log('Seeded: hospital_patient_code_counter');
+
+	// 3. User Groups (depends: status)
 	await db.execute(sql`
 		INSERT INTO user_group (id, name, status_id, hospital_id)
 		VALUES 
@@ -82,6 +90,13 @@ export async function seedInformationTables() {
 			(100001, 'Staff Registration', 1, 1, 1, '/heka/home/administration/staff/registration', 1),
 			(100002, 'Staff List', 1, 1, 1, '/heka/home/administration/staff/list', 2),
 
+			-- schedule
+			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
+			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
+
+			-- external refer master
+			(5, 'External Refer Master', 1, 1, null, '/heka/home/administration/external-refer-master', 1),
+
 			
 			-- Registration Module
 			-- patient pages
@@ -90,9 +105,6 @@ export async function seedInformationTables() {
 			(200002, 'Patient List', 2, 1, 2, '/heka/home/registration/patient/list', 2),
 
 			-- Administration Module
-			-- schedule
-			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
-			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
 
 			-- Appointment Module
 			-- doctor appointments
