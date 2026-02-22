@@ -5,6 +5,6 @@
 	}>();
 </script>
 
-<div class=" d-join-item {className}">
+<div class="d-btn d-join-item {className}">
 	{@render children()}
 </div>
