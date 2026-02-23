@@ -15,7 +15,7 @@ export type PaginationParams = {
 	/** Optional search term for list endpoints (e.g. staff list). */
 	search?: string;
 	/** Optional hospital id to scope list data (e.g. under /heka/hospital/[id]/home/). */
-	hospitalId?: number;
+	hospitalId?: string;
 	/** Optional cache-busting key; when set, bypasses client cache (e.g. after edit). */
 	_t?: number;
 };

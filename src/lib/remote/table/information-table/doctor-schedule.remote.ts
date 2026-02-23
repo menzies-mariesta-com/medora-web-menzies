@@ -11,11 +11,11 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq } from 'drizzle-orm';
 
-// get all (optional hospitalId to scope to one hospital)
+// get all (optional hospitalId UUID to scope to one hospital)
 export const getDoctorSchedule = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: number }): Promise<DoctorScheduleSchema[]> => {
-		if (params?.hospitalId != null && Number.isInteger(params.hospitalId)) {
+	async (params?: { hospitalId?: string }): Promise<DoctorScheduleSchema[]> => {
+		if (params?.hospitalId != null && params.hospitalId !== '') {
 			return ensureDb()
 				.select()
 				.from(table.doctorScheduleTable)
@@ -51,14 +51,14 @@ export const getDoctorSchedulePaginated = query(
 	}
 );
 
-// get all with relations (optional hospitalId to scope to one hospital)
+// get all with relations (optional hospitalId UUID to scope to one hospital)
 export const getDoctorScheduleWithRelations = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: number }) => {
+	async (params?: { hospitalId?: string }) => {
 		const hospitalId = params?.hospitalId;
 		return ensureDb().query.doctorScheduleTable.findMany({
 			...(hospitalId != null &&
-				Number.isInteger(hospitalId) && {
+				hospitalId !== '' && {
 					where: eq(table.doctorScheduleTable.hospitalId, hospitalId),
 				}),
 			with: {

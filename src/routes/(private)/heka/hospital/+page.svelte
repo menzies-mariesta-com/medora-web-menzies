@@ -53,12 +53,12 @@
 		}
 	}
 
-	function goToHospitalHome(hospitalId: number) {
+	function goToHospitalHome(hospitalId: string) {
 		routerUtil.goToRoute(hekaHospitalHome(hospitalId));
 	}
 
 	async function openEditHospitalModal(h: HospitalWithOwner) {
-		HospitalModalState.hospitalId = h.id;
+		HospitalModalState.hospitalId = h.id as string;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
 		HospitalModalState.currentUserId = data?.user ? (data.user as { id?: string }).id : undefined;
 		const result = await dialogService.open({

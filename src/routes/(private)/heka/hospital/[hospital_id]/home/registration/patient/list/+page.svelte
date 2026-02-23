@@ -48,7 +48,7 @@
 	const total = $derived(patientResult?.total ?? 0);
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? Number(page.params.hospital_id) : undefined
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
@@ -59,7 +59,7 @@
 				page: currentPage,
 				pageSize,
 				search: searchInput.trim() || undefined,
-				hospitalId: Number.isInteger(hospitalId) ? hospitalId : undefined,
+				hospitalId: hospitalId ?? undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
