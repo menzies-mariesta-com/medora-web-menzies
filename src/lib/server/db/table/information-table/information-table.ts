@@ -378,7 +378,7 @@ export const appointmentBlockTable = pgTable('appointment_block', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
 	blockDate: date('block_date').notNull(),
 	fromTime: time('from_time').notNull(),
 	toTime: time('to_time').notNull(),
