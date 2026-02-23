@@ -45,11 +45,11 @@ export async function seedInformationTables() {
 	`);
 	console.log('Seeded: module');
 
-	// 2. Hospital (depends: status)
+	// 2. Hospital (depends: status). id is UUID.
 	await db.execute(sql`
 		INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
 		VALUES 
-			(1, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
+			('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: hospital');
@@ -62,19 +62,7 @@ export async function seedInformationTables() {
 	`);
 	console.log('Seeded: hospital_patient_code_counter');
 
-	// 3. User Groups (depends: status)
-	await db.execute(sql`
-		INSERT INTO user_group (id, name, status_id, hospital_id)
-		VALUES 
-			(1, 'Administration',  1, 1),
-			(2, 'Doctor',  1, 1),
-			(3, 'Nursing',  1, 1),
-			(4, 'Cashier',  1, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: user_group');
-
-	// 4. Page (depends: module, status)
+	// 3. Page (depends: module, status)
 	await db.execute(sql`
 		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
 		VALUES
@@ -97,7 +85,9 @@ export async function seedInformationTables() {
 			-- external refer master
 			(5, 'External Refer Master', 1, 1, null, '/heka/home/administration/external-refer-master', 1),
 
-			
+			-- user group (per-hospital management)
+			(6, 'User Group', 1, 1, null, '/heka/home/administration/user-group', 4),
+
 			-- Registration Module
 			-- patient pages
 			(2, 'Patient', 2, 1, null, '/heka/home/registration/patient', 1),

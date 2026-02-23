@@ -28,17 +28,29 @@ export enum WebRoutesEnum {
 	HEKA_HOME_ACCOUNT = '/heka/home/account',
 }
 
-/** Base path for a hospital's home (modules: administration, appointment, registration). */
-export function hekaHospitalHome(hospitalId: string | number): string {
+/** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */
+export function hekaHospitalHome(hospitalId: string): string {
 	return `/heka/hospital/${hospitalId}/home`;
 }
 
 /**
  * Rewrite DB page URL (/heka/home/...) to hospital-scoped URL.
  */
-export function hekaHospitalPageUrl(hospitalId: string | number, pageUrl: string | null): string {
+export function hekaHospitalPageUrl(hospitalId: string, pageUrl: string | null): string {
 	if (!pageUrl || !pageUrl.startsWith('/heka/home')) return pageUrl ?? '';
 	return `/heka/hospital/${hospitalId}/home${pageUrl.slice('/heka/home'.length) || ''}`;
+}
+
+/**
+ * Convert request pathname under hospital home to DB page URL (/heka/home/...).
+ * Returns null if pathname is not under /heka/hospital/{hospitalId}/home.
+ */
+export function requestPathToDbPageUrl(pathname: string, hospitalId: string): string | null {
+	const prefix = `/heka/hospital/${hospitalId}/home`;
+	if (!pathname.startsWith(prefix)) return null;
+	const suffix = pathname.slice(prefix.length) || '';
+	const dbPath = '/heka/home' + (suffix === '/' ? '' : suffix);
+	return dbPath.replace(/\/$/, '') || '/heka/home';
 }
 
 export enum ServerRoutesEnum {
