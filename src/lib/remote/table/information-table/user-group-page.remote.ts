@@ -6,6 +6,34 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
+/** Get all user_group_page rows for a user group (to know which pages are assigned). */
+export const getByUserGroupId = query(
+	'unchecked' as const,
+	async ({ userGroupId }: { userGroupId: number }): Promise<UserGroupPageSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.userGroupPageTable)
+			.where(eq(table.userGroupPageTable.userGroupId, userGroupId));
+	}
+);
+
+/** Replace page assignments for a user group: delete existing and insert the given page IDs. */
+export const setPagesForUserGroup = command(
+	'unchecked' as const,
+	async ({ userGroupId, pageIds }: { userGroupId: number; pageIds: number[] }): Promise<void> => {
+		await ensureDb()
+			.delete(table.userGroupPageTable)
+			.where(eq(table.userGroupPageTable.userGroupId, userGroupId));
+		for (const pageId of pageIds) {
+			await ensureDb().insert(table.userGroupPageTable).values({
+				userGroupId,
+				pageId,
+			});
+		}
+		getUserGroupPage().refresh();
+	}
+);
+
 // get all
 export const getUserGroupPage = query(async (): Promise<UserGroupPageSchema[]> => {
 	const data = await ensureDb().select().from(table.userGroupPageTable);

@@ -615,7 +615,7 @@ const currentPatientId = $derived(viewId || editId);
 				const result = await createPatientWithUser({
 					email: email.trim(),
 					name: fullName,
-					hospitalId: selectedHospitalId ? Number(selectedHospitalId) : 0,
+					hospitalId: selectedHospitalId ?? '',
 					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
 					firstName: firstName.trim(),
 					middleName: middleName.trim() || undefined,

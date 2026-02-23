@@ -80,7 +80,7 @@ export const updateStaffHospital = command(
 	async (payload: {
 		id: number;
 		staffId?: string;
-		hospitalId?: number;
+		hospitalId?: string;
 	}): Promise<StaffHospitalSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()

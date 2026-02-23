@@ -48,7 +48,7 @@
 	let establishedDate = $state('');
 	let isSubmitting = $state(false);
 	let isLoading = $state(false);
-	let editId = $state<number | null>(null);
+	let editId = $state<string | null>(null);
 
 	let countries = $state<CountrySchema[]>([]);
 	let states = $state<StateSchema[]>([]);
@@ -115,7 +115,7 @@
 		]);
 	}
 
-	async function loadHospitalForEdit(id: number) {
+	async function loadHospitalForEdit(id: string) {
 		const h = await getHospitalById({ id });
 		if (!h) return;
 		const loadedCountryId = h.countryId != null ? String(h.countryId) : '';
