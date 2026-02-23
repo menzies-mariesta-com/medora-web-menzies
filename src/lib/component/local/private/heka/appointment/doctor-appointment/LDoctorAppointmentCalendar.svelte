@@ -10,13 +10,20 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
+	import LBlockTimeDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LBlockTimeDialogContent.svelte';
 	import LCreateAppointmentDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LCreateAppointmentDialogContent.svelte';
 	import LEditAppointmentDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LEditAppointmentDialogContent.svelte';
+	import LEditBlockDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LEditBlockDialogContent.svelte';
+	import { BlockTimeDialogState } from '$lib/state/block-time-dialog.state.svelte';
 	import { CreateAppointmentDialogState } from '$lib/state/create-appointment-dialog.state.svelte';
 	import { EditAppointmentDialogState } from '$lib/state/edit-appointment-dialog.state.svelte';
+	import { EditBlockDialogState } from '$lib/state/edit-block-dialog.state.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { deleteAppointment } from '$lib/remote/table/information-table/appointment.remote';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import LucideBan from '$lib/component/library/lucide/LucideBan.svelte';
 
 	/** Slot shape: date (YYYY-MM-DD), startTime/endTime (HH:mm or HH:mm:ss). */
 	type ScheduleSlot = {
@@ -24,8 +31,20 @@
 		startTime: string;
 		endTime: string;
 	};
-	/** Appointment slot may include patient name and id for display and edit. */
-	type AppointmentSlot = ScheduleSlot & { patientName?: string; appointmentId?: number };
+	/** Blocked time slot: no appointments can be made in this range. Optional blockId for edit/delete. */
+	export type BlockSlot = ScheduleSlot & { blockId?: number };
+	/** Appointment slot state: unconfirmed → confirmed → check-in (reversible). */
+	export type AppointmentSlotState =
+		| 'unconfirmed'
+		| 'confirmed'
+		| 'check-in';
+	/** Appointment slot may include patient name, id, and state for display and edit. */
+	type AppointmentSlot = ScheduleSlot & {
+		patientName?: string;
+		appointmentId?: number;
+		/** State for legend and cell color; defaults to 'unconfirmed' when missing. */
+		slotState?: AppointmentSlotState;
+	};
 
 	let {
 		selectDate,
@@ -35,11 +54,19 @@
 		selectedDoctorId = '',
 		scheduleSlots = [] as ScheduleSlot[],
 		appointmentSlots = [] as AppointmentSlot[],
+		/** Blocked time slots: cells in these ranges show as blocked; no appointments can be created. */
+		blockSlots = [] as BlockSlot[],
 		scheduleStartDate,
 		scheduleEndDate,
 		/** Interval in minutes for time column (e.g. 15 → 00:00, 00:15, 00:30 …). Default 15 so full 24h column always shows. */
 		slotDurationMinutes = 15,
-		onAppointmentCreated
+		onAppointmentCreated,
+		/** Called after a block is added (only if the range has no existing appointments). */
+		onBlockCreated,
+		/** Called after a block is updated. */
+		onBlockUpdated,
+		/** Called after a block is deleted. */
+		onBlockDeleted
 	} = $props<{
 		selectDate: string;
 		viewBy?: 'day' | 'week' | 'month';
@@ -52,6 +79,8 @@
 		scheduleSlots?: ScheduleSlot[];
 		/** Existing appointments: cells inside any slot get bg-primary; optional patientName shown in cell. */
 		appointmentSlots?: AppointmentSlot[];
+		/** Blocked time slots: no appointments in these ranges; cells use bg-error. */
+		blockSlots?: BlockSlot[];
 		/** Legacy: date range outside which cells get bg-base-200. */
 		scheduleStartDate?: string;
 		scheduleEndDate?: string;
@@ -59,11 +88,24 @@
 		slotDurationMinutes?: number;
 		/** Called after an appointment is created so the page can refetch and show it. */
 		onAppointmentCreated?: () => void | Promise<void>;
+		/** Called when user adds a block (only if range has no appointments). */
+		onBlockCreated?: (block: BlockSlot) => void | Promise<void>;
+		/** Called when user updates a block. */
+		onBlockUpdated?: (payload: {
+			id: number;
+			date: string;
+			startTime: string;
+			endTime: string;
+		}) => void | Promise<void>;
+		/** Called when user deletes a block. */
+		onBlockDeleted?: (blockId: number) => void | Promise<void>;
 	}>();
 
 	let selectedAppointmentId = $state<number | null>(null);
+	let selectedBlockId = $state<number | null>(null);
 
 	const dateTimeUtil = new DateTimeUtil();
+	const toastService = new ToastService();
 
 	/** Local YYYY-MM-DD so column dates match schedule slot dates (no UTC shift). */
 	function toLocalDateString(d: Date): string {
@@ -203,6 +245,36 @@
 		);
 	}
 
+	/** True if (date, timeSlot) is inside any blocked slot → no appointments allowed. */
+	function isCellInBlock(
+		dateString: string,
+		timeSlot: string
+	): boolean {
+		const t = toHHmm(timeSlot);
+		return blockSlots.some(
+			(s: BlockSlot) =>
+				s.date === dateString &&
+				toHHmm(s.startTime) <= t &&
+				t < toHHmm(s.endTime)
+		);
+	}
+
+	/** Block id for a cell that is inside a block (first matching slot), or null. */
+	function getCellBlockId(
+		dateString: string,
+		timeSlot: string
+	): number | null {
+		const t = toHHmm(timeSlot);
+		const slot = blockSlots.find(
+			(s: BlockSlot) =>
+				s.date === dateString &&
+				toHHmm(s.startTime) <= t &&
+				t < toHHmm(s.endTime)
+		);
+		const id = (slot as BlockSlot | undefined)?.blockId;
+		return id != null ? id : null;
+	}
+
 	/** True if (date, timeSlot) is inside any appointment slot → use bg-primary. */
 	function isCellInAppointment(
 		dateString: string,
@@ -229,7 +301,9 @@
 				toHHmm(s.startTime) <= t &&
 				t < toHHmm(s.endTime)
 		);
-		return (slot as AppointmentSlot | undefined)?.patientName?.trim() ?? '';
+		return (
+			(slot as AppointmentSlot | undefined)?.patientName?.trim() ?? ''
+		);
 	}
 
 	/** Appointment id for a cell that is inside an appointment (first matching slot). */
@@ -248,10 +322,44 @@
 		return id != null ? id : null;
 	}
 
+	/** Slot state for a cell that is inside an appointment (first matching slot). Defaults to 'unconfirmed'. */
+	function getCellAppointmentState(
+		dateString: string,
+		timeSlot: string
+	): AppointmentSlotState {
+		const t = toHHmm(timeSlot);
+		const slot = appointmentSlots.find(
+			(s: AppointmentSlot) =>
+				s.date === dateString &&
+				toHHmm(s.startTime) <= t &&
+				t < toHHmm(s.endTime)
+		);
+		const state = (slot as AppointmentSlot | undefined)?.slotState;
+		return state === 'confirmed' || state === 'check-in'
+			? state
+			: 'unconfirmed';
+	}
+
+	/** Text class for appointment cell label so it contrasts with state bg (warning/primary/success). */
+	function getCellAppointmentLabelClass(
+		dateString: string,
+		timeSlot: string
+	): string {
+		const state = getCellAppointmentState(dateString, timeSlot);
+		if (state === 'check-in') return 'text-success-content';
+		if (state === 'confirmed') return 'text-primary-content';
+		return 'text-warning-content';
+	}
+
 	/** True if (dateString, timeSlot) is in the past (slot start before now). */
-	function isCellInPast(dateString: string, timeSlot: string): boolean {
+	function isCellInPast(
+		dateString: string,
+		timeSlot: string
+	): boolean {
 		const slotStart = new Date(dateString + 'T' + timeSlot);
-		return isNaN(slotStart.getTime()) || slotStart.getTime() < Date.now();
+		return (
+			isNaN(slotStart.getTime()) || slotStart.getTime() < Date.now()
+		);
 	}
 
 	/** True if this column date is outside the doctor schedule range (irrelevant → grey). */
@@ -262,11 +370,23 @@
 		);
 	}
 
-	/** Cell bg: appointment = bg-primary, in-schedule = primary/30, outside or irrelevant = grey. */
+	/** Cell bg: blocked > appointment by state > in-schedule > off/irrelevant. */
 	function getCellBg(dateString: string, timeSlot: string): string {
 		if (isDateIrrelevant(dateString)) return 'bg-base-200';
-		if (appointmentSlots.length > 0 && isCellInAppointment(dateString, timeSlot)) {
-			return 'bg-primary';
+		if (
+			blockSlots.length > 0 &&
+			isCellInBlock(dateString, timeSlot)
+		) {
+			return 'bg-error';
+		}
+		if (
+			appointmentSlots.length > 0 &&
+			isCellInAppointment(dateString, timeSlot)
+		) {
+			const state = getCellAppointmentState(dateString, timeSlot);
+			if (state === 'check-in') return 'bg-success';
+			if (state === 'confirmed') return 'bg-primary';
+			return 'bg-warning';
 		}
 		if (scheduleSlots.length > 0) {
 			return isCellInSchedule(dateString, timeSlot)
@@ -276,15 +396,103 @@
 		return 'bg-base-100';
 	}
 
-	const canInteractWithCalendar = $derived(!!selectedDoctorId?.trim());
+	/** Outline class for past-time cells (disabled; no ring on past time). */
+	function getCellPastOutline(_dateString: string, _timeSlot: string): string {
+		return '';
+	}
 
-	/** Creating is allowed only when doctor is selected, cell has no existing appointment, and slot is not in the past. */
-	function canCreateInCell(dateString: string, timeSlot: string): boolean {
+	const canInteractWithCalendar = $derived(
+		!!selectedDoctorId?.trim()
+	);
+
+	/** Creating is allowed only when doctor is selected, cell is not blocked, has no appointment, and is not in the past. */
+	function canCreateInCell(
+		dateString: string,
+		timeSlot: string
+	): boolean {
 		return (
 			canInteractWithCalendar &&
+			!isCellInBlock(dateString, timeSlot) &&
 			!isCellInAppointment(dateString, timeSlot) &&
 			!isCellInPast(dateString, timeSlot)
 		);
+	}
+
+	/** True if the block range overlaps any existing appointment. */
+	function blockOverlapsAppointment(block: BlockSlot): boolean {
+		const blockStart = toHHmm(block.startTime);
+		const blockEnd = toHHmm(block.endTime);
+		return appointmentSlots.some((a: AppointmentSlot) => {
+			if (a.date !== block.date) return false;
+			const aStart = toHHmm(a.startTime);
+			const aEnd = toHHmm(a.endTime);
+			return blockStart < aEnd && aStart < blockEnd;
+		});
+	}
+
+	async function openBlockDialog() {
+		if (!canInteractWithCalendar) return;
+		BlockTimeDialogState.slotDurationMinutes =
+			slotDurationMinutes ?? 15;
+		const result = await dialogService.open<{
+			date: string;
+			startTime: string;
+			endTime: string;
+		}>({
+			title: 'Block time',
+			component: LBlockTimeDialogContent
+		});
+		if (result?.confirmed && result.data) {
+			const block: BlockSlot = {
+				date: result.data.date,
+				startTime: result.data.startTime,
+				endTime: result.data.endTime
+			};
+			if (blockOverlapsAppointment(block)) {
+				toastService.addToast(
+					'Cannot block this time: it overlaps an existing appointment.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			await onBlockCreated?.(block);
+		}
+	}
+
+	async function openEditBlockDialog(blockId: number) {
+		const slot = blockSlots.find(
+			(s: BlockSlot) => s.blockId === blockId
+		);
+		if (!slot) return;
+		EditBlockDialogState.blockId = blockId;
+		EditBlockDialogState.date = slot.date;
+		EditBlockDialogState.startTime = slot.startTime;
+		EditBlockDialogState.endTime = slot.endTime;
+		const result = await dialogService.open<{
+			id: number;
+			date: string;
+			startTime: string;
+			endTime: string;
+		}>({
+			title: 'Edit block',
+			component: LEditBlockDialogContent
+		});
+		EditBlockDialogState.blockId = null;
+		if (result?.confirmed && result.data) {
+			const block: BlockSlot = {
+				date: result.data.date,
+				startTime: result.data.startTime,
+				endTime: result.data.endTime
+			};
+			if (blockOverlapsAppointment(block)) {
+				toastService.addToast(
+					'Cannot set this time: it overlaps an existing appointment.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			await onBlockUpdated?.(result.data);
+		}
 	}
 
 	async function openCreateAppointmentDialog(
@@ -293,8 +501,10 @@
 	) {
 		if (!canCreateInCell(dateString, timeSlot)) return;
 		CreateAppointmentDialogState.slot = { dateString, timeSlot };
-		CreateAppointmentDialogState.staffId = selectedDoctorId?.trim() || null;
-		CreateAppointmentDialogState.slotDurationMinutes = slotDurationMinutes ?? 15;
+		CreateAppointmentDialogState.staffId =
+			selectedDoctorId?.trim() || null;
+		CreateAppointmentDialogState.slotDurationMinutes =
+			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
 			title: 'Create appointment',
 			component: LCreateAppointmentDialogContent,
@@ -312,8 +522,10 @@
 	async function openCreateFromPlus() {
 		if (!canInteractWithCalendar) return;
 		CreateAppointmentDialogState.slot = null;
-		CreateAppointmentDialogState.staffId = selectedDoctorId?.trim() || null;
-		CreateAppointmentDialogState.slotDurationMinutes = slotDurationMinutes ?? 15;
+		CreateAppointmentDialogState.staffId =
+			selectedDoctorId?.trim() || null;
+		CreateAppointmentDialogState.slotDurationMinutes =
+			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
 			title: 'Create appointment',
 			component: LCreateAppointmentDialogContent,
@@ -329,7 +541,8 @@
 
 	async function openEditAppointmentDialog(aptId: number) {
 		EditAppointmentDialogState.appointmentId = aptId;
-		EditAppointmentDialogState.slotDurationMinutes = slotDurationMinutes ?? 15;
+		EditAppointmentDialogState.slotDurationMinutes =
+			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
 			title: 'Edit appointment',
 			component: LEditAppointmentDialogContent
@@ -345,7 +558,19 @@
 		const aptId = getCellAppointmentId(dateString, timeSlot);
 		if (aptId != null) {
 			selectedAppointmentId = aptId;
+			selectedBlockId = null;
 			openEditAppointmentDialog(aptId);
+			return;
+		}
+		const blockId = getCellBlockId(dateString, timeSlot);
+		if (blockId != null) {
+			selectedAppointmentId = null;
+			// First click: select block. Click same block again: open edit dialog.
+			if (selectedBlockId === blockId) {
+				openEditBlockDialog(blockId);
+			} else {
+				selectedBlockId = blockId;
+			}
 			return;
 		}
 		if (canCreateInCell(dateString, timeSlot)) {
@@ -360,6 +585,17 @@
 			await deleteAppointment({ id: selectedAppointmentId });
 			selectedAppointmentId = null;
 			await onAppointmentCreated?.();
+		} catch {
+			// toast or ignore
+		}
+	}
+
+	async function handleDeleteBlock() {
+		if (selectedBlockId == null) return;
+		if (!confirm('Remove this block?')) return;
+		try {
+			await onBlockDeleted?.(selectedBlockId);
+			selectedBlockId = null;
 		} catch {
 			// toast or ignore
 		}
@@ -381,6 +617,20 @@
 			</div>
 			<div>
 				<DaisyUiTooltip
+					tooltipText="Block time (no appointments in blocked range)"
+					className="d-tooltip-bottom d-tooltip-error"
+				>
+					<DaisyUiButton
+						className="d-btn-error d-btn-square"
+						onClick={() => openBlockDialog()}
+						disabled={!canInteractWithCalendar}
+					>
+						<LucideBan />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			</div>
+			<div>
+				<DaisyUiTooltip
 					tooltipText="create appointment (pick date & time)"
 					className="d-tooltip-left d-tooltip-primary"
 				>
@@ -394,28 +644,38 @@
 				</DaisyUiTooltip>
 
 				<DaisyUiTooltip
-					tooltipText="edit selected appointment (click a slot first)"
+					tooltipText="edit selected (click an appointment or blocked slot first)"
 					className="d-tooltip-left d-tooltip-accent"
 				>
 					<DaisyUiButton
 						className="d-btn-accent d-btn-square"
 						onClick={() => {
-							if (selectedAppointmentId != null) void openEditAppointmentDialog(selectedAppointmentId);
+							if (selectedAppointmentId != null)
+								void openEditAppointmentDialog(selectedAppointmentId);
+							else if (selectedBlockId != null)
+								void openEditBlockDialog(selectedBlockId);
 						}}
-						disabled={selectedAppointmentId == null}
+						disabled={selectedAppointmentId == null &&
+							selectedBlockId == null}
 					>
 						<LucidePencil />
 					</DaisyUiButton>
 				</DaisyUiTooltip>
 
 				<DaisyUiTooltip
-					tooltipText="delete selected appointment"
+					tooltipText="delete selected appointment or remove selected block"
 					className="d-tooltip-left d-tooltip-error"
 				>
 					<DaisyUiButton
 						className="d-btn-error d-btn-square"
-						onClick={() => handleDeleteSelected()}
-						disabled={selectedAppointmentId == null}
+						onClick={() => {
+							if (selectedAppointmentId != null)
+								void handleDeleteSelected();
+							else if (selectedBlockId != null)
+								void handleDeleteBlock();
+						}}
+						disabled={selectedAppointmentId == null &&
+							selectedBlockId == null}
 					>
 						<LucideTrash2 />
 					</DaisyUiButton>
@@ -447,32 +707,60 @@
 								>{formatTimeForDisplay(timeSlot)}</td
 							>
 							{#each headerCells as cell}
-								{@const canCreate = canCreateInCell(cell.dateString, timeSlot)}
-								{@const cellLabel = getCellAppointmentLabel(cell.dateString, timeSlot)}
-								{@const cellAptId = getCellAppointmentId(cell.dateString, timeSlot)}
-								{@const isSelected = cellAptId != null && cellAptId === selectedAppointmentId}
+								{@const canCreate = canCreateInCell(
+									cell.dateString,
+									timeSlot
+								)}
+								{@const cellLabel = getCellAppointmentLabel(
+									cell.dateString,
+									timeSlot
+								)}
+								{@const cellAptId = getCellAppointmentId(
+									cell.dateString,
+									timeSlot
+								)}
+								{@const cellBlockId = getCellBlockId(
+									cell.dateString,
+									timeSlot
+								)}
+								{@const isSelected =
+									(cellAptId != null &&
+										cellAptId === selectedAppointmentId) ||
+									(cellBlockId != null &&
+										cellBlockId === selectedBlockId)}
 								<td
-									role={canCreate || cellAptId != null ? 'button' : undefined}
-									tabindex={canCreate || cellAptId != null ? 0 : undefined}
-									class="min-w-28 transition-[filter] duration-150 {canCreate
+									role={canCreate || cellAptId != null || cellBlockId != null
+										? 'button'
+										: undefined}
+									tabindex={canCreate || cellAptId != null || cellBlockId != null
+										? 0
+										: undefined}
+									class="min-w-28 transition-[filter] duration-150 {canCreate ||
+									cellAptId != null ||
+									cellBlockId != null
 										? 'cursor-pointer hover:brightness-90'
-										: cellAptId != null
-											? 'cursor-pointer hover:brightness-90'
-											: 'cursor-not-allowed opacity-90'} {isSelected
+										: 'cursor-not-allowed opacity-90'} {isSelected
 										? 'ring-2 ring-accent ring-offset-2 ring-offset-base-100'
-										: ''} {getCellBg(
+										: ''} {getCellBg(cell.dateString, timeSlot)} {getCellPastOutline(
 										cell.dateString,
 										timeSlot
 									)}"
-									onclick={() => handleCellClick(cell.dateString, timeSlot)}
+									onclick={() =>
+										handleCellClick(cell.dateString, timeSlot)}
 									onkeydown={(e) =>
-										(canCreate || cellAptId != null) &&
+										(canCreate || cellAptId != null || cellBlockId != null) &&
 										e.key === 'Enter' &&
 										handleCellClick(cell.dateString, timeSlot)}
 								>
 									{#if cellLabel}
-										<span class="line-clamp-2 text-xs font-medium text-primary-content"
-											>{cellLabel}</span
+										<span
+											class="line-clamp-2 text-xs font-medium {cellAptId !=
+											null
+												? getCellAppointmentLabelClass(
+														cell.dateString,
+														timeSlot
+													)
+												: 'text-primary-content'}">{cellLabel}</span
 										>
 									{/if}
 								</td>
@@ -483,17 +771,41 @@
 			</DaisyUiTable>
 			<!-- legend -->
 		</div>
-		<div class="flex flex-wrap justify-center gap-7">
+		<div
+			class="flex flex-wrap items-center justify-center gap-x-7 gap-y-2"
+		>
 			<div class="flex items-center gap-2">
-				<span class="h-5 w-5 rounded-md bg-primary"></span>
-				appointment
+				<span class="h-5 w-5 rounded-md bg-error" aria-hidden="true"
+				></span>
+				blocked (no appointments)
 			</div>
 			<div class="flex items-center gap-2">
-				<span class="h-5 w-5 rounded-md bg-primary/30"></span>
+				<span class="h-5 w-5 rounded-md bg-warning" aria-hidden="true"
+				></span>
+				unconfirmed
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="h-5 w-5 rounded-md bg-primary" aria-hidden="true"
+				></span>
+				confirmed
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="h-5 w-5 rounded-md bg-success" aria-hidden="true"
+				></span>
+				check-in
+			</div>
+			<div class="flex items-center gap-2">
+				<span
+					class="h-5 w-5 rounded-md bg-primary/30"
+					aria-hidden="true"
+				></span>
 				on schedule
 			</div>
 			<div class="flex items-center gap-2">
-				<span class="h-5 w-5 rounded-md bg-base-200"></span>
+				<span
+					class="h-5 w-5 rounded-md bg-base-200"
+					aria-hidden="true"
+				></span>
 				off schedule
 			</div>
 		</div>
