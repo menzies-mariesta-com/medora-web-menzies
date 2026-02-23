@@ -41,7 +41,7 @@
 	const SLOT_TIMING_MAX = 60;
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? Number(page.params.hospital_id) : undefined
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
 
 	const DAYS = await getWeekday();
@@ -49,7 +49,7 @@
 
 	$effect(() => {
 		const hid = hospitalId;
-		if (hid != null && Number.isInteger(hid)) {
+		if (hid) {
 			getDoctorStaffList({ hospitalId: hid }).then((list) => {
 				DOCTOR_STAFF_LIST = list;
 			});
@@ -137,8 +137,8 @@
 			doctorSchedules = [];
 			return;
 		}
-		const hid = hospitalId != null && Number.isInteger(hospitalId) ? hospitalId : undefined;
-		const all = await getDoctorSchedule(hid != null ? { hospitalId: hid } : undefined);
+		const hid = hospitalId ?? undefined;
+		const all = await getDoctorSchedule(hid ? { hospitalId: hid } : undefined);
 		doctorSchedules = all.filter(
 			(s) =>
 				s.staffId === id &&
@@ -268,8 +268,7 @@
 			);
 			return;
 		}
-		const hid =
-			hospitalId != null && Number.isInteger(hospitalId) ? hospitalId : undefined;
+		const hid = hospitalId ?? undefined;
 		if (!hid) {
 			toastService.addToast('Hospital context is missing.', StatusColorEnum.ERROR);
 			return;

@@ -34,7 +34,9 @@ const timestamps = {
 
 // Information Tables (alphabetical) - business/transactional data
 export const hospitalTable = pgTable('hospital', {
-	id: serial('id').primaryKey(),
+	id: uuid('id')
+		.primaryKey()
+		.$defaultFn(() => uuidv7()),
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
 	address: text('address'),
@@ -59,7 +61,7 @@ export const hospitalTable = pgTable('hospital', {
 export const hospitalPatientCodeCounterTable = pgTable(
 	'hospital_patient_code_counter',
 	{
-		hospitalId: integer('hospital_id')
+		hospitalId: uuid('hospital_id')
 			.primaryKey()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		lastNumber: integer('last_number').notNull().default(0),
@@ -69,7 +71,7 @@ export const hospitalPatientCodeCounterTable = pgTable(
 
 export const hospitalDepartmentTable = pgTable('hospital_department', {
 	id: serial('id').primaryKey(),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id).notNull(),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id).notNull(),
 	departmentId: integer('department_id').references(() => departmentTable.id).notNull(),
 	...timestamps,
 });
@@ -136,7 +138,7 @@ export const staffHospitalTable = pgTable('staff_hospital', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	hospitalId: integer('hospital_id')
+	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id),
 	...timestamps,
@@ -224,7 +226,7 @@ export const userGroupTable = pgTable('user_group', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
 	//userGroupPageTable
 	...timestamps,
 });
@@ -318,7 +320,7 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	hospitalId: serial('hospital_id').notNull().references(() => hospitalTable.id),
+	hospitalId: uuid('hospital_id').notNull().references(() => hospitalTable.id),
 	weekdayId: serial('weekday_id').notNull().references(() => weekdayTable.id),
 	fromDate: date('from_date'),
 	toDate: date('to_date'),
@@ -333,7 +335,7 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 export const externalReferTable = pgTable('external_refer', {
 	id: serial('id').primaryKey(),
 	referTypeId: integer('refer_type_id').references(() => referTypeTable.id),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
 	titleId: integer('title_id').references(() => titleTable.id),
 	name: varchar('name', { length: 512 }),
 	address: text('address'),
@@ -376,7 +378,7 @@ export const appointmentBlockTable = pgTable('appointment_block', {
 	staffId: uuid('staff_id')
 		.notNull()
 		.references(() => staffTable.id),
-	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
 	blockDate: date('block_date').notNull(),
 	fromTime: time('from_time').notNull(),
 	toTime: time('to_time').notNull(),

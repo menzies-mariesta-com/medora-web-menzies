@@ -5,13 +5,48 @@ import type { UserGroupSchema, UserGroupSchemaInsert, UserGroupSchemaUpdate } fr
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
-// get all
-export const getUserGroup = query(async (): Promise<UserGroupSchema[]> => {
-	const data = await ensureDb().select().from(table.userGroupTable);
-	return data;
-});
+// get all (optional hospitalId to scope to one hospital)
+export const getUserGroup = query(
+	'unchecked' as const,
+	async (params?: { hospitalId?: string | null }): Promise<UserGroupSchema[]> => {
+		if (params?.hospitalId != null && params.hospitalId !== '') {
+			return ensureDb()
+				.select()
+				.from(table.userGroupTable)
+				.where(
+					and(
+						eq(table.userGroupTable.hospitalId, params.hospitalId),
+						ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+					)
+				)
+				.orderBy(table.userGroupTable.name);
+		}
+		return ensureDb()
+			.select()
+			.from(table.userGroupTable)
+			.where(ne(table.userGroupTable.statusId, StatusEnum.DELETED))
+			.orderBy(table.userGroupTable.name);
+	}
+);
+
+/** Get user groups for a hospital (for dropdowns and admin list). Excludes soft-deleted. */
+export const getUserGroupByHospitalId = query(
+	'unchecked' as const,
+	async ({ hospitalId }: { hospitalId: string }): Promise<UserGroupSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.userGroupTable)
+			.where(
+				and(
+					eq(table.userGroupTable.hospitalId, hospitalId),
+					ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+				)
+			)
+			.orderBy(table.userGroupTable.name);
+	}
+);
 
 // get count
 export const getUserGroupCount = query(async (): Promise<number> => {
@@ -19,14 +54,26 @@ export const getUserGroupCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+// get paginated (optional hospitalId to scope to one hospital)
 export const getUserGroupPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<UserGroupSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const hospitalId = params?.hospitalId;
+		const notDeleted = ne(table.userGroupTable.statusId, StatusEnum.DELETED);
+		const whereClause =
+			hospitalId != null && hospitalId !== ''
+				? and(eq(table.userGroupTable.hospitalId, hospitalId), notDeleted)
+				: notDeleted;
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.userGroupTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.userGroupTable),
+			ensureDb()
+				.select()
+				.from(table.userGroupTable)
+				.where(whereClause)
+				.orderBy(table.userGroupTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb().select({ count: count() }).from(table.userGroupTable).where(whereClause),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -77,7 +124,7 @@ export const getUserGroupById = query(
 	}
 );
 
-// create
+// create (hospitalId required when creating from hospital admin)
 export const createUserGroup = command(
 	'unchecked' as const,
 	async (payload: UserGroupSchemaInsert): Promise<UserGroupSchema> => {
@@ -86,7 +133,8 @@ export const createUserGroup = command(
 			.values(payload)
 			.returning();
 		if (!row) throw new Error('Insert failed');
-		getUserGroup().refresh();
+		getUserGroup(undefined).refresh();
+		getUserGroupPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -102,7 +150,8 @@ export const updateUserGroup = command(
 			.where(eq(table.userGroupTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
-		getUserGroup().refresh();
+		getUserGroup(undefined).refresh();
+		getUserGroupPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -115,7 +164,8 @@ export const deleteUserGroup = command(
 			.update(table.userGroupTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.userGroupTable.id, id));
-		getUserGroup().refresh();
+		getUserGroup(undefined).refresh();
+		getUserGroupPaginated(undefined).refresh();
 	}
 );
 
@@ -124,6 +174,7 @@ export const deleteUserGroupComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb().delete(table.userGroupTable).where(eq(table.userGroupTable.id, id));
-		getUserGroup().refresh();
+		getUserGroup(undefined).refresh();
+		getUserGroupPaginated(undefined).refresh();
 	}
 );

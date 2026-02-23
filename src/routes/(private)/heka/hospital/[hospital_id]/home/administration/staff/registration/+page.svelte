@@ -9,7 +9,7 @@
 	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
 	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
-	import { getUserGroup } from '$lib/remote/table/information-table/user-group.remote';
+	import { getUserGroupByHospitalId } from '$lib/remote/table/information-table/user-group.remote';
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { getGender } from '$lib/remote/table/master-table/gender.remote';
 	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
@@ -341,7 +341,7 @@ import { browser } from '$app/environment';
 		maritalStatusData = await getMaritalStatus();
 		countryData = await getCountry();
 		identityTypeData = await getIdentityType();
-		userGroupData = await getUserGroup();
+		userGroupData = await getUserGroupByHospitalId({ hospitalId: page.params.hospital_id });
 		staffEmploymentTypeData = await getStaffEmploymentType();
 		stateData = await getState();
 		cityData = await getCity();
@@ -567,12 +567,14 @@ import { browser } from '$app/environment';
 
 			// 1. Create staff first (without photo/signature image URLs); assign to current hospital when in hospital context
 			const urlHospitalId =
-				typeof page.params.hospital_id === 'string' ? Number(page.params.hospital_id) : undefined;
+				typeof page.params.hospital_id === 'string' && page.params.hospital_id
+					? page.params.hospital_id
+					: undefined;
 			const result = await createStaffWithUser({
 				email: selectedEmail.trim(),
 				name: fullName,
 				code: selectedStaffCode.trim(),
-				hospitalId: Number.isInteger(urlHospitalId) ? urlHospitalId : undefined,
+				hospitalId: urlHospitalId ?? undefined,
 				firstName: selectedFirstName.trim(),
 				middleName: selectedMiddleName.trim() || undefined,
 				lastName: selectedLastName.trim(),

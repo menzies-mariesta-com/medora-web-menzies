@@ -59,9 +59,9 @@ export const getPatientCount = query(async (): Promise<number> => {
  */
 export const getNextPatientCode = query(
 	'unchecked' as const,
-	async ({ hospitalId }: { hospitalId: number }): Promise<string> => {
+	async ({ hospitalId }: { hospitalId: string }): Promise<string> => {
 		const hospital = (await getHospitalById({ id: hospitalId })) as HospitalSchema | null;
-		const prefix = (hospital?.code?.trim() ?? String(hospitalId)).toUpperCase();
+		const prefix = (hospital?.code?.trim() ?? hospitalId).toUpperCase();
 		const counter = table.hospitalPatientCodeCounterTable;
 		const [row] = await ensureDb()
 			.insert(counter)
@@ -99,7 +99,7 @@ export const getPatientPaginated = query(
 
 		// When hospitalId is set, only patients whose code was issued by that hospital (code prefix = hospital code)
 		const hospitalId = params?.hospitalId;
-		if (hospitalId != null && Number.isInteger(hospitalId)) {
+		if (hospitalId != null && hospitalId !== '') {
 			const hospital = await getHospitalById({ id: hospitalId });
 			const codePrefix = hospital?.code?.trim();
 			if (codePrefix) {
@@ -375,8 +375,8 @@ export const createPatientWithUser = command(
 		// User fields
 		email: string;
 		name: string;
-		// Required for backend-generated patient code (Hospital Code + number)
-		hospitalId: number;
+		// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
+		hospitalId: string;
 		// Patient fields (only include fields that exist in patientTable); code is generated on backend
 		titleId?: number;
 		firstName?: string;

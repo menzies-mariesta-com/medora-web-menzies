@@ -97,7 +97,7 @@ export const updateHospitalDepartment = command(
 	'unchecked' as const,
 	async (payload: {
 		id: number;
-		hospitalId?: number;
+		hospitalId?: string;
 		departmentId?: number;
 	}): Promise<HospitalDepartmentSchema> => {
 		const { id, ...rest } = payload;
