@@ -23,7 +23,7 @@
 	import { page } from '$app/state';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? Number(page.params.hospital_id) : undefined
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
 
 	let doctorList = $state<StaffWithRelations[]>([]);
@@ -170,20 +170,20 @@
 
 	const lifeCycleutil = new LifeCycleUtil();
 	lifeCycleutil.onMount(async () => {
-		const hid = hospitalId != null && Number.isInteger(hospitalId) ? hospitalId : undefined;
-		doctorList = await getDoctorStaffList(hid != null ? { hospitalId: hid } : undefined);
+		const hid = hospitalId ?? undefined;
+		doctorList = await getDoctorStaffList(hid ? { hospitalId: hid } : undefined);
 	});
 
 	$effect(() => {
 		const id = selectedDoctorId.trim();
-		const hid = hospitalId != null && Number.isInteger(hospitalId) ? hospitalId : undefined;
+		const hid = hospitalId ?? undefined;
 		if (!id) {
 			doctorSchedules = [];
 			appointments = [];
 			appointmentBlocks = [];
 			return;
 		}
-		getDoctorSchedule(hid != null ? { hospitalId: hid } : undefined).then((all) => {
+		getDoctorSchedule(hid ? { hospitalId: hid } : undefined).then((all) => {
 			doctorSchedules = all.filter(
 				(s) =>
 					String(s.staffId) === String(id) &&

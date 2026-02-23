@@ -27,7 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
 		event.locals.staff = staff ?? null;
 		if (event.locals.userRoleId === RoleEnum.STAFF && staff?.staffHospitals?.length) {
-			event.locals.allowedHospitalIds = (staff.staffHospitals as { hospitalId: number }[]).map(
+			event.locals.allowedHospitalIds = (staff.staffHospitals as { hospitalId: string }[]).map(
 				(sh) => sh.hospitalId
 			);
 		} else {

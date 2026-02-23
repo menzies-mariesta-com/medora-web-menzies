@@ -19,8 +19,8 @@ declare global {
 			staff?: StaffSchema | null;
 			/** User's role id (from user.role_id). Used for STAFF vs OWNER/SYSTEM_ADMIN. */
 			userRoleId?: number | null;
-			/** When user is STAFF, only these hospital ids are allowed; else null = all. */
-			allowedHospitalIds?: number[] | null;
+			/** When user is STAFF, only these hospital ids (UUIDs) are allowed; else null = all. */
+			allowedHospitalIds?: string[] | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

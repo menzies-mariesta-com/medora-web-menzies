@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { query, command, getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -100,10 +100,13 @@ function generateRandomPassword(length: number = 16): string {
 	return password;
 }
 
-// create owner (user with role OWNER + credential account); no password — send reset email after
+// create owner (user with role OWNER + credential account); no password — send reset email after. SYSTEM_ADMIN only.
 export const createOwner = command(
 	'unchecked' as const,
 	async (payload: { name: string; email: string }): Promise<UserSchema> => {
+		const event = getRequestEvent();
+		if (!event?.locals?.user) throw error(401, 'Unauthorized');
+		if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) throw error(403, 'Only system admin can create owners');
 		const passwordHashUtil = new PasswordHashUtil();
 		const existing = await ensureDb()
 			.select()
@@ -155,10 +158,13 @@ export const updateUser = command(
 	}
 );
 
-// delete user completely (cascades to sessions/accounts via FK)
+// delete user completely (cascades to sessions/accounts via FK). SYSTEM_ADMIN only.
 export const deleteUser = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
+		const event = getRequestEvent();
+		if (!event?.locals?.user) throw error(401, 'Unauthorized');
+		if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) throw error(403, 'Only system admin can delete users');
 		await ensureDb().delete(table.userTable).where(eq(table.userTable.id, id));
 		getUser().refresh();
 	}

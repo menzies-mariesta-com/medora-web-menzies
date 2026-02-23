@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { query, command, getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -77,13 +77,13 @@ const staffWithRelationsWith = {
 	staffUserGroups: { with: { userGroup: true } },
 } as const;
 
-// get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted. Optional hospitalId limits to doctors assigned to that hospital.
+// get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted. Optional hospitalId (UUID) limits to doctors assigned to that hospital.
 export const getDoctorStaffList = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: number }): Promise<StaffWithRelations[]> => {
+	async (params?: { hospitalId?: string }): Promise<StaffWithRelations[]> => {
 		const hospitalId = params?.hospitalId;
 		const hospitalCondition =
-			hospitalId != null && Number.isInteger(hospitalId)
+			hospitalId != null && hospitalId !== ''
 				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
 				: undefined;
 
@@ -167,7 +167,7 @@ export const getStaffPaginated = query(
 		// When hospitalId is set, only staff assigned to that hospital (via staff_hospital)
 		const hospitalId = params?.hospitalId;
 		const hospitalCondition =
-			hospitalId != null && Number.isInteger(hospitalId)
+			hospitalId != null && hospitalId !== ''
 				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
 				: undefined;
 
@@ -344,7 +344,7 @@ function generateRandomPassword(length: number = 16): string {
 	return password;
 }
 
-// Create staff with user (Better Auth)
+// Create staff with user (Better Auth). Only OWNER or SYSTEM_ADMIN can register new staff.
 export const createStaffWithUser = command(
 	'unchecked' as const,
 	async (payload: {
@@ -389,9 +389,15 @@ export const createStaffWithUser = command(
 		licenseExpiryDate?: string;
 		signatureImageUrl?: string;
 		signatureText?: string;
-		/** When provided, assigns the new staff to this hospital (staff_hospital). */
-		hospitalId?: number;
+		/** When provided, assigns the new staff to this hospital (staff_hospital). UUID. */
+		hospitalId?: string;
 	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
+		const event = getRequestEvent();
+		if (!event?.locals?.user) throw error(401, 'Unauthorized');
+		const roleId = event.locals.userRoleId ?? null;
+		if (roleId !== RoleEnum.OWNER && roleId !== RoleEnum.SYSTEM_ADMIN) {
+			throw error(403, 'Only owner or system admin can register staff');
+		}
 		const passwordHashUtil = new PasswordHashUtil();
 
 		// Check if email already exists
@@ -508,7 +514,7 @@ export const createStaffWithUser = command(
 		}
 
 		// Assign staff to hospital when registering from a hospital context
-		if (payload.hospitalId != null && Number.isInteger(payload.hospitalId)) {
+		if (payload.hospitalId != null && payload.hospitalId !== '') {
 			await createStaffHospital({
 				staffId: staff.id,
 				hospitalId: payload.hospitalId

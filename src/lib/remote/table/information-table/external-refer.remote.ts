@@ -60,7 +60,7 @@ export const getExternalReferPaginated = query(
 			: notDeletedCondition;
 
 		const hospitalId = params?.hospitalId;
-		if (hospitalId != null && Number.isInteger(hospitalId)) {
+		if (hospitalId != null && hospitalId !== '') {
 			whereExpr = and(whereExpr, eq(table.externalReferTable.hospitalId, hospitalId));
 		}
 
