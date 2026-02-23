@@ -14,13 +14,13 @@ export const getAppointmentBlock = query(
 	'unchecked' as const,
 	async (params?: {
 		staffId?: string;
-		hospitalId?: number;
+		hospitalId?: string;
 	}): Promise<AppointmentBlockSchema[]> => {
 		const conditions = [eq(table.appointmentBlockTable.statusId, StatusEnum.ACTIVE)];
 		if (params?.staffId != null && params.staffId !== '') {
 			conditions.push(eq(table.appointmentBlockTable.staffId, params.staffId));
 		}
-		if (params?.hospitalId != null && Number.isInteger(params.hospitalId)) {
+		if (params?.hospitalId != null && params.hospitalId !== '') {
 			conditions.push(eq(table.appointmentBlockTable.hospitalId, params.hospitalId));
 		}
 		return ensureDb()
