@@ -368,4 +368,18 @@ export const appointmentTable = pgTable('appointment', {
 	statusTaggingId: integer('status_tagging_id').references(() => statusTaggingTable.id),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
-})
+});
+
+/** Appointment block: blocked time slots for a staff (doctor); no appointments can be booked in these ranges. */
+export const appointmentBlockTable = pgTable('appointment_block', {
+	id: serial('id').primaryKey(),
+	staffId: uuid('staff_id')
+		.notNull()
+		.references(() => staffTable.id),
+	hospitalId: integer('hospital_id').references(() => hospitalTable.id),
+	blockDate: date('block_date').notNull(),
+	fromTime: time('from_time').notNull(),
+	toTime: time('to_time').notNull(),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});

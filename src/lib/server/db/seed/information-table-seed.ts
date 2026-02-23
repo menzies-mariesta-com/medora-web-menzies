@@ -126,6 +126,31 @@ export async function seedInformationTables() {
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: role')
+
+	// 6. Status Tagging Type
+	await db.execute(sql`
+		INSERT INTO status_tagging_type (id, name)
+		VALUES
+			(1, 'Doctor Appointment')
+		ON CONFLICT (id) DO NOTHING;
+		`)
+	console.log('Seeded: status tagging type')
+
+
+	// 7. status_tagging
+	await db.execute(sql`
+		INSERT INTO status_tagging (id, name, code, sequence_no, status_tagging_type_id)
+		VALUES 
+
+			-- Doctor Appointment Status
+			(1, 'Unconfirmed', 'unconfirmed', 1, 1),
+			(2, 'Confirmed', 'confirmed', 2, 1),
+			(3, 'Check In', 'check_in', 3, 1)
+
+		ON CONFLICT (id) DO NOTHING;
+		`)
+	console.log('Seeded: status tagging')
+
 }
 
 seedInformationTables()

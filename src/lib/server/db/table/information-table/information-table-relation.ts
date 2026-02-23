@@ -3,6 +3,7 @@ import {
 	appointmentTable,
 	doctorScheduleTable,
 	externalReferTable,
+	appointmentBlockTable,
 	hospitalDepartmentTable,
 	hospitalPatientCodeCounterTable,
 	hospitalTable,
@@ -83,6 +84,7 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	staffHospitals: many(staffHospitalTable),
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
+	appointmentBlocks: many(appointmentBlockTable),
 }));
 
 export const hospitalPatientCodeCounterTableRelations = relations(
@@ -247,6 +249,21 @@ export const appointmentTableRelations = relations(appointmentTable, ({ one }) =
 	}),
 }));
 
+export const appointmentBlockTableRelations = relations(appointmentBlockTable, ({ one }) => ({
+	staff: one(staffTable, {
+		fields: [appointmentBlockTable.staffId],
+		references: [staffTable.id],
+	}),
+	hospital: one(hospitalTable, {
+		fields: [appointmentBlockTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [appointmentBlockTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
+
 export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one }) => ({
 	staff: one(staffTable, {
 		fields: [staffHospitalTable.staffId],
@@ -336,6 +353,7 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	staffUserGroups: many(staffUserGroupTable),
 	doctorSchedules: many(doctorScheduleTable),
 	appointments: many(appointmentTable),
+	appointmentBlocks: many(appointmentBlockTable),
 }));
 
 export const staffUserGroupTableRelations = relations(staffUserGroupTable, ({ one }) => ({

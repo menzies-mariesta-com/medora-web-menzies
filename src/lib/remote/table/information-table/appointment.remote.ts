@@ -80,6 +80,7 @@ export const createAppointment = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getAppointment().refresh();
+		getAppointmentWithRelations().refresh();
 		return row;
 	}
 );
@@ -96,6 +97,7 @@ export const updateAppointment = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getAppointment().refresh();
+		getAppointmentWithRelations().refresh();
 		return row;
 	}
 );
@@ -109,6 +111,7 @@ export const deleteAppointment = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.appointmentTable.id, id));
 		getAppointment().refresh();
+		getAppointmentWithRelations().refresh();
 	}
 );
 
@@ -118,5 +121,6 @@ export const deleteAppointmentComplete = command(
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb().delete(table.appointmentTable).where(eq(table.appointmentTable.id, id));
 		getAppointment().refresh();
+		getAppointmentWithRelations().refresh();
 	}
 );
