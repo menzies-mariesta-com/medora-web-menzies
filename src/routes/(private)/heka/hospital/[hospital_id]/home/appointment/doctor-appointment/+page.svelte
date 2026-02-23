@@ -2,13 +2,20 @@
 	import LDoctorAppointmentCalendar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
 	import LDoctorAppointmentProfileBar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
 	import LDoctorAppointmentStatistics from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
-	import { getAppointment } from '$lib/remote/table/information-table/appointment.remote';
+	import { getAppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
 	import { getDoctorSchedule } from '$lib/remote/table/information-table/doctor-schedule.remote';
+	import {
+		createAppointmentBlock,
+		deleteAppointmentBlock,
+		getAppointmentBlock,
+		updateAppointmentBlock
+	} from '$lib/remote/table/information-table/appointment-block.remote';
 	import {
 		getDoctorStaffList,
 		type StaffWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import type { AppointmentBlockSchema } from '$lib/server/db/schema-type';
 	import type { DoctorScheduleSchema } from '$lib/server/db/schema-type';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -21,11 +28,14 @@
 
 	let doctorList = $state<StaffWithRelations[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
-	let appointments = $state<Awaited<ReturnType<typeof getAppointment>>>([]);
+	type AppointmentWithRelations = Awaited<ReturnType<typeof getAppointmentWithRelations>>[number];
+	let appointments = $state<AppointmentWithRelations[]>([]);
 	let selectDate = $state(new Date().toISOString().slice(0, 10));
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
 	let timeFormat = $state<'24h' | '12h'>('24h');
 	let selectedDoctorId = $state('');
+	/** Appointment blocks from DB for the selected doctor (and hospital). */
+	let appointmentBlocks = $state<AppointmentBlockSchema[]>([]);
 
 	const dateTimeUtil = new DateTimeUtil();
 
@@ -85,7 +95,15 @@
 		return DEFAULT_SLOT_DURATION_MINUTES;
 	});
 
-	/** Appointments for selected doctor in visible date range → calendar highlights with bg-primary and patient name. */
+	/** Map statusTagging code to calendar slot state (unconfirmed → confirmed → check-in, reversible). */
+	function toSlotState(code: string | null | undefined): 'unconfirmed' | 'confirmed' | 'check-in' {
+		const c = (code ?? '').trim().toLowerCase().replace(/-/g, '_');
+		if (c === 'check_in') return 'check-in';
+		if (c === 'confirmed') return 'confirmed';
+		return 'unconfirmed';
+	}
+
+	/** Appointments for selected doctor in visible date range → calendar highlights by state and patient name. */
 	const appointmentSlots = $derived.by(() => {
 		const dateSet = new Set(visibleDates);
 		return appointments
@@ -101,10 +119,28 @@
 				date: String(a.appointmentDate).slice(0, 10),
 				startTime: String(a.fromTime ?? '').trim(),
 				endTime: String(a.toTime ?? '').trim(),
-				patientName: a.patientName?.trim() ?? ''
+				patientName: a.patientName?.trim() ?? '',
+				slotState: toSlotState(a.statusTagging?.code ?? a.statusTagging?.name)
 			}))
 			.filter((s) => s.startTime && s.endTime);
 	});
+
+	/** Blocked slots for the calendar (from DB), with blockId for edit/delete. */
+	const blockSlots = $derived.by(() =>
+		appointmentBlocks
+			.filter(
+				(b) =>
+					b.blockDate != null &&
+					b.fromTime != null &&
+					b.toTime != null
+			)
+			.map((b) => ({
+				blockId: b.id,
+				date: String(b.blockDate).slice(0, 10),
+				startTime: String(b.fromTime).trim(),
+				endTime: String(b.toTime).trim()
+			}))
+	);
 
 	/** Expand doctor schedules into (date, startTime, endTime) slots for visible dates. WeekdayId 1=Sun, 7=Sat. */
 	const scheduleSlots = $derived.by(() => {
@@ -144,6 +180,7 @@
 		if (!id) {
 			doctorSchedules = [];
 			appointments = [];
+			appointmentBlocks = [];
 			return;
 		}
 		getDoctorSchedule(hid != null ? { hospitalId: hid } : undefined).then((all) => {
@@ -154,8 +191,14 @@
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
-		getAppointment().then((all) => {
+		getAppointmentWithRelations().then((all) => {
 			appointments = all;
+		});
+		getAppointmentBlock({
+			staffId: id,
+			hospitalId: hid ?? undefined
+		}).then((all) => {
+			appointmentBlocks = all;
 		});
 	});
 </script>
@@ -181,9 +224,47 @@
 			selectedDoctorId={selectedDoctorId}
 			{scheduleSlots}
 			{appointmentSlots}
+			{blockSlots}
 			{slotDurationMinutes}
 			onAppointmentCreated={async () => {
-				appointments = await getAppointment();
+				appointments = await getAppointmentWithRelations();
+			}}
+			onBlockCreated={async (block) => {
+				try {
+					const created = await createAppointmentBlock({
+						staffId: selectedDoctorId,
+						hospitalId: hospitalId ?? undefined,
+						blockDate: block.date,
+						fromTime: block.startTime,
+						toTime: block.endTime
+					});
+					appointmentBlocks = [...appointmentBlocks, created];
+				} catch {
+					// Error already surfaced by calendar toast or could add toast here
+				}
+			}}
+			onBlockUpdated={async (payload) => {
+				try {
+					const updated = await updateAppointmentBlock({
+						id: payload.id,
+						blockDate: payload.date,
+						fromTime: payload.startTime,
+						toTime: payload.endTime
+					});
+					appointmentBlocks = appointmentBlocks.map((b) =>
+						b.id === payload.id ? updated : b
+					);
+				} catch {
+					// toast on error if desired
+				}
+			}}
+			onBlockDeleted={async (blockId) => {
+				try {
+					await deleteAppointmentBlock({ id: blockId });
+					appointmentBlocks = appointmentBlocks.filter((b) => b.id !== blockId);
+				} catch {
+					// toast on error if desired
+				}
 			}}
 		/>
 		<LDoctorAppointmentStatistics />
