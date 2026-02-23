@@ -22,8 +22,8 @@ import type {
 	doctorScheduleTable,
 	externalReferTable,
 	patientTable,
+	appointmentBlockTable,
 } from './information-table';
-import type { StatusSchema } from '../master-table/master-table-schema-type';
 
 // Information Tables (alphabetical)
 export type HospitalDepartmentSchema = InferSelectModel<typeof hospitalDepartmentTable>;
@@ -119,3 +119,7 @@ export type ExternalReferSchemaUpdate = Partial<ExternalReferSchemaInsert>;
 export type AppointmentSchema = InferSelectModel<typeof appointmentTable>;
 export type AppointmentSchemaInsert = InferInsertModel<typeof appointmentTable>;
 export type AppointmentSchemaUpdate = Partial<AppointmentSchemaInsert>;
+
+export type AppointmentBlockSchema = InferSelectModel<typeof appointmentBlockTable>;
+export type AppointmentBlockSchemaInsert = InferInsertModel<typeof appointmentBlockTable>;
+export type AppointmentBlockSchemaUpdate = Partial<AppointmentBlockSchemaInsert>;
