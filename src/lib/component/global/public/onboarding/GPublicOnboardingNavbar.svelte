@@ -7,6 +7,8 @@
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import DaisyUiNavbarCenter from '$lib/component/library/daisyui/navbar/center/DaisyUiNavbarCenter.svelte';
+	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
 
 	const routerUtil = new RouterUtil();
 	const session = authClient.useSession();
@@ -27,16 +29,23 @@
 		</DaisyUiButton>
 	</DaisyUiNavbarStart>
 
+	<DaisyUiNavbarCenter>
+		<DaisyUiLink
+			href={WebRoutesEnum.ONBOARDING_MARKETPLACE}
+			className="d-btn"
+		>
+			Market Place
+		</DaisyUiLink>
+	</DaisyUiNavbarCenter>
+
 	<DaisyUiNavbarEnd className="gap-3">
 		{#if $session.data}
-			<div class="flex items-center gap-2 my-ft-small">
+			<div class="my-ft-small flex items-center gap-2">
 				<span class="opacity-70">
 					{$session.data.user.name ?? $session.data.user.email}
 				</span>
 			</div>
-			<DaisyUiButton onClick={handleSignOut}>
-				Log out
-			</DaisyUiButton>
+			<DaisyUiButton onClick={handleSignOut}>Log out</DaisyUiButton>
 		{:else}
 			<DaisyUiButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.SIGNUP)}
