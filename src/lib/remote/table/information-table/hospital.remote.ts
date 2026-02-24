@@ -101,7 +101,6 @@ export const updateHospital = command(
 				.where(eq(table.hospitalTable.id, id))
 				.limit(1);
 			if (!hospital || hospital.ownerId !== userId) throw error(403, 'You can only update your own hospitals');
-			// OWNER cannot change ownerId
 			data.ownerId = userId;
 		}
 		const [updated] = await ensureDb()
