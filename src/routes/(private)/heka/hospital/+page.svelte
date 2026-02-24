@@ -40,14 +40,17 @@
 	let hospitals = $state<HospitalWithOwner[]>([]);
 	let isLoading = $state(true);
 
-	async function loadHospitals() {
+	async function loadHospitals(forceRefresh = false) {
 		isLoading = true;
 		try {
 			const ownerId =
 				isOwner && data?.user ? (data.user as { id?: string }).id : undefined;
-			hospitals = await getHospitalWithOwner(
-				ownerId != null ? { ownerId } : undefined
-			);
+			const params = ownerId != null ? { ownerId } : undefined;
+			// After create/update/delete, invalidate cache then fetch so list updates
+			if (forceRefresh) {
+				await getHospitalWithOwner(params).refresh();
+			}
+			hospitals = await getHospitalWithOwner(params);
 		} finally {
 			isLoading = false;
 		}
@@ -66,7 +69,7 @@
 			component: NewHospitalModal
 		});
 		if (result.confirmed) {
-			await loadHospitals();
+			await loadHospitals(true);
 		}
 	}
 
@@ -79,7 +82,7 @@
 			component: NewHospitalModal
 		});
 		if (result.confirmed) {
-			await loadHospitals();
+			await loadHospitals(true);
 		}
 	}
 
@@ -93,7 +96,7 @@
 		try {
 			await deleteHospital({ id: h.id });
 			toastService.addToast('Hospital deleted.', StatusColorEnum.SUCCESS);
-			await loadHospitals();
+			await loadHospitals(true);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Delete failed';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
