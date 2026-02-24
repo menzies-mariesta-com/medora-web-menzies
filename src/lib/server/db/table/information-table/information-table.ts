@@ -390,6 +390,7 @@ export const appointmentTable = pgTable('appointment', {
 	referTypeId: integer('refer_type_id').references(() => referTypeTable.id),
 	externalReferId: integer('external_refer_id').references(() => externalReferTable.id),
 	statusTaggingId: integer('status_tagging_id').references(() => statusTaggingTable.id),
+	remark: text('remark'),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps,
 });
