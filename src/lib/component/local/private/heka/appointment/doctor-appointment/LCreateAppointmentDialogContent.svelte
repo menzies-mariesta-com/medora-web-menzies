@@ -2,6 +2,7 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import {
 		createAppointment,
 		getAppointment
@@ -74,6 +75,7 @@
 	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
 
 	// Form state
+	let patientMode = $state<'existing' | 'new'>('existing');
 	let selectedPatientId = $state('');
 	let selectedPatientTitleId = $state('');
 	let patientName = $state('');
@@ -81,12 +83,154 @@
 	let patientAgeYear = $state('');
 	let patientAgeMonth = $state('');
 	let patientAgeDay = $state('');
+	let skipNextDobToAgeSync = $state(false);
 	let appointmentPhone = $state('');
 	let appointmentEmail = $state('');
+	let appointmentRemark = $state('');
 	let selectedReferTypeId = $state('');
 	let selectedExternalReferId = $state('');
 	let selectedStatusTaggingId = $state('');
 	let isSubmitting = $state(false);
+
+	const selectedReferType = $derived.by(
+		() =>
+			referTypeData.find(
+				(r) => String(r.id) === (selectedReferTypeId?.trim() || '')
+			) ?? null
+	);
+	const selectedReferTypeName = $derived.by(
+		() => (selectedReferType?.name ?? '').trim().toLowerCase()
+	);
+	const referBoxLabel = $derived.by(
+		() =>
+			selectedReferTypeName === 'internal'
+				? 'Internal Refer'
+				: 'External Refer'
+	);
+	const filteredExternalReferData = $derived.by(() => {
+		const typeId = selectedReferType?.id;
+		return typeId != null
+			? externalReferData.filter((e) => e.referTypeId === typeId)
+			: externalReferData;
+	});
+
+	const hasSelectedPatient = $derived.by(
+		() => !!selectedPatientId?.trim()
+	);
+
+	// When switching to "new" mode, clear any selected patient account
+	$effect(() => {
+		if (patientMode === 'new' && selectedPatientId) {
+			selectedPatientId = '';
+		}
+	});
+
+	// Clear external/internal refer selection when refer type is cleared
+	$effect(() => {
+		const id = selectedReferTypeId?.trim();
+		if (!id && selectedExternalReferId) {
+			selectedExternalReferId = '';
+		}
+	});
+
+	function getAgeFromBirthDate(dob: string): {
+		years: number;
+		months: number;
+		days: number;
+	} {
+		const birth = new Date(dob);
+		const today = new Date();
+		let years = today.getFullYear() - birth.getFullYear();
+		let months = today.getMonth() - birth.getMonth();
+		let days = today.getDate() - birth.getDate();
+		if (days < 0) {
+			months -= 1;
+			const prevMonth = new Date(
+				today.getFullYear(),
+				today.getMonth(),
+				0
+			);
+			days += prevMonth.getDate();
+		}
+		if (months < 0) {
+			years -= 1;
+			months += 12;
+		}
+		return { years, months, days };
+	}
+
+	function getBirthDateFromAge(
+		years: number,
+		months: number,
+		days: number
+	): string {
+		const d = new Date();
+		d.setDate(d.getDate() - days);
+		d.setMonth(d.getMonth() - months);
+		d.setFullYear(d.getFullYear() - years);
+		return d.toISOString().slice(0, 10);
+	}
+
+	function syncAgeFromDateOfBirth(): void {
+		const dob = patientDateOfBirth ?? '';
+		if (!dob || dob.length < 10) {
+			patientAgeYear = '';
+			patientAgeMonth = '';
+			patientAgeDay = '';
+			return;
+		}
+		const age = getAgeFromBirthDate(dob);
+		patientAgeYear = String(age.years);
+		patientAgeMonth = String(age.months);
+		patientAgeDay = String(age.days);
+	}
+
+	// dateOfBirth → age (skip when change came from age fields)
+	$effect(() => {
+		if (skipNextDobToAgeSync) {
+			skipNextDobToAgeSync = false;
+			return;
+		}
+		const dob = patientDateOfBirth ?? '';
+		if (!dob || dob.length < 10) {
+			patientAgeYear = '';
+			patientAgeMonth = '';
+			patientAgeDay = '';
+			return;
+		}
+		syncAgeFromDateOfBirth();
+	});
+
+	// age → dateOfBirth
+	$effect(() => {
+		const y = String(patientAgeYear ?? '').trim();
+		if (!y) {
+			if ((patientDateOfBirth ?? '') !== '') {
+				patientDateOfBirth = '';
+			}
+			return;
+		}
+		const numY = Number(y);
+		const numM =
+			patientAgeMonth != null && patientAgeMonth !== ''
+				? Math.min(
+						11,
+						Math.max(0, Number(patientAgeMonth))
+					)
+				: 0;
+		const numD =
+			patientAgeDay != null && patientAgeDay !== ''
+				? Math.max(0, Number(patientAgeDay))
+				: 0;
+		const next = getBirthDateFromAge(numY, numM, numD);
+		if (next !== (patientDateOfBirth ?? '')) {
+			skipNextDobToAgeSync = true;
+			patientDateOfBirth = next;
+			patientAgeYear = String(numY);
+			patientAgeMonth = String(numM);
+			patientAgeDay = String(numD);
+		}
+	});
 
 	lifeCycle.onMount(async () => {
 		const [titles, patients, referTypes, externalRefers, statusTaggings] = await Promise.all([
@@ -184,7 +328,8 @@
 				appointmentEmail: appointmentEmail.trim() || null,
 				referTypeId: selectedReferTypeId ? parseInt(selectedReferTypeId, 10) : null,
 				externalReferId: selectedExternalReferId ? parseInt(selectedExternalReferId, 10) : null,
-				statusTaggingId: selectedStatusTaggingId ? parseInt(selectedStatusTaggingId, 10) : null
+				statusTaggingId: selectedStatusTaggingId ? parseInt(selectedStatusTaggingId, 10) : null,
+				remark: appointmentRemark.trim() || null
 			};
 			const created = await createAppointment(payload);
 			toastService.addToast('Appointment created.', StatusColorEnum.SUCCESS);
@@ -288,6 +433,31 @@
 
 	<!-- Patient & details -->
 	<div class="flex flex-col gap-4">
+			<div class="flex min-w-0 gap-1 sm:flex-row sm:items-center sm:gap-3">
+				<div class="max-w-80 flex-1 flex justify-between gap-1">
+					<label class="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name="patient-mode"
+							class="d-radio d-radio-primary"
+							value="existing"
+							bind:group={patientMode}
+						/>
+						<span>Existing patient</span>
+					</label>
+					<label class="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name="patient-mode"
+							class="d-radio d-radio-primary"
+							value="new"
+							bind:group={patientMode}
+						/>
+						<span>New patient</span>
+					</label>
+				</div>
+			</div>
+			{#if patientMode === 'existing'}
 			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 				<DaisyUiLabel forText="apt-patient" className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
 				<div class="max-w-80 flex-1">
@@ -310,57 +480,60 @@
 					</DaisyUiSelect>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-title" className="shrink-0 sm:w-36">Patient Title</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
-						bind:value={selectedPatientTitleId}
-						optionHeader="Select title …"
-						className="w-full"
-					>
-						{#each titleData as t (t.id)}
-							<option value={String(t.id)}>{t.name}</option>
-						{/each}
-					</DaisyUiSelect>
+			{/if}
+			{#if patientMode === 'new'}
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="apt-title" className="shrink-0 sm:w-36">Patient Title</DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<DaisyUiSelect
+							bind:value={selectedPatientTitleId}
+							optionHeader="Select title …"
+							className="w-full"
+						>
+							{#each titleData as t (t.id)}
+								<option value={String(t.id)}>{t.name}</option>
+							{/each}
+						</DaisyUiSelect>
+					</div>
 				</div>
-			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-name" className="shrink-0 sm:w-36">Patient Name <span class="text-error">*</span></DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiInputField bind:value={patientName} inputType="text" className="w-full" />
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="apt-name" className="shrink-0 sm:w-36">Patient Name <span class="text-error">*</span></DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<DaisyUiInputField bind:value={patientName} inputType="text" className="w-full" />
+					</div>
 				</div>
-			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiInputField bind:value={patientDateOfBirth} inputType="date" className="w-full" />
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<DaisyUiInputField bind:value={patientDateOfBirth} inputType="date" className="w-full" />
+					</div>
 				</div>
-			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36">Age (Y / M / D)</DaisyUiLabel>
-				<div class="max-w-80 flex-1 flex gap-2">
-					<DaisyUiInputField
-						bind:value={patientAgeYear}
-						inputType="number"
-						inputPlaceholderText="Y"
-						className="w-20"
-					/>
-					<DaisyUiInputField
-						bind:value={patientAgeMonth}
-						inputType="number"
-						inputPlaceholderText="M"
-						className="w-20"
-					/>
-					<DaisyUiInputField
-						bind:value={patientAgeDay}
-						inputType="number"
-						inputPlaceholderText="D"
-						className="w-20"
-					/>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36">Age (Y / M / D)</DaisyUiLabel>
+					<div class="max-w-80 flex-1 flex gap-2">
+						<DaisyUiInputField
+							bind:value={patientAgeYear}
+							inputType="number"
+							inputPlaceholderText="Y"
+							className="w-20"
+						/>
+						<DaisyUiInputField
+							bind:value={patientAgeMonth}
+							inputType="number"
+							inputPlaceholderText="M"
+							className="w-20"
+						/>
+						<DaisyUiInputField
+							bind:value={patientAgeDay}
+							inputType="number"
+							inputPlaceholderText="D"
+							className="w-20"
+						/>
+					</div>
 				</div>
-			</div>
+			{/if}
 			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36">Phone</DaisyUiLabel>
+				<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36">Guardian Phone</DaisyUiLabel>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField bind:value={appointmentPhone} inputType="tel" className="w-full" />
 				</div>
@@ -390,18 +563,30 @@
 					</DaisyUiSelect>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-external-refer" className="shrink-0 sm:w-36">External Refer</DaisyUiLabel>
+			{#if selectedReferTypeId?.trim()}
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="apt-external-refer" className="shrink-0 sm:w-36">{referBoxLabel}</DaisyUiLabel>
+					<div class="max-w-80 flex-1">
+						<DaisyUiSelect
+							bind:value={selectedExternalReferId}
+							optionHeader="Select external refer …"
+							className="w-full"
+						>
+							{#each filteredExternalReferData as e (e.id)}
+								<option value={String(e.id)}>{e.name}</option>
+							{/each}
+						</DaisyUiSelect>
+					</div>
+				</div>
+			{/if}
+			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+				<DaisyUiLabel forText="apt-remark" className="shrink-0 sm:w-36">Remark</DaisyUiLabel>
 				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
-						bind:value={selectedExternalReferId}
-						optionHeader="Select external refer …"
-						className="w-full"
-					>
-						{#each externalReferData as e (e.id)}
-							<option value={String(e.id)}>{e.name}</option>
-						{/each}
-					</DaisyUiSelect>
+					<DaisyUiTextarea
+						id="apt-remark"
+						bind:value={appointmentRemark}
+						className="w-full min-h-24 resize-y"
+					/>
 				</div>
 			</div>
 			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
