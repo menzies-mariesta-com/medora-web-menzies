@@ -106,13 +106,18 @@
 	});
 
 	async function loadOptions() {
-		[countries, states, cities, postalCodes, owners] = await Promise.all([
+		const [countriesData, statesData, citiesData, postalCodesData, ownersData] = await Promise.all([
 			getCountry(),
 			getState(),
 			getCity(),
 			getPostalCode(),
 			getUsersByRole({ roleId: RoleEnum.OWNER })
 		]);
+		countries = countriesData;
+		states = statesData;
+		cities = citiesData;
+		postalCodes = postalCodesData;
+		owners = ownersData;
 	}
 
 	async function loadHospitalForEdit(id: string) {
