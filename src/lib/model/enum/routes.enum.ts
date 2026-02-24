@@ -3,6 +3,7 @@ export enum WebRoutesEnum {
 
 	// public
 	ONBOARDING = '/onboarding',
+	ONBOARDING_MARKETPLACE = "/onboarding/marketplace",
 	LOGIN = '/auth/login',
 	SIGNUP = '/auth/signup',
 	RESET_PASSWORD = '/auth/reset-password',
