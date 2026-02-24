@@ -4,6 +4,7 @@ import {
 	doctorScheduleTable,
 	externalReferTable,
 	appointmentBlockTable,
+	hospitalBranchTable,
 	hospitalDepartmentTable,
 	hospitalPatientCodeCounterTable,
 	hospitalTable,
@@ -50,6 +51,7 @@ import { userTable } from '../auth-table/auth-table';
 
 // Information table relations (alphabetical)
 export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) => ({
+	branches: many(hospitalBranchTable),
 	owner: one(userTable, {
 		fields: [hospitalTable.ownerId],
 		references: [userTable.id],
@@ -85,6 +87,37 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
 	appointmentBlocks: many(appointmentBlockTable),
+}));
+
+export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ one }) => ({
+	hospital: one(hospitalTable, {
+		fields: [hospitalBranchTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [hospitalBranchTable.statusId],
+		references: [statusTable.id],
+	}),
+	city: one(cityTable, {
+		fields: [hospitalBranchTable.cityId],
+		references: [cityTable.id],
+	}),
+	state: one(stateTable, {
+		fields: [hospitalBranchTable.stateId],
+		references: [stateTable.id],
+	}),
+	country: one(countryTable, {
+		fields: [hospitalBranchTable.countryId],
+		references: [countryTable.id],
+	}),
+	phoneCountry: one(countryTable, {
+		fields: [hospitalBranchTable.phoneCountryId],
+		references: [countryTable.id],
+	}),
+	postalCode: one(postalCodeTable, {
+		fields: [hospitalBranchTable.postalCodeId],
+		references: [postalCodeTable.id],
+	}),
 }));
 
 export const hospitalPatientCodeCounterTableRelations = relations(

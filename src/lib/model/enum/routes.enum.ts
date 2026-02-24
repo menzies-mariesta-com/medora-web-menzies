@@ -21,6 +21,7 @@ export enum WebRoutesEnum {
 	HEKA_HOME_ADMINISTRATION_STAFF = '/heka/home/administration/staff',
 	HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION = '/heka/home/administration/staff/registration',
 	HEKA_HOME_ADMINISTRATION_STAFF_LIST = '/heka/home/administration/staff/list',
+	HEKA_HOME_ADMINISTRATION_BRANCHES = '/heka/home/administration/branches',
 	HEKA_HOME_REGISTRATION = '/heka/home/registration',
 	HEKA_HOME_REGISTRATION_PATIENT = '/heka/home/registration/patient',
 	HEKA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/heka/home/registration/patient/registration',
