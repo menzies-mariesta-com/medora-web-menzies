@@ -49,17 +49,21 @@
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
 
-	async function fetchStaff(opts?: { bustCache?: boolean }) {
+	async function fetchStaff(forceRefresh = false) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
+		const params = {
+			page: currentPage,
+			pageSize,
+			search: searchInput.trim() || undefined,
+			hospitalId: hospitalId ?? undefined
+		};
 		try {
-			staffResult = await getStaffPaginated({
-				page: currentPage,
-				pageSize,
-				search: searchInput.trim() || undefined,
-				hospitalId: hospitalId ?? undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			// After create/update/delete or dialog close, invalidate cache then fetch so list updates
+			if (forceRefresh) {
+				await getStaffPaginated(params).refresh();
+			}
+			staffResult = await getStaffPaginated(params);
 		} finally {
 			isLoading = false;
 		}
@@ -109,7 +113,7 @@
 			});
 			if (result.confirmed && typeof result.data === 'string') {
 				await deleteStaff({ id: result.data });
-				await fetchStaff();
+				await fetchStaff(true);
 				toastService.addToast('Staff deleted.', StatusColorEnum.SUCCESS);
 			}
 		} catch (err) {
@@ -164,7 +168,7 @@
 
 	function closeStaffDialog() {
 		staffDialog = null;
-		fetchStaff({ bustCache: true });
+		fetchStaff(true);
 	}
 </script>
 
@@ -197,7 +201,7 @@
 		>
 			<DaisyUiButton
 				className="d-btn-primary d-btn-sm"
-				onClick={() => fetchStaff()}
+				onClick={() => fetchStaff(true)}
 			>
 				<LucideRefreshCcw className="size-5" />
 			</DaisyUiButton>

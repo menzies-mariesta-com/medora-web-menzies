@@ -17,6 +17,7 @@
 	import UserGroupFormModal from '$lib/component/local/private/heka/administration/user-group/UserGroupFormModal.svelte';
 	import UserGroupPagesModal from '$lib/component/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
 	import type { StatusSchema } from '$lib/server/db/schema-type';
+	import { getStatus } from '$lib/remote/table/master-table/status.remote';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -42,15 +43,16 @@
 	let isLoading = $state(false);
 	let statusOptions = $state<StatusSchema[]>([]);
 
-	async function fetchGroups() {
+	async function fetchGroups(forceRefresh = false) {
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			const result = await getUserGroupPaginated({
-				hospitalId,
-				page: currentPage,
-				pageSize
-			});
+			const params = { hospitalId, page: currentPage, pageSize };
+			// After create/update/delete, invalidate cache then fetch so list updates
+			if (forceRefresh) {
+				await getUserGroupPaginated(params).refresh();
+			}
+			const result = await getUserGroupPaginated(params);
 			groups = result.data;
 			total = result.total;
 			totalPages = result.totalPages;
@@ -76,7 +78,7 @@
 			title: 'New user group',
 			component: UserGroupFormModal
 		});
-		if (result.confirmed) fetchGroups();
+		if (result.confirmed) fetchGroups(true);
 	}
 
 	async function openEdit(row: UserGroupSchema) {
@@ -87,7 +89,7 @@
 			title: 'Edit user group',
 			component: UserGroupFormModal
 		});
-		if (result.confirmed) fetchGroups();
+		if (result.confirmed) fetchGroups(true);
 	}
 
 	async function handleDelete(row: UserGroupSchema) {
@@ -100,7 +102,7 @@
 		try {
 			await deleteUserGroup({ id: row.id });
 			toastService.addToast('User group deleted.', StatusColorEnum.SUCCESS);
-			fetchGroups();
+			fetchGroups(true);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Delete failed';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
@@ -118,7 +120,7 @@
 			title: 'Manage page access',
 			component: UserGroupPagesModal
 		});
-		if (result.confirmed) fetchGroups();
+		if (result.confirmed) fetchGroups(true);
 	}
 </script>
 
