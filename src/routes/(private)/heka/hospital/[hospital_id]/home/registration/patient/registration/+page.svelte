@@ -483,10 +483,7 @@ const currentPatientId = $derived(viewId || editId);
 			toastService.addToast('First name is required.', StatusColorEnum.ERROR);
 			return;
 		}
-		if (!email.trim()) {
-			toastService.addToast('Email is required.', StatusColorEnum.ERROR);
-			return;
-		}
+		// Email is now optional; no validation here.
 
 		const fullName =
 			[firstName, middleName, lastName].filter(Boolean).join(' ') || firstName;
@@ -611,9 +608,12 @@ const currentPatientId = $derived(viewId || editId);
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				// Create: new patient (code is generated on backend from selectedHospitalId)
+				// Create: new patient (code is generated on backend from selectedHospitalId).
+				// Email is optional, but account creation still requires a unique email, so we
+				// pass whatever is provided (or a generated placeholder if blank).
+				const emailValue = email.trim();
 				const result = await createPatientWithUser({
-					email: email.trim(),
+					email: emailValue || `${crypto.randomUUID()}@placeholder.local`,
 					name: fullName,
 					hospitalId: selectedHospitalId ?? '',
 					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
@@ -735,23 +735,6 @@ const currentPatientId = $derived(viewId || editId);
 					`Patient (${patientCode}) created successfully.`,
 					StatusColorEnum.SUCCESS
 				);
-
-				const { error } = await authClient.requestPasswordReset({
-					email: email.trim(),
-					redirectTo: routerUtil.getResetRedirectUrl()
-				});
-
-				if (error) {
-					toastService.addToast(
-						error.message ?? 'Failed to send reset link.',
-						StatusColorEnum.ERROR
-					);
-				} else {
-					toastService.addToast(
-						'Reset password email has been sent to the patient.',
-						StatusColorEnum.INFO
-					);
-				}
 
 				patientCode = '';
 				selectedTitleId = '';
