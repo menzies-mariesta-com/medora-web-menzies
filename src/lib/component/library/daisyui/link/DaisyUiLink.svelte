@@ -8,4 +8,6 @@
 	}>();
 </script>
 
-<a class="d-link {className}" {href} {target} onclick={onClick}>{@render children()}</a>
+<a class=" {className}" {href} {target} onclick={onClick}
+	>{@render children()}</a
+>
