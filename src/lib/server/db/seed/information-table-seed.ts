@@ -88,6 +88,9 @@ export async function seedInformationTables() {
 			-- user group (per-hospital management)
 			(6, 'User Group', 1, 1, null, '/heka/home/administration/user-group', 4),
 
+			-- branches (per-hospital; Branch is under Hospital)
+			(7, 'Branches', 1, 1, null, '/heka/home/administration/branches', 5),
+
 			-- Registration Module
 			-- patient pages
 			(2, 'Patient', 2, 1, null, '/heka/home/registration/patient', 1),
