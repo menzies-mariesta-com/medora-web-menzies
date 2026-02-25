@@ -497,6 +497,7 @@
 						searchFn={searchPatients}
 						getLabelForValue={getPatientLabelForValue}
 						minSearchLength={0}
+						listClassName='w-200'
 					/>
 			</div>
 			{/if}

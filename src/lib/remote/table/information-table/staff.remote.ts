@@ -314,6 +314,7 @@ export const getStaffByIdWithRelations = query(
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
 				staffUserGroups: { with: { userGroup: true } },
+				phonePrimaryCountry: true,
 			},
 		});
 	}

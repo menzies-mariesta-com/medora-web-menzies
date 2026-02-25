@@ -1,5 +1,6 @@
 import { YesNoEnum } from "$lib/model/enum/db-link";
 import type { PatientWithRelations } from "$lib/remote/table/information-table/patient.remote";
+import type { StaffWithRelations } from "$lib/remote/table/information-table/staff.remote";
 import type { CountrySchema, IdentityTypeSchema } from "$lib/server/db/schema-type";
 
 export class StringUtil {
@@ -136,6 +137,10 @@ export class StringUtil {
       null,
       'Father'
     )}`;
+  }
+
+  static doctorOptionDisplayName(doctor: StaffWithRelations): string {
+    return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
   }
 
   // =========================================================
