@@ -41,12 +41,7 @@ import { page } from '$app/state';
 			pageSize: 20
 		});
 		return res.data.map((doctor) => ({
-			label: StringUtil.fullNameWithTitle(
-				doctor.title?.name ?? '',
-				doctor.firstName,
-				doctor.middleName,
-				doctor.lastName
-			),
+			label: StringUtil.doctorOptionDisplayName(doctor),
 			value: String(doctor.id)
 		}));
 	}
@@ -54,12 +49,7 @@ import { page } from '$app/state';
 	async function getDoctorLabelForValue(id: string): Promise<string> {
 		const doctor = await getStaffByIdWithRelations({ id });
 		if (!doctor) return '';
-		return StringUtil.fullNameWithTitle(
-			doctor.title?.name ?? '',
-			doctor.firstName,
-			doctor.middleName,
-			doctor.lastName
-		);
+		return StringUtil.doctorOptionDisplayName(doctor);
 	}
 
 	function handleCalendarChange(date: string) {

@@ -90,12 +90,7 @@ async function searchDoctors(query: string): Promise<{ label: string; value: str
 		pageSize: 20
 	});
 	return res.data.map((staff) => ({
-		label: StringUtil.fullNameWithTitle(
-			staff.title?.name ?? '',
-			staff.firstName,
-			staff.middleName,
-			staff.lastName
-		),
+		label: StringUtil.doctorOptionDisplayName(staff),
 		value: String(staff.id)
 	}));
 }
@@ -103,12 +98,7 @@ async function searchDoctors(query: string): Promise<{ label: string; value: str
 async function getDoctorLabelForValue(id: string): Promise<string> {
 	const staff = await getStaffByIdWithRelations({ id });
 	if (!staff) return '';
-	return StringUtil.fullNameWithTitle(
-		staff.title?.name ?? '',
-		staff.firstName,
-		staff.middleName,
-		staff.lastName
-	);
+	return StringUtil.doctorOptionDisplayName(staff);
 }
 
 	const selectedStaff = $derived(
