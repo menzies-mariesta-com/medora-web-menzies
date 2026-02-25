@@ -178,4 +178,30 @@ export const weekdayTable = pgTable('weekday', {
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
 	...timestamps
-})
+});
+
+/** Unit type (e.g. length, weight) for categorising units. */
+export const unitTypeTable = pgTable('unit_type', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+/** Unit (e.g. cm, in, kg, lbs) for vitals and measurements. */
+export const unitTable = pgTable('unit', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	unitTypeId: integer('unit_type_id').references(() => unitTypeTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+/** Visit type (e.g. OPD, follow-up) for patient visits. */
+export const visitTypeTable = pgTable('visit_type', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	code: varchar('code', { length: 128 }),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
