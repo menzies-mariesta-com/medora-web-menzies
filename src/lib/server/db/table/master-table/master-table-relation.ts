@@ -8,6 +8,7 @@ import {
 	moduleTable,
 	pageTable,
 	patientTable,
+	patientVisitTable,
 	staffDepartmentTable,
 	staffDetailTable,
 	staffTable,
@@ -36,6 +37,9 @@ import {
 	stateTable,
 	statusTable,
 	titleTable,
+	unitTable,
+	unitTypeTable,
+	visitTypeTable,
 	weekdayTable,
 } from './master-table';
 
@@ -258,4 +262,31 @@ export const weekdayTableRelations = relations(weekdayTable, ({ one, many }) => 
 		references: [statusTable.id],
 	}),
 	doctorSchedules: many(doctorScheduleTable),
+}));
+
+export const unitTypeTableRelations = relations(unitTypeTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [unitTypeTable.statusId],
+		references: [statusTable.id],
+	}),
+	units: many(unitTable),
+}));
+
+export const unitTableRelations = relations(unitTable, ({ one }) => ({
+	unitType: one(unitTypeTable, {
+		fields: [unitTable.unitTypeId],
+		references: [unitTypeTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [unitTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
+
+export const visitTypeTableRelations = relations(visitTypeTable, ({ one, many }) => ({
+	status: one(statusTable, {
+		fields: [visitTypeTable.statusId],
+		references: [statusTable.id],
+	}),
+	patientVisits: many(patientVisitTable),
 }));
