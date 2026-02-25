@@ -43,6 +43,7 @@ export const getPatientWithRelations = query(async () => {
 			attachments: true,
 			insurances: { with: { insurance: true } },
 			allergies: true,
+			fatherTitle: true,
 		},
 	});
 });
@@ -86,8 +87,15 @@ export const getPatientPaginated = query(
 		const searchCondition =
 			pattern &&
 			or(
-				ilike(table.patientTable.firstName, pattern),
-				ilike(table.patientTable.lastName, pattern),
+				// Match by name ONLY when name masking is NOT enabled
+				and(
+					ilike(
+						sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+						`%${searchTerm}%`
+					),
+					ne(table.patientTable.nameMasking, YesNoEnum.YES)
+				),
+				// Always allow search by code / phone
 				ilike(table.patientTable.code, pattern),
 				ilike(table.patientTable.phonePrimary, pattern)
 			);
@@ -125,6 +133,7 @@ export const getPatientPaginated = query(
 					attachments: true,
 					insurances: { with: { insurance: true } },
 					allergies: true,
+					fatherTitle: true,
 				},
 				limit,
 				offset
@@ -301,6 +310,8 @@ export const getPatientByIdWithRelations = query(
 				attachments: true,
 				insurances: { with: { insurance: true } },
 				allergies: true,
+				fatherTitle: true,
+				phonePrimaryCountry: true
 			},
 		});
 	}
@@ -369,46 +380,47 @@ function generateRandomPassword(length: number = 16): string {
 }
 
 // Create patient with Better Auth user (email/password)
-export const createPatientWithUser = command(
-	'unchecked' as const,
-	async (payload: {
-		// User fields
-		email: string;
-		name: string;
-		// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
-		hospitalId: string;
-		// Patient fields (only include fields that exist in patientTable); code is generated on backend
-		titleId?: number;
-		firstName?: string;
-		middleName?: string;
-		lastName?: string;
-		phonePrimary?: string;
-		phoneSecondary?: string;
-		phonePrimaryCountryId?: number;
-		phoneSecondaryCountryId?: number;
-		fatherTitleId?: number;
-		guardianTitleId?: number;
-		identityNo?: string;
-		dateOfBirth?: string;
-		guardianName?: string;
-		guardianPhone?: string;
-		guardianPhoneCountryId?: number;
-		photoPath?: string;
-		address?: string;
-		remark?: string;
-		maritalStatusId?: number;
-		genderId?: number;
-		identityTypeId?: number;
-		bloodTypeId?: number;
-		cityId?: number;
-		stateId?: number;
-		countryId?: number;
-		postalCodeId?: number;
-		nationalityId?: number;
-		religionId?: number;
-		isActive?: boolean;
-		nameMasking?: boolean;
-	}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
+	export const createPatientWithUser = command(
+		'unchecked' as const,
+		async (payload: {
+			// User fields
+			email: string;
+			name: string;
+			// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
+			hospitalId: string;
+			// Patient fields (only include fields that exist in patientTable); code is generated on backend
+			titleId?: number;
+			firstName?: string;
+			middleName?: string;
+			lastName?: string;
+			phonePrimary?: string;
+			phoneSecondary?: string;
+			phonePrimaryCountryId?: number;
+			phoneSecondaryCountryId?: number;
+			fatherTitleId?: number;
+			fatherName?: string;
+			guardianTitleId?: number;
+			identityNo?: string;
+			dateOfBirth?: string;
+			guardianName?: string;
+			guardianPhone?: string;
+			guardianPhoneCountryId?: number;
+			photoPath?: string;
+			address?: string;
+			remark?: string;
+			maritalStatusId?: number;
+			genderId?: number;
+			identityTypeId?: number;
+			bloodTypeId?: number;
+			cityId?: number;
+			stateId?: number;
+			countryId?: number;
+			postalCodeId?: number;
+			nationalityId?: number;
+			religionId?: number;
+			isActive?: boolean;
+			nameMasking?: boolean;
+		}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
 		if (!payload.hospitalId) {
@@ -465,8 +477,15 @@ export const createPatientWithUser = command(
 			lastName: payload.lastName,
 			phonePrimary: payload.phonePrimary,
 			phoneSecondary: payload.phoneSecondary,
-			phonePrimaryCountryId: payload.phonePrimaryCountryId ? Number(payload.phonePrimaryCountryId) : undefined,
-			phoneSecondaryCountryId: payload.phoneSecondaryCountryId ? Number(payload.phoneSecondaryCountryId) : undefined,
+			phonePrimaryCountryId: payload.phonePrimaryCountryId
+				? Number(payload.phonePrimaryCountryId)
+				: undefined,
+			phoneSecondaryCountryId: payload.phoneSecondaryCountryId
+				? Number(payload.phoneSecondaryCountryId)
+				: undefined,
+			fatherTitleId: payload.fatherTitleId ? Number(payload.fatherTitleId) : undefined,
+			fatherName: payload.fatherName,
+			guardianTitleId: payload.guardianTitleId ? Number(payload.guardianTitleId) : undefined,
 			identityNo: payload.identityNo,
 			dateOfBirth: payload.dateOfBirth
 				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
