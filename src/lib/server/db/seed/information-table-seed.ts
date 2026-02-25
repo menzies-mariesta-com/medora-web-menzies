@@ -46,13 +46,13 @@ export async function seedInformationTables() {
 	console.log('Seeded: module');
 
 	// 2. Hospital (depends: status). id is UUID.
-	await db.execute(sql`
-		INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
-		VALUES 
-			('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: hospital');
+	// await db.execute(sql`
+	// 	INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
+	// 	VALUES 
+	// 		('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
+	// 	ON CONFLICT (id) DO NOTHING;
+	// `);
+	// console.log('Seeded: hospital');
 
 	// 2b. Hospital patient code counter (one row per hospital, start at 0 so first code is 1)
 	await db.execute(sql`
