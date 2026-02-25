@@ -1,5 +1,6 @@
 import { YesNoEnum } from "$lib/model/enum/db-link";
 import type { PatientWithRelations } from "$lib/remote/table/information-table/patient.remote";
+import type { CountrySchema, IdentityTypeSchema } from "$lib/server/db/schema-type";
 
 export class StringUtil {
   /**
@@ -72,7 +73,8 @@ export class StringUtil {
     titleName?: string | null,
     firstName?: string | null,
     middleName?: string | null,
-    lastName?: string | null
+    lastName?: string | null,
+    type?: string | null
   ): string {
     const parts: string[] = [];
 
@@ -88,6 +90,9 @@ export class StringUtil {
     if (lastName && lastName.trim()) {
       parts.push(lastName.trim());
     }
+    if (!titleName && !firstName && !middleName && !lastName && type) {
+      parts.push(`Unknown ${type.trim()}`);
+    }
 
     return parts.join(' ');
   }
@@ -102,6 +107,36 @@ export class StringUtil {
 			patient.lastName
 		);
 	}
+
+  static fullPhoneNo(phoneCountry?: CountrySchema | null, phone?: string | null): string {
+    if (phoneCountry && phone) {
+      return `${phoneCountry.countryCallingCode}${phone}`;
+    } else if (phone) {
+      return `${phone}`;
+    }
+    return `Unknown Phone`;
+  }
+
+  static fullIdentity(identityType: IdentityTypeSchema | null, identityNo: string | null): string {
+    if (identityType && identityNo) {
+      return `(${identityType.name}) ${identityNo}`;
+    }
+
+    return `Unknown Identity`;
+  }
+
+  static patientOptionDisplayName(patient: PatientWithRelations): string {
+    return `${patient.code} - ${this.patientDisplayName(patient)} - ${this.fullPhoneNo(
+      patient.phonePrimaryCountry,
+      patient.phonePrimary
+    )} - ${this.fullIdentity(patient.identityType, patient.identityNo)} - ${this.fullNameWithTitle(
+      patient.fatherTitle?.name ?? null,
+      patient.fatherName,
+      null,
+      null,
+      'Father'
+    )}`;
+  }
 
   // =========================================================
   // 🔥 NEW URL HELPERS
