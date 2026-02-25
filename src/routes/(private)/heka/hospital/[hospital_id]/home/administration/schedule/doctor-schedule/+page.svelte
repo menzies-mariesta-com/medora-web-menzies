@@ -5,8 +5,8 @@
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
@@ -15,7 +15,6 @@
 		getDoctorSchedule,
 		updateDoctorSchedule
 	} from '$lib/remote/table/information-table/doctor-schedule.remote';
-	import { getDoctorStaffList } from '$lib/remote/table/information-table/staff.remote';
 	import { getWeekday } from '$lib/remote/table/master-table/weekday.remote';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -29,7 +28,12 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { page } from '$app/state';
-	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
+	import {
+		type StaffWithRelations,
+		getDoctorStaffList,
+		getDoctorStaffPaginated,
+		getStaffByIdWithRelations
+	} from '$lib/remote/table/information-table/staff.remote';
 
 	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
 	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -78,6 +82,35 @@
 	};
 
 	let staffId = $state('');
+async function searchDoctors(query: string): Promise<{ label: string; value: string }[]> {
+	const res = await getDoctorStaffPaginated({
+		search: query.trim(),
+		hospitalId: hospitalId,
+		page: 1,
+		pageSize: 20
+	});
+	return res.data.map((staff) => ({
+		label: StringUtil.fullNameWithTitle(
+			staff.title?.name ?? '',
+			staff.firstName,
+			staff.middleName,
+			staff.lastName
+		),
+		value: String(staff.id)
+	}));
+}
+
+async function getDoctorLabelForValue(id: string): Promise<string> {
+	const staff = await getStaffByIdWithRelations({ id });
+	if (!staff) return '';
+	return StringUtil.fullNameWithTitle(
+		staff.title?.name ?? '',
+		staff.firstName,
+		staff.middleName,
+		staff.lastName
+	);
+}
+
 	const selectedStaff = $derived(
 		DOCTOR_STAFF_LIST.find((s) => s.id === staffId) ?? null
 	);
@@ -389,22 +422,14 @@
 					<div class="flex flex-wrap items-center gap-x-10 gap-y-4">
 						<div class="flex items-center gap-3">
 							<p class="min-w-[4.5rem]">Doctor</p>
-							<DaisyUiSelect
-								optionHeader="Select a Doctor ..."
+							<DaisyUiSearchSelect
 								bind:value={staffId}
+								placeholder="Select a Doctor ..."
 								className="w-[14rem] min-w-[14rem]"
-							>
-								{#each DOCTOR_STAFF_LIST as staff (staff.id)}
-									<option value={staff.id}>
-										{StringUtil.fullNameWithTitle(
-											staff.title?.name,
-											staff.firstName,
-											staff.middleName,
-											staff.lastName
-										)}
-									</option>
-								{/each}
-							</DaisyUiSelect>
+								searchFn={searchDoctors}
+								getLabelForValue={getDoctorLabelForValue}
+								minSearchLength={0}
+							/>
 						</div>
 					</div>
 

@@ -542,6 +542,13 @@ const currentPatientId = $derived(viewId || editId);
 					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
 						? Number(selectedPhoneSecondaryCountryId)
 						: undefined,
+					fatherTitleId: selectedFatherTitleId
+						? Number(selectedFatherTitleId)
+						: undefined,
+					fatherName: fatherName.trim() || undefined,
+					guardianTitleId: selectedGuardianTitleId
+						? Number(selectedGuardianTitleId)
+						: undefined,
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
 					guardianName: guardianName.trim() || undefined,
@@ -631,6 +638,7 @@ const currentPatientId = $derived(viewId || editId);
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
 					fatherTitleId: selectedFatherTitleId ? Number(selectedFatherTitleId) : undefined,
+					fatherName: fatherName.trim() || undefined,
 					guardianTitleId: selectedGuardianTitleId ? Number(selectedGuardianTitleId) : undefined,
 					guardianName: guardianName.trim() || undefined,
 					guardianPhone,
