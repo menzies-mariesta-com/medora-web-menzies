@@ -5,12 +5,13 @@
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		getAppointment,
-		getAppointmentById,
-		updateAppointment,
-		deleteAppointment
+import {
+	getAppointment,
+	getAppointmentById,
+	updateAppointment,
+	deleteAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
+import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientPaginated,
 		getPatientByIdWithRelations
@@ -102,6 +103,40 @@
 	const hasSelectedPatient = $derived.by(
 		() => !!selectedPatientId?.trim()
 	);
+
+const availableStatusTaggingData = $derived.by(() => {
+	// For new patients (no linked account), hide "Check In" status
+	if (patientMode === 'new') {
+		return statusTaggingData.filter((s) => {
+			const raw = (s.code ?? s.name ?? '')
+				.trim()
+				.toLowerCase()
+				.replace(/[\s_-]/g, '');
+			return raw !== 'checkin';
+		});
+	}
+	return statusTaggingData;
+});
+
+function isCheckInStatus(id: string | null | undefined): boolean {
+	if (!id) return false;
+	const status = statusTaggingData.find((s) => String(s.id) === id);
+	if (!status) return false;
+	const raw = (status.code ?? status.name ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]/g, '');
+	return raw === 'checkin';
+}
+
+// When in "new" patient mode, clear "Check In" if currently selected
+$effect(() => {
+	if (patientMode === 'new' && selectedStatusTaggingId) {
+		if (isCheckInStatus(selectedStatusTaggingId)) {
+			selectedStatusTaggingId = '';
+		}
+	}
+});
 
 	/** Server-side patient search for the dropdown. Returns options with label (code + full name) and value (id). */
 	async function searchPatients(query: string): Promise<{ label: string; value: string }[]> {
@@ -385,6 +420,7 @@
 		const nextStatusId = selectedStatusTaggingId
 			? parseInt(selectedStatusTaggingId, 10)
 			: null;
+		let becomesCheckIn = false;
 		if (currentStatusId != null && nextStatusId != null) {
 			const currentStatus = statusTaggingData.find(
 				(s) => s.id === currentStatusId
@@ -394,17 +430,34 @@
 			);
 			const currentSeq = currentStatus?.sequenceNo ?? null;
 			const nextSeq = nextStatus?.sequenceNo ?? null;
-			if (
-				currentSeq != null &&
-				nextSeq != null &&
-				Math.abs(nextSeq - currentSeq) > 1
-			) {
-				toastService.addToast(
-					'Status can only move one step at a time (Unconfirmed ↔ Confirmed ↔ Check In).',
-					StatusColorEnum.ERROR
-				);
-				return;
+			const currentIsCancel = currentStatus && isCheckInStatus(String(currentStatusId)) === false &&
+				((currentStatus.code ?? currentStatus.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '') === 'cancel');
+			const nextIsCancel = nextStatus && isCheckInStatus(String(nextStatusId)) === false &&
+				((nextStatus.code ?? nextStatus.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '') === 'cancel');
+
+			// Enforce step-by-step only between unconfirmed/confirmed/check-in (exclude cancel).
+			if (!currentIsCancel && !nextIsCancel) {
+				if (
+					currentSeq != null &&
+					nextSeq != null &&
+					Math.abs(nextSeq - currentSeq) > 1
+				) {
+					toastService.addToast(
+						'Status can only move one step at a time (Unconfirmed ↔ Confirmed ↔ Check In).',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
 			}
+			const currentIsCheckIn = isCheckInStatus(String(currentStatusId));
+			const nextIsCheckIn = isCheckInStatus(String(nextStatusId));
+			becomesCheckIn = !currentIsCheckIn && nextIsCheckIn;
 		}
 
 		const overlap = await hasOverlap(
@@ -447,6 +500,35 @@
 				remark: appointmentRemark.trim() || null
 			};
 			await updateAppointment(payload);
+
+			// When status newly becomes "Check In" for an existing patient, create a patient visit.
+			const effectivePatientId =
+				selectedPatientId?.trim() ||
+				(latest?.patientId ? String(latest.patientId) : '');
+			if (
+				becomesCheckIn &&
+				effectivePatientId &&
+				hospitalId &&
+				staffIdVal
+			) {
+				try {
+					await createPatientVisit({
+						patientId: effectivePatientId,
+						hospitalId,
+						branchId: null,
+						appointmentId,
+						doctorId: String(staffIdVal),
+						statusTypeId: null,
+						// Default to OPD visit type (see master-table seed: id=1, code 'O').
+						visitTypeId: 1,
+						statusId: undefined,
+						visitNo: null
+					});
+				} catch (e) {
+					console.error('Failed to create patient visit for check-in:', e);
+				}
+			}
+
 			toastService.addToast('Appointment updated.', StatusColorEnum.SUCCESS);
 			confirm({ updated: true });
 		} catch (e) {
@@ -694,12 +776,18 @@
 						optionHeader="Select status …"
 						className="w-full"
 					>
-						{#each statusTaggingData as s (s.id)}
+						{#each availableStatusTaggingData as s (s.id)}
 							<option value={String(s.id)}>{s.name}</option>
 						{/each}
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if patientMode === 'new'}
+				<p class="text-xs text-info mt-1 w-full">
+					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
+					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
+				</p>
+			{/if}
 		</div>
 
 		<div class="d-modal-action flex flex-wrap justify-end gap-2 border-t border-base-300 pt-4">

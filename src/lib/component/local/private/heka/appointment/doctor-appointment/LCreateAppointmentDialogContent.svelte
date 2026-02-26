@@ -2,12 +2,13 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createAppointment,
-		getAppointment
+import {
+	createAppointment,
+	getAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
+import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientPaginated,
 		getPatientByIdWithRelations
@@ -149,6 +150,49 @@
 	const hasSelectedPatient = $derived.by(
 		() => !!selectedPatientId?.trim()
 	);
+
+	const availableStatusTaggingData = $derived.by(() => {
+	// Cancel is only available in edit dialog, never on create.
+	// For new patients (no linked account), also hide "Check In".
+	return statusTaggingData.filter((s) => {
+		const raw = (s.code ?? s.name ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]/g, '');
+		if (raw === 'cancel') return false;
+		if (patientMode === 'new' && raw === 'checkin') return false;
+		return true;
+	});
+	});
+
+function isCheckInStatus(id: string | null | undefined): boolean {
+	if (!id) return false;
+	const status = statusTaggingData.find((s) => String(s.id) === id);
+	if (!status) return false;
+	const raw = (status.code ?? status.name ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]/g, '');
+	return raw === 'checkin';
+}
+
+	// When in "new" patient mode, clear "Check In" if currently selected
+	$effect(() => {
+		if (patientMode === 'new' && selectedStatusTaggingId) {
+			const current = statusTaggingData.find(
+				(s) => String(s.id) === selectedStatusTaggingId
+			);
+			if (current) {
+				const raw = (current.code ?? current.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '');
+				if (raw === 'checkin') {
+					selectedStatusTaggingId = '';
+				}
+			}
+		}
+	});
 
 	// When switching to "new" mode, clear any selected patient account
 	$effect(() => {
@@ -363,6 +407,35 @@
 				remark: appointmentRemark.trim() || null
 			};
 			const created = await createAppointment(payload);
+
+			// If this appointment is immediately in "Check In" for an existing patient,
+			// create a patient visit record.
+			const patientIdVal = selectedPatientId?.trim() || null;
+			if (
+				patientIdVal &&
+				isCheckInStatus(selectedStatusTaggingId) &&
+				hospitalId &&
+				staffId?.trim()
+			) {
+				try {
+					await createPatientVisit({
+						patientId: patientIdVal,
+						hospitalId,
+						branchId: null,
+						appointmentId: created.id,
+						doctorId: staffId.trim() || null,
+						statusTypeId: null,
+						// Default to OPD visit type (see master-table seed: id=1, code 'O').
+						visitTypeId: 1,
+						statusId: undefined,
+						visitNo: null
+					});
+				} catch (e) {
+					// Do not block appointment creation if visit creation fails.
+					console.error('Failed to create patient visit for check-in:', e);
+				}
+			}
+
 			toastService.addToast('Appointment created.', StatusColorEnum.SUCCESS);
 			confirm(created);
 		} catch (e) {
@@ -497,7 +570,6 @@
 						searchFn={searchPatients}
 						getLabelForValue={getPatientLabelForValue}
 						minSearchLength={0}
-						listClassName='w-200'
 					/>
 			</div>
 			{/if}
@@ -617,12 +689,18 @@
 						optionHeader="Select status …"
 						className="w-full"
 					>
-						{#each statusTaggingData as s (s.id)}
+						{#each availableStatusTaggingData as s (s.id)}
 							<option value={String(s.id)}>{s.name}</option>
 						{/each}
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if patientMode === 'new'}
+				<p class="text-xs text-info mt-1 w-full">
+					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
+					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
+				</p>
+			{/if}
 		</div>
 
 	<div class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4">
