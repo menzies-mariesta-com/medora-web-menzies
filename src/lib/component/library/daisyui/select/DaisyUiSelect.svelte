@@ -5,7 +5,8 @@
 		optionHeader,
 		onChange,
 		value = $bindable(),
-		disabled
+		disabled,
+		name
 	} = $props<{
 		children?: () => void;
 		onChange?: () => void;
@@ -13,6 +14,7 @@
 		optionHeader?: string;
 		value?: any;
 		disabled?: boolean;
+		name?: string;
 	}>();
 </script>
 
@@ -20,6 +22,7 @@
 	class="d-select {className}"
 	bind:value
 	{disabled}
+	{name}
 	onchange={onChange}
 >
 	{#if optionHeader != null && optionHeader !== ''}
