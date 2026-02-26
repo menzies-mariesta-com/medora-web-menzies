@@ -30,13 +30,18 @@
 <div class="my-app">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
-		<GPrivateHekaModuleBar
-			hospitalId={hospitalId}
-			moduleList={uniqueModuleData}
-			pageList={pageData}
-			staffId={currentStaffId}
-			staffPhotoUrl={currentStaffPhotoUrl}
-		/>
+		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}`}
+			<GPrivateHekaModuleBar
+				hospitalId={hospitalId}
+				moduleList={uniqueModuleData}
+				pageList={pageData}
+				staffId={currentStaffId}
+				staffPhotoUrl={currentStaffPhotoUrl}
+				userRoleId={data?.userRoleId ?? null}
+				staffUserGroupsForNav={data?.staffUserGroupsForNav ?? []}
+				selectedUserGroupId={data?.selectedUserGroupId ?? null}
+			/>
+		{/key}
 	{/if}
 	<div class="my-main p-3" class:my-main-embed={isEmbed}>
 		{@render children?.()}
