@@ -27,6 +27,8 @@
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { hekaHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import LPatientListViewEditModal from '$lib/component/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
 	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
@@ -34,6 +36,7 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const stringUtil = new StringUtil();
+	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
@@ -50,6 +53,7 @@
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
+	const selectForEmr = $derived(page.url.searchParams.get('selectFor') === 'emr');
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
 		isLoading = true;
@@ -166,6 +170,19 @@
 	function closePatientDialog() {
 		patientDialog = null;
 		fetchPatients({ bustCache: true });
+	}
+
+	function selectForEmrPatient(patient: PatientWithRelations) {
+		if (!hospitalId) return;
+		const baseUrl = hekaHospitalPageUrl(
+			hospitalId,
+			WebRoutesEnum.HEKA_HOME_EMR_CLONE_EMR_VITAL
+		);
+		const name = StringUtil.patientDisplayName(patient);
+		const url =
+			`${baseUrl}?patientId=${encodeURIComponent(patient.id)}` +
+			`&patientName=${encodeURIComponent(name)}`;
+		routerUtil.replaceRoute(url);
 	}
 </script>
 
@@ -306,6 +323,19 @@
 										<LucidePencil className="size-5" />
 									</DaisyUiButton>
 								</DaisyUiTooltip>
+								{#if selectForEmr}
+									<DaisyUiTooltip
+										tooltipText="select for EMR"
+										className="d-tooltip-info d-tooltip-right"
+									>
+										<DaisyUiButton
+											className="d-btn-sm d-btn-info"
+											onClick={() => selectForEmrPatient(patient)}
+										>
+											<LucideChevronRight className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								{/if}
 								<DaisyUiTooltip
 									tooltipText="delete data"
 									className="d-tooltip-error d-tooltip-right"
