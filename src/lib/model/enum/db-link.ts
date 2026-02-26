@@ -22,9 +22,35 @@ export enum ReferTypeEnum {
 };
 
 export enum VisitTypeEnum {
-    OPD = 1,
-    IPD = 2,
-    ED = 3,
-    DAY_CARE = 4,
-    PACKAGE = 5,
+	OPD = 1,
+	IPD = 2,
+	ED = 3,
+	DAY_CARE = 4,
+	PACKAGE = 5,
+};
+
+export enum UnitTypeEnum {
+	LENGTH = 1,
+	WEIGHT = 2,
+	PRESSURE = 3,
+	RATE = 4,
+	TEMPERATURE = 5,
+	PERCENTAGE = 6,
+	RESPIRATION = 7,
+	BLOOD_SUGAR = 8,
+};
+
+export enum UnitEnum {
+	CM = 1,
+	IN = 2,
+	KG = 3,
+	LB = 4,
+	MMHG = 5,
+	BPM = 6,
+	CELSIUS = 7,
+	FAHRENHEIT = 8,
+	PERCENT = 9,
+	PER_MIN = 10,
+	MG_DL = 11,
+	MMOL_L = 12,
 };

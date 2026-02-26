@@ -52,6 +52,18 @@ export const getPatientVisit = query(async (): Promise<PatientVisitSchema[]> => 
 	return await ensureDb().select().from(table.patientVisitTable);
 });
 
+// Get by ID
+export const getPatientVisitById = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<PatientVisitSchema | null> => {
+		const [row] = await ensureDb()
+			.select()
+			.from(table.patientVisitTable)
+			.where(eq(table.patientVisitTable.id, id));
+		return row ?? null;
+	}
+);
+
 // Create
 export const createPatientVisit = command(
 	'unchecked' as const,
