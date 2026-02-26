@@ -33,11 +33,12 @@
 	};
 	/** Blocked time slot: no appointments can be made in this range. Optional blockId for edit/delete. */
 	export type BlockSlot = ScheduleSlot & { blockId?: number };
-	/** Appointment slot state: unconfirmed → confirmed → check-in (reversible). */
+	/** Appointment slot state: unconfirmed → confirmed → check-in; plus cancel. */
 	export type AppointmentSlotState =
 		| 'unconfirmed'
 		| 'confirmed'
-		| 'check-in';
+		| 'check-in'
+		| 'cancel';
 	/** Appointment slot may include patient name, id, and state for display and edit. */
 	type AppointmentSlot = ScheduleSlot & {
 		patientName?: string;
@@ -335,7 +336,7 @@
 				t < toHHmm(s.endTime)
 		);
 		const state = (slot as AppointmentSlot | undefined)?.slotState;
-		return state === 'confirmed' || state === 'check-in'
+		return state === 'confirmed' || state === 'check-in' || state === 'cancel'
 			? state
 			: 'unconfirmed';
 	}
@@ -347,6 +348,7 @@
 	): string {
 		const state = getCellAppointmentState(dateString, timeSlot);
 		if (state === 'check-in') return 'text-success-content';
+		if (state === 'cancel') return 'text-neutral-content';
 		if (state === 'confirmed') return 'text-primary-content';
 		return 'text-warning-content';
 	}
@@ -385,6 +387,7 @@
 		) {
 			const state = getCellAppointmentState(dateString, timeSlot);
 			if (state === 'check-in') return 'bg-success';
+			if (state === 'cancel') return 'bg-neutral';
 			if (state === 'confirmed') return 'bg-primary';
 			return 'bg-warning';
 		}
@@ -793,6 +796,11 @@
 				<span class="h-5 w-5 rounded-md bg-success" aria-hidden="true"
 				></span>
 				check-in
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="h-5 w-5 rounded-md bg-neutral" aria-hidden="true"
+				></span>
+				cancel
 			</div>
 			<div class="flex items-center gap-2">
 				<span
