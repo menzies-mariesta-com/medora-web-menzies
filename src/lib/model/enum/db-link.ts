@@ -20,3 +20,11 @@ export enum ReferTypeEnum {
     EXTERNAL = 1,
     INTERNAL = 2,
 };
+
+export enum VisitTypeEnum {
+    OPD = 1,
+    IPD = 2,
+    ED = 3,
+    DAY_CARE = 4,
+    PACKAGE = 5,
+};
