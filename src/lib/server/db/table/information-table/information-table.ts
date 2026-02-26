@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
 	date,
+	decimal,
 	foreignKey,
 	integer,
 	pgTable,
@@ -14,7 +15,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, weekdayTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -406,5 +407,60 @@ export const appointmentBlockTable = pgTable('appointment_block', {
 	fromTime: time('from_time').notNull(),
 	toTime: time('to_time').notNull(),
 	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	...timestamps,
+});
+
+/** Patient visit to a hospital/branch; may be linked to an appointment and doctor. */
+export const patientVisitTable = pgTable('patient_visit', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id),
+	branchId: uuid('branch_id').references(() => hospitalBranchTable.id),
+	appointmentId: integer('appointment_id').references(() => appointmentTable.id),
+	doctorId: uuid('doctor_id').references(() => staffTable.id),
+	statusTypeId: integer('status_type_id'),
+	visitTypeId: integer('visit_type_id').references(() => visitTypeTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	visitNo: varchar('visit_no', { length: 128 }),
+	...timestamps,
+});
+
+/** Patient diagnosis / vitals and symptoms for a visit. */
+export const patientDiagnosisTable = pgTable('patient_diagnosis', {
+	id: serial('id').primaryKey(),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id),
+	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	height: decimal('height', { precision: 10, scale: 2 }),
+	heightUnitId: integer('height_unit_id').references(() => unitTable.id),
+	weight: decimal('weight', { precision: 10, scale: 2 }),
+	weightUnitId: integer('weight_unit_id').references(() => unitTable.id),
+	bpSystolic: decimal('bp_systolic', { precision: 10, scale: 2 }),
+	bpDiastolic: decimal('bp_diastolic', { precision: 10, scale: 2 }),
+	bpUnitId: integer('bp_unit_id').references(() => unitTable.id),
+	pulse: decimal('pulse', { precision: 10, scale: 2 }),
+	pulseUnitId: integer('pulse_unit_id').references(() => unitTable.id),
+	temperature: decimal('temperature', { precision: 10, scale: 2 }),
+	temperatureUnitId: integer('temperature_unit_id').references(() => unitTable.id),
+	spO2: decimal('sp_o2', { precision: 10, scale: 2 }),
+	spO2UnitId: integer('sp_o2_unit_id').references(() => unitTable.id),
+	respiration: decimal('respiration', { precision: 10, scale: 2 }),
+	respirationUnitId: integer('respiration_unit_id').references(() => unitTable.id),
+	rbs: decimal('rbs', { precision: 10, scale: 2 }),
+	rbsUnitId: integer('rbs_unit_id').references(() => unitTable.id),
+	symptom: text('symptom'),
+	description: text('description'),
+	remark: text('remark'),
 	...timestamps,
 });

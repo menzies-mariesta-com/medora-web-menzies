@@ -2,15 +2,20 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		getAppointment,
-		getAppointmentById,
-		updateAppointment,
-		deleteAppointment
+import {
+	getAppointment,
+	getAppointmentById,
+	updateAppointment,
+	deleteAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
-	import { getPatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getPatientPaginated,
+		getPatientByIdWithRelations
+	} from '$lib/remote/table/information-table/patient.remote';
 	import { getTitle } from '$lib/remote/table/master-table/title.remote';
 	import { getReferType } from '$lib/remote/table/master-table/refer-type.remote';
 	import { getExternalRefer } from '$lib/remote/table/information-table/external-refer.remote';
@@ -27,8 +32,13 @@
 		StatusTaggingSchema
 	} from '$lib/server/db/schema-type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { page } from '$app/state';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
+
+	const hospitalId = $derived(
+		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+	);
 
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
@@ -67,7 +77,6 @@
 	);
 
 	let titleData = $state<TitleSchema[]>([]);
-	let patientData = $state<Awaited<ReturnType<typeof getPatientWithRelations>>>([]);
 	let referTypeData = $state<ReferTypeSchema[]>([]);
 	let externalReferData = $state<ExternalReferSchema[]>([]);
 	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
@@ -94,6 +103,76 @@
 	const hasSelectedPatient = $derived.by(
 		() => !!selectedPatientId?.trim()
 	);
+
+const availableStatusTaggingData = $derived.by(() => {
+	// For new patients (no linked account), hide "Check In" status
+	if (patientMode === 'new') {
+		return statusTaggingData.filter((s) => {
+			const raw = (s.code ?? s.name ?? '')
+				.trim()
+				.toLowerCase()
+				.replace(/[\s_-]/g, '');
+			return raw !== 'checkin';
+		});
+	}
+	return statusTaggingData;
+});
+
+function isCheckInStatus(id: string | null | undefined): boolean {
+	if (!id) return false;
+	const status = statusTaggingData.find((s) => String(s.id) === id);
+	if (!status) return false;
+	const raw = (status.code ?? status.name ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]/g, '');
+	return raw === 'checkin';
+}
+
+// When in "new" patient mode, clear "Check In" if currently selected
+$effect(() => {
+	if (patientMode === 'new' && selectedStatusTaggingId) {
+		if (isCheckInStatus(selectedStatusTaggingId)) {
+			selectedStatusTaggingId = '';
+		}
+	}
+});
+
+	/** Server-side patient search for the dropdown. Returns options with label (code + full name) and value (id). */
+	async function searchPatients(query: string): Promise<{ label: string; value: string }[]> {
+		const res = await getPatientPaginated({
+			search: query.trim(),
+			hospitalId: hospitalId || undefined,
+			page: 1,
+			pageSize: 20
+		});
+		const list = res.data.map((p) => {
+			const titleName = (p as { title?: { name?: string } }).title?.name;
+			return {
+				label: `${p.code} - ${StringUtil.fullNameWithTitle(
+					titleName ?? undefined,
+					p.firstName,
+					p.middleName,
+					p.lastName
+				)}`,
+				value: String(p.id)
+			};
+		});
+		return list;
+	}
+
+	/** Resolve selected patient id to display label (when not in current search results). */
+	async function getPatientLabelForValue(id: string): Promise<string> {
+		const p = await getPatientByIdWithRelations({ id });
+		if (!p) return '';
+		const titleName = (p as { title?: { name?: string } }).title?.name;
+		return `${p.code} - ${StringUtil.fullNameWithTitle(
+			titleName ?? undefined,
+			p.firstName,
+			p.middleName,
+			p.lastName
+		)}`;
+	}
 
 	// Default patient mode after load based on whether appointment has a linked patient
 	$effect(() => {
@@ -238,17 +317,15 @@
 	});
 
 	lifeCycle.onMount(async () => {
-		const [titles, patients, referTypes, externalRefers, statusTaggings, apt] =
+		const [titles, referTypes, externalRefers, statusTaggings, apt] =
 			await Promise.all([
 				getTitle(),
-				getPatientWithRelations(),
 				getReferType(),
 				getExternalRefer(),
 				getStatusTagging(),
 				appointmentId != null ? getAppointmentById({ id: appointmentId }) : Promise.resolve(null)
 			]);
 		titleData = titles;
-		patientData = patients;
 		referTypeData = referTypes;
 		externalReferData = externalRefers;
 		statusTaggingData = statusTaggings;
@@ -288,9 +365,9 @@
 	$effect(() => {
 		const id = selectedPatientId?.trim();
 		if (!id) return;
-		const p = patientData.find((x) => String(x.id) === id);
-		if (p) {
-			const titleName = titleData.find((t) => t.id === p.titleId)?.name;
+		getPatientByIdWithRelations({ id }).then((p) => {
+			if (!p) return;
+			const titleName = (p as { title?: { name?: string } }).title?.name;
 			patientName = StringUtil.fullNameWithTitle(
 				titleName ?? undefined,
 				p.firstName ?? '',
@@ -298,8 +375,9 @@
 				p.lastName ?? ''
 			);
 			if (p.titleId != null) selectedPatientTitleId = String(p.titleId);
-			if (p.dateOfBirth != null) patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
-		}
+			if (p.dateOfBirth != null)
+				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
+		});
 	});
 
 	async function hasOverlap(
@@ -342,6 +420,7 @@
 		const nextStatusId = selectedStatusTaggingId
 			? parseInt(selectedStatusTaggingId, 10)
 			: null;
+		let becomesCheckIn = false;
 		if (currentStatusId != null && nextStatusId != null) {
 			const currentStatus = statusTaggingData.find(
 				(s) => s.id === currentStatusId
@@ -351,17 +430,34 @@
 			);
 			const currentSeq = currentStatus?.sequenceNo ?? null;
 			const nextSeq = nextStatus?.sequenceNo ?? null;
-			if (
-				currentSeq != null &&
-				nextSeq != null &&
-				Math.abs(nextSeq - currentSeq) > 1
-			) {
-				toastService.addToast(
-					'Status can only move one step at a time (Unconfirmed ↔ Confirmed ↔ Check In).',
-					StatusColorEnum.ERROR
-				);
-				return;
+			const currentIsCancel = currentStatus && isCheckInStatus(String(currentStatusId)) === false &&
+				((currentStatus.code ?? currentStatus.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '') === 'cancel');
+			const nextIsCancel = nextStatus && isCheckInStatus(String(nextStatusId)) === false &&
+				((nextStatus.code ?? nextStatus.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '') === 'cancel');
+
+			// Enforce step-by-step only between unconfirmed/confirmed/check-in (exclude cancel).
+			if (!currentIsCancel && !nextIsCancel) {
+				if (
+					currentSeq != null &&
+					nextSeq != null &&
+					Math.abs(nextSeq - currentSeq) > 1
+				) {
+					toastService.addToast(
+						'Status can only move one step at a time (Unconfirmed ↔ Confirmed ↔ Check In).',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
 			}
+			const currentIsCheckIn = isCheckInStatus(String(currentStatusId));
+			const nextIsCheckIn = isCheckInStatus(String(nextStatusId));
+			becomesCheckIn = !currentIsCheckIn && nextIsCheckIn;
 		}
 
 		const overlap = await hasOverlap(
@@ -404,6 +500,35 @@
 				remark: appointmentRemark.trim() || null
 			};
 			await updateAppointment(payload);
+
+			// When status newly becomes "Check In" for an existing patient, create a patient visit.
+			const effectivePatientId =
+				selectedPatientId?.trim() ||
+				(latest?.patientId ? String(latest.patientId) : '');
+			if (
+				becomesCheckIn &&
+				effectivePatientId &&
+				hospitalId &&
+				staffIdVal
+			) {
+				try {
+					await createPatientVisit({
+						patientId: effectivePatientId,
+						hospitalId,
+						branchId: null,
+						appointmentId,
+						doctorId: String(staffIdVal),
+						statusTypeId: null,
+						// Default to OPD visit type (see master-table seed: id=1, code 'O').
+						visitTypeId: 1,
+						statusId: undefined,
+						visitNo: null
+					});
+				} catch (e) {
+					console.error('Failed to create patient visit for check-in:', e);
+				}
+			}
+
 			toastService.addToast('Appointment updated.', StatusColorEnum.SUCCESS);
 			confirm({ updated: true });
 		} catch (e) {
@@ -524,23 +649,14 @@
 			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 				<DaisyUiLabel forText="apt-patient" className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
 				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
+					<DaisyUiSearchSelect
 						bind:value={selectedPatientId}
-						optionHeader="Select patient (optional) …"
+						placeholder="Select patient (optional) …"
 						className="w-full"
-					>
-						{#each patientData as p (p.id)}
-							{@const titleName = titleData.find((t) => t.id === p.titleId)?.name}
-							<option value={String(p.id)}>
-								{StringUtil.fullNameWithTitle(
-									titleName ?? undefined,
-									p.firstName,
-									p.middleName,
-									p.lastName
-								)}
-							</option>
-						{/each}
-					</DaisyUiSelect>
+						searchFn={searchPatients}
+						getLabelForValue={getPatientLabelForValue}
+						minSearchLength={0}
+					/>
 				</div>
 			</div>
 			{/if}
@@ -660,12 +776,18 @@
 						optionHeader="Select status …"
 						className="w-full"
 					>
-						{#each statusTaggingData as s (s.id)}
+						{#each availableStatusTaggingData as s (s.id)}
 							<option value={String(s.id)}>{s.name}</option>
 						{/each}
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if patientMode === 'new'}
+				<p class="text-xs text-info mt-1 w-full">
+					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
+					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
+				</p>
+			{/if}
 		</div>
 
 		<div class="d-modal-action flex flex-wrap justify-end gap-2 border-t border-base-300 pt-4">

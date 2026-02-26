@@ -12,8 +12,10 @@ import {
 	pageTable,
 	patientAllergyTable,
 	patientAttachmentTable,
+	patientDiagnosisTable,
 	patientInsurance,
 	patientTable,
+	patientVisitTable,
 	insuranceTable,
 	staffDepartmentTable,
 	staffDetailTable,
@@ -45,6 +47,8 @@ import {
 	statusTable,
 	titleTable,
 	religionTable,
+	unitTable,
+	visitTypeTable,
 	weekdayTable,
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
@@ -297,6 +301,89 @@ export const appointmentBlockTableRelations = relations(appointmentBlockTable, (
 	}),
 }));
 
+export const patientVisitTableRelations = relations(patientVisitTable, ({ one, many }) => ({
+	patient: one(patientTable, {
+		fields: [patientVisitTable.patientId],
+		references: [patientTable.id],
+	}),
+	hospital: one(hospitalTable, {
+		fields: [patientVisitTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	branch: one(hospitalBranchTable, {
+		fields: [patientVisitTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+	appointment: one(appointmentTable, {
+		fields: [patientVisitTable.appointmentId],
+		references: [appointmentTable.id],
+	}),
+	doctor: one(staffTable, {
+		fields: [patientVisitTable.doctorId],
+		references: [staffTable.id],
+	}),
+	visitType: one(visitTypeTable, {
+		fields: [patientVisitTable.visitTypeId],
+		references: [visitTypeTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [patientVisitTable.statusId],
+		references: [statusTable.id],
+	}),
+	diagnoses: many(patientDiagnosisTable),
+}));
+
+export const patientDiagnosisTableRelations = relations(patientDiagnosisTable, ({ one }) => ({
+	patient: one(patientTable, {
+		fields: [patientDiagnosisTable.patientId],
+		references: [patientTable.id],
+	}),
+	hospital: one(hospitalTable, {
+		fields: [patientDiagnosisTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	visit: one(patientVisitTable, {
+		fields: [patientDiagnosisTable.visitId],
+		references: [patientVisitTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [patientDiagnosisTable.statusId],
+		references: [statusTable.id],
+	}),
+	heightUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.heightUnitId],
+		references: [unitTable.id],
+	}),
+	weightUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.weightUnitId],
+		references: [unitTable.id],
+	}),
+	bpUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.bpUnitId],
+		references: [unitTable.id],
+	}),
+	pulseUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.pulseUnitId],
+		references: [unitTable.id],
+	}),
+	temperatureUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.temperatureUnitId],
+		references: [unitTable.id],
+	}),
+	spO2Unit: one(unitTable, {
+		fields: [patientDiagnosisTable.spO2UnitId],
+		references: [unitTable.id],
+	}),
+	respirationUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.respirationUnitId],
+		references: [unitTable.id],
+	}),
+	rbsUnit: one(unitTable, {
+		fields: [patientDiagnosisTable.rbsUnitId],
+		references: [unitTable.id],
+	}),
+}));
+
 export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one }) => ({
 	staff: one(staffTable, {
 		fields: [staffHospitalTable.staffId],
@@ -522,6 +609,8 @@ export const patientTableRelations = relations(patientTable, ({ one, many }) => 
 	insurances: many(patientInsurance),
 	allergies: many(patientAllergyTable),
 	appointments: many(appointmentTable),
+	visits: many(patientVisitTable),
+	diagnoses: many(patientDiagnosisTable),
 }));
 
 export const patientAttachmentTableRelations = relations(

@@ -1503,6 +1503,55 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: refer-type');
 
+	// 16. Unit types (for categorising units: length, weight, etc.)
+	await db.execute(sql`
+		INSERT INTO unit_type (id, name, status_id)
+		VALUES
+			(1, 'Length', 1),
+			(2, 'Weight', 1),
+			(3, 'Pressure', 1),
+			(4, 'Rate', 1),
+			(5, 'Temperature', 1),
+			(6, 'Percentage', 1),
+			(7, 'Respiration', 1),
+			(8, 'Blood sugar', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: unit_type');
+
+	// 17. Units (for vitals and measurements; unit_type_id links to unit_type)
+	await db.execute(sql`
+		INSERT INTO unit (id, name, unit_type_id, status_id)
+		VALUES
+			(1, 'cm', 1, 1),
+			(2, 'in', 1, 1),
+			(3, 'kg', 2, 1),
+			(4, 'lb', 2, 1),
+			(5, 'mmHg', 3, 1),
+			(6, 'bpm', 4, 1),
+			(7, '°C', 5, 1),
+			(8, '°F', 5, 1),
+			(9, '%', 6, 1),
+			(10, '/min', 7, 1),
+			(11, 'mg/dL', 8, 1),
+			(12, 'mmol/L', 8, 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: unit');
+
+	// 18. Visit types (for patient_visit)
+	await db.execute(sql`
+		INSERT INTO visit_type (id, name, code, status_id)
+		VALUES
+			(1, 'OPD', 'O', 1),
+			(2, 'IPD', 'I', 1),
+			(3, 'ED', 'E', 1),
+			(4, 'DayCare', 'DC', 1),
+			(5, 'Package', 'PK', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: visit_type');
+
 	console.log('Master tables seeding completed.');
 }
 

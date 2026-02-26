@@ -23,6 +23,8 @@ import type {
 	doctorScheduleTable,
 	externalReferTable,
 	patientTable,
+	patientVisitTable,
+	patientDiagnosisTable,
 	appointmentBlockTable,
 } from './information-table';
 
@@ -128,3 +130,11 @@ export type AppointmentSchemaUpdate = Partial<AppointmentSchemaInsert>;
 export type AppointmentBlockSchema = InferSelectModel<typeof appointmentBlockTable>;
 export type AppointmentBlockSchemaInsert = InferInsertModel<typeof appointmentBlockTable>;
 export type AppointmentBlockSchemaUpdate = Partial<AppointmentBlockSchemaInsert>;
+
+export type PatientVisitSchema = InferSelectModel<typeof patientVisitTable>;
+export type PatientVisitSchemaInsert = InferInsertModel<typeof patientVisitTable>;
+export type PatientVisitSchemaUpdate = Partial<PatientVisitSchemaInsert>;
+
+export type PatientDiagnosisSchema = InferSelectModel<typeof patientDiagnosisTable>;
+export type PatientDiagnosisSchemaInsert = InferInsertModel<typeof patientDiagnosisTable>;
+export type PatientDiagnosisSchemaUpdate = Partial<PatientDiagnosisSchemaInsert>;

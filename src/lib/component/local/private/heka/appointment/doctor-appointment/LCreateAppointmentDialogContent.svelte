@@ -1,13 +1,18 @@
 <script lang="ts">
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createAppointment,
-		getAppointment
+import {
+	createAppointment,
+	getAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
-	import { getPatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getPatientPaginated,
+		getPatientByIdWithRelations
+	} from '$lib/remote/table/information-table/patient.remote';
 	import { getTitle } from '$lib/remote/table/master-table/title.remote';
 	import { getReferType } from '$lib/remote/table/master-table/refer-type.remote';
 	import { getExternalRefer } from '$lib/remote/table/information-table/external-refer.remote';
@@ -24,8 +29,13 @@
 		StatusTaggingSchema
 	} from '$lib/server/db/schema-type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { page } from '$app/state';
 
 	let { confirm, cancel } = $props();
+
+	const hospitalId = $derived(
+		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+	);
 
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
@@ -69,7 +79,6 @@
 
 	// Lookup data
 	let titleData = $state<TitleSchema[]>([]);
-	let patientData = $state<Awaited<ReturnType<typeof getPatientWithRelations>>>([]);
 	let referTypeData = $state<ReferTypeSchema[]>([]);
 	let externalReferData = $state<ExternalReferSchema[]>([]);
 	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
@@ -91,6 +100,30 @@
 	let selectedExternalReferId = $state('');
 	let selectedStatusTaggingId = $state('');
 	let isSubmitting = $state(false);
+
+	/** Server-side patient search for the dropdown. Returns options with label (full name) and value (id). */
+	async function searchPatients(query: string): Promise<{ label: string; value: string }[]> {
+		const res = await getPatientPaginated({
+			search: query.trim(),
+			hospitalId: hospitalId || undefined,
+			page: 1,
+			pageSize: 20
+		});
+		const list = res.data.map((p) => {
+			return {
+				label: StringUtil.patientOptionDisplayName(p),
+				value: String(p.id)
+			};
+		});
+		return [...list];
+	}
+
+	/** Resolve selected patient id to display label (when not in current search results). */
+	async function getPatientLabelForValue(id: string): Promise<string> {
+		const p = await getPatientByIdWithRelations({ id });
+		if (!p) return '';
+		return StringUtil.patientOptionDisplayName(p);
+	}
 
 	const selectedReferType = $derived.by(
 		() =>
@@ -117,6 +150,49 @@
 	const hasSelectedPatient = $derived.by(
 		() => !!selectedPatientId?.trim()
 	);
+
+	const availableStatusTaggingData = $derived.by(() => {
+	// Cancel is only available in edit dialog, never on create.
+	// For new patients (no linked account), also hide "Check In".
+	return statusTaggingData.filter((s) => {
+		const raw = (s.code ?? s.name ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]/g, '');
+		if (raw === 'cancel') return false;
+		if (patientMode === 'new' && raw === 'checkin') return false;
+		return true;
+	});
+	});
+
+function isCheckInStatus(id: string | null | undefined): boolean {
+	if (!id) return false;
+	const status = statusTaggingData.find((s) => String(s.id) === id);
+	if (!status) return false;
+	const raw = (status.code ?? status.name ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]/g, '');
+	return raw === 'checkin';
+}
+
+	// When in "new" patient mode, clear "Check In" if currently selected
+	$effect(() => {
+		if (patientMode === 'new' && selectedStatusTaggingId) {
+			const current = statusTaggingData.find(
+				(s) => String(s.id) === selectedStatusTaggingId
+			);
+			if (current) {
+				const raw = (current.code ?? current.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '');
+				if (raw === 'checkin') {
+					selectedStatusTaggingId = '';
+				}
+			}
+		}
+	});
 
 	// When switching to "new" mode, clear any selected patient account
 	$effect(() => {
@@ -233,15 +309,13 @@
 	});
 
 	lifeCycle.onMount(async () => {
-		const [titles, patients, referTypes, externalRefers, statusTaggings] = await Promise.all([
+		const [titles, referTypes, externalRefers, statusTaggings] = await Promise.all([
 			getTitle(),
-			getPatientWithRelations(),
 			getReferType(),
 			getExternalRefer(),
 			getStatusTagging()
 		]);
 		titleData = titles;
-		patientData = patients;
 		referTypeData = referTypes;
 		externalReferData = externalRefers;
 		statusTaggingData = statusTaggings;
@@ -250,9 +324,9 @@
 	$effect(() => {
 		const id = selectedPatientId?.trim();
 		if (!id) return;
-		const p = patientData.find((x) => String(x.id) === id);
-		if (p) {
-			const titleName = titleData.find((t) => t.id === p.titleId)?.name;
+		getPatientByIdWithRelations({ id }).then((p) => {
+			if (!p) return;
+			const titleName = (p as { title?: { name?: string } }).title?.name;
 			patientName = StringUtil.fullNameWithTitle(
 				titleName ?? undefined,
 				p.firstName ?? '',
@@ -260,8 +334,9 @@
 				p.lastName ?? ''
 			);
 			if (p.titleId != null) selectedPatientTitleId = String(p.titleId);
-			if (p.dateOfBirth != null) patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
-		}
+			if (p.dateOfBirth != null)
+				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
+		});
 	});
 
 	/** Check if [from, to) overlaps any existing appointment for same staff/date (exclude optional id for edit). */
@@ -332,6 +407,35 @@
 				remark: appointmentRemark.trim() || null
 			};
 			const created = await createAppointment(payload);
+
+			// If this appointment is immediately in "Check In" for an existing patient,
+			// create a patient visit record.
+			const patientIdVal = selectedPatientId?.trim() || null;
+			if (
+				patientIdVal &&
+				isCheckInStatus(selectedStatusTaggingId) &&
+				hospitalId &&
+				staffId?.trim()
+			) {
+				try {
+					await createPatientVisit({
+						patientId: patientIdVal,
+						hospitalId,
+						branchId: null,
+						appointmentId: created.id,
+						doctorId: staffId.trim() || null,
+						statusTypeId: null,
+						// Default to OPD visit type (see master-table seed: id=1, code 'O').
+						visitTypeId: 1,
+						statusId: undefined,
+						visitNo: null
+					});
+				} catch (e) {
+					// Do not block appointment creation if visit creation fails.
+					console.error('Failed to create patient visit for check-in:', e);
+				}
+			}
+
 			toastService.addToast('Appointment created.', StatusColorEnum.SUCCESS);
 			confirm(created);
 		} catch (e) {
@@ -459,26 +563,14 @@
 			</div>
 			{#if patientMode === 'existing'}
 			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-patient" className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
+					<DaisyUiSearchSelect
 						bind:value={selectedPatientId}
-						optionHeader="Select patient (optional) …"
+						placeholder="Select Patient"
 						className="w-full"
-					>
-						{#each patientData as p (p.id)}
-							{@const titleName = titleData.find((t) => t.id === p.titleId)?.name}
-							<option value={String(p.id)}>
-								{StringUtil.fullNameWithTitle(
-									titleName ?? undefined,
-									p.firstName,
-									p.middleName,
-									p.lastName
-								)}
-							</option>
-						{/each}
-					</DaisyUiSelect>
-				</div>
+						searchFn={searchPatients}
+						getLabelForValue={getPatientLabelForValue}
+						minSearchLength={0}
+					/>
 			</div>
 			{/if}
 			{#if patientMode === 'new'}
@@ -597,12 +689,18 @@
 						optionHeader="Select status …"
 						className="w-full"
 					>
-						{#each statusTaggingData as s (s.id)}
+						{#each availableStatusTaggingData as s (s.id)}
 							<option value={String(s.id)}>{s.name}</option>
 						{/each}
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if patientMode === 'new'}
+				<p class="text-xs text-info mt-1 w-full">
+					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
+					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
+				</p>
+			{/if}
 		</div>
 
 	<div class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4">
