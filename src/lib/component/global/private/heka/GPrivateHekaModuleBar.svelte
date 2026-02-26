@@ -27,19 +27,29 @@
 	} from '$lib/model/enum/routes.enum';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
+	import { RoleEnum } from '$lib/model/enum/db-link';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+
+	type StaffUserGroupForNav = { id: number; name: string | null };
 
 	let {
 		hospitalId = null,
 		moduleList,
 		pageList,
 		staffId = null,
-		staffPhotoUrl = null
+		staffPhotoUrl = null,
+		userRoleId = null,
+		staffUserGroupsForNav = [],
+		selectedUserGroupId = null
 	}: {
 		hospitalId?: string | null;
 		moduleList: ModuleSchema[];
 		pageList: PageSchema[];
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
+		userRoleId?: number | null;
+		staffUserGroupsForNav?: StaffUserGroupForNav[];
+		selectedUserGroupId?: number | null;
 	} = $props();
 
 	const profilePhotoDisplayUrl = $derived(
@@ -77,6 +87,18 @@
 	function toggleNavbarVisibility() {
 		isNavbarVisible = !isNavbarVisible;
 	}
+
+	// User group select: only for STAFF with multiple user groups (after logged in)
+	const showUserGroupSelect = $derived(
+		userRoleId === RoleEnum.STAFF && (staffUserGroupsForNav?.length ?? 0) > 1
+	);
+	const setSelectedUserGroupUrl = $derived(
+		hospitalId ? `/heka/hospital/${hospitalId}/home/set-selected-user-group` : ''
+	);
+	const selectedUserGroupIdStr = $derived(
+		selectedUserGroupId != null ? String(selectedUserGroupId) : ''
+	);
+	let userGroupForm: HTMLFormElement | undefined = $state();
 </script>
 
 {#if isNavbarVisible}
@@ -93,6 +115,26 @@
 			/>
 		</DaisyUiNavbarCenter>
 		<DaisyUiNavbarEnd className="gap-3">
+			{#if showUserGroupSelect && setSelectedUserGroupUrl}
+				<form
+					bind:this={userGroupForm}
+					class="form-control"
+					action={setSelectedUserGroupUrl}
+					method="post"
+					role="presentation"
+				>
+					<DaisyUiSelect
+						value={selectedUserGroupIdStr}
+						className="d-select-sm min-w-36"
+						name="userGroupId"
+						onChange={() => userGroupForm?.requestSubmit()}
+					>
+						{#each staffUserGroupsForNav as ug (ug.id)}
+							<option value={String(ug.id)}>{ug.name ?? ''}</option>
+						{/each}
+					</DaisyUiSelect>
+				</form>
+			{/if}
 			<DaisyUiTooltip
 				tooltipText="Notification"
 				className="d-tooltip-left"
