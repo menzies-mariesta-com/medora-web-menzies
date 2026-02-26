@@ -20,6 +20,9 @@ import type {
 	stateTable,
 	statusTable,
 	titleTable,
+	unitTable,
+	unitTypeTable,
+	visitTypeTable,
 	weekdayTable,
 } from './master-table';
 import type { Infer } from 'zod';
@@ -108,3 +111,15 @@ export type ReligionSchemaUpdate = Partial<ReligionSchemaInsert>;
 export type WeekdaySchema = InferSelectModel<typeof weekdayTable>;
 export type WeekdaySchemaInsert = InferInsertModel<typeof weekdayTable>;
 export type WeekdaySchemaUpdate = Partial<WeekdaySchemaInsert>;
+
+export type UnitTypeSchema = InferSelectModel<typeof unitTypeTable>;
+export type UnitTypeSchemaInsert = InferInsertModel<typeof unitTypeTable>;
+export type UnitTypeSchemaUpdate = Partial<UnitTypeSchemaInsert>;
+
+export type UnitSchema = InferSelectModel<typeof unitTable>;
+export type UnitSchemaInsert = InferInsertModel<typeof unitTable>;
+export type UnitSchemaUpdate = Partial<UnitSchemaInsert>;
+
+export type VisitTypeSchema = InferSelectModel<typeof visitTypeTable>;
+export type VisitTypeSchemaInsert = InferInsertModel<typeof visitTypeTable>;
+export type VisitTypeSchemaUpdate = Partial<VisitTypeSchemaInsert>;

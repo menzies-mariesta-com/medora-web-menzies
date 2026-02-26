@@ -3,11 +3,16 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiFilter from '$lib/component/library/daisyui/filter/DaisyUiFilter.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
-	import { StringUtil } from '$lib/util/string.util.svelte';
+import DaisyUiFilter from '$lib/component/library/daisyui/filter/DaisyUiFilter.svelte';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+import {
+	type StaffWithRelations,
+	getDoctorStaffPaginated,
+	getStaffByIdWithRelations
+} from '$lib/remote/table/information-table/staff.remote';
+import { StringUtil } from '$lib/util/string.util.svelte';
+import { page } from '$app/state';
 
 	let {
 		doctorList,
@@ -24,6 +29,28 @@
 	}>();
 
 	let selectedDate = $state(new Date().toISOString().slice(0, 10));
+	const hospitalId = $derived(
+		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+	);
+
+	async function searchDoctors(query: string): Promise<{ label: string; value: string }[]> {
+		const res = await getDoctorStaffPaginated({
+			search: query.trim(),
+			hospitalId: hospitalId || undefined,
+			page: 1,
+			pageSize: 20
+		});
+		return res.data.map((doctor) => ({
+			label: StringUtil.doctorOptionDisplayName(doctor),
+			value: String(doctor.id)
+		}));
+	}
+
+	async function getDoctorLabelForValue(id: string): Promise<string> {
+		const doctor = await getStaffByIdWithRelations({ id });
+		if (!doctor) return '';
+		return StringUtil.doctorOptionDisplayName(doctor);
+	}
 
 	function handleCalendarChange(date: string) {
 		selectedDate = date;
@@ -37,22 +64,14 @@
 	<DaisyUiCardBody className="w-full gap-5">
 		<DaisyUiCardBodyTitle>Doctor :</DaisyUiCardBodyTitle>
 
-		<DaisyUiSelect
+		<DaisyUiSearchSelect
 			bind:value={selectedDoctorId}
-			optionHeader="Select a doctor ..."
+			placeholder="Select a doctor ..."
 			className="w-full"
-		>
-			{#each doctorList as doctor (doctor.id)}
-				<option value={String(doctor.id)}>
-					{StringUtil.fullNameWithTitle(
-						doctor.title.name,
-						doctor.firstName,
-						doctor.middleName,
-						doctor.lastName
-					)}
-				</option>
-			{/each}
-		</DaisyUiSelect>
+			searchFn={searchDoctors}
+			getLabelForValue={getDoctorLabelForValue}
+			minSearchLength={0}
+		/>
 		<div class="flex items-center justify-between">
 			<p class="font-bold">View By</p>
 			<DaisyUiFilter className="gap-1">

@@ -108,6 +108,62 @@ export const getDoctorStaffList = query(
 	}
 );
 
+/** Paginated doctor list (staffTypeId = 3) with optional search and hospital filter, for server-side search selects. */
+export const getDoctorStaffPaginated = query(
+	'unchecked' as const,
+	async (params?: PaginationParams): Promise<PaginatedResult<StaffWithRelations>> => {
+		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const searchTerm = params?.search?.trim();
+		const pattern = searchTerm ? `%${searchTerm}%` : null;
+		const searchCondition =
+			pattern &&
+			or(
+				ilike(
+					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+					`%${searchTerm}%`
+				),
+				ilike(table.staffTable.code, pattern),
+				ilike(table.staffTable.phonePrimary, pattern)
+			);
+
+		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+		const doctorCondition = eq(table.staffTable.staffTypeId, 3);
+
+		const hospitalId = params?.hospitalId;
+		const hospitalCondition =
+			hospitalId != null && hospitalId !== ''
+				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
+				: undefined;
+
+		let whereExpr = searchCondition
+			? and(notDeletedCondition, doctorCondition, searchCondition)
+			: and(notDeletedCondition, doctorCondition);
+		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
+
+		const [data, countResult] = await Promise.all([
+			ensureDb().query.staffTable.findMany({
+				where: whereExpr,
+				with: staffWithRelationsWith,
+				limit,
+				offset
+			}),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffTable)
+				.where(whereExpr)
+		]);
+
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1
+		};
+	}
+);
+
 // get one with relations
 export const getStaffByUserIdWithRelations = query(
 	'unchecked' as const,
@@ -155,8 +211,10 @@ export const getStaffPaginated = query(
 		const searchCondition =
 			pattern &&
 			or(
-				ilike(table.staffTable.firstName, pattern),
-				ilike(table.staffTable.lastName, pattern),
+				ilike(
+					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+					`%${searchTerm}%`
+				),
 				ilike(table.staffTable.code, pattern),
 				ilike(table.staffTable.phonePrimary, pattern)
 			);
@@ -256,6 +314,7 @@ export const getStaffByIdWithRelations = query(
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
 				staffUserGroups: { with: { userGroup: true } },
+				phonePrimaryCountry: true,
 			},
 		});
 	}
