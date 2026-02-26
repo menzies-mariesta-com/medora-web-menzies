@@ -5,16 +5,18 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+
+const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
 
 /**
  * Load page list for the module bar.
  * - OWNER / SYSTEM_ADMIN: all pages.
- * - STAFF: only pages linked to the staff's user groups (via user_group_page), plus ancestor pages so sections show.
+ * - STAFF: only pages linked to the **selected** user group (cookie), plus ancestor pages. Restrictions enforced per selection.
  *
- * For STAFF, also enforces page access: if the current URL maps to a page the staff is not allowed, redirect to hospital home.
+ * For STAFF, also enforces page access: if the current URL maps to a page not allowed for the selected group, redirect to hospital home.
  */
-export const load: LayoutServerLoad = async ({ locals, url, params }) => {
+export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) => {
 	const fullPages = (await ensureDb().query.pageTable.findMany({
 		with: {
 			module: true,
@@ -28,34 +30,60 @@ export const load: LayoutServerLoad = async ({ locals, url, params }) => {
 
 	// OWNER or SYSTEM_ADMIN: show all pages, no page-level enforcement
 	if (userRoleId === RoleEnum.OWNER || userRoleId === RoleEnum.SYSTEM_ADMIN) {
-		return { pageData: fullPages };
+		return { pageData: fullPages, staffUserGroupsForNav: [], selectedUserGroupId: null };
 	}
 
-	// STAFF: filter by user group page assignments and enforce access
+	// STAFF: filter by **selected** user group (cookie), enforce access for that group only
 	if (userRoleId === RoleEnum.STAFF && staffId) {
-		// 1. Staff's user group ids
+		// 1. Staff's user group ids (all)
 		const staffUserGroups = await ensureDb()
 			.select({ userGroupId: table.staffUserGroupTable.userGroupId })
 			.from(table.staffUserGroupTable)
 			.where(eq(table.staffUserGroupTable.staffId, staffId));
 		const userGroupIds = [...new Set(staffUserGroups.map((r) => r.userGroupId).filter((id) => id != null))];
 		if (userGroupIds.length === 0) {
-			// No user groups: only allow hospital home dashboard (no child path)
 			const dbPageUrl = requestPathToDbPageUrl(url.pathname, hospitalId);
 			if (dbPageUrl && dbPageUrl !== '/heka/home') {
 				throw redirect(302, hekaHospitalHome(hospitalId));
 			}
-			return { pageData: [] };
+			return { pageData: [], staffUserGroupsForNav: [], selectedUserGroupId: null };
 		}
 
-		// 2. Page ids assigned to those user groups
+		// Staff's user groups for this hospital (for navbar select)
+		const staffUserGroupsForNav = await ensureDb()
+			.select({
+				id: table.userGroupTable.id,
+				name: table.userGroupTable.name
+			})
+			.from(table.staffUserGroupTable)
+			.innerJoin(
+				table.userGroupTable,
+				eq(table.staffUserGroupTable.userGroupId, table.userGroupTable.id)
+			)
+			.where(
+				and(
+					eq(table.staffUserGroupTable.staffId, staffId),
+					eq(table.userGroupTable.hospitalId, hospitalId)
+				)
+			)
+			.orderBy(table.userGroupTable.name);
+
+		const navIds = staffUserGroupsForNav.map((g) => g.id);
+		// Resolve selected user group: cookie if valid, else first group
+		const cookieValue = cookies.get(COOKIE_SELECTED_USER_GROUP_ID);
+		const selectedUserGroupId =
+			cookieValue != null && navIds.includes(Number(cookieValue))
+				? Number(cookieValue)
+				: navIds[0] ?? null;
+
+		// 2. Page ids for the **selected** user group only (restrict pages and restrictions to this group)
 		const userGroupPages = await ensureDb()
 			.select({ pageId: table.userGroupPageTable.pageId })
 			.from(table.userGroupPageTable)
-			.where(inArray(table.userGroupPageTable.userGroupId, userGroupIds));
+			.where(eq(table.userGroupPageTable.userGroupId, selectedUserGroupId!));
 		let allowedPageIds = new Set(userGroupPages.map((r) => r.pageId).filter((id) => id != null));
 
-		// 3. Add all ancestor page ids so parent sections appear in nav
+		// 3. Add ancestor page ids so parent sections appear in nav
 		let changed = true;
 		while (changed) {
 			changed = false;
@@ -67,7 +95,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params }) => {
 			}
 		}
 
-		// 4. Enforce page access: current path must be dashboard or an allowed page
+		// 4. Enforce page access for selected group: current path must be dashboard or an allowed page
 		const dbPageUrl = requestPathToDbPageUrl(url.pathname, hospitalId);
 		if (dbPageUrl && dbPageUrl !== '/heka/home') {
 			const page = fullPages.find((p) => p.pageUrl === dbPageUrl);
@@ -77,9 +105,9 @@ export const load: LayoutServerLoad = async ({ locals, url, params }) => {
 		}
 
 		const filtered = fullPages.filter((p) => allowedPageIds.has(p.id));
-		return { pageData: filtered };
+		return { pageData: filtered, staffUserGroupsForNav, selectedUserGroupId };
 	}
 
 	// Fallback (e.g. no role or no staff): show all
-	return { pageData: fullPages };
+	return { pageData: fullPages, staffUserGroupsForNav: [], selectedUserGroupId: null };
 };
