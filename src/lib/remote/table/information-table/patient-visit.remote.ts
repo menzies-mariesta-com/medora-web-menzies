@@ -1,24 +1,36 @@
-import { query } from '$app/server';
+import { command, query } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+
 import type {
 	PatientVisitSchema,
+	PatientVisitSchemaInsert,
+	PatientVisitSchemaUpdate,
 	PatientSchema,
 	HospitalSchema,
 	HospitalBranchSchema,
 	StaffSchema
 } from '$lib/server/db/schema-type';
+
 import type {
 	StatusSchema,
 	VisitTypeSchema
 } from '$lib/server/db/table/master-table/master-table-schema-type';
+
 import type {
 	PaginatedResult,
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
+
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne, ilike, or, sql } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+
+
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 export type PatientVisitWithRelations = PatientVisitSchema & {
 	patient: PatientSchema | null;
@@ -29,10 +41,58 @@ export type PatientVisitWithRelations = PatientVisitSchema & {
 	doctor: StaffSchema | null;
 };
 
-/**
- * Paginated list of patient visits with basic relations (patient, status, visitType),
- * filtered by hospital and excluding DELETED visits.
- */
+
+
+/* =========================================================
+   BASIC CRUD
+========================================================= */
+
+// Get All
+export const getPatientVisit = query(async (): Promise<PatientVisitSchema[]> => {
+	return await ensureDb().select().from(table.patientVisitTable);
+});
+
+// Create
+export const createPatientVisit = command(
+	'unchecked' as const,
+	async (payload: PatientVisitSchemaInsert): Promise<PatientVisitSchema> => {
+		const [row] = await ensureDb()
+			.insert(table.patientVisitTable)
+			.values(payload)
+			.returning();
+
+		if (!row) throw new Error('Insert failed');
+
+		getPatientVisit().refresh();
+		return row;
+	}
+);
+
+// Update
+export const updatePatientVisit = command(
+	'unchecked' as const,
+	async (payload: { id: number } & PatientVisitSchemaUpdate): Promise<PatientVisitSchema> => {
+		const { id, ...rest } = payload;
+
+		const [row] = await ensureDb()
+			.update(table.patientVisitTable)
+			.set(rest)
+			.where(eq(table.patientVisitTable.id, id))
+			.returning();
+
+		if (!row) throw new Error('Update failed');
+
+		getPatientVisit().refresh();
+		return row;
+	}
+);
+
+
+
+/* =========================================================
+   EMR PAGINATED QUERY
+========================================================= */
+
 export const getPatientVisitPaginatedForEmr = query(
 	'unchecked' as const,
 	async (
@@ -46,18 +106,27 @@ export const getPatientVisitPaginatedForEmr = query(
 			visitTypeId?: number | null;
 		}
 	): Promise<PaginatedResult<PatientVisitWithRelations>> => {
+
 		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const hospitalId = params?.hospitalId;
 
-		let whereExpr: any = ne(table.patientVisitTable.statusId, StatusEnum.DELETED);
+		let whereExpr: any = ne(
+			table.patientVisitTable.statusId,
+			StatusEnum.DELETED
+		);
 
-		if (hospitalId != null && hospitalId !== '') {
-			whereExpr = and(whereExpr, eq(table.patientVisitTable.hospitalId, hospitalId));
+		// Hospital filter
+		if (params?.hospitalId) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.patientVisitTable.hospitalId, params.hospitalId)
+			);
 		}
 
+		// Global search
 		const searchTerm = params?.search?.trim();
 		if (searchTerm) {
 			const pattern = `%${searchTerm}%`;
+
 			whereExpr = and(
 				whereExpr,
 				or(
@@ -65,7 +134,7 @@ export const getPatientVisitPaginatedForEmr = query(
 					sql`patient_visit.patient_id IN (
 						SELECT id FROM patient
 						WHERE code ILIKE ${pattern}
-							OR concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
+						OR concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
 					)`,
 					sql`patient_visit.doctor_id IN (
 						SELECT id FROM staff
@@ -75,69 +144,12 @@ export const getPatientVisitPaginatedForEmr = query(
 			);
 		}
 
-		const patientName = params?.patientName?.trim();
-		if (patientName) {
-			const pattern = `%${patientName}%`;
+		// Visit Type filter
+		if (params?.visitTypeId != null) {
 			whereExpr = and(
 				whereExpr,
-				sql`patient_visit.patient_id IN (
-					SELECT id FROM patient
-					WHERE concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
-				)` as any
+				eq(table.patientVisitTable.visitTypeId, params.visitTypeId)
 			);
-		}
-
-		const patientCode = params?.patientCode?.trim();
-		if (patientCode) {
-			const pattern = `%${patientCode}%`;
-			whereExpr = and(
-				whereExpr,
-				sql`patient_visit.patient_id IN (
-					SELECT id FROM patient
-					WHERE code ILIKE ${pattern}
-				)` as any
-			);
-		}
-
-		const hospitalName = params?.hospitalName?.trim();
-		if (hospitalName) {
-			const pattern = `%${hospitalName}%`;
-			whereExpr = and(
-				whereExpr,
-				sql`patient_visit.hospital_id IN (
-					SELECT id FROM hospital
-					WHERE name ILIKE ${pattern}
-				)` as any
-			);
-		}
-
-		const branchName = params?.branchName?.trim();
-		if (branchName) {
-			const pattern = `%${branchName}%`;
-			whereExpr = and(
-				whereExpr,
-				sql`patient_visit.branch_id IN (
-					SELECT id FROM hospital_branch
-					WHERE name ILIKE ${pattern}
-				)` as any
-			);
-		}
-
-		const doctorName = params?.doctorName?.trim();
-		if (doctorName) {
-			const pattern = `%${doctorName}%`;
-			whereExpr = and(
-				whereExpr,
-				sql`patient_visit.doctor_id IN (
-					SELECT id FROM staff
-					WHERE concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
-				)` as any
-			);
-		}
-
-		const visitTypeId = params?.visitTypeId ?? null;
-		if (visitTypeId != null && !Number.isNaN(visitTypeId)) {
-			whereExpr = and(whereExpr, eq(table.patientVisitTable.visitTypeId, visitTypeId) as any);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -151,7 +163,7 @@ export const getPatientVisitPaginatedForEmr = query(
 					branch: true,
 					doctor: true
 				},
-				orderBy: (patientVisitTable, { desc }) => desc(patientVisitTable.createdAt),
+				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,
 				offset
 			}),
@@ -162,6 +174,7 @@ export const getPatientVisitPaginatedForEmr = query(
 		]);
 
 		const total = countResult[0]?.count ?? 0;
+
 		return {
 			data: data as PatientVisitWithRelations[],
 			total,
@@ -171,4 +184,3 @@ export const getPatientVisitPaginatedForEmr = query(
 		};
 	}
 );
-

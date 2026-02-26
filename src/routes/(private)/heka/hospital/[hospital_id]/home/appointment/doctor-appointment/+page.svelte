@@ -95,11 +95,12 @@
 		return DEFAULT_SLOT_DURATION_MINUTES;
 	});
 
-	/** Map statusTagging code to calendar slot state (unconfirmed → confirmed → check-in, reversible). */
-	function toSlotState(code: string | null | undefined): 'unconfirmed' | 'confirmed' | 'check-in' {
-		const c = (code ?? '').trim().toLowerCase().replace(/-/g, '_');
+	/** Map statusTagging code to calendar slot state (unconfirmed → confirmed → check-in, plus cancel). */
+	function toSlotState(code: string | null | undefined): 'unconfirmed' | 'confirmed' | 'check-in' | 'cancel' {
+		const c = (code ?? '').trim().toLowerCase().replace(/[\s-]/g, '_');
 		if (c === 'check_in') return 'check-in';
 		if (c === 'confirmed') return 'confirmed';
+		if (c === 'cancel' || c === 'cancelled') return 'cancel';
 		return 'unconfirmed';
 	}
 

@@ -142,7 +142,8 @@ export async function seedInformationTables() {
 			-- Doctor Appointment Status
 			(1, 'Unconfirmed', 'unconfirmed', 1, 1),
 			(2, 'Confirmed', 'confirmed', 2, 1),
-			(3, 'Check In', 'check_in', 3, 1)
+			(3, 'Check In', 'check_in', 3, 1),
+			(4, 'Cancelled', 'cancel', 4, 1)
 
 		ON CONFLICT (id) DO NOTHING;
 		`)
