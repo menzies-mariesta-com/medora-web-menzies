@@ -22,6 +22,7 @@ export class DialogService {
 				message: options.message,
 				variant: options.variant ?? DialogVariantEnum.ALERT,
 				fullScreen: options.fullScreen,
+				modalClassName: options.modalClassName,
 				children: options.children,
 				component: options.component,
 				onClose: options.onClose,
