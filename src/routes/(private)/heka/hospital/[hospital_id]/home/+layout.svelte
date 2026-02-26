@@ -3,10 +3,12 @@
 	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
 	import GPrivateHekaModuleBar from '$lib/component/global/private/heka/GPrivateHekaModuleBar.svelte';
 	import GPrivateHekaNavbar from '$lib/component/global/private/heka/GPrivateHekaNavbar.svelte';
+	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import {
 		setPageData,
 		getUniqueModuleData,
-		getPageData
+		getPageData,
+		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
 
 	let { children, data } = $props();
@@ -21,6 +23,16 @@
 	const uniqueModuleData = $derived(getUniqueModuleData());
 	const pageData = $derived(getPageData());
 	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	// In EMR Clone emr routes: navbar auto-hides but can be opened from the module bar button
+	const isInEmrCloneEmr = $derived(
+		pathnameForPageMatch().startsWith(WebRoutesEnum.HEKA_HOME_EMR_CLONE_EMR)
+	);
+	let emrNavbarOpen = $state(false);
+	let prevInEmrCloneEmr = $state(false);
+	$effect(() => {
+		if (isInEmrCloneEmr && !prevInEmrCloneEmr) emrNavbarOpen = false;
+		prevInEmrCloneEmr = isInEmrCloneEmr;
+	});
 	const currentStaffId = $derived(data?.staff?.id ?? null);
 	const currentStaffPhotoUrl = $derived(
 		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ?? null
@@ -40,6 +52,8 @@
 				userRoleId={data?.userRoleId ?? null}
 				staffUserGroupsForNav={data?.staffUserGroupsForNav ?? []}
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}
+				navbarVisible={isInEmrCloneEmr ? emrNavbarOpen : undefined}
+				onToggleNavbar={isInEmrCloneEmr ? () => (emrNavbarOpen = !emrNavbarOpen) : undefined}
 			/>
 		{/key}
 	{/if}

@@ -40,7 +40,10 @@
 		staffPhotoUrl = null,
 		userRoleId = null,
 		staffUserGroupsForNav = [],
-		selectedUserGroupId = null
+		selectedUserGroupId = null,
+		/** When set (e.g. in EMR Clone), navbar visibility is controlled by parent; otherwise internal state. */
+		navbarVisible = undefined,
+		onToggleNavbar = undefined
 	}: {
 		hospitalId?: string | null;
 		moduleList: ModuleSchema[];
@@ -50,6 +53,8 @@
 		userRoleId?: number | null;
 		staffUserGroupsForNav?: StaffUserGroupForNav[];
 		selectedUserGroupId?: number | null;
+		navbarVisible?: boolean;
+		onToggleNavbar?: () => void;
 	} = $props();
 
 	const profilePhotoDisplayUrl = $derived(
@@ -82,10 +87,16 @@
 		StringUtil.urlToTitleLast(page.url.pathname, 2)
 	);
 
-	let isNavbarVisible = $state(true);
-
+	let isNavbarVisibleInternal = $state(true);
+	const isControlled = $derived(
+		navbarVisible !== undefined && typeof onToggleNavbar === 'function'
+	);
+	const isNavbarVisible = $derived(
+		isControlled ? (navbarVisible ?? false) : isNavbarVisibleInternal
+	);
 	function toggleNavbarVisibility() {
-		isNavbarVisible = !isNavbarVisible;
+		if (isControlled) onToggleNavbar?.();
+		else isNavbarVisibleInternal = !isNavbarVisibleInternal;
 	}
 
 	// User group select: only for STAFF with multiple user groups (after logged in)
