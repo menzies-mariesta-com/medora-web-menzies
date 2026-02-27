@@ -29,11 +29,11 @@ export enum WebRoutesEnum {
 	HEKA_HOME_REGISTRATION_PATIENT_LIST = '/heka/home/registration/patient/list',
 	HEKA_HOME_ACCOUNT = '/heka/home/account',
 
-	// EMR Clone module (navbar auto-hides; sub-pages: Vital, Diagnosis)
-	HEKA_HOME_EMR_CLONE = '/heka/home/emr-clone',
-	HEKA_HOME_EMR_CLONE_EMR = '/heka/home/emr-clone/emr',
-	HEKA_HOME_EMR_CLONE_EMR_VITAL = '/heka/home/emr-clone/emr/vital',
-	HEKA_HOME_EMR_CLONE_EMR_DIAGNOSIS = '/heka/home/emr-clone/emr/diagnosis',
+	// Nursing Workbench module (navbar auto-hides; sub-pages: Vital, Diagnosis)
+	HEKA_HOME_NURSING_WORKBENCH = '/heka/home/nursing-workbench',
+	HEKA_HOME_NURSING_WORKBENCH_EMR = '/heka/home/nursing-workbench/emr',
+	HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/heka/home/nursing-workbench/emr/vital',
+	HEKA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/heka/home/nursing-workbench/emr/diagnosis',
 }
 
 /** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */
