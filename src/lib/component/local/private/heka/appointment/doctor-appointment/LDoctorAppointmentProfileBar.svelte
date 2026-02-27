@@ -6,6 +6,7 @@
 import DaisyUiFilter from '$lib/component/library/daisyui/filter/DaisyUiFilter.svelte';
 import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 import {
 	type StaffWithRelations,
 	getDoctorStaffPaginated,
@@ -17,14 +18,22 @@ import { page } from '$app/state';
 	let {
 		doctorList,
 		selectedDoctorId = $bindable(''),
+		selectedBranchId = $bindable(''),
 		viewBy = $bindable('day'),
 		timeFormat = $bindable('24h'),
+		branchOptions = [],
+		branchLocked = false,
+		branchIdForSearch,
 		onDateChange
 	} = $props<{
 		doctorList: StaffWithRelations[];
 		selectedDoctorId?: string;
+		selectedBranchId?: string;
 		viewBy?: 'day' | 'week' | 'month';
 		timeFormat?: '24h' | '12h';
+		branchOptions?: { id: string; name: string | null }[];
+		branchLocked?: boolean;
+		branchIdForSearch?: string;
 		onDateChange?: (date: string) => void;
 	}>();
 
@@ -37,6 +46,7 @@ import { page } from '$app/state';
 		const res = await getDoctorStaffPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
+			branchId: branchIdForSearch || undefined,
 			page: 1,
 			pageSize: 20
 		});
@@ -72,6 +82,20 @@ import { page } from '$app/state';
 			getLabelForValue={getDoctorLabelForValue}
 			minSearchLength={0}
 		/>
+		{#if branchOptions.length > 0}
+			<div class="flex items-center justify-between gap-3">
+				<p class="font-bold">Branch</p>
+				<DaisyUiSelect
+					className="w-56"
+					bind:value={selectedBranchId}
+					disabled={branchLocked}
+				>
+					{#each branchOptions as b (b.id)}
+						<option value={b.id}>{b.name ?? b.id}</option>
+					{/each}
+				</DaisyUiSelect>
+			</div>
+		{/if}
 		<div class="flex items-center justify-between">
 			<p class="font-bold">View By</p>
 			<DaisyUiFilter className="gap-1">

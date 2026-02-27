@@ -53,6 +53,7 @@
 		timeFormat = '24h',
 		selectedDoctorName = '',
 		selectedDoctorId = '',
+		activeBranchId = null,
 		scheduleSlots = [] as ScheduleSlot[],
 		appointmentSlots = [] as AppointmentSlot[],
 		/** Blocked time slots: cells in these ranges show as blocked; no appointments can be created. */
@@ -76,6 +77,8 @@
 		selectedDoctorName?: string;
 		/** Selected doctor (staff) id; passed into create-appointment dialog. */
 		selectedDoctorId?: string;
+		/** Active branch id for appointment operations. */
+		activeBranchId?: string | null;
 		/** Doctor schedule slots: cells inside any slot get normal bg, outside get bg-base-200. */
 		scheduleSlots?: ScheduleSlot[];
 		/** Existing appointments: cells inside any slot get bg-primary; optional patientName shown in cell. */
@@ -405,7 +408,7 @@
 	}
 
 	const canInteractWithCalendar = $derived(
-		!!selectedDoctorId?.trim()
+		!!selectedDoctorId?.trim() && !!activeBranchId?.trim()
 	);
 
 	/** Creating is allowed only when doctor is selected, cell is not blocked, has no appointment, and is not in the past. */
@@ -506,6 +509,7 @@
 		CreateAppointmentDialogState.slot = { dateString, timeSlot };
 		CreateAppointmentDialogState.staffId =
 			selectedDoctorId?.trim() || null;
+		CreateAppointmentDialogState.branchId = activeBranchId?.trim() || null;
 		CreateAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -514,6 +518,7 @@
 			onClose: () => {
 				CreateAppointmentDialogState.slot = null;
 				CreateAppointmentDialogState.staffId = null;
+				CreateAppointmentDialogState.branchId = null;
 			}
 		});
 		if (result?.confirmed) {
@@ -527,6 +532,7 @@
 		CreateAppointmentDialogState.slot = null;
 		CreateAppointmentDialogState.staffId =
 			selectedDoctorId?.trim() || null;
+		CreateAppointmentDialogState.branchId = activeBranchId?.trim() || null;
 		CreateAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -535,6 +541,7 @@
 			onClose: () => {
 				CreateAppointmentDialogState.slot = null;
 				CreateAppointmentDialogState.staffId = null;
+				CreateAppointmentDialogState.branchId = null;
 			}
 		});
 		if (result?.confirmed) {
@@ -544,6 +551,7 @@
 
 	async function openEditAppointmentDialog(aptId: number) {
 		EditAppointmentDialogState.appointmentId = aptId;
+		EditAppointmentDialogState.branchId = activeBranchId?.trim() || null;
 		EditAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -551,6 +559,7 @@
 			component: LEditAppointmentDialogContent
 		});
 		EditAppointmentDialogState.appointmentId = null;
+		EditAppointmentDialogState.branchId = null;
 		if (result?.confirmed) {
 			selectedAppointmentId = null;
 			await onAppointmentCreated?.();

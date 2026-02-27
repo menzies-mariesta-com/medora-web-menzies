@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { query, command, getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -11,7 +11,7 @@ import type {
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike, like, ne, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
@@ -20,6 +20,20 @@ import { getHospitalById } from '$lib/remote/table/information-table/hospital.re
 export type PatientWithRelations = NonNullable<
 	Awaited<ReturnType<typeof getPatientByIdWithRelations>>
 >;
+const BRANCH_ALL_VALUE = '__all__';
+
+function getSelectedScopeFromRequest(): { hospitalId: string | null; branchId: string | null } {
+	try {
+		const event = getRequestEvent();
+		const hospitalIdParam =
+			typeof event.params?.hospital_id === 'string' ? event.params.hospital_id : null;
+		const rawBranchIdCookie = event.cookies.get('heka_selected_branch_id') ?? null;
+		const branchIdCookie = rawBranchIdCookie === BRANCH_ALL_VALUE ? null : rawBranchIdCookie;
+		return { hospitalId: hospitalIdParam, branchId: branchIdCookie };
+	} catch {
+		return { hospitalId: null, branchId: null };
+	}
+}
 
 // get all
 export const getPatient = query(async (): Promise<PatientSchema[]> => {
@@ -32,6 +46,7 @@ export const getPatientWithRelations = query(async () => {
 	return ensureDb().query.patientTable.findMany({
 		with: {
 			user: true,
+			hospital: true,
 			maritalStatus: true,
 			gender: true,
 			identityType: true,
@@ -105,14 +120,10 @@ export const getPatientPaginated = query(
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
 
-		// When hospitalId is set, only patients whose code was issued by that hospital (code prefix = hospital code)
-		const hospitalId = params?.hospitalId;
+		const requestScope = getSelectedScopeFromRequest();
+		const hospitalId = params?.hospitalId ?? requestScope.hospitalId ?? undefined;
 		if (hospitalId != null && hospitalId !== '') {
-			const hospital = await getHospitalById({ id: hospitalId });
-			const codePrefix = hospital?.code?.trim();
-			if (codePrefix) {
-				whereExpr = and(whereExpr, like(table.patientTable.code, `${codePrefix}%`));
-			}
+			whereExpr = and(whereExpr, eq(table.patientTable.hospitalId, hospitalId));
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -121,6 +132,7 @@ export const getPatientPaginated = query(
 				with: {
 					user: true,
 					title: true,
+					hospital: true,
 					religion: true,
 					maritalStatus: true,
 					gender: true,
@@ -134,6 +146,7 @@ export const getPatientPaginated = query(
 					insurances: { with: { insurance: true } },
 					allergies: true,
 					fatherTitle: true,
+					phonePrimaryCountry: true
 				},
 				limit,
 				offset
@@ -177,6 +190,10 @@ export const getDuplicatePatients = query(
 		const conditions = [
 			ne(table.patientTable.statusId, StatusEnum.DELETED)
 		];
+		const requestScope = getSelectedScopeFromRequest();
+		if (requestScope.hospitalId) {
+			conditions.push(eq(table.patientTable.hospitalId, requestScope.hospitalId));
+		}
 
 		if (params.excludePatientId?.trim()) {
 			conditions.push(
@@ -260,6 +277,7 @@ export const getDuplicatePatients = query(
 				user: true,
 				title: true,
 				fatherTitle: true,
+				hospital: true,
 				religion: true,
 				maritalStatus: true,
 				gender: true,
@@ -272,6 +290,7 @@ export const getDuplicatePatients = query(
 				attachments: true,
 				insurances: { with: { insurance: true } },
 				allergies: true,
+				phonePrimaryCountry: true
 			},
 		});
 	}
@@ -298,6 +317,7 @@ export const getPatientByIdWithRelations = query(
 			with: {
 				user: true,
 				title: true,
+				hospital: true,
 				religion: true,
 				maritalStatus: true,
 				gender: true,
@@ -388,6 +408,8 @@ function generateRandomPassword(length: number = 16): string {
 			name: string;
 			// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
 			hospitalId: string;
+			// Branch assignment for patient is intentionally deferred for now.
+			branchId?: string;
 			// Patient fields (only include fields that exist in patientTable); code is generated on backend
 			titleId?: number;
 			firstName?: string;
@@ -470,6 +492,7 @@ function generateRandomPassword(length: number = 16): string {
 		// Prepare patient payload (only fields that exist in patientTable)
 		const patientPayload: PatientSchemaInsert = {
 			userId: user.id,
+			hospitalId: payload.hospitalId,
 			code: generatedCode,
 			titleId: payload.titleId ? Number(payload.titleId) : undefined,
 			firstName: payload.firstName,
