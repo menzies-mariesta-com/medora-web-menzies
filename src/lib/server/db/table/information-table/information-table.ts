@@ -167,6 +167,17 @@ export const staffHospitalTable = pgTable('staff_hospital', {
 	...timestamps,
 });
 
+export const staffBranchTable = pgTable('staff_branch', {
+	id: serial('id').primaryKey(),
+	staffId: uuid('staff_id')
+		.notNull()
+		.references(() => staffTable.id),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+	...timestamps,
+});
+
 export const staffTable = pgTable('staff', {
 	id: uuid('id')
 		.primaryKey()
@@ -257,6 +268,9 @@ export const patientTable = pgTable('patient', {
 	id: uuid('id')
 		.primaryKey()
 		.$defaultFn(() => uuidv7()),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id),
 	code: varchar('code', { length: 512 }),
 	titleId: integer('title_id').references(() => titleTable.id),
 	firstName: varchar('first_name', { length: 512 }),
@@ -344,6 +358,9 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 		.notNull()
 		.references(() => staffTable.id),
 	hospitalId: uuid('hospital_id').notNull().references(() => hospitalTable.id),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id),
 	weekdayId: serial('weekday_id').notNull().references(() => weekdayTable.id),
 	fromDate: date('from_date'),
 	toDate: date('to_date'),
@@ -375,6 +392,12 @@ export const externalReferTable = pgTable('external_refer', {
 
 export const appointmentTable = pgTable('appointment', {
 	id: serial('id').primaryKey(),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id),
 	patientId: uuid('patient_id').references(() => patientTable.id),
 	staffId: uuid('staff_id').references(() => staffTable.id),
 	appointmentDate: date('appointment_date'),
@@ -419,7 +442,9 @@ export const patientVisitTable = pgTable('patient_visit', {
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id),
-	branchId: uuid('branch_id').references(() => hospitalBranchTable.id),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id),
 	appointmentId: integer('appointment_id').references(() => appointmentTable.id),
 	doctorId: uuid('doctor_id').references(() => staffTable.id),
 	statusTypeId: integer('status_type_id'),

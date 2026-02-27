@@ -42,7 +42,7 @@
 <div class="my-app">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
-		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}`}
+		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}-${(data?.staffBranchesForNav ?? []).map((b) => b.id).join(',')}`}
 			<GPrivateHekaModuleBar
 				hospitalId={hospitalId}
 				moduleList={uniqueModuleData}
@@ -52,6 +52,8 @@
 				userRoleId={data?.userRoleId ?? null}
 				staffUserGroupsForNav={data?.staffUserGroupsForNav ?? []}
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}
+				staffBranchesForNav={data?.staffBranchesForNav ?? []}
+				selectedBranchId={data?.selectedBranchId ?? null}
 				navbarVisible={isInEmrCloneEmr ? emrNavbarOpen : undefined}
 				onToggleNavbar={isInEmrCloneEmr ? () => (emrNavbarOpen = !emrNavbarOpen) : undefined}
 			/>

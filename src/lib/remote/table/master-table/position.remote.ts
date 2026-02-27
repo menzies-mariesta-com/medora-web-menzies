@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getPosition = query(async (): Promise<PositionSchema[]> => {
-	const data = await ensureDb().select().from(table.positionTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.positionTable)
+		.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.positionTable.name);
 });
 
-// get count
 export const getPositionCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.positionTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.positionTable)
+		.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getPositionPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<PositionSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.positionTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.positionTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.positionTable),
+			ensureDb()
+				.select()
+				.from(table.positionTable)
+				.where(activeFilter)
+				.orderBy(table.positionTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.positionTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getPositionPaginated = query(
 	}
 );
 
-// get one
 export const getPositionById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<PositionSchema | null> => {
@@ -55,7 +67,6 @@ export const getPositionById = query(
 	}
 );
 
-// create
 export const createPosition = command(
 	'unchecked' as const,
 	async (payload: PositionSchemaInsert): Promise<PositionSchema> => {
@@ -69,7 +80,6 @@ export const createPosition = command(
 	}
 );
 
-// update
 export const updatePosition = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<PositionSchema> => {
@@ -85,7 +95,6 @@ export const updatePosition = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deletePosition = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -97,7 +106,6 @@ export const deletePosition = command(
 	}
 );
 
-// delete complete (hard)
 export const deletePositionComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

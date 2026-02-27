@@ -2,30 +2,44 @@ import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { SpecializationSchema, SpecializationSchemaInsert, SpecializationSchemaUpdate } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getSpecialization = query(async (): Promise<SpecializationSchema[]> => {
-	const data = await ensureDb().select().from(table.specializationTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.specializationTable)
+		.where(eq(table.specializationTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.specializationTable.name);
 });
 
-// get count
 export const getSpecializationCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.specializationTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.specializationTable)
+		.where(eq(table.specializationTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getSpecializationPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<SpecializationSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.specializationTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.specializationTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.specializationTable),
+			ensureDb()
+				.select()
+				.from(table.specializationTable)
+				.where(activeFilter)
+				.orderBy(table.specializationTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.specializationTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -38,7 +52,6 @@ export const getSpecializationPaginated = query(
 	}
 );
 
-// get one
 export const getSpecializationById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<SpecializationSchema | null> => {
@@ -50,7 +63,6 @@ export const getSpecializationById = query(
 	}
 );
 
-// create
 export const createSpecialization = command(
 	'unchecked' as const,
 	async (payload: SpecializationSchemaInsert): Promise<SpecializationSchema> => {
@@ -64,7 +76,6 @@ export const createSpecialization = command(
 	}
 );
 
-// update
 export const updateSpecialization = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<SpecializationSchema> => {
@@ -80,16 +91,17 @@ export const updateSpecialization = command(
 	}
 );
 
-// delete (no status_id: hard delete)
 export const deleteSpecialization = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.specializationTable).where(eq(table.specializationTable.id, id));
+		await ensureDb()
+			.update(table.specializationTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.specializationTable.id, id));
 		getSpecialization().refresh();
 	}
 );
 
-// delete complete (hard)
 export const deleteSpecializationComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

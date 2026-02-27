@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getStaffShiftType = query(async (): Promise<StaffShiftTypeSchema[]> => {
-	const data = await ensureDb().select().from(table.staffShiftTypeTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.staffShiftTypeTable)
+		.where(eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.staffShiftTypeTable.name);
 });
 
-// get count
 export const getStaffShiftTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.staffShiftTypeTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.staffShiftTypeTable)
+		.where(eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getStaffShiftTypePaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<StaffShiftTypeSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.staffShiftTypeTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.staffShiftTypeTable),
+			ensureDb()
+				.select()
+				.from(table.staffShiftTypeTable)
+				.where(activeFilter)
+				.orderBy(table.staffShiftTypeTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffShiftTypeTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getStaffShiftTypePaginated = query(
 	}
 );
 
-// get one
 export const getStaffShiftTypeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StaffShiftTypeSchema | null> => {
@@ -55,7 +67,6 @@ export const getStaffShiftTypeById = query(
 	}
 );
 
-// create
 export const createStaffShiftType = command(
 	'unchecked' as const,
 	async (payload: StaffShiftTypeSchemaInsert): Promise<StaffShiftTypeSchema> => {
@@ -69,7 +80,6 @@ export const createStaffShiftType = command(
 	}
 );
 
-// update
 export const updateStaffShiftType = command(
 	'unchecked' as const,
 	async (payload: {
@@ -90,7 +100,6 @@ export const updateStaffShiftType = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteStaffShiftType = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -102,7 +111,6 @@ export const deleteStaffShiftType = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteStaffShiftTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

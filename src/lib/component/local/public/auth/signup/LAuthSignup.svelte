@@ -25,6 +25,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ResetPasswordModal from '$lib/component/snippet/modal/ResetPasswordModal.svelte';
 	import { authClient } from '$lib/auth/client';
+	import { m } from '$lib/paraglide/messages';
 
 	const passwordTool = new PasswordTool();
 	const toastService = new ToastService();
@@ -58,35 +59,35 @@
 		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
 
 		if (!firstName) {
-			toastService.addToast('First name is required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.first_name_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (!lastName) {
-			toastService.addToast('Last name is required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.last_name_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (!selectedCountryId) {
-			toastService.addToast('Country is required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.country_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (!phonePrimary) {
-			toastService.addToast('Primary phone number is required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.phone_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (!selectedGenderId) {
-			toastService.addToast('Gender is required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.gender_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (!email || !password) {
-			toastService.addToast('Email and password are required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.email_password_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (password.length < 8) {
-			toastService.addToast('Password must be at least 8 characters.', StatusColorEnum.ERROR);
+			toastService.addToast(m.password_min_length(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (password !== confirmPassword) {
-			toastService.addToast('Passwords do not match.', StatusColorEnum.ERROR);
+			toastService.addToast(m.passwords_not_match(), StatusColorEnum.ERROR);
 			return;
 		}
 		isLoading = true;
@@ -98,10 +99,9 @@
 		});
 		if (error) {
 			isLoading = false;
-			toastService.addToast(error.message ?? 'Sign up failed. Please try again.', StatusColorEnum.ERROR);
+			toastService.addToast(error.message ?? m.sign_up_failed(), StatusColorEnum.ERROR);
 			return;
 		}
-		// Create staff profile linked to the new user (1:1) via remote; signup = OWNER role
 		if (data?.user) {
 			const countryId = selectedCountryId ? Number(selectedCountryId) : undefined;
 			const genderId = selectedGenderId ? Number(selectedGenderId) : undefined;
@@ -119,7 +119,7 @@
 				});
 			} catch (err) {
 				const message =
-					err instanceof Error ? err.message : 'Profile could not be created.';
+					err instanceof Error ? err.message : m.profile_create_failed();
 				toastService.addToast(message, StatusColorEnum.ERROR);
 				isLoading = false;
 				return;
@@ -143,41 +143,37 @@
 					<img src={HekaLogo} alt="" class="w-42" />
 				</DaisyUiLink>
 			</DaisyUiFieldsetLegend>
-			<!-- first name -->
 				<section id="first-name-input">
 					<DaisyUiInputField
 						inputType="text"
-						inputPlaceholderText="First Name"
+						inputPlaceholderText={m.first_name()}
 						nameText="firstName"
 						className="w-full"
 					/>
 				</section>
 
-				<!-- middle name -->
 				<section id="middle-name-input">
 					<DaisyUiInputField
 						inputType="text"
-						inputPlaceholderText="Middle Name"
+						inputPlaceholderText={m.middle_name()}
 						nameText="middleName"
 						className="w-full"
 					/>
 				</section>
 
-				<!-- last name -->
 				<section id="last-name-input">
 					<DaisyUiInputField
 						inputType="text"
-						inputPlaceholderText="Last Name"
+						inputPlaceholderText={m.last_name()}
 						nameText="lastName"
 						className="w-full"
 					/>
 				</section>
 
-			<!-- Country -->
 			<section id="country-input">
 				<DaisyUiSelect
 					bind:value={selectedCountryId}
-					optionHeader="Select a Country ..."
+					optionHeader={m.select_country()}
 					className="bg-base-200"
 				>
 					{#each countryData as data}
@@ -194,13 +190,12 @@
 				</DaisyUiSelect>
 			</section>
 
-			<!-- phone number -->
 			<section id="phone-number-input">
 				<DaisyUiJoin>
 					<DaisyUiSelect
 						bind:value={selectedCountryId}
 						className="max-w-20 bg-base-200"
-						optionHeader="Select a Country code"
+						optionHeader={m.select_country_code()}
 					>
 						{#each countryData as data}
 							<option value={String(data.id)} class="gap-5">
@@ -210,28 +205,26 @@
 					</DaisyUiSelect>
 					<DaisyUiInputField
 						inputType="text"
-						inputPlaceholderText="Phone Number ( Primary )"
+						inputPlaceholderText={m.phone_number_primary()}
 						nameText="phonePrimary"
 						className="w-full"
 					/>
 				</DaisyUiJoin>
 			</section>
 
-				<!-- email -->
 				<section id="email-input">
 					<DaisyUiInputField
 						inputType="email"
-						inputPlaceholderText="Email"
+						inputPlaceholderText={m.email()}
 						nameText="email"
 						className="w-full"
 					/>
 				</section>
 
-			<!-- Gender -->
 			<section id="gender-type-input">
 				<DaisyUiSelect
 					bind:value={selectedGenderId}
-					optionHeader="Select Gender ..."
+					optionHeader={m.select_gender()}
 					className="bg-base-200"
 				>
 					{#each genderData as data}
@@ -242,12 +235,11 @@
 				</DaisyUiSelect>
 			</section>
 
-				<!-- password -->
 				<section id="password">
 					<DaisyUiJoin className="w-full">
 						<DaisyUiInputField
 							inputType={isPasswordVisible ? 'text' : 'password'}
-							inputPlaceholderText="Password"
+							inputPlaceholderText={m.password()}
 							nameText="password"
 						/>
 						<DaisyUiButton
@@ -265,38 +257,35 @@
 					</DaisyUiJoin>
 				</section>
 
-				<!-- confirm password -->
 				<section id="confirm-password">
 					<DaisyUiInputField
 						inputType="password"
-						inputPlaceholderText="Confirm Password"
+						inputPlaceholderText={m.confirm_password()}
 						nameText="confirmPassword"
 					/>
 				</section>
 
-				<!-- sign up button -->
 				<DaisyUiButton
 					type="submit"
 					className="d-btn-primary w-full"
 					disabled={isLoading}
 				>
-					{isLoading ? 'Signing up…' : 'Sign Up'}
+					{isLoading ? m.signing_up() : m.sign_up()}
 				</DaisyUiButton>
 
-			<!-- external links -->
 			<div class="my-ft-small flex flex-col gap-3">
 				<div id="login">
-					already have an account? <DaisyUiLink
+					{m.already_have_account()} <DaisyUiLink
 						href={WebRoutesEnum.LOGIN}
-						className="d-link-info">Login</DaisyUiLink
+						className="d-link-info">{m.login()}</DaisyUiLink
 					>
 				</div>
 				<div id="forget-password">
-					forget your password? <DaisyUiLink
+					{m.forget_password()} <DaisyUiLink
 						onClick={openResetPasswordModal}
 						className="d-link-info"
 					>
-						Reset Password
+						{m.reset_password()}
 					</DaisyUiLink>
 				</div>
 			</div>

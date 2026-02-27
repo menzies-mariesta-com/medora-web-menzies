@@ -7,26 +7,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getGender = query(async (): Promise<GenderSchema[]> => {
-	const data = await ensureDb().select().from(table.genderTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.genderTable)
+		.where(eq(table.genderTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.genderTable.name);
 });
 
-// get count
 export const getGenderCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.genderTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.genderTable)
+		.where(eq(table.genderTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getGenderPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<GenderSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.genderTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.genderTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.genderTable),
+			ensureDb()
+				.select()
+				.from(table.genderTable)
+				.where(activeFilter)
+				.orderBy(table.genderTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.genderTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -39,7 +52,6 @@ export const getGenderPaginated = query(
 	}
 );
 
-// get one
 export const getGenderById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<GenderSchema | null> => {
@@ -51,7 +63,6 @@ export const getGenderById = query(
 	}
 );
 
-// create
 export const createGender = command(
 	'unchecked' as const,
 	async (payload: GenderSchemaInsert): Promise<GenderSchema> => {
@@ -65,7 +76,6 @@ export const createGender = command(
 	}
 );
 
-// update
 export const updateGender = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string; statusId?: number | null }): Promise<GenderSchema> => {
@@ -81,7 +91,6 @@ export const updateGender = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteGender = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -93,7 +102,6 @@ export const deleteGender = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteGenderComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

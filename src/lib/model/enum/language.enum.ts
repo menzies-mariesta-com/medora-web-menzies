@@ -3,4 +3,5 @@ export enum LanguageEnum {
   "MYANMAR" = "my",
   "JAPAN" = "ja",
   "KOREAN" = "ko",
+  "HINDI" = "hi",
 }
