@@ -42,6 +42,7 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 
 	const slot = $derived(CreateAppointmentDialogState.slot);
 	const staffId = $derived(CreateAppointmentDialogState.staffId);
+	const selectedBranchId = $derived(CreateAppointmentDialogState.branchId);
 	const slotDurationMinutes = $derived(CreateAppointmentDialogState.slotDurationMinutes);
 
 	/** Compute toTime from timeSlot + total minutes (e.g. "09:00" + 60 → "10:00"). */
@@ -106,6 +107,7 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 		const res = await getPatientPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
+			branchId: selectedBranchId || undefined,
 			page: 1,
 			pageSize: 20
 		});
@@ -370,6 +372,10 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 
 	async function handleCreate() {
 		if (!staffId?.trim()) return;
+		if (!selectedBranchId?.trim()) {
+			toastService.addToast('Please select a branch before creating appointment.', StatusColorEnum.ERROR);
+			return;
+		}
 		if (isNoSlotMode && (!effectiveDate.trim() || !effectiveFromTime.trim())) {
 			toastService.addToast('Please pick date and start time.', StatusColorEnum.ERROR);
 			return;
@@ -388,6 +394,8 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 		isSubmitting = true;
 		try {
 			const payload: AppointmentSchemaInsert = {
+				hospitalId: hospitalId || '',
+				branchId: selectedBranchId,
 				appointmentDate: effectiveDate,
 				fromTime: effectiveFromTime,
 				toTime,
@@ -421,7 +429,7 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 					await createPatientVisit({
 						patientId: patientIdVal,
 						hospitalId,
-						branchId: null,
+						branchId: selectedBranchId,
 						appointmentId: created.id,
 						doctorId: staffId.trim() || null,
 						statusTypeId: null,

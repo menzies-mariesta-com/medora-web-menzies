@@ -1,4 +1,4 @@
-import { command, query } from '$app/server';
+import { command, query, getRequestEvent } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 
@@ -25,6 +25,8 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne, ilike, or, sql } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { error } from '@sveltejs/kit';
+const BRANCH_ALL_VALUE = '__all__';
 
 
 
@@ -40,6 +42,16 @@ export type PatientVisitWithRelations = PatientVisitSchema & {
 	branch: HospitalBranchSchema | null;
 	doctor: StaffSchema | null;
 };
+
+function getSelectedBranchFromRequest(): string | null {
+	try {
+		const event = getRequestEvent();
+		const raw = event.cookies.get('heka_selected_branch_id') ?? null;
+		return raw === BRANCH_ALL_VALUE ? null : raw;
+	} catch {
+		return null;
+	}
+}
 
 
 
@@ -67,10 +79,19 @@ export const getPatientVisitById = query(
 // Create
 export const createPatientVisit = command(
 	'unchecked' as const,
-	async (payload: PatientVisitSchemaInsert): Promise<PatientVisitSchema> => {
+	async (
+		payload: Omit<PatientVisitSchemaInsert, 'branchId'> & { branchId?: string | null }
+	): Promise<PatientVisitSchema> => {
+		const selectedBranchId = getSelectedBranchFromRequest();
+		const branchId = payload.branchId ?? selectedBranchId ?? null;
+		if (!branchId) throw error(400, 'Branch is required to create patient visit');
+		const values: PatientVisitSchemaInsert = {
+			...payload,
+			branchId
+		};
 		const [row] = await ensureDb()
 			.insert(table.patientVisitTable)
-			.values(payload)
+			.values(values)
 			.returning();
 
 		if (!row) throw new Error('Insert failed');

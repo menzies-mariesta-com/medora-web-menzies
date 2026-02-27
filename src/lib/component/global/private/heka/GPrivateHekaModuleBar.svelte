@@ -31,6 +31,7 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
+type StaffBranchForNav = { id: string; name: string | null };
 
 	let {
 		hospitalId = null,
@@ -41,6 +42,8 @@
 		userRoleId = null,
 		staffUserGroupsForNav = [],
 		selectedUserGroupId = null,
+		staffBranchesForNav = [],
+		selectedBranchId = null,
 		/** When set (e.g. in EMR Clone), navbar visibility is controlled by parent; otherwise internal state. */
 		navbarVisible = undefined,
 		onToggleNavbar = undefined
@@ -53,6 +56,8 @@
 		userRoleId?: number | null;
 		staffUserGroupsForNav?: StaffUserGroupForNav[];
 		selectedUserGroupId?: number | null;
+		staffBranchesForNav?: StaffBranchForNav[];
+		selectedBranchId?: string | null;
 		navbarVisible?: boolean;
 		onToggleNavbar?: () => void;
 	} = $props();
@@ -109,7 +114,15 @@
 	const selectedUserGroupIdStr = $derived(
 		selectedUserGroupId != null ? String(selectedUserGroupId) : ''
 	);
+	const showBranchSelect = $derived(
+		userRoleId === RoleEnum.STAFF && (staffBranchesForNav?.length ?? 0) > 1
+	);
+	const setSelectedBranchUrl = $derived(
+		hospitalId ? `/heka/hospital/${hospitalId}/home/set-selected-branch` : ''
+	);
+	const selectedBranchIdStr = $derived(selectedBranchId ?? '');
 	let userGroupForm: HTMLFormElement | undefined = $state();
+	let branchForm: HTMLFormElement | undefined = $state();
 </script>
 
 {#if isNavbarVisible}
@@ -126,6 +139,26 @@
 			/>
 		</DaisyUiNavbarCenter>
 		<DaisyUiNavbarEnd className="gap-3">
+			{#if showBranchSelect && setSelectedBranchUrl}
+				<form
+					bind:this={branchForm}
+					class="form-control"
+					action={setSelectedBranchUrl}
+					method="post"
+					role="presentation"
+				>
+					<DaisyUiSelect
+						value={selectedBranchIdStr}
+						className="d-select-sm min-w-36"
+						name="branchId"
+						onChange={() => branchForm?.requestSubmit()}
+					>
+						{#each staffBranchesForNav as b (b.id)}
+							<option value={b.id}>{b.name ?? ''}</option>
+						{/each}
+					</DaisyUiSelect>
+				</form>
+			{/if}
 			{#if showUserGroupSelect && setSelectedUserGroupUrl}
 				<form
 					bind:this={userGroupForm}

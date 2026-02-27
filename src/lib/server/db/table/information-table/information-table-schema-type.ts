@@ -9,6 +9,7 @@ import type {
 	staffDetailTable,
 	staffDepartmentTable,
 	staffHospitalTable,
+	staffBranchTable,
 	staffTable,
 	staffUserGroupTable,
 	statusTaggingTable,
@@ -70,6 +71,10 @@ export type StaffDepartmentSchemaUpdate = Partial<StaffDepartmentSchemaInsert>;
 export type StaffHospitalSchema = InferSelectModel<typeof staffHospitalTable>;
 export type StaffHospitalSchemaInsert = InferInsertModel<typeof staffHospitalTable>;
 export type StaffHospitalSchemaUpdate = Partial<StaffHospitalSchemaInsert>;
+
+export type StaffBranchSchema = InferSelectModel<typeof staffBranchTable>;
+export type StaffBranchSchemaInsert = InferInsertModel<typeof staffBranchTable>;
+export type StaffBranchSchemaUpdate = Partial<StaffBranchSchemaInsert>;
 
 export type StaffSchema = InferSelectModel<typeof staffTable>;
 export type StaffSchemaInsert = InferInsertModel<typeof staffTable>;
