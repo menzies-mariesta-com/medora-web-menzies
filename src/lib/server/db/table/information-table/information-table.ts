@@ -5,7 +5,6 @@ import {
 	foreignKey,
 	integer,
 	pgTable,
-	primaryKey,
 	serial,
 	text,
 	timestamp,
@@ -91,30 +90,6 @@ export const hospitalPatientCodeCounterTable = pgTable(
 		lastNumber: integer('last_number').notNull().default(0),
 		...timestamps,
 	}
-);
-
-/** Per-hospital/branch/visit-type/year atomic counter for visit numbers. */
-export const hospitalVisitCodeCounterTable = pgTable(
-	'hospital_visit_code_counter',
-	{
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		branchId: uuid('branch_id')
-			.notNull()
-			.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
-		visitTypeId: integer('visit_type_id')
-			.notNull()
-			.references(() => visitTypeTable.id),
-		year: integer('year').notNull(),
-		lastNumber: integer('last_number').notNull().default(0),
-		...timestamps,
-	},
-	(table) => [
-		primaryKey({
-			columns: [table.hospitalId, table.branchId, table.visitTypeId, table.year],
-		}),
-	]
 );
 
 export const hospitalDepartmentTable = pgTable('hospital_department', {

@@ -435,7 +435,8 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 						statusTypeId: null,
 						// Default to OPD visit type (see master-table seed: id=1, code 'O').
 						visitTypeId: 1,
-						statusId: undefined
+						statusId: undefined,
+						visitNo: null
 					});
 				} catch (e) {
 					// Do not block appointment creation if visit creation fails.

@@ -56,78 +56,8 @@ function getSelectedBranchFromRequest(): string | null {
 
 
 /* =========================================================
-   BASIC CRUD & HELPERS
+   BASIC CRUD
 ========================================================= */
-
-/**
- * Generate next visitNo in the format:
- *   VisitTypeCode + YY (year, last 2 digits) + HospitalCode + '-' + BranchCode + Order
- * Example: I26THH-ISN000001
- */
-export const getNextVisitNo = query(
-	'unchecked' as const,
-	async ({
-		hospitalId,
-		branchId,
-		visitTypeId
-	}: {
-		hospitalId: string;
-		branchId: string;
-		visitTypeId: number;
-	}): Promise<string> => {
-		const [hospital, branch, visitType] = await Promise.all([
-			ensureDb().query.hospitalTable.findFirst({
-				where: (t, { eq }) => eq(t.id, hospitalId)
-			}),
-			ensureDb().query.hospitalBranchTable.findFirst({
-				where: (t, { eq }) => eq(t.id, branchId)
-			}),
-			ensureDb().query.visitTypeTable.findFirst({
-				where: (t, { eq }) => eq(t.id, visitTypeId)
-			})
-		]);
-
-		if (!hospital) throw error(400, 'Hospital is required to generate visit number.');
-		if (!branch) throw error(400, 'Branch is required to generate visit number.');
-		if (!visitType) throw error(400, 'Visit type is required to generate visit number.');
-
-		const hospitalCode =
-			(hospital.code?.trim() || hospitalId.substring(0, 3)).toUpperCase();
-		const branchCode =
-			(branch.code?.trim() || 'MAIN').toUpperCase();
-		const visitTypeCode =
-			(visitType.code?.trim() || 'V').toUpperCase();
-
-		const fullYear = new Date().getFullYear();
-		const yearSuffix = String(fullYear).slice(-2);
-
-		const counter = table.hospitalVisitCodeCounterTable;
-		const [row] = await ensureDb()
-			.insert(counter)
-			.values({
-				hospitalId,
-				branchId,
-				visitTypeId,
-				year: fullYear,
-				lastNumber: 1
-			})
-			.onConflictDoUpdate({
-				target: [
-					counter.hospitalId,
-					counter.branchId,
-					counter.visitTypeId,
-					counter.year
-				],
-				set: { lastNumber: sql`${counter.lastNumber} + 1` }
-			})
-			.returning({ lastNumber: counter.lastNumber });
-
-		const nextNumber = row?.lastNumber ?? 1;
-		const orderPart = String(nextNumber).padStart(6, '0');
-
-		return `${visitTypeCode}${yearSuffix}${hospitalCode}-${branchCode}${orderPart}`;
-	}
-);
 
 // Get All
 export const getPatientVisit = query(async (): Promise<PatientVisitSchema[]> => {
@@ -150,31 +80,14 @@ export const getPatientVisitById = query(
 export const createPatientVisit = command(
 	'unchecked' as const,
 	async (
-		payload: Omit<PatientVisitSchemaInsert, 'branchId' | 'visitNo'> & {
-			branchId?: string | null;
-		}
+		payload: Omit<PatientVisitSchemaInsert, 'branchId'> & { branchId?: string | null }
 	): Promise<PatientVisitSchema> => {
 		const selectedBranchId = getSelectedBranchFromRequest();
 		const branchId = payload.branchId ?? selectedBranchId ?? null;
 		if (!branchId) throw error(400, 'Branch is required to create patient visit');
-
-		if (!payload.hospitalId) {
-			throw error(400, 'Hospital is required to create patient visit');
-		}
-		if (!payload.visitTypeId) {
-			throw error(400, 'Visit type is required to create patient visit');
-		}
-
-		const visitNo = await getNextVisitNo({
-			hospitalId: payload.hospitalId,
-			branchId,
-			visitTypeId: payload.visitTypeId
-		});
-
 		const values: PatientVisitSchemaInsert = {
 			...payload,
-			branchId,
-			visitNo
+			branchId
 		};
 		const [row] = await ensureDb()
 			.insert(table.patientVisitTable)
