@@ -45,7 +45,7 @@ type StaffBranchForNav = { id: string; name: string | null };
 		selectedUserGroupId = null,
 		staffBranchesForNav = [],
 		selectedBranchId = null,
-		/** When set (e.g. in EMR Clone), navbar visibility is controlled by parent; otherwise internal state. */
+		/** When set (e.g. in Nursing Workbench), navbar visibility is controlled by parent; otherwise internal state. */
 		navbarVisible = undefined,
 		onToggleNavbar = undefined
 	}: {
