@@ -29,11 +29,20 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 	const userRoleId = locals.userRoleId ?? null;
 	const staffId = locals.staff?.id ?? null;
 	const hospitalId = params.hospital_id ?? '';
+	const [hospital] = hospitalId
+		? await ensureDb()
+				.select({ name: table.hospitalTable.name })
+				.from(table.hospitalTable)
+				.where(eq(table.hospitalTable.id, hospitalId))
+				.limit(1)
+		: [];
+	const currentHospitalName = hospital?.name ?? null;
 
 	// OWNER or SYSTEM_ADMIN: show all pages, no page-level enforcement
 	if (userRoleId === RoleEnum.OWNER || userRoleId === RoleEnum.SYSTEM_ADMIN) {
 		return {
 			pageData: fullPages,
+			currentHospitalName,
 			staffUserGroupsForNav: [],
 			selectedUserGroupId: null,
 			staffBranchesForNav: [],
@@ -56,6 +65,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			}
 			return {
 				pageData: [],
+				currentHospitalName,
 				staffUserGroupsForNav: [],
 				selectedUserGroupId: null,
 				staffBranchesForNav: [],
@@ -158,6 +168,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		const filtered = fullPages.filter((p) => allowedPageIds.has(p.id));
 		return {
 			pageData: filtered,
+			currentHospitalName,
 			staffUserGroupsForNav,
 			selectedUserGroupId,
 			staffBranchesForNav: staffBranchesForNavWithAll,
@@ -168,6 +179,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 	// Fallback (e.g. no role or no staff): show all
 	return {
 		pageData: fullPages,
+		currentHospitalName,
 		staffUserGroupsForNav: [],
 		selectedUserGroupId: null,
 		staffBranchesForNav: [],
