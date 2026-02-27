@@ -35,6 +35,7 @@ type StaffBranchForNav = { id: string; name: string | null };
 
 	let {
 		hospitalId = null,
+		hospitalName = null,
 		moduleList,
 		pageList,
 		staffId = null,
@@ -49,6 +50,7 @@ type StaffBranchForNav = { id: string; name: string | null };
 		onToggleNavbar = undefined
 	}: {
 		hospitalId?: string | null;
+		hospitalName?: string | null;
 		moduleList: ModuleSchema[];
 		pageList: PageSchema[];
 		staffId?: string | null;
@@ -88,9 +90,21 @@ type StaffBranchForNav = { id: string; name: string | null };
 
 	const routerUtil = new RouterUtil();
 
-	let pageLocator = $derived(
-		StringUtil.urlToTitleLast(page.url.pathname, 2)
-	);
+	let pageLocator = $derived.by(() => {
+		const segments = StringUtil.parseUrlSegments(page.url.pathname).slice(-2);
+		const pageTitle = segments
+			.filter((segment) => !(hospitalId && segment === hospitalId))
+			.map((segment) =>
+				StringUtil.segmentToLabel(segment)
+			)
+			.join(' / ');
+
+		if (hospitalName?.trim()) {
+			return pageTitle ? `${hospitalName} / ${pageTitle}` : hospitalName;
+		}
+
+		return pageTitle;
+	});
 
 	let isNavbarVisibleInternal = $state(true);
 	const isControlled = $derived(

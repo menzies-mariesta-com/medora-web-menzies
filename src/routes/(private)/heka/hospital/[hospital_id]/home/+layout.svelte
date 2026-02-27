@@ -45,6 +45,7 @@
 		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}-${(data?.staffBranchesForNav ?? []).map((b) => b.id).join(',')}`}
 			<GPrivateHekaModuleBar
 				hospitalId={hospitalId}
+				hospitalName={data?.currentHospitalName ?? null}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
 				staffId={currentStaffId}
