@@ -10,7 +10,9 @@ function normPath(p: string | null | undefined): string {
 export const load: PageServerLoad = async ({ params }) => {
 	const hospitalId = params.hospital_id;
 	const pages = await getPage();
-	const emrPage = pages.find((p) => normPath(p.pageUrl) === WebRoutesEnum.HEKA_HOME_EMR_CLONE_EMR);
+	const emrPage = pages.find(
+		(p) => normPath(p.pageUrl) === WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
+	);
 	if (!emrPage) return {};
 
 	const children = pages
