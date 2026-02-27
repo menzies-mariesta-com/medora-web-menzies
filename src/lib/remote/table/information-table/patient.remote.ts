@@ -77,7 +77,8 @@ export const getNextPatientCode = query(
 	'unchecked' as const,
 	async ({ hospitalId }: { hospitalId: string }): Promise<string> => {
 		const hospital = (await getHospitalById({ id: hospitalId })) as HospitalSchema | null;
-		const prefix = (hospital?.code?.trim() ?? hospitalId).toUpperCase();
+		const hospitalCode = (hospital?.code?.trim() ?? hospitalId).toUpperCase();
+		const yearSuffix = new Date().getFullYear().toString().slice(-2);
 		const counter = table.hospitalPatientCodeCounterTable;
 		const [row] = await ensureDb()
 			.insert(counter)
@@ -88,7 +89,7 @@ export const getNextPatientCode = query(
 			})
 			.returning({ lastNumber: counter.lastNumber });
 		const nextNumber = row?.lastNumber ?? 1;
-		return `${prefix}${String(nextNumber).padStart(8, '0')}`;
+		return `${yearSuffix}${hospitalCode}${String(nextNumber).padStart(8, '0')}`;
 	}
 );
 
