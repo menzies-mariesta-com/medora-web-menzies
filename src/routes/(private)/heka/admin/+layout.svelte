@@ -6,6 +6,7 @@
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LucideArrowLeft from '$lib/component/library/lucide/LucideArrowLeft.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children, data } = $props();
 	const routerUtil = new RouterUtil();
@@ -17,7 +18,7 @@
 
 <div class="my-app">
 	<GPrivateHekaNavbarOnly
-		title="System Admin"
+		title={m.system_admin()}
 		staffId={currentStaffId}
 		staffPhotoUrl={currentStaffPhotoUrl}
 	/>
@@ -27,8 +28,8 @@
 				className="d-btn-ghost d-btn-sm"
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.HEKA_HOSPITAL)}
 			>
-				<LucideArrowLeft />
-				Back to hospitals
+			<LucideArrowLeft />
+			{m.back_to_hospitals()}
 			</DaisyUiButton>
 		</div>
 		{@render children?.()}

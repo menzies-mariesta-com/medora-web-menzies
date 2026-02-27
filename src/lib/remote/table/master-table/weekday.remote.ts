@@ -7,26 +7,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getWeekday = query(async (): Promise<WeekdaySchema[]> => {
-	const data = await ensureDb().select().from(table.weekdayTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.weekdayTable)
+		.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.weekdayTable.name);
 });
 
-// get count
 export const getWeekdayCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.weekdayTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.weekdayTable)
+		.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getWeekdayPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<WeekdaySchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.weekdayTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.weekdayTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.weekdayTable),
+			ensureDb()
+				.select()
+				.from(table.weekdayTable)
+				.where(activeFilter)
+				.orderBy(table.weekdayTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.weekdayTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -39,7 +52,6 @@ export const getWeekdayPaginated = query(
 	}
 );
 
-// get one
 export const getWeekdayById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<WeekdaySchema | null> => {
@@ -51,7 +63,6 @@ export const getWeekdayById = query(
 	}
 );
 
-// create
 export const createWeekday = command(
 	'unchecked' as const,
 	async (payload: WeekdaySchemaInsert): Promise<WeekdaySchema> => {
@@ -65,7 +76,6 @@ export const createWeekday = command(
 	}
 );
 
-// update
 export const updateWeekday = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<WeekdaySchema> => {
@@ -81,7 +91,6 @@ export const updateWeekday = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteWeekday = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -93,7 +102,6 @@ export const deleteWeekday = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteWeekdayComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

@@ -2,6 +2,7 @@
 	import DaisyUiFooterAside from '$lib/component/library/daisyui/footer/aside/DaisyUiFooterAside.svelte';
 	import DaisyUiFooter from '$lib/component/library/daisyui/footer/DaisyUiFooter.svelte';
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
+	import { m } from '$lib/paraglide/messages';
 </script>
 
 <!-- First Footer -->
@@ -9,46 +10,46 @@
 	className="sm:d-footer-horizontal bg-base-200 text-base-content p-10"
 >
 	<nav>
-		<h6 class="d-footer-title">Services</h6>
+		<h6 class="d-footer-title">{m.services()}</h6>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Branding</DaisyUiLink
+			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">Design</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>Marketing</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Advertisement</DaisyUiLink
+			>{m.marketing()}</DaisyUiLink
+		>
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.advertisement()}</DaisyUiLink
 		>
 	</nav>
 
 	<nav>
-		<h6 class="d-footer-title">Services</h6>
+		<h6 class="d-footer-title">{m.services()}</h6>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Branding</DaisyUiLink
+			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">Design</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>Marketing</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Advertisement</DaisyUiLink
+			>{m.marketing()}</DaisyUiLink
+		>
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.advertisement()}</DaisyUiLink
 		>
 	</nav>
 	<nav>
-		<h6 class="d-footer-title">Services</h6>
+		<h6 class="d-footer-title">{m.services()}</h6>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Branding</DaisyUiLink
+			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">Design</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>Marketing</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
-			>Advertisement</DaisyUiLink
+			>{m.marketing()}</DaisyUiLink
+		>
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.advertisement()}</DaisyUiLink
 		>
 	</nav>
 </DaisyUiFooter>

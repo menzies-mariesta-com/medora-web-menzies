@@ -34,7 +34,7 @@
 			href={WebRoutesEnum.ONBOARDING_MARKETPLACE}
 			className="d-btn"
 		>
-			Market Place
+			{m.market_place()}
 		</DaisyUiLink>
 	</DaisyUiNavbarCenter>
 
@@ -45,18 +45,18 @@
 					{$session.data.user.name ?? $session.data.user.email}
 				</span>
 			</div>
-			<DaisyUiButton onClick={handleSignOut}>Log out</DaisyUiButton>
+			<DaisyUiButton onClick={handleSignOut}>{m.log_out()}</DaisyUiButton>
 		{:else}
 			<DaisyUiButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.SIGNUP)}
 			>
-				SIGN UP
+				{m.sign_up()}
 			</DaisyUiButton>
 			<DaisyUiButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.LOGIN)}
 				className="d-btn-primary"
 			>
-				LOGIN
+				{m.login()}
 			</DaisyUiButton>
 		{/if}
 	</DaisyUiNavbarEnd>

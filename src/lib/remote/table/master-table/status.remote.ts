@@ -6,26 +6,34 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getStatus = query(async (): Promise<StatusSchema[]> => {
-	const data = await ensureDb().select().from(table.statusTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.statusTable)
+		.orderBy(table.statusTable.name);
 });
 
-// get count
 export const getStatusCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.statusTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.statusTable);
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getStatusPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<StatusSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.statusTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.statusTable),
+			ensureDb()
+				.select()
+				.from(table.statusTable)
+				.orderBy(table.statusTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.statusTable),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -38,7 +46,6 @@ export const getStatusPaginated = query(
 	}
 );
 
-// get one
 export const getStatusById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StatusSchema | null> => {
@@ -50,7 +57,6 @@ export const getStatusById = query(
 	}
 );
 
-// create
 export const createStatus = command(
 	'unchecked' as const,
 	async (payload: StatusSchemaInsert): Promise<StatusSchema> => {
@@ -64,7 +70,6 @@ export const createStatus = command(
 	}
 );
 
-// update
 export const updateStatus = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<StatusSchema> => {
@@ -80,7 +85,6 @@ export const updateStatus = command(
 	}
 );
 
-// delete (no status_id: hard delete)
 export const deleteStatus = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -89,7 +93,6 @@ export const deleteStatus = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteStatusComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getNationality = query(async (): Promise<NationalitySchema[]> => {
-	const data = await ensureDb().select().from(table.nationalityTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.nationalityTable)
+		.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.nationalityTable.name);
 });
 
-// get count
 export const getNationalityCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.nationalityTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.nationalityTable)
+		.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getNationalityPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<NationalitySchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.nationalityTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.nationalityTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.nationalityTable),
+			ensureDb()
+				.select()
+				.from(table.nationalityTable)
+				.where(activeFilter)
+				.orderBy(table.nationalityTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.nationalityTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getNationalityPaginated = query(
 	}
 );
 
-// get one
 export const getNationalityById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<NationalitySchema | null> => {
@@ -55,7 +67,6 @@ export const getNationalityById = query(
 	}
 );
 
-// create
 export const createNationality = command(
 	'unchecked' as const,
 	async (payload: NationalitySchemaInsert): Promise<NationalitySchema> => {
@@ -69,7 +80,6 @@ export const createNationality = command(
 	}
 );
 
-// update
 export const updateNationality = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<NationalitySchema> => {
@@ -85,7 +95,6 @@ export const updateNationality = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteNationality = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -97,7 +106,6 @@ export const deleteNationality = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteNationalityComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

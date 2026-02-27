@@ -16,6 +16,7 @@
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
 	import type { FontEnum } from '$lib/model/enum/font.enum';
 	import { FontTool } from '$lib/tool/font.tool.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const languageTool = new LanguageTool();
 	const localStorageUtil = new LocalStorageUtil();
@@ -47,7 +48,7 @@
 
 <DaisyUiFab>
 	<DaisyUiTooltip
-		tooltipText="Quick Tool"
+		tooltipText={m.quick_tool()}
 		className="d-tooltip-left d-tooltip-secondary"
 	>
 		<DaisyUiButton
@@ -58,7 +59,7 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText="Support" className="d-tooltip-left ">
+	<DaisyUiTooltip tooltipText={m.support()} className="d-tooltip-left ">
 		<DaisyUiButton
 			className="d-btn-circle d-btn-lg"
 			onClick={openSupportDialog}
@@ -67,7 +68,7 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText="Theme" className="d-tooltip-left ">
+	<DaisyUiTooltip tooltipText={m.theme()} className="d-tooltip-left ">
 		<DaisyUiButton
 			onClick={openThemeSettings}
 			className="d-btn-circle d-btn-lg"
@@ -76,7 +77,7 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText="Languages" className="d-tooltip-left ">
+	<DaisyUiTooltip tooltipText={m.languages()} className="d-tooltip-left ">
 		<DaisyUiButton
 			onClick={openLanguageDialog}
 			className="d-btn-circle d-btn-lg"

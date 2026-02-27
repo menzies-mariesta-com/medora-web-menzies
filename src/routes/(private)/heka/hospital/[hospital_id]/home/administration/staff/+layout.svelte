@@ -3,6 +3,7 @@
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { getSubPages, pathnameForPageMatch } from '$lib/state/page.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
 
@@ -39,7 +40,7 @@
 						if (url) routerUtil.replaceRoute(url);
 					}}
 				>
-					{sub.name ?? 'Untitled'}
+					{sub.name ?? m.untitled()}
 				</button>
 			{/each}
 		</nav>

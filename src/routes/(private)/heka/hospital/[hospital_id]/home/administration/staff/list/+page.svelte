@@ -31,6 +31,7 @@
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -114,11 +115,11 @@
 			if (result.confirmed && typeof result.data === 'string') {
 				await deleteStaff({ id: result.data });
 				await fetchStaff(true);
-				toastService.addToast('Staff deleted.', StatusColorEnum.SUCCESS);
+				toastService.addToast(m.staff_deleted(), StatusColorEnum.SUCCESS);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete staff.', StatusColorEnum.ERROR);
+			toastService.addToast(m.failed_delete_staff(), StatusColorEnum.ERROR);
 		} finally {
 			DeleteStaffConfirmState.pending = null;
 		}
@@ -190,13 +191,13 @@
 	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
 		<div class="staff-list-search-form">
 			<DaisyUiInputField
-				inputPlaceholderText="name, code, phone..."
+				inputPlaceholderText={m.search_placeholder_staff()}
 				bind:value={searchInput}
 				className="d-input-sm"
 			/>
 		</div>
 		<DaisyUiTooltip
-			tooltipText="Refresh data"
+			tooltipText={m.refresh_data()}
 			className="d-tooltip-bottom d-tooltip-primary"
 		>
 			<DaisyUiButton
@@ -209,7 +210,7 @@
 	</div>
 
 	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
-		<span class="text-sm">per page</span>
+		<span class="text-sm">{m.per_page()}</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
 			bind:value={filterPageSize}
@@ -265,26 +266,26 @@
 		>
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">
-						Actions
-					</th>
-					<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-32 min-w-[8rem]">
-						Staff Code
-					</th>
-					<th class="w-64 min-w-[16rem]">Name</th>
-					<th class="w-64 min-w-[16rem]">Identity</th>
-					<th class="w-40 min-w-[10rem]">Phone primary</th>
-					<th class="w-40 min-w-[10rem]">Phone secondary</th>
-					<th class="w-36 min-w-[9rem]">Date of birth</th>
-					<th class="w-56 min-w-[14rem]">Employment Type</th>
-					<th class="w-40 min-w-[10rem]">Staff Type</th>
-					<th class="w-48 min-w-[12rem]">Specialization</th>
-					<th class="w-40 min-w-[10rem]">Marital status</th>
-					<th class="w-40 min-w-[10rem]">Nationality</th>
-					<th class="w-32 min-w-[8rem]">Gender</th>
-					<th class="w-32 min-w-[8rem]">Status</th>
-					<th class="w-40 min-w-[10rem]">Created at</th>
-					<th class="w-40 min-w-[10rem]">Updated at</th>
+				<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">
+					{m.actions()}
+				</th>
+				<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-32 min-w-[8rem]">
+					{m.staff_code()}
+				</th>
+				<th class="w-64 min-w-[16rem]">{m.name()}</th>
+				<th class="w-64 min-w-[16rem]">{m.identity()}</th>
+				<th class="w-40 min-w-[10rem]">{m.phone_primary()}</th>
+				<th class="w-40 min-w-[10rem]">{m.phone_secondary()}</th>
+				<th class="w-36 min-w-[9rem]">{m.date_of_birth()}</th>
+				<th class="w-56 min-w-[14rem]">{m.employment_type()}</th>
+				<th class="w-40 min-w-[10rem]">{m.staff_type()}</th>
+				<th class="w-48 min-w-[12rem]">{m.specialization()}</th>
+				<th class="w-40 min-w-[10rem]">{m.marital_status()}</th>
+				<th class="w-40 min-w-[10rem]">{m.nationality()}</th>
+				<th class="w-32 min-w-[8rem]">{m.gender()}</th>
+				<th class="w-32 min-w-[8rem]">{m.status()}</th>
+				<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
+				<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
 				</tr>
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
@@ -293,7 +294,7 @@
 						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
-									tooltipText="view data"
+									tooltipText={m.view_data()}
 									className="d-tooltip-ghost d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -304,7 +305,7 @@
 									</DaisyUiButton>
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
-									tooltipText="edit data"
+									tooltipText={m.edit_data()}
 									className="d-tooltip-accent d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -315,7 +316,7 @@
 									</DaisyUiButton>
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
-									tooltipText="delete data"
+									tooltipText={m.delete_data()}
 									className="d-tooltip-error d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -371,7 +372,7 @@
 					<tr>
 						<td
 							colspan={STAFF_COLUMN_COUNT}
-							class="text-center opacity-70">No staff found.</td
+							class="text-center opacity-70">{m.no_staff_found()}</td
 						>
 					</tr>
 				{/each}
