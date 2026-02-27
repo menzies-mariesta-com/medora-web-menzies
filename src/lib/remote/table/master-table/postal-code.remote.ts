@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getPostalCode = query(async (): Promise<PostalCodeSchema[]> => {
-	const data = await ensureDb().select().from(table.postalCodeTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.postalCodeTable)
+		.where(eq(table.postalCodeTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.postalCodeTable.value);
 });
 
-// get count
 export const getPostalCodeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.postalCodeTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.postalCodeTable)
+		.where(eq(table.postalCodeTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getPostalCodePaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<PostalCodeSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.postalCodeTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.postalCodeTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.postalCodeTable),
+			ensureDb()
+				.select()
+				.from(table.postalCodeTable)
+				.where(activeFilter)
+				.orderBy(table.postalCodeTable.value)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.postalCodeTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getPostalCodePaginated = query(
 	}
 );
 
-// get one
 export const getPostalCodeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<PostalCodeSchema | null> => {
@@ -55,7 +67,6 @@ export const getPostalCodeById = query(
 	}
 );
 
-// create
 export const createPostalCode = command(
 	'unchecked' as const,
 	async (payload: PostalCodeSchemaInsert): Promise<PostalCodeSchema> => {
@@ -69,7 +80,6 @@ export const createPostalCode = command(
 	}
 );
 
-// update
 export const updatePostalCode = command(
 	'unchecked' as const,
 	async (payload: {
@@ -90,7 +100,6 @@ export const updatePostalCode = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deletePostalCode = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -102,7 +111,6 @@ export const deletePostalCode = command(
 	}
 );
 
-// delete complete (hard)
 export const deletePostalCodeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

@@ -151,14 +151,14 @@
 								class="d-btn"
 								onclick={() => dialogService.cancel()}
 							>
-								Cancel
+								{m.cancel()}
 							</button>
 							<button
 								type="button"
 								class="d-btn d-btn-primary"
 								onclick={() => dialogService.confirm()}
 							>
-								OK
+								{m.ok()}
 							</button>
 						{:else}
 							<button
@@ -166,7 +166,7 @@
 								class="d-btn d-btn-primary"
 								onclick={() => dialogService.close()}
 							>
-								OK
+								{m.ok()}
 							</button>
 						{/if}
 					</div>

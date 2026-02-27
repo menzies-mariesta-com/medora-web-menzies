@@ -5,6 +5,7 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import LPatientListDialogContent from '$lib/component/local/private/heka/emr/LPatientListDialogContent.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
 
@@ -29,8 +30,8 @@
 	const selectedPatientName = $derived(page.url.searchParams.get('patientName') ?? '');
 	const selectedVisitLabel = $derived(
 		selectedVisitId
-			? `Visit ${selectedVisitId} – ${selectedPatientName || 'Unknown patient'}`
-			: 'No visit selected'
+			? `Visit ${selectedVisitId} – ${selectedPatientName || ''}`
+			: m.no_visit_selected()
 	);
 
 	async function handleChoosePatient() {
@@ -39,7 +40,7 @@
 			visitId: number;
 			patientName: string;
 		}>({
-			title: 'Choose visit',
+			title: m.choose_visit(),
 			component: LPatientListDialogContent,
 			fullScreen: true
 		});
@@ -59,7 +60,7 @@
 	<div class="emr-subnav-wrapper">
 		<div class="emr-patient-bar">
 			<div class="emr-patient-bar-left">
-				<div class="emr-patient-bar-title">Selected Visit</div>
+				<div class="emr-patient-bar-title">{m.selected_visit()}</div>
 				<div class="emr-patient-bar-value">{selectedVisitLabel}</div>
 			</div>
 			<div class="emr-patient-bar-right">
@@ -68,7 +69,7 @@
 					class="emr-patient-bar-button"
 					onclick={handleChoosePatient}
 				>
-					Select Visit
+					{m.select_visit()}
 				</button>
 			</div>
 		</div>
@@ -84,7 +85,7 @@
 						if (url) routerUtil.replaceRoute(url);
 					}}
 				>
-					{sub.name ?? 'Untitled'}
+					{sub.name ?? m.untitled()}
 				</button>
 			{/each}
 		</nav>

@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getStaffEmploymentType = query(async (): Promise<StaffEmploymentTypeSchema[]> => {
-	const data = await ensureDb().select().from(table.staffEmploymentTypeTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.staffEmploymentTypeTable)
+		.where(eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.staffEmploymentTypeTable.name);
 });
 
-// get count
 export const getStaffEmploymentTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.staffEmploymentTypeTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.staffEmploymentTypeTable)
+		.where(eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getStaffEmploymentTypePaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<StaffEmploymentTypeSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.staffEmploymentTypeTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.staffEmploymentTypeTable),
+			ensureDb()
+				.select()
+				.from(table.staffEmploymentTypeTable)
+				.where(activeFilter)
+				.orderBy(table.staffEmploymentTypeTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffEmploymentTypeTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getStaffEmploymentTypePaginated = query(
 	}
 );
 
-// get one
 export const getStaffEmploymentTypeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StaffEmploymentTypeSchema | null> => {
@@ -55,7 +67,6 @@ export const getStaffEmploymentTypeById = query(
 	}
 );
 
-// create
 export const createStaffEmploymentType = command(
 	'unchecked' as const,
 	async (payload: StaffEmploymentTypeSchemaInsert): Promise<StaffEmploymentTypeSchema> => {
@@ -69,7 +80,6 @@ export const createStaffEmploymentType = command(
 	}
 );
 
-// update
 export const updateStaffEmploymentType = command(
 	'unchecked' as const,
 	async (payload: {
@@ -90,7 +100,6 @@ export const updateStaffEmploymentType = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteStaffEmploymentType = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -102,7 +111,6 @@ export const deleteStaffEmploymentType = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteStaffEmploymentTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

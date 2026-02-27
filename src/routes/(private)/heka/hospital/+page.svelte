@@ -26,6 +26,7 @@
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props();
 	const isStaff = $derived(data?.userRoleId === RoleEnum.STAFF);
@@ -65,7 +66,7 @@
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
 		HospitalModalState.currentUserId = data?.user ? (data.user as { id?: string }).id : undefined;
 		const result = await dialogService.open({
-			title: 'Edit hospital',
+			title: m.edit_hospital(),
 			component: NewHospitalModal
 		});
 		if (result.confirmed) {
@@ -78,7 +79,7 @@
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
 		HospitalModalState.currentUserId = data?.user ? (data.user as { id?: string }).id : undefined;
 		const result = await dialogService.open({
-			title: 'New hospital',
+			title: m.new_hospital(),
 			component: NewHospitalModal
 		});
 		if (result.confirmed) {
@@ -88,29 +89,29 @@
 
 	async function handleDelete(h: HospitalWithOwner) {
 		const result = await dialogService.open({
-			title: 'Delete hospital',
-			message: `Delete "${h.name ?? h.code ?? 'Hospital'}"? This cannot be undone.`,
+		title: m.delete_hospital(),
+		message: `Delete "${h.name ?? h.code ?? m.hospitals()}"? This cannot be undone.`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteHospital({ id: h.id });
-			toastService.addToast('Hospital deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(m.hospital_deleted(), StatusColorEnum.SUCCESS);
 			await loadHospitals(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Delete failed';
-			toastService.addToast(msg, StatusColorEnum.ERROR);
-		}
+		const msg = err instanceof Error ? err.message : m.delete_failed();
+		toastService.addToast(msg, StatusColorEnum.ERROR);
 	}
+}
 
 	lifeCycleUtil.onMount(() => {
-		loadHospitals();
-	});
+	loadHospitals();
+});
 </script>
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Choose a hospital</h1>
+		<h1 class="text-2xl font-bold">{m.choose_hospital()}</h1>
 		<div class="flex flex-wrap items-center gap-2">
 			{#if isSystemAdmin}
 				<DaisyUiButton
@@ -118,7 +119,7 @@
 					onClick={() => routerUtil.goToRoute(WebRoutesEnum.HEKA_ADMIN_OWNERS)}
 				>
 					<LucideUserCog />
-					Manage owners
+					{m.manage_owners()}
 				</DaisyUiButton>
 			{/if}
 			{#if canManageHospitals}
@@ -127,7 +128,7 @@
 					onClick={openNewHospitalModal}
 				>
 					<LucidePlus />
-					New hospital
+					{m.new_hospital()}
 				</DaisyUiButton>
 			{/if}
 		</div>
@@ -135,7 +136,7 @@
 
 	{#if isStaff && !(data?.allowedHospitalIds?.length)}
 		<p class="text-base-content/70 py-8 text-center">
-			No hospital assigned to your account. Contact your administrator.
+			{m.no_hospital_assigned()}
 		</p>
 	{:else}
 	<DaisyUiCard>
@@ -144,19 +145,19 @@
 				<DaisyUiLoading className="py-8" />
 			{:else if hospitals.length === 0}
 				<p class="text-base-content/70 py-8 text-center">
-					No hospitals yet. Create one to get started.
+					{m.no_hospitals_yet()}
 				</p>
 			{:else}
 				<DaisyUiTable>
 					<DaisyUiTableHeader>
 						<tr>
-							<th>Name</th>
-							<th>Code</th>
-							<th>Owner</th>
-							<th>Phone</th>
-							<th>Email</th>
-							<th>Address</th>
-							<th class="text-right">Actions</th>
+							<th>{m.name()}</th>
+							<th>{m.code()}</th>
+							<th>{m.owner()}</th>
+							<th>{m.phone()}</th>
+							<th>{m.email()}</th>
+							<th>{m.address()}</th>
+							<th class="text-right">{m.actions()}</th>
 						</tr>
 					</DaisyUiTableHeader>
 					<DaisyUiTableBody>
@@ -174,7 +175,7 @@
 											className="d-btn-primary d-btn-sm"
 											onClick={() => goToHospitalHome(h.id)}
 										>
-											Enter
+											{m.enter()}
 										</DaisyUiButton>
 										{#if canManageHospitals}
 											<DaisyUiButton

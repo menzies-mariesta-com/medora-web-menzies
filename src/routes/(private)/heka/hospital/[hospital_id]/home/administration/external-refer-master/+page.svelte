@@ -28,6 +28,7 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LExternalReferMasterModal from '$lib/component/local/private/heka/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { m } from '$lib/paraglide/messages';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -100,18 +101,18 @@
 	async function handleDelete(referId: number) {
 		try {
 			const result = await dialogService.open({
-				title: 'Delete external refer',
-				message: 'Are you sure you want to delete this refer?',
+			title: m.delete_external_refer(),
+			message: m.confirm_delete_refer(),
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
 				await deleteExternalRefer({ id: referId });
 				await fetchRefer();
-				toastService.addToast('External refer deleted.', StatusColorEnum.SUCCESS);
+				toastService.addToast(m.external_refer_deleted(), StatusColorEnum.SUCCESS);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete external refer.', StatusColorEnum.ERROR);
+			toastService.addToast(m.failed_delete_external_refer(), StatusColorEnum.ERROR);
 		}
 	}
 
@@ -151,7 +152,7 @@
 	<div class="order-1 flex flex-wrap items-center gap-2 md:order-none">
 		<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
 			<LucidePlus className="size-5" />
-			Create
+			{m.create()}
 		</DaisyUiButton>
 		<p class="text-sm opacity-80">
 			{#if total > 0}
@@ -169,13 +170,13 @@
 	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
 		<div>
 			<DaisyUiInputField
-				inputPlaceholderText="name, address, phone, email..."
+				inputPlaceholderText={m.search_placeholder_refer()}
 				bind:value={searchInput}
 				className="d-input-sm"
 			/>
 		</div>
 		<DaisyUiTooltip
-			tooltipText="Refresh data"
+			tooltipText={m.refresh_data()}
 			className="d-tooltip-bottom d-tooltip-primary"
 		>
 			<DaisyUiButton
@@ -188,7 +189,7 @@
 	</div>
 
 	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
-		<span class="text-sm">per page</span>
+		<span class="text-sm">{m.per_page()}</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
 			bind:value={filterPageSize}
@@ -242,20 +243,20 @@
 		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">Actions</th>
-					<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-24 min-w-[6rem]">ID</th>
-					<th class="w-56 min-w-[14rem]">Name</th>
-					<th class="w-56 min-w-[14rem]">Address</th>
-					<th class="w-32 min-w-[8rem]">Country</th>
-					<th class="w-32 min-w-[8rem]">State</th>
-					<th class="w-32 min-w-[8rem]">City</th>
-					<th class="w-28 min-w-[7rem]">Postal Code</th>
-					<th class="w-32 min-w-[8rem]">Phone (code)</th>
-					<th class="w-36 min-w-[9rem]">Phone</th>
-					<th class="w-48 min-w-[12rem]">Email</th>
-					<th class="w-28 min-w-[7rem]">Status</th>
-					<th class="w-40 min-w-[10rem]">Created at</th>
-					<th class="w-40 min-w-[10rem]">Updated at</th>
+				<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">{m.actions()}</th>
+				<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-24 min-w-[6rem]">{m.id()}</th>
+				<th class="w-56 min-w-[14rem]">{m.name()}</th>
+				<th class="w-56 min-w-[14rem]">{m.address()}</th>
+				<th class="w-32 min-w-[8rem]">{m.country()}</th>
+				<th class="w-32 min-w-[8rem]">{m.state()}</th>
+				<th class="w-32 min-w-[8rem]">{m.city()}</th>
+				<th class="w-28 min-w-[7rem]">{m.postal_code()}</th>
+				<th class="w-32 min-w-[8rem]">{m.phone_code()}</th>
+				<th class="w-36 min-w-[9rem]">{m.phone()}</th>
+				<th class="w-48 min-w-[12rem]">{m.email()}</th>
+				<th class="w-28 min-w-[7rem]">{m.status()}</th>
+				<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
+				<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
 				</tr>
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
@@ -264,7 +265,7 @@
 						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
-									tooltipText="view data"
+									tooltipText={m.view_data()}
 									className="d-tooltip-ghost d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -275,7 +276,7 @@
 									</DaisyUiButton>
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
-									tooltipText="edit data"
+									tooltipText={m.edit_data()}
 									className="d-tooltip-accent d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -286,7 +287,7 @@
 									</DaisyUiButton>
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
-									tooltipText="delete data"
+									tooltipText={m.delete_data()}
 									className="d-tooltip-error d-tooltip-right"
 								>
 									<DaisyUiButton
@@ -320,7 +321,7 @@
 				{:else}
 					<tr>
 						<td colspan={REFER_COLUMN_COUNT} class="text-center opacity-70">
-							No refer found.
+							{m.no_refer_found()}
 						</td>
 					</tr>
 				{/each}
