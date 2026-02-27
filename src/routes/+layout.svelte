@@ -112,6 +112,7 @@
 				</DaisyUiToast>
 			{/if}
 			<DaisyUiModalBox
+				className={DialogState.current.modalClassName}
 				onClose={() => dialogService.close()}
 				showCloseButton={!DialogState.current.component}
 			>

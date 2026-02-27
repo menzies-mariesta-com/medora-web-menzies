@@ -68,7 +68,7 @@
 					class="emr-patient-bar-button"
 					onclick={handleChoosePatient}
 				>
-					Choose Visit
+					Select Visit
 				</button>
 			</div>
 		</div>

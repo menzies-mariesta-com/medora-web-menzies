@@ -10,6 +10,7 @@
 		maxlength,
 		min,
 		max,
+		step,
 		nameText,
 		value = $bindable(),
 		ariaLabel,
@@ -30,6 +31,7 @@
 		maxlength?: number;
 		min?: string;
 		max?: string;
+		step?: string;
 		nameText?: string;
 		value?: string;
 		ariaLabel?: string;
@@ -53,6 +55,7 @@
 		maxlength={maxlength ?? 50}
 		{min}
 		{max}
+		{step}
 		title={inputTitle}
 		name={nameText}
 		bind:value
@@ -74,6 +77,7 @@
 		maxlength={maxlength ?? 50}
 		{min}
 		{max}
+		{step}
 		title={inputTitle}
 		name={nameText}
 		bind:value
