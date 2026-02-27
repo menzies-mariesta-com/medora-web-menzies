@@ -8,6 +8,8 @@ import type { PageWithRelations } from '$lib/remote/table/information-table/page
 import { and, eq } from 'drizzle-orm';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
+const COOKIE_SELECTED_BRANCH_ID = 'heka_selected_branch_id';
+const BRANCH_ALL_VALUE = '__all__';
 
 /**
  * Load page list for the module bar.
@@ -30,7 +32,13 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 
 	// OWNER or SYSTEM_ADMIN: show all pages, no page-level enforcement
 	if (userRoleId === RoleEnum.OWNER || userRoleId === RoleEnum.SYSTEM_ADMIN) {
-		return { pageData: fullPages, staffUserGroupsForNav: [], selectedUserGroupId: null };
+		return {
+			pageData: fullPages,
+			staffUserGroupsForNav: [],
+			selectedUserGroupId: null,
+			staffBranchesForNav: [],
+			selectedBranchId: null
+		};
 	}
 
 	// STAFF: filter by **selected** user group (cookie), enforce access for that group only
@@ -46,7 +54,13 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			if (dbPageUrl && dbPageUrl !== '/heka/home') {
 				throw redirect(302, hekaHospitalHome(hospitalId));
 			}
-			return { pageData: [], staffUserGroupsForNav: [], selectedUserGroupId: null };
+			return {
+				pageData: [],
+				staffUserGroupsForNav: [],
+				selectedUserGroupId: null,
+				staffBranchesForNav: [],
+				selectedBranchId: null
+			};
 		}
 
 		// Staff's user groups for this hospital (for navbar select)
@@ -75,6 +89,43 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			cookieValue != null && navIds.includes(Number(cookieValue))
 				? Number(cookieValue)
 				: navIds[0] ?? null;
+
+		// Staff branches for this hospital (for navbar select)
+		const staffBranchesForNav = await ensureDb()
+			.select({
+				id: table.hospitalBranchTable.id,
+				name: table.hospitalBranchTable.name
+			})
+			.from(table.staffBranchTable)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
+			)
+			.where(
+				and(
+					eq(table.staffBranchTable.staffId, staffId),
+					eq(table.hospitalBranchTable.hospitalId, hospitalId)
+				)
+			)
+			.orderBy(table.hospitalBranchTable.name);
+		const allHospitalBranches = await ensureDb()
+			.select({ id: table.hospitalBranchTable.id })
+			.from(table.hospitalBranchTable)
+			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
+		const allHospitalBranchIds = allHospitalBranches.map((b) => b.id);
+		const staffBranchIdSet = new Set(staffBranchesForNav.map((b) => b.id));
+		const hasAllBranchesAccess =
+			allHospitalBranchIds.length > 0 &&
+			allHospitalBranchIds.every((id) => staffBranchIdSet.has(id));
+		const staffBranchesForNavWithAll = hasAllBranchesAccess
+			? [{ id: BRANCH_ALL_VALUE, name: 'All Branches' }, ...staffBranchesForNav]
+			: staffBranchesForNav;
+		const branchNavIds = staffBranchesForNavWithAll.map((b) => b.id);
+		const branchCookieValue = cookies.get(COOKIE_SELECTED_BRANCH_ID);
+		const selectedBranchId =
+			branchCookieValue != null && branchNavIds.includes(branchCookieValue)
+				? branchCookieValue
+				: branchNavIds[0] ?? null;
 
 		// 2. Page ids for the **selected** user group only (restrict pages and restrictions to this group)
 		const userGroupPages = await ensureDb()
@@ -105,9 +156,21 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		}
 
 		const filtered = fullPages.filter((p) => allowedPageIds.has(p.id));
-		return { pageData: filtered, staffUserGroupsForNav, selectedUserGroupId };
+		return {
+			pageData: filtered,
+			staffUserGroupsForNav,
+			selectedUserGroupId,
+			staffBranchesForNav: staffBranchesForNavWithAll,
+			selectedBranchId
+		};
 	}
 
 	// Fallback (e.g. no role or no staff): show all
-	return { pageData: fullPages, staffUserGroupsForNav: [], selectedUserGroupId: null };
+	return {
+		pageData: fullPages,
+		staffUserGroupsForNav: [],
+		selectedUserGroupId: null,
+		staffBranchesForNav: [],
+		selectedBranchId: null
+	};
 };

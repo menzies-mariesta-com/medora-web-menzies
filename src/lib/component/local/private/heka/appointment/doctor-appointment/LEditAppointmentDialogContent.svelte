@@ -44,6 +44,7 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	const lifeCycle = new LifeCycleUtil();
 
 	const appointmentId = $derived(EditAppointmentDialogState.appointmentId);
+	const selectedBranchId = $derived(EditAppointmentDialogState.branchId);
 	const slotDurationMinutes = $derived(EditAppointmentDialogState.slotDurationMinutes);
 
 	function addMinutesToTime(hhmm: string, minutes: number): string {
@@ -143,6 +144,7 @@ $effect(() => {
 		const res = await getPatientPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
+			branchId: selectedBranchId || undefined,
 			page: 1,
 			pageSize: 20
 		});
@@ -505,17 +507,19 @@ $effect(() => {
 			const effectivePatientId =
 				selectedPatientId?.trim() ||
 				(latest?.patientId ? String(latest.patientId) : '');
+			const effectiveBranchId = latest?.branchId ?? selectedBranchId ?? null;
 			if (
 				becomesCheckIn &&
 				effectivePatientId &&
 				hospitalId &&
-				staffIdVal
+				staffIdVal &&
+				effectiveBranchId
 			) {
 				try {
 					await createPatientVisit({
 						patientId: effectivePatientId,
 						hospitalId,
-						branchId: null,
+						branchId: effectiveBranchId,
 						appointmentId,
 						doctorId: String(staffIdVal),
 						statusTypeId: null,

@@ -18,14 +18,16 @@
 	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
 	import { getState } from '$lib/remote/table/master-table/state.remote';
 	import { getCity } from '$lib/remote/table/master-table/city.remote';
-import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
-import { browser } from '$app/environment';
+	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+	import { browser } from '$app/environment';
+	import { getBranchesByHospitalId } from '$lib/remote/table/information-table/hospital-branch.remote';
 	import type {
 		BloodTypeSchema,
 		CitySchema,
 		CountrySchema,
 		DepartmentSchema,
 		GenderSchema,
+		HospitalBranchSchema,
 		IdentityTypeSchema,
 		MaritalStatusSchema,
 		NationalitySchema,
@@ -54,6 +56,10 @@ import { browser } from '$app/environment';
 		createStaffUserGroup,
 		deleteStaffUserGroup
 	} from '$lib/remote/table/information-table/staff-user-group.remote';
+	import {
+		createStaffBranch,
+		deleteStaffBranch
+	} from '$lib/remote/table/information-table/staff-branch.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
@@ -77,6 +83,7 @@ import { browser } from '$app/environment';
 	let titleData: TitleSchema[] = $state([]);
 	let staffTypeData: StaffTypeSchema[] = $state([]);
 	let departmentData: DepartmentSchema[] = $state([]);
+	let branchData: HospitalBranchSchema[] = $state([]);
 	let specializationData: SpecializationSchema[] = $state([]);
 	let genderData: GenderSchema[] = $state([]);
 	let maritalStatusData: MaritalStatusSchema[] = $state([]);
@@ -127,6 +134,7 @@ import { browser } from '$app/environment';
 	let selectedBloodTypeId: string = $state('');
 	let selectedNationalityId: string = $state('');
 	let selectedUserGroups: number[] = $state([]);
+	let selectedBranchIds: string[] = $state([]);
 	let isActive: boolean = $state(true);
 	let isSuperAdmin: boolean = $state(false);
 	let isLocked: boolean = $state(false);
@@ -320,6 +328,7 @@ import { browser } from '$app/environment';
 		selectedRemark = staff.remark ?? '';
 		selectedBloodTypeId = (staff as { staffDetail?: { bloodTypeId?: number } }).staffDetail?.bloodTypeId != null ? String((staff as { staffDetail: { bloodTypeId: number } }).staffDetail.bloodTypeId) : '';
 		selectedUserGroups = ((staff as { staffUserGroups?: { userGroupId: number }[] }).staffUserGroups ?? []).map((ug) => ug.userGroupId);
+		selectedBranchIds = ((staff as { staffBranches?: { branchId: string }[] }).staffBranches ?? []).map((sb) => sb.branchId);
 		isActive = staff.statusId === StatusEnum.ACTIVE;
 		const detail = (staff as { staffDetail?: { licenseNo?: string; licenseExpiryDate?: string | Date; signatureImageUrl?: string; signatureText?: string } }).staffDetail;
 		selectedLicenseNo = detail?.licenseNo ?? '';
@@ -333,15 +342,22 @@ import { browser } from '$app/environment';
 	}
 
 	async function fetchInitialFieldData() {
+		const currentHospitalId =
+			typeof page.params.hospital_id === 'string' ? page.params.hospital_id : '';
 		titleData = await getTitle();
 		staffTypeData = await getStaffType();
 		departmentData = await getDepartment();
+		branchData = currentHospitalId
+			? await getBranchesByHospitalId({ hospitalId: currentHospitalId })
+			: [];
 		specializationData = await getSpecialization();
 		genderData = await getGender();
 		maritalStatusData = await getMaritalStatus();
 		countryData = await getCountry();
 		identityTypeData = await getIdentityType();
-		userGroupData = await getUserGroupByHospitalId({ hospitalId: page.params.hospital_id });
+		userGroupData = currentHospitalId
+			? await getUserGroupByHospitalId({ hospitalId: currentHospitalId })
+			: [];
 		staffEmploymentTypeData = await getStaffEmploymentType();
 		stateData = await getState();
 		cityData = await getCity();
@@ -427,6 +443,13 @@ import { browser } from '$app/environment';
 		if (selectedUserGroups.length === 0) {
 			toastService.addToast(
 				'At Least One User Group is required',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (selectedBranchIds.length === 0) {
+			toastService.addToast(
+				'At Least One Branch is required',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -537,6 +560,21 @@ import { browser } from '$app/environment';
 				for (const ugId of selectedUserGroups) {
 					await createStaffUserGroup({ staffId: staffEditId, userGroupId: ugId });
 				}
+				const staffBranches = (staff as { staffBranches?: { id: number }[] }).staffBranches ?? [];
+				for (const sb of staffBranches) {
+					await deleteStaffBranch({ id: sb.id });
+				}
+				const editHospitalId =
+					typeof page.params.hospital_id === 'string' ? page.params.hospital_id : '';
+				if (editHospitalId) {
+					for (const branchId of selectedBranchIds) {
+						await createStaffBranch({
+							staffId: staffEditId,
+							branchId,
+							hospitalId: editHospitalId
+						});
+					}
+				}
 				if (photoFile) {
 					photoUploading = true;
 					try {
@@ -630,6 +668,10 @@ import { browser } from '$app/environment';
 				userGroupIds:
 					selectedUserGroups.length > 0
 						? selectedUserGroups
+						: undefined,
+				branchIds:
+					selectedBranchIds.length > 0
+						? selectedBranchIds
 						: undefined,
 				licenseNo: selectedLicenseNo.trim() || undefined,
 				licenseExpiryDate: selectedLicenseExpiryDate || undefined,
@@ -752,6 +794,7 @@ import { browser } from '$app/environment';
 			selectedAddress = '';
 			selectedRemark = '';
 			selectedUserGroups = [];
+			selectedBranchIds = [];
 			isActive = true;
 			isSuperAdmin = false;
 			isLocked = false;
@@ -946,7 +989,9 @@ import { browser } from '$app/environment';
 				<!-- Permissions: stack on mobile, row on md+ -->
 				<LStaffRegistrationPermissions
 					{userGroupData}
+					{branchData}
 					bind:selectedUserGroups
+					bind:selectedBranchIds
 					bind:selectedJoinDate
 					bind:selectedResignDate
 					bind:isActive

@@ -16,6 +16,8 @@ export type PaginationParams = {
 	search?: string;
 	/** Optional hospital id to scope list data (e.g. under /heka/hospital/[id]/home/). */
 	hospitalId?: string;
+	/** Optional branch id to scope list data inside a hospital. */
+	branchId?: string;
 	/** Optional cache-busting key; when set, bypasses client cache (e.g. after edit). */
 	_t?: number;
 };
