@@ -27,6 +27,7 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucideList from '$lib/component/library/lucide/LucideList.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -75,7 +76,7 @@
 		UserGroupModalState.editGroup = null;
 		UserGroupModalState.hospitalId = hospitalId;
 		const result = await dialogService.open({
-			title: 'New user group',
+			title: m.new_user_group(),
 			component: UserGroupFormModal
 		});
 		if (result.confirmed) fetchGroups(true);
@@ -86,7 +87,7 @@
 		UserGroupModalState.editGroup = row;
 		UserGroupModalState.hospitalId = hospitalId;
 		const result = await dialogService.open({
-			title: 'Edit user group',
+			title: m.edit_user_group(),
 			component: UserGroupFormModal
 		});
 		if (result.confirmed) fetchGroups(true);
@@ -94,17 +95,17 @@
 
 	async function handleDelete(row: UserGroupSchema) {
 		const result = await dialogService.open({
-			title: 'Delete user group',
+			title: m.delete_user_group(),
 			message: `Delete "${row.name ?? 'this group'}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteUserGroup({ id: row.id });
-			toastService.addToast('User group deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(m.user_group_deleted(), StatusColorEnum.SUCCESS);
 			fetchGroups(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Delete failed';
+			const msg = err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -117,7 +118,7 @@
 	async function openPagesModal(row: UserGroupSchema) {
 		UserGroupPagesModalState.group = row;
 		const result = await dialogService.open({
-			title: 'Manage page access',
+			title: m.manage_page_access(),
 			component: UserGroupPagesModal
 		});
 		if (result.confirmed) fetchGroups(true);
@@ -126,10 +127,10 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">User groups</h1>
+		<h1 class="text-2xl font-bold">{m.user_groups()}</h1>
 		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 			<LucidePlus />
-			New user group
+			{m.new_user_group()}
 		</DaisyUiButton>
 	</div>
 
@@ -140,18 +141,18 @@
 			{:else}
 				<p class="text-base-content/70 mb-4">
 					{#if total > 0}
-						Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, total)} of {total}
-					{:else}
-						No user groups yet. Create one to assign to staff.
+					{m.showing()} {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, total)} {m.of()} {total}
+				{:else}
+					{m.no_user_groups_yet()}
 					{/if}
 				</p>
 				<DaisyUiTable>
 					<DaisyUiTableHeader>
 						<tr>
-							<th>ID</th>
-							<th>Name</th>
-							<th>Status</th>
-							<th class="text-right">Actions</th>
+							<th>{m.id()}</th>
+							<th>{m.name()}</th>
+							<th>{m.status()}</th>
+							<th class="text-right">{m.actions()}</th>
 						</tr>
 					</DaisyUiTableHeader>
 					<DaisyUiTableBody>
@@ -170,7 +171,7 @@
 											title="Manage which pages this group can access"
 										>
 											<LucideList />
-											Pages
+											{m.pages()}
 										</DaisyUiButton>
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm"
@@ -190,7 +191,7 @@
 						{:else}
 							<tr>
 								<td colspan={4} class="text-center text-base-content/70 py-8">
-									No user groups. Create one above.
+									{m.no_user_groups_create()}
 								</td>
 							</tr>
 						{/each}
@@ -203,17 +204,17 @@
 							disabled={currentPage <= 1}
 							onClick={() => goToPage(currentPage - 1)}
 						>
-							Previous
+							{m.previous()}
 						</DaisyUiButton>
 						<span class="flex items-center px-2">
-							Page {currentPage} of {totalPages}
+							{m.page()} {currentPage} {m.of()} {totalPages}
 						</span>
 						<DaisyUiButton
 							className="d-btn-sm"
 							disabled={currentPage >= totalPages}
 							onClick={() => goToPage(currentPage + 1)}
 						>
-							Next
+							{m.next()}
 						</DaisyUiButton>
 					</div>
 				{/if}

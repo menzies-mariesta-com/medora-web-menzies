@@ -11,26 +11,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getDepartment = query(async (): Promise<DepartmentSchema[]> => {
-	const data = await ensureDb().select().from(table.departmentTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.departmentTable)
+		.where(eq(table.departmentTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.departmentTable.name);
 });
 
-// get count
 export const getDepartmentCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.departmentTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.departmentTable)
+		.where(eq(table.departmentTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getDepartmentPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<DepartmentSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.departmentTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.departmentTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.departmentTable),
+			ensureDb()
+				.select()
+				.from(table.departmentTable)
+				.where(activeFilter)
+				.orderBy(table.departmentTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.departmentTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +56,6 @@ export const getDepartmentPaginated = query(
 	}
 );
 
-// get one
 export const getDepartmentById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<DepartmentSchema | null> => {
@@ -55,7 +67,6 @@ export const getDepartmentById = query(
 	}
 );
 
-// create
 export const createDepartment = command(
 	'unchecked' as const,
 	async (payload: DepartmentSchemaInsert): Promise<DepartmentSchema> => {
@@ -69,7 +80,6 @@ export const createDepartment = command(
 	}
 );
 
-// update
 export const updateDepartment = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; code?: string | null; statusId?: number | null }): Promise<DepartmentSchema> => {
@@ -85,7 +95,6 @@ export const updateDepartment = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteDepartment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -97,7 +106,6 @@ export const deleteDepartment = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteDepartmentComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
