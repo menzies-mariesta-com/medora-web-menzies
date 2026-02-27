@@ -22,6 +22,7 @@
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -52,7 +53,7 @@
 		BranchModalState.hospitalId = hospitalId;
 		BranchModalState.branchId = null;
 		const result = await dialogService.open({
-			title: 'New branch',
+			title: m.new_branch(),
 			component: BranchFormModal
 		});
 		if (result.confirmed) fetchBranches(true);
@@ -62,7 +63,7 @@
 		BranchModalState.hospitalId = hospitalId;
 		BranchModalState.branchId = row.id;
 		const result = await dialogService.open({
-			title: 'Edit branch',
+			title: m.edit_branch(),
 			component: BranchFormModal
 		});
 		if (result.confirmed) fetchBranches(true);
@@ -70,17 +71,17 @@
 
 	async function handleDelete(row: HospitalBranchSchema) {
 		const result = await dialogService.open({
-			title: 'Delete branch',
+			title: m.delete_branch(),
 			message: `Delete "${row.name ?? row.code ?? 'this branch'}"? This cannot be undone.`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteBranch({ id: row.id });
-			toastService.addToast('Branch deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(m.branch_deleted(), StatusColorEnum.SUCCESS);
 			fetchBranches(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Delete failed';
+			const msg = err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -88,10 +89,10 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Branches</h1>
+		<h1 class="text-2xl font-bold">{m.branches()}</h1>
 		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 			<LucidePlus />
-			New branch
+			{m.new_branch()}
 		</DaisyUiButton>
 	</div>
 
@@ -101,18 +102,18 @@
 				<DaisyUiLoading className="py-8" />
 			{:else if branches.length === 0}
 				<p class="text-base-content/70 py-8 text-center">
-					No branches yet. Add a branch for this hospital.
+					{m.no_branches_yet()}
 				</p>
 			{:else}
 				<DaisyUiTable>
 					<DaisyUiTableHeader>
 						<tr>
-							<th>Name</th>
-							<th>Code</th>
-							<th>Phone</th>
-							<th>Email</th>
-							<th>Address</th>
-							<th class="text-right">Actions</th>
+							<th>{m.name()}</th>
+							<th>{m.code()}</th>
+							<th>{m.phone()}</th>
+							<th>{m.email()}</th>
+							<th>{m.address()}</th>
+							<th class="text-right">{m.actions()}</th>
 						</tr>
 					</DaisyUiTableHeader>
 					<DaisyUiTableBody>

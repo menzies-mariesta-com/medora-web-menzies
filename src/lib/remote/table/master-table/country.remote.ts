@@ -9,13 +9,19 @@ import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getCountry = query(async (): Promise<CountrySchema[]> => {
-	const data = await ensureDb().select().from(table.countryTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.countryTable)
+		.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.countryTable.name);
 });
 
 // get count
 export const getCountryCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.countryTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.countryTable)
+		.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
@@ -24,9 +30,19 @@ export const getCountryPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<CountrySchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.countryTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.countryTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.countryTable),
+			ensureDb()
+				.select()
+				.from(table.countryTable)
+				.where(activeFilter)
+				.orderBy(table.countryTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.countryTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {

@@ -2,30 +2,44 @@ import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { IdentityTypeSchema, IdentityTypeSchemaInsert, IdentityTypeSchemaUpdate } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getIdentityType = query(async (): Promise<IdentityTypeSchema[]> => {
-	const data = await ensureDb().select().from(table.identityTypeTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.identityTypeTable)
+		.where(eq(table.identityTypeTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.identityTypeTable.name);
 });
 
-// get count
 export const getIdentityTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.identityTypeTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.identityTypeTable)
+		.where(eq(table.identityTypeTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getIdentityTypePaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<IdentityTypeSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.identityTypeTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.identityTypeTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.identityTypeTable),
+			ensureDb()
+				.select()
+				.from(table.identityTypeTable)
+				.where(activeFilter)
+				.orderBy(table.identityTypeTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.identityTypeTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -38,7 +52,6 @@ export const getIdentityTypePaginated = query(
 	}
 );
 
-// get one
 export const getIdentityTypeById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<IdentityTypeSchema | null> => {
@@ -50,7 +63,6 @@ export const getIdentityTypeById = query(
 	}
 );
 
-// create
 export const createIdentityType = command(
 	'unchecked' as const,
 	async (payload: IdentityTypeSchemaInsert): Promise<IdentityTypeSchema> => {
@@ -64,7 +76,6 @@ export const createIdentityType = command(
 	}
 );
 
-// update
 export const updateIdentityType = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<IdentityTypeSchema> => {
@@ -80,16 +91,17 @@ export const updateIdentityType = command(
 	}
 );
 
-// delete (no status_id: hard delete)
 export const deleteIdentityType = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.identityTypeTable).where(eq(table.identityTypeTable.id, id));
+		await ensureDb()
+			.update(table.identityTypeTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.identityTypeTable.id, id));
 		getIdentityType().refresh();
 	}
 );
 
-// delete complete (hard)
 export const deleteIdentityTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

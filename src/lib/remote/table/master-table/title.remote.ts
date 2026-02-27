@@ -7,26 +7,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getTitle = query(async (): Promise<TitleSchema[]> => {
-	const data = await ensureDb().select().from(table.titleTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.titleTable)
+		.where(eq(table.titleTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.titleTable.name);
 });
 
-// get count
 export const getTitleCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.titleTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.titleTable)
+		.where(eq(table.titleTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getTitlePaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<TitleSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.titleTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.titleTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.titleTable),
+			ensureDb()
+				.select()
+				.from(table.titleTable)
+				.where(activeFilter)
+				.orderBy(table.titleTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.titleTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -39,7 +52,6 @@ export const getTitlePaginated = query(
 	}
 );
 
-// get one
 export const getTitleById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<TitleSchema | null> => {
@@ -51,7 +63,6 @@ export const getTitleById = query(
 	}
 );
 
-// create
 export const createTitle = command(
 	'unchecked' as const,
 	async (payload: TitleSchemaInsert): Promise<TitleSchema> => {
@@ -65,7 +76,6 @@ export const createTitle = command(
 	}
 );
 
-// update
 export const updateTitle = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<TitleSchema> => {
@@ -81,7 +91,6 @@ export const updateTitle = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteTitle = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -93,7 +102,6 @@ export const deleteTitle = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteTitleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

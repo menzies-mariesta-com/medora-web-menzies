@@ -2,30 +2,44 @@ import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { MaritalStatusSchema, MaritalStatusSchemaInsert, MaritalStatusSchemaUpdate } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getMaritalStatus = query(async (): Promise<MaritalStatusSchema[]> => {
-	const data = await ensureDb().select().from(table.maritalStatusTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.maritalStatusTable)
+		.where(eq(table.maritalStatusTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.maritalStatusTable.name);
 });
 
-// get count
 export const getMaritalStatusCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.maritalStatusTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.maritalStatusTable)
+		.where(eq(table.maritalStatusTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getMaritalStatusPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<MaritalStatusSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.maritalStatusTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.maritalStatusTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.maritalStatusTable),
+			ensureDb()
+				.select()
+				.from(table.maritalStatusTable)
+				.where(activeFilter)
+				.orderBy(table.maritalStatusTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.maritalStatusTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -38,7 +52,6 @@ export const getMaritalStatusPaginated = query(
 	}
 );
 
-// get one
 export const getMaritalStatusById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<MaritalStatusSchema | null> => {
@@ -50,7 +63,6 @@ export const getMaritalStatusById = query(
 	}
 );
 
-// create
 export const createMaritalStatus = command(
 	'unchecked' as const,
 	async (payload: MaritalStatusSchemaInsert): Promise<MaritalStatusSchema> => {
@@ -64,7 +76,6 @@ export const createMaritalStatus = command(
 	}
 );
 
-// update
 export const updateMaritalStatus = command(
 	'unchecked' as const,
 	async (payload: { id: number; name?: string }): Promise<MaritalStatusSchema> => {
@@ -80,16 +91,17 @@ export const updateMaritalStatus = command(
 	}
 );
 
-// delete (no status_id: hard delete)
 export const deleteMaritalStatus = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.maritalStatusTable).where(eq(table.maritalStatusTable.id, id));
+		await ensureDb()
+			.update(table.maritalStatusTable)
+			.set({ statusId: StatusEnum.DELETED })
+			.where(eq(table.maritalStatusTable.id, id));
 		getMaritalStatus().refresh();
 	}
 );
 
-// delete complete (hard)
 export const deleteMaritalStatusComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
