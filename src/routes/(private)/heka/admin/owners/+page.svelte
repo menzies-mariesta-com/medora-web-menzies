@@ -20,6 +20,7 @@
 	import NewOwnerModal from '$lib/component/snippet/modal/NewOwnerModal.svelte';
 	import EditOwnerModal from '$lib/component/snippet/modal/EditOwnerModal.svelte';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -39,7 +40,7 @@
 
 	async function openNewOwnerModal() {
 		const result = await dialogService.open({
-			title: 'New owner',
+			title: m.new_owner(),
 			component: NewOwnerModal
 		});
 		if (result.confirmed) await loadOwners();
@@ -48,7 +49,7 @@
 	async function openEditOwnerModal(owner: UserSchema) {
 		EditOwnerModalState.owner = owner;
 		const result = await dialogService.open({
-			title: 'Edit owner',
+			title: m.edit_owner(),
 			component: EditOwnerModal
 		});
 		if (result.confirmed) await loadOwners();
@@ -56,17 +57,17 @@
 
 	async function handleDelete(owner: UserSchema) {
 		const result = await dialogService.open({
-			title: 'Delete owner',
+			title: m.delete_owner(),
 			message: `Delete "${owner.name ?? owner.email}"? This will remove their account and they will no longer be able to sign in.`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteUser({ id: owner.id });
-			toastService.addToast('Owner deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(m.owner_deleted(), StatusColorEnum.SUCCESS);
 			await loadOwners();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Delete failed';
+			const msg = err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -87,10 +88,10 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Owner management</h1>
+		<h1 class="text-2xl font-bold">{m.owner_management()}</h1>
 		<DaisyUiButton className="d-btn-primary" onClick={openNewOwnerModal}>
 			<LucidePlus />
-			New owner
+			{m.new_owner()}
 		</DaisyUiButton>
 	</div>
 
@@ -100,16 +101,16 @@
 				<DaisyUiLoading className="py-8" />
 			{:else if owners.length === 0}
 				<p class="text-base-content/70 py-8 text-center">
-					No owners yet. Create one to allow them to access hospitals.
+					{m.no_owners_yet()}
 				</p>
 			{:else}
 				<DaisyUiTable>
 					<DaisyUiTableHeader>
 						<tr>
-							<th>Name</th>
-							<th>Email</th>
-							<th>Created</th>
-							<th class="text-right">Actions</th>
+							<th>{m.name()}</th>
+							<th>{m.email()}</th>
+							<th>{m.created()}</th>
+							<th class="text-right">{m.actions()}</th>
 						</tr>
 					</DaisyUiTableHeader>
 					<DaisyUiTableBody>

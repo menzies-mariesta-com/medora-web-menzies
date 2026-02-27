@@ -13,11 +13,11 @@
 	function updateTime() {
 		const now = new Date();
 
-		const h = String(now.getHours()).padStart(2, '0'); // 24hr
-		const m = String(now.getMinutes()).padStart(2, '0');
+		const h = String(now.getHours()).padStart(2, '0');
+		const mins = String(now.getMinutes()).padStart(2, '0');
 		const s = String(now.getSeconds()).padStart(2, '0');
 
-		time = `${h}:${m}:${s}`;
+		time = `${h}:${mins}:${s}`;
 	}
 
 	lifeCycleUtil.onMount(() => {
@@ -36,7 +36,7 @@
 	<div id="copyright" class="flex items-center">
 		<LucideCopyright />
 		{dateTimeUtil.getCurrentYear()}
-		{m.heka()}. All rights reserved.
+		{m.heka()}. {m.all_rights_reserved()}
 	</div>
 
 	<div id="time">
@@ -47,6 +47,5 @@
 		</span>
 	</div>
 
-	<div id="version" class="mr-12">v0.0.1</div>
+	<div id="version" class="mr-12">{m.version()}</div>
 </DaisyUiFooter>
-

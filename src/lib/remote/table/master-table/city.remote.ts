@@ -7,26 +7,39 @@ import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagina
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getCity = query(async (): Promise<CitySchema[]> => {
-	const data = await ensureDb().select().from(table.cityTable);
-	return data;
+	return ensureDb()
+		.select()
+		.from(table.cityTable)
+		.where(eq(table.cityTable.statusId, StatusEnum.ACTIVE))
+		.orderBy(table.cityTable.name);
 });
 
-// get count
 export const getCityCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.cityTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.cityTable)
+		.where(eq(table.cityTable.statusId, StatusEnum.ACTIVE));
 	return row?.count ?? 0;
 });
 
-// get paginated
 export const getCityPaginated = query(
 	'unchecked' as const,
 	async (params?: PaginationParams): Promise<PaginatedResult<CitySchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const activeFilter = eq(table.cityTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.cityTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.cityTable),
+			ensureDb()
+				.select()
+				.from(table.cityTable)
+				.where(activeFilter)
+				.orderBy(table.cityTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.cityTable)
+				.where(activeFilter),
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -39,7 +52,6 @@ export const getCityPaginated = query(
 	}
 );
 
-// get one
 export const getCityById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<CitySchema | null> => {
@@ -51,7 +63,6 @@ export const getCityById = query(
 	}
 );
 
-// create
 export const createCity = command(
 	'unchecked' as const,
 	async (payload: CitySchemaInsert): Promise<CitySchema> => {
@@ -65,7 +76,6 @@ export const createCity = command(
 	}
 );
 
-// update
 export const updateCity = command(
 	'unchecked' as const,
 	async (payload: {
@@ -87,7 +97,6 @@ export const updateCity = command(
 	}
 );
 
-// delete (soft: set status to DELETED)
 export const deleteCity = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -99,7 +108,6 @@ export const deleteCity = command(
 	}
 );
 
-// delete complete (hard)
 export const deleteCityComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

@@ -7,6 +7,7 @@
 	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
 import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
@@ -34,6 +35,8 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
+	import { getBranchesByHospitalId } from '$lib/remote/table/information-table/hospital-branch.remote';
+	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 
 	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
 	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -47,18 +50,31 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
+	const selectedNavbarBranchId = $derived(
+		typeof page.data?.selectedBranchId === 'string' ? page.data.selectedBranchId : undefined
+	);
+	const scopedBranchId = $derived(
+		selectedNavbarBranchId && selectedNavbarBranchId !== '__all__'
+			? selectedNavbarBranchId
+			: undefined
+	);
 
 	const DAYS = await getWeekday();
 	let DOCTOR_STAFF_LIST = $state<StaffWithRelations[]>([]);
 
 	$effect(() => {
 		const hid = hospitalId;
+		const bid = scopedBranchId;
 		if (hid) {
-			getDoctorStaffList({ hospitalId: hid }).then((list) => {
+			getDoctorStaffList({ hospitalId: hid, branchId: bid }).then((list) => {
 				DOCTOR_STAFF_LIST = list;
+			});
+			getBranchesByHospitalId({ hospitalId: hid }).then((list) => {
+				branchData = list;
 			});
 		} else {
 			DOCTOR_STAFF_LIST = [];
+			branchData = [];
 		}
 	});
 
@@ -76,16 +92,21 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 
 	type DoctorScheduleGroup = {
 		key: string;
+		branchId: string;
+		branchName: string | null;
 		fromDate: string | null;
 		toDate: string | null;
 		scheduleIds: number[];
 	};
 
 	let staffId = $state('');
+	let selectedBranchId = $state('');
+	let branchData = $state<HospitalBranchSchema[]>([]);
 async function searchDoctors(query: string): Promise<{ label: string; value: string }[]> {
 	const res = await getDoctorStaffPaginated({
 		search: query.trim(),
 		hospitalId: hospitalId,
+		branchId: scopedBranchId,
 		page: 1,
 		pageSize: 20
 	});
@@ -104,6 +125,26 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 	const selectedStaff = $derived(
 		DOCTOR_STAFF_LIST.find((s) => s.id === staffId) ?? null
 	);
+	const availableDoctorBranches = $derived(
+		(selectedStaff?.staffBranches ?? [])
+			.map((sb) => sb.branch)
+			.filter((b): b is NonNullable<typeof b> => b != null)
+	);
+	const scopedDoctorBranches = $derived(
+		scopedBranchId
+			? availableDoctorBranches.filter((b) => b.id === scopedBranchId)
+			: availableDoctorBranches
+	);
+	$effect(() => {
+		const options = scopedDoctorBranches;
+		if (options.length === 0) {
+			selectedBranchId = '';
+			return;
+		}
+		if (!options.some((b) => b.id === selectedBranchId)) {
+			selectedBranchId = options[0].id;
+		}
+	});
 	const selectedStaffPhotoUrl = $derived(
 		selectedStaff ? getStaffPhotoDisplayUrl(selectedStaff.photoUrl) : undefined
 	);
@@ -112,11 +153,14 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		Object.values(
 			doctorSchedules.reduce(
 				(acc, s) => {
-					const key = `${s.fromDate ?? ''}__${s.toDate ?? ''}`;
+					const key = `${s.branchId}__${s.fromDate ?? ''}__${s.toDate ?? ''}`;
 					let group = acc[key];
 					if (!group) {
 						group = {
 							key,
+							branchId: s.branchId,
+							branchName:
+								branchData.find((b) => b.id === s.branchId)?.name ?? null,
 							fromDate: s.fromDate ?? null,
 							toDate: s.toDate ?? null,
 							scheduleIds: []
@@ -161,7 +205,10 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 			return;
 		}
 		const hid = hospitalId ?? undefined;
-		const all = await getDoctorSchedule(hid ? { hospitalId: hid } : undefined);
+		const bid = scopedBranchId ?? undefined;
+		const all = await getDoctorSchedule(
+			hid ? { hospitalId: hid, branchId: bid } : undefined
+		);
 		doctorSchedules = all.filter(
 			(s) =>
 				s.staffId === id &&
@@ -192,6 +239,7 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 
 	async function handleEditGroup(group: DoctorScheduleGroup) {
 		editingGroupKey = group.key;
+		selectedBranchId = group.branchId;
 		fromDate = group.fromDate ?? '';
 		toDate = group.toDate ?? '';
 		noEndDate = group.toDate == null;
@@ -303,6 +351,13 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 			);
 			return;
 		}
+		if (!selectedBranchId?.trim()) {
+			toastService.addToast(
+				'Please select a branch.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		const checkedIndices = daySchedules
 			.map((d, i) => (d.checked ? i : -1))
 			.filter((i) => i >= 0);
@@ -328,14 +383,14 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		const wasEditing = editingGroupKey !== null;
 		try {
 			if (wasEditing) {
-				const [origFromRaw, origToRaw] = (
-					editingGroupKey as string
-				).split('__');
-				const origFrom = origFromRaw || null;
-				const origTo = origToRaw || null;
+				const currentGroup = scheduleGroups.find((g) => g.key === editingGroupKey);
+				const origFrom = currentGroup?.fromDate ?? null;
+				const origTo = currentGroup?.toDate ?? null;
+				const origBranchId = currentGroup?.branchId ?? null;
 				const existingGroup = doctorSchedules.filter(
 					(s) =>
 						String(s.staffId) === staffId.trim() &&
+						(origBranchId == null || s.branchId === origBranchId) &&
 						(s.fromDate ?? null) === origFrom &&
 						(s.toDate ?? null) === origTo
 				);
@@ -362,6 +417,7 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 				await createDoctorSchedule({
 					staffId: staffId.trim(),
 					hospitalId: hid,
+					branchId: selectedBranchId.trim(),
 					weekdayId: DAYS[i].id,
 					fromDate: fromDate.trim() || null,
 					toDate: noEndDate ? null : toDate?.trim() || null,
@@ -420,6 +476,19 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 								getLabelForValue={getDoctorLabelForValue}
 								minSearchLength={0}
 							/>
+						</div>
+						<div class="flex items-center gap-3">
+							<p class="min-w-[4.5rem]">Branch</p>
+							<DaisyUiSelect
+								className="w-[14rem] min-w-[14rem]"
+								optionHeader="Select a branch ..."
+								bind:value={selectedBranchId}
+								disabled={!selectedStaff || scopedBranchId != null}
+							>
+								{#each scopedDoctorBranches as b (b.id)}
+									<option value={b.id}>{b.name ?? b.id}</option>
+								{/each}
+							</DaisyUiSelect>
 						</div>
 					</div>
 
@@ -506,6 +575,7 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 									>
 										<DaisyUiTableHeader>
 											<tr>
+												<th>Branch</th>
 												<th>Start Date</th>
 												<th>End Date</th>
 												<th>Actions</th>
@@ -515,7 +585,7 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 											{#if scheduleGroups.length === 0}
 												<tr>
 													<td
-														colspan="3"
+														colspan="4"
 														class="text-sm text-base-content/60"
 													>
 														No schedules found.
@@ -524,6 +594,9 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 											{:else}
 												{#each scheduleGroups as group (group.key)}
 													<tr>
+														<td>
+															{group.branchName ?? group.branchId}
+														</td>
 														<td>
 															{group.fromDate ?? '-'}
 														</td>

@@ -17,6 +17,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ResetPasswordModal from '$lib/component/snippet/modal/ResetPasswordModal.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
 
@@ -41,7 +42,7 @@
 		const password = fd.get('password') as string;
 
 		if (!email || !password) {
-			toastService.addToast('Email and password are required.', StatusColorEnum.ERROR);
+			toastService.addToast(m.email_password_required(), StatusColorEnum.ERROR);
 			return;
 		}
 		isLoading = true;
@@ -53,7 +54,7 @@
 		isLoading = false;
 
 		if (error) {
-			toastService.addToast(error.message ?? 'Invalid email or password.', StatusColorEnum.ERROR);
+			toastService.addToast(error.message ?? m.invalid_email_password(), StatusColorEnum.ERROR);
 			return;
 		}
 		if (data) {
@@ -78,7 +79,7 @@
 				<section id="email-input">
 					<DaisyUiInputField
 						inputType="email"
-						inputPlaceholderText="Email"
+						inputPlaceholderText={m.email()}
 						nameText="email"
 						className="w-full"
 					/>
@@ -89,7 +90,7 @@
 					<DaisyUiJoin className="w-full">
 						<DaisyUiInputField
 							inputType={isPasswordVisible ? 'text' : 'password'}
-							inputPlaceholderText="Password"
+							inputPlaceholderText={m.password()}
 							nameText="password"
 							className="d-join-item"
 						/>
@@ -109,23 +110,23 @@
 					className="d-btn-primary w-full"
 					disabled={isLoading}
 				>
-					{isLoading ? 'Signing in…' : 'Login'}
+					{isLoading ? m.signing_in() : m.login()}
 				</DaisyUiButton>
 
 			<!-- external links -->
 			<div class="my-ft-small flex flex-col gap-3">
 				<div id="signup">
-					Do Not Have an Account? <DaisyUiLink
+					{m.no_account()} <DaisyUiLink
 						href={WebRoutesEnum.SIGNUP}
-						className="d-link-info">Signup</DaisyUiLink
+						className="d-link-info">{m.signup()}</DaisyUiLink
 					>
 				</div>
 				<div id="forget-password">
-					Forget Your Password? <DaisyUiLink
+					{m.forget_password()} <DaisyUiLink
 						onClick={openResetPasswordModal}
 						className="d-link-info"
 					>
-						Reset Password
+						{m.reset_password()}
 					</DaisyUiLink>
 				</div>
 			</div>

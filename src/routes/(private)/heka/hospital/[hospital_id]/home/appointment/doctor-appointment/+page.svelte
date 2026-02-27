@@ -25,6 +25,10 @@
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
 	);
+	const navbarSelectedBranchId = $derived(
+		typeof page.data?.selectedBranchId === 'string' ? page.data.selectedBranchId : undefined
+	);
+	const isAllBranchMode = $derived(navbarSelectedBranchId === '__all__');
 
 	let doctorList = $state<StaffWithRelations[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
@@ -34,6 +38,7 @@
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
 	let timeFormat = $state<'24h' | '12h'>('24h');
 	let selectedDoctorId = $state('');
+	let selectedAppointmentBranchId = $state('');
 	/** Appointment blocks from DB for the selected doctor (and hospital). */
 	let appointmentBlocks = $state<AppointmentBlockSchema[]>([]);
 
@@ -55,6 +60,36 @@
 					doctor.lastName
 				)
 			: '';
+	});
+	const doctorBranchOptions = $derived.by(() => {
+		const doctor = doctorList.find((d) => String(d.id) === selectedDoctorId);
+		if (!doctor) return [];
+		return (doctor.staffBranches ?? [])
+			.map((sb) => sb.branch)
+			.filter((b): b is NonNullable<typeof b> => b != null)
+			.map((b) => ({ id: b.id, name: b.name ?? null }));
+	});
+	const effectiveBranchId = $derived.by(() => {
+		if (!isAllBranchMode) {
+			return navbarSelectedBranchId && navbarSelectedBranchId !== '__all__'
+				? navbarSelectedBranchId
+				: undefined;
+		}
+		return selectedAppointmentBranchId || undefined;
+	});
+	$effect(() => {
+		if (!isAllBranchMode) {
+			selectedAppointmentBranchId = effectiveBranchId ?? '';
+			return;
+		}
+		const options = doctorBranchOptions;
+		if (options.length === 0) {
+			selectedAppointmentBranchId = '';
+			return;
+		}
+		if (!options.some((b) => b.id === selectedAppointmentBranchId)) {
+			selectedAppointmentBranchId = options[0].id;
+		}
 	});
 
 	/** Visible calendar dates (YYYY-MM-DD, local) for current selectDate + viewBy. */
@@ -111,6 +146,7 @@
 			.filter(
 				(a) =>
 					String(a.staffId) === selectedDoctorId &&
+					(effectiveBranchId ? String(a.branchId) === effectiveBranchId : true) &&
 					a.statusId !== StatusEnum.DELETED &&
 					a.appointmentDate != null &&
 					dateSet.has(String(a.appointmentDate).slice(0, 10))
@@ -172,19 +208,26 @@
 	const lifeCycleutil = new LifeCycleUtil();
 	lifeCycleutil.onMount(async () => {
 		const hid = hospitalId ?? undefined;
-		doctorList = await getDoctorStaffList(hid ? { hospitalId: hid } : undefined);
+		doctorList = await getDoctorStaffList(
+			hid
+				? { hospitalId: hid, branchId: effectiveBranchId ?? undefined }
+				: undefined
+		);
 	});
 
 	$effect(() => {
 		const id = selectedDoctorId.trim();
 		const hid = hospitalId ?? undefined;
+		const bid = effectiveBranchId ?? undefined;
 		if (!id) {
 			doctorSchedules = [];
 			appointments = [];
 			appointmentBlocks = [];
 			return;
 		}
-		getDoctorSchedule(hid ? { hospitalId: hid } : undefined).then((all) => {
+		getDoctorSchedule(
+			hid ? { hospitalId: hid, branchId: bid } : undefined
+		).then((all) => {
 			doctorSchedules = all.filter(
 				(s) =>
 					String(s.staffId) === String(id) &&
@@ -209,6 +252,10 @@
 		<LDoctorAppointmentProfileBar
 			{doctorList}
 			bind:selectedDoctorId
+			bind:selectedBranchId={selectedAppointmentBranchId}
+			branchOptions={doctorBranchOptions}
+			branchLocked={!isAllBranchMode}
+			branchIdForSearch={effectiveBranchId}
 			bind:viewBy
 			bind:timeFormat
 			onDateChange={(date) => {
@@ -223,6 +270,7 @@
 			{timeFormat}
 			selectedDoctorName={selectedDoctorName}
 			selectedDoctorId={selectedDoctorId}
+			activeBranchId={effectiveBranchId ?? null}
 			{scheduleSlots}
 			{appointmentSlots}
 			{blockSlots}
