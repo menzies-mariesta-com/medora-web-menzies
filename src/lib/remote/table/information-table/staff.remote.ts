@@ -11,6 +11,7 @@ import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
 import { createStaffUserGroup } from './staff-user-group.remote';
+import { createStaffBranch } from './staff-branch.remote';
 import { createStaffHospital } from './staff-hospital.remote';
 import { uuidv7 } from 'uuidv7';
 import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
@@ -47,7 +48,9 @@ export const getStaffWithRelations = query(async () => {
 			staffType: true,
 			state: true,
 			title: true,
+			phonePrimaryCountry: true,
 			user: true,
+			staffBranches: { with: { branch: true } },
 			staffHospitals: { with: { hospital: true } },
 			staffDepartments: { with: { department: true } },
 			staffUserGroups: { with: { userGroup: true } },
@@ -71,7 +74,9 @@ const staffWithRelationsWith = {
 	staffType: true,
 	state: true,
 	title: true,
+	phonePrimaryCountry: true,
 	user: true,
+	staffBranches: { with: { branch: true } },
 	staffHospitals: { with: { hospital: true } },
 	staffDepartments: { with: { department: true } },
 	staffUserGroups: { with: { userGroup: true } },
@@ -80,18 +85,32 @@ const staffWithRelationsWith = {
 // get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted. Optional hospitalId (UUID) limits to doctors assigned to that hospital.
 export const getDoctorStaffList = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: string }): Promise<StaffWithRelations[]> => {
+	async (params?: { hospitalId?: string; branchId?: string }): Promise<StaffWithRelations[]> => {
 		const hospitalId = params?.hospitalId;
 		const hospitalCondition =
 			hospitalId != null && hospitalId !== ''
 				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
+				: undefined;
+		const branchId = params?.branchId;
+		const branchCondition =
+			branchId != null && branchId !== ''
+				? sql`${table.staffTable.id} IN (
+					SELECT sb.staff_id
+					FROM staff_branch sb
+					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
+					WHERE sb.branch_id = ${branchId}
+					${hospitalId != null && hospitalId !== ''
+						? sql`AND hb.hospital_id = ${hospitalId}`
+						: sql``}
+				)`
 				: undefined;
 
 		const baseCondition = and(
 			eq(table.staffTable.staffTypeId, 3),
 			ne(table.staffTable.statusId, StatusEnum.DELETED)
 		);
-		const whereCondition = hospitalCondition ? and(baseCondition, hospitalCondition) : baseCondition;
+		let whereCondition = hospitalCondition ? and(baseCondition, hospitalCondition) : baseCondition;
+		if (branchCondition) whereCondition = and(whereCondition, branchCondition);
 
 		const doctorStaffIds = await ensureDb()
 			.select({ id: table.staffTable.id })
@@ -134,11 +153,25 @@ export const getDoctorStaffPaginated = query(
 			hospitalId != null && hospitalId !== ''
 				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
 				: undefined;
+		const branchId = params?.branchId;
+		const branchCondition =
+			branchId != null && branchId !== ''
+				? sql`${table.staffTable.id} IN (
+					SELECT sb.staff_id
+					FROM staff_branch sb
+					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
+					WHERE sb.branch_id = ${branchId}
+					${hospitalId != null && hospitalId !== ''
+						? sql`AND hb.hospital_id = ${hospitalId}`
+						: sql``}
+				)`
+				: undefined;
 
 		let whereExpr = searchCondition
 			? and(notDeletedCondition, doctorCondition, searchCondition)
 			: and(notDeletedCondition, doctorCondition);
 		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
+		if (branchCondition) whereExpr = and(whereExpr, branchCondition);
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.staffTable.findMany({
@@ -186,7 +219,9 @@ export const getStaffByUserIdWithRelations = query(
 				staffType: true,
 				state: true,
 				title: true,
+				phonePrimaryCountry: true,
 				user: true,
+				staffBranches: { with: { branch: true } },
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
 				staffUserGroups: { with: { userGroup: true } },
@@ -228,9 +263,23 @@ export const getStaffPaginated = query(
 			hospitalId != null && hospitalId !== ''
 				? sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${hospitalId})`
 				: undefined;
+		const branchId = params?.branchId;
+		const branchCondition =
+			branchId != null && branchId !== ''
+				? sql`${table.staffTable.id} IN (
+					SELECT sb.staff_id
+					FROM staff_branch sb
+					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
+					WHERE sb.branch_id = ${branchId}
+					${hospitalId != null && hospitalId !== ''
+						? sql`AND hb.hospital_id = ${hospitalId}`
+						: sql``}
+				)`
+				: undefined;
 
 		let whereExpr = searchCondition ? and(notDeletedCondition, searchCondition) : notDeletedCondition;
 		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
+		if (branchCondition) whereExpr = and(whereExpr, branchCondition);
 
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.staffTable.findMany({
@@ -251,7 +300,9 @@ export const getStaffPaginated = query(
 					staffType: true,
 					state: true,
 					title: true,
+					phonePrimaryCountry: true,
 					user: true,
+					staffBranches: { with: { branch: true } },
 					staffHospitals: { with: { hospital: true } },
 					staffDepartments: { with: { department: true } },
 					staffUserGroups: { with: { userGroup: true } },
@@ -310,11 +361,12 @@ export const getStaffByIdWithRelations = query(
 				staffType: true,
 				state: true,
 				title: true,
+				phonePrimaryCountry: true,
 				user: true,
+				staffBranches: { with: { branch: true } },
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
 				staffUserGroups: { with: { userGroup: true } },
-				phonePrimaryCountry: true,
 			},
 		});
 	}
@@ -403,7 +455,7 @@ function generateRandomPassword(length: number = 16): string {
 	return password;
 }
 
-// Create staff with user (Better Auth). Only OWNER or SYSTEM_ADMIN can register new staff.
+// Create staff with user (Better Auth). Owner, system admin, and hospital staff can register new staff.
 export const createStaffWithUser = command(
 	'unchecked' as const,
 	async (payload: {
@@ -450,12 +502,14 @@ export const createStaffWithUser = command(
 		signatureText?: string;
 		/** When provided, assigns the new staff to this hospital (staff_hospital). UUID. */
 		hospitalId?: string;
+		/** When provided, assigns the new staff to these branches under hospitalId (staff_branch). */
+		branchIds?: string[];
 	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
 		const event = getRequestEvent();
 		if (!event?.locals?.user) throw error(401, 'Unauthorized');
 		const roleId = event.locals.userRoleId ?? null;
-		if (roleId !== RoleEnum.OWNER && roleId !== RoleEnum.SYSTEM_ADMIN) {
-			throw error(403, 'Only owner or system admin can register staff');
+		if (roleId !== RoleEnum.OWNER && roleId !== RoleEnum.SYSTEM_ADMIN && roleId !== RoleEnum.STAFF) {
+			throw error(403, 'Only owner, system admin, or staff can register staff');
 		}
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -578,6 +632,21 @@ export const createStaffWithUser = command(
 				staffId: staff.id,
 				hospitalId: payload.hospitalId
 			});
+		}
+		if (
+			payload.hospitalId != null &&
+			payload.hospitalId !== '' &&
+			payload.branchIds != null &&
+			payload.branchIds.length > 0
+		) {
+			for (const branchId of payload.branchIds) {
+				if (!branchId) continue;
+				await createStaffBranch({
+					staffId: staff.id,
+					branchId,
+					hospitalId: payload.hospitalId
+				});
+			}
 		}
 
 		return { staff, userId: user.id, generatedPassword };

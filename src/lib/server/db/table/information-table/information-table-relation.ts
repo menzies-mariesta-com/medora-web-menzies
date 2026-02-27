@@ -19,6 +19,7 @@ import {
 	insuranceTable,
 	staffDepartmentTable,
 	staffDetailTable,
+	staffBranchTable,
 	staffHospitalTable,
 	staffTable,
 	staffUserGroupTable,
@@ -88,12 +89,14 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	hospitalDepartments: many(hospitalDepartmentTable),
 	patientCodeCounter: one(hospitalPatientCodeCounterTable),
 	staffHospitals: many(staffHospitalTable),
+	patients: many(patientTable),
+	appointments: many(appointmentTable),
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
 	appointmentBlocks: many(appointmentBlockTable),
 }));
 
-export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ one }) => ({
+export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ one, many }) => ({
 	hospital: one(hospitalTable, {
 		fields: [hospitalBranchTable.hospitalId],
 		references: [hospitalTable.id],
@@ -122,6 +125,9 @@ export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ on
 		fields: [hospitalBranchTable.postalCodeId],
 		references: [postalCodeTable.id],
 	}),
+	appointments: many(appointmentTable),
+	doctorSchedules: many(doctorScheduleTable),
+	staffBranches: many(staffBranchTable),
 }));
 
 export const hospitalPatientCodeCounterTableRelations = relations(
@@ -205,6 +211,10 @@ export const doctorScheduleTableRelations = relations(doctorScheduleTable, ({ on
 		fields: [doctorScheduleTable.hospitalId],
 		references: [hospitalTable.id],
 	}),
+	branch: one(hospitalBranchTable, {
+		fields: [doctorScheduleTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
 	weekday: one(weekdayTable, {
 		fields: [doctorScheduleTable.weekdayId],
 		references: [weekdayTable.id],
@@ -256,6 +266,14 @@ export const externalReferTableRelations = relations(externalReferTable, ({ one,
 }));
 
 export const appointmentTableRelations = relations(appointmentTable, ({ one }) => ({
+	hospital: one(hospitalTable, {
+		fields: [appointmentTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	branch: one(hospitalBranchTable, {
+		fields: [appointmentTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
 	patient: one(patientTable, {
 		fields: [appointmentTable.patientId],
 		references: [patientTable.id],
@@ -395,6 +413,17 @@ export const staffHospitalTableRelations = relations(staffHospitalTable, ({ one 
 	}),
 }));
 
+export const staffBranchTableRelations = relations(staffBranchTable, ({ one }) => ({
+	staff: one(staffTable, {
+		fields: [staffBranchTable.staffId],
+		references: [staffTable.id],
+	}),
+	branch: one(hospitalBranchTable, {
+		fields: [staffBranchTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+}));
+
 export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 	user: one(userTable, {
 		fields: [staffTable.userId],
@@ -468,6 +497,7 @@ export const staffTableRelations = relations(staffTable, ({ one, many }) => ({
 		fields: [staffTable.staffDetailId],
 		references: [staffDetailTable.id],
 	}),
+	staffBranches: many(staffBranchTable),
 	staffHospitals: many(staffHospitalTable),
 	staffDepartments: many(staffDepartmentTable),
 	staffUserGroups: many(staffUserGroupTable),
@@ -533,6 +563,10 @@ export const userGroupTableRelations = relations(userGroupTable, ({ one, many })
 }));
 
 export const patientTableRelations = relations(patientTable, ({ one, many }) => ({
+	hospital: one(hospitalTable, {
+		fields: [patientTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
 	user: one(userTable, {
 		fields: [patientTable.userId],
 		references: [userTable.id],
