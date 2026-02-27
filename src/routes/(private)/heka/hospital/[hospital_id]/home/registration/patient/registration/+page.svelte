@@ -36,7 +36,6 @@
 		CitySchema,
 		CountrySchema,
 		GenderSchema,
-		HospitalSchema,
 		MaritalStatusSchema,
 		IdentityTypeSchema,
 		NationalitySchema,
@@ -52,7 +51,6 @@ import {
 		getPatientByIdWithRelations,
 		getDuplicatePatients
 	} from '$lib/remote/table/information-table/patient.remote';
-import { getHospital } from '$lib/remote/table/information-table/hospital.remote';
 import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
 import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
 import { authClient } from '$lib/auth/client';
@@ -92,11 +90,12 @@ const currentPatientId = $derived(viewId || editId);
 	let postalCodeData: PostalCodeSchema[] = $state([]);
 	let nationalityData: NationalitySchema[] = $state([]);
 	let religionData: ReligionSchema[] = $state([]);
-	let hospitalData: HospitalSchema[] = $state([]);
 
 	// Form state
 	let patientCode: string = $state('');
-	let selectedHospitalId: string = $state('');
+	const hospitalIdFromUrl = $derived(
+		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+	);
 	let selectedTitleId: string = $state('');
 	let firstName: string = $state('');
 	let middleName: string = $state('');
@@ -215,13 +214,6 @@ const currentPatientId = $derived(viewId || editId);
 		postalCodeData = await getPostalCode();
 		nationalityData = await getNationality();
 		religionData = await getReligion();
-		hospitalData = await getHospital();
-		const urlHospitalId = page.params.hospital_id;
-		if (urlHospitalId && hospitalData.some((h) => String(h.id) === urlHospitalId)) {
-			selectedHospitalId = String(urlHospitalId);
-		} else if (hospitalData.length > 0 && !selectedHospitalId) {
-			selectedHospitalId = String(hospitalData[0].id);
-		}
 	}
 
 	async function loadPatientIntoForm(id: string) {
@@ -518,8 +510,8 @@ const currentPatientId = $derived(viewId || editId);
 			return;
 		}
 
-		if (!currentPatientId && !selectedHospitalId) {
-			toastService.addToast('Please select a hospital.', StatusColorEnum.ERROR);
+		if (!currentPatientId && !hospitalIdFromUrl) {
+			toastService.addToast('Hospital context is missing from URL.', StatusColorEnum.ERROR);
 			return;
 		}
 
@@ -615,14 +607,14 @@ const currentPatientId = $derived(viewId || editId);
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				// Create: new patient (code is generated on backend from selectedHospitalId).
+				// Create: new patient (code is generated on backend from route hospital).
 				// Email is optional, but account creation still requires a unique email, so we
 				// pass whatever is provided (or a generated placeholder if blank).
 				const emailValue = email.trim();
 				const result = await createPatientWithUser({
 					email: emailValue || `${crypto.randomUUID()}@placeholder.local`,
 					name: fullName,
-					hospitalId: selectedHospitalId ?? '',
+					hospitalId: hospitalIdFromUrl ?? '',
 					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
 					firstName: firstName.trim(),
 					middleName: middleName.trim() || undefined,
@@ -892,9 +884,7 @@ const currentPatientId = $derived(viewId || editId);
 						{titleData}
 						{genderData}
 						{maritalStatusData}
-						hospitalData={hospitalData}
 						bind:patientCode
-						bind:selectedHospitalId
 						bind:selectedTitleId
 						bind:firstName
 						bind:middleName
@@ -902,7 +892,6 @@ const currentPatientId = $derived(viewId || editId);
 						bind:email
 						bind:selectedGenderId
 						bind:selectedMaritalStatusId
-						showHospitalSelect={!currentPatientId}
 					/>
 					<LPatientRegistrationSecondColumn
 						{titleData}
