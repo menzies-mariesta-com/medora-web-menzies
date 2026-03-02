@@ -12,7 +12,7 @@ export const getWeekday = query(async (): Promise<WeekdaySchema[]> => {
 		.select()
 		.from(table.weekdayTable)
 		.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.weekdayTable.name);
+		.orderBy(table.weekdayTable.id);
 });
 
 export const getWeekdayCount = query(async (): Promise<number> => {
@@ -33,7 +33,7 @@ export const getWeekdayPaginated = query(
 				.select()
 				.from(table.weekdayTable)
 				.where(activeFilter)
-				.orderBy(table.weekdayTable.name)
+				.orderBy(table.weekdayTable.id)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()

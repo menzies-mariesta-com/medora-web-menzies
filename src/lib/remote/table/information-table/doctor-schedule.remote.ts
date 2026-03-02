@@ -77,6 +77,86 @@ async function ensureDoctorBranchContext(input: {
 	if (!staffInBranch) throw new Error('Selected doctor is not assigned to this branch');
 }
 
+type DoctorScheduleOverlapCheckInput = {
+	staffId: string;
+	weekdayId: number;
+	fromDate: string | null;
+	toDate: string | null;
+	fromShiftTime: string | null;
+	toShiftTime: string | null;
+	excludeId?: number;
+};
+
+/** Normalize time string to HH:MM:SS for consistent comparison. */
+function normalizeTime(t: string | null): string {
+	if (!t || typeof t !== 'string') return '00:00:00';
+	const parts = t.trim().split(':');
+	const h = parts[0]?.padStart(2, '0') ?? '00';
+	const m = (parts[1] ?? '00').padStart(2, '0');
+	const s = (parts[2] ?? '00').padStart(2, '0');
+	return `${h}:${m}:${s}`;
+}
+
+/**
+ * Ensure that a doctor does not have overlapping schedules across branches (or within the same branch).
+ * Only ACTIVE schedules are considered; INACTIVE and DELETED are ignored.
+ * Two schedules "overlap" when:
+ * - Same doctor and weekday,
+ * - Date ranges intersect, and
+ * - Time ranges intersect.
+ *
+ * `fromDate`/`toDate` or `fromShiftTime`/`toShiftTime` null = open‑ended range.
+ */
+async function assertNoOverlappingDoctorSchedule(input: DoctorScheduleOverlapCheckInput): Promise<void> {
+	const { staffId, weekdayId, fromDate, toDate, fromShiftTime, toShiftTime, excludeId } = input;
+
+	const existingSchedules = await ensureDb()
+		.select({
+			schedule: table.doctorScheduleTable,
+			branchName: table.hospitalBranchTable.name,
+		})
+		.from(table.doctorScheduleTable)
+		.innerJoin(
+			table.hospitalBranchTable,
+			eq(table.doctorScheduleTable.branchId, table.hospitalBranchTable.id)
+		)
+		.where(eq(table.doctorScheduleTable.staffId, staffId));
+
+	const MIN_DATE = '0001-01-01';
+	const MAX_DATE = '9999-12-31';
+	const MIN_TIME = '00:00:00';
+	const MAX_TIME = '23:59:59';
+
+	const newFromDate = fromDate ?? MIN_DATE;
+	const newToDate = toDate ?? MAX_DATE;
+	const newFromTime = normalizeTime(fromShiftTime) || MIN_TIME;
+	const newToTime = normalizeTime(toShiftTime) || MAX_TIME;
+
+	const conflict = existingSchedules.find(({ schedule: row }) => {
+		if (excludeId != null && row.id === excludeId) return false;
+		// Only consider ACTIVE schedules; INACTIVE/DELETED do not block
+		if (row.statusId !== StatusEnum.ACTIVE) return false;
+		if (row.weekdayId !== weekdayId) return false;
+
+		const rowFromDate = row.fromDate ?? MIN_DATE;
+		const rowToDate = row.toDate ?? MAX_DATE;
+		const rowFromTime = normalizeTime(row.fromShiftTime) || MIN_TIME;
+		const rowToTime = normalizeTime(row.toShiftTime) || MAX_TIME;
+
+		const dateOverlap = rowFromDate <= newToDate && newFromDate <= rowToDate;
+		const timeOverlap = rowFromTime < newToTime && newFromTime < rowToTime;
+
+		return dateOverlap && timeOverlap;
+	});
+
+	if (conflict) {
+		const branchLabel = conflict.branchName ?? conflict.schedule.branchId;
+		throw new Error(
+			`Doctor already has an overlapping schedule at branch "${branchLabel}" for this time.`
+		);
+	}
+}
+
 // get all (optional hospitalId/branchId UUID to scope)
 export const getDoctorSchedule = query(
 	'unchecked' as const,
@@ -176,6 +256,14 @@ export const createDoctorSchedule = command(
 			hospitalId: payload.hospitalId,
 			branchId: payload.branchId
 		});
+		await assertNoOverlappingDoctorSchedule({
+			staffId: payload.staffId,
+			weekdayId: payload.weekdayId!,
+			fromDate: payload.fromDate ?? null,
+			toDate: payload.toDate ?? null,
+			fromShiftTime: payload.fromShiftTime ?? null,
+			toShiftTime: payload.toShiftTime ?? null
+		});
 		const [row] = await ensureDb()
 			.insert(table.doctorScheduleTable)
 			.values(payload)
@@ -196,6 +284,11 @@ export const updateDoctorSchedule = command(
 		const nextStaffId = rest.staffId ?? existing.staffId;
 		const nextHospitalId = rest.hospitalId ?? existing.hospitalId;
 		const nextBranchId = rest.branchId ?? existing.branchId;
+		const nextWeekdayId = rest.weekdayId ?? existing.weekdayId;
+		const nextFromDate = rest.fromDate ?? existing.fromDate;
+		const nextToDate = rest.toDate ?? existing.toDate;
+		const nextFromShiftTime = rest.fromShiftTime ?? existing.fromShiftTime;
+		const nextToShiftTime = rest.toShiftTime ?? existing.toShiftTime;
 		const selectedBranchConstraint = getSelectedBranchConstraintForStaff();
 		if (selectedBranchConstraint && nextBranchId !== selectedBranchConstraint) {
 			throw new Error('You can only update schedules in your selected branch');
@@ -205,6 +298,23 @@ export const updateDoctorSchedule = command(
 			hospitalId: nextHospitalId,
 			branchId: nextBranchId
 		});
+		// Skip overlap check when only deactivating/deleting; we're reducing active schedules
+		const onlyDeactivating =
+			rest.statusId === StatusEnum.INACTIVE || rest.statusId === StatusEnum.DELETED;
+		const hasOtherChanges = Object.keys(rest).some(
+			(k) => k !== 'statusId' && (rest as Record<string, unknown>)[k] !== undefined
+		);
+		if (!onlyDeactivating || hasOtherChanges) {
+			await assertNoOverlappingDoctorSchedule({
+				staffId: nextStaffId,
+				weekdayId: nextWeekdayId!,
+				fromDate: nextFromDate ?? null,
+				toDate: nextToDate ?? null,
+				fromShiftTime: nextFromShiftTime ?? null,
+				toShiftTime: nextToShiftTime ?? null,
+				excludeId: id
+			});
+		}
 		const [row] = await ensureDb()
 			.update(table.doctorScheduleTable)
 			.set(rest as DoctorScheduleSchemaUpdate)
