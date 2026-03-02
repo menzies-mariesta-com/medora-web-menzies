@@ -77,14 +77,18 @@ export const getAppointmentPaginated = query(
 	}
 );
 
-// get all with relations
-export const getAppointmentWithRelations = query(async () => {
-	const scope = getSelectedScopeFromRequest();
-	const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
-	if (scope.hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, scope.hospitalId));
-	if (scope.branchId) conditions.push(eq(table.appointmentTable.branchId, scope.branchId));
-	const whereExpr = and(...conditions)!;
-	return ensureDb().query.appointmentTable.findMany({
+// get all with relations (optional hospitalId/branchId to override scope)
+export const getAppointmentWithRelations = query(
+	'unchecked' as const,
+	async (params?: { hospitalId?: string; branchId?: string }) => {
+		const scope = getSelectedScopeFromRequest();
+		const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
+		const hospitalId = params?.hospitalId ?? scope.hospitalId;
+		const branchId = params?.branchId ?? scope.branchId;
+		if (hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, hospitalId));
+		if (branchId) conditions.push(eq(table.appointmentTable.branchId, branchId));
+		const whereExpr = and(...conditions)!;
+		return ensureDb().query.appointmentTable.findMany({
 		where: whereExpr,
 		with: {
 			hospital: true,
@@ -98,7 +102,8 @@ export const getAppointmentWithRelations = query(async () => {
 			status: true,
 		},
 	});
-});
+	}
+);
 
 // get one
 export const getAppointmentById = query(

@@ -386,7 +386,7 @@ export const doctorScheduleTable = pgTable('doctor_schedule', {
 	branchId: uuid('branch_id')
 		.notNull()
 		.references(() => hospitalBranchTable.id),
-	weekdayId: serial('weekday_id').notNull().references(() => weekdayTable.id),
+	weekdayId: integer('weekday_id').notNull().references(() => weekdayTable.id),
 	fromDate: date('from_date'),
 	toDate: date('to_date'),
 	fromShiftTime: time('from_shift_time'),
