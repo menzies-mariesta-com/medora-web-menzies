@@ -176,7 +176,7 @@
 		if (!hospitalId) return;
 		const baseUrl = hekaHospitalPageUrl(
 			hospitalId,
-			WebRoutesEnum.HEKA_HOME_EMR_CLONE_EMR_VITAL
+			WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL
 		);
 		const name = StringUtil.patientDisplayName(patient);
 		const url =

@@ -23,9 +23,9 @@
 	const uniqueModuleData = $derived(getUniqueModuleData());
 	const pageData = $derived(getPageData());
 	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
-	// In EMR Clone emr routes: navbar auto-hides but can be opened from the module bar button
+	// In Nursing Workbench EMR routes: navbar auto-hides but can be opened from the module bar button
 	const isInEmrCloneEmr = $derived(
-		pathnameForPageMatch().startsWith(WebRoutesEnum.HEKA_HOME_EMR_CLONE_EMR)
+		pathnameForPageMatch().startsWith(WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR)
 	);
 	let emrNavbarOpen = $state(false);
 	let prevInEmrCloneEmr = $state(false);
@@ -45,6 +45,7 @@
 		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}-${(data?.staffBranchesForNav ?? []).map((b) => b.id).join(',')}`}
 			<GPrivateHekaModuleBar
 				hospitalId={hospitalId}
+				hospitalName={data?.currentHospitalName ?? null}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
 				staffId={currentStaffId}
