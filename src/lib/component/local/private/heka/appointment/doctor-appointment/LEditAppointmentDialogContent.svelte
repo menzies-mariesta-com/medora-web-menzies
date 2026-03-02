@@ -525,8 +525,7 @@ $effect(() => {
 						statusTypeId: null,
 						// Default to OPD visit type (see master-table seed: id=1, code 'O').
 						visitTypeId: 1,
-						statusId: undefined,
-						visitNo: null
+						statusId: undefined
 					});
 				} catch (e) {
 					console.error('Failed to create patient visit for check-in:', e);
