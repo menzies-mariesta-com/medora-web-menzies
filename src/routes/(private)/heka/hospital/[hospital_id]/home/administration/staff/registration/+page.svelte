@@ -243,14 +243,12 @@
 	let lastLoadedStaffId: string | null = $state(null);
 
 	lifeCycleUtil.onMount(() => {
-		console.log('[registration] mounted', page.url.href, 'view', page.url.searchParams.get('view'), 'edit', page.url.searchParams.get('edit'));
 		fetchInitialFieldData();
 	});
 
 	// When URL has ?view= or ?edit= and dropdowns are ready, load staff into form (reacts to URL change)
 	$effect(() => {
 		const id = viewId || editId;
-		console.log('registration id', id);
 		if (!id || typeof id !== 'string') {
 			lastLoadedStaffId = null;
 			return;
