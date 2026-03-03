@@ -34,6 +34,13 @@ export enum WebRoutesEnum {
 	HEKA_HOME_NURSING_WORKBENCH_EMR = '/heka/home/nursing-workbench/emr',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/heka/home/nursing-workbench/emr/vital',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/heka/home/nursing-workbench/emr/diagnosis',
+
+	// Serice Item
+	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
+	HEKA_HOME_SERVICE_ITEM_SERVICE = '/heka/home/service-item/service',
+	HEKA_HOME_SERVICE_ITEM_CREATE = '/heka/home/service-item/service/create',
+	HEKA_HOME_SERVICE_ITEM_TAGGING = '/heka/home/service-item/service/tagging',
+
 }
 
 /** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */
