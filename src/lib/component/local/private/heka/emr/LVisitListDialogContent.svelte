@@ -34,7 +34,6 @@
 	let result = $state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state('10');
-	let searchText = $state('');
 	let filterPatientName = $state('');
 	let filterPatientCode = $state('');
 	let filterHospitalName = $state('');
@@ -55,7 +54,6 @@
 			result = await getPatientVisitPaginatedForEmr({
 				page: currentPage,
 				pageSize,
-				search: searchText.trim() || undefined,
 				hospitalId: hospitalId ?? undefined,
 				patientName: filterPatientName.trim() || undefined,
 				patientCode: filterPatientCode.trim() || undefined,
@@ -82,21 +80,28 @@
 		loadVisitTypes();
 	});
 
-	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
-	let isFirstSearchEffect = true;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isFirstFilterEffect = true;
 	$effect(() => {
-		const _query = searchText;
-		if (isFirstSearchEffect) {
-			isFirstSearchEffect = false;
+		const _ = [
+			filterPatientCode,
+			filterPatientName,
+			filterHospitalName,
+			filterBranchName,
+			filterDoctorName,
+			selectedVisitTypeIdStr
+		];
+		if (isFirstFilterEffect) {
+			isFirstFilterEffect = false;
 			return;
 		}
-		if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
-		searchDebounceTimeout = setTimeout(() => {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+		filterDebounceTimeout = setTimeout(() => {
 			currentPage = 1;
-			fetchPatients();
+			fetchPatients({ bustCache: true });
 		}, 350);
 		return () => {
-			if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+			if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
 		};
 	});
 
@@ -107,7 +112,7 @@
 
 	function handleFilterChange() {
 		currentPage = 1;
-		fetchPatients();
+		fetchPatients({ bustCache: true });
 	}
 
 	function goToPage(p: number) {
@@ -127,7 +132,7 @@
 
 <div class="flex h-full min-h-[60vh] flex-col gap-0">
 	<div class="flex items-center justify-between border-b border-base-300 px-4 py-2">
-		<h2 class="text-lg font-semibold">Choose patient</h2>
+		<h2 class="text-lg font-semibold">Visit List</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={cancel}
@@ -136,14 +141,7 @@
 		</DaisyUiButton>
 	</div>
 
-	<div class="flex flex-wrap items-center gap-3 border-b border-base-200 px-4 py-2">
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Search by name, code, phone..."
-				bind:value={searchText}
-				className="d-input-sm w-full"
-			/>
-		</div>
+	<div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2">
 		<div class="flex items-center gap-2 whitespace-nowrap">
 			<span class="text-sm">per page</span>
 			<DaisyUiSelect
@@ -165,66 +163,11 @@
 				{@const end = Math.min(currentPage * pageSize, total)}
 				<span>
 					Showing <span class="text-success">{start}–{end}</span> of
-					<span class="text-error"> {total}</span> patients
+					<span class="text-error"> {total}</span> visits
 				</span>
 			{:else}
-				<span>Showing 0 of 0 patients</span>
+				<span>Showing 0 of 0 visits</span>
 			{/if}
-		</div>
-	</div>
-
-	<div class="flex flex-wrap gap-3 border-b border-base-200 px-4 py-2 text-sm">
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Patient name"
-				bind:value={filterPatientName}
-				className="d-input-sm w-full"
-				onBlur={handleFilterChange}
-			/>
-		</div>
-		<div class="flex-1 min-w-[10rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Patient code"
-				bind:value={filterPatientCode}
-				className="d-input-sm w-full"
-				onBlur={handleFilterChange}
-			/>
-		</div>
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Hospital name"
-				bind:value={filterHospitalName}
-				className="d-input-sm w-full"
-				onBlur={handleFilterChange}
-			/>
-		</div>
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Branch name"
-				bind:value={filterBranchName}
-				className="d-input-sm w-full"
-				onBlur={handleFilterChange}
-			/>
-		</div>
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiInputField
-				inputPlaceholderText="Doctor name"
-				bind:value={filterDoctorName}
-				className="d-input-sm w-full"
-				onBlur={handleFilterChange}
-			/>
-		</div>
-		<div class="flex-1 min-w-[12rem]">
-			<DaisyUiSelect
-				className="d-select d-select-sm w-full"
-				bind:value={selectedVisitTypeIdStr}
-				onChange={handleFilterChange}
-			>
-				<option value="">All visit types</option>
-				{#each visitTypeOptions as vt (vt.id)}
-					<option value={String(vt.id)}>{vt.name ?? `Type ${vt.id}`}</option>
-				{/each}
-			</DaisyUiSelect>
 		</div>
 	</div>
 
@@ -239,12 +182,53 @@
 					<tr class="sticky top-0 z-10 bg-base-200">
 						<th class="w-24 min-w-[6rem]">Actions</th>
 						<th class="w-28 min-w-[6rem]">Visit No</th>
-						<th class="w-32 min-w-[8rem]">Patient Code</th>
-						<th class="w-48 min-w-[12rem]">Patient Name</th>
-						<th class="w-40 min-w-[10rem]">Hospital</th>
-						<th class="w-40 min-w-[10rem]">Branch</th>
-						<th class="w-40 min-w-[10rem]">Doctor</th>
-						<th class="w-32 min-w-[8rem]">Visit Type</th>
+						<th class="w-32 min-w-[8rem]">
+								<DaisyUiInputField
+									inputPlaceholderText="Patient Code"
+									bind:value={filterPatientCode}
+									className="d-input-sm w-full"
+								/>
+						</th>
+						<th class="w-48 min-w-[12rem]">
+								<DaisyUiInputField
+									inputPlaceholderText="Patient Name"
+									bind:value={filterPatientName}
+									className="d-input-sm w-full"
+								/>
+						</th>
+						<th class="w-40 min-w-[10rem]">
+								<DaisyUiInputField
+									inputPlaceholderText="Hospital Name"
+									bind:value={filterHospitalName}
+									className="d-input-sm w-full"
+								/>
+						</th>
+						<th class="w-40 min-w-[10rem]">
+								<DaisyUiInputField
+									inputPlaceholderText="Branch Name"
+									bind:value={filterBranchName}
+									className="d-input-sm w-full"
+								/>
+						</th>
+						<th class="w-40 min-w-[10rem]">
+								<DaisyUiInputField
+									inputPlaceholderText="Doctor Name"
+									bind:value={filterDoctorName}
+									className="d-input-sm w-full"
+								/>
+						</th>
+						<th class="w-32 min-w-[8rem]">
+								<DaisyUiSelect
+									className="d-select d-select-sm w-full"
+									bind:value={selectedVisitTypeIdStr}
+									onChange={handleFilterChange}
+								>
+									<option value="">All Visit Type</option>
+									{#each visitTypeOptions as vt (vt.id)}
+										<option value={String(vt.id)}>{vt.name ?? `Type ${vt.id}`}</option>
+									{/each}
+								</DaisyUiSelect>
+						</th>
 						<th class="w-28 min-w-[7rem]">Status</th>
 					</tr>
 				</DaisyUiTableHeader>
@@ -252,17 +236,12 @@
 					{#each visits as v (v.id)}
 						<tr class="hover:bg-info/20">
 							<td class="w-24 min-w-[6rem]">
-								<DaisyUiTooltip
-									tooltipText="Select this patient"
-									className="d-tooltip-left d-tooltip-primary"
-								>
 									<DaisyUiButton
 										className="d-btn-primary d-btn-sm w-full"
 										onClick={() => selectPatient(v)}
 									>
 										Select
 									</DaisyUiButton>
-								</DaisyUiTooltip>
 							</td>
 							<td class="w-32 min-w-[8rem]">
 								{v.visitNo ?? v.id}
@@ -298,8 +277,8 @@
 						</tr>
 					{:else}
 						<tr>
-							<td colspan={5} class="py-6 text-center opacity-70">
-								No patients found.
+							<td colspan={9} class="py-6 text-center opacity-70">
+								No visits found.
 							</td>
 						</tr>
 					{/each}
@@ -344,4 +323,3 @@
 		</div>
 	</div>
 </div>
-
