@@ -101,6 +101,11 @@ export async function seedInformationTables() {
 			(8, 'EMR', 4, 1, null, '/heka/home/nursing-workbench/emr', 1),
 			(800001, 'Vital', 4, 1, 8, '/heka/home/nursing-workbench/emr/vital', 1),
 			(800002, 'Diagnosis', 4, 1, 8, '/heka/home/nursing-workbench/emr/diagnosis', 2),
+			(800003, 'Allergy', 4, 1, 8, '/heka/home/nursing-workbench/emr/allergy', 3),
+			(800004, 'Billing', 4, 1, 8, '/heka/home/nursing-workbench/emr/billing', 4),
+			(800005, 'Case Sheet', 4, 1, 8, '/heka/home/nursing-workbench/emr/case-sheet', 5),
+			(800006, 'Consent', 4, 1, 8, '/heka/home/nursing-workbench/emr/consent', 6),
+			(800007, 'Patient Attachment', 4, 1, 8, '/heka/home/nursing-workbench/emr/patient-attachment', 7),
 
 
 			-- Service Item Module
