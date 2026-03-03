@@ -21,6 +21,7 @@ import {
 	staffDepartmentTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	storeTable,
 	staffDetailTable,
 	subCategoryTable,
 	staffBranchTable,
@@ -55,6 +56,7 @@ import {
 	unitTable,
 	visitTypeTable,
 	weekdayTable,
+	allergyMasterTable,
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -135,6 +137,7 @@ export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ on
 	doctorSchedules: many(doctorScheduleTable),
 	staffBranches: many(staffBranchTable),
 	categories: many(categoryTable),
+	stores: many(storeTable),
 	serviceTaggings: many(serviceTaggingTable),
 }));
 
@@ -693,6 +696,10 @@ export const patientAllergyTableRelations = relations(patientAllergyTable, ({ on
 		fields: [patientAllergyTable.patientId],
 		references: [patientTable.id],
 	}),
+	allergyType: one(allergyMasterTable, {
+		fields: [patientAllergyTable.allergyTypeId],
+		references: [allergyMasterTable.allergyTypeId],
+	}),
 	status: one(statusTable, {
 		fields: [patientAllergyTable.statusId],
 		references: [statusTable.id],
@@ -755,6 +762,21 @@ export const serviceTaggingTableRelations = relations(serviceTaggingTable, ({ on
 	status: one(statusTable, {
 		fields: [serviceTaggingTable.statusId],
 		references: [statusTable.id],
+	}),
+}));
+
+export const storeTableRelations = relations(storeTable, ({ one }) => ({
+	branch: one(hospitalBranchTable, {
+		fields: [storeTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [storeTable.statusId],
+		references: [statusTable.id],
+	}),
+	updatedBy: one(userTable, {
+		fields: [storeTable.updatedBy],
+		references: [userTable.id],
 	}),
 }));
 
