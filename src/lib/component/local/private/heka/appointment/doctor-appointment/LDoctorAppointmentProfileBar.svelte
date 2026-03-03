@@ -3,10 +3,13 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-import DaisyUiFilter from '$lib/component/library/daisyui/filter/DaisyUiFilter.svelte';
-import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
-import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiFilter from '$lib/component/library/daisyui/filter/DaisyUiFilter.svelte';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
 import {
 	type StaffWithRelations,
 	getDoctorStaffPaginated,
@@ -72,7 +75,22 @@ import { page } from '$app/state';
 
 <DaisyUiCard>
 	<DaisyUiCardBody className="w-full gap-5">
-		<DaisyUiCardBodyTitle>Doctor :</DaisyUiCardBodyTitle>
+		<DaisyUiCardBodyTitle className="flex items-center justify-between gap-2">
+			<span>Doctor :</span>
+			{#if selectedDoctorId || selectedBranchId}
+				<DaisyUiTooltip tooltipText="Reset Doctor" className="d-tooltip-left">
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-xs d-btn-circle"
+						onClick={() => {
+							selectedDoctorId = '';
+							selectedBranchId = '';
+						}}
+					>
+						<LucideX className="size-4" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			{/if}
+		</DaisyUiCardBodyTitle>
 
 		<DaisyUiSearchSelect
 			bind:value={selectedDoctorId}

@@ -39,8 +39,9 @@
 		| 'confirmed'
 		| 'check-in'
 		| 'cancel';
-	/** Appointment slot may include patient name, id, and state for display and edit. */
+	/** Appointment slot may include patient code, name, id, and state for display and edit. */
 	type AppointmentSlot = ScheduleSlot & {
+		patientCode?: string;
 		patientName?: string;
 		appointmentId?: number;
 		/** State for legend and cell color; defaults to 'unconfirmed' when missing. */
@@ -293,7 +294,7 @@
 		);
 	}
 
-	/** Patient name for a cell that is inside an appointment (first matching slot). */
+	/** Patient code + name for a cell that is inside an appointment (first matching slot). */
 	function getCellAppointmentLabel(
 		dateString: string,
 		timeSlot: string
@@ -304,10 +305,12 @@
 				s.date === dateString &&
 				toHHmm(s.startTime) <= t &&
 				t < toHHmm(s.endTime)
-		);
-		return (
-			(slot as AppointmentSlot | undefined)?.patientName?.trim() ?? ''
-		);
+		) as AppointmentSlot | undefined;
+		if (!slot) return '';
+		const code = slot.patientCode?.trim() ?? '';
+		const name = slot.patientName?.trim() ?? '';
+		if (code && name) return `${code} – ${name}`;
+		return name || code;
 	}
 
 	/** Appointment id for a cell that is inside an appointment (first matching slot). */

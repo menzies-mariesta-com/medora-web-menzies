@@ -194,6 +194,8 @@ const currentPatientId = $derived(viewId || editId);
 	let isActive: boolean = $state(true);
 	let nameMasking: boolean = $state(false);
 	let isLoading: boolean = $state(false);
+	// After creating a new patient, hide the Save button until user clicks New
+	let disableCreateSave: boolean = $state(false);
 
 	let photoFile: File | null = $state(null);
 	let photoPreviewUrl: string = $state('');
@@ -735,42 +737,7 @@ const currentPatientId = $derived(viewId || editId);
 					`Patient (${patientCode}) created successfully.`,
 					StatusColorEnum.SUCCESS
 				);
-
-				patientCode = '';
-				selectedTitleId = '';
-				firstName = '';
-				middleName = '';
-				lastName = '';
-				email = '';
-				selectedPhoneCountryId = '';
-				selectedPhone = '';
-				selectedPhoneSecondaryCountryId = '';
-				selectedPhoneSecondary = '';
-				selectedFatherTitleId = '';
-				selectedGuardianTitleId = '';
-				selectedGuardianPhoneCountryId = '';
-				identityNo = '';
-				dateOfBirth = '';
-				guardianName = '';
-				guardianPhone = '';
-				address = '';
-				remark = '';
-				selectedReligionId = '';
-				selectedGenderId = '';
-				selectedMaritalStatusId = '';
-				selectedIdentityTypeId = '';
-				selectedBloodTypeId = '';
-				selectedCountryId = '';
-				selectedStateId = '';
-				selectedCityId = '';
-				selectedPostalCodeId = '';
-				selectedNationalityId = '';
-				isActive = true;
-				nameMasking = false;
-				if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-				photoPreviewUrl = '';
-				photoFile = null;
-				if (photoInputEl) photoInputEl.value = '';
+				disableCreateSave = true;
 			}
 		} catch (error: unknown) {
 			let message: string | null = null;
@@ -795,12 +762,52 @@ const currentPatientId = $derived(viewId || editId);
 			isLoading = false;
 		}
 	}
+
+	function resetPatientFormForNew() {
+		disableCreateSave = false;
+		patientCode = '';
+		selectedTitleId = '';
+		firstName = '';
+		middleName = '';
+		lastName = '';
+		email = '';
+		selectedPhoneCountryId = '';
+		selectedPhone = '';
+		selectedPhoneSecondaryCountryId = '';
+		selectedPhoneSecondary = '';
+		selectedFatherTitleId = '';
+		selectedGuardianTitleId = '';
+		selectedGuardianPhoneCountryId = '';
+		identityNo = '';
+		dateOfBirth = '';
+		guardianName = '';
+		guardianPhone = '';
+		address = '';
+		remark = '';
+		selectedReligionId = '';
+		selectedGenderId = '';
+		selectedMaritalStatusId = '';
+		selectedIdentityTypeId = '';
+		selectedBloodTypeId = '';
+		selectedCountryId = '';
+		selectedStateId = '';
+		selectedCityId = '';
+		selectedPostalCodeId = '';
+		selectedNationalityId = '';
+		isActive = true;
+		nameMasking = false;
+		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+		photoPreviewUrl = '';
+		photoFile = null;
+		if (photoInputEl) photoInputEl.value = '';
+		PatientAttachmentDialogState.stagedAttachments = [];
+	}
 </script>
 
 <DaisyUiCard>
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
-			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
+			<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0">
 				<DaisyUiCardBodyTitle className="mb-5">
 					Profile Details
 				</DaisyUiCardBodyTitle>
@@ -813,7 +820,7 @@ const currentPatientId = $derived(viewId || editId);
 					<div
 						class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 					>
-						<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
+						<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
 							<DaisyUiFileInput
 								accept="image/jpeg,image/png,image/webp,image/gif"
 								className="hidden"
@@ -876,7 +883,7 @@ const currentPatientId = $derived(viewId || editId);
 					</div>
 
 					<!-- Form columns: 1 col mobile, 2 md, 3 xl (same as staff) -->
-					<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex-1">
+					<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0 flex-1">
 				<div
 					class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
 				>
@@ -940,22 +947,31 @@ const currentPatientId = $derived(viewId || editId);
 				</div>
 					</fieldset>
 			</div>
-			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
+			<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0">
 				<LPatientRegistrationMoreInfo bind:address bind:remark />
 				<LPatientRegistrationStatus bind:isActive bind:nameMasking />
-
-				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
-					{#if !isViewMode}
+			</fieldset>
+			<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
+				{#if !isViewMode}
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-wide"
+						disabled={isLoading || disableCreateSave}
+					>
+						{isLoading ? 'Saving...' : 'Save'}
+					</DaisyUiButton>
+					{#if disableCreateSave}
 						<DaisyUiButton
-							type="submit"
-							className="d-btn-primary d-btn-wide"
+							type="button"
+							className="d-btn-outline d-btn-wide"
+							onClick={resetPatientFormForNew}
 							disabled={isLoading}
 						>
-							{isLoading ? 'Saving...' : 'Save'}
+							New
 						</DaisyUiButton>
 					{/if}
-				</DaisyUiCardBodyAction>
-			</fieldset>
+				{/if}
+			</DaisyUiCardBodyAction>
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>

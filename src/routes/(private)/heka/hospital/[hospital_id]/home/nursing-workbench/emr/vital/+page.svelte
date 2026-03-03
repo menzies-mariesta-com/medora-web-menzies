@@ -39,6 +39,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
+	import { vitalTextClass } from '$lib/config/vital.config';
 
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
@@ -116,7 +117,7 @@
 	async function handleDeleteVital(v: PatientVitalWithVisit) {
 		const result = await dialogService.open({
 			title: 'Delete vital',
-			message: `Delete vital record from ${formatDateTime(v.createdAt ?? null)}? This cannot be undone.`,
+			message: `Delete vital record from ${formatDateTime(getVitalDisplayDate(v) ?? null)}? This cannot be undone.`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
@@ -192,6 +193,11 @@
 		}
 	}
 
+	/** Prefer vitalDateTime (when vital was taken) over createdAt (when record was saved). */
+	function getVitalDisplayDate(v: PatientVitalWithVisit): string | null | undefined {
+		return v.vitalDateTime ?? v.createdAt;
+	}
+
 	/** Group vitals by visit, sorted by most recent first. */
 	type VitalGroup = { visitNo: string; vitals: PatientVitalWithVisit[] };
 	const vitalGroups = $derived.by(() => {
@@ -208,16 +214,16 @@
 		for (const [, arr] of groups) {
 			arr.sort(
 				(a, b) =>
-					new Date(b.createdAt ?? 0).getTime() -
-					new Date(a.createdAt ?? 0).getTime()
+					new Date(getVitalDisplayDate(b) ?? 0).getTime() -
+					new Date(getVitalDisplayDate(a) ?? 0).getTime()
 			);
 			const visitNo = arr[0]?.visit?.visitNo?.trim() || '–';
 			result.push({ visitNo, vitals: arr });
 		}
 		result.sort(
 			(a, b) =>
-				new Date(b.vitals[0]?.createdAt ?? 0).getTime() -
-				new Date(a.vitals[0]?.createdAt ?? 0).getTime()
+				new Date(getVitalDisplayDate(b.vitals[0]!) ?? 0).getTime() -
+				new Date(getVitalDisplayDate(a.vitals[0]!) ?? 0).getTime()
 		);
 		return result.slice(0, limitN);
 	});
@@ -325,7 +331,7 @@
 											Visit {group.visitNo}
 											<span class="ml-2 font-normal opacity-70">
 												· {group.vitals.length} record(s)
-												· {formatDateTime(group.vitals[0]?.createdAt ?? null)}
+												· {formatDateTime(group.vitals[0] ? getVitalDisplayDate(group.vitals[0]) ?? null : null)}
 											</span>
 										</DaisyUiCollapseTitle>
 										<DaisyUiCollapseContent>
@@ -350,18 +356,18 @@
 														{#each group.vitals as v (v.id)}
 															<tr class="hover:bg-info/20">
 																<td class="whitespace-nowrap">
-																	{formatDateTime(v.createdAt ?? null)}
+																	{formatDateTime(getVitalDisplayDate(v) ?? null)}
 																</td>
 																<td>{formatVital(v.height)}</td>
 																<td>{formatVital(v.weight)}</td>
 																<td>
-																	{formatVital(v.bpSystolic)}/{formatVital(v.bpDiastolic)}
+																	<span class={vitalTextClass(v.bpSystolic, 'bpSystolic')}>{formatVital(v.bpSystolic)}</span>/<span class={vitalTextClass(v.bpDiastolic, 'bpDiastolic')}>{formatVital(v.bpDiastolic)}</span>
 																</td>
-																<td>{formatVital(v.pulse)}</td>
-																<td>{formatVital(v.temperature)}</td>
-																<td>{formatVital(v.spO2)}</td>
-																<td>{formatVital(v.respiration)}</td>
-																<td>{formatVital(v.rbs)}</td>
+																<td><span class={vitalTextClass(v.pulse, 'pulse')}>{formatVital(v.pulse)}</span></td>
+																<td><span class={vitalTextClass(v.temperature, 'temperature')}>{formatVital(v.temperature)}</span></td>
+																<td><span class={vitalTextClass(v.spO2, 'spO2')}>{formatVital(v.spO2)}</span></td>
+																<td><span class={vitalTextClass(v.respiration, 'respiration')}>{formatVital(v.respiration)}</span></td>
+																<td><span class={vitalTextClass(v.rbs, 'rbs')}>{formatVital(v.rbs)}</span></td>
 																<td
 																	class="max-w-48 truncate"
 																	title={v.symptom ?? undefined}
