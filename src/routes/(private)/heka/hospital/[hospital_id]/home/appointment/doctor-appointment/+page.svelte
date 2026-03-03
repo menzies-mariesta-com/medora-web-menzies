@@ -64,33 +64,21 @@
 	const doctorBranchOptions = $derived.by(() => {
 		const doctor = doctorList.find((d) => String(d.id) === selectedDoctorId);
 		if (!doctor) return [];
-		const branches = (doctor.staffBranches ?? [])
+		return (doctor.staffBranches ?? [])
 			.map((sb) => sb.branch)
 			.filter((b): b is NonNullable<typeof b> => b != null)
 			.map((b) => ({ id: b.id, name: b.name ?? null }));
-		// Add "All branches" when doctor has multiple branches
-		if (branches.length > 1) {
-			return [{ id: '__all__', name: 'All branches' }, ...branches];
-		}
-		return branches;
 	});
-	const hasMultipleBranches = $derived(doctorBranchOptions.length > 1);
 	const effectiveBranchId = $derived.by(() => {
-		// When doctor has multiple branches, always use their selection (allows filtering regardless of navbar)
-		if (hasMultipleBranches) {
-			const bid = selectedAppointmentBranchId || undefined;
-			return bid && bid !== '__all__' ? bid : undefined;
-		}
 		if (!isAllBranchMode) {
 			return navbarSelectedBranchId && navbarSelectedBranchId !== '__all__'
 				? navbarSelectedBranchId
 				: undefined;
 		}
-		const bid = selectedAppointmentBranchId || undefined;
-		return bid && bid !== '__all__' ? bid : undefined;
+		return selectedAppointmentBranchId || undefined;
 	});
 	$effect(() => {
-		if (!isAllBranchMode && !hasMultipleBranches) {
+		if (!isAllBranchMode) {
 			selectedAppointmentBranchId = effectiveBranchId ?? '';
 			return;
 		}
@@ -100,14 +88,7 @@
 			return;
 		}
 		if (!options.some((b) => b.id === selectedAppointmentBranchId)) {
-			// Prefer navbar branch when doctor works there, else first option
-			const navBranch =
-				navbarSelectedBranchId &&
-				navbarSelectedBranchId !== '__all__' &&
-				options.some((b) => b.id === navbarSelectedBranchId)
-					? navbarSelectedBranchId
-					: null;
-			selectedAppointmentBranchId = navBranch ?? options[0].id;
+			selectedAppointmentBranchId = options[0].id;
 		}
 	});
 
@@ -135,14 +116,13 @@
 	/** Default interval for time column when doctor has no schedule. Always show full 24h grid. */
 	const DEFAULT_SLOT_DURATION_MINUTES = 15;
 
-	/** Slot duration (minutes) for calendar time column. From doctor schedule when present, else default. Filter by branch when doctor has multiple branches. */
+	/** Slot duration (minutes) for calendar time column. From doctor schedule when present, else default so time column always shows full day. */
 	const slotDurationMinutes = $derived.by(() => {
 		const schedules = doctorSchedules.filter(
 			(s) =>
 				String(s.staffId) === selectedDoctorId &&
 				s.statusId !== StatusEnum.INACTIVE &&
-				s.statusId !== StatusEnum.DELETED &&
-				(effectiveBranchId ? String(s.branchId) === effectiveBranchId : true)
+				s.statusId !== StatusEnum.DELETED
 		);
 		const first = schedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
 		const mins = first?.slotDurationMinutes;
@@ -176,7 +156,8 @@
 				date: String(a.appointmentDate).slice(0, 10),
 				startTime: String(a.fromTime ?? '').trim(),
 				endTime: String(a.toTime ?? '').trim(),
-				patientName: a.patientName?.trim() ?? '',
+				patientCode: a.patient?.code?.trim() ?? '',
+				patientName: a.patientName?.trim() ?? (a.patient ? StringUtil.patientDisplayName(a.patient as any) : ''),
 				slotState: toSlotState(a.statusTagging?.code ?? a.statusTagging?.name)
 			}))
 			.filter((s) => s.startTime && s.endTime);
@@ -199,15 +180,14 @@
 			}))
 	);
 
-	/** Expand doctor schedules into (date, startTime, endTime) slots for visible dates. WeekdayId 1=Sun, 7=Sat. Filter by branch when doctor has multiple branches. */
+	/** Expand doctor schedules into (date, startTime, endTime) slots for visible dates. WeekdayId 1=Sun, 7=Sat. */
 	const scheduleSlots = $derived.by(() => {
 		const slots: { date: string; startTime: string; endTime: string }[] = [];
 		const schedules = doctorSchedules.filter(
 			(s) =>
 				String(s.staffId) === String(selectedDoctorId) &&
 				s.statusId !== StatusEnum.INACTIVE &&
-				s.statusId !== StatusEnum.DELETED &&
-				(effectiveBranchId ? String(s.branchId) === effectiveBranchId : true)
+				s.statusId !== StatusEnum.DELETED
 		);
 		for (const dateStr of visibleDates) {
 			const d = new Date(dateStr + 'T12:00:00');
@@ -256,11 +236,7 @@
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
-		getAppointmentWithRelations(
-			hid
-				? { hospitalId: hid, branchId: bid ?? undefined }
-				: undefined
-		).then((all) => {
+		getAppointmentWithRelations().then((all) => {
 			appointments = all;
 		});
 		getAppointmentBlock({
@@ -279,7 +255,7 @@
 			bind:selectedDoctorId
 			bind:selectedBranchId={selectedAppointmentBranchId}
 			branchOptions={doctorBranchOptions}
-			branchLocked={doctorBranchOptions.length <= 1 && !isAllBranchMode}
+			branchLocked={!isAllBranchMode}
 			branchIdForSearch={effectiveBranchId}
 			bind:viewBy
 			bind:timeFormat
@@ -301,11 +277,7 @@
 			{blockSlots}
 			{slotDurationMinutes}
 			onAppointmentCreated={async () => {
-				appointments = await getAppointmentWithRelations(
-					hospitalId
-						? { hospitalId, branchId: effectiveBranchId ?? undefined }
-						: undefined
-				);
+				appointments = await getAppointmentWithRelations();
 			}}
 			onBlockCreated={async (block) => {
 				try {

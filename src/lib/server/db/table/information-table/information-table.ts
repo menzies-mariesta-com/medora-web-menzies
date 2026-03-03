@@ -512,5 +512,10 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	symptom: text('symptom'),
 	description: text('description'),
 	remark: text('remark'),
+	/** When the vital was recorded/taken (nullable; defaults to createdAt if not set). */
+	vitalDateTime: timestamp('vital_date_time', {
+		withTimezone: true,
+		mode: 'string',
+	}),
 	...timestamps,
 });

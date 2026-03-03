@@ -14,6 +14,10 @@
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import {
+		getVitalPlaceholder,
+		vitalInputClass
+	} from '$lib/config/vital.config';
 
 	const toastService = new ToastService();
 
@@ -35,20 +39,51 @@
 	let spO2 = $state('');
 	let respiration = $state('');
 	let rbs = $state('');
+	let vitalDateTime = $state('');
 	let symptom = $state('');
 	let description = $state('');
 	let remark = $state('');
 
-	function parseDecimal(v: string): string | null {
-		const s = v.trim();
-		if (!s) return null;
-		const n = Number(s);
-		if (Number.isNaN(n)) return null;
-		return String(n);
-	}
+function parseDecimal(v: string): string | null {
+	const s = v.trim();
+	if (!s) return null;
+	const n = Number(s);
+	if (Number.isNaN(n)) return null;
+	return String(n);
+}
 
 	function asStr(v: unknown): string {
 		return v != null ? String(v) : '';
+	}
+
+	/** Format ISO/date string to datetime-local input value (YYYY-MM-DDTHH:mm). */
+	function formatVitalDateTimeForInput(v: unknown): string {
+		if (v == null || v === '') return '';
+		try {
+			const d = new Date(String(v));
+			if (isNaN(d.getTime())) return '';
+			const y = d.getFullYear();
+			const m = String(d.getMonth() + 1).padStart(2, '0');
+			const day = String(d.getDate()).padStart(2, '0');
+			const h = String(d.getHours()).padStart(2, '0');
+			const min = String(d.getMinutes()).padStart(2, '0');
+			return `${y}-${m}-${day}T${h}:${min}`;
+		} catch {
+			return '';
+		}
+	}
+
+	/** Parse datetime-local value to ISO string for API. */
+	function parseVitalDateTime(s: string): string | undefined {
+		const t = s.trim();
+		if (!t) return undefined;
+		try {
+			const d = new Date(t);
+			if (isNaN(d.getTime())) return undefined;
+			return d.toISOString();
+		} catch {
+			return undefined;
+		}
 	}
 
 	$effect(() => {
@@ -65,11 +100,14 @@
 					spO2 = asStr(v.spO2);
 					respiration = asStr(v.respiration);
 					rbs = asStr(v.rbs);
+					vitalDateTime = formatVitalDateTimeForInput(v.vitalDateTime ?? v.createdAt);
 					symptom = asStr(v.symptom);
 					description = asStr(v.description);
 					remark = asStr(v.remark);
 				}
 			});
+		} else if (!vitalDateTime.trim()) {
+			vitalDateTime = formatVitalDateTimeForInput(new Date().toISOString());
 		}
 	});
 
@@ -124,6 +162,7 @@
 			symptom: asStr(symptom).trim() || undefined,
 			description: asStr(description).trim() || undefined,
 			remark: asStr(remark).trim() || undefined,
+			vitalDateTime: parseVitalDateTime(vitalDateTime),
 		};
 		try {
 			if (isEditMode && vitalId) {
@@ -152,6 +191,18 @@
 
 <form onsubmit={handleSubmit} class="flex flex-col gap-4">
 	<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
+		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3 md:col-span-2 xl:col-span-3">
+			<DaisyUiLabel forText="vital-datetime" className="shrink-0 sm:w-36">Vital Date & Time</DaisyUiLabel>
+			<div class="max-w-80 flex-1">
+				<DaisyUiInputField
+					id="vital-datetime"
+					bind:value={vitalDateTime}
+					inputType="datetime-local"
+					inputPlaceholderText="Select date and time"
+					className="w-full"
+				/>
+			</div>
+		</div>
 		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 			<DaisyUiLabel forText="vital-height" className="shrink-0 sm:w-36">Height (cm)</DaisyUiLabel>
 			<div class="max-w-80 flex-1">
@@ -185,9 +236,10 @@
 					id="vital-temp"
 					bind:value={temperature}
 					inputType="number"
-					inputPlaceholderText="e.g. 36.5"
+					inputPlaceholderText={getVitalPlaceholder('temperature')}
 					min="0"
 					step="any"
+					className={vitalInputClass(temperature, 'temperature')}
 				/>
 			</div>
 		</div>
@@ -198,9 +250,10 @@
 					id="vital-bp-sys"
 					bind:value={bpSystolic}
 					inputType="number"
-					inputPlaceholderText="e.g. 120"
+					inputPlaceholderText={getVitalPlaceholder('bpSystolic')}
 					min="0"
 					step="any"
+					className={vitalInputClass(bpSystolic, 'bpSystolic')}
 				/>
 			</div>
 		</div>
@@ -211,9 +264,10 @@
 					id="vital-bp-dia"
 					bind:value={bpDiastolic}
 					inputType="number"
-					inputPlaceholderText="e.g. 80"
+					inputPlaceholderText={getVitalPlaceholder('bpDiastolic')}
 					min="0"
 					step="any"
+					className={vitalInputClass(bpDiastolic, 'bpDiastolic')}
 				/>
 			</div>
 		</div>
@@ -224,9 +278,10 @@
 					id="vital-pulse"
 					bind:value={pulse}
 					inputType="number"
-					inputPlaceholderText="e.g. 72"
+					inputPlaceholderText={getVitalPlaceholder('pulse')}
 					min="0"
 					step="any"
+					className={vitalInputClass(pulse, 'pulse')}
 				/>
 			</div>
 		</div>
@@ -237,9 +292,10 @@
 					id="vital-resp"
 					bind:value={respiration}
 					inputType="number"
-					inputPlaceholderText="e.g. 16"
+					inputPlaceholderText={getVitalPlaceholder('respiration')}
 					min="0"
 					step="any"
+					className={vitalInputClass(respiration, 'respiration')}
 				/>
 			</div>
 		</div>
@@ -250,10 +306,11 @@
 					id="vital-spo2"
 					bind:value={spO2}
 					inputType="number"
-					inputPlaceholderText="e.g. 98"
+					inputPlaceholderText={getVitalPlaceholder('spO2')}
 					min="0"
 					max="100"
 					step="any"
+					className={vitalInputClass(spO2, 'spO2')}
 				/>
 			</div>
 		</div>
@@ -264,9 +321,10 @@
 					id="vital-rbs"
 					bind:value={rbs}
 					inputType="number"
-					inputPlaceholderText="e.g. 90"
+					inputPlaceholderText={getVitalPlaceholder('rbs')}
 					min="0"
 					step="any"
+					className={vitalInputClass(rbs, 'rbs')}
 				/>
 			</div>
 		</div>

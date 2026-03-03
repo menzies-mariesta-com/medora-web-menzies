@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772512125499,
+      "tag": "0000_add_vital_date_time",
+      "breakpoints": true
+    }
+  ]
+}

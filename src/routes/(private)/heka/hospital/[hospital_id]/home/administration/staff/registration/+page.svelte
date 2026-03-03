@@ -149,6 +149,8 @@
 	let selectedSignatureImageUrl: string = $state('');
 	let selectedSignatureText: string = $state('');
 
+	// After creating a new staff, hide the Save button until user clicks New
+	let disableCreateSave: boolean = $state(false);
 	const viewId = $derived(page.url.searchParams.get('view'));
 	const editId = $derived(page.url.searchParams.get('edit'));
 	const isViewMode = $derived(!!viewId);
@@ -761,51 +763,8 @@
 				StatusColorEnum.INFO
 			);
 
-			// Reset form
-			selectedStaffCode = '';
-			selectedTitleId = '';
-			selectedFirstName = '';
-			selectedMiddleName = '';
-			selectedLastName = '';
-			selectedEmail = '';
-			selectedGenderId = '';
-			selectedMaritalStatusId = '';
-			selectedPhoneCountryId = '';
-			selectedPhone = '';
-			selectedPhoneSecondaryCountryId = '';
-			selectedPhoneSecondary = '';
-			selectedStaffEmploymentTypeId = '';
-			selectedEducation = '';
-			selectedDesignation = '';
-			selectedDepartmentId = '';
-			selectedSpecializationId = '';
-			selectedCountryId = '';
-			selectedStateId = '';
-			selectedCityId = '';
-			selectedPostalCodeId = '';
-			selectedStaffTypeId = '';
-			selectedIdentityTypeId = '';
-			selectedIdentityNumber = '';
-			selectedDateOfBirth = '';
-			selectedJoinDate = dateTimeUtil.getTodayDateString();
-			selectedResignDate = '';
-			selectedAddress = '';
-			selectedRemark = '';
-			selectedUserGroups = [];
-			selectedBranchIds = [];
-			isActive = true;
-			isSuperAdmin = false;
-			isLocked = false;
-			if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-			photoPreviewUrl = '';
-			photoFile = null;
-			if (photoInputEl) photoInputEl.value = '';
-			licenseAndSignatureModalOpen = false;
-			selectedLicenseNo = '';
-			selectedLicenseExpiryDate = '';
-			signatureFile = null;
-			selectedSignatureImageUrl = '';
-			selectedSignatureText = '';
+			disableCreateSave = true;
+
 		} catch (error: unknown) {
 			let message: string | null = null;
 
@@ -833,12 +792,60 @@
 			isLoading = false;
 		}
 	}
+
+	function resetStaffFormForNew() {
+		disableCreateSave = false;
+		selectedStaffCode = '';
+		selectedTitleId = '';
+		selectedFirstName = '';
+		selectedMiddleName = '';
+		selectedLastName = '';
+		selectedEmail = '';
+		selectedGenderId = '';
+		selectedMaritalStatusId = '';
+		selectedPhoneCountryId = '';
+		selectedPhone = '';
+		selectedPhoneSecondaryCountryId = '';
+		selectedPhoneSecondary = '';
+		selectedStaffEmploymentTypeId = '';
+		selectedEducation = '';
+		selectedDesignation = '';
+		selectedDepartmentId = '';
+		selectedSpecializationId = '';
+		selectedCountryId = '';
+		selectedStateId = '';
+		selectedCityId = '';
+		selectedPostalCodeId = '';
+		selectedStaffTypeId = '';
+		selectedIdentityTypeId = '';
+		selectedIdentityNumber = '';
+		selectedDateOfBirth = '';
+		selectedJoinDate = dateTimeUtil.getTodayDateString();
+		selectedResignDate = '';
+		selectedAddress = '';
+		selectedRemark = '';
+		selectedUserGroups = [];
+		selectedBranchIds = [];
+		isActive = true;
+		isSuperAdmin = false;
+		isLocked = false;
+		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+		photoPreviewUrl = '';
+		photoFile = null;
+		if (photoInputEl) photoInputEl.value = '';
+		licenseAndSignatureModalOpen = false;
+		selectedLicenseNo = '';
+		selectedLicenseExpiryDate = '';
+		signatureFile = null;
+		selectedSignatureImageUrl = '';
+		selectedSignatureText = '';
+	}
 </script>
 
 <DaisyUiCard>
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
-			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
+			<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0">
 				<DaisyUiCardBodyTitle className="mb-5"
 					>Profile Details</DaisyUiCardBodyTitle
 				>
@@ -851,7 +858,7 @@
 				<div
 					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 				>
-					<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
+					<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
 						<DaisyUiFileInput
 							accept="image/jpeg,image/png,image/webp,image/gif"
 							className="hidden"
@@ -909,7 +916,7 @@
 				</div>
 
 				<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
-				<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0 flex-1">
+				<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0 flex-1">
 				<div
 					class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
 				>
@@ -977,7 +984,7 @@
 				</fieldset>
 			</div>
 
-			<fieldset disabled={isViewMode} class="border-0 p-0 m-0 min-w-0">
+			<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0">
 				<!-- More Info: 1 col mobile, 2 cols md+ -->
 				<LStaffRegistrationMoreInfo
 					bind:selectedAddress
@@ -996,20 +1003,30 @@
 					bind:isSuperAdmin
 					bind:isLocked
 				/>
+			</fieldset>
 
-				<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
-				{#if !isViewMode}
-					<DaisyUiCardBodyAction className="mt-6">
+			<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
+			{#if !isViewMode}
+				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
+						disabled={isLoading || (!isEditMode && disableCreateSave)}
+					>
+						{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
+					</DaisyUiButton>
+					{#if !isEditMode && disableCreateSave}
 						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
+							type="button"
+							className="d-btn-outline d-btn-wide"
+							onClick={resetStaffFormForNew}
 							disabled={isLoading}
 						>
-							{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
+							New
 						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{/if}
-			</fieldset>
+					{/if}
+				</DaisyUiCardBodyAction>
+			{/if}
 			<LStaffRegistrationLicenseAndSignatureModal
 				bind:open={licenseAndSignatureModalOpen}
 				bind:licenseNo={selectedLicenseNo}
