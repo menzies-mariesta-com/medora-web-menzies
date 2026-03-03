@@ -31,6 +31,7 @@ import type {
 	subCategoryTable,
 	serviceItemTable,
 	serviceTaggingTable,
+	storeTable,
 } from './information-table';
 
 // Information Tables (alphabetical)
@@ -163,3 +164,7 @@ export type ServiceItemSchemaUpdate = Partial<ServiceItemSchemaInsert>;
 export type ServiceTaggingSchema = InferSelectModel<typeof serviceTaggingTable>;
 export type ServiceTaggingSchemaInsert = InferInsertModel<typeof serviceTaggingTable>;
 export type ServiceTaggingSchemaUpdate = Partial<ServiceTaggingSchemaInsert>;
+
+export type StoreSchema = InferSelectModel<typeof storeTable>;
+export type StoreSchemaInsert = InferInsertModel<typeof storeTable>;
+export type StoreSchemaUpdate = Partial<StoreSchemaInsert>;

@@ -24,6 +24,7 @@ import type {
 	unitTypeTable,
 	visitTypeTable,
 	weekdayTable,
+	allergyMasterTable,
 } from './master-table';
 import type { Infer } from 'zod';
 
@@ -123,3 +124,7 @@ export type UnitSchemaUpdate = Partial<UnitSchemaInsert>;
 export type VisitTypeSchema = InferSelectModel<typeof visitTypeTable>;
 export type VisitTypeSchemaInsert = InferInsertModel<typeof visitTypeTable>;
 export type VisitTypeSchemaUpdate = Partial<VisitTypeSchemaInsert>;
+
+export type AllergyMasterSchema = InferSelectModel<typeof allergyMasterTable>;
+export type AllergyMasterSchemaInsert = InferInsertModel<typeof allergyMasterTable>;
+export type AllergyMasterSchemaUpdate = Partial<AllergyMasterSchemaInsert>;
