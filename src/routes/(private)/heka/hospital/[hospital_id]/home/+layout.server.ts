@@ -132,10 +132,13 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			: staffBranchesForNav;
 		const branchNavIds = staffBranchesForNavWithAll.map((b) => b.id);
 		const branchCookieValue = cookies.get(COOKIE_SELECTED_BRANCH_ID);
+		// Staff with only one branch: always use that branch (no selector); otherwise use cookie or first option
 		const selectedBranchId =
-			branchCookieValue != null && branchNavIds.includes(branchCookieValue)
-				? branchCookieValue
-				: branchNavIds[0] ?? null;
+			staffBranchesForNav.length === 1
+				? staffBranchesForNav[0].id
+				: branchCookieValue != null && branchNavIds.includes(branchCookieValue)
+					? branchCookieValue
+					: branchNavIds[0] ?? null;
 
 		// 2. Page ids for the **selected** user group only (restrict pages and restrictions to this group)
 		const userGroupPages = await ensureDb()
