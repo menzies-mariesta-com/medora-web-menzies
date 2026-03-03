@@ -16,7 +16,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable } from '../master-table/master-table';
+import { allergyMasterTable, bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -367,13 +367,22 @@ export const patientInsurance = pgTable('patient_insurance', {
 	...timestamps,
 })
 
-export const patientAllergyTable = pgTable('patient_allergies', {
+export const patientAllergyTable = pgTable('patient_allergy', {
 	id: serial('id').primaryKey(),
 	patientId: uuid('patient_id')
 		.notNull()
 		.references(() => patientTable.id),
-	description: text('description'),
-	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+	allergyTypeId: integer('allergy_type_id')
+		.notNull()
+		.references(() => allergyMasterTable.allergyTypeId),
+	reaction: text('reaction'),
+	remark: text('remark'),
+	deActivationRemarks: text('de_activation_remarks'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps,
 })
 
@@ -579,6 +588,21 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
 	serviceAmount: decimal('service_amount', { precision: 10, scale: 2 }),
 	serviceTaxAmount: decimal('service_tax_amount', { precision: 10, scale: 2 }),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps,
+});
+
+export const storeTable = pgTable('store', {
+	id: serial('id').primaryKey(),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+	storeName: varchar('store_name', { length: 512 }),
+	remark: text('remark'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
