@@ -27,6 +27,10 @@ import type {
 	patientVisitTable,
 	patientDiagnosisTable,
 	appointmentBlockTable,
+	categoryTable,
+	subCategoryTable,
+	serviceItemTable,
+	serviceTaggingTable,
 } from './information-table';
 
 // Information Tables (alphabetical)
@@ -143,3 +147,19 @@ export type PatientVisitSchemaUpdate = Partial<PatientVisitSchemaInsert>;
 export type PatientDiagnosisSchema = InferSelectModel<typeof patientDiagnosisTable>;
 export type PatientDiagnosisSchemaInsert = InferInsertModel<typeof patientDiagnosisTable>;
 export type PatientDiagnosisSchemaUpdate = Partial<PatientDiagnosisSchemaInsert>;
+
+export type CategorySchema = InferSelectModel<typeof categoryTable>;
+export type CategorySchemaInsert = InferInsertModel<typeof categoryTable>;
+export type CategorySchemaUpdate = Partial<CategorySchemaInsert>;
+
+export type SubCategorySchema = InferSelectModel<typeof subCategoryTable>;
+export type SubCategorySchemaInsert = InferInsertModel<typeof subCategoryTable>;
+export type SubCategorySchemaUpdate = Partial<SubCategorySchemaInsert>;
+
+export type ServiceItemSchema = InferSelectModel<typeof serviceItemTable>;
+export type ServiceItemSchemaInsert = InferInsertModel<typeof serviceItemTable>;
+export type ServiceItemSchemaUpdate = Partial<ServiceItemSchemaInsert>;
+
+export type ServiceTaggingSchema = InferSelectModel<typeof serviceTaggingTable>;
+export type ServiceTaggingSchemaInsert = InferInsertModel<typeof serviceTaggingTable>;
+export type ServiceTaggingSchemaUpdate = Partial<ServiceTaggingSchemaInsert>;
