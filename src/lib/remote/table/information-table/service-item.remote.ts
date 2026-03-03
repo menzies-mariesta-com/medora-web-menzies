@@ -6,112 +6,6 @@ import type {
 	ServiceItemSchemaInsert,
 	ServiceItemSchemaUpdate,
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
-import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
-
-// get all
-export const getServiceItem = query(async (): Promise<ServiceItemSchema[]> => {
-	const data = await ensureDb().select().from(table.serviceItemTable);
-	return data;
-});
-
-// get count
-export const getServiceItemCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.serviceItemTable);
-	return row?.count ?? 0;
-});
-
-// get paginated
-export const getServiceItemPaginated = query(
-	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<ServiceItemSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.serviceItemTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.serviceItemTable),
-		]);
-		const total = countResult[0]?.count ?? 0;
-		return {
-			data,
-			total,
-			page,
-			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
-		};
-	}
-);
-
-// get one
-export const getServiceItemById = query(
-	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ServiceItemSchema | null> => {
-		const [row] = await ensureDb()
-			.select()
-			.from(table.serviceItemTable)
-			.where(eq(table.serviceItemTable.id, id));
-		return row ?? null;
-	}
-);
-
-// create
-export const createServiceItem = command(
-	'unchecked' as const,
-	async (payload: ServiceItemSchemaInsert): Promise<ServiceItemSchema> => {
-		const [row] = await ensureDb()
-			.insert(table.serviceItemTable)
-			.values(payload)
-			.returning();
-		if (!row) throw new Error('Insert failed');
-		getServiceItem().refresh();
-		return row;
-	}
-);
-
-// update
-export const updateServiceItem = command(
-	'unchecked' as const,
-	async (
-		payload: { id: number } & ServiceItemSchemaUpdate,
-	): Promise<ServiceItemSchema> => {
-		const { id, ...rest } = payload;
-		const [row] = await ensureDb()
-			.update(table.serviceItemTable)
-			.set(rest as ServiceItemSchemaUpdate)
-			.where(eq(table.serviceItemTable.id, id))
-			.returning();
-		if (!row) throw new Error('Update failed');
-		getServiceItem().refresh();
-		return row;
-	}
-);
-
-// delete (hard)
-export const deleteServiceItem = command(
-	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.serviceItemTable).where(eq(table.serviceItemTable.id, id));
-		getServiceItem().refresh();
-	}
-);
-
-// delete complete (hard, alias)
-export const deleteServiceItemComplete = command(
-	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.serviceItemTable).where(eq(table.serviceItemTable.id, id));
-		getServiceItem().refresh();
-	}
-);
-
-import { query, command } from '$app/server';
-import { ensureDb } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import type {
-	ServiceItemSchema,
-	ServiceItemSchemaInsert,
-	ServiceItemSchemaUpdate,
-} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
@@ -137,7 +31,7 @@ export const getServiceItem = query(
 			.select()
 			.from(table.serviceItemTable)
 			.where(whereExpr)
-			.orderBy(table.serviceItemTable.name);
+			.orderBy(table.serviceItemTable.serviceName);
 	}
 );
 
@@ -169,7 +63,7 @@ export const getServiceItemPaginated = query(
 				.select()
 				.from(table.serviceItemTable)
 				.where(whereExpr)
-				.orderBy(table.serviceItemTable.name)
+				.orderBy(table.serviceItemTable.serviceName)
 				.limit(limit)
 				.offset(offset),
 			ensureDb().select({ count: count() }).from(table.serviceItemTable).where(whereExpr),
@@ -255,4 +149,3 @@ export const deleteServiceItemComplete = command(
 		getServiceItemPaginated(undefined).refresh();
 	}
 );
-
