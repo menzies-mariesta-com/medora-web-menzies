@@ -512,5 +512,77 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	symptom: text('symptom'),
 	description: text('description'),
 	remark: text('remark'),
+	vitalDateTime: timestamp('vital_date_time', {
+        withTimezone: true,
+        mode: 'string',
+    }),
+	...timestamps,
+});
+
+export const categoryTable = pgTable('category', {
+	id: serial('id').primaryKey(),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+	categoryName: varchar('category_name', { length: 512 }),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps,
+});
+
+export const subCategoryTable = pgTable('sub_category', {
+	id: serial('id').primaryKey(),
+	categoryId: integer('category_id')
+		.notNull()
+		.references(() => categoryTable.id, { onDelete: 'cascade' }),
+	subCategoryName: varchar('sub_category_name', { length: 512 }),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps,
+});
+
+export const serviceItemTable = pgTable('service_item', {
+	id: serial('id').primaryKey(),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	subCategoryId: integer('sub_category_id')
+		.notNull()
+		.references(() => subCategoryTable.id, { onDelete: 'cascade' }),
+	serviceName: varchar('service_name', { length: 512 }),
+	serviceCode: varchar('service_code', { length: 128 }),
+	remark: text('remark'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps,
+});
+
+export const serviceTaggingTable = pgTable('service_tagging', {
+	id: serial('id').primaryKey(),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+	serviceId: integer('service_id')
+		.notNull()
+		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
+	serviceAmount: decimal('service_amount', { precision: 10, scale: 2 }),
+	serviceTaxAmount: decimal('service_tax_amount', { precision: 10, scale: 2 }),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps,
 });
