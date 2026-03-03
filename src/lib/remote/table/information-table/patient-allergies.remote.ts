@@ -23,6 +23,7 @@ export const getPatientAllergiesWithRelations = query(async () => {
 	return ensureDb().query.patientAllergyTable.findMany({
 		with: {
 			patient: true,
+			allergyType: true,
 		},
 	});
 });
@@ -74,6 +75,22 @@ export const getPatientAllergiesById = query(
 			.from(table.patientAllergyTable)
 			.where(eq(table.patientAllergyTable.id, id));
 		return row ?? null;
+	}
+);
+
+// get by patient
+export const getPatientAllergiesByPatientId = query(
+	'unchecked' as const,
+	async ({
+		patientId,
+	}: {
+		patientId: string;
+	}): Promise<PatientAllergiesSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.patientId, patientId))
+			.orderBy(table.patientAllergyTable.id);
 	}
 );
 
