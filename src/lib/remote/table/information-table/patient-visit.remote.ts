@@ -146,6 +146,25 @@ export const getPatientVisitById = query(
 	}
 );
 
+// Get by ID with relations (for visit info display)
+export const getPatientVisitByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<PatientVisitWithRelations | null> => {
+		const row = await ensureDb().query.patientVisitTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				patient: { with: { title: true }},
+				status: true,
+				visitType: true,
+				hospital: true,
+				branch: true,
+				doctor: { with: { title: true }}
+			}
+		});
+		return row as PatientVisitWithRelations | null;
+	}
+);
+
 // Create
 export const createPatientVisit = command(
 	'unchecked' as const,
@@ -242,7 +261,7 @@ export const getPatientVisitPaginatedForEmr = query(
 			);
 		}
 
-		// Global search
+		// Global search (optional; when no specific filters are used)
 		const searchTerm = params?.search?.trim();
 		if (searchTerm) {
 			const pattern = `%${searchTerm}%`;
@@ -261,6 +280,64 @@ export const getPatientVisitPaginatedForEmr = query(
 						WHERE concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
 					)`
 				) as any
+			);
+		}
+
+		// Specific column filters (each filters only its own field)
+		const patientCodeTerm = params?.patientCode?.trim();
+		if (patientCodeTerm) {
+			const pattern = `%${patientCodeTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				sql`${table.patientVisitTable.patientId} IN (
+					SELECT id FROM patient WHERE code ILIKE ${pattern}
+				)` as any
+			);
+		}
+
+		const patientNameTerm = params?.patientName?.trim();
+		if (patientNameTerm) {
+			const pattern = `%${patientNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				sql`${table.patientVisitTable.patientId} IN (
+					SELECT id FROM patient
+					WHERE concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
+				)` as any
+			);
+		}
+
+		const hospitalNameTerm = params?.hospitalName?.trim();
+		if (hospitalNameTerm) {
+			const pattern = `%${hospitalNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				sql`${table.patientVisitTable.hospitalId} IN (
+					SELECT id FROM hospital WHERE name ILIKE ${pattern}
+				)` as any
+			);
+		}
+
+		const branchNameTerm = params?.branchName?.trim();
+		if (branchNameTerm) {
+			const pattern = `%${branchNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				sql`${table.patientVisitTable.branchId} IN (
+					SELECT id FROM hospital_branch WHERE name ILIKE ${pattern}
+				)` as any
+			);
+		}
+
+		const doctorNameTerm = params?.doctorName?.trim();
+		if (doctorNameTerm) {
+			const pattern = `%${doctorNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				sql`${table.patientVisitTable.doctorId} IN (
+					SELECT id FROM staff
+					WHERE concat_ws(' ', first_name, middle_name, last_name) ILIKE ${pattern}
+				)` as any
 			);
 		}
 

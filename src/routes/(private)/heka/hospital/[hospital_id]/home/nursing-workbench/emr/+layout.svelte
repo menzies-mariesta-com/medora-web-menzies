@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { hekaHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { getSubPages, pathnameForPageMatch } from '$lib/state/page.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import LPatientListDialogContent from '$lib/component/local/private/heka/emr/LPatientListDialogContent.svelte';
+	import LVisitInfoBar from '$lib/component/local/private/heka/visit/LVisitInfoBar.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
@@ -27,52 +26,36 @@
 	}
 
 	const selectedVisitId = $derived(page.url.searchParams.get('visitId') ?? '');
-	const selectedPatientName = $derived(page.url.searchParams.get('patientName') ?? '');
-	const selectedVisitLabel = $derived(
-		selectedVisitId
-			? `Visit ${selectedVisitId} – ${selectedPatientName || ''}`
-			: m.no_visit_selected()
-	);
 
-	async function handleChoosePatient() {
-		if (!hospitalId) return;
-		const result = await dialogService.open<{
-			visitId: number;
-			patientName: string;
-		}>({
-			title: m.choose_visit(),
-			component: LPatientListDialogContent,
-			fullScreen: true
-		});
-		if (result?.confirmed && result.data) {
-			const search = new URLSearchParams(page.url.search);
-			search.set('visitId', String(result.data.visitId));
-			search.set('patientName', result.data.patientName);
-			const base = page.url.pathname;
-			const url =
-				search.toString().length > 0 ? `${base}?${search.toString()}` : base;
-			routerUtil.replaceRoute(url);
-		}
+	function handleVisitSelected(data: { visitId: number; patientName: string }) {
+		const search = new URLSearchParams(page.url.search);
+		search.set('visitId', String(data.visitId));
+		search.set('patientName', data.patientName);
+		const base = page.url.pathname;
+		const url =
+			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+		routerUtil.replaceRoute(url);
+	}
+
+	function handleVisitReset() {
+		const search = new URLSearchParams(page.url.search);
+		search.delete('visitId');
+		search.delete('patientName');
+		const base = page.url.pathname;
+		const url =
+			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+		routerUtil.replaceRoute(url);
 	}
 </script>
 
 {#if subPages.length > 0}
 	<div class="emr-subnav-wrapper">
-		<div class="emr-patient-bar">
-			<div class="emr-patient-bar-left">
-				<div class="emr-patient-bar-title">{m.selected_visit()}</div>
-				<div class="emr-patient-bar-value">{selectedVisitLabel}</div>
-			</div>
-			<div class="emr-patient-bar-right">
-				<button
-					type="button"
-					class="emr-patient-bar-button"
-					onclick={handleChoosePatient}
-				>
-					{m.select_visit()}
-				</button>
-			</div>
-		</div>
+		<LVisitInfoBar
+			visitId={selectedVisitId}
+			hospitalId={hospitalId}
+			onVisitSelected={handleVisitSelected}
+			onVisitReset={handleVisitReset}
+		/>
 		<nav role="tablist" class="emr-subnav-tabs">
 			{#each subPages as sub (sub.id)}
 				<button
@@ -131,44 +114,6 @@
 		opacity: 1;
 		border-bottom-color: var(--color-primary, #570df8);
 		font-weight: 600;
-	}
-	.emr-patient-bar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		border-top: 1px solid var(--color-base-300, #d1d5db);
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
-		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-	}
-	.emr-patient-bar-left {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-	}
-	.emr-patient-bar-title {
-		font-weight: 600;
-	}
-	.emr-patient-bar-value {
-		color: var(--color-base-400, #9ca3af);
-	}
-	.emr-patient-bar-right {
-		display: flex;
-		align-items: center;
-	}
-	.emr-patient-bar-button {
-		appearance: none;
-		border-radius: 0.25rem;
-		border: 1px solid var(--color-primary, #570df8);
-		background: var(--color-primary, #570df8);
-		color: white;
-		padding: 0.35rem 0.9rem;
-		font: inherit;
-		cursor: pointer;
-	}
-	.emr-patient-bar-button:hover {
-		filter: brightness(1.05);
 	}
 	.emr-subnav-content {
 		display: block;
