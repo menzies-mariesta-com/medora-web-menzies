@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
 	appointmentTable,
+	categoryTable,
 	doctorScheduleTable,
 	externalReferTable,
 	appointmentBlockTable,
@@ -18,7 +19,10 @@ import {
 	patientVisitTable,
 	insuranceTable,
 	staffDepartmentTable,
+	serviceItemTable,
+	serviceTaggingTable,
 	staffDetailTable,
+	subCategoryTable,
 	staffBranchTable,
 	staffHospitalTable,
 	staffTable,
@@ -94,6 +98,8 @@ export const hospitalTableRelations = relations(hospitalTable, ({ one, many }) =
 	doctorSchedules: many(doctorScheduleTable),
 	externalRefers: many(externalReferTable),
 	appointmentBlocks: many(appointmentBlockTable),
+	categories: many(categoryTable),
+	serviceItems: many(serviceItemTable),
 }));
 
 export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ one, many }) => ({
@@ -128,6 +134,8 @@ export const hospitalBranchTableRelations = relations(hospitalBranchTable, ({ on
 	appointments: many(appointmentTable),
 	doctorSchedules: many(doctorScheduleTable),
 	staffBranches: many(staffBranchTable),
+	categories: many(categoryTable),
+	serviceTaggings: many(serviceTaggingTable),
 }));
 
 export const hospitalPatientCodeCounterTableRelations = relations(
@@ -687,6 +695,65 @@ export const patientAllergyTableRelations = relations(patientAllergyTable, ({ on
 	}),
 	status: one(statusTable, {
 		fields: [patientAllergyTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
+
+export const categoryTableRelations = relations(categoryTable, ({ one, many }) => ({
+	hospital: one(hospitalTable, {
+		fields: [categoryTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	branch: one(hospitalBranchTable, {
+		fields: [categoryTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [categoryTable.statusId],
+		references: [statusTable.id],
+	}),
+	subCategories: many(subCategoryTable),
+}));
+
+export const subCategoryTableRelations = relations(subCategoryTable, ({ one, many }) => ({
+	category: one(categoryTable, {
+		fields: [subCategoryTable.categoryId],
+		references: [categoryTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [subCategoryTable.statusId],
+		references: [statusTable.id],
+	}),
+	serviceItems: many(serviceItemTable),
+}));
+
+export const serviceItemTableRelations = relations(serviceItemTable, ({ one, many }) => ({
+	hospital: one(hospitalTable, {
+		fields: [serviceItemTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	subCategory: one(subCategoryTable, {
+		fields: [serviceItemTable.subCategoryId],
+		references: [subCategoryTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [serviceItemTable.statusId],
+		references: [statusTable.id],
+	}),
+	serviceTaggings: many(serviceTaggingTable),
+}));
+
+export const serviceTaggingTableRelations = relations(serviceTaggingTable, ({ one }) => ({
+	branch: one(hospitalBranchTable, {
+		fields: [serviceTaggingTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+	serviceItem: one(serviceItemTable, {
+		fields: [serviceTaggingTable.serviceId],
+		references: [serviceItemTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [serviceTaggingTable.statusId],
 		references: [statusTable.id],
 	}),
 }));

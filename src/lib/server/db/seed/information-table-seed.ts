@@ -29,19 +29,9 @@ export async function seedInformationTables() {
 			(1, 'Administration', 1, 1, '/heka/home/administration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-star-icon lucide-user-star"><path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/><path d="M8 15H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>'),
 			(2, 'Registration', 2, 1, '/heka/home/registration', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round-icon lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>'),
 			(3, 'Appointment', 3, 1, '/heka/home/appointment', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-clock-icon lucide-clipboard-clock"><path d="M16 14v2.2l1.6 1"/><path d="M16 4h2a2 2 0 0 1 2 2v.832"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h2"/><circle cx="16" cy="16" r="6"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>'),
-			(4, 'Nursing Workbench', 4, 1, '/heka/home/nursing-workbench', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-app-window-icon lucide-app-window"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>')
+			(4, 'Nursing Workbench', 4, 1, '/heka/home/nursing-workbench', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-app-window-icon lucide-app-window"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>'),
+			(5, 'Service Item', 5, 1, '/heka/home/service-item', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>')
 			
-			-- (1, 'Dashboard', 'layout-dashboard.svg', 1, 1, '/heka/home/dashboard'),
-			-- (3, 'Appointment', 'calendar.svg', 3, 1, '/heka/home/appointment'),
-			-- (4, 'Settings', 'settings.svg', 4, 1, '/heka/home/settings'),
-			-- (6, 'Report', 'report.svg', 6, 1, '/heka/home/report'),
-			-- (7, 'Billing', 'billing.svg', 7, 1, '/heka/home/billing'),
-			-- (8, 'CPOE', 'cpoe.svg', 8, 1, '/heka/home/cpoe'),
-			-- (9, 'Pharmacy', 'pharmacy.svg', 9, 1, '/heka/home/pharmacy'),
-			-- (10, 'Medical Record', 'medical-record.svg', 10, 1, '/heka/home/medical-record'),
-			-- (11, 'Inventory', 'inventory.svg', 11, 1, '/heka/home/inventory'),
-			-- (12, 'Nursing', 'nursing.svg', 12, 1, '/heka/home/nursing'),
-			-- (13, 'Emergency', 'emergency.svg', 13, 1, '/heka/home/emergency')
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	console.log('Seeded: module');
@@ -92,6 +82,11 @@ export async function seedInformationTables() {
 			-- branches (per-hospital; Branch is under Hospital)
 			(7, 'Branches', 1, 1, null, '/heka/home/administration/branches', 5),
 
+			-- category
+			(9, 'Category', 1, 1, null, '/heka/home/administration/category', 6),
+			(900001, 'Category', 1, 1, 9, '/heka/home/administration/category/list', 1),
+			(900002, 'Sub Category', 1, 1, 9, '/heka/home/administration/category/sub-category', 2),
+
 			-- Registration Module
 			-- patient pages
 			(2, 'Patient', 2, 1, null, '/heka/home/registration/patient', 1),
@@ -105,9 +100,13 @@ export async function seedInformationTables() {
 			-- Nursing Workbench Module
 			(8, 'EMR', 4, 1, null, '/heka/home/nursing-workbench/emr', 1),
 			(800001, 'Vital', 4, 1, 8, '/heka/home/nursing-workbench/emr/vital', 1),
-			(800002, 'Diagnosis', 4, 1, 8, '/heka/home/nursing-workbench/emr/diagnosis', 2)
+			(800002, 'Diagnosis', 4, 1, 8, '/heka/home/nursing-workbench/emr/diagnosis', 2),
 
 
+			-- Service Item Module
+			(10, 'Service Item', 5, 1, null, '/heka/home/service-item/service', 7),
+			(1000001, 'Create', 5, 1, 10, '/heka/home/service-item/service/create', 1),
+			(1000002, 'Tagging', 5, 1, 10, '/heka/home/service-item/service/tagging', 2)
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: page')
@@ -148,6 +147,38 @@ export async function seedInformationTables() {
 		ON CONFLICT (id) DO NOTHING;
 		`)
 	console.log('Seeded: status tagging')
+
+	// 8. Category (per-branch, depends: hospital_branch, status)
+	await db.execute(sql`
+		INSERT INTO category (hospital_id, branch_id, category_name, status_id)
+		SELECT 
+			hb.hospital_id,
+			hb.id,
+			c.category_name,
+			1
+		FROM hospital_branch hb
+		CROSS JOIN (
+			VALUES
+				('Radiology'),
+				('Nursing Procedure'),
+				('Medical Gases'),
+				('Ambulance Service'),
+				('Laboratory'),
+				('Hospital Fees'),
+				('Doctor Fees'),
+				('Cathlab'),
+				('Endoscopy'),
+				('Housekeeping')
+		) AS c(category_name)
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM category existing
+			WHERE existing.hospital_id = hb.hospital_id
+				AND existing.branch_id = hb.id
+				AND existing.category_name = c.category_name
+		);
+	`);
+	console.log('Seeded: category');
 
 }
 
