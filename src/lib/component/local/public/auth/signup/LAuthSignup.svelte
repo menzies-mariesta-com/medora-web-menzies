@@ -56,38 +56,65 @@
 		const password = fd.get('password') as string;
 		const confirmPassword = fd.get('confirmPassword') as string;
 
-		const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || firstName || email;
+		const name =
+			[firstName, middleName, lastName].filter(Boolean).join(' ') ||
+			firstName ||
+			email;
 
 		if (!firstName) {
-			toastService.addToast(m.first_name_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.first_name_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!lastName) {
-			toastService.addToast(m.last_name_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.last_name_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!selectedCountryId) {
-			toastService.addToast(m.country_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.country_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!phonePrimary) {
-			toastService.addToast(m.phone_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.phone_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!selectedGenderId) {
-			toastService.addToast(m.gender_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.gender_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!email || !password) {
-			toastService.addToast(m.email_password_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.email_password_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (password.length < 8) {
-			toastService.addToast(m.password_min_length(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.password_min_length(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (password !== confirmPassword) {
-			toastService.addToast(m.passwords_not_match(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.passwords_not_match(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
@@ -99,15 +126,25 @@
 		});
 		if (error) {
 			isLoading = false;
-			toastService.addToast(error.message ?? m.sign_up_failed(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				error.message ?? m.sign_up_failed(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (data?.user) {
-			const countryId = selectedCountryId ? Number(selectedCountryId) : undefined;
-			const genderId = selectedGenderId ? Number(selectedGenderId) : undefined;
+			const countryId = selectedCountryId
+				? Number(selectedCountryId)
+				: undefined;
+			const genderId = selectedGenderId
+				? Number(selectedGenderId)
+				: undefined;
 
 			try {
-				await updateUser({ id: data.user.id, roleId: RoleEnum.OWNER });
+				await updateUser({
+					id: data.user.id,
+					roleId: RoleEnum.OWNER
+				});
 				await createStaff({
 					userId: data.user.id,
 					firstName,
@@ -115,11 +152,14 @@
 					lastName,
 					countryId,
 					genderId,
-					phonePrimary: (fd.get('phonePrimary') as string) || undefined
+					phonePrimary:
+						(fd.get('phonePrimary') as string) || undefined
 				});
 			} catch (err) {
 				const message =
-					err instanceof Error ? err.message : m.profile_create_failed();
+					err instanceof Error
+						? err.message
+						: m.profile_create_failed();
 				toastService.addToast(message, StatusColorEnum.ERROR);
 				isLoading = false;
 				return;
@@ -134,15 +174,15 @@
 
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
-    <form onsubmit={handleSubmit}>
-		<DaisyUiFieldset
-			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-		>
-			<DaisyUiFieldsetLegend>
-				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
-					<img src={HekaLogo} alt="" class="w-42" />
-				</DaisyUiLink>
-			</DaisyUiFieldsetLegend>
+		<form onsubmit={handleSubmit}>
+			<DaisyUiFieldset
+				className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
+			>
+				<DaisyUiFieldsetLegend>
+					<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+						<img src={HekaLogo} alt="" class="w-42" />
+					</DaisyUiLink>
+				</DaisyUiFieldsetLegend>
 				<section id="first-name-input">
 					<DaisyUiInputField
 						inputType="text"
@@ -170,47 +210,47 @@
 					/>
 				</section>
 
-			<section id="country-input">
-				<DaisyUiSelect
-					bind:value={selectedCountryId}
-					optionHeader={m.select_country()}
-					className="bg-base-200"
-				>
-					{#each countryData as data}
-						<option value={String(data.id)} class="gap-5">
-							<DaisyUiAvatar
-								src={data.imageUrl}
-								alt={data.name}
-								className="w-5"
-							/>
-							{data.name}
-							[ {data.code.toUpperCase()} ]
-						</option>
-					{/each}
-				</DaisyUiSelect>
-			</section>
-
-			<section id="phone-number-input">
-				<DaisyUiJoin>
+				<section id="country-input">
 					<DaisyUiSelect
 						bind:value={selectedCountryId}
-						className="max-w-20 bg-base-200"
-						optionHeader={m.select_country_code()}
+						optionHeader={m.select_country()}
+						className="bg-base-200"
 					>
 						{#each countryData as data}
 							<option value={String(data.id)} class="gap-5">
-								{data.countryCallingCode}
+								<DaisyUiAvatar
+									src={data.imageUrl}
+									alt={data.name}
+									className="w-5"
+								/>
+								{data.name}
+								[ {data.code.toUpperCase()} ]
 							</option>
 						{/each}
 					</DaisyUiSelect>
-					<DaisyUiInputField
-						inputType="text"
-						inputPlaceholderText={m.phone_number_primary()}
-						nameText="phonePrimary"
-						className="w-full"
-					/>
-				</DaisyUiJoin>
-			</section>
+				</section>
+
+				<section id="phone-number-input">
+					<DaisyUiJoin>
+						<DaisyUiSelect
+							bind:value={selectedCountryId}
+							className="max-w-20 bg-base-200"
+							optionHeader={m.select_country_code()}
+						>
+							{#each countryData as data}
+								<option value={String(data.id)} class="gap-5">
+									{data.countryCallingCode}
+								</option>
+							{/each}
+						</DaisyUiSelect>
+						<DaisyUiInputField
+							inputType="text"
+							inputPlaceholderText={m.phone_number_primary()}
+							nameText="phonePrimary"
+							className="w-full"
+						/>
+					</DaisyUiJoin>
+				</section>
 
 				<section id="email-input">
 					<DaisyUiInputField
@@ -221,19 +261,19 @@
 					/>
 				</section>
 
-			<section id="gender-type-input">
-				<DaisyUiSelect
-					bind:value={selectedGenderId}
-					optionHeader={m.select_gender()}
-					className="bg-base-200"
-				>
-					{#each genderData as data}
-						<option value={String(data.id)} class="gap-5">
-							{data.name}
-						</option>
-					{/each}
-				</DaisyUiSelect>
-			</section>
+				<section id="gender-type-input">
+					<DaisyUiSelect
+						bind:value={selectedGenderId}
+						optionHeader={m.select_gender()}
+						className="bg-base-200"
+					>
+						{#each genderData as data}
+							<option value={String(data.id)} class="gap-5">
+								{data.name}
+							</option>
+						{/each}
+					</DaisyUiSelect>
+				</section>
 
 				<section id="password">
 					<DaisyUiJoin className="w-full">
@@ -273,22 +313,24 @@
 					{isLoading ? m.signing_up() : m.sign_up()}
 				</DaisyUiButton>
 
-			<div class="my-ft-small flex flex-col gap-3">
-				<div id="login">
-					{m.already_have_account()} <DaisyUiLink
-						href={WebRoutesEnum.LOGIN}
-						className="d-link-info">{m.login()}</DaisyUiLink
-					>
+				<div class="my-ft-small flex flex-col gap-3">
+					<div id="login">
+						{m.already_have_account()}
+						<DaisyUiLink
+							href={WebRoutesEnum.LOGIN}
+							className="d-link-info">{m.login()}</DaisyUiLink
+						>
+					</div>
+					<div id="forget-password">
+						{m.forget_password()}
+						<DaisyUiLink
+							onClick={openResetPasswordModal}
+							className="d-link-info"
+						>
+							{m.reset_password()}
+						</DaisyUiLink>
+					</div>
 				</div>
-				<div id="forget-password">
-					{m.forget_password()} <DaisyUiLink
-						onClick={openResetPasswordModal}
-						className="d-link-info"
-					>
-						{m.reset_password()}
-					</DaisyUiLink>
-				</div>
-			</div>
 			</DaisyUiFieldset>
 		</form>
 	</DaisyUiCardBody>

@@ -1,9 +1,16 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { ModuleSchema, ModuleSchemaInsert, ModuleSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	ModuleSchema,
+	ModuleSchemaInsert,
+	ModuleSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
@@ -15,18 +22,27 @@ export const getModule = query(async (): Promise<ModuleSchema[]> => {
 
 // get count
 export const getModuleCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.moduleTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.moduleTable);
 	return row?.count ?? 0;
 });
 
 // get paginated
 export const getModulePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<ModuleSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<ModuleSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.moduleTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.moduleTable),
+			ensureDb()
+				.select()
+				.from(table.moduleTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb().select({ count: count() }).from(table.moduleTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -34,7 +50,7 @@ export const getModulePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -44,8 +60,8 @@ export const getModuleWithRelations = query(async () => {
 	return ensureDb().query.moduleTable.findMany({
 		with: {
 			status: true,
-			pages: true,
-		},
+			pages: true
+		}
 	});
 });
 
@@ -57,8 +73,8 @@ export const getModuleByIdWithRelations = query(
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				status: true,
-				pages: true,
-			},
+				pages: true
+			}
 		});
 	}
 );
@@ -126,7 +142,9 @@ export const deleteModule = command(
 export const deleteModuleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.moduleTable).where(eq(table.moduleTable.id, id));
+		await ensureDb()
+			.delete(table.moduleTable)
+			.where(eq(table.moduleTable.id, id));
 		getModule().refresh();
 	}
 );

@@ -4,22 +4,33 @@ import * as table from '$lib/server/db/schema';
 import type {
 	SubCategorySchema,
 	SubCategorySchemaInsert,
-	SubCategorySchemaUpdate,
+	SubCategorySchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by categoryId)
 export const getSubCategory = query(
 	'unchecked' as const,
-	async (params?: { categoryId?: number | null }): Promise<SubCategorySchema[]> => {
-		const notDeleted = ne(table.subCategoryTable.statusId, StatusEnum.DELETED);
+	async (params?: {
+		categoryId?: number | null;
+	}): Promise<SubCategorySchema[]> => {
+		const notDeleted = ne(
+			table.subCategoryTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.categoryId != null) {
-			whereExpr = and(whereExpr, eq(table.subCategoryTable.categoryId, params.categoryId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.subCategoryTable.categoryId, params.categoryId)
+			);
 		}
 
 		return ensureDb()
@@ -31,23 +42,34 @@ export const getSubCategory = query(
 );
 
 // get count
-export const getSubCategoryCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.subCategoryTable);
-	return row?.count ?? 0;
-});
+export const getSubCategoryCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.subCategoryTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getSubCategoryPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams & { categoryId?: number | null }): Promise<
-		PaginatedResult<SubCategorySchema>
-	> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const notDeleted = ne(table.subCategoryTable.statusId, StatusEnum.DELETED);
+	async (
+		params?: PaginationParams & { categoryId?: number | null }
+	): Promise<PaginatedResult<SubCategorySchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const notDeleted = ne(
+			table.subCategoryTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.categoryId != null) {
-			whereExpr = and(whereExpr, eq(table.subCategoryTable.categoryId, params.categoryId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.subCategoryTable.categoryId, params.categoryId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -58,7 +80,10 @@ export const getSubCategoryPaginated = query(
 				.orderBy(table.subCategoryTable.subCategoryName)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.subCategoryTable).where(whereExpr),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.subCategoryTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -66,7 +91,7 @@ export const getSubCategoryPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -74,7 +99,11 @@ export const getSubCategoryPaginated = query(
 // get one
 export const getSubCategoryById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<SubCategorySchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<SubCategorySchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.subCategoryTable)
@@ -86,7 +115,9 @@ export const getSubCategoryById = query(
 // create
 export const createSubCategory = command(
 	'unchecked' as const,
-	async (payload: SubCategorySchemaInsert): Promise<SubCategorySchema> => {
+	async (
+		payload: SubCategorySchemaInsert
+	): Promise<SubCategorySchema> => {
 		const [row] = await ensureDb()
 			.insert(table.subCategoryTable)
 			.values(payload)
@@ -102,7 +133,9 @@ export const createSubCategory = command(
 // update
 export const updateSubCategory = command(
 	'unchecked' as const,
-	async (payload: SubCategorySchemaUpdate & { id: number }): Promise<SubCategorySchema> => {
+	async (
+		payload: SubCategorySchemaUpdate & { id: number }
+	): Promise<SubCategorySchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.subCategoryTable)
@@ -135,7 +168,9 @@ export const deleteSubCategory = command(
 export const deleteSubCategoryComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.subCategoryTable).where(eq(table.subCategoryTable.id, id));
+		await ensureDb()
+			.delete(table.subCategoryTable)
+			.where(eq(table.subCategoryTable.id, id));
 		getSubCategory(undefined).refresh();
 		getSubCategoryCount().refresh();
 		getSubCategoryPaginated(undefined).refresh();

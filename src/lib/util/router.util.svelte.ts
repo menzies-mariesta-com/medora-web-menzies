@@ -4,7 +4,7 @@ import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { SvelteURL } from 'svelte/reactivity';
 
 export class RouterUtil {
-	constructor() { }
+	constructor() {}
 
 	/**
 	 * Navigate to an internal route
@@ -16,8 +16,7 @@ export class RouterUtil {
 	}
 
 	replaceRoute(path: string): void {
-		goto(path, { replaceState: true })
-
+		goto(path, { replaceState: true });
 	}
 
 	/**

@@ -1,5 +1,10 @@
 <script lang="ts">
-	let { className, onClose, children, showCloseButton = true } = $props<{
+	let {
+		className,
+		onClose,
+		children,
+		showCloseButton = true
+	} = $props<{
 		className?: string;
 		onClose?: () => void;
 		children: () => void;
@@ -13,7 +18,7 @@
 		<div>
 			<button
 				type="button"
-				class="d-btn d-btn-sm d-btn-circle d-btn-ghost absolute right-2 top-2"
+				class="d-btn absolute top-2 right-2 d-btn-circle d-btn-ghost d-btn-sm"
 				onclick={() => onClose?.()}
 				aria-label="Close"
 			>

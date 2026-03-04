@@ -31,7 +31,9 @@
 </script>
 
 <div class="flex flex-col">
-	<div class="flex items-center justify-between border-b border-base-300 pb-4">
+	<div
+		class="flex items-center justify-between border-b border-base-300 pb-4"
+	>
 		<h2 class="text-lg font-semibold">Change appearance</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"

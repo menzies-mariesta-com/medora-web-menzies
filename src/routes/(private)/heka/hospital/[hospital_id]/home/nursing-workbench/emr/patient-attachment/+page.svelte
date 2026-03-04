@@ -1,7 +1,3 @@
-<svelte:head>
-	<title>Patient attachments</title>
-</svelte:head>
-
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -14,10 +10,15 @@
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
 	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
 
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 
-	let visit = $state<{ patientId: string; hospitalId: string } | null>(null);
+	let visit = $state<{
+		patientId: string;
+		hospitalId: string;
+	} | null>(null);
 	let isLoadingVisit = $state(false);
 
 	async function fetchVisit() {
@@ -65,15 +66,20 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Patient attachments</title>
+</svelte:head>
+
 <div class="flex flex-col gap-4">
 	<p class="text-sm text-base-content/70">
-		Manage files and documents linked to the patient. Attachments are stored per patient, not per visit.
+		Manage files and documents linked to the patient. Attachments are
+		stored per patient, not per visit.
 	</p>
 
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" bar above to manage patient attachments.'
+			message="Choose a visit using the "Choose Visit" bar above to manage patient attachments."
 		/>
 	{:else if isLoadingVisit}
 		<div class="flex min-h-32 items-center justify-center">
@@ -88,10 +94,12 @@
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<div class="flex flex-col">
-					<LPatientAttachmentDialogContent cancel={() => {}} embedded={true} />
+					<LPatientAttachmentDialogContent
+						cancel={() => {}}
+						embedded={true}
+					/>
 				</div>
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
 </div>
-

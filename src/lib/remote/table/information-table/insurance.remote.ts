@@ -4,32 +4,46 @@ import * as table from '$lib/server/db/schema';
 import type {
 	InsuranceSchema,
 	InsuranceSchemaInsert,
-	InsuranceSchemaUpdate,
+	InsuranceSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getInsurance = query(async (): Promise<InsuranceSchema[]> => {
-	const data = await ensureDb().select().from(table.insuranceTable);
-	return data;
-});
+export const getInsurance = query(
+	async (): Promise<InsuranceSchema[]> => {
+		const data = await ensureDb().select().from(table.insuranceTable);
+		return data;
+	}
+);
 
 // get count
 export const getInsuranceCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.insuranceTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.insuranceTable);
 	return row?.count ?? 0;
 });
 
 // get paginated
 export const getInsurancePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<InsuranceSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<InsuranceSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.insuranceTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.insuranceTable),
+			ensureDb()
+				.select()
+				.from(table.insuranceTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb().select({ count: count() }).from(table.insuranceTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -37,7 +51,7 @@ export const getInsurancePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -57,7 +71,9 @@ export const getInsuranceById = query(
 // create
 export const createInsurance = command(
 	'unchecked' as const,
-	async (payload: InsuranceSchemaInsert): Promise<InsuranceSchema> => {
+	async (
+		payload: InsuranceSchemaInsert
+	): Promise<InsuranceSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.insuranceTable)
 			.values(payload)
@@ -72,7 +88,7 @@ export const createInsurance = command(
 export const updateInsurance = command(
 	'unchecked' as const,
 	async (
-		payload: { id: string } & InsuranceSchemaUpdate,
+		payload: { id: string } & InsuranceSchemaUpdate
 	): Promise<InsuranceSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
@@ -107,4 +123,3 @@ export const deleteInsuranceComplete = command(
 		getInsurance().refresh();
 	}
 );
-

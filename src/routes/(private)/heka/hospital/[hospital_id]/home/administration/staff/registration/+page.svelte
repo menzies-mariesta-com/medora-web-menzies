@@ -47,7 +47,10 @@
 	} from '$lib/remote/table/information-table/staff.remote';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import { createStaffDetail, updateStaffDetail } from '$lib/remote/table/information-table/staff-detail.remote';
+	import {
+		createStaffDetail,
+		updateStaffDetail
+	} from '$lib/remote/table/information-table/staff-detail.remote';
 	import {
 		createStaffDepartment,
 		deleteStaffDepartment
@@ -266,76 +269,173 @@
 		if (!staff) return;
 		staffEditId = editId ? id : null;
 		selectedStaffCode = staff.code ?? '';
-		selectedTitleId = staff.titleId != null ? String(staff.titleId) : '';
+		selectedTitleId =
+			staff.titleId != null ? String(staff.titleId) : '';
 		selectedFirstName = staff.firstName ?? '';
 		selectedMiddleName = staff.middleName ?? '';
 		selectedLastName = staff.lastName ?? '';
-		selectedEmail = (staff as { user?: { email?: string } }).user?.email ?? '';
-		selectedGenderId = staff.genderId != null ? String(staff.genderId) : '';
-		selectedMaritalStatusId = staff.maritalStatusId != null ? String(staff.maritalStatusId) : '';
+		selectedEmail =
+			(staff as { user?: { email?: string } }).user?.email ?? '';
+		selectedGenderId =
+			staff.genderId != null ? String(staff.genderId) : '';
+		selectedMaritalStatusId =
+			staff.maritalStatusId != null
+				? String(staff.maritalStatusId)
+				: '';
 		// Phone: use phone_primary_country_id / phone_secondary_country_id when set, else parse from full number
 		const phonePrimary = staff.phonePrimary ?? '';
 		const phoneSecondary = staff.phoneSecondary ?? '';
-		const staffPrimaryCountryId = (staff as { phonePrimaryCountryId?: number | null }).phonePrimaryCountryId;
-		const staffSecondaryCountryId = (staff as { phoneSecondaryCountryId?: number | null }).phoneSecondaryCountryId;
+		const staffPrimaryCountryId = (
+			staff as { phonePrimaryCountryId?: number | null }
+		).phonePrimaryCountryId;
+		const staffSecondaryCountryId = (
+			staff as { phoneSecondaryCountryId?: number | null }
+		).phoneSecondaryCountryId;
 		if (staffPrimaryCountryId != null) {
 			selectedPhoneCountryId = String(staffPrimaryCountryId);
-			const country = countryData.find((c) => c.id === staffPrimaryCountryId);
-			selectedPhone = country?.countryCallingCode && phonePrimary.startsWith(country.countryCallingCode)
-				? phonePrimary.slice(country.countryCallingCode.length).trim()
-				: phonePrimary;
+			const country = countryData.find(
+				(c) => c.id === staffPrimaryCountryId
+			);
+			selectedPhone =
+				country?.countryCallingCode &&
+				phonePrimary.startsWith(country.countryCallingCode)
+					? phonePrimary
+							.slice(country.countryCallingCode.length)
+							.trim()
+					: phonePrimary;
 		} else {
-			const matchPrimary = countryData.find((c) => c.countryCallingCode && phonePrimary.startsWith(c.countryCallingCode));
+			const matchPrimary = countryData.find(
+				(c) =>
+					c.countryCallingCode &&
+					phonePrimary.startsWith(c.countryCallingCode)
+			);
 			if (matchPrimary) {
 				selectedPhoneCountryId = String(matchPrimary.id);
-				selectedPhone = phonePrimary.slice(matchPrimary.countryCallingCode?.length ?? 0).trim();
+				selectedPhone = phonePrimary
+					.slice(matchPrimary.countryCallingCode?.length ?? 0)
+					.trim();
 			} else {
 				selectedPhoneCountryId = '';
 				selectedPhone = phonePrimary;
 			}
 		}
 		if (staffSecondaryCountryId != null) {
-			selectedPhoneSecondaryCountryId = String(staffSecondaryCountryId);
-			const country = countryData.find((c) => c.id === staffSecondaryCountryId);
-			selectedPhoneSecondary = country?.countryCallingCode && phoneSecondary.startsWith(country.countryCallingCode)
-				? phoneSecondary.slice(country.countryCallingCode.length).trim()
-				: phoneSecondary;
+			selectedPhoneSecondaryCountryId = String(
+				staffSecondaryCountryId
+			);
+			const country = countryData.find(
+				(c) => c.id === staffSecondaryCountryId
+			);
+			selectedPhoneSecondary =
+				country?.countryCallingCode &&
+				phoneSecondary.startsWith(country.countryCallingCode)
+					? phoneSecondary
+							.slice(country.countryCallingCode.length)
+							.trim()
+					: phoneSecondary;
 		} else {
-			const matchSecondary = countryData.find((c) => c.countryCallingCode && phoneSecondary.startsWith(c.countryCallingCode));
+			const matchSecondary = countryData.find(
+				(c) =>
+					c.countryCallingCode &&
+					phoneSecondary.startsWith(c.countryCallingCode)
+			);
 			if (matchSecondary) {
 				selectedPhoneSecondaryCountryId = String(matchSecondary.id);
-				selectedPhoneSecondary = phoneSecondary.slice(matchSecondary.countryCallingCode?.length ?? 0).trim();
+				selectedPhoneSecondary = phoneSecondary
+					.slice(matchSecondary.countryCallingCode?.length ?? 0)
+					.trim();
 			} else {
 				selectedPhoneSecondaryCountryId = '';
 				selectedPhoneSecondary = phoneSecondary;
 			}
 		}
-		selectedStaffEmploymentTypeId = staff.staffEmploymentTypeId != null ? String(staff.staffEmploymentTypeId) : '';
-		selectedEducation = (staff as { staffDetail?: { education?: string } }).staffDetail?.education ?? '';
-		selectedDesignation = (staff as { staffDetail?: { designation?: string } }).staffDetail?.designation ?? '';
-		selectedDepartmentId = (staff as { staffDepartments?: { departmentId: number }[] }).staffDepartments?.[0]?.departmentId != null ? String((staff as { staffDepartments: { departmentId: number }[] }).staffDepartments[0].departmentId) : '';
-		selectedSpecializationId = staff.specializationId != null ? String(staff.specializationId) : '';
-		selectedCountryId = staff.countryId != null ? String(staff.countryId) : '';
-		selectedStateId = staff.stateId != null ? String(staff.stateId) : '';
+		selectedStaffEmploymentTypeId =
+			staff.staffEmploymentTypeId != null
+				? String(staff.staffEmploymentTypeId)
+				: '';
+		selectedEducation =
+			(staff as { staffDetail?: { education?: string } }).staffDetail
+				?.education ?? '';
+		selectedDesignation =
+			(staff as { staffDetail?: { designation?: string } })
+				.staffDetail?.designation ?? '';
+		selectedDepartmentId =
+			(staff as { staffDepartments?: { departmentId: number }[] })
+				.staffDepartments?.[0]?.departmentId != null
+				? String(
+						(
+							staff as {
+								staffDepartments: { departmentId: number }[];
+							}
+						).staffDepartments[0].departmentId
+					)
+				: '';
+		selectedSpecializationId =
+			staff.specializationId != null
+				? String(staff.specializationId)
+				: '';
+		selectedCountryId =
+			staff.countryId != null ? String(staff.countryId) : '';
+		selectedStateId =
+			staff.stateId != null ? String(staff.stateId) : '';
 		selectedCityId = staff.cityId != null ? String(staff.cityId) : '';
-		selectedPostalCodeId = staff.postalCodeId != null ? String(staff.postalCodeId) : '';
-		selectedStaffTypeId = staff.staffTypeId != null ? String(staff.staffTypeId) : '';
-		selectedIdentityTypeId = staff.identityTypeId != null ? String(staff.identityTypeId) : '';
+		selectedPostalCodeId =
+			staff.postalCodeId != null ? String(staff.postalCodeId) : '';
+		selectedStaffTypeId =
+			staff.staffTypeId != null ? String(staff.staffTypeId) : '';
+		selectedIdentityTypeId =
+			staff.identityTypeId != null
+				? String(staff.identityTypeId)
+				: '';
 		selectedIdentityNumber = staff.identityNo ?? '';
-		selectedNationalityId = staff.nationalityId != null ? String(staff.nationalityId) : '';
-		selectedDateOfBirth = staff.dateOfBirth ? (typeof staff.dateOfBirth === 'string' ? staff.dateOfBirth : new Date(staff.dateOfBirth).toISOString().slice(0, 10)) : '';
+		selectedNationalityId =
+			staff.nationalityId != null ? String(staff.nationalityId) : '';
+		selectedDateOfBirth = staff.dateOfBirth
+			? typeof staff.dateOfBirth === 'string'
+				? staff.dateOfBirth
+				: new Date(staff.dateOfBirth).toISOString().slice(0, 10)
+			: '';
 		selectedAddress = staff.address ?? '';
 		selectedRemark = staff.remark ?? '';
-		selectedBloodTypeId = (staff as { staffDetail?: { bloodTypeId?: number } }).staffDetail?.bloodTypeId != null ? String((staff as { staffDetail: { bloodTypeId: number } }).staffDetail.bloodTypeId) : '';
-		selectedUserGroups = ((staff as { staffUserGroups?: { userGroupId: number }[] }).staffUserGroups ?? []).map((ug) => ug.userGroupId);
-		selectedBranchIds = ((staff as { staffBranches?: { branchId: string }[] }).staffBranches ?? []).map((sb) => sb.branchId);
+		selectedBloodTypeId =
+			(staff as { staffDetail?: { bloodTypeId?: number } })
+				.staffDetail?.bloodTypeId != null
+				? String(
+						(staff as { staffDetail: { bloodTypeId: number } })
+							.staffDetail.bloodTypeId
+					)
+				: '';
+		selectedUserGroups = (
+			(staff as { staffUserGroups?: { userGroupId: number }[] })
+				.staffUserGroups ?? []
+		).map((ug) => ug.userGroupId);
+		selectedBranchIds = (
+			(staff as { staffBranches?: { branchId: string }[] })
+				.staffBranches ?? []
+		).map((sb) => sb.branchId);
 		isActive = staff.statusId === StatusEnum.ACTIVE;
-		const detail = (staff as { staffDetail?: { licenseNo?: string; licenseExpiryDate?: string | Date; signatureImageUrl?: string; signatureText?: string } }).staffDetail;
+		const detail = (
+			staff as {
+				staffDetail?: {
+					licenseNo?: string;
+					licenseExpiryDate?: string | Date;
+					signatureImageUrl?: string;
+					signatureText?: string;
+				};
+			}
+		).staffDetail;
 		selectedLicenseNo = detail?.licenseNo ?? '';
-		selectedLicenseExpiryDate = detail?.licenseExpiryDate ? (typeof detail.licenseExpiryDate === 'string' ? detail.licenseExpiryDate : new Date(detail.licenseExpiryDate).toISOString().slice(0, 10)) : '';
+		selectedLicenseExpiryDate = detail?.licenseExpiryDate
+			? typeof detail.licenseExpiryDate === 'string'
+				? detail.licenseExpiryDate
+				: new Date(detail.licenseExpiryDate)
+						.toISOString()
+						.slice(0, 10)
+			: '';
 		selectedSignatureImageUrl = detail?.signatureImageUrl ?? '';
 		selectedSignatureText = detail?.signatureText ?? '';
-		photoPreviewUrl = getStaffPhotoDisplayUrl(staff.photoUrl) ?? staff.photoUrl ?? '';
+		photoPreviewUrl =
+			getStaffPhotoDisplayUrl(staff.photoUrl) ?? staff.photoUrl ?? '';
 		// Join/resign dates if we have them on staff - extend schema if needed
 		selectedJoinDate = dateTimeUtil.getTodayDateString();
 		selectedResignDate = '';
@@ -343,12 +443,16 @@
 
 	async function fetchInitialFieldData() {
 		const currentHospitalId =
-			typeof page.params.hospital_id === 'string' ? page.params.hospital_id : '';
+			typeof page.params.hospital_id === 'string'
+				? page.params.hospital_id
+				: '';
 		titleData = await getTitle();
 		staffTypeData = await getStaffType();
 		departmentData = await getDepartment();
 		branchData = currentHospitalId
-			? await getBranchesByHospitalId({ hospitalId: currentHospitalId })
+			? await getBranchesByHospitalId({
+					hospitalId: currentHospitalId
+				})
 			: [];
 		specializationData = await getSpecialization();
 		genderData = await getGender();
@@ -356,7 +460,9 @@
 		countryData = await getCountry();
 		identityTypeData = await getIdentityType();
 		userGroupData = currentHospitalId
-			? await getUserGroupByHospitalId({ hospitalId: currentHospitalId })
+			? await getUserGroupByHospitalId({
+					hospitalId: currentHospitalId
+				})
 			: [];
 		staffEmploymentTypeData = await getStaffEmploymentType();
 		stateData = await getState();
@@ -414,7 +520,7 @@
 
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
-	if (!browser) return;
+		if (!browser) return;
 		const form = e.currentTarget as HTMLFormElement;
 		const fd = new FormData(form);
 
@@ -486,13 +592,20 @@
 		try {
 			if (staffEditId) {
 				// --- EDIT MODE: update existing staff ---
-				const staff = await getStaffByIdWithRelations({ id: staffEditId });
+				const staff = await getStaffByIdWithRelations({
+					id: staffEditId
+				});
 				if (!staff) {
-					toastService.addToast('Staff not found.', StatusColorEnum.ERROR);
+					toastService.addToast(
+						'Staff not found.',
+						StatusColorEnum.ERROR
+					);
 					isLoading = false;
 					return;
 				}
-				const statusId = isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
+				const statusId = isActive
+					? StatusEnum.ACTIVE
+					: StatusEnum.INACTIVE;
 				await updateStaff({
 					id: staffEditId,
 					firstName: selectedFirstName.trim(),
@@ -501,27 +614,55 @@
 					code: selectedStaffCode.trim() || undefined,
 					phonePrimary: phonePrimary || undefined,
 					phoneSecondary: phoneSecondary || undefined,
-					phonePrimaryCountryId: selectedPhoneCountryId ? Number(selectedPhoneCountryId) : undefined,
-					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId ? Number(selectedPhoneSecondaryCountryId) : undefined,
+					phonePrimaryCountryId: selectedPhoneCountryId
+						? Number(selectedPhoneCountryId)
+						: undefined,
+					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
+						? Number(selectedPhoneSecondaryCountryId)
+						: undefined,
 					dateOfBirth: selectedDateOfBirth || undefined,
 					address: selectedAddress || undefined,
 					remark: selectedRemark || undefined,
 					identityNo: selectedIdentityNumber.trim() || undefined,
-					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
-					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
-					maritalStatusId: selectedMaritalStatusId ? Number(selectedMaritalStatusId) : undefined,
-					staffEmploymentTypeId: selectedStaffEmploymentTypeId ? Number(selectedStaffEmploymentTypeId) : undefined,
-					staffTypeId: selectedStaffTypeId ? Number(selectedStaffTypeId) : undefined,
-					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
-					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					titleId: selectedTitleId
+						? Number(selectedTitleId)
+						: undefined,
+					genderId: selectedGenderId
+						? Number(selectedGenderId)
+						: undefined,
+					maritalStatusId: selectedMaritalStatusId
+						? Number(selectedMaritalStatusId)
+						: undefined,
+					staffEmploymentTypeId: selectedStaffEmploymentTypeId
+						? Number(selectedStaffEmploymentTypeId)
+						: undefined,
+					staffTypeId: selectedStaffTypeId
+						? Number(selectedStaffTypeId)
+						: undefined,
+					countryId: selectedCountryId
+						? Number(selectedCountryId)
+						: undefined,
+					stateId: selectedStateId
+						? Number(selectedStateId)
+						: undefined,
 					cityId: selectedCityId ? Number(selectedCityId) : undefined,
-					postalCodeId: selectedPostalCodeId ? Number(selectedPostalCodeId) : undefined,
-					nationalityId: selectedNationalityId ? Number(selectedNationalityId) : undefined,
-					identityTypeId: selectedIdentityTypeId ? Number(selectedIdentityTypeId) : undefined,
-					specializationId: selectedSpecializationId ? Number(selectedSpecializationId) : undefined,
+					postalCodeId: selectedPostalCodeId
+						? Number(selectedPostalCodeId)
+						: undefined,
+					nationalityId: selectedNationalityId
+						? Number(selectedNationalityId)
+						: undefined,
+					identityTypeId: selectedIdentityTypeId
+						? Number(selectedIdentityTypeId)
+						: undefined,
+					specializationId: selectedSpecializationId
+						? Number(selectedSpecializationId)
+						: undefined,
 					statusId
 				});
-				const existingDetail = (staff as { staffDetail?: { id: number } }).staffDetail;
+				const existingDetail = (
+					staff as { staffDetail?: { id: number } }
+				).staffDetail;
 				let staffDetailId: number | undefined = existingDetail?.id;
 				if (existingDetail?.id) {
 					await updateStaffDetail({
@@ -532,7 +673,12 @@
 						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
 						signatureText: selectedSignatureText.trim() || undefined
 					});
-				} else if (selectedEducation || selectedDesignation || selectedLicenseNo || selectedSignatureText) {
+				} else if (
+					selectedEducation ||
+					selectedDesignation ||
+					selectedLicenseNo ||
+					selectedSignatureText
+				) {
 					const newDetail = await createStaffDetail({
 						education: selectedEducation.trim() || undefined,
 						designation: selectedDesignation.trim() || undefined,
@@ -541,9 +687,14 @@
 						signatureText: selectedSignatureText.trim() || undefined
 					});
 					staffDetailId = newDetail.id;
-					await updateStaff({ id: staffEditId, staffDetailId: newDetail.id });
+					await updateStaff({
+						id: staffEditId,
+						staffDetailId: newDetail.id
+					});
 				}
-				const staffDepts = (staff as { staffDepartments?: { id: number }[] }).staffDepartments ?? [];
+				const staffDepts =
+					(staff as { staffDepartments?: { id: number }[] })
+						.staffDepartments ?? [];
 				for (const sd of staffDepts) {
 					await deleteStaffDepartment({ id: sd.id });
 				}
@@ -553,19 +704,28 @@
 						departmentId: Number(selectedDepartmentId)
 					});
 				}
-				const staffUGs = (staff as { staffUserGroups?: { id: number }[] }).staffUserGroups ?? [];
+				const staffUGs =
+					(staff as { staffUserGroups?: { id: number }[] })
+						.staffUserGroups ?? [];
 				for (const sug of staffUGs) {
 					await deleteStaffUserGroup({ id: sug.id });
 				}
 				for (const ugId of selectedUserGroups) {
-					await createStaffUserGroup({ staffId: staffEditId, userGroupId: ugId });
+					await createStaffUserGroup({
+						staffId: staffEditId,
+						userGroupId: ugId
+					});
 				}
-				const staffBranches = (staff as { staffBranches?: { id: number }[] }).staffBranches ?? [];
+				const staffBranches =
+					(staff as { staffBranches?: { id: number }[] })
+						.staffBranches ?? [];
 				for (const sb of staffBranches) {
 					await deleteStaffBranch({ id: sb.id });
 				}
 				const editHospitalId =
-					typeof page.params.hospital_id === 'string' ? page.params.hospital_id : '';
+					typeof page.params.hospital_id === 'string'
+						? page.params.hospital_id
+						: '';
 				if (editHospitalId) {
 					for (const branchId of selectedBranchIds) {
 						await createStaffBranch({
@@ -580,10 +740,16 @@
 					try {
 						const fd = new FormData();
 						fd.set('photo', photoFile);
-						const res = await fetch('/api/upload/staff-photo', { method: 'POST', body: fd });
+						const res = await fetch('/api/upload/staff-photo', {
+							method: 'POST',
+							body: fd
+						});
 						const data = await res.json().catch(() => ({}));
 						if (res.ok && data.url) {
-							await updateStaff({ id: staffEditId, photoUrl: data.url });
+							await updateStaff({
+								id: staffEditId,
+								photoUrl: data.url
+							});
 						}
 					} finally {
 						photoUploading = false;
@@ -592,20 +758,30 @@
 				if (signatureFile && staffDetailId) {
 					const fd = new FormData();
 					fd.set('signature', signatureFile);
-					const res = await fetch('/api/upload/staff-signature', { method: 'POST', body: fd });
+					const res = await fetch('/api/upload/staff-signature', {
+						method: 'POST',
+						body: fd
+					});
 					const data = await res.json().catch(() => ({}));
 					if (res.ok && data.url) {
-						await updateStaffDetail({ id: staffDetailId, signatureImageUrl: data.url });
+						await updateStaffDetail({
+							id: staffDetailId,
+							signatureImageUrl: data.url
+						});
 					}
 				}
-				toastService.addToast('Staff updated successfully.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Staff updated successfully.',
+					StatusColorEnum.SUCCESS
+				);
 				isLoading = false;
 				return;
 			}
 
 			// 1. Create staff first (without photo/signature image URLs); assign to current hospital when in hospital context
 			const urlHospitalId =
-				typeof page.params.hospital_id === 'string' && page.params.hospital_id
+				typeof page.params.hospital_id === 'string' &&
+				page.params.hospital_id
 					? page.params.hospital_id
 					: undefined;
 			const result = await createStaffWithUser({
@@ -618,8 +794,12 @@
 				lastName: selectedLastName.trim(),
 				phonePrimary,
 				phoneSecondary: phoneSecondary || undefined,
-				phonePrimaryCountryId: selectedPhoneCountryId ? Number(selectedPhoneCountryId) : undefined,
-				phoneSecondaryCountryId: selectedPhoneSecondaryCountryId ? Number(selectedPhoneSecondaryCountryId) : undefined,
+				phonePrimaryCountryId: selectedPhoneCountryId
+					? Number(selectedPhoneCountryId)
+					: undefined,
+				phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
+					? Number(selectedPhoneSecondaryCountryId)
+					: undefined,
 				dateOfBirth: selectedDateOfBirth || undefined,
 				address: selectedAddress || undefined,
 				remark: selectedRemark || undefined,
@@ -764,7 +944,6 @@
 			);
 
 			disableCreateSave = true;
-
 		} catch (error: unknown) {
 			let message: string | null = null;
 
@@ -845,7 +1024,10 @@
 <DaisyUiCard>
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
-			<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0">
+			<fieldset
+				disabled={isViewMode || (!isEditMode && disableCreateSave)}
+				class="m-0 min-w-0 border-0 p-0"
+			>
 				<DaisyUiCardBodyTitle className="mb-5"
 					>Profile Details</DaisyUiCardBodyTitle
 				>
@@ -858,7 +1040,11 @@
 				<div
 					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
 				>
-					<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
+					<fieldset
+						disabled={isViewMode ||
+							(!isEditMode && disableCreateSave)}
+						class="m-0 flex min-w-0 flex-col items-center gap-2 border-0 p-0"
+					>
 						<DaisyUiFileInput
 							accept="image/jpeg,image/png,image/webp,image/gif"
 							className="hidden"
@@ -901,7 +1087,10 @@
 							>
 								Remove
 							</DaisyUiButton>
-							<DaisyUiDivider position="horizontal" className="text-xs">More Detail</DaisyUiDivider>
+							<DaisyUiDivider
+								position="horizontal"
+								className="text-xs">More Detail</DaisyUiDivider
+							>
 						</div>
 					</fieldset>
 					<div class="flex flex-col gap-2">
@@ -916,75 +1105,81 @@
 				</div>
 
 				<!-- Form columns: 1 col mobile, 2 md, 3 xl -->
-				<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0 flex-1">
-				<div
-					class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+				<fieldset
+					disabled={isViewMode || (!isEditMode && disableCreateSave)}
+					class="m-0 min-w-0 flex-1 border-0 p-0"
 				>
-					<!-- Column 1 -->
-					<LAdministrationStaffRegistrationFirstColumn
-						{titleData}
-						{genderData}
-						{maritalStatusData}
-						emailDisabled={isEditMode}
-						bind:selectedStaffCode
-						bind:selectedTitleId
-						bind:selectedFirstName
-						bind:selectedMiddleName
-						bind:selectedLastName
-						bind:selectedEmail
-						bind:selectedGenderId
-						bind:selectedMaritalStatusId
-					/>
+					<div
+						class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+					>
+						<!-- Column 1 -->
+						<LAdministrationStaffRegistrationFirstColumn
+							{titleData}
+							{genderData}
+							{maritalStatusData}
+							emailDisabled={isEditMode}
+							bind:selectedStaffCode
+							bind:selectedTitleId
+							bind:selectedFirstName
+							bind:selectedMiddleName
+							bind:selectedLastName
+							bind:selectedEmail
+							bind:selectedGenderId
+							bind:selectedMaritalStatusId
+						/>
 
-					<!-- Column 2 -->
-					<LStaffRegistrationSecondColumn
-						{countryData}
-						{bloodTypeData}
-						{staffTypeData}
-						{staffEmploymentTypeData}
-						bind:selectedPhoneCountryId
-						bind:selectedPhone
-						bind:selectedPhoneSecondaryCountryId
-						bind:selectedPhoneSecondary
-						bind:selectedDateOfBirth
-						bind:selectedStaffTypeId
-						bind:selectedStaffEmploymentTypeId
-						bind:selectedEducation
-						bind:selectedDesignation
-						bind:selectedBloodTypeId
-					/>
+						<!-- Column 2 -->
+						<LStaffRegistrationSecondColumn
+							{countryData}
+							{bloodTypeData}
+							{staffTypeData}
+							{staffEmploymentTypeData}
+							bind:selectedPhoneCountryId
+							bind:selectedPhone
+							bind:selectedPhoneSecondaryCountryId
+							bind:selectedPhoneSecondary
+							bind:selectedDateOfBirth
+							bind:selectedStaffTypeId
+							bind:selectedStaffEmploymentTypeId
+							bind:selectedEducation
+							bind:selectedDesignation
+							bind:selectedBloodTypeId
+						/>
 
-					<!-- Column 3 -->
-					<LStaffRegistrationThirdColumn
-						{countryData}
-						{stateData}
-						{cityData}
-						{nationalityData}
-						{postalCodeData}
-						{departmentData}
-						{specializationData}
-						{identityTypeData}
-						{filteredStateData}
-						{filteredCityData}
-						{filteredPostalCodeData}
-						{selectedCountry}
-						{selectedState}
-						{selectedCity}
-						bind:selectedCountryId
-						bind:selectedStateId
-						bind:selectedCityId
-						bind:selectedPostalCodeId
-						bind:selectedDepartmentId
-						bind:selectedSpecializationId
-						bind:selectedIdentityTypeId
-						bind:selectedIdentityNumber
-						bind:selectedNationalityId
-					/>
-				</div>
+						<!-- Column 3 -->
+						<LStaffRegistrationThirdColumn
+							{countryData}
+							{stateData}
+							{cityData}
+							{nationalityData}
+							{postalCodeData}
+							{departmentData}
+							{specializationData}
+							{identityTypeData}
+							{filteredStateData}
+							{filteredCityData}
+							{filteredPostalCodeData}
+							{selectedCountry}
+							{selectedState}
+							{selectedCity}
+							bind:selectedCountryId
+							bind:selectedStateId
+							bind:selectedCityId
+							bind:selectedPostalCodeId
+							bind:selectedDepartmentId
+							bind:selectedSpecializationId
+							bind:selectedIdentityTypeId
+							bind:selectedIdentityNumber
+							bind:selectedNationalityId
+						/>
+					</div>
 				</fieldset>
 			</div>
 
-			<fieldset disabled={isViewMode || (!isEditMode && disableCreateSave)} class="border-0 p-0 m-0 min-w-0">
+			<fieldset
+				disabled={isViewMode || (!isEditMode && disableCreateSave)}
+				class="m-0 min-w-0 border-0 p-0"
+			>
 				<!-- More Info: 1 col mobile, 2 cols md+ -->
 				<LStaffRegistrationMoreInfo
 					bind:selectedAddress
@@ -1010,7 +1205,9 @@
 				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
 					<DaisyUiButton
 						type="submit"
-						className="d-btn-wide {isEditMode ? 'd-btn-accent' : 'd-btn-primary'}"
+						className="d-btn-wide {isEditMode
+							? 'd-btn-accent'
+							: 'd-btn-primary'}"
 						disabled={isLoading || (!isEditMode && disableCreateSave)}
 					>
 						{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}

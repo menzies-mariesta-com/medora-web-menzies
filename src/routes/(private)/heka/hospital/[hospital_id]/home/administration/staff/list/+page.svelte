@@ -36,7 +36,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let staffResult = $state<PaginatedResult<StaffWithRelations> | null>(null);
+	let staffResult =
+		$state<PaginatedResult<StaffWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let filterPageSize = $state('5');
 	let searchInput = $state('');
@@ -47,7 +48,10 @@
 	const total = $derived(staffResult?.total ?? 0);
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
 
 	async function fetchStaff(forceRefresh = false) {
@@ -107,19 +111,29 @@
 		try {
 			const staff = await getStaffByIdWithRelations({ id: staffId });
 			const staffEmail =
-				(staff as { user?: { email?: string } })?.user?.email ?? '(no email)';
-			DeleteStaffConfirmState.pending = { id: staffId, email: staffEmail };
+				(staff as { user?: { email?: string } })?.user?.email ??
+				'(no email)';
+			DeleteStaffConfirmState.pending = {
+				id: staffId,
+				email: staffEmail
+			};
 			const result = await dialogService.open({
 				component: DeleteStaffConfirmModal
 			});
 			if (result.confirmed && typeof result.data === 'string') {
 				await deleteStaff({ id: result.data });
 				await fetchStaff(true);
-				toastService.addToast(m.staff_deleted(), StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					m.staff_deleted(),
+					StatusColorEnum.SUCCESS
+				);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast(m.failed_delete_staff(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.failed_delete_staff(),
+				StatusColorEnum.ERROR
+			);
 		} finally {
 			DeleteStaffConfirmState.pending = null;
 		}
@@ -148,7 +162,10 @@
 	const STAFF_COLUMN_COUNT = 30;
 
 	type StaffDialogMode = 'view' | 'edit';
-	let staffDialog = $state<{ mode: StaffDialogMode; staffId: string } | null>(null);
+	let staffDialog = $state<{
+		mode: StaffDialogMode;
+		staffId: string;
+	} | null>(null);
 
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
@@ -188,7 +205,9 @@
 		{/if}
 	</p>
 
-	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
+	<div
+		class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end"
+	>
 		<div class="staff-list-search-form">
 			<DaisyUiInputField
 				inputPlaceholderText={m.search_placeholder_staff()}
@@ -209,7 +228,9 @@
 		</DaisyUiTooltip>
 	</div>
 
-	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
+	<div
+		class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none"
+	>
 		<span class="text-sm">{m.per_page()}</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
@@ -226,7 +247,9 @@
 	</div>
 
 	{#if staffResult !== null}
-		<div class="order-4 w-full md:order-none md:w-auto md:justify-end">
+		<div
+			class="order-4 w-full md:order-none md:w-auto md:justify-end"
+		>
 			<DaisyUiPagination>
 				<DaisyUiPaginationItem
 					onClick={() => goToPage(currentPage - 1)}
@@ -256,42 +279,44 @@
 </div>
 
 {#if isLoading && !staffResult}
-<div class="flex justify-center items-center">
-	<DaisyUiLoading className="d-loading-xl" />
-</div>
+	<div class="flex items-center justify-center">
+		<DaisyUiLoading className="d-loading-xl" />
+	</div>
 {:else}
-	<div class="overflow-auto max-h-[calc(100vh-18rem)]">
-		<DaisyUiTable
-			className="d-table d-table-zebra d-table-sm"
-		>
+	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
+		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-				<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">
-					{m.actions()}
-				</th>
-				<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-32 min-w-[8rem]">
-					{m.staff_code()}
-				</th>
-				<th class="w-64 min-w-[16rem]">{m.name()}</th>
-				<th class="w-64 min-w-[16rem]">{m.identity()}</th>
-				<th class="w-40 min-w-[10rem]">{m.phone_primary()}</th>
-				<th class="w-40 min-w-[10rem]">{m.phone_secondary()}</th>
-				<th class="w-36 min-w-[9rem]">{m.date_of_birth()}</th>
-				<th class="w-56 min-w-[14rem]">{m.employment_type()}</th>
-				<th class="w-40 min-w-[10rem]">{m.staff_type()}</th>
-				<th class="w-48 min-w-[12rem]">{m.specialization()}</th>
-				<th class="w-40 min-w-[10rem]">{m.marital_status()}</th>
-				<th class="w-40 min-w-[10rem]">{m.nationality()}</th>
-				<th class="w-32 min-w-[8rem]">{m.gender()}</th>
-				<th class="w-32 min-w-[8rem]">{m.status()}</th>
-				<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
-				<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
+					<th class="sticky left-0 z-1 w-16 min-w-[4rem] bg-base-200">
+						{m.actions()}
+					</th>
+					<th
+						class="sticky top-0 left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-200"
+					>
+						{m.staff_code()}
+					</th>
+					<th class="w-64 min-w-[16rem]">{m.name()}</th>
+					<th class="w-64 min-w-[16rem]">{m.identity()}</th>
+					<th class="w-40 min-w-[10rem]">{m.phone_primary()}</th>
+					<th class="w-40 min-w-[10rem]">{m.phone_secondary()}</th>
+					<th class="w-36 min-w-[9rem]">{m.date_of_birth()}</th>
+					<th class="w-56 min-w-[14rem]">{m.employment_type()}</th>
+					<th class="w-40 min-w-[10rem]">{m.staff_type()}</th>
+					<th class="w-48 min-w-[12rem]">{m.specialization()}</th>
+					<th class="w-40 min-w-[10rem]">{m.marital_status()}</th>
+					<th class="w-40 min-w-[10rem]">{m.nationality()}</th>
+					<th class="w-32 min-w-[8rem]">{m.gender()}</th>
+					<th class="w-32 min-w-[8rem]">{m.status()}</th>
+					<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
+					<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
 				</tr>
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
 				{#each staffList as staff (staff.id)}
-					<tr class="hover:bg-info/30 z-0">
-						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
+					<tr class="z-0 hover:bg-info/30">
+						<td
+							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+						>
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText={m.view_data()}
@@ -329,7 +354,9 @@
 								</DaisyUiTooltip>
 							</div>
 						</td>
-						<td class="sticky left-[4.75rem] z-1 bg-base-100 w-32 min-w-[8rem]">
+						<td
+							class="sticky left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-100"
+						>
 							{staff.code ?? '—'}
 						</td>
 						<td class="w-64 min-w-[16rem]">
@@ -343,13 +370,21 @@
 						<td class="w-64 min-w-[16rem]">
 							({staff.identityType?.name ?? '—'}){staff.identityNo}
 						</td>
-						<td class="w-40 min-w-[10rem]">{staff.phonePrimary ?? '—'}</td>
-						<td class="w-40 min-w-[10rem]">{staff.phoneSecondary ?? '—'}</td>
-						<td class="w-36 min-w-[9rem]">{formatDate(staff.dateOfBirth)}</td>
+						<td class="w-40 min-w-[10rem]"
+							>{staff.phonePrimary ?? '—'}</td
+						>
+						<td class="w-40 min-w-[10rem]"
+							>{staff.phoneSecondary ?? '—'}</td
+						>
+						<td class="w-36 min-w-[9rem]"
+							>{formatDate(staff.dateOfBirth)}</td
+						>
 						<td class="w-56 min-w-[14rem]">
 							{staff.staffEmploymentType?.name ?? '—'}
 						</td>
-						<td class="w-40 min-w-[10rem]">{staff.staffType?.name ?? '—'}</td>
+						<td class="w-40 min-w-[10rem]"
+							>{staff.staffType?.name ?? '—'}</td
+						>
 						<td class="w-48 min-w-[12rem]">
 							{staff.specialization?.name ?? '—'}
 						</td>
@@ -359,8 +394,12 @@
 						<td class="w-40 min-w-[10rem]">
 							{staff.nationality?.name ?? '—'}
 						</td>
-						<td class="w-32 min-w-[8rem]">{staff.gender?.name ?? '—'}</td>
-						<td class="w-32 min-w-[8rem]">{staff.status?.name ?? '—'}</td>
+						<td class="w-32 min-w-[8rem]"
+							>{staff.gender?.name ?? '—'}</td
+						>
+						<td class="w-32 min-w-[8rem]"
+							>{staff.status?.name ?? '—'}</td
+						>
 						<td class="w-40 min-w-[10rem]">
 							{formatDateTime(staff.createdAt)}
 						</td>

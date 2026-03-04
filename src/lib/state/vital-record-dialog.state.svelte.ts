@@ -4,4 +4,9 @@ export const VitalRecordDialogState = $state<{
 	visitId: number | null;
 	/** When set, open in edit mode with existing vital data */
 	vitalId: number | null;
-}>({ patientId: null, hospitalId: null, visitId: null, vitalId: null });
+}>({
+	patientId: null,
+	hospitalId: null,
+	visitId: null,
+	vitalId: null
+});

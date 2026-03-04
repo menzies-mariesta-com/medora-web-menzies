@@ -4,9 +4,12 @@ import * as table from '$lib/server/db/schema';
 import type {
 	StoreSchema,
 	StoreSchemaInsert,
-	StoreSchemaUpdate,
+	StoreSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -14,12 +17,20 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 // get all (optionally filtered by branchId)
 export const getStore = query(
 	'unchecked' as const,
-	async (params?: { branchId?: string | null }): Promise<StoreSchema[]> => {
-		const notDeleted = ne(table.storeTable.statusId, StatusEnum.DELETED);
+	async (params?: {
+		branchId?: string | null;
+	}): Promise<StoreSchema[]> => {
+		const notDeleted = ne(
+			table.storeTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(whereExpr, eq(table.storeTable.branchId, params.branchId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.storeTable.branchId, params.branchId)
+			);
 		}
 
 		return ensureDb()
@@ -32,7 +43,9 @@ export const getStore = query(
 
 // get count
 export const getStoreCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.storeTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.storeTable);
 	return row?.count ?? 0;
 });
 
@@ -40,14 +53,21 @@ export const getStoreCount = query(async (): Promise<number> => {
 export const getStorePaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams & { branchId?: string | null },
+		params?: PaginationParams & { branchId?: string | null }
 	): Promise<PaginatedResult<StoreSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const notDeleted = ne(table.storeTable.statusId, StatusEnum.DELETED);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const notDeleted = ne(
+			table.storeTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(whereExpr, eq(table.storeTable.branchId, params.branchId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.storeTable.branchId, params.branchId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -58,7 +78,10 @@ export const getStorePaginated = query(
 				.orderBy(table.storeTable.storeName)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.storeTable).where(whereExpr),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.storeTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -66,7 +89,7 @@ export const getStorePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -102,7 +125,9 @@ export const createStore = command(
 // update
 export const updateStore = command(
 	'unchecked' as const,
-	async (payload: StoreSchemaUpdate & { id: number }): Promise<StoreSchema> => {
+	async (
+		payload: StoreSchemaUpdate & { id: number }
+	): Promise<StoreSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.storeTable)
@@ -135,10 +160,11 @@ export const deleteStore = command(
 export const deleteStoreComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.storeTable).where(eq(table.storeTable.id, id));
+		await ensureDb()
+			.delete(table.storeTable)
+			.where(eq(table.storeTable.id, id));
 		getStore(undefined).refresh();
 		getStoreCount().refresh();
 		getStorePaginated(undefined).refresh();
 	}
 );
-

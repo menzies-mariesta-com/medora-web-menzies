@@ -22,17 +22,26 @@
 		const n = name.trim();
 		const em = email.trim();
 		if (!n) {
-			toastService.addToast('Name is required.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Name is required.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!em) {
-			toastService.addToast('Email is required.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Email is required.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isSubmitting = true;
 		try {
 			await createOwner({ name: n, email: em });
-			toastService.addToast('Owner created.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Owner created.',
+				StatusColorEnum.SUCCESS
+			);
 
 			const { error } = await authClient.requestPasswordReset({
 				email: em,
@@ -51,7 +60,8 @@
 			}
 			confirm();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Create failed';
+			const msg =
+				err instanceof Error ? err.message : 'Create failed';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		} finally {
 			isSubmitting = false;
@@ -61,8 +71,14 @@
 
 <form onsubmit={handleSubmit} class="flex flex-col gap-4">
 	<div class="flex flex-col gap-4">
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="owner-name" className="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="owner-name"
+				className="shrink-0 sm:w-36 font-bold"
+				>Name <span class="text-error">*</span></DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="owner-name"
@@ -73,8 +89,14 @@
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="owner-email" className="shrink-0 sm:w-36 font-bold">Email <span class="text-error">*</span></DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="owner-email"
+				className="shrink-0 sm:w-36 font-bold"
+				>Email <span class="text-error">*</span></DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="owner-email"
@@ -86,14 +108,25 @@
 			</div>
 		</div>
 		<p class="text-sm text-base-content/70">
-			A reset password email will be sent to this address so the owner can set their password.
+			A reset password email will be sent to this address so the owner
+			can set their password.
 		</p>
 	</div>
-	<div class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4">
-		<DaisyUiButton type="button" className="d-btn-ghost" onClick={() => cancel()}>
+	<div
+		class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
+	>
+		<DaisyUiButton
+			type="button"
+			className="d-btn-ghost"
+			onClick={() => cancel()}
+		>
 			Cancel
 		</DaisyUiButton>
-		<DaisyUiButton type="submit" className="d-btn-primary" disabled={isSubmitting}>
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary"
+			disabled={isSubmitting}
+		>
 			{isSubmitting ? 'Creating…' : 'Create'}
 		</DaisyUiButton>
 	</div>

@@ -17,7 +17,7 @@ const db = drizzle(client);
  * This script is designed to be:
  * - **Order-aware** – inserts in FK‑safe order (status → country → state → city → others)
  * - **Idempotent-ish** – sets fixed primary keys so re-running will no-op on conflicts
- * 
+ *
  * npx tsx src/lib/server/db/seed/master-table-seed.ts
  */
 export async function seedMasterTables() {
@@ -40,13 +40,14 @@ export async function seedMasterTables() {
 	await db.execute(sql`
 		INSERT INTO country (id, name, code, image_url, country_calling_code, language, status_id)
 		VALUES ${sql.join(
-		CountryCodeData.map((c) =>
-			// name: formatted with StringUtil.countryName
-			// code: kept in lowercase as in source data
-			sql`(${c.id}, ${StringUtil.countryName(c.name)}, ${c.code}, ${c.image}, ${c.phone}, ${c.language}, 1)`
-		),
-		sql`, `
-	)}
+			CountryCodeData.map(
+				(c) =>
+					// name: formatted with StringUtil.countryName
+					// code: kept in lowercase as in source data
+					sql`(${c.id}, ${StringUtil.countryName(c.name)}, ${c.code}, ${c.image}, ${c.phone}, ${c.language}, 1)`
+			),
+			sql`, `
+		)}
 		ON CONFLICT (id) DO NOTHING;
 	`);
 

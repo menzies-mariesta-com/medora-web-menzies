@@ -4,42 +4,62 @@ import * as table from '$lib/server/db/schema';
 import type {
 	HospitalDepartmentSchema,
 	HospitalDepartmentSchemaInsert,
-	HospitalDepartmentSchemaUpdate,
+	HospitalDepartmentSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getHospitalDepartment = query(async (): Promise<HospitalDepartmentSchema[]> => {
-	const data = await ensureDb().select().from(table.hospitalDepartmentTable);
-	return data;
-});
+export const getHospitalDepartment = query(
+	async (): Promise<HospitalDepartmentSchema[]> => {
+		const data = await ensureDb()
+			.select()
+			.from(table.hospitalDepartmentTable);
+		return data;
+	}
+);
 
 // get all with relations
 export const getHospitalDepartmentWithRelations = query(async () => {
 	return ensureDb().query.hospitalDepartmentTable.findMany({
 		with: {
 			hospital: true,
-			department: true,
-		},
+			department: true
+		}
 	});
 });
 
 // get count
-export const getHospitalDepartmentCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.hospitalDepartmentTable);
-	return row?.count ?? 0;
-});
+export const getHospitalDepartmentCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.hospitalDepartmentTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getHospitalDepartmentPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<HospitalDepartmentSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<HospitalDepartmentSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.hospitalDepartmentTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.hospitalDepartmentTable),
+			ensureDb()
+				.select()
+				.from(table.hospitalDepartmentTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.hospitalDepartmentTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -47,7 +67,7 @@ export const getHospitalDepartmentPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -55,7 +75,11 @@ export const getHospitalDepartmentPaginated = query(
 // get one
 export const getHospitalDepartmentById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<HospitalDepartmentSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<HospitalDepartmentSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.hospitalDepartmentTable)
@@ -72,8 +96,8 @@ export const getHospitalDepartmentByIdWithRelations = query(
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				hospital: true,
-				department: true,
-			},
+				department: true
+			}
 		});
 	}
 );
@@ -81,7 +105,9 @@ export const getHospitalDepartmentByIdWithRelations = query(
 // create
 export const createHospitalDepartment = command(
 	'unchecked' as const,
-	async (payload: HospitalDepartmentSchemaInsert): Promise<HospitalDepartmentSchema> => {
+	async (
+		payload: HospitalDepartmentSchemaInsert
+	): Promise<HospitalDepartmentSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.hospitalDepartmentTable)
 			.values(payload)
@@ -116,7 +142,9 @@ export const updateHospitalDepartment = command(
 export const deleteHospitalDepartment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.hospitalDepartmentTable).where(eq(table.hospitalDepartmentTable.id, id));
+		await ensureDb()
+			.delete(table.hospitalDepartmentTable)
+			.where(eq(table.hospitalDepartmentTable.id, id));
 		getHospitalDepartment().refresh();
 	}
 );

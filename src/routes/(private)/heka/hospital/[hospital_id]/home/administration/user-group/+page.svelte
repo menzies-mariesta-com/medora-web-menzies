@@ -33,7 +33,10 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
 	);
 
 	let groups = $state<UserGroupSchema[]>([]);
@@ -102,10 +105,14 @@
 		if (!result.confirmed) return;
 		try {
 			await deleteUserGroup({ id: row.id });
-			toastService.addToast(m.user_group_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.user_group_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			fetchGroups(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : m.delete_failed();
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -139,11 +146,17 @@
 			{#if isLoading && groups.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<p class="text-base-content/70 mb-4">
+				<p class="mb-4 text-base-content/70">
 					{#if total > 0}
-					{m.showing()} {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, total)} {m.of()} {total}
-				{:else}
-					{m.no_user_groups_yet()}
+						{m.showing()}
+						{(currentPage - 1) * pageSize + 1}–{Math.min(
+							currentPage * pageSize,
+							total
+						)}
+						{m.of()}
+						{total}
+					{:else}
+						{m.no_user_groups_yet()}
 					{/if}
 				</p>
 				<DaisyUiTable>
@@ -161,7 +174,8 @@
 								<td>{row.id}</td>
 								<td>{row.name ?? '—'}</td>
 								<td>
-									{statusOptions.find((s) => s.id === row.statusId)?.name ?? row.statusId}
+									{statusOptions.find((s) => s.id === row.statusId)
+										?.name ?? row.statusId}
 								</td>
 								<td class="text-right">
 									<div class="flex justify-end gap-2">
@@ -190,7 +204,10 @@
 							</tr>
 						{:else}
 							<tr>
-								<td colspan={4} class="text-center text-base-content/70 py-8">
+								<td
+									colspan={4}
+									class="text-center text-base-content/70 py-8"
+								>
 									{m.no_user_groups_create()}
 								</td>
 							</tr>
@@ -207,7 +224,10 @@
 							{m.previous()}
 						</DaisyUiButton>
 						<span class="flex items-center px-2">
-							{m.page()} {currentPage} {m.of()} {totalPages}
+							{m.page()}
+							{currentPage}
+							{m.of()}
+							{totalPages}
 						</span>
 						<DaisyUiButton
 							className="d-btn-sm"
@@ -222,4 +242,3 @@
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>
-

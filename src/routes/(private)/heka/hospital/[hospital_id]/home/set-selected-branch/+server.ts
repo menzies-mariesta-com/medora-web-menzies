@@ -10,7 +10,12 @@ const COOKIE_SELECTED_BRANCH_ID = 'heka_selected_branch_id';
 const BRANCH_ALL_VALUE = '__all__';
 
 /** POST with form body branchId=uuid. Sets cookie and redirects to referrer or hospital home. */
-export const POST: RequestHandler = async ({ request, params, cookies, locals }) => {
+export const POST: RequestHandler = async ({
+	request,
+	params,
+	cookies,
+	locals
+}) => {
 	const userRoleId = locals.userRoleId ?? null;
 	const staffId = locals.staff?.id ?? null;
 	const hospitalId = params.hospital_id ?? '';
@@ -27,28 +32,37 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 
 	if (branchId === BRANCH_ALL_VALUE) {
 		// "All Branches" is only valid when staff is assigned to every branch in this hospital.
-		const [allHospitalBranches, staffBranchesInHospital] = await Promise.all([
-			ensureDb()
-				.select({ id: table.hospitalBranchTable.id })
-				.from(table.hospitalBranchTable)
-				.where(eq(table.hospitalBranchTable.hospitalId, hospitalId)),
-			ensureDb()
-				.select({ branchId: table.staffBranchTable.branchId })
-				.from(table.staffBranchTable)
-				.innerJoin(
-					table.hospitalBranchTable,
-					eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
-				)
-				.where(
-					and(
-						eq(table.staffBranchTable.staffId, staffId),
+		const [allHospitalBranches, staffBranchesInHospital] =
+			await Promise.all([
+				ensureDb()
+					.select({ id: table.hospitalBranchTable.id })
+					.from(table.hospitalBranchTable)
+					.where(
 						eq(table.hospitalBranchTable.hospitalId, hospitalId)
+					),
+				ensureDb()
+					.select({ branchId: table.staffBranchTable.branchId })
+					.from(table.staffBranchTable)
+					.innerJoin(
+						table.hospitalBranchTable,
+						eq(
+							table.staffBranchTable.branchId,
+							table.hospitalBranchTable.id
+						)
 					)
-				)
-		]);
+					.where(
+						and(
+							eq(table.staffBranchTable.staffId, staffId),
+							eq(table.hospitalBranchTable.hospitalId, hospitalId)
+						)
+					)
+			]);
 		const allIds = allHospitalBranches.map((b) => b.id);
-		const staffSet = new Set(staffBranchesInHospital.map((b) => b.branchId));
-		const hasAllBranchesAccess = allIds.length > 0 && allIds.every((id) => staffSet.has(id));
+		const staffSet = new Set(
+			staffBranchesInHospital.map((b) => b.branchId)
+		);
+		const hasAllBranchesAccess =
+			allIds.length > 0 && allIds.every((id) => staffSet.has(id));
 		if (!hasAllBranchesAccess) {
 			throw redirect(303, hekaHospitalHome(hospitalId));
 		}
@@ -60,7 +74,10 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 		});
 		const referer = request.headers.get('referer');
 		const redirectUrl =
-			referer && new URL(referer).pathname.startsWith(`/heka/hospital/${hospitalId}/home`)
+			referer &&
+			new URL(referer).pathname.startsWith(
+				`/heka/hospital/${hospitalId}/home`
+			)
 				? referer
 				: hekaHospitalHome(hospitalId);
 		throw redirect(303, redirectUrl);
@@ -72,7 +89,10 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 		.from(table.staffBranchTable)
 		.innerJoin(
 			table.hospitalBranchTable,
-			eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
+			eq(
+				table.staffBranchTable.branchId,
+				table.hospitalBranchTable.id
+			)
 		)
 		.where(
 			and(
@@ -97,7 +117,10 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 
 	const referer = request.headers.get('referer');
 	const redirectUrl =
-		referer && new URL(referer).pathname.startsWith(`/heka/hospital/${hospitalId}/home`)
+		referer &&
+		new URL(referer).pathname.startsWith(
+			`/heka/hospital/${hospitalId}/home`
+		)
 			? referer
 			: hekaHospitalHome(hospitalId);
 	throw redirect(303, redirectUrl);

@@ -6,5 +6,5 @@
 </script>
 
 <li class="d-list-row {className}">
-    {@render children()}
+	{@render children()}
 </li>

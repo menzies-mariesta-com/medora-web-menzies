@@ -30,7 +30,9 @@
 
 	let { data } = $props();
 	const isStaff = $derived(data?.userRoleId === RoleEnum.STAFF);
-	const isSystemAdmin = $derived(data?.userRoleId === RoleEnum.SYSTEM_ADMIN);
+	const isSystemAdmin = $derived(
+		data?.userRoleId === RoleEnum.SYSTEM_ADMIN
+	);
 	const isOwner = $derived(data?.userRoleId === RoleEnum.OWNER);
 	const canManageHospitals = $derived(!isStaff);
 
@@ -45,7 +47,9 @@
 		isLoading = true;
 		try {
 			const ownerId =
-				isOwner && data?.user ? (data.user as { id?: string }).id : undefined;
+				isOwner && data?.user
+					? (data.user as { id?: string }).id
+					: undefined;
 			const params = ownerId != null ? { ownerId } : undefined;
 			// After create/update/delete, invalidate cache then fetch so list updates
 			if (forceRefresh) {
@@ -64,7 +68,9 @@
 	async function openEditHospitalModal(h: HospitalWithOwner) {
 		HospitalModalState.hospitalId = h.id as string;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
-		HospitalModalState.currentUserId = data?.user ? (data.user as { id?: string }).id : undefined;
+		HospitalModalState.currentUserId = data?.user
+			? (data.user as { id?: string }).id
+			: undefined;
 		const result = await dialogService.open({
 			title: m.edit_hospital(),
 			component: NewHospitalModal
@@ -77,7 +83,9 @@
 	async function openNewHospitalModal() {
 		HospitalModalState.hospitalId = null;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
-		HospitalModalState.currentUserId = data?.user ? (data.user as { id?: string }).id : undefined;
+		HospitalModalState.currentUserId = data?.user
+			? (data.user as { id?: string }).id
+			: undefined;
 		const result = await dialogService.open({
 			title: m.new_hospital(),
 			component: NewHospitalModal
@@ -89,24 +97,28 @@
 
 	async function handleDelete(h: HospitalWithOwner) {
 		const result = await dialogService.open({
-		title: m.delete_hospital(),
-		message: `Delete "${h.name ?? h.code ?? m.hospitals()}"? This cannot be undone.`,
+			title: m.delete_hospital(),
+			message: `Delete "${h.name ?? h.code ?? m.hospitals()}"? This cannot be undone.`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteHospital({ id: h.id });
-			toastService.addToast(m.hospital_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.hospital_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			await loadHospitals(true);
 		} catch (err) {
-		const msg = err instanceof Error ? err.message : m.delete_failed();
-		toastService.addToast(msg, StatusColorEnum.ERROR);
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
+			toastService.addToast(msg, StatusColorEnum.ERROR);
+		}
 	}
-}
 
 	lifeCycleUtil.onMount(() => {
-	loadHospitals();
-});
+		loadHospitals();
+	});
 </script>
 
 <div class="space-y-6">
@@ -116,7 +128,8 @@
 			{#if isSystemAdmin}
 				<DaisyUiButton
 					className="d-btn-outline"
-					onClick={() => routerUtil.goToRoute(WebRoutesEnum.HEKA_ADMIN_OWNERS)}
+					onClick={() =>
+						routerUtil.goToRoute(WebRoutesEnum.HEKA_ADMIN_OWNERS)}
 				>
 					<LucideUserCog />
 					{m.manage_owners()}
@@ -134,71 +147,75 @@
 		</div>
 	</div>
 
-	{#if isStaff && !(data?.allowedHospitalIds?.length)}
-		<p class="text-base-content/70 py-8 text-center">
+	{#if isStaff && !data?.allowedHospitalIds?.length}
+		<p class="py-8 text-center text-base-content/70">
 			{m.no_hospital_assigned()}
 		</p>
 	{:else}
-	<DaisyUiCard>
-		<DaisyUiCardBody>
-			{#if isLoading}
-				<DaisyUiLoading className="py-8" />
-			{:else if hospitals.length === 0}
-				<p class="text-base-content/70 py-8 text-center">
-					{m.no_hospitals_yet()}
-				</p>
-			{:else}
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.name()}</th>
-							<th>{m.code()}</th>
-							<th>{m.owner()}</th>
-							<th>{m.phone()}</th>
-							<th>{m.email()}</th>
-							<th>{m.address()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each hospitals as h (h.id)}
+		<DaisyUiCard>
+			<DaisyUiCardBody>
+				{#if isLoading}
+					<DaisyUiLoading className="py-8" />
+				{:else if hospitals.length === 0}
+					<p class="py-8 text-center text-base-content/70">
+						{m.no_hospitals_yet()}
+					</p>
+				{:else}
+					<DaisyUiTable>
+						<DaisyUiTableHeader>
 							<tr>
-								<td>{h.name ?? '—'}</td>
-								<td>{h.code ?? '—'}</td>
-								<td>{h.owner?.name ?? h.owner?.email ?? '—'}</td>
-								<td>{h.phone ?? '—'}</td>
-								<td>{h.email ?? '—'}</td>
-								<td class="max-w-[200px] truncate" title={h.address ?? undefined}>{h.address ?? '—'}</td>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-primary d-btn-sm"
-											onClick={() => goToHospitalHome(h.id)}
-										>
-											{m.enter()}
-										</DaisyUiButton>
-										{#if canManageHospitals}
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm"
-												onClick={() => openEditHospitalModal(h)}
-											>
-												<LucidePencil />
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-error d-btn-sm"
-												onClick={() => handleDelete(h)}
-											>
-												<LucideTrash2 />
-											</DaisyUiButton>
-										{/if}
-									</div>
-								</td>
+								<th>{m.name()}</th>
+								<th>{m.code()}</th>
+								<th>{m.owner()}</th>
+								<th>{m.phone()}</th>
+								<th>{m.email()}</th>
+								<th>{m.address()}</th>
+								<th class="text-right">{m.actions()}</th>
 							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
-			{/if}
-		</DaisyUiCardBody>
-	</DaisyUiCard>
+						</DaisyUiTableHeader>
+						<DaisyUiTableBody>
+							{#each hospitals as h (h.id)}
+								<tr>
+									<td>{h.name ?? '—'}</td>
+									<td>{h.code ?? '—'}</td>
+									<td>{h.owner?.name ?? h.owner?.email ?? '—'}</td>
+									<td>{h.phone ?? '—'}</td>
+									<td>{h.email ?? '—'}</td>
+									<td
+										class="max-w-[200px] truncate"
+										title={h.address ?? undefined}
+										>{h.address ?? '—'}</td
+									>
+									<td class="text-right">
+										<div class="flex justify-end gap-2">
+											<DaisyUiButton
+												className="d-btn-primary d-btn-sm"
+												onClick={() => goToHospitalHome(h.id)}
+											>
+												{m.enter()}
+											</DaisyUiButton>
+											{#if canManageHospitals}
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-sm"
+													onClick={() => openEditHospitalModal(h)}
+												>
+													<LucidePencil />
+												</DaisyUiButton>
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-error d-btn-sm"
+													onClick={() => handleDelete(h)}
+												>
+													<LucideTrash2 />
+												</DaisyUiButton>
+											{/if}
+										</div>
+									</td>
+								</tr>
+							{/each}
+						</DaisyUiTableBody>
+					</DaisyUiTable>
+				{/if}
+			</DaisyUiCardBody>
+		</DaisyUiCard>
 	{/if}
 </div>

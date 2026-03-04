@@ -15,7 +15,7 @@
 
 <div class="flex flex-col gap-4">
 	<h1 class="text-2xl font-bold">{m.marketplace()}</h1>
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 		{#each store as item}
 			<div class="card">
 				<div class="card-body">

@@ -17,7 +17,7 @@ const db = drizzle(client);
  * This script is designed to be:
  * - **Order-aware** – inserts in FK‑safe order (status → country → state → city → others)
  * - **Idempotent-ish** – sets fixed primary keys so re-running will no-op on conflicts
- * 
+ *
  * npx tsx src/lib/server/db/seed/master-table-seed.ts
  */
 export async function seedAuthTables() {
@@ -34,7 +34,6 @@ export async function seedAuthTables() {
 	`);
 
 	console.log('Seeded: role');
-
 }
 
 // Allow running via `ts-node` / `tsx` / `node` (after build)

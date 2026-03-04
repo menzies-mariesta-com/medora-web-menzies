@@ -36,7 +36,10 @@ export function normalizePagination(params?: PaginationParams): {
 	offset: number;
 } {
 	const page = Math.max(1, params?.page ?? DEFAULT_PAGE);
-	const pageSize = Math.max(1, Math.min(MAX_PAGE_SIZE, params?.pageSize ?? DEFAULT_PAGE_SIZE));
+	const pageSize = Math.max(
+		1,
+		Math.min(MAX_PAGE_SIZE, params?.pageSize ?? DEFAULT_PAGE_SIZE)
+	);
 	const offset = (page - 1) * pageSize;
 	return { page, pageSize, limit: pageSize, offset };
 }
