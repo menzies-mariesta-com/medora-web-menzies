@@ -1,7 +1,4 @@
 <script lang="ts">
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
@@ -29,6 +26,9 @@
 	import LExternalReferMasterModal from '$lib/component/local/private/heka/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -140,6 +140,92 @@
 	}
 
 	const REFER_COLUMN_COUNT = 14;
+
+	const referColumns: MariTableColumn<ExternalReferWithRelations>[] = [
+		{
+			id: 'id',
+			header: m.id(),
+			widthClass: 'w-24 min-w-[6rem]'
+		},
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-56 min-w-[14rem]',
+			format: (_value, row) =>
+				[
+					(row.title?.name ?? '').trim(),
+					(row.name ?? '').trim()
+				]
+					.filter(Boolean)
+					.join(' ') || '—'
+		},
+		{
+			id: 'address',
+			header: m.address(),
+			widthClass: 'w-56 min-w-[14rem]'
+		},
+		{
+			id: 'country',
+			header: m.country(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'country.name'
+		},
+		{
+			id: 'state',
+			header: m.state(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'state.name'
+		},
+		{
+			id: 'city',
+			header: m.city(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'city.name'
+		},
+		{
+			id: 'postalCode',
+			header: m.postal_code(),
+			widthClass: 'w-28 min-w-[7rem]',
+			format: (_value, row) =>
+				row.postalCode != null
+					? String(row.postalCode.value)
+					: '—'
+		},
+		{
+			id: 'phoneCode',
+			header: m.phone_code(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'phoneCountry.countryCallingCode'
+		},
+		{
+			id: 'phone',
+			header: m.phone(),
+			widthClass: 'w-36 min-w-[9rem]'
+		},
+		{
+			id: 'email',
+			header: m.email(),
+			widthClass: 'w-48 min-w-[12rem]'
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-28 min-w-[7rem]',
+			field: 'status.name'
+		},
+		{
+			id: 'createdAt',
+			header: m.created_at(),
+			widthClass: 'w-40 min-w-[10rem]',
+			format: (value) => formatDateTime(value as any)
+		},
+		{
+			id: 'updatedAt',
+			header: m.updated_at(),
+			widthClass: 'w-40 min-w-[10rem]',
+			format: (value) => formatDateTime(value as any)
+		}
+	];
 
 	function openCreate() {
 		modalState = { mode: 'create' };
@@ -264,128 +350,60 @@
 	</div>
 {:else}
 	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
-		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
-			<DaisyUiTableHeader>
-				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-1 w-16 min-w-[4rem] bg-base-200"
-						>{m.actions()}</th
-					>
-					<th
-						class="sticky top-0 left-[4.75rem] z-1 w-24 min-w-[6rem] bg-base-200"
-						>{m.id()}</th
-					>
-					<th class="w-56 min-w-[14rem]">{m.name()}</th>
-					<th class="w-56 min-w-[14rem]">{m.address()}</th>
-					<th class="w-32 min-w-[8rem]">{m.country()}</th>
-					<th class="w-32 min-w-[8rem]">{m.state()}</th>
-					<th class="w-32 min-w-[8rem]">{m.city()}</th>
-					<th class="w-28 min-w-[7rem]">{m.postal_code()}</th>
-					<th class="w-32 min-w-[8rem]">{m.phone_code()}</th>
-					<th class="w-36 min-w-[9rem]">{m.phone()}</th>
-					<th class="w-48 min-w-[12rem]">{m.email()}</th>
-					<th class="w-28 min-w-[7rem]">{m.status()}</th>
-					<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
-					<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
-				</tr>
-			</DaisyUiTableHeader>
-			<DaisyUiTableBody>
-				{#each referList as refer (refer.id)}
-					<tr class="z-0 hover:bg-info/30">
-						<td
-							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+		<MariTable
+			rows={referList}
+			columns={referColumns}
+			isLoading={isLoading}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage={m.no_refer_found()}
+			showRowActions={true}
+			actionsHeader={m.actions()}
+			actionsVariant="none"
+			enableColumnFilters={false}
+			on:refresh={() => fetchRefer({ bustCache: true })}
+		>
+			<svelte:fragment slot="rowActions" let:row>
+				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
+					<div class="flex flex-col items-center gap-1">
+						<DaisyUiTooltip
+							tooltipText={m.view_data()}
+							className="d-tooltip-ghost d-tooltip-right"
 						>
-							<div class="flex flex-col items-center gap-1">
-								<DaisyUiTooltip
-									tooltipText={m.view_data()}
-									className="d-tooltip-ghost d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => viewData(refer.id)}
-									>
-										<LucideEye className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.edit_data()}
-									className="d-tooltip-accent d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-sm d-btn-ghost d-btn-accent"
-										onClick={() => editData(refer.id)}
-									>
-										<LucidePencil className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.delete_data()}
-									className="d-tooltip-error d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm d-btn-error"
-										disabled={isLoading}
-										onClick={() => handleDelete(refer.id)}
-									>
-										<LucideTrash2 className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-							</div>
-						</td>
-						<td
-							class="sticky left-[4.75rem] z-1 w-24 min-w-[6rem] bg-base-100"
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm"
+								onClick={() => viewData(row.id)}
+							>
+								<LucideEye className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+						<DaisyUiTooltip
+							tooltipText={m.edit_data()}
+							className="d-tooltip-accent d-tooltip-right"
 						>
-							{refer.id}
-						</td>
-						<td class="w-56 min-w-[14rem]">
-							{[
-								(refer.title?.name ?? '').trim(),
-								(refer.name ?? '').trim()
-							]
-								.filter(Boolean)
-								.join(' ') || '—'}
-						</td>
-						<td class="w-56 min-w-[14rem]">{refer.address ?? '—'}</td>
-						<td class="w-32 min-w-[8rem]"
-							>{refer.country?.name ?? '—'}</td
+							<DaisyUiButton
+								className="d-btn-sm d-btn-ghost d-btn-accent"
+								onClick={() => editData(row.id)}
+							>
+								<LucidePencil className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+						<DaisyUiTooltip
+							tooltipText={m.delete_data()}
+							className="d-tooltip-error d-tooltip-right"
 						>
-						<td class="w-32 min-w-[8rem]"
-							>{refer.state?.name ?? '—'}</td
-						>
-						<td class="w-32 min-w-[8rem]"
-							>{refer.city?.name ?? '—'}</td
-						>
-						<td class="w-28 min-w-[7rem]"
-							>{refer.postalCode != null
-								? String(refer.postalCode.value)
-								: '—'}</td
-						>
-						<td class="w-32 min-w-[8rem]"
-							>{refer.phoneCountry?.countryCallingCode ?? '—'}</td
-						>
-						<td class="w-36 min-w-[9rem]">{refer.phone ?? '—'}</td>
-						<td class="w-48 min-w-[12rem]">{refer.email ?? '—'}</td>
-						<td class="w-28 min-w-[7rem]"
-							>{refer.status?.name ?? '—'}</td
-						>
-						<td class="w-40 min-w-[10rem]"
-							>{formatDateTime(refer.createdAt)}</td
-						>
-						<td class="w-40 min-w-[10rem]"
-							>{formatDateTime(refer.updatedAt)}</td
-						>
-					</tr>
-				{:else}
-					<tr>
-						<td
-							colspan={REFER_COLUMN_COUNT}
-							class="text-center opacity-70"
-						>
-							{m.no_refer_found()}
-						</td>
-					</tr>
-				{/each}
-			</DaisyUiTableBody>
-		</DaisyUiTable>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-error"
+								disabled={isLoading}
+								onClick={() => handleDelete(row.id)}
+							>
+								<LucideTrash2 className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+					</div>
+				</td>
+			</svelte:fragment>
+		</MariTable>
 	</div>
 {/if}
 

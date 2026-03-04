@@ -3,6 +3,7 @@
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import type { SpecializationWithRelations } from '$lib/remote/table/master-table/specialization.remote';
 	import type {
 		CitySchema,
 		CountrySchema,
@@ -45,7 +46,7 @@
 		nationalityData: NationalitySchema[];
 		postalCodeData: PostalCodeSchema[];
 		departmentData: DepartmentSchema[];
-		specializationData: SpecializationSchema[];
+		specializationData: SpecializationWithRelations[];
 		identityTypeData: IdentityTypeSchema[];
 		filteredStateData: StateSchema[];
 		filteredCityData: CitySchema[];
@@ -168,7 +169,7 @@
 				optionHeader="Select a specialization ..."
 			>
 				{#each specializationData as data (data.id)}
-					<option value={String(data.id)}>{data.name}</option>
+					<option value={String(data.id)}>{data.name} ({data.craftGroup.name})</option>
 				{/each}
 			</DaisyUiSelect>
 		</div>

@@ -273,7 +273,10 @@ export const getStaffCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
+// get paginated with relations
+// Supports:
+// - generic search (search across name, code, phonePrimary)
+// - dedicated filters: staffCode, staffName, staffPhonePrimary
 export const getStaffPaginated = query(
 	'unchecked' as const,
 	async (
@@ -282,23 +285,53 @@ export const getStaffPaginated = query(
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
-		const pattern = searchTerm ? `%${searchTerm}%` : null;
-		const searchCondition =
-			pattern &&
-			or(
-				ilike(
-					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
-					`%${searchTerm}%`
-				),
-				ilike(table.staffTable.code, pattern),
-				ilike(table.staffTable.phonePrimary, pattern)
-			);
+		const staffCode = params?.staffCode?.trim();
+		const staffName = params?.staffName?.trim();
+		const staffPhonePrimary = params?.staffPhonePrimary?.trim();
 
-		// Exclude soft-deleted staff
-		const notDeletedCondition = ne(
-			table.staffTable.statusId,
-			StatusEnum.DELETED
-		);
+		const conditions = [
+			// Exclude soft-deleted staff
+			ne(table.staffTable.statusId, StatusEnum.DELETED)
+		];
+
+		// Generic search across name, code, primary phone
+		if (searchTerm) {
+			const pattern = `%${searchTerm}%`;
+			conditions.push(
+				or(
+					ilike(
+						sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName})`,
+						pattern
+					),
+					ilike(table.staffTable.code, pattern),
+					ilike(table.staffTable.phonePrimary, pattern)
+				)
+			);
+		}
+
+		// Dedicated filters
+		if (staffCode) {
+			conditions.push(
+				ilike(table.staffTable.code, `%${staffCode}%`)
+			);
+		}
+		if (staffName) {
+			conditions.push(
+				ilike(
+					sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName})`,
+					`%${staffName}%`
+				)
+			);
+		}
+		if (staffPhonePrimary) {
+			conditions.push(
+				ilike(
+					table.staffTable.phonePrimary,
+					`%${staffPhonePrimary}%`
+				)
+			);
+		}
+
 
 		// When hospitalId is set, only staff assigned to that hospital (via staff_hospital)
 		const hospitalId = params?.hospitalId;
@@ -322,9 +355,7 @@ export const getStaffPaginated = query(
 				)`
 				: undefined;
 
-		let whereExpr = searchCondition
-			? and(notDeletedCondition, searchCondition)
-			: notDeletedCondition;
+		let whereExpr = and(...conditions);
 		if (hospitalCondition)
 			whereExpr = and(whereExpr, hospitalCondition);
 		if (branchCondition) whereExpr = and(whereExpr, branchCondition);
