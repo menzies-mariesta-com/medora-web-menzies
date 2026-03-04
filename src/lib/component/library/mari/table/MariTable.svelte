@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from 'svelte';
 
 	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
@@ -45,16 +45,21 @@
 
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
-	type RowEventDetail = any;
+type RowEventDetail = any;
 
-	const dispatch = createEventDispatcher<{
-		refresh: void;
-		rowClick: RowEventDetail;
-		view: RowEventDetail;
-		edit: RowEventDetail;
-		delete: RowEventDetail;
-		select: RowEventDetail;
-	}>();
+const dispatch = createEventDispatcher<{
+	refresh: void;
+	rowClick: RowEventDetail;
+	view: RowEventDetail;
+	edit: RowEventDetail;
+	delete: RowEventDetail;
+	select: RowEventDetail;
+	filtersChange: {
+		columnId: string;
+		value: string;
+		filters: Record<string, string>;
+	};
+}>();
 
 	let {
 		rows,
@@ -68,7 +73,8 @@
 		showRowActions = false,
 		actionsHeader = 'Actions',
 		enableColumnFilters = false,
-		actionsVariant = 'none'
+		actionsVariant = 'none',
+		useRemoteFilters = false
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -82,6 +88,7 @@
 		actionsHeader?: string;
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
+		useRemoteFilters?: boolean;
 	}>();
 
 	let currentPage = $state(1);
@@ -93,20 +100,22 @@
 	const hasActionsColumn = $derived(showRowActions || actionsVariant !== 'none');
 
 	const filteredRows = $derived(
-		rows.filter((row, index) => {
-			for (const column of columns) {
-				const rawFilter = columnFilters[column.id];
-				const filter = rawFilter ? rawFilter.trim().toLowerCase() : '';
-				if (!filter) continue;
+		useRemoteFilters
+			? rows
+			: rows.filter((row, index) => {
+					for (const column of columns) {
+						const rawFilter = columnFilters[column.id];
+						const filter = rawFilter ? rawFilter.trim().toLowerCase() : '';
+						if (!filter) continue;
 
-				const cell = getCellValue(row, column, index);
-				const valueStr = cell == null ? '' : String(cell).toLowerCase();
-				if (!valueStr.includes(filter)) {
-					return false;
-				}
-			}
-			return true;
-		})
+						const cell = getCellValue(row, column, index);
+						const valueStr = cell == null ? '' : String(cell).toLowerCase();
+						if (!valueStr.includes(filter)) {
+							return false;
+						}
+					}
+					return true;
+				})
 	);
 
 	const total = $derived(filteredRows.length);
@@ -151,11 +160,22 @@
 
 	function handleFilterInputEvent(columnId: string, event: Event) {
 		const target = event.currentTarget as HTMLInputElement | null;
-		columnFilters = {
+		const value = target?.value ?? '';
+		const newFilters: Record<string, string> = {
 			...columnFilters,
-			[columnId]: target?.value ?? ''
+			[columnId]: value
 		};
+
+		columnFilters = newFilters;
 		currentPage = 1;
+
+		if (useRemoteFilters) {
+			dispatch('filtersChange', {
+				columnId,
+				value,
+				filters: newFilters
+			});
+		}
 	}
 </script>
 
@@ -294,7 +314,7 @@
 													<LucideEye className="size-4" />
 												</DaisyUiButton>
 												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
+													className="d-btn-ghost d-btn-sm d-btn-success"
 													onClick={() => dispatch('edit', row)}
 												>
 													<LucidePencil className="size-4" />

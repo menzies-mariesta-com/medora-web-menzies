@@ -51,7 +51,9 @@ import { m } from '$lib/paraglide/messages';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
 	let isLoading = $state(false);
-let isSaving = $state(false);
+	let isSaving = $state(false);
+
+	let tableColumnFilters = $state<Record<string, string>>({});
 
 const branchLocked = $derived(!!branchIdForTagging);
 
@@ -97,7 +99,70 @@ const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
 		if (!branchIdForTagging) return;
 		isLoading = true;
 		try {
-			const params = { branchId: branchIdForTagging };
+			const filters = tableColumnFilters;
+
+			const params: {
+				branchId: string;
+				serviceIds?: number[];
+				serviceAmount?: number;
+				serviceTaxAmount?: number;
+				statusId?: number;
+				id?: number;
+			} = {
+				branchId: branchIdForTagging
+			};
+
+			// ID filter
+			const idTerm = filters.id?.trim();
+			if (idTerm) {
+				const idVal = Number(idTerm);
+				if (!Number.isNaN(idVal)) {
+					params.id = idVal;
+				}
+			}
+
+			// Service name filter -> serviceIds list
+			const serviceFilter = filters.service?.trim().toLowerCase();
+			if (serviceFilter) {
+				const serviceIds = serviceItems
+					.filter((s) =>
+						(s.serviceName ?? '').toLowerCase().includes(serviceFilter)
+					)
+					.map((s) => s.id);
+
+				if (serviceIds.length === 0) {
+					taggings = [];
+					return;
+				}
+
+				params.serviceIds = serviceIds;
+			}
+
+			// Amount filters
+			const amountTerm = filters.serviceAmount?.trim();
+			if (amountTerm) {
+				const value = Number(amountTerm);
+				if (!Number.isNaN(value)) {
+					params.serviceAmount = value;
+				}
+			}
+
+			const taxAmountTerm = filters.serviceTaxAmount?.trim();
+			if (taxAmountTerm) {
+				const value = Number(taxAmountTerm);
+				if (!Number.isNaN(value)) {
+					params.serviceTaxAmount = value;
+				}
+			}
+
+			// Status filter
+			const statusTerm = filters.status?.trim().toLowerCase();
+			if (statusTerm === 'active') {
+				params.statusId = StatusEnum.ACTIVE;
+			} else if (statusTerm === 'inactive') {
+				params.statusId = StatusEnum.INACTIVE;
+			}
+
 			if (forceRefresh) {
 				await getServiceTagging(params).refresh();
 			}
@@ -137,6 +202,11 @@ const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
 		formServiceAmount = row.serviceAmount != null ? String(row.serviceAmount) : '';
 		formServiceTaxAmount = row.serviceTaxAmount != null ? String(row.serviceTaxAmount) : '';
 		formActive = (row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
+	}
+
+	function handleTableFiltersChange(event: CustomEvent<{ filters: Record<string, string> }>) {
+		tableColumnFilters = event.detail.filters;
+		fetchTaggings(true);
 	}
 
 	async function handleSubmit(e: Event) {
@@ -303,9 +373,11 @@ const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
 						rows={taggings}
 						columns={taggingColumns}
 						enableColumnFilters={true}
+						useRemoteFilters={true}
 						actionsHeader={m.actions()}
 						actionsVariant="crud"
 						on:refresh={() => fetchTaggings(true)}
+						on:filtersChange={handleTableFiltersChange}
 						on:edit={(event) => startEdit(event.detail)}
 						on:delete={(event) => handleDelete(event.detail)}
 					/>
