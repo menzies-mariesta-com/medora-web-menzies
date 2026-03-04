@@ -3,12 +3,12 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import MariTable, {
+	type MariTableColumn
+} from '$lib/component/library/mari/table/MariTable.svelte';
 	import {
 		getServiceTagging,
 		createServiceTagging,
@@ -21,12 +21,10 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import { m } from '$lib/paraglide/messages';
+import { dialogService } from '$lib/service/dialog.service.svelte';
+import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
+import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
 
@@ -44,8 +42,6 @@
 	let serviceItems = $state<ServiceItemSchema[]>([]);
 	let taggings = $state<ServiceTaggingSchema[]>([]);
 
-	let selectedServiceId = $state<string>('');
-
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
 	let formServiceTaxAmount = $state('');
@@ -55,9 +51,41 @@
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
 	let isLoading = $state(false);
-	let isSaving = $state(false);
+let isSaving = $state(false);
 
-	const branchLocked = $derived(!!branchIdForTagging);
+const branchLocked = $derived(!!branchIdForTagging);
+
+const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
+	{
+		id: 'id',
+		header: m.id(),
+		widthClass: 'w-20'
+	},
+	{
+		id: 'service',
+		header: 'Service',
+		widthClass: 'w-64',
+		format: (_value, row) => serviceNameById(row.serviceId)
+	},
+	{
+		id: 'serviceAmount',
+		header: 'Amount',
+		widthClass: 'w-32',
+		field: 'serviceAmount'
+	},
+	{
+		id: 'serviceTaxAmount',
+		header: 'Tax amount',
+		widthClass: 'w-32',
+		field: 'serviceTaxAmount'
+	},
+	{
+		id: 'status',
+		header: m.status(),
+		widthClass: 'w-32',
+		format: (_value, row) => (row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive')
+	}
+];
 
 	async function fetchServiceItems() {
 		if (!hospitalId) return;
@@ -69,8 +97,7 @@
 		if (!branchIdForTagging) return;
 		isLoading = true;
 		try {
-			const serviceId = selectedServiceId ? Number(selectedServiceId) : null;
-			const params = { branchId: branchIdForTagging, serviceId: serviceId ?? undefined };
+			const params = { branchId: branchIdForTagging };
 			if (forceRefresh) {
 				await getServiceTagging(params).refresh();
 			}
@@ -90,12 +117,8 @@
 		})();
 	});
 
-	async function onServiceFilterChange() {
-		await fetchTaggings(true);
-	}
-
 	function resetForm() {
-		formServiceId = selectedServiceId || '';
+		formServiceId = '';
 		formServiceAmount = '';
 		formServiceTaxAmount = '';
 		formActive = true;
@@ -211,61 +234,44 @@
 	{:else}
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<h1 class="text-2xl font-bold">Service tagging</h1>
-			<DaisyUiButton className="d-btn-outline d-btn-sm" onClick={startCreate}>
+			<DaisyUiButton className="d-btn-outline d-btn-sm d-btn-square" onClick={startCreate}>
 				<LucidePlus />
-				{m.create()}
 			</DaisyUiButton>
 		</div>
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
-					<div class="flex flex-wrap gap-4 items-end">
-						<div class="flex flex-col gap-1">
-							<label class="text-sm font-medium">Service (filter)</label>
-							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm w-72"
-								bind:value={selectedServiceId}
-								onChange={onServiceFilterChange}
-								optionHeader="All services"
-							>
-								{#each serviceItems as s (s.id)}
-									<option value={s.id}>{s.serviceName ?? `Service ${s.id}`}</option>
-								{/each}
-							</DaisyUiSelect>
-						</div>
-					</div>
-
 					<div class="flex flex-wrap gap-4">
-						<div class="flex flex-col gap-1">
+						<div class="flex flex-1 min-w-60 flex-col gap-1">
 							<label class="text-sm font-medium">Service<span class="text-error"> *</span></label>
 							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm w-72"
+								className="d-select d-select-bordered d-select-sm w-full"
 								bind:value={formServiceId}
 								optionHeader="Select service"
 							>
 								{#each serviceItems as s (s.id)}
-									<option value={s.id}>{s.serviceName ?? `Service ${s.id}`}</option>
+									<option value={String(s.id)}>{s.serviceName ?? `Service ${s.id}`}</option>
 								{/each}
 							</DaisyUiSelect>
 						</div>
-						<div class="flex flex-col gap-1">
+						<div class="flex flex-1 min-w-40 flex-col gap-1">
 							<label class="text-sm font-medium">Amount<span class="text-error"> *</span></label>
 							<DaisyUiInputField
 								bind:value={formServiceAmount}
 								inputType="number"
 								inputPlaceholderText="0.00"
 								required
-								className="d-input-sm w-40"
+								className="d-input-sm w-full"
 							/>
 						</div>
-						<div class="flex flex-col gap-1">
+						<div class="flex flex-1 min-w-40 flex-col gap-1">
 							<label class="text-sm font-medium">Tax amount</label>
 							<DaisyUiInputField
 								bind:value={formServiceTaxAmount}
 								inputType="number"
 								inputPlaceholderText="0.00"
-								className="d-input-sm w-40"
+								className="d-input-sm w-full"
 							/>
 						</div>
 						<div class="flex items-end gap-2">
@@ -293,51 +299,16 @@
 				{#if isLoading}
 					<DaisyUiLoading className="py-8" />
 				{:else}
-					<DaisyUiTable>
-						<DaisyUiTableHeader>
-							<tr>
-								<th>{m.id()}</th>
-								<th>Service</th>
-								<th>Amount</th>
-								<th>Tax amount</th>
-								<th>{m.status()}</th>
-								<th class="text-right">{m.actions()}</th>
-							</tr>
-						</DaisyUiTableHeader>
-						<DaisyUiTableBody>
-							{#each taggings as row (row.id)}
-								<tr>
-									<td>{row.id}</td>
-									<td>{serviceNameById(row.serviceId)}</td>
-									<td>{row.serviceAmount ?? '—'}</td>
-									<td>{row.serviceTaxAmount ?? '—'}</td>
-									<td>{row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'}</td>
-									<td class="text-right">
-										<div class="flex justify-end gap-2">
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm"
-												onClick={() => startEdit(row)}
-											>
-												<LucidePencil />
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-error d-btn-sm"
-												onClick={() => handleDelete(row)}
-											>
-												<LucideTrash2 />
-											</DaisyUiButton>
-										</div>
-									</td>
-								</tr>
-							{:else}
-								<tr>
-									<td colspan={6} class="text-center text-base-content/70 py-8">
-										No service tagging records yet. Create one above.
-									</td>
-								</tr>
-							{/each}
-						</DaisyUiTableBody>
-					</DaisyUiTable>
+					<MariTable
+						rows={taggings}
+						columns={taggingColumns}
+						enableColumnFilters={true}
+						actionsHeader={m.actions()}
+						actionsVariant="crud"
+						on:refresh={() => fetchTaggings(true)}
+						on:edit={(event) => startEdit(event.detail)}
+						on:delete={(event) => handleDelete(event.detail)}
+					/>
 				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>
