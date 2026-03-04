@@ -17,7 +17,6 @@ import {
 	userGroupTable
 } from '../information-table/information-table';
 import {
-	allergyMasterTable,
 	bloodTypeTable,
 	cityTable,
 	countryTable,
@@ -358,16 +357,5 @@ export const visitTypeTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		patientVisits: many(patientVisitTable)
-	})
-);
-
-export const allergyMasterTableRelations = relations(
-	allergyMasterTable,
-	({ one, many }) => ({
-		status: one(statusTable, {
-			fields: [allergyMasterTable.statusId],
-			references: [statusTable.id]
-		}),
-		patientAllergies: many(patientTable)
 	})
 );
