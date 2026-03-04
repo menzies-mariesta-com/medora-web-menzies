@@ -3,7 +3,7 @@ export type StagedPatientAttachment = { file: File; description: string };
 
 export const PatientAttachmentDialogState = $state<{
 	pending:
-		| { patientId: string; patientName?: string }
+		| { patientId: string }
 		| { mode: 'staging' }
 		| null;
 	/** Used in create flow: attachments to upload after patient is created. */
