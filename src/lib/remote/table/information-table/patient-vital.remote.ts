@@ -20,18 +20,22 @@ export const getPatientVitalsByPatientId = query(
 		patientId: string;
 		hospitalId?: string;
 	}): Promise<PatientVitalWithVisit[]> => {
-		let whereExpr = eq(table.patientDiagnosisTable.patientId, params.patientId);
+		let whereExpr = eq(
+			table.patientDiagnosisTable.patientId,
+			params.patientId
+		);
 		if (params.hospitalId) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.patientDiagnosisTable.hospitalId, params.hospitalId)
 			) as typeof whereExpr;
 		}
-		const rows = await ensureDb().query.patientDiagnosisTable.findMany({
-			where: whereExpr,
-			with: { visit: true },
-			orderBy: (t, { desc }) => desc(t.createdAt)
-		});
+		const rows =
+			await ensureDb().query.patientDiagnosisTable.findMany({
+				where: whereExpr,
+				with: { visit: true },
+				orderBy: (t, { desc }) => desc(t.createdAt)
+			});
 		return rows as PatientVitalWithVisit[];
 	}
 );
@@ -39,7 +43,11 @@ export const getPatientVitalsByPatientId = query(
 /** Get a single vital by id. */
 export const getPatientVitalById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<PatientDiagnosisSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<PatientDiagnosisSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.patientDiagnosisTable)
@@ -52,7 +60,11 @@ export const getPatientVitalById = query(
 /** Get all vitals for a visit, ordered by createdAt desc (newest first). */
 export const getPatientVitalsByVisitId = query(
 	'unchecked' as const,
-	async ({ visitId }: { visitId: number }): Promise<PatientDiagnosisSchema[]> => {
+	async ({
+		visitId
+	}: {
+		visitId: number;
+	}): Promise<PatientDiagnosisSchema[]> => {
 		return await ensureDb()
 			.select()
 			.from(table.patientDiagnosisTable)
@@ -64,7 +76,9 @@ export const getPatientVitalsByVisitId = query(
 /** Create a new vital record. */
 export const createPatientVital = command(
 	'unchecked' as const,
-	async (payload: PatientDiagnosisSchemaInsert): Promise<PatientDiagnosisSchema> => {
+	async (
+		payload: PatientDiagnosisSchemaInsert
+	): Promise<PatientDiagnosisSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.patientDiagnosisTable)
 			.values(payload)
@@ -87,7 +101,9 @@ export const updatePatientVital = command(
 	async ({
 		id,
 		...data
-	}: { id: number } & PatientDiagnosisSchemaUpdate): Promise<PatientDiagnosisSchema> => {
+	}: {
+		id: number;
+	} & PatientDiagnosisSchemaUpdate): Promise<PatientDiagnosisSchema> => {
 		const [existing] = await ensureDb()
 			.select({
 				patientId: table.patientDiagnosisTable.patientId,
@@ -104,7 +120,9 @@ export const updatePatientVital = command(
 			.where(eq(table.patientDiagnosisTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
-		getPatientVitalsByVisitId({ visitId: existing.visitId }).refresh();
+		getPatientVitalsByVisitId({
+			visitId: existing.visitId
+		}).refresh();
 		getPatientVitalsByPatientId({
 			patientId: existing.patientId,
 			hospitalId: existing.hospitalId
@@ -130,7 +148,9 @@ export const deletePatientVital = command(
 		await ensureDb()
 			.delete(table.patientDiagnosisTable)
 			.where(eq(table.patientDiagnosisTable.id, id));
-		getPatientVitalsByVisitId({ visitId: existing.visitId }).refresh();
+		getPatientVitalsByVisitId({
+			visitId: existing.visitId
+		}).refresh();
 		getPatientVitalsByPatientId({
 			patientId: existing.patientId,
 			hospitalId: existing.hospitalId

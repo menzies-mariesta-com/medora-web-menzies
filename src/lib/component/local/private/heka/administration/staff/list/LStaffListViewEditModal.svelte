@@ -5,15 +5,12 @@
 
 	type StaffDialogMode = 'view' | 'edit';
 
-	let {
-		staffDialog,
-		staffDialogIframeSrc,
-		closeStaffDialog
-	} = $props<{
-		staffDialog: { mode: StaffDialogMode; staffId: string } | null;
-		staffDialogIframeSrc: string;
-		closeStaffDialog: () => void;
-	}>();
+	let { staffDialog, staffDialogIframeSrc, closeStaffDialog } =
+		$props<{
+			staffDialog: { mode: StaffDialogMode; staffId: string } | null;
+			staffDialogIframeSrc: string;
+			closeStaffDialog: () => void;
+		}>();
 </script>
 
 {#if staffDialog}
@@ -24,10 +21,12 @@
 		className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
 	>
 		<div
-			class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+			class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
 			role="document"
 		>
-			<div class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2">
+			<div
+				class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2"
+			>
 				<h2 class="text-lg font-semibold">
 					{staffDialog.mode === 'view' ? 'View staff' : 'Edit staff'}
 				</h2>
@@ -39,8 +38,10 @@
 				</DaisyUiButton>
 			</div>
 			<iframe
-				title={staffDialog.mode === 'view' ? 'View staff' : 'Edit staff'}
-				class="flex-1 min-h-0 w-full border-0 rounded-b-box"
+				title={staffDialog.mode === 'view'
+					? 'View staff'
+					: 'Edit staff'}
+				class="min-h-0 w-full flex-1 rounded-b-box border-0"
 				src={staffDialogIframeSrc}
 			></iframe>
 		</div>

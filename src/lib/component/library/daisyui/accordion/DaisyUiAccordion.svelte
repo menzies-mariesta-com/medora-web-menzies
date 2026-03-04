@@ -13,7 +13,7 @@
 	}>();
 </script>
 
-<div class="d-join-vertical d-join bg-base-100">
+<div class="d-join d-join-vertical bg-base-100">
 	{#each items as { title, content, titleClass, contentClass, icon = 'arrow', className, checked }, i}
 		<div
 			class="d-collapse d-join-item border border-base-300 bg-base-100 {className}"

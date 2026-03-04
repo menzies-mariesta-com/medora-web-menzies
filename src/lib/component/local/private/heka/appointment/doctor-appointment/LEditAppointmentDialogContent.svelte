@@ -5,13 +5,13 @@
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-import {
-	getAppointment,
-	getAppointmentById,
-	updateAppointment,
-	deleteAppointment
+	import {
+		getAppointment,
+		getAppointmentById,
+		updateAppointment,
+		deleteAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
-import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
+	import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientPaginated,
 		getPatientByIdWithRelations
@@ -37,15 +37,23 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const hospitalId = $derived(
-		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+		(typeof page.params?.hospital_id === 'string' &&
+			page.params.hospital_id) ||
+			''
 	);
 
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
 
-	const appointmentId = $derived(EditAppointmentDialogState.appointmentId);
-	const selectedBranchId = $derived(EditAppointmentDialogState.branchId);
-	const slotDurationMinutes = $derived(EditAppointmentDialogState.slotDurationMinutes);
+	const appointmentId = $derived(
+		EditAppointmentDialogState.appointmentId
+	);
+	const selectedBranchId = $derived(
+		EditAppointmentDialogState.branchId
+	);
+	const slotDurationMinutes = $derived(
+		EditAppointmentDialogState.slotDurationMinutes
+	);
 
 	function addMinutesToTime(hhmm: string, minutes: number): string {
 		const [hStr, mStr] = hhmm.split(':');
@@ -60,8 +68,12 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	function toHHmm(t: string): string {
 		if (!t) return '';
 		const parts = String(t).trim().split(':');
-		const h = parts[0] ? String(Number(parts[0])).padStart(2, '0') : '00';
-		const m = parts[1] ? String(Number(parts[1])).padStart(2, '0') : '00';
+		const h = parts[0]
+			? String(Number(parts[0])).padStart(2, '0')
+			: '00';
+		const m = parts[1]
+			? String(Number(parts[1])).padStart(2, '0')
+			: '00';
 		return `${h}:${m}`;
 	}
 
@@ -72,9 +84,13 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	const slotCountNum = $derived(
 		Math.min(24, Math.max(1, Math.floor(Number(slotCount) || 1)))
 	);
-	const totalMinutes = $derived(slotCountNum * (slotDurationMinutes ?? 15));
+	const totalMinutes = $derived(
+		slotCountNum * (slotDurationMinutes ?? 15)
+	);
 	const toTime = $derived(
-		manualFromTime ? addMinutesToTime(manualFromTime, totalMinutes) : ''
+		manualFromTime
+			? addMinutesToTime(manualFromTime, totalMinutes)
+			: ''
 	);
 
 	let titleData = $state<TitleSchema[]>([]);
@@ -105,42 +121,44 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 		() => !!selectedPatientId?.trim()
 	);
 
-const availableStatusTaggingData = $derived.by(() => {
-	// For new patients (no linked account), hide "Check In" status
-	if (patientMode === 'new') {
-		return statusTaggingData.filter((s) => {
-			const raw = (s.code ?? s.name ?? '')
-				.trim()
-				.toLowerCase()
-				.replace(/[\s_-]/g, '');
-			return raw !== 'checkin';
-		});
-	}
-	return statusTaggingData;
-});
-
-function isCheckInStatus(id: string | null | undefined): boolean {
-	if (!id) return false;
-	const status = statusTaggingData.find((s) => String(s.id) === id);
-	if (!status) return false;
-	const raw = (status.code ?? status.name ?? '')
-		.trim()
-		.toLowerCase()
-		.replace(/[\s_-]/g, '');
-	return raw === 'checkin';
-}
-
-// When in "new" patient mode, clear "Check In" if currently selected
-$effect(() => {
-	if (patientMode === 'new' && selectedStatusTaggingId) {
-		if (isCheckInStatus(selectedStatusTaggingId)) {
-			selectedStatusTaggingId = '';
+	const availableStatusTaggingData = $derived.by(() => {
+		// For new patients (no linked account), hide "Check In" status
+		if (patientMode === 'new') {
+			return statusTaggingData.filter((s) => {
+				const raw = (s.code ?? s.name ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/[\s_-]/g, '');
+				return raw !== 'checkin';
+			});
 		}
+		return statusTaggingData;
+	});
+
+	function isCheckInStatus(id: string | null | undefined): boolean {
+		if (!id) return false;
+		const status = statusTaggingData.find((s) => String(s.id) === id);
+		if (!status) return false;
+		const raw = (status.code ?? status.name ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]/g, '');
+		return raw === 'checkin';
 	}
-});
+
+	// When in "new" patient mode, clear "Check In" if currently selected
+	$effect(() => {
+		if (patientMode === 'new' && selectedStatusTaggingId) {
+			if (isCheckInStatus(selectedStatusTaggingId)) {
+				selectedStatusTaggingId = '';
+			}
+		}
+	});
 
 	/** Server-side patient search for the dropdown. Returns options with label (code + full name) and value (id). */
-	async function searchPatients(query: string): Promise<{ label: string; value: string }[]> {
+	async function searchPatients(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
 		const res = await getPatientPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
@@ -149,7 +167,8 @@ $effect(() => {
 			pageSize: 20
 		});
 		const list = res.data.map((p) => {
-			const titleName = (p as { title?: { name?: string } }).title?.name;
+			const titleName = (p as { title?: { name?: string } }).title
+				?.name;
 			return {
 				label: `${p.code} - ${StringUtil.fullNameWithTitle(
 					titleName ?? undefined,
@@ -164,10 +183,13 @@ $effect(() => {
 	}
 
 	/** Resolve selected patient id to display label (when not in current search results). */
-	async function getPatientLabelForValue(id: string): Promise<string> {
+	async function getPatientLabelForValue(
+		id: string
+	): Promise<string> {
 		const p = await getPatientByIdWithRelations({ id });
 		if (!p) return '';
-		const titleName = (p as { title?: { name?: string } }).title?.name;
+		const titleName = (p as { title?: { name?: string } }).title
+			?.name;
 		return `${p.code} - ${StringUtil.fullNameWithTitle(
 			titleName ?? undefined,
 			p.firstName,
@@ -195,14 +217,13 @@ $effect(() => {
 				(r) => String(r.id) === (selectedReferTypeId?.trim() || '')
 			) ?? null
 	);
-	const selectedReferTypeName = $derived.by(
-		() => (selectedReferType?.name ?? '').trim().toLowerCase()
+	const selectedReferTypeName = $derived.by(() =>
+		(selectedReferType?.name ?? '').trim().toLowerCase()
 	);
-	const referBoxLabel = $derived.by(
-		() =>
-			selectedReferTypeName === 'internal'
-				? 'Internal Refer'
-				: 'External Refer'
+	const referBoxLabel = $derived.by(() =>
+		selectedReferTypeName === 'internal'
+			? 'Internal Refer'
+			: 'External Refer'
 	);
 	const filteredExternalReferData = $derived.by(() => {
 		const typeId = selectedReferType?.id;
@@ -299,10 +320,7 @@ $effect(() => {
 		const numY = Number(y);
 		const numM =
 			patientAgeMonth != null && patientAgeMonth !== ''
-				? Math.min(
-						11,
-						Math.max(0, Number(patientAgeMonth))
-					)
+				? Math.min(11, Math.max(0, Number(patientAgeMonth)))
 				: 0;
 		const numD =
 			patientAgeDay != null && patientAgeDay !== ''
@@ -325,28 +343,48 @@ $effect(() => {
 				getReferType(),
 				getExternalRefer(),
 				getStatusTagging(),
-				appointmentId != null ? getAppointmentById({ id: appointmentId }) : Promise.resolve(null)
+				appointmentId != null
+					? getAppointmentById({ id: appointmentId })
+					: Promise.resolve(null)
 			]);
 		titleData = titles;
 		referTypeData = referTypes;
 		externalReferData = externalRefers;
 		statusTaggingData = statusTaggings;
 		if (apt) {
-			manualAppointmentDate = String(apt.appointmentDate ?? '').slice(0, 10);
+			manualAppointmentDate = String(apt.appointmentDate ?? '').slice(
+				0,
+				10
+			);
 			manualFromTime = toHHmm(String(apt.fromTime ?? ''));
 			selectedPatientId = apt.patientId ? String(apt.patientId) : '';
-			selectedPatientTitleId = apt.patientTitleId != null ? String(apt.patientTitleId) : '';
+			selectedPatientTitleId =
+				apt.patientTitleId != null ? String(apt.patientTitleId) : '';
 			patientName = apt.patientName?.trim() ?? '';
-			patientDateOfBirth = String(apt.patientDateOfBirth ?? '').slice(0, 10);
-			patientAgeYear = apt.patientAgeYear != null ? String(apt.patientAgeYear) : '';
-			patientAgeMonth = apt.patientAgeMonth != null ? String(apt.patientAgeMonth) : '';
-			patientAgeDay = apt.patientAgeDay != null ? String(apt.patientAgeDay) : '';
+			patientDateOfBirth = String(apt.patientDateOfBirth ?? '').slice(
+				0,
+				10
+			);
+			patientAgeYear =
+				apt.patientAgeYear != null ? String(apt.patientAgeYear) : '';
+			patientAgeMonth =
+				apt.patientAgeMonth != null
+					? String(apt.patientAgeMonth)
+					: '';
+			patientAgeDay =
+				apt.patientAgeDay != null ? String(apt.patientAgeDay) : '';
 			appointmentPhone = apt.appointmentPhone?.trim() ?? '';
 			appointmentEmail = apt.appointmentEmail?.trim() ?? '';
-			selectedReferTypeId = apt.referTypeId != null ? String(apt.referTypeId) : '';
-			selectedExternalReferId = apt.externalReferId != null ? String(apt.externalReferId) : '';
+			selectedReferTypeId =
+				apt.referTypeId != null ? String(apt.referTypeId) : '';
+			selectedExternalReferId =
+				apt.externalReferId != null
+					? String(apt.externalReferId)
+					: '';
 			selectedStatusTaggingId =
-				apt.statusTaggingId != null ? String(apt.statusTaggingId) : '';
+				apt.statusTaggingId != null
+					? String(apt.statusTaggingId)
+					: '';
 			appointmentRemark = apt.remark?.trim() ?? '';
 			const fromMin = (() => {
 				const [h, m] = manualFromTime.split(':').map(Number);
@@ -369,14 +407,16 @@ $effect(() => {
 		if (!id) return;
 		getPatientByIdWithRelations({ id }).then((p) => {
 			if (!p) return;
-			const titleName = (p as { title?: { name?: string } }).title?.name;
+			const titleName = (p as { title?: { name?: string } }).title
+				?.name;
 			patientName = StringUtil.fullNameWithTitle(
 				titleName ?? undefined,
 				p.firstName ?? '',
 				p.middleName ?? '',
 				p.lastName ?? ''
 			);
-			if (p.titleId != null) selectedPatientTitleId = String(p.titleId);
+			if (p.titleId != null)
+				selectedPatientTitleId = String(p.titleId);
 			if (p.dateOfBirth != null)
 				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
 		});
@@ -396,7 +436,8 @@ $effect(() => {
 		const endMin = toH * 60 + (toM || 0);
 		for (const a of all) {
 			if (String(a.staffId) !== staffIdVal) continue;
-			if (String(a.appointmentDate).slice(0, 10) !== dateStr) continue;
+			if (String(a.appointmentDate).slice(0, 10) !== dateStr)
+				continue;
 			if (a.id === excludeId) continue;
 			const aFrom = String(a.fromTime ?? '').trim();
 			const aTo = String(a.toTime ?? '').trim();
@@ -412,7 +453,12 @@ $effect(() => {
 
 	async function handleUpdate() {
 		if (appointmentId == null) return;
-		if (!manualAppointmentDate.trim() || !manualFromTime.trim() || !toTime) return;
+		if (
+			!manualAppointmentDate.trim() ||
+			!manualFromTime.trim() ||
+			!toTime
+		)
+			return;
 		const latest = await getAppointmentById({ id: appointmentId });
 		const staffIdVal = latest?.staffId;
 		if (!staffIdVal) return;
@@ -432,16 +478,20 @@ $effect(() => {
 			);
 			const currentSeq = currentStatus?.sequenceNo ?? null;
 			const nextSeq = nextStatus?.sequenceNo ?? null;
-			const currentIsCancel = currentStatus && isCheckInStatus(String(currentStatusId)) === false &&
-				((currentStatus.code ?? currentStatus.name ?? '')
+			const currentIsCancel =
+				currentStatus &&
+				isCheckInStatus(String(currentStatusId)) === false &&
+				(currentStatus.code ?? currentStatus.name ?? '')
 					.trim()
 					.toLowerCase()
-					.replace(/[\s_-]/g, '') === 'cancel');
-			const nextIsCancel = nextStatus && isCheckInStatus(String(nextStatusId)) === false &&
-				((nextStatus.code ?? nextStatus.name ?? '')
+					.replace(/[\s_-]/g, '') === 'cancel';
+			const nextIsCancel =
+				nextStatus &&
+				isCheckInStatus(String(nextStatusId)) === false &&
+				(nextStatus.code ?? nextStatus.name ?? '')
 					.trim()
 					.toLowerCase()
-					.replace(/[\s_-]/g, '') === 'cancel');
+					.replace(/[\s_-]/g, '') === 'cancel';
 
 			// Enforce step-by-step only between unconfirmed/confirmed/check-in (exclude cancel).
 			if (!currentIsCancel && !nextIsCancel) {
@@ -457,7 +507,9 @@ $effect(() => {
 					return;
 				}
 			}
-			const currentIsCheckIn = isCheckInStatus(String(currentStatusId));
+			const currentIsCheckIn = isCheckInStatus(
+				String(currentStatusId)
+			);
 			const nextIsCheckIn = isCheckInStatus(String(nextStatusId));
 			becomesCheckIn = !currentIsCheckIn && nextIsCheckIn;
 		}
@@ -484,15 +536,25 @@ $effect(() => {
 				fromTime: manualFromTime,
 				toTime,
 				patientId: selectedPatientId?.trim() || null,
-				patientTitleId: selectedPatientTitleId ? parseInt(selectedPatientTitleId, 10) : null,
+				patientTitleId: selectedPatientTitleId
+					? parseInt(selectedPatientTitleId, 10)
+					: null,
 				patientName: patientName.trim() || null,
 				patientDateOfBirth: patientDateOfBirth.trim() || null,
-				patientAgeYear: patientAgeYear ? parseInt(patientAgeYear, 10) : null,
-				patientAgeMonth: patientAgeMonth ? parseInt(patientAgeMonth, 10) : null,
-				patientAgeDay: patientAgeDay ? parseInt(patientAgeDay, 10) : null,
+				patientAgeYear: patientAgeYear
+					? parseInt(patientAgeYear, 10)
+					: null,
+				patientAgeMonth: patientAgeMonth
+					? parseInt(patientAgeMonth, 10)
+					: null,
+				patientAgeDay: patientAgeDay
+					? parseInt(patientAgeDay, 10)
+					: null,
 				appointmentPhone: appointmentPhone.trim() || null,
 				appointmentEmail: appointmentEmail.trim() || null,
-				referTypeId: selectedReferTypeId ? parseInt(selectedReferTypeId, 10) : null,
+				referTypeId: selectedReferTypeId
+					? parseInt(selectedReferTypeId, 10)
+					: null,
 				externalReferId: selectedExternalReferId
 					? parseInt(selectedExternalReferId, 10)
 					: null,
@@ -507,7 +569,8 @@ $effect(() => {
 			const effectivePatientId =
 				selectedPatientId?.trim() ||
 				(latest?.patientId ? String(latest.patientId) : '');
-			const effectiveBranchId = latest?.branchId ?? selectedBranchId ?? null;
+			const effectiveBranchId =
+				latest?.branchId ?? selectedBranchId ?? null;
 			if (
 				becomesCheckIn &&
 				effectivePatientId &&
@@ -528,15 +591,23 @@ $effect(() => {
 						statusId: undefined
 					});
 				} catch (e) {
-					console.error('Failed to create patient visit for check-in:', e);
+					console.error(
+						'Failed to create patient visit for check-in:',
+						e
+					);
 				}
 			}
 
-			toastService.addToast('Appointment updated.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Appointment updated.',
+				StatusColorEnum.SUCCESS
+			);
 			confirm({ updated: true });
 		} catch (e) {
 			toastService.addToast(
-				e instanceof Error ? e.message : 'Failed to update appointment.',
+				e instanceof Error
+					? e.message
+					: 'Failed to update appointment.',
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -546,15 +617,24 @@ $effect(() => {
 
 	async function handleDelete() {
 		if (appointmentId == null) return;
-		if (typeof window !== 'undefined' && !window.confirm('Delete this appointment?')) return;
+		if (
+			typeof window !== 'undefined' &&
+			!window.confirm('Delete this appointment?')
+		)
+			return;
 		isDeleting = true;
 		try {
 			await deleteAppointment({ id: appointmentId });
-			toastService.addToast('Appointment deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Appointment deleted.',
+				StatusColorEnum.SUCCESS
+			);
 			confirm({ deleted: true });
 		} catch (e) {
 			toastService.addToast(
-				e instanceof Error ? e.message : 'Failed to delete appointment.',
+				e instanceof Error
+					? e.message
+					: 'Failed to delete appointment.',
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -570,8 +650,12 @@ $effect(() => {
 {:else}
 	<div class="flex flex-col gap-5">
 		<div class="flex flex-col gap-3 rounded-lg bg-base-200/50 p-3">
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36">Date <span class="text-error">*</span></DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36"
+					>Date <span class="text-error">*</span></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="apt-date"
@@ -581,8 +665,12 @@ $effect(() => {
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36">Start time <span class="text-error">*</span></DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36"
+					>Start time <span class="text-error">*</span></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="apt-from"
@@ -592,15 +680,19 @@ $effect(() => {
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-slots" className="shrink-0 sm:w-36">Number of slots</DaisyUiLabel>
-				<div class="max-w-80 flex-1 flex items-center gap-2">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-slots" className="shrink-0 sm:w-36"
+					>Number of slots</DaisyUiLabel
+				>
+				<div class="flex max-w-80 flex-1 items-center gap-2">
 					<input
 						id="apt-slots"
 						type="number"
 						min="1"
 						max="24"
-						class="d-input d-input-bordered d-input-sm w-20"
+						class="d-input-bordered d-input d-input-sm w-20"
 						bind:value={slotCount}
 						aria-label="Number of slots"
 					/>
@@ -609,14 +701,18 @@ $effect(() => {
 					</span>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-to" className="shrink-0 sm:w-36">To</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-to" className="shrink-0 sm:w-36"
+					>To</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<input
 						type="text"
 						value={toTime}
 						disabled
-						class="d-input d-input-bordered d-input-sm w-full"
+						class="d-input-bordered d-input d-input-sm w-full"
 						readonly
 					/>
 				</div>
@@ -624,48 +720,60 @@ $effect(() => {
 		</div>
 
 		<div class="flex flex-col gap-4">
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<div class="max-w-80 flex-1 flex justify-between gap-1">
-						<label class="inline-flex items-center gap-2">
-							<input
-								type="radio"
-								name="patient-mode"
-								class="d-radio d-radio-primary"
-								value="existing"
-								bind:group={patientMode}
-							/>
-							<span>Existing patient</span>
-						</label>
-						<label class="inline-flex items-center gap-2">
-							<input
-								type="radio"
-								name="patient-mode"
-								class="d-radio d-radio-primary"
-								value="new"
-								bind:group={patientMode}
-							/>
-							<span>New patient</span>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<div class="flex max-w-80 flex-1 justify-between gap-1">
+					<label class="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name="patient-mode"
+							class="d-radio d-radio-primary"
+							value="existing"
+							bind:group={patientMode}
+						/>
+						<span>Existing patient</span>
+					</label>
+					<label class="inline-flex items-center gap-2">
+						<input
+							type="radio"
+							name="patient-mode"
+							class="d-radio d-radio-primary"
+							value="new"
+							bind:group={patientMode}
+						/>
+						<span>New patient</span>
 					</label>
 				</div>
 			</div>
 			{#if patientMode === 'existing'}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-patient" className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiSearchSelect
-						bind:value={selectedPatientId}
-						placeholder="Select patient (optional) …"
-						className="w-full"
-						searchFn={searchPatients}
-						getLabelForValue={getPatientLabelForValue}
-						minSearchLength={0}
-					/>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="apt-patient"
+						className="shrink-0 sm:w-36">Patient</DaisyUiLabel
+					>
+					<div class="max-w-80 flex-1">
+						<DaisyUiSearchSelect
+							bind:value={selectedPatientId}
+							placeholder="Select patient (optional) …"
+							className="w-full"
+							searchFn={searchPatients}
+							getLabelForValue={getPatientLabelForValue}
+							minSearchLength={0}
+						/>
+					</div>
 				</div>
-			</div>
 			{/if}
 			{#if patientMode === 'new'}
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-title" className="shrink-0 sm:w-36">Patient Title</DaisyUiLabel>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="apt-title"
+						className="shrink-0 sm:w-36">Patient Title</DaisyUiLabel
+					>
 					<div class="max-w-80 flex-1">
 						<DaisyUiSelect
 							bind:value={selectedPatientTitleId}
@@ -678,21 +786,42 @@ $effect(() => {
 						</DaisyUiSelect>
 					</div>
 				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-name" className="shrink-0 sm:w-36">Patient Name</DaisyUiLabel>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="apt-name"
+						className="shrink-0 sm:w-36">Patient Name</DaisyUiLabel
+					>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField bind:value={patientName} inputType="text" className="w-full" />
+						<DaisyUiInputField
+							bind:value={patientName}
+							inputType="text"
+							className="w-full"
+						/>
 					</div>
 				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36"
+						>Date of Birth</DaisyUiLabel
+					>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField bind:value={patientDateOfBirth} inputType="date" className="w-full" />
+						<DaisyUiInputField
+							bind:value={patientDateOfBirth}
+							inputType="date"
+							className="w-full"
+						/>
 					</div>
 				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36">Age (Y / M / D)</DaisyUiLabel>
-					<div class="max-w-80 flex-1 flex gap-2">
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36"
+						>Age (Y / M / D)</DaisyUiLabel
+					>
+					<div class="flex max-w-80 flex-1 gap-2">
 						<DaisyUiInputField
 							bind:value={patientAgeYear}
 							inputType="number"
@@ -714,14 +843,26 @@ $effect(() => {
 					</div>
 				</div>
 			{/if}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36">Guardian Phone</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36"
+					>Guardian Phone</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
-					<DaisyUiInputField bind:value={appointmentPhone} inputType="tel" className="w-full" />
+					<DaisyUiInputField
+						bind:value={appointmentPhone}
+						inputType="tel"
+						className="w-full"
+					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-email" className="shrink-0 sm:w-36">Email</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-email" className="shrink-0 sm:w-36"
+					>Email</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						bind:value={appointmentEmail}
@@ -731,8 +872,13 @@ $effect(() => {
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-refer-type" className="shrink-0 sm:w-36">Refer Type</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="apt-refer-type"
+					className="shrink-0 sm:w-36">Refer Type</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiSelect
 						bind:value={selectedReferTypeId}
@@ -746,8 +892,13 @@ $effect(() => {
 				</div>
 			</div>
 			{#if selectedReferTypeId?.trim()}
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-external-refer" className="shrink-0 sm:w-36">{referBoxLabel}</DaisyUiLabel>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="apt-external-refer"
+						className="shrink-0 sm:w-36">{referBoxLabel}</DaisyUiLabel
+					>
 					<div class="max-w-80 flex-1">
 						<DaisyUiSelect
 							bind:value={selectedExternalReferId}
@@ -761,8 +912,13 @@ $effect(() => {
 					</div>
 				</div>
 			{/if}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-				<DaisyUiLabel forText="apt-remark" className="shrink-0 sm:w-36">Remark</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="apt-remark"
+					className="shrink-0 sm:w-36">Remark</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiTextarea
 						id="apt-remark"
@@ -771,8 +927,13 @@ $effect(() => {
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-status-tagging" className="shrink-0 sm:w-36">Status Tagging</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="apt-status-tagging"
+					className="shrink-0 sm:w-36">Status Tagging</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiSelect
 						bind:value={selectedStatusTaggingId}
@@ -786,30 +947,44 @@ $effect(() => {
 				</div>
 			</div>
 			{#if patientMode === 'new'}
-				<p class="text-xs text-info mt-1 w-full">
-					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
-					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
+				<p class="mt-1 w-full text-xs text-info">
+					To use <span class="font-semibold">Check In</span>, first
+					register the patient in the patient registration page, then
+					return here, choose the patient under
+					<span class="font-semibold">Existing patient</span>, and
+					continue.
 				</p>
 			{/if}
 		</div>
 
-		<div class="d-modal-action flex flex-wrap justify-end gap-2 border-t border-base-300 pt-4">
+		<div
+			class="d-modal-action flex flex-wrap justify-end gap-2 border-t border-base-300 pt-4"
+		>
 			<button
 				type="button"
-				class="d-btn d-btn-error d-btn-outline"
+				class="d-btn d-btn-outline d-btn-error"
 				onclick={() => handleDelete()}
 				disabled={isSubmitting || isDeleting}
 			>
 				{isDeleting ? 'Deleting…' : 'Delete'}
 			</button>
-			<button type="button" class="d-btn" onclick={() => cancel()} disabled={isSubmitting || isDeleting}>
+			<button
+				type="button"
+				class="d-btn"
+				onclick={() => cancel()}
+				disabled={isSubmitting || isDeleting}
+			>
 				Cancel
 			</button>
 			<button
 				type="button"
 				class="d-btn d-btn-primary"
 				onclick={() => handleUpdate()}
-				disabled={!manualAppointmentDate || !manualFromTime || !toTime || isSubmitting || isDeleting}
+				disabled={!manualAppointmentDate ||
+					!manualFromTime ||
+					!toTime ||
+					isSubmitting ||
+					isDeleting}
 			>
 				{isSubmitting ? 'Saving…' : 'Save'}
 			</button>

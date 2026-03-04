@@ -5,8 +5,8 @@
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
-import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
@@ -48,10 +48,15 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 	const SLOT_TIMING_MAX = 60;
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
 	const selectedNavbarBranchId = $derived(
-		typeof page.data?.selectedBranchId === 'string' ? page.data.selectedBranchId : undefined
+		typeof page.data?.selectedBranchId === 'string'
+			? page.data.selectedBranchId
+			: undefined
 	);
 	const scopedBranchId = $derived(
 		selectedNavbarBranchId && selectedNavbarBranchId !== '__all__'
@@ -66,9 +71,11 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 		const hid = hospitalId;
 		const bid = scopedBranchId;
 		if (hid) {
-			getDoctorStaffList({ hospitalId: hid, branchId: bid }).then((list) => {
-				DOCTOR_STAFF_LIST = list;
-			});
+			getDoctorStaffList({ hospitalId: hid, branchId: bid }).then(
+				(list) => {
+					DOCTOR_STAFF_LIST = list;
+				}
+			);
 			getBranchesByHospitalId({ hospitalId: hid }).then((list) => {
 				branchData = list;
 			});
@@ -102,25 +109,27 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 	let staffId = $state('');
 	let selectedBranchId = $state('');
 	let branchData = $state<HospitalBranchSchema[]>([]);
-async function searchDoctors(query: string): Promise<{ label: string; value: string }[]> {
-	const res = await getDoctorStaffPaginated({
-		search: query.trim(),
-		hospitalId: hospitalId,
-		branchId: scopedBranchId,
-		page: 1,
-		pageSize: 20
-	});
-	return res.data.map((staff) => ({
-		label: StringUtil.doctorOptionDisplayName(staff),
-		value: String(staff.id)
-	}));
-}
+	async function searchDoctors(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
+		const res = await getDoctorStaffPaginated({
+			search: query.trim(),
+			hospitalId: hospitalId,
+			branchId: scopedBranchId,
+			page: 1,
+			pageSize: 20
+		});
+		return res.data.map((staff) => ({
+			label: StringUtil.doctorOptionDisplayName(staff),
+			value: String(staff.id)
+		}));
+	}
 
-async function getDoctorLabelForValue(id: string): Promise<string> {
-	const staff = await getStaffByIdWithRelations({ id });
-	if (!staff) return '';
-	return StringUtil.doctorOptionDisplayName(staff);
-}
+	async function getDoctorLabelForValue(id: string): Promise<string> {
+		const staff = await getStaffByIdWithRelations({ id });
+		if (!staff) return '';
+		return StringUtil.doctorOptionDisplayName(staff);
+	}
 
 	const selectedStaff = $derived(
 		DOCTOR_STAFF_LIST.find((s) => s.id === staffId) ?? null
@@ -146,7 +155,9 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		}
 	});
 	const selectedStaffPhotoUrl = $derived(
-		selectedStaff ? getStaffPhotoDisplayUrl(selectedStaff.photoUrl) : undefined
+		selectedStaff
+			? getStaffPhotoDisplayUrl(selectedStaff.photoUrl)
+			: undefined
 	);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
 	const scheduleGroups = $derived<DoctorScheduleGroup[]>(
@@ -160,7 +171,8 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 							key,
 							branchId: s.branchId,
 							branchName:
-								branchData.find((b) => b.id === s.branchId)?.name ?? null,
+								branchData.find((b) => b.id === s.branchId)?.name ??
+								null,
 							fromDate: s.fromDate ?? null,
 							toDate: s.toDate ?? null,
 							scheduleIds: []
@@ -258,9 +270,17 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		const groupSchedules = doctorSchedules.filter((s) =>
 			group.scheduleIds.includes(s.id)
 		);
-		const firstInGroup = groupSchedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
+		const firstInGroup = groupSchedules[0] as
+			| (DoctorScheduleSchema & {
+					slotDurationMinutes?: number | null;
+			  })
+			| undefined;
 		const savedMins = firstInGroup?.slotDurationMinutes;
-		if (savedMins != null && savedMins >= SLOT_TIMING_MIN && savedMins <= SLOT_TIMING_MAX) {
+		if (
+			savedMins != null &&
+			savedMins >= SLOT_TIMING_MIN &&
+			savedMins <= SLOT_TIMING_MAX
+		) {
 			slotTimingMinutes = String(savedMins);
 		}
 
@@ -341,7 +361,10 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		}
 		const hid = hospitalId ?? undefined;
 		if (!hid) {
-			toastService.addToast('Hospital context is missing.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Hospital context is missing.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!fromDate?.trim()) {
@@ -369,9 +392,16 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 			return;
 		}
 
-		const slotStr = typeof slotTimingMinutes === 'string' ? slotTimingMinutes : String(slotTimingMinutes ?? '');
+		const slotStr =
+			typeof slotTimingMinutes === 'string'
+				? slotTimingMinutes
+				: String(slotTimingMinutes ?? '');
 		const parsedSlot = parseInt(slotStr.trim(), 10);
-		if (Number.isNaN(parsedSlot) || parsedSlot < SLOT_TIMING_MIN || parsedSlot > SLOT_TIMING_MAX) {
+		if (
+			Number.isNaN(parsedSlot) ||
+			parsedSlot < SLOT_TIMING_MIN ||
+			parsedSlot > SLOT_TIMING_MAX
+		) {
 			toastService.addToast(
 				`Slot timing must be a number between ${SLOT_TIMING_MIN} and ${SLOT_TIMING_MAX} (minutes).`,
 				StatusColorEnum.ERROR
@@ -383,7 +413,9 @@ async function getDoctorLabelForValue(id: string): Promise<string> {
 		const wasEditing = editingGroupKey !== null;
 		try {
 			if (wasEditing) {
-				const currentGroup = scheduleGroups.find((g) => g.key === editingGroupKey);
+				const currentGroup = scheduleGroups.find(
+					(g) => g.key === editingGroupKey
+				);
 				const origFrom = currentGroup?.fromDate ?? null;
 				const origTo = currentGroup?.toDate ?? null;
 				const origBranchId = currentGroup?.branchId ?? null;

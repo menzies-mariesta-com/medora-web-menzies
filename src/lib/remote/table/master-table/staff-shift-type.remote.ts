@@ -4,34 +4,51 @@ import * as table from '$lib/server/db/schema';
 import type {
 	StaffShiftTypeSchema,
 	StaffShiftTypeSchemaInsert,
-	StaffShiftTypeSchemaUpdate,
+	StaffShiftTypeSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getStaffShiftType = query(async (): Promise<StaffShiftTypeSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.staffShiftTypeTable)
-		.where(eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.staffShiftTypeTable.name);
-});
+export const getStaffShiftType = query(
+	async (): Promise<StaffShiftTypeSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.staffShiftTypeTable)
+			.where(
+				eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE)
+			)
+			.orderBy(table.staffShiftTypeTable.name);
+	}
+);
 
-export const getStaffShiftTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.staffShiftTypeTable)
-		.where(eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE));
-	return row?.count ?? 0;
-});
+export const getStaffShiftTypeCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.staffShiftTypeTable)
+			.where(
+				eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE)
+			);
+		return row?.count ?? 0;
+	}
+);
 
 export const getStaffShiftTypePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffShiftTypeSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffShiftTypeSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.staffShiftTypeTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +60,7 @@ export const getStaffShiftTypePaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.staffShiftTypeTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,14 +68,18 @@ export const getStaffShiftTypePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
 
 export const getStaffShiftTypeById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<StaffShiftTypeSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<StaffShiftTypeSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffShiftTypeTable)
@@ -69,7 +90,9 @@ export const getStaffShiftTypeById = query(
 
 export const createStaffShiftType = command(
 	'unchecked' as const,
-	async (payload: StaffShiftTypeSchemaInsert): Promise<StaffShiftTypeSchema> => {
+	async (
+		payload: StaffShiftTypeSchemaInsert
+	): Promise<StaffShiftTypeSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.staffShiftTypeTable)
 			.values(payload)
@@ -114,7 +137,9 @@ export const deleteStaffShiftType = command(
 export const deleteStaffShiftTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.staffShiftTypeTable).where(eq(table.staffShiftTypeTable.id, id));
+		await ensureDb()
+			.delete(table.staffShiftTypeTable)
+			.where(eq(table.staffShiftTypeTable.id, id));
 		getStaffShiftType().refresh();
 	}
 );

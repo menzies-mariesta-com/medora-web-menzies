@@ -8,7 +8,10 @@ import type {
 	StaffBranchSchemaInsert,
 	StaffBranchSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 
 async function ensureStaffAndBranchAreInHospital(input: {
@@ -26,7 +29,11 @@ async function ensureStaffAndBranchAreInHospital(input: {
 			)
 		)
 		.limit(1);
-	if (!branch) throw error(400, 'Branch does not belong to the selected hospital');
+	if (!branch)
+		throw error(
+			400,
+			'Branch does not belong to the selected hospital'
+		);
 
 	const [staffHospital] = await ensureDb()
 		.select({ id: table.staffHospitalTable.id })
@@ -38,25 +45,44 @@ async function ensureStaffAndBranchAreInHospital(input: {
 			)
 		)
 		.limit(1);
-	if (!staffHospital) throw error(400, 'Staff is not assigned to the selected hospital');
+	if (!staffHospital)
+		throw error(
+			400,
+			'Staff is not assigned to the selected hospital'
+		);
 }
 
-export const getStaffBranch = query(async (): Promise<StaffBranchSchema[]> => {
-	return ensureDb().select().from(table.staffBranchTable);
-});
+export const getStaffBranch = query(
+	async (): Promise<StaffBranchSchema[]> => {
+		return ensureDb().select().from(table.staffBranchTable);
+	}
+);
 
-export const getStaffBranchCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.staffBranchTable);
-	return row?.count ?? 0;
-});
+export const getStaffBranchCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.staffBranchTable);
+		return row?.count ?? 0;
+	}
+);
 
 export const getStaffBranchPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffBranchSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffBranchSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.staffBranchTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.staffBranchTable)
+			ensureDb()
+				.select()
+				.from(table.staffBranchTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffBranchTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -89,7 +115,10 @@ export const getStaffBranchByStaffAndHospital = query(
 			.from(table.staffBranchTable)
 			.innerJoin(
 				table.hospitalBranchTable,
-				eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
+				eq(
+					table.staffBranchTable.branchId,
+					table.hospitalBranchTable.id
+				)
 			)
 			.where(
 				and(
@@ -123,7 +152,10 @@ export const createStaffBranch = command(
 		}
 
 		const { hospitalId: _hospitalId, ...values } = payload;
-		const [row] = await ensureDb().insert(table.staffBranchTable).values(values).returning();
+		const [row] = await ensureDb()
+			.insert(table.staffBranchTable)
+			.values(values)
+			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStaffBranch().refresh();
 		return row;
@@ -140,7 +172,10 @@ export const updateStaffBranch = command(
 	): Promise<StaffBranchSchema> => {
 		const { id, hospitalId, ...rest } = payload;
 		if (!rest.staffId || !rest.branchId) {
-			throw error(400, 'staffId and branchId are required to update staff branch');
+			throw error(
+				400,
+				'staffId and branchId are required to update staff branch'
+			);
 		}
 		await ensureStaffAndBranchAreInHospital({
 			staffId: rest.staffId,
@@ -161,7 +196,9 @@ export const updateStaffBranch = command(
 export const deleteStaffBranch = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.staffBranchTable).where(eq(table.staffBranchTable.id, id));
+		await ensureDb()
+			.delete(table.staffBranchTable)
+			.where(eq(table.staffBranchTable.id, id));
 		getStaffBranch().refresh();
 	}
 );

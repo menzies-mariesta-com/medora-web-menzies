@@ -5,7 +5,6 @@
 	}>();
 </script>
 
-
 <div class="d-chat-header {className}">
-    {@render children()}
+	{@render children()}
 </div>

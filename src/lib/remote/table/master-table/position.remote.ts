@@ -4,20 +4,25 @@ import * as table from '$lib/server/db/schema';
 import type {
 	PositionSchema,
 	PositionSchemaInsert,
-	PositionSchemaUpdate,
+	PositionSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getPosition = query(async (): Promise<PositionSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.positionTable)
-		.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.positionTable.name);
-});
+export const getPosition = query(
+	async (): Promise<PositionSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.positionTable)
+			.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.positionTable.name);
+	}
+);
 
 export const getPositionCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -29,9 +34,15 @@ export const getPositionCount = query(async (): Promise<number> => {
 
 export const getPositionPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<PositionSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.positionTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<PositionSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.positionTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +54,7 @@ export const getPositionPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.positionTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,7 +62,7 @@ export const getPositionPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -82,7 +93,11 @@ export const createPosition = command(
 
 export const updatePosition = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<PositionSchema> => {
+	async (payload: {
+		id: number;
+		name?: string | null;
+		statusId?: number | null;
+	}): Promise<PositionSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.positionTable)
@@ -109,7 +124,9 @@ export const deletePosition = command(
 export const deletePositionComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.positionTable).where(eq(table.positionTable.id, id));
+		await ensureDb()
+			.delete(table.positionTable)
+			.where(eq(table.positionTable.id, id));
 		getPosition().refresh();
 	}
 );

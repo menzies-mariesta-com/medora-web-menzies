@@ -342,7 +342,9 @@
 				t < toHHmm(s.endTime)
 		);
 		const state = (slot as AppointmentSlot | undefined)?.slotState;
-		return state === 'confirmed' || state === 'check-in' || state === 'cancel'
+		return state === 'confirmed' ||
+			state === 'check-in' ||
+			state === 'cancel'
 			? state
 			: 'unconfirmed';
 	}
@@ -406,7 +408,10 @@
 	}
 
 	/** Outline class for past-time cells (disabled; no ring on past time). */
-	function getCellPastOutline(_dateString: string, _timeSlot: string): string {
+	function getCellPastOutline(
+		_dateString: string,
+		_timeSlot: string
+	): string {
 		return '';
 	}
 
@@ -512,7 +517,8 @@
 		CreateAppointmentDialogState.slot = { dateString, timeSlot };
 		CreateAppointmentDialogState.staffId =
 			selectedDoctorId?.trim() || null;
-		CreateAppointmentDialogState.branchId = activeBranchId?.trim() || null;
+		CreateAppointmentDialogState.branchId =
+			activeBranchId?.trim() || null;
 		CreateAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -535,7 +541,8 @@
 		CreateAppointmentDialogState.slot = null;
 		CreateAppointmentDialogState.staffId =
 			selectedDoctorId?.trim() || null;
-		CreateAppointmentDialogState.branchId = activeBranchId?.trim() || null;
+		CreateAppointmentDialogState.branchId =
+			activeBranchId?.trim() || null;
 		CreateAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -554,7 +561,8 @@
 
 	async function openEditAppointmentDialog(aptId: number) {
 		EditAppointmentDialogState.appointmentId = aptId;
-		EditAppointmentDialogState.branchId = activeBranchId?.trim() || null;
+		EditAppointmentDialogState.branchId =
+			activeBranchId?.trim() || null;
 		EditAppointmentDialogState.slotDurationMinutes =
 			slotDurationMinutes ?? 15;
 		const result = await dialogService.open({
@@ -744,10 +752,14 @@
 									(cellBlockId != null &&
 										cellBlockId === selectedBlockId)}
 								<td
-									role={canCreate || cellAptId != null || cellBlockId != null
+									role={canCreate ||
+									cellAptId != null ||
+									cellBlockId != null
 										? 'button'
 										: undefined}
-									tabindex={canCreate || cellAptId != null || cellBlockId != null
+									tabindex={canCreate ||
+									cellAptId != null ||
+									cellBlockId != null
 										? 0
 										: undefined}
 									class="min-w-28 transition-[filter] duration-150 {canCreate ||
@@ -756,14 +768,16 @@
 										? 'cursor-pointer hover:brightness-90'
 										: 'cursor-not-allowed opacity-90'} {isSelected
 										? 'ring-2 ring-accent ring-offset-2 ring-offset-base-100'
-										: ''} {getCellBg(cell.dateString, timeSlot)} {getCellPastOutline(
+										: ''} {getCellBg(
 										cell.dateString,
 										timeSlot
-									)}"
+									)} {getCellPastOutline(cell.dateString, timeSlot)}"
 									onclick={() =>
 										handleCellClick(cell.dateString, timeSlot)}
 									onkeydown={(e) =>
-										(canCreate || cellAptId != null || cellBlockId != null) &&
+										(canCreate ||
+											cellAptId != null ||
+											cellBlockId != null) &&
 										e.key === 'Enter' &&
 										handleCellClick(cell.dateString, timeSlot)}
 								>

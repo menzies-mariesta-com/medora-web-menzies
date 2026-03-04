@@ -9,9 +9,15 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		throw redirect(302, WebRoutesEnum.LOGIN);
 	}
 	// Staff cannot access hospital list (CRUD); redirect to their assigned hospital
-	if (locals.userRoleId === RoleEnum.STAFF && url.pathname === WebRoutesEnum.HEKA_HOSPITAL) {
+	if (
+		locals.userRoleId === RoleEnum.STAFF &&
+		url.pathname === WebRoutesEnum.HEKA_HOSPITAL
+	) {
 		if (locals.allowedHospitalIds?.length) {
-			throw redirect(302, hekaHospitalHome(locals.allowedHospitalIds[0]));
+			throw redirect(
+				302,
+				hekaHospitalHome(locals.allowedHospitalIds[0])
+			);
 		}
 		// No assigned hospital: redirect to /heka/hospital so the page can show "No hospital assigned"
 	}

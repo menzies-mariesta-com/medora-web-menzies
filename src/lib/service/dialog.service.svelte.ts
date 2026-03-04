@@ -14,7 +14,9 @@ export type DialogResult<T = unknown> =
 	| { confirmed: false };
 
 export class DialogService {
-	open<T = unknown>(options: DialogOpenOptions<T>): Promise<DialogResult<T>> {
+	open<T = unknown>(
+		options: DialogOpenOptions<T>
+	): Promise<DialogResult<T>> {
 		return new Promise((resolve) => {
 			const dialog: DialogInterface = {
 				id: Date.now(),

@@ -11,7 +11,10 @@
 		className = ''
 	} = $props<{
 		hospitalId: string | undefined;
-		onVisitSelected: (data: { visitId: number; patientName: string }) => void;
+		onVisitSelected: (data: {
+			visitId: number;
+			patientName: string;
+		}) => void;
 		label?: string;
 		className?: string;
 	}>();

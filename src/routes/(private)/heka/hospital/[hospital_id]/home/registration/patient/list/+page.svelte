@@ -28,7 +28,10 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import { hekaHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import {
+		hekaHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
 	import LPatientListViewEditModal from '$lib/component/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
 	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
@@ -40,7 +43,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let patientResult = $state<PaginatedResult<PatientWithRelations> | null>(null);
+	let patientResult =
+		$state<PaginatedResult<PatientWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let filterPageSize = $state('5');
 	let searchInput = $state('');
@@ -51,9 +55,14 @@
 	const total = $derived(patientResult?.total ?? 0);
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
-	const selectForEmr = $derived(page.url.searchParams.get('selectFor') === 'emr');
+	const selectForEmr = $derived(
+		page.url.searchParams.get('selectFor') === 'emr'
+	);
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
 		isLoading = true;
@@ -75,7 +84,8 @@
 		fetchPatients();
 	});
 
-	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let isFirstSearchEffect = true;
 	$effect(() => {
 		const _query = searchInput;
@@ -105,21 +115,33 @@
 
 	async function handleDelete(patientId: string) {
 		try {
-			const patient = await getPatientByIdWithRelations({ id: patientId });
+			const patient = await getPatientByIdWithRelations({
+				id: patientId
+			});
 			const patientEmail =
-				(patient as { user?: { email?: string } })?.user?.email ?? '(no email)';
-			DeletePatientConfirmState.pending = { id: patientId, email: patientEmail };
+				(patient as { user?: { email?: string } })?.user?.email ??
+				'(no email)';
+			DeletePatientConfirmState.pending = {
+				id: patientId,
+				email: patientEmail
+			};
 			const result = await dialogService.open({
 				component: DeletePatientConfirmModal
 			});
 			if (result.confirmed && typeof result.data === 'string') {
 				await deletePatient({ id: result.data });
 				await fetchPatients();
-				toastService.addToast('Patient deleted.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Patient deleted.',
+					StatusColorEnum.SUCCESS
+				);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete patient.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to delete patient.',
+				StatusColorEnum.ERROR
+			);
 		} finally {
 			DeletePatientConfirmState.pending = null;
 		}
@@ -148,7 +170,10 @@
 	const PATIENT_COLUMN_COUNT = 12;
 
 	type PatientDialogMode = 'view' | 'edit';
-	let patientDialog = $state<{ mode: PatientDialogMode; patientId: string } | null>(null);
+	let patientDialog = $state<{
+		mode: PatientDialogMode;
+		patientId: string;
+	} | null>(null);
 
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
@@ -198,7 +223,9 @@
 		{/if}
 	</p>
 
-	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
+	<div
+		class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end"
+	>
 		<div class="staff-list-search-form">
 			<DaisyUiInputField
 				inputPlaceholderText="name, code, phone..."
@@ -219,7 +246,9 @@
 		</DaisyUiTooltip>
 	</div>
 
-	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
+	<div
+		class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none"
+	>
 		<span class="text-sm">per page</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
@@ -236,7 +265,9 @@
 	</div>
 
 	{#if patientResult !== null}
-		<div class="order-4 w-full md:order-none md:w-auto md:justify-end">
+		<div
+			class="order-4 w-full md:order-none md:w-auto md:justify-end"
+		>
 			<DaisyUiPagination>
 				<DaisyUiPaginationItem
 					onClick={() => goToPage(currentPage - 1)}
@@ -266,20 +297,20 @@
 </div>
 
 {#if isLoading && !patientResult}
-	<div class="flex justify-center items-center">
+	<div class="flex items-center justify-center">
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="overflow-auto max-h-[calc(100vh-18rem)]">
-		<DaisyUiTable
-			className="d-table d-table-zebra d-table-sm"
-		>
+	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
+		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">
+					<th class="sticky left-0 z-1 w-16 min-w-[4rem] bg-base-200">
 						Actions
 					</th>
-					<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-32 min-w-[8rem]">
+					<th
+						class="sticky top-0 left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-200"
+					>
 						Patient Code
 					</th>
 					<th class="w-64 min-w-[16rem]">Name</th>
@@ -295,8 +326,10 @@
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
 				{#each patientList as patient (patient.id)}
-					<tr class="hover:bg-info/30 z-0">
-						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
+					<tr class="z-0 hover:bg-info/30">
+						<td
+							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+						>
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText="view data"
@@ -347,25 +380,38 @@
 								</DaisyUiTooltip>
 							</div>
 						</td>
-						<td class="sticky left-[4.75rem] z-1 bg-base-100 w-32 min-w-[8rem]">
+						<td
+							class="sticky left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-100"
+						>
 							{patient.code ?? '—'}
 						</td>
 						<td class="w-64 min-w-[16rem]">
 							{StringUtil.patientDisplayName(patient)}
 						</td>
 						<td class="w-64 min-w-[16rem]">
-							({patient.identityType?.name ?? '—'}) {patient.identityNo ?? '—'}
+							({patient.identityType?.name ?? '—'}) {patient.identityNo ??
+								'—'}
 						</td>
-						<td class="w-40 min-w-[10rem]">{patient.phonePrimary ?? '—'}</td>
-						<td class="w-40 min-w-[10rem]">{patient.phoneSecondary ?? '—'}</td>
-						<td class="w-36 min-w-[9rem]">{formatDate(patient.dateOfBirth)}</td>
+						<td class="w-40 min-w-[10rem]"
+							>{patient.phonePrimary ?? '—'}</td
+						>
+						<td class="w-40 min-w-[10rem]"
+							>{patient.phoneSecondary ?? '—'}</td
+						>
+						<td class="w-36 min-w-[9rem]"
+							>{formatDate(patient.dateOfBirth)}</td
+						>
 						<td class="w-48 min-w-[12rem]">
 							{patient.guardianName ?? '—'}
 							{#if patient.guardianPhone}
-								<span class="text-base-content/70"> · {patient.guardianPhone}</span>
+								<span class="text-base-content/70">
+									· {patient.guardianPhone}</span
+								>
 							{/if}
 						</td>
-						<td class="w-32 min-w-[8rem]">{patient.status?.name ?? '—'}</td>
+						<td class="w-32 min-w-[8rem]"
+							>{patient.status?.name ?? '—'}</td
+						>
 						<td class="w-40 min-w-[10rem]">
 							{formatDateTime(patient.createdAt)}
 						</td>

@@ -4,21 +4,33 @@ import * as table from '$lib/server/db/schema';
 import type {
 	AppointmentSchema,
 	AppointmentSchemaInsert,
-	AppointmentSchemaUpdate,
+	AppointmentSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 const BRANCH_ALL_VALUE = '__all__';
 
-function getSelectedScopeFromRequest(): { hospitalId: string | null; branchId: string | null } {
+function getSelectedScopeFromRequest(): {
+	hospitalId: string | null;
+	branchId: string | null;
+} {
 	try {
 		const event = getRequestEvent();
 		const hospitalIdParam =
-			typeof event.params?.hospital_id === 'string' ? event.params.hospital_id : null;
-		const rawBranchIdCookie = event.cookies.get('heka_selected_branch_id') ?? null;
-		const branchIdCookie = rawBranchIdCookie === BRANCH_ALL_VALUE ? null : rawBranchIdCookie;
+			typeof event.params?.hospital_id === 'string'
+				? event.params.hospital_id
+				: null;
+		const rawBranchIdCookie =
+			event.cookies.get('heka_selected_branch_id') ?? null;
+		const branchIdCookie =
+			rawBranchIdCookie === BRANCH_ALL_VALUE
+				? null
+				: rawBranchIdCookie;
 		return { hospitalId: hospitalIdParam, branchId: branchIdCookie };
 	} catch {
 		return { hospitalId: null, branchId: null };
@@ -26,45 +38,86 @@ function getSelectedScopeFromRequest(): { hospitalId: string | null; branchId: s
 }
 
 // get all
-export const getAppointment = query(async (): Promise<AppointmentSchema[]> => {
-	const scope = getSelectedScopeFromRequest();
-	const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
-	if (scope.hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, scope.hospitalId));
-	if (scope.branchId) conditions.push(eq(table.appointmentTable.branchId, scope.branchId));
-	const whereExpr = and(...conditions)!;
-	const data = await ensureDb().select().from(table.appointmentTable).where(whereExpr);
-	return data;
-});
+export const getAppointment = query(
+	async (): Promise<AppointmentSchema[]> => {
+		const scope = getSelectedScopeFromRequest();
+		const conditions = [
+			ne(table.appointmentTable.statusId, StatusEnum.DELETED)
+		];
+		if (scope.hospitalId)
+			conditions.push(
+				eq(table.appointmentTable.hospitalId, scope.hospitalId)
+			);
+		if (scope.branchId)
+			conditions.push(
+				eq(table.appointmentTable.branchId, scope.branchId)
+			);
+		const whereExpr = and(...conditions)!;
+		const data = await ensureDb()
+			.select()
+			.from(table.appointmentTable)
+			.where(whereExpr);
+		return data;
+	}
+);
 
 // get count
-export const getAppointmentCount = query(async (): Promise<number> => {
-	const scope = getSelectedScopeFromRequest();
-	const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
-	if (scope.hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, scope.hospitalId));
-	if (scope.branchId) conditions.push(eq(table.appointmentTable.branchId, scope.branchId));
-	const whereExpr = and(...conditions)!;
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.appointmentTable)
-		.where(whereExpr);
-	return row?.count ?? 0;
-});
+export const getAppointmentCount = query(
+	async (): Promise<number> => {
+		const scope = getSelectedScopeFromRequest();
+		const conditions = [
+			ne(table.appointmentTable.statusId, StatusEnum.DELETED)
+		];
+		if (scope.hospitalId)
+			conditions.push(
+				eq(table.appointmentTable.hospitalId, scope.hospitalId)
+			);
+		if (scope.branchId)
+			conditions.push(
+				eq(table.appointmentTable.branchId, scope.branchId)
+			);
+		const whereExpr = and(...conditions)!;
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.appointmentTable)
+			.where(whereExpr);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getAppointmentPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<AppointmentSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<AppointmentSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const scope = getSelectedScopeFromRequest();
-		const hospitalId = params?.hospitalId ?? scope.hospitalId ?? undefined;
+		const hospitalId =
+			params?.hospitalId ?? scope.hospitalId ?? undefined;
 		const branchId = params?.branchId ?? scope.branchId ?? undefined;
-		const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
-		if (hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, hospitalId));
-		if (branchId) conditions.push(eq(table.appointmentTable.branchId, branchId));
+		const conditions = [
+			ne(table.appointmentTable.statusId, StatusEnum.DELETED)
+		];
+		if (hospitalId)
+			conditions.push(
+				eq(table.appointmentTable.hospitalId, hospitalId)
+			);
+		if (branchId)
+			conditions.push(eq(table.appointmentTable.branchId, branchId));
 		const whereExpr = and(...conditions)!;
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.appointmentTable).where(whereExpr).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.appointmentTable).where(whereExpr),
+			ensureDb()
+				.select()
+				.from(table.appointmentTable)
+				.where(whereExpr)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.appointmentTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -72,7 +125,7 @@ export const getAppointmentPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -82,37 +135,53 @@ export const getAppointmentWithRelations = query(
 	'unchecked' as const,
 	async (params?: { hospitalId?: string; branchId?: string }) => {
 		const scope = getSelectedScopeFromRequest();
-		const conditions = [ne(table.appointmentTable.statusId, StatusEnum.DELETED)];
+		const conditions = [
+			ne(table.appointmentTable.statusId, StatusEnum.DELETED)
+		];
 		const hospitalId = params?.hospitalId ?? scope.hospitalId;
 		const branchId = params?.branchId ?? scope.branchId;
-		if (hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, hospitalId));
-		if (branchId) conditions.push(eq(table.appointmentTable.branchId, branchId));
+		if (hospitalId)
+			conditions.push(
+				eq(table.appointmentTable.hospitalId, hospitalId)
+			);
+		if (branchId)
+			conditions.push(eq(table.appointmentTable.branchId, branchId));
 		const whereExpr = and(...conditions)!;
 		return ensureDb().query.appointmentTable.findMany({
-		where: whereExpr,
-		with: {
-			hospital: true,
-			branch: true,
-			patient: true,
-			staff: true,
-			patientTitle: true,
-			referType: true,
-			externalRefer: true,
-			statusTagging: true,
-			status: true,
-		},
-	});
+			where: whereExpr,
+			with: {
+				hospital: true,
+				branch: true,
+				patient: true,
+				staff: true,
+				patientTitle: true,
+				referType: true,
+				externalRefer: true,
+				statusTagging: true,
+				status: true
+			}
+		});
 	}
 );
 
 // get one
 export const getAppointmentById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<AppointmentSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<AppointmentSchema | null> => {
 		const scope = getSelectedScopeFromRequest();
 		const conditions = [eq(table.appointmentTable.id, id)];
-		if (scope.hospitalId) conditions.push(eq(table.appointmentTable.hospitalId, scope.hospitalId));
-		if (scope.branchId) conditions.push(eq(table.appointmentTable.branchId, scope.branchId));
+		if (scope.hospitalId)
+			conditions.push(
+				eq(table.appointmentTable.hospitalId, scope.hospitalId)
+			);
+		if (scope.branchId)
+			conditions.push(
+				eq(table.appointmentTable.branchId, scope.branchId)
+			);
 		const whereExpr = and(...conditions)!;
 		const [row] = await ensureDb()
 			.select()
@@ -126,7 +195,10 @@ export const getAppointmentById = query(
 export const createAppointment = command(
 	'unchecked' as const,
 	async (
-		payload: Omit<AppointmentSchemaInsert, 'hospitalId' | 'branchId'> & {
+		payload: Omit<
+			AppointmentSchemaInsert,
+			'hospitalId' | 'branchId'
+		> & {
 			hospitalId?: string | null;
 			branchId?: string | null;
 		}
@@ -155,7 +227,9 @@ export const createAppointment = command(
 // update
 export const updateAppointment = command(
 	'unchecked' as const,
-	async (payload: AppointmentSchemaUpdate & { id: number }): Promise<AppointmentSchema> => {
+	async (
+		payload: AppointmentSchemaUpdate & { id: number }
+	): Promise<AppointmentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.appointmentTable)
@@ -186,7 +260,9 @@ export const deleteAppointment = command(
 export const deleteAppointmentComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.appointmentTable).where(eq(table.appointmentTable.id, id));
+		await ensureDb()
+			.delete(table.appointmentTable)
+			.where(eq(table.appointmentTable.id, id));
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
 	}

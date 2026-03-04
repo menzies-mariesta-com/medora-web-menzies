@@ -45,7 +45,9 @@
 					{$session.data.user.name ?? $session.data.user.email}
 				</span>
 			</div>
-			<DaisyUiButton onClick={handleSignOut}>{m.log_out()}</DaisyUiButton>
+			<DaisyUiButton onClick={handleSignOut}
+				>{m.log_out()}</DaisyUiButton
+			>
 		{:else}
 			<DaisyUiButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.SIGNUP)}

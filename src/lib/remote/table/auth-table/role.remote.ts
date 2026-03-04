@@ -1,9 +1,16 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { RoleSchema, RoleSchemaInsert, RoleSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	RoleSchema,
+	RoleSchemaInsert,
+	RoleSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
@@ -17,25 +24,34 @@ export const getRole = query(async (): Promise<RoleSchema[]> => {
 export const getRoleWithRelations = query(async () => {
 	return ensureDb().query.roleTable.findMany({
 		with: {
-			status: true,
-		},
+			status: true
+		}
 	});
 });
 
 // get count
 export const getRoleCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.roleTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.roleTable);
 	return row?.count ?? 0;
 });
 
 // get paginated
 export const getRolePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<RoleSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<RoleSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.roleTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.roleTable),
+			ensureDb()
+				.select()
+				.from(table.roleTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb().select({ count: count() }).from(table.roleTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -43,7 +59,7 @@ export const getRolePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -77,7 +93,11 @@ export const createRole = command(
 // update
 export const updateRole = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<RoleSchema> => {
+	async (payload: {
+		id: number;
+		name?: string | null;
+		statusId?: number | null;
+	}): Promise<RoleSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.roleTable)
@@ -106,7 +126,9 @@ export const deleteRole = command(
 export const deleteRoleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.roleTable).where(eq(table.roleTable.id, id));
+		await ensureDb()
+			.delete(table.roleTable)
+			.where(eq(table.roleTable.id, id));
 		getRole().refresh();
 	}
 );

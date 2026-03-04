@@ -30,24 +30,28 @@ body {
 	}
 }
 
-
 .my-dotted-background-teal {
-    display: flex;
+	display: flex;
 
-    min-height: 100vh;
-    width: 100%;
+	min-height: 100vh;
+	width: 100%;
 
-    align-items: center;
-    justify-content: center;
+	align-items: center;
+	justify-content: center;
 
-    background-color: #ecfaf5;
+	background-color: #ecfaf5;
 
-    background-image:
-        radial-gradient(rgba(112,236,173,0.7) 0.9px, transparent 0.9px),
-        radial-gradient(rgba(112,236,173,0.7) 0.9px, #fff 0.9px);
+	background-image:
+		radial-gradient(
+			rgba(112, 236, 173, 0.7) 0.9px,
+			transparent 0.9px
+		),
+		radial-gradient(rgba(112, 236, 173, 0.7) 0.9px, #fff 0.9px);
 
-    background-size: 36px 36px;
-    background-position: 0 0, 18px 18px;
+	background-size: 36px 36px;
+	background-position:
+		0 0,
+		18px 18px;
 
-    padding: 1.25rem; /* p-5 = 20px */
+	padding: 1.25rem; /* p-5 = 20px */
 }

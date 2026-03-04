@@ -26,8 +26,6 @@
 
 		return () => clearInterval(interval);
 	});
-
-	
 </script>
 
 <DaisyUiFooter

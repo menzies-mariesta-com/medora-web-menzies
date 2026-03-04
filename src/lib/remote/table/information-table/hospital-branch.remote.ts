@@ -11,7 +11,9 @@ import { eq } from 'drizzle-orm';
 import { RoleEnum } from '$lib/model/enum/db-link';
 
 /** Ensure the current user can manage branches for this hospital. */
-async function ensureCanManageHospital(hospitalId: string): Promise<void> {
+async function ensureCanManageHospital(
+	hospitalId: string
+): Promise<void> {
 	const event = getRequestEvent();
 	if (!event?.locals?.user) throw error(401, 'Unauthorized');
 	const userRoleId = event.locals.userRoleId ?? null;
@@ -25,11 +27,16 @@ async function ensureCanManageHospital(hospitalId: string): Promise<void> {
 			.from(table.hospitalTable)
 			.where(eq(table.hospitalTable.id, hospitalId))
 			.limit(1);
-		if (!h || h.ownerId !== userId) throw error(403, 'You can only manage branches of your own hospitals');
+		if (!h || h.ownerId !== userId)
+			throw error(
+				403,
+				'You can only manage branches of your own hospitals'
+			);
 		return;
 	}
 	if (userRoleId === RoleEnum.STAFF) {
-		if (!allowedHospitalIds.includes(hospitalId)) throw error(403, 'You do not have access to this hospital');
+		if (!allowedHospitalIds.includes(hospitalId))
+			throw error(403, 'You do not have access to this hospital');
 		return;
 	}
 	throw error(403, 'Forbidden');
@@ -38,7 +45,11 @@ async function ensureCanManageHospital(hospitalId: string): Promise<void> {
 /** List branches for a hospital. */
 export const getBranchesByHospitalId = query(
 	'unchecked' as const,
-	async ({ hospitalId }: { hospitalId: string }): Promise<HospitalBranchSchema[]> => {
+	async ({
+		hospitalId
+	}: {
+		hospitalId: string;
+	}): Promise<HospitalBranchSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.hospitalBranchTable)
@@ -50,7 +61,11 @@ export const getBranchesByHospitalId = query(
 /** Get one branch by id. */
 export const getBranchById = query(
 	'unchecked' as const,
-	async ({ id }: { id: string }): Promise<HospitalBranchSchema | null> => {
+	async ({
+		id
+	}: {
+		id: string;
+	}): Promise<HospitalBranchSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.hospitalBranchTable)
@@ -62,21 +77,30 @@ export const getBranchById = query(
 
 export const createBranch = command(
 	'unchecked' as const,
-	async (input: HospitalBranchSchemaInsert): Promise<HospitalBranchSchema> => {
+	async (
+		input: HospitalBranchSchemaInsert
+	): Promise<HospitalBranchSchema> => {
 		await ensureCanManageHospital(input.hospitalId);
 		const [inserted] = await ensureDb()
 			.insert(table.hospitalBranchTable)
 			.values(input)
 			.returning();
 		if (!inserted) throw new Error('Failed to create branch');
-		getBranchesByHospitalId({ hospitalId: input.hospitalId }).refresh();
+		getBranchesByHospitalId({
+			hospitalId: input.hospitalId
+		}).refresh();
 		return inserted;
 	}
 );
 
 export const updateBranch = command(
 	'unchecked' as const,
-	async ({ id, ...data }: HospitalBranchSchemaUpdate & { id: string }): Promise<HospitalBranchSchema> => {
+	async ({
+		id,
+		...data
+	}: HospitalBranchSchemaUpdate & {
+		id: string;
+	}): Promise<HospitalBranchSchema> => {
 		const [branch] = await ensureDb()
 			.select({ hospitalId: table.hospitalBranchTable.hospitalId })
 			.from(table.hospitalBranchTable)
@@ -91,7 +115,9 @@ export const updateBranch = command(
 			.where(eq(table.hospitalBranchTable.id, id))
 			.returning();
 		if (!updated) throw new Error('Branch not found');
-		getBranchesByHospitalId({ hospitalId: branch.hospitalId }).refresh();
+		getBranchesByHospitalId({
+			hospitalId: branch.hospitalId
+		}).refresh();
 		return updated;
 	}
 );
@@ -106,7 +132,11 @@ export const deleteBranch = command(
 			.limit(1);
 		if (!branch) throw error(404, 'Branch not found');
 		await ensureCanManageHospital(branch.hospitalId);
-		await ensureDb().delete(table.hospitalBranchTable).where(eq(table.hospitalBranchTable.id, id));
-		getBranchesByHospitalId({ hospitalId: branch.hospitalId }).refresh();
+		await ensureDb()
+			.delete(table.hospitalBranchTable)
+			.where(eq(table.hospitalBranchTable.id, id));
+		getBranchesByHospitalId({
+			hospitalId: branch.hospitalId
+		}).refresh();
 	}
 );

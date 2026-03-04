@@ -1,19 +1,28 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { CraftGroupSchema, CraftGroupSchemaInsert, CraftGroupSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	CraftGroupSchema,
+	CraftGroupSchemaInsert,
+	CraftGroupSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getCraftGroup = query(async (): Promise<CraftGroupSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.craftGroupTable)
-		.where(eq(table.craftGroupTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.craftGroupTable.name);
-});
+export const getCraftGroup = query(
+	async (): Promise<CraftGroupSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.craftGroupTable)
+			.where(eq(table.craftGroupTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.craftGroupTable.name);
+	}
+);
 
 export const getCraftGroupCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -25,9 +34,15 @@ export const getCraftGroupCount = query(async (): Promise<number> => {
 
 export const getCraftGroupPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<CraftGroupSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.craftGroupTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<CraftGroupSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.craftGroupTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -39,7 +54,7 @@ export const getCraftGroupPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.craftGroupTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -47,14 +62,18 @@ export const getCraftGroupPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
 
 export const getCraftGroupById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<CraftGroupSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<CraftGroupSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.craftGroupTable)
@@ -65,7 +84,9 @@ export const getCraftGroupById = query(
 
 export const createCraftGroup = command(
 	'unchecked' as const,
-	async (payload: CraftGroupSchemaInsert): Promise<CraftGroupSchema> => {
+	async (
+		payload: CraftGroupSchemaInsert
+	): Promise<CraftGroupSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.craftGroupTable)
 			.values(payload)
@@ -78,7 +99,10 @@ export const createCraftGroup = command(
 
 export const updateCraftGroup = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string }): Promise<CraftGroupSchema> => {
+	async (payload: {
+		id: number;
+		name?: string;
+	}): Promise<CraftGroupSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.craftGroupTable)
@@ -105,7 +129,9 @@ export const deleteCraftGroup = command(
 export const deleteCraftGroupComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.craftGroupTable).where(eq(table.craftGroupTable.id, id));
+		await ensureDb()
+			.delete(table.craftGroupTable)
+			.where(eq(table.craftGroupTable.id, id));
 		getCraftGroup().refresh();
 	}
 );

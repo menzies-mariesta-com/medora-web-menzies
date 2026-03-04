@@ -1,19 +1,28 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { WeekdaySchema, WeekdaySchemaInsert, WeekdaySchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	WeekdaySchema,
+	WeekdaySchemaInsert,
+	WeekdaySchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getWeekday = query(async (): Promise<WeekdaySchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.weekdayTable)
-		.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.weekdayTable.id);
-});
+export const getWeekday = query(
+	async (): Promise<WeekdaySchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.weekdayTable)
+			.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.weekdayTable.id);
+	}
+);
 
 export const getWeekdayCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -25,9 +34,15 @@ export const getWeekdayCount = query(async (): Promise<number> => {
 
 export const getWeekdayPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<WeekdaySchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.weekdayTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<WeekdaySchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.weekdayTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -39,7 +54,7 @@ export const getWeekdayPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.weekdayTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -47,7 +62,7 @@ export const getWeekdayPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -78,7 +93,11 @@ export const createWeekday = command(
 
 export const updateWeekday = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<WeekdaySchema> => {
+	async (payload: {
+		id: number;
+		name?: string | null;
+		statusId?: number | null;
+	}): Promise<WeekdaySchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.weekdayTable)
@@ -105,7 +124,9 @@ export const deleteWeekday = command(
 export const deleteWeekdayComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.weekdayTable).where(eq(table.weekdayTable.id, id));
+		await ensureDb()
+			.delete(table.weekdayTable)
+			.where(eq(table.weekdayTable.id, id));
 		getWeekday().refresh();
 	}
 );

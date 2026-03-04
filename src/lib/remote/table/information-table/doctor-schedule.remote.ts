@@ -4,10 +4,13 @@ import * as table from '$lib/server/db/schema';
 import type {
 	DoctorScheduleSchema,
 	DoctorScheduleSchemaInsert,
-	DoctorScheduleSchemaUpdate,
+	DoctorScheduleSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq } from 'drizzle-orm';
 
@@ -18,7 +21,8 @@ function getSelectedBranchConstraintForStaff(): string | null {
 		const event = getRequestEvent();
 		const roleId = event.locals.userRoleId ?? null;
 		if (roleId !== RoleEnum.STAFF) return null;
-		const selected = event.cookies.get('heka_selected_branch_id') ?? null;
+		const selected =
+			event.cookies.get('heka_selected_branch_id') ?? null;
 		if (!selected || selected === BRANCH_ALL_VALUE) return null;
 		return selected;
 	} catch {
@@ -32,49 +36,60 @@ async function ensureDoctorBranchContext(input: {
 	branchId: string;
 }): Promise<void> {
 	const { staffId, hospitalId, branchId } = input;
-	const [branchInHospital, staffInHospital, staffInBranch] = await Promise.all([
-		ensureDb()
-			.select({ id: table.hospitalBranchTable.id })
-			.from(table.hospitalBranchTable)
-			.where(
-				and(
-					eq(table.hospitalBranchTable.id, branchId),
-					eq(table.hospitalBranchTable.hospitalId, hospitalId)
+	const [branchInHospital, staffInHospital, staffInBranch] =
+		await Promise.all([
+			ensureDb()
+				.select({ id: table.hospitalBranchTable.id })
+				.from(table.hospitalBranchTable)
+				.where(
+					and(
+						eq(table.hospitalBranchTable.id, branchId),
+						eq(table.hospitalBranchTable.hospitalId, hospitalId)
+					)
 				)
-			)
-			.limit(1)
-			.then((rows) => rows[0]),
-		ensureDb()
-			.select({ id: table.staffHospitalTable.id })
-			.from(table.staffHospitalTable)
-			.where(
-				and(
-					eq(table.staffHospitalTable.staffId, staffId),
-					eq(table.staffHospitalTable.hospitalId, hospitalId)
+				.limit(1)
+				.then((rows) => rows[0]),
+			ensureDb()
+				.select({ id: table.staffHospitalTable.id })
+				.from(table.staffHospitalTable)
+				.where(
+					and(
+						eq(table.staffHospitalTable.staffId, staffId),
+						eq(table.staffHospitalTable.hospitalId, hospitalId)
+					)
 				)
-			)
-			.limit(1)
-			.then((rows) => rows[0]),
-		ensureDb()
-			.select({ id: table.staffBranchTable.id })
-			.from(table.staffBranchTable)
-			.innerJoin(
-				table.hospitalBranchTable,
-				eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
-			)
-			.where(
-				and(
-					eq(table.staffBranchTable.staffId, staffId),
-					eq(table.staffBranchTable.branchId, branchId),
-					eq(table.hospitalBranchTable.hospitalId, hospitalId)
+				.limit(1)
+				.then((rows) => rows[0]),
+			ensureDb()
+				.select({ id: table.staffBranchTable.id })
+				.from(table.staffBranchTable)
+				.innerJoin(
+					table.hospitalBranchTable,
+					eq(
+						table.staffBranchTable.branchId,
+						table.hospitalBranchTable.id
+					)
 				)
-			)
-			.limit(1)
-			.then((rows) => rows[0])
-	]);
-	if (!branchInHospital) throw new Error('Selected branch does not belong to this hospital');
-	if (!staffInHospital) throw new Error('Selected doctor is not assigned to this hospital');
-	if (!staffInBranch) throw new Error('Selected doctor is not assigned to this branch');
+				.where(
+					and(
+						eq(table.staffBranchTable.staffId, staffId),
+						eq(table.staffBranchTable.branchId, branchId),
+						eq(table.hospitalBranchTable.hospitalId, hospitalId)
+					)
+				)
+				.limit(1)
+				.then((rows) => rows[0])
+		]);
+	if (!branchInHospital)
+		throw new Error(
+			'Selected branch does not belong to this hospital'
+		);
+	if (!staffInHospital)
+		throw new Error(
+			'Selected doctor is not assigned to this hospital'
+		);
+	if (!staffInBranch)
+		throw new Error('Selected doctor is not assigned to this branch');
 }
 
 type DoctorScheduleOverlapCheckInput = {
@@ -107,18 +122,31 @@ function normalizeTime(t: string | null): string {
  *
  * `fromDate`/`toDate` or `fromShiftTime`/`toShiftTime` null = open‑ended range.
  */
-async function assertNoOverlappingDoctorSchedule(input: DoctorScheduleOverlapCheckInput): Promise<void> {
-	const { staffId, weekdayId, fromDate, toDate, fromShiftTime, toShiftTime, excludeId } = input;
+async function assertNoOverlappingDoctorSchedule(
+	input: DoctorScheduleOverlapCheckInput
+): Promise<void> {
+	const {
+		staffId,
+		weekdayId,
+		fromDate,
+		toDate,
+		fromShiftTime,
+		toShiftTime,
+		excludeId
+	} = input;
 
 	const existingSchedules = await ensureDb()
 		.select({
 			schedule: table.doctorScheduleTable,
-			branchName: table.hospitalBranchTable.name,
+			branchName: table.hospitalBranchTable.name
 		})
 		.from(table.doctorScheduleTable)
 		.innerJoin(
 			table.hospitalBranchTable,
-			eq(table.doctorScheduleTable.branchId, table.hospitalBranchTable.id)
+			eq(
+				table.doctorScheduleTable.branchId,
+				table.hospitalBranchTable.id
+			)
 		)
 		.where(eq(table.doctorScheduleTable.staffId, staffId));
 
@@ -143,14 +171,17 @@ async function assertNoOverlappingDoctorSchedule(input: DoctorScheduleOverlapChe
 		const rowFromTime = normalizeTime(row.fromShiftTime) || MIN_TIME;
 		const rowToTime = normalizeTime(row.toShiftTime) || MAX_TIME;
 
-		const dateOverlap = rowFromDate <= newToDate && newFromDate <= rowToDate;
-		const timeOverlap = rowFromTime < newToTime && newFromTime < rowToTime;
+		const dateOverlap =
+			rowFromDate <= newToDate && newFromDate <= rowToDate;
+		const timeOverlap =
+			rowFromTime < newToTime && newFromTime < rowToTime;
 
 		return dateOverlap && timeOverlap;
 	});
 
 	if (conflict) {
-		const branchLabel = conflict.branchName ?? conflict.schedule.branchId;
+		const branchLabel =
+			conflict.branchName ?? conflict.schedule.branchId;
 		throw new Error(
 			`Doctor already has an overlapping schedule at branch "${branchLabel}" for this time.`
 		);
@@ -160,35 +191,63 @@ async function assertNoOverlappingDoctorSchedule(input: DoctorScheduleOverlapChe
 // get all (optional hospitalId/branchId UUID to scope)
 export const getDoctorSchedule = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: string; branchId?: string }): Promise<DoctorScheduleSchema[]> => {
-		let whereExpr: ReturnType<typeof eq> | ReturnType<typeof and> | undefined;
+	async (params?: {
+		hospitalId?: string;
+		branchId?: string;
+	}): Promise<DoctorScheduleSchema[]> => {
+		let whereExpr:
+			| ReturnType<typeof eq>
+			| ReturnType<typeof and>
+			| undefined;
 		if (params?.hospitalId != null && params.hospitalId !== '') {
-			whereExpr = eq(table.doctorScheduleTable.hospitalId, params.hospitalId);
+			whereExpr = eq(
+				table.doctorScheduleTable.hospitalId,
+				params.hospitalId
+			);
 		}
 		if (params?.branchId != null && params.branchId !== '') {
-			const branchExpr = eq(table.doctorScheduleTable.branchId, params.branchId);
+			const branchExpr = eq(
+				table.doctorScheduleTable.branchId,
+				params.branchId
+			);
 			whereExpr = whereExpr ? and(whereExpr, branchExpr) : branchExpr;
 		}
 		return whereExpr
-			? ensureDb().select().from(table.doctorScheduleTable).where(whereExpr)
+			? ensureDb()
+					.select()
+					.from(table.doctorScheduleTable)
+					.where(whereExpr)
 			: ensureDb().select().from(table.doctorScheduleTable);
 	}
 );
 
 // get count
-export const getDoctorScheduleCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.doctorScheduleTable);
-	return row?.count ?? 0;
-});
+export const getDoctorScheduleCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.doctorScheduleTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getDoctorSchedulePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<DoctorScheduleSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<DoctorScheduleSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.doctorScheduleTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.doctorScheduleTable),
+			ensureDb()
+				.select()
+				.from(table.doctorScheduleTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.doctorScheduleTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -196,7 +255,7 @@ export const getDoctorSchedulePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -208,7 +267,10 @@ export const getDoctorScheduleWithRelations = query(
 		const hospitalId = params?.hospitalId;
 		const branchId = params?.branchId;
 		const whereExpr =
-			hospitalId != null && hospitalId !== '' && branchId != null && branchId !== ''
+			hospitalId != null &&
+			hospitalId !== '' &&
+			branchId != null &&
+			branchId !== ''
 				? and(
 						eq(table.doctorScheduleTable.hospitalId, hospitalId),
 						eq(table.doctorScheduleTable.branchId, branchId)
@@ -225,8 +287,8 @@ export const getDoctorScheduleWithRelations = query(
 				hospital: true,
 				branch: true,
 				weekday: true,
-				status: true,
-			},
+				status: true
+			}
 		});
 	}
 );
@@ -234,7 +296,11 @@ export const getDoctorScheduleWithRelations = query(
 // get one
 export const getDoctorScheduleById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<DoctorScheduleSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<DoctorScheduleSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.doctorScheduleTable)
@@ -246,10 +312,18 @@ export const getDoctorScheduleById = query(
 // create
 export const createDoctorSchedule = command(
 	'unchecked' as const,
-	async (payload: DoctorScheduleSchemaInsert): Promise<DoctorScheduleSchema> => {
-		const selectedBranchConstraint = getSelectedBranchConstraintForStaff();
-		if (selectedBranchConstraint && payload.branchId !== selectedBranchConstraint) {
-			throw new Error('You can only create schedules for your selected branch');
+	async (
+		payload: DoctorScheduleSchemaInsert
+	): Promise<DoctorScheduleSchema> => {
+		const selectedBranchConstraint =
+			getSelectedBranchConstraintForStaff();
+		if (
+			selectedBranchConstraint &&
+			payload.branchId !== selectedBranchConstraint
+		) {
+			throw new Error(
+				'You can only create schedules for your selected branch'
+			);
 		}
 		await ensureDoctorBranchContext({
 			staffId: payload.staffId,
@@ -277,7 +351,9 @@ export const createDoctorSchedule = command(
 // update
 export const updateDoctorSchedule = command(
 	'unchecked' as const,
-	async (payload: DoctorScheduleSchemaUpdate & { id: number }): Promise<DoctorScheduleSchema> => {
+	async (
+		payload: DoctorScheduleSchemaUpdate & { id: number }
+	): Promise<DoctorScheduleSchema> => {
 		const { id, ...rest } = payload;
 		const existing = await getDoctorScheduleById({ id });
 		if (!existing) throw new Error('Schedule not found');
@@ -287,11 +363,18 @@ export const updateDoctorSchedule = command(
 		const nextWeekdayId = rest.weekdayId ?? existing.weekdayId;
 		const nextFromDate = rest.fromDate ?? existing.fromDate;
 		const nextToDate = rest.toDate ?? existing.toDate;
-		const nextFromShiftTime = rest.fromShiftTime ?? existing.fromShiftTime;
+		const nextFromShiftTime =
+			rest.fromShiftTime ?? existing.fromShiftTime;
 		const nextToShiftTime = rest.toShiftTime ?? existing.toShiftTime;
-		const selectedBranchConstraint = getSelectedBranchConstraintForStaff();
-		if (selectedBranchConstraint && nextBranchId !== selectedBranchConstraint) {
-			throw new Error('You can only update schedules in your selected branch');
+		const selectedBranchConstraint =
+			getSelectedBranchConstraintForStaff();
+		if (
+			selectedBranchConstraint &&
+			nextBranchId !== selectedBranchConstraint
+		) {
+			throw new Error(
+				'You can only update schedules in your selected branch'
+			);
 		}
 		await ensureDoctorBranchContext({
 			staffId: nextStaffId,
@@ -300,9 +383,12 @@ export const updateDoctorSchedule = command(
 		});
 		// Skip overlap check when only deactivating/deleting; we're reducing active schedules
 		const onlyDeactivating =
-			rest.statusId === StatusEnum.INACTIVE || rest.statusId === StatusEnum.DELETED;
+			rest.statusId === StatusEnum.INACTIVE ||
+			rest.statusId === StatusEnum.DELETED;
 		const hasOtherChanges = Object.keys(rest).some(
-			(k) => k !== 'statusId' && (rest as Record<string, unknown>)[k] !== undefined
+			(k) =>
+				k !== 'statusId' &&
+				(rest as Record<string, unknown>)[k] !== undefined
 		);
 		if (!onlyDeactivating || hasOtherChanges) {
 			await assertNoOverlappingDoctorSchedule({
@@ -342,7 +428,9 @@ export const deleteDoctorSchedule = command(
 export const deleteDoctorScheduleComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.doctorScheduleTable).where(eq(table.doctorScheduleTable.id, id));
+		await ensureDb()
+			.delete(table.doctorScheduleTable)
+			.where(eq(table.doctorScheduleTable.id, id));
 		getDoctorSchedule(undefined).refresh();
 	}
 );

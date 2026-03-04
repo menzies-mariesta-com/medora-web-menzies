@@ -13,6 +13,8 @@
 	lifeCycleUtil.onMount(() => {
 		const first = getSubPages()[0];
 		if (first?.pageUrl && hospitalId)
-			routerUtil.replaceRoute(hekaHospitalPageUrl(hospitalId, first.pageUrl));
+			routerUtil.replaceRoute(
+				hekaHospitalPageUrl(hospitalId, first.pageUrl)
+			);
 	});
 </script>

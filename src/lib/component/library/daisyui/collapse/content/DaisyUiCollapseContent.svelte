@@ -6,5 +6,5 @@
 </script>
 
 <div class="d-collapse-content text-sm {className}">
-    {@render children()}
+	{@render children()}
 </div>
