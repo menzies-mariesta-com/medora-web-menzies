@@ -1553,16 +1553,7 @@ export async function seedMasterTables() {
 	`);
 	console.log('Seeded: visit_type');
 
-	// 19. Allergy master (lookup for patient allergies)
-	await db.execute(sql`
-		INSERT INTO allergy_master (allergy_type_id, description, status_id)
-		VALUES
-			(1, 'No Known', 1)
-		ON CONFLICT (allergy_type_id) DO NOTHING;
-	`);
-	console.log('Seeded: allergy_master');
-
-	// 20. Severity master (lookup for alert severity)
+	// 19. Severity master (lookup for alert severity)
 	await db.execute(sql`
 		INSERT INTO severity (id, name, status_id)
 		VALUES
