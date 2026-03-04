@@ -58,8 +58,10 @@ import MariTable, {
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
-let isLoading = $state(false);
-let isSaving = $state(false);
+	let isLoading = $state(false);
+	let isSaving = $state(false);
+
+	let tableColumnFilters = $state<Record<string, string>>({});
 
 const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
 	{
@@ -145,8 +147,97 @@ async function fetchSubCategories() {
 	async function fetchServiceItems(forceRefresh = false) {
 		isLoading = true;
 		try {
-			const params = hospitalId ? { hospitalId } : undefined;
-			if (forceRefresh && params) {
+			const filters = tableColumnFilters;
+
+			const params: {
+				hospitalId?: string;
+				subCategoryIds?: number[];
+				serviceName?: string;
+				serviceCode?: string;
+				statusId?: number;
+				id?: number;
+			} = {};
+
+			if (hospitalId) {
+				params.hospitalId = hospitalId;
+			}
+
+			// ID filter
+			const idTerm = filters.id?.trim();
+			if (idTerm) {
+				const idVal = Number(idTerm);
+				if (!Number.isNaN(idVal)) {
+					params.id = idVal;
+				}
+			}
+
+			// Category / Sub-category filters -> subCategoryIds array
+			const categoryTerm = filters.category?.trim().toLowerCase();
+			const subCategoryTerm = filters.subCategory?.trim().toLowerCase();
+
+			let subCategoryIds: number[] | undefined;
+
+			if (categoryTerm) {
+				const matchingCategoryIds = categories
+					.filter((c) => (c.categoryName ?? '').toLowerCase().includes(categoryTerm))
+					.map((c) => c.id);
+
+				if (matchingCategoryIds.length > 0) {
+					const fromCategory = subCategories
+						.filter((sc) =>
+							matchingCategoryIds.includes(sc.categoryId ?? 0)
+						)
+						.map((sc) => sc.id);
+					subCategoryIds = fromCategory;
+				} else {
+					subCategoryIds = [];
+				}
+			}
+
+			if (subCategoryTerm) {
+				const fromSubCategory = subCategories
+					.filter((sc) =>
+						(sc.subCategoryName ?? '').toLowerCase().includes(subCategoryTerm)
+					)
+					.map((sc) => sc.id);
+
+				if (subCategoryIds == null) {
+					subCategoryIds = fromSubCategory;
+				} else {
+					subCategoryIds = subCategoryIds.filter((id) =>
+						fromSubCategory.includes(id)
+					);
+				}
+			}
+
+			if (subCategoryIds) {
+				if (subCategoryIds.length === 0) {
+					serviceItems = [];
+					return;
+				}
+				params.subCategoryIds = subCategoryIds;
+			}
+
+			// Service name / code filters
+			const nameTerm = filters.serviceName?.trim();
+			if (nameTerm) {
+				params.serviceName = nameTerm;
+			}
+
+			const codeTerm = filters.serviceCode?.trim();
+			if (codeTerm) {
+				params.serviceCode = codeTerm;
+			}
+
+			// Status filter from text
+			const statusTerm = filters.status?.trim().toLowerCase();
+			if (statusTerm === 'active') {
+				params.statusId = StatusEnum.ACTIVE;
+			} else if (statusTerm === 'inactive') {
+				params.statusId = StatusEnum.INACTIVE;
+			}
+
+			if (forceRefresh) {
 				await getServiceItem(params).refresh();
 			}
 			serviceItems = await getServiceItem(params);
@@ -198,6 +289,11 @@ async function fetchSubCategories() {
 		formActive = (row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 	}
 
+	function handleTableFiltersChange(event: CustomEvent<{ filters: Record<string, string> }>) {
+		tableColumnFilters = event.detail.filters;
+		fetchServiceItems(true);
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!hospitalId) {
@@ -209,10 +305,39 @@ async function fetchSubCategories() {
 			toastService.addToast('Please select category and sub-category.', StatusColorEnum.ERROR);
 			return;
 		}
-		if (!formServiceName.trim()) {
+		const name = formServiceName.trim();
+		if (!name) {
 			toastService.addToast('Service name is required.', StatusColorEnum.ERROR);
 			return;
 		}
+		const code = formServiceCode.trim();
+
+		// Prevent duplicate service name within this hospital
+		const normalizedName = name.toLowerCase();
+		const duplicateByName = serviceItems.find(
+			(item) =>
+				item.id !== editingId &&
+				(item.serviceName ?? '').trim().toLowerCase() === normalizedName
+		);
+		if (duplicateByName) {
+			toastService.addToast('Service name already exists.', StatusColorEnum.ERROR);
+			return;
+		}
+
+		// Prevent duplicate service code within this hospital
+		if (code) {
+			const normalizedCode = code.toLowerCase();
+			const duplicateByCode = serviceItems.find(
+				(item) =>
+					item.id !== editingId &&
+					(item.serviceCode ?? '').trim().toLowerCase() === normalizedCode
+			);
+			if (duplicateByCode) {
+				toastService.addToast('Service code already exists.', StatusColorEnum.ERROR);
+				return;
+			}
+		}
+
 		const statusId = formActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
 		isSaving = true;
 		try {
@@ -220,8 +345,8 @@ async function fetchSubCategories() {
 				await createServiceItem({
 					hospitalId,
 					subCategoryId,
-					serviceName: formServiceName.trim(),
-					serviceCode: formServiceCode.trim() || null,
+					serviceName: name,
+					serviceCode: code || null,
 					remark: formRemark.trim() || null,
 					statusId
 				});
@@ -229,8 +354,8 @@ async function fetchSubCategories() {
 			} else if (mode === 'edit' && editingId != null) {
 				await updateServiceItem({
 					id: editingId,
-					serviceName: formServiceName.trim(),
-					serviceCode: formServiceCode.trim() || null,
+					serviceName: name,
+					serviceCode: code || null,
 					remark: formRemark.trim() || null,
 					statusId
 				});
@@ -362,9 +487,11 @@ async function fetchSubCategories() {
 					rows={serviceItems}
 					columns={serviceItemColumns}
 					enableColumnFilters={true}
+					useRemoteFilters={true}
 					actionsHeader={m.actions()}
 					actionsVariant="crud"
 					on:refresh={() => fetchServiceItems(true)}
+					on:filtersChange={handleTableFiltersChange}
 					on:edit={(event) => startEdit(event.detail)}
 					on:delete={(event) => handleDelete(event.detail)}
 				/>
