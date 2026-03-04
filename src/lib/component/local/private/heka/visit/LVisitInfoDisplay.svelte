@@ -42,7 +42,17 @@
 		};
 	});
 
-	function formatVisitDate(value: string | null | undefined): string {
+	function formatDate(value: string | Date | null | undefined): string {
+		if (value == null) return '';
+		try {
+			const d = typeof value === 'string' ? new Date(value) : value;
+			return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { dateStyle: 'short' });
+		} catch {
+			return '';
+		}
+	}
+
+	function formatDateTime(value: string | null | undefined): string {
 		if (!value) return '';
 		try {
 			return new Date(value).toLocaleString('en-US', {
@@ -54,44 +64,102 @@
 		}
 	}
 
-	const displayValue = $derived.by(() => {
-		if (isLoading) return 'Loading…';
-		if (!visit) return emptyLabel;
-		const patientName = visit.patient
-			? StringUtil.patientDisplayName(visit.patient as any)
-			: '';
-		const patientCode = visit.patient?.code ?? '';
-		const visitNo = visit.visitNo ?? '';
-		const visitDate = formatVisitDate(visit.createdAt ?? null);
-		const hospitalName = visit.hospital?.name ?? '';
-		const branchName = visit.branch?.name ?? '';
-		const doctorName = visit.doctor
+	const patientName = $derived(
+		visit?.patient ? StringUtil.patientDisplayName(visit.patient as any) : ''
+	);
+	const patientCode = $derived(visit?.patient?.code ?? '');
+	const patientDob = $derived(formatDate(visit?.patient?.dateOfBirth));
+	const visitNo = $derived(visit?.visitNo ?? '');
+	const visitTypeName = $derived(visit?.visitType?.name ?? '');
+	const visitDate = $derived(formatDateTime(visit?.createdAt ?? null));
+	const branchName = $derived(visit?.branch?.name ?? '');
+	const hospitalName = $derived(visit?.hospital?.name ?? '');
+	const doctorName = $derived(
+		visit?.doctor
 			? StringUtil.fullNameWithTitle(
 					visit.doctor.title?.name ?? null,
 					visit.doctor.firstName,
 					visit.doctor.middleName,
 					visit.doctor.lastName
 				)
-			: '';
-		const visitTypeName = visit.visitType?.name ?? '';
-		const branchAndHospital = [branchName, hospitalName].filter(Boolean).join(', ');
-		const parts: string[] = [];
-		if (visitTypeName) parts.push(visitTypeName);
-		if (visitNo) parts.push(visitNo);
-		if (patientCode) parts.push(patientCode);
-		if (patientName) parts.push(patientName);
-		if (doctorName) parts.push(doctorName);
-		if (branchAndHospital) parts.push(branchAndHospital);
-		if (visitDate) parts.push(visitDate);
-		return parts.join(' · ') || emptyLabel;
-	});
+			: ''
+	);
 </script>
 
-<div class="flex flex-col gap-1">
-	<div class="text-xs font-semibold uppercase tracking-wide text-base-content/80">
+<div class="flex flex-col gap-2 min-w-0">
+	<div class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
 		{title}
 	</div>
-	<div class="text-base font-medium leading-snug text-base-content text-primary">
-		{displayValue}
-	</div>
+
+	{#if isLoading}
+		<div class="text-sm text-base-content/60">Loading…</div>
+	{:else if !visit}
+		<div class="text-sm text-base-content/60">{emptyLabel}</div>
+	{:else}
+		<dl class="visit-info-grid grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+			{#if visitNo || visitTypeName}
+				<div class="visit-info-item">
+					<dt class="text-base-content/60 font-normal">Visit</dt>
+					<dd class="font-medium text-primary">
+						{#if visitNo}{visitNo}{/if}{#if visitTypeName}
+							{#if visitNo}<span class="text-base-content/60"> · </span>{/if}
+							{visitTypeName}
+						{/if}
+					</dd>
+				</div>
+			{/if}
+			{#if patientName || patientCode}
+				<div class="visit-info-item">
+					<dt class="text-base-content/60 font-normal">Patient</dt>
+					<dd class="font-medium">
+						{#if patientName}{patientName}{/if}
+						{#if patientCode}
+							{#if patientName}<span class="text-base-content/60"> · </span>{/if}
+							<span class="text-base-content/80">{patientCode}</span>
+						{/if}
+						{#if patientDob}
+							<span class="text-base-content/60"> · {patientDob}</span>
+						{/if}
+					</dd>
+				</div>
+			{/if}
+			{#if doctorName}
+				<div class="visit-info-item">
+					<dt class="text-base-content/60 font-normal">Doctor</dt>
+					<dd class="font-medium text-base-content">{doctorName}</dd>
+				</div>
+			{/if}
+			{#if branchName || hospitalName}
+				<div class="visit-info-item">
+					<dt class="text-base-content/60 font-normal">Location</dt>
+					<dd class="font-medium text-base-content">
+						{[branchName, hospitalName].filter(Boolean).join(' · ')}
+					</dd>
+				</div>
+			{/if}
+			{#if visitDate}
+				<div class="visit-info-item">
+					<dt class="text-base-content/60 font-normal">Visit Date</dt>
+					<dd class="font-medium text-base-content">{visitDate}</dd>
+				</div>
+			{/if}
+		</dl>
+	{/if}
 </div>
+
+<style>
+	.visit-info-grid .visit-info-item {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.25rem 0.75rem;
+		align-items: baseline;
+		min-width: 0;
+	}
+	.visit-info-grid .visit-info-item dt {
+		margin: 0;
+	}
+	.visit-info-grid .visit-info-item dd {
+		margin: 0;
+		min-width: 0;
+	}
+</style>
