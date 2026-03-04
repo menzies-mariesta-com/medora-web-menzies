@@ -14,6 +14,7 @@ import type {
 	referTypeTable,
 	religionTable,
 	specializationTable,
+	severityTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
 	staffTypeTable,
@@ -162,6 +163,10 @@ export type ReligionSchemaInsert = InferInsertModel<
 	typeof religionTable
 >;
 export type ReligionSchemaUpdate = Partial<ReligionSchemaInsert>;
+
+export type SeveritySchema = InferSelectModel<typeof severityTable>;
+export type SeveritySchemaInsert = InferInsertModel<typeof severityTable>;
+export type SeveritySchemaUpdate = Partial<SeveritySchemaInsert>;
 
 export type WeekdaySchema = InferSelectModel<typeof weekdayTable>;
 export type WeekdaySchemaInsert = InferInsertModel<

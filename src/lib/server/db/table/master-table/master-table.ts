@@ -264,6 +264,20 @@ export const religionTable = pgTable(
 	]
 );
 
+export const severityTable = pgTable(
+	'severity',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }),
+		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+		...timestamps,
+	},
+	(table) => [
+		index('severity_name_idx').on(table.name),
+		index('severity_status_id_idx').on(table.statusId),
+	],
+);
+
 export const specializationTable = pgTable(
 	'specialization',
 	{
@@ -465,23 +479,6 @@ export const visitTypeTable = pgTable(
 	(table) => [
 		index('visit_type_name_idx').on(table.name),
 		index('visit_type_code_idx').on(table.code),
-		index('visit_type_status_id_idx').on(table.statusId)
-	]
-);
-
-export const allergyMasterTable = pgTable(
-	'allergy_master',
-	{
-		allergyTypeId: serial('allergy_type_id').primaryKey(),
-		description: varchar('description', { length: 512 }),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
-			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
-	},
-	(table) => [
-		index('allergy_master_description_idx').on(table.description),
-		index('allergy_master_status_id_idx').on(table.statusId)
-	]
+		index('visit_type_status_id_idx').on(table.statusId),
+	],
 );
