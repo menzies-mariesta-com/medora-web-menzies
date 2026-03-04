@@ -2,10 +2,7 @@
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 
-	let {
-		address = $bindable(),
-		remark = $bindable()
-	} = $props<{
+	let { address = $bindable(), remark = $bindable() } = $props<{
 		address?: string;
 		remark?: string;
 	}>();

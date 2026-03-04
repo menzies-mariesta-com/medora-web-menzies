@@ -15,7 +15,10 @@ export class PasswordHashUtil {
 		return argon2.hash(password, argon2Options);
 	}
 
-	async verify(data: { password: string; hash: string }): Promise<boolean> {
+	async verify(data: {
+		password: string;
+		hash: string;
+	}): Promise<boolean> {
 		const { password, hash } = data;
 		return argon2.verify(hash, password);
 	}

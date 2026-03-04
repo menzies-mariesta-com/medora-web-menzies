@@ -1,4 +1,7 @@
-import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-type';
+import type {
+	CategorySchema,
+	SubCategorySchema
+} from '$lib/server/db/schema-type';
 
 /** Set before opening Create/Edit sub-category modal. */
 export const SubCategoryModalState = $state<{

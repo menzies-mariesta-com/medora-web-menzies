@@ -5,7 +5,6 @@
 	}>();
 </script>
 
-
 <div class="d-chat-bubble {className}">
-    {@render children()}
+	{@render children()}
 </div>

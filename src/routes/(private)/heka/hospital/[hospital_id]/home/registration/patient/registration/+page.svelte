@@ -42,37 +42,37 @@
 		PostalCodeSchema,
 		ReligionSchema,
 		StateSchema,
-		TitleSchema,
+		TitleSchema
 	} from '$lib/server/db/schema-type';
 
-import {
+	import {
 		createPatientWithUser,
 		updatePatient,
 		getPatientByIdWithRelations,
 		getDuplicatePatients
 	} from '$lib/remote/table/information-table/patient.remote';
-import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
-import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
-import { authClient } from '$lib/auth/client';
-import { RouterUtil } from '$lib/util/router.util.svelte';
-import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
-import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
-import { page } from '$app/state';
-import { dialogService } from '$lib/service/dialog.service.svelte';
-import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
-import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
-import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
+	import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+	import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
+	import { authClient } from '$lib/auth/client';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
+	import { page } from '$app/state';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
+	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
+	import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
 	import LPatientCheckDuplicateDialogContent from '$lib/component/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
 
-const lifeCycleUtil = new LifeCycleUtil();
-const dateTimeUtil = new DateTimeUtil();
-const toastService = new ToastService();
-const routerUtil = new RouterUtil();
+	const lifeCycleUtil = new LifeCycleUtil();
+	const dateTimeUtil = new DateTimeUtil();
+	const toastService = new ToastService();
+	const routerUtil = new RouterUtil();
 
-const viewId = $derived(page.url.searchParams.get('view'));
-const editId = $derived(page.url.searchParams.get('edit'));
-const currentPatientId = $derived(viewId || editId);
+	const viewId = $derived(page.url.searchParams.get('view'));
+	const editId = $derived(page.url.searchParams.get('edit'));
+	const currentPatientId = $derived(viewId || editId);
 	const isViewMode = $derived(!!viewId);
 	const stagedAttachmentCount = $derived(
 		PatientAttachmentDialogState.stagedAttachments.length
@@ -94,7 +94,9 @@ const currentPatientId = $derived(viewId || editId);
 	// Form state
 	let patientCode: string = $state('');
 	const hospitalIdFromUrl = $derived(
-		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+		(typeof page.params?.hospital_id === 'string' &&
+			page.params.hospital_id) ||
+			''
 	);
 	let selectedTitleId: string = $state('');
 	let firstName: string = $state('');
@@ -129,16 +131,21 @@ const currentPatientId = $derived(viewId || editId);
 
 	// Derived: selected objects and filtered lists (staff-style cascading)
 	let selectedCountry = $derived(
-		countryData.find((c) => String(c.id) === selectedCountryId) ?? ({} as CountrySchema)
+		countryData.find((c) => String(c.id) === selectedCountryId) ??
+			({} as CountrySchema)
 	);
 	let selectedState = $derived(
-		stateData.find((s) => String(s.id) === selectedStateId) ?? ({} as StateSchema)
+		stateData.find((s) => String(s.id) === selectedStateId) ??
+			({} as StateSchema)
 	);
 	let selectedCity = $derived(
-		cityData.find((c) => String(c.id) === selectedCityId) ?? ({} as CitySchema)
+		cityData.find((c) => String(c.id) === selectedCityId) ??
+			({} as CitySchema)
 	);
 	let selectedPostalCode = $derived(
-		postalCodeData.find((p) => String(p.id) === selectedPostalCodeId) ?? ({} as PostalCodeSchema)
+		postalCodeData.find(
+			(p) => String(p.id) === selectedPostalCodeId
+		) ?? ({} as PostalCodeSchema)
 	);
 	let filteredStateData = $derived(
 		selectedCountry?.id
@@ -161,7 +168,8 @@ const currentPatientId = $derived(viewId || editId);
 		if (selectedCountryId) {
 			if (
 				!selectedCountry?.id ||
-				(selectedStateId && selectedState?.countryId !== selectedCountry.id)
+				(selectedStateId &&
+					selectedState?.countryId !== selectedCountry.id)
 			) {
 				selectedStateId = '';
 				selectedCityId = '';
@@ -184,7 +192,8 @@ const currentPatientId = $derived(viewId || editId);
 		if (selectedCityId) {
 			if (
 				!selectedCity?.id ||
-				(selectedPostalCodeId && selectedPostalCode?.cityId !== selectedCity.id)
+				(selectedPostalCodeId &&
+					selectedPostalCode?.cityId !== selectedCity.id)
 			) {
 				selectedPostalCodeId = '';
 			}
@@ -222,42 +231,68 @@ const currentPatientId = $derived(viewId || editId);
 		const patient = await getPatientByIdWithRelations({ id });
 		if (!patient) return;
 		patientCode = patient.code ?? '';
-		selectedTitleId = patient.titleId != null ? String(patient.titleId) : '';
+		selectedTitleId =
+			patient.titleId != null ? String(patient.titleId) : '';
 		firstName = patient.firstName ?? '';
 		middleName = patient.middleName ?? '';
 		lastName = patient.lastName ?? '';
-		email = (patient as { user?: { email?: string } }).user?.email ?? '';
-		selectedGenderId = patient.genderId != null ? String(patient.genderId) : '';
+		email =
+			(patient as { user?: { email?: string } }).user?.email ?? '';
+		selectedGenderId =
+			patient.genderId != null ? String(patient.genderId) : '';
 		selectedMaritalStatusId =
-			patient.maritalStatusId != null ? String(patient.maritalStatusId) : '';
+			patient.maritalStatusId != null
+				? String(patient.maritalStatusId)
+				: '';
 		identityNo = patient.identityNo ?? '';
 		dateOfBirth = patient.dateOfBirth
-			? (typeof patient.dateOfBirth === 'string'
+			? typeof patient.dateOfBirth === 'string'
 				? patient.dateOfBirth
-				: new Date(patient.dateOfBirth).toISOString().slice(0, 10))
+				: new Date(patient.dateOfBirth).toISOString().slice(0, 10)
 			: '';
-		selectedFatherTitleId = patient.fatherTitleId != null ? String(patient.fatherTitleId) : '';
-		fatherName = (patient as { fatherName?: string }).fatherName ?? '';
-		selectedGuardianTitleId = patient.guardianTitleId != null ? String(patient.guardianTitleId) : '';
+		selectedFatherTitleId =
+			patient.fatherTitleId != null
+				? String(patient.fatherTitleId)
+				: '';
+		fatherName =
+			(patient as { fatherName?: string }).fatherName ?? '';
+		selectedGuardianTitleId =
+			patient.guardianTitleId != null
+				? String(patient.guardianTitleId)
+				: '';
 		guardianName = patient.guardianName ?? '';
-		selectedGuardianPhoneCountryId = patient.guardianPhoneCountryId != null ? String(patient.guardianPhoneCountryId) : '';
+		selectedGuardianPhoneCountryId =
+			patient.guardianPhoneCountryId != null
+				? String(patient.guardianPhoneCountryId)
+				: '';
 		address = patient.address ?? '';
 		remark = patient.remark ?? '';
-		selectedReligionId = patient.religionId != null ? String(patient.religionId) : '';
+		selectedReligionId =
+			patient.religionId != null ? String(patient.religionId) : '';
 		selectedIdentityTypeId =
-			patient.identityTypeId != null ? String(patient.identityTypeId) : '';
+			patient.identityTypeId != null
+				? String(patient.identityTypeId)
+				: '';
 		selectedBloodTypeId =
 			patient.bloodTypeId != null ? String(patient.bloodTypeId) : '';
-		selectedCountryId = patient.countryId != null ? String(patient.countryId) : '';
-		selectedStateId = patient.stateId != null ? String(patient.stateId) : '';
-		selectedCityId = patient.cityId != null ? String(patient.cityId) : '';
+		selectedCountryId =
+			patient.countryId != null ? String(patient.countryId) : '';
+		selectedStateId =
+			patient.stateId != null ? String(patient.stateId) : '';
+		selectedCityId =
+			patient.cityId != null ? String(patient.cityId) : '';
 		selectedPostalCodeId =
-			patient.postalCodeId != null ? String(patient.postalCodeId) : '';
+			patient.postalCodeId != null
+				? String(patient.postalCodeId)
+				: '';
 		selectedNationalityId =
-			patient.nationalityId != null ? String(patient.nationalityId) : '';
+			patient.nationalityId != null
+				? String(patient.nationalityId)
+				: '';
 		isActive = patient.statusId === StatusEnum.ACTIVE;
 		nameMasking =
-			(patient as { nameMasking?: number }).nameMasking === YesNoEnum.YES;
+			(patient as { nameMasking?: number }).nameMasking ===
+			YesNoEnum.YES;
 
 		const phonePrimary = patient.phonePrimary ?? '';
 		const phoneSecondary = patient.phoneSecondary ?? '';
@@ -269,35 +304,45 @@ const currentPatientId = $derived(viewId || editId);
 		).phoneSecondaryCountryId;
 		if (patientPrimaryCountryId != null) {
 			selectedPhoneCountryId = String(patientPrimaryCountryId);
-			const country = countryData.find((c) => c.id === patientPrimaryCountryId);
+			const country = countryData.find(
+				(c) => c.id === patientPrimaryCountryId
+			);
 			selectedPhone =
 				country?.countryCallingCode &&
 				phonePrimary.startsWith(country.countryCallingCode)
-					? phonePrimary.slice(country.countryCallingCode.length).trim()
+					? phonePrimary
+							.slice(country.countryCallingCode.length)
+							.trim()
 					: phonePrimary;
 		} else {
 			const matchPrimary = countryData.find(
-				(c) => c.countryCallingCode && phonePrimary.startsWith(c.countryCallingCode)
+				(c) =>
+					c.countryCallingCode &&
+					phonePrimary.startsWith(c.countryCallingCode)
 			);
 			if (matchPrimary) {
 				selectedPhoneCountryId = String(matchPrimary.id);
-				selectedPhone = phonePrimary.slice(
-					matchPrimary.countryCallingCode?.length ?? 0
-				).trim();
+				selectedPhone = phonePrimary
+					.slice(matchPrimary.countryCallingCode?.length ?? 0)
+					.trim();
 			} else {
 				selectedPhoneCountryId = '';
 				selectedPhone = phonePrimary;
 			}
 		}
 		if (patientSecondaryCountryId != null) {
-			selectedPhoneSecondaryCountryId = String(patientSecondaryCountryId);
+			selectedPhoneSecondaryCountryId = String(
+				patientSecondaryCountryId
+			);
 			const country = countryData.find(
 				(c) => c.id === patientSecondaryCountryId
 			);
 			selectedPhoneSecondary =
 				country?.countryCallingCode &&
 				phoneSecondary.startsWith(country.countryCallingCode)
-					? phoneSecondary.slice(country.countryCallingCode.length).trim()
+					? phoneSecondary
+							.slice(country.countryCallingCode.length)
+							.trim()
 					: phoneSecondary;
 		} else {
 			const matchSecondary = countryData.find(
@@ -319,7 +364,9 @@ const currentPatientId = $derived(viewId || editId);
 		photoPreviewUrl =
 			getPatientPhotoDisplayUrl(
 				(patient as { photoPath?: string }).photoPath
-			) ?? (patient as { photoPath?: string }).photoPath ?? '';
+			) ??
+			(patient as { photoPath?: string }).photoPath ??
+			'';
 	}
 
 	let lastLoadedPatientId: string | null = $state(null);
@@ -387,8 +434,11 @@ const currentPatientId = $derived(viewId || editId);
 	}
 
 	function buildPhonePrimary(): string {
-		if (!selectedPhoneCountryId || !selectedPhone?.trim()) return selectedPhone?.trim() ?? '';
-		const country = countryData.find((c) => String(c.id) === selectedPhoneCountryId);
+		if (!selectedPhoneCountryId || !selectedPhone?.trim())
+			return selectedPhone?.trim() ?? '';
+		const country = countryData.find(
+			(c) => String(c.id) === selectedPhoneCountryId
+		);
 		return country?.countryCallingCode
 			? `${country.countryCallingCode}${selectedPhone.trim()}`
 			: selectedPhone.trim();
@@ -397,7 +447,10 @@ const currentPatientId = $derived(viewId || editId);
 	async function checkDuplicate() {
 		const phonePrimary = buildPhonePrimary();
 		if (!firstName?.trim()) {
-			toastService.addToast('Enter at least first name to check for duplicates.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Enter at least first name to check for duplicates.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		duplicateCheckLoading = true;
@@ -407,15 +460,22 @@ const currentPatientId = $derived(viewId || editId);
 				firstName: firstName.trim(),
 				middleName: middleName.trim(),
 				lastName: lastName.trim(),
-				fatherTitleId: selectedFatherTitleId ? Number(selectedFatherTitleId) : null,
+				fatherTitleId: selectedFatherTitleId
+					? Number(selectedFatherTitleId)
+					: null,
 				fatherName: fatherName.trim(),
 				phonePrimary,
-				identityTypeId: selectedIdentityTypeId ? Number(selectedIdentityTypeId) : null,
+				identityTypeId: selectedIdentityTypeId
+					? Number(selectedIdentityTypeId)
+					: null,
 				identityNo: identityNo.trim(),
 				excludePatientId: currentPatientId ?? undefined
 			});
 			if (list.length === 0) {
-				toastService.addToast('No duplicate patients found.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'No duplicate patients found.',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				PatientDuplicateModalState.duplicates = list;
 				const result = await dialogService.open({
@@ -424,19 +484,26 @@ const currentPatientId = $derived(viewId || editId);
 					component: LPatientCheckDuplicateDialogContent
 				});
 				if (result.confirmed && result.data) {
-					handleSelectDuplicatePatient(result.data as PatientWithRelations);
+					handleSelectDuplicatePatient(
+						result.data as PatientWithRelations
+					);
 				}
 				PatientDuplicateModalState.duplicates = [];
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to check for duplicates.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to check for duplicates.',
+				StatusColorEnum.ERROR
+			);
 		} finally {
 			duplicateCheckLoading = false;
 		}
 	}
 
-	function handleSelectDuplicatePatient(patient: PatientWithRelations) {
+	function handleSelectDuplicatePatient(
+		patient: PatientWithRelations
+	) {
 		routerUtil.replaceRoute(
 			`${page.url.pathname}?edit=${patient.id}`
 		);
@@ -470,25 +537,33 @@ const currentPatientId = $derived(viewId || editId);
 
 		// Basic validation
 		if (!firstName.trim()) {
-			toastService.addToast('First name is required.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'First name is required.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		// Email is now optional; no validation here.
 
 		const fullName =
-			[firstName, middleName, lastName].filter(Boolean).join(' ') || firstName;
+			[firstName, middleName, lastName].filter(Boolean).join(' ') ||
+			firstName;
 
 		// Build phone with country calling code (staff-style)
 		let phonePrimary: string | undefined;
 		if (selectedPhoneCountryId && selectedPhone) {
-			const country = countryData.find((c) => String(c.id) === selectedPhoneCountryId);
+			const country = countryData.find(
+				(c) => String(c.id) === selectedPhoneCountryId
+			);
 			phonePrimary = country?.countryCallingCode
 				? `${country.countryCallingCode}${selectedPhone.trim()}`
 				: selectedPhone.trim();
 		}
 		let phoneSecondary: string | undefined;
 		if (selectedPhoneSecondaryCountryId && selectedPhoneSecondary) {
-			const country = countryData.find((c) => String(c.id) === selectedPhoneSecondaryCountryId);
+			const country = countryData.find(
+				(c) => String(c.id) === selectedPhoneSecondaryCountryId
+			);
 			phoneSecondary = country?.countryCallingCode
 				? `${country.countryCallingCode}${selectedPhoneSecondary.trim()}`
 				: selectedPhoneSecondary.trim();
@@ -509,7 +584,10 @@ const currentPatientId = $derived(viewId || editId);
 		}
 
 		if (!currentPatientId && !hospitalIdFromUrl) {
-			toastService.addToast('Hospital context is missing from URL.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Hospital context is missing from URL.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 
@@ -520,7 +598,9 @@ const currentPatientId = $derived(viewId || editId);
 				await updatePatient({
 					id: currentPatientId,
 					code: patientCode.trim() || undefined,
-					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
+					titleId: selectedTitleId
+						? Number(selectedTitleId)
+						: undefined,
 					firstName: firstName.trim(),
 					middleName: middleName.trim() || undefined,
 					lastName: lastName.trim() || undefined,
@@ -551,15 +631,21 @@ const currentPatientId = $derived(viewId || editId);
 					maritalStatusId: selectedMaritalStatusId
 						? Number(selectedMaritalStatusId)
 						: undefined,
-					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+					genderId: selectedGenderId
+						? Number(selectedGenderId)
+						: undefined,
 					identityTypeId: selectedIdentityTypeId
 						? Number(selectedIdentityTypeId)
 						: undefined,
 					bloodTypeId: selectedBloodTypeId
 						? Number(selectedBloodTypeId)
 						: undefined,
-					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
-					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					countryId: selectedCountryId
+						? Number(selectedCountryId)
+						: undefined,
+					stateId: selectedStateId
+						? Number(selectedStateId)
+						: undefined,
 					cityId: selectedCityId ? Number(selectedCityId) : undefined,
 					postalCodeId: selectedPostalCodeId
 						? Number(selectedPostalCodeId)
@@ -567,8 +653,12 @@ const currentPatientId = $derived(viewId || editId);
 					nationalityId: selectedNationalityId
 						? Number(selectedNationalityId)
 						: undefined,
-					religionId: selectedReligionId ? Number(selectedReligionId) : undefined,
-					statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE,
+					religionId: selectedReligionId
+						? Number(selectedReligionId)
+						: undefined,
+					statusId: isActive
+						? StatusEnum.ACTIVE
+						: StatusEnum.INACTIVE,
 					nameMasking: nameMasking ? YesNoEnum.YES : YesNoEnum.NO
 				});
 
@@ -610,10 +700,13 @@ const currentPatientId = $derived(viewId || editId);
 				// pass whatever is provided (or a generated placeholder if blank).
 				const emailValue = email.trim();
 				const result = await createPatientWithUser({
-					email: emailValue || `${crypto.randomUUID()}@placeholder.local`,
+					email:
+						emailValue || `${crypto.randomUUID()}@placeholder.local`,
 					name: fullName,
 					hospitalId: hospitalIdFromUrl ?? '',
-					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
+					titleId: selectedTitleId
+						? Number(selectedTitleId)
+						: undefined,
 					firstName: firstName.trim(),
 					middleName: middleName.trim() || undefined,
 					lastName: lastName.trim() || undefined,
@@ -627,9 +720,13 @@ const currentPatientId = $derived(viewId || editId);
 						: undefined,
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
-					fatherTitleId: selectedFatherTitleId ? Number(selectedFatherTitleId) : undefined,
+					fatherTitleId: selectedFatherTitleId
+						? Number(selectedFatherTitleId)
+						: undefined,
 					fatherName: fatherName.trim() || undefined,
-					guardianTitleId: selectedGuardianTitleId ? Number(selectedGuardianTitleId) : undefined,
+					guardianTitleId: selectedGuardianTitleId
+						? Number(selectedGuardianTitleId)
+						: undefined,
 					guardianName: guardianName.trim() || undefined,
 					guardianPhone,
 					guardianPhoneCountryId: selectedGuardianPhoneCountryId
@@ -637,19 +734,27 @@ const currentPatientId = $derived(viewId || editId);
 						: undefined,
 					address: address.trim() || undefined,
 					remark: remark.trim() || undefined,
-					religionId: selectedReligionId ? Number(selectedReligionId) : undefined,
+					religionId: selectedReligionId
+						? Number(selectedReligionId)
+						: undefined,
 					maritalStatusId: selectedMaritalStatusId
 						? Number(selectedMaritalStatusId)
 						: undefined,
-					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+					genderId: selectedGenderId
+						? Number(selectedGenderId)
+						: undefined,
 					identityTypeId: selectedIdentityTypeId
 						? Number(selectedIdentityTypeId)
 						: undefined,
 					bloodTypeId: selectedBloodTypeId
 						? Number(selectedBloodTypeId)
 						: undefined,
-					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
-					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					countryId: selectedCountryId
+						? Number(selectedCountryId)
+						: undefined,
+					stateId: selectedStateId
+						? Number(selectedStateId)
+						: undefined,
 					cityId: selectedCityId ? Number(selectedCityId) : undefined,
 					postalCodeId: selectedPostalCodeId
 						? Number(selectedPostalCodeId)
@@ -680,7 +785,10 @@ const currentPatientId = $derived(viewId || editId);
 								StatusColorEnum.ERROR
 							);
 						} else if (data.url) {
-							await updatePatient({ id: patient.id, photoPath: data.url });
+							await updatePatient({
+								id: patient.id,
+								photoPath: data.url
+							});
 							photoPreviewUrl =
 								getPatientPhotoDisplayUrl(data.url) ?? data.url ?? '';
 						}
@@ -739,7 +847,10 @@ const currentPatientId = $derived(viewId || editId);
 			let message: string | null = null;
 
 			if (error && typeof error === 'object') {
-				const err = error as { message?: string; body?: { message?: string } };
+				const err = error as {
+					message?: string;
+					body?: { message?: string };
+				};
 				if (err.body && typeof err.body.message === 'string') {
 					message = err.body.message;
 				} else if (typeof err.message === 'string') {
@@ -803,7 +914,10 @@ const currentPatientId = $derived(viewId || editId);
 <DaisyUiCard>
 	<DaisyUiCardBody>
 		<form onsubmit={handleOnSubmit}>
-			<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0">
+			<fieldset
+				disabled={isViewMode || disableCreateSave}
+				class="m-0 min-w-0 border-0 p-0"
+			>
 				<DaisyUiCardBodyTitle className="mb-5">
 					Profile Details
 				</DaisyUiCardBodyTitle>
@@ -812,138 +926,150 @@ const currentPatientId = $derived(viewId || editId);
 			<div
 				class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
 			>
-					<!-- Profile block: photo + Choose/Remove/Divider in fieldset; Attachments button outside so it stays clickable in view mode -->
-					<div
-						class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
+				<!-- Profile block: photo + Choose/Remove/Divider in fieldset; Attachments button outside so it stays clickable in view mode -->
+				<div
+					class="flex shrink-0 flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col lg:items-center"
+				>
+					<fieldset
+						disabled={isViewMode || disableCreateSave}
+						class="m-0 flex min-w-0 flex-col items-center gap-2 border-0 p-0"
 					>
-						<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0 flex flex-col gap-2 items-center">
-							<DaisyUiFileInput
-								accept="image/jpeg,image/png,image/webp,image/gif"
-								className="hidden"
-								bind:inputEl={photoInputEl}
-								onchange={handlePhotoChange}
-							/>
-							<button
-								type="button"
-								class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
-								onclick={() => photoInputEl?.click()}
-								disabled={photoUploading}
-								title="Choose photo (uploaded when you save)"
-							>
-								{#if photoUploading}
-									<span class="text-xs">Uploading…</span>
-								{:else if photoPreviewUrl}
-									<img
-										src={photoPreviewUrl}
-										alt="Patient profile"
-										class="size-full object-cover"
-									/>
-								{:else}
-									<DaisyUiSkeleton className="size-full rounded-full" />
-								{/if}
-							</button>
-							<div class="flex flex-col gap-2">
-								<DaisyUiButton
-									type="button"
-									className="d-btn-primary d-btn-sm"
-									onClick={() => photoInputEl?.click()}
-									disabled={photoUploading}
-								>
-									{photoFile ? 'Change photo' : 'Choose photo'}
-								</DaisyUiButton>
-								<DaisyUiButton
-									type="button"
-									className="d-btn-error d-btn-sm"
-									onClick={handleRemovePhoto}
-									disabled={!photoFile}
-								>
-									Remove
-								</DaisyUiButton>
-								<DaisyUiDivider position="horizontal" className="text-xs">
-									More Detail
-								</DaisyUiDivider>
-							</div>
-						</fieldset>
+						<DaisyUiFileInput
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							className="hidden"
+							bind:inputEl={photoInputEl}
+							onchange={handlePhotoChange}
+						/>
+						<button
+							type="button"
+							class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
+							onclick={() => photoInputEl?.click()}
+							disabled={photoUploading}
+							title="Choose photo (uploaded when you save)"
+						>
+							{#if photoUploading}
+								<span class="text-xs">Uploading…</span>
+							{:else if photoPreviewUrl}
+								<img
+									src={photoPreviewUrl}
+									alt="Patient profile"
+									class="size-full object-cover"
+								/>
+							{:else}
+								<DaisyUiSkeleton className="size-full rounded-full" />
+							{/if}
+						</button>
 						<div class="flex flex-col gap-2">
 							<DaisyUiButton
 								type="button"
-								className="d-btn-outline d-btn-sm"
-								onClick={goToPatientAttachment}
+								className="d-btn-primary d-btn-sm"
+								onClick={() => photoInputEl?.click()}
+								disabled={photoUploading}
 							>
-								Attachments
-								{#if !currentPatientId && stagedAttachmentCount > 0}
-									({stagedAttachmentCount})
-								{/if}
+								{photoFile ? 'Change photo' : 'Choose photo'}
 							</DaisyUiButton>
+							<DaisyUiButton
+								type="button"
+								className="d-btn-error d-btn-sm"
+								onClick={handleRemovePhoto}
+								disabled={!photoFile}
+							>
+								Remove
+							</DaisyUiButton>
+							<DaisyUiDivider
+								position="horizontal"
+								className="text-xs"
+							>
+								More Detail
+							</DaisyUiDivider>
 						</div>
-					</div>
-
-					<!-- Form columns: 1 col mobile, 2 md, 3 xl (same as staff) -->
-					<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0 flex-1">
-				<div
-					class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
-				>
-					<LPatientRegistrationFirstColumn
-						{titleData}
-						{genderData}
-						{maritalStatusData}
-						bind:patientCode
-						bind:selectedTitleId
-						bind:firstName
-						bind:middleName
-						bind:lastName
-						bind:email
-						bind:selectedGenderId
-						bind:selectedMaritalStatusId
-					/>
-					<LPatientRegistrationSecondColumn
-						{titleData}
-						{countryData}
-						{identityTypeData}
-						bind:selectedPhoneCountryId
-						bind:selectedPhone
-						bind:selectedPhoneSecondaryCountryId
-						bind:selectedPhoneSecondary
-						bind:selectedFatherTitleId
-						bind:fatherName
-						bind:selectedGuardianTitleId
-						bind:selectedGuardianPhoneCountryId
-						bind:selectedIdentityTypeId
-						bind:identityNo
-						bind:dateOfBirth
-						dateOfBirthMax={dateTimeUtil.getTodayDateString()}
-						bind:guardianName
-						bind:guardianPhone
-					/>
-					<LPatientRegistrationThirdColumn
-						{countryData}
-						{bloodTypeData}
-						{stateData}
-						{cityData}
-						{postalCodeData}
-						{nationalityData}
-						{religionData}
-						{filteredStateData}
-						{filteredCityData}
-						{filteredPostalCodeData}
-						{selectedCountry}
-						{selectedState}
-						{selectedCity}
-						bind:selectedCountryId
-						bind:selectedBloodTypeId
-						bind:selectedStateId
-						bind:selectedCityId
-						bind:selectedPostalCodeId
-						bind:selectedNationalityId
-						bind:selectedReligionId
-						{duplicateCheckLoading}
-						showCheckDuplicate={!currentPatientId}
-						onCheckDuplicate={checkDuplicate}
-					/>
-				</div>
 					</fieldset>
+					<div class="flex flex-col gap-2">
+						<DaisyUiButton
+							type="button"
+							className="d-btn-outline d-btn-sm"
+							onClick={goToPatientAttachment}
+						>
+							Attachments
+							{#if !currentPatientId && stagedAttachmentCount > 0}
+								({stagedAttachmentCount})
+							{/if}
+						</DaisyUiButton>
+					</div>
+				</div>
+
+				<!-- Form columns: 1 col mobile, 2 md, 3 xl (same as staff) -->
+				<fieldset
+					disabled={isViewMode || disableCreateSave}
+					class="m-0 min-w-0 flex-1 border-0 p-0"
+				>
+					<div
+						class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+					>
+						<LPatientRegistrationFirstColumn
+							{titleData}
+							{genderData}
+							{maritalStatusData}
+							bind:patientCode
+							bind:selectedTitleId
+							bind:firstName
+							bind:middleName
+							bind:lastName
+							bind:email
+							bind:selectedGenderId
+							bind:selectedMaritalStatusId
+						/>
+						<LPatientRegistrationSecondColumn
+							{titleData}
+							{countryData}
+							{identityTypeData}
+							bind:selectedPhoneCountryId
+							bind:selectedPhone
+							bind:selectedPhoneSecondaryCountryId
+							bind:selectedPhoneSecondary
+							bind:selectedFatherTitleId
+							bind:fatherName
+							bind:selectedGuardianTitleId
+							bind:selectedGuardianPhoneCountryId
+							bind:selectedIdentityTypeId
+							bind:identityNo
+							bind:dateOfBirth
+							dateOfBirthMax={dateTimeUtil.getTodayDateString()}
+							bind:guardianName
+							bind:guardianPhone
+						/>
+						<LPatientRegistrationThirdColumn
+							{countryData}
+							{bloodTypeData}
+							{stateData}
+							{cityData}
+							{postalCodeData}
+							{nationalityData}
+							{religionData}
+							{filteredStateData}
+							{filteredCityData}
+							{filteredPostalCodeData}
+							{selectedCountry}
+							{selectedState}
+							{selectedCity}
+							bind:selectedCountryId
+							bind:selectedBloodTypeId
+							bind:selectedStateId
+							bind:selectedCityId
+							bind:selectedPostalCodeId
+							bind:selectedNationalityId
+							bind:selectedReligionId
+							{duplicateCheckLoading}
+							showCheckDuplicate={!currentPatientId}
+							onCheckDuplicate={checkDuplicate}
+						/>
+					</div>
+				</fieldset>
 			</div>
-			<fieldset disabled={isViewMode || disableCreateSave} class="border-0 p-0 m-0 min-w-0">
+			<fieldset
+				disabled={isViewMode || disableCreateSave}
+				class="m-0 min-w-0 border-0 p-0"
+			>
 				<LPatientRegistrationMoreInfo bind:address bind:remark />
 				<LPatientRegistrationStatus bind:isActive bind:nameMasking />
 			</fieldset>
@@ -971,4 +1097,3 @@ const currentPatientId = $derived(viewId || editId);
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
-

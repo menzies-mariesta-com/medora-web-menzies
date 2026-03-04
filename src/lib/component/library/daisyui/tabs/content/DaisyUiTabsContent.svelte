@@ -9,7 +9,7 @@
 
 <!-- Each tab content linked to its corresponding radio via id -->
 <div
-	class="d-tab-content bg-base-100  {className}"
+	class="d-tab-content bg-base-100 {className}"
 	role="tabpanel"
 	id={`${tabName}-content`}
 	aria-labelledby={tabName}

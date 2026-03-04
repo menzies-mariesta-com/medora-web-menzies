@@ -1,6 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { hekaHospitalHome, requestPathToDbPageUrl } from '$lib/model/enum/routes.enum';
+import {
+	hekaHospitalHome,
+	requestPathToDbPageUrl
+} from '$lib/model/enum/routes.enum';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
@@ -18,12 +21,17 @@ const BRANCH_ALL_VALUE = '__all__';
  *
  * For STAFF, also enforces page access: if the current URL maps to a page not allowed for the selected group, redirect to hospital home.
  */
-export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) => {
+export const load: LayoutServerLoad = async ({
+	locals,
+	url,
+	params,
+	cookies
+}) => {
 	const fullPages = (await ensureDb().query.pageTable.findMany({
 		with: {
 			module: true,
-			status: true,
-		},
+			status: true
+		}
 	})) as unknown as PageWithRelations[];
 
 	const userRoleId = locals.userRoleId ?? null;
@@ -39,7 +47,10 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 	const currentHospitalName = hospital?.name ?? null;
 
 	// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
-	if (userRoleId === RoleEnum.OWNER || userRoleId === RoleEnum.SYSTEM_ADMIN) {
+	if (
+		userRoleId === RoleEnum.OWNER ||
+		userRoleId === RoleEnum.SYSTEM_ADMIN
+	) {
 		const allHospitalBranches = hospitalId
 			? await ensureDb()
 					.select({
@@ -54,13 +65,19 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		const branchIds = allHospitalBranches.map((b) => b.id);
 		const hasBranches = allHospitalBranches.length > 0;
 		const staffBranchesForNav = hasBranches
-			? [{ id: BRANCH_ALL_VALUE, name: 'All Branches' }, ...allHospitalBranches]
+			? [
+					{ id: BRANCH_ALL_VALUE, name: 'All Branches' },
+					...allHospitalBranches
+				]
 			: [];
 		const selectedBranchId =
-			hasBranches && branchCookieValue != null && (branchCookieValue === BRANCH_ALL_VALUE || branchIds.includes(branchCookieValue))
+			hasBranches &&
+			branchCookieValue != null &&
+			(branchCookieValue === BRANCH_ALL_VALUE ||
+				branchIds.includes(branchCookieValue))
 				? branchCookieValue
 				: hasBranches
-					? staffBranchesForNav[0]?.id ?? null
+					? (staffBranchesForNav[0]?.id ?? null)
 					: null;
 
 		return {
@@ -82,9 +99,18 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			.select({ userGroupId: table.staffUserGroupTable.userGroupId })
 			.from(table.staffUserGroupTable)
 			.where(eq(table.staffUserGroupTable.staffId, staffId));
-		const userGroupIds = [...new Set(staffUserGroups.map((r) => r.userGroupId).filter((id) => id != null))];
+		const userGroupIds = [
+			...new Set(
+				staffUserGroups
+					.map((r) => r.userGroupId)
+					.filter((id) => id != null)
+			)
+		];
 		if (userGroupIds.length === 0) {
-			const dbPageUrl = requestPathToDbPageUrl(url.pathname, hospitalId);
+			const dbPageUrl = requestPathToDbPageUrl(
+				url.pathname,
+				hospitalId
+			);
 			if (dbPageUrl && dbPageUrl !== '/heka/home') {
 				throw redirect(302, hekaHospitalHome(hospitalId));
 			}
@@ -108,7 +134,10 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			.from(table.staffUserGroupTable)
 			.innerJoin(
 				table.userGroupTable,
-				eq(table.staffUserGroupTable.userGroupId, table.userGroupTable.id)
+				eq(
+					table.staffUserGroupTable.userGroupId,
+					table.userGroupTable.id
+				)
 			)
 			.where(
 				and(
@@ -124,7 +153,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		const selectedUserGroupId =
 			cookieValue != null && navIds.includes(Number(cookieValue))
 				? Number(cookieValue)
-				: navIds[0] ?? null;
+				: (navIds[0] ?? null);
 
 		// Staff branches for this hospital (for navbar select)
 		const staffBranchesForNav = await ensureDb()
@@ -135,7 +164,10 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			.from(table.staffBranchTable)
 			.innerJoin(
 				table.hospitalBranchTable,
-				eq(table.staffBranchTable.branchId, table.hospitalBranchTable.id)
+				eq(
+					table.staffBranchTable.branchId,
+					table.hospitalBranchTable.id
+				)
 			)
 			.where(
 				and(
@@ -149,12 +181,17 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			.from(table.hospitalBranchTable)
 			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
 		const allHospitalBranchIds = allHospitalBranches.map((b) => b.id);
-		const staffBranchIdSet = new Set(staffBranchesForNav.map((b) => b.id));
+		const staffBranchIdSet = new Set(
+			staffBranchesForNav.map((b) => b.id)
+		);
 		const hasAllBranchesAccess =
 			allHospitalBranchIds.length > 0 &&
 			allHospitalBranchIds.every((id) => staffBranchIdSet.has(id));
 		const staffBranchesForNavWithAll = hasAllBranchesAccess
-			? [{ id: BRANCH_ALL_VALUE, name: 'All Branches' }, ...staffBranchesForNav]
+			? [
+					{ id: BRANCH_ALL_VALUE, name: 'All Branches' },
+					...staffBranchesForNav
+				]
 			: staffBranchesForNav;
 		const branchNavIds = staffBranchesForNavWithAll.map((b) => b.id);
 		const branchCookieValue = cookies.get(COOKIE_SELECTED_BRANCH_ID);
@@ -162,23 +199,32 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		const selectedBranchId =
 			staffBranchesForNav.length === 1
 				? staffBranchesForNav[0].id
-				: branchCookieValue != null && branchNavIds.includes(branchCookieValue)
+				: branchCookieValue != null &&
+					  branchNavIds.includes(branchCookieValue)
 					? branchCookieValue
-					: branchNavIds[0] ?? null;
+					: (branchNavIds[0] ?? null);
 
 		// 2. Page ids for the **selected** user group only (restrict pages and restrictions to this group)
 		const userGroupPages = await ensureDb()
 			.select({ pageId: table.userGroupPageTable.pageId })
 			.from(table.userGroupPageTable)
-			.where(eq(table.userGroupPageTable.userGroupId, selectedUserGroupId!));
-		let allowedPageIds = new Set(userGroupPages.map((r) => r.pageId).filter((id) => id != null));
+			.where(
+				eq(table.userGroupPageTable.userGroupId, selectedUserGroupId!)
+			);
+		let allowedPageIds = new Set(
+			userGroupPages.map((r) => r.pageId).filter((id) => id != null)
+		);
 
 		// 3. Add ancestor page ids so parent sections appear in nav
 		let changed = true;
 		while (changed) {
 			changed = false;
 			for (const p of fullPages) {
-				if (allowedPageIds.has(p.id) && p.parentId != null && !allowedPageIds.has(p.parentId)) {
+				if (
+					allowedPageIds.has(p.id) &&
+					p.parentId != null &&
+					!allowedPageIds.has(p.parentId)
+				) {
 					allowedPageIds.add(p.parentId);
 					changed = true;
 				}
@@ -186,7 +232,10 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		}
 
 		// 4. Enforce page access for selected group: current path must be dashboard or an allowed page
-		const dbPageUrl = requestPathToDbPageUrl(url.pathname, hospitalId);
+		const dbPageUrl = requestPathToDbPageUrl(
+			url.pathname,
+			hospitalId
+		);
 		if (dbPageUrl && dbPageUrl !== '/heka/home') {
 			const page = fullPages.find((p) => p.pageUrl === dbPageUrl);
 			if (page && !allowedPageIds.has(page.id)) {
@@ -194,7 +243,9 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			}
 		}
 
-		const filtered = fullPages.filter((p) => allowedPageIds.has(p.id));
+		const filtered = fullPages.filter((p) =>
+			allowedPageIds.has(p.id)
+		);
 		return {
 			pageData: filtered,
 			currentHospitalName,

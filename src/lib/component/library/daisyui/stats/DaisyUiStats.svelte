@@ -6,5 +6,5 @@
 </script>
 
 <div class="d-stats shadow-md {className}">
-  {@render children()}
+	{@render children()}
 </div>

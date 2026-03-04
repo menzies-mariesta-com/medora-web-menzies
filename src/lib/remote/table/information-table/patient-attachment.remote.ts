@@ -4,16 +4,21 @@ import * as table from '$lib/server/db/schema';
 import type {
 	PatientAttachmentSchema,
 	PatientAttachmentSchemaInsert,
-	PatientAttachmentSchemaUpdate,
+	PatientAttachmentSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getPatientAttachment = query(
 	async (): Promise<PatientAttachmentSchema[]> => {
-		const data = await ensureDb().select().from(table.patientAttachmentTable);
+		const data = await ensureDb()
+			.select()
+			.from(table.patientAttachmentTable);
 		return data;
 	}
 );
@@ -22,26 +27,29 @@ export const getPatientAttachment = query(
 export const getPatientAttachmentWithRelations = query(async () => {
 	return ensureDb().query.patientAttachmentTable.findMany({
 		with: {
-			patient: true,
-		},
+			patient: true
+		}
 	});
 });
 
 // get count
-export const getPatientAttachmentCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.patientAttachmentTable);
-	return row?.count ?? 0;
-});
+export const getPatientAttachmentCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.patientAttachmentTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getPatientAttachmentPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams,
+		params?: PaginationParams
 	): Promise<PaginatedResult<PatientAttachmentSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -50,7 +58,7 @@ export const getPatientAttachmentPaginated = query(
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
-				.from(table.patientAttachmentTable),
+				.from(table.patientAttachmentTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -58,7 +66,7 @@ export const getPatientAttachmentPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -67,7 +75,7 @@ export const getPatientAttachmentPaginated = query(
 export const getPatientAttachmentById = query(
 	'unchecked' as const,
 	async ({
-		id,
+		id
 	}: {
 		id: number;
 	}): Promise<PatientAttachmentSchema | null> => {
@@ -83,7 +91,7 @@ export const getPatientAttachmentById = query(
 export const getPatientAttachmentByPatientId = query(
 	'unchecked' as const,
 	async ({
-		patientId,
+		patientId
 	}: {
 		patientId: string;
 	}): Promise<PatientAttachmentSchema[]> => {
@@ -99,7 +107,7 @@ export const getPatientAttachmentByPatientId = query(
 export const createPatientAttachment = command(
 	'unchecked' as const,
 	async (
-		payload: PatientAttachmentSchemaInsert,
+		payload: PatientAttachmentSchemaInsert
 	): Promise<PatientAttachmentSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.patientAttachmentTable)
@@ -114,9 +122,11 @@ export const createPatientAttachment = command(
 // update
 export const updatePatientAttachment = command(
 	'unchecked' as const,
-	async (payload: {
-		id: number;
-	} & PatientAttachmentSchemaUpdate): Promise<PatientAttachmentSchema> => {
+	async (
+		payload: {
+			id: number;
+		} & PatientAttachmentSchemaUpdate
+	): Promise<PatientAttachmentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.patientAttachmentTable)
@@ -150,4 +160,3 @@ export const deletePatientAttachmentComplete = command(
 		getPatientAttachment().refresh();
 	}
 );
-

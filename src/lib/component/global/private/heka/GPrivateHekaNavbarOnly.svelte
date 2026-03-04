@@ -23,9 +23,12 @@
 		staffPhotoUrl?: string | null;
 	} = $props();
 
-	const profilePhotoDisplayUrl = $derived(getStaffPhotoDisplayUrl(staffPhotoUrl));
+	const profilePhotoDisplayUrl = $derived(
+		getStaffPhotoDisplayUrl(staffPhotoUrl)
+	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
-	const registrationEditUrl = WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
+	const registrationEditUrl =
+		WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
 
 	let accountModalOpen = $state(false);
 
@@ -51,7 +54,10 @@
 		/>
 	</DaisyUiNavbarCenter>
 	<DaisyUiNavbarEnd className="gap-3">
-		<DaisyUiTooltip tooltipText="Notification" className="d-tooltip-left">
+		<DaisyUiTooltip
+			tooltipText="Notification"
+			className="d-tooltip-left"
+		>
 			<DaisyUiButton className="d-btn-circle">
 				<LucideBell />
 			</DaisyUiButton>
@@ -77,6 +83,6 @@
 <AccountModal
 	open={accountModalOpen}
 	onClose={closeAccountModal}
-	staffId={staffId}
-	registrationEditUrl={registrationEditUrl}
+	{staffId}
+	{registrationEditUrl}
 />

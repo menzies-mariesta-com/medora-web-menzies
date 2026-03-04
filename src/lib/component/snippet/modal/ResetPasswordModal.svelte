@@ -18,13 +18,16 @@
 	async function handleConfirm() {
 		const trimmed = email.trim();
 		if (!trimmed) {
-			toastService.addToast('Please enter your email.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please enter your email.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
 		const { error } = await authClient.requestPasswordReset({
 			email: trimmed,
-			redirectTo: routerUtil.getResetRedirectUrl(),
+			redirectTo: routerUtil.getResetRedirectUrl()
 		});
 		isLoading = false;
 
@@ -44,7 +47,9 @@
 </script>
 
 <div class="flex flex-col">
-	<div class="flex items-center justify-between border-b border-base-300 pb-4">
+	<div
+		class="flex items-center justify-between border-b border-base-300 pb-4"
+	>
 		<h2 class="text-lg font-semibold">Forgot password</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
@@ -66,7 +71,11 @@
 		/>
 
 		<div class="d-modal-action">
-			<DaisyUiButton className="d-btn" onClick={() => cancel()} disabled={isLoading}>
+			<DaisyUiButton
+				className="d-btn"
+				onClick={() => cancel()}
+				disabled={isLoading}
+			>
 				Cancel
 			</DaisyUiButton>
 			<DaisyUiButton

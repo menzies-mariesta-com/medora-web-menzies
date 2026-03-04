@@ -6,15 +6,21 @@ import type {
 	HospitalSchema,
 	PatientSchema,
 	PatientSchemaInsert,
-	PatientSchemaUpdate,
+	PatientSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { uuidv7 } from 'uuidv7';
-import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
+import {
+	userTable,
+	accountTable
+} from '$lib/server/db/table/auth-table/auth-table';
 import { getHospitalById } from '$lib/remote/table/information-table/hospital.remote';
 
 export type PatientWithRelations = NonNullable<
@@ -22,13 +28,22 @@ export type PatientWithRelations = NonNullable<
 >;
 const BRANCH_ALL_VALUE = '__all__';
 
-function getSelectedScopeFromRequest(): { hospitalId: string | null; branchId: string | null } {
+function getSelectedScopeFromRequest(): {
+	hospitalId: string | null;
+	branchId: string | null;
+} {
 	try {
 		const event = getRequestEvent();
 		const hospitalIdParam =
-			typeof event.params?.hospital_id === 'string' ? event.params.hospital_id : null;
-		const rawBranchIdCookie = event.cookies.get('heka_selected_branch_id') ?? null;
-		const branchIdCookie = rawBranchIdCookie === BRANCH_ALL_VALUE ? null : rawBranchIdCookie;
+			typeof event.params?.hospital_id === 'string'
+				? event.params.hospital_id
+				: null;
+		const rawBranchIdCookie =
+			event.cookies.get('heka_selected_branch_id') ?? null;
+		const branchIdCookie =
+			rawBranchIdCookie === BRANCH_ALL_VALUE
+				? null
+				: rawBranchIdCookie;
 		return { hospitalId: hospitalIdParam, branchId: branchIdCookie };
 	} catch {
 		return { hospitalId: null, branchId: null };
@@ -36,10 +51,12 @@ function getSelectedScopeFromRequest(): { hospitalId: string | null; branchId: s
 }
 
 // get all
-export const getPatient = query(async (): Promise<PatientSchema[]> => {
-	const data = await ensureDb().select().from(table.patientTable);
-	return data;
-});
+export const getPatient = query(
+	async (): Promise<PatientSchema[]> => {
+		const data = await ensureDb().select().from(table.patientTable);
+		return data;
+	}
+);
 
 // get all with relations
 export const getPatientWithRelations = query(async () => {
@@ -58,14 +75,16 @@ export const getPatientWithRelations = query(async () => {
 			attachments: true,
 			insurances: { with: { insurance: true } },
 			allergies: true,
-			fatherTitle: true,
-		},
+			fatherTitle: true
+		}
 	});
 });
 
 // get count
 export const getPatientCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.patientTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.patientTable);
 	return row?.count ?? 0;
 });
 
@@ -76,8 +95,12 @@ export const getPatientCount = query(async (): Promise<number> => {
 export const getNextPatientCode = query(
 	'unchecked' as const,
 	async ({ hospitalId }: { hospitalId: string }): Promise<string> => {
-		const hospital = (await getHospitalById({ id: hospitalId })) as HospitalSchema | null;
-		const hospitalCode = (hospital?.code?.trim() ?? hospitalId).toUpperCase();
+		const hospital = (await getHospitalById({
+			id: hospitalId
+		})) as HospitalSchema | null;
+		const hospitalCode = (
+			hospital?.code?.trim() ?? hospitalId
+		).toUpperCase();
 		const yearSuffix = new Date().getFullYear().toString().slice(-2);
 		const counter = table.hospitalPatientCodeCounterTable;
 		const [row] = await ensureDb()
@@ -85,7 +108,7 @@ export const getNextPatientCode = query(
 			.values({ hospitalId, lastNumber: 1 })
 			.onConflictDoUpdate({
 				target: counter.hospitalId,
-				set: { lastNumber: sql`${counter.lastNumber} + 1` },
+				set: { lastNumber: sql`${counter.lastNumber} + 1` }
 			})
 			.returning({ lastNumber: counter.lastNumber });
 		const nextNumber = row?.lastNumber ?? 1;
@@ -96,8 +119,11 @@ export const getNextPatientCode = query(
 // get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
 export const getPatientPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<PatientWithRelations>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<PatientWithRelations>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
 		const pattern = searchTerm ? `%${searchTerm}%` : null;
 		const searchCondition =
@@ -116,15 +142,22 @@ export const getPatientPaginated = query(
 				ilike(table.patientTable.phonePrimary, pattern)
 			);
 
-		const notDeletedCondition = ne(table.patientTable.statusId, StatusEnum.DELETED);
+		const notDeletedCondition = ne(
+			table.patientTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = searchCondition
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
 
 		const requestScope = getSelectedScopeFromRequest();
-		const hospitalId = params?.hospitalId ?? requestScope.hospitalId ?? undefined;
+		const hospitalId =
+			params?.hospitalId ?? requestScope.hospitalId ?? undefined;
 		if (hospitalId != null && hospitalId !== '') {
-			whereExpr = and(whereExpr, eq(table.patientTable.hospitalId, hospitalId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.patientTable.hospitalId, hospitalId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -164,7 +197,7 @@ export const getPatientPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -193,7 +226,9 @@ export const getDuplicatePatients = query(
 		];
 		const requestScope = getSelectedScopeFromRequest();
 		if (requestScope.hospitalId) {
-			conditions.push(eq(table.patientTable.hospitalId, requestScope.hospitalId));
+			conditions.push(
+				eq(table.patientTable.hospitalId, requestScope.hospitalId)
+			);
 		}
 
 		if (params.excludePatientId?.trim()) {
@@ -210,7 +245,11 @@ export const getDuplicatePatients = query(
 		const identityNoTrim = (params.identityNo ?? '').trim();
 
 		// Full name: title + first + middle + last (using name parts only here)
-		const fullNameSearch = [firstNameTrim, middleNameTrim, lastNameTrim]
+		const fullNameSearch = [
+			firstNameTrim,
+			middleNameTrim,
+			lastNameTrim
+		]
 			.filter(Boolean)
 			.join(' ')
 			.trim();
@@ -231,10 +270,7 @@ export const getDuplicatePatients = query(
 		}
 		if (fatherNameTrim) {
 			conditions.push(
-				ilike(
-					table.patientTable.fatherName,
-					`%${fatherNameTrim}%`
-				)
+				ilike(table.patientTable.fatherName, `%${fatherNameTrim}%`)
 			);
 		}
 
@@ -251,18 +287,12 @@ export const getDuplicatePatients = query(
 		// Identity (type + number)
 		if (params.identityTypeId != null) {
 			conditions.push(
-				eq(
-					table.patientTable.identityTypeId,
-					params.identityTypeId
-				)
+				eq(table.patientTable.identityTypeId, params.identityTypeId)
 			);
 		}
 		if (identityNoTrim) {
 			conditions.push(
-				ilike(
-					table.patientTable.identityNo,
-					`%${identityNoTrim}%`
-				)
+				ilike(table.patientTable.identityNo, `%${identityNoTrim}%`)
 			);
 		}
 
@@ -292,7 +322,7 @@ export const getDuplicatePatients = query(
 				insurances: { with: { insurance: true } },
 				allergies: true,
 				phonePrimaryCountry: true
-			},
+			}
 		});
 	}
 );
@@ -333,7 +363,7 @@ export const getPatientByIdWithRelations = query(
 				allergies: true,
 				fatherTitle: true,
 				phonePrimaryCountry: true
-			},
+			}
 		});
 	}
 );
@@ -355,7 +385,9 @@ export const createPatient = command(
 // update
 export const updatePatient = command(
 	'unchecked' as const,
-	async (payload: { id: string } & PatientSchemaUpdate): Promise<PatientSchema> => {
+	async (
+		payload: { id: string } & PatientSchemaUpdate
+	): Promise<PatientSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.patientTable)
@@ -384,7 +416,9 @@ export const deletePatient = command(
 export const deletePatientComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
-		await ensureDb().delete(table.patientTable).where(eq(table.patientTable.id, id));
+		await ensureDb()
+			.delete(table.patientTable)
+			.where(eq(table.patientTable.id, id));
 		getPatient().refresh();
 	}
 );
@@ -395,55 +429,61 @@ function generateRandomPassword(length: number = 16): string {
 		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
 	let password = '';
 	for (let i = 0; i < length; i++) {
-		password += charset.charAt(Math.floor(Math.random() * charset.length));
+		password += charset.charAt(
+			Math.floor(Math.random() * charset.length)
+		);
 	}
 	return password;
 }
 
 // Create patient with Better Auth user (email/password)
-	export const createPatientWithUser = command(
-		'unchecked' as const,
-		async (payload: {
-			// User fields
-			email: string;
-			name: string;
-			// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
-			hospitalId: string;
-			// Branch assignment for patient is intentionally deferred for now.
-			branchId?: string;
-			// Patient fields (only include fields that exist in patientTable); code is generated on backend
-			titleId?: number;
-			firstName?: string;
-			middleName?: string;
-			lastName?: string;
-			phonePrimary?: string;
-			phoneSecondary?: string;
-			phonePrimaryCountryId?: number;
-			phoneSecondaryCountryId?: number;
-			fatherTitleId?: number;
-			fatherName?: string;
-			guardianTitleId?: number;
-			identityNo?: string;
-			dateOfBirth?: string;
-			guardianName?: string;
-			guardianPhone?: string;
-			guardianPhoneCountryId?: number;
-			photoPath?: string;
-			address?: string;
-			remark?: string;
-			maritalStatusId?: number;
-			genderId?: number;
-			identityTypeId?: number;
-			bloodTypeId?: number;
-			cityId?: number;
-			stateId?: number;
-			countryId?: number;
-			postalCodeId?: number;
-			nationalityId?: number;
-			religionId?: number;
-			isActive?: boolean;
-			nameMasking?: boolean;
-		}): Promise<{ patient: PatientSchema; userId: string; generatedPassword: string }> => {
+export const createPatientWithUser = command(
+	'unchecked' as const,
+	async (payload: {
+		// User fields
+		email: string;
+		name: string;
+		// Required for backend-generated patient code (Hospital Code + number). Hospital UUID.
+		hospitalId: string;
+		// Branch assignment for patient is intentionally deferred for now.
+		branchId?: string;
+		// Patient fields (only include fields that exist in patientTable); code is generated on backend
+		titleId?: number;
+		firstName?: string;
+		middleName?: string;
+		lastName?: string;
+		phonePrimary?: string;
+		phoneSecondary?: string;
+		phonePrimaryCountryId?: number;
+		phoneSecondaryCountryId?: number;
+		fatherTitleId?: number;
+		fatherName?: string;
+		guardianTitleId?: number;
+		identityNo?: string;
+		dateOfBirth?: string;
+		guardianName?: string;
+		guardianPhone?: string;
+		guardianPhoneCountryId?: number;
+		photoPath?: string;
+		address?: string;
+		remark?: string;
+		maritalStatusId?: number;
+		genderId?: number;
+		identityTypeId?: number;
+		bloodTypeId?: number;
+		cityId?: number;
+		stateId?: number;
+		countryId?: number;
+		postalCodeId?: number;
+		nationalityId?: number;
+		religionId?: number;
+		isActive?: boolean;
+		nameMasking?: boolean;
+	}): Promise<{
+		patient: PatientSchema;
+		userId: string;
+		generatedPassword: string;
+	}> => {
 		const passwordHashUtil = new PasswordHashUtil();
 
 		if (!payload.hospitalId) {
@@ -462,7 +502,8 @@ function generateRandomPassword(length: number = 16): string {
 
 		// Generate random password for Better Auth user
 		const generatedPassword = generateRandomPassword(16);
-		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+		const hashedPassword =
+			await passwordHashUtil.hash(generatedPassword);
 
 		// Create user
 		const userId = uuidv7();
@@ -472,7 +513,7 @@ function generateRandomPassword(length: number = 16): string {
 				id: userId,
 				name: payload.name,
 				email: payload.email,
-				emailVerified: false,
+				emailVerified: false
 			})
 			.returning();
 
@@ -484,11 +525,13 @@ function generateRandomPassword(length: number = 16): string {
 			userId: user.id,
 			accountId: payload.email,
 			providerId: 'credential',
-			password: hashedPassword,
+			password: hashedPassword
 		});
 
 		// Generate patient code on backend (Hospital Code + next number per hospital)
-		const generatedCode = await getNextPatientCode({ hospitalId: payload.hospitalId });
+		const generatedCode = await getNextPatientCode({
+			hospitalId: payload.hospitalId
+		});
 
 		// Prepare patient payload (only fields that exist in patientTable)
 		const patientPayload: PatientSchemaInsert = {
@@ -507,9 +550,13 @@ function generateRandomPassword(length: number = 16): string {
 			phoneSecondaryCountryId: payload.phoneSecondaryCountryId
 				? Number(payload.phoneSecondaryCountryId)
 				: undefined,
-			fatherTitleId: payload.fatherTitleId ? Number(payload.fatherTitleId) : undefined,
+			fatherTitleId: payload.fatherTitleId
+				? Number(payload.fatherTitleId)
+				: undefined,
 			fatherName: payload.fatherName,
-			guardianTitleId: payload.guardianTitleId ? Number(payload.guardianTitleId) : undefined,
+			guardianTitleId: payload.guardianTitleId
+				? Number(payload.guardianTitleId)
+				: undefined,
 			identityNo: payload.identityNo,
 			dateOfBirth: payload.dateOfBirth
 				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
@@ -525,19 +572,35 @@ function generateRandomPassword(length: number = 16): string {
 			maritalStatusId: payload.maritalStatusId
 				? Number(payload.maritalStatusId)
 				: undefined,
-			genderId: payload.genderId ? Number(payload.genderId) : undefined,
+			genderId: payload.genderId
+				? Number(payload.genderId)
+				: undefined,
 			identityTypeId: payload.identityTypeId
 				? Number(payload.identityTypeId)
 				: undefined,
-			bloodTypeId: payload.bloodTypeId ? Number(payload.bloodTypeId) : undefined,
+			bloodTypeId: payload.bloodTypeId
+				? Number(payload.bloodTypeId)
+				: undefined,
 			cityId: payload.cityId ? Number(payload.cityId) : undefined,
 			stateId: payload.stateId ? Number(payload.stateId) : undefined,
-			countryId: payload.countryId ? Number(payload.countryId) : undefined,
-			postalCodeId: payload.postalCodeId ? Number(payload.postalCodeId) : undefined,
-			nationalityId: payload.nationalityId ? Number(payload.nationalityId) : undefined,
-			religionId: payload.religionId ? Number(payload.religionId) : undefined,
-			statusId: payload.isActive === false ? StatusEnum.INACTIVE : StatusEnum.ACTIVE,
-			nameMasking: payload.nameMasking === true ? YesNoEnum.YES : YesNoEnum.NO,
+			countryId: payload.countryId
+				? Number(payload.countryId)
+				: undefined,
+			postalCodeId: payload.postalCodeId
+				? Number(payload.postalCodeId)
+				: undefined,
+			nationalityId: payload.nationalityId
+				? Number(payload.nationalityId)
+				: undefined,
+			religionId: payload.religionId
+				? Number(payload.religionId)
+				: undefined,
+			statusId:
+				payload.isActive === false
+					? StatusEnum.INACTIVE
+					: StatusEnum.ACTIVE,
+			nameMasking:
+				payload.nameMasking === true ? YesNoEnum.YES : YesNoEnum.NO
 		};
 
 		const [patient] = await ensureDb()
@@ -552,4 +615,3 @@ function generateRandomPassword(length: number = 16): string {
 		return { patient, userId: user.id, generatedPassword };
 	}
 );
-

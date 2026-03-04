@@ -54,11 +54,17 @@
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!name?.trim()) {
-			toastService.addToast('Name is required.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Name is required.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!hospitalId) {
-			toastService.addToast('Hospital context is missing.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Hospital context is missing.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isSubmitting = true;
@@ -72,7 +78,10 @@
 					phone: phone.trim() || undefined,
 					email: email.trim() || undefined
 				});
-				toastService.addToast('Branch updated.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Branch updated.',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				await createBranch({
 					hospitalId,
@@ -82,11 +91,15 @@
 					phone: phone.trim() || undefined,
 					email: email.trim() || undefined
 				});
-				toastService.addToast('Branch created.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Branch created.',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			confirm();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to save';
+			const msg =
+				err instanceof Error ? err.message : 'Failed to save';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		} finally {
 			isSubmitting = false;
@@ -101,13 +114,19 @@
 
 {#if isLoading}
 	<div class="flex items-center justify-center py-8">
-		<span class="d-loading d-loading-spinner d-loading-lg" />
+		<span class="d-loading d-loading-lg d-loading-spinner" />
 	</div>
 {:else}
 	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 		<div class="flex flex-col gap-4">
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="branch-name" className="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="branch-name"
+					className="shrink-0 sm:w-36 font-bold"
+					>Name <span class="text-error">*</span></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="branch-name"
@@ -118,8 +137,13 @@
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="branch-code" className="shrink-0 sm:w-36">Code</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="branch-code"
+					className="shrink-0 sm:w-36">Code</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="branch-code"
@@ -129,8 +153,13 @@
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="branch-phone" className="shrink-0 sm:w-36">Phone</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="branch-phone"
+					className="shrink-0 sm:w-36">Phone</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="branch-phone"
@@ -140,8 +169,13 @@
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="branch-email" className="shrink-0 sm:w-36">Email</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="branch-email"
+					className="shrink-0 sm:w-36">Email</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="branch-email"
@@ -151,8 +185,13 @@
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-				<DaisyUiLabel forText="branch-address" className="shrink-0 sm:w-36 pt-2">Address</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="branch-address"
+					className="shrink-0 sm:w-36 pt-2">Address</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiTextarea
 						id="branch-address"
@@ -162,12 +201,28 @@
 				</div>
 			</div>
 		</div>
-		<div class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4">
-			<DaisyUiButton type="button" className="d-btn-ghost" onClick={handleCancel}>
+		<div
+			class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
+		>
+			<DaisyUiButton
+				type="button"
+				className="d-btn-ghost"
+				onClick={handleCancel}
+			>
 				Cancel
 			</DaisyUiButton>
-			<DaisyUiButton type="submit" className="d-btn-primary" disabled={isSubmitting}>
-				{isSubmitting ? (isEdit ? 'Updating…' : 'Creating…') : isEdit ? 'Update' : 'Create'}
+			<DaisyUiButton
+				type="submit"
+				className="d-btn-primary"
+				disabled={isSubmitting}
+			>
+				{isSubmitting
+					? isEdit
+						? 'Updating…'
+						: 'Creating…'
+					: isEdit
+						? 'Update'
+						: 'Create'}
 			</DaisyUiButton>
 		</div>
 	</form>

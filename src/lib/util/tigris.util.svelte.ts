@@ -1,4 +1,15 @@
-import { createBucket, get, getBucketInfo, getPresignedUrl, head, list, listBuckets, put, remove, removeBucket } from '@tigrisdata/storage';
+import {
+	createBucket,
+	get,
+	getBucketInfo,
+	getPresignedUrl,
+	head,
+	list,
+	listBuckets,
+	put,
+	remove,
+	removeBucket
+} from '@tigrisdata/storage';
 
 // Local type helpers – mirror SDK shapes we actually use to keep this file typed
 type TigrisStorageConfig = {
@@ -30,7 +41,11 @@ type PutOptions = {
 	contentDisposition?: 'inline' | 'attachment';
 	multipart?: boolean;
 	abortController?: AbortController;
-	onUploadProgress?: (args: { loaded: number; total?: number; percentage?: number }) => void;
+	onUploadProgress?: (args: {
+		loaded: number;
+		total?: number;
+		percentage?: number;
+	}) => void;
 	config?: TigrisStorageConfig;
 };
 
@@ -144,7 +159,8 @@ export class TigrisUtil {
 		// If secret contains + or spaces, quote it in .env: TIGRIS_SECRET_KEY="tsec_..."
 		return {
 			bucket:
-				process.env.TIGRIS_STORAGE_BUCKET ?? process.env.TIGRIS_BUCKET,
+				process.env.TIGRIS_STORAGE_BUCKET ??
+				process.env.TIGRIS_BUCKET,
 			accessKeyId:
 				process.env.TIGRIS_STORAGE_ACCESS_KEY_ID ??
 				process.env.TIGRIS_ACCESS_KEY,
@@ -152,7 +168,8 @@ export class TigrisUtil {
 				process.env.TIGRIS_STORAGE_SECRET_ACCESS_KEY ??
 				process.env.TIGRIS_SECRET_KEY,
 			endpoint:
-				process.env.TIGRIS_STORAGE_ENDPOINT ?? 'https://t3.storage.dev'
+				process.env.TIGRIS_STORAGE_ENDPOINT ??
+				'https://t3.storage.dev'
 		};
 	}
 
@@ -289,10 +306,11 @@ export class TigrisUtil {
 		options?: ListOptions & { configOverride?: TigrisStorageConfig }
 	): Promise<ListResponse> {
 		const { configOverride, ...rest } = options ?? {};
-		const res: TigrisStorageResponse<ListResponse, Error> = (await list({
-			...rest,
-			config: this.mergeConfig(configOverride)
-		})) as unknown as TigrisStorageResponse<ListResponse, Error>;
+		const res: TigrisStorageResponse<ListResponse, Error> =
+			(await list({
+				...rest,
+				config: this.mergeConfig(configOverride)
+			})) as unknown as TigrisStorageResponse<ListResponse, Error>;
 
 		if (res.error) {
 			throw res.error;
@@ -306,7 +324,9 @@ export class TigrisUtil {
 	 */
 	static async createBucket(
 		bucketName: string,
-		options?: CreateBucketOptions & { configOverride?: TigrisStorageConfig }
+		options?: CreateBucketOptions & {
+			configOverride?: TigrisStorageConfig;
+		}
 	): Promise<CreateBucketResponse> {
 		const { configOverride, ...rest } = options ?? {};
 		const res = await createBucket(bucketName, {
@@ -326,7 +346,9 @@ export class TigrisUtil {
 	 */
 	static async deleteBucket(
 		bucketName: string,
-		options?: RemoveBucketOptions & { configOverride?: TigrisStorageConfig }
+		options?: RemoveBucketOptions & {
+			configOverride?: TigrisStorageConfig;
+		}
 	): Promise<void> {
 		const { configOverride, ...rest } = options ?? {};
 		const res = await removeBucket(bucketName, {
@@ -361,13 +383,19 @@ export class TigrisUtil {
 	 * List all buckets for the current account.
 	 */
 	static async listBuckets(
-		options?: ListBucketsOptions & { configOverride?: TigrisStorageConfig }
+		options?: ListBucketsOptions & {
+			configOverride?: TigrisStorageConfig;
+		}
 	): Promise<ListBucketsResponse> {
 		const { configOverride, ...rest } = options ?? {};
-		const res: TigrisStorageResponse<ListBucketsResponse, Error> = (await listBuckets({
-			...rest,
-			config: this.mergeConfig(configOverride)
-		})) as unknown as TigrisStorageResponse<ListBucketsResponse, Error>;
+		const res: TigrisStorageResponse<ListBucketsResponse, Error> =
+			(await listBuckets({
+				...rest,
+				config: this.mergeConfig(configOverride)
+			})) as unknown as TigrisStorageResponse<
+				ListBucketsResponse,
+				Error
+			>;
 
 		if (res.error) {
 			throw res.error;
@@ -381,13 +409,18 @@ export class TigrisUtil {
 	 */
 	static async getPresignedUrl(
 		path: string,
-		options: GetPresignedUrlOptions & { configOverride?: TigrisStorageConfig }
+		options: GetPresignedUrlOptions & {
+			configOverride?: TigrisStorageConfig;
+		}
 	): Promise<GetPresignedUrlResponse> {
 		const { configOverride, ...rest } = options;
 		const res = (await getPresignedUrl(path, {
 			...rest,
 			config: this.mergeConfig(configOverride)
-		})) as unknown as TigrisStorageResponse<GetPresignedUrlResponse, Error>;
+		})) as unknown as TigrisStorageResponse<
+			GetPresignedUrlResponse,
+			Error
+		>;
 
 		if (res.error) {
 			throw res.error;

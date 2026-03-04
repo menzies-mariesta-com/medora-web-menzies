@@ -4,43 +4,63 @@ import * as table from '$lib/server/db/schema';
 import type {
 	StaffDetailSchema,
 	StaffDetailSchemaInsert,
-	StaffDetailSchemaUpdate,
+	StaffDetailSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getStaffDetail = query(async (): Promise<StaffDetailSchema[]> => {
-	const data = await ensureDb().select().from(table.staffDetailTable);
-	return data;
-});
+export const getStaffDetail = query(
+	async (): Promise<StaffDetailSchema[]> => {
+		const data = await ensureDb()
+			.select()
+			.from(table.staffDetailTable);
+		return data;
+	}
+);
 
 // get all with relations
 export const getStaffDetailWithRelations = query(async () => {
 	return ensureDb().query.staffDetailTable.findMany({
 		with: {
 			bloodType: true,
-			status: true,
-		},
+			status: true
+		}
 	});
 });
 
 // get count
-export const getStaffDetailCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.staffDetailTable);
-	return row?.count ?? 0;
-});
+export const getStaffDetailCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.staffDetailTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getStaffDetailPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffDetailSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffDetailSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.staffDetailTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.staffDetailTable),
+			ensureDb()
+				.select()
+				.from(table.staffDetailTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.staffDetailTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -48,7 +68,7 @@ export const getStaffDetailPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -56,7 +76,11 @@ export const getStaffDetailPaginated = query(
 // get one
 export const getStaffDetailById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<StaffDetailSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<StaffDetailSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffDetailTable)
@@ -73,8 +97,8 @@ export const getStaffDetailByIdWithRelations = query(
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
 				bloodType: true,
-				status: true,
-			},
+				status: true
+			}
 		});
 	}
 );
@@ -82,7 +106,9 @@ export const getStaffDetailByIdWithRelations = query(
 // create
 export const createStaffDetail = command(
 	'unchecked' as const,
-	async (payload: StaffDetailSchemaInsert): Promise<StaffDetailSchema> => {
+	async (
+		payload: StaffDetailSchemaInsert
+	): Promise<StaffDetailSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.staffDetailTable)
 			.values(payload)
@@ -96,7 +122,9 @@ export const createStaffDetail = command(
 // update
 export const updateStaffDetail = command(
 	'unchecked' as const,
-	async (payload: { id: number } & StaffDetailSchemaUpdate): Promise<StaffDetailSchema> => {
+	async (
+		payload: { id: number } & StaffDetailSchemaUpdate
+	): Promise<StaffDetailSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.staffDetailTable)
@@ -125,7 +153,9 @@ export const deleteStaffDetail = command(
 export const deleteStaffDetailComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.staffDetailTable).where(eq(table.staffDetailTable.id, id));
+		await ensureDb()
+			.delete(table.staffDetailTable)
+			.where(eq(table.staffDetailTable.id, id));
 		getStaffDetail().refresh();
 	}
 );

@@ -13,7 +13,8 @@
 
 	const currentStaffId = $derived(data?.staff?.id ?? null);
 	const currentStaffPhotoUrl = $derived(
-		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ?? null
+		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ??
+			null
 	);
 </script>
 

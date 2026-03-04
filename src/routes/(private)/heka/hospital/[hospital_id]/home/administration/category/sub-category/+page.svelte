@@ -31,12 +31,17 @@
 	let { data } = $props();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
 	);
 	/** User's current branch from layout; filters categories to this branch. "__all__" means show all branches. */
 	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
 	const branchIdForCategory = $derived(
-		selectedBranchId && selectedBranchId !== '__all__' ? selectedBranchId : null
+		selectedBranchId && selectedBranchId !== '__all__'
+			? selectedBranchId
+			: null
 	);
 
 	let subCategories = $state<SubCategorySchema[]>([]);
@@ -46,17 +51,26 @@
 
 	async function fetchCategories() {
 		if (!hospitalId) return;
-		categories = await getCategory({ hospitalId, branchId: branchIdForCategory });
+		categories = await getCategory({
+			hospitalId,
+			branchId: branchIdForCategory
+		});
 	}
 
 	async function fetchSubCategories(forceRefresh = false) {
 		isLoading = true;
 		try {
-			const categoryId = selectedCategoryId ? Number(selectedCategoryId) : null;
+			const categoryId = selectedCategoryId
+				? Number(selectedCategoryId)
+				: null;
 			if (forceRefresh) {
-				await getSubCategory({ categoryId: categoryId ?? undefined }).refresh();
+				await getSubCategory({
+					categoryId: categoryId ?? undefined
+				}).refresh();
 			}
-			subCategories = await getSubCategory({ categoryId: categoryId ?? undefined });
+			subCategories = await getSubCategory({
+				categoryId: categoryId ?? undefined
+			});
 		} finally {
 			isLoading = false;
 		}
@@ -76,7 +90,9 @@
 	async function openCreate() {
 		SubCategoryModalState.mode = 'create';
 		SubCategoryModalState.editRow = null;
-		SubCategoryModalState.defaultCategoryId = selectedCategoryId ? Number(selectedCategoryId) : null;
+		SubCategoryModalState.defaultCategoryId = selectedCategoryId
+			? Number(selectedCategoryId)
+			: null;
 		SubCategoryModalState.categoryOptions = categories;
 		const result = await dialogService.open({
 			title: 'New sub-category',
@@ -111,10 +127,14 @@
 		if (!result.confirmed) return;
 		try {
 			await deleteSubCategory({ id: row.id });
-			toastService.addToast('Sub-category deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Sub-category deleted.',
+				StatusColorEnum.SUCCESS
+			);
 			fetchSubCategories(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : m.delete_failed();
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -146,7 +166,9 @@
 						optionHeader="All categories"
 					>
 						{#each categories as cat (cat.id)}
-							<option value={cat.id}>{cat.categoryName ?? `Category ${cat.id}`}</option>
+							<option value={cat.id}
+								>{cat.categoryName ?? `Category ${cat.id}`}</option
+							>
 						{/each}
 					</DaisyUiSelect>
 				</label>
@@ -155,11 +177,16 @@
 			{#if isLoading && subCategories.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<p class="text-base-content/70 mb-4">
+				<p class="mb-4 text-base-content/70">
 					{#if subCategories.length > 0}
-						{m.showing()} {subCategories.length} sub-categor{subCategories.length === 1 ? 'y' : 'ies'}
+						{m.showing()}
+						{subCategories.length} sub-categor{subCategories.length ===
+						1
+							? 'y'
+							: 'ies'}
 					{:else}
-						No sub-categories yet. Create one above or select a category.
+						No sub-categories yet. Create one above or select a
+						category.
 					{/if}
 				</p>
 				<DaisyUiTable>
@@ -198,7 +225,10 @@
 							</tr>
 						{:else}
 							<tr>
-								<td colspan={5} class="text-center text-base-content/70 py-8">
+								<td
+									colspan={5}
+									class="text-center text-base-content/70 py-8"
+								>
 									No sub-categories. Create one or change the filter.
 								</td>
 							</tr>

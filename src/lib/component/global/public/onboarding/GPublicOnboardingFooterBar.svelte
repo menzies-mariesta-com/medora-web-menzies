@@ -14,7 +14,8 @@
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.marketing()}</DaisyUiLink
@@ -29,7 +30,8 @@
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.marketing()}</DaisyUiLink
@@ -43,7 +45,8 @@
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.branding()}</DaisyUiLink
 		>
-		<DaisyUiLink className="d-link-hover" href="#">{m.design()}</DaisyUiLink
+		<DaisyUiLink className="d-link-hover" href="#"
+			>{m.design()}</DaisyUiLink
 		>
 		<DaisyUiLink className="d-link-hover" href="#"
 			>{m.marketing()}</DaisyUiLink

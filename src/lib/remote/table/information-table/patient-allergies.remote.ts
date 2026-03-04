@@ -4,16 +4,21 @@ import * as table from '$lib/server/db/schema';
 import type {
 	PatientAllergiesSchema,
 	PatientAllergiesSchemaInsert,
-	PatientAllergiesSchemaUpdate,
+	PatientAllergiesSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getPatientAllergies = query(
 	async (): Promise<PatientAllergiesSchema[]> => {
-		const data = await ensureDb().select().from(table.patientAllergyTable);
+		const data = await ensureDb()
+			.select()
+			.from(table.patientAllergyTable);
 		return data;
 	}
 );
@@ -23,33 +28,38 @@ export const getPatientAllergiesWithRelations = query(async () => {
 	return ensureDb().query.patientAllergyTable.findMany({
 		with: {
 			patient: true,
-			allergyType: true,
-		},
+			allergyType: true
+		}
 	});
 });
 
 // get count
-export const getPatientAllergiesCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.patientAllergyTable);
-	return row?.count ?? 0;
-});
+export const getPatientAllergiesCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.patientAllergyTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getPatientAllergiesPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams,
+		params?: PaginationParams
 	): Promise<PaginatedResult<PatientAllergiesSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.patientAllergyTable)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.patientAllergyTable),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.patientAllergyTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -57,7 +67,7 @@ export const getPatientAllergiesPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -66,7 +76,7 @@ export const getPatientAllergiesPaginated = query(
 export const getPatientAllergiesById = query(
 	'unchecked' as const,
 	async ({
-		id,
+		id
 	}: {
 		id: number;
 	}): Promise<PatientAllergiesSchema | null> => {
@@ -82,7 +92,7 @@ export const getPatientAllergiesById = query(
 export const getPatientAllergiesByPatientId = query(
 	'unchecked' as const,
 	async ({
-		patientId,
+		patientId
 	}: {
 		patientId: string;
 	}): Promise<PatientAllergiesSchema[]> => {
@@ -98,7 +108,7 @@ export const getPatientAllergiesByPatientId = query(
 export const createPatientAllergies = command(
 	'unchecked' as const,
 	async (
-		payload: PatientAllergiesSchemaInsert,
+		payload: PatientAllergiesSchemaInsert
 	): Promise<PatientAllergiesSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.patientAllergyTable)
@@ -114,7 +124,7 @@ export const createPatientAllergies = command(
 export const updatePatientAllergies = command(
 	'unchecked' as const,
 	async (
-		payload: { id: number } & PatientAllergiesSchemaUpdate,
+		payload: { id: number } & PatientAllergiesSchemaUpdate
 	): Promise<PatientAllergiesSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
@@ -149,4 +159,3 @@ export const deletePatientAllergiesComplete = command(
 		getPatientAllergies().refresh();
 	}
 );
-

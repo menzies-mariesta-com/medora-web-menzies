@@ -28,10 +28,14 @@
 	let { confirm, cancel } = $props<DialogSlotProps>();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
 
-	let result = $state<PaginatedResult<PatientVisitWithRelations> | null>(null);
+	let result =
+		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state('10');
 	let filterPatientName = $state('');
@@ -39,7 +43,9 @@
 	let filterHospitalName = $state('');
 	let filterBranchName = $state('');
 	let filterDoctorName = $state('');
-	let visitTypeOptions = $state<{ id: number; name: string | null }[]>([]);
+	let visitTypeOptions = $state<
+		{ id: number; name: string | null }[]
+	>([]);
 	let selectedVisitTypeIdStr = $state('');
 	let isLoading = $state(false);
 
@@ -60,7 +66,9 @@
 				hospitalName: filterHospitalName.trim() || undefined,
 				branchName: filterBranchName.trim() || undefined,
 				doctorName: filterDoctorName.trim() || undefined,
-				visitTypeId: selectedVisitTypeIdStr ? Number(selectedVisitTypeIdStr) : undefined,
+				visitTypeId: selectedVisitTypeIdStr
+					? Number(selectedVisitTypeIdStr)
+					: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -80,7 +88,8 @@
 		loadVisitTypes();
 	});
 
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let isFirstFilterEffect = true;
 	$effect(() => {
 		const _ = [
@@ -122,7 +131,9 @@
 
 	function selectPatient(v: PatientVisitWithRelations) {
 		const patient = v.patient;
-		const patientName = patient ? StringUtil.patientDisplayName(patient as any) : '';
+		const patientName = patient
+			? StringUtil.patientDisplayName(patient as any)
+			: '';
 		confirm({
 			visitId: v.id,
 			patientName
@@ -131,7 +142,9 @@
 </script>
 
 <div class="flex h-full min-h-[60vh] flex-col gap-0">
-	<div class="flex items-center justify-between border-b border-base-300 px-4 py-2">
+	<div
+		class="flex items-center justify-between border-b border-base-300 px-4 py-2"
+	>
 		<h2 class="text-lg font-semibold">Visit List</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
@@ -141,7 +154,9 @@
 		</DaisyUiButton>
 	</div>
 
-	<div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2">
+	<div
+		class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+	>
 		<div class="flex items-center gap-2 whitespace-nowrap">
 			<span class="text-sm">per page</span>
 			<DaisyUiSelect
@@ -176,58 +191,60 @@
 			<DaisyUiLoading className="d-loading-xl" />
 		</div>
 	{:else}
-		<div class="flex-1 min-h-0 overflow-auto px-4 py-2">
+		<div class="min-h-0 flex-1 overflow-auto px-4 py-2">
 			<DaisyUiTable className="d-table d-table-sm">
 				<DaisyUiTableHeader>
 					<tr class="sticky top-0 z-10 bg-base-200">
 						<th class="w-24 min-w-[6rem]">Actions</th>
 						<th class="w-28 min-w-[6rem]">Visit No</th>
 						<th class="w-32 min-w-[8rem]">
-								<DaisyUiInputField
-									inputPlaceholderText="Patient Code"
-									bind:value={filterPatientCode}
-									className="d-input-sm w-full"
-								/>
+							<DaisyUiInputField
+								inputPlaceholderText="Patient Code"
+								bind:value={filterPatientCode}
+								className="d-input-sm w-full"
+							/>
 						</th>
 						<th class="w-48 min-w-[12rem]">
-								<DaisyUiInputField
-									inputPlaceholderText="Patient Name"
-									bind:value={filterPatientName}
-									className="d-input-sm w-full"
-								/>
+							<DaisyUiInputField
+								inputPlaceholderText="Patient Name"
+								bind:value={filterPatientName}
+								className="d-input-sm w-full"
+							/>
 						</th>
 						<th class="w-40 min-w-[10rem]">
-								<DaisyUiInputField
-									inputPlaceholderText="Hospital Name"
-									bind:value={filterHospitalName}
-									className="d-input-sm w-full"
-								/>
+							<DaisyUiInputField
+								inputPlaceholderText="Hospital Name"
+								bind:value={filterHospitalName}
+								className="d-input-sm w-full"
+							/>
 						</th>
 						<th class="w-40 min-w-[10rem]">
-								<DaisyUiInputField
-									inputPlaceholderText="Branch Name"
-									bind:value={filterBranchName}
-									className="d-input-sm w-full"
-								/>
+							<DaisyUiInputField
+								inputPlaceholderText="Branch Name"
+								bind:value={filterBranchName}
+								className="d-input-sm w-full"
+							/>
 						</th>
 						<th class="w-40 min-w-[10rem]">
-								<DaisyUiInputField
-									inputPlaceholderText="Doctor Name"
-									bind:value={filterDoctorName}
-									className="d-input-sm w-full"
-								/>
+							<DaisyUiInputField
+								inputPlaceholderText="Doctor Name"
+								bind:value={filterDoctorName}
+								className="d-input-sm w-full"
+							/>
 						</th>
 						<th class="w-32 min-w-[8rem]">
-								<DaisyUiSelect
-									className="d-select d-select-sm w-full"
-									bind:value={selectedVisitTypeIdStr}
-									onChange={handleFilterChange}
-								>
-									<option value="">All Visit Type</option>
-									{#each visitTypeOptions as vt (vt.id)}
-										<option value={String(vt.id)}>{vt.name ?? `Type ${vt.id}`}</option>
-									{/each}
-								</DaisyUiSelect>
+							<DaisyUiSelect
+								className="d-select d-select-sm w-full"
+								bind:value={selectedVisitTypeIdStr}
+								onChange={handleFilterChange}
+							>
+								<option value="">All Visit Type</option>
+								{#each visitTypeOptions as vt (vt.id)}
+									<option value={String(vt.id)}
+										>{vt.name ?? `Type ${vt.id}`}</option
+									>
+								{/each}
+							</DaisyUiSelect>
 						</th>
 						<th class="w-28 min-w-[7rem]">Status</th>
 					</tr>
@@ -236,12 +253,12 @@
 					{#each visits as v (v.id)}
 						<tr class="hover:bg-info/20">
 							<td class="w-24 min-w-[6rem]">
-									<DaisyUiButton
-										className="d-btn-primary d-btn-sm w-full"
-										onClick={() => selectPatient(v)}
-									>
-										Select
-									</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm w-full"
+									onClick={() => selectPatient(v)}
+								>
+									Select
+								</DaisyUiButton>
 							</td>
 							<td class="w-32 min-w-[8rem]">
 								{v.visitNo ?? v.id}
@@ -250,7 +267,9 @@
 								{v.patient?.code ?? '—'}
 							</td>
 							<td class="w-48 min-w-[12rem]">
-								{v.patient ? StringUtil.patientDisplayName(v.patient as any) : '—'}
+								{v.patient
+									? StringUtil.patientDisplayName(v.patient as any)
+									: '—'}
 							</td>
 							<td class="w-40 min-w-[10rem]">
 								{v.hospital?.name ?? '—'}
@@ -287,7 +306,9 @@
 		</div>
 	{/if}
 
-	<div class="flex items-center justify-between border-t border-base-200 px-4 py-2">
+	<div
+		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
+	>
 		<div>
 			{#if totalPages > 1}
 				<DaisyUiPagination>
@@ -317,7 +338,10 @@
 			{/if}
 		</div>
 		<div class="flex gap-2">
-			<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={cancel}>
+			<DaisyUiButton
+				className="d-btn-ghost d-btn-sm"
+				onClick={cancel}
+			>
 				Cancel
 			</DaisyUiButton>
 		</div>

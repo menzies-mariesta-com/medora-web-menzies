@@ -82,15 +82,17 @@
 {#if open}
 	<DaisyUiModal
 		groupName="staff-registration-more-info-modal"
-		open={open}
+		{open}
 		onClose={handleClose}
 	>
 		<DaisyUiModalBox onClose={handleClose}>
 			<h3 class="mb-4 text-lg font-bold">License &amp; Signature</h3>
-			<fieldset disabled={viewOnly} class="border-0 p-0 m-0 min-w-0">
+			<fieldset disabled={viewOnly} class="m-0 min-w-0 border-0 p-0">
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-2">
-						<DaisyUiLabel forText="license-no">License No</DaisyUiLabel>
+						<DaisyUiLabel forText="license-no"
+							>License No</DaisyUiLabel
+						>
 						<DaisyUiInputField
 							id="license-no"
 							bind:value={licenseNo}
@@ -99,7 +101,9 @@
 						/>
 					</div>
 					<div class="flex flex-col gap-2">
-						<DaisyUiLabel forText="license-expiry-date">License expiry date</DaisyUiLabel>
+						<DaisyUiLabel forText="license-expiry-date"
+							>License expiry date</DaisyUiLabel
+						>
 						<DaisyUiInputField
 							id="license-expiry-date"
 							bind:value={licenseExpiryDate}
@@ -108,7 +112,9 @@
 						/>
 					</div>
 					<div class="flex flex-col gap-2">
-						<DaisyUiLabel forText="signature-image">Signature image</DaisyUiLabel>
+						<DaisyUiLabel forText="signature-image"
+							>Signature image</DaisyUiLabel
+						>
 						<DaisyUiFileInput
 							accept="image/jpeg,image/png,image/webp,image/gif"
 							className="hidden"
@@ -116,7 +122,7 @@
 							onchange={handleSignatureChange}
 						/>
 						<div
-							class="flex flex-wrap justify-center items-center gap-5 rounded-lg border border-base-300 bg-base-200/50 p-3"
+							class="flex flex-wrap items-center justify-center gap-5 rounded-lg border border-base-300 bg-base-200/50 p-3"
 						>
 							<button
 								type="button"
@@ -154,7 +160,9 @@
 						</div>
 					</div>
 					<div class="flex flex-col gap-2">
-						<DaisyUiLabel forText="signature-text">Signature text</DaisyUiLabel>
+						<DaisyUiLabel forText="signature-text"
+							>Signature text</DaisyUiLabel
+						>
 						<DaisyUiTextarea
 							id="signature-text"
 							bind:value={signatureText}

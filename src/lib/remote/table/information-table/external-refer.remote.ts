@@ -4,24 +4,35 @@ import * as table from '$lib/server/db/schema';
 import type {
 	ExternalReferSchema,
 	ExternalReferSchemaInsert,
-	ExternalReferSchemaUpdate,
+	ExternalReferSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq, or, ilike, ne, and } from 'drizzle-orm';
 
 // get all
-export const getExternalRefer = query(async (): Promise<ExternalReferSchema[]> => {
-	const data = await ensureDb().select().from(table.externalReferTable);
-	return data;
-});
+export const getExternalRefer = query(
+	async (): Promise<ExternalReferSchema[]> => {
+		const data = await ensureDb()
+			.select()
+			.from(table.externalReferTable);
+		return data;
+	}
+);
 
 // get count
-export const getExternalReferCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.externalReferTable);
-	return row?.count ?? 0;
-});
+export const getExternalReferCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.externalReferTable);
+		return row?.count ?? 0;
+	}
+);
 
 const externalReferWithRelationsWith = {
 	referType: true,
@@ -32,7 +43,7 @@ const externalReferWithRelationsWith = {
 	state: true,
 	city: true,
 	postalCode: true,
-	status: true,
+	status: true
 } as const;
 
 export type ExternalReferWithRelations = NonNullable<
@@ -42,8 +53,11 @@ export type ExternalReferWithRelations = NonNullable<
 // get paginated with relations (optional search on name, address, phone, email)
 export const getExternalReferPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<ExternalReferWithRelations>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<ExternalReferWithRelations>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
 		const pattern = searchTerm ? `%${searchTerm}%` : null;
 		const searchCondition =
@@ -54,14 +68,20 @@ export const getExternalReferPaginated = query(
 				ilike(table.externalReferTable.phone, pattern),
 				ilike(table.externalReferTable.email, pattern)
 			);
-		const notDeletedCondition = ne(table.externalReferTable.statusId, StatusEnum.DELETED);
+		const notDeletedCondition = ne(
+			table.externalReferTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = searchCondition
 			? and(notDeletedCondition, searchCondition)
 			: notDeletedCondition;
 
 		const hospitalId = params?.hospitalId;
 		if (hospitalId != null && hospitalId !== '') {
-			whereExpr = and(whereExpr, eq(table.externalReferTable.hospitalId, hospitalId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.externalReferTable.hospitalId, hospitalId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -69,12 +89,12 @@ export const getExternalReferPaginated = query(
 				where: whereExpr,
 				with: externalReferWithRelationsWith,
 				limit,
-				offset,
+				offset
 			}),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.externalReferTable)
-				.where(whereExpr),
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -82,7 +102,7 @@ export const getExternalReferPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -99,15 +119,19 @@ export const getExternalReferWithRelations = query(async () => {
 			state: true,
 			city: true,
 			postalCode: true,
-			status: true,
-		},
+			status: true
+		}
 	});
 });
 
 // get one
 export const getExternalReferById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ExternalReferSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<ExternalReferSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.externalReferTable)
@@ -122,7 +146,7 @@ export const getExternalReferByIdWithRelations = query(
 	async ({ id }: { id: number }) => {
 		return ensureDb().query.externalReferTable.findFirst({
 			where: (t, funcs) => funcs.eq(t.id, id),
-			with: externalReferWithRelationsWith,
+			with: externalReferWithRelationsWith
 		});
 	}
 );
@@ -130,7 +154,9 @@ export const getExternalReferByIdWithRelations = query(
 // create
 export const createExternalRefer = command(
 	'unchecked' as const,
-	async (payload: ExternalReferSchemaInsert): Promise<ExternalReferSchema> => {
+	async (
+		payload: ExternalReferSchemaInsert
+	): Promise<ExternalReferSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.externalReferTable)
 			.values(payload)
@@ -144,7 +170,9 @@ export const createExternalRefer = command(
 // update
 export const updateExternalRefer = command(
 	'unchecked' as const,
-	async (payload: ExternalReferSchemaUpdate & { id: number }): Promise<ExternalReferSchema> => {
+	async (
+		payload: ExternalReferSchemaUpdate & { id: number }
+	): Promise<ExternalReferSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.externalReferTable)
@@ -173,7 +201,9 @@ export const deleteExternalRefer = command(
 export const deleteExternalReferComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.externalReferTable).where(eq(table.externalReferTable.id, id));
+		await ensureDb()
+			.delete(table.externalReferTable)
+			.where(eq(table.externalReferTable.id, id));
 		getExternalRefer().refresh();
 	}
 );

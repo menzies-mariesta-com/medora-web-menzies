@@ -10,13 +10,13 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
-import {
-	type StaffWithRelations,
-	getDoctorStaffPaginated,
-	getStaffByIdWithRelations
-} from '$lib/remote/table/information-table/staff.remote';
-import { StringUtil } from '$lib/util/string.util.svelte';
-import { page } from '$app/state';
+	import {
+		type StaffWithRelations,
+		getDoctorStaffPaginated,
+		getStaffByIdWithRelations
+	} from '$lib/remote/table/information-table/staff.remote';
+	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { page } from '$app/state';
 
 	let {
 		doctorList,
@@ -42,10 +42,14 @@ import { page } from '$app/state';
 
 	let selectedDate = $state(new Date().toISOString().slice(0, 10));
 	const hospitalId = $derived(
-		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+		(typeof page.params?.hospital_id === 'string' &&
+			page.params.hospital_id) ||
+			''
 	);
 
-	async function searchDoctors(query: string): Promise<{ label: string; value: string }[]> {
+	async function searchDoctors(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
 		const res = await getDoctorStaffPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
@@ -75,10 +79,15 @@ import { page } from '$app/state';
 
 <DaisyUiCard>
 	<DaisyUiCardBody className="w-full gap-5">
-		<DaisyUiCardBodyTitle className="flex items-center justify-between gap-2">
+		<DaisyUiCardBodyTitle
+			className="flex items-center justify-between gap-2"
+		>
 			<span>Doctor :</span>
 			{#if selectedDoctorId || selectedBranchId}
-				<DaisyUiTooltip tooltipText="Reset Doctor" className="d-tooltip-left">
+				<DaisyUiTooltip
+					tooltipText="Reset Doctor"
+					className="d-tooltip-left"
+				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-xs d-btn-circle"
 						onClick={() => {

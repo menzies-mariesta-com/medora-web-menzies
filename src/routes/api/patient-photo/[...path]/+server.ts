@@ -10,7 +10,9 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 export const GET: RequestHandler = async ({ params }) => {
-	const path = Array.isArray(params.path) ? params.path.join('/') : params.path;
+	const path = Array.isArray(params.path)
+		? params.path.join('/')
+		: params.path;
 	if (!path || path.includes('..')) {
 		return new Response('Bad Request', { status: 400 });
 	}
@@ -23,7 +25,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			return new Response('Not Found', { status: 404 });
 		}
 		const ext = path.split('.').pop()?.toLowerCase() ?? '';
-		const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream';
+		const contentType =
+			CONTENT_TYPES[ext] ?? 'application/octet-stream';
 		return new Response(stream, {
 			headers: {
 				'Content-Type': contentType,
