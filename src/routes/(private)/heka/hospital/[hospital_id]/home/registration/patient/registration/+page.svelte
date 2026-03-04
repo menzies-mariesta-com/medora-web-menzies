@@ -443,16 +443,12 @@ const currentPatientId = $derived(viewId || editId);
 	}
 
 	async function goToPatientAttachment() {
-		const patientName =
-			[firstName, middleName, lastName].filter(Boolean).join(' ') || undefined;
-
 		PatientAttachmentDialogState.viewOnly = isViewMode;
 
 		if (currentPatientId) {
 			PatientAttachmentDialogState.stagedAttachments = [];
 			PatientAttachmentDialogState.pending = {
-				patientId: currentPatientId,
-				patientName: patientName || undefined
+				patientId: currentPatientId
 			};
 		} else {
 			// New patient: stage attachments; they will be saved when registration is submitted
