@@ -9,14 +9,20 @@ import type {
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 
-// get all (optionally filtered by branchId/serviceId)
+// get all (optionally filtered by branchId/serviceId and column filters)
 export const getServiceTagging = query(
 	'unchecked' as const,
-	async (params?: { branchId?: string | null; serviceId?: number | null }): Promise<
-		ServiceTaggingSchema[]
-	> => {
+	async (params?: {
+		branchId?: string | null;
+		serviceId?: number | null;
+		serviceIds?: number[] | null;
+		serviceAmount?: number | null;
+		serviceTaxAmount?: number | null;
+		statusId?: number | null;
+		id?: number | null;
+	}): Promise<ServiceTaggingSchema[]> => {
 		const notDeleted = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
 		let whereExpr = notDeleted;
 
@@ -25,6 +31,35 @@ export const getServiceTagging = query(
 		}
 		if (params?.serviceId != null) {
 			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.serviceId, params.serviceId));
+		}
+
+		if (params?.serviceIds && params.serviceIds.length > 0) {
+			whereExpr = and(
+				whereExpr,
+				inArray(table.serviceTaggingTable.serviceId, params.serviceIds)
+			);
+		}
+
+		if (params?.id != null) {
+			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, params.id));
+		}
+
+		if (params?.serviceAmount != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceAmount, params.serviceAmount)
+			);
+		}
+
+		if (params?.serviceTaxAmount != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceTaxAmount, params.serviceTaxAmount)
+			);
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.statusId, params.statusId));
 		}
 
 		return ensureDb()
@@ -40,12 +75,20 @@ export const getServiceTaggingCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+// get paginated (supports same filters as getServiceTagging)
 export const getServiceTaggingPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams & { branchId?: string | null; serviceId?: number | null }): Promise<
-		PaginatedResult<ServiceTaggingSchema>
-	> => {
+	async (
+		params?: PaginationParams & {
+			branchId?: string | null;
+			serviceId?: number | null;
+			serviceIds?: number[] | null;
+			serviceAmount?: number | null;
+			serviceTaxAmount?: number | null;
+			statusId?: number | null;
+			id?: number | null;
+		}
+	): Promise<PaginatedResult<ServiceTaggingSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
 		const notDeleted = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
 		let whereExpr = notDeleted;
@@ -55,6 +98,35 @@ export const getServiceTaggingPaginated = query(
 		}
 		if (params?.serviceId != null) {
 			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.serviceId, params.serviceId));
+		}
+
+		if (params?.serviceIds && params.serviceIds.length > 0) {
+			whereExpr = and(
+				whereExpr,
+				inArray(table.serviceTaggingTable.serviceId, params.serviceIds)
+			);
+		}
+
+		if (params?.id != null) {
+			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, params.id));
+		}
+
+		if (params?.serviceAmount != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceAmount, params.serviceAmount)
+			);
+		}
+
+		if (params?.serviceTaxAmount != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceTaxAmount, params.serviceTaxAmount)
+			);
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.statusId, params.statusId));
 		}
 
 		const [data, countResult] = await Promise.all([
