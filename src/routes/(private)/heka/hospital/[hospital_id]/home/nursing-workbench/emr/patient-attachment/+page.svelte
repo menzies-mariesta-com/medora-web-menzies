@@ -79,7 +79,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message="Choose a visit using the "Choose Visit" bar above to manage patient attachments."
+			message='Choose a visit using the "Choose Visit" bar above to manage patient attachments.'
 		/>
 	{:else if isLoadingVisit}
 		<div class="flex min-h-32 items-center justify-center">
