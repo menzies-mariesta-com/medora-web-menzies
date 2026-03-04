@@ -38,15 +38,40 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		: [];
 	const currentHospitalName = hospital?.name ?? null;
 
-	// OWNER or SYSTEM_ADMIN: show all pages, no page-level enforcement
+	// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
 	if (userRoleId === RoleEnum.OWNER || userRoleId === RoleEnum.SYSTEM_ADMIN) {
+		const allHospitalBranches = hospitalId
+			? await ensureDb()
+					.select({
+						id: table.hospitalBranchTable.id,
+						name: table.hospitalBranchTable.name
+					})
+					.from(table.hospitalBranchTable)
+					.where(eq(table.hospitalBranchTable.hospitalId, hospitalId))
+					.orderBy(table.hospitalBranchTable.name)
+			: [];
+		const branchCookieValue = cookies.get(COOKIE_SELECTED_BRANCH_ID);
+		const branchIds = allHospitalBranches.map((b) => b.id);
+		const hasBranches = allHospitalBranches.length > 0;
+		const staffBranchesForNav = hasBranches
+			? [{ id: BRANCH_ALL_VALUE, name: 'All Branches' }, ...allHospitalBranches]
+			: [];
+		const selectedBranchId =
+			hasBranches && branchCookieValue != null && (branchCookieValue === BRANCH_ALL_VALUE || branchIds.includes(branchCookieValue))
+				? branchCookieValue
+				: hasBranches
+					? staffBranchesForNav[0]?.id ?? null
+					: null;
+
 		return {
 			pageData: fullPages,
 			currentHospitalName,
 			staffUserGroupsForNav: [],
 			selectedUserGroupId: null,
-			staffBranchesForNav: [],
-			selectedBranchId: null
+			staffBranchesForNav,
+			selectedBranchId,
+			/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
+			allowedBranches: allHospitalBranches
 		};
 	}
 
@@ -69,7 +94,8 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 				staffUserGroupsForNav: [],
 				selectedUserGroupId: null,
 				staffBranchesForNav: [],
-				selectedBranchId: null
+				selectedBranchId: null,
+				allowedBranches: []
 			};
 		}
 
@@ -175,7 +201,9 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 			staffUserGroupsForNav,
 			selectedUserGroupId,
 			staffBranchesForNav: staffBranchesForNavWithAll,
-			selectedBranchId
+			selectedBranchId,
+			/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
+			allowedBranches: staffBranchesForNav
 		};
 	}
 
@@ -186,6 +214,7 @@ export const load: LayoutServerLoad = async ({ locals, url, params, cookies }) =
 		staffUserGroupsForNav: [],
 		selectedUserGroupId: null,
 		staffBranchesForNav: [],
-		selectedBranchId: null
+		selectedBranchId: null,
+		allowedBranches: []
 	};
 };
