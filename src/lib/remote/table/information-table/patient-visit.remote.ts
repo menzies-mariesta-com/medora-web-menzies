@@ -261,6 +261,15 @@ export const getPatientVisitPaginatedForEmr = query(
 			);
 		}
 
+		// Selected branch filter (from cookie: when user picks a branch in the module bar, restrict to that branch)
+		const selectedBranchId = getSelectedBranchFromRequest();
+		if (selectedBranchId) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.patientVisitTable.branchId, selectedBranchId)
+			);
+		}
+
 		// Global search (optional; when no specific filters are used)
 		const searchTerm = params?.search?.trim();
 		if (searchTerm) {
@@ -353,12 +362,12 @@ export const getPatientVisitPaginatedForEmr = query(
 			ensureDb().query.patientVisitTable.findMany({
 				where: whereExpr,
 				with: {
-					patient: true,
+					patient: { with: { title: true }},
 					status: true,
 					visitType: true,
 					hospital: true,
 					branch: true,
-					doctor: true
+					doctor: { with: { title: true }}
 				},
 				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,
