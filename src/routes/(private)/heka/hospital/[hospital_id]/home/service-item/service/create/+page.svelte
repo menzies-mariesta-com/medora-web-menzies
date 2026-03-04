@@ -3,12 +3,16 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
+import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
+import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
+import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
+import MariTable, {
+	type MariTableColumn
+} from '$lib/component/library/mari/table/MariTable.svelte';
 	import {
 		getServiceItem,
 		createServiceItem,
@@ -36,11 +40,8 @@
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : ''
 	);
-	/** User's current branch from layout; used to scope categories; \"__all__\" means all branches. */
+	/** User's current branch from layout; refetch when branch changes. */
 	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
-	const branchIdForCategory = $derived(
-		selectedBranchId && selectedBranchId !== '__all__' ? selectedBranchId : null
-	);
 
 	let categories = $state<CategorySchema[]>([]);
 	let subCategories = $state<SubCategorySchema[]>([]);
@@ -57,23 +58,85 @@
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
-	let isLoading = $state(false);
-	let isSaving = $state(false);
+let isLoading = $state(false);
+let isSaving = $state(false);
+
+const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
+	{
+		id: 'id',
+		header: m.id(),
+		widthClass: 'w-20'
+	},
+	{
+		id: 'category',
+		header: 'Category',
+		widthClass: 'w-40',
+		format: (_value, row) =>
+			categoryNameById(
+				row.subCategoryId
+					? subCategories.find((s) => s.id === row.subCategoryId)?.categoryId ?? null
+					: null
+			)
+	},
+	{
+		id: 'subCategory',
+		header: 'Sub-category',
+		widthClass: 'w-40',
+		format: (_value, row) => subCategoryNameById(row.subCategoryId)
+	},
+	{
+		id: 'serviceName',
+		header: m.name(),
+		widthClass: 'w-48',
+		field: 'serviceName'
+	},
+	{
+		id: 'serviceCode',
+		header: 'Code',
+		widthClass: 'w-32',
+		field: 'serviceCode',
+		format: (value) => value ?? '—'
+	},
+	{
+		id: 'status',
+		header: m.status(),
+		widthClass: 'w-32',
+		format: (_value, row) => (row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive')
+	}
+];
 
 	async function fetchCategories() {
 		if (!hospitalId) return;
-		categories = await getCategory({ hospitalId, branchId: branchIdForCategory });
+		// Load all categories for hospital so table can show category/sub-category names for every service item
+		categories = await getCategory({ hospitalId });
 	}
 
-	async function fetchSubCategories() {
-		const categoryId = selectedCategoryId ? Number(selectedCategoryId) : null;
-		if (!categoryId) {
+async function fetchSubCategories() {
+		// Load all sub-categories for all categories available to this branch
+		if (categories.length === 0) {
 			subCategories = [];
 			selectedSubCategoryId = '';
 			return;
 		}
-		subCategories = await getSubCategory({ categoryId });
-		// If current selected sub-category doesn't belong to this category, reset it
+
+		const lists = await Promise.all(
+			categories.map((cat) => getSubCategory({ categoryId: cat.id }))
+		);
+
+		const byId = new Map<number, SubCategorySchema>();
+		for (const list of lists) {
+			for (const sc of list) {
+				if (!byId.has(sc.id)) {
+					byId.set(sc.id, sc);
+				}
+			}
+		}
+
+		subCategories = Array.from(byId.values()).sort((a, b) =>
+			(a.subCategoryName ?? '').localeCompare(b.subCategoryName ?? '')
+		);
+
+		// Ensure current selection is valid
 		if (!subCategories.find((s) => String(s.id) === selectedSubCategoryId) && subCategories.length > 0) {
 			selectedSubCategoryId = String(subCategories[0].id);
 		}
@@ -82,11 +145,7 @@
 	async function fetchServiceItems(forceRefresh = false) {
 		isLoading = true;
 		try {
-			const subCategoryId = selectedSubCategoryId ? Number(selectedSubCategoryId) : null;
-			const params =
-				hospitalId || subCategoryId != null
-					? { hospitalId, subCategoryId: subCategoryId ?? undefined }
-					: undefined;
+			const params = hospitalId ? { hospitalId } : undefined;
 			if (forceRefresh && params) {
 				await getServiceItem(params).refresh();
 			}
@@ -132,6 +191,7 @@
 	function startEdit(row: ServiceItemSchema) {
 		mode = 'edit';
 		editingId = row.id;
+		selectedSubCategoryId = row.subCategoryId != null ? String(row.subCategoryId) : '';
 		formServiceName = row.serviceName ?? '';
 		formServiceCode = row.serviceCode ?? '';
 		formRemark = row.remark ?? '';
@@ -219,9 +279,8 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="text-2xl font-bold">Service items</h1>
-		<DaisyUiButton className="d-btn-outline d-btn-sm" onClick={startCreate}>
+		<DaisyUiButton className="d-btn-outline d-btn-sm d-btn-square" onClick={startCreate}>
 			<LucidePlus />
-			{m.create()}
 		</DaisyUiButton>
 	</div>
 
@@ -229,61 +288,49 @@
 		<DaisyUiCardBody>
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
-					<div class="flex flex-col gap-1">
-						<label class="text-sm font-medium">Category</label>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-64"
-							bind:value={selectedCategoryId}
-							onChange={onCategoryChange}
-							optionHeader="Select category"
-						>
-							{#each categories as cat (cat.id)}
-								<option value={cat.id}>{cat.categoryName ?? `Category ${cat.id}`}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-					<div class="flex flex-col gap-1">
+					<div class="flex flex-1 min-w-52 flex-col gap-1">
 						<label class="text-sm font-medium">Sub-category</label>
 						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-64"
+							className="d-select d-select-bordered d-select-sm w-full"
 							bind:value={selectedSubCategoryId}
 							onChange={onSubCategoryChange}
 							optionHeader="Select sub-category"
 						>
 							{#each subCategories as sc (sc.id)}
-								<option value={sc.id}>{sc.subCategoryName ?? `Sub-category ${sc.id}`}</option>
+								<option value={String(sc.id)}>{sc.subCategoryName ?? `Sub-category ${sc.id}`}</option>
 							{/each}
 						</DaisyUiSelect>
 					</div>
-				</div>
-
-				<div class="flex flex-wrap gap-4">
-					<div class="flex flex-col gap-1">
-						<label class="text-sm font-medium">Service name<span class="text-error"> *</span></label>
+					<div class="flex flex-1 min-w-52 flex-col gap-1">
+						<label class="text-sm font-medium">
+							Service name<span class="text-error"> *</span>
+						</label>
 						<DaisyUiInputField
 							bind:value={formServiceName}
 							inputType="text"
 							inputPlaceholderText="Service name"
 							required
-							className="d-input-sm w-72"
+							className="d-input-sm w-full"
 						/>
 					</div>
-					<div class="flex flex-col gap-1">
+					<div class="flex flex-1 min-w-40 flex-col gap-1">
 						<label class="text-sm font-medium">Service code</label>
 						<DaisyUiInputField
 							bind:value={formServiceCode}
 							inputType="text"
 							inputPlaceholderText="Code (optional)"
-							className="d-input-sm w-48"
+							className="d-input-sm w-full"
 						/>
 					</div>
+				</div>
+
+				<div class="flex flex-wrap gap-4">
 					<div class="flex flex-col gap-1 flex-1 min-w-56">
 						<label class="text-sm font-medium">Remark</label>
-						<DaisyUiInputField
+						<DaisyUiTextarea
 							bind:value={formRemark}
-							inputType="text"
-							inputPlaceholderText="Remark (optional)"
-							className="d-input-sm w-full"
+							placeholder="Remark (optional)"
+							className="h-24 w-full"
 						/>
 					</div>
 					<div class="flex items-end gap-2">
@@ -311,53 +358,16 @@
 			{#if isLoading}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.id()}</th>
-							<th>Category</th>
-							<th>Sub-category</th>
-							<th>{m.name()}</th>
-							<th>Code</th>
-							<th>{m.status()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each serviceItems as row (row.id)}
-							<tr>
-								<td>{row.id}</td>
-								<td>{categoryNameById(row.subCategoryId ? subCategories.find((s) => s.id === row.subCategoryId)?.categoryId ?? null : null)}</td>
-								<td>{subCategoryNameById(row.subCategoryId)}</td>
-								<td>{row.serviceName ?? '—'}</td>
-								<td>{row.serviceCode ?? '—'}</td>
-								<td>{row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'}</td>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => startEdit(row)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(row)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									</div>
-								</td>
-							</tr>
-						{:else}
-							<tr>
-								<td colspan={7} class="text-center text-base-content/70 py-8">
-									No service items yet. Create one above.
-								</td>
-							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
+				<MariTable
+					rows={serviceItems}
+					columns={serviceItemColumns}
+					enableColumnFilters={true}
+					actionsHeader={m.actions()}
+					actionsVariant="crud"
+					on:refresh={() => fetchServiceItems(true)}
+					on:edit={(event) => startEdit(event.detail)}
+					on:delete={(event) => handleDelete(event.detail)}
+				/>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
