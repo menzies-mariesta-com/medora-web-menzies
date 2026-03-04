@@ -6,5 +6,5 @@
 </script>
 
 <div class="d-stat-value {className}">
-    {@render children()}
+	{@render children()}
 </div>

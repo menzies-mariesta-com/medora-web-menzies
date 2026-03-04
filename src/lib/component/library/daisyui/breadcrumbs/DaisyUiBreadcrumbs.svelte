@@ -1,12 +1,12 @@
 <script lang="ts">
-	let {  className, children } = $props<{
+	let { className, children } = $props<{
 		className?: string;
-        children: () => void;
+		children: () => void;
 	}>();
 </script>
 
 <div class="d-breadcrumbs {className}">
-  <ul>
-    {@render children()}
-  </ul>
+	<ul>
+		{@render children()}
+	</ul>
 </div>

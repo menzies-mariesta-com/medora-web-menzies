@@ -28,7 +28,10 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
 	);
 
 	let branches = $state<HospitalBranchSchema[]>([]);
@@ -38,7 +41,8 @@
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			if (forceRefresh) await getBranchesByHospitalId({ hospitalId }).refresh();
+			if (forceRefresh)
+				await getBranchesByHospitalId({ hospitalId }).refresh();
 			branches = await getBranchesByHospitalId({ hospitalId });
 		} finally {
 			isLoading = false;
@@ -78,10 +82,14 @@
 		if (!result.confirmed) return;
 		try {
 			await deleteBranch({ id: row.id });
-			toastService.addToast(m.branch_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.branch_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			fetchBranches(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : m.delete_failed();
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -101,7 +109,7 @@
 			{#if isLoading}
 				<DaisyUiLoading className="py-8" />
 			{:else if branches.length === 0}
-				<p class="text-base-content/70 py-8 text-center">
+				<p class="py-8 text-center text-base-content/70">
 					{m.no_branches_yet()}
 				</p>
 			{:else}
@@ -123,7 +131,11 @@
 								<td>{b.code ?? '—'}</td>
 								<td>{b.phone ?? '—'}</td>
 								<td>{b.email ?? '—'}</td>
-								<td class="max-w-[200px] truncate" title={b.address ?? undefined}>{b.address ?? '—'}</td>
+								<td
+									class="max-w-[200px] truncate"
+									title={b.address ?? undefined}
+									>{b.address ?? '—'}</td
+								>
 								<td class="text-right">
 									<div class="flex justify-end gap-2">
 										<DaisyUiButton

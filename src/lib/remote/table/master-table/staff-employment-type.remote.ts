@@ -4,34 +4,51 @@ import * as table from '$lib/server/db/schema';
 import type {
 	StaffEmploymentTypeSchema,
 	StaffEmploymentTypeSchemaInsert,
-	StaffEmploymentTypeSchemaUpdate,
+	StaffEmploymentTypeSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getStaffEmploymentType = query(async (): Promise<StaffEmploymentTypeSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.staffEmploymentTypeTable)
-		.where(eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.staffEmploymentTypeTable.name);
-});
+export const getStaffEmploymentType = query(
+	async (): Promise<StaffEmploymentTypeSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.staffEmploymentTypeTable)
+			.where(
+				eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE)
+			)
+			.orderBy(table.staffEmploymentTypeTable.name);
+	}
+);
 
-export const getStaffEmploymentTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.staffEmploymentTypeTable)
-		.where(eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE));
-	return row?.count ?? 0;
-});
+export const getStaffEmploymentTypeCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.staffEmploymentTypeTable)
+			.where(
+				eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE)
+			);
+		return row?.count ?? 0;
+	}
+);
 
 export const getStaffEmploymentTypePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffEmploymentTypeSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.staffEmploymentTypeTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffEmploymentTypeSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.staffEmploymentTypeTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +60,7 @@ export const getStaffEmploymentTypePaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.staffEmploymentTypeTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,14 +68,18 @@ export const getStaffEmploymentTypePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
 
 export const getStaffEmploymentTypeById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<StaffEmploymentTypeSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<StaffEmploymentTypeSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffEmploymentTypeTable)
@@ -69,7 +90,9 @@ export const getStaffEmploymentTypeById = query(
 
 export const createStaffEmploymentType = command(
 	'unchecked' as const,
-	async (payload: StaffEmploymentTypeSchemaInsert): Promise<StaffEmploymentTypeSchema> => {
+	async (
+		payload: StaffEmploymentTypeSchemaInsert
+	): Promise<StaffEmploymentTypeSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.staffEmploymentTypeTable)
 			.values(payload)
@@ -114,7 +137,9 @@ export const deleteStaffEmploymentType = command(
 export const deleteStaffEmploymentTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.staffEmploymentTypeTable).where(eq(table.staffEmploymentTypeTable.id, id));
+		await ensureDb()
+			.delete(table.staffEmploymentTypeTable)
+			.where(eq(table.staffEmploymentTypeTable.id, id));
 		getStaffEmploymentType().refresh();
 	}
 );

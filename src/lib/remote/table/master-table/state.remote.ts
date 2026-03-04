@@ -1,9 +1,16 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StateSchema, StateSchemaInsert, StateSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	StateSchema,
+	StateSchemaInsert,
+	StateSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
@@ -25,9 +32,15 @@ export const getStateCount = query(async (): Promise<number> => {
 
 export const getStatePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StateSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.stateTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StateSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.stateTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -39,7 +52,7 @@ export const getStatePaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.stateTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -47,7 +60,7 @@ export const getStatePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -111,7 +124,9 @@ export const deleteState = command(
 export const deleteStateComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.stateTable).where(eq(table.stateTable.id, id));
+		await ensureDb()
+			.delete(table.stateTable)
+			.where(eq(table.stateTable.id, id));
 		getState().refresh();
 	}
 );

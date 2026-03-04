@@ -7,17 +7,22 @@ import type {
 	ReferTypeSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getReferType = query(async (): Promise<ReferTypeSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.referTypeTable)
-		.where(eq(table.referTypeTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.referTypeTable.name);
-});
+export const getReferType = query(
+	async (): Promise<ReferTypeSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.referTypeTable)
+			.where(eq(table.referTypeTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.referTypeTable.name);
+	}
+);
 
 export const getReferTypeCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -29,9 +34,15 @@ export const getReferTypeCount = query(async (): Promise<number> => {
 
 export const getReferTypePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<ReferTypeSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.referTypeTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<ReferTypeSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.referTypeTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +54,7 @@ export const getReferTypePaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.referTypeTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,7 +62,7 @@ export const getReferTypePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -69,7 +80,9 @@ export const getReferTypeById = query(
 
 export const createReferType = command(
 	'unchecked' as const,
-	async (payload: ReferTypeSchemaInsert): Promise<ReferTypeSchema> => {
+	async (
+		payload: ReferTypeSchemaInsert
+	): Promise<ReferTypeSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.referTypeTable)
 			.values(payload)
@@ -82,7 +95,9 @@ export const createReferType = command(
 
 export const updateReferType = command(
 	'unchecked' as const,
-	async (payload: ReferTypeSchemaUpdate & { id: number }): Promise<ReferTypeSchema> => {
+	async (
+		payload: ReferTypeSchemaUpdate & { id: number }
+	): Promise<ReferTypeSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.referTypeTable)
@@ -109,7 +124,9 @@ export const deleteReferType = command(
 export const deleteReferTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.referTypeTable).where(eq(table.referTypeTable.id, id));
+		await ensureDb()
+			.delete(table.referTypeTable)
+			.where(eq(table.referTypeTable.id, id));
 		getReferType().refresh();
 	}
 );

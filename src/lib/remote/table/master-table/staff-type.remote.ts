@@ -1,19 +1,28 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StaffTypeSchema, StaffTypeSchemaInsert, StaffTypeSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	StaffTypeSchema,
+	StaffTypeSchemaInsert,
+	StaffTypeSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getStaffType = query(async (): Promise<StaffTypeSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.staffTypeTable)
-		.where(eq(table.staffTypeTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.staffTypeTable.name);
-});
+export const getStaffType = query(
+	async (): Promise<StaffTypeSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.staffTypeTable)
+			.where(eq(table.staffTypeTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.staffTypeTable.name);
+	}
+);
 
 export const getStaffTypeCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -25,9 +34,15 @@ export const getStaffTypeCount = query(async (): Promise<number> => {
 
 export const getStaffTypePaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffTypeSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.staffTypeTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffTypeSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.staffTypeTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -39,7 +54,7 @@ export const getStaffTypePaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.staffTypeTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -47,7 +62,7 @@ export const getStaffTypePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -65,7 +80,9 @@ export const getStaffTypeById = query(
 
 export const createStaffType = command(
 	'unchecked' as const,
-	async (payload: StaffTypeSchemaInsert): Promise<StaffTypeSchema> => {
+	async (
+		payload: StaffTypeSchemaInsert
+	): Promise<StaffTypeSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.staffTypeTable)
 			.values(payload)
@@ -78,7 +95,10 @@ export const createStaffType = command(
 
 export const updateStaffType = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string }): Promise<StaffTypeSchema> => {
+	async (payload: {
+		id: number;
+		name?: string;
+	}): Promise<StaffTypeSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.staffTypeTable)
@@ -105,7 +125,9 @@ export const deleteStaffType = command(
 export const deleteStaffTypeComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.staffTypeTable).where(eq(table.staffTypeTable.id, id));
+		await ensureDb()
+			.delete(table.staffTypeTable)
+			.where(eq(table.staffTypeTable.id, id));
 		getStaffType().refresh();
 	}
 );

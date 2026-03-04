@@ -5,15 +5,15 @@
 
 	type PatientDialogMode = 'view' | 'edit';
 
-	let {
-		patientDialog,
-		patientDialogIframeSrc,
-		closePatientDialog
-	} = $props<{
-		patientDialog: { mode: PatientDialogMode; patientId: string } | null;
-		patientDialogIframeSrc: string;
-		closePatientDialog: () => void;
-	}>();
+	let { patientDialog, patientDialogIframeSrc, closePatientDialog } =
+		$props<{
+			patientDialog: {
+				mode: PatientDialogMode;
+				patientId: string;
+			} | null;
+			patientDialogIframeSrc: string;
+			closePatientDialog: () => void;
+		}>();
 </script>
 
 {#if patientDialog}
@@ -24,12 +24,16 @@
 		className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
 	>
 		<div
-			class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+			class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
 			role="document"
 		>
-			<div class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2">
+			<div
+				class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2"
+			>
 				<h2 class="text-lg font-semibold">
-					{patientDialog.mode === 'view' ? 'View patient' : 'Edit patient'}
+					{patientDialog.mode === 'view'
+						? 'View patient'
+						: 'Edit patient'}
 				</h2>
 				<DaisyUiButton
 					className="d-btn-ghost d-btn-sm d-btn-circle"
@@ -39,8 +43,10 @@
 				</DaisyUiButton>
 			</div>
 			<iframe
-				title={patientDialog.mode === 'view' ? 'View patient' : 'Edit patient'}
-				class="flex-1 min-h-0 w-full border-0 rounded-b-box"
+				title={patientDialog.mode === 'view'
+					? 'View patient'
+					: 'Edit patient'}
+				class="min-h-0 w-full flex-1 rounded-b-box border-0"
 				src={patientDialogIframeSrc}
 			></iframe>
 		</div>

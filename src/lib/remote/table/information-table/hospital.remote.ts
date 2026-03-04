@@ -11,10 +11,12 @@ import { eq } from 'drizzle-orm';
 import { RoleEnum } from '$lib/model/enum/db-link';
 
 // get all (for dropdowns and list)
-export const getHospital = query(async (): Promise<HospitalSchema[]> => {
-	const data = await ensureDb().select().from(table.hospitalTable);
-	return data;
-});
+export const getHospital = query(
+	async (): Promise<HospitalSchema[]> => {
+		const data = await ensureDb().select().from(table.hospitalTable);
+		return data;
+	}
+);
 
 export type HospitalWithOwner = HospitalSchema & {
 	owner?: { id: string; name: string | null; email: string } | null;
@@ -23,22 +25,27 @@ export type HospitalWithOwner = HospitalSchema & {
 /** Hospitals with owner relation for list. Server enforces: OWNER only sees their hospitals; SYSTEM_ADMIN sees all. */
 export const getHospitalWithOwner = query(
 	'unchecked' as const,
-	async (params?: { ownerId?: string | null }): Promise<HospitalWithOwner[]> => {
+	async (params?: {
+		ownerId?: string | null;
+	}): Promise<HospitalWithOwner[]> => {
 		const event = getRequestEvent();
 		const userRoleId = event?.locals?.userRoleId ?? null;
 		const userId = event?.locals?.user?.id ?? null;
 		// OWNER: ignore client param and restrict to their hospitals
 		const effectiveOwnerId =
-			userRoleId === RoleEnum.OWNER && userId ? userId : params?.ownerId ?? undefined;
+			userRoleId === RoleEnum.OWNER && userId
+				? userId
+				: (params?.ownerId ?? undefined);
 		return ensureDb().query.hospitalTable.findMany({
 			with: {
 				owner: {
-					columns: { id: true, name: true, email: true },
-				},
+					columns: { id: true, name: true, email: true }
+				}
 			},
-			...(effectiveOwnerId != null && effectiveOwnerId !== '' && {
-				where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId),
-			}),
+			...(effectiveOwnerId != null &&
+				effectiveOwnerId !== '' && {
+					where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId)
+				})
 		}) as Promise<HospitalWithOwner[]>;
 	}
 );
@@ -62,7 +69,8 @@ export const createHospital = command(
 		if (!event?.locals?.user) throw error(401, 'Unauthorized');
 		const userRoleId = event.locals.userRoleId ?? null;
 		const userId = event.locals.user.id;
-		if (userRoleId === RoleEnum.STAFF) throw error(403, 'Staff cannot create hospitals');
+		if (userRoleId === RoleEnum.STAFF)
+			throw error(403, 'Staff cannot create hospitals');
 		const values = { ...input };
 		if (userRoleId === RoleEnum.OWNER) {
 			values.ownerId = userId;
@@ -73,10 +81,12 @@ export const createHospital = command(
 			.returning();
 		if (!inserted) throw new Error('Failed to create hospital');
 		// Initialize per-hospital patient code counter
-		await ensureDb().insert(table.hospitalPatientCodeCounterTable).values({
-			hospitalId: inserted.id,
-			lastNumber: 0
-		});
+		await ensureDb()
+			.insert(table.hospitalPatientCodeCounterTable)
+			.values({
+				hospitalId: inserted.id,
+				lastNumber: 0
+			});
 		getHospital().refresh();
 		getHospitalWithOwner(undefined).refresh();
 		return inserted;
@@ -88,19 +98,23 @@ export const updateHospital = command(
 	async ({
 		id,
 		...data
-	}: HospitalSchemaUpdate & { id: string }): Promise<HospitalSchema> => {
+	}: HospitalSchemaUpdate & {
+		id: string;
+	}): Promise<HospitalSchema> => {
 		const event = getRequestEvent();
 		if (!event?.locals?.user) throw error(401, 'Unauthorized');
 		const userRoleId = event.locals.userRoleId ?? null;
 		const userId = event.locals.user.id;
-		if (userRoleId === RoleEnum.STAFF) throw error(403, 'Staff cannot update hospitals');
+		if (userRoleId === RoleEnum.STAFF)
+			throw error(403, 'Staff cannot update hospitals');
 		if (userRoleId === RoleEnum.OWNER) {
 			const [hospital] = await ensureDb()
 				.select({ ownerId: table.hospitalTable.ownerId })
 				.from(table.hospitalTable)
 				.where(eq(table.hospitalTable.id, id))
 				.limit(1);
-			if (!hospital || hospital.ownerId !== userId) throw error(403, 'You can only update your own hospitals');
+			if (!hospital || hospital.ownerId !== userId)
+				throw error(403, 'You can only update your own hospitals');
 			data.ownerId = userId;
 		}
 		const [updated] = await ensureDb()
@@ -122,16 +136,20 @@ export const deleteHospital = command(
 		if (!event?.locals?.user) throw error(401, 'Unauthorized');
 		const userRoleId = event.locals.userRoleId ?? null;
 		const userId = event.locals.user.id;
-		if (userRoleId === RoleEnum.STAFF) throw error(403, 'Staff cannot delete hospitals');
+		if (userRoleId === RoleEnum.STAFF)
+			throw error(403, 'Staff cannot delete hospitals');
 		if (userRoleId === RoleEnum.OWNER) {
 			const [hospital] = await ensureDb()
 				.select({ ownerId: table.hospitalTable.ownerId })
 				.from(table.hospitalTable)
 				.where(eq(table.hospitalTable.id, id))
 				.limit(1);
-			if (!hospital || hospital.ownerId !== userId) throw error(403, 'You can only delete your own hospitals');
+			if (!hospital || hospital.ownerId !== userId)
+				throw error(403, 'You can only delete your own hospitals');
 		}
-		await ensureDb().delete(table.hospitalTable).where(eq(table.hospitalTable.id, id));
+		await ensureDb()
+			.delete(table.hospitalTable)
+			.where(eq(table.hospitalTable.id, id));
 		getHospital().refresh();
 		getHospitalWithOwner(undefined).refresh();
 	}

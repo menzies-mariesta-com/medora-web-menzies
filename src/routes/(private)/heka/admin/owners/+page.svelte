@@ -6,7 +6,10 @@
 	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
 	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import { getUsersByRole, deleteUser } from '$lib/remote/table/auth-table/user.remote';
+	import {
+		getUsersByRole,
+		deleteUser
+	} from '$lib/remote/table/auth-table/user.remote';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -64,10 +67,14 @@
 		if (!result.confirmed) return;
 		try {
 			await deleteUser({ id: owner.id });
-			toastService.addToast(m.owner_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.owner_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			await loadOwners();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : m.delete_failed();
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -89,7 +96,10 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="text-2xl font-bold">{m.owner_management()}</h1>
-		<DaisyUiButton className="d-btn-primary" onClick={openNewOwnerModal}>
+		<DaisyUiButton
+			className="d-btn-primary"
+			onClick={openNewOwnerModal}
+		>
 			<LucidePlus />
 			{m.new_owner()}
 		</DaisyUiButton>
@@ -100,7 +110,7 @@
 			{#if isLoading}
 				<DaisyUiLoading className="py-8" />
 			{:else if owners.length === 0}
-				<p class="text-base-content/70 py-8 text-center">
+				<p class="py-8 text-center text-base-content/70">
 					{m.no_owners_yet()}
 				</p>
 			{:else}

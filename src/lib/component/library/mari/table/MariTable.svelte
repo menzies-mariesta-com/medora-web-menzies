@@ -54,6 +54,11 @@
 		edit: RowEventDetail;
 		delete: RowEventDetail;
 		select: RowEventDetail;
+		filtersChange: {
+			columnId: string;
+			value: string;
+			filters: Record<string, string>;
+		};
 	}>();
 
 	let {
@@ -68,7 +73,8 @@
 		showRowActions = false,
 		actionsHeader = 'Actions',
 		enableColumnFilters = false,
-		actionsVariant = 'none'
+		actionsVariant = 'none',
+		useRemoteFilters = false
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -82,6 +88,7 @@
 		actionsHeader?: string;
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
+		useRemoteFilters?: boolean;
 	}>();
 
 	let currentPage = $state(1);
@@ -90,45 +97,67 @@
 
 	const pageSize = $derived(Number(pageSizeStr) || 10);
 
-	const hasActionsColumn = $derived(showRowActions || actionsVariant !== 'none');
+	const hasActionsColumn = $derived(
+		showRowActions || actionsVariant !== 'none'
+	);
 
 	const filteredRows = $derived(
-		rows.filter((row, index) => {
-			for (const column of columns) {
-				const rawFilter = columnFilters[column.id];
-				const filter = rawFilter ? rawFilter.trim().toLowerCase() : '';
-				if (!filter) continue;
+		useRemoteFilters
+			? rows
+			: rows.filter((row, index) => {
+					for (const column of columns) {
+						const rawFilter = columnFilters[column.id];
+						const filter = rawFilter
+							? rawFilter.trim().toLowerCase()
+							: '';
+						if (!filter) continue;
 
-				const cell = getCellValue(row, column, index);
-				const valueStr = cell == null ? '' : String(cell).toLowerCase();
-				if (!valueStr.includes(filter)) {
-					return false;
-				}
-			}
-			return true;
-		})
+						const cell = getCellValue(row, column, index);
+						const valueStr =
+							cell == null ? '' : String(cell).toLowerCase();
+						if (!valueStr.includes(filter)) {
+							return false;
+						}
+					}
+					return true;
+				})
 	);
 
 	const total = $derived(filteredRows.length);
-	const totalPages = $derived(total === 0 ? 1 : Math.ceil(total / pageSize));
+	const totalPages = $derived(
+		total === 0 ? 1 : Math.ceil(total / pageSize)
+	);
 
-	const pageStart = $derived(total === 0 ? 0 : (currentPage - 1) * pageSize + 1);
+	const pageStart = $derived(
+		total === 0 ? 0 : (currentPage - 1) * pageSize + 1
+	);
 	const pageEnd = $derived(Math.min(currentPage * pageSize, total));
 
 	const pagedRows = $derived(
-		filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+		filteredRows.slice(
+			(currentPage - 1) * pageSize,
+			currentPage * pageSize
+		)
 	);
 
-	function getCellValue(row: any, column: MariTableColumn, index: number) {
+	function getCellValue(
+		row: any,
+		column: MariTableColumn,
+		index: number
+	) {
 		if (column.format) {
 			const raw = column.field
-				? column.field.split('.').reduce((acc: any, part) => acc?.[part], row)
+				? column.field
+						.split('.')
+						.reduce((acc: any, part) => acc?.[part], row)
 				: (row as any)[column.id];
 			return column.format(raw, row, index);
 		}
 
 		const path = column.field ?? column.id;
-		const value = path.split('.').reduce((acc: any, part) => acc?.[part], row);
+		const value = path
+			.split('.')
+			.reduce((acc: any, part) => acc?.[part], row);
 		return value ?? '—';
 	}
 
@@ -151,17 +180,30 @@
 
 	function handleFilterInputEvent(columnId: string, event: Event) {
 		const target = event.currentTarget as HTMLInputElement | null;
-		columnFilters = {
+		const value = target?.value ?? '';
+		const newFilters: Record<string, string> = {
 			...columnFilters,
-			[columnId]: target?.value ?? ''
+			[columnId]: value
 		};
+
+		columnFilters = newFilters;
 		currentPage = 1;
+
+		if (useRemoteFilters) {
+			dispatch('filtersChange', {
+				columnId,
+				value,
+				filters: newFilters
+			});
+		}
 	}
 </script>
 
 <div class="flex h-full min-h-[40vh] flex-col gap-0">
 	<!-- Top controls: per page, pagination, summary, refresh -->
-	<div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2">
+	<div
+		class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
 				<span class="text-sm">per page</span>
@@ -207,7 +249,10 @@
 			<div class="text-sm opacity-80">
 				{#if total > 0}
 					<span>
-						Showing <span class="text-success">{pageStart}–{pageEnd}</span> of
+						Showing <span class="text-success"
+							>{pageStart}–{pageEnd}</span
+						>
+						of
 						<span class="text-error"> {total}</span> items
 					</span>
 				{:else}
@@ -234,7 +279,7 @@
 			<DaisyUiLoading className="d-loading-xl" />
 		</div>
 	{:else}
-		<div class="flex-1 min-h-0 overflow-auto px-4 py-2">
+		<div class="min-h-0 flex-1 overflow-auto px-4 py-2">
 			<DaisyUiTable className="d-table d-table-sm">
 				<DaisyUiTableHeader>
 					<tr class="sticky top-0 z-10 bg-base-200">
@@ -254,7 +299,8 @@
 										type="text"
 										placeholder={column.header}
 										value={columnFilters[column.id] ?? ''}
-										on:input={(event) => handleFilterInputEvent(column.id, event)}
+										on:input={(event) =>
+											handleFilterInputEvent(column.id, event)}
 									/>
 								{:else}
 									{column.header}
@@ -294,7 +340,7 @@
 													<LucideEye className="size-4" />
 												</DaisyUiButton>
 												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
+													className="d-btn-ghost d-btn-sm d-btn-success"
 													onClick={() => dispatch('edit', row)}
 												>
 													<LucidePencil className="size-4" />
@@ -314,7 +360,11 @@
 												Select
 											</DaisyUiButton>
 										{:else}
-											<slot name="rowActions" {row} rowIndex={index} />
+											<slot
+												name="rowActions"
+												{row}
+												rowIndex={index}
+											/>
 										{/if}
 									</td>
 								{/if}
@@ -332,4 +382,3 @@
 		</div>
 	{/if}
 </div>
-

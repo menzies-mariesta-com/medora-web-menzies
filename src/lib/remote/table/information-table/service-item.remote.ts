@@ -4,27 +4,88 @@ import * as table from '$lib/server/db/schema';
 import type {
 	ServiceItemSchema,
 	ServiceItemSchemaInsert,
-	ServiceItemSchemaUpdate,
+	ServiceItemSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, ne } from 'drizzle-orm';
 
-// get all (optionally filtered by hospitalId/subCategoryId)
+// get all (optionally filtered by hospitalId/subCategoryId, column filters)
 export const getServiceItem = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: string | null; subCategoryId?: number | null }): Promise<
-		ServiceItemSchema[]
-	> => {
-		const notDeleted = ne(table.serviceItemTable.statusId, StatusEnum.DELETED);
+	async (params?: {
+		hospitalId?: string | null;
+		subCategoryId?: number | null;
+		subCategoryIds?: number[] | null;
+		serviceName?: string | null;
+		serviceCode?: string | null;
+		statusId?: number | null;
+		id?: number | null;
+	}): Promise<ServiceItemSchema[]> => {
+		const notDeleted = ne(
+			table.serviceItemTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.hospitalId != null && params.hospitalId !== '') {
-			whereExpr = and(whereExpr, eq(table.serviceItemTable.hospitalId, params.hospitalId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.hospitalId, params.hospitalId)
+			);
 		}
+
 		if (params?.subCategoryId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceItemTable.subCategoryId, params.subCategoryId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.subCategoryId, params.subCategoryId)
+			);
+		}
+
+		if (params?.subCategoryIds && params.subCategoryIds.length > 0) {
+			whereExpr = and(
+				whereExpr,
+				inArray(
+					table.serviceItemTable.subCategoryId,
+					params.subCategoryIds
+				)
+			);
+		}
+
+		if (params?.id != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.id, params.id)
+			);
+		}
+
+		const serviceNameTerm = params?.serviceName?.trim();
+		if (serviceNameTerm) {
+			const pattern = `%${serviceNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.serviceItemTable.serviceName, pattern)
+			);
+		}
+
+		const serviceCodeTerm = params?.serviceCode?.trim();
+		if (serviceCodeTerm) {
+			const pattern = `%${serviceCodeTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.serviceItemTable.serviceCode, pattern)
+			);
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.statusId, params.statusId)
+			);
 		}
 
 		return ensureDb()
@@ -36,26 +97,90 @@ export const getServiceItem = query(
 );
 
 // get count
-export const getServiceItemCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.serviceItemTable);
-	return row?.count ?? 0;
-});
+export const getServiceItemCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.serviceItemTable);
+		return row?.count ?? 0;
+	}
+);
 
-// get paginated
+// get paginated (supports same filters as getServiceItem)
 export const getServiceItemPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams & { hospitalId?: string | null; subCategoryId?: number | null }): Promise<
-		PaginatedResult<ServiceItemSchema>
-	> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const notDeleted = ne(table.serviceItemTable.statusId, StatusEnum.DELETED);
+	async (
+		params?: PaginationParams & {
+			hospitalId?: string | null;
+			subCategoryId?: number | null;
+			subCategoryIds?: number[] | null;
+			serviceName?: string | null;
+			serviceCode?: string | null;
+			statusId?: number | null;
+			id?: number | null;
+		}
+	): Promise<PaginatedResult<ServiceItemSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const notDeleted = ne(
+			table.serviceItemTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.hospitalId != null && params.hospitalId !== '') {
-			whereExpr = and(whereExpr, eq(table.serviceItemTable.hospitalId, params.hospitalId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.hospitalId, params.hospitalId)
+			);
 		}
 		if (params?.subCategoryId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceItemTable.subCategoryId, params.subCategoryId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.subCategoryId, params.subCategoryId)
+			);
+		}
+
+		if (params?.subCategoryIds && params.subCategoryIds.length > 0) {
+			whereExpr = and(
+				whereExpr,
+				inArray(
+					table.serviceItemTable.subCategoryId,
+					params.subCategoryIds
+				)
+			);
+		}
+
+		if (params?.id != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.id, params.id)
+			);
+		}
+
+		const serviceNameTerm = params?.serviceName?.trim();
+		if (serviceNameTerm) {
+			const pattern = `%${serviceNameTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.serviceItemTable.serviceName, pattern)
+			);
+		}
+
+		const serviceCodeTerm = params?.serviceCode?.trim();
+		if (serviceCodeTerm) {
+			const pattern = `%${serviceCodeTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.serviceItemTable.serviceCode, pattern)
+			);
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceItemTable.statusId, params.statusId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -66,7 +191,10 @@ export const getServiceItemPaginated = query(
 				.orderBy(table.serviceItemTable.serviceName)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.serviceItemTable).where(whereExpr),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.serviceItemTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -74,7 +202,7 @@ export const getServiceItemPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -82,7 +210,11 @@ export const getServiceItemPaginated = query(
 // get one
 export const getServiceItemById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ServiceItemSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<ServiceItemSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceItemTable)
@@ -94,7 +226,9 @@ export const getServiceItemById = query(
 // create
 export const createServiceItem = command(
 	'unchecked' as const,
-	async (payload: ServiceItemSchemaInsert): Promise<ServiceItemSchema> => {
+	async (
+		payload: ServiceItemSchemaInsert
+	): Promise<ServiceItemSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.serviceItemTable)
 			.values(payload)
@@ -110,7 +244,9 @@ export const createServiceItem = command(
 // update
 export const updateServiceItem = command(
 	'unchecked' as const,
-	async (payload: ServiceItemSchemaUpdate & { id: number }): Promise<ServiceItemSchema> => {
+	async (
+		payload: ServiceItemSchemaUpdate & { id: number }
+	): Promise<ServiceItemSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.serviceItemTable)
@@ -143,7 +279,9 @@ export const deleteServiceItem = command(
 export const deleteServiceItemComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.serviceItemTable).where(eq(table.serviceItemTable.id, id));
+		await ensureDb()
+			.delete(table.serviceItemTable)
+			.where(eq(table.serviceItemTable.id, id));
 		getServiceItem(undefined).refresh();
 		getServiceItemCount().refresh();
 		getServiceItemPaginated(undefined).refresh();

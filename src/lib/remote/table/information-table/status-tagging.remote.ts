@@ -4,43 +4,63 @@ import * as table from '$lib/server/db/schema';
 import type {
 	StatusTaggingSchema,
 	StatusTaggingSchemaInsert,
-	StatusTaggingSchemaUpdate,
+	StatusTaggingSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getStatusTagging = query(async (): Promise<StatusTaggingSchema[]> => {
-	const data = await ensureDb().select().from(table.statusTaggingTable);
-	return data;
-});
+export const getStatusTagging = query(
+	async (): Promise<StatusTaggingSchema[]> => {
+		const data = await ensureDb()
+			.select()
+			.from(table.statusTaggingTable);
+		return data;
+	}
+);
 
 // get all with relations
 export const getStatusTaggingWithRelations = query(async () => {
 	return ensureDb().query.statusTaggingTable.findMany({
 		with: {
 			statusTaggingType: true,
-			status: true,
-		},
+			status: true
+		}
 	});
 });
 
 // get count
-export const getStatusTaggingCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.statusTaggingTable);
-	return row?.count ?? 0;
-});
+export const getStatusTaggingCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.statusTaggingTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getStatusTaggingPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StatusTaggingSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StatusTaggingSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
-			ensureDb().select().from(table.statusTaggingTable).limit(limit).offset(offset),
-			ensureDb().select({ count: count() }).from(table.statusTaggingTable),
+			ensureDb()
+				.select()
+				.from(table.statusTaggingTable)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.statusTaggingTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -48,7 +68,7 @@ export const getStatusTaggingPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -56,7 +76,11 @@ export const getStatusTaggingPaginated = query(
 // get one
 export const getStatusTaggingById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<StatusTaggingSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<StatusTaggingSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.statusTaggingTable)
@@ -68,7 +92,9 @@ export const getStatusTaggingById = query(
 // create
 export const createStatusTagging = command(
 	'unchecked' as const,
-	async (payload: StatusTaggingSchemaInsert): Promise<StatusTaggingSchema> => {
+	async (
+		payload: StatusTaggingSchemaInsert
+	): Promise<StatusTaggingSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.statusTaggingTable)
 			.values(payload)
@@ -82,7 +108,9 @@ export const createStatusTagging = command(
 // update
 export const updateStatusTagging = command(
 	'unchecked' as const,
-	async (payload: { id: number } & StatusTaggingSchemaUpdate): Promise<StatusTaggingSchema> => {
+	async (
+		payload: { id: number } & StatusTaggingSchemaUpdate
+	): Promise<StatusTaggingSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.statusTaggingTable)
@@ -111,7 +139,9 @@ export const deleteStatusTagging = command(
 export const deleteStatusTaggingComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.statusTaggingTable).where(eq(table.statusTaggingTable.id, id));
+		await ensureDb()
+			.delete(table.statusTaggingTable)
+			.where(eq(table.statusTaggingTable.id, id));
 		getStatusTagging().refresh();
 	}
 );

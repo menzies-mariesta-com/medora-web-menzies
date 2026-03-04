@@ -16,12 +16,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 
-	let {
-		open,
-		onClose,
-		staffId,
-		registrationEditUrl
-	} = $props<{
+	let { open, onClose, staffId, registrationEditUrl } = $props<{
 		open: boolean;
 		onClose: () => void;
 		staffId: string | null;
@@ -33,7 +28,9 @@
 	type Screen = 'menu' | 'account-edit';
 	let screen = $state<Screen>('menu');
 
-	let showEditIframe = $derived(screen === 'account-edit' && !!staffId);
+	let showEditIframe = $derived(
+		screen === 'account-edit' && !!staffId
+	);
 	const iframeSrc = $derived(
 		staffId ? `${registrationEditUrl}?edit=${staffId}&embed=1` : ''
 	);
@@ -75,14 +72,23 @@
 		});
 		if (result.confirmed) {
 			try {
-				await updateStaff({ id: staffId, statusId: StatusEnum.INACTIVE });
-				toastService.addToast('Account deactivated.', StatusColorEnum.SUCCESS);
+				await updateStaff({
+					id: staffId,
+					statusId: StatusEnum.INACTIVE
+				});
+				toastService.addToast(
+					'Account deactivated.',
+					StatusColorEnum.SUCCESS
+				);
 				onClose();
 				await authClient.signOut();
 				goto(WebRoutesEnum.LOGIN);
 			} catch (err) {
 				console.error(err);
-				toastService.addToast('Failed to deactivate account.', StatusColorEnum.ERROR);
+				toastService.addToast(
+					'Failed to deactivate account.',
+					StatusColorEnum.ERROR
+				);
 			}
 		}
 	}
@@ -104,7 +110,7 @@
 	>
 		{#if showEditIframe}
 			<div
-				class="d-modal-box !max-w-none w-[96vw] h-[96dvh] min-h-[96dvh] flex flex-col p-0 gap-0 overflow-hidden"
+				class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
 				role="document"
 			>
 				<div
@@ -127,13 +133,15 @@
 				</div>
 				<iframe
 					title="Edit your profile"
-					class="flex-1 min-h-0 w-full border-0 rounded-b-box"
+					class="min-h-0 w-full flex-1 rounded-b-box border-0"
 					src={iframeSrc}
 				></iframe>
 			</div>
 		{:else}
 			<div class="d-modal-box max-w-md" role="document">
-				<div class="flex items-center justify-between border-b border-base-300 pb-4">
+				<div
+					class="flex items-center justify-between border-b border-base-300 pb-4"
+				>
 					<h2 class="text-lg font-semibold">Account</h2>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm d-btn-circle"

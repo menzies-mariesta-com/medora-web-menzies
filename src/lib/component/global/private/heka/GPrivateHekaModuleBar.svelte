@@ -31,7 +31,7 @@
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
-type StaffBranchForNav = { id: string; name: string | null };
+	type StaffBranchForNav = { id: string; name: string | null };
 
 	let {
 		hospitalId = null,
@@ -91,16 +91,18 @@ type StaffBranchForNav = { id: string; name: string | null };
 	const routerUtil = new RouterUtil();
 
 	let pageLocator = $derived.by(() => {
-		const segments = StringUtil.parseUrlSegments(page.url.pathname).slice(-2);
+		const segments = StringUtil.parseUrlSegments(
+			page.url.pathname
+		).slice(-2);
 		const pageTitle = segments
 			.filter((segment) => !(hospitalId && segment === hospitalId))
-			.map((segment) =>
-				StringUtil.segmentToLabel(segment)
-			)
+			.map((segment) => StringUtil.segmentToLabel(segment))
 			.join(' / ');
 
 		if (hospitalName?.trim()) {
-			return pageTitle ? `${hospitalName} / ${pageTitle}` : hospitalName;
+			return pageTitle
+				? `${hospitalName} / ${pageTitle}`
+				: hospitalName;
 		}
 
 		return pageTitle;
@@ -108,7 +110,8 @@ type StaffBranchForNav = { id: string; name: string | null };
 
 	let isNavbarVisibleInternal = $state(true);
 	const isControlled = $derived(
-		navbarVisible !== undefined && typeof onToggleNavbar === 'function'
+		navbarVisible !== undefined &&
+			typeof onToggleNavbar === 'function'
 	);
 	const isNavbarVisible = $derived(
 		isControlled ? (navbarVisible ?? false) : isNavbarVisibleInternal
@@ -120,19 +123,25 @@ type StaffBranchForNav = { id: string; name: string | null };
 
 	// User group select: only for STAFF with multiple user groups (after logged in)
 	const showUserGroupSelect = $derived(
-		userRoleId === RoleEnum.STAFF && (staffUserGroupsForNav?.length ?? 0) > 1
+		userRoleId === RoleEnum.STAFF &&
+			(staffUserGroupsForNav?.length ?? 0) > 1
 	);
 	const setSelectedUserGroupUrl = $derived(
-		hospitalId ? `/heka/hospital/${hospitalId}/home/set-selected-user-group` : ''
+		hospitalId
+			? `/heka/hospital/${hospitalId}/home/set-selected-user-group`
+			: ''
 	);
 	const selectedUserGroupIdStr = $derived(
 		selectedUserGroupId != null ? String(selectedUserGroupId) : ''
 	);
 	const showBranchSelect = $derived(
-		userRoleId === RoleEnum.STAFF && (staffBranchesForNav?.length ?? 0) > 1
+		userRoleId === RoleEnum.STAFF &&
+			(staffBranchesForNav?.length ?? 0) > 1
 	);
 	const setSelectedBranchUrl = $derived(
-		hospitalId ? `/heka/hospital/${hospitalId}/home/set-selected-branch` : ''
+		hospitalId
+			? `/heka/hospital/${hospitalId}/home/set-selected-branch`
+			: ''
 	);
 	const selectedBranchIdStr = $derived(selectedBranchId ?? '');
 	let userGroupForm: HTMLFormElement | undefined = $state();
@@ -223,12 +232,12 @@ type StaffBranchForNav = { id: string; name: string | null };
 		</DaisyUiNavbarEnd>
 	</DaisyUiNavbar>
 {/if}
-	<AccountModal
-		open={accountModalOpen}
-		onClose={closeAccountModal}
-		staffId={staffId}
-		registrationEditUrl={registrationEditUrl}
-	/>
+<AccountModal
+	open={accountModalOpen}
+	onClose={closeAccountModal}
+	{staffId}
+	{registrationEditUrl}
+/>
 
 <!-- navbar end -->
 

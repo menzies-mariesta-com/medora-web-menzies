@@ -5,6 +5,6 @@
 	}>();
 </script>
 
-<div class="d-toast-center d-toast {className}">
+<div class="d-toast d-toast-center {className}">
 	{@render children()}
 </div>

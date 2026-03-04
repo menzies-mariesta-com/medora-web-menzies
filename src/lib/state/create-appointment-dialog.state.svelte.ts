@@ -7,4 +7,9 @@ export const CreateAppointmentDialogState = $state<{
 	branchId: string | null;
 	/** Slot duration in minutes; used to compute toTime from timeSlot. */
 	slotDurationMinutes: number;
-}>({ slot: null, staffId: null, branchId: null, slotDurationMinutes: 15 });
+}>({
+	slot: null,
+	staffId: null,
+	branchId: null,
+	slotDurationMinutes: 15
+});

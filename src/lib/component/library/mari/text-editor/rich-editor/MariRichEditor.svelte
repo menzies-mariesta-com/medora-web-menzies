@@ -5,6 +5,6 @@
 
 <MariRichEditorController />
 
-{@html ""}
+{@html ''}
 
 <MariRichEditorPreview />

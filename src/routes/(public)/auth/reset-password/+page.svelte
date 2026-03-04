@@ -37,7 +37,10 @@
 		const fd = new FormData(form);
 		const email = (fd.get('email') as string)?.trim();
 		if (!email) {
-			toastService.addToast(m.please_enter_email(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.please_enter_email(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
@@ -47,13 +50,13 @@
 		});
 		isLoading = false;
 		if (error) {
-			toastService.addToast(error.message ?? m.failed_send_reset_link(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				error.message ?? m.failed_send_reset_link(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		toastService.addToast(
-			m.reset_email_sent(),
-			StatusColorEnum.INFO
-		);
+		toastService.addToast(m.reset_email_sent(), StatusColorEnum.INFO);
 	}
 
 	async function handleResetPassword(e: SubmitEvent) {
@@ -64,11 +67,17 @@
 		const newPassword = fd.get('newPassword') as string;
 		const confirmPassword = fd.get('confirmPassword') as string;
 		if (!newPassword || newPassword.length < 8) {
-			toastService.addToast(m.password_min_length(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.password_min_length(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (newPassword !== confirmPassword) {
-			toastService.addToast(m.passwords_not_match(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.passwords_not_match(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
@@ -78,10 +87,16 @@
 		});
 		isLoading = false;
 		if (error) {
-			toastService.addToast(error.message ?? m.failed_reset_password(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				error.message ?? m.failed_reset_password(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		toastService.addToast(m.password_reset_success(), StatusColorEnum.INFO);
+		toastService.addToast(
+			m.password_reset_success(),
+			StatusColorEnum.INFO
+		);
 		await goto(WebRoutesEnum.LOGIN);
 	}
 
@@ -93,7 +108,9 @@
 <DaisyUiCard className="w-full max-w-md">
 	<DaisyUiCardBody>
 		{#if errorFromUrl === 'INVALID_TOKEN'}
-			<div class="rounded-box border border-error/30 bg-error/10 p-4 text-error">
+			<div
+				class="rounded-box border border-error/30 bg-error/10 p-4 text-error"
+			>
 				{m.invalid_reset_link()}
 			</div>
 		{/if}
@@ -108,7 +125,9 @@
 							<img src={HekaLogo} alt="" class="w-42" />
 						</DaisyUiLink>
 					</DaisyUiFieldsetLegend>
-					<p class="text-sm text-base-content/80">{m.set_new_password_description()}</p>
+					<p class="text-sm text-base-content/80">
+						{m.set_new_password_description()}
+					</p>
 
 					<section>
 						<DaisyUiJoin className="w-full">
@@ -118,7 +137,10 @@
 								nameText="newPassword"
 								className="w-full"
 							/>
-							<DaisyUiButton type="button" onClick={togglePasswordVisibility}>
+							<DaisyUiButton
+								type="button"
+								onClick={togglePasswordVisibility}
+							>
 								{#if isPasswordVisible}
 									<LucideEye />
 								{:else}
@@ -177,7 +199,10 @@
 					</DaisyUiButton>
 
 					<div class="my-ft-small">
-						<DaisyUiLink href={WebRoutesEnum.LOGIN} className="d-link-info">
+						<DaisyUiLink
+							href={WebRoutesEnum.LOGIN}
+							className="d-link-info"
+						>
 							{m.back_to_login()}
 						</DaisyUiLink>
 					</div>

@@ -3,16 +3,16 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
+	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
+	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
+	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-import MariTable, {
-	type MariTableColumn
-} from '$lib/component/library/mari/table/MariTable.svelte';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import {
 		getServiceItem,
 		createServiceItem,
@@ -22,7 +22,10 @@ import MariTable, {
 	} from '$lib/remote/table/information-table/service-item.remote';
 	import { getCategory } from '$lib/remote/table/information-table/category.remote';
 	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
-	import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-type';
+	import type {
+		CategorySchema,
+		SubCategorySchema
+	} from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -38,7 +41,10 @@ import MariTable, {
 	let { data } = $props();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
 	);
 	/** User's current branch from layout; refetch when branch changes. */
 	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
@@ -58,52 +64,56 @@ import MariTable, {
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
-let isLoading = $state(false);
-let isSaving = $state(false);
+	let isLoading = $state(false);
+	let isSaving = $state(false);
 
-const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
-	{
-		id: 'id',
-		header: m.id(),
-		widthClass: 'w-20'
-	},
-	{
-		id: 'category',
-		header: 'Category',
-		widthClass: 'w-40',
-		format: (_value, row) =>
-			categoryNameById(
-				row.subCategoryId
-					? subCategories.find((s) => s.id === row.subCategoryId)?.categoryId ?? null
-					: null
-			)
-	},
-	{
-		id: 'subCategory',
-		header: 'Sub-category',
-		widthClass: 'w-40',
-		format: (_value, row) => subCategoryNameById(row.subCategoryId)
-	},
-	{
-		id: 'serviceName',
-		header: m.name(),
-		widthClass: 'w-48',
-		field: 'serviceName'
-	},
-	{
-		id: 'serviceCode',
-		header: 'Code',
-		widthClass: 'w-32',
-		field: 'serviceCode',
-		format: (value) => value ?? '—'
-	},
-	{
-		id: 'status',
-		header: m.status(),
-		widthClass: 'w-32',
-		format: (_value, row) => (row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive')
-	}
-];
+	let tableColumnFilters = $state<Record<string, string>>({});
+
+	const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
+		{
+			id: 'id',
+			header: m.id(),
+			widthClass: 'w-20'
+		},
+		{
+			id: 'category',
+			header: 'Category',
+			widthClass: 'w-40',
+			format: (_value, row) =>
+				categoryNameById(
+					row.subCategoryId
+						? (subCategories.find((s) => s.id === row.subCategoryId)
+								?.categoryId ?? null)
+						: null
+				)
+		},
+		{
+			id: 'subCategory',
+			header: 'Sub-category',
+			widthClass: 'w-40',
+			format: (_value, row) => subCategoryNameById(row.subCategoryId)
+		},
+		{
+			id: 'serviceName',
+			header: m.name(),
+			widthClass: 'w-48',
+			field: 'serviceName'
+		},
+		{
+			id: 'serviceCode',
+			header: 'Code',
+			widthClass: 'w-32',
+			field: 'serviceCode',
+			format: (value) => value ?? '—'
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-32',
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+		}
+	];
 
 	async function fetchCategories() {
 		if (!hospitalId) return;
@@ -111,7 +121,7 @@ const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
 		categories = await getCategory({ hospitalId });
 	}
 
-async function fetchSubCategories() {
+	async function fetchSubCategories() {
 		// Load all sub-categories for all categories available to this branch
 		if (categories.length === 0) {
 			subCategories = [];
@@ -137,7 +147,12 @@ async function fetchSubCategories() {
 		);
 
 		// Ensure current selection is valid
-		if (!subCategories.find((s) => String(s.id) === selectedSubCategoryId) && subCategories.length > 0) {
+		if (
+			!subCategories.find(
+				(s) => String(s.id) === selectedSubCategoryId
+			) &&
+			subCategories.length > 0
+		) {
 			selectedSubCategoryId = String(subCategories[0].id);
 		}
 	}
@@ -145,8 +160,105 @@ async function fetchSubCategories() {
 	async function fetchServiceItems(forceRefresh = false) {
 		isLoading = true;
 		try {
-			const params = hospitalId ? { hospitalId } : undefined;
-			if (forceRefresh && params) {
+			const filters = tableColumnFilters;
+
+			const params: {
+				hospitalId?: string;
+				subCategoryIds?: number[];
+				serviceName?: string;
+				serviceCode?: string;
+				statusId?: number;
+				id?: number;
+			} = {};
+
+			if (hospitalId) {
+				params.hospitalId = hospitalId;
+			}
+
+			// ID filter
+			const idTerm = filters.id?.trim();
+			if (idTerm) {
+				const idVal = Number(idTerm);
+				if (!Number.isNaN(idVal)) {
+					params.id = idVal;
+				}
+			}
+
+			// Category / Sub-category filters -> subCategoryIds array
+			const categoryTerm = filters.category?.trim().toLowerCase();
+			const subCategoryTerm = filters.subCategory
+				?.trim()
+				.toLowerCase();
+
+			let subCategoryIds: number[] | undefined;
+
+			if (categoryTerm) {
+				const matchingCategoryIds = categories
+					.filter((c) =>
+						(c.categoryName ?? '')
+							.toLowerCase()
+							.includes(categoryTerm)
+					)
+					.map((c) => c.id);
+
+				if (matchingCategoryIds.length > 0) {
+					const fromCategory = subCategories
+						.filter((sc) =>
+							matchingCategoryIds.includes(sc.categoryId ?? 0)
+						)
+						.map((sc) => sc.id);
+					subCategoryIds = fromCategory;
+				} else {
+					subCategoryIds = [];
+				}
+			}
+
+			if (subCategoryTerm) {
+				const fromSubCategory = subCategories
+					.filter((sc) =>
+						(sc.subCategoryName ?? '')
+							.toLowerCase()
+							.includes(subCategoryTerm)
+					)
+					.map((sc) => sc.id);
+
+				if (subCategoryIds == null) {
+					subCategoryIds = fromSubCategory;
+				} else {
+					subCategoryIds = subCategoryIds.filter((id) =>
+						fromSubCategory.includes(id)
+					);
+				}
+			}
+
+			if (subCategoryIds) {
+				if (subCategoryIds.length === 0) {
+					serviceItems = [];
+					return;
+				}
+				params.subCategoryIds = subCategoryIds;
+			}
+
+			// Service name / code filters
+			const nameTerm = filters.serviceName?.trim();
+			if (nameTerm) {
+				params.serviceName = nameTerm;
+			}
+
+			const codeTerm = filters.serviceCode?.trim();
+			if (codeTerm) {
+				params.serviceCode = codeTerm;
+			}
+
+			// Status filter from text
+			const statusTerm = filters.status?.trim().toLowerCase();
+			if (statusTerm === 'active') {
+				params.statusId = StatusEnum.ACTIVE;
+			} else if (statusTerm === 'inactive') {
+				params.statusId = StatusEnum.INACTIVE;
+			}
+
+			if (forceRefresh) {
 				await getServiceItem(params).refresh();
 			}
 			serviceItems = await getServiceItem(params);
@@ -191,55 +303,123 @@ async function fetchSubCategories() {
 	function startEdit(row: ServiceItemSchema) {
 		mode = 'edit';
 		editingId = row.id;
-		selectedSubCategoryId = row.subCategoryId != null ? String(row.subCategoryId) : '';
+		selectedSubCategoryId =
+			row.subCategoryId != null ? String(row.subCategoryId) : '';
 		formServiceName = row.serviceName ?? '';
 		formServiceCode = row.serviceCode ?? '';
 		formRemark = row.remark ?? '';
-		formActive = (row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
+		formActive =
+			(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
+	}
+
+	function handleTableFiltersChange(
+		event: CustomEvent<{ filters: Record<string, string> }>
+	) {
+		tableColumnFilters = event.detail.filters;
+		fetchServiceItems(true);
 	}
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!hospitalId) {
-			toastService.addToast('Hospital context is missing.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Hospital context is missing.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		const subCategoryId = selectedSubCategoryId ? Number(selectedSubCategoryId) : null;
+		const subCategoryId = selectedSubCategoryId
+			? Number(selectedSubCategoryId)
+			: null;
 		if (!subCategoryId) {
-			toastService.addToast('Please select category and sub-category.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please select category and sub-category.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		if (!formServiceName.trim()) {
-			toastService.addToast('Service name is required.', StatusColorEnum.ERROR);
+		const name = formServiceName.trim();
+		if (!name) {
+			toastService.addToast(
+				'Service name is required.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		const statusId = formActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
+		const code = formServiceCode.trim();
+
+		// Prevent duplicate service name within this hospital
+		const normalizedName = name.toLowerCase();
+		const duplicateByName = serviceItems.find(
+			(item) =>
+				item.id !== editingId &&
+				(item.serviceName ?? '').trim().toLowerCase() ===
+					normalizedName
+		);
+		if (duplicateByName) {
+			toastService.addToast(
+				'Service name already exists.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
+		// Prevent duplicate service code within this hospital
+		if (code) {
+			const normalizedCode = code.toLowerCase();
+			const duplicateByCode = serviceItems.find(
+				(item) =>
+					item.id !== editingId &&
+					(item.serviceCode ?? '').trim().toLowerCase() ===
+						normalizedCode
+			);
+			if (duplicateByCode) {
+				toastService.addToast(
+					'Service code already exists.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+		}
+
+		const statusId = formActive
+			? StatusEnum.ACTIVE
+			: StatusEnum.INACTIVE;
 		isSaving = true;
 		try {
 			if (mode === 'create') {
 				await createServiceItem({
 					hospitalId,
 					subCategoryId,
-					serviceName: formServiceName.trim(),
-					serviceCode: formServiceCode.trim() || null,
+					serviceName: name,
+					serviceCode: code || null,
 					remark: formRemark.trim() || null,
 					statusId
 				});
-				toastService.addToast('Service item created.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Service item created.',
+					StatusColorEnum.SUCCESS
+				);
 			} else if (mode === 'edit' && editingId != null) {
 				await updateServiceItem({
 					id: editingId,
-					serviceName: formServiceName.trim(),
-					serviceCode: formServiceCode.trim() || null,
+					serviceName: name,
+					serviceCode: code || null,
 					remark: formRemark.trim() || null,
 					statusId
 				});
-				toastService.addToast('Service item updated.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Service item updated.',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			await fetchServiceItems(true);
 			if (mode === 'create') resetForm();
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to save service item.';
+			const msg =
+				err instanceof Error
+					? err.message
+					: 'Failed to save service item.';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		} finally {
 			isSaving = false;
@@ -255,10 +435,16 @@ async function fetchSubCategories() {
 		if (!result.confirmed) return;
 		try {
 			await deleteServiceItem({ id: row.id });
-			toastService.addToast('Service item deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Service item deleted.',
+				StatusColorEnum.SUCCESS
+			);
 			await fetchServiceItems(true);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to delete service item.';
+			const msg =
+				err instanceof Error
+					? err.message
+					: 'Failed to delete service item.';
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -269,7 +455,9 @@ async function fetchSubCategories() {
 		return cat?.categoryName ?? `#${id}`;
 	}
 
-	function subCategoryNameById(id: number | null | undefined): string {
+	function subCategoryNameById(
+		id: number | null | undefined
+	): string {
 		if (id == null) return '—';
 		const sc = subCategories.find((s) => s.id === id);
 		return sc?.subCategoryName ?? `#${id}`;
@@ -279,7 +467,10 @@ async function fetchSubCategories() {
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="text-2xl font-bold">Service items</h1>
-		<DaisyUiButton className="d-btn-outline d-btn-sm d-btn-square" onClick={startCreate}>
+		<DaisyUiButton
+			className="d-btn-outline d-btn-sm d-btn-square"
+			onClick={startCreate}
+		>
 			<LucidePlus />
 		</DaisyUiButton>
 	</div>
@@ -288,7 +479,7 @@ async function fetchSubCategories() {
 		<DaisyUiCardBody>
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
-					<div class="flex flex-1 min-w-52 flex-col gap-1">
+					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">Sub-category</label>
 						<DaisyUiSelect
 							className="d-select d-select-bordered d-select-sm w-full"
@@ -297,11 +488,14 @@ async function fetchSubCategories() {
 							optionHeader="Select sub-category"
 						>
 							{#each subCategories as sc (sc.id)}
-								<option value={String(sc.id)}>{sc.subCategoryName ?? `Sub-category ${sc.id}`}</option>
+								<option value={String(sc.id)}
+									>{sc.subCategoryName ??
+										`Sub-category ${sc.id}`}</option
+								>
 							{/each}
 						</DaisyUiSelect>
 					</div>
-					<div class="flex flex-1 min-w-52 flex-col gap-1">
+					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">
 							Service name<span class="text-error"> *</span>
 						</label>
@@ -313,7 +507,7 @@ async function fetchSubCategories() {
 							className="d-input-sm w-full"
 						/>
 					</div>
-					<div class="flex flex-1 min-w-40 flex-col gap-1">
+					<div class="flex min-w-40 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">Service code</label>
 						<DaisyUiInputField
 							bind:value={formServiceCode}
@@ -325,7 +519,7 @@ async function fetchSubCategories() {
 				</div>
 
 				<div class="flex flex-wrap gap-4">
-					<div class="flex flex-col gap-1 flex-1 min-w-56">
+					<div class="flex min-w-56 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">Remark</label>
 						<DaisyUiTextarea
 							bind:value={formRemark}
@@ -335,18 +529,36 @@ async function fetchSubCategories() {
 					</div>
 					<div class="flex items-end gap-2">
 						<label class="flex items-center gap-2 text-sm">
-							<input type="checkbox" bind:checked={formActive} class="d-checkbox d-checkbox-sm" />
+							<input
+								type="checkbox"
+								bind:checked={formActive}
+								class="d-checkbox d-checkbox-sm"
+							/>
 							<span>Active</span>
 						</label>
 					</div>
 				</div>
 
-				<div class="flex justify-end gap-2 border-t border-base-300 pt-4">
-					<DaisyUiButton type="button" className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+				<div
+					class="flex justify-end gap-2 border-t border-base-300 pt-4"
+				>
+					<DaisyUiButton
+						type="button"
+						className="d-btn-ghost d-btn-sm"
+						onClick={resetForm}
+					>
 						{m.cancel()}
 					</DaisyUiButton>
-					<DaisyUiButton type="submit" className="d-btn-primary d-btn-sm" disabled={isSaving}>
-						{isSaving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save'}
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-sm"
+						disabled={isSaving}
+					>
+						{isSaving
+							? 'Saving…'
+							: mode === 'create'
+								? 'Create'
+								: 'Save'}
 					</DaisyUiButton>
 				</div>
 			</form>
@@ -355,21 +567,19 @@ async function fetchSubCategories() {
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading}
-				<DaisyUiLoading className="py-8" />
-			{:else}
-				<MariTable
-					rows={serviceItems}
-					columns={serviceItemColumns}
-					enableColumnFilters={true}
-					actionsHeader={m.actions()}
-					actionsVariant="crud"
-					on:refresh={() => fetchServiceItems(true)}
-					on:edit={(event) => startEdit(event.detail)}
-					on:delete={(event) => handleDelete(event.detail)}
-				/>
-			{/if}
+			<MariTable
+				rows={serviceItems}
+				columns={serviceItemColumns}
+				isLoading={isLoading}
+				enableColumnFilters={true}
+				useRemoteFilters={true}
+				actionsHeader={m.actions()}
+				actionsVariant="crud"
+				on:refresh={() => fetchServiceItems(true)}
+				on:filtersChange={handleTableFiltersChange}
+				on:edit={(event) => startEdit(event.detail)}
+				on:delete={(event) => handleDelete(event.detail)}
+			/>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>
-

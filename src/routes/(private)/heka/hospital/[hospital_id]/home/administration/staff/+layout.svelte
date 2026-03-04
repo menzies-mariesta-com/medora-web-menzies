@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
-	import { getSubPages, pathnameForPageMatch } from '$lib/state/page.state.svelte';
+	import {
+		getSubPages,
+		pathnameForPageMatch
+	} from '$lib/state/page.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 
@@ -9,9 +12,13 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
-	const currentPath = $derived(pathnameForPageMatch().replace(/\/$/, '') || '/');
+	const currentPath = $derived(
+		pathnameForPageMatch().replace(/\/$/, '') || '/'
+	);
 	const hospitalId = $derived(page.params.hospital_id);
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		const u = (pageUrl ?? '').replace(/\/$/, '') || '/';

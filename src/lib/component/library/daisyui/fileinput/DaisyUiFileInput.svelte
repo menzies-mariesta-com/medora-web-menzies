@@ -26,5 +26,5 @@
 	{multiple}
 	{disabled}
 	bind:this={inputEl}
-	onchange={onchange}
+	{onchange}
 />

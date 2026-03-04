@@ -14,12 +14,12 @@
 
 		<!-- Animated status badge -->
 		<div
-			class="d-status absolute top-0 right-0 {className} animate-{effect}"
+			class="absolute top-0 right-0 d-status {className} animate-{effect}"
 		></div>
 
 		{#if effect === 'ping'}
 			<!-- Static status below the animated one for ping effect -->
-			<div class="d-status absolute top-0 right-0 {className}"></div>
+			<div class="absolute top-0 right-0 d-status {className}"></div>
 		{/if}
 	</div>
 {:else}

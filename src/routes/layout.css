@@ -2,13 +2,13 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-@plugin "daisyui" {
-    themes: all;
-    root: ':root';
-    include: ;
-    exclude: ;
-    prefix: 'd-';
-    logs: false;
+@plugin 'daisyui' {
+	themes: all;
+	root: ':root';
+	include:;
+	exclude:;
+	prefix: 'd-';
+	logs: false;
 }
 
 /* Import Css From lib asset here */

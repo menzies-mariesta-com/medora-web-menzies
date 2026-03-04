@@ -1,8 +1,15 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StatusSchema, StatusSchemaInsert, StatusSchemaUpdate } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	StatusSchema,
+	StatusSchemaInsert,
+	StatusSchemaUpdate
+} from '$lib/server/db/schema-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
@@ -22,8 +29,11 @@ export const getStatusCount = query(async (): Promise<number> => {
 
 export const getStatusPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StatusSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StatusSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -31,9 +41,7 @@ export const getStatusPaginated = query(
 				.orderBy(table.statusTable.name)
 				.limit(limit)
 				.offset(offset),
-			ensureDb()
-				.select({ count: count() })
-				.from(table.statusTable),
+			ensureDb().select({ count: count() }).from(table.statusTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -41,7 +49,7 @@ export const getStatusPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -72,7 +80,10 @@ export const createStatus = command(
 
 export const updateStatus = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string }): Promise<StatusSchema> => {
+	async (payload: {
+		id: number;
+		name?: string;
+	}): Promise<StatusSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.statusTable)
@@ -88,7 +99,9 @@ export const updateStatus = command(
 export const deleteStatus = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.statusTable).where(eq(table.statusTable.id, id));
+		await ensureDb()
+			.delete(table.statusTable)
+			.where(eq(table.statusTable.id, id));
 		getStatus().refresh();
 	}
 );
@@ -96,7 +109,9 @@ export const deleteStatus = command(
 export const deleteStatusComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.statusTable).where(eq(table.statusTable.id, id));
+		await ensureDb()
+			.delete(table.statusTable)
+			.where(eq(table.statusTable.id, id));
 		getStatus().refresh();
 	}
 );

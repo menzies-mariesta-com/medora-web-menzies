@@ -44,13 +44,13 @@
 	let description = $state('');
 	let remark = $state('');
 
-function parseDecimal(v: string): string | null {
-	const s = v.trim();
-	if (!s) return null;
-	const n = Number(s);
-	if (Number.isNaN(n)) return null;
-	return String(n);
-}
+	function parseDecimal(v: string): string | null {
+		const s = v.trim();
+		if (!s) return null;
+		const n = Number(s);
+		if (Number.isNaN(n)) return null;
+		return String(n);
+	}
 
 	function asStr(v: unknown): string {
 		return v != null ? String(v) : '';
@@ -100,21 +100,28 @@ function parseDecimal(v: string): string | null {
 					spO2 = asStr(v.spO2);
 					respiration = asStr(v.respiration);
 					rbs = asStr(v.rbs);
-					vitalDateTime = formatVitalDateTimeForInput(v.vitalDateTime ?? v.createdAt);
+					vitalDateTime = formatVitalDateTimeForInput(
+						v.vitalDateTime ?? v.createdAt
+					);
 					symptom = asStr(v.symptom);
 					description = asStr(v.description);
 					remark = asStr(v.remark);
 				}
 			});
 		} else if (!vitalDateTime.trim()) {
-			vitalDateTime = formatVitalDateTimeForInput(new Date().toISOString());
+			vitalDateTime = formatVitalDateTimeForInput(
+				new Date().toISOString()
+			);
 		}
 	});
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (!patientId || !hospitalId || !visitId) {
-			toastService.addToast('No visit selected.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'No visit selected.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 
@@ -133,7 +140,10 @@ function parseDecimal(v: string): string | null {
 			asStr(remark).trim();
 
 		if (!hasAny) {
-			toastService.addToast('Enter at least one vital sign or note.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Enter at least one vital sign or note.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 
@@ -152,35 +162,47 @@ function parseDecimal(v: string): string | null {
 			pulse: parseDecimal(asStr(pulse)) ?? undefined,
 			pulseUnitId: asStr(pulse).trim() ? UnitEnum.BPM : undefined,
 			temperature: parseDecimal(asStr(temperature)) ?? undefined,
-			temperatureUnitId: asStr(temperature).trim() ? UnitEnum.CELSIUS : undefined,
+			temperatureUnitId: asStr(temperature).trim()
+				? UnitEnum.CELSIUS
+				: undefined,
 			spO2: parseDecimal(asStr(spO2)) ?? undefined,
 			spO2UnitId: asStr(spO2).trim() ? UnitEnum.PERCENT : undefined,
 			respiration: parseDecimal(asStr(respiration)) ?? undefined,
-			respirationUnitId: asStr(respiration).trim() ? UnitEnum.PER_MIN : undefined,
+			respirationUnitId: asStr(respiration).trim()
+				? UnitEnum.PER_MIN
+				: undefined,
 			rbs: parseDecimal(asStr(rbs)) ?? undefined,
 			rbsUnitId: asStr(rbs).trim() ? UnitEnum.MG_DL : undefined,
 			symptom: asStr(symptom).trim() || undefined,
 			description: asStr(description).trim() || undefined,
 			remark: asStr(remark).trim() || undefined,
-			vitalDateTime: parseVitalDateTime(vitalDateTime),
+			vitalDateTime: parseVitalDateTime(vitalDateTime)
 		};
 		try {
 			if (isEditMode && vitalId) {
 				await updatePatientVital({ id: vitalId, ...vitalPayload });
-				toastService.addToast('Vitals updated.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Vitals updated.',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				await createPatientVital({
 					patientId: patientId!,
 					hospitalId: hospitalId!,
 					visitId: visitId!,
-					...vitalPayload,
+					...vitalPayload
 				});
-				toastService.addToast('Vitals saved.', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Vitals saved.',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Failed to save vitals.') as string,
+				(err instanceof Error
+					? err.message
+					: 'Failed to save vitals.') as string,
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -190,9 +212,16 @@ function parseDecimal(v: string): string | null {
 </script>
 
 <form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3 md:col-span-2 xl:col-span-3">
-			<DaisyUiLabel forText="vital-datetime" className="shrink-0 sm:w-36">Vital Date & Time</DaisyUiLabel>
+	<div
+		class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+	>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3 md:col-span-2 xl:col-span-3"
+		>
+			<DaisyUiLabel
+				forText="vital-datetime"
+				className="shrink-0 sm:w-36">Vital Date & Time</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-datetime"
@@ -203,8 +232,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-height" className="shrink-0 sm:w-36">Height (cm)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-height"
+				className="shrink-0 sm:w-36">Height (cm)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-height"
@@ -216,8 +250,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-weight" className="shrink-0 sm:w-36">Weight (kg)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-weight"
+				className="shrink-0 sm:w-36">Weight (kg)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-weight"
@@ -229,8 +268,12 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-temp" className="shrink-0 sm:w-36">Temperature (°C)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-temp" className="shrink-0 sm:w-36"
+				>Temperature (°C)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-temp"
@@ -243,8 +286,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-bp-sys" className="shrink-0 sm:w-36">BP Systolic (mmHg)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-bp-sys"
+				className="shrink-0 sm:w-36">BP Systolic (mmHg)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-bp-sys"
@@ -257,8 +305,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-bp-dia" className="shrink-0 sm:w-36">BP Diastolic (mmHg)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-bp-dia"
+				className="shrink-0 sm:w-36">BP Diastolic (mmHg)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-bp-dia"
@@ -271,8 +324,12 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-pulse" className="shrink-0 sm:w-36">Pulse (bpm)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-pulse" className="shrink-0 sm:w-36"
+				>Pulse (bpm)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-pulse"
@@ -285,8 +342,12 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-resp" className="shrink-0 sm:w-36">Respiration (/min)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-resp" className="shrink-0 sm:w-36"
+				>Respiration (/min)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-resp"
@@ -299,8 +360,12 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-spo2" className="shrink-0 sm:w-36">SpO₂ (%)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-spo2" className="shrink-0 sm:w-36"
+				>SpO₂ (%)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-spo2"
@@ -314,8 +379,12 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="vital-rbs" className="shrink-0 sm:w-36">RBS (mg/dL)</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-rbs" className="shrink-0 sm:w-36"
+				>RBS (mg/dL)</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<DaisyUiInputField
 					id="vital-rbs"
@@ -334,9 +403,16 @@ function parseDecimal(v: string): string | null {
 		Notes
 	</DaisyUiDivider>
 
-	<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-			<DaisyUiLabel forText="vital-symptom" className="shrink-0 sm:w-36">Symptom</DaisyUiLabel>
+	<div
+		class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
+	>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-symptom"
+				className="shrink-0 sm:w-36">Symptom</DaisyUiLabel
+			>
 			<div class="min-w-0 flex-1">
 				<DaisyUiTextarea
 					id="vital-symptom"
@@ -346,8 +422,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-			<DaisyUiLabel forText="vital-description" className="shrink-0 sm:w-36">Description</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-description"
+				className="shrink-0 sm:w-36">Description</DaisyUiLabel
+			>
 			<div class="min-w-0 flex-1">
 				<DaisyUiTextarea
 					id="vital-description"
@@ -357,8 +438,13 @@ function parseDecimal(v: string): string | null {
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-			<DaisyUiLabel forText="vital-remark" className="shrink-0 sm:w-36">Remark</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="vital-remark"
+				className="shrink-0 sm:w-36">Remark</DaisyUiLabel
+			>
 			<div class="min-w-0 flex-1">
 				<DaisyUiTextarea
 					id="vital-remark"
@@ -371,10 +457,23 @@ function parseDecimal(v: string): string | null {
 	</div>
 
 	<div class="mt-4 flex flex-wrap gap-3">
-		<DaisyUiButton type="submit" className="d-btn-primary d-btn-wide" disabled={isSubmitting}>
-			{isSubmitting ? 'Saving…' : isEditMode ? 'Update vitals' : 'Save vitals'}
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary d-btn-wide"
+			disabled={isSubmitting}
+		>
+			{isSubmitting
+				? 'Saving…'
+				: isEditMode
+					? 'Update vitals'
+					: 'Save vitals'}
 		</DaisyUiButton>
-		<DaisyUiButton type="button" className="d-btn-ghost" onClick={cancel} disabled={isSubmitting}>
+		<DaisyUiButton
+			type="button"
+			className="d-btn-ghost"
+			onClick={cancel}
+			disabled={isSubmitting}
+		>
 			Cancel
 		</DaisyUiButton>
 	</div>
