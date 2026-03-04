@@ -116,7 +116,10 @@ export const getNextPatientCode = query(
 	}
 );
 
-// get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
+// get paginated with relations
+// Supports:
+// - generic search (search across name, code, phonePrimary; respects nameMasking)
+// - dedicated filters: patientCode, patientName, patientPhonePrimary
 export const getPatientPaginated = query(
 	'unchecked' as const,
 	async (
@@ -125,30 +128,61 @@ export const getPatientPaginated = query(
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
-		const pattern = searchTerm ? `%${searchTerm}%` : null;
-		const searchCondition =
-			pattern &&
-			or(
-				// Match by name ONLY when name masking is NOT enabled
+		const patientCode = params?.patientCode?.trim();
+		const patientName = params?.patientName?.trim();
+		const patientPhonePrimary = params?.patientPhonePrimary?.trim();
+
+		const conditions = [
+			ne(table.patientTable.statusId, StatusEnum.DELETED)
+		];
+
+		// Generic search across name, code, primary phone
+		if (searchTerm) {
+			const pattern = `%${searchTerm}%`;
+			conditions.push(
+				or(
+					// Match by name ONLY when name masking is NOT enabled
+					and(
+						ilike(
+							sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+							pattern
+						),
+						ne(table.patientTable.nameMasking, YesNoEnum.YES)
+					),
+					// Always allow search by code / phone
+					ilike(table.patientTable.code, pattern),
+					ilike(table.patientTable.phonePrimary, pattern)
+				)
+			);
+		}
+
+		// Dedicated filters
+		if (patientCode) {
+			conditions.push(
+				ilike(table.patientTable.code, `%${patientCode}%`)
+			);
+		}
+		if (patientName) {
+			conditions.push(
 				and(
 					ilike(
 						sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
-						`%${searchTerm}%`
+						`%${patientName}%`
 					),
 					ne(table.patientTable.nameMasking, YesNoEnum.YES)
-				),
-				// Always allow search by code / phone
-				ilike(table.patientTable.code, pattern),
-				ilike(table.patientTable.phonePrimary, pattern)
+				)
 			);
+		}
+		if (patientPhonePrimary) {
+			conditions.push(
+				ilike(
+					table.patientTable.phonePrimary,
+					`%${patientPhonePrimary}%`
+				)
+			);
+		}
 
-		const notDeletedCondition = ne(
-			table.patientTable.statusId,
-			StatusEnum.DELETED
-		);
-		let whereExpr = searchCondition
-			? and(notDeletedCondition, searchCondition)
-			: notDeletedCondition;
+		let whereExpr = and(...conditions);
 
 		const requestScope = getSelectedScopeFromRequest();
 		const hospitalId =

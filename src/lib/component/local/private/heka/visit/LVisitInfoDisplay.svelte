@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import {
 		getPatientVisitByIdWithRelations,
 		type PatientVisitWithRelations
@@ -94,92 +95,112 @@
 				)
 			: ''
 	);
+
+	const patientPhotoUrl = $derived(
+		getPatientPhotoDisplayUrl(
+			(visit?.patient as any)?.photoPath
+		) ??
+			(visit?.patient as any)?.photoPath ??
+			''
+	);
 </script>
 
-<div class="flex min-w-0 flex-col gap-2">
-	<div
-		class="text-xs font-semibold tracking-wide text-base-content/70 uppercase"
-	>
-		{title}
-	</div>
-
-	{#if isLoading}
-		<div class="text-sm text-base-content/60">Loading…</div>
-	{:else if !visit}
-		<div class="text-sm text-base-content/60">{emptyLabel}</div>
-	{:else}
-		<dl
-			class="visit-info-grid grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3"
+<div class="flex min-w-0 items-center gap-4">
+	{#if visit && patientName}
+		<div
+			class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/60 sm:size-18"
+			aria-hidden="true"
 		>
-			{#if visitNo || visitTypeName}
-				<div class="visit-info-item">
-					<dt class="font-normal text-base-content/60">Visit</dt>
-					<dd class="font-medium text-primary">
-						{#if visitNo}{visitNo}{/if}{#if visitTypeName}
-							{#if visitNo}<span class="text-base-content/60">
-									·
-								</span>{/if}
-							{visitTypeName}
-						{/if}
-					</dd>
-				</div>
+			{#if patientPhotoUrl}
+				<img
+					src={patientPhotoUrl}
+					alt={`${patientName} profile`}
+					class="size-full object-cover"
+				/>
+			{:else}
+				<span class="text-sm font-semibold uppercase">
+					{patientName.charAt(0)}
+				</span>
 			{/if}
-			{#if patientName || patientCode}
-				<div class="visit-info-item">
-					<dt class="font-normal text-base-content/60">Patient</dt>
-					<dd class="font-medium">
-						{#if patientName}{patientName}{/if}
-						{#if patientCode}
-							{#if patientName}<span class="text-base-content/60">
-									·
-								</span>{/if}
-							<span class="text-base-content/80">{patientCode}</span>
-						{/if}
-						{#if patientDob}
-							<span class="text-base-content/60">
-								· {patientDob}</span
-							>
-						{/if}
-					</dd>
-				</div>
-			{/if}
-			{#if doctorName}
-				<div class="visit-info-item">
-					<dt class="font-normal text-base-content/60">Doctor</dt>
-					<dd class="font-medium text-base-content">{doctorName}</dd>
-				</div>
-			{/if}
-			{#if branchName || hospitalName}
-				<div class="visit-info-item">
-					<dt class="font-normal text-base-content/60">Location</dt>
-					<dd class="font-medium text-base-content">
-						{[branchName, hospitalName].filter(Boolean).join(' · ')}
-					</dd>
-				</div>
-			{/if}
-			{#if visitDate}
-				<div class="visit-info-item">
-					<dt class="font-normal text-base-content/60">Visit Date</dt>
-					<dd class="font-medium text-base-content">{visitDate}</dd>
-				</div>
-			{/if}
-		</dl>
+		</div>
 	{/if}
-</div>
 
-<style>
-	.visit-info-grid .visit-info-item {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 0.25rem 0.75rem;
-		align-items: baseline;
-		min-width: 0;
-	}
-	.visit-info-grid .visit-info-item dt {
-		margin: 0;
-	}
-	.visit-info-grid .visit-info-item dd {
-		margin: 0;
-		min-width: 0;
-	}
-</style>
+	<div class="flex min-w-0 flex-col gap-2">
+		<div
+			class="text-xs font-semibold tracking-wide text-base-content/70 uppercase"
+		>
+			{title}
+		</div>
+
+		{#if isLoading}
+			<div class="text-sm text-base-content/60">Loading…</div>
+		{:else if !visit}
+			<div class="text-sm text-base-content/60">{emptyLabel}</div>
+		{:else}
+			<div
+				class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm"
+			>
+				{#if visitNo || visitTypeName}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60">Visit:</span>
+						<span class="font-medium text-primary">
+							{#if visitNo}{visitNo}{/if}{#if visitTypeName}
+								{#if visitNo}<span class="text-base-content/60">
+										·
+									</span>{/if}
+								{visitTypeName}
+							{/if}
+						</span>
+					</div>
+				{/if}
+
+				{#if patientName || patientCode}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60">Patient:</span>
+						<span class="font-medium">
+							{#if patientName}{patientName}{/if}
+							{#if patientCode}
+								{#if patientName}<span class="text-base-content/60">
+										·
+									</span>{/if}
+								<span class="text-base-content/80">{patientCode}</span>
+							{/if}
+							{#if patientDob}
+								<span class="text-base-content/60">
+									· {patientDob}</span
+								>
+							{/if}
+						</span>
+					</div>
+				{/if}
+
+				{#if doctorName}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60">Doctor:</span>
+						<span class="font-medium text-base-content">
+							{doctorName}
+						</span>
+					</div>
+				{/if}
+
+				{#if branchName || hospitalName}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60">Location:</span>
+						<span class="font-medium text-base-content">
+							{[branchName, hospitalName].filter(Boolean).join(' · ')}
+						</span>
+					</div>
+				{/if}
+
+				{#if visitDate}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60">Visit Date:</span>
+						<span class="font-medium text-base-content">
+							{visitDate}
+						</span>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</div>
+</div>
