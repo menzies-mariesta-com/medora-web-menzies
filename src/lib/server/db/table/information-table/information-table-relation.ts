@@ -32,6 +32,7 @@ import {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
+	allergyTable,
 } from './information-table';
 import {
 	cityTable,
@@ -57,6 +58,7 @@ import {
 	visitTypeTable,
 	weekdayTable,
 	allergyMasterTable,
+	severityTable,
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -696,9 +698,17 @@ export const patientAllergyTableRelations = relations(patientAllergyTable, ({ on
 		fields: [patientAllergyTable.patientId],
 		references: [patientTable.id],
 	}),
-	allergyType: one(allergyMasterTable, {
-		fields: [patientAllergyTable.allergyTypeId],
-		references: [allergyMasterTable.allergyTypeId],
+	visit: one(patientVisitTable, {
+		fields: [patientAllergyTable.visitId],
+		references: [patientVisitTable.id],
+	}),
+	allergy: one(allergyTable, {
+		fields: [patientAllergyTable.allergyId],
+		references: [allergyTable.id],
+	}),
+	severity: one(severityTable, {
+		fields: [patientAllergyTable.severityId],
+		references: [severityTable.id],
 	}),
 	status: one(statusTable, {
 		fields: [patientAllergyTable.statusId],
@@ -780,4 +790,9 @@ export const storeTableRelations = relations(storeTable, ({ one }) => ({
 	}),
 }));
 
-
+export const allergyTableRelations = relations(allergyTable, ({ one }) => ({
+	status: one(statusTable, {
+		fields: [allergyTable.statusId],
+		references: [statusTable.id],
+	}),
+}));
