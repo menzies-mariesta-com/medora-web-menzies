@@ -16,7 +16,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { allergyMasterTable, bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable } from '../master-table/master-table';
+import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable, severityTable } from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -369,20 +369,25 @@ export const patientInsurance = pgTable('patient_insurance', {
 
 export const patientAllergyTable = pgTable('patient_allergy', {
 	id: serial('id').primaryKey(),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id),
 	patientId: uuid('patient_id')
 		.notNull()
 		.references(() => patientTable.id),
-	allergyTypeId: integer('allergy_type_id')
+	allergyId: integer('allergy_id')
 		.notNull()
-		.references(() => allergyMasterTable.allergyTypeId),
+		.references(() => allergyTable.id),
+	severityId: integer('severity_id')
+		.notNull()
+		.references(() => severityTable.id),
 	reaction: text('reaction'),
 	remark: text('remark'),
-	deActivationRemarks: text('de_activation_remarks'),
+	deactivationRemark: text('deactivation_remark'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps,
 })
 
@@ -608,5 +613,15 @@ export const storeTable = pgTable('store', {
 		.notNull()
 		.default(StatusEnum.ACTIVE),
 	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps,
+});
+
+export const allergyTable = pgTable('allergy', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 512 }),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
 	...timestamps,
 });

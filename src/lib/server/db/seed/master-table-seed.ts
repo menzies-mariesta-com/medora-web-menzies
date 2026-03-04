@@ -1561,6 +1561,18 @@ export async function seedMasterTables() {
 	`);
 	console.log('Seeded: allergy_master');
 
+	// 20. Severity master (lookup for alert severity)
+	await db.execute(sql`
+		INSERT INTO severity (id, name, status_id)
+		VALUES
+			(1, 'Major', 1),
+			(2, 'Moderate', 1),
+			(3, 'Minor', 1),
+			(4, 'No Alert', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: severity');
+
 	console.log('Master tables seeding completed.');
 }
 
