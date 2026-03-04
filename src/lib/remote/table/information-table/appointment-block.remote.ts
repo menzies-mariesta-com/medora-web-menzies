@@ -4,7 +4,7 @@ import * as table from '$lib/server/db/schema';
 import type {
 	AppointmentBlockSchema,
 	AppointmentBlockSchemaInsert,
-	AppointmentBlockSchemaUpdate,
+	AppointmentBlockSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, eq } from 'drizzle-orm';
@@ -16,12 +16,18 @@ export const getAppointmentBlock = query(
 		staffId?: string;
 		hospitalId?: string;
 	}): Promise<AppointmentBlockSchema[]> => {
-		const conditions = [eq(table.appointmentBlockTable.statusId, StatusEnum.ACTIVE)];
+		const conditions = [
+			eq(table.appointmentBlockTable.statusId, StatusEnum.ACTIVE)
+		];
 		if (params?.staffId != null && params.staffId !== '') {
-			conditions.push(eq(table.appointmentBlockTable.staffId, params.staffId));
+			conditions.push(
+				eq(table.appointmentBlockTable.staffId, params.staffId)
+			);
 		}
 		if (params?.hospitalId != null && params.hospitalId !== '') {
-			conditions.push(eq(table.appointmentBlockTable.hospitalId, params.hospitalId));
+			conditions.push(
+				eq(table.appointmentBlockTable.hospitalId, params.hospitalId)
+			);
 		}
 		return ensureDb()
 			.select()
@@ -33,7 +39,9 @@ export const getAppointmentBlock = query(
 /** Create an appointment block. */
 export const createAppointmentBlock = command(
 	'unchecked' as const,
-	async (payload: AppointmentBlockSchemaInsert): Promise<AppointmentBlockSchema> => {
+	async (
+		payload: AppointmentBlockSchemaInsert
+	): Promise<AppointmentBlockSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.appointmentBlockTable)
 			.values(payload)

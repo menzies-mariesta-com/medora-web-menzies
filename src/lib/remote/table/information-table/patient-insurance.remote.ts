@@ -4,16 +4,21 @@ import * as table from '$lib/server/db/schema';
 import type {
 	PatientInsuranceSchema,
 	PatientInsuranceSchemaInsert,
-	PatientInsuranceSchemaUpdate,
+	PatientInsuranceSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
 export const getPatientInsurance = query(
 	async (): Promise<PatientInsuranceSchema[]> => {
-		const data = await ensureDb().select().from(table.patientInsurance);
+		const data = await ensureDb()
+			.select()
+			.from(table.patientInsurance);
 		return data;
 	}
 );
@@ -23,33 +28,38 @@ export const getPatientInsuranceWithRelations = query(async () => {
 	return ensureDb().query.patientInsurance.findMany({
 		with: {
 			patient: true,
-			insurance: true,
-		},
+			insurance: true
+		}
 	});
 });
 
 // get count
-export const getPatientInsuranceCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.patientInsurance);
-	return row?.count ?? 0;
-});
+export const getPatientInsuranceCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.patientInsurance);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated
 export const getPatientInsurancePaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams,
+		params?: PaginationParams
 	): Promise<PaginatedResult<PatientInsuranceSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.patientInsurance)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.patientInsurance),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.patientInsurance)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -57,7 +67,7 @@ export const getPatientInsurancePaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -66,7 +76,7 @@ export const getPatientInsurancePaginated = query(
 export const getPatientInsuranceById = query(
 	'unchecked' as const,
 	async ({
-		id,
+		id
 	}: {
 		id: number;
 	}): Promise<PatientInsuranceSchema | null> => {
@@ -82,7 +92,7 @@ export const getPatientInsuranceById = query(
 export const createPatientInsurance = command(
 	'unchecked' as const,
 	async (
-		payload: PatientInsuranceSchemaInsert,
+		payload: PatientInsuranceSchemaInsert
 	): Promise<PatientInsuranceSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.patientInsurance)
@@ -98,7 +108,7 @@ export const createPatientInsurance = command(
 export const updatePatientInsurance = command(
 	'unchecked' as const,
 	async (
-		payload: { id: number } & PatientInsuranceSchemaUpdate,
+		payload: { id: number } & PatientInsuranceSchemaUpdate
 	): Promise<PatientInsuranceSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
@@ -133,4 +143,3 @@ export const deletePatientInsuranceComplete = command(
 		getPatientInsurance().refresh();
 	}
 );
-

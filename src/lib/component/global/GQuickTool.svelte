@@ -59,7 +59,10 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText={m.support()} className="d-tooltip-left ">
+	<DaisyUiTooltip
+		tooltipText={m.support()}
+		className="d-tooltip-left "
+	>
 		<DaisyUiButton
 			className="d-btn-circle d-btn-lg"
 			onClick={openSupportDialog}
@@ -77,7 +80,10 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText={m.languages()} className="d-tooltip-left ">
+	<DaisyUiTooltip
+		tooltipText={m.languages()}
+		className="d-tooltip-left "
+	>
 		<DaisyUiButton
 			onClick={openLanguageDialog}
 			className="d-btn-circle d-btn-lg"

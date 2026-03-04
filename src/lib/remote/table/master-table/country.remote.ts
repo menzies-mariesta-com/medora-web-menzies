@@ -1,20 +1,29 @@
 import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { CountrySchema, CountrySchemaInsert, CountrySchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	CountrySchema,
+	CountrySchemaInsert,
+	CountrySchemaUpdate
+} from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
 // get all
-export const getCountry = query(async (): Promise<CountrySchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.countryTable)
-		.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.countryTable.name);
-});
+export const getCountry = query(
+	async (): Promise<CountrySchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.countryTable)
+			.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.countryTable.name);
+	}
+);
 
 // get count
 export const getCountryCount = query(async (): Promise<number> => {
@@ -28,9 +37,15 @@ export const getCountryCount = query(async (): Promise<number> => {
 // get paginated
 export const getCountryPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<CountrySchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.countryTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<CountrySchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.countryTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -42,7 +57,7 @@ export const getCountryPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.countryTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -50,7 +65,7 @@ export const getCountryPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -121,7 +136,9 @@ export const deleteCountry = command(
 export const deleteCountryComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.countryTable).where(eq(table.countryTable.id, id));
+		await ensureDb()
+			.delete(table.countryTable)
+			.where(eq(table.countryTable.id, id));
 		getCountry().refresh();
 	}
 );

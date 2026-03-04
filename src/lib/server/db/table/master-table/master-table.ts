@@ -1,21 +1,29 @@
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { sql } from 'drizzle-orm';
-import { index, integer, pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import {
+	index,
+	integer,
+	pgTable,
+	serial,
+	text,
+	timestamp,
+	varchar
+} from 'drizzle-orm/pg-core';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
 		withTimezone: true,
-		mode: 'string',
+		mode: 'string'
 	})
 		.notNull()
 		.defaultNow(),
 	updatedAt: timestamp('updated_at', {
 		withTimezone: true,
-		mode: 'string',
+		mode: 'string'
 	})
 		.notNull()
 		.defaultNow()
-		.$onUpdate(() => sql`now()`),
+		.$onUpdate(() => sql`now()`)
 } as const;
 
 // Master Tables (alphabetical) - lookup/reference data
@@ -24,13 +32,16 @@ export const bloodTypeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('blood_type_name_idx').on(table.name),
-		index('blood_type_status_id_idx').on(table.statusId),
-	],
+		index('blood_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const cityTable = pgTable(
@@ -39,16 +50,19 @@ export const cityTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
 		stateId: integer('state_id').references(() => stateTable.id),
-		...timestamps,
+		...timestamps
 	},
 	(table) => [
 		index('city_name_idx').on(table.name),
 		index('city_code_idx').on(table.code),
 		index('city_state_id_idx').on(table.stateId),
-		index('city_status_id_idx').on(table.statusId),
-	],
+		index('city_status_id_idx').on(table.statusId)
+	]
 );
 
 export const countryTable = pgTable(
@@ -59,16 +73,20 @@ export const countryTable = pgTable(
 		code: varchar('code', { length: 128 }).notNull(),
 		imageUrl: text('image_url').notNull(),
 		language: varchar('language', { length: 128 }).notNull(),
-		countryCallingCode: varchar('country_calling_code', { length: 128 }).notNull(),
-		statusId: integer('status_id').references(() => statusTable.id).notNull(),
-		...timestamps,
+		countryCallingCode: varchar('country_calling_code', {
+			length: 128
+		}).notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull(),
+		...timestamps
 	},
 	(table) => [
 		index('country_name_idx').on(table.name),
 		index('country_code_idx').on(table.code),
 		index('country_calling_code_idx').on(table.countryCallingCode),
-		index('country_status_id_idx').on(table.statusId),
-	],
+		index('country_status_id_idx').on(table.statusId)
+	]
 );
 
 export const craftGroupTable = pgTable(
@@ -76,13 +94,15 @@ export const craftGroupTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }).notNull(),
-		statusId: integer('status_id').references(() => statusTable.id).notNull(),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull(),
+		...timestamps
 	},
 	(table) => [
 		index('craft_group_name_idx').on(table.name),
-		index('craft_group_status_id_idx').on(table.statusId),
-	],
+		index('craft_group_status_id_idx').on(table.statusId)
+	]
 );
 
 export const departmentTable = pgTable(
@@ -91,14 +111,17 @@ export const departmentTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('department_name_idx').on(table.name),
 		index('department_code_idx').on(table.code),
-		index('department_status_id_idx').on(table.statusId),
-	],
+		index('department_status_id_idx').on(table.statusId)
+	]
 );
 
 export const genderTable = pgTable(
@@ -106,13 +129,16 @@ export const genderTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('gender_name_idx').on(table.name),
-		index('gender_status_id_idx').on(table.statusId),
-	],
+		index('gender_status_id_idx').on(table.statusId)
+	]
 );
 
 export const identityTypeTable = pgTable(
@@ -120,13 +146,16 @@ export const identityTypeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('identity_type_name_idx').on(table.name),
-		index('identity_type_status_id_idx').on(table.statusId),
-	],
+		index('identity_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const maritalStatusTable = pgTable(
@@ -134,13 +163,16 @@ export const maritalStatusTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('marital_status_name_idx').on(table.name),
-		index('marital_status_status_id_idx').on(table.statusId),
-	],
+		index('marital_status_status_id_idx').on(table.statusId)
+	]
 );
 
 export const nationalityTable = pgTable(
@@ -148,13 +180,16 @@ export const nationalityTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('nationality_name_idx').on(table.name),
-		index('nationality_status_id_idx').on(table.statusId),
-	],
+		index('nationality_status_id_idx').on(table.statusId)
+	]
 );
 
 export const positionTable = pgTable(
@@ -162,13 +197,16 @@ export const positionTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('position_name_idx').on(table.name),
-		index('position_status_id_idx').on(table.statusId),
-	],
+		index('position_status_id_idx').on(table.statusId)
+	]
 );
 
 export const postalCodeTable = pgTable(
@@ -176,15 +214,20 @@ export const postalCodeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		value: integer('value').notNull(),
-		cityId: integer('city_id').references(() => cityTable.id).notNull(),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		cityId: integer('city_id')
+			.references(() => cityTable.id)
+			.notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('postal_code_value_idx').on(table.value),
 		index('postal_code_city_id_idx').on(table.cityId),
-		index('postal_code_status_id_idx').on(table.statusId),
-	],
+		index('postal_code_status_id_idx').on(table.statusId)
+	]
 );
 
 export const referTypeTable = pgTable(
@@ -192,13 +235,16 @@ export const referTypeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('refer_type_name_idx').on(table.name),
-		index('refer_type_status_id_idx').on(table.statusId),
-	],
+		index('refer_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const religionTable = pgTable(
@@ -206,13 +252,16 @@ export const religionTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('religion_name_idx').on(table.name),
-		index('religion_status_id_idx').on(table.statusId),
-	],
+		index('religion_status_id_idx').on(table.statusId)
+	]
 );
 
 export const specializationTable = pgTable(
@@ -220,15 +269,20 @@ export const specializationTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		craftGroupId: integer('craft_group_id').references(() => craftGroupTable.id),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		craftGroupId: integer('craft_group_id').references(
+			() => craftGroupTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('specialization_name_idx').on(table.name),
 		index('specialization_craft_group_id_idx').on(table.craftGroupId),
-		index('specialization_status_id_idx').on(table.statusId),
-	],
+		index('specialization_status_id_idx').on(table.statusId)
+	]
 );
 
 export const statusTable = pgTable(
@@ -236,9 +290,9 @@ export const statusTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		...timestamps,
+		...timestamps
 	},
-	(table) => [index('status_name_idx').on(table.name)],
+	(table) => [index('status_name_idx').on(table.name)]
 );
 
 export const stateTable = pgTable(
@@ -247,16 +301,21 @@ export const stateTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		countryId: integer('country_id').references(() => countryTable.id),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		countryId: integer('country_id').references(
+			() => countryTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('state_name_idx').on(table.name),
 		index('state_code_idx').on(table.code),
 		index('state_country_id_idx').on(table.countryId),
-		index('state_status_id_idx').on(table.statusId),
-	],
+		index('state_status_id_idx').on(table.statusId)
+	]
 );
 
 export const staffEmploymentTypeTable = pgTable(
@@ -265,14 +324,17 @@ export const staffEmploymentTypeTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('staff_employment_type_name_idx').on(table.name),
 		index('staff_employment_type_code_idx').on(table.code),
-		index('staff_employment_type_status_id_idx').on(table.statusId),
-	],
+		index('staff_employment_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const staffShiftTypeTable = pgTable(
@@ -281,14 +343,17 @@ export const staffShiftTypeTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('staff_shift_type_name_idx').on(table.name),
 		index('staff_shift_type_code_idx').on(table.code),
-		index('staff_shift_type_status_id_idx').on(table.statusId),
-	],
+		index('staff_shift_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const staffTypeTable = pgTable(
@@ -297,14 +362,17 @@ export const staffTypeTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('staff_type_name_idx').on(table.name),
 		index('staff_type_code_idx').on(table.code),
-		index('staff_type_status_id_idx').on(table.statusId),
-	],
+		index('staff_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const titleTable = pgTable(
@@ -312,13 +380,16 @@ export const titleTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('title_name_idx').on(table.name),
-		index('title_status_id_idx').on(table.statusId),
-	],
+		index('title_status_id_idx').on(table.statusId)
+	]
 );
 
 export const weekdayTable = pgTable(
@@ -326,13 +397,16 @@ export const weekdayTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('weekday_name_idx').on(table.name),
-		index('weekday_status_id_idx').on(table.statusId),
-	],
+		index('weekday_status_id_idx').on(table.statusId)
+	]
 );
 
 /** Unit type (e.g. length, weight) for categorising units. */
@@ -341,13 +415,16 @@ export const unitTypeTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('unit_type_name_idx').on(table.name),
-		index('unit_type_status_id_idx').on(table.statusId),
-	],
+		index('unit_type_status_id_idx').on(table.statusId)
+	]
 );
 
 /** Unit (e.g. cm, in, kg, lbs) for vitals and measurements. */
@@ -356,15 +433,20 @@ export const unitTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		unitTypeId: integer('unit_type_id').references(() => unitTypeTable.id),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		unitTypeId: integer('unit_type_id').references(
+			() => unitTypeTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('unit_name_idx').on(table.name),
 		index('unit_unit_type_id_idx').on(table.unitTypeId),
-		index('unit_status_id_idx').on(table.statusId),
-	],
+		index('unit_status_id_idx').on(table.statusId)
+	]
 );
 
 /** Visit type (e.g. OPD, follow-up) for patient visits. */
@@ -374,14 +456,17 @@ export const visitTypeTable = pgTable(
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
 		code: varchar('code', { length: 128 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('visit_type_name_idx').on(table.name),
 		index('visit_type_code_idx').on(table.code),
-		index('visit_type_status_id_idx').on(table.statusId),
-	],
+		index('visit_type_status_id_idx').on(table.statusId)
+	]
 );
 
 export const allergyMasterTable = pgTable(
@@ -389,11 +474,14 @@ export const allergyMasterTable = pgTable(
 	{
 		allergyTypeId: serial('allergy_type_id').primaryKey(),
 		description: varchar('description', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('allergy_master_description_idx').on(table.description),
-		index('allergy_master_status_id_idx').on(table.statusId),
-	],
+		index('allergy_master_status_id_idx').on(table.statusId)
+	]
 );

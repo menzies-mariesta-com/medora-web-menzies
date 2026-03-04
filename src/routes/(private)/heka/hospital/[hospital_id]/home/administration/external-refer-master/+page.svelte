@@ -33,21 +33,27 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let referResult = $state<PaginatedResult<ExternalReferWithRelations> | null>(null);
+	let referResult =
+		$state<PaginatedResult<ExternalReferWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let filterPageSize = $state('10');
 	let searchInput = $state('');
 	let isLoading = $state(false);
 
 	type DialogMode = 'create' | 'view' | 'edit';
-	let modalState = $state<{ mode: DialogMode; id?: number } | null>(null);
+	let modalState = $state<{ mode: DialogMode; id?: number } | null>(
+		null
+	);
 
 	const referList = $derived(referResult?.data ?? []);
 	const totalPages = $derived(referResult?.totalPages ?? 1);
 	const total = $derived(referResult?.total ?? 0);
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
 
 	async function fetchRefer(opts?: { bustCache?: boolean }) {
@@ -70,7 +76,8 @@
 		fetchRefer();
 	});
 
-	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let isFirstSearchEffect = true;
 	$effect(() => {
 		const _query = searchInput;
@@ -101,18 +108,24 @@
 	async function handleDelete(referId: number) {
 		try {
 			const result = await dialogService.open({
-			title: m.delete_external_refer(),
-			message: m.confirm_delete_refer(),
+				title: m.delete_external_refer(),
+				message: m.confirm_delete_refer(),
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
 				await deleteExternalRefer({ id: referId });
 				await fetchRefer();
-				toastService.addToast(m.external_refer_deleted(), StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					m.external_refer_deleted(),
+					StatusColorEnum.SUCCESS
+				);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast(m.failed_delete_external_refer(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.failed_delete_external_refer(),
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -149,8 +162,13 @@
 <div
 	class="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between"
 >
-	<div class="order-1 flex flex-wrap items-center gap-2 md:order-none">
-		<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
+	<div
+		class="order-1 flex flex-wrap items-center gap-2 md:order-none"
+	>
+		<DaisyUiButton
+			className="d-btn-primary d-btn-sm"
+			onClick={openCreate}
+		>
 			<LucidePlus className="size-5" />
 			{m.create()}
 		</DaisyUiButton>
@@ -167,7 +185,9 @@
 		</p>
 	</div>
 
-	<div class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end">
+	<div
+		class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end"
+	>
 		<div>
 			<DaisyUiInputField
 				inputPlaceholderText={m.search_placeholder_refer()}
@@ -188,7 +208,9 @@
 		</DaisyUiTooltip>
 	</div>
 
-	<div class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none">
+	<div
+		class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none"
+	>
 		<span class="text-sm">{m.per_page()}</span>
 		<DaisyUiSelect
 			className="d-select d-select-sm w-16"
@@ -205,7 +227,9 @@
 	</div>
 
 	{#if referResult !== null}
-		<div class="order-4 w-full md:order-none md:w-auto md:justify-end">
+		<div
+			class="order-4 w-full md:order-none md:w-auto md:justify-end"
+		>
 			<DaisyUiPagination>
 				<DaisyUiPaginationItem
 					onClick={() => goToPage(currentPage - 1)}
@@ -239,30 +263,37 @@
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="overflow-auto max-h-[calc(100vh-18rem)]">
+	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
 		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
 			<DaisyUiTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
-				<th class="sticky left-0 z-1 bg-base-200 w-16 min-w-[4rem]">{m.actions()}</th>
-				<th class="sticky left-[4.75rem] top-0 z-1 bg-base-200 w-24 min-w-[6rem]">{m.id()}</th>
-				<th class="w-56 min-w-[14rem]">{m.name()}</th>
-				<th class="w-56 min-w-[14rem]">{m.address()}</th>
-				<th class="w-32 min-w-[8rem]">{m.country()}</th>
-				<th class="w-32 min-w-[8rem]">{m.state()}</th>
-				<th class="w-32 min-w-[8rem]">{m.city()}</th>
-				<th class="w-28 min-w-[7rem]">{m.postal_code()}</th>
-				<th class="w-32 min-w-[8rem]">{m.phone_code()}</th>
-				<th class="w-36 min-w-[9rem]">{m.phone()}</th>
-				<th class="w-48 min-w-[12rem]">{m.email()}</th>
-				<th class="w-28 min-w-[7rem]">{m.status()}</th>
-				<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
-				<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
+					<th class="sticky left-0 z-1 w-16 min-w-[4rem] bg-base-200"
+						>{m.actions()}</th
+					>
+					<th
+						class="sticky top-0 left-[4.75rem] z-1 w-24 min-w-[6rem] bg-base-200"
+						>{m.id()}</th
+					>
+					<th class="w-56 min-w-[14rem]">{m.name()}</th>
+					<th class="w-56 min-w-[14rem]">{m.address()}</th>
+					<th class="w-32 min-w-[8rem]">{m.country()}</th>
+					<th class="w-32 min-w-[8rem]">{m.state()}</th>
+					<th class="w-32 min-w-[8rem]">{m.city()}</th>
+					<th class="w-28 min-w-[7rem]">{m.postal_code()}</th>
+					<th class="w-32 min-w-[8rem]">{m.phone_code()}</th>
+					<th class="w-36 min-w-[9rem]">{m.phone()}</th>
+					<th class="w-48 min-w-[12rem]">{m.email()}</th>
+					<th class="w-28 min-w-[7rem]">{m.status()}</th>
+					<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
+					<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
 				</tr>
 			</DaisyUiTableHeader>
 			<DaisyUiTableBody>
 				{#each referList as refer (refer.id)}
-					<tr class="hover:bg-info/30 z-0">
-						<td class="sticky left-0 z-2 bg-base-100 w-16 min-w-[4rem]">
+					<tr class="z-0 hover:bg-info/30">
+						<td
+							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+						>
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText={m.view_data()}
@@ -300,27 +331,55 @@
 								</DaisyUiTooltip>
 							</div>
 						</td>
-						<td class="sticky left-[4.75rem] z-1 bg-base-100 w-24 min-w-[6rem]">
+						<td
+							class="sticky left-[4.75rem] z-1 w-24 min-w-[6rem] bg-base-100"
+						>
 							{refer.id}
 						</td>
 						<td class="w-56 min-w-[14rem]">
-							{[(refer.title?.name ?? '').trim(), (refer.name ?? '').trim()].filter(Boolean).join(' ') || '—'}
+							{[
+								(refer.title?.name ?? '').trim(),
+								(refer.name ?? '').trim()
+							]
+								.filter(Boolean)
+								.join(' ') || '—'}
 						</td>
 						<td class="w-56 min-w-[14rem]">{refer.address ?? '—'}</td>
-						<td class="w-32 min-w-[8rem]">{refer.country?.name ?? '—'}</td>
-						<td class="w-32 min-w-[8rem]">{refer.state?.name ?? '—'}</td>
-						<td class="w-32 min-w-[8rem]">{refer.city?.name ?? '—'}</td>
-						<td class="w-28 min-w-[7rem]">{refer.postalCode != null ? String(refer.postalCode.value) : '—'}</td>
-						<td class="w-32 min-w-[8rem]">{refer.phoneCountry?.countryCallingCode ?? '—'}</td>
+						<td class="w-32 min-w-[8rem]"
+							>{refer.country?.name ?? '—'}</td
+						>
+						<td class="w-32 min-w-[8rem]"
+							>{refer.state?.name ?? '—'}</td
+						>
+						<td class="w-32 min-w-[8rem]"
+							>{refer.city?.name ?? '—'}</td
+						>
+						<td class="w-28 min-w-[7rem]"
+							>{refer.postalCode != null
+								? String(refer.postalCode.value)
+								: '—'}</td
+						>
+						<td class="w-32 min-w-[8rem]"
+							>{refer.phoneCountry?.countryCallingCode ?? '—'}</td
+						>
 						<td class="w-36 min-w-[9rem]">{refer.phone ?? '—'}</td>
 						<td class="w-48 min-w-[12rem]">{refer.email ?? '—'}</td>
-						<td class="w-28 min-w-[7rem]">{refer.status?.name ?? '—'}</td>
-						<td class="w-40 min-w-[10rem]">{formatDateTime(refer.createdAt)}</td>
-						<td class="w-40 min-w-[10rem]">{formatDateTime(refer.updatedAt)}</td>
+						<td class="w-28 min-w-[7rem]"
+							>{refer.status?.name ?? '—'}</td
+						>
+						<td class="w-40 min-w-[10rem]"
+							>{formatDateTime(refer.createdAt)}</td
+						>
+						<td class="w-40 min-w-[10rem]"
+							>{formatDateTime(refer.updatedAt)}</td
+						>
 					</tr>
 				{:else}
 					<tr>
-						<td colspan={REFER_COLUMN_COUNT} class="text-center opacity-70">
+						<td
+							colspan={REFER_COLUMN_COUNT}
+							class="text-center opacity-70"
+						>
 							{m.no_refer_found()}
 						</td>
 					</tr>

@@ -12,7 +12,9 @@ function normPath(p: string | null | undefined): string {
 export const load: PageServerLoad = async ({ params }) => {
 	const hospitalId = params.hospital_id;
 	const pages = await getPage();
-	const staffPage = pages.find((p) => normPath(p.pageUrl) === STAFF_INDEX_PATH);
+	const staffPage = pages.find(
+		(p) => normPath(p.pageUrl) === STAFF_INDEX_PATH
+	);
 	if (!staffPage) return {};
 
 	const children = pages
@@ -20,7 +22,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
 	const first = children[0];
 	if (first?.pageUrl && hospitalId) {
-		throw redirect(302, hekaHospitalPageUrl(hospitalId, first.pageUrl));
+		throw redirect(
+			302,
+			hekaHospitalPageUrl(hospitalId, first.pageUrl)
+		);
 	}
 
 	return {};

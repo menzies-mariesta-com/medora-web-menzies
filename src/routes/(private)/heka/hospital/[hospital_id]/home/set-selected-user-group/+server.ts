@@ -9,7 +9,12 @@ import { and, eq } from 'drizzle-orm';
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
 
 /** POST with form body userGroupId= number. Sets cookie and redirects to referrer or hospital home. */
-export const POST: RequestHandler = async ({ request, params, cookies, locals }) => {
+export const POST: RequestHandler = async ({
+	request,
+	params,
+	cookies,
+	locals
+}) => {
 	const userRoleId = locals.userRoleId ?? null;
 	const staffId = locals.staff?.id ?? null;
 	const hospitalId = params.hospital_id ?? '';
@@ -30,7 +35,10 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 		.from(table.staffUserGroupTable)
 		.innerJoin(
 			table.userGroupTable,
-			eq(table.staffUserGroupTable.userGroupId, table.userGroupTable.id)
+			eq(
+				table.staffUserGroupTable.userGroupId,
+				table.userGroupTable.id
+			)
 		)
 		.where(
 			and(
@@ -54,8 +62,12 @@ export const POST: RequestHandler = async ({ request, params, cookies, locals })
 	});
 
 	const referer = request.headers.get('referer');
-	const redirectUrl = referer && new URL(referer).pathname.startsWith(`/heka/hospital/${hospitalId}/home`)
-		? referer
-		: hekaHospitalHome(hospitalId);
+	const redirectUrl =
+		referer &&
+		new URL(referer).pathname.startsWith(
+			`/heka/hospital/${hospitalId}/home`
+		)
+			? referer
+			: hekaHospitalHome(hospitalId);
 	throw redirect(303, redirectUrl);
 };

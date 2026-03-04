@@ -1,6 +1,9 @@
 <script lang="ts">
-import { page } from '$app/state';
-import { hekaHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { page } from '$app/state';
+	import {
+		hekaHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 
@@ -11,7 +14,10 @@ import { hekaHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum'
 	lifeCycleUtil.onMount(() => {
 		if (hospitalId)
 			routerUtil.replaceRoute(
-				hekaHospitalPageUrl(hospitalId, WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR)
+				hekaHospitalPageUrl(
+					hospitalId,
+					WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
+				)
 			);
 	});
 </script>

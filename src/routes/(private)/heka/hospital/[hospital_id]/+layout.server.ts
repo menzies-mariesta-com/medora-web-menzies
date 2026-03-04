@@ -1,6 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { hekaHospitalHome, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+import {
+	hekaHospitalHome,
+	WebRoutesEnum
+} from '$lib/model/enum/routes.enum';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -13,10 +16,16 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	}
 
 	// Staff may only access their assigned hospitals
-	if (locals.userRoleId === RoleEnum.STAFF && locals.allowedHospitalIds?.length) {
+	if (
+		locals.userRoleId === RoleEnum.STAFF &&
+		locals.allowedHospitalIds?.length
+	) {
 		const allowed = new Set(locals.allowedHospitalIds);
 		if (hospitalId && !allowed.has(hospitalId)) {
-			throw redirect(302, hekaHospitalHome(locals.allowedHospitalIds[0]));
+			throw redirect(
+				302,
+				hekaHospitalHome(locals.allowedHospitalIds[0])
+			);
 		}
 		return {};
 	}

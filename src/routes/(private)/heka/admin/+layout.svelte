@@ -12,7 +12,8 @@
 	const routerUtil = new RouterUtil();
 	const currentStaffId = $derived(data?.staff?.id ?? null);
 	const currentStaffPhotoUrl = $derived(
-		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ?? null
+		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ??
+			null
 	);
 </script>
 
@@ -26,10 +27,11 @@
 		<div class="mb-3">
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm"
-				onClick={() => routerUtil.goToRoute(WebRoutesEnum.HEKA_HOSPITAL)}
+				onClick={() =>
+					routerUtil.goToRoute(WebRoutesEnum.HEKA_HOSPITAL)}
 			>
-			<LucideArrowLeft />
-			{m.back_to_hospitals()}
+				<LucideArrowLeft />
+				{m.back_to_hospitals()}
 			</DaisyUiButton>
 		</div>
 		{@render children?.()}

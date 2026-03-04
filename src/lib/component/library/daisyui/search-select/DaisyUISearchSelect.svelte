@@ -44,7 +44,8 @@
 	const displayLabel = $derived(
 		!value?.trim()
 			? ''
-			: optionsList.find((o) => o.value === value)?.label ?? cachedLabelForValue
+			: (optionsList.find((o) => o.value === value)?.label ??
+					cachedLabelForValue)
 	);
 	const filtered = $derived(
 		isAsync
@@ -108,7 +109,8 @@
 			}
 		}
 		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
+		return () =>
+			document.removeEventListener('mousedown', handleClickOutside);
 	});
 
 	// When value is set and we're in async mode, fetch label if not in current options
@@ -130,7 +132,7 @@
 <div class="relative w-full" bind:this={containerEl}>
 	<input
 		type="text"
-		class="d-input d-input-bordered w-full {className ?? ''}"
+		class="d-input-bordered d-input w-full {className ?? ''}"
 		value={inputValue}
 		{placeholder}
 		{disabled}
@@ -144,11 +146,13 @@
 
 	{#if open}
 		<ul
-			class="d-menu bg-base-100 shadow-lg rounded-box mt-1 w-full absolute z-50 max-h-60 overflow-auto border"
+			class="d-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-box border bg-base-100 shadow-lg"
 			role="listbox"
 		>
 			{#if isLoading}
-				<li class="disabled px-4 py-2 text-sm opacity-60">Loading…</li>
+				<li class="disabled px-4 py-2 text-sm opacity-60">
+					Loading…
+				</li>
 			{:else if filtered.length === 0}
 				<li class="disabled px-4 py-2 text-sm opacity-60">
 					{isAsync && search.length < minSearchLength
@@ -158,7 +162,10 @@
 			{:else}
 				{#each filtered as option (option.value)}
 					<li role="option">
-						<button type="button" onclick={() => selectOption(option)}>
+						<button
+							type="button"
+							onclick={() => selectOption(option)}
+						>
 							{option.label}
 						</button>
 					</li>

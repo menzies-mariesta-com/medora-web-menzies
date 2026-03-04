@@ -26,7 +26,7 @@
 			component: ResetPasswordModal
 		});
 	}
-	
+
 	let isPasswordVisible = $state(false);
 	let isLoading = $state(false);
 
@@ -42,7 +42,10 @@
 		const password = fd.get('password') as string;
 
 		if (!email || !password) {
-			toastService.addToast(m.email_password_required(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.email_password_required(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
@@ -54,7 +57,10 @@
 		isLoading = false;
 
 		if (error) {
-			toastService.addToast(error.message ?? m.invalid_email_password(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				error.message ?? m.invalid_email_password(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (data) {
@@ -65,16 +71,16 @@
 
 <DaisyUiCard className="w-full max-w-md ">
 	<DaisyUiCardBody>
-    <form onsubmit={handleSubmit}>
-		<DaisyUiFieldset
-			className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-		>
-			<DaisyUiFieldsetLegend>
-				<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
-					<img src={HekaLogo} alt="" class="w-42" />
-				</DaisyUiLink>
-			</DaisyUiFieldsetLegend>
-			
+		<form onsubmit={handleSubmit}>
+			<DaisyUiFieldset
+				className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
+			>
+				<DaisyUiFieldsetLegend>
+					<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
+						<img src={HekaLogo} alt="" class="w-42" />
+					</DaisyUiLink>
+				</DaisyUiFieldsetLegend>
+
 				<!-- email -->
 				<section id="email-input">
 					<DaisyUiInputField
@@ -94,7 +100,11 @@
 							nameText="password"
 							className="d-join-item"
 						/>
-						<DaisyUiButton className="d-join-item" type="button" onClick={togglePasswordVisibility}>
+						<DaisyUiButton
+							className="d-join-item"
+							type="button"
+							onClick={togglePasswordVisibility}
+						>
 							{#if isPasswordVisible}
 								<LucideEye />
 							{:else}
@@ -113,23 +123,25 @@
 					{isLoading ? m.signing_in() : m.login()}
 				</DaisyUiButton>
 
-			<!-- external links -->
-			<div class="my-ft-small flex flex-col gap-3">
-				<div id="signup">
-					{m.no_account()} <DaisyUiLink
-						href={WebRoutesEnum.SIGNUP}
-						className="d-link-info">{m.signup()}</DaisyUiLink
-					>
+				<!-- external links -->
+				<div class="my-ft-small flex flex-col gap-3">
+					<div id="signup">
+						{m.no_account()}
+						<DaisyUiLink
+							href={WebRoutesEnum.SIGNUP}
+							className="d-link-info">{m.signup()}</DaisyUiLink
+						>
+					</div>
+					<div id="forget-password">
+						{m.forget_password()}
+						<DaisyUiLink
+							onClick={openResetPasswordModal}
+							className="d-link-info"
+						>
+							{m.reset_password()}
+						</DaisyUiLink>
+					</div>
 				</div>
-				<div id="forget-password">
-					{m.forget_password()} <DaisyUiLink
-						onClick={openResetPasswordModal}
-						className="d-link-info"
-					>
-						{m.reset_password()}
-					</DaisyUiLink>
-				</div>
-			</div>
 			</DaisyUiFieldset>
 		</form>
 	</DaisyUiCardBody>

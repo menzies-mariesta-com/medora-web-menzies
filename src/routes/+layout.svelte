@@ -116,12 +116,12 @@
 				onClose={() => dialogService.close()}
 				showCloseButton={!DialogState.current.component}
 			>
-			{#if DialogState.current.component}
-				{#if DialogState.current.title}
-					<h3 class="mb-5 text-lg font-bold">
-						{DialogState.current.title}
-					</h3>
-				{/if}
+				{#if DialogState.current.component}
+					{#if DialogState.current.title}
+						<h3 class="mb-5 text-lg font-bold">
+							{DialogState.current.title}
+						</h3>
+					{/if}
 					{@const DialogContent = DialogState.current.component}
 					<DialogContent
 						confirm={(data) => dialogService.confirm(data)}

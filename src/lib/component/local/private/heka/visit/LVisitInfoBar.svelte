@@ -14,7 +14,10 @@
 	} = $props<{
 		visitId?: string;
 		hospitalId: string | undefined;
-		onVisitSelected: (data: { visitId: number; patientName: string }) => void;
+		onVisitSelected: (data: {
+			visitId: number;
+			patientName: string;
+		}) => void;
 		onVisitReset: () => void;
 		className?: string;
 	}>();
@@ -23,14 +26,17 @@
 </script>
 
 <div
-	class="flex items-center justify-between gap-4 rounded-box border-l-4 border-primary bg-base-200 p-4 shadow-sm mb-2 {className}"
+	class="mb-2 flex items-center justify-between gap-4 rounded-box border-l-4 border-primary bg-base-200 p-4 shadow-sm {className}"
 >
 	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 		<LVisitInfoDisplay {visitId} />
 	</div>
 	<div class="flex shrink-0 items-center gap-2">
 		{#if hasVisit}
-			<DaisyUiTooltip tooltipText="Reset selected visit" className="d-tooltip-bottom">
+			<DaisyUiTooltip
+				tooltipText="Reset selected visit"
+				className="d-tooltip-bottom"
+			>
 				<DaisyUiButton
 					className="d-btn-ghost d-btn-sm d-btn-circle"
 					onClick={onVisitReset}

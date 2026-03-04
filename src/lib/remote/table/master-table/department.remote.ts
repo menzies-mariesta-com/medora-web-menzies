@@ -4,20 +4,25 @@ import * as table from '$lib/server/db/schema';
 import type {
 	DepartmentSchema,
 	DepartmentSchemaInsert,
-	DepartmentSchemaUpdate,
+	DepartmentSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getDepartment = query(async (): Promise<DepartmentSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.departmentTable)
-		.where(eq(table.departmentTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.departmentTable.name);
-});
+export const getDepartment = query(
+	async (): Promise<DepartmentSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.departmentTable)
+			.where(eq(table.departmentTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.departmentTable.name);
+	}
+);
 
 export const getDepartmentCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
@@ -29,9 +34,15 @@ export const getDepartmentCount = query(async (): Promise<number> => {
 
 export const getDepartmentPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<DepartmentSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.departmentTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<DepartmentSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.departmentTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +54,7 @@ export const getDepartmentPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.departmentTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,14 +62,18 @@ export const getDepartmentPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
 
 export const getDepartmentById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<DepartmentSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<DepartmentSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.departmentTable)
@@ -69,7 +84,9 @@ export const getDepartmentById = query(
 
 export const createDepartment = command(
 	'unchecked' as const,
-	async (payload: DepartmentSchemaInsert): Promise<DepartmentSchema> => {
+	async (
+		payload: DepartmentSchemaInsert
+	): Promise<DepartmentSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.departmentTable)
 			.values(payload)
@@ -82,7 +99,12 @@ export const createDepartment = command(
 
 export const updateDepartment = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string | null; code?: string | null; statusId?: number | null }): Promise<DepartmentSchema> => {
+	async (payload: {
+		id: number;
+		name?: string | null;
+		code?: string | null;
+		statusId?: number | null;
+	}): Promise<DepartmentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.departmentTable)
@@ -109,7 +131,9 @@ export const deleteDepartment = command(
 export const deleteDepartmentComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.departmentTable).where(eq(table.departmentTable.id, id));
+		await ensureDb()
+			.delete(table.departmentTable)
+			.where(eq(table.departmentTable.id, id));
 		getDepartment().refresh();
 	}
 );

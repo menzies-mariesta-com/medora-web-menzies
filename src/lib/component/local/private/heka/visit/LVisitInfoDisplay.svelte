@@ -42,11 +42,15 @@
 		};
 	});
 
-	function formatDate(value: string | Date | null | undefined): string {
+	function formatDate(
+		value: string | Date | null | undefined
+	): string {
 		if (value == null) return '';
 		try {
 			const d = typeof value === 'string' ? new Date(value) : value;
-			return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { dateStyle: 'short' });
+			return Number.isNaN(d.getTime())
+				? ''
+				: d.toLocaleDateString('en-US', { dateStyle: 'short' });
 		} catch {
 			return '';
 		}
@@ -65,13 +69,19 @@
 	}
 
 	const patientName = $derived(
-		visit?.patient ? StringUtil.patientDisplayName(visit.patient as any) : ''
+		visit?.patient
+			? StringUtil.patientDisplayName(visit.patient as any)
+			: ''
 	);
 	const patientCode = $derived(visit?.patient?.code ?? '');
-	const patientDob = $derived(formatDate(visit?.patient?.dateOfBirth));
+	const patientDob = $derived(
+		formatDate(visit?.patient?.dateOfBirth)
+	);
 	const visitNo = $derived(visit?.visitNo ?? '');
 	const visitTypeName = $derived(visit?.visitType?.name ?? '');
-	const visitDate = $derived(formatDateTime(visit?.createdAt ?? null));
+	const visitDate = $derived(
+		formatDateTime(visit?.createdAt ?? null)
+	);
 	const branchName = $derived(visit?.branch?.name ?? '');
 	const hospitalName = $derived(visit?.hospital?.name ?? '');
 	const doctorName = $derived(
@@ -86,8 +96,10 @@
 	);
 </script>
 
-<div class="flex flex-col gap-2 min-w-0">
-	<div class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+<div class="flex min-w-0 flex-col gap-2">
+	<div
+		class="text-xs font-semibold tracking-wide text-base-content/70 uppercase"
+	>
 		{title}
 	</div>
 
@@ -96,13 +108,17 @@
 	{:else if !visit}
 		<div class="text-sm text-base-content/60">{emptyLabel}</div>
 	{:else}
-		<dl class="visit-info-grid grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+		<dl
+			class="visit-info-grid grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3"
+		>
 			{#if visitNo || visitTypeName}
 				<div class="visit-info-item">
-					<dt class="text-base-content/60 font-normal">Visit</dt>
+					<dt class="font-normal text-base-content/60">Visit</dt>
 					<dd class="font-medium text-primary">
 						{#if visitNo}{visitNo}{/if}{#if visitTypeName}
-							{#if visitNo}<span class="text-base-content/60"> · </span>{/if}
+							{#if visitNo}<span class="text-base-content/60">
+									·
+								</span>{/if}
 							{visitTypeName}
 						{/if}
 					</dd>
@@ -110,28 +126,32 @@
 			{/if}
 			{#if patientName || patientCode}
 				<div class="visit-info-item">
-					<dt class="text-base-content/60 font-normal">Patient</dt>
+					<dt class="font-normal text-base-content/60">Patient</dt>
 					<dd class="font-medium">
 						{#if patientName}{patientName}{/if}
 						{#if patientCode}
-							{#if patientName}<span class="text-base-content/60"> · </span>{/if}
+							{#if patientName}<span class="text-base-content/60">
+									·
+								</span>{/if}
 							<span class="text-base-content/80">{patientCode}</span>
 						{/if}
 						{#if patientDob}
-							<span class="text-base-content/60"> · {patientDob}</span>
+							<span class="text-base-content/60">
+								· {patientDob}</span
+							>
 						{/if}
 					</dd>
 				</div>
 			{/if}
 			{#if doctorName}
 				<div class="visit-info-item">
-					<dt class="text-base-content/60 font-normal">Doctor</dt>
+					<dt class="font-normal text-base-content/60">Doctor</dt>
 					<dd class="font-medium text-base-content">{doctorName}</dd>
 				</div>
 			{/if}
 			{#if branchName || hospitalName}
 				<div class="visit-info-item">
-					<dt class="text-base-content/60 font-normal">Location</dt>
+					<dt class="font-normal text-base-content/60">Location</dt>
 					<dd class="font-medium text-base-content">
 						{[branchName, hospitalName].filter(Boolean).join(' · ')}
 					</dd>
@@ -139,7 +159,7 @@
 			{/if}
 			{#if visitDate}
 				<div class="visit-info-item">
-					<dt class="text-base-content/60 font-normal">Visit Date</dt>
+					<dt class="font-normal text-base-content/60">Visit Date</dt>
 					<dd class="font-medium text-base-content">{visitDate}</dd>
 				</div>
 			{/if}

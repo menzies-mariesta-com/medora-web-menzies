@@ -14,14 +14,17 @@ export type VitalKey =
 	| VitalEnum.SP_O2
 	| VitalEnum.RBS;
 
-export const VITAL_REFERENCE_RANGES: Record<VitalKey, { min: number; max: number }> = {
+export const VITAL_REFERENCE_RANGES: Record<
+	VitalKey,
+	{ min: number; max: number }
+> = {
 	[VitalEnum.TEMPERATURE]: { min: 36.2, max: 37.2 },
 	[VitalEnum.RESPIRATION]: { min: 12, max: 18 },
 	[VitalEnum.PULSE]: { min: 60, max: 100 },
 	[VitalEnum.BP_SYSTOLIC]: { min: 90, max: 120 },
 	[VitalEnum.BP_DIASTOLIC]: { min: 60, max: 90 },
 	[VitalEnum.SP_O2]: { min: 95, max: 100 },
-	[VitalEnum.RBS]: { min: 74, max: 140 },
+	[VitalEnum.RBS]: { min: 74, max: 140 }
 };
 
 export function getVitalPlaceholder(key: VitalKey): string {
@@ -46,11 +49,17 @@ export function isOutOfRange(value: unknown, key: VitalKey): boolean {
 }
 
 /** For input fields: border + text when out of range. */
-export function vitalInputClass(value: unknown, key: VitalKey): string {
+export function vitalInputClass(
+	value: unknown,
+	key: VitalKey
+): string {
 	return isOutOfRange(value, key) ? 'border-error text-error' : '';
 }
 
 /** For table display: text when out of range. */
-export function vitalTextClass(value: unknown, key: VitalKey): string {
+export function vitalTextClass(
+	value: unknown,
+	key: VitalKey
+): string {
 	return isOutOfRange(value, key) ? 'text-error font-medium' : '';
 }

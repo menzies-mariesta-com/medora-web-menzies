@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
-	import { getSubPages, pathnameForPageMatch } from '$lib/state/page.state.svelte';
+	import {
+		getSubPages,
+		pathnameForPageMatch
+	} from '$lib/state/page.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/local/private/heka/visit/LVisitInfoBar.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -10,7 +13,9 @@
 
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
-	const currentPath = $derived(pathnameForPageMatch().replace(/\/$/, '') || '/');
+	const currentPath = $derived(
+		pathnameForPageMatch().replace(/\/$/, '') || '/'
+	);
 	const hospitalId = $derived(page.params.hospital_id);
 	const currentSearch = $derived(page.url.search);
 
@@ -25,14 +30,21 @@
 		return currentSearch ? `${base}${currentSearch}` : base;
 	}
 
-	const selectedVisitId = $derived(page.url.searchParams.get('visitId') ?? '');
+	const selectedVisitId = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 
-	function handleVisitSelected(data: { visitId: number; patientName: string }) {
+	function handleVisitSelected(data: {
+		visitId: number;
+		patientName: string;
+	}) {
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
 		const url =
-			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+			search.toString().length > 0
+				? `${base}?${search.toString()}`
+				: base;
 		routerUtil.replaceRoute(url);
 	}
 
@@ -41,7 +53,9 @@
 		search.delete('visitId');
 		const base = page.url.pathname;
 		const url =
-			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+			search.toString().length > 0
+				? `${base}?${search.toString()}`
+				: base;
 		routerUtil.replaceRoute(url);
 	}
 </script>
@@ -50,7 +64,7 @@
 	<div class="emr-subnav-wrapper">
 		<LVisitInfoBar
 			visitId={selectedVisitId}
-			hospitalId={hospitalId}
+			{hospitalId}
 			onVisitSelected={handleVisitSelected}
 			onVisitReset={handleVisitReset}
 		/>

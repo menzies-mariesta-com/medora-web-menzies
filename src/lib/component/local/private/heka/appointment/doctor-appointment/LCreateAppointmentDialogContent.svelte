@@ -2,13 +2,13 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
-import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-import {
-	createAppointment,
-	getAppointment
+	import {
+		createAppointment,
+		getAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
-import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
+	import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientPaginated,
 		getPatientByIdWithRelations
@@ -34,7 +34,9 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	let { confirm, cancel } = $props();
 
 	const hospitalId = $derived(
-		(typeof page.params?.hospital_id === 'string' && page.params.hospital_id) || ''
+		(typeof page.params?.hospital_id === 'string' &&
+			page.params.hospital_id) ||
+			''
 	);
 
 	const toastService = new ToastService();
@@ -42,8 +44,12 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 
 	const slot = $derived(CreateAppointmentDialogState.slot);
 	const staffId = $derived(CreateAppointmentDialogState.staffId);
-	const selectedBranchId = $derived(CreateAppointmentDialogState.branchId);
-	const slotDurationMinutes = $derived(CreateAppointmentDialogState.slotDurationMinutes);
+	const selectedBranchId = $derived(
+		CreateAppointmentDialogState.branchId
+	);
+	const slotDurationMinutes = $derived(
+		CreateAppointmentDialogState.slotDurationMinutes
+	);
 
 	/** Compute toTime from timeSlot + total minutes (e.g. "09:00" + 60 → "10:00"). */
 	function addMinutesToTime(hhmm: string, minutes: number): string {
@@ -69,8 +75,12 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	let manualAppointmentDate = $state('');
 	let manualFromTime = $state('');
 
-	const effectiveDate = $derived(slot?.dateString ?? manualAppointmentDate);
-	const effectiveFromTime = $derived(slot?.timeSlot ?? manualFromTime);
+	const effectiveDate = $derived(
+		slot?.dateString ?? manualAppointmentDate
+	);
+	const effectiveFromTime = $derived(
+		slot?.timeSlot ?? manualFromTime
+	);
 	const toTime = $derived(
 		effectiveFromTime
 			? addMinutesToTime(effectiveFromTime, totalMinutes)
@@ -103,7 +113,9 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	let isSubmitting = $state(false);
 
 	/** Server-side patient search for the dropdown. Returns options with label (full name) and value (id). */
-	async function searchPatients(query: string): Promise<{ label: string; value: string }[]> {
+	async function searchPatients(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
 		const res = await getPatientPaginated({
 			search: query.trim(),
 			hospitalId: hospitalId || undefined,
@@ -121,7 +133,9 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	}
 
 	/** Resolve selected patient id to display label (when not in current search results). */
-	async function getPatientLabelForValue(id: string): Promise<string> {
+	async function getPatientLabelForValue(
+		id: string
+	): Promise<string> {
 		const p = await getPatientByIdWithRelations({ id });
 		if (!p) return '';
 		return StringUtil.patientOptionDisplayName(p);
@@ -133,14 +147,13 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 				(r) => String(r.id) === (selectedReferTypeId?.trim() || '')
 			) ?? null
 	);
-	const selectedReferTypeName = $derived.by(
-		() => (selectedReferType?.name ?? '').trim().toLowerCase()
+	const selectedReferTypeName = $derived.by(() =>
+		(selectedReferType?.name ?? '').trim().toLowerCase()
 	);
-	const referBoxLabel = $derived.by(
-		() =>
-			selectedReferTypeName === 'internal'
-				? 'Internal Refer'
-				: 'External Refer'
+	const referBoxLabel = $derived.by(() =>
+		selectedReferTypeName === 'internal'
+			? 'Internal Refer'
+			: 'External Refer'
 	);
 	const filteredExternalReferData = $derived.by(() => {
 		const typeId = selectedReferType?.id;
@@ -154,29 +167,29 @@ import { createPatientVisit } from '$lib/remote/table/information-table/patient-
 	);
 
 	const availableStatusTaggingData = $derived.by(() => {
-	// Cancel is only available in edit dialog, never on create.
-	// For new patients (no linked account), also hide "Check In".
-	return statusTaggingData.filter((s) => {
-		const raw = (s.code ?? s.name ?? '')
+		// Cancel is only available in edit dialog, never on create.
+		// For new patients (no linked account), also hide "Check In".
+		return statusTaggingData.filter((s) => {
+			const raw = (s.code ?? s.name ?? '')
+				.trim()
+				.toLowerCase()
+				.replace(/[\s_-]/g, '');
+			if (raw === 'cancel') return false;
+			if (patientMode === 'new' && raw === 'checkin') return false;
+			return true;
+		});
+	});
+
+	function isCheckInStatus(id: string | null | undefined): boolean {
+		if (!id) return false;
+		const status = statusTaggingData.find((s) => String(s.id) === id);
+		if (!status) return false;
+		const raw = (status.code ?? status.name ?? '')
 			.trim()
 			.toLowerCase()
 			.replace(/[\s_-]/g, '');
-		if (raw === 'cancel') return false;
-		if (patientMode === 'new' && raw === 'checkin') return false;
-		return true;
-	});
-	});
-
-function isCheckInStatus(id: string | null | undefined): boolean {
-	if (!id) return false;
-	const status = statusTaggingData.find((s) => String(s.id) === id);
-	if (!status) return false;
-	const raw = (status.code ?? status.name ?? '')
-		.trim()
-		.toLowerCase()
-		.replace(/[\s_-]/g, '');
-	return raw === 'checkin';
-}
+		return raw === 'checkin';
+	}
 
 	// When in "new" patient mode, clear "Check In" if currently selected
 	$effect(() => {
@@ -291,10 +304,7 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 		const numY = Number(y);
 		const numM =
 			patientAgeMonth != null && patientAgeMonth !== ''
-				? Math.min(
-						11,
-						Math.max(0, Number(patientAgeMonth))
-					)
+				? Math.min(11, Math.max(0, Number(patientAgeMonth)))
 				: 0;
 		const numD =
 			patientAgeDay != null && patientAgeDay !== ''
@@ -311,12 +321,13 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 	});
 
 	lifeCycle.onMount(async () => {
-		const [titles, referTypes, externalRefers, statusTaggings] = await Promise.all([
-			getTitle(),
-			getReferType(),
-			getExternalRefer(),
-			getStatusTagging()
-		]);
+		const [titles, referTypes, externalRefers, statusTaggings] =
+			await Promise.all([
+				getTitle(),
+				getReferType(),
+				getExternalRefer(),
+				getStatusTagging()
+			]);
 		titleData = titles;
 		referTypeData = referTypes;
 		externalReferData = externalRefers;
@@ -328,14 +339,16 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 		if (!id) return;
 		getPatientByIdWithRelations({ id }).then((p) => {
 			if (!p) return;
-			const titleName = (p as { title?: { name?: string } }).title?.name;
+			const titleName = (p as { title?: { name?: string } }).title
+				?.name;
 			patientName = StringUtil.fullNameWithTitle(
 				titleName ?? undefined,
 				p.firstName ?? '',
 				p.middleName ?? '',
 				p.lastName ?? ''
 			);
-			if (p.titleId != null) selectedPatientTitleId = String(p.titleId);
+			if (p.titleId != null)
+				selectedPatientTitleId = String(p.titleId);
 			if (p.dateOfBirth != null)
 				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
 		});
@@ -356,7 +369,8 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 		const endMin = toH * 60 + (toM || 0);
 		for (const a of all) {
 			if (String(a.staffId) !== staffIdVal) continue;
-			if (String(a.appointmentDate).slice(0, 10) !== dateStr) continue;
+			if (String(a.appointmentDate).slice(0, 10) !== dateStr)
+				continue;
 			if (excludeId != null && a.id === excludeId) continue;
 			const aFrom = String(a.fromTime ?? '').trim();
 			const aTo = String(a.toTime ?? '').trim();
@@ -373,11 +387,20 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 	async function handleCreate() {
 		if (!staffId?.trim()) return;
 		if (!selectedBranchId?.trim()) {
-			toastService.addToast('Please select a branch before creating appointment.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please select a branch before creating appointment.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
-		if (isNoSlotMode && (!effectiveDate.trim() || !effectiveFromTime.trim())) {
-			toastService.addToast('Please pick date and start time.', StatusColorEnum.ERROR);
+		if (
+			isNoSlotMode &&
+			(!effectiveDate.trim() || !effectiveFromTime.trim())
+		) {
+			toastService.addToast(
+				'Please pick date and start time.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (!effectiveDate || !effectiveFromTime || !toTime) return;
@@ -388,7 +411,10 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 			toTime
 		);
 		if (overlap) {
-			toastService.addToast('This time overlaps an existing appointment.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'This time overlaps an existing appointment.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isSubmitting = true;
@@ -401,17 +427,31 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 				toTime,
 				patientId: selectedPatientId?.trim() || null,
 				staffId: staffId?.trim() || null,
-				patientTitleId: selectedPatientTitleId ? parseInt(selectedPatientTitleId, 10) : null,
+				patientTitleId: selectedPatientTitleId
+					? parseInt(selectedPatientTitleId, 10)
+					: null,
 				patientName: patientName.trim() || null,
 				patientDateOfBirth: patientDateOfBirth.trim() || null,
-				patientAgeYear: patientAgeYear ? parseInt(patientAgeYear, 10) : null,
-				patientAgeMonth: patientAgeMonth ? parseInt(patientAgeMonth, 10) : null,
-				patientAgeDay: patientAgeDay ? parseInt(patientAgeDay, 10) : null,
+				patientAgeYear: patientAgeYear
+					? parseInt(patientAgeYear, 10)
+					: null,
+				patientAgeMonth: patientAgeMonth
+					? parseInt(patientAgeMonth, 10)
+					: null,
+				patientAgeDay: patientAgeDay
+					? parseInt(patientAgeDay, 10)
+					: null,
 				appointmentPhone: appointmentPhone.trim() || null,
 				appointmentEmail: appointmentEmail.trim() || null,
-				referTypeId: selectedReferTypeId ? parseInt(selectedReferTypeId, 10) : null,
-				externalReferId: selectedExternalReferId ? parseInt(selectedExternalReferId, 10) : null,
-				statusTaggingId: selectedStatusTaggingId ? parseInt(selectedStatusTaggingId, 10) : null,
+				referTypeId: selectedReferTypeId
+					? parseInt(selectedReferTypeId, 10)
+					: null,
+				externalReferId: selectedExternalReferId
+					? parseInt(selectedExternalReferId, 10)
+					: null,
+				statusTaggingId: selectedStatusTaggingId
+					? parseInt(selectedStatusTaggingId, 10)
+					: null,
 				remark: appointmentRemark.trim() || null
 			};
 			const created = await createAppointment(payload);
@@ -439,15 +479,23 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 					});
 				} catch (e) {
 					// Do not block appointment creation if visit creation fails.
-					console.error('Failed to create patient visit for check-in:', e);
+					console.error(
+						'Failed to create patient visit for check-in:',
+						e
+					);
 				}
 			}
 
-			toastService.addToast('Appointment created.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Appointment created.',
+				StatusColorEnum.SUCCESS
+			);
 			confirm(created);
 		} catch (e) {
 			toastService.addToast(
-				e instanceof Error ? e.message : 'Failed to create appointment.',
+				e instanceof Error
+					? e.message
+					: 'Failed to create appointment.',
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -460,35 +508,47 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 	<!-- Date & time: from cell (read-only) or manual (required when opened from Plus) -->
 	<div class="flex flex-col gap-3 rounded-lg bg-base-200/50 p-3">
 		{#if slot}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36">Date</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36"
+					>Date</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<input
 						type="text"
 						value={slot.dateString}
 						disabled
-						class="d-input d-input-bordered d-input-sm w-full"
+						class="d-input-bordered d-input d-input-sm w-full"
 						readonly
 						aria-readonly="true"
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36">From</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36"
+					>From</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<input
 						type="text"
 						value={slot.timeSlot}
 						disabled
-						class="d-input d-input-bordered d-input-sm w-full"
+						class="d-input-bordered d-input d-input-sm w-full"
 						readonly
 						aria-readonly="true"
 					/>
 				</div>
 			</div>
 		{:else}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36">Date <span class="text-error">*</span></DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-date" className="shrink-0 sm:w-36"
+					>Date <span class="text-error">*</span></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="apt-date"
@@ -498,8 +558,12 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36">Start time <span class="text-error">*</span></DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-from" className="shrink-0 sm:w-36"
+					>Start time <span class="text-error">*</span></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
 						id="apt-from"
@@ -510,15 +574,19 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 				</div>
 			</div>
 		{/if}
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="apt-slots" className="shrink-0 sm:w-36">Number of slots</DaisyUiLabel>
-			<div class="max-w-80 flex-1 flex items-center gap-2">
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="apt-slots" className="shrink-0 sm:w-36"
+				>Number of slots</DaisyUiLabel
+			>
+			<div class="flex max-w-80 flex-1 items-center gap-2">
 				<input
 					id="apt-slots"
 					type="number"
 					min="1"
 					max="24"
-					class="d-input d-input-bordered d-input-sm w-20"
+					class="d-input-bordered d-input d-input-sm w-20"
 					bind:value={slotCount}
 					aria-label="Number of slots"
 				/>
@@ -527,14 +595,18 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 				</span>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="apt-to" className="shrink-0 sm:w-36">To</DaisyUiLabel>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="apt-to" className="shrink-0 sm:w-36"
+				>To</DaisyUiLabel
+			>
 			<div class="max-w-80 flex-1">
 				<input
 					type="text"
 					value={toTime}
 					disabled
-					class="d-input d-input-bordered d-input-sm w-full"
+					class="d-input-bordered d-input d-input-sm w-full"
 					readonly
 					aria-readonly="true"
 				/>
@@ -544,181 +616,254 @@ function isCheckInStatus(id: string | null | undefined): boolean {
 
 	<!-- Patient & details -->
 	<div class="flex flex-col gap-4">
-			<div class="flex min-w-0 gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<div class="max-w-80 flex-1 flex justify-between gap-1">
-					<label class="inline-flex items-center gap-2">
-						<input
-							type="radio"
-							name="patient-mode"
-							class="d-radio d-radio-primary"
-							value="existing"
-							bind:group={patientMode}
-						/>
-						<span>Existing patient</span>
-					</label>
-					<label class="inline-flex items-center gap-2">
-						<input
-							type="radio"
-							name="patient-mode"
-							class="d-radio d-radio-primary"
-							value="new"
-							bind:group={patientMode}
-						/>
-						<span>New patient</span>
-					</label>
-				</div>
-			</div>
-			{#if patientMode === 'existing'}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiSearchSelect
-						bind:value={selectedPatientId}
-						placeholder="Select Patient"
-						className="w-full"
-						searchFn={searchPatients}
-						getLabelForValue={getPatientLabelForValue}
-						minSearchLength={0}
+		<div
+			class="flex min-w-0 gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<div class="flex max-w-80 flex-1 justify-between gap-1">
+				<label class="inline-flex items-center gap-2">
+					<input
+						type="radio"
+						name="patient-mode"
+						class="d-radio d-radio-primary"
+						value="existing"
+						bind:group={patientMode}
 					/>
+					<span>Existing patient</span>
+				</label>
+				<label class="inline-flex items-center gap-2">
+					<input
+						type="radio"
+						name="patient-mode"
+						class="d-radio d-radio-primary"
+						value="new"
+						bind:group={patientMode}
+					/>
+					<span>New patient</span>
+				</label>
 			</div>
-			{/if}
-			{#if patientMode === 'new'}
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-title" className="shrink-0 sm:w-36">Patient Title</DaisyUiLabel>
-					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
-							bind:value={selectedPatientTitleId}
-							optionHeader="Select title …"
-							className="w-full"
-						>
-							{#each titleData as t (t.id)}
-								<option value={String(t.id)}>{t.name}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-name" className="shrink-0 sm:w-36">Patient Name <span class="text-error">*</span></DaisyUiLabel>
-					<div class="max-w-80 flex-1">
-						<DaisyUiInputField bind:value={patientName} inputType="text" className="w-full" />
-					</div>
-				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36">Date of Birth</DaisyUiLabel>
-					<div class="max-w-80 flex-1">
-						<DaisyUiInputField bind:value={patientDateOfBirth} inputType="date" className="w-full" />
-					</div>
-				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36">Age (Y / M / D)</DaisyUiLabel>
-					<div class="max-w-80 flex-1 flex gap-2">
-						<DaisyUiInputField
-							bind:value={patientAgeYear}
-							inputType="number"
-							inputPlaceholderText="Y"
-							className="w-20"
-						/>
-						<DaisyUiInputField
-							bind:value={patientAgeMonth}
-							inputType="number"
-							inputPlaceholderText="M"
-							className="w-20"
-						/>
-						<DaisyUiInputField
-							bind:value={patientAgeDay}
-							inputType="number"
-							inputPlaceholderText="D"
-							className="w-20"
-						/>
-					</div>
-				</div>
-			{/if}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36">Guardian Phone</DaisyUiLabel>
+		</div>
+		{#if patientMode === 'existing'}
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiSearchSelect
+					bind:value={selectedPatientId}
+					placeholder="Select Patient"
+					className="w-full"
+					searchFn={searchPatients}
+					getLabelForValue={getPatientLabelForValue}
+					minSearchLength={0}
+				/>
+			</div>
+		{/if}
+		{#if patientMode === 'new'}
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-title" className="shrink-0 sm:w-36"
+					>Patient Title</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
-					<DaisyUiInputField bind:value={appointmentPhone} inputType="tel" className="w-full" />
+					<DaisyUiSelect
+						bind:value={selectedPatientTitleId}
+						optionHeader="Select title …"
+						className="w-full"
+					>
+						{#each titleData as t (t.id)}
+							<option value={String(t.id)}>{t.name}</option>
+						{/each}
+					</DaisyUiSelect>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-email" className="shrink-0 sm:w-36">Email</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-name" className="shrink-0 sm:w-36"
+					>Patient Name <span class="text-error">*</span
+					></DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
 					<DaisyUiInputField
-						bind:value={appointmentEmail}
-						inputType="email"
-						inputPlaceholderText="mail@example.com"
+						bind:value={patientName}
+						inputType="text"
 						className="w-full"
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-refer-type" className="shrink-0 sm:w-36">Refer Type</DaisyUiLabel>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36"
+					>Date of Birth</DaisyUiLabel
+				>
 				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
-						bind:value={selectedReferTypeId}
-						optionHeader="Select refer type …"
+					<DaisyUiInputField
+						bind:value={patientDateOfBirth}
+						inputType="date"
 						className="w-full"
-					>
-						{#each referTypeData as r (r.id)}
-							<option value={String(r.id)}>{r.name}</option>
-						{/each}
-					</DaisyUiSelect>
-				</div>
-			</div>
-			{#if selectedReferTypeId?.trim()}
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="apt-external-refer" className="shrink-0 sm:w-36">{referBoxLabel}</DaisyUiLabel>
-					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
-							bind:value={selectedExternalReferId}
-							optionHeader="Select external refer …"
-							className="w-full"
-						>
-							{#each filteredExternalReferData as e (e.id)}
-								<option value={String(e.id)}>{e.name}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-			{/if}
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-				<DaisyUiLabel forText="apt-remark" className="shrink-0 sm:w-36">Remark</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiTextarea
-						id="apt-remark"
-						bind:value={appointmentRemark}
-						className="w-full min-h-24 resize-y"
 					/>
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-				<DaisyUiLabel forText="apt-status-tagging" className="shrink-0 sm:w-36">Status Tagging</DaisyUiLabel>
-				<div class="max-w-80 flex-1">
-					<DaisyUiSelect
-						bind:value={selectedStatusTaggingId}
-						optionHeader="Select status …"
-						className="w-full"
-					>
-						{#each availableStatusTaggingData as s (s.id)}
-							<option value={String(s.id)}>{s.name}</option>
-						{/each}
-					</DaisyUiSelect>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel forText="apt-age" className="shrink-0 sm:w-36"
+					>Age (Y / M / D)</DaisyUiLabel
+				>
+				<div class="flex max-w-80 flex-1 gap-2">
+					<DaisyUiInputField
+						bind:value={patientAgeYear}
+						inputType="number"
+						inputPlaceholderText="Y"
+						className="w-20"
+					/>
+					<DaisyUiInputField
+						bind:value={patientAgeMonth}
+						inputType="number"
+						inputPlaceholderText="M"
+						className="w-20"
+					/>
+					<DaisyUiInputField
+						bind:value={patientAgeDay}
+						inputType="number"
+						inputPlaceholderText="D"
+						className="w-20"
+					/>
 				</div>
 			</div>
-			{#if patientMode === 'new'}
-				<p class="text-xs text-info mt-1 w-full">
-					To use <span class="font-semibold">Check In</span>, first register the patient in the patient registration page,
-					then return here, choose the patient under <span class="font-semibold">Existing patient</span>, and continue.
-				</p>
-			{/if}
+		{/if}
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="apt-phone" className="shrink-0 sm:w-36"
+				>Guardian Phone</DaisyUiLabel
+			>
+			<div class="max-w-80 flex-1">
+				<DaisyUiInputField
+					bind:value={appointmentPhone}
+					inputType="tel"
+					className="w-full"
+				/>
+			</div>
 		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel forText="apt-email" className="shrink-0 sm:w-36"
+				>Email</DaisyUiLabel
+			>
+			<div class="max-w-80 flex-1">
+				<DaisyUiInputField
+					bind:value={appointmentEmail}
+					inputType="email"
+					inputPlaceholderText="mail@example.com"
+					className="w-full"
+				/>
+			</div>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="apt-refer-type"
+				className="shrink-0 sm:w-36">Refer Type</DaisyUiLabel
+			>
+			<div class="max-w-80 flex-1">
+				<DaisyUiSelect
+					bind:value={selectedReferTypeId}
+					optionHeader="Select refer type …"
+					className="w-full"
+				>
+					{#each referTypeData as r (r.id)}
+						<option value={String(r.id)}>{r.name}</option>
+					{/each}
+				</DaisyUiSelect>
+			</div>
+		</div>
+		{#if selectedReferTypeId?.trim()}
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<DaisyUiLabel
+					forText="apt-external-refer"
+					className="shrink-0 sm:w-36">{referBoxLabel}</DaisyUiLabel
+				>
+				<div class="max-w-80 flex-1">
+					<DaisyUiSelect
+						bind:value={selectedExternalReferId}
+						optionHeader="Select external refer …"
+						className="w-full"
+					>
+						{#each filteredExternalReferData as e (e.id)}
+							<option value={String(e.id)}>{e.name}</option>
+						{/each}
+					</DaisyUiSelect>
+				</div>
+			</div>
+		{/if}
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<DaisyUiLabel forText="apt-remark" className="shrink-0 sm:w-36"
+				>Remark</DaisyUiLabel
+			>
+			<div class="max-w-80 flex-1">
+				<DaisyUiTextarea
+					id="apt-remark"
+					bind:value={appointmentRemark}
+					className="w-full min-h-24 resize-y"
+				/>
+			</div>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="apt-status-tagging"
+				className="shrink-0 sm:w-36">Status Tagging</DaisyUiLabel
+			>
+			<div class="max-w-80 flex-1">
+				<DaisyUiSelect
+					bind:value={selectedStatusTaggingId}
+					optionHeader="Select status …"
+					className="w-full"
+				>
+					{#each availableStatusTaggingData as s (s.id)}
+						<option value={String(s.id)}>{s.name}</option>
+					{/each}
+				</DaisyUiSelect>
+			</div>
+		</div>
+		{#if patientMode === 'new'}
+			<p class="mt-1 w-full text-xs text-info">
+				To use <span class="font-semibold">Check In</span>, first
+				register the patient in the patient registration page, then
+				return here, choose the patient under
+				<span class="font-semibold">Existing patient</span>, and
+				continue.
+			</p>
+		{/if}
+	</div>
 
-	<div class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4">
-		<button type="button" class="d-btn" onclick={() => cancel()} disabled={isSubmitting}>
+	<div
+		class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4"
+	>
+		<button
+			type="button"
+			class="d-btn"
+			onclick={() => cancel()}
+			disabled={isSubmitting}
+		>
 			Cancel
 		</button>
 		<button
 			type="button"
 			class="d-btn d-btn-primary"
 			onclick={() => handleCreate()}
-			disabled={!effectiveDate || !effectiveFromTime || !toTime || isSubmitting}
+			disabled={!effectiveDate ||
+				!effectiveFromTime ||
+				!toTime ||
+				isSubmitting}
 		>
 			{isSubmitting ? 'Creating…' : 'Create'}
 		</button>

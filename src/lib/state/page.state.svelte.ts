@@ -1,5 +1,8 @@
 import { page } from '$app/state';
-import type { ModuleSchema, PageSchema } from '$lib/server/db/schema-type';
+import type {
+	ModuleSchema,
+	PageSchema
+} from '$lib/server/db/schema-type';
 import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
 
 export type PageTreeItem = PageSchema & { children: PageTreeItem[] };
@@ -12,7 +15,9 @@ export function setPageData(data: PageWithRelations[]) {
 
 /** Use in reactive context, e.g. $derived(getPageData()) */
 export function getPageData(): PageSchema[] {
-	return fullPageData.map(({ module: _m, status: _s, ...p }) => p) as PageSchema[];
+	return fullPageData.map(
+		({ module: _m, status: _s, ...p }) => p
+	) as PageSchema[];
 }
 
 /** Use in reactive context, e.g. $derived(getUniqueModuleData()) */
@@ -21,15 +26,21 @@ export function getUniqueModuleData(): ModuleSchema[] {
 		new Map(
 			fullPageData
 				.filter(
-					(p): p is PageWithRelations & { module: NonNullable<PageWithRelations['module']> } =>
-						p.module != null
+					(
+						p
+					): p is PageWithRelations & {
+						module: NonNullable<PageWithRelations['module']>;
+					} => p.module != null
 				)
 				.map((p) => [p.module.id, p.module])
 		).values()
 	) as ModuleSchema[];
 }
 
-function buildPageTree(pages: PageSchema[], parentId: number | null = null): PageTreeItem[] {
+function buildPageTree(
+	pages: PageSchema[],
+	parentId: number | null = null
+): PageTreeItem[] {
 	return pages
 		.filter((p) => p.parentId === parentId)
 		.map((p) => ({
@@ -56,7 +67,9 @@ function normPath(path: string | null | undefined): string {
  */
 export function pathnameForPageMatch(): string {
 	const path = normPath(page.url.pathname);
-	const match = path.match(/^\/heka\/hospital\/([^/]+)\/home(\/.*)?$/);
+	const match = path.match(
+		/^\/heka\/hospital\/([^/]+)\/home(\/.*)?$/
+	);
 	if (match) {
 		return `/heka/home${match[2] ?? ''}`;
 	}

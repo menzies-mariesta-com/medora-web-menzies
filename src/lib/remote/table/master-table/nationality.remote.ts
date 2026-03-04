@@ -4,34 +4,47 @@ import * as table from '$lib/server/db/schema';
 import type {
 	NationalitySchema,
 	NationalitySchemaInsert,
-	NationalitySchemaUpdate,
+	NationalitySchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-export const getNationality = query(async (): Promise<NationalitySchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.nationalityTable)
-		.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE))
-		.orderBy(table.nationalityTable.name);
-});
+export const getNationality = query(
+	async (): Promise<NationalitySchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.nationalityTable)
+			.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.nationalityTable.name);
+	}
+);
 
-export const getNationalityCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.nationalityTable)
-		.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE));
-	return row?.count ?? 0;
-});
+export const getNationalityCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.nationalityTable)
+			.where(eq(table.nationalityTable.statusId, StatusEnum.ACTIVE));
+		return row?.count ?? 0;
+	}
+);
 
 export const getNationalityPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<NationalitySchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(table.nationalityTable.statusId, StatusEnum.ACTIVE);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<NationalitySchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(
+			table.nationalityTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -43,7 +56,7 @@ export const getNationalityPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.nationalityTable)
-				.where(activeFilter),
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -51,14 +64,18 @@ export const getNationalityPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
 
 export const getNationalityById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<NationalitySchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<NationalitySchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.nationalityTable)
@@ -69,7 +86,9 @@ export const getNationalityById = query(
 
 export const createNationality = command(
 	'unchecked' as const,
-	async (payload: NationalitySchemaInsert): Promise<NationalitySchema> => {
+	async (
+		payload: NationalitySchemaInsert
+	): Promise<NationalitySchema> => {
 		const [row] = await ensureDb()
 			.insert(table.nationalityTable)
 			.values(payload)
@@ -82,7 +101,11 @@ export const createNationality = command(
 
 export const updateNationality = command(
 	'unchecked' as const,
-	async (payload: { id: number; name?: string | null; statusId?: number | null }): Promise<NationalitySchema> => {
+	async (payload: {
+		id: number;
+		name?: string | null;
+		statusId?: number | null;
+	}): Promise<NationalitySchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.nationalityTable)
@@ -109,7 +132,9 @@ export const deleteNationality = command(
 export const deleteNationalityComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.nationalityTable).where(eq(table.nationalityTable.id, id));
+		await ensureDb()
+			.delete(table.nationalityTable)
+			.where(eq(table.nationalityTable.id, id));
 		getNationality().refresh();
 	}
 );
