@@ -33,4 +33,3 @@ export function ensureDb(): DbInstance {
 	}
 	return dbInternal;
 }
-

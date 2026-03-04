@@ -22,7 +22,10 @@
 		getPatientAttachmentByPatientId,
 		deletePatientAttachmentComplete
 	} from '$lib/remote/table/information-table/patient-attachment.remote';
-	import { getPatientByIdWithRelations, type PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+	import {
+		getPatientByIdWithRelations,
+		type PatientWithRelations
+	} from '$lib/remote/table/information-table/patient.remote';
 	import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
 	import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
@@ -31,10 +34,20 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
-	function formatAttachmentDateTime(value: string | Date | null | undefined): string {
+	function formatAttachmentDateTime(
+		value: string | Date | null | undefined
+	): string {
 		if (value == null) return '';
-		const date = typeof value === 'string' ? dateTimeUtil.parseDate(value) : value;
-		return date ? dateTimeUtil.formatDateTime(date, 'en-US', { dateStyle: 'short', timeStyle: 'short' }) : '';
+		const date =
+			typeof value === 'string'
+				? dateTimeUtil.parseDate(value)
+				: value;
+		return date
+			? dateTimeUtil.formatDateTime(date, 'en-US', {
+					dateStyle: 'short',
+					timeStyle: 'short'
+				})
+			: '';
 	}
 
 	/** Allowed MIME types for patient attachments (must match API). */
@@ -58,13 +71,18 @@
 		embedded?: boolean;
 	};
 
-	let { cancel, embedded = false }: PatientAttachmentDialogProps = $props();
+	let { cancel, embedded = false }: PatientAttachmentDialogProps =
+		$props();
 
 	const payload = $derived(PatientAttachmentDialogState.pending);
-	const stagedAttachments = $derived(PatientAttachmentDialogState.stagedAttachments);
+	const stagedAttachments = $derived(
+		PatientAttachmentDialogState.stagedAttachments
+	);
 	const viewOnly = $derived(PatientAttachmentDialogState.viewOnly);
 	const isStaging = $derived(
-		payload !== null && 'mode' in payload && payload.mode === 'staging'
+		payload !== null &&
+			'mode' in payload &&
+			payload.mode === 'staging'
 	);
 	const isExistingPatient = $derived(
 		payload !== null && 'patientId' in payload
@@ -90,11 +108,15 @@
 			return;
 		}
 		const all = Array.from(fileList);
-		const byType = all.filter((f) =>
-			f.type && ALLOWED_ATTACHMENT_MIMES.includes(f.type.toLowerCase())
+		const byType = all.filter(
+			(f) =>
+				f.type &&
+				ALLOWED_ATTACHMENT_MIMES.includes(f.type.toLowerCase())
 		);
 		const typeRejected = all.length - byType.length;
-		const allowed = byType.filter((f) => f.size <= MAX_ATTACHMENT_SIZE_BYTES);
+		const allowed = byType.filter(
+			(f) => f.size <= MAX_ATTACHMENT_SIZE_BYTES
+		);
 		const sizeRejected = byType.length - allowed.length;
 		if (typeRejected > 0) {
 			toastService.addToast(
@@ -117,7 +139,9 @@
 	async function loadExisting(patientId: string) {
 		isLoadingExisting = true;
 		try {
-			existingAttachments = await getPatientAttachmentByPatientId({ patientId });
+			existingAttachments = await getPatientAttachmentByPatientId({
+				patientId
+			});
 		} finally {
 			isLoadingExisting = false;
 		}
@@ -126,9 +150,13 @@
 	async function loadPatientLabel(patientId: string) {
 		isLoadingPatient = true;
 		try {
-			const patient = await getPatientByIdWithRelations({ id: patientId });
+			const patient = await getPatientByIdWithRelations({
+				id: patientId
+			});
 			if (patient) {
-				patientLabel = StringUtil.patientDisplayName(patient as PatientWithRelations);
+				patientLabel = StringUtil.patientDisplayName(
+					patient as PatientWithRelations
+				);
 			} else {
 				patientLabel = patientId;
 			}
@@ -144,12 +172,15 @@
 		} else {
 			patientLabel = '';
 		}
-		console.log(payload)
+		console.log(payload);
 	});
 
 	function addStaged() {
 		if (attachmentFiles.length === 0) {
-			toastService.addToast('Please choose one or more files to add.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please choose one or more files to add.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		const desc = description.trim();
@@ -169,7 +200,9 @@
 
 	function removeStaged(index: number) {
 		PatientAttachmentDialogState.stagedAttachments =
-			PatientAttachmentDialogState.stagedAttachments.filter((_, i) => i !== index);
+			PatientAttachmentDialogState.stagedAttachments.filter(
+				(_, i) => i !== index
+			);
 	}
 
 	async function handleOnSubmit(e: SubmitEvent) {
@@ -177,7 +210,10 @@
 		if (!browser) return;
 		if (!payload || !('patientId' in payload)) return;
 		if (attachmentFiles.length === 0) {
-			toastService.addToast('Please choose one or more files to upload.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Please choose one or more files to upload.',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 
@@ -223,7 +259,10 @@
 		} catch (error: unknown) {
 			let message: string | null = null;
 			if (error && typeof error === 'object') {
-				const err = error as { message?: string; body?: { message?: string } };
+				const err = error as {
+					message?: string;
+					body?: { message?: string };
+				};
 				if (err.body && typeof err.body.message === 'string') {
 					message = err.body.message;
 				} else if (typeof err.message === 'string') {
@@ -243,10 +282,18 @@
 		deletingId = att.id;
 		try {
 			await deletePatientAttachmentComplete({ id: att.id });
-			existingAttachments = existingAttachments.filter((a) => a.id !== att.id);
-			toastService.addToast('Attachment removed.', StatusColorEnum.SUCCESS);
+			existingAttachments = existingAttachments.filter(
+				(a) => a.id !== att.id
+			);
+			toastService.addToast(
+				'Attachment removed.',
+				StatusColorEnum.SUCCESS
+			);
 		} catch {
-			toastService.addToast('Failed to remove attachment.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to remove attachment.',
+				StatusColorEnum.ERROR
+			);
 		} finally {
 			deletingId = null;
 		}
@@ -270,7 +317,9 @@
 
 {#if payload}
 	<div class="flex h-full min-h-0 flex-col">
-		<div class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-2 bg-base-200/50">
+		<div
+			class="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-200/50 px-4 py-2"
+		>
 			<DaisyUiCardBodyTitle className="text-lg m-0">
 				{#if isStaging}
 					Attachments – New patient
@@ -290,7 +339,7 @@
 				</DaisyUiButton>
 			{/if}
 		</div>
-		<div class="flex-1 min-h-0 overflow-y-auto p-4">
+		<div class="min-h-0 flex-1 overflow-y-auto p-4">
 			{#if isStaging}
 				{#if viewOnly}
 					<DaisyUiAlert
@@ -304,17 +353,30 @@
 						message="Add one or more files below. They will be saved when you complete patient registration."
 						className="mb-4"
 					/>
-					
-					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
+
+					<DaisyUiDivider
+						position="horizontal"
+						className="my-4 text-xs"
+					>
 						Add Files
 					</DaisyUiDivider>
 					<DaisyUiCard className="w-full shadow-sm">
 						<DaisyUiCardBody className="p-4 w-full">
-							<form onsubmit={handleStagingSubmit} class="flex flex-col flex-1 gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel forText="attachment-files" className="shrink-0 sm:w-1/3">
+							<form
+								onsubmit={handleStagingSubmit}
+								class="flex flex-1 flex-col gap-4"
+							>
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel
+										forText="attachment-files"
+										className="shrink-0 sm:w-1/3"
+									>
 										File(s)
-										<span class="text-base-content/60 font-normal"> (JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span>
+										<span class="font-normal text-base-content/60">
+											(JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span
+										>
 									</DaisyUiLabel>
 									<div class="w-full sm:w-2/3">
 										<DaisyUiFileInput
@@ -326,13 +388,17 @@
 											onchange={handleFileChange}
 										/>
 										{#if attachmentFiles.length > 0}
-											<DaisyUiBadge className="d-badge-sm d-badge-outline mt-1">
+											<DaisyUiBadge
+												className="d-badge-sm d-badge-outline mt-1"
+											>
 												Selected: {attachmentFiles.length} file(s)
 											</DaisyUiBadge>
 										{/if}
 									</div>
 								</div>
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+								>
 									<DaisyUiLabel
 										forText="attachment-description"
 										className="shrink-0 sm:w-1/3 pt-1"
@@ -348,7 +414,10 @@
 									</div>
 								</div>
 								<div class="mt-2 flex flex-row justify-end">
-									<DaisyUiButton type="submit" className="d-btn-primary d-btn-wide">
+									<DaisyUiButton
+										type="submit"
+										className="d-btn-primary d-btn-wide"
+									>
 										Add to List
 									</DaisyUiButton>
 								</div>
@@ -356,24 +425,38 @@
 						</DaisyUiCardBody>
 					</DaisyUiCard>
 					{#if stagedAttachments.length > 0}
-					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
-						Listed Files
-					</DaisyUiDivider>
+						<DaisyUiDivider
+							position="horizontal"
+							className="my-4 text-xs"
+						>
+							Listed Files
+						</DaisyUiDivider>
 						<DaisyUiCard className="mb-4 shadow-sm">
 							<DaisyUiCardBody className="p-4">
-								<div class="flex items-center gap-2 mb-3">
-									<DaisyUiCardBodyTitle className="text-base m-0">Staged</DaisyUiCardBodyTitle>
-									<DaisyUiBadge className="d-badge-sm d-badge-primary">
+								<div class="mb-3 flex items-center gap-2">
+									<DaisyUiCardBodyTitle className="text-base m-0"
+										>Staged</DaisyUiCardBodyTitle
+									>
+									<DaisyUiBadge
+										className="d-badge-sm d-badge-primary"
+									>
 										{stagedAttachments.length}
 									</DaisyUiBadge>
 								</div>
 								<DaisyUiList className="gap-1">
 									{#each stagedAttachments as item, i}
-										<DaisyUiListRow className="flex items-center justify-between gap-2">
-											<span class="min-w-0 truncate text-sm" title={item.file.name}>
+										<DaisyUiListRow
+											className="flex items-center justify-between gap-2"
+										>
+											<span
+												class="min-w-0 truncate text-sm"
+												title={item.file.name}
+											>
 												{item.file.name}
 												{#if item.description}
-													<span class="text-base-content/70"> – {item.description}</span>
+													<span class="text-base-content/70">
+														– {item.description}</span
+													>
 												{/if}
 											</span>
 											<DaisyUiButton
@@ -391,22 +474,36 @@
 					{/if}
 				{/if}
 			{:else if isExistingPatient}
-			{#if !viewOnly}
+				{#if !viewOnly}
 					<DaisyUiCard className="w-full shadow-sm">
 						<DaisyUiCardBody className="p-4">
-							<form onsubmit={handleOnSubmit} class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
+							<form
+								onsubmit={handleOnSubmit}
+								class="flex flex-col gap-4"
+							>
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36"
+										>Patient</DaisyUiLabel
+									>
 									<div class="flex-1">
 										<p class="truncate text-sm font-medium">
 											{patientLabel || 'Patient'}
 										</p>
 									</div>
 								</div>
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel forText="attachment-files-existing" className="shrink-0 sm:w-36">
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel
+										forText="attachment-files-existing"
+										className="shrink-0 sm:w-36"
+									>
 										File(s)
-										<span class="text-base-content/60 font-normal"> (JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span>
+										<span class="font-normal text-base-content/60">
+											(JPEG, PNG, WebP, GIF, PDF, max {MAX_ATTACHMENT_SIZE_LABEL})</span
+										>
 									</DaisyUiLabel>
 									<div class="flex-1">
 										<DaisyUiFileInput
@@ -418,13 +515,17 @@
 											onchange={handleFileChange}
 										/>
 										{#if attachmentFiles.length > 0}
-											<DaisyUiBadge className="d-badge-sm d-badge-outline mt-1">
+											<DaisyUiBadge
+												className="d-badge-sm d-badge-outline mt-1"
+											>
 												Selected: {attachmentFiles.length} file(s)
 											</DaisyUiBadge>
 										{/if}
 									</div>
 								</div>
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+								>
 									<DaisyUiLabel
 										forText="attachment-description-existing"
 										className="shrink-0 sm:w-36 pt-1"
@@ -443,12 +544,15 @@
 									<DaisyUiButton
 										type="submit"
 										className="d-btn-primary d-btn-wide"
-										disabled={isSubmitting || attachmentFiles.length === 0}
+										disabled={isSubmitting ||
+											attachmentFiles.length === 0}
 									>
 										{#if isSubmitting}
 											<DaisyUiLoading className="d-loading-sm mr-2" />
 										{/if}
-										{isSubmitting ? 'Uploading...' : 'Add attachment(s)'}
+										{isSubmitting
+											? 'Uploading...'
+											: 'Add attachment(s)'}
 									</DaisyUiButton>
 								</div>
 							</form>
@@ -458,7 +562,9 @@
 				{#if isLoadingExisting}
 					<div class="flex items-center gap-3 py-6">
 						<DaisyUiLoading className="d-loading-md text-primary" />
-						<span class="text-sm text-base-content/80">Loading attachments…</span>
+						<span class="text-sm text-base-content/80"
+							>Loading attachments…</span
+						>
 					</div>
 				{:else if existingAttachments.length === 0 && viewOnly}
 					<DaisyUiAlert
@@ -467,36 +573,54 @@
 						className="mb-4"
 					/>
 				{:else if existingAttachments.length > 0}
-					<DaisyUiDivider position="horizontal" className="my-4 text-xs">
+					<DaisyUiDivider
+						position="horizontal"
+						className="my-4 text-xs"
+					>
 						Existing Lists
 					</DaisyUiDivider>
 					<DaisyUiCard className="mb-4 shadow-sm">
 						<DaisyUiCardBody className="p-4">
-							<div class="flex items-center gap-2 mb-3">
-								<DaisyUiCardBodyTitle className="text-base m-0">Existing</DaisyUiCardBodyTitle>
+							<div class="mb-3 flex items-center gap-2">
+								<DaisyUiCardBodyTitle className="text-base m-0"
+									>Existing</DaisyUiCardBodyTitle
+								>
 								<DaisyUiBadge className="d-badge-sm d-badge-neutral">
 									{existingAttachments.length}
 								</DaisyUiBadge>
 							</div>
 							<DaisyUiList className="gap-1">
 								{#each existingAttachments as att (att.id)}
-									<DaisyUiListRow className="flex items-center justify-between gap-2">
-										<span class="min-w-0 flex-1 truncate text-sm" title={att.fileUrl ?? ''}>
+									<DaisyUiListRow
+										className="flex items-center justify-between gap-2"
+									>
+										<span
+											class="min-w-0 flex-1 truncate text-sm"
+											title={att.fileUrl ?? ''}
+										>
 											{fileNameFromUrl(att.fileUrl)}
 											{#if att.description}
-												<span class="text-base-content/70"> – {att.description}</span>
+												<span class="text-base-content/70">
+													– {att.description}</span
+												>
 											{/if}
 											{#if att.createdAt}
-												<span class="text-base-content/70"> – {formatAttachmentDateTime(att.createdAt)}</span>
+												<span class="text-base-content/70">
+													– {formatAttachmentDateTime(
+														att.createdAt
+													)}</span
+												>
 											{/if}
 										</span>
 										<div class="flex shrink-0 items-center gap-1">
 											{#if att.fileUrl}
 												<a
-													href={getPatientAttachmentDisplayUrl(att.fileUrl) ?? att.fileUrl}
+													href={getPatientAttachmentDisplayUrl(
+														att.fileUrl
+													) ?? att.fileUrl}
 													target="_blank"
 													rel="noopener noreferrer"
-													class="d-btn d-btn-ghost d-btn-xs d-btn-circle"
+													class="d-btn d-btn-circle d-btn-ghost d-btn-xs"
 													title="View file"
 													aria-label="View file"
 												>
@@ -520,7 +644,6 @@
 						</DaisyUiCardBody>
 					</DaisyUiCard>
 				{/if}
-				
 			{/if}
 		</div>
 	</div>

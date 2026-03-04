@@ -1,10 +1,10 @@
 <script lang="ts">
-	let {  className, children } = $props<{
+	let { className, children } = $props<{
 		className?: string;
-        children: () => void;
+		children: () => void;
 	}>();
 </script>
 
-<tbody class="{className}">
-    {@render children()}
+<tbody class={className}>
+	{@render children()}
 </tbody>

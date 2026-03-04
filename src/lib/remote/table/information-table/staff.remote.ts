@@ -2,11 +2,27 @@ import { query, command, getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { StaffSchema, StaffSchemaInsert, StaffSchemaUpdate } from '$lib/server/db/schema-type';
+import type {
+	StaffSchema,
+	StaffSchemaInsert,
+	StaffSchemaUpdate
+} from '$lib/server/db/schema-type';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq, or, ilike, ne, and, inArray, sql } from 'drizzle-orm';
+import {
+	count,
+	eq,
+	or,
+	ilike,
+	ne,
+	and,
+	inArray,
+	sql
+} from 'drizzle-orm';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { createStaffDetail } from './staff-detail.remote';
 import { createStaffDepartment } from './staff-department.remote';
@@ -14,7 +30,10 @@ import { createStaffUserGroup } from './staff-user-group.remote';
 import { createStaffBranch } from './staff-branch.remote';
 import { createStaffHospital } from './staff-hospital.remote';
 import { uuidv7 } from 'uuidv7';
-import { userTable, accountTable } from '$lib/server/db/table/auth-table/auth-table';
+import {
+	userTable,
+	accountTable
+} from '$lib/server/db/table/auth-table/auth-table';
 
 // Reusable type for a single staff row with all relations
 export type StaffWithRelations = NonNullable<
@@ -26,8 +45,6 @@ export const getStaff = query(async (): Promise<StaffSchema[]> => {
 	const data = await ensureDb().select().from(table.staffTable);
 	return data;
 });
-
-
 
 // get all with many-to-many relations and master lookups (no pagination)
 export const getStaffWithRelations = query(async () => {
@@ -53,8 +70,8 @@ export const getStaffWithRelations = query(async () => {
 			staffBranches: { with: { branch: true } },
 			staffHospitals: { with: { hospital: true } },
 			staffDepartments: { with: { department: true } },
-			staffUserGroups: { with: { userGroup: true } },
-		},
+			staffUserGroups: { with: { userGroup: true } }
+		}
 	});
 });
 
@@ -79,13 +96,16 @@ const staffWithRelationsWith = {
 	staffBranches: { with: { branch: true } },
 	staffHospitals: { with: { hospital: true } },
 	staffDepartments: { with: { department: true } },
-	staffUserGroups: { with: { userGroup: true } },
+	staffUserGroups: { with: { userGroup: true } }
 } as const;
 
 // get only doctor staff (staffTypeId 3 => 'Doctor'), with relations, excluding soft-deleted. Optional hospitalId (UUID) limits to doctors assigned to that hospital.
 export const getDoctorStaffList = query(
 	'unchecked' as const,
-	async (params?: { hospitalId?: string; branchId?: string }): Promise<StaffWithRelations[]> => {
+	async (params?: {
+		hospitalId?: string;
+		branchId?: string;
+	}): Promise<StaffWithRelations[]> => {
 		const hospitalId = params?.hospitalId;
 		const hospitalCondition =
 			hospitalId != null && hospitalId !== ''
@@ -99,9 +119,11 @@ export const getDoctorStaffList = query(
 					FROM staff_branch sb
 					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
 					WHERE sb.branch_id = ${branchId}
-					${hospitalId != null && hospitalId !== ''
-						? sql`AND hb.hospital_id = ${hospitalId}`
-						: sql``}
+					${
+						hospitalId != null && hospitalId !== ''
+							? sql`AND hb.hospital_id = ${hospitalId}`
+							: sql``
+					}
 				)`
 				: undefined;
 
@@ -109,8 +131,11 @@ export const getDoctorStaffList = query(
 			eq(table.staffTable.staffTypeId, 3),
 			ne(table.staffTable.statusId, StatusEnum.DELETED)
 		);
-		let whereCondition = hospitalCondition ? and(baseCondition, hospitalCondition) : baseCondition;
-		if (branchCondition) whereCondition = and(whereCondition, branchCondition);
+		let whereCondition = hospitalCondition
+			? and(baseCondition, hospitalCondition)
+			: baseCondition;
+		if (branchCondition)
+			whereCondition = and(whereCondition, branchCondition);
 
 		const doctorStaffIds = await ensureDb()
 			.select({ id: table.staffTable.id })
@@ -130,8 +155,11 @@ export const getDoctorStaffList = query(
 /** Paginated doctor list (staffTypeId = 3) with optional search and hospital filter, for server-side search selects. */
 export const getDoctorStaffPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffWithRelations>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffWithRelations>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
 		const pattern = searchTerm ? `%${searchTerm}%` : null;
 		const searchCondition =
@@ -145,7 +173,10 @@ export const getDoctorStaffPaginated = query(
 				ilike(table.staffTable.phonePrimary, pattern)
 			);
 
-		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+		const notDeletedCondition = ne(
+			table.staffTable.statusId,
+			StatusEnum.DELETED
+		);
 		const doctorCondition = eq(table.staffTable.staffTypeId, 3);
 
 		const hospitalId = params?.hospitalId;
@@ -161,16 +192,19 @@ export const getDoctorStaffPaginated = query(
 					FROM staff_branch sb
 					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
 					WHERE sb.branch_id = ${branchId}
-					${hospitalId != null && hospitalId !== ''
-						? sql`AND hb.hospital_id = ${hospitalId}`
-						: sql``}
+					${
+						hospitalId != null && hospitalId !== ''
+							? sql`AND hb.hospital_id = ${hospitalId}`
+							: sql``
+					}
 				)`
 				: undefined;
 
 		let whereExpr = searchCondition
 			? and(notDeletedCondition, doctorCondition, searchCondition)
 			: and(notDeletedCondition, doctorCondition);
-		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
+		if (hospitalCondition)
+			whereExpr = and(whereExpr, hospitalCondition);
 		if (branchCondition) whereExpr = and(whereExpr, branchCondition);
 
 		const [data, countResult] = await Promise.all([
@@ -202,7 +236,8 @@ export const getStaffByUserIdWithRelations = query(
 	'unchecked' as const,
 	async ({ userId }: { userId: string }) => {
 		return ensureDb().query.staffTable.findFirst({
-			where: (staffTable, funcs) => funcs.eq(staffTable.userId, userId),
+			where: (staffTable, funcs) =>
+				funcs.eq(staffTable.userId, userId),
 			with: {
 				gender: true,
 				identityType: true,
@@ -224,23 +259,28 @@ export const getStaffByUserIdWithRelations = query(
 				staffBranches: { with: { branch: true } },
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
-				staffUserGroups: { with: { userGroup: true } },
-			},
+				staffUserGroups: { with: { userGroup: true } }
+			}
 		});
 	}
 );
 
 // get count
 export const getStaffCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.staffTable);
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.staffTable);
 	return row?.count ?? 0;
 });
 
 // get paginated with relations (optional search on firstName, lastName, code, phonePrimary)
 export const getStaffPaginated = query(
 	'unchecked' as const,
-	async (params?: PaginationParams): Promise<PaginatedResult<StaffWithRelations>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<StaffWithRelations>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const searchTerm = params?.search?.trim();
 		const pattern = searchTerm ? `%${searchTerm}%` : null;
 		const searchCondition =
@@ -255,7 +295,10 @@ export const getStaffPaginated = query(
 			);
 
 		// Exclude soft-deleted staff
-		const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+		const notDeletedCondition = ne(
+			table.staffTable.statusId,
+			StatusEnum.DELETED
+		);
 
 		// When hospitalId is set, only staff assigned to that hospital (via staff_hospital)
 		const hospitalId = params?.hospitalId;
@@ -271,14 +314,19 @@ export const getStaffPaginated = query(
 					FROM staff_branch sb
 					INNER JOIN hospital_branch hb ON sb.branch_id = hb.id
 					WHERE sb.branch_id = ${branchId}
-					${hospitalId != null && hospitalId !== ''
-						? sql`AND hb.hospital_id = ${hospitalId}`
-						: sql``}
+					${
+						hospitalId != null && hospitalId !== ''
+							? sql`AND hb.hospital_id = ${hospitalId}`
+							: sql``
+					}
 				)`
 				: undefined;
 
-		let whereExpr = searchCondition ? and(notDeletedCondition, searchCondition) : notDeletedCondition;
-		if (hospitalCondition) whereExpr = and(whereExpr, hospitalCondition);
+		let whereExpr = searchCondition
+			? and(notDeletedCondition, searchCondition)
+			: notDeletedCondition;
+		if (hospitalCondition)
+			whereExpr = and(whereExpr, hospitalCondition);
 		if (branchCondition) whereExpr = and(whereExpr, branchCondition);
 
 		const [data, countResult] = await Promise.all([
@@ -305,7 +353,7 @@ export const getStaffPaginated = query(
 					staffBranches: { with: { branch: true } },
 					staffHospitals: { with: { hospital: true } },
 					staffDepartments: { with: { department: true } },
-					staffUserGroups: { with: { userGroup: true } },
+					staffUserGroups: { with: { userGroup: true } }
 				},
 				limit,
 				offset
@@ -322,7 +370,7 @@ export const getStaffPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -366,15 +414,19 @@ export const getStaffByIdWithRelations = query(
 				staffBranches: { with: { branch: true } },
 				staffHospitals: { with: { hospital: true } },
 				staffDepartments: { with: { department: true } },
-				staffUserGroups: { with: { userGroup: true } },
-			},
+				staffUserGroups: { with: { userGroup: true } }
+			}
 		});
 	}
 );
 
 export const getStaffByUserId = query(
 	'unchecked' as const,
-	async ({ userId }: { userId: string }): Promise<StaffSchema | null> => {
+	async ({
+		userId
+	}: {
+		userId: string;
+	}): Promise<StaffSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTable)
@@ -393,7 +445,9 @@ export const createStaff = command(
 		}
 
 		// Enforce 1:1 constraint: a user can only have one staff profile
-		const existing = await getStaffByUserId({ userId: payload.userId });
+		const existing = await getStaffByUserId({
+			userId: payload.userId
+		});
 		if (existing) {
 			throw new Error('Staff profile already exists');
 		}
@@ -411,7 +465,9 @@ export const createStaff = command(
 // update
 export const updateStaff = command(
 	'unchecked' as const,
-	async (payload: { id: string } & StaffSchemaUpdate): Promise<StaffSchema> => {
+	async (
+		payload: { id: string } & StaffSchemaUpdate
+	): Promise<StaffSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.staffTable)
@@ -440,17 +496,22 @@ export const deleteStaff = command(
 export const deleteStaffComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
-		await ensureDb().delete(table.staffTable).where(eq(table.staffTable.id, id));
+		await ensureDb()
+			.delete(table.staffTable)
+			.where(eq(table.staffTable.id, id));
 		getStaff().refresh();
 	}
 );
 
 // Generate random password
 function generateRandomPassword(length: number = 16): string {
-	const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+	const charset =
+		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
 	let password = '';
 	for (let i = 0; i < length; i++) {
-		password += charset.charAt(Math.floor(Math.random() * charset.length));
+		password += charset.charAt(
+			Math.floor(Math.random() * charset.length)
+		);
 	}
 	return password;
 }
@@ -504,12 +565,23 @@ export const createStaffWithUser = command(
 		hospitalId?: string;
 		/** When provided, assigns the new staff to these branches under hospitalId (staff_branch). */
 		branchIds?: string[];
-	}): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> => {
+	}): Promise<{
+		staff: StaffSchema;
+		userId: string;
+		generatedPassword: string;
+	}> => {
 		const event = getRequestEvent();
 		if (!event?.locals?.user) throw error(401, 'Unauthorized');
 		const roleId = event.locals.userRoleId ?? null;
-		if (roleId !== RoleEnum.OWNER && roleId !== RoleEnum.SYSTEM_ADMIN && roleId !== RoleEnum.STAFF) {
-			throw error(403, 'Only owner, system admin, or staff can register staff');
+		if (
+			roleId !== RoleEnum.OWNER &&
+			roleId !== RoleEnum.SYSTEM_ADMIN &&
+			roleId !== RoleEnum.STAFF
+		) {
+			throw error(
+				403,
+				'Only owner, system admin, or staff can register staff'
+			);
 		}
 		const passwordHashUtil = new PasswordHashUtil();
 
@@ -526,7 +598,8 @@ export const createStaffWithUser = command(
 
 		// Generate random password
 		const generatedPassword = generateRandomPassword(16);
-		const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+		const hashedPassword =
+			await passwordHashUtil.hash(generatedPassword);
 
 		// Create user (hospital staff registration => STAFF role)
 		const userId = uuidv7();
@@ -567,7 +640,9 @@ export const createStaffWithUser = command(
 				designation: payload.designation,
 				licenseNo: payload.licenseNo,
 				licenseExpiryDate: payload.licenseExpiryDate
-					? new Date(payload.licenseExpiryDate).toISOString().split('T')[0]
+					? new Date(payload.licenseExpiryDate)
+							.toISOString()
+							.split('T')[0]
 					: undefined,
 				signatureImageUrl: payload.signatureImageUrl,
 				signatureText: payload.signatureText
@@ -583,26 +658,51 @@ export const createStaffWithUser = command(
 			lastName: payload.lastName,
 			phonePrimary: payload.phonePrimary,
 			phoneSecondary: payload.phoneSecondary,
-			phonePrimaryCountryId: payload.phonePrimaryCountryId ? Number(payload.phonePrimaryCountryId) : undefined,
-			phoneSecondaryCountryId: payload.phoneSecondaryCountryId ? Number(payload.phoneSecondaryCountryId) : undefined,
-			dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth).toISOString().split('T')[0] : undefined,
+			phonePrimaryCountryId: payload.phonePrimaryCountryId
+				? Number(payload.phonePrimaryCountryId)
+				: undefined,
+			phoneSecondaryCountryId: payload.phoneSecondaryCountryId
+				? Number(payload.phoneSecondaryCountryId)
+				: undefined,
+			dateOfBirth: payload.dateOfBirth
+				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
+				: undefined,
 			photoUrl: payload.photoUrl ?? undefined,
 			address: payload.address,
 			remark: payload.remark,
 			identityNo: payload.identityNo,
 			titleId: payload.titleId ? Number(payload.titleId) : undefined,
-			genderId: payload.genderId ? Number(payload.genderId) : undefined,
-			maritalStatusId: payload.maritalStatusId ? Number(payload.maritalStatusId) : undefined,
-			staffEmploymentTypeId: payload.staffEmploymentTypeId ? Number(payload.staffEmploymentTypeId) : undefined,
-			staffTypeId: payload.staffTypeId ? Number(payload.staffTypeId) : undefined,
+			genderId: payload.genderId
+				? Number(payload.genderId)
+				: undefined,
+			maritalStatusId: payload.maritalStatusId
+				? Number(payload.maritalStatusId)
+				: undefined,
+			staffEmploymentTypeId: payload.staffEmploymentTypeId
+				? Number(payload.staffEmploymentTypeId)
+				: undefined,
+			staffTypeId: payload.staffTypeId
+				? Number(payload.staffTypeId)
+				: undefined,
 			staffDetailId,
 			cityId: payload.cityId ? Number(payload.cityId) : undefined,
 			stateId: payload.stateId ? Number(payload.stateId) : undefined,
-			countryId: payload.countryId ? Number(payload.countryId) : undefined,
-			postalCodeId: payload.postalCodeId ? Number(payload.postalCodeId) : undefined,
-			identityTypeId: payload.identityTypeId ? Number(payload.identityTypeId) : undefined,
-			specializationId: payload.specializationId ? Number(payload.specializationId) : undefined,
-			statusId: payload.isActive === false ? StatusEnum.INACTIVE : StatusEnum.ACTIVE
+			countryId: payload.countryId
+				? Number(payload.countryId)
+				: undefined,
+			postalCodeId: payload.postalCodeId
+				? Number(payload.postalCodeId)
+				: undefined,
+			identityTypeId: payload.identityTypeId
+				? Number(payload.identityTypeId)
+				: undefined,
+			specializationId: payload.specializationId
+				? Number(payload.specializationId)
+				: undefined,
+			statusId:
+				payload.isActive === false
+					? StatusEnum.INACTIVE
+					: StatusEnum.ACTIVE
 		};
 
 		// Create staff

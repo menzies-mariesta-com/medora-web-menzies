@@ -28,8 +28,6 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { error } from '@sveltejs/kit';
 const BRANCH_ALL_VALUE = '__all__';
 
-
-
 /* =========================================================
    TYPES
 ========================================================= */
@@ -52,8 +50,6 @@ function getSelectedBranchFromRequest(): string | null {
 		return null;
 	}
 }
-
-
 
 /* =========================================================
    BASIC CRUD & HELPERS
@@ -87,16 +83,29 @@ export const getNextVisitNo = query(
 			})
 		]);
 
-		if (!hospital) throw error(400, 'Hospital is required to generate visit number.');
-		if (!branch) throw error(400, 'Branch is required to generate visit number.');
-		if (!visitType) throw error(400, 'Visit type is required to generate visit number.');
+		if (!hospital)
+			throw error(
+				400,
+				'Hospital is required to generate visit number.'
+			);
+		if (!branch)
+			throw error(
+				400,
+				'Branch is required to generate visit number.'
+			);
+		if (!visitType)
+			throw error(
+				400,
+				'Visit type is required to generate visit number.'
+			);
 
-		const hospitalCode =
-			(hospital.code?.trim() || hospitalId.substring(0, 3)).toUpperCase();
-		const branchCode =
-			(branch.code?.trim() || 'MAIN').toUpperCase();
-		const visitTypeCode =
-			(visitType.code?.trim() || 'V').toUpperCase();
+		const hospitalCode = (
+			hospital.code?.trim() || hospitalId.substring(0, 3)
+		).toUpperCase();
+		const branchCode = (branch.code?.trim() || 'MAIN').toUpperCase();
+		const visitTypeCode = (
+			visitType.code?.trim() || 'V'
+		).toUpperCase();
 
 		const fullYear = new Date().getFullYear();
 		const yearSuffix = String(fullYear).slice(-2);
@@ -130,14 +139,20 @@ export const getNextVisitNo = query(
 );
 
 // Get All
-export const getPatientVisit = query(async (): Promise<PatientVisitSchema[]> => {
-	return await ensureDb().select().from(table.patientVisitTable);
-});
+export const getPatientVisit = query(
+	async (): Promise<PatientVisitSchema[]> => {
+		return await ensureDb().select().from(table.patientVisitTable);
+	}
+);
 
 // Get by ID
 export const getPatientVisitById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<PatientVisitSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<PatientVisitSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.patientVisitTable)
@@ -149,16 +164,20 @@ export const getPatientVisitById = query(
 // Get by ID with relations (for visit info display)
 export const getPatientVisitByIdWithRelations = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<PatientVisitWithRelations | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<PatientVisitWithRelations | null> => {
 		const row = await ensureDb().query.patientVisitTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
-				patient: { with: { title: true }},
+				patient: { with: { title: true } },
 				status: true,
 				visitType: true,
 				hospital: true,
 				branch: true,
-				doctor: { with: { title: true }}
+				doctor: { with: { title: true } }
 			}
 		});
 		return row as PatientVisitWithRelations | null;
@@ -169,19 +188,29 @@ export const getPatientVisitByIdWithRelations = query(
 export const createPatientVisit = command(
 	'unchecked' as const,
 	async (
-		payload: Omit<PatientVisitSchemaInsert, 'branchId' | 'visitNo'> & {
+		payload: Omit<
+			PatientVisitSchemaInsert,
+			'branchId' | 'visitNo'
+		> & {
 			branchId?: string | null;
 		}
 	): Promise<PatientVisitSchema> => {
 		const selectedBranchId = getSelectedBranchFromRequest();
 		const branchId = payload.branchId ?? selectedBranchId ?? null;
-		if (!branchId) throw error(400, 'Branch is required to create patient visit');
+		if (!branchId)
+			throw error(400, 'Branch is required to create patient visit');
 
 		if (!payload.hospitalId) {
-			throw error(400, 'Hospital is required to create patient visit');
+			throw error(
+				400,
+				'Hospital is required to create patient visit'
+			);
 		}
 		if (!payload.visitTypeId) {
-			throw error(400, 'Visit type is required to create patient visit');
+			throw error(
+				400,
+				'Visit type is required to create patient visit'
+			);
 		}
 
 		const visitNo = await getNextVisitNo({
@@ -210,7 +239,9 @@ export const createPatientVisit = command(
 // Update
 export const updatePatientVisit = command(
 	'unchecked' as const,
-	async (payload: { id: number } & PatientVisitSchemaUpdate): Promise<PatientVisitSchema> => {
+	async (
+		payload: { id: number } & PatientVisitSchemaUpdate
+	): Promise<PatientVisitSchema> => {
 		const { id, ...rest } = payload;
 
 		const [row] = await ensureDb()
@@ -225,8 +256,6 @@ export const updatePatientVisit = command(
 		return row;
 	}
 );
-
-
 
 /* =========================================================
    EMR PAGINATED QUERY
@@ -245,8 +274,8 @@ export const getPatientVisitPaginatedForEmr = query(
 			visitTypeId?: number | null;
 		}
 	): Promise<PaginatedResult<PatientVisitWithRelations>> => {
-
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 
 		let whereExpr: any = ne(
 			table.patientVisitTable.statusId,
@@ -362,12 +391,12 @@ export const getPatientVisitPaginatedForEmr = query(
 			ensureDb().query.patientVisitTable.findMany({
 				where: whereExpr,
 				with: {
-					patient: { with: { title: true }},
+					patient: { with: { title: true } },
 					status: true,
 					visitType: true,
 					hospital: true,
 					branch: true,
-					doctor: { with: { title: true }}
+					doctor: { with: { title: true } }
 				},
 				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,

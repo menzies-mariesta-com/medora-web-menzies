@@ -23,16 +23,25 @@
 	import { page } from '$app/state';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id ? page.params.hospital_id : undefined
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
 	);
 	const navbarSelectedBranchId = $derived(
-		typeof page.data?.selectedBranchId === 'string' ? page.data.selectedBranchId : undefined
+		typeof page.data?.selectedBranchId === 'string'
+			? page.data.selectedBranchId
+			: undefined
 	);
-	const isAllBranchMode = $derived(navbarSelectedBranchId === '__all__');
+	const isAllBranchMode = $derived(
+		navbarSelectedBranchId === '__all__'
+	);
 
 	let doctorList = $state<StaffWithRelations[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
-	type AppointmentWithRelations = Awaited<ReturnType<typeof getAppointmentWithRelations>>[number];
+	type AppointmentWithRelations = Awaited<
+		ReturnType<typeof getAppointmentWithRelations>
+	>[number];
 	let appointments = $state<AppointmentWithRelations[]>([]);
 	let selectDate = $state(new Date().toISOString().slice(0, 10));
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
@@ -51,7 +60,9 @@
 	}
 
 	const selectedDoctorName = $derived.by(() => {
-		const doctor = doctorList.find((d) => String(d.id) === selectedDoctorId);
+		const doctor = doctorList.find(
+			(d) => String(d.id) === selectedDoctorId
+		);
 		return doctor
 			? StringUtil.fullNameWithTitle(
 					doctor.title?.name ?? '',
@@ -62,7 +73,9 @@
 			: '';
 	});
 	const doctorBranchOptions = $derived.by(() => {
-		const doctor = doctorList.find((d) => String(d.id) === selectedDoctorId);
+		const doctor = doctorList.find(
+			(d) => String(d.id) === selectedDoctorId
+		);
 		if (!doctor) return [];
 		return (doctor.staffBranches ?? [])
 			.map((sb) => sb.branch)
@@ -71,7 +84,8 @@
 	});
 	const effectiveBranchId = $derived.by(() => {
 		if (!isAllBranchMode) {
-			return navbarSelectedBranchId && navbarSelectedBranchId !== '__all__'
+			return navbarSelectedBranchId &&
+				navbarSelectedBranchId !== '__all__'
 				? navbarSelectedBranchId
 				: undefined;
 		}
@@ -124,15 +138,24 @@
 				s.statusId !== StatusEnum.INACTIVE &&
 				s.statusId !== StatusEnum.DELETED
 		);
-		const first = schedules[0] as (DoctorScheduleSchema & { slotDurationMinutes?: number | null }) | undefined;
+		const first = schedules[0] as
+			| (DoctorScheduleSchema & {
+					slotDurationMinutes?: number | null;
+			  })
+			| undefined;
 		const mins = first?.slotDurationMinutes;
 		if (mins != null && mins >= 1 && mins <= 60) return mins;
 		return DEFAULT_SLOT_DURATION_MINUTES;
 	});
 
 	/** Map statusTagging code to calendar slot state (unconfirmed → confirmed → check-in, plus cancel). */
-	function toSlotState(code: string | null | undefined): 'unconfirmed' | 'confirmed' | 'check-in' | 'cancel' {
-		const c = (code ?? '').trim().toLowerCase().replace(/[\s-]/g, '_');
+	function toSlotState(
+		code: string | null | undefined
+	): 'unconfirmed' | 'confirmed' | 'check-in' | 'cancel' {
+		const c = (code ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s-]/g, '_');
 		if (c === 'check_in') return 'check-in';
 		if (c === 'confirmed') return 'confirmed';
 		if (c === 'cancel' || c === 'cancelled') return 'cancel';
@@ -146,7 +169,9 @@
 			.filter(
 				(a) =>
 					String(a.staffId) === selectedDoctorId &&
-					(effectiveBranchId ? String(a.branchId) === effectiveBranchId : true) &&
+					(effectiveBranchId
+						? String(a.branchId) === effectiveBranchId
+						: true) &&
 					a.statusId !== StatusEnum.DELETED &&
 					a.appointmentDate != null &&
 					dateSet.has(String(a.appointmentDate).slice(0, 10))
@@ -157,8 +182,14 @@
 				startTime: String(a.fromTime ?? '').trim(),
 				endTime: String(a.toTime ?? '').trim(),
 				patientCode: a.patient?.code?.trim() ?? '',
-				patientName: a.patientName?.trim() ?? (a.patient ? StringUtil.patientDisplayName(a.patient as any) : ''),
-				slotState: toSlotState(a.statusTagging?.code ?? a.statusTagging?.name)
+				patientName:
+					a.patientName?.trim() ??
+					(a.patient
+						? StringUtil.patientDisplayName(a.patient as any)
+						: ''),
+				slotState: toSlotState(
+					a.statusTagging?.code ?? a.statusTagging?.name
+				)
 			}))
 			.filter((s) => s.startTime && s.endTime);
 	});
@@ -182,7 +213,11 @@
 
 	/** Expand doctor schedules into (date, startTime, endTime) slots for visible dates. WeekdayId 1=Sun, 7=Sat. */
 	const scheduleSlots = $derived.by(() => {
-		const slots: { date: string; startTime: string; endTime: string }[] = [];
+		const slots: {
+			date: string;
+			startTime: string;
+			endTime: string;
+		}[] = [];
 		const schedules = doctorSchedules.filter(
 			(s) =>
 				String(s.staffId) === String(selectedDoctorId) &&
@@ -194,13 +229,20 @@
 			const weekdayId = d.getDay() + 1; // 0=Sun -> 1, 1=Mon -> 2, ...
 			for (const sched of schedules) {
 				if (Number(sched.weekdayId) !== weekdayId) continue;
-				const fromDate = sched.fromDate != null ? String(sched.fromDate).slice(0, 10) : '';
-				const toDate = sched.toDate != null ? String(sched.toDate).slice(0, 10) : null;
+				const fromDate =
+					sched.fromDate != null
+						? String(sched.fromDate).slice(0, 10)
+						: '';
+				const toDate =
+					sched.toDate != null
+						? String(sched.toDate).slice(0, 10)
+						: null;
 				if (fromDate && dateStr < fromDate) continue;
 				if (toDate != null && dateStr > toDate) continue;
 				const startTime = String(sched.fromShiftTime ?? '').trim();
 				const endTime = String(sched.toShiftTime ?? '').trim();
-				if (startTime && endTime) slots.push({ date: dateStr, startTime, endTime });
+				if (startTime && endTime)
+					slots.push({ date: dateStr, startTime, endTime });
 			}
 		}
 		return slots;
@@ -211,7 +253,10 @@
 		const hid = hospitalId ?? undefined;
 		doctorList = await getDoctorStaffList(
 			hid
-				? { hospitalId: hid, branchId: effectiveBranchId ?? undefined }
+				? {
+						hospitalId: hid,
+						branchId: effectiveBranchId ?? undefined
+					}
 				: undefined
 		);
 	});
@@ -264,13 +309,13 @@
 			}}
 		/>
 	</div>
-	<div class="min-w-0 w-full">
+	<div class="w-full min-w-0">
 		<LDoctorAppointmentCalendar
 			{selectDate}
 			{viewBy}
 			{timeFormat}
-			selectedDoctorName={selectedDoctorName}
-			selectedDoctorId={selectedDoctorId}
+			{selectedDoctorName}
+			{selectedDoctorId}
 			activeBranchId={effectiveBranchId ?? null}
 			{scheduleSlots}
 			{appointmentSlots}
@@ -311,7 +356,9 @@
 			onBlockDeleted={async (blockId) => {
 				try {
 					await deleteAppointmentBlock({ id: blockId });
-					appointmentBlocks = appointmentBlocks.filter((b) => b.id !== blockId);
+					appointmentBlocks = appointmentBlocks.filter(
+						(b) => b.id !== blockId
+					);
 				} catch {
 					// toast on error if desired
 				}

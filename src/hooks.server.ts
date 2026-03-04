@@ -24,12 +24,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
-		const staff = await getStaffByUserIdWithRelations({ userId: session.user.id });
+		const staff = await getStaffByUserIdWithRelations({
+			userId: session.user.id
+		});
 		event.locals.staff = staff ?? null;
-		if (event.locals.userRoleId === RoleEnum.STAFF && staff?.staffHospitals?.length) {
-			event.locals.allowedHospitalIds = (staff.staffHospitals as { hospitalId: string }[]).map(
-				(sh) => sh.hospitalId
-			);
+		if (
+			event.locals.userRoleId === RoleEnum.STAFF &&
+			staff?.staffHospitals?.length
+		) {
+			event.locals.allowedHospitalIds = (
+				staff.staffHospitals as { hospitalId: string }[]
+			).map((sh) => sh.hospitalId);
 		} else {
 			event.locals.allowedHospitalIds = null;
 		}
@@ -38,13 +43,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({
 		event,
 		resolve: (e) =>
-			paraglideMiddleware(e.request, ({ request, locale }: { request: globalThis.Request; locale: string }) => {
-				e.request = request;
-				return resolve(e, {
-					transformPageChunk: ({ html }) =>
-						html.replace('%paraglide.lang%', locale)
-				});
-			}),
+			paraglideMiddleware(
+				e.request,
+				({
+					request,
+					locale
+				}: {
+					request: globalThis.Request;
+					locale: string;
+				}) => {
+					e.request = request;
+					return resolve(e, {
+						transformPageChunk: ({ html }) =>
+							html.replace('%paraglide.lang%', locale)
+					});
+				}
+			),
 		auth,
 		building
 	});

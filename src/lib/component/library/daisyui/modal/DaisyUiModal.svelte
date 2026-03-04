@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 
-	let { groupName, className, open = true, onClose, children } = $props<{
+	let {
+		groupName,
+		className,
+		open = true,
+		onClose,
+		children
+	} = $props<{
 		groupName: string;
 		className?: string;
 		open?: boolean;
@@ -24,7 +30,7 @@
 
 <dialog
 	bind:this={dialogEl}
-	id="{groupName}"
+	id={groupName}
 	class="d-modal {className}"
 	onclose={handleClose}
 >

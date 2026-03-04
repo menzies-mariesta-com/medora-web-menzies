@@ -5,7 +5,6 @@
 	}>();
 </script>
 
-
 <div class="d-chat-footer opacity-50 {className}">
-    {@render children()}
+	{@render children()}
 </div>

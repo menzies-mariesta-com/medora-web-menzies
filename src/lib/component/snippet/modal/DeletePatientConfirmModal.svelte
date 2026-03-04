@@ -20,7 +20,9 @@
 </script>
 
 <div class="flex flex-col">
-	<div class="flex items-center justify-between border-b border-base-300 pb-4">
+	<div
+		class="flex items-center justify-between border-b border-base-300 pb-4"
+	>
 		<h2 class="text-lg font-semibold">Delete patient</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
@@ -56,7 +58,9 @@
 		{:else}
 			<p class="opacity-70">No patient selected.</p>
 			<div class="d-modal-action mt-4">
-				<DaisyUiButton className="d-btn" onClick={() => cancel()}>Cancel</DaisyUiButton>
+				<DaisyUiButton className="d-btn" onClick={() => cancel()}
+					>Cancel</DaisyUiButton
+				>
 			</div>
 		{/if}
 	</div>

@@ -1,5 +1,11 @@
 <script lang="ts">
-	let { className, type = 'button', onClick, disabled, children } = $props<{
+	let {
+		className,
+		type = 'button',
+		onClick,
+		disabled,
+		children
+	} = $props<{
 		className?: string;
 		type?: 'button' | 'submit' | 'reset';
 		onClick?: () => void;
@@ -8,6 +14,6 @@
 	}>();
 </script>
 
-<button class="d-btn {className}" type={type} onclick={onClick} {disabled}>
+<button class="d-btn {className}" {type} onclick={onClick} {disabled}>
 	{@render children?.()}
 </button>

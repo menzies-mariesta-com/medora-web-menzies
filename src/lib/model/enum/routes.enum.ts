@@ -3,7 +3,7 @@ export enum WebRoutesEnum {
 
 	// public
 	ONBOARDING = '/onboarding',
-	ONBOARDING_MARKETPLACE = "/onboarding/marketplace",
+	ONBOARDING_MARKETPLACE = '/onboarding/marketplace',
 	LOGIN = '/auth/login',
 	SIGNUP = '/auth/signup',
 	RESET_PASSWORD = '/auth/reset-password',
@@ -39,8 +39,7 @@ export enum WebRoutesEnum {
 	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
 	HEKA_HOME_SERVICE_ITEM_SERVICE = '/heka/home/service-item/service',
 	HEKA_HOME_SERVICE_ITEM_CREATE = '/heka/home/service-item/service/create',
-	HEKA_HOME_SERVICE_ITEM_TAGGING = '/heka/home/service-item/service/tagging',
-
+	HEKA_HOME_SERVICE_ITEM_TAGGING = '/heka/home/service-item/service/tagging'
 }
 
 /** Base path for a hospital's home (modules: administration, appointment, registration). hospitalId is UUID string. */
@@ -51,8 +50,12 @@ export function hekaHospitalHome(hospitalId: string): string {
 /**
  * Rewrite DB page URL (/heka/home/...) to hospital-scoped URL.
  */
-export function hekaHospitalPageUrl(hospitalId: string, pageUrl: string | null): string {
-	if (!pageUrl || !pageUrl.startsWith('/heka/home')) return pageUrl ?? '';
+export function hekaHospitalPageUrl(
+	hospitalId: string,
+	pageUrl: string | null
+): string {
+	if (!pageUrl || !pageUrl.startsWith('/heka/home'))
+		return pageUrl ?? '';
 	return `/heka/hospital/${hospitalId}/home${pageUrl.slice('/heka/home'.length) || ''}`;
 }
 
@@ -60,7 +63,10 @@ export function hekaHospitalPageUrl(hospitalId: string, pageUrl: string | null):
  * Convert request pathname under hospital home to DB page URL (/heka/home/...).
  * Returns null if pathname is not under /heka/hospital/{hospitalId}/home.
  */
-export function requestPathToDbPageUrl(pathname: string, hospitalId: string): string | null {
+export function requestPathToDbPageUrl(
+	pathname: string,
+	hospitalId: string
+): string | null {
 	const prefix = `/heka/hospital/${hospitalId}/home`;
 	if (!pathname.startsWith(prefix)) return null;
 	const suffix = pathname.slice(prefix.length) || '';
@@ -68,5 +74,4 @@ export function requestPathToDbPageUrl(pathname: string, hospitalId: string): st
 	return dbPath.replace(/\/$/, '') || '/heka/home';
 }
 
-export enum ServerRoutesEnum {
-}
+export enum ServerRoutesEnum {}

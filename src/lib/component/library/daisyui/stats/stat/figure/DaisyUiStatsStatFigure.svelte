@@ -6,5 +6,5 @@
 </script>
 
 <div class="d-stat-figure {className}">
-    {@render children()}
+	{@render children()}
 </div>

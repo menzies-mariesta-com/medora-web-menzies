@@ -17,15 +17,20 @@
 
 	// Page list comes from server: all pages for OWNER/SYSTEM_ADMIN, filtered by user group for STAFF
 	$effect(() => {
-		if (data.pageData?.length !== undefined) setPageData(data.pageData);
+		if (data.pageData?.length !== undefined)
+			setPageData(data.pageData);
 	});
 
 	const uniqueModuleData = $derived(getUniqueModuleData());
 	const pageData = $derived(getPageData());
-	const isEmbed = $derived(page.url.searchParams.get('embed') === '1');
+	const isEmbed = $derived(
+		page.url.searchParams.get('embed') === '1'
+	);
 	// In Nursing Workbench EMR routes: navbar auto-hides but can be opened from the module bar button
 	const isInEmrCloneEmr = $derived(
-		pathnameForPageMatch().startsWith(WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR)
+		pathnameForPageMatch().startsWith(
+			WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
+		)
 	);
 	let emrNavbarOpen = $state(false);
 	let prevInEmrCloneEmr = $state(false);
@@ -35,7 +40,8 @@
 	});
 	const currentStaffId = $derived(data?.staff?.id ?? null);
 	const currentStaffPhotoUrl = $derived(
-		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ?? null
+		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ??
+			null
 	);
 </script>
 
@@ -44,7 +50,7 @@
 		<GPrivateHekaNavbar />
 		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}-${(data?.staffBranchesForNav ?? []).map((b) => b.id).join(',')}`}
 			<GPrivateHekaModuleBar
-				hospitalId={hospitalId}
+				{hospitalId}
 				hospitalName={data?.currentHospitalName ?? null}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
@@ -56,7 +62,9 @@
 				staffBranchesForNav={data?.staffBranchesForNav ?? []}
 				selectedBranchId={data?.selectedBranchId ?? null}
 				navbarVisible={isInEmrCloneEmr ? emrNavbarOpen : undefined}
-				onToggleNavbar={isInEmrCloneEmr ? () => (emrNavbarOpen = !emrNavbarOpen) : undefined}
+				onToggleNavbar={isInEmrCloneEmr
+					? () => (emrNavbarOpen = !emrNavbarOpen)
+					: undefined}
 			/>
 		{/key}
 	{/if}

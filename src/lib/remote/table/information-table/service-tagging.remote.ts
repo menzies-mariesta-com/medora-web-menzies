@@ -4,10 +4,13 @@ import * as table from '$lib/server/db/schema';
 import type {
 	ServiceTaggingSchema,
 	ServiceTaggingSchemaInsert,
-	ServiceTaggingSchemaUpdate,
+	ServiceTaggingSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import type { PaginatedResult, PaginationParams } from '$lib/remote/table/pagination-type';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, inArray, ne } from 'drizzle-orm';
 
@@ -23,43 +26,67 @@ export const getServiceTagging = query(
 		statusId?: number | null;
 		id?: number | null;
 	}): Promise<ServiceTaggingSchema[]> => {
-		const notDeleted = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
+		const notDeleted = ne(
+			table.serviceTaggingTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.branchId, params.branchId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.branchId, params.branchId)
+			);
 		}
 		if (params?.serviceId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.serviceId, params.serviceId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceId, params.serviceId)
+			);
 		}
 
 		if (params?.serviceIds && params.serviceIds.length > 0) {
 			whereExpr = and(
 				whereExpr,
-				inArray(table.serviceTaggingTable.serviceId, params.serviceIds)
+				inArray(
+					table.serviceTaggingTable.serviceId,
+					params.serviceIds
+				)
 			);
 		}
 
 		if (params?.id != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, params.id));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.id, params.id)
+			);
 		}
 
 		if (params?.serviceAmount != null) {
 			whereExpr = and(
 				whereExpr,
-				eq(table.serviceTaggingTable.serviceAmount, params.serviceAmount)
+				eq(
+					table.serviceTaggingTable.serviceAmount,
+					params.serviceAmount
+				)
 			);
 		}
 
 		if (params?.serviceTaxAmount != null) {
 			whereExpr = and(
 				whereExpr,
-				eq(table.serviceTaggingTable.serviceTaxAmount, params.serviceTaxAmount)
+				eq(
+					table.serviceTaggingTable.serviceTaxAmount,
+					params.serviceTaxAmount
+				)
 			);
 		}
 
 		if (params?.statusId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.statusId, params.statusId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.statusId, params.statusId)
+			);
 		}
 
 		return ensureDb()
@@ -70,10 +97,14 @@ export const getServiceTagging = query(
 );
 
 // get count
-export const getServiceTaggingCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb().select({ count: count() }).from(table.serviceTaggingTable);
-	return row?.count ?? 0;
-});
+export const getServiceTaggingCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.serviceTaggingTable);
+		return row?.count ?? 0;
+	}
+);
 
 // get paginated (supports same filters as getServiceTagging)
 export const getServiceTaggingPaginated = query(
@@ -89,44 +120,69 @@ export const getServiceTaggingPaginated = query(
 			id?: number | null;
 		}
 	): Promise<PaginatedResult<ServiceTaggingSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const notDeleted = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const notDeleted = ne(
+			table.serviceTaggingTable.statusId,
+			StatusEnum.DELETED
+		);
 		let whereExpr = notDeleted;
 
 		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.branchId, params.branchId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.branchId, params.branchId)
+			);
 		}
 		if (params?.serviceId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.serviceId, params.serviceId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.serviceId, params.serviceId)
+			);
 		}
 
 		if (params?.serviceIds && params.serviceIds.length > 0) {
 			whereExpr = and(
 				whereExpr,
-				inArray(table.serviceTaggingTable.serviceId, params.serviceIds)
+				inArray(
+					table.serviceTaggingTable.serviceId,
+					params.serviceIds
+				)
 			);
 		}
 
 		if (params?.id != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, params.id));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.id, params.id)
+			);
 		}
 
 		if (params?.serviceAmount != null) {
 			whereExpr = and(
 				whereExpr,
-				eq(table.serviceTaggingTable.serviceAmount, params.serviceAmount)
+				eq(
+					table.serviceTaggingTable.serviceAmount,
+					params.serviceAmount
+				)
 			);
 		}
 
 		if (params?.serviceTaxAmount != null) {
 			whereExpr = and(
 				whereExpr,
-				eq(table.serviceTaggingTable.serviceTaxAmount, params.serviceTaxAmount)
+				eq(
+					table.serviceTaggingTable.serviceTaxAmount,
+					params.serviceTaxAmount
+				)
 			);
 		}
 
 		if (params?.statusId != null) {
-			whereExpr = and(whereExpr, eq(table.serviceTaggingTable.statusId, params.statusId));
+			whereExpr = and(
+				whereExpr,
+				eq(table.serviceTaggingTable.statusId, params.statusId)
+			);
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -136,7 +192,10 @@ export const getServiceTaggingPaginated = query(
 				.where(whereExpr)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.serviceTaggingTable).where(whereExpr),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.serviceTaggingTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -144,7 +203,7 @@ export const getServiceTaggingPaginated = query(
 			total,
 			page,
 			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1,
+			totalPages: Math.ceil(total / pageSize) || 1
 		};
 	}
 );
@@ -152,7 +211,11 @@ export const getServiceTaggingPaginated = query(
 // get one
 export const getServiceTaggingById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ServiceTaggingSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<ServiceTaggingSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceTaggingTable)
@@ -164,7 +227,9 @@ export const getServiceTaggingById = query(
 // create
 export const createServiceTagging = command(
 	'unchecked' as const,
-	async (payload: ServiceTaggingSchemaInsert): Promise<ServiceTaggingSchema> => {
+	async (
+		payload: ServiceTaggingSchemaInsert
+	): Promise<ServiceTaggingSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.serviceTaggingTable)
 			.values(payload)
@@ -180,7 +245,9 @@ export const createServiceTagging = command(
 // update
 export const updateServiceTagging = command(
 	'unchecked' as const,
-	async (payload: ServiceTaggingSchemaUpdate & { id: number }): Promise<ServiceTaggingSchema> => {
+	async (
+		payload: ServiceTaggingSchemaUpdate & { id: number }
+	): Promise<ServiceTaggingSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.serviceTaggingTable)
@@ -213,10 +280,11 @@ export const deleteServiceTagging = command(
 export const deleteServiceTaggingComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb().delete(table.serviceTaggingTable).where(eq(table.serviceTaggingTable.id, id));
+		await ensureDb()
+			.delete(table.serviceTaggingTable)
+			.where(eq(table.serviceTaggingTable.id, id));
 		getServiceTagging(undefined).refresh();
 		getServiceTaggingCount().refresh();
 		getServiceTaggingPaginated(undefined).refresh();
 	}
 );
-

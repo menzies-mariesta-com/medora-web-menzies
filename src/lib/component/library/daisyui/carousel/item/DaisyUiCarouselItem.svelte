@@ -1,11 +1,11 @@
 <script lang="ts">
 	let { id, children, className } = $props<{
-        id: string;
+		id: string;
 		className?: string;
 		children: () => void;
 	}>();
 </script>
 
-<div id={id} class="d-carousel-item {className}">
+<div {id} class="d-carousel-item {className}">
 	{@render children()}
 </div>

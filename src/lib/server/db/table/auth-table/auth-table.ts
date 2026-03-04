@@ -6,7 +6,7 @@ import {
 	serial,
 	text,
 	timestamp,
-	varchar,
+	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { statusTable } from '../master-table/master-table';
@@ -15,17 +15,17 @@ import { StatusEnum } from '../../../../model/enum/db-link';
 const timestamps = {
 	createdAt: timestamp('created_at', {
 		withTimezone: true,
-		mode: 'string',
+		mode: 'string'
 	})
 		.notNull()
 		.defaultNow(),
 	updatedAt: timestamp('updated_at', {
 		withTimezone: true,
-		mode: 'string',
+		mode: 'string'
 	})
 		.notNull()
 		.defaultNow()
-		.$onUpdate(() => sql`now()`),
+		.$onUpdate(() => sql`now()`)
 } as const;
 
 // Better Auth core schema for email/password (see https://www.better-auth.com/docs/concepts/database)
@@ -39,7 +39,7 @@ export const userTable = pgTable('user', {
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
 	roleId: integer('role_id').references(() => roleTable.id),
-	...timestamps,
+	...timestamps
 });
 
 export const sessionTable = pgTable('session', {
@@ -50,10 +50,13 @@ export const sessionTable = pgTable('session', {
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
 	token: text('token').notNull().unique(),
-	expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+	expiresAt: timestamp('expires_at', {
+		withTimezone: true,
+		mode: 'string'
+	}).notNull(),
 	ipAddress: text('ip_address'),
 	userAgent: text('user_agent'),
-	...timestamps,
+	...timestamps
 });
 
 export const accountTable = pgTable('account', {
@@ -78,7 +81,7 @@ export const accountTable = pgTable('account', {
 	scope: text('scope'),
 	idToken: text('id_token'),
 	password: text('password'),
-	...timestamps,
+	...timestamps
 });
 
 export const verificationTable = pgTable('verification', {
@@ -87,15 +90,21 @@ export const verificationTable = pgTable('verification', {
 		.$defaultFn(() => uuidv7()),
 	identifier: text('identifier').notNull(),
 	value: text('value').notNull(),
-	expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
-	...timestamps,
+	expiresAt: timestamp('expires_at', {
+		withTimezone: true,
+		mode: 'string'
+	}).notNull(),
+	...timestamps
 });
 
 export const roleTable = pgTable('role', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
-	statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-	...timestamps,
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
 });
 
 export const authSchema = {
@@ -103,5 +112,5 @@ export const authSchema = {
 	session: sessionTable,
 	account: accountTable,
 	verification: verificationTable,
-	role: roleTable,
+	role: roleTable
 };

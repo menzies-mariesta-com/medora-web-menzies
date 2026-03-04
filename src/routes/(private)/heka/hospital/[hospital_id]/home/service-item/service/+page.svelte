@@ -16,9 +16,12 @@
 	// or to the \"Create\" page as a safe default.
 	lifeCycleUtil.onMount(() => {
 		const first = getSubPages()[0];
-		const targetPageUrl = first?.pageUrl ?? WebRoutesEnum.HEKA_HOME_SERVICE_ITEM_CREATE;
+		const targetPageUrl =
+			first?.pageUrl ?? WebRoutesEnum.HEKA_HOME_SERVICE_ITEM_CREATE;
 		if (targetPageUrl && hospitalId) {
-			routerUtil.replaceRoute(hekaHospitalPageUrl(hospitalId, targetPageUrl));
+			routerUtil.replaceRoute(
+				hekaHospitalPageUrl(hospitalId, targetPageUrl)
+			);
 		}
 	});
 </script>

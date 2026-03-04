@@ -8,7 +8,9 @@ export interface ResetPasswordEmailParams {
 	url: string;
 }
 
-export function renderResetPasswordEmail(params: ResetPasswordEmailParams): {
+export function renderResetPasswordEmail(
+	params: ResetPasswordEmailParams
+): {
 	html: string;
 	plainText: string;
 } {

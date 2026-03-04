@@ -14,7 +14,7 @@ const db = drizzle(client);
 
 /**
  * Seed information/business tables with sample data.
- * 
+ *
  * Run after master-table-seed. Inserts in FK-safe order.
  *
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
@@ -39,7 +39,7 @@ export async function seedInformationTables() {
 	// 2. Hospital (depends: status). id is UUID.
 	// await db.execute(sql`
 	// 	INSERT INTO hospital (id, name, code, city_id, state_id, country_id, status_id)
-	// 	VALUES 
+	// 	VALUES
 	// 		('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 	// 	ON CONFLICT (id) DO NOTHING;
 	// `);
@@ -113,8 +113,8 @@ export async function seedInformationTables() {
 			(1000001, 'Create', 5, 1, 10, '/heka/home/service-item/service/create', 1),
 			(1000002, 'Tagging', 5, 1, 10, '/heka/home/service-item/service/tagging', 2)
 		ON CONFLICT (id) DO NOTHING;
-		`)
-	console.log('Seeded: page')
+		`);
+	console.log('Seeded: page');
 
 	// 5. Role
 	await db.execute(sql`
@@ -125,8 +125,8 @@ export async function seedInformationTables() {
 			(3, 'Nurse', 1),
 			(4, 'Receptionist', 1)
 		ON CONFLICT (id) DO NOTHING;
-		`)
-	console.log('Seeded: role')
+		`);
+	console.log('Seeded: role');
 
 	// 6. Status Tagging Type
 	await db.execute(sql`
@@ -134,9 +134,8 @@ export async function seedInformationTables() {
 		VALUES
 			(1, 'Doctor Appointment')
 		ON CONFLICT (id) DO NOTHING;
-		`)
-	console.log('Seeded: status tagging type')
-
+		`);
+	console.log('Seeded: status tagging type');
 
 	// 7. status_tagging
 	await db.execute(sql`
@@ -150,8 +149,8 @@ export async function seedInformationTables() {
 			(4, 'Cancelled', 'cancel', 4, 1)
 
 		ON CONFLICT (id) DO NOTHING;
-		`)
-	console.log('Seeded: status tagging')
+		`);
+	console.log('Seeded: status tagging');
 
 	// 8. Category (per-branch, depends: hospital_branch, status)
 	await db.execute(sql`
@@ -184,7 +183,6 @@ export async function seedInformationTables() {
 		);
 	`);
 	console.log('Seeded: category');
-
 }
 
 seedInformationTables()

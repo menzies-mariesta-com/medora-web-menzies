@@ -6,11 +6,12 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { ne } from 'drizzle-orm';
 
 /** Get all visit types (excluding soft-deleted). */
-export const getVisitType = query(async (): Promise<VisitTypeSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.visitTypeTable)
-		.where(ne(table.visitTypeTable.statusId, StatusEnum.DELETED))
-		.orderBy(table.visitTypeTable.name);
-});
-
+export const getVisitType = query(
+	async (): Promise<VisitTypeSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.visitTypeTable)
+			.where(ne(table.visitTypeTable.statusId, StatusEnum.DELETED))
+			.orderBy(table.visitTypeTable.name);
+	}
+);
