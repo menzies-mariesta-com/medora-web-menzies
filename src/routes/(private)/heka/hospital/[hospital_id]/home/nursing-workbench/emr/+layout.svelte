@@ -30,7 +30,6 @@
 	function handleVisitSelected(data: { visitId: number; patientName: string }) {
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
-		search.set('patientName', data.patientName);
 		const base = page.url.pathname;
 		const url =
 			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
@@ -40,7 +39,6 @@
 	function handleVisitReset() {
 		const search = new URLSearchParams(page.url.search);
 		search.delete('visitId');
-		search.delete('patientName');
 		const base = page.url.pathname;
 		const url =
 			search.toString().length > 0 ? `${base}?${search.toString()}` : base;

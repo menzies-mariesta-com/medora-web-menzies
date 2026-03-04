@@ -22,11 +22,13 @@
 		getPatientAttachmentByPatientId,
 		deletePatientAttachmentComplete
 	} from '$lib/remote/table/information-table/patient-attachment.remote';
-import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
-import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
-import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
-import { browser } from '$app/environment';
+	import { getPatientByIdWithRelations, type PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+	import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
+	import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { browser } from '$app/environment';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
 	function formatAttachmentDateTime(value: string | Date | null | undefined): string {
@@ -51,7 +53,12 @@ import { browser } from '$app/environment';
 	const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 	const MAX_ATTACHMENT_SIZE_LABEL = '10MB';
 
-	let { cancel }: DialogSlotProps = $props();
+	type PatientAttachmentDialogProps = DialogSlotProps & {
+		/** When true, renders without dialog chrome (no close button). */
+		embedded?: boolean;
+	};
+
+	let { cancel, embedded = false }: PatientAttachmentDialogProps = $props();
 
 	const payload = $derived(PatientAttachmentDialogState.pending);
 	const stagedAttachments = $derived(PatientAttachmentDialogState.stagedAttachments);
@@ -72,6 +79,8 @@ import { browser } from '$app/environment';
 	let existingAttachments: PatientAttachmentSchema[] = $state([]);
 	let isLoadingExisting = $state(false);
 	let deletingId: number | null = $state(null);
+	let patientLabel: string = $state('');
+	let isLoadingPatient = $state(false);
 
 	function handleFileChange(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -114,10 +123,28 @@ import { browser } from '$app/environment';
 		}
 	}
 
+	async function loadPatientLabel(patientId: string) {
+		isLoadingPatient = true;
+		try {
+			const patient = await getPatientByIdWithRelations({ id: patientId });
+			if (patient) {
+				patientLabel = StringUtil.patientDisplayName(patient as PatientWithRelations);
+			} else {
+				patientLabel = patientId;
+			}
+		} finally {
+			isLoadingPatient = false;
+		}
+	}
+
 	$effect(() => {
 		if (isExistingPatient && payload && 'patientId' in payload) {
 			loadExisting(payload.patientId);
+			loadPatientLabel(payload.patientId);
+		} else {
+			patientLabel = '';
 		}
+		console.log(payload)
 	});
 
 	function addStaged() {
@@ -248,18 +275,20 @@ import { browser } from '$app/environment';
 				{#if isStaging}
 					Attachments – New patient
 				{:else if isExistingPatient}
-					Attachments – {payload && 'patientId' in payload ? (payload.patientName ?? payload.patientId) : ''}
+					Attachments – {patientLabel || 'Patient'}
 				{:else}
 					Attachments
 				{/if}
 			</DaisyUiCardBodyTitle>
-			<DaisyUiButton
-				type="button"
-				className="d-btn-ghost d-btn-sm d-btn-circle"
-				onClick={cancel}
-			>
-				<LucideX className="size-5" />
-			</DaisyUiButton>
+			{#if !embedded}
+				<DaisyUiButton
+					type="button"
+					className="d-btn-ghost d-btn-sm d-btn-circle"
+					onClick={cancel}
+				>
+					<LucideX className="size-5" />
+				</DaisyUiButton>
+			{/if}
 		</div>
 		<div class="flex-1 min-h-0 overflow-y-auto p-4">
 			{#if isStaging}
@@ -370,7 +399,7 @@ import { browser } from '$app/environment';
 									<DaisyUiLabel className="shrink-0 sm:w-36">Patient</DaisyUiLabel>
 									<div class="flex-1">
 										<p class="truncate text-sm font-medium">
-											{payload && 'patientId' in payload ? (payload.patientName || payload.patientId) : ''}
+											{patientLabel || 'Patient'}
 										</p>
 									</div>
 								</div>

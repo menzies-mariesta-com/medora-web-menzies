@@ -178,10 +178,7 @@
 			hospitalId,
 			WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL
 		);
-		const name = StringUtil.patientDisplayName(patient);
-		const url =
-			`${baseUrl}?patientId=${encodeURIComponent(patient.id)}` +
-			`&patientName=${encodeURIComponent(name)}`;
+		const url = `${baseUrl}?patientId=${encodeURIComponent(patient.id)}`;
 		routerUtil.replaceRoute(url);
 	}
 </script>
