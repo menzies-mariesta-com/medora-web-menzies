@@ -28,6 +28,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -311,6 +312,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
 			message='Choose a visit using the "Choose Visit" button above to record vitals.'
+			className='z-0'
 		/>
 	{:else if isLoadingVisit}
 		<div class="flex min-h-32 items-center justify-center">
@@ -347,8 +349,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 						No vitals recorded for this patient yet.
 					</p>
 				{:else}
-					<div class="flex flex-col gap-3">
-						<div class="max-h-80 overflow-auto pt-2">
+					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
 							<MariTable
 								rows={vitals}
 								columns={vitalColumns}
@@ -380,7 +381,6 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 								</svelte:fragment>
 							</MariTable>
 						</div>
-					</div>
 				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>

@@ -26,9 +26,10 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-	import { page } from '$app/state';
+import { dialogService } from '$lib/service/dialog.service.svelte';
+import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+import { page } from '$app/state';
+import { AppEnum } from '$lib/model/enum/app.enum';
 	import {
 		type StaffWithRelations,
 		getDoctorStaffList,
@@ -106,6 +107,7 @@
 		scheduleIds: number[];
 	};
 
+const appConfig = new AppConfig();
 	let staffId = $state('');
 	let selectedBranchId = $state('');
 	let branchData = $state<HospitalBranchSchema[]>([]);
@@ -117,7 +119,7 @@
 			hospitalId: hospitalId,
 			branchId: scopedBranchId,
 			page: 1,
-			pageSize: 20
+			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
 		});
 		return res.data.map((staff) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
