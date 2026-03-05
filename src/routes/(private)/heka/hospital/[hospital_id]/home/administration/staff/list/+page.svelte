@@ -1,7 +1,4 @@
 <script lang="ts">
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
@@ -32,6 +29,9 @@
 	import LStaffListViewEditModal from '$lib/component/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -41,6 +41,8 @@
 	let currentPage = $state(1);
 	let filterPageSize = $state('5');
 	let searchInput = $state('');
+	let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isLoading = $state(false);
 
 	const staffList = $derived(staffResult?.data ?? []);
@@ -61,7 +63,11 @@
 			page: currentPage,
 			pageSize,
 			search: searchInput.trim() || undefined,
-			hospitalId: hospitalId ?? undefined
+			hospitalId: hospitalId ?? undefined,
+			staffCode: tableFilters.code?.trim() || undefined,
+			staffName: tableFilters.name?.trim() || undefined,
+			staffPhonePrimary:
+				tableFilters.phonePrimary?.trim() || undefined
 		};
 		try {
 			// After create/update/delete or dialog close, invalidate cache then fetch so list updates
@@ -159,8 +165,6 @@
 		}
 	}
 
-	const STAFF_COLUMN_COUNT = 30;
-
 	type StaffDialogMode = 'view' | 'edit';
 	let staffDialog = $state<{
 		mode: StaffDialogMode;
@@ -188,235 +192,190 @@
 		staffDialog = null;
 		fetchStaff(true);
 	}
+
+const staffColumns: MariTableColumn<StaffWithRelations>[] = [
+	{
+		id: 'code',
+		header: m.staff_code(),
+		widthClass: 'w-32 min-w-[8rem]',
+		filterable: true
+	},
+	{
+		id: 'name',
+		header: m.name(),
+		widthClass: 'w-64 min-w-[16rem]',
+		filterable: true,
+		format: (_value, row) =>
+			StringUtil.fullNameWithTitle(
+				(row as StaffWithRelations).title?.name,
+				(row as StaffWithRelations).firstName,
+				(row as StaffWithRelations).middleName,
+				(row as StaffWithRelations).lastName
+			)
+	},
+	{
+		id: 'identity',
+		header: m.identity(),
+		widthClass: 'w-64 min-w-[16rem]',
+		filterable: false,
+		format: (_value, row) => {
+			const r = row as StaffWithRelations;
+			return `(${r.identityType?.name ?? '—'})${r.identityNo ?? ''}`;
+		}
+	},
+	{
+		id: 'phonePrimary',
+		header: m.phone_primary(),
+		widthClass: 'w-40 min-w-[10rem]',
+		filterable: true
+	},
+	{
+		id: 'phoneSecondary',
+		header: m.phone_secondary(),
+		widthClass: 'w-40 min-w-[10rem]',
+		filterable: false
+	},
+	{
+		id: 'dateOfBirth',
+		header: m.date_of_birth(),
+		widthClass: 'w-36 min-w-[9rem]',
+		filterable: false,
+		format: (value) => formatDate(value)
+	},
+	{
+		id: 'staffEmploymentType',
+		header: m.employment_type(),
+		widthClass: 'w-56 min-w-[14rem]',
+		field: 'staffEmploymentType.name',
+		filterable: false
+	},
+	{
+		id: 'staffType',
+		header: m.staff_type(),
+		widthClass: 'w-40 min-w-[10rem]',
+		field: 'staffType.name',
+		filterable: false
+	},
+	{
+		id: 'specialization',
+		header: m.specialization(),
+		widthClass: 'w-48 min-w-[12rem]',
+		field: 'specialization.name',
+		filterable: false
+	},
+	{
+		id: 'maritalStatus',
+		header: m.marital_status(),
+		widthClass: 'w-40 min-w-[10rem]',
+		field: 'maritalStatus.name',
+		filterable: false
+	},
+	{
+		id: 'nationality',
+		header: m.nationality(),
+		widthClass: 'w-40 min-w-[10rem]',
+		field: 'nationality.name',
+		filterable: false
+	},
+	{
+		id: 'gender',
+		header: m.gender(),
+		widthClass: 'w-32 min-w-[8rem]',
+		field: 'gender.name',
+		filterable: false
+	},
+	{
+		id: 'status',
+		header: m.status(),
+		widthClass: 'w-32 min-w-[8rem]',
+		field: 'status.name',
+		filterable: false
+	},
+	{
+		id: 'createdAt',
+		header: m.created_at(),
+		widthClass: 'w-40 min-w-[10rem]',
+		filterable: false,
+		format: (value) => formatDateTime(value)
+	},
+	{
+		id: 'updatedAt',
+		header: m.updated_at(),
+		widthClass: 'w-40 min-w-[10rem]',
+		filterable: false,
+		format: (value) => formatDateTime(value)
+	}
+];
 </script>
-
-<div
-	class="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between"
->
-	<p class="order-1 text-sm opacity-80 md:order-none">
-		{#if total > 0}
-			{@const pageSize = Number(filterPageSize) || 10}
-			{@const start = (currentPage - 1) * pageSize + 1}
-			{@const end = Math.min(currentPage * pageSize, total)}
-			Showing <span class="text-success">{start}–{end}</span> of
-			<span class="text-error">{total}</span> staff
-		{:else}
-			Showing 0 of 0 staff
-		{/if}
-	</p>
-
-	<div
-		class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end"
-	>
-		<div class="staff-list-search-form">
-			<DaisyUiInputField
-				inputPlaceholderText={m.search_placeholder_staff()}
-				bind:value={searchInput}
-				className="d-input-sm"
-			/>
-		</div>
-		<DaisyUiTooltip
-			tooltipText={m.refresh_data()}
-			className="d-tooltip-bottom d-tooltip-primary"
-		>
-			<DaisyUiButton
-				className="d-btn-primary d-btn-sm"
-				onClick={() => fetchStaff(true)}
-			>
-				<LucideRefreshCcw className="size-5" />
-			</DaisyUiButton>
-		</DaisyUiTooltip>
-	</div>
-
-	<div
-		class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none"
-	>
-		<span class="text-sm">{m.per_page()}</span>
-		<DaisyUiSelect
-			className="d-select d-select-sm w-16"
-			bind:value={filterPageSize}
-			onChange={handlePageSizeChange}
-			disabled={isLoading}
-		>
-			<option value="5">5</option>
-			<option value="10">10</option>
-			<option value="25">25</option>
-			<option value="50">50</option>
-			<option value="100">100</option>
-		</DaisyUiSelect>
-	</div>
-
-	{#if staffResult !== null}
-		<div
-			class="order-4 w-full md:order-none md:w-auto md:justify-end"
-		>
-			<DaisyUiPagination>
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage - 1)}
-					className="d-btn-sm"
-					disabled={currentPage <= 1 || isLoading}
-				>
-					<LucideChevronLeft className="size-5" />
-				</DaisyUiPaginationItem>
-				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
-					<DaisyUiPaginationItem
-						className="d-btn-sm"
-						onClick={() => goToPage(p)}
-					>
-						{p}
-					</DaisyUiPaginationItem>
-				{/each}
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage + 1)}
-					className="d-btn-sm"
-					disabled={currentPage >= totalPages || isLoading}
-				>
-					<LucideChevronRight className="size-5" />
-				</DaisyUiPaginationItem>
-			</DaisyUiPagination>
-		</div>
-	{/if}
-</div>
 
 {#if isLoading && !staffResult}
 	<div class="flex items-center justify-center">
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
-		<DaisyUiTable className="d-table d-table-zebra d-table-sm">
-			<DaisyUiTableHeader>
-				<tr class="sticky top-0 z-3 bg-base-200">
-					<th class="sticky left-0 z-1 w-16 min-w-[4rem] bg-base-200">
-						{m.actions()}
-					</th>
-					<th
-						class="sticky top-0 left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-200"
+	<div class="max-h-[calc(100vh-18rem)]">
+		<MariTable
+			rows={staffList}
+			columns={staffColumns}
+			isLoading={isLoading}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage={m.no_staff_found()}
+			showRowActions={true}
+			actionsVariant="none"
+			enableColumnFilters={true}
+			useRemoteFilters={true}
+			on:refresh={() => fetchStaff(true)}
+			on:filtersChange={(event) => {
+				if (filterDebounceTimeout) {
+					clearTimeout(filterDebounceTimeout);
+				}
+				tableFilters = event.detail.filters;
+				currentPage = 1;
+				filterDebounceTimeout = setTimeout(() => {
+					fetchStaff();
+				}, 350);
+			}}
+		>
+			<svelte:fragment slot="rowActions" let:row>
+				<div class="flex flex-col items-center gap-1">
+					<DaisyUiTooltip
+						tooltipText={m.view_data()}
+						className="d-tooltip-ghost d-tooltip-right"
 					>
-						{m.staff_code()}
-					</th>
-					<th class="w-64 min-w-[16rem]">{m.name()}</th>
-					<th class="w-64 min-w-[16rem]">{m.identity()}</th>
-					<th class="w-40 min-w-[10rem]">{m.phone_primary()}</th>
-					<th class="w-40 min-w-[10rem]">{m.phone_secondary()}</th>
-					<th class="w-36 min-w-[9rem]">{m.date_of_birth()}</th>
-					<th class="w-56 min-w-[14rem]">{m.employment_type()}</th>
-					<th class="w-40 min-w-[10rem]">{m.staff_type()}</th>
-					<th class="w-48 min-w-[12rem]">{m.specialization()}</th>
-					<th class="w-40 min-w-[10rem]">{m.marital_status()}</th>
-					<th class="w-40 min-w-[10rem]">{m.nationality()}</th>
-					<th class="w-32 min-w-[8rem]">{m.gender()}</th>
-					<th class="w-32 min-w-[8rem]">{m.status()}</th>
-					<th class="w-40 min-w-[10rem]">{m.created_at()}</th>
-					<th class="w-40 min-w-[10rem]">{m.updated_at()}</th>
-				</tr>
-			</DaisyUiTableHeader>
-			<DaisyUiTableBody>
-				{#each staffList as staff (staff.id)}
-					<tr class="z-0 hover:bg-info/30">
-						<td
-							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={() => viewData(row.id)}
 						>
-							<div class="flex flex-col items-center gap-1">
-								<DaisyUiTooltip
-									tooltipText={m.view_data()}
-									className="d-tooltip-ghost d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => viewData(staff.id)}
-									>
-										<LucideEye className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.edit_data()}
-									className="d-tooltip-accent d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-sm d-btn-ghost d-btn-accent"
-										onClick={() => editData(staff.id)}
-									>
-										<LucidePencil className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.delete_data()}
-									className="d-tooltip-error d-tooltip-right"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm d-btn-error"
-										disabled={isLoading}
-										onClick={() => handleDelete(staff.id)}
-									>
-										<LucideTrash2 className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-							</div>
-						</td>
-						<td
-							class="sticky left-[4.75rem] z-1 w-32 min-w-[8rem] bg-base-100"
+							<LucideEye className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip
+						tooltipText={m.edit_data()}
+						className="d-tooltip-accent d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-sm d-btn-ghost d-btn-accent"
+							onClick={() => editData(row.id)}
 						>
-							{staff.code ?? '—'}
-						</td>
-						<td class="w-64 min-w-[16rem]">
-							{StringUtil.fullNameWithTitle(
-								staff.title?.name,
-								staff.firstName,
-								staff.middleName,
-								staff.lastName
-							)}
-						</td>
-						<td class="w-64 min-w-[16rem]">
-							({staff.identityType?.name ?? '—'}){staff.identityNo}
-						</td>
-						<td class="w-40 min-w-[10rem]"
-							>{staff.phonePrimary ?? '—'}</td
+							<LucidePencil className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip
+						tooltipText={m.delete_data()}
+						className="d-tooltip-error d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm d-btn-error"
+							disabled={isLoading}
+							onClick={() => handleDelete(row.id)}
 						>
-						<td class="w-40 min-w-[10rem]"
-							>{staff.phoneSecondary ?? '—'}</td
-						>
-						<td class="w-36 min-w-[9rem]"
-							>{formatDate(staff.dateOfBirth)}</td
-						>
-						<td class="w-56 min-w-[14rem]">
-							{staff.staffEmploymentType?.name ?? '—'}
-						</td>
-						<td class="w-40 min-w-[10rem]"
-							>{staff.staffType?.name ?? '—'}</td
-						>
-						<td class="w-48 min-w-[12rem]">
-							{staff.specialization?.name ?? '—'}
-						</td>
-						<td class="w-40 min-w-[10rem]">
-							{staff.maritalStatus?.name ?? '—'}
-						</td>
-						<td class="w-40 min-w-[10rem]">
-							{staff.nationality?.name ?? '—'}
-						</td>
-						<td class="w-32 min-w-[8rem]"
-							>{staff.gender?.name ?? '—'}</td
-						>
-						<td class="w-32 min-w-[8rem]"
-							>{staff.status?.name ?? '—'}</td
-						>
-						<td class="w-40 min-w-[10rem]">
-							{formatDateTime(staff.createdAt)}
-						</td>
-						<td class="w-40 min-w-[10rem]">
-							{formatDateTime(staff.updatedAt)}
-						</td>
-					</tr>
-				{:else}
-					<tr>
-						<td
-							colspan={STAFF_COLUMN_COUNT}
-							class="text-center opacity-70">{m.no_staff_found()}</td
-						>
-					</tr>
-				{/each}
-			</DaisyUiTableBody>
-		</DaisyUiTable>
+							<LucideTrash2 className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+				</div>
+			</svelte:fragment>
+		</MariTable>
 	</div>
 {/if}
 

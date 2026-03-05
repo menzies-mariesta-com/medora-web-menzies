@@ -69,7 +69,7 @@ export const getUserGroupCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated (optional hospitalId to scope to one hospital)
+// get paginated (optional hospitalId to scope to one hospital, plus filters)
 export const getUserGroupPaginated = query(
 	'unchecked' as const,
 	async (
@@ -78,17 +78,28 @@ export const getUserGroupPaginated = query(
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
 		const hospitalId = params?.hospitalId;
-		const notDeleted = ne(
-			table.userGroupTable.statusId,
-			StatusEnum.DELETED
-		);
-		const whereClause =
-			hospitalId != null && hospitalId !== ''
-				? and(
-						eq(table.userGroupTable.hospitalId, hospitalId),
-						notDeleted
-					)
-				: notDeleted;
+		const nameFilter = params?.name?.trim();
+		const statusId = params?.statusId;
+
+		const conditions = [
+			ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+		];
+
+		if (hospitalId != null && hospitalId !== '') {
+			conditions.push(
+				eq(table.userGroupTable.hospitalId, hospitalId)
+			);
+		}
+		if (nameFilter) {
+			conditions.push(
+				ilike(table.userGroupTable.name, `%${nameFilter}%`)
+			);
+		}
+		if (typeof statusId === 'number') {
+			conditions.push(eq(table.userGroupTable.statusId, statusId));
+		}
+
+		const whereClause = and(...conditions);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()

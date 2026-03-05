@@ -2,9 +2,6 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		getUsersByRole,
@@ -24,12 +21,36 @@
 	import EditOwnerModal from '$lib/component/snippet/modal/EditOwnerModal.svelte';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	let owners = $state<UserSchema[]>([]);
 	let isLoading = $state(true);
+
+	const ownerColumns: MariTableColumn<UserSchema>[] = [
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-64 min-w-[16rem]',
+			field: 'name'
+		},
+		{
+			id: 'email',
+			header: m.email(),
+			widthClass: 'w-72 min-w-[18rem]',
+			field: 'email'
+		},
+		{
+			id: 'createdAt',
+			header: m.created(),
+			widthClass: 'w-40 min-w-[10rem]',
+			format: (value) => formatDate(value as string | null | undefined)
+		}
+	];
 
 	async function loadOwners() {
 		isLoading = true;
@@ -114,41 +135,35 @@
 					{m.no_owners_yet()}
 				</p>
 			{:else}
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.name()}</th>
-							<th>{m.email()}</th>
-							<th>{m.created()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each owners as o (o.id)}
-							<tr>
-								<td>{o.name ?? '—'}</td>
-								<td>{o.email ?? '—'}</td>
-								<td>{formatDate(o.createdAt)}</td>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEditOwnerModal(o)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(o)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
+				<MariTable
+					rows={owners}
+					columns={ownerColumns}
+					isLoading={isLoading}
+					showRefreshButton={false}
+					emptyMessage={m.no_owners_yet()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEditOwnerModal(row)}
+								>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					</svelte:fragment>
+				</MariTable>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>

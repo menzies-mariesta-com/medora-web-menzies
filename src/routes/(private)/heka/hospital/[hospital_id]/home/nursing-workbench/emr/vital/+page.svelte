@@ -5,23 +5,14 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
-	import DaisyUiCollapse from '$lib/component/library/daisyui/collapse/DaisyUiCollapse.svelte';
+import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import LVitalRecordDialogContent from '$lib/component/local/private/heka/emr/LVitalRecordDialogContent.svelte';
-	import DaisyUiCollapseTitle from '$lib/component/library/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
-	import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/library/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
+import DaisyUiCollapseTitle from '$lib/component/library/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
+import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
@@ -34,6 +25,9 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import { vitalTextClass } from '$lib/config/vital.config';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -53,8 +47,6 @@
 	let vitals = $state<PatientVitalWithVisit[]>([]);
 	let isLoadingVisit = $state(false);
 	let isLoadingVitals = $state(false);
-	let vitalDisplayLimit = $state<'10' | '25' | 'all'>('25');
-	let vitalPage = $state(1);
 	const toastService = new ToastService();
 
 	async function openRecordDialog() {
@@ -220,54 +212,88 @@
 		return v.vitalDateTime ?? v.createdAt;
 	}
 
-	/** Group vitals by visit, sorted by most recent first. */
-	type VitalGroup = {
-		visitNo: string;
-		vitals: PatientVitalWithVisit[];
-	};
-	const vitalGroups = $derived.by(() => {
-		const limitN =
-			vitalDisplayLimit === 'all'
-				? Infinity
-				: Number(vitalDisplayLimit);
-		const groups = new Map<number, PatientVitalWithVisit[]>();
-		for (const v of vitals) {
-			const key = v.visitId;
-			const arr = groups.get(key) ?? [];
-			arr.push(v);
-			groups.set(key, arr);
+	const vitalColumns: MariTableColumn<PatientVitalWithVisit>[] = [
+	{
+		id: 'visitNo',
+		header: 'Visit No',
+		widthClass: 'w-28 min-w-[7rem]',
+		filterable: false,
+		format: (_value, row) => row.visit?.visitNo?.trim() || '–'
+	},
+		{
+			id: 'date',
+			header: 'Date',
+			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+			filterable: false,
+			format: (_value, row) =>
+				formatDateTime(getVitalDisplayDate(row) ?? null)
+		},
+		{
+			id: 'height',
+			header: 'Ht (cm)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.height)
+		},
+		{
+			id: 'weight',
+			header: 'Wt (kg)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.weight)
+		},
+		{
+			id: 'bp',
+			header: 'BP (mmHg)',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+		format: (_value, row) =>
+			`${formatVital(row.bpSystolic)}/${formatVital(row.bpDiastolic)}`
+		},
+		{
+			id: 'pulse',
+			header: 'P (bpm)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.pulse)
+		},
+		{
+			id: 'temperature',
+			header: 'T (°C)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.temperature)
+		},
+		{
+			id: 'spO2',
+			header: 'SpO₂ (%)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.spO2)
+		},
+		{
+			id: 'respiration',
+			header: 'R (/min)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.respiration)
+		},
+		{
+			id: 'rbs',
+			header: 'RBS (mg/dL)',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.rbs)
+		},
+		{
+			id: 'symptom',
+			header: 'Symptom',
+			widthClass: 'min-w-32',
+			filterable: false,
+			format: (_value, row) => formatVital(row.symptom),
+			cellClass: 'max-w-48 truncate'
 		}
-		const result: VitalGroup[] = [];
-		for (const [, arr] of groups) {
-			arr.sort(
-				(a, b) =>
-					new Date(getVitalDisplayDate(b) ?? 0).getTime() -
-					new Date(getVitalDisplayDate(a) ?? 0).getTime()
-			);
-			const visitNo = arr[0]?.visit?.visitNo?.trim() || '–';
-			result.push({ visitNo, vitals: arr });
-		}
-		result.sort(
-			(a, b) =>
-				new Date(getVitalDisplayDate(b.vitals[0]!) ?? 0).getTime() -
-				new Date(getVitalDisplayDate(a.vitals[0]!) ?? 0).getTime()
-		);
-		return result.slice(0, limitN);
-	});
-
-	const pageSize = 8;
-	const totalGroupPages = $derived(
-		Math.max(1, Math.ceil(vitalGroups.length / pageSize))
-	);
-	const effectivePage = $derived(
-		Math.min(vitalPage, totalGroupPages) || 1
-	);
-	const paginatedGroups = $derived(
-		vitalGroups.slice(
-			(effectivePage - 1) * pageSize,
-			effectivePage * pageSize
-		)
-	);
+	];
 </script>
 
 <svelte:head>
@@ -322,195 +348,37 @@
 					</p>
 				{:else}
 					<div class="flex flex-col gap-3">
-						<div
-							class="flex flex-wrap items-center justify-between gap-2"
-						>
-							<p class="text-sm text-base-content/70">
-								{vitals.length} record(s) across {vitalGroups.length} visit(s)
-							</p>
-							<div class="flex flex-wrap items-center gap-2">
-								<span class="text-sm">Show</span>
-								<DaisyUiSelect
-									className="d-select d-select-sm w-28"
-									bind:value={vitalDisplayLimit}
-									onChange={() => (vitalPage = 1)}
-								>
-									<option value="10">10 visits</option>
-									<option value="25">25 visits</option>
-									<option value="all">All</option>
-								</DaisyUiSelect>
-								{#if totalGroupPages > 1}
-									<DaisyUiPagination>
-										<DaisyUiPaginationItem
-											className="d-btn-sm"
-											onClick={() =>
-												(vitalPage = Math.max(1, effectivePage - 1))}
-											disabled={effectivePage <= 1}
-										>
-											<LucideChevronLeft className="size-5" />
-										</DaisyUiPaginationItem>
-										<span class="px-2 text-sm">
-											{effectivePage} / {totalGroupPages}
-										</span>
-										<DaisyUiPaginationItem
-											className="d-btn-sm"
-											onClick={() =>
-												(vitalPage = Math.min(
-													totalGroupPages,
-													effectivePage + 1
-												))}
-											disabled={effectivePage >= totalGroupPages}
-										>
-											<LucideChevronRight className="size-5" />
-										</DaisyUiPaginationItem>
-									</DaisyUiPagination>
-								{/if}
-							</div>
-						</div>
-						<div class="flex flex-col gap-2">
-							{#each paginatedGroups as group, i (group.vitals[0]?.visitId ?? `group-${i}`)}
-								<DaisyUiCollapse
-									checked={i === 0 ? 'true' : 'false'}
-									groupName="vitals-by-visit"
-								>
-									<DaisyUiCollapseTitle>
-										Visit {group.visitNo}
-										<span class="ml-2 font-normal opacity-70">
-											· {group.vitals.length} record(s) · {formatDateTime(
-												group.vitals[0]
-													? (getVitalDisplayDate(group.vitals[0]) ??
-															null)
-													: null
-											)}
-										</span>
-									</DaisyUiCollapseTitle>
-									<DaisyUiCollapseContent>
-										<div class="max-h-80 overflow-auto pt-2">
-											<DaisyUiTable
-												className="d-table d-table-zebra d-table-sm"
+						<div class="max-h-80 overflow-auto pt-2">
+							<MariTable
+								rows={vitals}
+								columns={vitalColumns}
+								isLoading={isLoadingVitals}
+								showRefreshButton={false}
+								emptyMessage="No vitals."
+								showRowActions={true}
+								actionsHeader="Actions"
+								actionsVariant="none"
+								enableColumnFilters={false}
+							>
+								<svelte:fragment slot="rowActions" let:row>
+									<td class="w-24 shrink-0 text-right">
+										<div class="flex justify-end gap-1">
+											<DaisyUiButton
+												className="d-btn-ghost d-btn-sm"
+												onClick={() => openEditDialog(row)}
 											>
-												<DaisyUiTableHeader>
-													<tr class="sticky top-0 z-3 bg-base-200">
-														<th class="w-36 min-w-[9rem]">Date</th>
-														<th class="w-20 min-w-[5rem]">Ht (cm)</th>
-														<th class="w-20 min-w-[5rem]">Wt (kg)</th>
-														<th class="w-24 min-w-[6rem]"
-															>BP (mmHg)</th
-														>
-														<th class="w-20 min-w-[5rem]">P (bpm)</th>
-														<th class="w-20 min-w-[5rem]">T (°C)</th>
-														<th class="w-20 min-w-[5rem]">SpO₂ (%)</th
-														>
-														<th class="w-20 min-w-[5rem]">R (/min)</th
-														>
-														<th class="w-24 min-w-[6rem]"
-															>RBS (mg/dL)</th
-														>
-														<th class="min-w-32">Symptom</th>
-														<th class="w-24 shrink-0 text-right"
-															>Actions</th
-														>
-													</tr>
-												</DaisyUiTableHeader>
-												<DaisyUiTableBody>
-													{#each group.vitals as v (v.id)}
-														<tr class="hover:bg-info/20">
-															<td class="whitespace-nowrap">
-																{formatDateTime(
-																	getVitalDisplayDate(v) ?? null
-																)}
-															</td>
-															<td>{formatVital(v.height)}</td>
-															<td>{formatVital(v.weight)}</td>
-															<td>
-																<span
-																	class={vitalTextClass(
-																		v.bpSystolic,
-																		'bpSystolic'
-																	)}>{formatVital(v.bpSystolic)}</span
-																>/<span
-																	class={vitalTextClass(
-																		v.bpDiastolic,
-																		'bpDiastolic'
-																	)}
-																	>{formatVital(v.bpDiastolic)}</span
-																>
-															</td>
-															<td
-																><span
-																	class={vitalTextClass(
-																		v.pulse,
-																		'pulse'
-																	)}>{formatVital(v.pulse)}</span
-																></td
-															>
-															<td
-																><span
-																	class={vitalTextClass(
-																		v.temperature,
-																		'temperature'
-																	)}
-																	>{formatVital(v.temperature)}</span
-																></td
-															>
-															<td
-																><span
-																	class={vitalTextClass(
-																		v.spO2,
-																		'spO2'
-																	)}>{formatVital(v.spO2)}</span
-																></td
-															>
-															<td
-																><span
-																	class={vitalTextClass(
-																		v.respiration,
-																		'respiration'
-																	)}
-																	>{formatVital(v.respiration)}</span
-																></td
-															>
-															<td
-																><span
-																	class={vitalTextClass(v.rbs, 'rbs')}
-																	>{formatVital(v.rbs)}</span
-																></td
-															>
-															<td
-																class="max-w-48 truncate"
-																title={v.symptom ?? undefined}
-															>
-																{formatVital(v.symptom)}
-															</td>
-															<td class="text-right">
-																<div class="flex justify-end gap-1">
-																	<DaisyUiButton
-																		className="d-btn-ghost d-btn-sm"
-																		onClick={() => openEditDialog(v)}
-																	>
-																		<LucidePencil
-																			className="size-4"
-																		/>
-																	</DaisyUiButton>
-																	<DaisyUiButton
-																		className="d-btn-ghost d-btn-error d-btn-sm"
-																		onClick={() =>
-																			handleDeleteVital(v)}
-																	>
-																		<LucideTrash2
-																			className="size-4"
-																		/>
-																	</DaisyUiButton>
-																</div>
-															</td>
-														</tr>
-													{/each}
-												</DaisyUiTableBody>
-											</DaisyUiTable>
+												<LucidePencil className="size-4" />
+											</DaisyUiButton>
+											<DaisyUiButton
+												className="d-btn-ghost d-btn-error d-btn-sm"
+												onClick={() => handleDeleteVital(row)}
+											>
+												<LucideTrash2 className="size-4" />
+											</DaisyUiButton>
 										</div>
-									</DaisyUiCollapseContent>
-								</DaisyUiCollapse>
-							{/each}
+									</td>
+								</svelte:fragment>
+							</MariTable>
 						</div>
 					</div>
 				{/if}
