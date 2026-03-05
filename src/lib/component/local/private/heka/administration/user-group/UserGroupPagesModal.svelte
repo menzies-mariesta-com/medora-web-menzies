@@ -1,8 +1,9 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { getModule } from '$lib/remote/table/information-table/module.remote';
 	import { getPage } from '$lib/remote/table/information-table/page.remote';
 	import {
@@ -22,42 +23,55 @@
 	const toastService = new ToastService();
 
 	let allPages = $state<PageSchema[]>([]);
-	let allModules = $state<ModuleSchema[]>([]);
-	let pageSelected = $state<Record<number, boolean>>({});
-	let isSaving = $state(false);
-	let loaded = $state(false);
+let allModules = $state<ModuleSchema[]>([]);
+let pageSelected = $state<Record<number, boolean>>({});
+let isSaving = $state(false);
+let loaded = $state(false);
+let searchText = $state('');
 
 	const group = $derived(UserGroupPagesModalState.group);
 
-	/** Group pages by module (null = no module). Order: known modules first, then "Other". */
-	const modulesWithPages = $derived.by(() => {
-		const byModule = new Map<number | null, PageSchema[]>();
-		for (const p of allPages) {
-			const key = p.moduleId ?? null;
-			if (!byModule.has(key)) byModule.set(key, []);
-			byModule.get(key)!.push(p);
-		}
-		const result: {
-			moduleName: string;
-			moduleId: number | null;
-			pages: PageSchema[];
-		}[] = [];
+	/** Map module id -> display name for quick lookup. */
+	const moduleNameById = $derived.by(() => {
+		const map = new Map<number, string>();
 		for (const m of allModules) {
-			const pages = byModule.get(m.id) ?? [];
-			if (pages.length > 0)
-				result.push({
-					moduleName: m.name ?? m.moduleUrl ?? 'Module',
-					moduleId: m.id,
-					pages
-				});
+			map.set(m.id, m.name ?? m.moduleUrl ?? 'Module');
 		}
-		const otherPages = byModule.get(null) ?? [];
-		if (otherPages.length > 0) {
-			result.push({
-				moduleName: 'Other',
-				moduleId: null,
-				pages: otherPages
-			});
+		return map;
+	});
+
+	/** Flat list of pages, filtered by search term, preserving natural order. */
+	const filteredPages = $derived.by(() => {
+		const term = searchText.trim().toLowerCase();
+		if (!term) return allPages;
+		return allPages.filter((p) => {
+			const name = (p.name ?? '').toLowerCase();
+			const url = (p.pageUrl ?? '').toLowerCase();
+			const moduleName =
+				(p.moduleId != null ? moduleNameById.get(p.moduleId) : 'Other')?.toLowerCase() ??
+				'';
+			return (
+				name.includes(term) ||
+				url.includes(term) ||
+				moduleName.includes(term)
+			);
+		});
+	});
+
+	/** Modules available for select-all; includes an "Other" bucket (null). */
+	const modulesForSelection = $derived.by(() => {
+		const moduleIds = new Set<number | null>();
+		for (const p of allPages) {
+			moduleIds.add(p.moduleId ?? null);
+		}
+		const result: { id: number | null; name: string }[] = [];
+		for (const id of moduleIds) {
+			if (id === null) {
+				result.push({ id: null, name: 'Other' });
+			} else {
+				const name = moduleNameById.get(id) ?? 'Module';
+				result.push({ id, name });
+			}
 		}
 		return result;
 	});
@@ -138,98 +152,116 @@
 </script>
 
 <div
-	class="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden"
+	class="flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center overflow-hidden"
 >
 	{#if !loaded}
 		<p class="py-4 text-base-content/70">Loading…</p>
 	{:else}
 		<DaisyUiCard
-			className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden bg-base-200 shadow-sm"
+			className="min-h-0 min-w-0 w-full max-w-6xl flex-1 flex flex-col overflow-hidden bg-base-200 shadow-sm"
 		>
-			<DaisyUiCardBody className="gap-0 overflow-hidden p-4 min-w-0">
-				<p
-					class="mb-4 min-w-0 text-sm break-words text-base-content/70"
-				>
-					Select by module: allow all pages in a module or customize
-					which pages in <strong>{group?.name ?? '—'}</strong> can be accessed.
-				</p>
+			<DaisyUiCardBody className="gap-3 overflow-hidden p-4 min-w-0">
+				<div class="flex flex-col gap-3">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<p
+							class="min-w-0 text-sm break-words text-base-content/70"
+						>
+							Select by module: allow all pages in a module or customize
+							which pages in <strong>{group?.name ?? '—'}</strong> can be accessed.
+						</p>
+						<div class="w-full sm:w-72">
+							<DaisyUiInputField
+								inputType="text"
+								inputPlaceholderText="Search pages by name or URL…"
+								bind:value={searchText}
+								className="w-full"
+							/>
+						</div>
+					</div>
+					{#if modulesForSelection.length > 0}
+						<div class="flex flex-wrap items-center gap-2 text-sm">
+							<span class="mr-1 font-semibold text-base-content/70">
+								Modules:
+							</span>
+							{#each modulesForSelection as mod (mod.id ?? 'other')}
+								{@const pagesInModule = allPages.filter(
+									(p) => (p.moduleId ?? null) === mod.id
+								)}
+								{@const allChecked =
+									pagesInModule.length > 0 &&
+									pagesInModule.every((p) => pageSelected[p.id] ?? false)}
+								{@const someChecked = pagesInModule.some(
+									(p) => pageSelected[p.id] ?? false
+								)}
+								<button
+									type="button"
+									class={`flex items-center gap-1 rounded-full border px-3 py-1 ${someChecked ? 'border-primary bg-primary/10' : ''}`}
+									onclick={() =>
+										setModuleSelection(
+											mod.id,
+											pagesInModule,
+											!allChecked
+										)}
+								>
+									<input
+										type="checkbox"
+										class="d-checkbox d-checkbox-xs"
+										checked={allChecked}
+										indeterminate={someChecked && !allChecked}
+										readOnly
+									/>
+									<span class="whitespace-nowrap">
+										{mod.name}
+										<span class="opacity-60">
+											({pagesInModule.length})
+										</span>
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
 				<div
 					class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
 				>
 					<ul
-						class="d-menu w-full max-w-full min-w-0 gap-2 rounded-box border border-base-300 bg-base-100 p-2"
+						class="d-menu w-full max-w-full min-w-0 gap-3 rounded-box border border-base-300 bg-base-100 p-3 grid grid-cols-1 md:grid-cols-2"
 					>
-						{#each modulesWithPages as { moduleName, moduleId, pages } (moduleId !== null ? String(moduleId) : 'other')}
-							{@const allChecked =
-								pages.length > 0 &&
-								pages.every((p) => pageSelected[p.id] ?? false)}
-							{@const someChecked = pages.some(
-								(p) => pageSelected[p.id] ?? false
-							)}
-							<li
-								class="flex min-w-0 flex-row items-center gap-2 rounded-lg bg-base-200/80 d-menu-title px-3 py-2"
-								class:ring-2={someChecked && !allChecked}
-								class:ring-primary={someChecked && !allChecked}
-							>
+						{#each filteredPages as p (p.id)}
+							{@const isChecked = pageSelected[p.id] ?? false}
+							{@const moduleName =
+								p.moduleId != null
+									? moduleNameById.get(p.moduleId) ?? 'Other'
+									: 'Other'}
+							<li class="min-w-0">
 								<label
-									class="flex min-h-0 min-w-0 flex-1 cursor-pointer items-center gap-2 py-0"
+									class="flex min-w-0 cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-base-200 active:bg-base-300"
 								>
 									<input
 										type="checkbox"
-										class="d-checkbox shrink-0 d-checkbox-sm d-checkbox-primary"
-										checked={allChecked}
-										indeterminate={someChecked && !allChecked}
-										onchange={() =>
-											setModuleSelection(
-												moduleId,
-												pages,
-												!allChecked
-											)}
+										class="d-checkbox shrink-0 d-checkbox-sm"
+										checked={isChecked}
+										onchange={() => togglePage(p.id)}
 									/>
-									<span class="min-w-0 truncate font-medium"
-										>{moduleName}</span
-									>
-									<span
-										class="d-badge shrink-0 d-badge-ghost d-badge-sm"
-										>{pages.length} page{pages.length === 1
-											? ''
-											: 's'}</span
-									>
+									<span class="min-w-0 flex-1 break-words">
+										<span
+											class="block text-xs font-semibold text-base-content/70"
+										>
+											{moduleName}
+										</span>
+										<span class="block">
+											{p.name ?? '—'}
+											<span
+												class="ml-1 break-all text-base-content/50"
+												>({p.pageUrl ?? ''})</span
+											>
+										</span>
+									</span>
 								</label>
 							</li>
-							<li
-								class="ml-4 min-w-0 border-l-2 border-base-300 pl-3"
-							>
-								<ul
-									class="d-menu w-full max-w-full min-w-0 gap-0.5 rounded-box bg-base-100/50 p-1"
-								>
-									{#each pages as p (p.id)}
-										{@const isChecked = pageSelected[p.id] ?? false}
-										<li class="min-w-0">
-											<label
-												class="flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-base-200 active:bg-base-300"
-											>
-												<input
-													type="checkbox"
-													class="d-checkbox shrink-0 d-checkbox-sm"
-													checked={isChecked}
-													onchange={() => togglePage(p.id)}
-												/>
-												<span class="min-w-0 flex-1 break-words">
-													{p.name ?? '—'}
-													<span
-														class="ml-1 break-all text-base-content/50"
-														>({p.pageUrl ?? ''})</span
-													>
-												</span>
-											</label>
-										</li>
-									{/each}
-								</ul>
-							</li>
 						{:else}
-							<li class="text-base-content/60 text-sm px-3 py-2">
-								No modules with pages defined.
+							<li class="text-base-content/60 text-sm px-3 py-2 col-span-full">
+								No pages defined.
 							</li>
 						{/each}
 					</ul>
@@ -237,7 +269,7 @@
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 		<div
-			class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
+			class="d-modal-action flex shrink-0 !justify-end gap-2 border-t border-base-300 pt-4"
 		>
 			<DaisyUiButton
 				type="button"
