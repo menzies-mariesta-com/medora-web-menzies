@@ -14,6 +14,17 @@ export type PaginationParams = {
 	pageSize?: number;
 	/** Optional search term for list endpoints (e.g. staff list). */
 	search?: string;
+	/** Optional staff filters (code, name, phone) for server-side filtering. */
+	staffCode?: string;
+	staffName?: string;
+	staffPhonePrimary?: string;
+	/** Optional patient filters (code, name, phone) for server-side filtering. */
+	patientCode?: string;
+	patientName?: string;
+	patientPhonePrimary?: string;
+	/** Optional user group filters (name, status) for server-side filtering. */
+	name?: string;
+	statusId?: number;
 	/** Optional hospital id to scope list data (e.g. under /heka/hospital/[id]/home/). */
 	hospitalId?: string;
 	/** Optional branch id to scope list data inside a hospital. */

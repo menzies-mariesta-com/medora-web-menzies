@@ -3,9 +3,6 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		getUserGroupPaginated,
@@ -28,6 +25,9 @@
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucideList from '$lib/component/library/lucide/LucideList.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -46,12 +46,47 @@
 	let pageSize = $state(10);
 	let isLoading = $state(false);
 	let statusOptions = $state<StatusSchema[]>([]);
+let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
+	{
+		id: 'id',
+		header: m.id(),
+		widthClass: 'w-16 min-w-[4rem]',
+		filterable: false
+	},
+	{
+		id: 'name',
+		header: m.name(),
+		widthClass: 'w-64 min-w-[12rem]',
+		filterable: true,
+		field: 'name'
+	},
+	{
+		id: 'status',
+		header: m.status(),
+		widthClass: 'w-40 min-w-[10rem]',
+		filterable: true,
+		format: (_value, row) =>
+			statusOptions.find((s) => s.id === row.statusId)?.name ??
+			String(row.statusId)
+	}
+];
 
 	async function fetchGroups(forceRefresh = false) {
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			const params = { hospitalId, page: currentPage, pageSize };
+			const params = {
+				hospitalId,
+				page: currentPage,
+				pageSize,
+				name: tableFilters.name?.trim() || undefined,
+				statusId: tableFilters.status
+					? Number(tableFilters.status)
+					: undefined
+			};
 			// After create/update/delete, invalidate cache then fetch so list updates
 			if (forceRefresh) {
 				await getUserGroupPaginated(params).refresh();
@@ -159,61 +194,57 @@
 						{m.no_user_groups_yet()}
 					{/if}
 				</p>
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.id()}</th>
-							<th>{m.name()}</th>
-							<th>{m.status()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each groups as row (row.id)}
-							<tr>
-								<td>{row.id}</td>
-								<td>{row.name ?? '—'}</td>
-								<td>
-									{statusOptions.find((s) => s.id === row.statusId)
-										?.name ?? row.statusId}
-								</td>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openPagesModal(row)}
-											title="Manage which pages this group can access"
-										>
-											<LucideList />
-											{m.pages()}
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEdit(row)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(row)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									</div>
-								</td>
-							</tr>
-						{:else}
-							<tr>
-								<td
-									colspan={4}
-									class="text-center text-base-content/70 py-8"
+				<MariTable
+					rows={groups}
+					columns={userGroupColumns}
+					isLoading={isLoading}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage={m.no_user_groups_create()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchGroups(true)}
+					on:filtersChange={(event) => {
+						if (filterDebounceTimeout) {
+							clearTimeout(filterDebounceTimeout);
+						}
+						tableFilters = event.detail.filters;
+						currentPage = 1;
+						filterDebounceTimeout = setTimeout(() => {
+							fetchGroups();
+						}, 350);
+					}}
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openPagesModal(row)}
+									title="Manage which pages this group can access"
 								>
-									{m.no_user_groups_create()}
-								</td>
-							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
+									<LucideList />
+									{m.pages()}
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row)}
+								>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					</svelte:fragment>
+				</MariTable>
 				{#if totalPages > 1}
 					<div class="mt-4 flex justify-center gap-2">
 						<DaisyUiButton

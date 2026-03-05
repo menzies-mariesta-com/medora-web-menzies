@@ -1,7 +1,4 @@
 <script lang="ts">
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
@@ -22,6 +19,9 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -38,20 +38,89 @@
 		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state('10');
-	let filterPatientName = $state('');
-	let filterPatientCode = $state('');
-	let filterHospitalName = $state('');
-	let filterBranchName = $state('');
-	let filterDoctorName = $state('');
-	let visitTypeOptions = $state<
-		{ id: number; name: string | null }[]
-	>([]);
-	let selectedVisitTypeIdStr = $state('');
+let visitTypeOptions = $state<{ id: number; name: string | null }[]>([]);
 	let isLoading = $state(false);
+let tableFilters = $state<Record<string, string>>({});
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
+
+	const visitColumns: MariTableColumn<PatientVisitWithRelations>[] = [
+		{
+			id: 'visitNo',
+			header: 'Visit No',
+			widthClass: 'w-28 min-w-[6rem]',
+			filterable: false,
+			field: 'visitNo'
+		},
+		{
+			id: 'patientCode',
+			header: 'Patient Code',
+			widthClass: 'w-32 min-w-[8rem]',
+		filterable: true,
+			field: 'patient.code'
+		},
+		{
+			id: 'patientName',
+			header: 'Patient Name',
+			widthClass: 'w-48 min-w-[12rem]',
+		filterable: true,
+			format: (_value, row) =>
+				row.patient
+					? StringUtil.patientDisplayName(row.patient as any)
+					: '—'
+		},
+		{
+			id: 'hospitalName',
+			header: 'Hospital Name',
+			widthClass: 'w-40 min-w-[10rem]',
+		filterable: true,
+			field: 'hospital.name'
+		},
+		{
+			id: 'branchName',
+			header: 'Branch Name',
+			widthClass: 'w-40 min-w-[10rem]',
+		filterable: true,
+			field: 'branch.name'
+		},
+		{
+			id: 'doctorName',
+			header: 'Doctor Name',
+			widthClass: 'w-40 min-w-[10rem]',
+		filterable: true,
+			format: (_value, row) =>
+				row.doctor
+					? StringUtil.fullNameWithTitle(
+							row.doctor.title?.name ?? null,
+							row.doctor.firstName,
+							row.doctor.middleName,
+							row.doctor.lastName
+						)
+					: '—'
+		},
+		{
+			id: 'visitType',
+			header: 'Visit Type',
+			widthClass: 'w-32 min-w-[8rem]',
+		filterable: true,
+		filterType: 'select',
+		filterOptionsGetter: () =>
+			visitTypeOptions.map((vt) => ({
+				value: String(vt.id),
+				label: vt.name ?? `Type ${vt.id}`
+			})),
+		field: 'visitType.name'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: false,
+			field: 'status.name'
+		}
+	];
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
 		isLoading = true;
@@ -61,14 +130,14 @@
 				page: currentPage,
 				pageSize,
 				hospitalId: hospitalId ?? undefined,
-				patientName: filterPatientName.trim() || undefined,
-				patientCode: filterPatientCode.trim() || undefined,
-				hospitalName: filterHospitalName.trim() || undefined,
-				branchName: filterBranchName.trim() || undefined,
-				doctorName: filterDoctorName.trim() || undefined,
-				visitTypeId: selectedVisitTypeIdStr
-					? Number(selectedVisitTypeIdStr)
-					: undefined,
+			patientName: tableFilters.patientName?.trim() || undefined,
+			patientCode: tableFilters.patientCode?.trim() || undefined,
+			hospitalName: tableFilters.hospitalName?.trim() || undefined,
+			branchName: tableFilters.branchName?.trim() || undefined,
+			doctorName: tableFilters.doctorName?.trim() || undefined,
+			visitTypeId: tableFilters.visitType
+				? Number(tableFilters.visitType)
+				: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -88,31 +157,8 @@
 		loadVisitTypes();
 	});
 
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
-	let isFirstFilterEffect = true;
-	$effect(() => {
-		const _ = [
-			filterPatientCode,
-			filterPatientName,
-			filterHospitalName,
-			filterBranchName,
-			filterDoctorName,
-			selectedVisitTypeIdStr
-		];
-		if (isFirstFilterEffect) {
-			isFirstFilterEffect = false;
-			return;
-		}
-		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
-		filterDebounceTimeout = setTimeout(() => {
-			currentPage = 1;
-			fetchPatients({ bustCache: true });
-		}, 350);
-		return () => {
-			if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
-		};
-	});
 
 	function handlePageSizeChange() {
 		currentPage = 1;
@@ -192,117 +238,34 @@
 		</div>
 	{:else}
 		<div class="min-h-0 flex-1 overflow-auto px-4 py-2">
-			<DaisyUiTable className="d-table d-table-sm">
-				<DaisyUiTableHeader>
-					<tr class="sticky top-0 z-10 bg-base-200">
-						<th class="w-24 min-w-[6rem]">Actions</th>
-						<th class="w-28 min-w-[6rem]">Visit No</th>
-						<th class="w-32 min-w-[8rem]">
-							<DaisyUiInputField
-								inputPlaceholderText="Patient Code"
-								bind:value={filterPatientCode}
-								className="d-input-sm w-full"
-							/>
-						</th>
-						<th class="w-48 min-w-[12rem]">
-							<DaisyUiInputField
-								inputPlaceholderText="Patient Name"
-								bind:value={filterPatientName}
-								className="d-input-sm w-full"
-							/>
-						</th>
-						<th class="w-40 min-w-[10rem]">
-							<DaisyUiInputField
-								inputPlaceholderText="Hospital Name"
-								bind:value={filterHospitalName}
-								className="d-input-sm w-full"
-							/>
-						</th>
-						<th class="w-40 min-w-[10rem]">
-							<DaisyUiInputField
-								inputPlaceholderText="Branch Name"
-								bind:value={filterBranchName}
-								className="d-input-sm w-full"
-							/>
-						</th>
-						<th class="w-40 min-w-[10rem]">
-							<DaisyUiInputField
-								inputPlaceholderText="Doctor Name"
-								bind:value={filterDoctorName}
-								className="d-input-sm w-full"
-							/>
-						</th>
-						<th class="w-32 min-w-[8rem]">
-							<DaisyUiSelect
-								className="d-select d-select-sm w-full"
-								bind:value={selectedVisitTypeIdStr}
-								onChange={handleFilterChange}
-							>
-								<option value="">All Visit Type</option>
-								{#each visitTypeOptions as vt (vt.id)}
-									<option value={String(vt.id)}
-										>{vt.name ?? `Type ${vt.id}`}</option
-									>
-								{/each}
-							</DaisyUiSelect>
-						</th>
-						<th class="w-28 min-w-[7rem]">Status</th>
-					</tr>
-				</DaisyUiTableHeader>
-				<DaisyUiTableBody>
-					{#each visits as v (v.id)}
-						<tr class="hover:bg-info/20">
-							<td class="w-24 min-w-[6rem]">
-								<DaisyUiButton
-									className="d-btn-primary d-btn-sm w-full"
-									onClick={() => selectPatient(v)}
-								>
-									Select
-								</DaisyUiButton>
-							</td>
-							<td class="w-32 min-w-[8rem]">
-								{v.visitNo ?? v.id}
-							</td>
-							<td class="w-32 min-w-[8rem]">
-								{v.patient?.code ?? '—'}
-							</td>
-							<td class="w-48 min-w-[12rem]">
-								{v.patient
-									? StringUtil.patientDisplayName(v.patient as any)
-									: '—'}
-							</td>
-							<td class="w-40 min-w-[10rem]">
-								{v.hospital?.name ?? '—'}
-							</td>
-							<td class="w-40 min-w-[10rem]">
-								{v.branch?.name ?? '—'}
-							</td>
-							<td class="w-40 min-w-[10rem]">
-								{v.doctor
-									? StringUtil.fullNameWithTitle(
-											v.doctor.title?.name ?? null,
-											v.doctor.firstName,
-											v.doctor.middleName,
-											v.doctor.lastName
-										)
-									: '—'}
-							</td>
-							<td class="w-32 min-w-[8rem]">
-								{v.visitType?.name ?? '—'}
-							</td>
-							<td class="w-28 min-w-[7rem]">
-								{v.status?.name ?? '—'}
-							</td>
-						</tr>
-					{:else}
-						<tr>
-							<td colspan={9} class="py-6 text-center opacity-70">
-								No visits found.
-							</td>
-						</tr>
-					{/each}
-				</DaisyUiTableBody>
-			</DaisyUiTable>
+			<MariTable
+				rows={visits}
+				columns={visitColumns}
+				isLoading={isLoading}
+				showRefreshButton={true}
+				refreshTooltip="Refresh visits"
+				emptyMessage="No visits found."
+				showRowActions={true}
+				actionsHeader="Actions"
+				actionsVariant="select"
+				enableColumnFilters={true}
+				useRemoteFilters={true}
+				on:refresh={() => fetchPatients({ bustCache: true })}
+				on:filtersChange={(event) => {
+					if (filterDebounceTimeout) {
+						clearTimeout(filterDebounceTimeout);
+					}
+					tableFilters = event.detail.filters;
+					currentPage = 1;
+					filterDebounceTimeout = setTimeout(() => {
+						fetchPatients({ bustCache: true });
+					}, 350);
+				}}
+				on:select={(event) =>
+					selectPatient(
+						event.detail as PatientVisitWithRelations
+					)}
+			/>
 		</div>
 	{/if}
 
