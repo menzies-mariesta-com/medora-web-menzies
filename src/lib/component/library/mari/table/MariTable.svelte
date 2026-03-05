@@ -297,131 +297,133 @@ function handleFilterInputEvent(columnId: string, event: Event) {
 		</div>
 	</div>
 
-	<div class="min-h-0 flex-1 overflow-auto px-4 py-2">
-		<DaisyUiTable className="d-table  d-table-zebra d-table-sm">
-			<DaisyUiTableHeader>
-				<tr class="sticky top-0 z-10 bg-base-200">
-					{#if hasActionsColumn}
-						<th
-							class="px-1 text-left whitespace-nowrap"
-							style="width: 1%;"
-						>
-							{actionsHeader}
-						</th>
-					{/if}
-					{#each columns as column (column.id)}
-						{@const isFilterable =
-							enableColumnFilters && (column.filterable ?? true)}
-						{@const filterType = column.filterType ?? 'text'}
-						{@const selectOptions = column.filterOptionsGetter
-							? column.filterOptionsGetter()
-							: column.filterOptions}
-						<th class={column.headerClass ?? column.widthClass}>
-							{#if isFilterable}
-								{#if filterType === 'select' && selectOptions}
-									<select
-										class="d-select d-select-sm w-full"
-										value={columnFilters[column.id] ?? ''}
-										on:change={(event) =>
-											handleFilterInputEvent(column.id, event)}
-									>
-										<option value="">All</option>
-										{#each selectOptions as opt}
-											<option value={opt.value}>
-												{opt.label}
-											</option>
-										{/each}
-									</select>
-								{:else}
-									<input
-										class="d-input d-input-sm w-full"
-										type="text"
-										placeholder={column.header}
-										value={columnFilters[column.id] ?? ''}
-										on:input={(event) =>
-											handleFilterInputEvent(column.id, event)}
-									/>
-								{/if}
-							{:else}
-								{column.header}
-							{/if}
-						</th>
-					{/each}
-				</tr>
-			</DaisyUiTableHeader>
-			<DaisyUiTableBody>
-				{#if pagedRows.length === 0}
-					<tr>
-						<td
-							colspan={columns.length + (hasActionsColumn ? 1 : 0)}
-							class="py-6 text-center opacity-70"
-						>
-							{#if isLoading}
-								<DaisyUiLoading className="d-loading-md" />
-							{:else}
-								{emptyMessage}
-							{/if}
-						</td>
-					</tr>
-				{:else}
-					{#each pagedRows as row, index (row.id ?? index)}
-						<tr
-							class="hover:bg-info/20"
-							on:click={() => handleRowClick(row)}
-						>
-							{#if hasActionsColumn}
-								<td
-									class="px-1 whitespace-nowrap"
-									style="width: 1%;"
-									on:click|stopPropagation
-								>
-									{#if actionsVariant === 'crud'}
-										<div class="flex items-center gap-2">
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm"
-												onClick={() => dispatch('view', row)}
-											>
-												<LucideEye className="size-4" />
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm d-btn-success"
-												onClick={() => dispatch('edit', row)}
-											>
-												<LucidePencil className="size-4" />
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-error d-btn-sm"
-												onClick={() => dispatch('delete', row)}
-											>
-												<LucideTrash2 className="size-4" />
-											</DaisyUiButton>
-										</div>
-									{:else if actionsVariant === 'select'}
-										<DaisyUiButton
-											className="d-btn-primary d-btn-sm"
-											onClick={() => dispatch('select', row)}
+	<div class="px-4 py-2">
+		<div class="max-h-[60vh] overflow-auto">
+			<DaisyUiTable className="d-table  d-table-zebra d-table-sm">
+				<DaisyUiTableHeader>
+					<tr class="sticky top-0 z-30 bg-base-200">
+						{#if hasActionsColumn}
+							<th
+								class="px-1 text-left whitespace-nowrap"
+								style="width: 1%;"
+							>
+								{actionsHeader}
+							</th>
+						{/if}
+						{#each columns as column (column.id)}
+							{@const isFilterable =
+								enableColumnFilters && (column.filterable ?? true)}
+							{@const filterType = column.filterType ?? 'text'}
+							{@const selectOptions = column.filterOptionsGetter
+								? column.filterOptionsGetter()
+								: column.filterOptions}
+							<th class={column.headerClass ?? column.widthClass}>
+								{#if isFilterable}
+									{#if filterType === 'select' && selectOptions}
+										<select
+											class="d-select d-select-sm w-full"
+											value={columnFilters[column.id] ?? ''}
+											on:change={(event) =>
+												handleFilterInputEvent(column.id, event)}
 										>
-											Select
-										</DaisyUiButton>
+											<option value="">All</option>
+											{#each selectOptions as opt}
+												<option value={opt.value}>
+													{opt.label}
+												</option>
+											{/each}
+										</select>
 									{:else}
-										<slot
-											name="rowActions"
-											{row}
-											rowIndex={index}
+										<input
+											class="d-input d-input-sm w-full"
+											type="text"
+											placeholder={column.header}
+											value={columnFilters[column.id] ?? ''}
+											on:input={(event) =>
+												handleFilterInputEvent(column.id, event)}
 										/>
 									{/if}
-								</td>
-							{/if}
-
-							{#each columns as column (column.id)}
-								<td class={column.cellClass ?? column.widthClass}>
-									{getCellValue(row, column, index)}
-								</td>
-							{/each}
+								{:else}
+									{column.header}
+								{/if}
+							</th>
+						{/each}
+					</tr>
+				</DaisyUiTableHeader>
+				<DaisyUiTableBody>
+					{#if pagedRows.length === 0}
+						<tr>
+							<td
+								colspan={columns.length + (hasActionsColumn ? 1 : 0)}
+								class="py-6 text-center opacity-70"
+							>
+								{#if isLoading}
+									<DaisyUiLoading className="d-loading-md" />
+								{:else}
+									{emptyMessage}
+								{/if}
+							</td>
 						</tr>
-					{/each}
-				{/if}
-			</DaisyUiTableBody>
-		</DaisyUiTable>
+					{:else}
+						{#each pagedRows as row, index (row.id ?? index)}
+							<tr
+								class="hover:bg-info/20"
+								on:click={() => handleRowClick(row)}
+							>
+								{#if hasActionsColumn}
+									<td
+										class="px-1 whitespace-nowrap"
+										style="width: 1%;"
+										on:click|stopPropagation
+									>
+										{#if actionsVariant === 'crud'}
+											<div class="flex items-center gap-2">
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-sm"
+													onClick={() => dispatch('view', row)}
+												>
+													<LucideEye className="size-4" />
+												</DaisyUiButton>
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-sm d-btn-success"
+													onClick={() => dispatch('edit', row)}
+												>
+													<LucidePencil className="size-4" />
+												</DaisyUiButton>
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-error d-btn-sm"
+													onClick={() => dispatch('delete', row)}
+												>
+													<LucideTrash2 className="size-4" />
+												</DaisyUiButton>
+											</div>
+										{:else if actionsVariant === 'select'}
+											<DaisyUiButton
+												className="d-btn-primary d-btn-sm"
+												onClick={() => dispatch('select', row)}
+											>
+												Select
+											</DaisyUiButton>
+										{:else}
+											<slot
+												name="rowActions"
+												{row}
+												rowIndex={index}
+											/>
+										{/if}
+									</td>
+								{/if}
+
+								{#each columns as column (column.id)}
+									<td class={column.cellClass ?? column.widthClass}>
+										{getCellValue(row, column, index)}
+									</td>
+								{/each}
+							</tr>
+						{/each}
+					{/if}
+				</DaisyUiTableBody>
+			</DaisyUiTable>
+		</div>
 	</div>
 </div>

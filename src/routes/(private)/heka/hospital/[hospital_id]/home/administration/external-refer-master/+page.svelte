@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
@@ -29,6 +30,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -246,11 +248,8 @@
 </script>
 
 <div
-	class="mb-4 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between"
+	class="flex items-center justify-end mx-4 my-2"
 >
-	<div
-		class="order-1 flex flex-wrap items-center gap-2 md:order-none"
-	>
 		<DaisyUiButton
 			className="d-btn-primary d-btn-sm"
 			onClick={openCreate}
@@ -258,90 +257,6 @@
 			<LucidePlus className="size-5" />
 			{m.create()}
 		</DaisyUiButton>
-		<p class="text-sm opacity-80">
-			{#if total > 0}
-				{@const pageSize = Number(filterPageSize) || 10}
-				{@const start = (currentPage - 1) * pageSize + 1}
-				{@const end = Math.min(currentPage * pageSize, total)}
-				Showing <span class="text-success">{start}–{end}</span> of
-				<span class="text-error">{total}</span> refer
-			{:else}
-				Showing 0 of 0 refer
-			{/if}
-		</p>
-	</div>
-
-	<div
-		class="order-3 flex flex-1 flex-wrap items-center gap-3 md:order-none md:justify-end"
-	>
-		<div>
-			<DaisyUiInputField
-				inputPlaceholderText={m.search_placeholder_refer()}
-				bind:value={searchInput}
-				className="d-input-sm"
-			/>
-		</div>
-		<DaisyUiTooltip
-			tooltipText={m.refresh_data()}
-			className="d-tooltip-bottom d-tooltip-primary"
-		>
-			<DaisyUiButton
-				className="d-btn-primary d-btn-sm"
-				onClick={() => fetchRefer()}
-			>
-				<LucideRefreshCcw className="size-5" />
-			</DaisyUiButton>
-		</DaisyUiTooltip>
-	</div>
-
-	<div
-		class="order-2 flex items-center gap-2 whitespace-nowrap md:order-none"
-	>
-		<span class="text-sm">{m.per_page()}</span>
-		<DaisyUiSelect
-			className="d-select d-select-sm w-16"
-			bind:value={filterPageSize}
-			onChange={handlePageSizeChange}
-			disabled={isLoading}
-		>
-			<option value="5">5</option>
-			<option value="10">10</option>
-			<option value="25">25</option>
-			<option value="50">50</option>
-			<option value="100">100</option>
-		</DaisyUiSelect>
-	</div>
-
-	{#if referResult !== null}
-		<div
-			class="order-4 w-full md:order-none md:w-auto md:justify-end"
-		>
-			<DaisyUiPagination>
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage - 1)}
-					className="d-btn-sm"
-					disabled={currentPage <= 1 || isLoading}
-				>
-					<LucideChevronLeft className="size-5" />
-				</DaisyUiPaginationItem>
-				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
-					<DaisyUiPaginationItem
-						className="d-btn-sm"
-						onClick={() => goToPage(p)}
-					>
-						{p}
-					</DaisyUiPaginationItem>
-				{/each}
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage + 1)}
-					className="d-btn-sm"
-					disabled={currentPage >= totalPages || isLoading}
-				>
-					<LucideChevronRight className="size-5" />
-				</DaisyUiPaginationItem>
-			</DaisyUiPagination>
-		</div>
-	{/if}
 </div>
 
 {#if isLoading && !referResult}
@@ -349,7 +264,7 @@
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="max-h-[calc(100vh-18rem)] overflow-auto">
+	<div class="{TableEnum.HEIGHT} overflow-auto">
 		<MariTable
 			rows={referList}
 			columns={referColumns}

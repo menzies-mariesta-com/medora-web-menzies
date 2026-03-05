@@ -31,8 +31,9 @@
 		ReferTypeSchema,
 		StatusTaggingSchema
 	} from '$lib/server/db/schema-type';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { page } from '$app/state';
+import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+import { page } from '$app/state';
+import { AppEnum } from '$lib/model/enum/app.enum';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -164,7 +165,7 @@
 			hospitalId: hospitalId || undefined,
 			branchId: selectedBranchId || undefined,
 			page: 1,
-			pageSize: 20
+			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
 		});
 		const list = res.data.map((p) => {
 			const titleName = (p as { title?: { name?: string } }).title

@@ -22,6 +22,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -237,7 +238,7 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 			<DaisyUiLoading className="d-loading-xl" />
 		</div>
 	{:else}
-		<div class="min-h-0 flex-1 overflow-auto px-4 py-2">
+		<div class="min-h-0 flex-1 overflow-auto px-4 py-2 {TableEnum.HEIGHT}">
 			<MariTable
 				rows={visits}
 				columns={visitColumns}
