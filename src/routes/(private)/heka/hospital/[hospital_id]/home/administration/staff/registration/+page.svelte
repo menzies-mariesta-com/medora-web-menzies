@@ -6,7 +6,7 @@
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
 
-	import { getSpecialization } from '$lib/remote/table/master-table/specialization.remote';
+	import { getSpecialization, getSpecializationWithRelations, type SpecializationWithRelations } from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
 	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
 	import { getUserGroupByHospitalId } from '$lib/remote/table/information-table/user-group.remote';
@@ -87,7 +87,7 @@
 	let staffTypeData: StaffTypeSchema[] = $state([]);
 	let departmentData: DepartmentSchema[] = $state([]);
 	let branchData: HospitalBranchSchema[] = $state([]);
-	let specializationData: SpecializationSchema[] = $state([]);
+	let specializationData: SpecializationWithRelations[] = $state([]);
 	let genderData: GenderSchema[] = $state([]);
 	let maritalStatusData: MaritalStatusSchema[] = $state([]);
 	let countryData: CountrySchema[] = $state([]);
@@ -454,7 +454,7 @@
 					hospitalId: currentHospitalId
 				})
 			: [];
-		specializationData = await getSpecialization();
+		specializationData = await getSpecializationWithRelations();
 		genderData = await getGender();
 		maritalStatusData = await getMaritalStatus();
 		countryData = await getCountry();

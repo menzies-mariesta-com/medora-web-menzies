@@ -3,9 +3,6 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import {
@@ -25,6 +22,9 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const toastService = new ToastService();
 
@@ -143,6 +143,37 @@
 		const cat = categories.find((c) => c.id === id);
 		return cat?.categoryName ?? `#${id}`;
 	}
+
+	const subCategoryColumns: MariTableColumn<SubCategorySchema>[] = [
+		{
+			id: 'id',
+			header: m.id(),
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false
+		},
+		{
+			id: 'category',
+			header: 'Category',
+			widthClass: 'w-64 min-w-[12rem]',
+			filterable: false,
+			format: (_value, row) => categoryNameById(row.categoryId)
+		},
+		{
+			id: 'subCategoryName',
+			header: m.name(),
+			widthClass: 'w-64 min-w-[12rem]',
+			filterable: false,
+			field: 'subCategoryName'
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.statusId === 1 ? 'Active' : 'Inactive'
+		}
+	];
 </script>
 
 <div class="space-y-6">
@@ -189,52 +220,37 @@
 						category.
 					{/if}
 				</p>
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.id()}</th>
-							<th>Category</th>
-							<th>{m.name()}</th>
-							<th>{m.status()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each subCategories as row (row.id)}
-							<tr>
-								<td>{row.id}</td>
-								<td>{categoryNameById(row.categoryId)}</td>
-								<td>{row.subCategoryName ?? '—'}</td>
-								<td>{row.statusId === 1 ? 'Active' : 'Inactive'}</td>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEdit(row)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(row)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									</div>
-								</td>
-							</tr>
-						{:else}
-							<tr>
-								<td
-									colspan={5}
-									class="text-center text-base-content/70 py-8"
+				<MariTable
+					rows={subCategories}
+					columns={subCategoryColumns}
+					isLoading={isLoading}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage="No sub-categories. Create one or change the filter."
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={false}
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row)}
 								>
-									No sub-categories. Create one or change the filter.
-								</td>
-							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					</svelte:fragment>
+				</MariTable>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>

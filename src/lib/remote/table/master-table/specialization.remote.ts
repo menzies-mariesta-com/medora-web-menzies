@@ -12,7 +12,12 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { asc, count, eq } from 'drizzle-orm';
+import { specialization } from '$lib/paraglide/messages';
+
+export type SpecializationWithRelations = NonNullable<
+	Awaited<ReturnType<typeof getSpecializationWithRelations>>
+>[number];
 
 export const getSpecialization = query(
 	async (): Promise<SpecializationSchema[]> => {
@@ -25,6 +30,16 @@ export const getSpecialization = query(
 			.orderBy(table.specializationTable.name);
 	}
 );
+
+export const getSpecializationWithRelations = query(async () => {
+	return ensureDb().query.specializationTable.findMany({
+		with: {
+			craftGroup: true
+		},
+		orderBy: [asc(table.specializationTable.name)]
+	});
+});
+
 
 export const getSpecializationCount = query(
 	async (): Promise<number> => {

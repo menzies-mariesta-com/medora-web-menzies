@@ -14,6 +14,7 @@ import type {
 	referTypeTable,
 	religionTable,
 	specializationTable,
+	severityTable,
 	staffEmploymentTypeTable,
 	staffShiftTypeTable,
 	staffTypeTable,
@@ -23,8 +24,7 @@ import type {
 	unitTable,
 	unitTypeTable,
 	visitTypeTable,
-	weekdayTable,
-	allergyMasterTable
+	weekdayTable
 } from './master-table';
 import type { Infer } from 'zod';
 
@@ -163,6 +163,10 @@ export type ReligionSchemaInsert = InferInsertModel<
 >;
 export type ReligionSchemaUpdate = Partial<ReligionSchemaInsert>;
 
+export type SeveritySchema = InferSelectModel<typeof severityTable>;
+export type SeveritySchemaInsert = InferInsertModel<typeof severityTable>;
+export type SeveritySchemaUpdate = Partial<SeveritySchemaInsert>;
+
 export type WeekdaySchema = InferSelectModel<typeof weekdayTable>;
 export type WeekdaySchemaInsert = InferInsertModel<
 	typeof weekdayTable
@@ -184,12 +188,3 @@ export type VisitTypeSchemaInsert = InferInsertModel<
 	typeof visitTypeTable
 >;
 export type VisitTypeSchemaUpdate = Partial<VisitTypeSchemaInsert>;
-
-export type AllergyMasterSchema = InferSelectModel<
-	typeof allergyMasterTable
->;
-export type AllergyMasterSchemaInsert = InferInsertModel<
-	typeof allergyMasterTable
->;
-export type AllergyMasterSchemaUpdate =
-	Partial<AllergyMasterSchemaInsert>;
