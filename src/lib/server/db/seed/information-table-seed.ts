@@ -185,6 +185,15 @@ export async function seedInformationTables() {
 	console.log('Seeded: category');
 }
 
+
+await db.execute(sql`
+	INSERT INTO allergy (id, name)
+	VALUES
+		(1, 'No Known Allergy')
+	ON CONFLICT (id) DO NOTHING;
+	`);
+console.log('Seeded: allergy table');
+
 seedInformationTables()
 	.then(() => {
 		console.log('Seeding finished successfully.');

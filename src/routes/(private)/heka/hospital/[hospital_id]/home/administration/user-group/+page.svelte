@@ -28,6 +28,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -194,30 +195,31 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 						{m.no_user_groups_yet()}
 					{/if}
 				</p>
-				<MariTable
-					rows={groups}
-					columns={userGroupColumns}
-					isLoading={isLoading}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage={m.no_user_groups_create()}
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchGroups(true)}
-					on:filtersChange={(event) => {
-						if (filterDebounceTimeout) {
-							clearTimeout(filterDebounceTimeout);
-						}
-						tableFilters = event.detail.filters;
-						currentPage = 1;
-						filterDebounceTimeout = setTimeout(() => {
-							fetchGroups();
-						}, 350);
-					}}
-				>
+				<div class="{TableEnum.HEIGHT}">
+					<MariTable
+						rows={groups}
+						columns={userGroupColumns}
+						isLoading={isLoading}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage={m.no_user_groups_create()}
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={true}
+						useRemoteFilters={true}
+						on:refresh={() => fetchGroups(true)}
+						on:filtersChange={(event) => {
+							if (filterDebounceTimeout) {
+								clearTimeout(filterDebounceTimeout);
+							}
+							tableFilters = event.detail.filters;
+							currentPage = 1;
+							filterDebounceTimeout = setTimeout(() => {
+								fetchGroups();
+							}, 350);
+						}}
+					>
 					<svelte:fragment slot="rowActions" let:row>
 						<td class="text-right">
 							<div class="flex justify-end gap-2">
@@ -245,6 +247,7 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 						</td>
 					</svelte:fragment>
 				</MariTable>
+				</div>
 				{#if totalPages > 1}
 					<div class="mt-4 flex justify-center gap-2">
 						<DaisyUiButton

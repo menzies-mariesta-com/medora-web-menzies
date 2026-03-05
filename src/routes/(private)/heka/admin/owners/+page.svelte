@@ -24,6 +24,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -135,16 +136,17 @@
 					{m.no_owners_yet()}
 				</p>
 			{:else}
-				<MariTable
-					rows={owners}
-					columns={ownerColumns}
-					isLoading={isLoading}
-					showRefreshButton={false}
-					emptyMessage={m.no_owners_yet()}
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-				>
+				<div class="{TableEnum.HEIGHT}">
+					<MariTable
+						rows={owners}
+						columns={ownerColumns}
+						isLoading={isLoading}
+						showRefreshButton={false}
+						emptyMessage={m.no_owners_yet()}
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+					>
 					<svelte:fragment slot="rowActions" let:row>
 						<td class="text-right">
 							<div class="flex justify-end gap-2">
@@ -164,6 +166,7 @@
 						</td>
 					</svelte:fragment>
 				</MariTable>
+				</div>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>

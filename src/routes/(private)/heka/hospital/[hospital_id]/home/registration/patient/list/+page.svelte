@@ -37,6 +37,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const stringUtil = new StringUtil();
 	const routerUtil = new RouterUtil();
@@ -302,7 +303,7 @@ let patientList = $derived(patientResult?.data ?? []);
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="max-h-[calc(100vh-18rem)]">
+	<div class="{TableEnum.HEIGHT}">
 		<MariTable
 			rows={patientList}
 			columns={patientColumns}
