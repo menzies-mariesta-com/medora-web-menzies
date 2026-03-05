@@ -162,7 +162,8 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 		UserGroupPagesModalState.group = row;
 		const result = await dialogService.open({
 			title: m.manage_page_access(),
-			component: UserGroupPagesModal
+			component: UserGroupPagesModal,
+			modalClassName: 'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
 		if (result.confirmed) fetchGroups(true);
 	}

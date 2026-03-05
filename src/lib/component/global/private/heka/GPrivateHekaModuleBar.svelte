@@ -21,9 +21,10 @@
 	import { page } from '$app/state';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import {
+import {
 		WebRoutesEnum,
-		hekaHospitalPageUrl
+		hekaHospitalPageUrl,
+		requestPathToDbPageUrl
 	} from '$lib/model/enum/routes.enum';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
@@ -89,6 +90,26 @@
 	}
 
 	const routerUtil = new RouterUtil();
+
+	// Map current pathname -> DB page URL (/heka/home/...) for highlighting.
+	const activeDbPageUrl = $derived.by(() => {
+		if (!hospitalId) return null;
+		return requestPathToDbPageUrl(page.url.pathname, hospitalId);
+	});
+
+	// Determine which module is "active" based on the current DB page URL.
+	const activeModuleId = $derived.by(() => {
+		if (!activeDbPageUrl) return null;
+		const activePage = pageList.find((p) => p.pageUrl === activeDbPageUrl);
+		return activePage?.moduleId ?? null;
+	});
+
+	function isPageActive(p: PageSchema): boolean {
+		if (!activeDbPageUrl || !p.pageUrl) return false;
+		if (activeDbPageUrl === p.pageUrl) return true;
+		const base = p.pageUrl.endsWith('/') ? p.pageUrl : `${p.pageUrl}/`;
+		return activeDbPageUrl.startsWith(base);
+	}
 
 	let pageLocator = $derived.by(() => {
 		const segments = StringUtil.parseUrlSegments(
@@ -273,7 +294,9 @@
 		{#each moduleList as m (m.id)}
 			<div>
 				<DaisyUiDropdown>
-					<DaisyUiDropdownButton>
+					<DaisyUiDropdownButton
+						className={activeModuleId === m.id ? 'd-btn-accent' : ''}
+					>
 						{m?.name}
 					</DaisyUiDropdownButton>
 					<DaisyUiDropdownContent
@@ -281,7 +304,7 @@
 					>
 						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 							<DaisyUiButton
-								className="w-full min-w-0 justify-start truncate text-left"
+								className={`w-full min-w-0 justify-start truncate text-left ${isPageActive(p) ? 'd-btn-accent' : ''}`}
 								onClick={() => {
 									const url =
 										hospitalId && p.pageUrl != null
