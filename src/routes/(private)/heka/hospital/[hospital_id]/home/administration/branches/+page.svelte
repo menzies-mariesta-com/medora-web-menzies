@@ -3,9 +3,6 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 	import {
@@ -23,6 +20,9 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -36,6 +36,45 @@
 
 	let branches = $state<HospitalBranchSchema[]>([]);
 	let isLoading = $state(true);
+
+	const branchColumns: MariTableColumn<HospitalBranchSchema>[] = [
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-64 min-w-[12rem]',
+			filterable: false,
+			field: 'name'
+		},
+		{
+			id: 'code',
+			header: m.code(),
+			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false,
+			field: 'code'
+		},
+		{
+			id: 'phone',
+			header: m.phone(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			field: 'phone'
+		},
+		{
+			id: 'email',
+			header: m.email(),
+			widthClass: 'w-56 min-w-[14rem]',
+			filterable: false,
+			field: 'email'
+		},
+		{
+			id: 'address',
+			header: m.address(),
+			widthClass: 'w-80 min-w-[16rem]',
+			filterable: false,
+			format: (_value, row) => row.address ?? '—',
+			cellClass: 'max-w-[200px] truncate'
+		}
+	];
 
 	async function fetchBranches(forceRefresh = false) {
 		if (!hospitalId) return;
@@ -113,49 +152,38 @@
 					{m.no_branches_yet()}
 				</p>
 			{:else}
-				<DaisyUiTable>
-					<DaisyUiTableHeader>
-						<tr>
-							<th>{m.name()}</th>
-							<th>{m.code()}</th>
-							<th>{m.phone()}</th>
-							<th>{m.email()}</th>
-							<th>{m.address()}</th>
-							<th class="text-right">{m.actions()}</th>
-						</tr>
-					</DaisyUiTableHeader>
-					<DaisyUiTableBody>
-						{#each branches as b (b.id)}
-							<tr>
-								<td>{b.name ?? '—'}</td>
-								<td>{b.code ?? '—'}</td>
-								<td>{b.phone ?? '—'}</td>
-								<td>{b.email ?? '—'}</td>
-								<td
-									class="max-w-[200px] truncate"
-									title={b.address ?? undefined}
-									>{b.address ?? '—'}</td
+				<MariTable
+					rows={branches}
+					columns={branchColumns}
+					isLoading={isLoading}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage={m.no_branches_yet()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={false}
+					on:refresh={() => fetchBranches(true)}
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row)}
 								>
-								<td class="text-right">
-									<div class="flex justify-end gap-2">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEdit(b)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(b)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</DaisyUiTableBody>
-				</DaisyUiTable>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					</svelte:fragment>
+				</MariTable>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
