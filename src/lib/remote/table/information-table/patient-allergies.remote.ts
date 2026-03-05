@@ -6,12 +6,16 @@ import type {
 	PatientAllergiesSchemaInsert,
 	PatientAllergiesSchemaUpdate
 } from '$lib/server/db/schema-type';
+import type { AllergySchema } from '$lib/server/db/schema-type';
+import type { SeveritySchema } from '$lib/server/db/schema-type';
+import type { PatientVisitSchema } from '$lib/server/db/schema-type';
 import type {
 	PaginatedResult,
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 // get all
 export const getPatientAllergies = query(
@@ -28,10 +32,38 @@ export const getPatientAllergiesWithRelations = query(async () => {
 	return ensureDb().query.patientAllergyTable.findMany({
 		with: {
 			patient: true,
-			allergyType: true
+			allergy: true,
+			severity: true,
+			visit: true
 		}
 	});
 });
+
+export type PatientAllergyWithRelations = PatientAllergiesSchema & {
+	allergy: AllergySchema | null;
+	severity: SeveritySchema | null;
+	visit: PatientVisitSchema | null;
+};
+
+/** Get all patient allergies (active and inactive) by patientId with allergy, severity, and visit (for EMR allergy page). */
+export const getPatientAllergiesByPatientIdWithRelations = query(
+	'unchecked' as const,
+	async ({
+		patientId
+	}: {
+		patientId: string;
+	}): Promise<PatientAllergyWithRelations[]> => {
+		return ensureDb().query.patientAllergyTable.findMany({
+			where: (t, { eq }) => eq(t.patientId, patientId),
+			with: {
+				allergy: true,
+				severity: true,
+				visit: true
+			},
+			orderBy: (t, { desc }) => desc(t.id)
+		}) as Promise<PatientAllergyWithRelations[]>;
+	}
+);
 
 // get count
 export const getPatientAllergiesCount = query(
@@ -101,6 +133,85 @@ export const getPatientAllergiesByPatientId = query(
 			.from(table.patientAllergyTable)
 			.where(eq(table.patientAllergyTable.patientId, patientId))
 			.orderBy(table.patientAllergyTable.id);
+	}
+);
+
+/** Get active patient allergies for a patient (for "No Known Allergy" flow: check before inactivating others). */
+export const getActivePatientAllergiesByPatientId = query(
+	'unchecked' as const,
+	async ({
+		patientId
+	}: {
+		patientId: string;
+	}): Promise<PatientAllergiesSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.patientAllergyTable)
+			.where(
+				and(
+					eq(table.patientAllergyTable.patientId, patientId),
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
+				)
+			)
+			.orderBy(table.patientAllergyTable.id);
+	}
+);
+
+/** Set all patient allergies for a patient to inactive (used when adding "No Known Allergy"). */
+export const inactivateAllPatientAllergiesForPatient = command(
+	'unchecked' as const,
+	async ({ patientId }: { patientId: string }): Promise<void> => {
+		await ensureDb()
+			.update(table.patientAllergyTable)
+			.set({ statusId: StatusEnum.INACTIVE })
+			.where(eq(table.patientAllergyTable.patientId, patientId));
+		getPatientAllergies().refresh();
+	}
+);
+
+/** Inactivate all patient allergies for a patient except the one with excludeId (used when activating "No Known Allergy" in edit). */
+export const inactivateOtherPatientAllergiesForPatient = command(
+	'unchecked' as const,
+	async ({
+		patientId,
+		excludeId
+	}: {
+		patientId: string;
+		excludeId: number;
+	}): Promise<void> => {
+		await ensureDb()
+			.update(table.patientAllergyTable)
+			.set({ statusId: StatusEnum.INACTIVE })
+			.where(
+				and(
+					eq(table.patientAllergyTable.patientId, patientId),
+					ne(table.patientAllergyTable.id, excludeId)
+				)
+			);
+		getPatientAllergies().refresh();
+	}
+);
+
+/** Inactivate all patient allergy records for a patient that have the given allergyId (e.g. "No Known Allergy"). */
+export const inactivatePatientAllergiesByAllergyIdForPatient = command(
+	'unchecked' as const,
+	async ({
+		patientId,
+		allergyId
+	}: {
+		patientId: string;
+		allergyId: number;
+	}): Promise<void> => {
+		await ensureDb()
+			.update(table.patientAllergyTable)
+			.set({ statusId: StatusEnum.INACTIVE })
+			.where(
+				and(
+					eq(table.patientAllergyTable.patientId, patientId),
+					eq(table.patientAllergyTable.allergyId, allergyId)
+				)
+			);
+		getPatientAllergies().refresh();
 	}
 );
 

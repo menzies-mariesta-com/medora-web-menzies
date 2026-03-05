@@ -4,10 +4,10 @@
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createAppointment,
-		getAppointment
-	} from '$lib/remote/table/information-table/appointment.remote';
+import {
+	createAppointment,
+	getAppointment
+} from '$lib/remote/table/information-table/appointment.remote';
 	import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientPaginated,
@@ -28,8 +28,9 @@
 		ReferTypeSchema,
 		StatusTaggingSchema
 	} from '$lib/server/db/schema-type';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { page } from '$app/state';
+import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+import { page } from '$app/state';
+import { AppEnum } from '$lib/model/enum/app.enum';
 
 	let { confirm, cancel } = $props();
 
@@ -121,7 +122,7 @@
 			hospitalId: hospitalId || undefined,
 			branchId: selectedBranchId || undefined,
 			page: 1,
-			pageSize: 20
+			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
 		});
 		const list = res.data.map((p) => {
 			return {

@@ -25,6 +25,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const toastService = new ToastService();
 
@@ -220,18 +221,19 @@
 						category.
 					{/if}
 				</p>
-				<MariTable
-					rows={subCategories}
-					columns={subCategoryColumns}
-					isLoading={isLoading}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="No sub-categories. Create one or change the filter."
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={false}
-				>
+				<div class="{TableEnum.HEIGHT}">
+					<MariTable
+						rows={subCategories}
+						columns={subCategoryColumns}
+						isLoading={isLoading}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage="No sub-categories. Create one or change the filter."
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={false}
+					>
 					<svelte:fragment slot="rowActions" let:row>
 						<td class="text-right">
 							<div class="flex justify-end gap-2">
@@ -251,6 +253,7 @@
 						</td>
 					</svelte:fragment>
 				</MariTable>
+				</div>
 			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>

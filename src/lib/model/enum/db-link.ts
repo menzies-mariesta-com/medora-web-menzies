@@ -54,3 +54,13 @@ export enum UnitEnum {
 	MG_DL = 11,
 	MMOL_L = 12
 }
+
+export enum SeverityEnum {
+	LOW = 1,
+	MEDIUM = 2,
+	HIGH = 3
+}
+
+export enum AllergyEnum {
+	NO_KNOWN_ALLERGY = 1
+}
