@@ -32,6 +32,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -313,7 +314,7 @@ const staffColumns: MariTableColumn<StaffWithRelations>[] = [
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="max-h-[calc(100vh-18rem)]">
+	<div class="{TableEnum.HEIGHT}">
 		<MariTable
 			rows={staffList}
 			columns={staffColumns}

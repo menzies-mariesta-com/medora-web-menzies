@@ -2,10 +2,10 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import {
 		getHospitalWithOwner,
 		deleteHospital,
@@ -27,6 +27,16 @@
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { TableEnum } from '$lib/model/enum/table.enum';
+
+	const hospitalColumns: MariTableColumn<HospitalWithOwner>[] = [
+		{ id: 'name', header: m.name(), widthClass: 'w-48 min-w-[10rem]', filterable: false, field: 'name', format: (v) => v ?? '—' },
+		{ id: 'code', header: m.code(), widthClass: 'w-28 min-w-[6rem]', filterable: false, field: 'code', format: (v) => v ?? '—' },
+		{ id: 'owner', header: m.owner(), widthClass: 'w-40 min-w-[10rem]', filterable: false, format: (_v, row) => row.owner?.name ?? row.owner?.email ?? '—' },
+		{ id: 'phone', header: m.phone(), widthClass: 'w-36 min-w-[9rem]', filterable: false, field: 'phone', format: (v) => v ?? '—' },
+		{ id: 'email', header: m.email(), widthClass: 'w-52 min-w-[12rem]', filterable: false, field: 'email', format: (v) => v ?? '—' },
+		{ id: 'address', header: m.address(), widthClass: 'w-80 min-w-[16rem]', filterable: false, format: (_v, row) => row.address ?? '—', cellClass: 'max-w-[200px] truncate' }
+	];
 
 	let { data } = $props();
 	const isStaff = $derived(data?.userRoleId === RoleEnum.STAFF);
@@ -161,59 +171,46 @@
 						{m.no_hospitals_yet()}
 					</p>
 				{:else}
-					<DaisyUiTable>
-						<DaisyUiTableHeader>
-							<tr>
-								<th>{m.name()}</th>
-								<th>{m.code()}</th>
-								<th>{m.owner()}</th>
-								<th>{m.phone()}</th>
-								<th>{m.email()}</th>
-								<th>{m.address()}</th>
-								<th class="text-right">{m.actions()}</th>
-							</tr>
-						</DaisyUiTableHeader>
-						<DaisyUiTableBody>
-							{#each hospitals as h (h.id)}
-								<tr>
-									<td>{h.name ?? '—'}</td>
-									<td>{h.code ?? '—'}</td>
-									<td>{h.owner?.name ?? h.owner?.email ?? '—'}</td>
-									<td>{h.phone ?? '—'}</td>
-									<td>{h.email ?? '—'}</td>
-									<td
-										class="max-w-[200px] truncate"
-										title={h.address ?? undefined}
-										>{h.address ?? '—'}</td
+					<div class="{TableEnum.HEIGHT}">
+						<MariTable
+							rows={hospitals}
+							columns={hospitalColumns}
+							isLoading={isLoading}
+							showRefreshButton={true}
+							refreshTooltip={m.refresh_data()}
+							emptyMessage={m.no_hospitals_yet()}
+							showRowActions={true}
+							actionsHeader={m.actions()}
+							actionsVariant="none"
+							enableColumnFilters={false}
+							on:refresh={() => loadHospitals(true)}
+						>
+						<svelte:fragment slot="rowActions" let:row>
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm"
+									onClick={() => goToHospitalHome(row.id)}
+								>
+									{m.enter()}
+								</DaisyUiButton>
+								{#if canManageHospitals}
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openEditHospitalModal(row)}
 									>
-									<td class="text-right">
-										<div class="flex justify-end gap-2">
-											<DaisyUiButton
-												className="d-btn-primary d-btn-sm"
-												onClick={() => goToHospitalHome(h.id)}
-											>
-												{m.enter()}
-											</DaisyUiButton>
-											{#if canManageHospitals}
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
-													onClick={() => openEditHospitalModal(h)}
-												>
-													<LucidePencil />
-												</DaisyUiButton>
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() => handleDelete(h)}
-												>
-													<LucideTrash2 />
-												</DaisyUiButton>
-											{/if}
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</DaisyUiTableBody>
-					</DaisyUiTable>
+										<LucidePencil />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										onClick={() => handleDelete(row)}
+									>
+										<LucideTrash2 />
+									</DaisyUiButton>
+								{/if}
+							</div>
+						</svelte:fragment>
+					</MariTable>
+					</div>
 				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>

@@ -146,7 +146,7 @@
 
 	{#if open}
 		<ul
-			class="d-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-box border bg-base-100 shadow-lg"
+			class="d-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-box border bg-base-100 shadow-lg flex flex-row"
 			role="listbox"
 		>
 			{#if isLoading}
@@ -161,9 +161,10 @@
 				</li>
 			{:else}
 				{#each filtered as option (option.value)}
-					<li role="option">
+					<li role="option" class="w-full">
 						<button
 							type="button"
+							class="w-full justify-start text-left"
 							onclick={() => selectOption(option)}
 						>
 							{option.label}
