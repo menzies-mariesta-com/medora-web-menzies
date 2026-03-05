@@ -13,6 +13,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		getServiceItem,
 		createServiceItem,
@@ -567,19 +568,21 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			<MariTable
-				rows={serviceItems}
-				columns={serviceItemColumns}
-				isLoading={isLoading}
-				enableColumnFilters={true}
-				useRemoteFilters={true}
-				actionsHeader={m.actions()}
-				actionsVariant="crud"
-				on:refresh={() => fetchServiceItems(true)}
-				on:filtersChange={handleTableFiltersChange}
-				on:edit={(event) => startEdit(event.detail)}
-				on:delete={(event) => handleDelete(event.detail)}
-			/>
+			<div class="{TableEnum.HEIGHT}">
+				<MariTable
+					rows={serviceItems}
+					columns={serviceItemColumns}
+					isLoading={isLoading}
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					actionsHeader={m.actions()}
+					actionsVariant="crud"
+					on:refresh={() => fetchServiceItems(true)}
+					on:filtersChange={handleTableFiltersChange}
+					on:edit={(event) => startEdit(event.detail)}
+					on:delete={(event) => handleDelete(event.detail)}
+				/>
+			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>
