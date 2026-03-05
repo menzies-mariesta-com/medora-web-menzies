@@ -336,9 +336,15 @@
 	}
 
 	function serviceNameById(id: number | null | undefined): string {
-		if (id == null) return '—';
-		const s = serviceItems.find((x) => x.id === id);
-		return s?.serviceName ?? `#${id}`;
+	if (id == null) return '—';
+	const s = serviceItems.find((x) => x.id === id);
+	if (!s) return `ID ${id}`;
+	const name = (s.serviceName ?? '').trim();
+	const code = (s.serviceCode ?? '').trim();
+	if (name && code) return `${name} (${code})`;
+	if (name) return name;
+	if (code) return code;
+	return `ID ${id}`;
 	}
 </script>
 
