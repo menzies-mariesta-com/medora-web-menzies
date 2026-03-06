@@ -106,13 +106,10 @@ export function getCurrentParentPage(): PageSchema | null {
 
 /**
  * Child pages of currentParentPage (for sub-nav / tabs).
- * Ordered by sequenceNo.
  * Use in reactive context, e.g. $derived(getSubPages()).
  */
 export function getSubPages(): PageSchema[] {
 	const parent = getCurrentParentPage();
 	if (!parent) return [];
-	return getPageData()
-		.filter((p) => p.parentId === parent.id)
-		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
+	return getPageData().filter((p) => p.parentId === parent.id);
 }
