@@ -15,8 +15,8 @@ import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { asc, count, eq } from 'drizzle-orm';
 import { specialization } from '$lib/paraglide/messages';
 
-export type SpecializationWithRelations = NonNullable<
-	Awaited<ReturnType<typeof getSpecializationWithRelations>>
+export type SpecializationWithRelations = Awaited<
+	ReturnType<typeof getSpecializationWithRelations>
 >[number];
 
 export const getSpecialization = query(
@@ -34,7 +34,9 @@ export const getSpecialization = query(
 export const getSpecializationWithRelations = query(async () => {
 	return ensureDb().query.specializationTable.findMany({
 		with: {
-			craftGroup: true
+			craftGroup: true,
+			status: true,
+			staffs: true
 		},
 		orderBy: [asc(table.specializationTable.name)]
 	});

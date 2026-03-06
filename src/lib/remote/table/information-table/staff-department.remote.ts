@@ -72,6 +72,10 @@ export const getStaffDepartmentWithRelations = query(async () => {
 	});
 });
 
+export type StaffDepartmentWithRelations = Awaited<
+	ReturnType<typeof getStaffDepartmentWithRelations>
+>[number];
+
 // get one
 export const getStaffDepartmentById = query(
 	'unchecked' as const,

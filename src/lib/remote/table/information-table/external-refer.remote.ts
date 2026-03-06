@@ -46,9 +46,9 @@ const externalReferWithRelationsWith = {
 	status: true
 } as const;
 
-export type ExternalReferWithRelations = NonNullable<
-	Awaited<ReturnType<typeof getExternalReferByIdWithRelations>>
->;
+export type ExternalReferWithRelations = Awaited<
+	ReturnType<typeof getExternalReferWithRelations>
+>[number];
 
 // get paginated with relations (optional search on name, address, phone, email)
 export const getExternalReferPaginated = query(
