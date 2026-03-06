@@ -21,7 +21,7 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 		inactivatePatientAllergiesByAllergyIdForPatient
 	} from '$lib/remote/table/information-table/patient-allergies.remote';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { DeactivationRemarkDialogState } from '$lib/state/deactivation-remark-dialog.state.svelte';
 	import { AllergyEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
@@ -29,8 +29,11 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import LDeactivationRemarkDialogContent from './LDeactivationRemarkDialogContent.svelte';
 
 	const toastService = new ToastService();
+
+	type DeactivationRemarkResult = { deactivationRemark: string };
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -50,6 +53,7 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
 	let reaction = $state('');
 	let remark = $state('');
+	let deactivationRemark = $state('');
 
 	// Paginated server-side allergy search for the searchable select.
 	async function searchAllergies(
@@ -103,6 +107,7 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 					statusIdStr = String(row.statusId);
 					reaction = row.reaction ?? '';
 					remark = row.remark ?? '';
+					deactivationRemark = row.deactivationRemark ?? '';
 				}
 			});
 		} else {
@@ -112,6 +117,7 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 			statusIdStr = String(StatusEnum.ACTIVE);
 			reaction = '';
 			remark = '';
+			deactivationRemark = '';
 			allergyMode = 'existing';
 		}
 	});
@@ -135,6 +141,16 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 			const newStatusId = statusIdStr ? Number(statusIdStr) : StatusEnum.ACTIVE;
 			const currentAllergyId = selectedAllergyId ? Number(selectedAllergyId) : 0;
 
+			if (newStatusId === StatusEnum.INACTIVE) {
+				if (!deactivationRemark.trim()) {
+					toastService.addToast(
+						'Deactivation remark is required when inactivating an allergy.',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
+			}
+
 			// When changing status to Active, apply No Known Allergy rules
 			if (newStatusId === StatusEnum.ACTIVE && patientId) {
 				const activeList = await getActivePatientAllergiesByPatientId({
@@ -145,15 +161,16 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 				if (currentAllergyId === AllergyEnum.NO_KNOWN_ALLERGY) {
 					// Activating "No Known Allergy" → inactivate all other active allergies
 					if (othersActive.length > 0) {
-						const result = await dialogService.open({
-							title: 'No Known Allergy',
-							message: `This patient has ${othersActive.length} other active allergy record(s). Activating "No Known Allergy" will mark them as inactive. Continue?`,
-							variant: DialogVariantEnum.CONFIRM
+						DeactivationRemarkDialogState.message = `This patient has ${othersActive.length} other active allergy record(s). Activating "No Known Allergy" will mark them as inactive. Enter deactivation remark below to continue.`;
+						const result = await dialogService.open<DeactivationRemarkResult>({
+							title: 'Inactivate other allergies',
+							component: LDeactivationRemarkDialogContent
 						});
-						if (!result.confirmed) return;
+						if (!result.confirmed || !result.data?.deactivationRemark) return;
 						await inactivateOtherPatientAllergiesForPatient({
 							patientId,
-							excludeId: patientAllergyId
+							excludeId: patientAllergyId,
+							deactivationRemark: result.data.deactivationRemark
 						});
 					}
 				} else {
@@ -162,15 +179,16 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 						(r) => r.allergyId === AllergyEnum.NO_KNOWN_ALLERGY
 					);
 					if (noKnownActive.length > 0) {
-						const result = await dialogService.open({
-							title: 'No Known Allergy',
-							message: `This patient has "No Known Allergy" recorded as active. Activating this allergy will mark it as inactive. Continue?`,
-							variant: DialogVariantEnum.CONFIRM
+						DeactivationRemarkDialogState.message = `This patient has "No Known Allergy" recorded as active. Activating this allergy will mark it as inactive. Enter deactivation remark below to continue.`;
+						const result = await dialogService.open<DeactivationRemarkResult>({
+							title: 'Inactivate No Known Allergy',
+							component: LDeactivationRemarkDialogContent
 						});
-						if (!result.confirmed) return;
+						if (!result.confirmed || !result.data?.deactivationRemark) return;
 						await inactivatePatientAllergiesByAllergyIdForPatient({
 							patientId,
-							allergyId: AllergyEnum.NO_KNOWN_ALLERGY
+							allergyId: AllergyEnum.NO_KNOWN_ALLERGY,
+							deactivationRemark: result.data.deactivationRemark
 						});
 					}
 				}
@@ -181,9 +199,14 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 				severityId: severityIdNum,
 				statusId: newStatusId,
 				reaction: reaction.trim() || null,
-				remark: remark.trim() || null
+				remark: remark.trim() || null,
+				deactivationRemark:
+					newStatusId === StatusEnum.INACTIVE
+						? deactivationRemark.trim() || null
+						: null
 			});
 			toastService.addToast('Allergy record updated.', StatusColorEnum.SUCCESS);
+			PatientAllergyDialogState.onSaved?.();
 			confirm({ saved: true });
 			return;
 		}
@@ -232,23 +255,26 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 			allergyId = idNum;
 		}
 
-		// When adding "No Known Allergy" (id 1), check existing active allergies and confirm before inactivating them
+		// When adding "No Known Allergy" (id 1), check existing active allergies and show combined confirm + deactivation remark before inactivating them
 		if (allergyId === AllergyEnum.NO_KNOWN_ALLERGY && patientId) {
 			const existing = await getActivePatientAllergiesByPatientId({
 				patientId
 			});
 			if (existing.length > 0) {
-				const result = await dialogService.open({
-					title: 'No Known Allergy',
-					message: `This patient has ${existing.length} existing allergy record(s). Adding "No Known Allergy" will mark them as inactive. Continue?`,
-					variant: DialogVariantEnum.CONFIRM
+				DeactivationRemarkDialogState.message = `This patient has ${existing.length} existing allergy record(s). Adding "No Known Allergy" will mark them as inactive. Enter deactivation remark below to continue.`;
+				const result = await dialogService.open<DeactivationRemarkResult>({
+					title: 'Inactivate other allergies',
+					component: LDeactivationRemarkDialogContent
 				});
-				if (!result.confirmed) return;
-				await inactivateAllPatientAllergiesForPatient({ patientId });
+				if (!result.confirmed || !result.data?.deactivationRemark) return;
+				await inactivateAllPatientAllergiesForPatient({
+					patientId,
+					deactivationRemark: result.data.deactivationRemark
+				});
 			}
 		}
 
-		// When adding any other allergy, if patient has active "No Known Allergy", ask to inactivate it
+		// When adding any other allergy, if patient has active "No Known Allergy", show combined confirm + deactivation remark and inactivate it
 		if (allergyId !== AllergyEnum.NO_KNOWN_ALLERGY && patientId) {
 			const activeList = await getActivePatientAllergiesByPatientId({
 				patientId
@@ -257,15 +283,16 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 				(r) => r.allergyId === AllergyEnum.NO_KNOWN_ALLERGY
 			);
 			if (noKnownActive.length > 0) {
-				const result = await dialogService.open({
-					title: 'No Known Allergy',
-					message: `This patient has "No Known Allergy" recorded as active. Adding this allergy will mark it as inactive. Continue?`,
-					variant: DialogVariantEnum.CONFIRM
+				DeactivationRemarkDialogState.message = `This patient has "No Known Allergy" recorded as active. Adding this allergy will mark it as inactive. Enter deactivation remark below to continue.`;
+				const result = await dialogService.open<DeactivationRemarkResult>({
+					title: 'Inactivate No Known Allergy',
+					component: LDeactivationRemarkDialogContent
 				});
-				if (!result.confirmed) return;
+				if (!result.confirmed || !result.data?.deactivationRemark) return;
 				await inactivatePatientAllergiesByAllergyIdForPatient({
 					patientId,
-					allergyId: AllergyEnum.NO_KNOWN_ALLERGY
+					allergyId: AllergyEnum.NO_KNOWN_ALLERGY,
+					deactivationRemark: result.data.deactivationRemark
 				});
 			}
 		}
@@ -281,6 +308,7 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 				remark: remark.trim() || null
 			});
 			toastService.addToast('Allergy added to patient.', StatusColorEnum.SUCCESS);
+			PatientAllergyDialogState.onSaved?.();
 			confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
@@ -381,6 +409,21 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if statusIdStr === String(StatusEnum.INACTIVE)}
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+					<DaisyUiLabel forText="deactivation-remark" className="shrink-0 sm:w-36">
+						Deactivation remark <span class="text-error">*</span>
+					</DaisyUiLabel>
+					<div class="min-w-0 flex-1">
+						<DaisyUiTextarea
+							id="deactivation-remark"
+							bind:value={deactivationRemark}
+							placeholder="Reason for deactivating this allergy"
+							className="w-full"
+						/>
+					</div>
+				</div>
+			{/if}
 		{/if}
 
 		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">

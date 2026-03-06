@@ -6,10 +6,11 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import {
-		getSubCategory,
+		getSubCategoryPaginated,
 		deleteSubCategory,
 		type SubCategorySchema
 	} from '$lib/remote/table/information-table/sub-category.remote';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getCategory } from '$lib/remote/table/information-table/category.remote';
 	import type { CategorySchema } from '$lib/server/db/schema-type';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
@@ -26,6 +27,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const toastService = new ToastService();
 
@@ -45,10 +47,15 @@
 			: null
 	);
 
-	let subCategories = $state<SubCategorySchema[]>([]);
+	let subCategoryResult = $state<PaginatedResult<SubCategorySchema> | null>(null);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let categories = $state<CategorySchema[]>([]);
 	let selectedCategoryId = $state<string>('');
 	let isLoading = $state(false);
+
+	const subCategories = $derived(subCategoryResult?.data ?? []);
+	const total = $derived(subCategoryResult?.total ?? 0);
 
 	async function fetchCategories() {
 		if (!hospitalId) return;
@@ -64,14 +71,16 @@
 			const categoryId = selectedCategoryId
 				? Number(selectedCategoryId)
 				: null;
-			if (forceRefresh) {
-				await getSubCategory({
-					categoryId: categoryId ?? undefined
-				}).refresh();
-			}
-			subCategories = await getSubCategory({
+			const pageSize = Number(pageSizeStr) || 10;
+			const params = {
+				page: currentPage,
+				pageSize,
 				categoryId: categoryId ?? undefined
-			});
+			};
+			if (forceRefresh) {
+				await getSubCategoryPaginated(params).refresh();
+			}
+			subCategoryResult = await getSubCategoryPaginated(params);
 		} finally {
 			isLoading = false;
 		}
@@ -85,6 +94,7 @@
 	});
 
 	function onCategoryFilterChange() {
+		currentPage = 1;
 		fetchSubCategories(true);
 	}
 
@@ -209,23 +219,14 @@
 			{#if isLoading && subCategories.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<p class="mb-4 text-base-content/70">
-					{#if subCategories.length > 0}
-						{m.showing()}
-						{subCategories.length} sub-categor{subCategories.length ===
-						1
-							? 'y'
-							: 'ies'}
-					{:else}
-						No sub-categories yet. Create one above or select a
-						category.
-					{/if}
-				</p>
 				<div class="{TableEnum.HEIGHT}">
 					<MariTable
 						rows={subCategories}
 						columns={subCategoryColumns}
 						isLoading={isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage={currentPage}
+						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
 						emptyMessage="No sub-categories. Create one or change the filter."
@@ -233,6 +234,13 @@
 						actionsHeader={m.actions()}
 						actionsVariant="none"
 						enableColumnFilters={false}
+						useRemoteFilters={true}
+						on:refresh={() => fetchSubCategories(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchSubCategories(true);
+						}}
+						on:pageChange={() => fetchSubCategories(true)}
 					>
 					<svelte:fragment slot="rowActions" let:row>
 						<td class="text-right">

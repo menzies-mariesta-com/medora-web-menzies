@@ -25,8 +25,11 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 
+	const dateTimeUtil = new DateTimeUtil();
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(
@@ -40,17 +43,22 @@
 		hospitalId: string;
 	} | null>(null);
 	let patientAllergies = $state<PatientAllergyWithRelations[]>([]);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingAllergies = $state(false);
 	const toastService = new ToastService();
 
 	async function openAddDialog() {
 		if (!visit?.patientId || !visitId) return;
-		PatientAllergyDialogState.patientId = visit.patientId;
+		const patientId = visit.patientId;
+		const hospitalIdParam = visit.hospitalId;
+		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
+		PatientAllergyDialogState.onSaved = () => fetchAllergies(patientId, hospitalIdParam);
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
@@ -59,48 +67,49 @@
 					PatientAllergyDialogState.patientId = null;
 					PatientAllergyDialogState.visitId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
+					PatientAllergyDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) {
+						fetchAllergies(patientId, hospitalIdParam);
+					}
 				}
 			});
-			if (
-				result?.confirmed &&
-				result.data?.saved &&
-				visit?.patientId &&
-				visit?.hospitalId
-			) {
-				await fetchAllergies(visit.patientId, visit.hospitalId);
-			}
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
+			PatientAllergyDialogState.onSaved = null;
 		}
 	}
 
 	async function openEditDialog(row: PatientAllergyWithRelations) {
 		if (!visit?.patientId) return;
-		PatientAllergyDialogState.patientId = visit.patientId;
+		const patientId = visit.patientId;
+		const hospitalIdParam = visit.hospitalId;
+		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
+		PatientAllergyDialogState.onSaved = () => fetchAllergies(patientId, hospitalIdParam);
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
 				modalClassName: 'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
 					PatientAllergyDialogState.patientAllergyId = null;
+					PatientAllergyDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) {
+						fetchAllergies(patientId, hospitalIdParam);
+					}
 				}
 			});
-			if (
-				result?.confirmed &&
-				result.data?.saved &&
-				visit?.patientId &&
-				visit?.hospitalId
-			) {
-				await fetchAllergies(visit.patientId, visit.hospitalId);
-			}
 		} finally {
 			PatientAllergyDialogState.patientAllergyId = null;
+			PatientAllergyDialogState.onSaved = null;
 		}
 	}
 
@@ -180,18 +189,29 @@
 		return String(value);
 	}
 
+	function formatDateTime(value: string | null | undefined): string {
+		if (value == null || value === '') return '–';
+		const date = dateTimeUtil.parseDate(value);
+		return date
+			? dateTimeUtil.formatDateTime(date, 'en-US', {
+					dateStyle: 'short',
+					timeStyle: 'short'
+				})
+			: '–';
+	}
+
 	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] = [
 		{
 			id: 'visitNo',
 			header: 'Visit No',
-			widthClass: 'w-28 min-w-[7rem]',
+			widthClass: 'w-40',
 			filterable: false,
 			format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
 		},
 		{
 			id: 'allergyName',
 			header: 'Allergy',
-			widthClass: 'min-w-[10rem]',
+			widthClass: 'min-w-[8rem]',
 			filterable: false,
 			format: (_value, row) => formatText(row.allergy?.name ?? null)
 		},
@@ -225,6 +245,28 @@
 			filterable: false,
 			format: (_value, row) => formatText(row.remark),
 			cellClass: 'max-w-48 truncate'
+		},
+		{
+			id: 'deactivationRemark',
+			header: 'Deactivation remark',
+			widthClass: 'min-w-32',
+			filterable: false,
+			format: (_value, row) => formatText(row.deactivationRemark),
+			cellClass: 'max-w-48 truncate'
+		},
+		{
+			id: 'createdAt',
+			header: 'Created At',
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			format: (_value, row) => formatDateTime(row.createdAt ?? null)
+		},
+		{
+			id: 'updatedAt',
+			header: 'Updated At',
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			format: (_value, row) => formatDateTime(row.updatedAt ?? null)
 		}
 	];
 </script>
@@ -284,12 +326,19 @@
 							rows={patientAllergies}
 							columns={allergyColumns}
 							isLoading={isLoadingAllergies}
-							showRefreshButton={false}
+							bind:pageSize={pageSizeStr}
+							bind:currentPage={currentPage}
+							showRefreshButton={true}
 							emptyMessage="No allergies."
 							showRowActions={true}
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={false}
+							on:refresh={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchAllergies(visit.patientId, visit.hospitalId);
+								}
+							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
 								<td class="w-24 shrink-0 text-right">

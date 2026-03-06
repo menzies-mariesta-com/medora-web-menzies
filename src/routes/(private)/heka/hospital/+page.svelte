@@ -7,10 +7,11 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import {
-		getHospitalWithOwner,
+		getHospitalWithOwnerPaginated,
 		deleteHospital,
 		type HospitalWithOwner
 	} from '$lib/remote/table/information-table/hospital.remote';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { hekaHospitalHome } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -28,6 +29,7 @@
 	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const hospitalColumns: MariTableColumn<HospitalWithOwner>[] = [
 		{ id: 'name', header: m.name(), widthClass: 'w-48 min-w-[10rem]', filterable: false, field: 'name', format: (v) => v ?? '—' },
@@ -50,8 +52,13 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let hospitals = $state<HospitalWithOwner[]>([]);
+	let hospitalResult = $state<PaginatedResult<HospitalWithOwner> | null>(null);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
+
+	const hospitals = $derived(hospitalResult?.data ?? []);
+	const total = $derived(hospitalResult?.total ?? 0);
 
 	async function loadHospitals(forceRefresh = false) {
 		isLoading = true;
@@ -60,12 +67,16 @@
 				isOwner && data?.user
 					? (data.user as { id?: string }).id
 					: undefined;
-			const params = ownerId != null ? { ownerId } : undefined;
-			// After create/update/delete, invalidate cache then fetch so list updates
+			const pageSize = Number(pageSizeStr) || 10;
+			const params = {
+				page: currentPage,
+				pageSize,
+				...(ownerId != null && { ownerId })
+			};
 			if (forceRefresh) {
-				await getHospitalWithOwner(params).refresh();
+				await getHospitalWithOwnerPaginated(params).refresh();
 			}
-			hospitals = await getHospitalWithOwner(params);
+			hospitalResult = await getHospitalWithOwnerPaginated(params);
 		} finally {
 			isLoading = false;
 		}
@@ -176,6 +187,9 @@
 							rows={hospitals}
 							columns={hospitalColumns}
 							isLoading={isLoading}
+							bind:pageSize={pageSizeStr}
+							bind:currentPage={currentPage}
+							totalRowCount={total}
 							showRefreshButton={true}
 							refreshTooltip={m.refresh_data()}
 							emptyMessage={m.no_hospitals_yet()}
@@ -183,7 +197,13 @@
 							actionsHeader={m.actions()}
 							actionsVariant="none"
 							enableColumnFilters={false}
+							useRemoteFilters={true}
 							on:refresh={() => loadHospitals(true)}
+							on:pageSizeChange={() => {
+								currentPage = 1;
+								loadHospitals(true);
+							}}
+							on:pageChange={() => loadHospitals(true)}
 						>
 						<svelte:fragment slot="rowActions" let:row>
 							<div class="flex justify-end gap-2">
