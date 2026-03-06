@@ -25,11 +25,14 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	let owners = $state<UserSchema[]>([]);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
 
 	const ownerColumns: MariTableColumn<UserSchema>[] = [
@@ -141,6 +144,8 @@
 						rows={owners}
 						columns={ownerColumns}
 						isLoading={isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage={currentPage}
 						showRefreshButton={false}
 						emptyMessage={m.no_owners_yet()}
 						showRowActions={true}

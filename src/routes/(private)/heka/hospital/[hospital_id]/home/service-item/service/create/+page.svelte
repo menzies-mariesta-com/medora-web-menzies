@@ -15,12 +15,13 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
-		getServiceItem,
+		getServiceItemPaginated,
 		createServiceItem,
 		updateServiceItem,
 		deleteServiceItem,
 		type ServiceItemSchema
 	} from '$lib/remote/table/information-table/service-item.remote';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getCategory } from '$lib/remote/table/information-table/category.remote';
 	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
 	import type {
@@ -36,6 +37,7 @@
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const toastService = new ToastService();
 
@@ -52,7 +54,13 @@
 
 	let categories = $state<CategorySchema[]>([]);
 	let subCategories = $state<SubCategorySchema[]>([]);
-	let serviceItems = $state<ServiceItemSchema[]>([]);
+	let serviceResult = $state<PaginatedResult<ServiceItemSchema> | null>(null);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	const serviceItems = $derived(serviceResult?.data ?? []);
+	const total = $derived(serviceResult?.total ?? 0);
 
 	let selectedCategoryId = $state<string>('');
 	let selectedSubCategoryId = $state<string>('');
@@ -234,7 +242,13 @@
 
 			if (subCategoryIds) {
 				if (subCategoryIds.length === 0) {
-					serviceItems = [];
+					serviceResult = {
+						data: [],
+						total: 0,
+						page: 1,
+						pageSize: Number(pageSizeStr) || 10,
+						totalPages: 1
+					};
 					return;
 				}
 				params.subCategoryIds = subCategoryIds;
@@ -259,10 +273,16 @@
 				params.statusId = StatusEnum.INACTIVE;
 			}
 
+			const pageSize = Number(pageSizeStr) || 10;
+			const paginatedParams = {
+				...params,
+				page: currentPage,
+				pageSize
+			};
 			if (forceRefresh) {
-				await getServiceItem(params).refresh();
+				await getServiceItemPaginated(paginatedParams).refresh();
 			}
-			serviceItems = await getServiceItem(params);
+			serviceResult = await getServiceItemPaginated(paginatedParams);
 		} finally {
 			isLoading = false;
 		}
@@ -316,8 +336,12 @@
 	function handleTableFiltersChange(
 		event: CustomEvent<{ filters: Record<string, string> }>
 	) {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
 		tableColumnFilters = event.detail.filters;
-		fetchServiceItems(true);
+		currentPage = 1;
+		filterDebounceTimeout = setTimeout(() => {
+			fetchServiceItems(true);
+		}, 350);
 	}
 
 	async function handleSubmit(e: Event) {
@@ -573,11 +597,21 @@
 					rows={serviceItems}
 					columns={serviceItemColumns}
 					isLoading={isLoading}
+					bind:pageSize={pageSizeStr}
+					bind:currentPage={currentPage}
+					totalRowCount={total}
+					showRefreshButton={true}
+					emptyMessage={m.no_records_found()}
 					enableColumnFilters={true}
 					useRemoteFilters={true}
 					actionsHeader={m.actions()}
 					actionsVariant="crud"
 					on:refresh={() => fetchServiceItems(true)}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchServiceItems(true);
+					}}
+					on:pageChange={() => fetchServiceItems(true)}
 					on:filtersChange={handleTableFiltersChange}
 					on:edit={(event) => startEdit(event.detail)}
 					on:delete={(event) => handleDelete(event.detail)}

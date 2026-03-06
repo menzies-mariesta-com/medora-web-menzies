@@ -6,9 +6,10 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 	import {
-		getBranchesByHospitalId,
+		getBranchesByHospitalIdPaginated,
 		deleteBranch
 	} from '$lib/remote/table/information-table/hospital-branch.remote';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
 	import BranchFormModal from '$lib/component/local/private/heka/administration/branches/BranchFormModal.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -24,6 +25,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -35,8 +37,13 @@
 			: ''
 	);
 
-	let branches = $state<HospitalBranchSchema[]>([]);
+	let branchResult = $state<PaginatedResult<HospitalBranchSchema> | null>(null);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
+
+	const branches = $derived(branchResult?.data ?? []);
+	const total = $derived(branchResult?.total ?? 0);
 
 	const branchColumns: MariTableColumn<HospitalBranchSchema>[] = [
 		{
@@ -80,10 +87,12 @@
 	async function fetchBranches(forceRefresh = false) {
 		if (!hospitalId) return;
 		isLoading = true;
+		const pageSize = Number(pageSizeStr) || 10;
 		try {
+			const params = { hospitalId, page: currentPage, pageSize };
 			if (forceRefresh)
-				await getBranchesByHospitalId({ hospitalId }).refresh();
-			branches = await getBranchesByHospitalId({ hospitalId });
+				await getBranchesByHospitalIdPaginated(params).refresh();
+			branchResult = await getBranchesByHospitalIdPaginated(params);
 		} finally {
 			isLoading = false;
 		}
@@ -158,6 +167,9 @@
 						rows={branches}
 						columns={branchColumns}
 						isLoading={isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage={currentPage}
+						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
 						emptyMessage={m.no_branches_yet()}
@@ -165,7 +177,13 @@
 						actionsHeader={m.actions()}
 						actionsVariant="none"
 						enableColumnFilters={false}
+						useRemoteFilters={true}
 						on:refresh={() => fetchBranches(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchBranches(true);
+						}}
+						on:pageChange={() => fetchBranches(true)}
 					>
 					<svelte:fragment slot="rowActions" let:row>
 						<td class="text-right">

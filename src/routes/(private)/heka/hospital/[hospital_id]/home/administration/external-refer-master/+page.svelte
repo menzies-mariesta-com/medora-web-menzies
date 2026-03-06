@@ -31,6 +31,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -38,7 +39,7 @@
 	let referResult =
 		$state<PaginatedResult<ExternalReferWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state('10');
+	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let searchInput = $state('');
 	let isLoading = $state(false);
 
@@ -96,16 +97,6 @@
 			if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
 		};
 	});
-
-	function handlePageSizeChange() {
-		currentPage = 1;
-		fetchRefer();
-	}
-
-	function goToPage(p: number) {
-		currentPage = p;
-		fetchRefer();
-	}
 
 	async function handleDelete(referId: number) {
 		try {
@@ -269,6 +260,9 @@
 			rows={referList}
 			columns={referColumns}
 			isLoading={isLoading}
+			bind:pageSize={filterPageSize}
+			bind:currentPage={currentPage}
+			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}
 			emptyMessage={m.no_refer_found()}
@@ -276,7 +270,13 @@
 			actionsHeader={m.actions()}
 			actionsVariant="none"
 			enableColumnFilters={false}
+			useRemoteFilters={true}
 			on:refresh={() => fetchRefer({ bustCache: true })}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchRefer();
+			}}
+			on:pageChange={() => fetchRefer()}
 		>
 			<svelte:fragment slot="rowActions" let:row>
 				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">

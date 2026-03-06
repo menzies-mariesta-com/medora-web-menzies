@@ -7,8 +7,13 @@ import type {
 	HospitalBranchSchemaInsert,
 	HospitalBranchSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { RoleEnum } from '$lib/model/enum/db-link';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 
 /** Ensure the current user can manage branches for this hospital. */
 async function ensureCanManageHospital(
@@ -55,6 +60,42 @@ export const getBranchesByHospitalId = query(
 			.from(table.hospitalBranchTable)
 			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId))
 			.orderBy(table.hospitalBranchTable.name);
+	}
+);
+
+/** List branches for a hospital (paginated). */
+export const getBranchesByHospitalIdPaginated = query(
+	'unchecked' as const,
+	async (
+		params: PaginationParams & { hospitalId: string }
+	): Promise<PaginatedResult<HospitalBranchSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const whereExpr = eq(
+			table.hospitalBranchTable.hospitalId,
+			params.hospitalId
+		);
+		const [data, countResult] = await Promise.all([
+			ensureDb()
+				.select()
+				.from(table.hospitalBranchTable)
+				.where(whereExpr)
+				.orderBy(table.hospitalBranchTable.name)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.hospitalBranchTable)
+				.where(whereExpr)
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1
+		};
 	}
 );
 

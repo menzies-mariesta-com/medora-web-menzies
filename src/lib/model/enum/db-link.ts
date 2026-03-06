@@ -56,9 +56,10 @@ export enum UnitEnum {
 }
 
 export enum SeverityEnum {
-	LOW = 1,
-	MEDIUM = 2,
-	HIGH = 3
+	MAJOR = 1,
+	MODERATE = 2,
+	MINOR = 3,
+	NO_ALERT = 4
 }
 
 export enum AllergyEnum {
