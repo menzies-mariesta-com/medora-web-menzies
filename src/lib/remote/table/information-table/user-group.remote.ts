@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ne, ilike } from 'drizzle-orm';
 
 // get all (optional hospitalId to scope to one hospital)
 export const getUserGroup = query(
@@ -134,6 +134,10 @@ export const getUserGroupWithRelations = query(async () => {
 		}
 	});
 });
+
+export type UserGroupWithRelations = Awaited<
+	ReturnType<typeof getUserGroupWithRelations>
+>[number];
 
 // get one with relations
 export const getUserGroupByIdWithRelations = query(

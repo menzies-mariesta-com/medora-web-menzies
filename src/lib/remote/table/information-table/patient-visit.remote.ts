@@ -5,17 +5,8 @@ import * as table from '$lib/server/db/schema';
 import type {
 	PatientVisitSchema,
 	PatientVisitSchemaInsert,
-	PatientVisitSchemaUpdate,
-	PatientSchema,
-	HospitalSchema,
-	HospitalBranchSchema,
-	StaffSchema
+	PatientVisitSchemaUpdate
 } from '$lib/server/db/schema-type';
-
-import type {
-	StatusSchema,
-	VisitTypeSchema
-} from '$lib/server/db/table/master-table/master-table-schema-type';
 
 import type {
 	PaginatedResult,
@@ -32,14 +23,25 @@ const BRANCH_ALL_VALUE = '__all__';
    TYPES
 ========================================================= */
 
-export type PatientVisitWithRelations = PatientVisitSchema & {
-	patient: PatientSchema | null;
-	status: StatusSchema | null;
-	visitType: VisitTypeSchema | null;
-	hospital: HospitalSchema | null;
-	branch: HospitalBranchSchema | null;
-	doctor: StaffSchema | null;
-};
+export const getPatientVisitWithRelations = query(async () => {
+	return ensureDb().query.patientVisitTable.findMany({
+		with: {
+			patient: { with: { title: true } },
+			status: true,
+			visitType: true,
+			hospital: true,
+			branch: true,
+			doctor: { with: { title: true } },
+			appointment: true,
+			diagnoses: true,
+			patientDocuments: true
+		}
+	});
+});
+
+export type PatientVisitWithRelations = Awaited<
+	ReturnType<typeof getPatientVisitWithRelations>
+>[number];
 
 function getSelectedBranchFromRequest(): string | null {
 	try {
@@ -177,7 +179,10 @@ export const getPatientVisitByIdWithRelations = query(
 				visitType: true,
 				hospital: true,
 				branch: true,
-				doctor: { with: { title: true } }
+				doctor: { with: { title: true } },
+				appointment: true,
+				diagnoses: true,
+				patientDocuments: true
 			}
 		});
 		return row as PatientVisitWithRelations | null;

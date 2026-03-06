@@ -36,7 +36,7 @@
 
 <div
 	role="alert"
-	class="{alertClass} z-[9999] flex items-center shadow-lg"
+	class="{alertClass} flex items-center shadow-lg"
 >
 	<Icon />
 	<div class="text-black">

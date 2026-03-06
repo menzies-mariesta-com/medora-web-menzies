@@ -72,6 +72,10 @@ export const getStaffUserGroupWithRelations = query(async () => {
 	});
 });
 
+export type StaffUserGroupWithRelations = Awaited<
+	ReturnType<typeof getStaffUserGroupWithRelations>
+>[number];
+
 // get one
 export const getStaffUserGroupById = query(
 	'unchecked' as const,
