@@ -1,14 +1,9 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/library/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import {
 		getPatientVisitPaginatedForEmr,
@@ -23,6 +18,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -38,7 +34,7 @@
 	let result =
 		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let pageSizeStr = $state('10');
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 let visitTypeOptions = $state<{ id: number; name: string | null }[]>([]);
 	let isLoading = $state(false);
 let tableFilters = $state<Record<string, string>>({});
@@ -158,22 +154,12 @@ let tableFilters = $state<Record<string, string>>({});
 		loadVisitTypes();
 	});
 
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
-
-	function handlePageSizeChange() {
-		currentPage = 1;
-		fetchPatients();
-	}
 
 	function handleFilterChange() {
 		currentPage = 1;
 		fetchPatients({ bustCache: true });
-	}
-
-	function goToPage(p: number) {
-		currentPage = p;
-		fetchPatients();
 	}
 
 	function selectPatient(v: PatientVisitWithRelations) {
@@ -201,38 +187,6 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		</DaisyUiButton>
 	</div>
 
-	<div
-		class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
-	>
-		<div class="flex items-center gap-2 whitespace-nowrap">
-			<span class="text-sm">per page</span>
-			<DaisyUiSelect
-				className="d-select d-select-sm w-20"
-				bind:value={pageSizeStr}
-				onChange={handlePageSizeChange}
-				disabled={isLoading}
-			>
-				<option value="5">5</option>
-				<option value="10">10</option>
-				<option value="25">25</option>
-				<option value="50">50</option>
-			</DaisyUiSelect>
-		</div>
-		<div class="flex items-center gap-2 text-sm opacity-80">
-			{#if total > 0}
-				{@const pageSize = Number(pageSizeStr) || 10}
-				{@const start = (currentPage - 1) * pageSize + 1}
-				{@const end = Math.min(currentPage * pageSize, total)}
-				<span>
-					Showing <span class="text-success">{start}–{end}</span> of
-					<span class="text-error"> {total}</span> visits
-				</span>
-			{:else}
-				<span>Showing 0 of 0 visits</span>
-			{/if}
-		</div>
-	</div>
-
 	{#if isLoading && !result}
 		<div class="flex flex-1 items-center justify-center">
 			<DaisyUiLoading className="d-loading-xl" />
@@ -243,6 +197,9 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 				rows={visits}
 				columns={visitColumns}
 				isLoading={isLoading}
+				bind:pageSize={pageSizeStr}
+				bind:currentPage={currentPage}
+				totalRowCount={total}
 				showRefreshButton={true}
 				refreshTooltip="Refresh visits"
 				emptyMessage="No visits found."
@@ -252,6 +209,11 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 				enableColumnFilters={true}
 				useRemoteFilters={true}
 				on:refresh={() => fetchPatients({ bustCache: true })}
+				on:pageSizeChange={() => {
+					currentPage = 1;
+					fetchPatients();
+				}}
+				on:pageChange={() => fetchPatients()}
 				on:filtersChange={(event) => {
 					if (filterDebounceTimeout) {
 						clearTimeout(filterDebounceTimeout);
@@ -273,34 +235,7 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 	<div
 		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
 	>
-		<div>
-			{#if totalPages > 1}
-				<DaisyUiPagination>
-					<DaisyUiPaginationItem
-						onClick={() => goToPage(currentPage - 1)}
-						className="d-btn-sm"
-						disabled={currentPage <= 1 || isLoading}
-					>
-						<LucideChevronLeft className="size-5" />
-					</DaisyUiPaginationItem>
-					{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
-						<DaisyUiPaginationItem
-							className="d-btn-sm"
-							onClick={() => goToPage(p)}
-						>
-							{p}
-						</DaisyUiPaginationItem>
-					{/each}
-					<DaisyUiPaginationItem
-						onClick={() => goToPage(currentPage + 1)}
-						className="d-btn-sm"
-						disabled={currentPage >= totalPages || isLoading}
-					>
-						<LucideChevronRight className="size-5" />
-					</DaisyUiPaginationItem>
-				</DaisyUiPagination>
-			{/if}
-		</div>
+		<div />
 		<div class="flex gap-2">
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm"

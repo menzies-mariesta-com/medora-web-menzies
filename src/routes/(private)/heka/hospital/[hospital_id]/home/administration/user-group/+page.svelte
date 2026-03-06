@@ -29,6 +29,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -44,11 +45,11 @@
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
-	let pageSize = $state(10);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
 	let statusOptions = $state<StatusSchema[]>([]);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 	{
@@ -78,6 +79,7 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 	async function fetchGroups(forceRefresh = false) {
 		if (!hospitalId) return;
 		isLoading = true;
+		const pageSize = Number(pageSizeStr) || 10;
 		try {
 			const params = {
 				hospitalId,
@@ -153,11 +155,6 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 		}
 	}
 
-	function goToPage(p: number) {
-		currentPage = p;
-		fetchGroups();
-	}
-
 	async function openPagesModal(row: UserGroupSchema) {
 		UserGroupPagesModalState.group = row;
 		const result = await dialogService.open({
@@ -183,24 +180,14 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 			{#if isLoading && groups.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<p class="mb-4 text-base-content/70">
-					{#if total > 0}
-						{m.showing()}
-						{(currentPage - 1) * pageSize + 1}–{Math.min(
-							currentPage * pageSize,
-							total
-						)}
-						{m.of()}
-						{total}
-					{:else}
-						{m.no_user_groups_yet()}
-					{/if}
-				</p>
 				<div class="{TableEnum.HEIGHT}">
 					<MariTable
 						rows={groups}
 						columns={userGroupColumns}
 						isLoading={isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage={currentPage}
+						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
 						emptyMessage={m.no_user_groups_create()}
@@ -210,6 +197,11 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 						enableColumnFilters={true}
 						useRemoteFilters={true}
 						on:refresh={() => fetchGroups(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchGroups();
+						}}
+						on:pageChange={() => fetchGroups()}
 						on:filtersChange={(event) => {
 							if (filterDebounceTimeout) {
 								clearTimeout(filterDebounceTimeout);
