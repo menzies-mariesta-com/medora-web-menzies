@@ -127,7 +127,6 @@ export const getPatientPaginated = query(
 	): Promise<PaginatedResult<PatientWithRelations>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const searchTerm = params?.search?.trim();
 		const patientCode = params?.patientCode?.trim();
 		const patientName = params?.patientName?.trim();
 		const patientPhonePrimary = params?.patientPhonePrimary?.trim();
@@ -135,26 +134,6 @@ export const getPatientPaginated = query(
 		const conditions = [
 			ne(table.patientTable.statusId, StatusEnum.DELETED)
 		];
-
-		// Generic search across name, code, primary phone
-		if (searchTerm) {
-			const pattern = `%${searchTerm}%`;
-			conditions.push(
-				or(
-					// Match by name ONLY when name masking is NOT enabled
-					and(
-						ilike(
-							sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
-							pattern
-						),
-						ne(table.patientTable.nameMasking, YesNoEnum.YES)
-					),
-					// Always allow search by code / phone
-					ilike(table.patientTable.code, pattern),
-					ilike(table.patientTable.phonePrimary, pattern)
-				)
-			);
-		}
 
 		// Dedicated filters
 		if (patientCode) {

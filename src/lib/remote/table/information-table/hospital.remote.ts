@@ -7,8 +7,13 @@ import type {
 	HospitalSchemaInsert,
 	HospitalSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import { RoleEnum } from '$lib/model/enum/db-link';
+import type {
+	PaginatedResult,
+	PaginationParams
+} from '$lib/remote/table/pagination-type';
+import { normalizePagination } from '$lib/remote/table/pagination-type';
 
 // get all (for dropdowns and list)
 export const getHospital = query(
@@ -47,6 +52,61 @@ export const getHospitalWithOwner = query(
 					where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId)
 				})
 		}) as Promise<HospitalWithOwner[]>;
+	}
+);
+
+/** Hospitals with owner (paginated). Same access rules as getHospitalWithOwner. */
+export const getHospitalWithOwnerPaginated = query(
+	'unchecked' as const,
+	async (
+		params?: PaginationParams & { ownerId?: string | null }
+	): Promise<PaginatedResult<HospitalWithOwner>> => {
+		const event = getRequestEvent();
+		const userRoleId = event?.locals?.userRoleId ?? null;
+		const userId = event?.locals?.user?.id ?? null;
+		const effectiveOwnerId =
+			userRoleId === RoleEnum.OWNER && userId
+				? userId
+				: (params?.ownerId ?? undefined);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const db = ensureDb();
+		const hasOwnerFilter =
+			effectiveOwnerId != null && effectiveOwnerId !== '';
+		const whereExpr = hasOwnerFilter
+			? eq(table.hospitalTable.ownerId, effectiveOwnerId!)
+			: undefined;
+		const baseOpts = {
+			limit,
+			offset,
+			with: {
+				owner: {
+					columns: { id: true, name: true, email: true }
+				}
+			}
+		};
+		const [data, countResult] = await Promise.all([
+			hasOwnerFilter
+				? (db.query.hospitalTable.findMany({
+						...baseOpts,
+						where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId!)
+					}) as Promise<HospitalWithOwner[]>)
+				: (db.query.hospitalTable.findMany(baseOpts) as Promise<HospitalWithOwner[]>),
+			whereExpr != null
+				? db
+						.select({ count: count() })
+						.from(table.hospitalTable)
+						.where(whereExpr)
+				: db.select({ count: count() }).from(table.hospitalTable)
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1
+		};
 	}
 );
 

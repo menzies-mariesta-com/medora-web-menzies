@@ -11,12 +11,13 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
-		getServiceTagging,
+		getServiceTaggingPaginated,
 		createServiceTagging,
 		updateServiceTagging,
 		deleteServiceTagging,
 		type ServiceTaggingSchema
 	} from '$lib/remote/table/information-table/service-tagging.remote';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
 	import type { ServiceItemSchema } from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -26,6 +27,7 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const toastService = new ToastService();
 
@@ -48,7 +50,13 @@
 	);
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
-	let taggings = $state<ServiceTaggingSchema[]>([]);
+	let taggingResult = $state<PaginatedResult<ServiceTaggingSchema> | null>(null);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	const taggings = $derived(taggingResult?.data ?? []);
+	const total = $derived(taggingResult?.total ?? 0);
 
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
@@ -142,7 +150,14 @@
 					.map((s) => s.id);
 
 				if (serviceIds.length === 0) {
-					taggings = [];
+					const pageSize = Number(pageSizeStr) || 10;
+					taggingResult = {
+						data: [],
+						total: 0,
+						page: 1,
+						pageSize,
+						totalPages: 1
+					};
 					return;
 				}
 
@@ -174,10 +189,16 @@
 				params.statusId = StatusEnum.INACTIVE;
 			}
 
+			const pageSize = Number(pageSizeStr) || 10;
+			const paginatedParams = {
+				...params,
+				page: currentPage,
+				pageSize
+			};
 			if (forceRefresh) {
-				await getServiceTagging(params).refresh();
+				await getServiceTaggingPaginated(paginatedParams).refresh();
 			}
-			taggings = await getServiceTagging(params);
+			taggingResult = await getServiceTaggingPaginated(paginatedParams);
 		} finally {
 			isLoading = false;
 		}
@@ -223,8 +244,12 @@
 	function handleTableFiltersChange(
 		event: CustomEvent<{ filters: Record<string, string> }>
 	) {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
 		tableColumnFilters = event.detail.filters;
-		fetchTaggings(true);
+		currentPage = 1;
+		filterDebounceTimeout = setTimeout(() => {
+			fetchTaggings(true);
+		}, 350);
 	}
 
 	async function handleSubmit(e: Event) {
@@ -455,11 +480,21 @@
 						rows={taggings}
 						columns={taggingColumns}
 						isLoading={isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage={currentPage}
+						totalRowCount={total}
+						showRefreshButton={true}
+						emptyMessage={m.no_records_found()}
 						enableColumnFilters={true}
 						useRemoteFilters={true}
 						actionsHeader={m.actions()}
 						actionsVariant="crud"
 						on:refresh={() => fetchTaggings(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchTaggings(true);
+						}}
+						on:pageChange={() => fetchTaggings(true)}
 						on:filtersChange={handleTableFiltersChange}
 						on:edit={(event) => startEdit(event.detail)}
 						on:delete={(event) => handleDelete(event.detail)}
