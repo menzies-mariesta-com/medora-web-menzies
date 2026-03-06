@@ -107,7 +107,6 @@ import { AppEnum } from '$lib/model/enum/app.enum';
 		scheduleIds: number[];
 	};
 
-const appConfig = new AppConfig();
 	let staffId = $state('');
 	let selectedBranchId = $state('');
 	let branchData = $state<HospitalBranchSchema[]>([]);
