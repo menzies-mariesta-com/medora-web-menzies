@@ -14,12 +14,34 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import {
-	StatusEnum,
-	YesNoEnum
-} from '../../../../model/enum/db-link';
+import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { bloodTypeTable, cityTable, countryTable, departmentTable, genderTable, identityTypeTable, maritalStatusTable, nationalityTable, postalCodeTable, positionTable, referTypeTable, specializationTable, staffEmploymentTypeTable, staffTypeTable, stateTable, statusTable, titleTable, religionTable, unitTable, unitTypeTable, visitTypeTable, weekdayTable, severityTable } from '../master-table/master-table';
+import {
+	bloodTypeTable,
+	cityTable,
+	countryTable,
+	departmentTable,
+	documentTypeTable,
+	genderTable,
+	identityTypeTable,
+	maritalStatusTable,
+	nationalityTable,
+	postalCodeTable,
+	positionTable,
+	referTypeTable,
+	religionTable,
+	severityTable,
+	specializationTable,
+	staffEmploymentTypeTable,
+	staffTypeTable,
+	stateTable,
+	statusTable,
+	titleTable,
+	unitTable,
+	unitTypeTable,
+	visitTypeTable,
+	weekdayTable
+} from '../master-table/master-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -499,8 +521,39 @@ export const patientAllergyTable = pgTable('patient_allergy', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	...timestamps,
-})
+	...timestamps
+});
+
+export const documentTable = pgTable('document', {
+	id: serial('id').primaryKey(),
+	documentTypeId: integer('document_type_id')
+		.notNull()
+		.references(() => documentTypeTable.id),
+	documentText: text('document_text'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
+});
+
+export const patientDocumentTable = pgTable('patient_document', {
+	id: serial('id').primaryKey(),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	documentId: integer('document_id')
+		.notNull()
+		.references(() => documentTable.id),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
+});
 
 export const doctorScheduleTable = pgTable('doctor_schedule', {
 	id: serial('id').primaryKey(),
@@ -796,5 +849,5 @@ export const allergyTable = pgTable('allergy', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	...timestamps,
+	...timestamps
 });

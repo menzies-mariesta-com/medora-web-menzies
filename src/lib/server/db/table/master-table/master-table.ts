@@ -124,6 +124,23 @@ export const departmentTable = pgTable(
 	]
 );
 
+export const documentTypeTable = pgTable(
+	'document_type',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('document_type_name_idx').on(table.name),
+		index('document_type_status_id_idx').on(table.statusId)
+	]
+);
+
 export const genderTable = pgTable(
 	'gender',
 	{

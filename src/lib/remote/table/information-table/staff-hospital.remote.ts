@@ -72,6 +72,10 @@ export const getStaffHospitalWithRelations = query(async () => {
 	});
 });
 
+export type StaffHospitalWithRelations = Awaited<
+	ReturnType<typeof getStaffHospitalWithRelations>
+>[number];
+
 // get one
 export const getStaffHospitalById = query(
 	'unchecked' as const,

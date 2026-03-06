@@ -72,8 +72,8 @@ export async function seedInformationTables() {
 			(100002, 'Staff List', 1, 1, 1, '/heka/home/administration/staff/list', 2),
 
 			-- schedule
-			(3, 'Schedule', 1, 1, null, '/heka/home/administration/schedule', 1),
-			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule/doctor-schedule', 1),
+			(3, 'Schedule Master', 1, 1, null, '/heka/home/administration/schedule-master', 1),
+			(300001, 'Doctor Schedule', 1, 1, 3, '/heka/home/administration/schedule-master/doctor-schedule', 1),
 
 			-- external refer master
 			(5, 'External Refer Master', 1, 1, null, '/heka/home/administration/external-refer-master', 1),
@@ -85,9 +85,17 @@ export async function seedInformationTables() {
 			(7, 'Branches', 1, 1, null, '/heka/home/administration/branches', 5),
 
 			-- category
-			(9, 'Category', 1, 1, null, '/heka/home/administration/category', 6),
-			(900001, 'Category', 1, 1, 9, '/heka/home/administration/category/list', 1),
-			(900002, 'Sub Category', 1, 1, 9, '/heka/home/administration/category/sub-category', 2),
+			(9, 'Service Order', 1, 1, null, '/heka/home/administration/service-order', 6),
+			(900001, 'Category Master', 1, 1, 9, '/heka/home/administration/service-order/category-master', 1),
+			(900002, 'Service Item Master', 1, 1, 9, '/heka/home/administration/service-order/service-item-master', 3),
+			(900003, 'Service Pricing', 1, 1, 9, '/heka/home/administration/service-order/service-pricing', 5),
+			(900004, 'Sub Category Master', 1, 1, 9, '/heka/home/administration/service-order/sub-category-master', 2),
+			(900005, 'Service Item Tagging', 1, 1, 9, '/heka/home/administration/service-order/service-item-tagging', 4),
+
+			-- document master
+			(10, 'Document Master', 1, 1, null, '/heka/home/administration/document-master', 7),
+			(100007, 'Document Type', 1, 1, 10, '/heka/home/administration/document-master/document-type', 1),
+			(100008, 'Document', 1, 1, 10, '/heka/home/administration/document-master/document', 2),
 
 			-- Registration Module
 			-- patient pages
@@ -109,12 +117,6 @@ export async function seedInformationTables() {
 			(800006, 'Patient Attachment', 4, 1, 8, '/heka/home/nursing-workbench/emr/patient-attachment', 3),
 			(800007, 'Order', 4, 1, 8, '/heka/home/nursing-workbench/emr/order', 6),
 
-
-			-- Service Item Module
-			(10, 'Service Item', 5, 1, null, '/heka/home/service-item/service', 7),
-			(1000001, 'Create', 5, 1, 10, '/heka/home/service-item/service/create', 1),
-			(1000002, 'Tagging', 5, 1, 10, '/heka/home/service-item/service/tagging', 2),
-
 			-- CPOE Module
 			(11, 'Order', 6, 1, null, '/heka/home/cpoe/order', 1),
 			(12, 'Prescription', 6, 1, null, '/heka/home/cpoe/prescription', 2),
@@ -122,7 +124,7 @@ export async function seedInformationTables() {
 
 			-- Observation Module
 			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1)
-			
+
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	console.log('Seeded: page');

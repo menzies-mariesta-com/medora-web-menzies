@@ -164,6 +164,10 @@ export const getAppointmentWithRelations = query(
 	}
 );
 
+export type AppointmentWithRelations = Awaited<
+	ReturnType<typeof getAppointmentWithRelations>
+>[number];
+
 // get one
 export const getAppointmentById = query(
 	'unchecked' as const,
