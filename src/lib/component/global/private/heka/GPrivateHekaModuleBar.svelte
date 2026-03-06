@@ -23,6 +23,7 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 import {
 		WebRoutesEnum,
+		hekaHospitalHome,
 		hekaHospitalPageUrl,
 		requestPathToDbPageUrl
 	} from '$lib/model/enum/routes.enum';
@@ -30,6 +31,10 @@ import {
 	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import LucideHouse from '$lib/component/library/lucide/LucideHouse.svelte';
+	import LucideSearch from '$lib/component/library/lucide/LucideSearch.svelte';
+	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
+	import { tick } from 'svelte';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -88,6 +93,62 @@ import {
 	function closeAccountModal() {
 		accountModalOpen = false;
 	}
+
+	let searchDialogOpen = $state(false);
+	let searchQuery = $state('');
+	let searchInputEl = $state<HTMLInputElement | null>(null);
+
+	function openSearchDialog() {
+		searchQuery = '';
+		searchDialogOpen = true;
+		tick().then(() => searchInputEl?.focus());
+	}
+
+	function closeSearchDialog() {
+		searchDialogOpen = false;
+	}
+
+	// Search results: top-level pages only, with module name; filter by searchQuery.
+	type SearchEntry = { page: PageSchema; moduleName: string };
+	const searchEntries = $derived.by(() => {
+		const q = searchQuery.trim().toLowerCase();
+		const entries: SearchEntry[] = [];
+		for (const p of pageList) {
+			if (p.parentId != null) continue;
+			const mod = moduleList.find((m) => m.id === p.moduleId);
+			entries.push({ page: p, moduleName: mod?.name ?? '' });
+		}
+		if (!q) return entries.slice(0, 30);
+		return entries
+			.filter(
+				(e) =>
+					(e.page.name ?? '').toLowerCase().includes(q) ||
+					(e.page.pageUrl ?? '').toLowerCase().includes(q) ||
+					e.moduleName.toLowerCase().includes(q)
+			)
+			.slice(0, 30);
+	});
+
+	function goToPage(p: PageSchema) {
+		closeSearchDialog();
+		const url =
+			hospitalId && p.pageUrl != null
+				? hekaHospitalPageUrl(hospitalId, p.pageUrl)
+				: p.pageUrl;
+		if (url != null) routerUtil.replaceRoute(url);
+	}
+
+	// Ctrl+K opens search dialog.
+	$effect(() => {
+		function onKeyDown(e: KeyboardEvent) {
+			if (e.ctrlKey && e.key === 'k') {
+				e.preventDefault();
+				openSearchDialog();
+			}
+		}
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	});
 
 	const routerUtil = new RouterUtil();
 
@@ -265,6 +326,7 @@ import {
 <!-- module bar start  -->
 
 <DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
+	
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
 			tooltipText="close top panel"
@@ -321,4 +383,67 @@ import {
 			</div>
 		{/each}
 	</div>
+	<div>
+			<DaisyUiTooltip tooltipText="Home" className="d-tooltip-secondary d-tooltip-bottom">
+				<DaisyUiButton
+					className="d-btn-secondary d-btn-square"
+					onClick={() =>
+						routerUtil.goToRoute(
+							hospitalId ? hekaHospitalHome(hospitalId) : WebRoutesEnum.HEKA_HOME
+						)}
+				>
+					<LucideHouse />
+				</DaisyUiButton>
+			</DaisyUiTooltip>
+	</div>
+	<div>
+		<DaisyUiTooltip tooltipText="Search (Ctrl+K)" className="d-tooltip-secondary d-tooltip-bottom">
+			<DaisyUiButton
+				className="d-btn-secondary d-btn-square"
+				onClick={openSearchDialog}
+			>
+				<LucideSearch />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
+	</div>
 </DaisyUiNavbar>
+
+<DaisyUiModal
+	groupName="heka-module-search"
+	className="d-modal-middle"
+	open={searchDialogOpen}
+	onClose={closeSearchDialog}
+>
+	{#snippet children()}
+		<div class="d-modal-box max-h-[80vh] flex flex-col gap-3">
+			<h3 class="text-lg font-semibold">Search modules &amp; pages</h3>
+			<input
+				bind:this={searchInputEl}
+				bind:value={searchQuery}
+				type="text"
+				placeholder="Type to search..."
+				class="d-input d-input-bordered w-full"
+				aria-label="Search"
+			/>
+			<ul class="flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto">
+				{#each searchEntries as entry (entry.page.id)}
+					<li>
+						<button
+							type="button"
+							class="d-btn d-btn-ghost w-full justify-start text-left"
+							onclick={() => goToPage(entry.page)}
+						>
+							<span class="font-medium">{entry.page.name ?? entry.page.pageUrl ?? ''}</span>
+							{#if entry.moduleName}
+								<span class="text-base-content/60 text-sm"> — {entry.moduleName}</span>
+							{/if}
+						</button>
+					</li>
+				{/each}
+			</ul>
+			{#if searchEntries.length === 0}
+				<p class="text-base-content/60 text-sm">No matches.</p>
+			{/if}
+		</div>
+	{/snippet}
+</DaisyUiModal>
