@@ -71,10 +71,6 @@
 </svelte:head>
 
 <div class="flex flex-col gap-4">
-	<p class="text-sm text-base-content/70">
-		Manage files and documents linked to the patient. Attachments are
-		stored per patient, not per visit.
-	</p>
 
 	{#if !visitId}
 		<DaisyUiAlert
@@ -92,7 +88,7 @@
 		/>
 	{:else}
 		<DaisyUiCard>
-			<DaisyUiCardBody>
+			<DaisyUiCardBody className="m-0 p-1">
 				<div class="flex flex-col">
 					<LPatientAttachmentDialogContent
 						cancel={() => {}}
