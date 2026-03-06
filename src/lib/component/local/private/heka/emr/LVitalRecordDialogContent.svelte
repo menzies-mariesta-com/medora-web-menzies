@@ -417,7 +417,7 @@
 				<DaisyUiTextarea
 					id="vital-symptom"
 					bind:value={symptom}
-					placeholder="Chief complaint or symptoms"
+					placeholder="symptoms"
 					className="w-full min-h-20 resize-y"
 				/>
 			</div>

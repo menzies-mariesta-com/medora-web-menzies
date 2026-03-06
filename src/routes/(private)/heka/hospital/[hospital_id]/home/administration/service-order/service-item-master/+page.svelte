@@ -49,8 +49,13 @@
 			? page.params.hospital_id
 			: ''
 	);
-	/** User's current branch from layout; refetch when branch changes. */
-	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
+/** User's current branch from layout; refetch when branch changes. */
+const selectedBranchId = $derived(data?.selectedBranchId ?? null);
+const branchIdForCategory = $derived(
+	selectedBranchId && selectedBranchId !== '__all__'
+		? selectedBranchId
+		: null
+);
 
 	let categories = $state<CategorySchema[]>([]);
 	let subCategories = $state<SubCategorySchema[]>([]);
@@ -64,6 +69,13 @@
 
 	let selectedCategoryId = $state<string>('');
 	let selectedSubCategoryId = $state<string>('');
+
+const filteredSubCategories = $derived.by(() => {
+	if (!selectedCategoryId) return subCategories;
+	const categoryId = Number(selectedCategoryId);
+	if (Number.isNaN(categoryId)) return subCategories;
+	return subCategories.filter((sc) => sc.categoryId === categoryId);
+});
 
 	let formServiceName = $state('');
 	let formServiceCode = $state('');
@@ -126,8 +138,11 @@
 
 	async function fetchCategories() {
 		if (!hospitalId) return;
-		// Load all categories for hospital so table can show category/sub-category names for every service item
-		categories = await getCategory({ hospitalId });
+	// Load categories for this hospital and current branch so table can show branch-specific category/sub-category names
+	categories = await getCategory({
+		hospitalId,
+		branchId: branchIdForCategory
+	});
 	}
 
 	async function fetchSubCategories() {
@@ -288,7 +303,7 @@
 		}
 	}
 
-	$effect(() => {
+$effect(() => {
 		const _hospital = hospitalId;
 		const _branch = selectedBranchId;
 		if (!_hospital) return;
@@ -299,9 +314,12 @@
 		})();
 	});
 
-	async function onCategoryChange() {
-		await fetchSubCategories();
-		await fetchServiceItems(true);
+	function onCategoryChange() {
+		const available = filteredSubCategories;
+		if (!available.find((sc) => String(sc.id) === selectedSubCategoryId)) {
+			selectedSubCategoryId =
+				available.length > 0 ? String(available[0].id) : '';
+		}
 	}
 
 	async function onSubCategoryChange() {
@@ -505,6 +523,22 @@
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
+						<label class="text-sm font-medium">Category</label>
+						<DaisyUiSelect
+							className="d-select d-select-bordered d-select-sm w-full"
+							bind:value={selectedCategoryId}
+							onChange={onCategoryChange}
+							optionHeader="All categories"
+						>
+							{#each categories as cat (cat.id)}
+								<option value={String(cat.id)}
+									>{cat.categoryName ??
+										`Category ${cat.id}`}</option
+								>
+							{/each}
+						</DaisyUiSelect>
+					</div>
+					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">Sub-category</label>
 						<DaisyUiSelect
 							className="d-select d-select-bordered d-select-sm w-full"
@@ -512,7 +546,7 @@
 							onChange={onSubCategoryChange}
 							optionHeader="Select sub-category"
 						>
-							{#each subCategories as sc (sc.id)}
+							{#each filteredSubCategories as sc (sc.id)}
 								<option value={String(sc.id)}
 									>{sc.subCategoryName ??
 										`Sub-category ${sc.id}`}</option
@@ -601,7 +635,7 @@
 					bind:currentPage={currentPage}
 					totalRowCount={total}
 					showRefreshButton={true}
-					emptyMessage={m.no_records_found()}
+					emptyMessage={m.no_records_found?.() ?? 'No records found'}
 					enableColumnFilters={true}
 					useRemoteFilters={true}
 					actionsHeader={m.actions()}

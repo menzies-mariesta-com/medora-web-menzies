@@ -29,7 +29,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
-	const toastService = new ToastService();
+		const toastService = new ToastService();
 
 	let { data } = $props();
 
@@ -171,7 +171,7 @@
 		},
 		{
 			id: 'subCategoryName',
-			header: m.name(),
+			header: 'Sub-category',
 			widthClass: 'w-64 min-w-[12rem]',
 			filterable: false,
 			field: 'subCategoryName'
