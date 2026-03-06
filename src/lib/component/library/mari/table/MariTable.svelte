@@ -144,7 +144,13 @@ export type MariTableColumn<T = any> = {
 						const cell = getCellValue(row, column, index);
 						const valueStr =
 							cell == null ? '' : String(cell).toLowerCase();
-						if (!valueStr.includes(filter)) {
+
+						// For select filters, require an exact match; for text filters, use substring match.
+						if (column.filterType === 'select') {
+							if (valueStr !== filter) {
+								return false;
+							}
+						} else if (!valueStr.includes(filter)) {
 							return false;
 						}
 					}
@@ -215,6 +221,50 @@ export type MariTableColumn<T = any> = {
 		dispatch('rowClick', row);
 	}
 
+	function getVisiblePages() {
+		const pages: Array<{ type: 'page' | 'ellipsis'; page?: number }> = [];
+
+		const maxButtons = 5;
+
+		if (totalPages <= maxButtons) {
+			for (let p = 1; p <= totalPages; p += 1) {
+				pages.push({ type: 'page', page: p });
+			}
+			return pages;
+		}
+
+		// Always show first and last page, and a sliding window around currentPage
+		const windowSize = 3;
+		let start = Math.max(2, currentPage - 1);
+		let end = Math.min(totalPages - 1, currentPage + 1);
+
+		if (start <= 2) {
+			start = 2;
+			end = Math.min(start + windowSize - 1, totalPages - 1);
+		} else if (end >= totalPages - 1) {
+			end = totalPages - 1;
+			start = Math.max(end - windowSize + 1, 2);
+		}
+
+		pages.push({ type: 'page', page: 1 });
+
+		if (start > 2) {
+			pages.push({ type: 'ellipsis' });
+		}
+
+		for (let p = start; p <= end; p += 1) {
+			pages.push({ type: 'page', page: p });
+		}
+
+		if (end < totalPages - 1) {
+			pages.push({ type: 'ellipsis' });
+		}
+
+		pages.push({ type: 'page', page: totalPages });
+
+		return pages;
+	}
+
 function handleFilterInputEvent(columnId: string, event: Event) {
 		const target = event.currentTarget as
 			| HTMLInputElement
@@ -267,13 +317,22 @@ function handleFilterInputEvent(columnId: string, event: Event) {
 				>
 					<LucideChevronLeft className="size-5" />
 				</DaisyUiPaginationItem>
-				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
-					<DaisyUiPaginationItem
-						className="d-btn-sm"
-						onClick={() => goToPage(p)}
-					>
-						{p}
-					</DaisyUiPaginationItem>
+				{#each getVisiblePages() as item, i (item.type === 'page' ? `page-${item.page}` : `ellipsis-${i}`)}
+					{#if item.type === 'page'}
+						<DaisyUiPaginationItem
+							className={`d-btn-sm ${item.page === currentPage ? 'd-btn-active d-btn-primary' : ''}`}
+							onClick={() => item.page && goToPage(item.page)}
+						>
+							{item.page}
+						</DaisyUiPaginationItem>
+					{:else}
+						<DaisyUiPaginationItem
+							className="d-btn-sm d-btn-disabled"
+							disabled={true}
+						>
+							…
+						</DaisyUiPaginationItem>
+					{/if}
 				{/each}
 				<DaisyUiPaginationItem
 					onClick={() => goToPage(currentPage + 1)}
