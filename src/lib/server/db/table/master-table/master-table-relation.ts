@@ -22,6 +22,7 @@ import {
 	countryTable,
 	craftGroupTable,
 	departmentTable,
+	documentTypeTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -202,8 +203,19 @@ export const statusTableRelations = relations(
 		statusTaggings: many(statusTaggingTable),
 		statusTaggingTypes: many(statusTaggingTypeTable),
 		craftGroups: many(craftGroupTable),
+		documentTypes: many(documentTypeTable),
 		staffDetails: many(staffDetailTable),
 		patients: many(patientTable)
+	})
+);
+
+export const documentTypeTableRelations = relations(
+	documentTypeTable,
+	({ one }) => ({
+		status: one(statusTable, {
+			fields: [documentTypeTable.statusId],
+			references: [statusTable.id]
+		})
 	})
 );
 

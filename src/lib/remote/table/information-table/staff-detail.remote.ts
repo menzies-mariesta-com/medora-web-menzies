@@ -34,6 +34,23 @@ export const getStaffDetailWithRelations = query(async () => {
 	});
 });
 
+export type StaffDetailWithRelations = Awaited<
+	ReturnType<typeof getStaffDetailWithRelations>
+>[number];
+
+export const getStaffDetailByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return ensureDb().query.staffDetailTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				bloodType: true,
+				status: true
+			}
+		});
+	}
+);
+
 // get count
 export const getStaffDetailCount = query(
 	async (): Promise<number> => {
@@ -73,7 +90,7 @@ export const getStaffDetailPaginated = query(
 	}
 );
 
-// get one
+// get one (without relations)
 export const getStaffDetailById = query(
 	'unchecked' as const,
 	async ({

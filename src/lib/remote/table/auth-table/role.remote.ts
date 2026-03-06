@@ -29,6 +29,10 @@ export const getRoleWithRelations = query(async () => {
 	});
 });
 
+export type RoleWithRelations = Awaited<
+	ReturnType<typeof getRoleWithRelations>
+>[number];
+
 // get count
 export const getRoleCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()

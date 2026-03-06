@@ -34,6 +34,10 @@ export const getStatusTaggingWithRelations = query(async () => {
 	});
 });
 
+export type StatusTaggingWithRelations = Awaited<
+	ReturnType<typeof getStatusTaggingWithRelations>
+>[number];
+
 // get count
 export const getStatusTaggingCount = query(
 	async (): Promise<number> => {

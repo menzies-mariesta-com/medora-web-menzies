@@ -1565,6 +1565,19 @@ export async function seedMasterTables() {
 	`);
 	console.log('Seeded: severity');
 
+	// 20. Document types
+	await db.execute(sql`
+		INSERT INTO document_type (id, name, status_id)
+		VALUES
+			(1, 'Consent', 1),
+			(2, 'Form', 1),
+			(3, 'Instruction', 1),
+			(4, 'Certificate', 1),
+			(5, 'Help', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: document_type');
+
 	console.log('Master tables seeding completed.');
 }
 
