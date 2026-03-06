@@ -70,6 +70,18 @@ import {
 		onToggleNavbar?: () => void;
 	} = $props();
 
+	const orderedModuleList = $derived.by(() =>
+		[...moduleList].sort(
+			(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
+		)
+	);
+
+	const orderedPageList = $derived.by(() =>
+		[...pageList].sort(
+			(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
+		)
+	);
+
 	const profilePhotoDisplayUrl = $derived(
 		getStaffPhotoDisplayUrl(staffPhotoUrl)
 	);
@@ -113,7 +125,7 @@ import {
 	const searchEntries = $derived.by(() => {
 		const q = searchQuery.trim().toLowerCase();
 		const entries: SearchEntry[] = [];
-		for (const p of pageList) {
+		for (const p of orderedPageList) {
 			if (p.parentId != null) continue;
 			const mod = moduleList.find((m) => m.id === p.moduleId);
 			entries.push({ page: p, moduleName: mod?.name ?? '' });
@@ -161,7 +173,9 @@ import {
 	// Determine which module is "active" based on the current DB page URL.
 	const activeModuleId = $derived.by(() => {
 		if (!activeDbPageUrl) return null;
-		const activePage = pageList.find((p) => p.pageUrl === activeDbPageUrl);
+		const activePage = orderedPageList.find(
+			(p) => p.pageUrl === activeDbPageUrl
+		);
 		return activePage?.moduleId ?? null;
 	});
 
@@ -353,7 +367,7 @@ import {
 		</DaisyUiTooltip>
 	{/if}
 	<div class="flex flex-1 flex-wrap gap-3">
-		{#each moduleList as m (m.id)}
+		{#each orderedModuleList as m (m.id)}
 			<div>
 				<DaisyUiDropdown>
 					<DaisyUiDropdownButton
@@ -362,11 +376,11 @@ import {
 						{m?.name}
 					</DaisyUiDropdownButton>
 					<DaisyUiDropdownContent
-						className="max-h-96 min-h-0 min-w-0 flex flex-row gap-2 overflow-x-hidden overflow-y-auto bg-accent/50 z-10000"
+						className="max-h-96 flex w-fit min-w-48 flex-col gap-2 overflow-y-auto bg-accent/50 z-100 p-2"
 					>
-						{#each pageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
+						{#each orderedPageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
 							<DaisyUiButton
-								className={`w-full min-w-0 justify-start truncate text-left ${isPageActive(p) ? 'd-btn-accent' : ''}`}
+								className={`w-full justify-start whitespace-nowrap text-left d-btn-wide  ${isPageActive(p) ? 'd-btn-accent' : ''}`}
 								onClick={() => {
 									const url =
 										hospitalId && p.pageUrl != null
