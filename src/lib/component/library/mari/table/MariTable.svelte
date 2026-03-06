@@ -38,6 +38,10 @@ export type MariTableColumn<T = any> = {
 	headerClass?: string;
 	cellClass?: string;
 	/**
+	 * Optional per-row cell class generator.
+	 */
+	cellClassGetter?: (row: T, rowIndex: number) => string;
+	/**
 	 * Whether this column should show a filter control when column filters are enabled.
 	 * Defaults to true.
 	 */
@@ -74,6 +78,8 @@ export type MariTableColumn<T = any> = {
 		edit: RowEventDetail;
 		delete: RowEventDetail;
 		select: RowEventDetail;
+		pageSizeChange: number;
+		pageChange: number;
 		filtersChange: {
 			columnId: string;
 			value: string;
@@ -85,7 +91,9 @@ export type MariTableColumn<T = any> = {
 		rows,
 		columns,
 		pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
-		initialPageSize = 10,
+		pageSize = $bindable('10'),
+		currentPage = $bindable(1),
+		totalRowCount,
 		isLoading = false,
 		showRefreshButton = true,
 		refreshTooltip = 'Refresh',
@@ -99,7 +107,10 @@ export type MariTableColumn<T = any> = {
 		rows: any[];
 		columns: MariTableColumn[];
 		pageSizeOptions?: number[];
-		initialPageSize?: number;
+		pageSize?: string;
+		currentPage?: number;
+		/** When set with useRemoteFilters, used for "Showing X–Y of Z" and pagination. */
+		totalRowCount?: number;
 		isLoading?: boolean;
 		showRefreshButton?: boolean;
 		refreshTooltip?: string;
@@ -111,11 +122,9 @@ export type MariTableColumn<T = any> = {
 		useRemoteFilters?: boolean;
 	}>();
 
-	let currentPage = $state(1);
-	let pageSizeStr = $state(String(initialPageSize));
 	let columnFilters = $state<Record<string, string>>({});
 
-	const pageSize = $derived(Number(pageSizeStr) || 10);
+	const pageSizeNum = $derived(Number(pageSize) || 10);
 
 	const hasActionsColumn = $derived(
 		showRowActions || actionsVariant !== 'none'
@@ -143,21 +152,27 @@ export type MariTableColumn<T = any> = {
 				})
 	);
 
-	const total = $derived(filteredRows.length);
+	const total = $derived(
+		useRemoteFilters && totalRowCount != null
+			? totalRowCount
+			: filteredRows.length
+	);
 	const totalPages = $derived(
-		total === 0 ? 1 : Math.ceil(total / pageSize)
+		total === 0 ? 1 : Math.ceil(total / pageSizeNum)
 	);
 
 	const pageStart = $derived(
-		total === 0 ? 0 : (currentPage - 1) * pageSize + 1
+		total === 0 ? 0 : (currentPage - 1) * pageSizeNum + 1
 	);
-	const pageEnd = $derived(Math.min(currentPage * pageSize, total));
+	const pageEnd = $derived(Math.min(currentPage * pageSizeNum, total));
 
 	const pagedRows = $derived(
-		filteredRows.slice(
-			(currentPage - 1) * pageSize,
-			currentPage * pageSize
-		)
+		useRemoteFilters
+			? filteredRows
+			: filteredRows.slice(
+					(currentPage - 1) * pageSizeNum,
+					currentPage * pageSizeNum
+				)
 	);
 
 	function getCellValue(
@@ -184,10 +199,12 @@ export type MariTableColumn<T = any> = {
 	function goToPage(p: number) {
 		if (p < 1 || p > totalPages || p === currentPage) return;
 		currentPage = p;
+		dispatch('pageChange', p);
 	}
 
 	function handlePageSizeChange() {
 		currentPage = 1;
+		dispatch('pageSizeChange', pageSizeNum);
 	}
 
 	function handleRefresh() {
@@ -232,7 +249,7 @@ function handleFilterInputEvent(columnId: string, event: Event) {
 				<span class="text-sm">per page</span>
 				<DaisyUiSelect
 					className="d-select d-select-sm w-20"
-					bind:value={pageSizeStr}
+					bind:value={pageSize}
 					onChange={handlePageSizeChange}
 					disabled={isLoading}
 				>
@@ -415,7 +432,9 @@ function handleFilterInputEvent(columnId: string, event: Event) {
 								{/if}
 
 								{#each columns as column (column.id)}
-									<td class={column.cellClass ?? column.widthClass}>
+									<td
+										class={`${column.widthClass ?? ''} ${column.cellClass ?? ''} ${column.cellClassGetter ? column.cellClassGetter(row, index) : ''}`.trim()}
+									>
 										{getCellValue(row, column, index)}
 									</td>
 								{/each}

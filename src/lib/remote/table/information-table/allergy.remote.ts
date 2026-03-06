@@ -22,7 +22,7 @@ export const getAllergies = query(
 			.select()
 			.from(table.allergyTable)
 			.where(eq(table.allergyTable.statusId, StatusEnum.ACTIVE))
-			.orderBy(table.allergyTable.name);
+			.orderBy(table.allergyTable.id);
 	}
 );
 
@@ -65,7 +65,7 @@ export const getAllergyPaginated = query(
 				.select()
 				.from(table.allergyTable)
 				.where(whereExpr)
-				.orderBy(table.allergyTable.name)
+				.orderBy(table.allergyTable.id)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()

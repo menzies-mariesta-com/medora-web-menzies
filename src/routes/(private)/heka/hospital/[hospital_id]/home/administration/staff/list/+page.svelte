@@ -33,6 +33,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -40,7 +41,7 @@
 	let staffResult =
 		$state<PaginatedResult<StaffWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state('5');
+	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let searchInput = $state('');
 	let tableFilters = $state<Record<string, string>>({});
 let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -103,16 +104,6 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 			if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
 		};
 	});
-
-	function handlePageSizeChange() {
-		currentPage = 1;
-		fetchStaff();
-	}
-
-	function goToPage(p: number) {
-		currentPage = p;
-		fetchStaff();
-	}
 
 	async function handleDelete(staffId: string) {
 		try {
@@ -319,6 +310,9 @@ const staffColumns: MariTableColumn<StaffWithRelations>[] = [
 			rows={staffList}
 			columns={staffColumns}
 			isLoading={isLoading}
+			bind:pageSize={filterPageSize}
+			bind:currentPage={currentPage}
+			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}
 			emptyMessage={m.no_staff_found()}
@@ -327,6 +321,11 @@ const staffColumns: MariTableColumn<StaffWithRelations>[] = [
 			enableColumnFilters={true}
 			useRemoteFilters={true}
 			on:refresh={() => fetchStaff(true)}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchStaff();
+			}}
+			on:pageChange={() => fetchStaff()}
 			on:filtersChange={(event) => {
 				if (filterDebounceTimeout) {
 					clearTimeout(filterDebounceTimeout);

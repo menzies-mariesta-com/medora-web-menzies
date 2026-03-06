@@ -29,6 +29,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -46,6 +47,8 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 		hospitalId: string;
 	} | null>(null);
 	let vitals = $state<PatientVitalWithVisit[]>([]);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingVitals = $state(false);
 	const toastService = new ToastService();
@@ -214,13 +217,13 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 	}
 
 	const vitalColumns: MariTableColumn<PatientVitalWithVisit>[] = [
-	{
-		id: 'visitNo',
-		header: 'Visit No',
-		widthClass: 'w-28 min-w-[7rem]',
-		filterable: false,
-		format: (_value, row) => row.visit?.visitNo?.trim() || '–'
-	},
+		{
+			id: 'visitNo',
+			header: 'Visit No',
+			widthClass: 'w-40',
+			filterable: false,
+			format: (_value, row) => row.visit?.visitNo?.trim() || '–'
+		},
 		{
 			id: 'date',
 			header: 'Date',
@@ -231,14 +234,14 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 		},
 		{
 			id: 'height',
-			header: 'Ht (cm)',
+			header: 'Height (cm)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.height)
 		},
 		{
 			id: 'weight',
-			header: 'Wt (kg)',
+			header: 'Weight (kg)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.weight)
@@ -248,43 +251,55 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 			header: 'BP (mmHg)',
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
-		format: (_value, row) =>
-			`${formatVital(row.bpSystolic)}/${formatVital(row.bpDiastolic)}`
+			format: (_value, row) =>
+				`${formatVital(row.bpSystolic)}/${formatVital(
+					row.bpDiastolic
+				)}`,
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bpSystolic, 'bpSystolic') ||
+				vitalTextClass(row.bpDiastolic, 'bpDiastolic')
 		},
 		{
 			id: 'pulse',
 			header: 'P (bpm)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
-			format: (_value, row) => formatVital(row.pulse)
+			format: (_value, row) => formatVital(row.pulse),
+			cellClassGetter: (row) => vitalTextClass(row.pulse, 'pulse')
 		},
 		{
 			id: 'temperature',
 			header: 'T (°C)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
-			format: (_value, row) => formatVital(row.temperature)
+			format: (_value, row) => formatVital(row.temperature),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.temperature, 'temperature')
 		},
 		{
 			id: 'spO2',
 			header: 'SpO₂ (%)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
-			format: (_value, row) => formatVital(row.spO2)
+			format: (_value, row) => formatVital(row.spO2),
+			cellClassGetter: (row) => vitalTextClass(row.spO2, 'spO2')
 		},
 		{
 			id: 'respiration',
 			header: 'R (/min)',
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
-			format: (_value, row) => formatVital(row.respiration)
+			format: (_value, row) => formatVital(row.respiration),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.respiration, 'respiration')
 		},
 		{
 			id: 'rbs',
 			header: 'RBS (mg/dL)',
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
-			format: (_value, row) => formatVital(row.rbs)
+			format: (_value, row) => formatVital(row.rbs),
+			cellClassGetter: (row) => vitalTextClass(row.rbs, 'rbs')
 		},
 		{
 			id: 'symptom',
@@ -354,6 +369,8 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 								rows={vitals}
 								columns={vitalColumns}
 								isLoading={isLoadingVitals}
+								bind:pageSize={pageSizeStr}
+								bind:currentPage={currentPage}
 								showRefreshButton={false}
 								emptyMessage="No vitals."
 								showRowActions={true}

@@ -160,11 +160,25 @@ export const getActivePatientAllergiesByPatientId = query(
 /** Set all patient allergies for a patient to inactive (used when adding "No Known Allergy"). */
 export const inactivateAllPatientAllergiesForPatient = command(
 	'unchecked' as const,
-	async ({ patientId }: { patientId: string }): Promise<void> => {
+	async ({
+		patientId,
+		deactivationRemark
+	}: {
+		patientId: string;
+		deactivationRemark: string;
+	}): Promise<void> => {
 		await ensureDb()
 			.update(table.patientAllergyTable)
-			.set({ statusId: StatusEnum.INACTIVE })
-			.where(eq(table.patientAllergyTable.patientId, patientId));
+			.set({
+				statusId: StatusEnum.INACTIVE,
+				deactivationRemark: deactivationRemark.trim() || null
+			})
+			.where(
+				and(
+					eq(table.patientAllergyTable.patientId, patientId),
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
+				)
+			);
 		getPatientAllergies().refresh();
 	}
 );
@@ -174,18 +188,24 @@ export const inactivateOtherPatientAllergiesForPatient = command(
 	'unchecked' as const,
 	async ({
 		patientId,
-		excludeId
+		excludeId,
+		deactivationRemark
 	}: {
 		patientId: string;
 		excludeId: number;
+		deactivationRemark: string;
 	}): Promise<void> => {
 		await ensureDb()
 			.update(table.patientAllergyTable)
-			.set({ statusId: StatusEnum.INACTIVE })
+			.set({
+				statusId: StatusEnum.INACTIVE,
+				deactivationRemark: deactivationRemark.trim() || null
+			})
 			.where(
 				and(
 					eq(table.patientAllergyTable.patientId, patientId),
-					ne(table.patientAllergyTable.id, excludeId)
+					ne(table.patientAllergyTable.id, excludeId),
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
 				)
 			);
 		getPatientAllergies().refresh();
@@ -197,18 +217,24 @@ export const inactivatePatientAllergiesByAllergyIdForPatient = command(
 	'unchecked' as const,
 	async ({
 		patientId,
-		allergyId
+		allergyId,
+		deactivationRemark
 	}: {
 		patientId: string;
 		allergyId: number;
+		deactivationRemark: string;
 	}): Promise<void> => {
 		await ensureDb()
 			.update(table.patientAllergyTable)
-			.set({ statusId: StatusEnum.INACTIVE })
+			.set({
+				statusId: StatusEnum.INACTIVE,
+				deactivationRemark: deactivationRemark.trim() || null
+			})
 			.where(
 				and(
 					eq(table.patientAllergyTable.patientId, patientId),
-					eq(table.patientAllergyTable.allergyId, allergyId)
+					eq(table.patientAllergyTable.allergyId, allergyId),
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
 				)
 			);
 		getPatientAllergies().refresh();
@@ -227,6 +253,9 @@ export const createPatientAllergies = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getPatientAllergies().refresh();
+		getPatientAllergiesByPatientIdWithRelations({
+			patientId: payload.patientId
+		}).refresh();
 		return row;
 	}
 );
@@ -245,6 +274,9 @@ export const updatePatientAllergies = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getPatientAllergies().refresh();
+		getPatientAllergiesByPatientIdWithRelations({
+			patientId: row.patientId
+		}).refresh();
 		return row;
 	}
 );

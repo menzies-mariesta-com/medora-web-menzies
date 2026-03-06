@@ -38,6 +38,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const stringUtil = new StringUtil();
 	const routerUtil = new RouterUtil();
@@ -47,8 +48,7 @@
 let patientResult =
 	$state<PaginatedResult<PatientWithRelations> | null>(null);
 let currentPage = $state(1);
-let filterPageSize = $state('5');
-let searchInput = $state('');
+let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 let isLoading = $state(false);
 let tableFilters = $state<Record<string, string>>({});
 let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -74,7 +74,6 @@ let patientList = $derived(patientResult?.data ?? []);
 			patientResult = await getPatientPaginated({
 				page: currentPage,
 				pageSize,
-				search: searchInput.trim() || undefined,
 				hospitalId: hospitalId ?? undefined,
 				patientCode: tableFilters.code?.trim() || undefined,
 				patientName: tableFilters.name?.trim() || undefined,
@@ -95,7 +94,6 @@ let patientList = $derived(patientResult?.data ?? []);
 		null;
 	let isFirstSearchEffect = true;
 	$effect(() => {
-		const _query = searchInput;
 		if (isFirstSearchEffect) {
 			isFirstSearchEffect = false;
 			return;
@@ -308,6 +306,9 @@ let patientList = $derived(patientResult?.data ?? []);
 			rows={patientList}
 			columns={patientColumns}
 			isLoading={isLoading}
+			bind:pageSize={filterPageSize}
+			bind:currentPage={currentPage}
+			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip="Refresh data"
 			emptyMessage="No patients found."
@@ -316,6 +317,11 @@ let patientList = $derived(patientResult?.data ?? []);
 			enableColumnFilters={true}
 			useRemoteFilters={true}
 			on:refresh={() => fetchPatients({ bustCache: true })}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchPatients();
+			}}
+			on:pageChange={() => fetchPatients()}
 			on:filtersChange={(event) => {
 				if (filterDebounceTimeout) {
 					clearTimeout(filterDebounceTimeout);
