@@ -276,12 +276,7 @@
 </svelte:head>
 
 <div class="flex flex-col gap-4">
-	<div class="flex flex-col gap-1">
-		<p class="text-sm text-base-content/70">
-			Add and view patient allergies across all visits.
-		</p>
-	</div>
-
+	
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}

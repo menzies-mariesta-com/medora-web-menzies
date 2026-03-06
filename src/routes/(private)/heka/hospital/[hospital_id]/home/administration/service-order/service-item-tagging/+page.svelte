@@ -484,7 +484,7 @@
 						bind:currentPage={currentPage}
 						totalRowCount={total}
 						showRefreshButton={true}
-						emptyMessage={m.no_records_found()}
+						emptyMessage={m.no_records_found?.() ?? 'No records found'}
 						enableColumnFilters={true}
 						useRemoteFilters={true}
 						actionsHeader={m.actions()}
