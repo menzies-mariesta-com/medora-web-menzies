@@ -221,7 +221,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 			id: 'visitNo',
 			header: 'Visit No',
 			widthClass: 'w-40',
-			filterable: false,
+			filterable: true,
 			format: (_value, row) => row.visit?.visitNo?.trim() || '–'
 		},
 		{
@@ -336,9 +336,9 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 		/>
 	{:else}
 		<DaisyUiCard>
-			<DaisyUiCardBody>
+			<DaisyUiCardBody className="p-3 m-0 ">
 				<div
-					class="mb-5 flex flex-wrap items-center justify-between gap-3"
+					class="mb-2 flex flex-wrap items-center justify-between gap-3"
 				>
 					<DaisyUiCardBodyTitle className="mb-0">
 						Patient vitals (all visits)
@@ -372,7 +372,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 								showRowActions={true}
 								actionsHeader="Actions"
 								actionsVariant="none"
-								enableColumnFilters={false}
+								enableColumnFilters={true}
 							>
 								<svelte:fragment slot="rowActions" let:row>
 									<td class="w-24 shrink-0 text-right">
