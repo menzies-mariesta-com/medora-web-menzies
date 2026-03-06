@@ -200,12 +200,28 @@
 			: '–';
 	}
 
+	const statusFilterOptions = [
+		{ label: 'Active', value: 'Active' },
+		{ label: 'Inactive', value: 'Inactive' }
+	];
+
+	function getSeverityFilterOptions() {
+		const names = Array.from(
+			new Set(
+				patientAllergies
+					.map((row) => row.severity?.name)
+					.filter((name): name is string => !!name)
+			)
+		);
+		return names.map((name) => ({ label: name, value: name }));
+	}
+
 	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] = [
 		{
 			id: 'visitNo',
 			header: 'Visit No',
 			widthClass: 'w-40',
-			filterable: false,
+			filterable: true,
 			format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
 		},
 		{
@@ -218,16 +234,20 @@
 		{
 			id: 'status',
 			header: 'Status',
-			widthClass: 'w-24 min-w-[6rem]',
-			filterable: false,
+			widthClass: 'w-28',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
 		},
 		{
 			id: 'severity',
 			header: 'Severity',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: false,
+			widthClass: 'w-30',
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: getSeverityFilterOptions,
 			format: (_value, row) => formatText(row.severity?.name ?? null)
 		},
 		{
@@ -294,8 +314,8 @@
 		/>
 	{:else}
 		<DaisyUiCard>
-			<DaisyUiCardBody>
-				<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+			<DaisyUiCardBody className="p-3 m-0">
+				<div class="mb-2 flex flex-wrap items-center justify-between gap-3">
 					<DaisyUiCardBodyTitle className="mb-0">
 						Patient allergies (all visits)
 					</DaisyUiCardBodyTitle>
@@ -328,7 +348,7 @@
 							showRowActions={true}
 							actionsHeader="Actions"
 							actionsVariant="none"
-							enableColumnFilters={false}
+							enableColumnFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
 									fetchAllergies(visit.patientId, visit.hospitalId);
