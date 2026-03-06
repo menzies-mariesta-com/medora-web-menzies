@@ -23,6 +23,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (!open && dialogEl) {
+			dialogEl.close();
+		}
+	});
+
 	function handleClose() {
 		onClose?.();
 	}

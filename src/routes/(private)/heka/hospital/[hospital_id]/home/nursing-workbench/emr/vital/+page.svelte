@@ -317,11 +317,7 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 </svelte:head>
 
 <div class="flex flex-col gap-4">
-	<div class="flex flex-col gap-1">
-		<p class="text-sm text-base-content/70">
-			Record vital signs and view previous measurements.
-		</p>
-	</div>
+	
 
 	{#if !visitId}
 		<DaisyUiAlert
