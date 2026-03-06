@@ -27,10 +27,15 @@ export const getPatientAttachment = query(
 export const getPatientAttachmentWithRelations = query(async () => {
 	return ensureDb().query.patientAttachmentTable.findMany({
 		with: {
-			patient: true
+			patient: true,
+			status: true
 		}
 	});
 });
+
+export type PatientAttachmentWithRelations = Awaited<
+	ReturnType<typeof getPatientAttachmentWithRelations>
+>[number];
 
 // get count
 export const getPatientAttachmentCount = query(

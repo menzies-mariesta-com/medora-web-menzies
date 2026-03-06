@@ -33,6 +33,10 @@ export const getHospitalDepartmentWithRelations = query(async () => {
 	});
 });
 
+export type HospitalDepartmentWithRelations = Awaited<
+	ReturnType<typeof getHospitalDepartmentWithRelations>
+>[number];
+
 // get count
 export const getHospitalDepartmentCount = query(
 	async (): Promise<number> => {

@@ -33,6 +33,8 @@ import type {
 	serviceTaggingTable,
 	storeTable,
 	allergyTable,
+	documentTable,
+	patientDocumentTable
 } from './information-table';
 
 // Information Tables (alphabetical)
@@ -292,3 +294,16 @@ export type StoreSchemaUpdate = Partial<StoreSchemaInsert>;
 export type AllergySchema = InferSelectModel<typeof allergyTable>;
 export type AllergySchemaInsert = InferInsertModel<typeof allergyTable>;
 export type AllergySchemaUpdate = Partial<AllergySchemaInsert>;
+
+export type DocumentSchema = InferSelectModel<typeof documentTable>;
+export type DocumentSchemaInsert = InferInsertModel<typeof documentTable>;
+export type DocumentSchemaUpdate = Partial<DocumentSchemaInsert>;
+
+export type PatientDocumentSchema = InferSelectModel<
+	typeof patientDocumentTable
+>;
+export type PatientDocumentSchemaInsert = InferInsertModel<
+	typeof patientDocumentTable
+>;
+export type PatientDocumentSchemaUpdate =
+	Partial<PatientDocumentSchemaInsert>;

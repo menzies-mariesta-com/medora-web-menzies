@@ -2,12 +2,10 @@ import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
-	ModuleSchema,
 	PageSchema,
 	PageSchemaInsert,
 	PageSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { StatusSchema } from '$lib/server/db/table/master-table/master-table-schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
@@ -15,11 +13,6 @@ import type {
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
-
-export type PageWithRelations = PageSchema & {
-	module: ModuleSchema | null;
-	status: StatusSchema | null;
-};
 
 // get all
 export const getPage = query(async (): Promise<PageSchema[]> => {
@@ -76,14 +69,18 @@ export const getPageById = query(
 
 // get all with related data (module, status, etc.)
 export const getPageWithRelations = query(
-	async (): Promise<PageWithRelations[]> =>
+	async () =>
 		ensureDb().query.pageTable.findMany({
 			with: {
 				module: true,
 				status: true
 			}
-		}) as Promise<PageWithRelations[]>
+		})
 );
+
+export type PageWithRelations = Awaited<
+	ReturnType<typeof getPageWithRelations>
+>[number];
 
 // create
 export const createPage = command(

@@ -23,9 +23,38 @@ import {
 } from '$lib/server/db/table/auth-table/auth-table';
 import { getHospitalById } from '$lib/remote/table/information-table/hospital.remote';
 
-export type PatientWithRelations = NonNullable<
-	Awaited<ReturnType<typeof getPatientByIdWithRelations>>
->;
+const patientWithRelationsWith = {
+	user: true,
+	title: true,
+	hospital: true,
+	religion: true,
+	maritalStatus: true,
+	gender: true,
+	identityType: true,
+	bloodType: true,
+	city: true,
+	state: true,
+	country: true,
+	status: true,
+	phonePrimaryCountry: true,
+	phoneSecondaryCountry: true,
+	attachments: true,
+	insurances: { with: { insurance: true } },
+	allergies: true,
+	fatherTitle: true,
+	guardianTitle: true,
+	guardianPhoneCountry: true,
+	postalCode: true,
+	nationality: true,
+	visits: true,
+	appointments: true,
+	diagnoses: true,
+	patientDocuments: true
+} as const;
+
+export type PatientWithRelations = Awaited<
+	ReturnType<typeof getPatientWithRelations>
+>[number];
 const BRANCH_ALL_VALUE = '__all__';
 
 function getSelectedScopeFromRequest(): {
@@ -61,22 +90,7 @@ export const getPatient = query(
 // get all with relations
 export const getPatientWithRelations = query(async () => {
 	return ensureDb().query.patientTable.findMany({
-		with: {
-			user: true,
-			hospital: true,
-			maritalStatus: true,
-			gender: true,
-			identityType: true,
-			bloodType: true,
-			city: true,
-			state: true,
-			country: true,
-			status: true,
-			attachments: true,
-			insurances: { with: { insurance: true } },
-			allergies: true,
-			fatherTitle: true
-		}
+		with: patientWithRelationsWith
 	});
 });
 
@@ -142,14 +156,15 @@ export const getPatientPaginated = query(
 			);
 		}
 		if (patientName) {
+			const pattern = `%${patientName}%`;
 			conditions.push(
-				and(
-					ilike(
-						sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
-						`%${patientName}%`
-					),
-					ne(table.patientTable.nameMasking, YesNoEnum.YES)
+				ilike(
+					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
+					pattern
 				)
+			);
+			conditions.push(
+				ne(table.patientTable.nameMasking, YesNoEnum.YES)
 			);
 		}
 		if (patientPhonePrimary) {
@@ -189,11 +204,20 @@ export const getPatientPaginated = query(
 					state: true,
 					country: true,
 					status: true,
+					phonePrimaryCountry: true,
+					phoneSecondaryCountry: true,
 					attachments: true,
 					insurances: { with: { insurance: true } },
 					allergies: true,
 					fatherTitle: true,
-					phonePrimaryCountry: true
+					guardianTitle: true,
+					guardianPhoneCountry: true,
+					postalCode: true,
+					nationality: true,
+					visits: true,
+					appointments: true,
+					diagnoses: true,
+					patientDocuments: true
 				},
 				limit,
 				offset
@@ -317,25 +341,7 @@ export const getDuplicatePatients = query(
 
 		return ensureDb().query.patientTable.findMany({
 			where: and(...conditions),
-			with: {
-				user: true,
-				title: true,
-				fatherTitle: true,
-				hospital: true,
-				religion: true,
-				maritalStatus: true,
-				gender: true,
-				identityType: true,
-				bloodType: true,
-				city: true,
-				state: true,
-				country: true,
-				status: true,
-				attachments: true,
-				insurances: { with: { insurance: true } },
-				allergies: true,
-				phonePrimaryCountry: true
-			}
+			with: patientWithRelationsWith
 		});
 	}
 );

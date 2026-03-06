@@ -6,9 +6,6 @@ import type {
 	PatientAllergiesSchemaInsert,
 	PatientAllergiesSchemaUpdate
 } from '$lib/server/db/schema-type';
-import type { AllergySchema } from '$lib/server/db/schema-type';
-import type { SeveritySchema } from '$lib/server/db/schema-type';
-import type { PatientVisitSchema } from '$lib/server/db/schema-type';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -34,16 +31,15 @@ export const getPatientAllergiesWithRelations = query(async () => {
 			patient: true,
 			allergy: true,
 			severity: true,
-			visit: true
+			visit: true,
+			status: true
 		}
 	});
 });
 
-export type PatientAllergyWithRelations = PatientAllergiesSchema & {
-	allergy: AllergySchema | null;
-	severity: SeveritySchema | null;
-	visit: PatientVisitSchema | null;
-};
+export type PatientAllergyWithRelations = Awaited<
+	ReturnType<typeof getPatientAllergiesWithRelations>
+>[number];
 
 /** Get all patient allergies (active and inactive) by patientId with allergy, severity, and visit (for EMR allergy page). */
 export const getPatientAllergiesByPatientIdWithRelations = query(
@@ -53,15 +49,18 @@ export const getPatientAllergiesByPatientIdWithRelations = query(
 	}: {
 		patientId: string;
 	}): Promise<PatientAllergyWithRelations[]> => {
-		return ensureDb().query.patientAllergyTable.findMany({
+		const rows = await ensureDb().query.patientAllergyTable.findMany({
 			where: (t, { eq }) => eq(t.patientId, patientId),
 			with: {
+				patient: true,
 				allergy: true,
 				severity: true,
-				visit: true
+				visit: true,
+				status: true
 			},
 			orderBy: (t, { desc }) => desc(t.id)
-		}) as Promise<PatientAllergyWithRelations[]>;
+		});
+		return rows as PatientAllergyWithRelations[];
 	}
 );
 

@@ -14,6 +14,32 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
+export const getModuleWithRelations = query(async () => {
+	return ensureDb().query.moduleTable.findMany({
+		with: {
+			status: true,
+			pages: true
+		}
+	});
+});
+
+export const getModuleByIdWithRelations = query(
+	'unchecked' as const,
+	async ({ id }: { id: number }) => {
+		return ensureDb().query.moduleTable.findFirst({
+			where: (t, { eq }) => eq(t.id, id),
+			with: {
+				status: true,
+				pages: true
+			}
+		});
+	}
+);
+
+export type ModuleWithRelations = Awaited<
+	ReturnType<typeof getModuleWithRelations>
+>[number];
+
 // get all
 export const getModule = query(async (): Promise<ModuleSchema[]> => {
 	const data = await ensureDb().select().from(table.moduleTable);
@@ -52,30 +78,6 @@ export const getModulePaginated = query(
 			pageSize,
 			totalPages: Math.ceil(total / pageSize) || 1
 		};
-	}
-);
-
-// get all with relations
-export const getModuleWithRelations = query(async () => {
-	return ensureDb().query.moduleTable.findMany({
-		with: {
-			status: true,
-			pages: true
-		}
-	});
-});
-
-// get one with relations
-export const getModuleByIdWithRelations = query(
-	'unchecked' as const,
-	async ({ id }: { id: number }) => {
-		return ensureDb().query.moduleTable.findFirst({
-			where: (t, { eq }) => eq(t.id, id),
-			with: {
-				status: true,
-				pages: true
-			}
-		});
 	}
 );
 

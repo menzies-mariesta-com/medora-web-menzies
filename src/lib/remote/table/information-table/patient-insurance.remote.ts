@@ -33,6 +33,10 @@ export const getPatientInsuranceWithRelations = query(async () => {
 	});
 });
 
+export type PatientInsuranceWithRelations = Awaited<
+	ReturnType<typeof getPatientInsuranceWithRelations>
+>[number];
+
 // get count
 export const getPatientInsuranceCount = query(
 	async (): Promise<number> => {
