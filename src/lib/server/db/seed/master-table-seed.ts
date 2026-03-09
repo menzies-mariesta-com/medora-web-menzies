@@ -36,7 +36,25 @@ export async function seedMasterTables() {
 
 	console.log('Seeded: status');
 
-	// 2. Countries
+	// 2. Category (depends: status)
+	await db.execute(sql`
+		INSERT INTO category (id, category_name, status_id)
+		VALUES
+			(1, 'Radiology', 1),
+			(2, 'Nursing Procedure', 1),
+			(3, 'Medical Gases', 1),
+			(4, 'Ambulance Service', 1),
+			(5, 'Laboratory', 1),
+			(6, 'Hospital Fees', 1),
+			(7, 'Doctor Fees', 1),
+			(8, 'Cathlab', 1),
+			(9, 'Endoscopy', 1),
+			(10, 'Housekeeping', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: category');
+
+	// 3. Countries
 	await db.execute(sql`
 		INSERT INTO country (id, name, code, image_url, country_calling_code, language, status_id)
 		VALUES ${sql.join(
