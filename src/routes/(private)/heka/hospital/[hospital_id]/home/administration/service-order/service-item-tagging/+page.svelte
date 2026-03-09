@@ -10,16 +10,18 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import {
+import {
 		getServiceTaggingPaginated,
 		createServiceTagging,
 		updateServiceTagging,
-		deleteServiceTagging,
-		type ServiceTaggingSchema
+		deleteServiceTagging
 	} from '$lib/remote/table/information-table/service-tagging.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
-	import type { ServiceItemSchema } from '$lib/server/db/schema-type';
+import type {
+	ServiceItemSchema,
+	ServiceTaggingSchema
+} from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -61,6 +63,8 @@
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
 	let formServiceTaxAmount = $state('');
+	let formValidDate = $state('');
+	let formAllowEdit = $state(true);
 	let formActive = $state(true);
 
 	type Mode = 'create' | 'edit';
@@ -72,6 +76,12 @@
 	let tableColumnFilters = $state<Record<string, string>>({});
 
 	const branchLocked = $derived(!!branchIdForTagging);
+
+	function toDateInputValue(value: ServiceTaggingSchema['validDate']): string {
+		if (!value) return '';
+		const str = String(value);
+		return str.length >= 10 ? str.slice(0, 10) : str;
+	}
 
 	const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
 		{
@@ -96,6 +106,21 @@
 			header: 'Tax amount',
 			widthClass: 'w-32',
 			field: 'serviceTaxAmount'
+		},
+		{
+			id: 'validDate',
+			header: 'Valid date',
+			widthClass: 'w-36',
+			format: (_value, row) =>
+				row.validDate ? toDateInputValue(row.validDate) : '—',
+			filterable: false
+		},
+		{
+			id: 'allowEdit',
+			header: 'Allow edit',
+			widthClass: 'w-28',
+			format: (_value, row) => (row.allowEdit ? 'Yes' : 'No'),
+			filterable: false
 		},
 		{
 			id: 'status',
@@ -218,6 +243,8 @@
 		formServiceId = '';
 		formServiceAmount = '';
 		formServiceTaxAmount = '';
+		formValidDate = '';
+		formAllowEdit = true;
 		formActive = true;
 		mode = 'create';
 		editingId = null;
@@ -237,6 +264,8 @@
 			row.serviceTaxAmount != null
 				? String(row.serviceTaxAmount)
 				: '';
+		formValidDate = toDateInputValue(row.validDate);
+		formAllowEdit = row.allowEdit ?? true;
 		formActive =
 			(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 	}
@@ -297,6 +326,8 @@
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
+		const validDate = formValidDate.trim() ? formValidDate.trim() : null;
+		const allowEdit = formAllowEdit;
 
 		isSaving = true;
 		try {
@@ -306,6 +337,8 @@
 					serviceId,
 					serviceAmount,
 					serviceTaxAmount,
+					validDate,
+					allowEdit,
 					statusId
 				});
 				toastService.addToast(
@@ -317,6 +350,8 @@
 					id: editingId,
 					serviceAmount,
 					serviceTaxAmount,
+					validDate,
+					allowEdit,
 					statusId
 				});
 				toastService.addToast(
@@ -435,7 +470,23 @@
 								className="d-input-sm w-full"
 							/>
 						</div>
-						<div class="flex items-end gap-2">
+						<div class="flex min-w-40 flex-1 flex-col gap-1">
+							<label class="text-sm font-medium">Valid date</label>
+							<input
+								type="date"
+								bind:value={formValidDate}
+								class="d-input d-input-bordered d-input-sm w-full"
+							/>
+						</div>
+						<div class="flex items-end gap-4">
+							<label class="flex items-center gap-2 text-sm">
+								<input
+									type="checkbox"
+									bind:checked={formAllowEdit}
+									class="d-checkbox d-checkbox-sm"
+								/>
+								<span>Allow edit</span>
+							</label>
 							<label class="flex items-center gap-2 text-sm">
 								<input
 									type="checkbox"

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+	boolean,
 	date,
 	decimal,
 	foreignKey,
@@ -809,6 +810,7 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 	serviceId: integer('service_id')
 		.notNull()
 		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
+	validDate: date('valid_date'),
 	serviceAmount: decimal('service_amount', {
 		precision: 10,
 		scale: 2
@@ -817,6 +819,7 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 		precision: 10,
 		scale: 2
 	}),
+	allowEdit: boolean('allow_edit').notNull().default(true),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
