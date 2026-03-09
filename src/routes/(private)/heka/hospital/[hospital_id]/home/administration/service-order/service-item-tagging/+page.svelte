@@ -36,6 +36,7 @@ const toastService = new ToastService();
 let { data } = $props();
 
 type AllowedBranch = { id: string; name: string | null };
+const ALL_BRANCHES_ID = '__all__';
 
 const hospitalId = $derived(
 	typeof page.params.hospital_id === 'string' &&
@@ -48,11 +49,23 @@ const allowedBranches = $derived(
 	((data?.allowedBranches ?? []) as AllowedBranch[]) ?? []
 );
 
+	const branchOptions = $derived.by(() => {
+	if (allowedBranches.length > 1) {
+		return [
+			{ id: ALL_BRANCHES_ID, name: 'All branches' },
+			...allowedBranches
+		];
+	}
+	return allowedBranches;
+});
+
 let selectedBranchId = $state<string>(
-	allowedBranches[0]?.id ?? ''
+	branchOptions[0]?.id ?? ''
 );
 
-const branchIdForTagging = $derived(selectedBranchId);
+const branchIdForTagging = $derived(
+	selectedBranchId === ALL_BRANCHES_ID ? null : selectedBranchId
+);
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
 	let taggingResult = $state<PaginatedResult<ServiceTaggingSchema> | null>(null);
@@ -145,28 +158,30 @@ let tableColumnFilters = $state<Record<string, string>>({});
 	}
 
 	async function fetchTaggings(forceRefresh = false) {
-		if (!branchIdForTagging) return;
+		if (allowedBranches.length === 0) return;
 		isLoading = true;
 		try {
 			const filters = tableColumnFilters;
 
-			const params: {
-				branchId: string;
+			const paramsBase: {
+				branchId?: string;
 				serviceIds?: number[];
 				serviceAmount?: number;
 				serviceTaxAmount?: number;
 				statusId?: number;
 				id?: number;
-			} = {
-				branchId: branchIdForTagging
-			};
+			} = {};
+
+			if (branchIdForTagging) {
+				paramsBase.branchId = branchIdForTagging;
+			}
 
 			// ID filter
 			const idTerm = filters.id?.trim();
 			if (idTerm) {
 				const idVal = Number(idTerm);
 				if (!Number.isNaN(idVal)) {
-					params.id = idVal;
+					paramsBase.id = idVal;
 				}
 			}
 
@@ -193,7 +208,7 @@ let tableColumnFilters = $state<Record<string, string>>({});
 					return;
 				}
 
-				params.serviceIds = serviceIds;
+				paramsBase.serviceIds = serviceIds;
 			}
 
 			// Amount filters
@@ -201,7 +216,7 @@ let tableColumnFilters = $state<Record<string, string>>({});
 			if (amountTerm) {
 				const value = Number(amountTerm);
 				if (!Number.isNaN(value)) {
-					params.serviceAmount = value;
+					paramsBase.serviceAmount = value;
 				}
 			}
 
@@ -209,28 +224,51 @@ let tableColumnFilters = $state<Record<string, string>>({});
 			if (taxAmountTerm) {
 				const value = Number(taxAmountTerm);
 				if (!Number.isNaN(value)) {
-					params.serviceTaxAmount = value;
+					paramsBase.serviceTaxAmount = value;
 				}
 			}
 
 			// Status filter
 			const statusTerm = filters.status?.trim().toLowerCase();
 			if (statusTerm === 'active') {
-				params.statusId = StatusEnum.ACTIVE;
+				paramsBase.statusId = StatusEnum.ACTIVE;
 			} else if (statusTerm === 'inactive') {
-				params.statusId = StatusEnum.INACTIVE;
+				paramsBase.statusId = StatusEnum.INACTIVE;
 			}
 
 			const pageSize = Number(pageSizeStr) || 10;
 			const paginatedParams = {
-				...params,
+				...paramsBase,
 				page: currentPage,
 				pageSize
 			};
+
 			if (forceRefresh) {
 				await getServiceTaggingPaginated(paginatedParams).refresh();
 			}
-			taggingResult = await getServiceTaggingPaginated(paginatedParams);
+
+			let result = await getServiceTaggingPaginated(paginatedParams);
+
+			// When "All branches" is selected, show only rows
+			// for branches the user is allowed to use.
+			if (!branchIdForTagging && selectedBranchId === ALL_BRANCHES_ID) {
+				const allowedIds = new Set(
+					allowedBranches.map((b) => b.id)
+				);
+				const filteredData = result.data.filter((row) =>
+					allowedIds.has(row.branchId)
+				);
+				const totalFiltered = filteredData.length;
+				result = {
+					...result,
+					data: filteredData,
+					total: totalFiltered,
+					totalPages:
+						Math.ceil(totalFiltered / pageSize) || 1
+				};
+			}
+
+			taggingResult = result;
 		} finally {
 			isLoading = false;
 		}
@@ -238,8 +276,9 @@ let tableColumnFilters = $state<Record<string, string>>({});
 
 	$effect(() => {
 		const _hospital = hospitalId;
-		const _branch = branchIdForTagging;
-		if (!_hospital || !_branch) return;
+		const _branchSelection = selectedBranchId;
+		if (!_hospital || allowedBranches.length === 0 || !_branchSelection)
+			return;
 		(async () => {
 			await fetchServiceItems();
 			await fetchTaggings(true);
@@ -295,9 +334,9 @@ let tableColumnFilters = $state<Record<string, string>>({});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (!branchIdForTagging) {
+		if (!selectedBranchId) {
 			toastService.addToast(
-				'Please select a branch in the top bar to manage tagging.',
+				'Please select a branch to manage tagging.',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -341,20 +380,38 @@ let tableColumnFilters = $state<Record<string, string>>({});
 		const validDate = formValidDate.trim() ? formValidDate.trim() : null;
 		const allowEdit = formAllowEdit;
 
+		const targetBranchIds =
+			selectedBranchId === ALL_BRANCHES_ID
+				? allowedBranches.map((b) => b.id)
+				: [branchIdForTagging].filter(
+						(id): id is string => !!id
+					);
+		if (targetBranchIds.length === 0) {
+			toastService.addToast(
+				'No branches available for tagging.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
 		isSaving = true;
 		try {
 			if (mode === 'create') {
-				await createServiceTagging({
-					branchId: branchIdForTagging,
-					serviceId,
-					serviceAmount: serviceAmountNum.toString(),
-					serviceTaxAmount: taxStr
-						? serviceTaxAmountNum.toString()
-						: null,
-					validDate,
-					allowEdit,
-					statusId
-				});
+				await Promise.all(
+					targetBranchIds.map((branchId) =>
+						createServiceTagging({
+							branchId,
+							serviceId,
+							serviceAmount: serviceAmountNum.toString(),
+							serviceTaxAmount: taxStr
+								? serviceTaxAmountNum.toString()
+								: null,
+							validDate,
+							allowEdit,
+							statusId
+						})
+					)
+				);
 				toastService.addToast(
 					'Service tagging created.',
 					StatusColorEnum.SUCCESS
@@ -438,36 +495,33 @@ function serviceNameById(id: number | null | undefined): string {
 	{:else}
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<h1 class="text-2xl font-bold">Service tagging</h1>
-			<div class="flex items-center gap-3">
-				<label class="flex items-center gap-2 text-sm">
-					<span>Branch</span>
-					{#if allowedBranches.length > 1}
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm min-w-48"
-							bind:value={selectedBranchId}
-							onChange={onBranchChange}
-						>
-							{#each allowedBranches as b (b.id)}
-								<option value={b.id}>{b.name ?? 'Unnamed branch'}</option>
-							{/each}
-						</DaisyUiSelect>
-					{:else}
-						<span>{branchNameById(allowedBranches[0].id)}</span>
-					{/if}
-				</label>
-				<DaisyUiButton
-					className="d-btn-outline d-btn-sm d-btn-square"
-					onClick={startCreate}
-				>
-					<LucidePlus />
-				</DaisyUiButton>
-			</div>
+			<DaisyUiButton
+				className="d-btn-outline d-btn-sm d-btn-square"
+				onClick={startCreate}
+			>
+				<LucidePlus />
+			</DaisyUiButton>
 		</div>
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 					<div class="flex flex-wrap gap-4">
+						<div class="flex min-w-48 flex-1 flex-col gap-1">
+							<label class="text-sm font-medium"
+								>Branch<span class="text-error"> *</span></label
+							>
+							<DaisyUiSelect
+								className="d-select d-select-bordered d-select-sm w-full"
+								bind:value={selectedBranchId}
+								onChange={onBranchChange}
+							>
+								{#each branchOptions as b (b.id)}
+									<option value={b.id}>{b.name ?? 'Unnamed branch'}</option>
+								{/each}
+							</DaisyUiSelect>
+						</div>
+
 						<div class="flex min-w-60 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium"
 								>Service<span class="text-error"> *</span></label

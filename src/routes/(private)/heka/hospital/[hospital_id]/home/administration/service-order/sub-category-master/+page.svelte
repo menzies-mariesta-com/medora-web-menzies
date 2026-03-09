@@ -160,7 +160,13 @@ let categories = $state<CategorySchema[]>([]);
 </script>
 
 <div class="space-y-6">
-	
+	<div class="flex items-center justify-between">
+		<h1 class="text-2xl font-bold">{m.sub_category_master}</h1>
+		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
+			<LucidePlus />
+			{m.create()}
+		</DaisyUiButton>
+	</div>
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
