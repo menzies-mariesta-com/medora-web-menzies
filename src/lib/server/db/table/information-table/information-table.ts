@@ -19,6 +19,7 @@ import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
+	categoryTable,
 	cityTable,
 	countryTable,
 	departmentTable,
@@ -556,6 +557,39 @@ export const patientDocumentTable = pgTable('patient_document', {
 	...timestamps
 });
 
+export const documentSettingTable = pgTable('document_setting', {
+	id: serial('id').primaryKey(),
+	documentName: varchar('document_name', { length: 512 }),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id, { onDelete: 'cascade' }),
+	patientCode: varchar('patient_code', { length: 128 }),
+	dob: date('dob'),
+	ageGender: varchar('age_gender', { length: 256 }),
+	doctorName: varchar('doctor_name', { length: 512 }),
+	date: date('date'),
+	visitNo: varchar('visit_no', { length: 128 }),
+	visitDateTime: timestamp('visit_date_time', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	printBy: text('print_by').references(() => userTable.id),
+	printDateTime: timestamp('print_date_time', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
+});
+
 export const doctorScheduleTable = pgTable('doctor_schedule', {
 	id: serial('id').primaryKey(),
 	staffId: uuid('staff_id')
@@ -748,25 +782,6 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	...timestamps
 });
 
-export const categoryTable = pgTable('category', {
-	id: serial('id').primaryKey(),
-	hospitalId: uuid('hospital_id')
-		.notNull()
-		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-	branchId: uuid('branch_id')
-		.notNull()
-		.references(() => hospitalBranchTable.id, {
-			onDelete: 'cascade'
-		}),
-	categoryName: varchar('category_name', { length: 512 }),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
-	...timestamps
-});
-
 export const subCategoryTable = pgTable('sub_category', {
 	id: serial('id').primaryKey(),
 	categoryId: integer('category_id')
@@ -825,6 +840,61 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 		.notNull()
 		.default(StatusEnum.ACTIVE),
 	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps
+});
+
+export const serviceOrderTable = pgTable('service_order', {
+	id: serial('id').primaryKey(),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, {
+			onDelete: 'cascade'
+		}),
+	orderDate: date('order_date'),
+	orderNo: varchar('order_no', { length: 128 }),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id, {
+			onDelete: 'cascade'
+		}),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	createdBy: text('created_by').references(() => userTable.id),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	...timestamps
+});
+
+export const serviceOrderDetailTable = pgTable('service_order_detail', {
+	id: serial('id').primaryKey(),
+	serviceOrderId: integer('service_order_id')
+		.notNull()
+		.references(() => serviceOrderTable.id, {
+			onDelete: 'cascade'
+		}),
+	serviceId: integer('service_id')
+		.notNull()
+		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
+	doctorAmount: decimal('doctor_amount', { precision: 10, scale: 2 }),
+	doctorDiscount: decimal('doctor_discount', {
+		precision: 10,
+		scale: 2
+	}),
+	serviceAmount: decimal('service_amount', { precision: 10, scale: 2 }),
+	serviceTaxAmount: decimal('service_tax_amount', {
+		precision: 10,
+		scale: 2
+	}),
+	serviceUnit: integer('service_unit'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	createdBy: text('created_by').references(() => userTable.id),
+	updatedBy: text('updated_by').references(() => userTable.id),
+	cancelBy: text('cancel_by').references(() => userTable.id),
+	cancelRemark: text('cancel_remark'),
 	...timestamps
 });
 

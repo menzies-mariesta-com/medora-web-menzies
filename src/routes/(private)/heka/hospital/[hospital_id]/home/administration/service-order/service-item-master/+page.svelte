@@ -137,12 +137,7 @@ const filteredSubCategories = $derived.by(() => {
 	];
 
 	async function fetchCategories() {
-		if (!hospitalId) return;
-	// Load categories for this hospital and current branch so table can show branch-specific category/sub-category names
-	categories = await getCategory({
-		hospitalId,
-		branchId: branchIdForCategory
-	});
+		categories = await getCategory();
 	}
 
 	async function fetchSubCategories() {
