@@ -12,38 +12,20 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { count, eq, ne } from 'drizzle-orm';
 
-// get all (optionally filtered by hospitalId/branchId)
+// get all (status not deleted)
 export const getCategory = query(
 	'unchecked' as const,
-	async (params?: {
-		hospitalId?: string | null;
-		branchId?: string | null;
-	}): Promise<CategorySchema[]> => {
+	async (): Promise<CategorySchema[]> => {
 		const notDeleted = ne(
 			table.categoryTable.statusId,
 			StatusEnum.DELETED
 		);
-		let whereExpr = notDeleted;
-
-		if (params?.hospitalId != null && params.hospitalId !== '') {
-			whereExpr = and(
-				whereExpr,
-				eq(table.categoryTable.hospitalId, params.hospitalId)
-			);
-		}
-		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(
-				whereExpr,
-				eq(table.categoryTable.branchId, params.branchId)
-			);
-		}
-
 		return ensureDb()
 			.select()
 			.from(table.categoryTable)
-			.where(whereExpr)
+			.where(notDeleted)
 			.orderBy(table.categoryTable.categoryName);
 	}
 );
@@ -60,10 +42,7 @@ export const getCategoryCount = query(async (): Promise<number> => {
 export const getCategoryPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams & {
-			hospitalId?: string | null;
-			branchId?: string | null;
-		}
+		params?: PaginationParams
 	): Promise<PaginatedResult<CategorySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
@@ -71,33 +50,19 @@ export const getCategoryPaginated = query(
 			table.categoryTable.statusId,
 			StatusEnum.DELETED
 		);
-		let whereExpr = notDeleted;
-
-		if (params?.hospitalId != null && params.hospitalId !== '') {
-			whereExpr = and(
-				whereExpr,
-				eq(table.categoryTable.hospitalId, params.hospitalId)
-			);
-		}
-		if (params?.branchId != null && params.branchId !== '') {
-			whereExpr = and(
-				whereExpr,
-				eq(table.categoryTable.branchId, params.branchId)
-			);
-		}
 
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.categoryTable)
-				.where(whereExpr)
+				.where(notDeleted)
 				.orderBy(table.categoryTable.categoryName)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.categoryTable)
-				.where(whereExpr)
+				.where(notDeleted)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {

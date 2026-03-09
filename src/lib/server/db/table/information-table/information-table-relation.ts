@@ -1,7 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
 	appointmentTable,
-	categoryTable,
 	documentTable,
 	doctorScheduleTable,
 	externalReferTable,
@@ -20,6 +19,8 @@ import {
 	patientTable,
 	patientVisitTable,
 	insuranceTable,
+	serviceOrderTable,
+	serviceOrderDetailTable,
 	staffDepartmentTable,
 	serviceItemTable,
 	serviceTaggingTable,
@@ -34,9 +35,11 @@ import {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
-	allergyTable
+	allergyTable,
+	documentSettingTable
 } from './information-table';
 import {
+	categoryTable,
 	cityTable,
 	countryTable,
 	departmentTable,
@@ -106,8 +109,8 @@ export const hospitalTableRelations = relations(
 		doctorSchedules: many(doctorScheduleTable),
 		externalRefers: many(externalReferTable),
 		appointmentBlocks: many(appointmentBlockTable),
-		categories: many(categoryTable),
-		serviceItems: many(serviceItemTable)
+		serviceItems: many(serviceItemTable),
+		documentSettings: many(documentSettingTable)
 	})
 );
 
@@ -145,9 +148,9 @@ export const hospitalBranchTableRelations = relations(
 		appointments: many(appointmentTable),
 		doctorSchedules: many(doctorScheduleTable),
 		staffBranches: many(staffBranchTable),
-		categories: many(categoryTable),
 		stores: many(storeTable),
-		serviceTaggings: many(serviceTaggingTable)
+		serviceTaggings: many(serviceTaggingTable),
+		serviceOrders: many(serviceOrderTable)
 	})
 );
 
@@ -399,7 +402,8 @@ export const patientVisitTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		diagnoses: many(patientDiagnosisTable),
-		patientDocuments: many(patientDocumentTable)
+		patientDocuments: many(patientDocumentTable),
+		serviceOrders: many(serviceOrderTable)
 	})
 );
 
@@ -726,7 +730,8 @@ export const patientTableRelations = relations(
 		appointments: many(appointmentTable),
 		visits: many(patientVisitTable),
 		diagnoses: many(patientDiagnosisTable),
-		patientDocuments: many(patientDocumentTable)
+		patientDocuments: many(patientDocumentTable),
+		documentSettings: many(documentSettingTable)
 	})
 );
 
@@ -787,14 +792,6 @@ export const patientAllergyTableRelations = relations(patientAllergyTable, ({ on
 }));
 
 export const categoryTableRelations = relations(categoryTable, ({ one, many }) => ({
-	hospital: one(hospitalTable, {
-		fields: [categoryTable.hospitalId],
-		references: [hospitalTable.id],
-	}),
-	branch: one(hospitalBranchTable, {
-		fields: [categoryTable.branchId],
-		references: [hospitalBranchTable.id],
-	}),
 	status: one(statusTable, {
 		fields: [categoryTable.statusId],
 		references: [statusTable.id],
@@ -828,6 +825,7 @@ export const serviceItemTableRelations = relations(serviceItemTable, ({ one, man
 		references: [statusTable.id],
 	}),
 	serviceTaggings: many(serviceTaggingTable),
+	serviceOrderDetails: many(serviceOrderDetailTable),
 }));
 
 export const serviceTaggingTableRelations = relations(serviceTaggingTable, ({ one }) => ({
@@ -860,6 +858,57 @@ export const storeTableRelations = relations(storeTable, ({ one }) => ({
 	}),
 }));
 
+export const serviceOrderTableRelations = relations(serviceOrderTable, ({ one, many }) => ({
+	branch: one(hospitalBranchTable, {
+		fields: [serviceOrderTable.branchId],
+		references: [hospitalBranchTable.id],
+	}),
+	visit: one(patientVisitTable, {
+		fields: [serviceOrderTable.visitId],
+		references: [patientVisitTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [serviceOrderTable.statusId],
+		references: [statusTable.id],
+	}),
+	createdBy: one(userTable, {
+		fields: [serviceOrderTable.createdBy],
+		references: [userTable.id],
+	}),
+	updatedBy: one(userTable, {
+		fields: [serviceOrderTable.updatedBy],
+		references: [userTable.id],
+	}),
+	details: many(serviceOrderDetailTable),
+}));
+
+export const serviceOrderDetailTableRelations = relations(serviceOrderDetailTable, ({ one }) => ({
+	serviceOrder: one(serviceOrderTable, {
+		fields: [serviceOrderDetailTable.serviceOrderId],
+		references: [serviceOrderTable.id],
+	}),
+	serviceItem: one(serviceItemTable, {
+		fields: [serviceOrderDetailTable.serviceId],
+		references: [serviceItemTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [serviceOrderDetailTable.statusId],
+		references: [statusTable.id],
+	}),
+	createdBy: one(userTable, {
+		fields: [serviceOrderDetailTable.createdBy],
+		references: [userTable.id],
+	}),
+	updatedBy: one(userTable, {
+		fields: [serviceOrderDetailTable.updatedBy],
+		references: [userTable.id],
+	}),
+	cancelBy: one(userTable, {
+		fields: [serviceOrderDetailTable.cancelBy],
+		references: [userTable.id],
+	}),
+}));
+
 export const allergyTableRelations = relations(allergyTable, ({ one }) => ({
 	status: one(statusTable, {
 		fields: [allergyTable.statusId],
@@ -877,6 +926,25 @@ export const documentTableRelations = relations(documentTable, ({ one, many }) =
 		references: [statusTable.id],
 	}),
 	patientDocuments: many(patientDocumentTable),
+}));
+
+export const documentSettingTableRelations = relations(documentSettingTable, ({ one }) => ({
+	hospital: one(hospitalTable, {
+		fields: [documentSettingTable.hospitalId],
+		references: [hospitalTable.id],
+	}),
+	patient: one(patientTable, {
+		fields: [documentSettingTable.patientId],
+		references: [patientTable.id],
+	}),
+	printedBy: one(userTable, {
+		fields: [documentSettingTable.printBy],
+		references: [userTable.id],
+	}),
+	status: one(statusTable, {
+		fields: [documentSettingTable.statusId],
+		references: [statusTable.id],
+	}),
 }));
 
 export const patientDocumentTableRelations = relations(patientDocumentTable, ({ one }) => ({
