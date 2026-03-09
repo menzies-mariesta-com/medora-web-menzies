@@ -44,6 +44,24 @@ export const bloodTypeTable = pgTable(
 	]
 );
 
+export const categoryTable = pgTable(
+	'category',
+	{
+		id: serial('id').primaryKey(),
+		categoryName: varchar('category_name', { length: 512 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		updatedBy: text('updated_by'),
+		...timestamps
+	},
+	(table) => [
+		index('category_name_idx').on(table.categoryName),
+		index('category_status_id_idx').on(table.statusId)
+	]
+);
+
 export const cityTable = pgTable(
 	'city',
 	{

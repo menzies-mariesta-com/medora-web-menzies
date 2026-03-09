@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by categoryId)
 export const getSubCategory = query(
@@ -55,7 +55,11 @@ export const getSubCategoryCount = query(
 export const getSubCategoryPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams & { categoryId?: number | null }
+		params?: PaginationParams & {
+			categoryId?: number | null;
+			/** When set, only subcategories whose categoryId is in this list (e.g. hospital-level). */
+			categoryIds?: number[];
+		}
 	): Promise<PaginatedResult<SubCategorySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
@@ -70,6 +74,19 @@ export const getSubCategoryPaginated = query(
 				whereExpr,
 				eq(table.subCategoryTable.categoryId, params.categoryId)
 			);
+		}
+		if (params?.categoryIds !== undefined) {
+			if (params.categoryIds.length === 0) {
+				whereExpr = and(
+					whereExpr,
+					eq(table.subCategoryTable.id, -1)
+				);
+			} else {
+				whereExpr = and(
+					whereExpr,
+					inArray(table.subCategoryTable.categoryId, params.categoryIds)
+				);
+			}
 		}
 
 		const [data, countResult] = await Promise.all([
