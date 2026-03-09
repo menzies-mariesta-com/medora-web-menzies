@@ -141,12 +141,18 @@ import {
 			.slice(0, 30);
 	});
 
+	const currentSearch = $derived(page.url.search);
+
 	function goToPage(p: PageSchema) {
 		closeSearchDialog();
-		const url =
+		const base =
 			hospitalId && p.pageUrl != null
 				? hekaHospitalPageUrl(hospitalId, p.pageUrl)
 				: p.pageUrl;
+		const url =
+			base != null && currentSearch
+				? `${base}${currentSearch}`
+				: base;
 		if (url != null) routerUtil.replaceRoute(url);
 	}
 
@@ -382,10 +388,14 @@ import {
 							<DaisyUiButton
 								className={`w-full justify-start whitespace-nowrap text-left d-btn-wide  ${isPageActive(p) ? 'd-btn-accent' : ''}`}
 								onClick={() => {
-									const url =
+									const base =
 										hospitalId && p.pageUrl != null
 											? hekaHospitalPageUrl(hospitalId, p.pageUrl)
 											: p.pageUrl;
+									const url =
+										base != null && currentSearch
+											? `${base}${currentSearch}`
+											: base;
 									if (url != null) routerUtil.replaceRoute(url);
 								}}
 							>

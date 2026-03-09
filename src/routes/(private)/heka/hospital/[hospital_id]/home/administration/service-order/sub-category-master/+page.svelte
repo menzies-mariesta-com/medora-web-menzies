@@ -37,13 +37,7 @@ import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-ty
 			? page.params.hospital_id
 			: ''
 	);
-	/** User's current branch from layout; filters categories to this branch. "__all__" means show all branches. */
-	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
-	const branchIdForCategory = $derived(
-		selectedBranchId && selectedBranchId !== '__all__'
-			? selectedBranchId
-			: null
-	);
+	/** Data is always fetched at hospital level (no branch filter). */
 
 	let subCategoryResult = $state<PaginatedResult<SubCategorySchema> | null>(null);
 	let currentPage = $state(1);
@@ -55,55 +49,30 @@ let categories = $state<CategorySchema[]>([]);
 	const total = $derived(subCategoryResult?.total ?? 0);
 
 	async function fetchCategories() {
-		if (!hospitalId) return;
-		categories = await getCategory({
-			hospitalId,
-			branchId: branchIdForCategory
-		});
+		categories = await getCategory();
 	}
 
 	async function fetchSubCategories(forceRefresh = false) {
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
+			const categoryIds = categories.map((c) => c.id);
 			const params = {
 				page: currentPage,
-				pageSize
+				pageSize,
+				categoryIds
 			};
 			if (forceRefresh) {
 				await getSubCategoryPaginated(params).refresh();
 			}
-			const rawResult = await getSubCategoryPaginated(params);
-
-		// Ensure table shows only sub-categories for categories
-		// available to the current branch.
-		let data = rawResult.data;
-		if (branchIdForCategory) {
-			const allowedCategoryIds = new Set(
-				categories.map((c) => c.id)
-			);
-			data = data.filter((row) =>
-				allowedCategoryIds.has(row.categoryId)
-			);
-		}
-
-			const filteredTotal = data.length;
-			subCategoryResult = {
-				...rawResult,
-				data,
-				total: filteredTotal,
-				totalPages:
-					Math.ceil(filteredTotal / pageSize) || 1
-			};
+			subCategoryResult = await getSubCategoryPaginated(params);
 		} finally {
 			isLoading = false;
 		}
 	}
 
 	$effect(() => {
-		const _branch = selectedBranchId;
-		const _hospital = hospitalId;
-		if (!_hospital) return;
+		if (!hospitalId) return;
 		fetchCategories().then(() => fetchSubCategories(true));
 	});
 

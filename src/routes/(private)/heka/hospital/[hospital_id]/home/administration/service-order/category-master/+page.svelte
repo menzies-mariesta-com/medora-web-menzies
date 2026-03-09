@@ -9,29 +9,14 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
-	import {
-		getCategoryPaginated,
-		type CategorySchema
-	} from '$lib/remote/table/information-table/category.remote';
+	import { getCategoryPaginated } from '$lib/remote/table/information-table/category.remote';
+	import type { CategorySchema } from '$lib/server/db/schema-type';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	let { data } = $props();
 
-	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' &&
-			page.params.hospital_id
-			? page.params.hospital_id
-			: ''
-	);
-
-	/** User's current branch from layout; "__all__" means show all branches. */
-	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
-	const branchIdForCategory = $derived(
-		selectedBranchId && selectedBranchId !== '__all__'
-			? selectedBranchId
-			: null
-	);
+	/** Categories are global (master table); no hospital/branch filter. */
 
 	let categoryResult = $state<PaginatedResult<CategorySchema> | null>(null);
 	let currentPage = $state(1);
@@ -67,12 +52,7 @@
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
-			const params = {
-				page: currentPage,
-				pageSize,
-				hospitalId: hospitalId || undefined,
-				branchId: branchIdForCategory ?? undefined
-			};
+			const params = { page: currentPage, pageSize };
 			if (forceRefresh) {
 				await getCategoryPaginated(params).refresh();
 			}
@@ -83,9 +63,6 @@
 	}
 
 	$effect(() => {
-		const _hospital = hospitalId;
-		const _branch = selectedBranchId;
-		if (!_hospital) return;
 		fetchCategories(true);
 	});
 </script>
@@ -106,7 +83,7 @@
 						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
-						emptyMessage="No categories for this branch."
+						emptyMessage="No categories."
 						showRowActions={false}
 						actionsVariant="none"
 						enableColumnFilters={true}
