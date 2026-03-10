@@ -532,10 +532,13 @@ export const documentTable = pgTable('document', {
 		.notNull()
 		.references(() => documentTypeTable.id),
 	documentText: text('document_text'),
+	documentNumber: varchar('document_number', { length: 128 }),
+	documentSettingId: integer('document_setting_id'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
+	createdBy: text('created_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -554,6 +557,7 @@ export const patientDocumentTable = pgTable('patient_document', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
+	createdBy: text('created_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -876,8 +880,10 @@ export const serviceOrderDetailTable = pgTable('service_order_detail', {
 	serviceId: integer('service_id')
 		.notNull()
 		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
-	doctorAmount: decimal('doctor_amount', { precision: 10, scale: 2 }),
-	doctorDiscount: decimal('doctor_discount', {
+	advisingDoctorId: uuid('advising_doctor_id').references(() => staffTable.id),
+	instruction: text('instruction'),
+	isUrgent: boolean('is_urgent').notNull().default(false),
+	discount: decimal('discount', {
 		precision: 10,
 		scale: 2
 	}),

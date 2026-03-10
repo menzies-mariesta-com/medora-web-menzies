@@ -1,20 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
-	import {
+import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+import {
 		getServiceOrder,
 		createServiceOrder,
 		updateServiceOrder,
@@ -28,6 +29,11 @@ import {
 	} from '$lib/remote/table/information-table/service-order-detail.remote';
 import { getServiceTagging } from '$lib/remote/table/information-table/service-tagging.remote';
 import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
+import {
+		getDoctorStaffPaginated,
+		getStaffByIdWithRelations
+	} from '$lib/remote/table/information-table/staff.remote';
+import { StringUtil } from '$lib/util/string.util.svelte';
 import type {
 		ServiceOrderSchema,
 		ServiceOrderDetailSchema,
@@ -49,10 +55,11 @@ import type {
 			: undefined
 	);
 
-	let visit = $state<{
+let visit = $state<{
 		patientId: string;
 		hospitalId: string;
 		branchId: string;
+		visitNo: string | null;
 	} | null>(null);
 
 	let orders = $state<ServiceOrderSchema[]>([]);
@@ -74,16 +81,19 @@ let branchServices = $state<ServiceItemSchema[]>([]);
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 
-	let orderDateInput = $state('');
-	let editingOrderId = $state<number | null>(null);
+let orderDateInput = $state('');
+let editingOrderId = $state<number | null>(null);
 
-	let detailServiceIdInput = $state('');
-let detailDoctorAmountInput = $state('');
-let detailDoctorDiscountInput = $state('');
+let detailServiceIdInput = $state('');
+let detailAdvisingDoctorIdInput = $state('');
+let detailDiscountInput = $state('');
 let detailServiceAmountInput = $state('');
 let detailServiceTaxAmountInput = $state('');
-	let detailServiceUnitInput = $state('');
-	let editingDetailId = $state<number | null>(null);
+let detailServiceUnitInput = $state('1');
+let detailInstructionInput = $state('');
+let detailIsUrgentInput = $state(false);
+let editingDetailId = $state<number | null>(null);
+let detailAmountEditable = $state(true);
 
 	const toastService = new ToastService();
 
@@ -101,6 +111,13 @@ let detailServiceTaxAmountInput = $state('');
 		}
 	}
 
+	function getSelectedOrderLabel(): string {
+		if (!selectedOrderId) return '';
+		const order = orders.find((o) => o.id === selectedOrderId);
+		if (order?.orderNo) return String(order.orderNo);
+		return String(selectedOrderId);
+	}
+
 	async function fetchVisit() {
 		if (!visitId || !hospitalId) return;
 		isLoadingVisit = true;
@@ -110,7 +127,8 @@ let detailServiceTaxAmountInput = $state('');
 				visit = {
 					patientId: v.patientId,
 					hospitalId: v.hospitalId,
-					branchId: v.branchId
+					branchId: v.branchId,
+					visitNo: v.visitNo ?? null
 				};
 				await fetchBranchServices(v.hospitalId, v.branchId);
 			} else {
@@ -179,7 +197,9 @@ function startEditOrder(order: any) {
 		const dateStr = orderDateInput || todayDateString();
 		const yearSuffix = dateStr.slice(2, 4);
 		const seq = existingOrdersForVisit.length + 1;
-		return `${yearSuffix}/${visitId}/${seq}`;
+		const visitKey = visit?.visitNo || String(visitId);
+		const seqPart = String(seq).padStart(3, '0');
+		return `${yearSuffix}/${visitKey}/${seqPart}`;
 	}
 
 	async function handleSaveOrder() {
@@ -261,11 +281,14 @@ function handleSelectOrder(order: any) {
 function resetDetailForm() {
 	editingDetailId = null;
 	detailServiceIdInput = '';
-	detailDoctorAmountInput = '';
-	detailDoctorDiscountInput = '';
+	detailAdvisingDoctorIdInput = '';
+	detailDiscountInput = '';
 	detailServiceAmountInput = '';
 	detailServiceTaxAmountInput = '';
-	detailServiceUnitInput = '';
+	detailServiceUnitInput = '1';
+	detailInstructionInput = '';
+	detailIsUrgentInput = false;
+	detailAmountEditable = true;
 }
 
 async function fetchBranchServices(
@@ -298,6 +321,27 @@ async function fetchBranchServices(
 	}
 }
 
+async function searchDoctors(
+	query: string
+): Promise<{ label: string; value: string }[]> {
+	const res = await getDoctorStaffPaginated({
+		search: query.trim(),
+		hospitalId,
+		page: 1,
+		pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
+	});
+	return res.data.map((staff) => ({
+		label: StringUtil.doctorOptionDisplayName(staff),
+		value: String(staff.id)
+	}));
+}
+
+async function getDoctorLabelForValue(id: string): Promise<string> {
+	const staff = await getStaffByIdWithRelations({ id });
+	if (!staff) return '';
+	return StringUtil.doctorOptionDisplayName(staff);
+}
+
 function parseNumberOrNull(value: string): number | null {
 		const trimmed = value.trim();
 		if (!trimmed) return null;
@@ -305,8 +349,12 @@ function parseNumberOrNull(value: string): number | null {
 		return Number.isFinite(n) ? n : null;
 	}
 
-function parseDecimalOrNull(value: string): string | null {
-	const trimmed = value.trim();
+function parseDecimalOrNull(
+	value: string | number | null | undefined
+): string | null {
+	if (value == null) return null;
+	const trimmed =
+		typeof value === 'string' ? value.trim() : String(value).trim();
 	if (!trimmed) return null;
 	const n = Number(trimmed);
 	if (!Number.isFinite(n)) return null;
@@ -324,10 +372,7 @@ function parseDecimalOrNull(value: string): string | null {
 			return;
 		}
 	const doctorAmount = parseDecimalOrNull(
-		detailDoctorAmountInput
-	);
-	const doctorDiscount = parseDecimalOrNull(
-		detailDoctorDiscountInput
+		detailDiscountInput
 	);
 	const serviceAmount = parseDecimalOrNull(
 		detailServiceAmountInput
@@ -336,15 +381,26 @@ function parseDecimalOrNull(value: string): string | null {
 		detailServiceTaxAmountInput
 	);
 	const serviceUnit = parseNumberOrNull(detailServiceUnitInput);
+	if (!serviceUnit || serviceUnit < 1) {
+		toastService.addToast(
+			'Unit must be at least 1.',
+			StatusColorEnum.ERROR
+		);
+		return;
+	}
 
 	const basePayload = {
 			serviceOrderId: selectedOrderId,
 			serviceId,
-			doctorAmount,
-			doctorDiscount,
+			advisingDoctorId:
+				detailAdvisingDoctorIdInput.trim() || null,
+			discount: doctorAmount,
 			serviceAmount,
 			serviceTaxAmount,
-			serviceUnit
+			serviceUnit,
+			instruction:
+				detailInstructionInput.trim() || null,
+			isUrgent: detailIsUrgentInput
 		};
 
 		try {
@@ -374,15 +430,40 @@ function parseDecimalOrNull(value: string): string | null {
 		}
 	}
 
+async function applyPricingForSelectedService() {
+	const branchIdForVisit = visit?.branchId;
+	if (!branchIdForVisit) return;
+	const serviceId = parseNumberOrNull(detailServiceIdInput);
+	if (!serviceId) return;
+	try {
+		const taggings = await getServiceTagging({
+			branchId: branchIdForVisit,
+			serviceId
+		});
+		const t = taggings[0];
+		if (!t) {
+			detailAmountEditable = true;
+			return;
+		}
+		detailServiceAmountInput =
+			t.serviceAmount != null ? String(t.serviceAmount) : '';
+		detailServiceTaxAmountInput =
+			t.serviceTaxAmount != null ? String(t.serviceTaxAmount) : '';
+		detailAmountEditable = t.allowEdit ?? true;
+	} catch (err) {
+		console.error('Failed to load pricing for service', err);
+		detailAmountEditable = true;
+	}
+}
+
 	function startEditDetail(row: any) {
 		editingDetailId = row.id;
 		detailServiceIdInput = String(row.serviceId ?? '');
-		detailDoctorAmountInput = row.doctorAmount
-			? String(row.doctorAmount)
-			: '';
-		detailDoctorDiscountInput = row.doctorDiscount
-			? String(row.doctorDiscount)
-			: '';
+	detailAdvisingDoctorIdInput =
+		(row.advisingDoctorId as string | null | undefined) ?? '';
+	detailDiscountInput = row.discount
+		? String(row.discount)
+		: '';
 		detailServiceAmountInput = row.serviceAmount
 			? String(row.serviceAmount)
 			: '';
@@ -392,6 +473,9 @@ function parseDecimalOrNull(value: string): string | null {
 		detailServiceUnitInput = row.serviceUnit
 			? String(row.serviceUnit)
 			: '';
+	detailInstructionInput =
+		(row.instruction as string | null | undefined) ?? '';
+	detailIsUrgentInput = Boolean(row.isUrgent);
 	}
 
 	async function handleDeleteDetail(row: any) {
@@ -481,6 +565,13 @@ function parseDecimalOrNull(value: string): string | null {
 
 	const detailColumns: MariTableColumn<ServiceOrderDetailSchema>[] = [
 		{
+			id: 'advisingDoctorId',
+			header: 'Doctor ID',
+			widthClass: 'w-40',
+			filterable: false,
+			format: (value) => (value ? String(value) : '–')
+		},
+		{
 			id: 'serviceId',
 			header: 'Service ID',
 			widthClass: 'w-24',
@@ -488,15 +579,8 @@ function parseDecimalOrNull(value: string): string | null {
 			format: (value) => (value != null ? String(value) : '–')
 		},
 		{
-			id: 'doctorAmount',
-			header: 'Doctor Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => formatNumber(value as any)
-		},
-		{
-			id: 'doctorDiscount',
-			header: 'Doctor Discount',
+			id: 'discount',
+			header: 'Discount',
 			widthClass: 'w-32',
 			filterable: false,
 			format: (value) => formatNumber(value as any)
@@ -521,6 +605,21 @@ function parseDecimalOrNull(value: string): string | null {
 			widthClass: 'w-20',
 			filterable: false,
 			format: (value) => (value != null ? String(value) : '–')
+		},
+		{
+			id: 'isUrgent',
+			header: 'Urgent',
+			widthClass: 'w-20',
+			filterable: false,
+			format: (_value, row) => (row.isUrgent ? 'Yes' : 'No')
+		},
+		{
+			id: 'instruction',
+			header: 'Instruction',
+			widthClass: 'w-64',
+			filterable: false,
+			format: (value) =>
+				(value as string | null | undefined)?.trim() || '–'
 		}
 	];
 </script>
@@ -546,128 +645,37 @@ function parseDecimalOrNull(value: string): string | null {
 			message="Visit not found."
 		/>
 	{:else}
-		<DaisyUiCard>
-			<DaisyUiCardBody>
-				<div class="mb-5 flex flex-col gap-4">
-					<div class="flex flex-wrap items-center justify-between gap-3">
-						<DaisyUiCardBodyTitle className="mb-0">
-							Order header
-						</DaisyUiCardBodyTitle>
-						<div class="flex flex-wrap items-center gap-2">
-							<label class="flex items-center gap-2 text-sm">
-								<span>Order date</span>
+		<div class="flex flex-col gap-4">
+			<DaisyUiCard>
+				<DaisyUiCardBody>
+					<div class="mb-5 flex flex-col gap-4">
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<DaisyUiCardBodyTitle className="mb-0">
+								Order header
+							</DaisyUiCardBodyTitle>
+						</div>
+
+						<div class="flex flex-wrap items-end gap-4">
+							<label class="flex flex-col gap-1 text-sm">
+								Order date
 								<input
 									type="date"
-									class="d-input d-input-bordered d-input-sm"
+									class="d-input d-input-bordered d-input-sm w-40"
 									bind:value={orderDateInput}
 								/>
 							</label>
-							<DaisyUiButton
-								className="d-btn-primary d-btn-sm gap-1.5"
-								onClick={handleSaveOrder}
-							>
-								<LucidePlus className="size-4 shrink-0" />
-								{editingOrderId ? 'Save order' : 'Create order'}
-							</DaisyUiButton>
+							<div class="flex items-end">
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm gap-1.5"
+									onClick={handleSaveOrder}
+								>
+									<LucidePlus className="size-4 shrink-0" />
+									{editingOrderId ? 'Save order' : 'Create order'}
+								</DaisyUiButton>
+							</div>
 						</div>
 					</div>
 
-					{#if selectedOrderId}
-						<div class="flex flex-col gap-3">
-							<h2 class="text-base font-semibold">
-								Order items (Order #{selectedOrderId})
-							</h2>
-
-							<div class="flex flex-wrap items-end gap-3">
-							<label class="flex flex-col gap-1 text-sm">
-								Service
-								<DaisyUiSelect
-									className="d-select d-select-bordered d-select-sm w-64"
-									bind:value={detailServiceIdInput}
-									optionHeader="Select service"
-								>
-									{#each branchServices as s (s.id)}
-										<option value={String(s.id)}>
-											{s.serviceName ?? `Service ${s.id}`}{s.serviceCode ? ` - ${s.serviceCode}` : ''}
-										</option>
-									{/each}
-								</DaisyUiSelect>
-							</label>
-								<label class="flex flex-col gap-1 text-sm">
-									Doctor Amount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input d-input-bordered d-input-sm"
-										bind:value={detailDoctorAmountInput}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									Doctor Discount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input d-input-bordered d-input-sm"
-										bind:value={detailDoctorDiscountInput}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									Service Amount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input d-input-bordered d-input-sm"
-										bind:value={detailServiceAmountInput}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									Tax Amount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input d-input-bordered d-input-sm"
-										bind:value={detailServiceTaxAmountInput}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									Unit
-									<input
-										type="number"
-										step="1"
-										min="1"
-										class="d-input d-input-bordered d-input-sm"
-										bind:value={detailServiceUnitInput}
-									/>
-								</label>
-								<div class="flex gap-2">
-									<DaisyUiButton
-										className="d-btn-primary d-btn-sm mt-4 gap-1.5"
-										onClick={handleSaveDetail}
-									>
-										<LucidePlus className="size-4 shrink-0" />
-										{editingDetailId
-											? 'Save item'
-											: 'Add item'}
-									</DaisyUiButton>
-									{#if editingDetailId}
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm mt-4"
-											onClick={resetDetailForm}
-										>
-											Cancel
-										</DaisyUiButton>
-									{/if}
-								</div>
-							</div>
-						</div>
-					{:else if orders.length > 0}
-						<p class="text-sm text-base-content/70">
-							Select an order to add items.
-						</p>
-					{/if}
-				</div>
-
-				<div class="flex flex-col gap-6">
 					<div>
 						<h2 class="mb-2 text-base font-semibold">
 							Service orders for this visit
@@ -681,7 +689,7 @@ function parseDecimalOrNull(value: string): string | null {
 								No orders for this visit yet.
 							</p>
 						{:else}
-							<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
+							<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
 								<MariTable
 									rows={orders}
 									columns={orderColumns}
@@ -723,72 +731,204 @@ function parseDecimalOrNull(value: string): string | null {
 							</div>
 						{/if}
 					</div>
+				</DaisyUiCardBody>
+			</DaisyUiCard>
 
-					<div>
-						<h2 class="mb-2 text-base font-semibold">
-							Order items
-						</h2>
-						{#if !selectedOrderId}
-							<p class="text-sm text-base-content/70">
-								Select an order above to view its items.
-							</p>
-						{:else if isLoadingDetails}
-							<div class="flex min-h-24 items-center justify-center">
-								<DaisyUiLoading className="d-loading-lg" />
+			<DaisyUiCard>
+				<DaisyUiCardBody>
+					<div class="flex flex-col gap-4">
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<DaisyUiCardBodyTitle className="mb-0">
+								Order items
+							</DaisyUiCardBodyTitle>
+						</div>
+
+						{#if selectedOrderId}
+							<div class="flex flex-col gap-3">
+								<h2 class="text-base font-semibold">
+									Order No : {getSelectedOrderLabel()}
+								</h2>
+
+								<div class="flex flex-wrap items-end gap-3">
+									<label class="flex flex-col gap-1 text-sm">
+										Service
+										<DaisyUiSelect
+											className="d-select d-select-bordered d-select-sm w-64"
+											bind:value={detailServiceIdInput}
+											onChange={async () => {
+												detailServiceAmountInput = '';
+												detailServiceTaxAmountInput = '';
+												detailServiceUnitInput = '1';
+												await applyPricingForSelectedService();
+											}}
+											optionHeader="Select service"
+										>
+											{#each branchServices as s (s.id)}
+												<option value={String(s.id)}>
+													{s.serviceName ?? `Service ${s.id}`}{s.serviceCode ? ` - ${s.serviceCode}` : ''}
+												</option>
+											{/each}
+										</DaisyUiSelect>
+									</label>
+									<label class="flex flex-col gap-1 text-sm min-w-56 flex-1">
+										Advising doctor
+										<DaisyUiSearchSelect
+											bind:value={detailAdvisingDoctorIdInput}
+											placeholder="Select doctor"
+											className="w-full"
+											searchFn={searchDoctors}
+											getLabelForValue={getDoctorLabelForValue}
+											minSearchLength={0}
+										/>
+									</label>
+									<label class="flex flex-col gap-1 text-sm">
+										Discount
+										<input
+											type="number"
+											step="0.01"
+											class="d-input d-input-bordered d-input-sm"
+											bind:value={detailDiscountInput}
+										/>
+									</label>
+									<label class="flex flex-col gap-1 text-sm">
+										Service Amount
+										<input
+											type="number"
+											step="0.01"
+											class="d-input d-input-bordered d-input-sm"
+											bind:value={detailServiceAmountInput}
+											disabled={!detailAmountEditable}
+										/>
+									</label>
+									<label class="flex flex-col gap-1 text-sm">
+										Tax Amount
+										<input
+											type="number"
+											step="0.01"
+											class="d-input d-input-bordered d-input-sm"
+											bind:value={detailServiceTaxAmountInput}
+											disabled
+										/>
+									</label>
+									<label class="flex flex-col gap-1 text-sm">
+										Unit
+										<input
+											type="number"
+											step="1"
+											min="1"
+											class="d-input d-input-bordered d-input-sm"
+											bind:value={detailServiceUnitInput}
+										/>
+									</label>
+									<label class="flex flex-col gap-1 text-sm flex-1 min-w-60">
+										Instruction
+										<textarea
+											class="d-textarea d-textarea-bordered d-textarea-sm w-full"
+											rows="2"
+											bind:value={detailInstructionInput}
+										></textarea>
+									</label>
+									<label class="flex items-center gap-2 text-sm">
+										<input
+											type="checkbox"
+											class="d-checkbox d-checkbox-sm"
+											bind:checked={detailIsUrgentInput}
+										/>
+										<span>Urgent</span>
+									</label>
+									<div class="flex gap-2">
+										<DaisyUiButton
+											className="d-btn-primary d-btn-sm mt-4 gap-1.5"
+											onClick={handleSaveDetail}
+										>
+											<LucidePlus className="size-4 shrink-0" />
+											{editingDetailId
+												? 'Save item'
+												: 'Add item'}
+										</DaisyUiButton>
+										{#if editingDetailId}
+											<DaisyUiButton
+												className="d-btn-ghost d-btn-sm mt-4"
+												onClick={resetDetailForm}
+											>
+												Cancel
+											</DaisyUiButton>
+										{/if}
+									</div>
+								</div>
 							</div>
-						{:else if orderDetails.length === 0}
+						{:else if orders.length > 0}
 							<p class="text-sm text-base-content/70">
-								No items in this order yet.
+								Select an order to add items.
 							</p>
-						{:else}
-							<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-								<MariTable
-									rows={orderDetails}
-									columns={detailColumns}
-									isLoading={isLoadingDetails}
-									bind:pageSize={detailPageSizeStr}
-									bind:currentPage={currentDetailPage}
-									showRefreshButton={true}
-									emptyMessage="No items."
-									showRowActions={true}
-									actionsHeader="Actions"
-									actionsVariant="none"
-									enableColumnFilters={false}
-									on:refresh={() => {
-										if (selectedOrderId) {
-											fetchOrderDetails(selectedOrderId);
-										}
-									}}
-								>
-									<svelte:fragment slot="rowActions" let:row>
-										<td class="w-28 shrink-0 text-right">
-											<div class="flex justify-end gap-1">
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
-													onClick={() =>
-														startEditDetail(row)
-													}
-												>
-													<LucidePencil className="size-4" />
-												</DaisyUiButton>
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() =>
-														handleDeleteDetail(row)
-													}
-												>
-													<LucideTrash2 className="size-4" />
-												</DaisyUiButton>
-											</div>
-										</td>
-									</svelte:fragment>
-								</MariTable>
-							</div>
 						{/if}
+
+						<div>
+							<h2 class="mb-2 text-base font-semibold">
+								Order items list
+							</h2>
+							{#if !selectedOrderId}
+								<p class="text-sm text-base-content/70">
+									Select an order above to view its items.
+								</p>
+							{:else if isLoadingDetails}
+								<div class="flex min-h-24 items-center justify-center">
+									<DaisyUiLoading className="d-loading-lg" />
+								</div>
+							{:else if orderDetails.length === 0}
+								<p class="text-sm text-base-content/70">
+									No items in this order yet.
+								</p>
+							{:else}
+								<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
+									<MariTable
+										rows={orderDetails}
+										columns={detailColumns}
+										isLoading={isLoadingDetails}
+										bind:pageSize={detailPageSizeStr}
+										bind:currentPage={currentDetailPage}
+										showRefreshButton={true}
+										emptyMessage="No items."
+										showRowActions={true}
+										actionsHeader="Actions"
+										actionsVariant="none"
+										enableColumnFilters={false}
+										on:refresh={() => {
+											if (selectedOrderId) {
+												fetchOrderDetails(selectedOrderId);
+											}
+										}}
+									>
+										<svelte:fragment slot="rowActions" let:row>
+											<td class="w-28 shrink-0 text-right">
+												<div class="flex justify-end gap-1">
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-sm"
+														onClick={() =>
+															startEditDetail(row)
+														}
+													>
+														<LucidePencil className="size-4" />
+													</DaisyUiButton>
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-error d-btn-sm"
+														onClick={() =>
+															handleDeleteDetail(row)
+														}
+													>
+														<LucideTrash2 className="size-4" />
+													</DaisyUiButton>
+												</div>
+											</td>
+										</svelte:fragment>
+									</MariTable>
+								</div>
+							{/if}
+						</div>
 					</div>
-				</div>
-			</DaisyUiCardBody>
-		</DaisyUiCard>
+				</DaisyUiCardBody>
+			</DaisyUiCard>
+		</div>
 	{/if}
 </div>
 
