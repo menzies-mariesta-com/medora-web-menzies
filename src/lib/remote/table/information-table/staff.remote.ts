@@ -165,9 +165,10 @@ export const getDoctorStaffPaginated = query(
 		const searchCondition =
 			pattern &&
 			or(
+				// Doctor full name (with or without middle name)
 				ilike(
-					sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
-					`%${searchTerm}%`
+					sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName})`,
+					pattern
 				),
 				ilike(table.staffTable.code, pattern),
 				ilike(table.staffTable.phonePrimary, pattern)
