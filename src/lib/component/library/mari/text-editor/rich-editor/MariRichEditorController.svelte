@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
 	import DaisyUiJoinItem from '$lib/component/library/daisyui/join/item/DaisyUiJoinItem.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
@@ -16,112 +16,389 @@
 	import LucideTextAlignEnd from '$lib/component/library/lucide/LucideTextAlignEnd.svelte';
 	import LucideTextAlignJustify from '$lib/component/library/lucide/LucideTextAlignJustify.svelte';
 	import LucideTextAlignStart from '$lib/component/library/lucide/LucideTextAlignStart.svelte';
-	import LucideType from '$lib/component/library/lucide/LucideType.svelte';
 	import LucideUnderline from '$lib/component/library/lucide/LucideUnderline.svelte';
+	import { createEventDispatcher } from 'svelte';
+
+	export type CommandName =
+		| 'paragraph'
+		| 'heading1'
+		| 'heading2'
+		| 'heading3'
+		| 'heading4'
+		| 'heading5'
+		| 'heading6'
+		| 'bold'
+		| 'italic'
+		| 'underline'
+		| 'strikeThrough'
+		| 'subscript'
+		| 'superscript'
+		| 'justifyLeft'
+		| 'justifyCenter'
+		| 'justifyRight'
+		| 'justifyFull'
+		| 'insertOrderedList'
+		| 'insertUnorderedList'
+		| 'fontSizeIncrease'
+		| 'fontSizeDecrease'
+		| 'fontSizeSet'
+		| 'fontFamilySet'
+		| 'foreColor'
+		| 'backColor'
+		| 'code'
+		| 'blockquote'
+		| 'horizontalRule'
+		| 'indent'
+		| 'outdent'
+		| 'removeFormat'
+		| 'tableAddRowBelow'
+		| 'tableRemoveRow'
+		| 'tableAddColRight'
+		| 'tableRemoveCol'
+		| 'link'
+		| 'unlink'
+		| 'image'
+		| 'table';
+
+	type ActiveStates = Partial<Record<CommandName, boolean>>;
+
+	const FONT_FAMILIES = [
+		{ label: 'Roboto', value: 'Roboto, sans-serif' },
+		{ label: 'Adwaita Sans', value: 'Adwaita-sans, sans-serif' },
+		{ label: 'Adwaita Mono', value: 'Adwaita-mono, monospace' },
+		{ label: 'Comic Relief', value: 'ComicRelief, sans-serif' },
+		{ label: 'Pangolin', value: 'Pangolin, sans-serif' }
+	];
+
+	const TEXT_COLORS = [
+		{ label: 'Black', value: '#000000' },
+		{ label: 'Dark Gray', value: '#4a4a4a' },
+		{ label: 'Gray', value: '#808080' },
+		{ label: 'Red', value: '#e53935' },
+		{ label: 'Orange', value: '#fb8c00' },
+		{ label: 'Yellow', value: '#fdd835' },
+		{ label: 'Green', value: '#43a047' },
+		{ label: 'Blue', value: '#1e88e5' },
+		{ label: 'Purple', value: '#8e24aa' },
+		{ label: 'Pink', value: '#d81b60' }
+	];
+
+	const BG_COLORS = [
+		{ label: 'None', value: '' },
+		{ label: 'Yellow', value: '#fff59d' },
+		{ label: 'Green', value: '#c8e6c9' },
+		{ label: 'Blue', value: '#bbdefb' },
+		{ label: 'Pink', value: '#f8bbd9' },
+		{ label: 'Orange', value: '#ffe0b2' },
+		{ label: 'Purple', value: '#e1bee7' },
+		{ label: 'Gray', value: '#e0e0e0' }
+	];
+
+	let { activeStates = {}, fontSize = 14, fontFamily = '', isInTable = false, textColor = '#000000', bgColor = '' } = $props<{
+		activeStates?: ActiveStates;
+		fontSize?: number;
+		fontFamily?: string;
+		isInTable?: boolean;
+		textColor?: string;
+		bgColor?: string;
+	}>();
+
+	const dispatch = createEventDispatcher<{
+		command: { name: CommandName; value?: number; stringValue?: string };
+	}>();
+
+	function execute(name: CommandName) {
+		dispatch('command', { name });
+	}
+
+	function executeWithValue(name: CommandName, stringValue: string) {
+		dispatch('command', { name, stringValue });
+	}
+
+	function handleFontFamilyChange(e: Event) {
+		const target = e.currentTarget as HTMLSelectElement;
+		dispatch('command', { name: 'fontFamilySet', stringValue: target.value });
+	}
+
+	function handleTextColorChange(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		dispatch('command', { name: 'foreColor', stringValue: target.value });
+	}
+
+	function handleBgColorChange(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		dispatch('command', { name: 'backColor', stringValue: target.value });
+	}
+
+	let showHeadingDropdown = $state(false);
+	let showColorDropdown = $state(false);
+
+	function getCurrentHeadingLabel(): string {
+		if (activeStates.heading1) return 'H1';
+		if (activeStates.heading2) return 'H2';
+		if (activeStates.heading3) return 'H3';
+		if (activeStates.heading4) return 'H4';
+		if (activeStates.heading5) return 'H5';
+		if (activeStates.heading6) return 'H6';
+		if (activeStates.paragraph) return 'P';
+		return 'P';
+	}
 </script>
 
-<div class="flex justify-between px-5 py-3">
+<div class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2">
+	<!-- Font family selector -->
+	<select
+		class="d-select d-select-bordered d-select-xs h-7 min-h-0 w-32 text-xs"
+		value={fontFamily}
+		on:change={handleFontFamilyChange}
+	>
+		{#each FONT_FAMILIES as font (font.value)}
+			<option value={font.value}>{font.label}</option>
+		{/each}
+	</select>
+
+	<!-- Block level / heading dropdown -->
+	<div class="relative">
+		<button
+			type="button"
+			class="d-btn d-btn-xs d-btn-ghost flex items-center gap-1 border border-base-300 px-2"
+			on:click={() => { showHeadingDropdown = !showHeadingDropdown; showColorDropdown = false; }}
+		>
+			<span class="text-xs font-semibold w-6">{getCurrentHeadingLabel()}</span>
+			<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+			</svg>
+		</button>
+		{#if showHeadingDropdown}
+			<div class="absolute left-0 top-full z-50 mt-1 rounded border border-base-300 bg-base-100 shadow-lg">
+				<button type="button" class="block w-full px-3 py-1 text-left text-sm hover:bg-base-200 {activeStates.paragraph ? 'bg-primary/20' : ''}" on:click={() => { execute('paragraph'); showHeadingDropdown = false; }}>Paragraph</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-lg font-bold hover:bg-base-200 {activeStates.heading1 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading1'); showHeadingDropdown = false; }}>Heading 1</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-base font-bold hover:bg-base-200 {activeStates.heading2 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading2'); showHeadingDropdown = false; }}>Heading 2</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-sm font-bold hover:bg-base-200 {activeStates.heading3 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading3'); showHeadingDropdown = false; }}>Heading 3</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-sm font-semibold hover:bg-base-200 {activeStates.heading4 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading4'); showHeadingDropdown = false; }}>Heading 4</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-xs font-semibold hover:bg-base-200 {activeStates.heading5 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading5'); showHeadingDropdown = false; }}>Heading 5</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-xs hover:bg-base-200 {activeStates.heading6 ? 'bg-primary/20' : ''}" on:click={() => { execute('heading6'); showHeadingDropdown = false; }}>Heading 6</button>
+				<div class="border-t border-base-300"></div>
+				<button type="button" class="block w-full px-3 py-1 text-left text-xs font-mono hover:bg-base-200 {activeStates.code ? 'bg-primary/20' : ''}" on:click={() => { execute('code'); showHeadingDropdown = false; }}>Code Block</button>
+				<button type="button" class="block w-full px-3 py-1 text-left text-xs italic hover:bg-base-200 {activeStates.blockquote ? 'bg-primary/20' : ''}" on:click={() => { execute('blockquote'); showHeadingDropdown = false; }}>Blockquote</button>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Font size -->
+	<div class="flex items-center border border-base-300 rounded">
+		<button type="button" class="px-2 py-1 hover:bg-base-300" on:mousedown|preventDefault on:click={() => execute('fontSizeDecrease')}>
+			<span class="text-sm font-bold">−</span>
+		</button>
+		<input
+			type="text"
+			inputmode="numeric"
+			pattern="[0-9]*"
+			value={fontSize}
+			class="w-8 h-7 bg-transparent text-center text-sm font-medium border-x border-base-300"
+			style="outline: none; box-shadow: none;"
+			on:change={(e) => {
+				const target = e.currentTarget as HTMLInputElement;
+				const val = Number(target.value);
+				if (!Number.isNaN(val) && val >= 8 && val <= 200) dispatch('command', { name: 'fontSizeSet', value: val });
+			}}
+		/>
+		<button type="button" class="px-2 py-1 hover:bg-base-300" on:mousedown|preventDefault on:click={() => execute('fontSizeIncrease')}>
+			<span class="text-sm font-bold">+</span>
+		</button>
+	</div>
+
+	<div class="h-5 w-px bg-base-300"></div>
+
+	<!-- Text formatting -->
 	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Bold">
-				<LucideType />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.bold ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('bold')}>
+				<DaisyUiTooltip tooltipText="Bold (Ctrl+B)"><LucideBold className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Italic">
-				<LucideItalic />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.italic ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('italic')}>
+				<DaisyUiTooltip tooltipText="Italic (Ctrl+I)"><LucideItalic className="size-4" /></DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.underline ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('underline')}>
+				<DaisyUiTooltip tooltipText="Underline (Ctrl+U)"><LucideUnderline className="size-4" /></DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.strikeThrough ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('strikeThrough')}>
+				<DaisyUiTooltip tooltipText="Strikethrough"><LucideStrikeThrough className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
 	</DaisyUiJoin>
 
+	<!-- Sub/Superscript -->
 	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Bold">
-				<LucideBold />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.subscript ? 'd-btn-active d-btn-primary' : ''} {activeStates.superscript ? 'opacity-50' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('subscript')} disabled={activeStates.superscript}>
+				<DaisyUiTooltip tooltipText="Subscript"><LucideSubscript className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Italic">
-				<LucideItalic />
-			</DaisyUiTooltip>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Underline">
-				<LucideUnderline />
-			</DaisyUiTooltip>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Strike Through">
-				<LucideStrikeThrough />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.superscript ? 'd-btn-active d-btn-primary' : ''} {activeStates.subscript ? 'opacity-50' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('superscript')} disabled={activeStates.subscript}>
+				<DaisyUiTooltip tooltipText="Superscript"><LucideSuperscript className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
 	</DaisyUiJoin>
 
+	<div class="h-5 w-px bg-base-300"></div>
+
+	<!-- Colors -->
+	<div class="flex items-center gap-1">
+		<DaisyUiTooltip tooltipText="Text Color">
+			<label class="relative cursor-pointer">
+				<span class="flex h-7 w-7 items-center justify-center rounded border border-base-300 bg-base-100 text-xs font-bold" style="color: {textColor}">A</span>
+				<input type="color" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={textColor} on:input={handleTextColorChange} />
+			</label>
+		</DaisyUiTooltip>
+		<DaisyUiTooltip tooltipText="Background Color">
+			<label class="relative cursor-pointer">
+				<span class="flex h-7 w-7 items-center justify-center rounded border border-base-300 text-xs" style="background-color: {bgColor || '#ffffff'}">
+					<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+				</span>
+				<input type="color" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={bgColor || '#ffffff'} on:input={handleBgColorChange} />
+			</label>
+		</DaisyUiTooltip>
+	</div>
+
+	<div class="h-5 w-px bg-base-300"></div>
+
+	<!-- Alignment -->
 	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Align Start">
-				<LucideTextAlignStart />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.justifyLeft ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('justifyLeft')}>
+				<DaisyUiTooltip tooltipText="Align Left"><LucideTextAlignStart className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Align Center">
-				<LucideAlignCenter />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.justifyCenter ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('justifyCenter')}>
+				<DaisyUiTooltip tooltipText="Align Center"><LucideAlignCenter className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Align End">
-				<LucideTextAlignEnd />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.justifyRight ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('justifyRight')}>
+				<DaisyUiTooltip tooltipText="Align Right"><LucideTextAlignEnd className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Align Justify">
-				<LucideTextAlignJustify />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.justifyFull ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('justifyFull')}>
+				<DaisyUiTooltip tooltipText="Justify"><LucideTextAlignJustify className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
 	</DaisyUiJoin>
 
+	<div class="h-5 w-px bg-base-300"></div>
+
+	<!-- Lists & Indent -->
 	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Subscript">
-				<LucideSubscript />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.insertOrderedList ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('insertOrderedList')}>
+				<DaisyUiTooltip tooltipText="Numbered List"><LucideListOrdered className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Superscript">
-				<LucideSuperscript />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7 {activeStates.insertUnorderedList ? 'd-btn-active d-btn-primary' : ''}">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('insertUnorderedList')}>
+				<DaisyUiTooltip tooltipText="Bulleted List"><LucideList className="size-4" /></DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('outdent')}>
+				<DaisyUiTooltip tooltipText="Decrease Indent">
+					<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14V5" /></svg>
+				</DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('indent')}>
+				<DaisyUiTooltip tooltipText="Increase Indent">
+					<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5v14" /></svg>
+				</DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
 	</DaisyUiJoin>
 
+	<div class="h-5 w-px bg-base-300"></div>
+
+	<!-- Insert tools -->
 	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="List Order">
-				<LucideListOrdered />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('link')}>
+				<DaisyUiTooltip tooltipText="Insert Link"><LucideLink className="size-4" /></DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="List Unorder">
-				<LucideList />
-			</DaisyUiTooltip>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('unlink')}>
+				<DaisyUiTooltip tooltipText="Remove Link">
+					<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6" /></svg>
+				</DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('image')}>
+				<DaisyUiTooltip tooltipText="Insert Image"><LucideImage className="size-4" /></DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('table')}>
+				<DaisyUiTooltip tooltipText="Insert Table"><LucideTable2 className="size-4" /></DaisyUiTooltip>
+			</button>
+		</DaisyUiJoinItem>
+		<DaisyUiJoinItem className="d-btn-xs h-7">
+			<button type="button" on:mousedown|preventDefault on:click={() => execute('horizontalRule')}>
+				<DaisyUiTooltip tooltipText="Horizontal Line">
+					<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14" /></svg>
+				</DaisyUiTooltip>
+			</button>
 		</DaisyUiJoinItem>
 	</DaisyUiJoin>
 
-	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Link">
-				<LucideLink />
-			</DaisyUiTooltip>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Table">
-				<LucideTable2 />
-			</DaisyUiTooltip>
-		</DaisyUiJoinItem>
+	<!-- Clear formatting -->
+	<button type="button" class="d-btn d-btn-xs d-btn-ghost h-7" on:mousedown|preventDefault on:click={() => execute('removeFormat')}>
+		<DaisyUiTooltip tooltipText="Clear Formatting">
+			<svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2 2m0 0l2 2m-2-2l-2 2m2-2l2-2M3 12l6.414-6.414a2 2 0 012.828 0L21 14.343" /></svg>
+		</DaisyUiTooltip>
+	</button>
 
-		<DaisyUiJoinItem className="d-btn-sm">
-			<DaisyUiTooltip className="" tooltipText="Image">
-				<LucideImage />
-			</DaisyUiTooltip>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+	<!-- Table tools (when in table) -->
+	{#if isInTable}
+		<div class="h-5 w-px bg-base-300"></div>
+		<DaisyUiJoin>
+			<DaisyUiJoinItem className="d-btn-xs h-7">
+				<button type="button" on:mousedown|preventDefault on:click={() => execute('tableAddRowBelow')}>
+					<DaisyUiTooltip tooltipText="Add Row"><span class="text-[10px] font-semibold">+Row</span></DaisyUiTooltip>
+				</button>
+			</DaisyUiJoinItem>
+			<DaisyUiJoinItem className="d-btn-xs h-7">
+				<button type="button" on:mousedown|preventDefault on:click={() => execute('tableRemoveRow')}>
+					<DaisyUiTooltip tooltipText="Delete Row"><span class="text-[10px] font-semibold">−Row</span></DaisyUiTooltip>
+				</button>
+			</DaisyUiJoinItem>
+			<DaisyUiJoinItem className="d-btn-xs h-7">
+				<button type="button" on:mousedown|preventDefault on:click={() => execute('tableAddColRight')}>
+					<DaisyUiTooltip tooltipText="Add Column"><span class="text-[10px] font-semibold">+Col</span></DaisyUiTooltip>
+				</button>
+			</DaisyUiJoinItem>
+			<DaisyUiJoinItem className="d-btn-xs h-7">
+				<button type="button" on:mousedown|preventDefault on:click={() => execute('tableRemoveCol')}>
+					<DaisyUiTooltip tooltipText="Delete Column"><span class="text-[10px] font-semibold">−Col</span></DaisyUiTooltip>
+				</button>
+			</DaisyUiJoinItem>
+		</DaisyUiJoin>
+	{/if}
 </div>
+
+<!-- Click outside to close dropdowns -->
+<svelte:window on:click={(e) => {
+	const target = e.target as HTMLElement;
+	if (!target.closest('.relative')) {
+		showHeadingDropdown = false;
+		showColorDropdown = false;
+	}
+}} />
