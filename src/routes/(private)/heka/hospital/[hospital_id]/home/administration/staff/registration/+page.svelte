@@ -532,13 +532,6 @@
 			);
 			return;
 		}
-		if (!selectedEmail?.trim()) {
-			toastService.addToast(
-				'Email is required.',
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
 		if (!selectedStaffEmploymentTypeId) {
 			toastService.addToast(
 				'Employment Type is required.',
@@ -920,11 +913,12 @@
 				}
 			}
 
-			toastService.addToast(
-				`Staff created successfully!`,
-				StatusColorEnum.SUCCESS
-			);
+		toastService.addToast(
+			`Staff created successfully!`,
+			StatusColorEnum.SUCCESS
+		);
 
+		if (selectedEmail?.trim()) {
 			const { error } = await authClient.requestPasswordReset({
 				email: selectedEmail.trim(),
 				redirectTo: routerUtil.getResetRedirectUrl()
@@ -942,6 +936,7 @@
 				'Reset password email has been sent to the staff.',
 				StatusColorEnum.INFO
 			);
+		}
 
 			disableCreateSave = true;
 		} catch (error: unknown) {

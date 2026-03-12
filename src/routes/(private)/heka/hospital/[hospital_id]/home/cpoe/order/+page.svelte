@@ -389,6 +389,18 @@ function parseDecimalOrNull(
 		return;
 	}
 
+	if (
+		doctorAmount != null &&
+		serviceAmount != null &&
+		Number(doctorAmount) > Number(serviceAmount)
+	) {
+		toastService.addToast(
+			'Discount amount cannot be greater than service amount.',
+			StatusColorEnum.ERROR
+		);
+		return;
+	}
+
 	const basePayload = {
 			serviceOrderId: selectedOrderId,
 			serviceId,
@@ -580,7 +592,7 @@ async function applyPricingForSelectedService() {
 		},
 		{
 			id: 'discount',
-			header: 'Discount',
+			header: 'Discount Amount',
 			widthClass: 'w-32',
 			filterable: false,
 			format: (value) => formatNumber(value as any)
@@ -782,7 +794,7 @@ async function applyPricingForSelectedService() {
 										/>
 									</label>
 									<label class="flex flex-col gap-1 text-sm">
-										Discount
+										Discount Amount
 										<input
 											type="number"
 											step="0.01"
