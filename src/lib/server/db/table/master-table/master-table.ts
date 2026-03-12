@@ -517,3 +517,28 @@ export const visitTypeTable = pgTable(
 		index('visit_type_status_id_idx').on(table.statusId),
 	],
 );
+
+/** Document setting for configuring document templates and settings. */
+export const documentSettingTable = pgTable(
+	'document_setting',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }),
+		code: varchar('code', { length: 128 }),
+		description: text('description'),
+		documentTypeId: integer('document_type_id').references(
+			() => documentTypeTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('document_setting_name_idx').on(table.name),
+		index('document_setting_code_idx').on(table.code),
+		index('document_setting_document_type_id_idx').on(table.documentTypeId),
+		index('document_setting_status_id_idx').on(table.statusId)
+	]
+);
