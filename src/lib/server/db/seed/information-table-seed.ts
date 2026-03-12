@@ -165,16 +165,57 @@ export async function seedInformationTables() {
 		`);
 	console.log('Seeded: status tagging');
 
-}
-
-
-await db.execute(sql`
-	INSERT INTO allergy (id, name)
-	VALUES
-		(1, 'No Known Allergy')
-	ON CONFLICT (id) DO NOTHING;
+	// 8. Document types (consent, form, instruction, certificate, help)
+	// Note: column is 'name' in old schema, 'document_type' in new schema after migration
+	await db.execute(sql`
+		INSERT INTO document_type (id, document_type, status_id)
+		VALUES
+			(1, 'Consent', 1),
+			(2, 'Form', 1),
+			(3, 'Instruction', 1),
+			(4, 'Certificate', 1),
+			(5, 'Help', 1)
+		ON CONFLICT (id) DO NOTHING;
 	`);
-console.log('Seeded: allergy table');
+	console.log('Seeded: document_type');
+
+	// 9. Document settings (template configurations)
+	await db.execute(sql`
+		INSERT INTO document_setting (id, name, code, document_type_id, margin_top, margin_bottom, margin_left, margin_right, padding_top, padding_bottom, padding_left, padding_right, page_size, page_orientation, show_header, show_footer, header_html, footer_html, status_id)
+		VALUES
+			(1, 'OPD Consent Form', 'OPD-CONSENT', 1, 20, 20, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
+				'<div style="text-align:center;"><strong>{{hospital.name}}</strong><br/><span style="font-size:12px;">{{hospital.address}}</span></div>',
+				'<div style="text-align:center;font-size:10px;">Page {{page.number}} of {{page.total}} | Printed: {{print.date}} by {{print.by}}</div>',
+				1),
+			(2, 'ED Case Sheet', 'ED-CASESHEET', 2, 15, 15, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
+				'<div><strong>{{hospital.name}}</strong> - Emergency Department<br/>Patient: {{patient.name}} | Code: {{patient.code}} | Visit: {{visit.no}}</div>',
+				'<div style="font-size:10px;">Doctor: {{doctor.name}} | Date: {{visit.date}}</div>',
+				1),
+			(3, 'Medical Certificate', 'MED-CERT', 4, 25, 25, 20, 20, 15, 15, 15, 15, 'A4', 'portrait', true, true,
+				'<div style="text-align:center;"><strong>MEDICAL CERTIFICATE</strong><br/>{{hospital.name}}</div>',
+				'<div style="text-align:right;font-size:11px;"><br/>_____________________<br/>{{doctor.name}}<br/>{{doctor.license}}</div>',
+				1),
+			(4, 'Discharge Instructions', 'DISCHARGE-INST', 3, 15, 15, 15, 15, 10, 10, 10, 10, 'A4', 'portrait', true, true,
+				'<div><strong>Discharge Instructions</strong><br/>Patient: {{patient.name}} | DOB: {{patient.dob}} | Age/Gender: {{patient.age}}/{{patient.gender}}</div>',
+				'<div style="font-size:10px;">Issued by: {{doctor.name}} on {{visit.date}}</div>',
+				1),
+			(5, 'OP Bill', 'OP-BILL', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
+				'<div><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</div>',
+				'<div style="font-size:9px;text-align:center;">Thank you for choosing {{hospital.name}}</div>',
+				1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: document_setting');
+
+	// 9. Allergy
+	await db.execute(sql`
+		INSERT INTO allergy (id, name)
+		VALUES
+			(1, 'No Known Allergy')
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	console.log('Seeded: allergy');
+}
 
 seedInformationTables()
 	.then(() => {

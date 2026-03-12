@@ -27,7 +27,7 @@
 		createDocumentType,
 		updateDocumentType,
 		deleteDocumentType
-	} from '$lib/remote/table/master-table/document-type.remote';
+	} from '$lib/remote/table/information-table/document-type.remote';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -71,7 +71,7 @@
 	function startEdit(item: DocumentTypeSchema) {
 		isEditing = true;
 		editingId = item.id;
-		nameInput = item.name ?? '';
+		nameInput = item.documentType ?? '';
 	}
 
 	function startCreate() {
@@ -88,12 +88,12 @@
 			if (editingId) {
 				await updateDocumentType({
 					id: editingId,
-					name: nameInput.trim()
+					documentType: nameInput.trim()
 				});
 				toastService.addToast('Document type updated', StatusColorEnum.SUCCESS);
 			} else {
 				await createDocumentType({
-					name: nameInput.trim()
+					documentType: nameInput.trim()
 				});
 				toastService.addToast('Document type created', StatusColorEnum.SUCCESS);
 			}
@@ -140,7 +140,7 @@
 			widthClass: 'w-20 min-w-[5rem]'
 		},
 		{
-			id: 'name',
+			id: 'documentType',
 			header: 'Name',
 			widthClass: 'w-64 min-w-[16rem]'
 		},

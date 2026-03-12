@@ -23,7 +23,6 @@ import {
 	cityTable,
 	countryTable,
 	departmentTable,
-	documentTypeTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -44,6 +43,7 @@ import {
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
+import { index } from 'drizzle-orm/pg-core';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -526,73 +526,126 @@ export const patientAllergyTable = pgTable('patient_allergy', {
 	...timestamps
 });
 
-export const documentTable = pgTable('document', {
-	id: serial('id').primaryKey(),
-	documentTypeId: integer('document_type_id')
-		.notNull()
-		.references(() => documentTypeTable.id),
-	documentText: text('document_text'),
-	documentNumber: varchar('document_number', { length: 128 }),
-	documentSettingId: integer('document_setting_id'),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	createdBy: text('created_by').references(() => userTable.id),
-	...timestamps
-});
+/** Document type lookup (consent, form, instruction, certificate, help) */
+export const documentTypeTable = pgTable(
+	'document_type',
+	{
+		id: serial('id').primaryKey(),
+		documentType: varchar('document_type', { length: 512 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdBy: text('created_by').references(() => userTable.id),
+		...timestamps
+	},
+	(table) => [
+		index('document_type_name_idx').on(table.documentType),
+		index('document_type_status_id_idx').on(table.statusId)
+	]
+);
 
-export const patientDocumentTable = pgTable('patient_document', {
-	id: serial('id').primaryKey(),
-	visitId: integer('visit_id')
-		.notNull()
-		.references(() => patientVisitTable.id),
-	patientId: uuid('patient_id')
-		.notNull()
-		.references(() => patientTable.id),
-	documentId: integer('document_id')
-		.notNull()
-		.references(() => documentTable.id),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	createdBy: text('created_by').references(() => userTable.id),
-	...timestamps
-});
+/** Document setting - template configuration for document layout and placeholders */
+export const documentSettingTable = pgTable(
+	'document_setting',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 128 }),
+		documentTypeId: integer('document_type_id').references(
+			() => documentTypeTable.id
+		),
+		hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
+		// Page layout settings (in mm)
+		marginTop: integer('margin_top').default(20),
+		marginBottom: integer('margin_bottom').default(20),
+		marginLeft: integer('margin_left').default(15),
+		marginRight: integer('margin_right').default(15),
+		paddingTop: integer('padding_top').default(10),
+		paddingBottom: integer('padding_bottom').default(10),
+		paddingLeft: integer('padding_left').default(10),
+		paddingRight: integer('padding_right').default(10),
+		// Page size
+		pageSize: varchar('page_size', { length: 20 }).default('A4'),
+		pageOrientation: varchar('page_orientation', { length: 20 }).default('portrait'),
+		// Header and footer templates (HTML with placeholders)
+		headerHtml: text('header_html'),
+		footerHtml: text('footer_html'),
+		// Show/hide header footer
+		showHeader: boolean('show_header').default(true),
+		showFooter: boolean('show_footer').default(true),
+		// Description
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdBy: text('created_by').references(() => userTable.id),
+		...timestamps
+	},
+	(table) => [
+		index('document_setting_name_idx').on(table.name),
+		index('document_setting_code_idx').on(table.code),
+		index('document_setting_document_type_id_idx').on(table.documentTypeId),
+		index('document_setting_hospital_id_idx').on(table.hospitalId),
+		index('document_setting_status_id_idx').on(table.statusId)
+	]
+);
 
-export const documentSettingTable = pgTable('document_setting', {
-	id: serial('id').primaryKey(),
-	documentName: varchar('document_name', { length: 512 }),
-	hospitalId: uuid('hospital_id')
-		.notNull()
-		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-	patientId: uuid('patient_id')
-		.notNull()
-		.references(() => patientTable.id, { onDelete: 'cascade' }),
-	patientCode: varchar('patient_code', { length: 128 }),
-	dob: date('dob'),
-	ageGender: varchar('age_gender', { length: 256 }),
-	doctorName: varchar('doctor_name', { length: 512 }),
-	date: date('date'),
-	visitNo: varchar('visit_no', { length: 128 }),
-	visitDateTime: timestamp('visit_date_time', {
-		withTimezone: true,
-		mode: 'string'
-	}),
-	printBy: text('print_by').references(() => userTable.id),
-	printDateTime: timestamp('print_date_time', {
-		withTimezone: true,
-		mode: 'string'
-	})
-		.notNull()
-		.defaultNow(),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	...timestamps
-});
+/** Document master - stores document templates with HTML content */
+export const documentTable = pgTable(
+	'document',
+	{
+		id: serial('id').primaryKey(),
+		documentTypeId: integer('document_type_id')
+			.notNull()
+			.references(() => documentTypeTable.id),
+		documentText: text('document_text'),
+		documentNumber: varchar('document_number', { length: 128 }),
+		documentSettingId: integer('document_setting_id').references(
+			() => documentSettingTable.id
+		),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdBy: text('created_by').references(() => userTable.id),
+		...timestamps
+	},
+	(table) => [
+		index('document_document_type_id_idx').on(table.documentTypeId),
+		index('document_status_id_idx').on(table.statusId)
+	]
+);
+
+/** Patient document - links documents to visits (clinical document sub page) */
+export const patientDocumentTable = pgTable(
+	'patient_document',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		documentId: integer('document_id')
+			.notNull()
+			.references(() => documentTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdBy: text('created_by').references(() => userTable.id),
+		...timestamps
+	},
+	(table) => [
+		index('patient_document_visit_id_idx').on(table.visitId),
+		index('patient_document_patient_id_idx').on(table.patientId),
+		index('patient_document_document_id_idx').on(table.documentId),
+		index('patient_document_status_id_idx').on(table.statusId)
+	]
+);
 
 export const doctorScheduleTable = pgTable('doctor_schedule', {
 	id: serial('id').primaryKey(),

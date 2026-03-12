@@ -2,6 +2,8 @@ import { relations } from 'drizzle-orm';
 import {
 	appointmentTable,
 	documentTable,
+	documentTypeTable,
+	documentSettingTable,
 	doctorScheduleTable,
 	externalReferTable,
 	appointmentBlockTable,
@@ -35,8 +37,7 @@ import {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
-	allergyTable,
-	documentSettingTable
+	allergyTable
 } from './information-table';
 import {
 	categoryTable,
@@ -62,8 +63,7 @@ import {
 	unitTable,
 	visitTypeTable,
 	weekdayTable,
-	severityTable,
-	documentTypeTable
+	severityTable
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -916,49 +916,80 @@ export const allergyTableRelations = relations(allergyTable, ({ one }) => ({
 	}),
 }));
 
+export const documentTypeTableRelations = relations(
+	documentTypeTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [documentTypeTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [documentTypeTable.createdBy],
+			references: [userTable.id]
+		}),
+		documents: many(documentTable)
+	})
+);
+
+export const documentSettingTableRelations = relations(
+	documentSettingTable,
+	({ one, many }) => ({
+		documentType: one(documentTypeTable, {
+			fields: [documentSettingTable.documentTypeId],
+			references: [documentTypeTable.id]
+		}),
+		hospital: one(hospitalTable, {
+			fields: [documentSettingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [documentSettingTable.createdBy],
+			references: [userTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [documentSettingTable.statusId],
+			references: [statusTable.id]
+		}),
+		documents: many(documentTable)
+	})
+);
+
 export const documentTableRelations = relations(documentTable, ({ one, many }) => ({
 	documentType: one(documentTypeTable, {
 		fields: [documentTable.documentTypeId],
 		references: [documentTypeTable.id],
 	}),
+	documentSetting: one(documentSettingTable, {
+		fields: [documentTable.documentSettingId],
+		references: [documentSettingTable.id],
+	}),
 	status: one(statusTable, {
 		fields: [documentTable.statusId],
 		references: [statusTable.id],
 	}),
+	createdByUser: one(userTable, {
+		fields: [documentTable.createdBy],
+		references: [userTable.id],
+	}),
 	patientDocuments: many(patientDocumentTable),
 }));
 
-export const documentSettingTableRelations = relations(documentSettingTable, ({ one }) => ({
-	hospital: one(hospitalTable, {
-		fields: [documentSettingTable.hospitalId],
-		references: [hospitalTable.id],
-	}),
-	patient: one(patientTable, {
-		fields: [documentSettingTable.patientId],
-		references: [patientTable.id],
-	}),
-	printedBy: one(userTable, {
-		fields: [documentSettingTable.printBy],
-		references: [userTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [documentSettingTable.statusId],
-		references: [statusTable.id],
-	}),
-}));
-
 export const patientDocumentTableRelations = relations(patientDocumentTable, ({ one }) => ({
-	patient: one(patientTable, {
-		fields: [patientDocumentTable.patientId],
-		references: [patientTable.id],
-	}),
 	visit: one(patientVisitTable, {
 		fields: [patientDocumentTable.visitId],
 		references: [patientVisitTable.id],
 	}),
+	patient: one(patientTable, {
+		fields: [patientDocumentTable.patientId],
+		references: [patientTable.id],
+	}),
 	document: one(documentTable, {
 		fields: [patientDocumentTable.documentId],
 		references: [documentTable.id],
+	}),
+	createdByUser: one(userTable, {
+		fields: [patientDocumentTable.createdBy],
+		references: [userTable.id],
 	}),
 	status: one(statusTable, {
 		fields: [patientDocumentTable.statusId],
