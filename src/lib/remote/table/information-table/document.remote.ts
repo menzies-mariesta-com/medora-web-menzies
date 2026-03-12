@@ -60,15 +60,18 @@ export const getDocumentsPaginated = query(
 	): Promise<PaginatedResult<DocumentSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
+		const activeFilter = eq(table.documentTable.statusId, StatusEnum.ACTIVE);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.documentTable)
+				.where(activeFilter)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.documentTable)
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -81,7 +84,42 @@ export const getDocumentsPaginated = query(
 	}
 );
 
-// create
+// get paginated with relations
+export const getDocumentsPaginatedWithRelations = query(
+	'unchecked' as const,
+	async (
+		params?: PaginationParams
+	): Promise<PaginatedResult<DocumentWithRelations>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		const activeFilter = eq(table.documentTable.statusId, StatusEnum.ACTIVE);
+		const [data, countResult] = await Promise.all([
+			ensureDb().query.documentTable.findMany({
+				where: activeFilter,
+				with: {
+					documentType: true,
+					status: true
+				},
+				limit,
+				offset
+			}),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.documentTable)
+				.where(activeFilter)
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1
+		};
+	}
+);
+
+// create document
 export const createDocument = command(
 	'unchecked' as const,
 	async (payload: DocumentSchemaInsert): Promise<DocumentSchema> => {
@@ -91,18 +129,19 @@ export const createDocument = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getDocuments().refresh();
-		getDocumentsPaginated(undefined).refresh();
-		getDocumentsWithRelations().refresh();
 		return row;
 	}
 );
 
-// update
+// update document
 export const updateDocument = command(
 	'unchecked' as const,
-	async (
-		payload: DocumentSchemaUpdate & { id: number }
-	): Promise<DocumentSchema> => {
+	async (payload: {
+		id: number;
+		documentTypeId?: number;
+		documentText?: string | null;
+		statusId?: number;
+	}): Promise<DocumentSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.documentTable)
@@ -111,13 +150,11 @@ export const updateDocument = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getDocuments().refresh();
-		getDocumentsPaginated(undefined).refresh();
-		getDocumentsWithRelations().refresh();
 		return row;
 	}
 );
 
-// delete (soft: mark as deleted)
+// delete document (soft delete)
 export const deleteDocument = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
@@ -126,20 +163,6 @@ export const deleteDocument = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.documentTable.id, id));
 		getDocuments().refresh();
-		getDocumentsPaginated(undefined).refresh();
-		getDocumentsWithRelations().refresh();
 	}
 );
 
-// delete complete (hard)
-export const deleteDocumentComplete = command(
-	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb()
-			.delete(table.documentTable)
-			.where(eq(table.documentTable.id, id));
-		getDocuments().refresh();
-		getDocumentsPaginated(undefined).refresh();
-		getDocumentsWithRelations().refresh();
-	}
-);
