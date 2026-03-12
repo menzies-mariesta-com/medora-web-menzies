@@ -40,6 +40,7 @@
 		| 'fontSizeIncrease'
 		| 'fontSizeDecrease'
 		| 'fontSizeSet'
+		| 'fontFamilySet'
 		| 'tableAddRowBelow'
 		| 'tableRemoveRow'
 		| 'tableAddColRight'
@@ -50,20 +51,47 @@
 
 	type ActiveStates = Partial<Record<CommandName, boolean>>;
 
-	let { activeStates = {}, fontSize = 14, isInTable = false } = $props<{
+	const FONT_FAMILIES = [
+		{ label: 'Roboto', value: 'Roboto, sans-serif' },
+		{ label: 'Adwaita Sans', value: 'Adwaita-sans, sans-serif' },
+		{ label: 'Adwaita Mono', value: 'Adwaita-mono, monospace' },
+		{ label: 'Comic Relief', value: 'ComicRelief, sans-serif' },
+		{ label: 'Pangolin', value: 'Pangolin, sans-serif' }
+	];
+
+	let { activeStates = {}, fontSize = 14, fontFamily = '', isInTable = false } = $props<{
 		activeStates?: ActiveStates;
 		fontSize?: number;
+		fontFamily?: string;
 		isInTable?: boolean;
 	}>();
 
-	const dispatch = createEventDispatcher<{ command: { name: CommandName; value?: number } }>();
+	const dispatch = createEventDispatcher<{
+		command: { name: CommandName; value?: number; stringValue?: string };
+	}>();
 
 	function execute(name: CommandName) {
 		dispatch('command', { name });
 	}
+
+	function handleFontFamilyChange(e: Event) {
+		const target = e.currentTarget as HTMLSelectElement;
+		dispatch('command', { name: 'fontFamilySet', stringValue: target.value });
+	}
 </script>
 
-<div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+<div class="flex flex-wrap items-center gap-3 px-5 py-3">
+	<!-- Font family selector -->
+	<select
+		class="d-select d-select-bordered d-select-sm w-36"
+		value={fontFamily}
+		on:change={handleFontFamilyChange}
+	>
+		{#each FONT_FAMILIES as font (font.value)}
+			<option value={font.value}>{font.label}</option>
+		{/each}
+	</select>
+
 	<!-- Block level / heading -->
 	<DaisyUiJoin>
 		<DaisyUiJoinItem

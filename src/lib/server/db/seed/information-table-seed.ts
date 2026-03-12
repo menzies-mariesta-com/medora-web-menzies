@@ -96,6 +96,7 @@ export async function seedInformationTables() {
 			(10, 'Document Master', 1, 1, null, '/heka/home/administration/document-master', 7),
 			(100007, 'Document Type', 1, 1, 10, '/heka/home/administration/document-master/document-type', 1),
 			(100008, 'Document', 1, 1, 10, '/heka/home/administration/document-master/document', 2),
+			(100009, 'Document Setting', 1, 1, 10, '/heka/home/administration/document-master/document-setting', 3),
 
 			-- Registration Module
 			-- patient pages

@@ -5,6 +5,7 @@ import type {
 	countryTable,
 	craftGroupTable,
 	departmentTable,
+	documentSettingTable,
 	documentTypeTable,
 	genderTable,
 	identityTypeTable,
@@ -195,3 +196,9 @@ export type DocumentTypeSchemaInsert = InferInsertModel<
 	typeof documentTypeTable
 >;
 export type DocumentTypeSchemaUpdate = Partial<DocumentTypeSchemaInsert>;
+
+export type DocumentSettingSchema = InferSelectModel<typeof documentSettingTable>;
+export type DocumentSettingSchemaInsert = InferInsertModel<
+	typeof documentSettingTable
+>;
+export type DocumentSettingSchemaUpdate = Partial<DocumentSettingSchemaInsert>;

@@ -5,6 +5,8 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
@@ -21,18 +23,21 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 	import {
-		getDocumentTypesPaginated,
-		createDocumentType,
-		updateDocumentType,
-		deleteDocumentType
-	} from '$lib/remote/table/master-table/document-type.remote';
+		getDocumentSettingsPaginated,
+		createDocumentSetting,
+		updateDocumentSetting,
+		deleteDocumentSetting,
+		type DocumentSettingWithRelations
+	} from '$lib/remote/table/master-table/document-setting.remote';
+	import { getDocumentTypes } from '$lib/remote/table/master-table/document-type.remote';
+	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let docTypeResult = $state<PaginatedResult<DocumentTypeSchema> | null>(null);
+	let settingResult = $state<PaginatedResult<DocumentSettingWithRelations> | null>(null);
+	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
@@ -40,15 +45,18 @@
 	let isEditing = $state(false);
 	let editingId = $state<number | null>(null);
 	let nameInput = $state('');
+	let codeInput = $state('');
+	let descriptionInput = $state('');
+	let documentTypeIdInput = $state('');
 
-	const docTypeList = $derived(docTypeResult?.data ?? []);
-	const total = $derived(docTypeResult?.total ?? 0);
+	const settingList = $derived(settingResult?.data ?? []);
+	const total = $derived(settingResult?.total ?? 0);
 
 	async function fetchData(opts?: { bustCache?: boolean }) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
 		try {
-			docTypeResult = await getDocumentTypesPaginated({
+			settingResult = await getDocumentSettingsPaginated({
 				page: currentPage,
 				pageSize,
 				...(opts?.bustCache && { _t: Date.now() })
@@ -58,20 +66,35 @@
 		}
 	}
 
+	async function fetchDocumentTypes() {
+		try {
+			documentTypes = await getDocumentTypes();
+		} catch (err) {
+			console.error('Failed to load document types', err);
+		}
+	}
+
 	lifeCycleUtil.onMount(() => {
 		fetchData();
+		fetchDocumentTypes();
 	});
 
 	function resetForm() {
 		isEditing = false;
 		editingId = null;
 		nameInput = '';
+		codeInput = '';
+		descriptionInput = '';
+		documentTypeIdInput = '';
 	}
 
-	function startEdit(item: DocumentTypeSchema) {
+	function startEdit(item: DocumentSettingWithRelations) {
 		isEditing = true;
 		editingId = item.id;
 		nameInput = item.name ?? '';
+		codeInput = item.code ?? '';
+		descriptionInput = item.description ?? '';
+		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
 	}
 
 	function startCreate() {
@@ -85,41 +108,46 @@
 			return;
 		}
 		try {
+			const payload = {
+				name: nameInput.trim(),
+				code: codeInput.trim() || null,
+				description: descriptionInput.trim() || null,
+				documentTypeId: documentTypeIdInput ? Number(documentTypeIdInput) : null
+			};
+
 			if (editingId) {
-				await updateDocumentType({
+				await updateDocumentSetting({
 					id: editingId,
-					name: nameInput.trim()
+					...payload
 				});
-				toastService.addToast('Document type updated', StatusColorEnum.SUCCESS);
+				toastService.addToast('Document setting updated', StatusColorEnum.SUCCESS);
 			} else {
-				await createDocumentType({
-					name: nameInput.trim()
-				});
-				toastService.addToast('Document type created', StatusColorEnum.SUCCESS);
+				await createDocumentSetting(payload);
+				toastService.addToast('Document setting created', StatusColorEnum.SUCCESS);
 			}
 			resetForm();
 			await fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to save document type', StatusColorEnum.ERROR);
+			toastService.addToast('Failed to save document setting', StatusColorEnum.ERROR);
 		}
 	}
 
 	async function handleDelete(id: number) {
 		try {
 			const result = await dialogService.open({
-				title: 'Delete Document Type',
-				message: 'Are you sure you want to delete this document type?',
+				title: 'Delete Document Setting',
+				message: 'Are you sure you want to delete this document setting?',
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
-				await deleteDocumentType({ id });
+				await deleteDocumentSetting({ id });
 				await fetchData({ bustCache: true });
-				toastService.addToast('Document type deleted', StatusColorEnum.SUCCESS);
+				toastService.addToast('Document setting deleted', StatusColorEnum.SUCCESS);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete document type', StatusColorEnum.ERROR);
+			toastService.addToast('Failed to delete document setting', StatusColorEnum.ERROR);
 		}
 	}
 
@@ -133,7 +161,7 @@
 		}
 	}
 
-	const columns: MariTableColumn<DocumentTypeSchema>[] = [
+	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
 		{
 			id: 'id',
 			header: 'ID',
@@ -142,6 +170,22 @@
 		{
 			id: 'name',
 			header: 'Name',
+			widthClass: 'w-48 min-w-[12rem]'
+		},
+		{
+			id: 'code',
+			header: 'Code',
+			widthClass: 'w-32 min-w-[8rem]'
+		},
+		{
+			id: 'documentType',
+			header: 'Document Type',
+			widthClass: 'w-40 min-w-[10rem]',
+			format: (_value, row) => row.documentType?.name ?? '—'
+		},
+		{
+			id: 'description',
+			header: 'Description',
 			widthClass: 'w-64 min-w-[16rem]'
 		},
 		{
@@ -162,21 +206,61 @@
 <div class="flex flex-col gap-4 p-4">
 	<DaisyUiCard className="p-4">
 		<h2 class="text-lg font-semibold mb-4">
-			{isEditing ? (editingId ? 'Edit Document Type' : 'Create Document Type') : 'Document Type'}
+			{isEditing
+				? editingId
+					? 'Edit Document Setting'
+					: 'Create Document Setting'
+				: 'Document Setting'}
 		</h2>
 		{#if isEditing}
-			<div class="flex items-end gap-4">
-				<div class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="docTypeName" className="shrink-0 sm:w-24">Name <span class="text-error">*</span></DaisyUiLabel>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="settingName" className="shrink-0 sm:w-32">Name <span class="text-error">*</span></DaisyUiLabel>
 					<div class="flex-1">
 						<DaisyUiInputField
-							id="docTypeName"
+							id="settingName"
 							bind:value={nameInput}
 							inputType="text"
-							inputPlaceholderText="Enter document type name"
+							inputPlaceholderText="Enter setting name"
 						/>
 					</div>
 				</div>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="settingCode" className="shrink-0 sm:w-32">Code</DaisyUiLabel>
+					<div class="flex-1">
+						<DaisyUiInputField
+							id="settingCode"
+							bind:value={codeInput}
+							inputType="text"
+							inputPlaceholderText="Enter code"
+						/>
+					</div>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="settingDocType" className="shrink-0 sm:w-32">Document Type</DaisyUiLabel>
+					<div class="flex-1">
+						<DaisyUiSelect
+							bind:value={documentTypeIdInput}
+							optionHeader="Select document type ..."
+						>
+							{#each documentTypes as dt (dt.id)}
+								<option value={String(dt.id)}>{dt.name}</option>
+							{/each}
+						</DaisyUiSelect>
+					</div>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3 md:col-span-2">
+					<DaisyUiLabel forText="settingDescription" className="shrink-0 sm:w-32">Description</DaisyUiLabel>
+					<div class="flex-1">
+						<DaisyUiTextarea
+							id="settingDescription"
+							bind:value={descriptionInput}
+							placeholder="Enter description"
+						/>
+					</div>
+				</div>
+			</div>
+			<div class="flex justify-end gap-2">
 				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={handleSave}>
 					{editingId ? 'Update' : 'Create'}
 				</DaisyUiButton>
@@ -195,14 +279,14 @@
 		{/if}
 	</DaisyUiCard>
 
-	{#if isLoading && !docTypeResult}
+	{#if isLoading && !settingResult}
 		<div class="flex items-center justify-center">
 			<DaisyUiLoading className="d-loading-xl" />
 		</div>
 	{:else}
 		<div class="{TableEnum.HEIGHT} overflow-auto">
 			<MariTable
-				rows={docTypeList}
+				rows={settingList}
 				{columns}
 				{isLoading}
 				bind:pageSize={filterPageSize}
@@ -210,7 +294,7 @@
 				totalRowCount={total}
 				showRefreshButton={true}
 				refreshTooltip={m.refresh_data()}
-				emptyMessage="No document types found"
+				emptyMessage="No document settings found"
 				showRowActions={true}
 				actionsHeader={m.actions()}
 				actionsVariant="none"
@@ -224,7 +308,7 @@
 				on:pageChange={() => fetchData()}
 			>
 			<svelte:fragment slot="rowActions" let:row>
-				{@const typedRow = row as DocumentTypeSchema}
+				{@const typedRow = row as DocumentSettingWithRelations}
 				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
 					<div class="flex flex-col items-center gap-1">
 						<DaisyUiTooltip
