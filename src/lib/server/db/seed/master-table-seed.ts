@@ -1583,37 +1583,6 @@ export async function seedMasterTables() {
 	`);
 	console.log('Seeded: severity');
 
-	// 20. Document types
-	await db.execute(sql`
-		INSERT INTO document_type (id, name, status_id)
-		VALUES
-			(1, 'Consent', 1),
-			(2, 'Form', 1),
-			(3, 'Instruction', 1),
-			(4, 'Certificate', 1),
-			(5, 'Help', 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: document_type');
-
-	// 21. Document settings
-	await db.execute(sql`
-		INSERT INTO document_setting (id, name, code, description, document_type_id, status_id)
-		VALUES
-			(1, 'General Consent Form', 'GCF', 'Standard consent form for general procedures', 1, 1),
-			(2, 'Surgery Consent Form', 'SCF', 'Consent form for surgical procedures', 1, 1),
-			(3, 'Patient Registration Form', 'PRF', 'Form for new patient registration', 2, 1),
-			(4, 'Medical History Form', 'MHF', 'Form to collect patient medical history', 2, 1),
-			(5, 'Discharge Instructions', 'DI', 'Instructions provided at patient discharge', 3, 1),
-			(6, 'Pre-operative Instructions', 'POI', 'Instructions before surgery', 3, 1),
-			(7, 'Medical Certificate', 'MC', 'Medical certificate for work/school absence', 4, 1),
-			(8, 'Fitness Certificate', 'FC', 'Certificate of fitness for activity', 4, 1),
-			(9, 'System Help Guide', 'SHG', 'General help documentation for the system', 5, 1),
-			(10, 'User Manual', 'UM', 'Detailed user manual for hospital staff', 5, 1)
-		ON CONFLICT (id) DO NOTHING;
-	`);
-	console.log('Seeded: document_setting');
-
 	console.log('Master tables seeding completed.');
 }
 

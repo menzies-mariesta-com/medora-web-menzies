@@ -139,6 +139,7 @@ export const updateDocument = command(
 	async (payload: {
 		id: number;
 		documentTypeId?: number;
+		documentNumber?: string | null;
 		documentText?: string | null;
 		statusId?: number;
 	}): Promise<DocumentSchema> => {

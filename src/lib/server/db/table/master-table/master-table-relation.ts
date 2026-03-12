@@ -22,8 +22,6 @@ import {
 	countryTable,
 	craftGroupTable,
 	departmentTable,
-	documentSettingTable,
-	documentTypeTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -204,20 +202,8 @@ export const statusTableRelations = relations(
 		statusTaggings: many(statusTaggingTable),
 		statusTaggingTypes: many(statusTaggingTypeTable),
 		craftGroups: many(craftGroupTable),
-		documentTypes: many(documentTypeTable),
 		staffDetails: many(staffDetailTable),
 		patients: many(patientTable)
-	})
-);
-
-export const documentTypeTableRelations = relations(
-	documentTypeTable,
-	({ one, many }) => ({
-		status: one(statusTable, {
-			fields: [documentTypeTable.statusId],
-			references: [statusTable.id]
-		}),
-		documentSettings: many(documentSettingTable)
 	})
 );
 
@@ -371,19 +357,5 @@ export const visitTypeTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		patientVisits: many(patientVisitTable)
-	})
-);
-
-export const documentSettingTableRelations = relations(
-	documentSettingTable,
-	({ one }) => ({
-		documentType: one(documentTypeTable, {
-			fields: [documentSettingTable.documentTypeId],
-			references: [documentTypeTable.id]
-		}),
-		status: one(statusTable, {
-			fields: [documentSettingTable.statusId],
-			references: [statusTable.id]
-		})
 	})
 );

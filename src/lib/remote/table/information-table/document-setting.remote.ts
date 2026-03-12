@@ -6,6 +6,7 @@ import type {
 	DocumentSettingSchemaInsert,
 	DocumentSettingSchemaUpdate
 } from '$lib/server/db/schema-type';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -13,40 +14,67 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { count, eq } from 'drizzle-orm';
 
-// get all
 export const getDocumentSettings = query(
 	async (): Promise<DocumentSettingSchema[]> => {
-		return ensureDb().select().from(table.documentSettingTable);
+		return ensureDb()
+			.select()
+			.from(table.documentSettingTable)
+			.where(eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE))
+			.orderBy(table.documentSettingTable.name);
 	}
 );
 
-// get count
-export const getDocumentSettingsCount = query(
-	async (): Promise<number> => {
-		const [row] = await ensureDb()
-			.select({ count: count() })
-			.from(table.documentSettingTable);
-		return row?.count ?? 0;
-	}
-);
+export const getDocumentSettingsWithRelations = query(async () => {
+	return ensureDb().query.documentSettingTable.findMany({
+		where: eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE),
+		with: {
+			documentType: true,
+			hospital: true,
+			status: true
+		},
+		orderBy: table.documentSettingTable.name
+	});
+});
 
-// get paginated
+export type DocumentSettingWithRelations = Awaited<
+	ReturnType<typeof getDocumentSettingsWithRelations>
+>[number];
+
+export const getDocumentSettingCount = query(async (): Promise<number> => {
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.documentSettingTable)
+		.where(eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE));
+	return row?.count ?? 0;
+});
+
 export const getDocumentSettingsPaginated = query(
 	'unchecked' as const,
 	async (
 		params?: PaginationParams
-	): Promise<PaginatedResult<DocumentSettingSchema>> => {
+	): Promise<PaginatedResult<DocumentSettingWithRelations>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
+		const activeFilter = eq(
+			table.documentSettingTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
-			ensureDb()
-				.select()
-				.from(table.documentSettingTable)
-				.limit(limit)
-				.offset(offset),
+			ensureDb().query.documentSettingTable.findMany({
+				where: activeFilter,
+				with: {
+					documentType: true,
+					hospital: true,
+					status: true
+				},
+				orderBy: table.documentSettingTable.name,
+				limit,
+				offset
+			}),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.documentSettingTable)
+				.where(activeFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -59,7 +87,6 @@ export const getDocumentSettingsPaginated = query(
 	}
 );
 
-// get one
 export const getDocumentSettingById = query(
 	'unchecked' as const,
 	async ({
@@ -75,7 +102,6 @@ export const getDocumentSettingById = query(
 	}
 );
 
-// create
 export const createDocumentSetting = command(
 	'unchecked' as const,
 	async (
@@ -87,18 +113,35 @@ export const createDocumentSetting = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getDocumentSettings().refresh();
-		getDocumentSettingsCount().refresh();
-		getDocumentSettingsPaginated(undefined).refresh();
 		return row;
 	}
 );
 
-// update
 export const updateDocumentSetting = command(
 	'unchecked' as const,
-	async (
-		payload: DocumentSettingSchemaUpdate & { id: number }
-	): Promise<DocumentSettingSchema> => {
+	async (payload: {
+		id: number;
+		name?: string;
+		code?: string | null;
+		documentTypeId?: number | null;
+		hospitalId?: string | null;
+		marginTop?: number | null;
+		marginBottom?: number | null;
+		marginLeft?: number | null;
+		marginRight?: number | null;
+		paddingTop?: number | null;
+		paddingBottom?: number | null;
+		paddingLeft?: number | null;
+		paddingRight?: number | null;
+		pageSize?: string | null;
+		pageOrientation?: string | null;
+		headerHtml?: string | null;
+		footerHtml?: string | null;
+		showHeader?: boolean | null;
+		showFooter?: boolean | null;
+		description?: string | null;
+		statusId?: number | null;
+	}): Promise<DocumentSettingSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()
 			.update(table.documentSettingTable)
@@ -107,35 +150,17 @@ export const updateDocumentSetting = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getDocumentSettings().refresh();
-		getDocumentSettingsCount().refresh();
-		getDocumentSettingsPaginated(undefined).refresh();
 		return row;
 	}
 );
 
-// delete (soft) - mark as deleted via status if using status enum
 export const deleteDocumentSetting = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.documentSettingTable)
+			.update(table.documentSettingTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.documentSettingTable.id, id));
 		getDocumentSettings().refresh();
-		getDocumentSettingsCount().refresh();
-		getDocumentSettingsPaginated(undefined).refresh();
 	}
 );
-
-// delete complete (hard)
-export const deleteDocumentSettingComplete = command(
-	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<void> => {
-		await ensureDb()
-			.delete(table.documentSettingTable)
-			.where(eq(table.documentSettingTable.id, id));
-		getDocumentSettings().refresh();
-		getDocumentSettingsCount().refresh();
-		getDocumentSettingsPaginated(undefined).refresh();
-	}
-);
-
