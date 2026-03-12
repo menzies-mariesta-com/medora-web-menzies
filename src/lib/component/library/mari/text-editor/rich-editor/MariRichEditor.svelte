@@ -7,12 +7,16 @@
 		value = $bindable(''),
 		placeholder,
 		showPreview = false,
+		showMenuBar = true,
+		documentTitle = 'Document',
 		className,
 		editorClassName
 	} = $props<{
 		value?: string;
 		placeholder?: string;
 		showPreview?: boolean;
+		showMenuBar?: boolean;
+		documentTitle?: string;
 		className?: string;
 		editorClassName?: string;
 	}>();
@@ -20,10 +24,12 @@
 	const dispatch = createEventDispatcher<{
 		input: { value: string };
 		change: { value: string };
+		export: { format: 'pdf' | 'html' | 'md'; content: string };
 	}>();
 
 	let editorElement: HTMLDivElement;
-let lastEditorRange: Range | null = null;
+	let lastEditorRange: Range | null = null;
+	let activeMenu: string | null = $state(null);
 
 	type ToolbarCommandDetail = {
 		name:
@@ -46,6 +52,7 @@ let lastEditorRange: Range | null = null;
 			| 'fontSizeIncrease'
 			| 'fontSizeDecrease'
 			| 'fontSizeSet'
+			| 'fontFamilySet'
 			| 'tableAddRowBelow'
 			| 'tableRemoveRow'
 			| 'tableAddColRight'
@@ -54,11 +61,13 @@ let lastEditorRange: Range | null = null;
 			| 'image'
 			| 'table';
 		value?: number;
+		stringValue?: string;
 	};
 
 	type ActiveStates = Partial<Record<ToolbarCommandDetail['name'], boolean>>;
 	let activeStates = $state<ActiveStates>({});
 	let fontSize = $state(14);
+	let fontFamily = $state('Roboto, sans-serif');
 	let isInTable = $state(false);
 
 	const QUERYABLE_COMMANDS: (keyof ActiveStates)[] = [
@@ -144,12 +153,20 @@ let lastEditorRange: Range | null = null;
 		}
 	}
 
+	function handleClickOutside(e: MouseEvent) {
+		const target = e.target as HTMLElement;
+		if (activeMenu && !target.closest('.relative')) {
+			activeMenu = null;
+		}
+	}
+
 	onMount(() => {
 		if (editorElement) {
 			editorElement.innerHTML = value ?? '';
 		}
 		if (typeof document !== 'undefined') {
 			document.addEventListener('selectionchange', onSelectionChange);
+			document.addEventListener('click', handleClickOutside);
 			editorElement?.addEventListener('focus', syncActiveStatesFromDocument);
 		}
 	});
@@ -157,6 +174,7 @@ let lastEditorRange: Range | null = null;
 	onDestroy(() => {
 		if (typeof document !== 'undefined') {
 			document.removeEventListener('selectionchange', onSelectionChange);
+			document.removeEventListener('click', handleClickOutside);
 			editorElement?.removeEventListener('focus', syncActiveStatesFromDocument);
 		}
 	});
@@ -447,7 +465,7 @@ let lastEditorRange: Range | null = null;
 	}
 
 	function handleCommand(event: CustomEvent<ToolbarCommandDetail>) {
-		const { name, value: cmdValue } = event.detail;
+		const { name, value: cmdValue, stringValue } = event.detail;
 
 		if (!editorElement || typeof window === 'undefined' || typeof document === 'undefined') {
 			return;
@@ -487,6 +505,11 @@ let lastEditorRange: Range | null = null;
 				fontSize = clamped;
 				applyFontSizePx(fontSize);
 			}
+		} else if (name === 'fontFamilySet') {
+			if (stringValue != null) {
+				fontFamily = stringValue;
+				applyFontFamily(stringValue);
+			}
 		} else if (name === 'link') {
 			const url = window.prompt('Enter URL');
 			if (url) {
@@ -514,7 +537,6 @@ let lastEditorRange: Range | null = null;
 		syncFromDom();
 		dispatch('change', { value });
 
-		// Sync toolbar from document so buttons reflect real state (after browser applies command)
 		requestAnimationFrame(() => {
 			syncActiveStatesFromDocument();
 		});
@@ -525,18 +547,329 @@ let lastEditorRange: Range | null = null;
 			editorElement.innerHTML = value ?? '';
 		}
 	});
+
+	function applyFontFamily(family: string) {
+		if (typeof window === 'undefined' || typeof document === 'undefined' || !editorElement) {
+			return;
+		}
+
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return;
+
+		const range = selection.getRangeAt(0);
+		if (!editorElement.contains(range.commonAncestorContainer)) return;
+
+		// Only apply to selected text
+		if (!range.collapsed) {
+			try {
+				const contents = range.extractContents();
+				const span = document.createElement('span');
+				span.style.setProperty('font-family', family, 'important');
+				span.appendChild(contents);
+				range.insertNode(span);
+				const newRange = document.createRange();
+				newRange.selectNodeContents(span);
+				selection.removeAllRanges();
+				selection.addRange(newRange);
+				syncFromDom();
+			} catch {
+				// fallback - do nothing
+			}
+		}
+	}
+
+	function htmlToMarkdown(html: string): string {
+		let md = html;
+		md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+		md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+		md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+		md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
+		md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n');
+		md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
+		md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+		md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+		md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+		md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+		md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+		md = md.replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~');
+		md = md.replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~');
+		md = md.replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~');
+		md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+		md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, '![$2]($1)');
+		md = md.replace(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, '![]($1)');
+		md = md.replace(/<br\s*\/?>/gi, '\n');
+		md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+		md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+		md = md.replace(/<\/?ul[^>]*>/gi, '\n');
+		md = md.replace(/<\/?ol[^>]*>/gi, '\n');
+		md = md.replace(/<hr\s*\/?>/gi, '\n---\n');
+		md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n');
+		md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+		md = md.replace(/<pre[^>]*>(.*?)<\/pre>/gi, '```\n$1\n```\n');
+		md = md.replace(/<sub[^>]*>(.*?)<\/sub>/gi, '~$1~');
+		md = md.replace(/<sup[^>]*>(.*?)<\/sup>/gi, '^$1^');
+		md = md.replace(/<[^>]+>/g, '');
+		md = md.replace(/&nbsp;/g, ' ');
+		md = md.replace(/&amp;/g, '&');
+		md = md.replace(/&lt;/g, '<');
+		md = md.replace(/&gt;/g, '>');
+		md = md.replace(/&quot;/g, '"');
+		md = md.replace(/\n{3,}/g, '\n\n');
+		return md.trim();
+	}
+
+	function getFullHtmlDocument(content: string): string {
+		const fontFamilyStyle = fontFamily ? fontFamily : 'system-ui, -apple-system, sans-serif';
+		return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${documentTitle}</title>
+<style>
+body { font-family: ${fontFamilyStyle}; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+td, th { border: 1px solid #ddd; padding: 8px; text-align: left; }
+img { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+${content}
+</body>
+</html>`;
+	}
+
+	function downloadFile(content: string, filename: string, mimeType: string) {
+		const blob = new Blob([content], { type: mimeType });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
+	function exportAsHtml() {
+		const content = getFullHtmlDocument(value);
+		downloadFile(content, `${documentTitle}.html`, 'text/html');
+		dispatch('export', { format: 'html', content });
+		activeMenu = null;
+	}
+
+	function exportAsMarkdown() {
+		const content = htmlToMarkdown(value);
+		downloadFile(content, `${documentTitle}.md`, 'text/markdown');
+		dispatch('export', { format: 'md', content });
+		activeMenu = null;
+	}
+
+	function exportAsPdf() {
+		const printWindow = window.open('', '_blank');
+		if (!printWindow) {
+			alert('Please allow popups to export as PDF');
+			return;
+		}
+		printWindow.document.write(getFullHtmlDocument(value));
+		printWindow.document.close();
+		printWindow.onload = () => {
+			printWindow.print();
+			printWindow.onafterprint = () => printWindow.close();
+		};
+		dispatch('export', { format: 'pdf', content: value });
+		activeMenu = null;
+	}
+
+	function handleUndo() {
+		document.execCommand('undo', false);
+		syncFromDom();
+		activeMenu = null;
+	}
+
+	function handleRedo() {
+		document.execCommand('redo', false);
+		syncFromDom();
+		activeMenu = null;
+	}
+
+	function handleSelectAll() {
+		if (!editorElement) return;
+		editorElement.focus();
+		const range = document.createRange();
+		range.selectNodeContents(editorElement);
+		const sel = window.getSelection();
+		sel?.removeAllRanges();
+		sel?.addRange(range);
+		activeMenu = null;
+	}
+
+	function toggleMenu(menu: string) {
+		activeMenu = activeMenu === menu ? null : menu;
+	}
+
+	function closeMenus() {
+		activeMenu = null;
+	}
+
+	function handleMenuKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			activeMenu = null;
+		}
+	}
 </script>
 
-<div class="flex flex-col gap-2 {className}">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="flex flex-col gap-2 {className}" on:keydown={handleMenuKeydown}>
+	{#if showMenuBar}
+		<!-- Menu Bar -->
+		<div class="flex items-center gap-0 border-b border-base-300 bg-base-200 text-sm">
+			<!-- File Menu -->
+			<div class="relative">
+				<button
+					type="button"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'file' ? 'bg-base-300' : ''}"
+					on:click={() => toggleMenu('file')}
+				>
+					File
+				</button>
+				{#if activeMenu === 'file'}
+					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={exportAsPdf}
+						>
+							<span class="w-4">📄</span>
+							<span>Export as PDF</span>
+							<span class="ml-auto text-xs text-base-content/50">Ctrl+P</span>
+						</button>
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={exportAsHtml}
+						>
+							<span class="w-4">🌐</span>
+							<span>Export as HTML</span>
+						</button>
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={exportAsMarkdown}
+						>
+							<span class="w-4">📝</span>
+							<span>Export as Markdown</span>
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Edit Menu -->
+			<div class="relative">
+				<button
+					type="button"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'edit' ? 'bg-base-300' : ''}"
+					on:click={() => toggleMenu('edit')}
+				>
+					Edit
+				</button>
+				{#if activeMenu === 'edit'}
+					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={handleUndo}
+						>
+							<span class="w-4">↩️</span>
+							<span>Undo</span>
+							<span class="ml-auto text-xs text-base-content/50">Ctrl+Z</span>
+						</button>
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={handleRedo}
+						>
+							<span class="w-4">↪️</span>
+							<span>Redo</span>
+							<span class="ml-auto text-xs text-base-content/50">Ctrl+Y</span>
+						</button>
+						<div class="my-1 border-t border-base-300"></div>
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={handleSelectAll}
+						>
+							<span class="w-4">📋</span>
+							<span>Select All</span>
+							<span class="ml-auto text-xs text-base-content/50">Ctrl+A</span>
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<!-- View Menu -->
+			<div class="relative">
+				<button
+					type="button"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'view' ? 'bg-base-300' : ''}"
+					on:click={() => toggleMenu('view')}
+				>
+					View
+				</button>
+				{#if activeMenu === 'view'}
+					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+						<button
+							type="button"
+							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							on:click={() => { showPreview = !showPreview; activeMenu = null; }}
+						>
+							<span class="w-4">{showPreview ? '✓' : ''}</span>
+							<span>Show Preview</span>
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Help Menu -->
+			<div class="relative">
+				<button
+					type="button"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'help' ? 'bg-base-300' : ''}"
+					on:click={() => toggleMenu('help')}
+				>
+					Help
+				</button>
+				{#if activeMenu === 'help'}
+					<div class="absolute left-0 top-full z-50 min-w-56 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+						<div class="px-4 py-2 text-base-content/70">
+							<p class="font-semibold">Keyboard Shortcuts</p>
+							<div class="mt-2 space-y-1 text-xs">
+								<p><kbd class="kbd kbd-xs">Ctrl+B</kbd> Bold</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+I</kbd> Italic</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+U</kbd> Underline</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+Z</kbd> Undo</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+Y</kbd> Redo</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+A</kbd> Select All</p>
+								<p><kbd class="kbd kbd-xs">Ctrl+P</kbd> Print/PDF</p>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
 	<MariRichEditorController
 		on:command={handleCommand}
 		{activeStates}
 		{fontSize}
+		{fontFamily}
 		isInTable={isInTable}
 	/>
 
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- Editor surface styled to match preview (.prose inside a rounded, bordered card) -->
-	<div class="mt-2 rounded-box border border-base-300 bg-base-100 p-4">
+	<div class="mt-2 rounded-box border border-base-300 bg-base-100 p-4" on:click={closeMenus}>
 		<div
 			class="prose max-w-none focus:outline-none {editorClassName}"
 			contenteditable="true"
@@ -551,3 +884,4 @@ let lastEditorRange: Range | null = null;
 		<MariRichEditorPreview {value} />
 	{/if}
 </div>
+
