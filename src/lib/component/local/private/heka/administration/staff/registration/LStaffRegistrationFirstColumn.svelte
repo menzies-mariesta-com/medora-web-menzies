@@ -113,7 +113,7 @@
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
 		<DaisyUiLabel forText="email" className="shrink-0 sm:w-36"
-			>Email <span class="text-error">*</span></DaisyUiLabel
+			>Email</DaisyUiLabel
 		>
 		<div class="max-w-80 flex-1">
 			<DaisyUiInputField

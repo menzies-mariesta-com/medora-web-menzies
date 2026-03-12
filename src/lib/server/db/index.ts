@@ -11,6 +11,9 @@ if (!url && env.NODE_ENV === 'production') {
 	console.warn('DATABASE_URL is not set');
 }
 
+// ensureDb() returns this singleton every time — no new connection per call.
+// For better performance use Neon's pooled connection string (host with `-pooler`,
+// e.g. ep-xxx-pooler.region.aws.neon.tech) so PgBouncer pools connections server-side.
 let client: ReturnType<typeof neon> | null = null;
 /** Db instance type including schema so that e.g. ensureDb().query.pageTable is typed. */
 type DbInstance = ReturnType<typeof drizzle<typeof schema>>;
@@ -26,7 +29,7 @@ if (url) {
 // Exported for existing imports: `import { db } from '$lib/server/db';`
 export const db = dbInternal;
 
-// Helper for places where you want an explicit runtime check.
+/** Returns the shared db instance. No connection is created per call (singleton). */
 export function ensureDb(): DbInstance {
 	if (!url || !dbInternal) {
 		throw new Error('DATABASE_URL is not set');

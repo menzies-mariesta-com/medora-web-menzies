@@ -141,12 +141,18 @@ import {
 			.slice(0, 30);
 	});
 
+	const currentSearch = $derived(page.url.search);
+
 	function goToPage(p: PageSchema) {
 		closeSearchDialog();
-		const url =
+		const base =
 			hospitalId && p.pageUrl != null
 				? hekaHospitalPageUrl(hospitalId, p.pageUrl)
 				: p.pageUrl;
+		const url =
+			base != null && currentSearch
+				? `${base}${currentSearch}`
+				: base;
 		if (url != null) routerUtil.replaceRoute(url);
 	}
 
@@ -382,10 +388,14 @@ import {
 							<DaisyUiButton
 								className={`w-full justify-start whitespace-nowrap text-left d-btn-wide  ${isPageActive(p) ? 'd-btn-accent' : ''}`}
 								onClick={() => {
-									const url =
+									const base =
 										hospitalId && p.pageUrl != null
 											? hekaHospitalPageUrl(hospitalId, p.pageUrl)
 											: p.pageUrl;
+									const url =
+										base != null && currentSearch
+											? `${base}${currentSearch}`
+											: base;
 									if (url != null) routerUtil.replaceRoute(url);
 								}}
 							>
@@ -439,7 +449,7 @@ import {
 				class="d-input d-input-bordered w-full"
 				aria-label="Search"
 			/>
-			<ul class="flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto">
+			<ul class="max-h-80 overflow-y-auto flex flex-col gap-1">
 				{#each searchEntries as entry (entry.page.id)}
 					<li>
 						<button

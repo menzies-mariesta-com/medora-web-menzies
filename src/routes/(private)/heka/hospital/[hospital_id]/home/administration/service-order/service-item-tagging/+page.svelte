@@ -10,16 +10,18 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import {
+import {
 		getServiceTaggingPaginated,
 		createServiceTagging,
 		updateServiceTagging,
-		deleteServiceTagging,
-		type ServiceTaggingSchema
+		deleteServiceTagging
 	} from '$lib/remote/table/information-table/service-tagging.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
-	import type { ServiceItemSchema } from '$lib/server/db/schema-type';
+import type {
+	ServiceItemSchema,
+	ServiceTaggingSchema
+} from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -29,25 +31,41 @@
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
-	const toastService = new ToastService();
+const toastService = new ToastService();
 
-	let { data } = $props();
+let { data } = $props();
 
-	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' &&
-			page.params.hospital_id
-			? page.params.hospital_id
-			: ''
-	);
-	/** User's current branch from layout; tagging is always per-branch. "__all__" is not valid for editing. */
-	const selectedBranchIdRaw = $derived(
-		data?.selectedBranchId ?? null
-	);
-	const branchIdForTagging = $derived(
-		selectedBranchIdRaw && selectedBranchIdRaw !== '__all__'
-			? selectedBranchIdRaw
-			: null
-	);
+type AllowedBranch = { id: string; name: string | null };
+const ALL_BRANCHES_ID = '__all__';
+
+const hospitalId = $derived(
+	typeof page.params.hospital_id === 'string' &&
+		page.params.hospital_id
+		? page.params.hospital_id
+		: ''
+);
+
+const allowedBranches = $derived(
+	((data?.allowedBranches ?? []) as AllowedBranch[]) ?? []
+);
+
+	const branchOptions = $derived.by(() => {
+	if (allowedBranches.length > 1) {
+		return [
+			{ id: ALL_BRANCHES_ID, name: 'All branches' },
+			...allowedBranches
+		];
+	}
+	return allowedBranches;
+});
+
+let selectedBranchId = $state<string>(
+	branchOptions[0]?.id ?? ''
+);
+
+const branchIdForTagging = $derived(
+	selectedBranchId === ALL_BRANCHES_ID ? null : selectedBranchId
+);
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
 	let taggingResult = $state<PaginatedResult<ServiceTaggingSchema> | null>(null);
@@ -61,6 +79,8 @@
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
 	let formServiceTaxAmount = $state('');
+	let formValidDate = $state('');
+	let formAllowEdit = $state(true);
 	let formActive = $state(true);
 
 	type Mode = 'create' | 'edit';
@@ -69,15 +89,25 @@
 	let isLoading = $state(false);
 	let isSaving = $state(false);
 
-	let tableColumnFilters = $state<Record<string, string>>({});
+let tableColumnFilters = $state<Record<string, string>>({});
 
-	const branchLocked = $derived(!!branchIdForTagging);
+	function toDateInputValue(value: ServiceTaggingSchema['validDate']): string {
+		if (!value) return '';
+		const str = String(value);
+		return str.length >= 10 ? str.slice(0, 10) : str;
+	}
 
 	const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
 		{
 			id: 'id',
 			header: m.id(),
 			widthClass: 'w-20'
+		},
+		{
+			id: 'branch',
+			header: 'Branch',
+			widthClass: 'w-48',
+			format: (_value, row) => branchNameById(row.branchId)
 		},
 		{
 			id: 'service',
@@ -98,6 +128,21 @@
 			field: 'serviceTaxAmount'
 		},
 		{
+			id: 'validDate',
+			header: 'Valid date',
+			widthClass: 'w-36',
+			format: (_value, row) =>
+				row.validDate ? toDateInputValue(row.validDate) : '—',
+			filterable: false
+		},
+		{
+			id: 'allowEdit',
+			header: 'Allow edit',
+			widthClass: 'w-28',
+			format: (_value, row) => (row.allowEdit ? 'Yes' : 'No'),
+			filterable: false
+		},
+		{
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32',
@@ -113,28 +158,30 @@
 	}
 
 	async function fetchTaggings(forceRefresh = false) {
-		if (!branchIdForTagging) return;
+		if (allowedBranches.length === 0) return;
 		isLoading = true;
 		try {
 			const filters = tableColumnFilters;
 
-			const params: {
-				branchId: string;
+			const paramsBase: {
+				branchId?: string;
 				serviceIds?: number[];
 				serviceAmount?: number;
 				serviceTaxAmount?: number;
 				statusId?: number;
 				id?: number;
-			} = {
-				branchId: branchIdForTagging
-			};
+			} = {};
+
+			if (branchIdForTagging) {
+				paramsBase.branchId = branchIdForTagging;
+			}
 
 			// ID filter
 			const idTerm = filters.id?.trim();
 			if (idTerm) {
 				const idVal = Number(idTerm);
 				if (!Number.isNaN(idVal)) {
-					params.id = idVal;
+					paramsBase.id = idVal;
 				}
 			}
 
@@ -142,11 +189,11 @@
 			const serviceFilter = filters.service?.trim().toLowerCase();
 			if (serviceFilter) {
 				const serviceIds = serviceItems
-					.filter((s) =>
-						(s.serviceName ?? '')
-							.toLowerCase()
-							.includes(serviceFilter)
-					)
+					.filter((s) => {
+						const name = (s.serviceName ?? '').toLowerCase();
+						const code = (s.serviceCode ?? '').toLowerCase();
+						return name.includes(serviceFilter) || code.includes(serviceFilter);
+					})
 					.map((s) => s.id);
 
 				if (serviceIds.length === 0) {
@@ -161,7 +208,7 @@
 					return;
 				}
 
-				params.serviceIds = serviceIds;
+				paramsBase.serviceIds = serviceIds;
 			}
 
 			// Amount filters
@@ -169,7 +216,7 @@
 			if (amountTerm) {
 				const value = Number(amountTerm);
 				if (!Number.isNaN(value)) {
-					params.serviceAmount = value;
+					paramsBase.serviceAmount = value;
 				}
 			}
 
@@ -177,28 +224,51 @@
 			if (taxAmountTerm) {
 				const value = Number(taxAmountTerm);
 				if (!Number.isNaN(value)) {
-					params.serviceTaxAmount = value;
+					paramsBase.serviceTaxAmount = value;
 				}
 			}
 
 			// Status filter
 			const statusTerm = filters.status?.trim().toLowerCase();
 			if (statusTerm === 'active') {
-				params.statusId = StatusEnum.ACTIVE;
+				paramsBase.statusId = StatusEnum.ACTIVE;
 			} else if (statusTerm === 'inactive') {
-				params.statusId = StatusEnum.INACTIVE;
+				paramsBase.statusId = StatusEnum.INACTIVE;
 			}
 
 			const pageSize = Number(pageSizeStr) || 10;
 			const paginatedParams = {
-				...params,
+				...paramsBase,
 				page: currentPage,
 				pageSize
 			};
+
 			if (forceRefresh) {
 				await getServiceTaggingPaginated(paginatedParams).refresh();
 			}
-			taggingResult = await getServiceTaggingPaginated(paginatedParams);
+
+			let result = await getServiceTaggingPaginated(paginatedParams);
+
+			// When "All branches" is selected, show only rows
+			// for branches the user is allowed to use.
+			if (!branchIdForTagging && selectedBranchId === ALL_BRANCHES_ID) {
+				const allowedIds = new Set(
+					allowedBranches.map((b) => b.id)
+				);
+				const filteredData = result.data.filter((row) =>
+					allowedIds.has(row.branchId)
+				);
+				const totalFiltered = filteredData.length;
+				result = {
+					...result,
+					data: filteredData,
+					total: totalFiltered,
+					totalPages:
+						Math.ceil(totalFiltered / pageSize) || 1
+				};
+			}
+
+			taggingResult = result;
 		} finally {
 			isLoading = false;
 		}
@@ -206,8 +276,9 @@
 
 	$effect(() => {
 		const _hospital = hospitalId;
-		const _branch = branchIdForTagging;
-		if (!_hospital || !_branch) return;
+		const _branchSelection = selectedBranchId;
+		if (!_hospital || allowedBranches.length === 0 || !_branchSelection)
+			return;
 		(async () => {
 			await fetchServiceItems();
 			await fetchTaggings(true);
@@ -218,6 +289,8 @@
 		formServiceId = '';
 		formServiceAmount = '';
 		formServiceTaxAmount = '';
+		formValidDate = '';
+		formAllowEdit = true;
 		formActive = true;
 		mode = 'create';
 		editingId = null;
@@ -237,6 +310,8 @@
 			row.serviceTaxAmount != null
 				? String(row.serviceTaxAmount)
 				: '';
+		formValidDate = toDateInputValue(row.validDate);
+		formAllowEdit = row.allowEdit ?? true;
 		formActive =
 			(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 	}
@@ -252,11 +327,16 @@
 		}, 350);
 	}
 
+	function onBranchChange() {
+		currentPage = 1;
+		fetchTaggings(true);
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (!branchIdForTagging) {
+		if (!selectedBranchId) {
 			toastService.addToast(
-				'Please select a branch in the top bar to manage tagging.',
+				'Please select a branch to manage tagging.',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -277,8 +357,8 @@
 			);
 			return;
 		}
-		const serviceAmount = Number(amount);
-		if (Number.isNaN(serviceAmount)) {
+		const serviceAmountNum = Number(amount);
+		if (Number.isNaN(serviceAmountNum)) {
 			toastService.addToast(
 				'Service amount must be a number.',
 				StatusColorEnum.ERROR
@@ -286,8 +366,8 @@
 			return;
 		}
 		const taxStr = String(formServiceTaxAmount ?? '').trim();
-		const serviceTaxAmount = taxStr ? Number(taxStr) : 0;
-		if (taxStr && Number.isNaN(serviceTaxAmount)) {
+		const serviceTaxAmountNum = taxStr ? Number(taxStr) : 0;
+		if (taxStr && Number.isNaN(serviceTaxAmountNum)) {
 			toastService.addToast(
 				'Tax amount must be a number.',
 				StatusColorEnum.ERROR
@@ -297,17 +377,41 @@
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
+		const validDate = formValidDate.trim() ? formValidDate.trim() : null;
+		const allowEdit = formAllowEdit;
+
+		const targetBranchIds =
+			selectedBranchId === ALL_BRANCHES_ID
+				? allowedBranches.map((b) => b.id)
+				: [branchIdForTagging].filter(
+						(id): id is string => !!id
+					);
+		if (targetBranchIds.length === 0) {
+			toastService.addToast(
+				'No branches available for tagging.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 
 		isSaving = true;
 		try {
 			if (mode === 'create') {
-				await createServiceTagging({
-					branchId: branchIdForTagging,
-					serviceId,
-					serviceAmount,
-					serviceTaxAmount,
-					statusId
-				});
+				await Promise.all(
+					targetBranchIds.map((branchId) =>
+						createServiceTagging({
+							branchId,
+							serviceId,
+							serviceAmount: serviceAmountNum.toString(),
+							serviceTaxAmount: taxStr
+								? serviceTaxAmountNum.toString()
+								: null,
+							validDate,
+							allowEdit,
+							statusId
+						})
+					)
+				);
 				toastService.addToast(
 					'Service tagging created.',
 					StatusColorEnum.SUCCESS
@@ -315,8 +419,12 @@
 			} else if (mode === 'edit' && editingId != null) {
 				await updateServiceTagging({
 					id: editingId,
-					serviceAmount,
-					serviceTaxAmount,
+					serviceAmount: serviceAmountNum.toString(),
+					serviceTaxAmount: taxStr
+						? serviceTaxAmountNum.toString()
+						: null,
+					validDate,
+					allowEdit,
 					statusId
 				});
 				toastService.addToast(
@@ -359,27 +467,28 @@
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
+function branchNameById(id: string | null | undefined): string {
+	if (!id) return '—';
+	const b = allowedBranches.find((x) => x.id === id);
+	return b?.name ?? `Branch ${id}`;
+}
 
-	function serviceNameById(id: number | null | undefined): string {
+function serviceNameById(id: number | null | undefined): string {
 	if (id == null) return '—';
 	const s = serviceItems.find((x) => x.id === id);
 	if (!s) return `ID ${id}`;
-	const name = (s.serviceName ?? '').trim();
+	const name = (s.serviceName ?? '').trim() || `Service ${s.id}`;
 	const code = (s.serviceCode ?? '').trim();
-	if (name && code) return `${name} (${code})`;
-	if (name) return name;
-	if (code) return code;
-	return `ID ${id}`;
-	}
+	return code ? `${name} - ${code}` : name;
+}
 </script>
 
 <div class="space-y-6">
-	{#if !branchIdForTagging}
+	{#if allowedBranches.length === 0}
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<p class="text-base-content/80">
-					Please select a branch in the top bar to manage service
-					tagging.
+					You do not have access to any branches for this hospital.
 				</p>
 			</DaisyUiCardBody>
 		</DaisyUiCard>
@@ -398,6 +507,21 @@
 			<DaisyUiCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 					<div class="flex flex-wrap gap-4">
+						<div class="flex min-w-48 flex-1 flex-col gap-1">
+							<label class="text-sm font-medium"
+								>Branch<span class="text-error"> *</span></label
+							>
+							<DaisyUiSelect
+								className="d-select d-select-bordered d-select-sm w-full"
+								bind:value={selectedBranchId}
+								onChange={onBranchChange}
+							>
+								{#each branchOptions as b (b.id)}
+									<option value={b.id}>{b.name ?? 'Unnamed branch'}</option>
+								{/each}
+							</DaisyUiSelect>
+						</div>
+
 						<div class="flex min-w-60 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium"
 								>Service<span class="text-error"> *</span></label
@@ -408,9 +532,9 @@
 								optionHeader="Select service"
 							>
 								{#each serviceItems as s (s.id)}
-									<option value={String(s.id)}
-										>{s.serviceName ?? `Service ${s.id}`}</option
-									>
+									<option value={String(s.id)}>
+										{s.serviceName ?? `Service ${s.id}`}{s.serviceCode ? ` - ${s.serviceCode}` : ''}
+									</option>
 								{/each}
 							</DaisyUiSelect>
 						</div>
@@ -421,6 +545,7 @@
 							<DaisyUiInputField
 								bind:value={formServiceAmount}
 								inputType="number"
+								step="0.01"
 								inputPlaceholderText="0.00"
 								required
 								className="d-input-sm w-full"
@@ -431,11 +556,28 @@
 							<DaisyUiInputField
 								bind:value={formServiceTaxAmount}
 								inputType="number"
+								step="0.01"
 								inputPlaceholderText="0.00"
 								className="d-input-sm w-full"
 							/>
 						</div>
-						<div class="flex items-end gap-2">
+						<div class="flex min-w-40 flex-1 flex-col gap-1">
+							<label class="text-sm font-medium">Valid date</label>
+							<input
+								type="date"
+								bind:value={formValidDate}
+								class="d-input d-input-bordered d-input-sm w-full"
+							/>
+						</div>
+						<div class="flex items-end gap-4">
+							<label class="flex items-center gap-2 text-sm">
+								<input
+									type="checkbox"
+									bind:checked={formAllowEdit}
+									class="d-checkbox d-checkbox-sm"
+								/>
+								<span>Allow edit</span>
+							</label>
 							<label class="flex items-center gap-2 text-sm">
 								<input
 									type="checkbox"
@@ -484,7 +626,7 @@
 						bind:currentPage={currentPage}
 						totalRowCount={total}
 						showRefreshButton={true}
-						emptyMessage={m.no_records_found?.() ?? 'No records found'}
+						emptyMessage="No records found"
 						enableColumnFilters={true}
 						useRemoteFilters={true}
 						actionsHeader={m.actions()}
