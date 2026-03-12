@@ -20,7 +20,7 @@ export const getDocumentTypes = query(
 			.select()
 			.from(table.documentTypeTable)
 			.where(eq(table.documentTypeTable.statusId, StatusEnum.ACTIVE))
-			.orderBy(table.documentTypeTable.name);
+			.orderBy(table.documentTypeTable.documentType);
 	}
 );
 
@@ -48,7 +48,7 @@ export const getDocumentTypesPaginated = query(
 				.select()
 				.from(table.documentTypeTable)
 				.where(activeFilter)
-				.orderBy(table.documentTypeTable.name)
+				.orderBy(table.documentTypeTable.documentType)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
@@ -101,7 +101,7 @@ export const updateDocumentType = command(
 	'unchecked' as const,
 	async (payload: {
 		id: number;
-		name?: string | null;
+		documentType?: string | null;
 		statusId?: number | null;
 	}): Promise<DocumentTypeSchema> => {
 		const { id, ...rest } = payload;
