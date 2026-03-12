@@ -88,7 +88,6 @@ export async function seedInformationTables() {
 			(9, 'Service Order', 1, 1, null, '/heka/home/administration/service-order', 6),
 			(900001, 'Category Master', 1, 1, 9, '/heka/home/administration/service-order/category-master', 1),
 			(900002, 'Service Item Master', 1, 1, 9, '/heka/home/administration/service-order/service-item-master', 3),
-			(900003, 'Service Pricing', 1, 1, 9, '/heka/home/administration/service-order/service-pricing', 5),
 			(900004, 'Sub Category Master', 1, 1, 9, '/heka/home/administration/service-order/sub-category-master', 2),
 			(900005, 'Service Item Tagging', 1, 1, 9, '/heka/home/administration/service-order/service-item-tagging', 4),
 
@@ -166,37 +165,6 @@ export async function seedInformationTables() {
 		`);
 	console.log('Seeded: status tagging');
 
-	// 8. Category (per-branch, depends: hospital_branch, status)
-	await db.execute(sql`
-		INSERT INTO category (hospital_id, branch_id, category_name, status_id)
-		SELECT 
-			hb.hospital_id,
-			hb.id,
-			c.category_name,
-			1
-		FROM hospital_branch hb
-		CROSS JOIN (
-			VALUES
-				('Radiology'),
-				('Nursing Procedure'),
-				('Medical Gases'),
-				('Ambulance Service'),
-				('Laboratory'),
-				('Hospital Fees'),
-				('Doctor Fees'),
-				('Cathlab'),
-				('Endoscopy'),
-				('Housekeeping')
-		) AS c(category_name)
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM category existing
-			WHERE existing.hospital_id = hb.hospital_id
-				AND existing.branch_id = hb.id
-				AND existing.category_name = c.category_name
-		);
-	`);
-	console.log('Seeded: category');
 }
 
 

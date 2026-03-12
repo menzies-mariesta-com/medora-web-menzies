@@ -27,14 +27,16 @@ import type {
 	patientVisitTable,
 	patientDiagnosisTable,
 	appointmentBlockTable,
-	categoryTable,
 	subCategoryTable,
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
 	allergyTable,
 	documentTable,
-	patientDocumentTable
+	patientDocumentTable,
+	serviceOrderTable,
+	serviceOrderDetailTable,
+	documentSettingTable
 } from './information-table';
 
 // Information Tables (alphabetical)
@@ -254,12 +256,6 @@ export type PatientDiagnosisSchemaInsert = InferInsertModel<
 export type PatientDiagnosisSchemaUpdate =
 	Partial<PatientDiagnosisSchemaInsert>;
 
-export type CategorySchema = InferSelectModel<typeof categoryTable>;
-export type CategorySchemaInsert = InferInsertModel<
-	typeof categoryTable
->;
-export type CategorySchemaUpdate = Partial<CategorySchemaInsert>;
-
 export type SubCategorySchema = InferSelectModel<
 	typeof subCategoryTable
 >;
@@ -307,3 +303,27 @@ export type PatientDocumentSchemaInsert = InferInsertModel<
 >;
 export type PatientDocumentSchemaUpdate =
 	Partial<PatientDocumentSchemaInsert>;
+
+export type ServiceOrderSchema = InferSelectModel<typeof serviceOrderTable>;
+export type ServiceOrderSchemaInsert = InferInsertModel<
+	typeof serviceOrderTable
+>;
+export type ServiceOrderSchemaUpdate = Partial<ServiceOrderSchemaInsert>;
+
+export type ServiceOrderDetailSchema = InferSelectModel<
+	typeof serviceOrderDetailTable
+>;
+export type ServiceOrderDetailSchemaInsert = InferInsertModel<
+	typeof serviceOrderDetailTable
+>;
+export type ServiceOrderDetailSchemaUpdate =
+	Partial<ServiceOrderDetailSchemaInsert>;
+
+export type DocumentSettingSchema = InferSelectModel<
+	typeof documentSettingTable
+>;
+export type DocumentSettingSchemaInsert = InferInsertModel<
+	typeof documentSettingTable
+>;
+export type DocumentSettingSchemaUpdate =
+	Partial<DocumentSettingSchemaInsert>;

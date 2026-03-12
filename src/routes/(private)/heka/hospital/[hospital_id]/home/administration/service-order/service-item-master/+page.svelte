@@ -18,15 +18,15 @@
 		getServiceItemPaginated,
 		createServiceItem,
 		updateServiceItem,
-		deleteServiceItem,
-		type ServiceItemSchema
+		deleteServiceItem
 	} from '$lib/remote/table/information-table/service-item.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getCategory } from '$lib/remote/table/information-table/category.remote';
 	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
 	import type {
 		CategorySchema,
-		SubCategorySchema
+		SubCategorySchema,
+		ServiceItemSchema
 	} from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -137,12 +137,7 @@ const filteredSubCategories = $derived.by(() => {
 	];
 
 	async function fetchCategories() {
-		if (!hospitalId) return;
-	// Load categories for this hospital and current branch so table can show branch-specific category/sub-category names
-	categories = await getCategory({
-		hospitalId,
-		branchId: branchIdForCategory
-	});
+		categories = await getCategory();
 	}
 
 	async function fetchSubCategories() {
@@ -297,7 +292,29 @@ const filteredSubCategories = $derived.by(() => {
 			if (forceRefresh) {
 				await getServiceItemPaginated(paginatedParams).refresh();
 			}
-			serviceResult = await getServiceItemPaginated(paginatedParams);
+
+			const rawResult = await getServiceItemPaginated(paginatedParams);
+
+			// If a specific branch is selected in the module bar,
+			// ensure we only show service items whose sub-category
+			// belongs to categories available for that branch.
+			let data = rawResult.data;
+			if (branchIdForCategory) {
+				const allowedSubCategoryIds = new Set(
+					subCategories.map((sc) => sc.id)
+				);
+				data = data.filter((row) =>
+					allowedSubCategoryIds.has(row.subCategoryId)
+				);
+			}
+
+			const filteredTotal = data.length;
+			serviceResult = {
+				...rawResult,
+				data,
+				total: filteredTotal,
+				totalPages: Math.ceil(filteredTotal / pageSize) || 1
+			};
 		} finally {
 			isLoading = false;
 		}
@@ -635,7 +652,7 @@ $effect(() => {
 					bind:currentPage={currentPage}
 					totalRowCount={total}
 					showRefreshButton={true}
-					emptyMessage={m.no_records_found?.() ?? 'No records found'}
+					emptyMessage="No records found"
 					enableColumnFilters={true}
 					useRemoteFilters={true}
 					actionsHeader={m.actions()}
