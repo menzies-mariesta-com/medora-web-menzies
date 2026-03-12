@@ -30,7 +30,7 @@
 		deleteDocument,
 		type DocumentWithRelations
 	} from '$lib/remote/table/information-table/document.remote';
-	import { getDocumentTypes } from '$lib/remote/table/master-table/document-type.remote';
+	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
 	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -46,6 +46,7 @@
 	let viewMode = $state<ViewMode>('list');
 	let editingId = $state<number | null>(null);
 	let documentTypeIdInput = $state('');
+	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
 
 	const documentList = $derived(documentResult?.data ?? []);
@@ -54,7 +55,7 @@
 	const selectedDocumentTypeName = $derived(() => {
 		if (!documentTypeIdInput) return 'Document';
 		const dt = documentTypes.find((d) => String(d.id) === documentTypeIdInput);
-		return dt?.name || 'Document';
+		return dt?.documentType || 'Document';
 	});
 
 	async function fetchData(opts?: { bustCache?: boolean }) {
@@ -88,6 +89,7 @@
 		viewMode = 'list';
 		editingId = null;
 		documentTypeIdInput = '';
+		documentNumberInput = '';
 		documentTextInput = '';
 	}
 
@@ -95,6 +97,7 @@
 		viewMode = 'edit';
 		editingId = item.id;
 		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
+		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
 
@@ -102,6 +105,7 @@
 		viewMode = 'view';
 		editingId = item.id;
 		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
+		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
 
@@ -115,9 +119,14 @@
 			toastService.addToast('Document type is required', StatusColorEnum.WARNING);
 			return;
 		}
+		if (!documentNumberInput.trim()) {
+			toastService.addToast('Document number/name is required', StatusColorEnum.WARNING);
+			return;
+		}
 		try {
 			const payload = {
 				documentTypeId: Number(documentTypeIdInput),
+				documentNumber: documentNumberInput.trim(),
 				documentText: documentTextInput || null
 			};
 
@@ -178,13 +187,18 @@
 		{
 			id: 'id',
 			header: 'ID',
-			widthClass: 'w-20 min-w-[5rem]'
+			widthClass: 'w-16 min-w-[4rem]'
+		},
+		{
+			id: 'documentNumber',
+			header: 'Document Name',
+			widthClass: 'w-48 min-w-[12rem]'
 		},
 		{
 			id: 'documentType',
 			header: 'Document Type',
-			widthClass: 'w-40 min-w-[10rem]',
-			format: (_value, row) => row.documentType?.name ?? '—'
+			widthClass: 'w-32 min-w-[8rem]',
+			format: (_value, row) => row.documentType?.documentType ?? '—'
 		},
 		{
 			id: 'documentText',
@@ -195,12 +209,6 @@
 		{
 			id: 'createdAt',
 			header: 'Created At',
-			widthClass: 'w-40 min-w-[10rem]',
-			format: (value) => formatDateTime(value as any)
-		},
-		{
-			id: 'updatedAt',
-			header: 'Updated At',
 			widthClass: 'w-40 min-w-[10rem]',
 			format: (value) => formatDateTime(value as any)
 		}
@@ -309,20 +317,37 @@
 				</DaisyUiButton>
 			</div>
 
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3 mb-4">
-				<DaisyUiLabel forText="documentType" className="shrink-0 sm:w-32">
-					Document Type <span class="text-error">*</span>
-				</DaisyUiLabel>
-				<div class="max-w-80">
-					<DaisyUiSelect
-						bind:value={documentTypeIdInput}
-						optionHeader="Select document type ..."
-						disabled={viewMode === 'view'}
-					>
-						{#each documentTypes as dt (dt.id)}
-							<option value={String(dt.id)}>{dt.name}</option>
-						{/each}
-					</DaisyUiSelect>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="documentType" className="shrink-0 sm:w-32">
+						Document Type <span class="text-error">*</span>
+					</DaisyUiLabel>
+					<div class="flex-1">
+						<DaisyUiSelect
+							bind:value={documentTypeIdInput}
+							optionHeader="Select document type ..."
+							disabled={viewMode === 'view'}
+						>
+							{#each documentTypes as dt (dt.id)}
+								<option value={String(dt.id)}>{dt.documentType}</option>
+							{/each}
+						</DaisyUiSelect>
+					</div>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+					<DaisyUiLabel forText="documentNumber" className="shrink-0 sm:w-32">
+						Document Name <span class="text-error">*</span>
+					</DaisyUiLabel>
+					<div class="flex-1">
+						<input
+							id="documentNumber"
+							type="text"
+							class="d-input d-input-bordered w-full"
+							placeholder="Enter document name"
+							bind:value={documentNumberInput}
+							disabled={viewMode === 'view'}
+						/>
+					</div>
 				</div>
 			</div>
 

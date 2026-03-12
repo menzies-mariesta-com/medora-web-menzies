@@ -10,7 +10,8 @@
 		showMenuBar = true,
 		documentTitle = 'Document',
 		className,
-		editorClassName
+		editorClassName,
+		disabled = false
 	} = $props<{
 		value?: string;
 		placeholder?: string;
@@ -19,6 +20,7 @@
 		documentTitle?: string;
 		className?: string;
 		editorClassName?: string;
+		disabled?: boolean;
 	}>();
 
 	const dispatch = createEventDispatcher<{
@@ -37,6 +39,9 @@
 			| 'heading1'
 			| 'heading2'
 			| 'heading3'
+			| 'heading4'
+			| 'heading5'
+			| 'heading6'
 			| 'bold'
 			| 'italic'
 			| 'underline'
@@ -53,11 +58,20 @@
 			| 'fontSizeDecrease'
 			| 'fontSizeSet'
 			| 'fontFamilySet'
+			| 'foreColor'
+			| 'backColor'
+			| 'code'
+			| 'blockquote'
+			| 'horizontalRule'
+			| 'indent'
+			| 'outdent'
+			| 'removeFormat'
 			| 'tableAddRowBelow'
 			| 'tableRemoveRow'
 			| 'tableAddColRight'
 			| 'tableRemoveCol'
 			| 'link'
+			| 'unlink'
 			| 'image'
 			| 'table';
 		value?: number;
@@ -67,8 +81,16 @@
 	type ActiveStates = Partial<Record<ToolbarCommandDetail['name'], boolean>>;
 	let activeStates = $state<ActiveStates>({});
 	let fontSize = $state(14);
-	let fontFamily = $state('Roboto, sans-serif');
+	let fontFamily = $state('');
+	let textColor = $state('#000000');
+	let bgColor = $state('');
 	let isInTable = $state(false);
+	let showLinkDialog = $state(false);
+	let showImageDialog = $state(false);
+	let linkUrl = $state('');
+	let linkText = $state('');
+	let imageUrl = $state('');
+	let imageAlt = $state('');
 
 	const QUERYABLE_COMMANDS: (keyof ActiveStates)[] = [
 		'bold',
@@ -93,7 +115,7 @@
 		return node != null && editorElement.contains(node);
 	}
 
-	/** Sync toolbar active state from the actual document selection (queryCommandState + DOM for sub/sup). */
+	/** Sync toolbar active state from the actual document selection (queryCommandState + DOM). */
 	function syncActiveStatesFromDocument() {
 		if (typeof document === 'undefined' || !editorElement) return;
 		if (!isSelectionInEditor()) return;
@@ -115,19 +137,21 @@
 
 		try {
 			const blockTag = (document.queryCommandValue('formatBlock') || '').toLowerCase();
-			next.paragraph = blockTag === 'p' || blockTag === 'paragraph';
+			next.paragraph = blockTag === 'p' || blockTag === 'paragraph' || blockTag === '';
 			next.heading1 = blockTag === 'h1';
 			next.heading2 = blockTag === 'h2';
 			next.heading3 = blockTag === 'h3';
+			next.heading4 = blockTag === 'h4';
+			next.heading5 = blockTag === 'h5';
+			next.heading6 = blockTag === 'h6';
+			next.blockquote = blockTag === 'blockquote';
 		} catch {
-			next.paragraph = false;
-			next.heading1 = false;
-			next.heading2 = false;
-			next.heading3 = false;
+			next.paragraph = true;
 		}
 
-		// queryCommandState for subscript/superscript is unreliable; check DOM for <sub>/<sup> ancestry
 		let foundTable = false;
+		let foundCode = false;
+		let foundBlockquote = false;
 		if (sel && sel.rangeCount > 0) {
 			let node: Node | null = sel.anchorNode;
 			while (node && node !== editorElement) {
@@ -135,13 +159,16 @@
 					const tag = (node as Element).tagName;
 					if (tag === 'SUB') next.subscript = true;
 					if (tag === 'SUP') next.superscript = true;
-					if (tag === 'TD' || tag === 'TH' || tag === 'TABLE') {
-						foundTable = true;
-					}
+					if (tag === 'TD' || tag === 'TH' || tag === 'TABLE') foundTable = true;
+					if (tag === 'PRE' || tag === 'CODE') foundCode = true;
+					if (tag === 'BLOCKQUOTE') foundBlockquote = true;
 				}
 				node = node.parentNode;
 			}
 		}
+
+		next.code = foundCode;
+		if (foundBlockquote) next.blockquote = true;
 
 		activeStates = next;
 		isInTable = foundTable;
@@ -475,10 +502,16 @@
 
 		const selection = window.getSelection();
 		if (!selection || selection.rangeCount === 0 || !editorElement.contains(selection.anchorNode)) {
-			const range = document.createRange();
-			range.selectNodeContents(editorElement);
-			selection?.removeAllRanges();
-			selection?.addRange(range);
+			if (lastEditorRange) {
+				selection?.removeAllRanges();
+				selection?.addRange(lastEditorRange);
+			} else {
+				const range = document.createRange();
+				range.selectNodeContents(editorElement);
+				range.collapse(false);
+				selection?.removeAllRanges();
+				selection?.addRange(range);
+			}
 		}
 
 		if (name === 'paragraph') {
@@ -489,15 +522,27 @@
 			document.execCommand('formatBlock', false, 'h2');
 		} else if (name === 'heading3') {
 			document.execCommand('formatBlock', false, 'h3');
+		} else if (name === 'heading4') {
+			document.execCommand('formatBlock', false, 'h4');
+		} else if (name === 'heading5') {
+			document.execCommand('formatBlock', false, 'h5');
+		} else if (name === 'heading6') {
+			document.execCommand('formatBlock', false, 'h6');
+		} else if (name === 'code') {
+			insertCodeBlock();
+		} else if (name === 'blockquote') {
+			document.execCommand('formatBlock', false, 'blockquote');
 		} else if (name === 'subscript') {
+			if (activeStates.superscript) return;
 			applySubscriptOrSuperscript('sub');
 		} else if (name === 'superscript') {
+			if (activeStates.subscript) return;
 			applySubscriptOrSuperscript('sup');
 		} else if (name === 'fontSizeIncrease') {
-			fontSize = Math.min(fontSize + 1, 200);
+			fontSize = Math.min(fontSize + 2, 200);
 			applyFontSizePx(fontSize);
 		} else if (name === 'fontSizeDecrease') {
-			fontSize = Math.max(fontSize - 1, 8);
+			fontSize = Math.max(fontSize - 2, 8);
 			applyFontSizePx(fontSize);
 		} else if (name === 'fontSizeSet') {
 			if (cmdValue != null && !Number.isNaN(cmdValue)) {
@@ -510,16 +555,30 @@
 				fontFamily = stringValue;
 				applyFontFamily(stringValue);
 			}
+		} else if (name === 'foreColor') {
+			if (stringValue) {
+				textColor = stringValue;
+				document.execCommand('foreColor', false, stringValue);
+			}
+		} else if (name === 'backColor') {
+			if (stringValue) {
+				bgColor = stringValue;
+				document.execCommand('hiliteColor', false, stringValue);
+			}
+		} else if (name === 'horizontalRule') {
+			document.execCommand('insertHorizontalRule', false);
+		} else if (name === 'indent') {
+			document.execCommand('indent', false);
+		} else if (name === 'outdent') {
+			document.execCommand('outdent', false);
+		} else if (name === 'removeFormat') {
+			document.execCommand('removeFormat', false);
 		} else if (name === 'link') {
-			const url = window.prompt('Enter URL');
-			if (url) {
-				document.execCommand('createLink', false, url);
-			}
+			openLinkDialog();
+		} else if (name === 'unlink') {
+			document.execCommand('unlink', false);
 		} else if (name === 'image') {
-			const src = window.prompt('Enter image URL');
-			if (src) {
-				document.execCommand('insertImage', false, src);
-			}
+			openImageDialog();
 		} else if (name === 'table') {
 			insertTable();
 		} else if (name === 'tableAddRowBelow') {
@@ -540,6 +599,126 @@
 		requestAnimationFrame(() => {
 			syncActiveStatesFromDocument();
 		});
+	}
+
+	function insertCodeBlock() {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0 || !editorElement) return;
+		const range = selection.getRangeAt(0);
+		if (!editorElement.contains(range.commonAncestorContainer)) return;
+
+		const pre = document.createElement('pre');
+		pre.className = 'bg-base-200 p-3 rounded font-mono text-sm overflow-x-auto';
+		const code = document.createElement('code');
+		
+		if (range.collapsed) {
+			code.textContent = '\u200b';
+		} else {
+			code.textContent = range.toString();
+			range.deleteContents();
+		}
+		
+		pre.appendChild(code);
+		range.insertNode(pre);
+		
+		const newRange = document.createRange();
+		newRange.selectNodeContents(code);
+		newRange.collapse(false);
+		selection.removeAllRanges();
+		selection.addRange(newRange);
+	}
+
+	function openLinkDialog() {
+		const selection = window.getSelection();
+		if (selection && selection.rangeCount > 0) {
+			linkText = selection.toString() || '';
+		}
+		linkUrl = '';
+		showLinkDialog = true;
+	}
+
+	function insertLink() {
+		if (!linkUrl) return;
+		
+		editorElement.focus();
+		const selection = window.getSelection();
+		
+		if (lastEditorRange) {
+			selection?.removeAllRanges();
+			selection?.addRange(lastEditorRange);
+		}
+		
+		if (linkText && (!selection || selection.toString() === '')) {
+			const a = document.createElement('a');
+			a.href = linkUrl;
+			a.textContent = linkText;
+			a.target = '_blank';
+			a.rel = 'noopener noreferrer';
+			
+			const range = selection?.getRangeAt(0);
+			range?.insertNode(a);
+		} else {
+			document.execCommand('createLink', false, linkUrl);
+			const links = editorElement.querySelectorAll('a[href="' + linkUrl + '"]');
+			links.forEach(link => {
+				link.setAttribute('target', '_blank');
+				link.setAttribute('rel', 'noopener noreferrer');
+			});
+		}
+		
+		showLinkDialog = false;
+		linkUrl = '';
+		linkText = '';
+		syncFromDom();
+	}
+
+	function openImageDialog() {
+		imageUrl = '';
+		imageAlt = '';
+		showImageDialog = true;
+	}
+
+	function insertImage() {
+		if (!imageUrl) return;
+		
+		editorElement.focus();
+		const selection = window.getSelection();
+		
+		if (lastEditorRange) {
+			selection?.removeAllRanges();
+			selection?.addRange(lastEditorRange);
+		}
+		
+		const img = document.createElement('img');
+		img.src = imageUrl;
+		img.alt = imageAlt || '';
+		img.className = 'max-w-full h-auto rounded';
+		img.style.maxWidth = '100%';
+		
+		const range = selection?.getRangeAt(0);
+		range?.insertNode(img);
+		
+		showImageDialog = false;
+		imageUrl = '';
+		imageAlt = '';
+		syncFromDom();
+	}
+
+	function handleImageUpload(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		
+		if (!file.type.startsWith('image/')) {
+			alert('Please select an image file');
+			return;
+		}
+		
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			imageUrl = event.target?.result as string;
+		};
+		reader.readAsDataURL(file);
 	}
 
 	$effect(() => {
@@ -859,20 +1038,24 @@ ${content}
 		</div>
 	{/if}
 
-	<MariRichEditorController
-		on:command={handleCommand}
-		{activeStates}
-		{fontSize}
-		{fontFamily}
-		isInTable={isInTable}
-	/>
+	{#if !disabled}
+		<MariRichEditorController
+			on:command={handleCommand}
+			{activeStates}
+			{fontSize}
+			{fontFamily}
+			{textColor}
+			{bgColor}
+			isInTable={isInTable}
+		/>
+	{/if}
 
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- Editor surface styled to match preview (.prose inside a rounded, bordered card) -->
 	<div class="mt-2 rounded-box border border-base-300 bg-base-100 p-4" on:click={closeMenus}>
 		<div
-			class="prose max-w-none focus:outline-none {editorClassName}"
-			contenteditable="true"
+			class="prose max-w-none focus:outline-none {editorClassName} {disabled ? 'opacity-70 cursor-not-allowed' : ''}"
+			contenteditable={!disabled}
 			bind:this={editorElement}
 			{placeholder}
 			on:input={syncFromDom}
@@ -884,4 +1067,110 @@ ${content}
 		<MariRichEditorPreview {value} />
 	{/if}
 </div>
+
+<!-- Link Dialog -->
+{#if showLinkDialog}
+	<div class="d-modal d-modal-open">
+		<div class="d-modal-box max-w-md">
+			<h3 class="font-bold text-lg mb-4">Insert Link</h3>
+			<div class="space-y-4">
+				<div>
+					<label class="d-label" for="linkText">
+						<span class="d-label-text">Link Text</span>
+					</label>
+					<input
+						id="linkText"
+						type="text"
+						class="d-input d-input-bordered w-full"
+						placeholder="Display text (optional)"
+						bind:value={linkText}
+					/>
+				</div>
+				<div>
+					<label class="d-label" for="linkUrl">
+						<span class="d-label-text">URL <span class="text-error">*</span></span>
+					</label>
+					<input
+						id="linkUrl"
+						type="url"
+						class="d-input d-input-bordered w-full"
+						placeholder="https://example.com"
+						bind:value={linkUrl}
+					/>
+				</div>
+			</div>
+			<div class="d-modal-action">
+				<button type="button" class="d-btn d-btn-ghost" on:click={() => { showLinkDialog = false; linkUrl = ''; linkText = ''; }}>
+					Cancel
+				</button>
+				<button type="button" class="d-btn d-btn-primary" on:click={insertLink} disabled={!linkUrl}>
+					Insert Link
+				</button>
+			</div>
+		</div>
+		<div class="d-modal-backdrop" on:click={() => showLinkDialog = false} on:keydown={(e) => e.key === 'Escape' && (showLinkDialog = false)} role="button" tabindex="-1"></div>
+	</div>
+{/if}
+
+<!-- Image Dialog -->
+{#if showImageDialog}
+	<div class="d-modal d-modal-open">
+		<div class="d-modal-box max-w-md">
+			<h3 class="font-bold text-lg mb-4">Insert Image</h3>
+			<div class="space-y-4">
+				<div>
+					<label class="d-label">
+						<span class="d-label-text">Upload Image</span>
+					</label>
+					<input
+						type="file"
+						accept="image/*"
+						class="d-file-input d-file-input-bordered w-full"
+						on:change={handleImageUpload}
+					/>
+				</div>
+				<div class="d-divider">OR</div>
+				<div>
+					<label class="d-label" for="imageUrl">
+						<span class="d-label-text">Image URL</span>
+					</label>
+					<input
+						id="imageUrl"
+						type="url"
+						class="d-input d-input-bordered w-full"
+						placeholder="https://example.com/image.jpg"
+						bind:value={imageUrl}
+					/>
+				</div>
+				<div>
+					<label class="d-label" for="imageAlt">
+						<span class="d-label-text">Alt Text (for accessibility)</span>
+					</label>
+					<input
+						id="imageAlt"
+						type="text"
+						class="d-input d-input-bordered w-full"
+						placeholder="Image description"
+						bind:value={imageAlt}
+					/>
+				</div>
+				{#if imageUrl}
+					<div class="border rounded p-2">
+						<p class="text-xs text-base-content/70 mb-2">Preview:</p>
+						<img src={imageUrl} alt={imageAlt} class="max-h-32 mx-auto" />
+					</div>
+				{/if}
+			</div>
+			<div class="d-modal-action">
+				<button type="button" class="d-btn d-btn-ghost" on:click={() => { showImageDialog = false; imageUrl = ''; imageAlt = ''; }}>
+					Cancel
+				</button>
+				<button type="button" class="d-btn d-btn-primary" on:click={insertImage} disabled={!imageUrl}>
+					Insert Image
+				</button>
+			</div>
+		</div>
+		<div class="d-modal-backdrop" on:click={() => showImageDialog = false} on:keydown={(e) => e.key === 'Escape' && (showImageDialog = false)} role="button" tabindex="-1"></div>
+	</div>
+{/if}
 
