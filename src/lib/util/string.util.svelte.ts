@@ -3,7 +3,8 @@ import type { PatientWithRelations } from '$lib/remote/table/information-table/p
 import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
 import type {
 	CountrySchema,
-	IdentityTypeSchema
+	IdentityTypeSchema,
+	ServiceItemSchema
 } from '$lib/server/db/schema-type';
 
 export class StringUtil {
@@ -159,6 +160,10 @@ export class StringUtil {
 
 	static doctorOptionDisplayName(doctor: StaffWithRelations): string {
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
+	}
+
+	static serviceOptionDisplayName(service: ServiceItemSchema): string {
+		return `${service.serviceName ?? 'Unknown Service'} (${service.serviceCode ?? '-'})`;
 	}
 
 	// =========================================================

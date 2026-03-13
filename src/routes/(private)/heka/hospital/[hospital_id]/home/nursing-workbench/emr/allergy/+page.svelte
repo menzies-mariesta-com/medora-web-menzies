@@ -315,7 +315,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message="Choose a visit using the "Choose Visit" button above to add or view allergies."
+			message="Choose a visit using the 'Choose Visit' button above to add or view allergies."
 			className="z-0"
 		/>
 	{:else if isLoadingVisit}
