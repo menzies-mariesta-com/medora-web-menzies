@@ -16,7 +16,16 @@
 		type DocumentWithRelations
 	} from '$lib/remote/table/information-table/document.remote';
 	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+	import {
+		getDocumentSettingById,
+		getDocumentSettingsWithRelations,
+		type DocumentSettingWithRelations
+	} from '$lib/remote/table/information-table/document-setting.remote';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import type {
+		DocumentTypeSchema,
+		DocumentSettingSchema
+	} from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -27,11 +36,12 @@
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
-	let visit = $state<{
-		patientId: string;
-		hospitalId: string;
-		patient?: { name?: string; patientCode?: string };
-	} | null>(null);
+let visit = $state<{
+	patientId: string;
+	hospitalId: string;
+	visitNo?: string;
+	patient?: { name?: string; patientCode?: string };
+} | null>(null);
 	let documents = $state<DocumentWithRelations[]>([]);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let isLoading = $state(false);
@@ -91,15 +101,108 @@
 		selectedDocument = null;
 	}
 
-	function printDocument(doc: DocumentWithRelations) {
+	function buildPlaceholderContext(doc: DocumentWithRelations) {
+		const patientName = visit?.patient?.name ?? 'Unknown Patient';
+		const patientCode = visit?.patient?.patientCode ?? '';
+		const visitNo = visit?.visitNo ?? '';
+		const documentTitle =
+			doc.documentNumber ||
+			doc.documentType?.documentType ||
+			'Document';
+
+		return {
+			'{{patient.name}}': patientName,
+			'{{patient.code}}': patientCode,
+			'{{visit.no}}': visitNo,
+			'{{document.title}}': documentTitle,
+			'{{document.code}}': doc.code ?? '',
+			'{{document.number}}': doc.documentNumber ?? '',
+			'{{print.date}}': new Date().toLocaleDateString(),
+			'{{print.time}}': new Date().toLocaleTimeString()
+		};
+	}
+
+	function applyPlaceholders(
+		template: string | null | undefined,
+		context: Record<string, string>
+	): string {
+		if (!template) return '';
+		let result = template;
+		for (const [key, value] of Object.entries(context)) {
+			result = result.split(key).join(value);
+		}
+		return result;
+	}
+
+	async function printDocument(doc: DocumentWithRelations) {
 		const printWindow = window.open('', '_blank');
 		if (!printWindow) {
-			toastService.error('Failed to open print window');
+			toastService.addToast(
+				'Failed to open print window',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 
-		const patientName = visit?.patient?.name ?? 'Unknown Patient';
-		const patientCode = visit?.patient?.patientCode ?? '';
+		let setting: DocumentSettingSchema | null = null;
+		try {
+			if (doc.documentSettingId) {
+				setting = await getDocumentSettingById({
+					id: doc.documentSettingId
+				});
+			} else if (doc.documentTypeId) {
+				// Fallback: find a setting by type/name, then single-item fallback.
+				const allSettings: DocumentSettingWithRelations[] =
+					await getDocumentSettingsWithRelations();
+				const docTypeName =
+					doc.documentType?.documentType?.trim().toLowerCase() ?? '';
+				const matchedByTypeId =
+					allSettings.find((s) => s.documentTypeId === doc.documentTypeId) ??
+					null;
+				const matchedByTypeName =
+					allSettings.find(
+						(s) =>
+							(s.documentType?.documentType ?? '')
+								.trim()
+								.toLowerCase() === docTypeName
+					) ?? null;
+				const matchedByNameOrCode =
+					allSettings.find((s) => {
+						const name = (s.name ?? '').trim().toLowerCase();
+						return (
+							Boolean(docTypeName) &&
+							name.includes(docTypeName)
+						);
+					}) ?? null;
+				const singleSetting =
+					allSettings.length === 1 ? allSettings[0] : null;
+
+				setting =
+					matchedByTypeId ??
+					matchedByTypeName ??
+					matchedByNameOrCode ??
+					singleSetting;
+			}
+		} catch (err) {
+			console.error('Failed to load document setting', err);
+		}
+
+		const context = buildPlaceholderContext(doc);
+		const marginTop = setting?.marginTop ?? 20;
+		const marginBottom = setting?.marginBottom ?? 20;
+		const marginLeft = setting?.marginLeft ?? 15;
+		const marginRight = setting?.marginRight ?? 15;
+		const paddingTop = setting?.paddingTop ?? 10;
+		const paddingBottom = setting?.paddingBottom ?? 10;
+		const paddingLeft = setting?.paddingLeft ?? 10;
+		const paddingRight = setting?.paddingRight ?? 10;
+		const pageSize = setting?.pageSize ?? 'A4';
+		const orientation = setting?.pageOrientation ?? 'portrait';
+		const showHeader = setting?.showHeader ?? true;
+		const showFooter = setting?.showFooter ?? true;
+		const headerHtml = applyPlaceholders(setting?.headerHtml, context).trim();
+		const footerHtml = applyPlaceholders(setting?.footerHtml, context).trim();
+
 		const documentTitle =
 			doc.documentNumber ||
 			doc.documentType?.documentType ||
@@ -113,8 +216,8 @@
 				<style>
 					body {
 						font-family: 'Roboto', Arial, sans-serif;
-						padding: 20mm;
-						margin: 0;
+						margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
 						line-height: 1.6;
 					}
 					.header {
@@ -122,12 +225,6 @@
 						margin-bottom: 20px;
 						padding-bottom: 10px;
 						border-bottom: 1px solid #ccc;
-					}
-					.patient-info {
-						margin-bottom: 20px;
-						padding: 10px;
-						background: #f5f5f5;
-						border-radius: 4px;
 					}
 					.content {
 						margin-top: 20px;
@@ -139,23 +236,27 @@
 						color: #666;
 					}
 					@media print {
-						body { padding: 15mm; }
+						@page {
+							size: ${pageSize} ${orientation};
+							margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+						}
 					}
 				</style>
 			</head>
 			<body>
-				<div class="header">
-					<h2>${documentTitle}</h2>
-				</div>
-				<div class="patient-info">
-					<strong>Patient:</strong> ${patientName} ${patientCode ? `(${patientCode})` : ''}
-				</div>
+				${
+					showHeader && headerHtml
+						? `<div class="header">${headerHtml}</div>`
+						: ''
+				}
 				<div class="content">
 					${doc.documentText || '<p>No content</p>'}
 				</div>
-				<div class="footer">
-					<p>Printed on: ${new Date().toLocaleString()}</p>
-				</div>
+				${
+					showFooter && footerHtml
+						? `<div class="footer">${footerHtml}</div>`
+						: ''
+				}
 			</body>
 			</html>
 		`);

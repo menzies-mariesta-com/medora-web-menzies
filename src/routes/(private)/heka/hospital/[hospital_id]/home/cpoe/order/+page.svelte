@@ -675,7 +675,7 @@ let showHistory = $state(false);
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message="Choose a visit using the 'Choose Visit' button above to place orders."
+			message={'Choose a visit using the "Choose Visit" button above to place orders.'}
 			className="z-0"
 		/>
 	{:else if isLoadingVisit}
