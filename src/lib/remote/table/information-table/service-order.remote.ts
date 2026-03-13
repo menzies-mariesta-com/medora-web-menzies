@@ -226,4 +226,3 @@ export const deleteServiceOrderComplete = command(
 		getServiceOrderPaginated(undefined).refresh();
 	}
 );
-

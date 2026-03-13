@@ -21,7 +21,7 @@
 	import { page } from '$app/state';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-import {
+	import {
 		WebRoutesEnum,
 		hekaHospitalHome,
 		hekaHospitalPageUrl,
@@ -188,7 +188,9 @@ import {
 	function isPageActive(p: PageSchema): boolean {
 		if (!activeDbPageUrl || !p.pageUrl) return false;
 		if (activeDbPageUrl === p.pageUrl) return true;
-		const base = p.pageUrl.endsWith('/') ? p.pageUrl : `${p.pageUrl}/`;
+		const base = p.pageUrl.endsWith('/')
+			? p.pageUrl
+			: `${p.pageUrl}/`;
 		return activeDbPageUrl.startsWith(base);
 	}
 
@@ -346,7 +348,6 @@ import {
 <!-- module bar start  -->
 
 <DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
-	
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
 			tooltipText="close top panel"
@@ -408,20 +409,28 @@ import {
 		{/each}
 	</div>
 	<div>
-			<DaisyUiTooltip tooltipText="Home" className="d-tooltip-secondary d-tooltip-bottom">
-				<DaisyUiButton
-					className="d-btn-secondary d-btn-square"
-					onClick={() =>
-						routerUtil.goToRoute(
-							hospitalId ? hekaHospitalHome(hospitalId) : WebRoutesEnum.HEKA_HOME
-						)}
-				>
-					<LucideHouse />
-				</DaisyUiButton>
-			</DaisyUiTooltip>
+		<DaisyUiTooltip
+			tooltipText="Home"
+			className="d-tooltip-secondary d-tooltip-bottom"
+		>
+			<DaisyUiButton
+				className="d-btn-secondary d-btn-square"
+				onClick={() =>
+					routerUtil.goToRoute(
+						hospitalId
+							? hekaHospitalHome(hospitalId)
+							: WebRoutesEnum.HEKA_HOME
+					)}
+			>
+				<LucideHouse />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
 	</div>
 	<div>
-		<DaisyUiTooltip tooltipText="Search (Ctrl+K)" className="d-tooltip-secondary d-tooltip-bottom">
+		<DaisyUiTooltip
+			tooltipText="Search (Ctrl+K)"
+			className="d-tooltip-secondary d-tooltip-bottom"
+		>
 			<DaisyUiButton
 				className="d-btn-secondary d-btn-square"
 				onClick={openSearchDialog}
@@ -439,34 +448,40 @@ import {
 	onClose={closeSearchDialog}
 >
 	{#snippet children()}
-		<div class="d-modal-box max-h-[80vh] flex flex-col gap-3">
-			<h3 class="text-lg font-semibold">Search modules &amp; pages</h3>
+		<div class="d-modal-box flex max-h-[80vh] flex-col gap-3">
+			<h3 class="text-lg font-semibold">
+				Search modules &amp; pages
+			</h3>
 			<input
 				bind:this={searchInputEl}
 				bind:value={searchQuery}
 				type="text"
 				placeholder="Type to search..."
-				class="d-input d-input-bordered w-full"
+				class="d-input-bordered d-input w-full"
 				aria-label="Search"
 			/>
-			<ul class="max-h-80 overflow-y-auto flex flex-col gap-1">
+			<ul class="flex max-h-80 flex-col gap-1 overflow-y-auto">
 				{#each searchEntries as entry (entry.page.id)}
 					<li>
 						<button
 							type="button"
-							class="d-btn d-btn-ghost w-full justify-start text-left"
+							class="d-btn w-full justify-start text-left d-btn-ghost"
 							onclick={() => goToPage(entry.page)}
 						>
-							<span class="font-medium">{entry.page.name ?? entry.page.pageUrl ?? ''}</span>
+							<span class="font-medium"
+								>{entry.page.name ?? entry.page.pageUrl ?? ''}</span
+							>
 							{#if entry.moduleName}
-								<span class="text-base-content/60 text-sm"> — {entry.moduleName}</span>
+								<span class="text-sm text-base-content/60">
+									— {entry.moduleName}</span
+								>
 							{/if}
 						</button>
 					</li>
 				{/each}
 			</ul>
 			{#if searchEntries.length === 0}
-				<p class="text-base-content/60 text-sm">No matches.</p>
+				<p class="text-sm text-base-content/60">No matches.</p>
 			{/if}
 		</div>
 	{/snippet}

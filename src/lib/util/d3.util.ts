@@ -62,7 +62,8 @@ const DEFAULT_THEME: ChartTheme = {
 	gridColor: '#e5e7eb',
 	lineColor: '#3b82f6',
 	barColor: '#3b82f6',
-	fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+	fontFamily:
+		'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
 	fontSize: 12
 };
 
@@ -88,7 +89,9 @@ function resolveTheme(theme?: Partial<ChartTheme>): ChartTheme {
 }
 
 function getTooltipElement(): HTMLDivElement {
-	let tooltip = document.querySelector<HTMLDivElement>('.d3-util-tooltip');
+	let tooltip = document.querySelector<HTMLDivElement>(
+		'.d3-util-tooltip'
+	);
 	if (!tooltip) {
 		tooltip = document.createElement('div');
 		tooltip.className = 'd3-util-tooltip';
@@ -171,9 +174,8 @@ export class D3Util {
 				.range([0, innerWidth])
 				.nice();
 		} else {
-			const xExtent = d3.extent(
-				data,
-				(d: T) => Number(xAccessor(d))
+			const xExtent = d3.extent(data, (d: T) =>
+				Number(xAccessor(d))
 			) as [number, number];
 			xScale = d3
 				.scaleLinear()
@@ -226,7 +228,10 @@ export class D3Util {
 
 		// Axes
 		const xAxis = d3.axisBottom(xScale as any).tickSizeOuter(0);
-		const yAxis = d3.axisLeft(yScale as any).ticks(5).tickSizeOuter(0);
+		const yAxis = d3
+			.axisLeft(yScale as any)
+			.ticks(5)
+			.tickSizeOuter(0);
 
 		g.append('g')
 			.attr('transform', `translate(0,${innerHeight})`)
@@ -236,9 +241,7 @@ export class D3Util {
 				selection
 					.selectAll('path,line')
 					.attr('stroke', theme.axisColor);
-				selection
-					.selectAll('text')
-					.attr('fill', theme.axisColor);
+				selection.selectAll('text').attr('fill', theme.axisColor);
 			});
 
 		g.append('g')
@@ -248,9 +251,7 @@ export class D3Util {
 				selection
 					.selectAll('path,line')
 					.attr('stroke', theme.axisColor);
-				selection
-					.selectAll('text')
-					.attr('fill', theme.axisColor);
+				selection.selectAll('text').attr('fill', theme.axisColor);
 			});
 
 		// Line generator
@@ -392,9 +393,7 @@ export class D3Util {
 				selection
 					.selectAll('path,line')
 					.attr('stroke', theme.axisColor);
-				selection
-					.selectAll('text')
-					.attr('fill', theme.axisColor);
+				selection.selectAll('text').attr('fill', theme.axisColor);
 			});
 
 		g.append('g')
@@ -404,9 +403,7 @@ export class D3Util {
 				selection
 					.selectAll('path,line')
 					.attr('stroke', theme.axisColor);
-				selection
-					.selectAll('text')
-					.attr('fill', theme.axisColor);
+				selection.selectAll('text').attr('fill', theme.axisColor);
 			});
 
 		// Bars + tooltip
@@ -440,4 +437,3 @@ export class D3Util {
 			});
 	}
 }
-

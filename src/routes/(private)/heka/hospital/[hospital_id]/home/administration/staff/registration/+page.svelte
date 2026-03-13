@@ -6,7 +6,11 @@
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
 
-	import { getSpecialization, getSpecializationWithRelations, type SpecializationWithRelations } from '$lib/remote/table/master-table/specialization.remote';
+	import {
+		getSpecialization,
+		getSpecializationWithRelations,
+		type SpecializationWithRelations
+	} from '$lib/remote/table/master-table/specialization.remote';
 	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
 	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
 	import { getUserGroupByHospitalId } from '$lib/remote/table/information-table/user-group.remote';
@@ -913,30 +917,30 @@
 				}
 			}
 
-		toastService.addToast(
-			`Staff created successfully!`,
-			StatusColorEnum.SUCCESS
-		);
-
-		if (selectedEmail?.trim()) {
-			const { error } = await authClient.requestPasswordReset({
-				email: selectedEmail.trim(),
-				redirectTo: routerUtil.getResetRedirectUrl()
-			});
-
-			if (error) {
-				toastService.addToast(
-					error.message ?? 'Failed to send reset link.',
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-
 			toastService.addToast(
-				'Reset password email has been sent to the staff.',
-				StatusColorEnum.INFO
+				`Staff created successfully!`,
+				StatusColorEnum.SUCCESS
 			);
-		}
+
+			if (selectedEmail?.trim()) {
+				const { error } = await authClient.requestPasswordReset({
+					email: selectedEmail.trim(),
+					redirectTo: routerUtil.getResetRedirectUrl()
+				});
+
+				if (error) {
+					toastService.addToast(
+						error.message ?? 'Failed to send reset link.',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
+
+				toastService.addToast(
+					'Reset password email has been sent to the staff.',
+					StatusColorEnum.INFO
+				);
+			}
 
 			disableCreateSave = true;
 		} catch (error: unknown) {

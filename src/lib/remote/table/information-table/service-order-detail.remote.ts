@@ -40,7 +40,10 @@ export const getServiceOrderDetail = query(
 			);
 		}
 
-		if (params?.serviceOrderIds && params.serviceOrderIds.length > 0) {
+		if (
+			params?.serviceOrderIds &&
+			params.serviceOrderIds.length > 0
+		) {
 			whereExpr = and(
 				whereExpr,
 				inArray(
@@ -118,7 +121,10 @@ export const getServiceOrderDetailPaginated = query(
 			);
 		}
 
-		if (params?.serviceOrderIds && params.serviceOrderIds.length > 0) {
+		if (
+			params?.serviceOrderIds &&
+			params.serviceOrderIds.length > 0
+		) {
 			whereExpr = and(
 				whereExpr,
 				inArray(
@@ -252,4 +258,3 @@ export const deleteServiceOrderDetailComplete = command(
 		getServiceOrderDetailPaginated(undefined).refresh();
 	}
 );
-

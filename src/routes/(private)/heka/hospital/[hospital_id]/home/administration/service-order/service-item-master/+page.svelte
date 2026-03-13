@@ -49,20 +49,22 @@
 			? page.params.hospital_id
 			: ''
 	);
-/** User's current branch from layout; refetch when branch changes. */
-const selectedBranchId = $derived(data?.selectedBranchId ?? null);
-const branchIdForCategory = $derived(
-	selectedBranchId && selectedBranchId !== '__all__'
-		? selectedBranchId
-		: null
-);
+	/** User's current branch from layout; refetch when branch changes. */
+	const selectedBranchId = $derived(data?.selectedBranchId ?? null);
+	const branchIdForCategory = $derived(
+		selectedBranchId && selectedBranchId !== '__all__'
+			? selectedBranchId
+			: null
+	);
 
 	let categories = $state<CategorySchema[]>([]);
 	let subCategories = $state<SubCategorySchema[]>([]);
-	let serviceResult = $state<PaginatedResult<ServiceItemSchema> | null>(null);
+	let serviceResult =
+		$state<PaginatedResult<ServiceItemSchema> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	const serviceItems = $derived(serviceResult?.data ?? []);
 	const total = $derived(serviceResult?.total ?? 0);
@@ -70,12 +72,12 @@ const branchIdForCategory = $derived(
 	let selectedCategoryId = $state<string>('');
 	let selectedSubCategoryId = $state<string>('');
 
-const filteredSubCategories = $derived.by(() => {
-	if (!selectedCategoryId) return subCategories;
-	const categoryId = Number(selectedCategoryId);
-	if (Number.isNaN(categoryId)) return subCategories;
-	return subCategories.filter((sc) => sc.categoryId === categoryId);
-});
+	const filteredSubCategories = $derived.by(() => {
+		if (!selectedCategoryId) return subCategories;
+		const categoryId = Number(selectedCategoryId);
+		if (Number.isNaN(categoryId)) return subCategories;
+		return subCategories.filter((sc) => sc.categoryId === categoryId);
+	});
 
 	let formServiceName = $state('');
 	let formServiceCode = $state('');
@@ -293,7 +295,8 @@ const filteredSubCategories = $derived.by(() => {
 				await getServiceItemPaginated(paginatedParams).refresh();
 			}
 
-			const rawResult = await getServiceItemPaginated(paginatedParams);
+			const rawResult =
+				await getServiceItemPaginated(paginatedParams);
 
 			// If a specific branch is selected in the module bar,
 			// ensure we only show service items whose sub-category
@@ -320,7 +323,7 @@ const filteredSubCategories = $derived.by(() => {
 		}
 	}
 
-$effect(() => {
+	$effect(() => {
 		const _hospital = hospitalId;
 		const _branch = selectedBranchId;
 		if (!_hospital) return;
@@ -333,7 +336,9 @@ $effect(() => {
 
 	function onCategoryChange() {
 		const available = filteredSubCategories;
-		if (!available.find((sc) => String(sc.id) === selectedSubCategoryId)) {
+		if (
+			!available.find((sc) => String(sc.id) === selectedSubCategoryId)
+		) {
 			selectedSubCategoryId =
 				available.length > 0 ? String(available[0].id) : '';
 		}
@@ -549,8 +554,7 @@ $effect(() => {
 						>
 							{#each categories as cat (cat.id)}
 								<option value={String(cat.id)}
-									>{cat.categoryName ??
-										`Category ${cat.id}`}</option
+									>{cat.categoryName ?? `Category ${cat.id}`}</option
 								>
 							{/each}
 						</DaisyUiSelect>
@@ -643,13 +647,13 @@ $effect(() => {
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			<div class="{TableEnum.HEIGHT}">
+			<div class={TableEnum.HEIGHT}>
 				<MariTable
 					rows={serviceItems}
 					columns={serviceItemColumns}
-					isLoading={isLoading}
+					{isLoading}
 					bind:pageSize={pageSizeStr}
-					bind:currentPage={currentPage}
+					bind:currentPage
 					totalRowCount={total}
 					showRefreshButton={true}
 					emptyMessage="No records found"

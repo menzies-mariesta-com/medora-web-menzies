@@ -39,11 +39,7 @@ export type DocumentWithRelations = Awaited<
 // get one by id
 export const getDocumentById = query(
 	'unchecked' as const,
-	async ({
-		id
-	}: {
-		id: number;
-	}): Promise<DocumentSchema | null> => {
+	async ({ id }: { id: number }): Promise<DocumentSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.documentTable)
@@ -60,7 +56,10 @@ export const getDocumentsPaginated = query(
 	): Promise<PaginatedResult<DocumentSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(table.documentTable.statusId, StatusEnum.ACTIVE);
+		const activeFilter = eq(
+			table.documentTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -92,7 +91,10 @@ export const getDocumentsPaginatedWithRelations = query(
 	): Promise<PaginatedResult<DocumentWithRelations>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(table.documentTable.statusId, StatusEnum.ACTIVE);
+		const activeFilter = eq(
+			table.documentTable.statusId,
+			StatusEnum.ACTIVE
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.documentTable.findMany({
 				where: activeFilter,
@@ -166,4 +168,3 @@ export const deleteDocument = command(
 		getDocuments().refresh();
 	}
 );
-
