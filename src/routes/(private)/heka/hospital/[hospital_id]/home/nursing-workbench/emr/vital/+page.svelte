@@ -320,7 +320,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the "Choose Visit" button above to record vitals.'}
+			message={"Choose a visit using the 'Choose Visit' button above to record vitals."}
 			className="z-0"
 		/>
 	{:else if isLoadingVisit}
