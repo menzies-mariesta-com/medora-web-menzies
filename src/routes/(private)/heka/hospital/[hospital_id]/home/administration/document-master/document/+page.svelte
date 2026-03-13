@@ -31,6 +31,10 @@
 		type DocumentWithRelations
 	} from '$lib/remote/table/information-table/document.remote';
 	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
+	import {
+		getDocumentSettingsWithRelations,
+		type DocumentSettingWithRelations
+	} from '$lib/remote/table/information-table/document-setting.remote';
 	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -39,6 +43,7 @@
 	let documentResult =
 		$state<PaginatedResult<DocumentWithRelations> | null>(null);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
+	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -49,6 +54,8 @@
 	let viewMode = $state<ViewMode>('list');
 	let editingId = $state<number | null>(null);
 	let documentTypeIdInput = $state('');
+	let documentSettingIdInput = $state('');
+	let documentCodeInput = $state('');
 	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
 
@@ -85,15 +92,26 @@
 		}
 	}
 
+	async function fetchDocumentSettings() {
+		try {
+			documentSettings = await getDocumentSettingsWithRelations();
+		} catch (err) {
+			console.error('Failed to load document settings', err);
+		}
+	}
+
 	lifeCycleUtil.onMount(() => {
 		fetchData();
 		fetchDocumentTypes();
+		fetchDocumentSettings();
 	});
 
 	function resetForm() {
 		viewMode = 'list';
 		editingId = null;
 		documentTypeIdInput = '';
+		documentSettingIdInput = '';
+		documentCodeInput = '';
 		documentNumberInput = '';
 		documentTextInput = '';
 	}
@@ -104,6 +122,10 @@
 		documentTypeIdInput = item.documentTypeId
 			? String(item.documentTypeId)
 			: '';
+		documentSettingIdInput = item.documentSettingId
+			? String(item.documentSettingId)
+			: '';
+		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
@@ -114,6 +136,10 @@
 		documentTypeIdInput = item.documentTypeId
 			? String(item.documentTypeId)
 			: '';
+		documentSettingIdInput = item.documentSettingId
+			? String(item.documentSettingId)
+			: '';
+		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
@@ -141,6 +167,10 @@
 		try {
 			const payload = {
 				documentTypeId: Number(documentTypeIdInput),
+				documentSettingId: documentSettingIdInput
+					? Number(documentSettingIdInput)
+					: null,
+				code: documentCodeInput.trim() || null,
 				documentNumber: documentNumberInput.trim(),
 				documentText: documentTextInput || null
 			};
@@ -228,10 +258,21 @@
 			widthClass: 'w-48 min-w-[12rem]'
 		},
 		{
+			id: 'code',
+			header: 'Document Code',
+			widthClass: 'w-32 min-w-[8rem]'
+		},
+		{
 			id: 'documentType',
 			header: 'Document Type',
 			widthClass: 'w-32 min-w-[8rem]',
 			format: (_value, row) => row.documentType?.documentType ?? '—'
+		},
+		{
+			id: 'documentSetting',
+			header: 'Document Setting',
+			widthClass: 'w-48 min-w-[12rem]',
+			format: (_value, row) => row.documentSetting?.name ?? '—'
 		},
 		{
 			id: 'documentText',
@@ -358,7 +399,7 @@
 				</DaisyUiButton>
 			</div>
 
-			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-4">
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
@@ -378,6 +419,47 @@
 								<option value={String(dt.id)}
 									>{dt.documentType}</option
 								>
+							{/each}
+						</DaisyUiSelect>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="documentCode"
+						className="shrink-0 sm:w-32"
+					>
+						Document Code
+					</DaisyUiLabel>
+					<div class="flex-1">
+						<input
+							id="documentCode"
+							type="text"
+							class="d-input-bordered d-input w-full"
+							placeholder="Enter document code"
+							bind:value={documentCodeInput}
+							disabled={viewMode === 'view'}
+						/>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="documentSetting"
+						className="shrink-0 sm:w-32"
+					>
+						Document Setting
+					</DaisyUiLabel>
+					<div class="flex-1">
+						<DaisyUiSelect
+							bind:value={documentSettingIdInput}
+							optionHeader="Select document setting ..."
+							disabled={viewMode === 'view'}
+						>
+							{#each documentSettings as ds (ds.id)}
+								<option value={String(ds.id)}>{ds.name}</option>
 							{/each}
 						</DaisyUiSelect>
 					</div>
