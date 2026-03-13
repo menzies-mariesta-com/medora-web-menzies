@@ -36,10 +36,13 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let documentResult = $state<PaginatedResult<DocumentWithRelations> | null>(null);
+	let documentResult =
+		$state<PaginatedResult<DocumentWithRelations> | null>(null);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let currentPage = $state(1);
-	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
 	let isLoading = $state(false);
 
 	type ViewMode = 'list' | 'create' | 'edit' | 'view';
@@ -54,7 +57,9 @@
 
 	const selectedDocumentTypeName = $derived(() => {
 		if (!documentTypeIdInput) return 'Document';
-		const dt = documentTypes.find((d) => String(d.id) === documentTypeIdInput);
+		const dt = documentTypes.find(
+			(d) => String(d.id) === documentTypeIdInput
+		);
 		return dt?.documentType || 'Document';
 	});
 
@@ -96,7 +101,9 @@
 	function startEdit(item: DocumentWithRelations) {
 		viewMode = 'edit';
 		editingId = item.id;
-		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
+		documentTypeIdInput = item.documentTypeId
+			? String(item.documentTypeId)
+			: '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
@@ -104,7 +111,9 @@
 	function startView(item: DocumentWithRelations) {
 		viewMode = 'view';
 		editingId = item.id;
-		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
+		documentTypeIdInput = item.documentTypeId
+			? String(item.documentTypeId)
+			: '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
 	}
@@ -116,11 +125,17 @@
 
 	async function handleSave() {
 		if (!documentTypeIdInput) {
-			toastService.addToast('Document type is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				'Document type is required',
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		if (!documentNumberInput.trim()) {
-			toastService.addToast('Document number/name is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				'Document number/name is required',
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		try {
@@ -135,16 +150,25 @@
 					id: editingId,
 					...payload
 				});
-				toastService.addToast('Document updated', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document updated',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				await createDocument(payload);
-				toastService.addToast('Document created', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document created',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			resetForm();
 			await fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to save document', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to save document',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -158,11 +182,17 @@
 			if (result.confirmed) {
 				await deleteDocument({ id });
 				await fetchData({ bustCache: true });
-				toastService.addToast('Document deleted', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document deleted',
+					StatusColorEnum.SUCCESS
+				);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete document', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to delete document',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -176,7 +206,10 @@
 		}
 	}
 
-	function truncateText(text: string | null | undefined, maxLength: number = 100): string {
+	function truncateText(
+		text: string | null | undefined,
+		maxLength: number = 100
+	): string {
 		if (!text) return '—';
 		const stripped = text.replace(/<[^>]*>/g, '');
 		if (stripped.length <= maxLength) return stripped;
@@ -218,9 +251,12 @@
 <div class="flex flex-col gap-4 p-4">
 	{#if viewMode === 'list'}
 		<DaisyUiCard className="p-4">
-			<div class="flex items-center justify-between mb-4">
+			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">Documents</h2>
-				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={startCreate}>
+				<DaisyUiButton
+					className="d-btn-primary d-btn-sm"
+					onClick={startCreate}
+				>
 					<LucidePlus className="size-5" />
 					{m.create()}
 				</DaisyUiButton>
@@ -257,7 +293,9 @@
 				>
 					<svelte:fragment slot="rowActions" let:row>
 						{@const typedRow = row as DocumentWithRelations}
-						<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
+						<td
+							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+						>
 							<div class="flex flex-col items-center gap-1">
 								<DaisyUiTooltip
 									tooltipText={m.view_data()}
@@ -301,7 +339,7 @@
 		{/if}
 	{:else}
 		<DaisyUiCard className="p-4">
-			<div class="flex items-center justify-between mb-4">
+			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">
 					{#if viewMode === 'view'}
 						View Document
@@ -311,15 +349,23 @@
 						Create Document
 					{/if}
 				</h2>
-				<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+				<DaisyUiButton
+					className="d-btn-ghost d-btn-sm"
+					onClick={resetForm}
+				>
 					<LucideX className="size-5" />
 					Back to List
 				</DaisyUiButton>
 			</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="documentType" className="shrink-0 sm:w-32">
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="documentType"
+						className="shrink-0 sm:w-32"
+					>
 						Document Type <span class="text-error">*</span>
 					</DaisyUiLabel>
 					<div class="flex-1">
@@ -329,20 +375,27 @@
 							disabled={viewMode === 'view'}
 						>
 							{#each documentTypes as dt (dt.id)}
-								<option value={String(dt.id)}>{dt.documentType}</option>
+								<option value={String(dt.id)}
+									>{dt.documentType}</option
+								>
 							{/each}
 						</DaisyUiSelect>
 					</div>
 				</div>
-				<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="documentNumber" className="shrink-0 sm:w-32">
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="documentNumber"
+						className="shrink-0 sm:w-32"
+					>
 						Document Name <span class="text-error">*</span>
 					</DaisyUiLabel>
 					<div class="flex-1">
 						<input
 							id="documentNumber"
 							type="text"
-							class="d-input d-input-bordered w-full"
+							class="d-input-bordered d-input w-full"
 							placeholder="Enter document name"
 							bind:value={documentNumberInput}
 							disabled={viewMode === 'view'}
@@ -352,13 +405,17 @@
 			</div>
 
 			<div class="mb-4">
-				<DaisyUiLabel forText="documentContent" className="mb-2 block">
+				<DaisyUiLabel
+					forText="documentContent"
+					className="mb-2 block"
+				>
 					Document Content
 				</DaisyUiLabel>
-				<div class="border rounded-lg overflow-hidden">
+				<div class="overflow-hidden rounded-lg border">
 					{#if viewMode === 'view'}
-						<div class="p-4 min-h-[400px] bg-base-100">
-							{@html documentTextInput || '<p class="text-base-content/50">No content</p>'}
+						<div class="min-h-[400px] bg-base-100 p-4">
+							{@html documentTextInput ||
+								'<p class="text-base-content/50">No content</p>'}
 						</div>
 					{:else}
 						<MariRichEditor
@@ -374,10 +431,16 @@
 
 			{#if viewMode !== 'view'}
 				<div class="flex justify-end gap-2">
-					<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm"
+						onClick={resetForm}
+					>
 						Cancel
 					</DaisyUiButton>
-					<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={handleSave}>
+					<DaisyUiButton
+						className="d-btn-primary d-btn-sm"
+						onClick={handleSave}
+					>
 						{editingId ? 'Update' : 'Create'}
 					</DaisyUiButton>
 				</div>

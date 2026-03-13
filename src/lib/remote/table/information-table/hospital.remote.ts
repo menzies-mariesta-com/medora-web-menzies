@@ -91,7 +91,9 @@ export const getHospitalWithOwnerPaginated = query(
 						...baseOpts,
 						where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId!)
 					}) as Promise<HospitalWithOwner[]>)
-				: (db.query.hospitalTable.findMany(baseOpts) as Promise<HospitalWithOwner[]>),
+				: (db.query.hospitalTable.findMany(baseOpts) as Promise<
+						HospitalWithOwner[]
+					>),
 			whereExpr != null
 				? db
 						.select({ count: count() })

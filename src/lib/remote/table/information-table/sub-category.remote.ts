@@ -77,14 +77,14 @@ export const getSubCategoryPaginated = query(
 		}
 		if (params?.categoryIds !== undefined) {
 			if (params.categoryIds.length === 0) {
-				whereExpr = and(
-					whereExpr,
-					eq(table.subCategoryTable.id, -1)
-				);
+				whereExpr = and(whereExpr, eq(table.subCategoryTable.id, -1));
 			} else {
 				whereExpr = and(
 					whereExpr,
-					inArray(table.subCategoryTable.categoryId, params.categoryIds)
+					inArray(
+						table.subCategoryTable.categoryId,
+						params.categoryIds
+					)
 				);
 			}
 		}

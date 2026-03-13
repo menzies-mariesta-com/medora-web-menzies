@@ -15,11 +15,11 @@
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
-import { StringUtil } from '$lib/util/string.util.svelte';
-import { page } from '$app/state';
-import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { page } from '$app/state';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
-let {
+	let {
 		doctorList,
 		selectedDoctorId = $bindable(''),
 		selectedBranchId = $bindable(''),
@@ -39,9 +39,9 @@ let {
 		branchLocked?: boolean;
 		branchIdForSearch?: string;
 		onDateChange?: (date: string) => void;
-}>();
-let selectedDate = $state(new Date().toISOString().slice(0, 10));
-const hospitalId = $derived(
+	}>();
+	let selectedDate = $state(new Date().toISOString().slice(0, 10));
+	const hospitalId = $derived(
 		(typeof page.params?.hospital_id === 'string' &&
 			page.params.hospital_id) ||
 			''

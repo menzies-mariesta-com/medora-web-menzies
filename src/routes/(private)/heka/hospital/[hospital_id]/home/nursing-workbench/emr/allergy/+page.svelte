@@ -30,10 +30,13 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: undefined
 	);
@@ -56,13 +59,15 @@
 		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
-		PatientAllergyDialogState.onSaved = () => fetchAllergies(patientId, hospitalIdParam);
+		PatientAllergyDialogState.onSaved = () =>
+			fetchAllergies(patientId, hospitalIdParam);
 		try {
 			await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
-				modalClassName: 'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				modalClassName:
+					'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
 					PatientAllergyDialogState.patientId = null;
 					PatientAllergyDialogState.visitId = null;
@@ -90,13 +95,15 @@
 		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
-		PatientAllergyDialogState.onSaved = () => fetchAllergies(patientId, hospitalIdParam);
+		PatientAllergyDialogState.onSaved = () =>
+			fetchAllergies(patientId, hospitalIdParam);
 		try {
 			await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
-				modalClassName: 'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				modalClassName:
+					'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
@@ -122,13 +129,18 @@
 		if (!result.confirmed) return;
 		try {
 			await deletePatientAllergies({ id: row.id });
-			toastService.addToast('Allergy removed.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Allergy removed.',
+				StatusColorEnum.SUCCESS
+			);
 			if (visit?.patientId && visit?.hospitalId) {
 				await fetchAllergies(visit.patientId, visit.hospitalId);
 			}
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Delete failed') as string,
+				(err instanceof Error
+					? err.message
+					: 'Delete failed') as string,
 				StatusColorEnum.ERROR
 			);
 		}
@@ -163,7 +175,9 @@
 			});
 			// Scope to this hospital (all visits) like Vital page
 			patientAllergies = hospitalIdParam
-				? data.filter((row) => row.visit?.hospitalId === hospitalIdParam)
+				? data.filter(
+						(row) => row.visit?.hospitalId === hospitalIdParam
+					)
 				: data;
 		} finally {
 			isLoadingAllergies = false;
@@ -216,79 +230,81 @@
 		return names.map((name) => ({ label: name, value: name }));
 	}
 
-	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] = [
-		{
-			id: 'visitNo',
-			header: 'Visit No',
-			widthClass: 'w-40',
-			filterable: true,
-			format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
-		},
-		{
-			id: 'allergyName',
-			header: 'Allergy',
-			widthClass: 'min-w-[8rem]',
-			filterable: false,
-			format: (_value, row) => formatText(row.allergy?.name ?? null)
-		},
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
-		},
-		{
-			id: 'severity',
-			header: 'Severity',
-			widthClass: 'w-30',
-			filterable: true,
-			filterType: 'select',
-			filterOptionsGetter: getSeverityFilterOptions,
-			format: (_value, row) => formatText(row.severity?.name ?? null)
-		},
-		{
-			id: 'reaction',
-			header: 'Reaction',
-			widthClass: 'min-w-32',
-			filterable: false,
-			format: (_value, row) => formatText(row.reaction),
-			cellClass: 'max-w-48 truncate'
-		},
-		{
-			id: 'remark',
-			header: 'Remark',
-			widthClass: 'min-w-32',
-			filterable: false,
-			format: (_value, row) => formatText(row.remark),
-			cellClass: 'max-w-48 truncate'
-		},
-		{
-			id: 'deactivationRemark',
-			header: 'Deactivation remark',
-			widthClass: 'min-w-32',
-			filterable: false,
-			format: (_value, row) => formatText(row.deactivationRemark),
-			cellClass: 'max-w-48 truncate'
-		},
-		{
-			id: 'createdAt',
-			header: 'Created At',
-			widthClass: 'w-36 min-w-[9rem]',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.createdAt ?? null)
-		},
-		{
-			id: 'updatedAt',
-			header: 'Updated At',
-			widthClass: 'w-36 min-w-[9rem]',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.updatedAt ?? null)
-		}
-	];
+	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] =
+		[
+			{
+				id: 'visitNo',
+				header: 'Visit No',
+				widthClass: 'w-40',
+				filterable: true,
+				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
+			},
+			{
+				id: 'allergyName',
+				header: 'Allergy',
+				widthClass: 'min-w-[8rem]',
+				filterable: false,
+				format: (_value, row) => formatText(row.allergy?.name ?? null)
+			},
+			{
+				id: 'status',
+				header: 'Status',
+				widthClass: 'w-28',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: statusFilterOptions,
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+			},
+			{
+				id: 'severity',
+				header: 'Severity',
+				widthClass: 'w-30',
+				filterable: true,
+				filterType: 'select',
+				filterOptionsGetter: getSeverityFilterOptions,
+				format: (_value, row) =>
+					formatText(row.severity?.name ?? null)
+			},
+			{
+				id: 'reaction',
+				header: 'Reaction',
+				widthClass: 'min-w-32',
+				filterable: false,
+				format: (_value, row) => formatText(row.reaction),
+				cellClass: 'max-w-48 truncate'
+			},
+			{
+				id: 'remark',
+				header: 'Remark',
+				widthClass: 'min-w-32',
+				filterable: false,
+				format: (_value, row) => formatText(row.remark),
+				cellClass: 'max-w-48 truncate'
+			},
+			{
+				id: 'deactivationRemark',
+				header: 'Deactivation remark',
+				widthClass: 'min-w-32',
+				filterable: false,
+				format: (_value, row) => formatText(row.deactivationRemark),
+				cellClass: 'max-w-48 truncate'
+			},
+			{
+				id: 'createdAt',
+				header: 'Created At',
+				widthClass: 'w-36 min-w-[9rem]',
+				filterable: false,
+				format: (_value, row) => formatDateTime(row.createdAt ?? null)
+			},
+			{
+				id: 'updatedAt',
+				header: 'Updated At',
+				widthClass: 'w-36 min-w-[9rem]',
+				filterable: false,
+				format: (_value, row) => formatDateTime(row.updatedAt ?? null)
+			}
+		];
 </script>
 
 <svelte:head>
@@ -296,11 +312,10 @@
 </svelte:head>
 
 <div class="flex flex-col gap-4">
-	
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" button above to add or view allergies.'
+			message="Choose a visit using the "Choose Visit" button above to add or view allergies."
 			className="z-0"
 		/>
 	{:else if isLoadingVisit}
@@ -315,7 +330,9 @@
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody className="p-3 m-0">
-				<div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+				<div
+					class="mb-2 flex flex-wrap items-center justify-between gap-3"
+				>
 					<DaisyUiCardBodyTitle className="mb-0">
 						Patient allergies (all visits)
 					</DaisyUiCardBodyTitle>
@@ -342,7 +359,7 @@
 							columns={allergyColumns}
 							isLoading={isLoadingAllergies}
 							bind:pageSize={pageSizeStr}
-							bind:currentPage={currentPage}
+							bind:currentPage
 							showRefreshButton={true}
 							emptyMessage="No allergies."
 							showRowActions={true}

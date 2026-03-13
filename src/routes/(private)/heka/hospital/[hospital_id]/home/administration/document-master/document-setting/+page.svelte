@@ -32,7 +32,10 @@
 		type DocumentSettingWithRelations
 	} from '$lib/remote/table/information-table/document-setting.remote';
 	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
-	import type { DocumentTypeSchema, DocumentSettingSchema } from '$lib/server/db/schema-type';
+	import type {
+		DocumentTypeSchema,
+		DocumentSettingSchema
+	} from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -41,54 +44,74 @@
 	const ORIENTATIONS = ['portrait', 'landscape'] as const;
 
 	const TEMPLATE_PLACEHOLDERS = [
-		{ category: 'Patient', placeholders: [
-			{ key: '{{patient.name}}', desc: 'Full patient name' },
-			{ key: '{{patient.code}}', desc: 'Patient code/ID' },
-			{ key: '{{patient.dob}}', desc: 'Date of birth' },
-			{ key: '{{patient.age}}', desc: 'Patient age' },
-			{ key: '{{patient.gender}}', desc: 'Gender (M/F)' },
-			{ key: '{{patient.address}}', desc: 'Patient address' },
-			{ key: '{{patient.phone}}', desc: 'Phone number' },
-			{ key: '{{patient.email}}', desc: 'Email address' },
-		]},
-		{ category: 'Visit', placeholders: [
-			{ key: '{{visit.no}}', desc: 'Visit number' },
-			{ key: '{{visit.date}}', desc: 'Visit date' },
-			{ key: '{{visit.time}}', desc: 'Visit time' },
-			{ key: '{{visit.datetime}}', desc: 'Visit date and time' },
-			{ key: '{{visit.type}}', desc: 'Visit type (OPD/IPD/ED)' },
-			{ key: '{{visit.department}}', desc: 'Department name' },
-		]},
-		{ category: 'Doctor', placeholders: [
-			{ key: '{{doctor.name}}', desc: 'Doctor full name' },
-			{ key: '{{doctor.title}}', desc: 'Doctor title' },
-			{ key: '{{doctor.specialty}}', desc: 'Specialty' },
-			{ key: '{{doctor.license}}', desc: 'License number' },
-			{ key: '{{doctor.signature}}', desc: 'Digital signature' },
-		]},
-		{ category: 'Hospital', placeholders: [
-			{ key: '{{hospital.name}}', desc: 'Hospital name' },
-			{ key: '{{hospital.logo}}', desc: 'Hospital logo' },
-			{ key: '{{hospital.address}}', desc: 'Hospital address' },
-			{ key: '{{hospital.phone}}', desc: 'Hospital phone' },
-			{ key: '{{hospital.email}}', desc: 'Hospital email' },
-		]},
-		{ category: 'Document', placeholders: [
-			{ key: '{{document.title}}', desc: 'Document title' },
-			{ key: '{{document.number}}', desc: 'Document number' },
-			{ key: '{{document.date}}', desc: 'Document date' },
-			{ key: '{{print.date}}', desc: 'Print date' },
-			{ key: '{{print.time}}', desc: 'Print time' },
-			{ key: '{{print.by}}', desc: 'Printed by user' },
-			{ key: '{{page.number}}', desc: 'Current page number' },
-			{ key: '{{page.total}}', desc: 'Total pages' },
-		]},
+		{
+			category: 'Patient',
+			placeholders: [
+				{ key: '{{patient.name}}', desc: 'Full patient name' },
+				{ key: '{{patient.code}}', desc: 'Patient code/ID' },
+				{ key: '{{patient.dob}}', desc: 'Date of birth' },
+				{ key: '{{patient.age}}', desc: 'Patient age' },
+				{ key: '{{patient.gender}}', desc: 'Gender (M/F)' },
+				{ key: '{{patient.address}}', desc: 'Patient address' },
+				{ key: '{{patient.phone}}', desc: 'Phone number' },
+				{ key: '{{patient.email}}', desc: 'Email address' }
+			]
+		},
+		{
+			category: 'Visit',
+			placeholders: [
+				{ key: '{{visit.no}}', desc: 'Visit number' },
+				{ key: '{{visit.date}}', desc: 'Visit date' },
+				{ key: '{{visit.time}}', desc: 'Visit time' },
+				{ key: '{{visit.datetime}}', desc: 'Visit date and time' },
+				{ key: '{{visit.type}}', desc: 'Visit type (OPD/IPD/ED)' },
+				{ key: '{{visit.department}}', desc: 'Department name' }
+			]
+		},
+		{
+			category: 'Doctor',
+			placeholders: [
+				{ key: '{{doctor.name}}', desc: 'Doctor full name' },
+				{ key: '{{doctor.title}}', desc: 'Doctor title' },
+				{ key: '{{doctor.specialty}}', desc: 'Specialty' },
+				{ key: '{{doctor.license}}', desc: 'License number' },
+				{ key: '{{doctor.signature}}', desc: 'Digital signature' }
+			]
+		},
+		{
+			category: 'Hospital',
+			placeholders: [
+				{ key: '{{hospital.name}}', desc: 'Hospital name' },
+				{ key: '{{hospital.logo}}', desc: 'Hospital logo' },
+				{ key: '{{hospital.address}}', desc: 'Hospital address' },
+				{ key: '{{hospital.phone}}', desc: 'Hospital phone' },
+				{ key: '{{hospital.email}}', desc: 'Hospital email' }
+			]
+		},
+		{
+			category: 'Document',
+			placeholders: [
+				{ key: '{{document.title}}', desc: 'Document title' },
+				{ key: '{{document.number}}', desc: 'Document number' },
+				{ key: '{{document.date}}', desc: 'Document date' },
+				{ key: '{{print.date}}', desc: 'Print date' },
+				{ key: '{{print.time}}', desc: 'Print time' },
+				{ key: '{{print.by}}', desc: 'Printed by user' },
+				{ key: '{{page.number}}', desc: 'Current page number' },
+				{ key: '{{page.total}}', desc: 'Total pages' }
+			]
+		}
 	] as const;
 
-	let settingResult = $state<PaginatedResult<DocumentSettingWithRelations> | null>(null);
+	let settingResult =
+		$state<PaginatedResult<DocumentSettingWithRelations> | null>(
+			null
+		);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let currentPage = $state(1);
-	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
 	let isLoading = $state(false);
 
 	type ViewMode = 'list' | 'create' | 'edit' | 'view';
@@ -183,7 +206,9 @@
 		editingId = item.id;
 		nameInput = item.name ?? '';
 		codeInput = item.code ?? '';
-		documentTypeIdInput = item.documentTypeId ? String(item.documentTypeId) : '';
+		documentTypeIdInput = item.documentTypeId
+			? String(item.documentTypeId)
+			: '';
 		descriptionInput = item.description ?? '';
 		marginTop = item.marginTop ?? 20;
 		marginBottom = item.marginBottom ?? 20;
@@ -216,7 +241,9 @@
 			const payload = {
 				name: nameInput.trim(),
 				code: codeInput.trim() || null,
-				documentTypeId: documentTypeIdInput ? Number(documentTypeIdInput) : null,
+				documentTypeId: documentTypeIdInput
+					? Number(documentTypeIdInput)
+					: null,
 				description: descriptionInput.trim() || null,
 				marginTop,
 				marginBottom,
@@ -251,7 +278,7 @@
 
 	async function handleDelete(item: DocumentSettingSchema) {
 		const confirmed = await dialogService.confirm({
-			title: m.common_confirm_delete(),
+			title: 'Confirm delete',
 			message: `Delete "${item.name}"?`,
 			variant: DialogVariantEnum.WARNING
 		});
@@ -295,7 +322,8 @@
 			id: 'pageSize',
 			header: 'Page',
 			widthClass: 'w-24 min-w-[6rem]',
-			format: (value, row) => `${value ?? 'A4'} ${row.pageOrientation === 'landscape' ? '↔' : '↕'}`
+			format: (value, row) =>
+				`${value ?? 'A4'} ${row.pageOrientation === 'landscape' ? '↔' : '↕'}`
 		}
 	];
 </script>
@@ -303,9 +331,13 @@
 <div class="flex flex-col gap-4 p-4">
 	{#if viewMode !== 'list'}
 		<DaisyUiCard className="p-4">
-			<div class="flex items-center justify-between mb-4">
+			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">
-					{viewMode === 'view' ? 'View' : editingId ? 'Edit' : 'Create'} Document Setting
+					{viewMode === 'view'
+						? 'View'
+						: editingId
+							? 'Edit'
+							: 'Create'} Document Setting
 				</h2>
 				<DaisyUiButton
 					className="d-btn-ghost d-btn-sm"
@@ -315,14 +347,17 @@
 				</DaisyUiButton>
 			</div>
 
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<!-- Left Column: Basic Info + Page Layout -->
 				<div class="space-y-4">
-					<div class="bg-base-200 rounded-lg p-4">
-						<h3 class="font-medium mb-3">Basic Information</h3>
+					<div class="rounded-lg bg-base-200 p-4">
+						<h3 class="mb-3 font-medium">Basic Information</h3>
 						<div class="space-y-3">
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="name">Name <span class="text-error">*</span></DaisyUiLabel>
+								<DaisyUiLabel forText="name"
+									>Name <span class="text-error">*</span
+									></DaisyUiLabel
+								>
 								<DaisyUiInputField
 									id="name"
 									bind:value={nameInput}
@@ -342,19 +377,25 @@
 								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="documentType">Document Type</DaisyUiLabel>
+								<DaisyUiLabel forText="documentType"
+									>Document Type</DaisyUiLabel
+								>
 								<DaisyUiSelect
 									bind:value={documentTypeIdInput}
 									optionHeader="Select type..."
 									disabled={viewMode === 'view'}
 								>
 									{#each documentTypes as dt (dt.id)}
-										<option value={String(dt.id)}>{dt.documentType}</option>
+										<option value={String(dt.id)}
+											>{dt.documentType}</option
+										>
 									{/each}
 								</DaisyUiSelect>
 							</div>
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="description">Description</DaisyUiLabel>
+								<DaisyUiLabel forText="description"
+									>Description</DaisyUiLabel
+								>
 								<DaisyUiTextarea
 									id="description"
 									bind:value={descriptionInput}
@@ -366,11 +407,13 @@
 						</div>
 					</div>
 
-					<div class="bg-base-200 rounded-lg p-4">
-						<h3 class="font-medium mb-3">Page Layout</h3>
+					<div class="rounded-lg bg-base-200 p-4">
+						<h3 class="mb-3 font-medium">Page Layout</h3>
 						<div class="grid grid-cols-2 gap-3">
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="pageSize">Page Size</DaisyUiLabel>
+								<DaisyUiLabel forText="pageSize"
+									>Page Size</DaisyUiLabel
+								>
 								<DaisyUiSelect
 									bind:value={pageSizeInput}
 									disabled={viewMode === 'view'}
@@ -381,7 +424,9 @@
 								</DaisyUiSelect>
 							</div>
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="pageOrientation">Orientation</DaisyUiLabel>
+								<DaisyUiLabel forText="pageOrientation"
+									>Orientation</DaisyUiLabel
+								>
 								<DaisyUiSelect
 									bind:value={pageOrientation}
 									disabled={viewMode === 'view'}
@@ -392,54 +437,130 @@
 								</DaisyUiSelect>
 							</div>
 						</div>
-						
-						<h4 class="text-sm font-medium mt-4 mb-2">Margins (mm)</h4>
+
+						<h4 class="mt-4 mb-2 text-sm font-medium">
+							Margins (mm)
+						</h4>
 						<div class="grid grid-cols-4 gap-2">
 							<div class="flex flex-col gap-1">
-								<label for="marginTop" class="text-xs text-base-content/70">Top</label>
-								<input id="marginTop" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={marginTop} disabled={viewMode === 'view'} />
+								<label
+									for="marginTop"
+									class="text-xs text-base-content/70">Top</label
+								>
+								<input
+									id="marginTop"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={marginTop}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="marginBottom" class="text-xs text-base-content/70">Bottom</label>
-								<input id="marginBottom" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={marginBottom} disabled={viewMode === 'view'} />
+								<label
+									for="marginBottom"
+									class="text-xs text-base-content/70">Bottom</label
+								>
+								<input
+									id="marginBottom"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={marginBottom}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="marginLeft" class="text-xs text-base-content/70">Left</label>
-								<input id="marginLeft" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={marginLeft} disabled={viewMode === 'view'} />
+								<label
+									for="marginLeft"
+									class="text-xs text-base-content/70">Left</label
+								>
+								<input
+									id="marginLeft"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={marginLeft}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="marginRight" class="text-xs text-base-content/70">Right</label>
-								<input id="marginRight" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={marginRight} disabled={viewMode === 'view'} />
+								<label
+									for="marginRight"
+									class="text-xs text-base-content/70">Right</label
+								>
+								<input
+									id="marginRight"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={marginRight}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 						</div>
 
-						<h4 class="text-sm font-medium mt-4 mb-2">Padding (mm)</h4>
+						<h4 class="mt-4 mb-2 text-sm font-medium">
+							Padding (mm)
+						</h4>
 						<div class="grid grid-cols-4 gap-2">
 							<div class="flex flex-col gap-1">
-								<label for="paddingTop" class="text-xs text-base-content/70">Top</label>
-								<input id="paddingTop" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={paddingTop} disabled={viewMode === 'view'} />
+								<label
+									for="paddingTop"
+									class="text-xs text-base-content/70">Top</label
+								>
+								<input
+									id="paddingTop"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={paddingTop}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="paddingBottom" class="text-xs text-base-content/70">Bottom</label>
-								<input id="paddingBottom" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={paddingBottom} disabled={viewMode === 'view'} />
+								<label
+									for="paddingBottom"
+									class="text-xs text-base-content/70">Bottom</label
+								>
+								<input
+									id="paddingBottom"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={paddingBottom}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="paddingLeft" class="text-xs text-base-content/70">Left</label>
-								<input id="paddingLeft" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={paddingLeft} disabled={viewMode === 'view'} />
+								<label
+									for="paddingLeft"
+									class="text-xs text-base-content/70">Left</label
+								>
+								<input
+									id="paddingLeft"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={paddingLeft}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<label for="paddingRight" class="text-xs text-base-content/70">Right</label>
-								<input id="paddingRight" type="number" class="d-input d-input-bordered d-input-sm w-full" bind:value={paddingRight} disabled={viewMode === 'view'} />
+								<label
+									for="paddingRight"
+									class="text-xs text-base-content/70">Right</label
+								>
+								<input
+									id="paddingRight"
+									type="number"
+									class="d-input-bordered d-input d-input-sm w-full"
+									bind:value={paddingRight}
+									disabled={viewMode === 'view'}
+								/>
 							</div>
 						</div>
 					</div>
 				</div>
 
 				<!-- Middle Column: Header & Footer Editors -->
-				<div class="lg:col-span-2 space-y-4">
+				<div class="space-y-4 lg:col-span-2">
 					<!-- Header Section -->
-					<div class="bg-base-200 rounded-lg p-4">
-						<div class="flex items-center justify-between mb-3">
+					<div class="rounded-lg bg-base-200 p-4">
+						<div class="mb-3 flex items-center justify-between">
 							<div class="flex items-center gap-3">
 								<h3 class="font-medium">Header Section</h3>
 								<label class="flex items-center gap-2 text-sm">
@@ -455,7 +576,7 @@
 							{#if viewMode !== 'view'}
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost"
+									class="d-btn d-btn-ghost d-btn-xs"
 									onclick={() => {
 										activeEditorTarget = 'header';
 										showPlaceholderPanel = !showPlaceholderPanel;
@@ -473,15 +594,17 @@
 								showMenuBar={false}
 							/>
 						{:else}
-							<div class="text-base-content/50 text-sm italic p-4 text-center">
+							<div
+								class="p-4 text-center text-sm text-base-content/50 italic"
+							>
 								Header is disabled
 							</div>
 						{/if}
 					</div>
 
 					<!-- Footer Section -->
-					<div class="bg-base-200 rounded-lg p-4">
-						<div class="flex items-center justify-between mb-3">
+					<div class="rounded-lg bg-base-200 p-4">
+						<div class="mb-3 flex items-center justify-between">
 							<div class="flex items-center gap-3">
 								<h3 class="font-medium">Footer Section</h3>
 								<label class="flex items-center gap-2 text-sm">
@@ -497,7 +620,7 @@
 							{#if viewMode !== 'view'}
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost"
+									class="d-btn d-btn-ghost d-btn-xs"
 									onclick={() => {
 										activeEditorTarget = 'footer';
 										showPlaceholderPanel = !showPlaceholderPanel;
@@ -515,7 +638,9 @@
 								showMenuBar={false}
 							/>
 						{:else}
-							<div class="text-base-content/50 text-sm italic p-4 text-center">
+							<div
+								class="p-4 text-center text-sm text-base-content/50 italic"
+							>
 								Footer is disabled
 							</div>
 						{/if}
@@ -523,34 +648,46 @@
 
 					<!-- Placeholder Panel -->
 					{#if showPlaceholderPanel && viewMode !== 'view'}
-						<div class="bg-base-200 rounded-lg p-4">
-							<div class="flex items-center justify-between mb-3">
+						<div class="rounded-lg bg-base-200 p-4">
+							<div class="mb-3 flex items-center justify-between">
 								<h3 class="font-medium">Template Placeholders</h3>
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost"
-									onclick={() => showPlaceholderPanel = false}
+									class="d-btn d-btn-ghost d-btn-xs"
+									onclick={() => (showPlaceholderPanel = false)}
 								>
 									<LucideX className="w-3 h-3" />
 								</button>
 							</div>
-							<p class="text-xs text-base-content/70 mb-3">
-								Click to copy, or click "Insert" to add to {activeEditorTarget} editor.
+							<p class="mb-3 text-xs text-base-content/70">
+								Click to copy, or click "Insert" to add to {activeEditorTarget}
+								editor.
 							</p>
-							<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-64 overflow-y-auto">
+							<div
+								class="grid max-h-64 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 xl:grid-cols-3"
+							>
 								{#each TEMPLATE_PLACEHOLDERS as category}
 									<div class="space-y-1">
-										<h4 class="text-xs font-semibold text-primary">{category.category}</h4>
+										<h4 class="text-xs font-semibold text-primary">
+											{category.category}
+										</h4>
 										{#each category.placeholders as ph}
-											<div class="flex items-center justify-between text-xs bg-base-100 rounded px-2 py-1">
-												<div class="flex-1 min-w-0">
-													<code class="text-primary font-mono text-[10px]">{ph.key}</code>
-													<p class="text-base-content/60 truncate">{ph.desc}</p>
+											<div
+												class="flex items-center justify-between rounded bg-base-100 px-2 py-1 text-xs"
+											>
+												<div class="min-w-0 flex-1">
+													<code
+														class="font-mono text-[10px] text-primary"
+														>{ph.key}</code
+													>
+													<p class="truncate text-base-content/60">
+														{ph.desc}
+													</p>
 												</div>
-												<div class="flex items-center gap-1 ml-2">
+												<div class="ml-2 flex items-center gap-1">
 													<button
 														type="button"
-														class="d-btn d-btn-xs d-btn-ghost p-1"
+														class="d-btn p-1 d-btn-ghost d-btn-xs"
 														onclick={() => copyPlaceholder(ph.key)}
 														title="Copy"
 													>
@@ -558,7 +695,7 @@
 													</button>
 													<button
 														type="button"
-														class="d-btn d-btn-xs d-btn-primary p-1"
+														class="d-btn p-1 d-btn-xs d-btn-primary"
 														onclick={() => insertPlaceholder(ph.key)}
 														title="Insert"
 													>
@@ -576,9 +713,16 @@
 			</div>
 
 			{#if viewMode !== 'view'}
-				<div class="flex justify-end gap-2 mt-6 pt-4 border-t border-base-300">
-					<DaisyUiButton className="d-btn-ghost" onClick={resetForm}>Cancel</DaisyUiButton>
-					<DaisyUiButton className="d-btn-primary" onClick={handleSave}>
+				<div
+					class="mt-6 flex justify-end gap-2 border-t border-base-300 pt-4"
+				>
+					<DaisyUiButton className="d-btn-ghost" onClick={resetForm}
+						>Cancel</DaisyUiButton
+					>
+					<DaisyUiButton
+						className="d-btn-primary"
+						onClick={handleSave}
+					>
 						{editingId ? 'Update' : 'Create'}
 					</DaisyUiButton>
 				</div>
@@ -587,10 +731,13 @@
 	{/if}
 
 	<DaisyUiCard className="p-4">
-		<div class="flex items-center justify-between mb-4">
+		<div class="mb-4 flex items-center justify-between">
 			<h2 class="text-lg font-semibold">Document Settings</h2>
 			{#if viewMode === 'list'}
-				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={startCreate}>
+				<DaisyUiButton
+					className="d-btn-primary d-btn-sm"
+					onClick={startCreate}
+				>
 					<LucidePlus className="w-4 h-4 mr-1" />
 					New Setting
 				</DaisyUiButton>
@@ -627,11 +774,13 @@
 				>
 					<svelte:fragment slot="rowActions" let:row>
 						{@const typedRow = row as DocumentSettingWithRelations}
-						<td class="sticky left-0 z-2 w-24 min-w-[6rem] bg-base-100">
+						<td
+							class="sticky left-0 z-2 w-24 min-w-[6rem] bg-base-100"
+						>
 							<div class="flex items-center gap-1">
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost"
+									class="d-btn d-btn-ghost d-btn-xs"
 									onclick={() => startView(typedRow)}
 									title="View"
 								>
@@ -639,7 +788,7 @@
 								</button>
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost"
+									class="d-btn d-btn-ghost d-btn-xs"
 									onclick={() => startEdit(typedRow)}
 									title="Edit"
 								>
@@ -647,7 +796,7 @@
 								</button>
 								<button
 									type="button"
-									class="d-btn d-btn-xs d-btn-ghost text-error"
+									class="d-btn text-error d-btn-ghost d-btn-xs"
 									onclick={() => handleDelete(typedRow)}
 									title="Delete"
 								>

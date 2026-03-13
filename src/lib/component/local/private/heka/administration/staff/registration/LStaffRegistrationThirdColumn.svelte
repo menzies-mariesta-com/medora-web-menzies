@@ -169,7 +169,9 @@
 				optionHeader="Select a specialization ..."
 			>
 				{#each specializationData as data (data.id)}
-					<option value={String(data.id)}>{data.name} ({data.craftGroup.name})</option>
+					<option value={String(data.id)}
+						>{data.name} ({data.craftGroup.name})</option
+					>
 				{/each}
 			</DaisyUiSelect>
 		</div>

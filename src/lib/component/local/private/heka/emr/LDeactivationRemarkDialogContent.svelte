@@ -39,8 +39,13 @@
 	{#if message}
 		<p class="text-base-content/80">{message}</p>
 	{/if}
-	<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-		<DaisyUiLabel forText="deactivation-remark-dialog" className="shrink-0 sm:w-36">
+	<div
+		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+	>
+		<DaisyUiLabel
+			forText="deactivation-remark-dialog"
+			className="shrink-0 sm:w-36"
+		>
 			Deactivation remark <span class="text-error">*</span>
 		</DaisyUiLabel>
 		<div class="min-w-0 flex-1">
@@ -53,7 +58,11 @@
 		</div>
 	</div>
 	<div class="flex flex-wrap justify-end gap-2">
-		<DaisyUiButton type="button" className="d-btn-ghost" onClick={handleCancel}>
+		<DaisyUiButton
+			type="button"
+			className="d-btn-ghost"
+			onClick={handleCancel}
+		>
 			Cancel
 		</DaisyUiButton>
 		<DaisyUiButton type="submit" className="d-btn-primary">

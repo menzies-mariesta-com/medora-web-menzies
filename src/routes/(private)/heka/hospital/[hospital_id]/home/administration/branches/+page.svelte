@@ -37,7 +37,8 @@
 			: ''
 	);
 
-	let branchResult = $state<PaginatedResult<HospitalBranchSchema> | null>(null);
+	let branchResult =
+		$state<PaginatedResult<HospitalBranchSchema> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
@@ -162,13 +163,13 @@
 					{m.no_branches_yet()}
 				</p>
 			{:else}
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={branches}
 						columns={branchColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
@@ -185,25 +186,25 @@
 						}}
 						on:pageChange={() => fetchBranches(true)}
 					>
-					<svelte:fragment slot="rowActions" let:row>
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() => handleDelete(row)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
-					</svelte:fragment>
-				</MariTable>
+						<svelte:fragment slot="rowActions" let:row>
+							<td class="text-right">
+								<div class="flex justify-end gap-2">
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openEdit(row)}
+									>
+										<LucidePencil />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										onClick={() => handleDelete(row)}
+									>
+										<LucideTrash2 />
+									</DaisyUiButton>
+								</div>
+							</td>
+						</svelte:fragment>
+					</MariTable>
 				</div>
 			{/if}
 		</DaisyUiCardBody>

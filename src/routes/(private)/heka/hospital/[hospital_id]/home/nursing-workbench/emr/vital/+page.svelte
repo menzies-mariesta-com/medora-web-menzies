@@ -7,12 +7,12 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import LVitalRecordDialogContent from '$lib/component/local/private/heka/emr/LVitalRecordDialogContent.svelte';
-import DaisyUiCollapseTitle from '$lib/component/library/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
-import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
+	import DaisyUiCollapseTitle from '$lib/component/library/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
+	import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
@@ -317,13 +317,11 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 </svelte:head>
 
 <div class="flex flex-col gap-4">
-	
-
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" button above to record vitals.'
-			className='z-0'
+			message={'Choose a visit using the "Choose Visit" button above to record vitals.'}
+			className="z-0"
 		/>
 	{:else if isLoadingVisit}
 		<div class="flex min-h-32 items-center justify-center">
@@ -361,39 +359,39 @@ import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/cont
 					</p>
 				{:else}
 					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-							<MariTable
-								rows={vitals}
-								columns={vitalColumns}
-								isLoading={isLoadingVitals}
-								bind:pageSize={pageSizeStr}
-								bind:currentPage={currentPage}
-								showRefreshButton={false}
-								emptyMessage="No vitals."
-								showRowActions={true}
-								actionsHeader="Actions"
-								actionsVariant="none"
-								enableColumnFilters={true}
-							>
-								<svelte:fragment slot="rowActions" let:row>
-									<td class="w-24 shrink-0 text-right">
-										<div class="flex justify-end gap-1">
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm"
-												onClick={() => openEditDialog(row)}
-											>
-												<LucidePencil className="size-4" />
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-error d-btn-sm"
-												onClick={() => handleDeleteVital(row)}
-											>
-												<LucideTrash2 className="size-4" />
-											</DaisyUiButton>
-										</div>
-									</td>
-								</svelte:fragment>
-							</MariTable>
-						</div>
+						<MariTable
+							rows={vitals}
+							columns={vitalColumns}
+							isLoading={isLoadingVitals}
+							bind:pageSize={pageSizeStr}
+							bind:currentPage
+							showRefreshButton={false}
+							emptyMessage="No vitals."
+							showRowActions={true}
+							actionsHeader="Actions"
+							actionsVariant="none"
+							enableColumnFilters={true}
+						>
+							<svelte:fragment slot="rowActions" let:row>
+								<td class="w-24 shrink-0 text-right">
+									<div class="flex justify-end gap-1">
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm"
+											onClick={() => openEditDialog(row)}
+										>
+											<LucidePencil className="size-4" />
+										</DaisyUiButton>
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-error d-btn-sm"
+											onClick={() => handleDeleteVital(row)}
+										>
+											<LucideTrash2 className="size-4" />
+										</DaisyUiButton>
+									</div>
+								</td>
+							</svelte:fragment>
+						</MariTable>
+					</div>
 				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>

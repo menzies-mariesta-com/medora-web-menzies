@@ -10,7 +10,7 @@
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-import {
+	import {
 		getServiceTaggingPaginated,
 		createServiceTagging,
 		updateServiceTagging,
@@ -18,10 +18,10 @@ import {
 	} from '$lib/remote/table/information-table/service-tagging.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
-import type {
-	ServiceItemSchema,
-	ServiceTaggingSchema
-} from '$lib/server/db/schema-type';
+	import type {
+		ServiceItemSchema,
+		ServiceTaggingSchema
+	} from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -31,47 +31,47 @@ import type {
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
-const toastService = new ToastService();
+	const toastService = new ToastService();
 
-let { data } = $props();
+	let { data } = $props();
 
-type AllowedBranch = { id: string; name: string | null };
-const ALL_BRANCHES_ID = '__all__';
+	type AllowedBranch = { id: string; name: string | null };
+	const ALL_BRANCHES_ID = '__all__';
 
-const hospitalId = $derived(
-	typeof page.params.hospital_id === 'string' &&
-		page.params.hospital_id
-		? page.params.hospital_id
-		: ''
-);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
 
-const allowedBranches = $derived(
-	((data?.allowedBranches ?? []) as AllowedBranch[]) ?? []
-);
+	const allowedBranches = $derived(
+		((data?.allowedBranches ?? []) as AllowedBranch[]) ?? []
+	);
 
 	const branchOptions = $derived.by(() => {
-	if (allowedBranches.length > 1) {
-		return [
-			{ id: ALL_BRANCHES_ID, name: 'All branches' },
-			...allowedBranches
-		];
-	}
-	return allowedBranches;
-});
+		if (allowedBranches.length > 1) {
+			return [
+				{ id: ALL_BRANCHES_ID, name: 'All branches' },
+				...allowedBranches
+			];
+		}
+		return allowedBranches;
+	});
 
-let selectedBranchId = $state<string>(
-	branchOptions[0]?.id ?? ''
-);
+	let selectedBranchId = $state<string>(branchOptions[0]?.id ?? '');
 
-const branchIdForTagging = $derived(
-	selectedBranchId === ALL_BRANCHES_ID ? null : selectedBranchId
-);
+	const branchIdForTagging = $derived(
+		selectedBranchId === ALL_BRANCHES_ID ? null : selectedBranchId
+	);
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
-	let taggingResult = $state<PaginatedResult<ServiceTaggingSchema> | null>(null);
+	let taggingResult =
+		$state<PaginatedResult<ServiceTaggingSchema> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	const taggings = $derived(taggingResult?.data ?? []);
 	const total = $derived(taggingResult?.total ?? 0);
@@ -89,9 +89,11 @@ const branchIdForTagging = $derived(
 	let isLoading = $state(false);
 	let isSaving = $state(false);
 
-let tableColumnFilters = $state<Record<string, string>>({});
+	let tableColumnFilters = $state<Record<string, string>>({});
 
-	function toDateInputValue(value: ServiceTaggingSchema['validDate']): string {
+	function toDateInputValue(
+		value: ServiceTaggingSchema['validDate']
+	): string {
 		if (!value) return '';
 		const str = String(value);
 		return str.length >= 10 ? str.slice(0, 10) : str;
@@ -192,7 +194,10 @@ let tableColumnFilters = $state<Record<string, string>>({});
 					.filter((s) => {
 						const name = (s.serviceName ?? '').toLowerCase();
 						const code = (s.serviceCode ?? '').toLowerCase();
-						return name.includes(serviceFilter) || code.includes(serviceFilter);
+						return (
+							name.includes(serviceFilter) ||
+							code.includes(serviceFilter)
+						);
 					})
 					.map((s) => s.id);
 
@@ -251,10 +256,11 @@ let tableColumnFilters = $state<Record<string, string>>({});
 
 			// When "All branches" is selected, show only rows
 			// for branches the user is allowed to use.
-			if (!branchIdForTagging && selectedBranchId === ALL_BRANCHES_ID) {
-				const allowedIds = new Set(
-					allowedBranches.map((b) => b.id)
-				);
+			if (
+				!branchIdForTagging &&
+				selectedBranchId === ALL_BRANCHES_ID
+			) {
+				const allowedIds = new Set(allowedBranches.map((b) => b.id));
 				const filteredData = result.data.filter((row) =>
 					allowedIds.has(row.branchId)
 				);
@@ -263,8 +269,7 @@ let tableColumnFilters = $state<Record<string, string>>({});
 					...result,
 					data: filteredData,
 					total: totalFiltered,
-					totalPages:
-						Math.ceil(totalFiltered / pageSize) || 1
+					totalPages: Math.ceil(totalFiltered / pageSize) || 1
 				};
 			}
 
@@ -277,7 +282,11 @@ let tableColumnFilters = $state<Record<string, string>>({});
 	$effect(() => {
 		const _hospital = hospitalId;
 		const _branchSelection = selectedBranchId;
-		if (!_hospital || allowedBranches.length === 0 || !_branchSelection)
+		if (
+			!_hospital ||
+			allowedBranches.length === 0 ||
+			!_branchSelection
+		)
 			return;
 		(async () => {
 			await fetchServiceItems();
@@ -377,15 +386,15 @@ let tableColumnFilters = $state<Record<string, string>>({});
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
-		const validDate = formValidDate.trim() ? formValidDate.trim() : null;
+		const validDate = formValidDate.trim()
+			? formValidDate.trim()
+			: null;
 		const allowEdit = formAllowEdit;
 
 		const targetBranchIds =
 			selectedBranchId === ALL_BRANCHES_ID
 				? allowedBranches.map((b) => b.id)
-				: [branchIdForTagging].filter(
-						(id): id is string => !!id
-					);
+				: [branchIdForTagging].filter((id): id is string => !!id);
 		if (targetBranchIds.length === 0) {
 			toastService.addToast(
 				'No branches available for tagging.',
@@ -467,20 +476,20 @@ let tableColumnFilters = $state<Record<string, string>>({});
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
-function branchNameById(id: string | null | undefined): string {
-	if (!id) return '—';
-	const b = allowedBranches.find((x) => x.id === id);
-	return b?.name ?? `Branch ${id}`;
-}
+	function branchNameById(id: string | null | undefined): string {
+		if (!id) return '—';
+		const b = allowedBranches.find((x) => x.id === id);
+		return b?.name ?? `Branch ${id}`;
+	}
 
-function serviceNameById(id: number | null | undefined): string {
-	if (id == null) return '—';
-	const s = serviceItems.find((x) => x.id === id);
-	if (!s) return `ID ${id}`;
-	const name = (s.serviceName ?? '').trim() || `Service ${s.id}`;
-	const code = (s.serviceCode ?? '').trim();
-	return code ? `${name} - ${code}` : name;
-}
+	function serviceNameById(id: number | null | undefined): string {
+		if (id == null) return '—';
+		const s = serviceItems.find((x) => x.id === id);
+		if (!s) return `ID ${id}`;
+		const name = (s.serviceName ?? '').trim() || `Service ${s.id}`;
+		const code = (s.serviceCode ?? '').trim();
+		return code ? `${name} - ${code}` : name;
+	}
 </script>
 
 <div class="space-y-6">
@@ -517,7 +526,9 @@ function serviceNameById(id: number | null | undefined): string {
 								onChange={onBranchChange}
 							>
 								{#each branchOptions as b (b.id)}
-									<option value={b.id}>{b.name ?? 'Unnamed branch'}</option>
+									<option value={b.id}
+										>{b.name ?? 'Unnamed branch'}</option
+									>
 								{/each}
 							</DaisyUiSelect>
 						</div>
@@ -533,7 +544,9 @@ function serviceNameById(id: number | null | undefined): string {
 							>
 								{#each serviceItems as s (s.id)}
 									<option value={String(s.id)}>
-										{s.serviceName ?? `Service ${s.id}`}{s.serviceCode ? ` - ${s.serviceCode}` : ''}
+										{s.serviceName ?? `Service ${s.id}`}{s.serviceCode
+											? ` - ${s.serviceCode}`
+											: ''}
 									</option>
 								{/each}
 							</DaisyUiSelect>
@@ -566,7 +579,7 @@ function serviceNameById(id: number | null | undefined): string {
 							<input
 								type="date"
 								bind:value={formValidDate}
-								class="d-input d-input-bordered d-input-sm w-full"
+								class="d-input-bordered d-input d-input-sm w-full"
 							/>
 						</div>
 						<div class="flex items-end gap-4">
@@ -617,13 +630,13 @@ function serviceNameById(id: number | null | undefined): string {
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={taggings}
 						columns={taggingColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						totalRowCount={total}
 						showRefreshButton={true}
 						emptyMessage="No records found"

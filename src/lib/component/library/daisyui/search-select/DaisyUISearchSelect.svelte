@@ -146,7 +146,7 @@
 
 	{#if open}
 		<ul
-			class="d-menu absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-box border bg-base-100 shadow-lg flex flex-row"
+			class="d-menu absolute z-50 mt-1 flex max-h-60 w-full flex-row overflow-auto rounded-box border bg-base-100 shadow-lg"
 			role="listbox"
 		>
 			{#if isLoading}
