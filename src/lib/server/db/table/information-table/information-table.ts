@@ -554,7 +554,6 @@ export const documentSettingTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }).notNull(),
-		code: varchar('code', { length: 128 }),
 		documentTypeId: integer('document_type_id').references(
 			() => documentTypeTable.id
 		),
@@ -592,7 +591,6 @@ export const documentSettingTable = pgTable(
 	},
 	(table) => [
 		index('document_setting_name_idx').on(table.name),
-		index('document_setting_code_idx').on(table.code),
 		index('document_setting_document_type_id_idx').on(
 			table.documentTypeId
 		),
@@ -609,6 +607,7 @@ export const documentTable = pgTable(
 		documentTypeId: integer('document_type_id')
 			.notNull()
 			.references(() => documentTypeTable.id),
+		code: varchar('code', { length: 128 }),
 		documentText: text('document_text'),
 		documentNumber: varchar('document_number', { length: 128 }),
 		documentSettingId: integer('document_setting_id').references(
@@ -622,6 +621,7 @@ export const documentTable = pgTable(
 		...timestamps
 	},
 	(table) => [
+		index('document_code_idx').on(table.code),
 		index('document_document_type_id_idx').on(table.documentTypeId),
 		index('document_status_id_idx').on(table.statusId)
 	]

@@ -4,7 +4,6 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
@@ -92,6 +91,7 @@
 			category: 'Document',
 			placeholders: [
 				{ key: '{{document.title}}', desc: 'Document title' },
+				{ key: '{{document.code}}', desc: 'Document code' },
 				{ key: '{{document.number}}', desc: 'Document number' },
 				{ key: '{{document.date}}', desc: 'Document date' },
 				{ key: '{{print.date}}', desc: 'Print date' },
@@ -119,7 +119,6 @@
 	let editingId = $state<number | null>(null);
 
 	let nameInput = $state('');
-	let codeInput = $state('');
 	let documentTypeIdInput = $state('');
 	let descriptionInput = $state('');
 
@@ -175,7 +174,6 @@
 		viewMode = 'list';
 		editingId = null;
 		nameInput = '';
-		codeInput = '';
 		documentTypeIdInput = '';
 		descriptionInput = '';
 		marginTop = 20;
@@ -205,7 +203,6 @@
 		viewMode = 'edit';
 		editingId = item.id;
 		nameInput = item.name ?? '';
-		codeInput = item.code ?? '';
 		documentTypeIdInput = item.documentTypeId
 			? String(item.documentTypeId)
 			: '';
@@ -233,14 +230,13 @@
 
 	async function handleSave() {
 		if (!nameInput.trim()) {
-			toastService.warning('Name is required');
+			toastService.addToast('Name is required', StatusColorEnum.WARNING);
 			return;
 		}
 
 		try {
 			const payload = {
 				name: nameInput.trim(),
-				code: codeInput.trim() || null,
 				documentTypeId: documentTypeIdInput
 					? Number(documentTypeIdInput)
 					: null,
@@ -263,40 +259,40 @@
 
 			if (editingId) {
 				await updateDocumentSetting({ id: editingId, ...payload });
-				toastService.success('Document setting updated');
+				toastService.addToast('Document setting updated', StatusColorEnum.SUCCESS);
 			} else {
 				await createDocumentSetting(payload);
-				toastService.success('Document setting created');
+				toastService.addToast('Document setting created', StatusColorEnum.SUCCESS);
 			}
 			resetForm();
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.error('Failed to save document setting');
+			toastService.addToast('Failed to save document setting', StatusColorEnum.ERROR);
 		}
 	}
 
 	async function handleDelete(item: DocumentSettingSchema) {
-		const confirmed = await dialogService.confirm({
+		const result = await dialogService.open({
 			title: 'Confirm delete',
 			message: `Delete "${item.name}"?`,
-			variant: DialogVariantEnum.WARNING
+			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!confirmed) return;
+		if (!result?.confirmed) return;
 
 		try {
 			await deleteDocumentSetting({ id: item.id });
-			toastService.success('Document setting deleted');
+			toastService.addToast('Document setting deleted', StatusColorEnum.SUCCESS);
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.error('Failed to delete');
+			toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
 		}
 	}
 
 	function copyPlaceholder(placeholder: string) {
 		navigator.clipboard.writeText(placeholder);
-		toastService.info(`Copied: ${placeholder}`);
+		toastService.addToast(`Copied: ${placeholder}`, StatusColorEnum.INFO);
 	}
 
 	function insertPlaceholder(placeholder: string) {
@@ -305,13 +301,12 @@
 		} else if (activeEditorTarget === 'footer') {
 			footerHtml = footerHtml + placeholder;
 		}
-		toastService.info(`Inserted: ${placeholder}`);
+		toastService.addToast(`Inserted: ${placeholder}`, StatusColorEnum.INFO);
 	}
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
 		{ id: 'id', header: 'ID', widthClass: 'w-16 min-w-[4rem]' },
 		{ id: 'name', header: 'Name', widthClass: 'w-48 min-w-[12rem]' },
-		{ id: 'code', header: 'Code', widthClass: 'w-24 min-w-[6rem]' },
 		{
 			id: 'documentType',
 			header: 'Document Type',
@@ -367,16 +362,6 @@
 								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="code">Code</DaisyUiLabel>
-								<DaisyUiInputField
-									id="code"
-									bind:value={codeInput}
-									inputType="text"
-									inputPlaceholderText="e.g., OPD-CONSENT"
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
 								<DaisyUiLabel forText="documentType"
 									>Document Type</DaisyUiLabel
 								>
@@ -396,13 +381,13 @@
 								<DaisyUiLabel forText="description"
 									>Description</DaisyUiLabel
 								>
-								<DaisyUiTextarea
+								<textarea
 									id="description"
 									bind:value={descriptionInput}
-									inputPlaceholderText="Optional description..."
+									placeholder="Optional description..."
 									disabled={viewMode === 'view'}
-									className="h-16"
-								/>
+									class="d-textarea h-16"
+								></textarea>
 							</div>
 						</div>
 					</div>

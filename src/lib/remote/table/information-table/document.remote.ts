@@ -26,6 +26,7 @@ export const getDocumentsWithRelations = query(async () => {
 	return ensureDb().query.documentTable.findMany({
 		with: {
 			documentType: true,
+			documentSetting: true,
 			status: true,
 			patientDocuments: true
 		}
@@ -100,6 +101,7 @@ export const getDocumentsPaginatedWithRelations = query(
 				where: activeFilter,
 				with: {
 					documentType: true,
+					documentSetting: true,
 					status: true
 				},
 				limit,
@@ -141,6 +143,8 @@ export const updateDocument = command(
 	async (payload: {
 		id: number;
 		documentTypeId?: number;
+		documentSettingId?: number | null;
+		code?: string | null;
 		documentNumber?: string | null;
 		documentText?: string | null;
 		statusId?: number;
