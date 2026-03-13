@@ -128,7 +128,6 @@ export const updateDocumentSetting = command(
 	async (payload: {
 		id: number;
 		name?: string;
-		code?: string | null;
 		documentTypeId?: number | null;
 		hospitalId?: string | null;
 		marginTop?: number | null;

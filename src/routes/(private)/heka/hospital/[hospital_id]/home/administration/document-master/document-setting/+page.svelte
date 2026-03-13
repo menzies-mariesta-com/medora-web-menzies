@@ -4,7 +4,6 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
@@ -92,6 +91,7 @@
 			category: 'Document',
 			placeholders: [
 				{ key: '{{document.title}}', desc: 'Document title' },
+				{ key: '{{document.code}}', desc: 'Document code' },
 				{ key: '{{document.number}}', desc: 'Document number' },
 				{ key: '{{document.date}}', desc: 'Document date' },
 				{ key: '{{print.date}}', desc: 'Print date' },
@@ -119,7 +119,6 @@
 	let editingId = $state<number | null>(null);
 
 	let nameInput = $state('');
-	let codeInput = $state('');
 	let documentTypeIdInput = $state('');
 	let descriptionInput = $state('');
 
@@ -175,7 +174,6 @@
 		viewMode = 'list';
 		editingId = null;
 		nameInput = '';
-		codeInput = '';
 		documentTypeIdInput = '';
 		descriptionInput = '';
 		marginTop = 20;
@@ -205,7 +203,6 @@
 		viewMode = 'edit';
 		editingId = item.id;
 		nameInput = item.name ?? '';
-		codeInput = item.code ?? '';
 		documentTypeIdInput = item.documentTypeId
 			? String(item.documentTypeId)
 			: '';
@@ -240,7 +237,6 @@
 		try {
 			const payload = {
 				name: nameInput.trim(),
-				code: codeInput.trim() || null,
 				documentTypeId: documentTypeIdInput
 					? Number(documentTypeIdInput)
 					: null,
@@ -311,7 +307,6 @@
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
 		{ id: 'id', header: 'ID', widthClass: 'w-16 min-w-[4rem]' },
 		{ id: 'name', header: 'Name', widthClass: 'w-48 min-w-[12rem]' },
-		{ id: 'code', header: 'Code', widthClass: 'w-24 min-w-[6rem]' },
 		{
 			id: 'documentType',
 			header: 'Document Type',
@@ -367,16 +362,6 @@
 								/>
 							</div>
 							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="code">Code</DaisyUiLabel>
-								<DaisyUiInputField
-									id="code"
-									bind:value={codeInput}
-									inputType="text"
-									inputPlaceholderText="e.g., OPD-CONSENT"
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
 								<DaisyUiLabel forText="documentType"
 									>Document Type</DaisyUiLabel
 								>
@@ -396,13 +381,13 @@
 								<DaisyUiLabel forText="description"
 									>Description</DaisyUiLabel
 								>
-								<DaisyUiTextarea
+								<textarea
 									id="description"
 									bind:value={descriptionInput}
-									inputPlaceholderText="Optional description..."
+									placeholder="Optional description..."
 									disabled={viewMode === 'view'}
-									className="h-16"
-								/>
+									class="d-textarea h-16"
+								></textarea>
 							</div>
 						</div>
 					</div>
