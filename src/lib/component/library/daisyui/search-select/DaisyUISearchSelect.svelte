@@ -33,6 +33,7 @@
 	let search = $state('');
 	let open = $state(false);
 	let containerEl = $state<HTMLDivElement | null>(null);
+	let inputEl = $state<HTMLInputElement | null>(null);
 	let optionsFromServer = $state<Option[]>([]);
 	let isLoading = $state(false);
 	let cachedLabelForValue = $state<string>('');
@@ -97,6 +98,20 @@
 		search = option.label;
 		open = false;
 		onChange?.(option.value);
+		inputEl?.blur();
+	}
+
+	function handleInputBlur() {
+		requestAnimationFrame(() => {
+			if (!containerEl) {
+				open = false;
+				return;
+			}
+			const active = document.activeElement;
+			if (!active || !containerEl.contains(active)) {
+				open = false;
+			}
+		});
 	}
 
 	$effect(() => {
@@ -133,11 +148,13 @@
 	<input
 		type="text"
 		class="d-input-bordered d-input w-full {className ?? ''}"
+		bind:this={inputEl}
 		value={inputValue}
 		{placeholder}
 		{disabled}
 		oninput={handleInput}
 		onfocus={handleFocus}
+		onblur={handleInputBlur}
 		role="combobox"
 		aria-expanded={open}
 		aria-haspopup="listbox"
@@ -165,7 +182,10 @@
 						<button
 							type="button"
 							class="w-full justify-start text-left"
-							onclick={() => selectOption(option)}
+							onmousedown={(event) => {
+								event.preventDefault();
+								selectOption(option);
+							}}
 						>
 							{option.label}
 						</button>
