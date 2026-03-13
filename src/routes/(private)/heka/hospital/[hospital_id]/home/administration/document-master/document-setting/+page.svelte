@@ -233,7 +233,7 @@
 
 	async function handleSave() {
 		if (!nameInput.trim()) {
-			toastService.warning('Name is required');
+			toastService.addToast('Name is required', StatusColorEnum.WARNING);
 			return;
 		}
 
@@ -263,40 +263,40 @@
 
 			if (editingId) {
 				await updateDocumentSetting({ id: editingId, ...payload });
-				toastService.success('Document setting updated');
+				toastService.addToast('Document setting updated', StatusColorEnum.SUCCESS);
 			} else {
 				await createDocumentSetting(payload);
-				toastService.success('Document setting created');
+				toastService.addToast('Document setting created', StatusColorEnum.SUCCESS);
 			}
 			resetForm();
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.error('Failed to save document setting');
+			toastService.addToast('Failed to save document setting', StatusColorEnum.ERROR);
 		}
 	}
 
 	async function handleDelete(item: DocumentSettingSchema) {
-		const confirmed = await dialogService.confirm({
+		const result = await dialogService.open({
 			title: 'Confirm delete',
 			message: `Delete "${item.name}"?`,
-			variant: DialogVariantEnum.WARNING
+			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!confirmed) return;
+		if (!result?.confirmed) return;
 
 		try {
 			await deleteDocumentSetting({ id: item.id });
-			toastService.success('Document setting deleted');
+			toastService.addToast('Document setting deleted', StatusColorEnum.SUCCESS);
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.error('Failed to delete');
+			toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
 		}
 	}
 
 	function copyPlaceholder(placeholder: string) {
 		navigator.clipboard.writeText(placeholder);
-		toastService.info(`Copied: ${placeholder}`);
+		toastService.addToast(`Copied: ${placeholder}`, StatusColorEnum.INFO);
 	}
 
 	function insertPlaceholder(placeholder: string) {
@@ -305,7 +305,7 @@
 		} else if (activeEditorTarget === 'footer') {
 			footerHtml = footerHtml + placeholder;
 		}
-		toastService.info(`Inserted: ${placeholder}`);
+		toastService.addToast(`Inserted: ${placeholder}`, StatusColorEnum.INFO);
 	}
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
