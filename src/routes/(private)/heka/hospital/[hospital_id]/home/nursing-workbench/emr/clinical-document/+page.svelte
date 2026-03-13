@@ -19,10 +19,13 @@
 	import {
 		getDocumentSettingById,
 		getDocumentSettingsWithRelations,
-		type DocumentSettingSchema
+		type DocumentSettingWithRelations
 	} from '$lib/remote/table/information-table/document-setting.remote';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+	import type {
+		DocumentTypeSchema,
+		DocumentSettingSchema
+	} from '$lib/server/db/schema-type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -112,6 +115,7 @@ let visit = $state<{
 			'{{patient.code}}': patientCode,
 			'{{visit.no}}': visitNo,
 			'{{document.title}}': documentTitle,
+			'{{document.code}}': doc.code ?? '',
 			'{{document.number}}': doc.documentNumber ?? '',
 			'{{print.date}}': new Date().toLocaleDateString(),
 			'{{print.time}}': new Date().toLocaleTimeString()
@@ -147,12 +151,37 @@ let visit = $state<{
 					id: doc.documentSettingId
 				});
 			} else if (doc.documentTypeId) {
-				// Fallback: choose first active setting matching document type
-				const allSettings = await getDocumentSettingsWithRelations();
-				setting =
+				// Fallback: find a setting by type/name, then single-item fallback.
+				const allSettings: DocumentSettingWithRelations[] =
+					await getDocumentSettingsWithRelations();
+				const docTypeName =
+					doc.documentType?.documentType?.trim().toLowerCase() ?? '';
+				const matchedByTypeId =
+					allSettings.find((s) => s.documentTypeId === doc.documentTypeId) ??
+					null;
+				const matchedByTypeName =
 					allSettings.find(
-						(s) => s.documentTypeId === doc.documentTypeId
+						(s) =>
+							(s.documentType?.documentType ?? '')
+								.trim()
+								.toLowerCase() === docTypeName
 					) ?? null;
+				const matchedByNameOrCode =
+					allSettings.find((s) => {
+						const name = (s.name ?? '').trim().toLowerCase();
+						return (
+							Boolean(docTypeName) &&
+							name.includes(docTypeName)
+						);
+					}) ?? null;
+				const singleSetting =
+					allSettings.length === 1 ? allSettings[0] : null;
+
+				setting =
+					matchedByTypeId ??
+					matchedByTypeName ??
+					matchedByNameOrCode ??
+					singleSetting;
 			}
 		} catch (err) {
 			console.error('Failed to load document setting', err);
@@ -171,8 +200,8 @@ let visit = $state<{
 		const orientation = setting?.pageOrientation ?? 'portrait';
 		const showHeader = setting?.showHeader ?? true;
 		const showFooter = setting?.showFooter ?? true;
-		const headerHtml = applyPlaceholders(setting?.headerHtml, context);
-		const footerHtml = applyPlaceholders(setting?.footerHtml, context);
+		const headerHtml = applyPlaceholders(setting?.headerHtml, context).trim();
+		const footerHtml = applyPlaceholders(setting?.footerHtml, context).trim();
 
 		const documentTitle =
 			doc.documentNumber ||
