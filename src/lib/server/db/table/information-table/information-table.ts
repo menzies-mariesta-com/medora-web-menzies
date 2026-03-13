@@ -15,7 +15,10 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
-import { StatusEnum, YesNoEnum } from '../../../../model/enum/db-link';
+import {
+	StatusEnum,
+	YesNoEnum
+} from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
@@ -555,7 +558,9 @@ export const documentSettingTable = pgTable(
 		documentTypeId: integer('document_type_id').references(
 			() => documentTypeTable.id
 		),
-		hospitalId: uuid('hospital_id').references(() => hospitalTable.id),
+		hospitalId: uuid('hospital_id').references(
+			() => hospitalTable.id
+		),
 		// Page layout settings (in mm)
 		marginTop: integer('margin_top').default(20),
 		marginBottom: integer('margin_bottom').default(20),
@@ -567,7 +572,9 @@ export const documentSettingTable = pgTable(
 		paddingRight: integer('padding_right').default(10),
 		// Page size
 		pageSize: varchar('page_size', { length: 20 }).default('A4'),
-		pageOrientation: varchar('page_orientation', { length: 20 }).default('portrait'),
+		pageOrientation: varchar('page_orientation', {
+			length: 20
+		}).default('portrait'),
 		// Header and footer templates (HTML with placeholders)
 		headerHtml: text('header_html'),
 		footerHtml: text('footer_html'),
@@ -586,7 +593,9 @@ export const documentSettingTable = pgTable(
 	(table) => [
 		index('document_setting_name_idx').on(table.name),
 		index('document_setting_code_idx').on(table.code),
-		index('document_setting_document_type_id_idx').on(table.documentTypeId),
+		index('document_setting_document_type_id_idx').on(
+			table.documentTypeId
+		),
 		index('document_setting_hospital_id_idx').on(table.hospitalId),
 		index('document_setting_status_id_idx').on(table.statusId)
 	]
@@ -923,39 +932,47 @@ export const serviceOrderTable = pgTable('service_order', {
 	...timestamps
 });
 
-export const serviceOrderDetailTable = pgTable('service_order_detail', {
-	id: serial('id').primaryKey(),
-	serviceOrderId: integer('service_order_id')
-		.notNull()
-		.references(() => serviceOrderTable.id, {
-			onDelete: 'cascade'
+export const serviceOrderDetailTable = pgTable(
+	'service_order_detail',
+	{
+		id: serial('id').primaryKey(),
+		serviceOrderId: integer('service_order_id')
+			.notNull()
+			.references(() => serviceOrderTable.id, {
+				onDelete: 'cascade'
+			}),
+		serviceId: integer('service_id')
+			.notNull()
+			.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
+		advisingDoctorId: uuid('advising_doctor_id').references(
+			() => staffTable.id
+		),
+		instruction: text('instruction'),
+		isUrgent: boolean('is_urgent').notNull().default(false),
+		discount: decimal('discount', {
+			precision: 10,
+			scale: 2
 		}),
-	serviceId: integer('service_id')
-		.notNull()
-		.references(() => serviceItemTable.id, { onDelete: 'cascade' }),
-	advisingDoctorId: uuid('advising_doctor_id').references(() => staffTable.id),
-	instruction: text('instruction'),
-	isUrgent: boolean('is_urgent').notNull().default(false),
-	discount: decimal('discount', {
-		precision: 10,
-		scale: 2
-	}),
-	serviceAmount: decimal('service_amount', { precision: 10, scale: 2 }),
-	serviceTaxAmount: decimal('service_tax_amount', {
-		precision: 10,
-		scale: 2
-	}),
-	serviceUnit: integer('service_unit'),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	createdBy: text('created_by').references(() => userTable.id),
-	updatedBy: text('updated_by').references(() => userTable.id),
-	cancelBy: text('cancel_by').references(() => userTable.id),
-	cancelRemark: text('cancel_remark'),
-	...timestamps
-});
+		serviceAmount: decimal('service_amount', {
+			precision: 10,
+			scale: 2
+		}),
+		serviceTaxAmount: decimal('service_tax_amount', {
+			precision: 10,
+			scale: 2
+		}),
+		serviceUnit: integer('service_unit'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		createdBy: text('created_by').references(() => userTable.id),
+		updatedBy: text('updated_by').references(() => userTable.id),
+		cancelBy: text('cancel_by').references(() => userTable.id),
+		cancelRemark: text('cancel_remark'),
+		...timestamps
+	}
+);
 
 export const storeTable = pgTable('store', {
 	id: serial('id').primaryKey(),

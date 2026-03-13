@@ -39,7 +39,9 @@
 	let referResult =
 		$state<PaginatedResult<ExternalReferWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
 	let searchInput = $state('');
 	let isLoading = $state(false);
 
@@ -134,91 +136,87 @@
 
 	const REFER_COLUMN_COUNT = 14;
 
-	const referColumns: MariTableColumn<ExternalReferWithRelations>[] = [
-		{
-			id: 'id',
-			header: m.id(),
-			widthClass: 'w-24 min-w-[6rem]'
-		},
-		{
-			id: 'name',
-			header: m.name(),
-			widthClass: 'w-56 min-w-[14rem]',
-			format: (_value, row) =>
-				[
-					(row.title?.name ?? '').trim(),
-					(row.name ?? '').trim()
-				]
-					.filter(Boolean)
-					.join(' ') || '—'
-		},
-		{
-			id: 'address',
-			header: m.address(),
-			widthClass: 'w-56 min-w-[14rem]'
-		},
-		{
-			id: 'country',
-			header: m.country(),
-			widthClass: 'w-32 min-w-[8rem]',
-			field: 'country.name'
-		},
-		{
-			id: 'state',
-			header: m.state(),
-			widthClass: 'w-32 min-w-[8rem]',
-			field: 'state.name'
-		},
-		{
-			id: 'city',
-			header: m.city(),
-			widthClass: 'w-32 min-w-[8rem]',
-			field: 'city.name'
-		},
-		{
-			id: 'postalCode',
-			header: m.postal_code(),
-			widthClass: 'w-28 min-w-[7rem]',
-			format: (_value, row) =>
-				row.postalCode != null
-					? String(row.postalCode.value)
-					: '—'
-		},
-		{
-			id: 'phoneCode',
-			header: m.phone_code(),
-			widthClass: 'w-32 min-w-[8rem]',
-			field: 'phoneCountry.countryCallingCode'
-		},
-		{
-			id: 'phone',
-			header: m.phone(),
-			widthClass: 'w-36 min-w-[9rem]'
-		},
-		{
-			id: 'email',
-			header: m.email(),
-			widthClass: 'w-48 min-w-[12rem]'
-		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-28 min-w-[7rem]',
-			field: 'status.name'
-		},
-		{
-			id: 'createdAt',
-			header: m.created_at(),
-			widthClass: 'w-40 min-w-[10rem]',
-			format: (value) => formatDateTime(value as any)
-		},
-		{
-			id: 'updatedAt',
-			header: m.updated_at(),
-			widthClass: 'w-40 min-w-[10rem]',
-			format: (value) => formatDateTime(value as any)
-		}
-	];
+	const referColumns: MariTableColumn<ExternalReferWithRelations>[] =
+		[
+			{
+				id: 'id',
+				header: m.id(),
+				widthClass: 'w-24 min-w-[6rem]'
+			},
+			{
+				id: 'name',
+				header: m.name(),
+				widthClass: 'w-56 min-w-[14rem]',
+				format: (_value, row) =>
+					[(row.title?.name ?? '').trim(), (row.name ?? '').trim()]
+						.filter(Boolean)
+						.join(' ') || '—'
+			},
+			{
+				id: 'address',
+				header: m.address(),
+				widthClass: 'w-56 min-w-[14rem]'
+			},
+			{
+				id: 'country',
+				header: m.country(),
+				widthClass: 'w-32 min-w-[8rem]',
+				field: 'country.name'
+			},
+			{
+				id: 'state',
+				header: m.state(),
+				widthClass: 'w-32 min-w-[8rem]',
+				field: 'state.name'
+			},
+			{
+				id: 'city',
+				header: m.city(),
+				widthClass: 'w-32 min-w-[8rem]',
+				field: 'city.name'
+			},
+			{
+				id: 'postalCode',
+				header: m.postal_code(),
+				widthClass: 'w-28 min-w-[7rem]',
+				format: (_value, row) =>
+					row.postalCode != null ? String(row.postalCode.value) : '—'
+			},
+			{
+				id: 'phoneCode',
+				header: m.phone_code(),
+				widthClass: 'w-32 min-w-[8rem]',
+				field: 'phoneCountry.countryCallingCode'
+			},
+			{
+				id: 'phone',
+				header: m.phone(),
+				widthClass: 'w-36 min-w-[9rem]'
+			},
+			{
+				id: 'email',
+				header: m.email(),
+				widthClass: 'w-48 min-w-[12rem]'
+			},
+			{
+				id: 'status',
+				header: m.status(),
+				widthClass: 'w-28 min-w-[7rem]',
+				field: 'status.name'
+			},
+			{
+				id: 'createdAt',
+				header: m.created_at(),
+				widthClass: 'w-40 min-w-[10rem]',
+				format: (value) => formatDateTime(value as any)
+			},
+			{
+				id: 'updatedAt',
+				header: m.updated_at(),
+				widthClass: 'w-40 min-w-[10rem]',
+				format: (value) => formatDateTime(value as any)
+			}
+		];
 
 	function openCreate() {
 		modalState = { mode: 'create' };
@@ -238,16 +236,14 @@
 	}
 </script>
 
-<div
-	class="flex items-center justify-end mx-4 my-2"
->
-		<DaisyUiButton
-			className="d-btn-primary d-btn-sm"
-			onClick={openCreate}
-		>
-			<LucidePlus className="size-5" />
-			{m.create()}
-		</DaisyUiButton>
+<div class="mx-4 my-2 flex items-center justify-end">
+	<DaisyUiButton
+		className="d-btn-primary d-btn-sm"
+		onClick={openCreate}
+	>
+		<LucidePlus className="size-5" />
+		{m.create()}
+	</DaisyUiButton>
 </div>
 
 {#if isLoading && !referResult}
@@ -259,9 +255,9 @@
 		<MariTable
 			rows={referList}
 			columns={referColumns}
-			isLoading={isLoading}
+			{isLoading}
 			bind:pageSize={filterPageSize}
-			bind:currentPage={currentPage}
+			bind:currentPage
 			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}

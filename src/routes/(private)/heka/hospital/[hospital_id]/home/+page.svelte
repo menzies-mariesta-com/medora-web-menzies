@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		D3Util,
-		type BarChartOptions
-	} from '$lib/util/d3.util';
+	import { D3Util, type BarChartOptions } from '$lib/util/d3.util';
 
 	type DailyVisitCount = {
 		date: string;
@@ -54,7 +51,8 @@
 	}
 
 	onMount(() => {
-		if (!visitsChartContainer || !data?.visitsLast7Days?.length) return;
+		if (!visitsChartContainer || !data?.visitsLast7Days?.length)
+			return;
 
 		const chartData: BarPoint[] = data.visitsLast7Days.map((d) => ({
 			label: d.date.slice(5),
@@ -89,7 +87,7 @@
 </script>
 
 <div
-	class="min-h-[calc(100vh-4rem)] w-full bg-gradient-to-b from-base-200 via-base-100 to-base-200 px-4 py-6 lg:px-8 lg:py-8 space-y-6"
+	class="min-h-[calc(100vh-4rem)] w-full space-y-6 bg-gradient-to-b from-base-200 via-base-100 to-base-200 px-4 py-6 lg:px-8 lg:py-8"
 >
 	<div
 		class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
@@ -107,7 +105,7 @@
 	<!-- Primary stats (DaisyUI stats, responsive) -->
 	<div class="w-full space-y-4">
 		<div
-			class="d-stats d-stats-vertical lg:d-stats-horizontal w-full shadow-lg bg-base-100/95 border border-base-300/70 rounded-2xl"
+			class="d-stats w-full d-stats-vertical rounded-2xl border border-base-300/70 bg-base-100/95 shadow-lg lg:d-stats-horizontal"
 		>
 			<div class="d-stat">
 				<div class="d-stat-figure text-primary">
@@ -209,7 +207,7 @@
 		</div>
 
 		<div
-			class="d-stats d-stats-vertical lg:d-stats-horizontal w-full shadow-lg bg-base-100/95 border border-base-300/70 rounded-2xl"
+			class="d-stats w-full d-stats-vertical rounded-2xl border border-base-300/70 bg-base-100/95 shadow-lg lg:d-stats-horizontal"
 		>
 			<div class="d-stat">
 				<div class="d-stat-figure text-info">
@@ -314,7 +312,7 @@
 
 		<!-- Unbill & Check-in ratio -->
 		<div
-			class="d-stats d-stats-vertical lg:d-stats-horizontal w-full shadow-lg bg-base-100/95 border border-base-300/70 rounded-2xl"
+			class="d-stats w-full d-stats-vertical rounded-2xl border border-base-300/70 bg-base-100/95 shadow-lg lg:d-stats-horizontal"
 		>
 			<div class="d-stat">
 				<div class="d-stat-figure text-base-content/70">
@@ -369,9 +367,9 @@
 	</div>
 
 	<!-- Charts & secondary cards -->
-	<div class="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-2">
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
 		<div
-			class="d-card bg-gradient-to-br from-primary/10 via-base-100 to-base-100 shadow-lg border border-base-300/70 rounded-2xl"
+			class="d-card rounded-2xl border border-base-300/70 bg-gradient-to-br from-primary/10 via-base-100 to-base-100 shadow-lg"
 		>
 			<div class="d-card-body">
 				<h3 class="d-card-title text-base">
@@ -388,7 +386,7 @@
 		</div>
 
 		<div
-			class="d-card bg-base-100/95 shadow-lg border border-base-300/70 rounded-2xl"
+			class="d-card rounded-2xl border border-base-300/70 bg-base-100/95 shadow-lg"
 		>
 			<div class="d-card-body grid gap-3">
 				<h3 class="d-card-title text-base">Today at a glance</h3>
@@ -402,17 +400,13 @@
 						</div>
 					</div>
 					<div>
-						<div class="text-xs text-base-content/70">
-							Doctors
-						</div>
+						<div class="text-xs text-base-content/70">Doctors</div>
 						<div class="mt-1 font-semibold">
 							{displayOrNA(data.stats?.doctors)}
 						</div>
 					</div>
 					<div>
-						<div class="text-xs text-base-content/70">
-							Patients
-						</div>
+						<div class="text-xs text-base-content/70">Patients</div>
 						<div class="mt-1 font-semibold">
 							{displayOrNA(data.stats?.patients)}
 						</div>

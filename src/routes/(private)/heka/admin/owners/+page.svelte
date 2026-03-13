@@ -52,7 +52,8 @@
 			id: 'createdAt',
 			header: m.created(),
 			widthClass: 'w-40 min-w-[10rem]',
-			format: (value) => formatDate(value as string | null | undefined)
+			format: (value) =>
+				formatDate(value as string | null | undefined)
 		}
 	];
 
@@ -139,38 +140,38 @@
 					{m.no_owners_yet()}
 				</p>
 			{:else}
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={owners}
 						columns={ownerColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						showRefreshButton={false}
 						emptyMessage={m.no_owners_yet()}
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
 					>
-					<svelte:fragment slot="rowActions" let:row>
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEditOwnerModal(row)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() => handleDelete(row)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
-					</svelte:fragment>
-				</MariTable>
+						<svelte:fragment slot="rowActions" let:row>
+							<td class="text-right">
+								<div class="flex justify-end gap-2">
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openEditOwnerModal(row)}
+									>
+										<LucidePencil />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										onClick={() => handleDelete(row)}
+									>
+										<LucideTrash2 />
+									</DaisyUiButton>
+								</div>
+							</td>
+						</svelte:fragment>
+					</MariTable>
 				</div>
 			{/if}
 		</DaisyUiCardBody>

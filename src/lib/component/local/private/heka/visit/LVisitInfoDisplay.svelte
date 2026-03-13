@@ -97,9 +97,7 @@
 	);
 
 	const patientPhotoUrl = $derived(
-		getPatientPhotoDisplayUrl(
-			(visit?.patient as any)?.photoPath
-		) ??
+		getPatientPhotoDisplayUrl((visit?.patient as any)?.photoPath) ??
 			(visit?.patient as any)?.photoPath ??
 			''
 	);
@@ -142,7 +140,9 @@
 			>
 				{#if visitNo || visitTypeName}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60">Visit:</span>
+						<span class="font-normal text-base-content/60"
+							>Visit:</span
+						>
 						<span class="font-medium text-primary">
 							{#if visitNo}{visitNo}{/if}{#if visitTypeName}
 								{#if visitNo}<span class="text-base-content/60">
@@ -156,14 +156,17 @@
 
 				{#if patientName || patientCode}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60">Patient:</span>
+						<span class="font-normal text-base-content/60"
+							>Patient:</span
+						>
 						<span class="font-medium">
 							{#if patientName}{patientName}{/if}
 							{#if patientCode}
 								{#if patientName}<span class="text-base-content/60">
 										·
 									</span>{/if}
-								<span class="text-base-content/80">{patientCode}</span>
+								<span class="text-base-content/80">{patientCode}</span
+								>
 							{/if}
 							{#if patientDob}
 								<span class="text-base-content/60">
@@ -176,7 +179,9 @@
 
 				{#if doctorName}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60">Doctor:</span>
+						<span class="font-normal text-base-content/60"
+							>Doctor:</span
+						>
 						<span class="font-medium text-base-content">
 							{doctorName}
 						</span>
@@ -185,7 +190,9 @@
 
 				{#if branchName || hospitalName}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60">Location:</span>
+						<span class="font-normal text-base-content/60"
+							>Location:</span
+						>
 						<span class="font-medium text-base-content">
 							{[branchName, hospitalName].filter(Boolean).join(' · ')}
 						</span>
@@ -194,7 +201,9 @@
 
 				{#if visitDate}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60">Visit Date:</span>
+						<span class="font-normal text-base-content/60"
+							>Visit Date:</span
+						>
 						<span class="font-medium text-base-content">
 							{visitDate}
 						</span>

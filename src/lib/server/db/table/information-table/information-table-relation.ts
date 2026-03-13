@@ -744,177 +744,210 @@ export const patientAttachmentTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [patientAttachmentTable.statusId],
-			references: [statusTable.id],
-		}),
-	}),
+			references: [statusTable.id]
+		})
+	})
 );
 
-export const insuranceTableRelations = relations(insuranceTable, ({ one, many }) => ({
-	status: one(statusTable, {
-		fields: [insuranceTable.statusId],
-		references: [statusTable.id],
-	}),
-	patientInsurances: many(patientInsurance),
-}));
+export const insuranceTableRelations = relations(
+	insuranceTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [insuranceTable.statusId],
+			references: [statusTable.id]
+		}),
+		patientInsurances: many(patientInsurance)
+	})
+);
 
-export const patientInsuranceTableRelations = relations(patientInsurance, ({ one }) => ({
-	patient: one(patientTable, {
-		fields: [patientInsurance.patientId],
-		references: [patientTable.id],
-	}),
-	insurance: one(insuranceTable, {
-		fields: [patientInsurance.insuranceId],
-		references: [insuranceTable.id],
-	}),
-}));
+export const patientInsuranceTableRelations = relations(
+	patientInsurance,
+	({ one }) => ({
+		patient: one(patientTable, {
+			fields: [patientInsurance.patientId],
+			references: [patientTable.id]
+		}),
+		insurance: one(insuranceTable, {
+			fields: [patientInsurance.insuranceId],
+			references: [insuranceTable.id]
+		})
+	})
+);
 
-export const patientAllergyTableRelations = relations(patientAllergyTable, ({ one }) => ({
-	patient: one(patientTable, {
-		fields: [patientAllergyTable.patientId],
-		references: [patientTable.id],
-	}),
-	visit: one(patientVisitTable, {
-		fields: [patientAllergyTable.visitId],
-		references: [patientVisitTable.id],
-	}),
-	allergy: one(allergyTable, {
-		fields: [patientAllergyTable.allergyId],
-		references: [allergyTable.id],
-	}),
-	severity: one(severityTable, {
-		fields: [patientAllergyTable.severityId],
-		references: [severityTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [patientAllergyTable.statusId],
-		references: [statusTable.id],
-	}),
-}));
+export const patientAllergyTableRelations = relations(
+	patientAllergyTable,
+	({ one }) => ({
+		patient: one(patientTable, {
+			fields: [patientAllergyTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [patientAllergyTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		allergy: one(allergyTable, {
+			fields: [patientAllergyTable.allergyId],
+			references: [allergyTable.id]
+		}),
+		severity: one(severityTable, {
+			fields: [patientAllergyTable.severityId],
+			references: [severityTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [patientAllergyTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
 
-export const categoryTableRelations = relations(categoryTable, ({ one, many }) => ({
-	status: one(statusTable, {
-		fields: [categoryTable.statusId],
-		references: [statusTable.id],
-	}),
-	subCategories: many(subCategoryTable),
-}));
+export const categoryTableRelations = relations(
+	categoryTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [categoryTable.statusId],
+			references: [statusTable.id]
+		}),
+		subCategories: many(subCategoryTable)
+	})
+);
 
-export const subCategoryTableRelations = relations(subCategoryTable, ({ one, many }) => ({
-	category: one(categoryTable, {
-		fields: [subCategoryTable.categoryId],
-		references: [categoryTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [subCategoryTable.statusId],
-		references: [statusTable.id],
-	}),
-	serviceItems: many(serviceItemTable),
-}));
+export const subCategoryTableRelations = relations(
+	subCategoryTable,
+	({ one, many }) => ({
+		category: one(categoryTable, {
+			fields: [subCategoryTable.categoryId],
+			references: [categoryTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [subCategoryTable.statusId],
+			references: [statusTable.id]
+		}),
+		serviceItems: many(serviceItemTable)
+	})
+);
 
-export const serviceItemTableRelations = relations(serviceItemTable, ({ one, many }) => ({
-	hospital: one(hospitalTable, {
-		fields: [serviceItemTable.hospitalId],
-		references: [hospitalTable.id],
-	}),
-	subCategory: one(subCategoryTable, {
-		fields: [serviceItemTable.subCategoryId],
-		references: [subCategoryTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [serviceItemTable.statusId],
-		references: [statusTable.id],
-	}),
-	serviceTaggings: many(serviceTaggingTable),
-	serviceOrderDetails: many(serviceOrderDetailTable),
-}));
+export const serviceItemTableRelations = relations(
+	serviceItemTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [serviceItemTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		subCategory: one(subCategoryTable, {
+			fields: [serviceItemTable.subCategoryId],
+			references: [subCategoryTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [serviceItemTable.statusId],
+			references: [statusTable.id]
+		}),
+		serviceTaggings: many(serviceTaggingTable),
+		serviceOrderDetails: many(serviceOrderDetailTable)
+	})
+);
 
-export const serviceTaggingTableRelations = relations(serviceTaggingTable, ({ one }) => ({
-	branch: one(hospitalBranchTable, {
-		fields: [serviceTaggingTable.branchId],
-		references: [hospitalBranchTable.id],
-	}),
-	serviceItem: one(serviceItemTable, {
-		fields: [serviceTaggingTable.serviceId],
-		references: [serviceItemTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [serviceTaggingTable.statusId],
-		references: [statusTable.id],
-	}),
-}));
+export const serviceTaggingTableRelations = relations(
+	serviceTaggingTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [serviceTaggingTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		serviceItem: one(serviceItemTable, {
+			fields: [serviceTaggingTable.serviceId],
+			references: [serviceItemTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [serviceTaggingTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
 
-export const storeTableRelations = relations(storeTable, ({ one }) => ({
-	branch: one(hospitalBranchTable, {
-		fields: [storeTable.branchId],
-		references: [hospitalBranchTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [storeTable.statusId],
-		references: [statusTable.id],
-	}),
-	updatedBy: one(userTable, {
-		fields: [storeTable.updatedBy],
-		references: [userTable.id],
-	}),
-}));
+export const storeTableRelations = relations(
+	storeTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [storeTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [storeTable.statusId],
+			references: [statusTable.id]
+		}),
+		updatedBy: one(userTable, {
+			fields: [storeTable.updatedBy],
+			references: [userTable.id]
+		})
+	})
+);
 
-export const serviceOrderTableRelations = relations(serviceOrderTable, ({ one, many }) => ({
-	branch: one(hospitalBranchTable, {
-		fields: [serviceOrderTable.branchId],
-		references: [hospitalBranchTable.id],
-	}),
-	visit: one(patientVisitTable, {
-		fields: [serviceOrderTable.visitId],
-		references: [patientVisitTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [serviceOrderTable.statusId],
-		references: [statusTable.id],
-	}),
-	createdBy: one(userTable, {
-		fields: [serviceOrderTable.createdBy],
-		references: [userTable.id],
-	}),
-	updatedBy: one(userTable, {
-		fields: [serviceOrderTable.updatedBy],
-		references: [userTable.id],
-	}),
-	details: many(serviceOrderDetailTable),
-}));
+export const serviceOrderTableRelations = relations(
+	serviceOrderTable,
+	({ one, many }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [serviceOrderTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [serviceOrderTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [serviceOrderTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdBy: one(userTable, {
+			fields: [serviceOrderTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedBy: one(userTable, {
+			fields: [serviceOrderTable.updatedBy],
+			references: [userTable.id]
+		}),
+		details: many(serviceOrderDetailTable)
+	})
+);
 
-export const serviceOrderDetailTableRelations = relations(serviceOrderDetailTable, ({ one }) => ({
-	serviceOrder: one(serviceOrderTable, {
-		fields: [serviceOrderDetailTable.serviceOrderId],
-		references: [serviceOrderTable.id],
-	}),
-	serviceItem: one(serviceItemTable, {
-		fields: [serviceOrderDetailTable.serviceId],
-		references: [serviceItemTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [serviceOrderDetailTable.statusId],
-		references: [statusTable.id],
-	}),
-	createdBy: one(userTable, {
-		fields: [serviceOrderDetailTable.createdBy],
-		references: [userTable.id],
-	}),
-	updatedBy: one(userTable, {
-		fields: [serviceOrderDetailTable.updatedBy],
-		references: [userTable.id],
-	}),
-	cancelBy: one(userTable, {
-		fields: [serviceOrderDetailTable.cancelBy],
-		references: [userTable.id],
-	}),
-}));
+export const serviceOrderDetailTableRelations = relations(
+	serviceOrderDetailTable,
+	({ one }) => ({
+		serviceOrder: one(serviceOrderTable, {
+			fields: [serviceOrderDetailTable.serviceOrderId],
+			references: [serviceOrderTable.id]
+		}),
+		serviceItem: one(serviceItemTable, {
+			fields: [serviceOrderDetailTable.serviceId],
+			references: [serviceItemTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [serviceOrderDetailTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdBy: one(userTable, {
+			fields: [serviceOrderDetailTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedBy: one(userTable, {
+			fields: [serviceOrderDetailTable.updatedBy],
+			references: [userTable.id]
+		}),
+		cancelBy: one(userTable, {
+			fields: [serviceOrderDetailTable.cancelBy],
+			references: [userTable.id]
+		})
+	})
+);
 
-export const allergyTableRelations = relations(allergyTable, ({ one }) => ({
-	status: one(statusTable, {
-		fields: [allergyTable.statusId],
-		references: [statusTable.id],
-	}),
-}));
+export const allergyTableRelations = relations(
+	allergyTable,
+	({ one }) => ({
+		status: one(statusTable, {
+			fields: [allergyTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
 
 export const documentTypeTableRelations = relations(
 	documentTypeTable,
@@ -954,45 +987,51 @@ export const documentSettingTableRelations = relations(
 	})
 );
 
-export const documentTableRelations = relations(documentTable, ({ one, many }) => ({
-	documentType: one(documentTypeTable, {
-		fields: [documentTable.documentTypeId],
-		references: [documentTypeTable.id],
-	}),
-	documentSetting: one(documentSettingTable, {
-		fields: [documentTable.documentSettingId],
-		references: [documentSettingTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [documentTable.statusId],
-		references: [statusTable.id],
-	}),
-	createdByUser: one(userTable, {
-		fields: [documentTable.createdBy],
-		references: [userTable.id],
-	}),
-	patientDocuments: many(patientDocumentTable),
-}));
+export const documentTableRelations = relations(
+	documentTable,
+	({ one, many }) => ({
+		documentType: one(documentTypeTable, {
+			fields: [documentTable.documentTypeId],
+			references: [documentTypeTable.id]
+		}),
+		documentSetting: one(documentSettingTable, {
+			fields: [documentTable.documentSettingId],
+			references: [documentSettingTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [documentTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [documentTable.createdBy],
+			references: [userTable.id]
+		}),
+		patientDocuments: many(patientDocumentTable)
+	})
+);
 
-export const patientDocumentTableRelations = relations(patientDocumentTable, ({ one }) => ({
-	visit: one(patientVisitTable, {
-		fields: [patientDocumentTable.visitId],
-		references: [patientVisitTable.id],
-	}),
-	patient: one(patientTable, {
-		fields: [patientDocumentTable.patientId],
-		references: [patientTable.id],
-	}),
-	document: one(documentTable, {
-		fields: [patientDocumentTable.documentId],
-		references: [documentTable.id],
-	}),
-	createdByUser: one(userTable, {
-		fields: [patientDocumentTable.createdBy],
-		references: [userTable.id],
-	}),
-	status: one(statusTable, {
-		fields: [patientDocumentTable.statusId],
-		references: [statusTable.id],
-	}),
-}));
+export const patientDocumentTableRelations = relations(
+	patientDocumentTable,
+	({ one }) => ({
+		visit: one(patientVisitTable, {
+			fields: [patientDocumentTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [patientDocumentTable.patientId],
+			references: [patientTable.id]
+		}),
+		document: one(documentTable, {
+			fields: [patientDocumentTable.documentId],
+			references: [documentTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [patientDocumentTable.createdBy],
+			references: [userTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [patientDocumentTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
