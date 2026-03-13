@@ -917,6 +917,7 @@ export const serviceOrderTable = pgTable('service_order', {
 			onDelete: 'cascade'
 		}),
 	orderDate: date('order_date'),
+	orderTime: time('order_time'),
 	orderNo: varchar('order_no', { length: 128 }),
 	visitId: integer('visit_id')
 		.notNull()
