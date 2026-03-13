@@ -32,9 +32,12 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let docTypeResult = $state<PaginatedResult<DocumentTypeSchema> | null>(null);
+	let docTypeResult =
+		$state<PaginatedResult<DocumentTypeSchema> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
 	let isLoading = $state(false);
 
 	let isEditing = $state(false);
@@ -81,7 +84,10 @@
 
 	async function handleSave() {
 		if (!nameInput.trim()) {
-			toastService.addToast('Name is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				'Name is required',
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		try {
@@ -90,18 +96,27 @@
 					id: editingId,
 					documentType: nameInput.trim()
 				});
-				toastService.addToast('Document type updated', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document type updated',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				await createDocumentType({
 					documentType: nameInput.trim()
 				});
-				toastService.addToast('Document type created', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document type created',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			resetForm();
 			await fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to save document type', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to save document type',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -109,17 +124,24 @@
 		try {
 			const result = await dialogService.open({
 				title: 'Delete Document Type',
-				message: 'Are you sure you want to delete this document type?',
+				message:
+					'Are you sure you want to delete this document type?',
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
 				await deleteDocumentType({ id });
 				await fetchData({ bustCache: true });
-				toastService.addToast('Document type deleted', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document type deleted',
+					StatusColorEnum.SUCCESS
+				);
 			}
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete document type', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to delete document type',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -161,13 +183,23 @@
 
 <div class="flex flex-col gap-4 p-4">
 	<DaisyUiCard className="p-4">
-		<h2 class="text-lg font-semibold mb-4">
-			{isEditing ? (editingId ? 'Edit Document Type' : 'Create Document Type') : 'Document Type'}
+		<h2 class="mb-4 text-lg font-semibold">
+			{isEditing
+				? editingId
+					? 'Edit Document Type'
+					: 'Create Document Type'
+				: 'Document Type'}
 		</h2>
 		{#if isEditing}
 			<div class="flex items-end gap-4">
-				<div class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-					<DaisyUiLabel forText="docTypeName" className="shrink-0 sm:w-24">Name <span class="text-error">*</span></DaisyUiLabel>
+				<div
+					class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="docTypeName"
+						className="shrink-0 sm:w-24"
+						>Name <span class="text-error">*</span></DaisyUiLabel
+					>
 					<div class="flex-1">
 						<DaisyUiInputField
 							id="docTypeName"
@@ -177,17 +209,26 @@
 						/>
 					</div>
 				</div>
-				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={handleSave}>
+				<DaisyUiButton
+					className="d-btn-primary d-btn-sm"
+					onClick={handleSave}
+				>
 					{editingId ? 'Update' : 'Create'}
 				</DaisyUiButton>
-				<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+				<DaisyUiButton
+					className="d-btn-ghost d-btn-sm"
+					onClick={resetForm}
+				>
 					<LucideX className="size-5" />
 					Cancel
 				</DaisyUiButton>
 			</div>
 		{:else}
 			<div class="flex justify-end">
-				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={startCreate}>
+				<DaisyUiButton
+					className="d-btn-primary d-btn-sm"
+					onClick={startCreate}
+				>
 					<LucidePlus className="size-5" />
 					{m.create()}
 				</DaisyUiButton>
@@ -223,36 +264,36 @@
 				}}
 				on:pageChange={() => fetchData()}
 			>
-			<svelte:fragment slot="rowActions" let:row>
-				{@const typedRow = row as DocumentTypeSchema}
-				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
-					<div class="flex flex-col items-center gap-1">
-						<DaisyUiTooltip
-							tooltipText={m.edit_data()}
-							className="d-tooltip-accent d-tooltip-right"
-						>
-							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-accent"
-								onClick={() => startEdit(typedRow)}
+				<svelte:fragment slot="rowActions" let:row>
+					{@const typedRow = row as DocumentTypeSchema}
+					<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
+						<div class="flex flex-col items-center gap-1">
+							<DaisyUiTooltip
+								tooltipText={m.edit_data()}
+								className="d-tooltip-accent d-tooltip-right"
 							>
-								<LucidePencil className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-						<DaisyUiTooltip
-							tooltipText={m.delete_data()}
-							className="d-tooltip-error d-tooltip-right"
-						>
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-error"
-								disabled={isLoading}
-								onClick={() => handleDelete(typedRow.id)}
+								<DaisyUiButton
+									className="d-btn-sm d-btn-ghost d-btn-accent"
+									onClick={() => startEdit(typedRow)}
+								>
+									<LucidePencil className="size-5" />
+								</DaisyUiButton>
+							</DaisyUiTooltip>
+							<DaisyUiTooltip
+								tooltipText={m.delete_data()}
+								className="d-tooltip-error d-tooltip-right"
 							>
-								<LucideTrash2 className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-					</div>
-				</td>
-			</svelte:fragment>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm d-btn-error"
+									disabled={isLoading}
+									onClick={() => handleDelete(typedRow.id)}
+								>
+									<LucideTrash2 className="size-5" />
+								</DaisyUiButton>
+							</DaisyUiTooltip>
+						</div>
+					</td>
+				</svelte:fragment>
 			</MariTable>
 		</div>
 	{/if}

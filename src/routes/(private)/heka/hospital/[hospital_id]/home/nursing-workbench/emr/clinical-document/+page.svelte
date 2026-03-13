@@ -1,0 +1,396 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import LucidePrinter from '$lib/component/library/lucide/LucidePrinter.svelte';
+	import LucideFileText from '$lib/component/library/lucide/LucideFileText.svelte';
+	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
+	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getDocumentsWithRelations,
+		type DocumentWithRelations
+	} from '$lib/remote/table/information-table/document.remote';
+	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
+	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+
+	const lifeCycleUtil = new LifeCycleUtil();
+	const toastService = new ToastService();
+
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
+	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const hospitalId = $derived(page.params.hospital_id ?? '');
+
+	let visit = $state<{
+		patientId: string;
+		hospitalId: string;
+		patient?: { name?: string; patientCode?: string };
+	} | null>(null);
+	let documents = $state<DocumentWithRelations[]>([]);
+	let documentTypes = $state<DocumentTypeSchema[]>([]);
+	let isLoading = $state(false);
+	let selectedDocument = $state<DocumentWithRelations | null>(null);
+	let showPreview = $state(false);
+
+	const consentDocuments = $derived(
+		documents.filter(
+			(d) => d.documentType?.documentType?.toLowerCase() === 'consent'
+		)
+	);
+	const instructionDocuments = $derived(
+		documents.filter(
+			(d) =>
+				d.documentType?.documentType?.toLowerCase() === 'instruction'
+		)
+	);
+	const formDocuments = $derived(
+		documents.filter(
+			(d) => d.documentType?.documentType?.toLowerCase() === 'form'
+		)
+	);
+
+	async function fetchVisit() {
+		if (!visitId) return;
+		try {
+			visit = await getPatientVisitById({ id: visitId });
+		} catch (err) {
+			console.error('Failed to fetch visit', err);
+		}
+	}
+
+	async function fetchDocuments() {
+		isLoading = true;
+		try {
+			documents = await getDocumentsWithRelations();
+			documentTypes = await getDocumentTypes();
+		} catch (err) {
+			console.error('Failed to fetch documents', err);
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	lifeCycleUtil.onMount(() => {
+		fetchVisit();
+		fetchDocuments();
+	});
+
+	function viewDocument(doc: DocumentWithRelations) {
+		selectedDocument = doc;
+		showPreview = true;
+	}
+
+	function closePreview() {
+		showPreview = false;
+		selectedDocument = null;
+	}
+
+	function printDocument(doc: DocumentWithRelations) {
+		const printWindow = window.open('', '_blank');
+		if (!printWindow) {
+			toastService.error('Failed to open print window');
+			return;
+		}
+
+		const patientName = visit?.patient?.name ?? 'Unknown Patient';
+		const patientCode = visit?.patient?.patientCode ?? '';
+		const documentTitle =
+			doc.documentNumber ||
+			doc.documentType?.documentType ||
+			'Document';
+
+		printWindow.document.write(`
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<title>${documentTitle}</title>
+				<style>
+					body {
+						font-family: 'Roboto', Arial, sans-serif;
+						padding: 20mm;
+						margin: 0;
+						line-height: 1.6;
+					}
+					.header {
+						text-align: center;
+						margin-bottom: 20px;
+						padding-bottom: 10px;
+						border-bottom: 1px solid #ccc;
+					}
+					.patient-info {
+						margin-bottom: 20px;
+						padding: 10px;
+						background: #f5f5f5;
+						border-radius: 4px;
+					}
+					.content {
+						margin-top: 20px;
+					}
+					.footer {
+						margin-top: 40px;
+						text-align: center;
+						font-size: 10px;
+						color: #666;
+					}
+					@media print {
+						body { padding: 15mm; }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="header">
+					<h2>${documentTitle}</h2>
+				</div>
+				<div class="patient-info">
+					<strong>Patient:</strong> ${patientName} ${patientCode ? `(${patientCode})` : ''}
+				</div>
+				<div class="content">
+					${doc.documentText || '<p>No content</p>'}
+				</div>
+				<div class="footer">
+					<p>Printed on: ${new Date().toLocaleString()}</p>
+				</div>
+			</body>
+			</html>
+		`);
+		printWindow.document.close();
+		printWindow.print();
+	}
+</script>
+
+<div class="flex flex-col gap-4 p-4">
+	{#if !visitId}
+		<DaisyUiCard className="p-6">
+			<div class="text-center text-base-content/70">
+				<LucideFileText
+					className="w-12 h-12 mx-auto mb-4 opacity-50"
+				/>
+				<p>
+					Please select a patient visit to view clinical documents.
+				</p>
+			</div>
+		</DaisyUiCard>
+	{:else if isLoading}
+		<div class="flex items-center justify-center py-12">
+			<DaisyUiLoading className="d-loading-lg" />
+		</div>
+	{:else}
+		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			<!-- Consent Forms -->
+			<DaisyUiCard className="bg-base-100">
+				<div class="border-b border-base-300 p-4">
+					<h3 class="flex items-center gap-2 text-lg font-semibold">
+						<LucideFileText className="w-5 h-5 text-primary" />
+						Consent Forms
+					</h3>
+					<p class="mt-1 text-sm text-base-content/60">
+						{consentDocuments.length} document{consentDocuments.length !==
+						1
+							? 's'
+							: ''} available
+					</p>
+				</div>
+				<ul class="d-menu p-2">
+					{#if consentDocuments.length === 0}
+						<li class="d-disabled">
+							<span class="text-sm text-base-content/50"
+								>No consent forms available</span
+							>
+						</li>
+					{:else}
+						{#each consentDocuments as doc (doc.id)}
+							<li>
+								<div
+									class="flex w-full items-center justify-between py-2"
+								>
+									<span class="flex-1 truncate text-sm">
+										{doc.documentNumber || `Consent #${doc.id}`}
+									</span>
+									<div class="flex items-center gap-1">
+										<button
+											type="button"
+											class="d-btn d-btn-ghost d-btn-xs"
+											onclick={() => viewDocument(doc)}
+											title="View"
+										>
+											<LucideEye className="w-4 h-4" />
+										</button>
+										<button
+											type="button"
+											class="d-btn text-primary d-btn-ghost d-btn-xs"
+											onclick={() => printDocument(doc)}
+											title="Print"
+										>
+											<LucidePrinter className="w-4 h-4" />
+										</button>
+									</div>
+								</div>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</DaisyUiCard>
+
+			<!-- Instruction Forms -->
+			<DaisyUiCard className="bg-base-100">
+				<div class="border-b border-base-300 p-4">
+					<h3 class="flex items-center gap-2 text-lg font-semibold">
+						<LucideFileText className="w-5 h-5 text-info" />
+						Instruction Forms
+					</h3>
+					<p class="mt-1 text-sm text-base-content/60">
+						{instructionDocuments.length} document{instructionDocuments.length !==
+						1
+							? 's'
+							: ''} available
+					</p>
+				</div>
+				<ul class="d-menu p-2">
+					{#if instructionDocuments.length === 0}
+						<li class="d-disabled">
+							<span class="text-sm text-base-content/50"
+								>No instruction forms available</span
+							>
+						</li>
+					{:else}
+						{#each instructionDocuments as doc (doc.id)}
+							<li>
+								<div
+									class="flex w-full items-center justify-between py-2"
+								>
+									<span class="flex-1 truncate text-sm">
+										{doc.documentNumber || `Instruction #${doc.id}`}
+									</span>
+									<div class="flex items-center gap-1">
+										<button
+											type="button"
+											class="d-btn d-btn-ghost d-btn-xs"
+											onclick={() => viewDocument(doc)}
+											title="View"
+										>
+											<LucideEye className="w-4 h-4" />
+										</button>
+										<button
+											type="button"
+											class="d-btn text-info d-btn-ghost d-btn-xs"
+											onclick={() => printDocument(doc)}
+											title="Print"
+										>
+											<LucidePrinter className="w-4 h-4" />
+										</button>
+									</div>
+								</div>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</DaisyUiCard>
+
+			<!-- Forms -->
+			<DaisyUiCard className="bg-base-100">
+				<div class="border-b border-base-300 p-4">
+					<h3 class="flex items-center gap-2 text-lg font-semibold">
+						<LucideFileText className="w-5 h-5 text-success" />
+						Forms
+					</h3>
+					<p class="mt-1 text-sm text-base-content/60">
+						{formDocuments.length} document{formDocuments.length !== 1
+							? 's'
+							: ''} available
+					</p>
+				</div>
+				<ul class="d-menu p-2">
+					{#if formDocuments.length === 0}
+						<li class="d-disabled">
+							<span class="text-sm text-base-content/50"
+								>No forms available</span
+							>
+						</li>
+					{:else}
+						{#each formDocuments as doc (doc.id)}
+							<li>
+								<div
+									class="flex w-full items-center justify-between py-2"
+								>
+									<span class="flex-1 truncate text-sm">
+										{doc.documentNumber || `Form #${doc.id}`}
+									</span>
+									<div class="flex items-center gap-1">
+										<button
+											type="button"
+											class="d-btn d-btn-ghost d-btn-xs"
+											onclick={() => viewDocument(doc)}
+											title="View"
+										>
+											<LucideEye className="w-4 h-4" />
+										</button>
+										<button
+											type="button"
+											class="d-btn text-success d-btn-ghost d-btn-xs"
+											onclick={() => printDocument(doc)}
+											title="Print"
+										>
+											<LucidePrinter className="w-4 h-4" />
+										</button>
+									</div>
+								</div>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</DaisyUiCard>
+		</div>
+	{/if}
+</div>
+
+<!-- Document Preview Modal -->
+{#if showPreview && selectedDocument}
+	<div class="d-modal-open d-modal">
+		<div class="d-modal-box max-h-[90vh] w-[95vw] max-w-4xl">
+			<div class="mb-4 flex items-center justify-between">
+				<h3 class="text-lg font-bold">
+					{selectedDocument.documentNumber ||
+						selectedDocument.documentType?.documentType ||
+						'Document Preview'}
+				</h3>
+				<div class="flex items-center gap-2">
+					<DaisyUiButton
+						className="d-btn-primary d-btn-sm"
+						onClick={() => printDocument(selectedDocument!)}
+					>
+						<LucidePrinter className="w-4 h-4 mr-1" />
+						Print
+					</DaisyUiButton>
+					<button
+						type="button"
+						class="d-btn d-btn-circle d-btn-ghost d-btn-sm"
+						onclick={closePreview}
+					>
+						✕
+					</button>
+				</div>
+			</div>
+			<div
+				class="max-h-[60vh] overflow-y-auto rounded-lg border bg-base-200 p-4"
+			>
+				<div class="prose max-w-none">
+					{@html selectedDocument.documentText ||
+						'<p class="text-base-content/50">No content</p>'}
+				</div>
+			</div>
+			<div class="d-modal-action">
+				<DaisyUiButton className="d-btn-ghost" onClick={closePreview}
+					>Close</DaisyUiButton
+				>
+			</div>
+		</div>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="d-modal-backdrop" onclick={closePreview}></div>
+	</div>
+{/if}

@@ -90,7 +90,10 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(table.patientDocumentTable)
 			.innerJoin(
 				table.patientTable,
-				eq(table.patientDocumentTable.patientId, table.patientTable.id)
+				eq(
+					table.patientDocumentTable.patientId,
+					table.patientTable.id
+				)
 			)
 			.where(
 				and(
@@ -191,4 +194,3 @@ export const load: PageServerLoad = async ({ params }) => {
 		visitsLast7Days
 	};
 };
-

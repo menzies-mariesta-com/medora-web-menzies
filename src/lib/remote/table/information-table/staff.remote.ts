@@ -312,9 +312,7 @@ export const getStaffPaginated = query(
 
 		// Dedicated filters
 		if (staffCode) {
-			conditions.push(
-				ilike(table.staffTable.code, `%${staffCode}%`)
-			);
+			conditions.push(ilike(table.staffTable.code, `%${staffCode}%`));
 		}
 		if (staffName) {
 			conditions.push(
@@ -326,13 +324,9 @@ export const getStaffPaginated = query(
 		}
 		if (staffPhonePrimary) {
 			conditions.push(
-				ilike(
-					table.staffTable.phonePrimary,
-					`%${staffPhonePrimary}%`
-				)
+				ilike(table.staffTable.phonePrimary, `%${staffPhonePrimary}%`)
 			);
 		}
-
 
 		// When hospitalId is set, only staff assigned to that hospital (via staff_hospital)
 		const hospitalId = params?.hospitalId;

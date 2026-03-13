@@ -4,4 +4,8 @@
 	let content = '<p>Hello <strong>world</strong></p>';
 </script>
 
-<MariRichEditor bind:value={content} showPreview={false} editorClassName="d-textarea-secondary" />
+<MariRichEditor
+	bind:value={content}
+	showPreview={false}
+	editorClassName="d-textarea-secondary"
+/>

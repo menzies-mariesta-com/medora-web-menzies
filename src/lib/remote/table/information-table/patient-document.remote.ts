@@ -210,4 +210,3 @@ export const deletePatientDocument = command(
 		getPatientDocuments().refresh();
 	}
 );
-

@@ -78,7 +78,9 @@
 		stringValue?: string;
 	};
 
-	type ActiveStates = Partial<Record<ToolbarCommandDetail['name'], boolean>>;
+	type ActiveStates = Partial<
+		Record<ToolbarCommandDetail['name'], boolean>
+	>;
 	let activeStates = $state<ActiveStates>({});
 	let fontSize = $state(14);
 	let fontFamily = $state('');
@@ -136,8 +138,13 @@
 		}
 
 		try {
-			const blockTag = (document.queryCommandValue('formatBlock') || '').toLowerCase();
-			next.paragraph = blockTag === 'p' || blockTag === 'paragraph' || blockTag === '';
+			const blockTag = (
+				document.queryCommandValue('formatBlock') || ''
+			).toLowerCase();
+			next.paragraph =
+				blockTag === 'p' ||
+				blockTag === 'paragraph' ||
+				blockTag === '';
 			next.heading1 = blockTag === 'h1';
 			next.heading2 = blockTag === 'h2';
 			next.heading3 = blockTag === 'h3';
@@ -159,7 +166,8 @@
 					const tag = (node as Element).tagName;
 					if (tag === 'SUB') next.subscript = true;
 					if (tag === 'SUP') next.superscript = true;
-					if (tag === 'TD' || tag === 'TH' || tag === 'TABLE') foundTable = true;
+					if (tag === 'TD' || tag === 'TH' || tag === 'TABLE')
+						foundTable = true;
 					if (tag === 'PRE' || tag === 'CODE') foundCode = true;
 					if (tag === 'BLOCKQUOTE') foundBlockquote = true;
 				}
@@ -194,15 +202,24 @@
 		if (typeof document !== 'undefined') {
 			document.addEventListener('selectionchange', onSelectionChange);
 			document.addEventListener('click', handleClickOutside);
-			editorElement?.addEventListener('focus', syncActiveStatesFromDocument);
+			editorElement?.addEventListener(
+				'focus',
+				syncActiveStatesFromDocument
+			);
 		}
 	});
 
 	onDestroy(() => {
 		if (typeof document !== 'undefined') {
-			document.removeEventListener('selectionchange', onSelectionChange);
+			document.removeEventListener(
+				'selectionchange',
+				onSelectionChange
+			);
 			document.removeEventListener('click', handleClickOutside);
-			editorElement?.removeEventListener('focus', syncActiveStatesFromDocument);
+			editorElement?.removeEventListener(
+				'focus',
+				syncActiveStatesFromDocument
+			);
 		}
 	});
 
@@ -254,17 +271,22 @@
 	/** Wrap selection in <sub> or <sup>; if already inside that tag, exit or unwrap. Uses Range API for reliable cross-browser behavior. */
 	function applySubscriptOrSuperscript(tagName: 'sub' | 'sup') {
 		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0 || !editorElement) return;
+		if (!selection || selection.rangeCount === 0 || !editorElement)
+			return;
 
 		const range = selection.getRangeAt(0);
-		if (!editorElement.contains(range.commonAncestorContainer)) return;
+		if (!editorElement.contains(range.commonAncestorContainer))
+			return;
 
 		const tag = tagName.toUpperCase();
 
 		// Cursor or selection is inside a <sub> or <sup> of the same type
 		let node: Node | null = range.commonAncestorContainer;
 		while (node && node !== editorElement) {
-			if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === tag) {
+			if (
+				node.nodeType === Node.ELEMENT_NODE &&
+				(node as Element).tagName === tag
+			) {
 				const el = node as Element;
 				if (range.collapsed) {
 					// Cursor only: "exit" — move cursor after the tag so they can type normal text (e.g. after SPO₂)
@@ -301,12 +323,19 @@
 			selection.removeAllRanges();
 			selection.addRange(range);
 		} catch {
-			document.execCommand(tagName === 'sub' ? 'subscript' : 'superscript', false);
+			document.execCommand(
+				tagName === 'sub' ? 'subscript' : 'superscript',
+				false
+			);
 		}
 	}
 
 	function applyFontSizePx(sizePx: number) {
-		if (typeof window === 'undefined' || typeof document === 'undefined' || !editorElement) {
+		if (
+			typeof window === 'undefined' ||
+			typeof document === 'undefined' ||
+			!editorElement
+		) {
 			return;
 		}
 		const selection = window.getSelection();
@@ -314,7 +343,11 @@
 
 		const range = selection.getRangeAt(0);
 		// Only operate when there is an actual selection inside the editor
-		if (range.collapsed || !editorElement.contains(range.commonAncestorContainer)) return;
+		if (
+			range.collapsed ||
+			!editorElement.contains(range.commonAncestorContainer)
+		)
+			return;
 
 		try {
 			const contents = range.extractContents();
@@ -333,7 +366,11 @@
 	}
 
 	function insertTable() {
-		if (typeof window === 'undefined' || typeof document === 'undefined' || !editorElement) {
+		if (
+			typeof window === 'undefined' ||
+			typeof document === 'undefined' ||
+			!editorElement
+		) {
 			return;
 		}
 
@@ -351,7 +388,11 @@
 		const selection = window.getSelection();
 		let range: Range | null = null;
 
-		if (selection && selection.rangeCount > 0 && editorElement.contains(selection.anchorNode)) {
+		if (
+			selection &&
+			selection.rangeCount > 0 &&
+			editorElement.contains(selection.anchorNode)
+		) {
 			range = selection.getRangeAt(0);
 		} else if (lastEditorRange) {
 			range = lastEditorRange.cloneRange();
@@ -365,7 +406,8 @@
 
 		// Build table DOM with visible cell borders (column grid)
 		const table = document.createElement('table');
-		table.className = 'table w-full border border-base-300 border-collapse';
+		table.className =
+			'table w-full border border-base-300 border-collapse';
 		const tbody = document.createElement('tbody');
 
 		for (let i = 0; i < r; i++) {
@@ -407,15 +449,25 @@
 				const el = node as HTMLElement;
 				if (el.tagName === 'TD' || el.tagName === 'TH') {
 					const cell = el as HTMLTableCellElement;
-					const row = cell.parentElement as HTMLTableRowElement | null;
+					const row =
+						cell.parentElement as HTMLTableRowElement | null;
 					if (!row) return null;
-					const table = row.closest('table') as HTMLTableElement | null;
+					const table = row.closest(
+						'table'
+					) as HTMLTableElement | null;
 					if (!table) return null;
-					const tbody = row.parentElement as HTMLTableSectionElement | null;
+					const tbody =
+						row.parentElement as HTMLTableSectionElement | null;
 					if (!tbody) return null;
 
-					const rowIndex = Array.prototype.indexOf.call(tbody.rows, row);
-					const colIndex = Array.prototype.indexOf.call(row.cells, cell);
+					const rowIndex = Array.prototype.indexOf.call(
+						tbody.rows,
+						row
+					);
+					const colIndex = Array.prototype.indexOf.call(
+						row.cells,
+						cell
+					);
 
 					return { table, tbody, row, cell, rowIndex, colIndex };
 				}
@@ -461,7 +513,9 @@
 		const ctx = getTableContext();
 		if (!ctx) return;
 		const { tbody, colIndex } = ctx;
-		for (const tr of Array.from(tbody.rows) as HTMLTableRowElement[]) {
+		for (const tr of Array.from(
+			tbody.rows
+		) as HTMLTableRowElement[]) {
 			const td = document.createElement('td');
 			td.className = 'border border-base-300 px-2 py-1 align-top';
 			td.innerHTML = '&nbsp;';
@@ -484,7 +538,9 @@
 			table?.remove();
 			return;
 		}
-		for (const tr of Array.from(tbody.rows) as HTMLTableRowElement[]) {
+		for (const tr of Array.from(
+			tbody.rows
+		) as HTMLTableRowElement[]) {
 			if (colIndex < tr.cells.length) {
 				tr.deleteCell(colIndex);
 			}
@@ -494,14 +550,22 @@
 	function handleCommand(event: CustomEvent<ToolbarCommandDetail>) {
 		const { name, value: cmdValue, stringValue } = event.detail;
 
-		if (!editorElement || typeof window === 'undefined' || typeof document === 'undefined') {
+		if (
+			!editorElement ||
+			typeof window === 'undefined' ||
+			typeof document === 'undefined'
+		) {
 			return;
 		}
 
 		editorElement.focus();
 
 		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0 || !editorElement.contains(selection.anchorNode)) {
+		if (
+			!selection ||
+			selection.rangeCount === 0 ||
+			!editorElement.contains(selection.anchorNode)
+		) {
 			if (lastEditorRange) {
 				selection?.removeAllRanges();
 				selection?.addRange(lastEditorRange);
@@ -546,7 +610,10 @@
 			applyFontSizePx(fontSize);
 		} else if (name === 'fontSizeSet') {
 			if (cmdValue != null && !Number.isNaN(cmdValue)) {
-				const clamped = Math.min(200, Math.max(8, Math.round(cmdValue)));
+				const clamped = Math.min(
+					200,
+					Math.max(8, Math.round(cmdValue))
+				);
 				fontSize = clamped;
 				applyFontSizePx(fontSize);
 			}
@@ -603,24 +670,27 @@
 
 	function insertCodeBlock() {
 		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0 || !editorElement) return;
+		if (!selection || selection.rangeCount === 0 || !editorElement)
+			return;
 		const range = selection.getRangeAt(0);
-		if (!editorElement.contains(range.commonAncestorContainer)) return;
+		if (!editorElement.contains(range.commonAncestorContainer))
+			return;
 
 		const pre = document.createElement('pre');
-		pre.className = 'bg-base-200 p-3 rounded font-mono text-sm overflow-x-auto';
+		pre.className =
+			'bg-base-200 p-3 rounded font-mono text-sm overflow-x-auto';
 		const code = document.createElement('code');
-		
+
 		if (range.collapsed) {
 			code.textContent = '\u200b';
 		} else {
 			code.textContent = range.toString();
 			range.deleteContents();
 		}
-		
+
 		pre.appendChild(code);
 		range.insertNode(pre);
-		
+
 		const newRange = document.createRange();
 		newRange.selectNodeContents(code);
 		newRange.collapse(false);
@@ -639,33 +709,35 @@
 
 	function insertLink() {
 		if (!linkUrl) return;
-		
+
 		editorElement.focus();
 		const selection = window.getSelection();
-		
+
 		if (lastEditorRange) {
 			selection?.removeAllRanges();
 			selection?.addRange(lastEditorRange);
 		}
-		
+
 		if (linkText && (!selection || selection.toString() === '')) {
 			const a = document.createElement('a');
 			a.href = linkUrl;
 			a.textContent = linkText;
 			a.target = '_blank';
 			a.rel = 'noopener noreferrer';
-			
+
 			const range = selection?.getRangeAt(0);
 			range?.insertNode(a);
 		} else {
 			document.execCommand('createLink', false, linkUrl);
-			const links = editorElement.querySelectorAll('a[href="' + linkUrl + '"]');
-			links.forEach(link => {
+			const links = editorElement.querySelectorAll(
+				'a[href="' + linkUrl + '"]'
+			);
+			links.forEach((link) => {
 				link.setAttribute('target', '_blank');
 				link.setAttribute('rel', 'noopener noreferrer');
 			});
 		}
-		
+
 		showLinkDialog = false;
 		linkUrl = '';
 		linkText = '';
@@ -680,24 +752,24 @@
 
 	function insertImage() {
 		if (!imageUrl) return;
-		
+
 		editorElement.focus();
 		const selection = window.getSelection();
-		
+
 		if (lastEditorRange) {
 			selection?.removeAllRanges();
 			selection?.addRange(lastEditorRange);
 		}
-		
+
 		const img = document.createElement('img');
 		img.src = imageUrl;
 		img.alt = imageAlt || '';
 		img.className = 'max-w-full h-auto rounded';
 		img.style.maxWidth = '100%';
-		
+
 		const range = selection?.getRangeAt(0);
 		range?.insertNode(img);
-		
+
 		showImageDialog = false;
 		imageUrl = '';
 		imageAlt = '';
@@ -708,12 +780,12 @@
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-		
+
 		if (!file.type.startsWith('image/')) {
 			alert('Please select an image file');
 			return;
 		}
-		
+
 		const reader = new FileReader();
 		reader.onload = (event) => {
 			imageUrl = event.target?.result as string;
@@ -728,7 +800,11 @@
 	});
 
 	function applyFontFamily(family: string) {
-		if (typeof window === 'undefined' || typeof document === 'undefined' || !editorElement) {
+		if (
+			typeof window === 'undefined' ||
+			typeof document === 'undefined' ||
+			!editorElement
+		) {
 			return;
 		}
 
@@ -736,7 +812,8 @@
 		if (!selection || selection.rangeCount === 0) return;
 
 		const range = selection.getRangeAt(0);
-		if (!editorElement.contains(range.commonAncestorContainer)) return;
+		if (!editorElement.contains(range.commonAncestorContainer))
+			return;
 
 		// Only apply to selected text
 		if (!range.collapsed) {
@@ -773,8 +850,14 @@
 		md = md.replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~');
 		md = md.replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~');
 		md = md.replace(/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~');
-		md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-		md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, '![$2]($1)');
+		md = md.replace(
+			/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi,
+			'[$2]($1)'
+		);
+		md = md.replace(
+			/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi,
+			'![$2]($1)'
+		);
 		md = md.replace(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, '![]($1)');
 		md = md.replace(/<br\s*\/?>/gi, '\n');
 		md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
@@ -782,7 +865,10 @@
 		md = md.replace(/<\/?ul[^>]*>/gi, '\n');
 		md = md.replace(/<\/?ol[^>]*>/gi, '\n');
 		md = md.replace(/<hr\s*\/?>/gi, '\n---\n');
-		md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n');
+		md = md.replace(
+			/<blockquote[^>]*>(.*?)<\/blockquote>/gi,
+			'> $1\n'
+		);
 		md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
 		md = md.replace(/<pre[^>]*>(.*?)<\/pre>/gi, '```\n$1\n```\n');
 		md = md.replace(/<sub[^>]*>(.*?)<\/sub>/gi, '~$1~');
@@ -798,7 +884,9 @@
 	}
 
 	function getFullHtmlDocument(content: string): string {
-		const fontFamilyStyle = fontFamily ? fontFamily : 'system-ui, -apple-system, sans-serif';
+		const fontFamilyStyle = fontFamily
+			? fontFamily
+			: 'system-ui, -apple-system, sans-serif';
 		return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -818,7 +906,11 @@ ${content}
 </html>`;
 	}
 
-	function downloadFile(content: string, filename: string, mimeType: string) {
+	function downloadFile(
+		content: string,
+		filename: string,
+		mimeType: string
+	) {
 		const blob = new Blob([content], { type: mimeType });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
@@ -899,21 +991,30 @@ ${content}
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="flex flex-col gap-2 {className}" on:keydown={handleMenuKeydown}>
+<div
+	class="flex flex-col gap-2 {className}"
+	on:keydown={handleMenuKeydown}
+>
 	{#if showMenuBar}
 		<!-- Menu Bar -->
-		<div class="flex items-center gap-0 border-b border-base-300 bg-base-200 text-sm">
+		<div
+			class="flex items-center gap-0 border-b border-base-300 bg-base-200 text-sm"
+		>
 			<!-- File Menu -->
 			<div class="relative">
 				<button
 					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'file' ? 'bg-base-300' : ''}"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'file'
+						? 'bg-base-300'
+						: ''}"
 					on:click={() => toggleMenu('file')}
 				>
 					File
 				</button>
 				{#if activeMenu === 'file'}
-					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+					<div
+						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
+					>
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
@@ -921,7 +1022,9 @@ ${content}
 						>
 							<span class="w-4">📄</span>
 							<span>Export as PDF</span>
-							<span class="ml-auto text-xs text-base-content/50">Ctrl+P</span>
+							<span class="ml-auto text-xs text-base-content/50"
+								>Ctrl+P</span
+							>
 						</button>
 						<button
 							type="button"
@@ -947,13 +1050,17 @@ ${content}
 			<div class="relative">
 				<button
 					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'edit' ? 'bg-base-300' : ''}"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'edit'
+						? 'bg-base-300'
+						: ''}"
 					on:click={() => toggleMenu('edit')}
 				>
 					Edit
 				</button>
 				{#if activeMenu === 'edit'}
-					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+					<div
+						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
+					>
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
@@ -961,7 +1068,9 @@ ${content}
 						>
 							<span class="w-4">↩️</span>
 							<span>Undo</span>
-							<span class="ml-auto text-xs text-base-content/50">Ctrl+Z</span>
+							<span class="ml-auto text-xs text-base-content/50"
+								>Ctrl+Z</span
+							>
 						</button>
 						<button
 							type="button"
@@ -970,7 +1079,9 @@ ${content}
 						>
 							<span class="w-4">↪️</span>
 							<span>Redo</span>
-							<span class="ml-auto text-xs text-base-content/50">Ctrl+Y</span>
+							<span class="ml-auto text-xs text-base-content/50"
+								>Ctrl+Y</span
+							>
 						</button>
 						<div class="my-1 border-t border-base-300"></div>
 						<button
@@ -980,7 +1091,9 @@ ${content}
 						>
 							<span class="w-4">📋</span>
 							<span>Select All</span>
-							<span class="ml-auto text-xs text-base-content/50">Ctrl+A</span>
+							<span class="ml-auto text-xs text-base-content/50"
+								>Ctrl+A</span
+							>
 						</button>
 					</div>
 				{/if}
@@ -990,17 +1103,24 @@ ${content}
 			<div class="relative">
 				<button
 					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'view' ? 'bg-base-300' : ''}"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'view'
+						? 'bg-base-300'
+						: ''}"
 					on:click={() => toggleMenu('view')}
 				>
 					View
 				</button>
 				{#if activeMenu === 'view'}
-					<div class="absolute left-0 top-full z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+					<div
+						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
+					>
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={() => { showPreview = !showPreview; activeMenu = null; }}
+							on:click={() => {
+								showPreview = !showPreview;
+								activeMenu = null;
+							}}
 						>
 							<span class="w-4">{showPreview ? '✓' : ''}</span>
 							<span>Show Preview</span>
@@ -1013,13 +1133,17 @@ ${content}
 			<div class="relative">
 				<button
 					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'help' ? 'bg-base-300' : ''}"
+					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'help'
+						? 'bg-base-300'
+						: ''}"
 					on:click={() => toggleMenu('help')}
 				>
 					Help
 				</button>
 				{#if activeMenu === 'help'}
-					<div class="absolute left-0 top-full z-50 min-w-56 rounded-b-lg border border-base-300 bg-base-100 shadow-lg">
+					<div
+						class="absolute top-full left-0 z-50 min-w-56 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
+					>
 						<div class="px-4 py-2 text-base-content/70">
 							<p class="font-semibold">Keyboard Shortcuts</p>
 							<div class="mt-2 space-y-1 text-xs">
@@ -1046,21 +1170,25 @@ ${content}
 			{fontFamily}
 			{textColor}
 			{bgColor}
-			isInTable={isInTable}
+			{isInTable}
 		/>
 	{/if}
 
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- Editor surface styled to match preview (.prose inside a rounded, bordered card) -->
-	<div class="mt-2 rounded-box border border-base-300 bg-base-100 p-4" on:click={closeMenus}>
+	<div
+		class="mt-2 rounded-box border border-base-300 bg-base-100 p-4"
+		on:click={closeMenus}
+	>
 		<div
-			class="prose max-w-none focus:outline-none {editorClassName} {disabled ? 'opacity-70 cursor-not-allowed' : ''}"
+			class="prose max-w-none focus:outline-none {editorClassName} {disabled
+				? 'cursor-not-allowed opacity-70'
+				: ''}"
 			contenteditable={!disabled}
 			bind:this={editorElement}
 			{placeholder}
 			on:input={syncFromDom}
-		>
-		</div>
+		></div>
 	</div>
 
 	{#if showPreview}
@@ -1070,9 +1198,9 @@ ${content}
 
 <!-- Link Dialog -->
 {#if showLinkDialog}
-	<div class="d-modal d-modal-open">
+	<div class="d-modal-open d-modal">
 		<div class="d-modal-box max-w-md">
-			<h3 class="font-bold text-lg mb-4">Insert Link</h3>
+			<h3 class="mb-4 text-lg font-bold">Insert Link</h3>
 			<div class="space-y-4">
 				<div>
 					<label class="d-label" for="linkText">
@@ -1081,42 +1209,64 @@ ${content}
 					<input
 						id="linkText"
 						type="text"
-						class="d-input d-input-bordered w-full"
+						class="d-input-bordered d-input w-full"
 						placeholder="Display text (optional)"
 						bind:value={linkText}
 					/>
 				</div>
 				<div>
 					<label class="d-label" for="linkUrl">
-						<span class="d-label-text">URL <span class="text-error">*</span></span>
+						<span class="d-label-text"
+							>URL <span class="text-error">*</span></span
+						>
 					</label>
 					<input
 						id="linkUrl"
 						type="url"
-						class="d-input d-input-bordered w-full"
+						class="d-input-bordered d-input w-full"
 						placeholder="https://example.com"
 						bind:value={linkUrl}
 					/>
 				</div>
 			</div>
 			<div class="d-modal-action">
-				<button type="button" class="d-btn d-btn-ghost" on:click={() => { showLinkDialog = false; linkUrl = ''; linkText = ''; }}>
+				<button
+					type="button"
+					class="d-btn d-btn-ghost"
+					on:click={() => {
+						showLinkDialog = false;
+						linkUrl = '';
+						linkText = '';
+					}}
+				>
 					Cancel
 				</button>
-				<button type="button" class="d-btn d-btn-primary" on:click={insertLink} disabled={!linkUrl}>
+				<button
+					type="button"
+					class="d-btn d-btn-primary"
+					on:click={insertLink}
+					disabled={!linkUrl}
+				>
 					Insert Link
 				</button>
 			</div>
 		</div>
-		<div class="d-modal-backdrop" on:click={() => showLinkDialog = false} on:keydown={(e) => e.key === 'Escape' && (showLinkDialog = false)} role="button" tabindex="-1"></div>
+		<div
+			class="d-modal-backdrop"
+			on:click={() => (showLinkDialog = false)}
+			on:keydown={(e) =>
+				e.key === 'Escape' && (showLinkDialog = false)}
+			role="button"
+			tabindex="-1"
+		></div>
 	</div>
 {/if}
 
 <!-- Image Dialog -->
 {#if showImageDialog}
-	<div class="d-modal d-modal-open">
+	<div class="d-modal-open d-modal">
 		<div class="d-modal-box max-w-md">
-			<h3 class="font-bold text-lg mb-4">Insert Image</h3>
+			<h3 class="mb-4 text-lg font-bold">Insert Image</h3>
 			<div class="space-y-4">
 				<div>
 					<label class="d-label">
@@ -1125,7 +1275,7 @@ ${content}
 					<input
 						type="file"
 						accept="image/*"
-						class="d-file-input d-file-input-bordered w-full"
+						class="d-file-input-bordered d-file-input w-full"
 						on:change={handleImageUpload}
 					/>
 				</div>
@@ -1137,40 +1287,65 @@ ${content}
 					<input
 						id="imageUrl"
 						type="url"
-						class="d-input d-input-bordered w-full"
+						class="d-input-bordered d-input w-full"
 						placeholder="https://example.com/image.jpg"
 						bind:value={imageUrl}
 					/>
 				</div>
 				<div>
 					<label class="d-label" for="imageAlt">
-						<span class="d-label-text">Alt Text (for accessibility)</span>
+						<span class="d-label-text"
+							>Alt Text (for accessibility)</span
+						>
 					</label>
 					<input
 						id="imageAlt"
 						type="text"
-						class="d-input d-input-bordered w-full"
+						class="d-input-bordered d-input w-full"
 						placeholder="Image description"
 						bind:value={imageAlt}
 					/>
 				</div>
 				{#if imageUrl}
-					<div class="border rounded p-2">
-						<p class="text-xs text-base-content/70 mb-2">Preview:</p>
-						<img src={imageUrl} alt={imageAlt} class="max-h-32 mx-auto" />
+					<div class="rounded border p-2">
+						<p class="mb-2 text-xs text-base-content/70">Preview:</p>
+						<img
+							src={imageUrl}
+							alt={imageAlt}
+							class="mx-auto max-h-32"
+						/>
 					</div>
 				{/if}
 			</div>
 			<div class="d-modal-action">
-				<button type="button" class="d-btn d-btn-ghost" on:click={() => { showImageDialog = false; imageUrl = ''; imageAlt = ''; }}>
+				<button
+					type="button"
+					class="d-btn d-btn-ghost"
+					on:click={() => {
+						showImageDialog = false;
+						imageUrl = '';
+						imageAlt = '';
+					}}
+				>
 					Cancel
 				</button>
-				<button type="button" class="d-btn d-btn-primary" on:click={insertImage} disabled={!imageUrl}>
+				<button
+					type="button"
+					class="d-btn d-btn-primary"
+					on:click={insertImage}
+					disabled={!imageUrl}
+				>
 					Insert Image
 				</button>
 			</div>
 		</div>
-		<div class="d-modal-backdrop" on:click={() => showImageDialog = false} on:keydown={(e) => e.key === 'Escape' && (showImageDialog = false)} role="button" tabindex="-1"></div>
+		<div
+			class="d-modal-backdrop"
+			on:click={() => (showImageDialog = false)}
+			on:keydown={(e) =>
+				e.key === 'Escape' && (showImageDialog = false)}
+			role="button"
+			tabindex="-1"
+		></div>
 	</div>
 {/if}
-

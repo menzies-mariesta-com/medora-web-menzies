@@ -42,7 +42,6 @@ export const getSpecializationWithRelations = query(async () => {
 	});
 });
 
-
 export const getSpecializationCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
