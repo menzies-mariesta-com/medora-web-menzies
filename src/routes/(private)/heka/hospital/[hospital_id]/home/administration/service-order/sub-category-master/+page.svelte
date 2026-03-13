@@ -3,14 +3,17 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-import {
+	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import {
 		getSubCategoryPaginated,
 		deleteSubCategory
 	} from '$lib/remote/table/information-table/sub-category.remote';
-import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-import { getCategory } from '$lib/remote/table/information-table/category.remote';
-import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-type';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import { getCategory } from '$lib/remote/table/information-table/category.remote';
+	import type {
+		CategorySchema,
+		SubCategorySchema
+	} from '$lib/server/db/schema-type';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import SubCategoryFormModal from '$lib/component/local/private/heka/administration/category/SubCategoryFormModal.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -27,7 +30,7 @@ import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-ty
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
-		const toastService = new ToastService();
+	const toastService = new ToastService();
 
 	let { data } = $props();
 
@@ -39,10 +42,11 @@ import type { CategorySchema, SubCategorySchema } from '$lib/server/db/schema-ty
 	);
 	/** Data is always fetched at hospital level (no branch filter). */
 
-	let subCategoryResult = $state<PaginatedResult<SubCategorySchema> | null>(null);
+	let subCategoryResult =
+		$state<PaginatedResult<SubCategorySchema> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let categories = $state<CategorySchema[]>([]);
+	let categories = $state<CategorySchema[]>([]);
 	let isLoading = $state(false);
 
 	const subCategories = $derived(subCategoryResult?.data ?? []);
@@ -173,13 +177,13 @@ let categories = $state<CategorySchema[]>([]);
 			{#if isLoading && subCategories.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={subCategories}
 						columns={subCategoryColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
@@ -207,7 +211,8 @@ let categories = $state<CategorySchema[]>([]);
 									</DaisyUiButton>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row as SubCategorySchema)}
+										onClick={() =>
+											handleDelete(row as SubCategorySchema)}
 									>
 										<LucideTrash2 />
 									</DaisyUiButton>

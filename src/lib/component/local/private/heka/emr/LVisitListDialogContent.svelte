@@ -35,9 +35,11 @@
 		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let visitTypeOptions = $state<{ id: number; name: string | null }[]>([]);
+	let visitTypeOptions = $state<
+		{ id: number; name: string | null }[]
+	>([]);
 	let isLoading = $state(false);
-let tableFilters = $state<Record<string, string>>({});
+	let tableFilters = $state<Record<string, string>>({});
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
@@ -55,14 +57,14 @@ let tableFilters = $state<Record<string, string>>({});
 			id: 'patientCode',
 			header: 'Patient Code',
 			widthClass: 'w-32 min-w-[8rem]',
-		filterable: true,
+			filterable: true,
 			field: 'patient.code'
 		},
 		{
 			id: 'patientName',
 			header: 'Patient Name',
 			widthClass: 'w-48 min-w-[12rem]',
-		filterable: true,
+			filterable: true,
 			format: (_value, row) =>
 				row.patient
 					? StringUtil.patientDisplayName(row.patient as any)
@@ -72,21 +74,21 @@ let tableFilters = $state<Record<string, string>>({});
 			id: 'hospitalName',
 			header: 'Hospital Name',
 			widthClass: 'w-40 min-w-[10rem]',
-		filterable: true,
+			filterable: true,
 			field: 'hospital.name'
 		},
 		{
 			id: 'branchName',
 			header: 'Branch Name',
 			widthClass: 'w-40 min-w-[10rem]',
-		filterable: true,
+			filterable: true,
 			field: 'branch.name'
 		},
 		{
 			id: 'doctorName',
 			header: 'Doctor Name',
 			widthClass: 'w-40 min-w-[10rem]',
-		filterable: true,
+			filterable: true,
 			format: (_value, row) =>
 				row.doctor
 					? StringUtil.fullNameWithTitle(
@@ -101,14 +103,14 @@ let tableFilters = $state<Record<string, string>>({});
 			id: 'visitType',
 			header: 'Visit Type',
 			widthClass: 'w-32 min-w-[8rem]',
-		filterable: true,
-		filterType: 'select',
-		filterOptionsGetter: () =>
-			visitTypeOptions.map((vt) => ({
-				value: String(vt.id),
-				label: vt.name ?? `Type ${vt.id}`
-			})),
-		field: 'visitType.name'
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: () =>
+				visitTypeOptions.map((vt) => ({
+					value: String(vt.id),
+					label: vt.name ?? `Type ${vt.id}`
+				})),
+			field: 'visitType.name'
 		},
 		{
 			id: 'status',
@@ -127,14 +129,14 @@ let tableFilters = $state<Record<string, string>>({});
 				page: currentPage,
 				pageSize,
 				hospitalId: hospitalId ?? undefined,
-			patientName: tableFilters.patientName?.trim() || undefined,
-			patientCode: tableFilters.patientCode?.trim() || undefined,
-			hospitalName: tableFilters.hospitalName?.trim() || undefined,
-			branchName: tableFilters.branchName?.trim() || undefined,
-			doctorName: tableFilters.doctorName?.trim() || undefined,
-			visitTypeId: tableFilters.visitType
-				? Number(tableFilters.visitType)
-				: undefined,
+				patientName: tableFilters.patientName?.trim() || undefined,
+				patientCode: tableFilters.patientCode?.trim() || undefined,
+				hospitalName: tableFilters.hospitalName?.trim() || undefined,
+				branchName: tableFilters.branchName?.trim() || undefined,
+				doctorName: tableFilters.doctorName?.trim() || undefined,
+				visitTypeId: tableFilters.visitType
+					? Number(tableFilters.visitType)
+					: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -192,13 +194,15 @@ let tableFilters = $state<Record<string, string>>({});
 			<DaisyUiLoading className="d-loading-xl" />
 		</div>
 	{:else}
-		<div class="min-h-0 flex-1 overflow-auto px-4 py-2 {TableEnum.HEIGHT}">
+		<div
+			class="min-h-0 flex-1 overflow-auto px-4 py-2 {TableEnum.HEIGHT}"
+		>
 			<MariTable
 				rows={visits}
 				columns={visitColumns}
-				isLoading={isLoading}
+				{isLoading}
 				bind:pageSize={pageSizeStr}
-				bind:currentPage={currentPage}
+				bind:currentPage
 				totalRowCount={total}
 				showRefreshButton={true}
 				refreshTooltip="Refresh visits"
@@ -225,9 +229,7 @@ let tableFilters = $state<Record<string, string>>({});
 					}, 350);
 				}}
 				on:select={(event) =>
-					selectPatient(
-						event.detail as PatientVisitWithRelations
-					)}
+					selectPatient(event.detail as PatientVisitWithRelations)}
 			/>
 		</div>
 	{/if}

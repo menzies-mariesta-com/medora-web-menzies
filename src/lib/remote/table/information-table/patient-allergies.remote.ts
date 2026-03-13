@@ -212,33 +212,34 @@ export const inactivateOtherPatientAllergiesForPatient = command(
 );
 
 /** Inactivate all patient allergy records for a patient that have the given allergyId (e.g. "No Known Allergy"). */
-export const inactivatePatientAllergiesByAllergyIdForPatient = command(
-	'unchecked' as const,
-	async ({
-		patientId,
-		allergyId,
-		deactivationRemark
-	}: {
-		patientId: string;
-		allergyId: number;
-		deactivationRemark: string;
-	}): Promise<void> => {
-		await ensureDb()
-			.update(table.patientAllergyTable)
-			.set({
-				statusId: StatusEnum.INACTIVE,
-				deactivationRemark: deactivationRemark.trim() || null
-			})
-			.where(
-				and(
-					eq(table.patientAllergyTable.patientId, patientId),
-					eq(table.patientAllergyTable.allergyId, allergyId),
-					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
-				)
-			);
-		getPatientAllergies().refresh();
-	}
-);
+export const inactivatePatientAllergiesByAllergyIdForPatient =
+	command(
+		'unchecked' as const,
+		async ({
+			patientId,
+			allergyId,
+			deactivationRemark
+		}: {
+			patientId: string;
+			allergyId: number;
+			deactivationRemark: string;
+		}): Promise<void> => {
+			await ensureDb()
+				.update(table.patientAllergyTable)
+				.set({
+					statusId: StatusEnum.INACTIVE,
+					deactivationRemark: deactivationRemark.trim() || null
+				})
+				.where(
+					and(
+						eq(table.patientAllergyTable.patientId, patientId),
+						eq(table.patientAllergyTable.allergyId, allergyId),
+						eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
+					)
+				);
+			getPatientAllergies().refresh();
+		}
+	);
 
 // create
 export const createPatientAllergies = command(

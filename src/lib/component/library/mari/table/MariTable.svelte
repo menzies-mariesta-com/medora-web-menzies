@@ -17,55 +17,55 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 
-export type MariTableColumn<T = any> = {
-	/**
-	 * Unique id for the column, also used as fallback key for value lookup.
-	 */
-	id: string;
-	/**
-	 * Header text shown in the table.
-	 */
-	header: string;
-	/**
-	 * Dot-notation path into the row object, e.g. `patient.name`.
-	 * If omitted, `row[id]` will be used.
-	 */
-	field?: string;
-	/**
-	 * Optional tailwind / daisyui width class, e.g. `w-32 min-w-[8rem]`.
-	 */
-	widthClass?: string;
-	headerClass?: string;
-	cellClass?: string;
-	/**
-	 * Optional per-row cell class generator.
-	 */
-	cellClassGetter?: (row: T, rowIndex: number) => string;
-	/**
-	 * Whether this column should show a filter control when column filters are enabled.
-	 * Defaults to true.
-	 */
-	filterable?: boolean;
-	/**
-	 * Type of header filter control to render.
-	 * - "text" (default): simple text input
-	 * - "select": dropdown select (options provided via filterOptions or filterOptionsGetter)
-	 */
-	filterType?: 'text' | 'select';
-	/**
-	 * Static options for select-style filters.
-	 */
-	filterOptions?: { value: string; label: string }[];
-	/**
-	 * Dynamic options for select-style filters. Called on each render so it can
-	 * depend on reactive data in the parent.
-	 */
-	filterOptionsGetter?: () => { value: string; label: string }[];
-	/**
-	 * Optional formatter for the cell value.
-	 */
-	format?: (value: any, row: T, rowIndex: number) => any;
-};
+	export type MariTableColumn<T = any> = {
+		/**
+		 * Unique id for the column, also used as fallback key for value lookup.
+		 */
+		id: string;
+		/**
+		 * Header text shown in the table.
+		 */
+		header: string;
+		/**
+		 * Dot-notation path into the row object, e.g. `patient.name`.
+		 * If omitted, `row[id]` will be used.
+		 */
+		field?: string;
+		/**
+		 * Optional tailwind / daisyui width class, e.g. `w-32 min-w-[8rem]`.
+		 */
+		widthClass?: string;
+		headerClass?: string;
+		cellClass?: string;
+		/**
+		 * Optional per-row cell class generator.
+		 */
+		cellClassGetter?: (row: T, rowIndex: number) => string;
+		/**
+		 * Whether this column should show a filter control when column filters are enabled.
+		 * Defaults to true.
+		 */
+		filterable?: boolean;
+		/**
+		 * Type of header filter control to render.
+		 * - "text" (default): simple text input
+		 * - "select": dropdown select (options provided via filterOptions or filterOptionsGetter)
+		 */
+		filterType?: 'text' | 'select';
+		/**
+		 * Static options for select-style filters.
+		 */
+		filterOptions?: { value: string; label: string }[];
+		/**
+		 * Dynamic options for select-style filters. Called on each render so it can
+		 * depend on reactive data in the parent.
+		 */
+		filterOptionsGetter?: () => { value: string; label: string }[];
+		/**
+		 * Optional formatter for the cell value.
+		 */
+		format?: (value: any, row: T, rowIndex: number) => any;
+	};
 
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
@@ -170,7 +170,9 @@ export type MariTableColumn<T = any> = {
 	const pageStart = $derived(
 		total === 0 ? 0 : (currentPage - 1) * pageSizeNum + 1
 	);
-	const pageEnd = $derived(Math.min(currentPage * pageSizeNum, total));
+	const pageEnd = $derived(
+		Math.min(currentPage * pageSizeNum, total)
+	);
 
 	const pagedRows = $derived(
 		useRemoteFilters
@@ -222,7 +224,8 @@ export type MariTableColumn<T = any> = {
 	}
 
 	function getVisiblePages() {
-		const pages: Array<{ type: 'page' | 'ellipsis'; page?: number }> = [];
+		const pages: Array<{ type: 'page' | 'ellipsis'; page?: number }> =
+			[];
 
 		const maxButtons = 5;
 
@@ -265,7 +268,7 @@ export type MariTableColumn<T = any> = {
 		return pages;
 	}
 
-function handleFilterInputEvent(columnId: string, event: Event) {
+	function handleFilterInputEvent(columnId: string, event: Event) {
 		const target = event.currentTarget as
 			| HTMLInputElement
 			| HTMLSelectElement
@@ -397,7 +400,7 @@ function handleFilterInputEvent(columnId: string, event: Event) {
 								{#if isFilterable}
 									{#if filterType === 'select' && selectOptions}
 										<select
-											class="d-select d-select-sm w-full"
+											class="d-select w-full d-select-sm"
 											value={columnFilters[column.id] ?? ''}
 											on:change={(event) =>
 												handleFilterInputEvent(column.id, event)}

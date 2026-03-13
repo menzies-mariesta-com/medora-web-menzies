@@ -49,32 +49,33 @@
 	let isLoading = $state(false);
 	let statusOptions = $state<StatusSchema[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
-const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
-	{
-		id: 'id',
-		header: m.id(),
-		widthClass: 'w-16 min-w-[4rem]',
-		filterable: false
-	},
-	{
-		id: 'name',
-		header: m.name(),
-		widthClass: 'w-64 min-w-[12rem]',
-		filterable: true,
-		field: 'name'
-	},
-	{
-		id: 'status',
-		header: m.status(),
-		widthClass: 'w-40 min-w-[10rem]',
-		filterable: true,
-		format: (_value, row) =>
-			statusOptions.find((s) => s.id === row.statusId)?.name ??
-			String(row.statusId)
-	}
-];
+	const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
+		{
+			id: 'id',
+			header: m.id(),
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false
+		},
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-64 min-w-[12rem]',
+			filterable: true,
+			field: 'name'
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true,
+			format: (_value, row) =>
+				statusOptions.find((s) => s.id === row.statusId)?.name ??
+				String(row.statusId)
+		}
+	];
 
 	async function fetchGroups(forceRefresh = false) {
 		if (!hospitalId) return;
@@ -160,7 +161,8 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 		const result = await dialogService.open({
 			title: m.manage_page_access(),
 			component: UserGroupPagesModal,
-			modalClassName: 'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto'
+			modalClassName:
+				'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
 		if (result.confirmed) fetchGroups(true);
 	}
@@ -180,13 +182,13 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 			{#if isLoading && groups.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={groups}
 						columns={userGroupColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}
@@ -213,33 +215,33 @@ const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
 							}, 350);
 						}}
 					>
-					<svelte:fragment slot="rowActions" let:row>
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openPagesModal(row)}
-									title="Manage which pages this group can access"
-								>
-									<LucideList />
-									{m.pages()}
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() => handleDelete(row)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
-					</svelte:fragment>
-				</MariTable>
+						<svelte:fragment slot="rowActions" let:row>
+							<td class="text-right">
+								<div class="flex justify-end gap-2">
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openPagesModal(row)}
+										title="Manage which pages this group can access"
+									>
+										<LucideList />
+										{m.pages()}
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openEdit(row)}
+									>
+										<LucidePencil />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										onClick={() => handleDelete(row)}
+									>
+										<LucideTrash2 />
+									</DaisyUiButton>
+								</div>
+							</td>
+						</svelte:fragment>
+					</MariTable>
 				</div>
 				{#if totalPages > 1}
 					<div class="mt-4 flex justify-center gap-2">

@@ -45,15 +45,18 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-let patientResult =
-	$state<PaginatedResult<PatientWithRelations> | null>(null);
-let currentPage = $state(1);
-let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let isLoading = $state(false);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let patientResult =
+		$state<PaginatedResult<PatientWithRelations> | null>(null);
+	let currentPage = $state(1);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
+	let isLoading = $state(false);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
-let patientList = $derived(patientResult?.data ?? []);
+	let patientList = $derived(patientResult?.data ?? []);
 	const totalPages = $derived(patientResult?.totalPages ?? 1);
 	const total = $derived(patientResult?.total ?? 0);
 
@@ -256,9 +259,7 @@ let patientList = $derived(patientResult?.data ?? []);
 				const r = row as PatientWithRelations;
 				if (!r.guardianName && !r.guardianPhone) return '—';
 				return `${r.guardianName ?? '—'}${
-					r.guardianPhone
-						? ` · ${r.guardianPhone}`
-						: ''
+					r.guardianPhone ? ` · ${r.guardianPhone}` : ''
 				}`;
 			}
 		},
@@ -301,13 +302,13 @@ let patientList = $derived(patientResult?.data ?? []);
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="{TableEnum.HEIGHT}">
+	<div class={TableEnum.HEIGHT}>
 		<MariTable
 			rows={patientList}
 			columns={patientColumns}
-			isLoading={isLoading}
+			{isLoading}
 			bind:pageSize={filterPageSize}
-			bind:currentPage={currentPage}
+			bind:currentPage
 			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip="Refresh data"

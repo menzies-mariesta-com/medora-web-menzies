@@ -37,9 +37,9 @@
 		return currentSearch ? `${base}${currentSearch}` : base;
 	}
 
-const selectedVisitId = $derived(
-	page.url.searchParams.get('visitId') ?? ''
-);
+	const selectedVisitId = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 
 	function handleVisitSelected(data: {
 		visitId: number;
@@ -141,4 +141,3 @@ const selectedVisitId = $derived(
 		padding: 0;
 	}
 </style>
-
