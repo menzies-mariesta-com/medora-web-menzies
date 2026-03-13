@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, inArray, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by serviceOrderId/serviceId/status/id)
 export const getServiceOrderDetail = query(
@@ -256,5 +256,38 @@ export const deleteServiceOrderDetailComplete = command(
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+	}
+);
+
+// mark nursing complete time (once)
+export const markServiceOrderDetailNursingComplete = command(
+	'unchecked' as const,
+	async ({ id }: { id: number }): Promise<ServiceOrderDetailSchema | null> => {
+		const [updated] = await ensureDb()
+			.update(table.serviceOrderDetailTable)
+			.set({
+				nursingCompleteTime: new Date().toISOString()
+			} as ServiceOrderDetailSchemaUpdate)
+			.where(
+				and(
+					eq(table.serviceOrderDetailTable.id, id),
+					isNull(table.serviceOrderDetailTable.nursingCompleteTime)
+				)
+			)
+			.returning();
+
+		// If already completed, return current row instead of failing.
+		if (!updated) {
+			const [existing] = await ensureDb()
+				.select()
+				.from(table.serviceOrderDetailTable)
+				.where(eq(table.serviceOrderDetailTable.id, id));
+			return existing ?? null;
+		}
+
+		getServiceOrderDetail(undefined).refresh();
+		getServiceOrderDetailCount().refresh();
+		getServiceOrderDetailPaginated(undefined).refresh();
+		return updated;
 	}
 );
