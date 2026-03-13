@@ -963,6 +963,10 @@ export const serviceOrderDetailTable = pgTable(
 			scale: 2
 		}),
 		serviceUnit: integer('service_unit'),
+		nursingCompleteTime: timestamp('nursing_complete_time', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
