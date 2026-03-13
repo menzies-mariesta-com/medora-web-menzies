@@ -68,14 +68,13 @@ export const getPageById = query(
 );
 
 // get all with related data (module, status, etc.)
-export const getPageWithRelations = query(
-	async () =>
-		ensureDb().query.pageTable.findMany({
-			with: {
-				module: true,
-				status: true
-			}
-		})
+export const getPageWithRelations = query(async () =>
+	ensureDb().query.pageTable.findMany({
+		with: {
+			module: true,
+			status: true
+		}
+	})
 );
 
 export type PageWithRelations = Awaited<

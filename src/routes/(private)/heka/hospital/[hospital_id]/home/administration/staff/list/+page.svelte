@@ -41,10 +41,13 @@
 	let staffResult =
 		$state<PaginatedResult<StaffWithRelations> | null>(null);
 	let currentPage = $state(1);
-	let filterPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let filterPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
 	let searchInput = $state('');
 	let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let isLoading = $state(false);
 
 	const staffList = $derived(staffResult?.data ?? []);
@@ -185,119 +188,119 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 		fetchStaff(true);
 	}
 
-const staffColumns: MariTableColumn<StaffWithRelations>[] = [
-	{
-		id: 'code',
-		header: m.staff_code(),
-		widthClass: 'w-32 min-w-[8rem]',
-		filterable: true
-	},
-	{
-		id: 'name',
-		header: m.name(),
-		widthClass: 'w-64 min-w-[16rem]',
-		filterable: true,
-		format: (_value, row) =>
-			StringUtil.fullNameWithTitle(
-				(row as StaffWithRelations).title?.name,
-				(row as StaffWithRelations).firstName,
-				(row as StaffWithRelations).middleName,
-				(row as StaffWithRelations).lastName
-			)
-	},
-	{
-		id: 'identity',
-		header: m.identity(),
-		widthClass: 'w-64 min-w-[16rem]',
-		filterable: false,
-		format: (_value, row) => {
-			const r = row as StaffWithRelations;
-			return `(${r.identityType?.name ?? '—'})${r.identityNo ?? ''}`;
+	const staffColumns: MariTableColumn<StaffWithRelations>[] = [
+		{
+			id: 'code',
+			header: m.staff_code(),
+			widthClass: 'w-32 min-w-[8rem]',
+			filterable: true
+		},
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-64 min-w-[16rem]',
+			filterable: true,
+			format: (_value, row) =>
+				StringUtil.fullNameWithTitle(
+					(row as StaffWithRelations).title?.name,
+					(row as StaffWithRelations).firstName,
+					(row as StaffWithRelations).middleName,
+					(row as StaffWithRelations).lastName
+				)
+		},
+		{
+			id: 'identity',
+			header: m.identity(),
+			widthClass: 'w-64 min-w-[16rem]',
+			filterable: false,
+			format: (_value, row) => {
+				const r = row as StaffWithRelations;
+				return `(${r.identityType?.name ?? '—'})${r.identityNo ?? ''}`;
+			}
+		},
+		{
+			id: 'phonePrimary',
+			header: m.phone_primary(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true
+		},
+		{
+			id: 'phoneSecondary',
+			header: m.phone_secondary(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false
+		},
+		{
+			id: 'dateOfBirth',
+			header: m.date_of_birth(),
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			format: (value) => formatDate(value)
+		},
+		{
+			id: 'staffEmploymentType',
+			header: m.employment_type(),
+			widthClass: 'w-56 min-w-[14rem]',
+			field: 'staffEmploymentType.name',
+			filterable: false
+		},
+		{
+			id: 'staffType',
+			header: m.staff_type(),
+			widthClass: 'w-40 min-w-[10rem]',
+			field: 'staffType.name',
+			filterable: false
+		},
+		{
+			id: 'specialization',
+			header: m.specialization(),
+			widthClass: 'w-48 min-w-[12rem]',
+			field: 'specialization.name',
+			filterable: false
+		},
+		{
+			id: 'maritalStatus',
+			header: m.marital_status(),
+			widthClass: 'w-40 min-w-[10rem]',
+			field: 'maritalStatus.name',
+			filterable: false
+		},
+		{
+			id: 'nationality',
+			header: m.nationality(),
+			widthClass: 'w-40 min-w-[10rem]',
+			field: 'nationality.name',
+			filterable: false
+		},
+		{
+			id: 'gender',
+			header: m.gender(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'gender.name',
+			filterable: false
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-32 min-w-[8rem]',
+			field: 'status.name',
+			filterable: false
+		},
+		{
+			id: 'createdAt',
+			header: m.created_at(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			format: (value) => formatDateTime(value)
+		},
+		{
+			id: 'updatedAt',
+			header: m.updated_at(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			format: (value) => formatDateTime(value)
 		}
-	},
-	{
-		id: 'phonePrimary',
-		header: m.phone_primary(),
-		widthClass: 'w-40 min-w-[10rem]',
-		filterable: true
-	},
-	{
-		id: 'phoneSecondary',
-		header: m.phone_secondary(),
-		widthClass: 'w-40 min-w-[10rem]',
-		filterable: false
-	},
-	{
-		id: 'dateOfBirth',
-		header: m.date_of_birth(),
-		widthClass: 'w-36 min-w-[9rem]',
-		filterable: false,
-		format: (value) => formatDate(value)
-	},
-	{
-		id: 'staffEmploymentType',
-		header: m.employment_type(),
-		widthClass: 'w-56 min-w-[14rem]',
-		field: 'staffEmploymentType.name',
-		filterable: false
-	},
-	{
-		id: 'staffType',
-		header: m.staff_type(),
-		widthClass: 'w-40 min-w-[10rem]',
-		field: 'staffType.name',
-		filterable: false
-	},
-	{
-		id: 'specialization',
-		header: m.specialization(),
-		widthClass: 'w-48 min-w-[12rem]',
-		field: 'specialization.name',
-		filterable: false
-	},
-	{
-		id: 'maritalStatus',
-		header: m.marital_status(),
-		widthClass: 'w-40 min-w-[10rem]',
-		field: 'maritalStatus.name',
-		filterable: false
-	},
-	{
-		id: 'nationality',
-		header: m.nationality(),
-		widthClass: 'w-40 min-w-[10rem]',
-		field: 'nationality.name',
-		filterable: false
-	},
-	{
-		id: 'gender',
-		header: m.gender(),
-		widthClass: 'w-32 min-w-[8rem]',
-		field: 'gender.name',
-		filterable: false
-	},
-	{
-		id: 'status',
-		header: m.status(),
-		widthClass: 'w-32 min-w-[8rem]',
-		field: 'status.name',
-		filterable: false
-	},
-	{
-		id: 'createdAt',
-		header: m.created_at(),
-		widthClass: 'w-40 min-w-[10rem]',
-		filterable: false,
-		format: (value) => formatDateTime(value)
-	},
-	{
-		id: 'updatedAt',
-		header: m.updated_at(),
-		widthClass: 'w-40 min-w-[10rem]',
-		filterable: false,
-		format: (value) => formatDateTime(value)
-	}
-];
+	];
 </script>
 
 {#if isLoading && !staffResult}
@@ -305,13 +308,13 @@ const staffColumns: MariTableColumn<StaffWithRelations>[] = [
 		<DaisyUiLoading className="d-loading-xl" />
 	</div>
 {:else}
-	<div class="{TableEnum.HEIGHT}">
+	<div class={TableEnum.HEIGHT}>
 		<MariTable
 			rows={staffList}
 			columns={staffColumns}
-			isLoading={isLoading}
+			{isLoading}
 			bind:pageSize={filterPageSize}
-			bind:currentPage={currentPage}
+			bind:currentPage
 			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}

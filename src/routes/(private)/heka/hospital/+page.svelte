@@ -32,12 +32,53 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const hospitalColumns: MariTableColumn<HospitalWithOwner>[] = [
-		{ id: 'name', header: m.name(), widthClass: 'w-48 min-w-[10rem]', filterable: false, field: 'name', format: (v) => v ?? '—' },
-		{ id: 'code', header: m.code(), widthClass: 'w-28 min-w-[6rem]', filterable: false, field: 'code', format: (v) => v ?? '—' },
-		{ id: 'owner', header: m.owner(), widthClass: 'w-40 min-w-[10rem]', filterable: false, format: (_v, row) => row.owner?.name ?? row.owner?.email ?? '—' },
-		{ id: 'phone', header: m.phone(), widthClass: 'w-36 min-w-[9rem]', filterable: false, field: 'phone', format: (v) => v ?? '—' },
-		{ id: 'email', header: m.email(), widthClass: 'w-52 min-w-[12rem]', filterable: false, field: 'email', format: (v) => v ?? '—' },
-		{ id: 'address', header: m.address(), widthClass: 'w-80 min-w-[16rem]', filterable: false, format: (_v, row) => row.address ?? '—', cellClass: 'max-w-[200px] truncate' }
+		{
+			id: 'name',
+			header: m.name(),
+			widthClass: 'w-48 min-w-[10rem]',
+			filterable: false,
+			field: 'name',
+			format: (v) => v ?? '—'
+		},
+		{
+			id: 'code',
+			header: m.code(),
+			widthClass: 'w-28 min-w-[6rem]',
+			filterable: false,
+			field: 'code',
+			format: (v) => v ?? '—'
+		},
+		{
+			id: 'owner',
+			header: m.owner(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			format: (_v, row) => row.owner?.name ?? row.owner?.email ?? '—'
+		},
+		{
+			id: 'phone',
+			header: m.phone(),
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			field: 'phone',
+			format: (v) => v ?? '—'
+		},
+		{
+			id: 'email',
+			header: m.email(),
+			widthClass: 'w-52 min-w-[12rem]',
+			filterable: false,
+			field: 'email',
+			format: (v) => v ?? '—'
+		},
+		{
+			id: 'address',
+			header: m.address(),
+			widthClass: 'w-80 min-w-[16rem]',
+			filterable: false,
+			format: (_v, row) => row.address ?? '—',
+			cellClass: 'max-w-[200px] truncate'
+		}
 	];
 
 	let { data } = $props();
@@ -52,7 +93,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let hospitalResult = $state<PaginatedResult<HospitalWithOwner> | null>(null);
+	let hospitalResult =
+		$state<PaginatedResult<HospitalWithOwner> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
@@ -182,13 +224,13 @@
 						{m.no_hospitals_yet()}
 					</p>
 				{:else}
-					<div class="{TableEnum.HEIGHT}">
+					<div class={TableEnum.HEIGHT}>
 						<MariTable
 							rows={hospitals}
 							columns={hospitalColumns}
-							isLoading={isLoading}
+							{isLoading}
 							bind:pageSize={pageSizeStr}
-							bind:currentPage={currentPage}
+							bind:currentPage
 							totalRowCount={total}
 							showRefreshButton={true}
 							refreshTooltip={m.refresh_data()}
@@ -205,31 +247,31 @@
 							}}
 							on:pageChange={() => loadHospitals(true)}
 						>
-						<svelte:fragment slot="rowActions" let:row>
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-primary d-btn-sm"
-									onClick={() => goToHospitalHome(row.id)}
-								>
-									{m.enter()}
-								</DaisyUiButton>
-								{#if canManageHospitals}
+							<svelte:fragment slot="rowActions" let:row>
+								<div class="flex justify-end gap-2">
 									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEditHospitalModal(row)}
+										className="d-btn-primary d-btn-sm"
+										onClick={() => goToHospitalHome(row.id)}
 									>
-										<LucidePencil />
+										{m.enter()}
 									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row)}
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
-								{/if}
-							</div>
-						</svelte:fragment>
-					</MariTable>
+									{#if canManageHospitals}
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm"
+											onClick={() => openEditHospitalModal(row)}
+										>
+											<LucidePencil />
+										</DaisyUiButton>
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-error d-btn-sm"
+											onClick={() => handleDelete(row)}
+										>
+											<LucideTrash2 />
+										</DaisyUiButton>
+									{/if}
+								</div>
+							</svelte:fragment>
+						</MariTable>
 					</div>
 				{/if}
 			</DaisyUiCardBody>

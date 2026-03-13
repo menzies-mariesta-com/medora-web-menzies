@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { getModule } from '$lib/remote/table/information-table/module.remote';
 	import { getPage } from '$lib/remote/table/information-table/page.remote';
 	import {
@@ -23,11 +23,11 @@ import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUi
 	const toastService = new ToastService();
 
 	let allPages = $state<PageSchema[]>([]);
-let allModules = $state<ModuleSchema[]>([]);
-let pageSelected = $state<Record<number, boolean>>({});
-let isSaving = $state(false);
-let loaded = $state(false);
-let searchText = $state('');
+	let allModules = $state<ModuleSchema[]>([]);
+	let pageSelected = $state<Record<number, boolean>>({});
+	let isSaving = $state(false);
+	let loaded = $state(false);
+	let searchText = $state('');
 
 	const group = $derived(UserGroupPagesModalState.group);
 
@@ -48,8 +48,10 @@ let searchText = $state('');
 			const name = (p.name ?? '').toLowerCase();
 			const url = (p.pageUrl ?? '').toLowerCase();
 			const moduleName =
-				(p.moduleId != null ? moduleNameById.get(p.moduleId) : 'Other')?.toLowerCase() ??
-				'';
+				(p.moduleId != null
+					? moduleNameById.get(p.moduleId)
+					: 'Other'
+				)?.toLowerCase() ?? '';
 			return (
 				name.includes(term) ||
 				url.includes(term) ||
@@ -162,12 +164,16 @@ let searchText = $state('');
 		>
 			<DaisyUiCardBody className="gap-3 overflow-hidden p-4 min-w-0">
 				<div class="flex flex-col gap-3">
-					<div class="flex flex-wrap items-center justify-between gap-3">
+					<div
+						class="flex flex-wrap items-center justify-between gap-3"
+					>
 						<p
 							class="min-w-0 text-sm break-words text-base-content/70"
 						>
-							Select by module: allow all pages in a module or customize
-							which pages in <strong>{group?.name ?? '—'}</strong> can be accessed.
+							Select by module: allow all pages in a module or
+							customize which pages in <strong
+								>{group?.name ?? '—'}</strong
+							> can be accessed.
 						</p>
 						<div class="w-full sm:w-72">
 							<DaisyUiInputField
@@ -189,7 +195,9 @@ let searchText = $state('');
 								)}
 								{@const allChecked =
 									pagesInModule.length > 0 &&
-									pagesInModule.every((p) => pageSelected[p.id] ?? false)}
+									pagesInModule.every(
+										(p) => pageSelected[p.id] ?? false
+									)}
 								{@const someChecked = pagesInModule.some(
 									(p) => pageSelected[p.id] ?? false
 								)}
@@ -225,13 +233,13 @@ let searchText = $state('');
 					class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
 				>
 					<ul
-						class="d-menu w-full max-w-full min-w-0 gap-3 rounded-box border border-base-300 bg-base-100 p-3 grid grid-cols-1 md:grid-cols-2"
+						class="d-menu grid w-full max-w-full min-w-0 grid-cols-1 gap-3 rounded-box border border-base-300 bg-base-100 p-3 md:grid-cols-2"
 					>
 						{#each filteredPages as p (p.id)}
 							{@const isChecked = pageSelected[p.id] ?? false}
 							{@const moduleName =
 								p.moduleId != null
-									? moduleNameById.get(p.moduleId) ?? 'Other'
+									? (moduleNameById.get(p.moduleId) ?? 'Other')
 									: 'Other'}
 							<li class="min-w-0">
 								<label
@@ -260,7 +268,9 @@ let searchText = $state('');
 								</label>
 							</li>
 						{:else}
-							<li class="text-base-content/60 text-sm px-3 py-2 col-span-full">
+							<li
+								class="text-base-content/60 text-sm px-3 py-2 col-span-full"
+							>
 								No pages defined.
 							</li>
 						{/each}

@@ -31,9 +31,9 @@
 		ReferTypeSchema,
 		StatusTaggingSchema
 	} from '$lib/server/db/schema-type';
-import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-import { page } from '$app/state';
-import { AppEnum } from '$lib/model/enum/app.enum';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { page } from '$app/state';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 

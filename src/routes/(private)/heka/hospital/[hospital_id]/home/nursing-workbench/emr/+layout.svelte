@@ -14,14 +14,20 @@
 	const routerUtil = new RouterUtil();
 	const subPages = $derived(getSubPages());
 	const currentPath = $derived(
-		(pathnameForPageMatch() ?? '').replace(/\/+$/, '').replace(/\/+/g, '/') || '/'
+		(pathnameForPageMatch() ?? '')
+			.replace(/\/+$/, '')
+			.replace(/\/+/g, '/') || '/'
 	);
 	const hospitalId = $derived(page.params.hospital_id);
 	const currentSearch = $derived(page.url.search);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		if (pageUrl == null || pageUrl === '') return false;
-		const u = (pageUrl ?? '').replace(/\/+$/, '').replace(/\/+/g, '/').trim() || '/';
+		const u =
+			(pageUrl ?? '')
+				.replace(/\/+$/, '')
+				.replace(/\/+/g, '/')
+				.trim() || '/';
 		return currentPath === u || currentPath.startsWith(u + '/');
 	}
 

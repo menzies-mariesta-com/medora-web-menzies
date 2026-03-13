@@ -19,7 +19,9 @@ export const getDocumentSettings = query(
 		return ensureDb()
 			.select()
 			.from(table.documentSettingTable)
-			.where(eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE))
+			.where(
+				eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE)
+			)
 			.orderBy(table.documentSettingTable.name);
 	}
 );
@@ -40,13 +42,17 @@ export type DocumentSettingWithRelations = Awaited<
 	ReturnType<typeof getDocumentSettingsWithRelations>
 >[number];
 
-export const getDocumentSettingCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.documentSettingTable)
-		.where(eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE));
-	return row?.count ?? 0;
-});
+export const getDocumentSettingCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.documentSettingTable)
+			.where(
+				eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE)
+			);
+		return row?.count ?? 0;
+	}
+);
 
 export const getDocumentSettingsPaginated = query(
 	'unchecked' as const,

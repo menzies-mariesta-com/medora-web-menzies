@@ -18,7 +18,9 @@
 
 	/** Categories are global (master table); no hospital/branch filter. */
 
-	let categoryResult = $state<PaginatedResult<CategorySchema> | null>(null);
+	let categoryResult = $state<PaginatedResult<CategorySchema> | null>(
+		null
+	);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
@@ -73,13 +75,13 @@
 			{#if isLoading && categories.length === 0}
 				<DaisyUiLoading className="py-8" />
 			{:else}
-				<div class="{TableEnum.HEIGHT}">
+				<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={categories}
 						columns={categoryColumns}
-						isLoading={isLoading}
+						{isLoading}
 						bind:pageSize={pageSizeStr}
-						bind:currentPage={currentPage}
+						bind:currentPage
 						totalRowCount={total}
 						showRefreshButton={true}
 						refreshTooltip={m.refresh_data()}

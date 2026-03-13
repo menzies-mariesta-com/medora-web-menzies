@@ -289,17 +289,24 @@ export type StoreSchemaInsert = InferInsertModel<typeof storeTable>;
 export type StoreSchemaUpdate = Partial<StoreSchemaInsert>;
 
 export type AllergySchema = InferSelectModel<typeof allergyTable>;
-export type AllergySchemaInsert = InferInsertModel<typeof allergyTable>;
+export type AllergySchemaInsert = InferInsertModel<
+	typeof allergyTable
+>;
 export type AllergySchemaUpdate = Partial<AllergySchemaInsert>;
 
-export type DocumentTypeSchema = InferSelectModel<typeof documentTypeTable>;
+export type DocumentTypeSchema = InferSelectModel<
+	typeof documentTypeTable
+>;
 export type DocumentTypeSchemaInsert = InferInsertModel<
 	typeof documentTypeTable
 >;
-export type DocumentTypeSchemaUpdate = Partial<DocumentTypeSchemaInsert>;
+export type DocumentTypeSchemaUpdate =
+	Partial<DocumentTypeSchemaInsert>;
 
 export type DocumentSchema = InferSelectModel<typeof documentTable>;
-export type DocumentSchemaInsert = InferInsertModel<typeof documentTable>;
+export type DocumentSchemaInsert = InferInsertModel<
+	typeof documentTable
+>;
 export type DocumentSchemaUpdate = Partial<DocumentSchemaInsert>;
 
 export type PatientDocumentSchema = InferSelectModel<
@@ -311,11 +318,14 @@ export type PatientDocumentSchemaInsert = InferInsertModel<
 export type PatientDocumentSchemaUpdate =
 	Partial<PatientDocumentSchemaInsert>;
 
-export type ServiceOrderSchema = InferSelectModel<typeof serviceOrderTable>;
+export type ServiceOrderSchema = InferSelectModel<
+	typeof serviceOrderTable
+>;
 export type ServiceOrderSchemaInsert = InferInsertModel<
 	typeof serviceOrderTable
 >;
-export type ServiceOrderSchemaUpdate = Partial<ServiceOrderSchemaInsert>;
+export type ServiceOrderSchemaUpdate =
+	Partial<ServiceOrderSchemaInsert>;
 
 export type ServiceOrderDetailSchema = InferSelectModel<
 	typeof serviceOrderDetailTable

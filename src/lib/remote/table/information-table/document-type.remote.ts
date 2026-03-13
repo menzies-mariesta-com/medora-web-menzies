@@ -24,13 +24,15 @@ export const getDocumentTypes = query(
 	}
 );
 
-export const getDocumentTypeCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.documentTypeTable)
-		.where(eq(table.documentTypeTable.statusId, StatusEnum.ACTIVE));
-	return row?.count ?? 0;
-});
+export const getDocumentTypeCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.documentTypeTable)
+			.where(eq(table.documentTypeTable.statusId, StatusEnum.ACTIVE));
+		return row?.count ?? 0;
+	}
+);
 
 export const getDocumentTypesPaginated = query(
 	'unchecked' as const,

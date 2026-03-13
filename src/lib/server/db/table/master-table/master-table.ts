@@ -287,13 +287,16 @@ export const severityTable = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		name: varchar('name', { length: 512 }),
-		statusId: integer('status_id').references(() => statusTable.id).notNull().default(StatusEnum.ACTIVE),
-		...timestamps,
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
 	},
 	(table) => [
 		index('severity_name_idx').on(table.name),
-		index('severity_status_id_idx').on(table.statusId),
-	],
+		index('severity_status_id_idx').on(table.statusId)
+	]
 );
 
 export const specializationTable = pgTable(
@@ -497,6 +500,6 @@ export const visitTypeTable = pgTable(
 	(table) => [
 		index('visit_type_name_idx').on(table.name),
 		index('visit_type_code_idx').on(table.code),
-		index('visit_type_status_id_idx').on(table.statusId),
-	],
+		index('visit_type_status_id_idx').on(table.statusId)
+	]
 );
