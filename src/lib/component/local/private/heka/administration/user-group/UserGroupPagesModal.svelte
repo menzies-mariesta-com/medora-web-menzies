@@ -41,23 +41,116 @@
 	});
 
 	/** Flat list of pages, filtered by search term, preserving natural order. */
+	const pageById = $derived.by(() => {
+		const map = new Map<number, PageSchema>();
+		for (const p of allPages) {
+			map.set(p.id, p);
+		}
+		return map;
+	});
+
+	const childrenByParentId = $derived.by(() => {
+		const map = new Map<number, PageSchema[]>();
+		for (const p of allPages) {
+			if (p.parentId == null) continue;
+			if (!map.has(p.parentId)) map.set(p.parentId, []);
+			map.get(p.parentId)!.push(p);
+		}
+		for (const [_key, list] of map) {
+			list.sort(
+				(a, b) =>
+					(a.sequenceNo ?? 0) - (b.sequenceNo ?? 0) ||
+					a.id - b.id
+			);
+		}
+		return map;
+	});
+
+const depthByPageId = $derived.by(() => {
+	const depthMap = new Map<number, number>();
+	for (const p of allPages) {
+		let depth = 0;
+		let cursor = p.parentId;
+		const guard = new Set<number>();
+		while (cursor != null && !guard.has(cursor)) {
+			guard.add(cursor);
+			depth += 1;
+			cursor = pageById.get(cursor)?.parentId ?? null;
+		}
+		depthMap.set(p.id, depth);
+	}
+	return depthMap;
+});
+
+	const sortedPages = $derived.by(() => {
+		return [...allPages].sort((a, b) => {
+			const moduleA = a.moduleId ?? Number.MAX_SAFE_INTEGER;
+			const moduleB = b.moduleId ?? Number.MAX_SAFE_INTEGER;
+			if (moduleA !== moduleB) return moduleA - moduleB;
+			const rootA = a.parentId == null ? 0 : 1;
+			const rootB = b.parentId == null ? 0 : 1;
+			if (rootA !== rootB) return rootA - rootB;
+			const seq = (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0);
+			if (seq !== 0) return seq;
+			return a.id - b.id;
+		});
+	});
+
+	/** Search with hierarchy support: if a page matches, include ancestors and descendants. */
 	const filteredPages = $derived.by(() => {
 		const term = searchText.trim().toLowerCase();
-		if (!term) return allPages;
-		return allPages.filter((p) => {
+		if (!term) return sortedPages;
+
+		const directMatches = new Set<number>();
+		for (const p of allPages) {
 			const name = (p.name ?? '').toLowerCase();
 			const url = (p.pageUrl ?? '').toLowerCase();
+		const parentName =
+			p.parentId != null
+				? (pageById.get(p.parentId)?.name ?? '').toLowerCase()
+				: '';
 			const moduleName =
 				(p.moduleId != null
 					? moduleNameById.get(p.moduleId)
 					: 'Other'
 				)?.toLowerCase() ?? '';
-			return (
+			if (
 				name.includes(term) ||
 				url.includes(term) ||
-				moduleName.includes(term)
-			);
-		});
+			moduleName.includes(term) ||
+			parentName.includes(term)
+			) {
+				directMatches.add(p.id);
+			}
+		}
+
+		const expanded = new Set<number>(directMatches);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const p of allPages) {
+				// include ancestors
+				if (
+					expanded.has(p.id) &&
+					p.parentId != null &&
+					!expanded.has(p.parentId)
+				) {
+					expanded.add(p.parentId);
+					changed = true;
+				}
+				// include descendants
+				if (
+					p.parentId != null &&
+					expanded.has(p.parentId) &&
+					!expanded.has(p.id)
+				) {
+					expanded.add(p.id);
+					changed = true;
+				}
+			}
+		}
+
+		return sortedPages.filter((p) => expanded.has(p.id));
 	});
 
 	/** Modules available for select-all; includes an "Other" bucket (null). */
@@ -123,10 +216,26 @@
 	}
 
 	function togglePage(pageId: number) {
-		pageSelected = {
-			...pageSelected,
-			[pageId]: !(pageSelected[pageId] ?? false)
-		};
+	const shouldCheck = !(pageSelected[pageId] ?? false);
+	const descendants: number[] = [];
+	const queue = [pageId];
+	const visited = new Set<number>(queue);
+	while (queue.length > 0) {
+		const current = queue.shift()!;
+		const children = childrenByParentId.get(current) ?? [];
+		for (const child of children) {
+			if (visited.has(child.id)) continue;
+			visited.add(child.id);
+			descendants.push(child.id);
+			queue.push(child.id);
+		}
+	}
+
+	const next = { ...pageSelected, [pageId]: shouldCheck };
+	for (const id of descendants) {
+		next[id] = shouldCheck;
+	}
+	pageSelected = next;
 	}
 
 	async function handleSave() {
@@ -241,9 +350,15 @@
 								p.moduleId != null
 									? (moduleNameById.get(p.moduleId) ?? 'Other')
 									: 'Other'}
+							{@const parentPage =
+								p.parentId != null
+									? pageById.get(p.parentId)
+									: null}
+							{@const depth = depthByPageId.get(p.id) ?? 0}
 							<li class="min-w-0">
 								<label
 									class="flex min-w-0 cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-base-200 active:bg-base-300"
+									style={`padding-left: ${0.5 + Math.min(depth, 6) * 0.75}rem`}
 								>
 									<input
 										type="checkbox"
@@ -264,6 +379,13 @@
 												>({p.pageUrl ?? ''})</span
 											>
 										</span>
+										{#if parentPage}
+											<span
+												class="block text-xs text-base-content/60"
+											>
+												Sub-page of: {parentPage.name ?? '—'}
+											</span>
+										{/if}
 									</span>
 								</label>
 							</li>

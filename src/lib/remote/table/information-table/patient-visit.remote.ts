@@ -26,12 +26,14 @@ const BRANCH_ALL_VALUE = '__all__';
 export const getPatientVisitWithRelations = query(async () => {
 	return ensureDb().query.patientVisitTable.findMany({
 		with: {
-			patient: { with: { title: true } },
+			patient: { with: { title: true, gender: true } },
 			status: true,
 			visitType: true,
 			hospital: true,
 			branch: true,
-			doctor: { with: { title: true } },
+			doctor: {
+				with: { title: true, specialization: true, staffDetail: true }
+			},
 			appointment: true,
 			diagnoses: true,
 			patientDocuments: true
@@ -174,12 +176,14 @@ export const getPatientVisitByIdWithRelations = query(
 		const row = await ensureDb().query.patientVisitTable.findFirst({
 			where: (t, { eq }) => eq(t.id, id),
 			with: {
-				patient: { with: { title: true } },
+				patient: { with: { title: true, gender: true } },
 				status: true,
 				visitType: true,
 				hospital: true,
 				branch: true,
-				doctor: { with: { title: true } },
+				doctor: {
+					with: { title: true, specialization: true, staffDetail: true }
+				},
 				appointment: true,
 				diagnoses: true,
 				patientDocuments: true
@@ -396,12 +400,14 @@ export const getPatientVisitPaginatedForEmr = query(
 			ensureDb().query.patientVisitTable.findMany({
 				where: whereExpr,
 				with: {
-					patient: { with: { title: true } },
+					patient: { with: { title: true, gender: true } },
 					status: true,
 					visitType: true,
 					hospital: true,
 					branch: true,
-					doctor: { with: { title: true } }
+					doctor: {
+						with: { title: true, specialization: true, staffDetail: true }
+					}
 				},
 				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,
