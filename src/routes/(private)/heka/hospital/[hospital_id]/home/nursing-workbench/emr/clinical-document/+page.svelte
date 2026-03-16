@@ -10,7 +10,9 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getPatientVisitByIdWithRelations
+	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getDocumentsWithRelations,
 		type DocumentWithRelations
@@ -26,6 +28,11 @@
 		DocumentTypeSchema,
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
+	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
+import {
+	buildDocumentPlaceholderContext,
+	resolveDocumentTemplate
+} from '$lib/util/document-placeholder.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -36,12 +43,7 @@
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
-let visit = $state<{
-	patientId: string;
-	hospitalId: string;
-	visitNo?: string;
-	patient?: { name?: string; patientCode?: string };
-} | null>(null);
+	let visit = $state<PatientVisitWithRelations | null>(null);
 	let documents = $state<DocumentWithRelations[]>([]);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let isLoading = $state(false);
@@ -68,7 +70,7 @@ let visit = $state<{
 	async function fetchVisit() {
 		if (!visitId) return;
 		try {
-			visit = await getPatientVisitById({ id: visitId });
+			visit = await getPatientVisitByIdWithRelations({ id: visitId });
 		} catch (err) {
 			console.error('Failed to fetch visit', err);
 		}
@@ -102,36 +104,21 @@ let visit = $state<{
 	}
 
 	function buildPlaceholderContext(doc: DocumentWithRelations) {
-		const patientName = visit?.patient?.name ?? 'Unknown Patient';
-		const patientCode = visit?.patient?.patientCode ?? '';
-		const visitNo = visit?.visitNo ?? '';
-		const documentTitle =
-			doc.documentNumber ||
-			doc.documentType?.documentType ||
-			'Document';
-
-		return {
-			'{{patient.name}}': patientName,
-			'{{patient.code}}': patientCode,
-			'{{visit.no}}': visitNo,
-			'{{document.title}}': documentTitle,
-			'{{document.code}}': doc.code ?? '',
-			'{{document.number}}': doc.documentNumber ?? '',
-			'{{print.date}}': new Date().toLocaleDateString(),
-			'{{print.time}}': new Date().toLocaleTimeString()
-		};
+		return buildDocumentPlaceholderContext(visit, doc, {
+			printBy: ''
+		});
 	}
 
 	function applyPlaceholders(
 		template: string | null | undefined,
 		context: Record<string, string>
 	): string {
-		if (!template) return '';
-		let result = template;
-		for (const [key, value] of Object.entries(context)) {
-			result = result.split(key).join(value);
-		}
-		return result;
+		return resolveDocumentTemplate(template, context);
+	}
+
+	function getResolvedDocumentHtml(doc: DocumentWithRelations): string {
+		const context = buildPlaceholderContext(doc);
+		return applyPlaceholders(doc.documentText, context).trim();
 	}
 
 	async function printDocument(doc: DocumentWithRelations) {
@@ -188,6 +175,7 @@ let visit = $state<{
 		}
 
 		const context = buildPlaceholderContext(doc);
+		const documentHtml = applyPlaceholders(doc.documentText, context).trim();
 		const marginTop = setting?.marginTop ?? 20;
 		const marginBottom = setting?.marginBottom ?? 20;
 		const marginLeft = setting?.marginLeft ?? 15;
@@ -235,6 +223,21 @@ let visit = $state<{
 						font-size: 10px;
 						color: #666;
 					}
+					table {
+						width: 100%;
+						border-collapse: collapse;
+					}
+					th,
+					td {
+						border: 1px solid #000;
+						padding: 4px 6px;
+						text-align: left;
+						vertical-align: top;
+					}
+					thead th {
+						background-color: #f5f5f5;
+						font-weight: 600;
+					}
 					@media print {
 						@page {
 							size: ${pageSize} ${orientation};
@@ -250,7 +253,7 @@ let visit = $state<{
 						: ''
 				}
 				<div class="content">
-					${doc.documentText || '<p>No content</p>'}
+					${documentHtml || '<p>No content</p>'}
 				</div>
 				${
 					showFooter && footerHtml
@@ -452,7 +455,7 @@ let visit = $state<{
 
 <!-- Document Preview Modal -->
 {#if showPreview && selectedDocument}
-	<div class="d-modal-open d-modal">
+	<div class="d-modal-open d-modal" role="dialog" aria-modal="true">
 		<div class="d-modal-box max-h-[90vh] w-[95vw] max-w-4xl">
 			<div class="mb-4 flex items-center justify-between">
 				<h3 class="text-lg font-bold">
@@ -480,8 +483,8 @@ let visit = $state<{
 			<div
 				class="max-h-[60vh] overflow-y-auto rounded-lg border bg-base-200 p-4"
 			>
-				<div class="prose max-w-none">
-					{@html selectedDocument.documentText ||
+				<div class="document-preview-content max-w-none">
+					{@html getResolvedDocumentHtml(selectedDocument) ||
 						'<p class="text-base-content/50">No content</p>'}
 				</div>
 			</div>
@@ -491,7 +494,32 @@ let visit = $state<{
 				>
 			</div>
 		</div>
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="d-modal-backdrop" onclick={closePreview}></div>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div
+			class="d-modal-backdrop"
+			role="button"
+			tabindex="0"
+			onclick={closePreview}
+		></div>
 	</div>
 {/if}
+
+<style>
+	:global(.document-preview-content table) {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	:global(.document-preview-content th),
+	:global(.document-preview-content td) {
+		border: 1px solid #000;
+		padding: 4px 6px;
+		vertical-align: top;
+		text-align: left;
+	}
+
+	:global(.document-preview-content thead th) {
+		background-color: #f5f5f5;
+		font-weight: 600;
+	}
+</style>

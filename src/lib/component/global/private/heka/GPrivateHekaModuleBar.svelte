@@ -120,13 +120,27 @@
 		searchDialogOpen = false;
 	}
 
-	// Search results: top-level pages only, with module name; filter by searchQuery.
+	// Search results: include all allowed pages (parent + sub-pages), with module name.
 	type SearchEntry = { page: PageSchema; moduleName: string };
+
+	function parentChainLabel(p: PageSchema): string {
+		const chain: string[] = [];
+		let cursor = p.parentId ?? null;
+		const guard = new Set<number>();
+		while (cursor != null && !guard.has(cursor)) {
+			guard.add(cursor);
+			const parent = orderedPageList.find((x) => x.id === cursor);
+			if (!parent) break;
+			chain.unshift(parent.name ?? String(parent.id));
+			cursor = parent.parentId ?? null;
+		}
+		return chain.join(' / ');
+	}
+
 	const searchEntries = $derived.by(() => {
 		const q = searchQuery.trim().toLowerCase();
 		const entries: SearchEntry[] = [];
 		for (const p of orderedPageList) {
-			if (p.parentId != null) continue;
 			const mod = moduleList.find((m) => m.id === p.moduleId);
 			entries.push({ page: p, moduleName: mod?.name ?? '' });
 		}
@@ -136,7 +150,8 @@
 				(e) =>
 					(e.page.name ?? '').toLowerCase().includes(q) ||
 					(e.page.pageUrl ?? '').toLowerCase().includes(q) ||
-					e.moduleName.toLowerCase().includes(q)
+					e.moduleName.toLowerCase().includes(q) ||
+					parentChainLabel(e.page).toLowerCase().includes(q)
 			)
 			.slice(0, 30);
 	});
@@ -462,6 +477,7 @@
 			/>
 			<ul class="flex max-h-80 flex-col gap-1 overflow-y-auto">
 				{#each searchEntries as entry (entry.page.id)}
+					{@const parentPath = parentChainLabel(entry.page)}
 					<li>
 						<button
 							type="button"
@@ -475,6 +491,11 @@
 								<span class="text-sm text-base-content/60">
 									— {entry.moduleName}</span
 								>
+							{/if}
+							{#if parentPath}
+								<span class="text-xs text-base-content/50">
+									({parentPath})
+								</span>
 							{/if}
 						</button>
 					</li>
