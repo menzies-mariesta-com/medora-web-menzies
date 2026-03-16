@@ -5,6 +5,7 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
@@ -181,120 +182,113 @@
 	];
 </script>
 
-<div class="flex flex-col gap-4 p-4">
-	<DaisyUiCard className="p-4">
-		<h2 class="mb-4 text-lg font-semibold">
-			{isEditing
-				? editingId
-					? 'Edit Document Type'
-					: 'Create Document Type'
-				: 'Document Type'}
-		</h2>
-		{#if isEditing}
-			<div class="flex items-end gap-4">
-				<div
-					class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="docTypeName"
-						className="shrink-0 sm:w-24"
-						>Name <span class="text-error">*</span></DaisyUiLabel
-					>
-					<div class="flex-1">
+<div class="space-y-6">
+	<div class="flex flex-wrap items-center justify-between gap-4">
+		<h1 class="text-2xl font-bold">Document types</h1>
+		<DaisyUiButton
+			className="d-btn-outline d-btn-sm d-btn-square"
+			onClick={startCreate}
+		>
+			<LucidePlus />
+		</DaisyUiButton>
+	</div>
+
+	{#if isEditing}
+		<DaisyUiCard>
+			<DaisyUiCardBody>
+				<div class="mb-3 text-base font-semibold">
+					{editingId ? 'Edit document type' : 'Create document type'}
+				</div>
+				<div class="flex flex-col gap-4">
+					<div class="flex min-w-0 flex-1 flex-col gap-1">
+						<DaisyUiLabel forText="docTypeName" className="text-sm font-medium">
+							Name <span class="text-error">*</span>
+						</DaisyUiLabel>
 						<DaisyUiInputField
 							id="docTypeName"
 							bind:value={nameInput}
 							inputType="text"
 							inputPlaceholderText="Enter document type name"
+							className="d-input-sm w-full"
 						/>
 					</div>
+					<div class="flex justify-end gap-2 border-t border-base-300 pt-4">
+						<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+							<LucideX className="size-4" />
+							{m.cancel()}
+						</DaisyUiButton>
+						<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={handleSave}>
+							{editingId ? 'Update' : 'Create'}
+						</DaisyUiButton>
+					</div>
 				</div>
-				<DaisyUiButton
-					className="d-btn-primary d-btn-sm"
-					onClick={handleSave}
-				>
-					{editingId ? 'Update' : 'Create'}
-				</DaisyUiButton>
-				<DaisyUiButton
-					className="d-btn-ghost d-btn-sm"
-					onClick={resetForm}
-				>
-					<LucideX className="size-5" />
-					Cancel
-				</DaisyUiButton>
-			</div>
-		{:else}
-			<div class="flex justify-end">
-				<DaisyUiButton
-					className="d-btn-primary d-btn-sm"
-					onClick={startCreate}
-				>
-					<LucidePlus className="size-5" />
-					{m.create()}
-				</DaisyUiButton>
-			</div>
-		{/if}
-	</DaisyUiCard>
-
-	{#if isLoading && !docTypeResult}
-		<div class="flex items-center justify-center">
-			<DaisyUiLoading className="d-loading-xl" />
-		</div>
-	{:else}
-		<div class="{TableEnum.HEIGHT} overflow-auto">
-			<MariTable
-				rows={docTypeList}
-				{columns}
-				{isLoading}
-				bind:pageSize={filterPageSize}
-				bind:currentPage
-				totalRowCount={total}
-				showRefreshButton={true}
-				refreshTooltip={m.refresh_data()}
-				emptyMessage="No document types found"
-				showRowActions={true}
-				actionsHeader={m.actions()}
-				actionsVariant="none"
-				enableColumnFilters={false}
-				useRemoteFilters={true}
-				on:refresh={() => fetchData({ bustCache: true })}
-				on:pageSizeChange={() => {
-					currentPage = 1;
-					fetchData();
-				}}
-				on:pageChange={() => fetchData()}
-			>
-				<svelte:fragment slot="rowActions" let:row>
-					{@const typedRow = row as DocumentTypeSchema}
-					<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
-						<div class="flex flex-col items-center gap-1">
-							<DaisyUiTooltip
-								tooltipText={m.edit_data()}
-								className="d-tooltip-accent d-tooltip-right"
-							>
-								<DaisyUiButton
-									className="d-btn-sm d-btn-ghost d-btn-accent"
-									onClick={() => startEdit(typedRow)}
-								>
-									<LucidePencil className="size-5" />
-								</DaisyUiButton>
-							</DaisyUiTooltip>
-							<DaisyUiTooltip
-								tooltipText={m.delete_data()}
-								className="d-tooltip-error d-tooltip-right"
-							>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm d-btn-error"
-									disabled={isLoading}
-									onClick={() => handleDelete(typedRow.id)}
-								>
-									<LucideTrash2 className="size-5" />
-								</DaisyUiButton>
-							</DaisyUiTooltip>
-						</div>
-					</td>
-				</svelte:fragment>
-			</MariTable>
-		</div>
+			</DaisyUiCardBody>
+		</DaisyUiCard>
 	{/if}
+
+	<DaisyUiCard>
+		<DaisyUiCardBody>
+			{#if isLoading && !docTypeResult}
+				<div class="flex items-center justify-center py-8">
+					<DaisyUiLoading className="d-loading-xl" />
+				</div>
+			{:else}
+				<div class="{TableEnum.HEIGHT} overflow-auto">
+					<MariTable
+						rows={docTypeList}
+						{columns}
+						{isLoading}
+						bind:pageSize={filterPageSize}
+						bind:currentPage
+						totalRowCount={total}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage="No document types found"
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={false}
+						useRemoteFilters={true}
+						on:refresh={() => fetchData({ bustCache: true })}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchData();
+						}}
+						on:pageChange={() => fetchData()}
+					>
+						<svelte:fragment slot="rowActions" let:row>
+							{@const typedRow = row as DocumentTypeSchema}
+							<td class="w-24 shrink-0 text-right">
+								<div class="flex justify-end gap-1">
+									<DaisyUiTooltip
+										tooltipText={m.edit_data()}
+										className="d-tooltip-accent d-tooltip-top"
+									>
+										<DaisyUiButton
+											className="d-btn-sm d-btn-ghost d-btn-accent"
+											onClick={() => startEdit(typedRow)}
+										>
+											<LucidePencil className="size-4" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+									<DaisyUiTooltip
+										tooltipText={m.delete_data()}
+										className="d-tooltip-error d-tooltip-top"
+									>
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm d-btn-error"
+											disabled={isLoading}
+											onClick={() => handleDelete(typedRow.id)}
+										>
+											<LucideTrash2 className="size-4" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								</div>
+							</td>
+						</svelte:fragment>
+					</MariTable>
+				</div>
+			{/if}
+		</DaisyUiCardBody>
+	</DaisyUiCard>
 </div>

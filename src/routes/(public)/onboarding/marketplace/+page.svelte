@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { MarketplaceStoreInterface } from '$lib/model/interface/third-party-api/marketplace/marketplace-store.interface';
-	import { getStore } from '$lib/remote/third-party-api/marketplace/store.remote';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 
@@ -8,8 +7,7 @@
 
 	let store = $state<MarketplaceStoreInterface[]>([]);
 	lifeCycle.onMount(async () => {
-		const response = await getStore();
-		store = response ?? [];
+		console.log('onMount');
 	});
 </script>
 
