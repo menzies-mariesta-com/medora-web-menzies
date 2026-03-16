@@ -8,7 +8,7 @@ import type {
 	HospitalSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
-import { RoleEnum } from '$lib/model/enum/db-link';
+import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -210,7 +210,8 @@ export const deleteHospital = command(
 				throw error(403, 'You can only delete your own hospitals');
 		}
 		await ensureDb()
-			.delete(table.hospitalTable)
+			.update(table.hospitalTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.hospitalTable.id, id));
 		getHospital().refresh();
 		getHospitalWithOwner(undefined).refresh();
