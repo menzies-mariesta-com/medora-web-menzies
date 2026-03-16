@@ -3,6 +3,7 @@
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
@@ -14,6 +15,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 	import MariRichEditor from '$lib/component/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -35,73 +37,13 @@
 		DocumentTypeSchema,
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
+import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	const PAGE_SIZES = ['A4', 'A5', 'Letter', 'Legal'] as const;
 	const ORIENTATIONS = ['portrait', 'landscape'] as const;
-
-	const TEMPLATE_PLACEHOLDERS = [
-		{
-			category: 'Patient',
-			placeholders: [
-				{ key: '{{patient.name}}', desc: 'Full patient name' },
-				{ key: '{{patient.code}}', desc: 'Patient code/ID' },
-				{ key: '{{patient.dob}}', desc: 'Date of birth' },
-				{ key: '{{patient.age}}', desc: 'Patient age' },
-				{ key: '{{patient.gender}}', desc: 'Gender (M/F)' },
-				{ key: '{{patient.address}}', desc: 'Patient address' },
-				{ key: '{{patient.phone}}', desc: 'Phone number' },
-				{ key: '{{patient.email}}', desc: 'Email address' }
-			]
-		},
-		{
-			category: 'Visit',
-			placeholders: [
-				{ key: '{{visit.no}}', desc: 'Visit number' },
-				{ key: '{{visit.date}}', desc: 'Visit date' },
-				{ key: '{{visit.time}}', desc: 'Visit time' },
-				{ key: '{{visit.datetime}}', desc: 'Visit date and time' },
-				{ key: '{{visit.type}}', desc: 'Visit type (OPD/IPD/ED)' },
-				{ key: '{{visit.department}}', desc: 'Department name' }
-			]
-		},
-		{
-			category: 'Doctor',
-			placeholders: [
-				{ key: '{{doctor.name}}', desc: 'Doctor full name' },
-				{ key: '{{doctor.title}}', desc: 'Doctor title' },
-				{ key: '{{doctor.specialty}}', desc: 'Specialty' },
-				{ key: '{{doctor.license}}', desc: 'License number' },
-				{ key: '{{doctor.signature}}', desc: 'Digital signature' }
-			]
-		},
-		{
-			category: 'Hospital',
-			placeholders: [
-				{ key: '{{hospital.name}}', desc: 'Hospital name' },
-				{ key: '{{hospital.logo}}', desc: 'Hospital logo' },
-				{ key: '{{hospital.address}}', desc: 'Hospital address' },
-				{ key: '{{hospital.phone}}', desc: 'Hospital phone' },
-				{ key: '{{hospital.email}}', desc: 'Hospital email' }
-			]
-		},
-		{
-			category: 'Document',
-			placeholders: [
-				{ key: '{{document.title}}', desc: 'Document title' },
-				{ key: '{{document.code}}', desc: 'Document code' },
-				{ key: '{{document.number}}', desc: 'Document number' },
-				{ key: '{{document.date}}', desc: 'Document date' },
-				{ key: '{{print.date}}', desc: 'Print date' },
-				{ key: '{{print.time}}', desc: 'Print time' },
-				{ key: '{{print.by}}', desc: 'Printed by user' },
-				{ key: '{{page.number}}', desc: 'Current page number' },
-				{ key: '{{page.total}}', desc: 'Total pages' }
-			]
-		}
-	] as const;
 
 	let settingResult =
 		$state<PaginatedResult<DocumentSettingWithRelations> | null>(
@@ -323,9 +265,22 @@
 	];
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="space-y-6">
+	<div class="flex flex-wrap items-center justify-between gap-4">
+		<h1 class="text-2xl font-bold">Document settings</h1>
+		{#if viewMode === 'list'}
+			<DaisyUiButton
+				className="d-btn-outline d-btn-sm d-btn-square"
+				onClick={startCreate}
+			>
+				<LucidePlus />
+			</DaisyUiButton>
+		{/if}
+	</div>
+
 	{#if viewMode !== 'list'}
-		<DaisyUiCard className="p-4">
+		<DaisyUiCard>
+			<DaisyUiCardBody>
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">
 					{viewMode === 'view'
@@ -651,7 +606,7 @@
 							<div
 								class="grid max-h-64 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 xl:grid-cols-3"
 							>
-								{#each TEMPLATE_PLACEHOLDERS as category}
+								{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category}
 									<div class="space-y-1">
 										<h4 class="text-xs font-semibold text-primary">
 											{category.category}
@@ -701,40 +656,29 @@
 				<div
 					class="mt-6 flex justify-end gap-2 border-t border-base-300 pt-4"
 				>
-					<DaisyUiButton className="d-btn-ghost" onClick={resetForm}
+					<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}
 						>Cancel</DaisyUiButton
 					>
 					<DaisyUiButton
-						className="d-btn-primary"
+						className="d-btn-primary d-btn-sm"
 						onClick={handleSave}
 					>
 						{editingId ? 'Update' : 'Create'}
 					</DaisyUiButton>
 				</div>
 			{/if}
+			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
 
-	<DaisyUiCard className="p-4">
-		<div class="mb-4 flex items-center justify-between">
-			<h2 class="text-lg font-semibold">Document Settings</h2>
-			{#if viewMode === 'list'}
-				<DaisyUiButton
-					className="d-btn-primary d-btn-sm"
-					onClick={startCreate}
-				>
-					<LucidePlus className="w-4 h-4 mr-1" />
-					New Setting
-				</DaisyUiButton>
-			{/if}
-		</div>
-
-		{#if isLoading && !settingResult}
-			<div class="flex justify-center py-8">
-				<DaisyUiLoading />
-			</div>
-		{:else}
-			<div class="overflow-auto">
+	<DaisyUiCard>
+		<DaisyUiCardBody>
+			{#if isLoading && !settingResult}
+				<div class="flex justify-center py-8">
+					<DaisyUiLoading />
+				</div>
+			{:else}
+				<div class="{TableEnum.HEIGHT} overflow-auto">
 				<MariTable
 					rows={settingList}
 					{columns}
@@ -759,10 +703,8 @@
 				>
 					<svelte:fragment slot="rowActions" let:row>
 						{@const typedRow = row as DocumentSettingWithRelations}
-						<td
-							class="sticky left-0 z-2 w-24 min-w-[6rem] bg-base-100"
-						>
-							<div class="flex items-center gap-1">
+						<td class="w-32 shrink-0 text-right">
+							<div class="flex justify-end gap-1">
 								<button
 									type="button"
 									class="d-btn d-btn-ghost d-btn-xs"
@@ -773,7 +715,7 @@
 								</button>
 								<button
 									type="button"
-									class="d-btn d-btn-ghost d-btn-xs"
+									class="d-btn d-btn-ghost d-btn-xs d-btn-accent"
 									onclick={() => startEdit(typedRow)}
 									title="Edit"
 								>
@@ -791,7 +733,8 @@
 						</td>
 					</svelte:fragment>
 				</MariTable>
-			</div>
-		{/if}
+				</div>
+			{/if}
+		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>
