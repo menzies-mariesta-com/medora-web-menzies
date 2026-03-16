@@ -200,12 +200,13 @@ export const inactivatePatientDocument = command(
 	}
 );
 
-// delete (hard)
+// delete (soft)
 export const deletePatientDocument = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.patientDocumentTable)
+			.update(table.patientDocumentTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientDocumentTable.id, id));
 		getPatientDocuments().refresh();
 	}
