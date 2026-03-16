@@ -8,7 +8,7 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
 const COOKIE_SELECTED_BRANCH_ID = 'heka_selected_branch_id';
@@ -17,7 +17,8 @@ const BRANCH_ALL_VALUE = '__all__';
 /**
  * Load page list for the module bar.
  * - OWNER / SYSTEM_ADMIN: all pages.
- * - STAFF: only pages linked to the **selected** user group (cookie), plus ancestor pages. Restrictions enforced per selection.
+ * - STAFF: pages linked to any of staff's hospital user groups (from user_group_page),
+ *   expanded with ancestors/descendants.
  *
  * For STAFF, also enforces page access: if the current URL maps to a page not allowed for the selected group, redirect to hospital home.
  */
@@ -204,34 +205,62 @@ export const load: LayoutServerLoad = async ({
 					? branchCookieValue
 					: (branchNavIds[0] ?? null);
 
-		// 2. Page ids for the **selected** user group only (restrict pages and restrictions to this group)
+		// 2. Page ids from all staff user groups in this hospital.
+		// Use user_group_page as source of truth for allowed pages.
+		const effectiveGroupIds = staffUserGroupsForNav.map((g) => g.id);
 		const userGroupPages = await ensureDb()
 			.select({ pageId: table.userGroupPageTable.pageId })
 			.from(table.userGroupPageTable)
 			.where(
-				eq(table.userGroupPageTable.userGroupId, selectedUserGroupId!)
+				effectiveGroupIds.length > 0
+					? inArray(
+							table.userGroupPageTable.userGroupId,
+							effectiveGroupIds
+						)
+					: eq(table.userGroupPageTable.userGroupId, -1)
 			);
 		let allowedPageIds = new Set(
 			userGroupPages.map((r) => r.pageId).filter((id) => id != null)
 		);
 
-		// 3. Add ancestor page ids so parent sections appear in nav
-		let changed = true;
-		while (changed) {
-			changed = false;
-			for (const p of fullPages) {
-				if (
-					allowedPageIds.has(p.id) &&
-					p.parentId != null &&
-					!allowedPageIds.has(p.parentId)
-				) {
-					allowedPageIds.add(p.parentId);
-					changed = true;
+		// 3. Expand page ids recursively to include:
+		// - ancestors (so parent sections appear in nav)
+		// - descendants (so assigning a parent grants all nested sub-pages)
+		const byId = new Map(fullPages.map((p) => [p.id, p] as const));
+		const childrenByParent = new Map<number, number[]>();
+		for (const p of fullPages) {
+			if (p.parentId == null) continue;
+			const list = childrenByParent.get(p.parentId) ?? [];
+			list.push(p.id);
+			childrenByParent.set(p.parentId, list);
+		}
+
+		// Add all ancestors for currently allowed pages.
+		const ancestorQueue = Array.from(allowedPageIds);
+		while (ancestorQueue.length > 0) {
+			const id = ancestorQueue.pop()!;
+			const page = byId.get(id);
+			const parentId = page?.parentId ?? null;
+			if (parentId != null && !allowedPageIds.has(parentId)) {
+				allowedPageIds.add(parentId);
+				ancestorQueue.push(parentId);
+			}
+		}
+
+		// Add all descendants for currently allowed pages.
+		const descendantQueue = Array.from(allowedPageIds);
+		while (descendantQueue.length > 0) {
+			const id = descendantQueue.pop()!;
+			const children = childrenByParent.get(id) ?? [];
+			for (const childId of children) {
+				if (!allowedPageIds.has(childId)) {
+					allowedPageIds.add(childId);
+					descendantQueue.push(childId);
 				}
 			}
 		}
 
-		// 4. Enforce page access for selected group: current path must be dashboard or an allowed page
+		// 4. Enforce page access: current path must be dashboard or an allowed page
 		const dbPageUrl = requestPathToDbPageUrl(
 			url.pathname,
 			hospitalId

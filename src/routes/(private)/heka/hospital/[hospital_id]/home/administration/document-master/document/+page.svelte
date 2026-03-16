@@ -4,6 +4,7 @@
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
@@ -58,6 +59,9 @@
 	let documentCodeInput = $state('');
 	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
+
+type ContentTab = 'rich' | 'html' | 'preview';
+let contentTab = $state<ContentTab>('rich');
 
 	const documentList = $derived(documentResult?.data ?? []);
 	const total = $derived(documentResult?.total ?? 0);
@@ -128,6 +132,7 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
+		contentTab = 'rich';
 	}
 
 	function startView(item: DocumentWithRelations) {
@@ -142,11 +147,13 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
+		contentTab = 'preview';
 	}
 
 	function startCreate() {
 		resetForm();
 		viewMode = 'create';
+		contentTab = 'rich';
 	}
 
 	async function handleSave() {
@@ -246,6 +253,53 @@
 		return stripped.substring(0, maxLength) + '...';
 	}
 
+	function formatHtmlForEditor(value: string): string {
+		const trimmed = value.trim();
+		if (!trimmed) return '';
+		try {
+			const parser = new DOMParser();
+			const parsed = parser.parseFromString(trimmed, 'text/html');
+			const formatNode = (node: Node, depth: number): string => {
+				const indent = '  '.repeat(depth);
+				if (node.nodeType === Node.TEXT_NODE) {
+					const text = node.textContent?.trim() ?? '';
+					return text ? `${indent}${text}\n` : '';
+				}
+				if (node.nodeType !== Node.ELEMENT_NODE) return '';
+				const el = node as HTMLElement;
+				const attrs = Array.from(el.attributes)
+					.map((a) => ` ${a.name}="${a.value}"`)
+					.join('');
+				const tagName = el.tagName.toLowerCase();
+				const children = Array.from(el.childNodes)
+					.map((child) => formatNode(child, depth + 1))
+					.join('');
+				if (!children.trim()) {
+					return `${indent}<${tagName}${attrs}></${tagName}>\n`;
+				}
+				return `${indent}<${tagName}${attrs}>\n${children}${indent}</${tagName}>\n`;
+			};
+
+			const bodyChildren = Array.from(parsed.body.childNodes)
+				.map((child) => formatNode(child, 0))
+				.join('')
+				.trim();
+			return bodyChildren || trimmed;
+		} catch {
+			return trimmed;
+		}
+	}
+
+	function switchToHtmlTab() {
+		contentTab = 'html';
+		documentTextInput = formatHtmlForEditor(documentTextInput);
+	}
+
+	function handleFormatHtmlClick() {
+		documentTextInput = formatHtmlForEditor(documentTextInput);
+		toastService.addToast('HTML formatted', StatusColorEnum.SUCCESS);
+	}
+
 	const columns: MariTableColumn<DocumentWithRelations>[] = [
 		{
 			id: 'id',
@@ -289,11 +343,22 @@
 	];
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="space-y-6">
 	{#if viewMode === 'list'}
-		<DaisyUiCard className="p-4">
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold">Documents</h2>
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<h1 class="text-2xl font-bold">Documents</h1>
+			<DaisyUiButton
+				className="d-btn-outline d-btn-sm d-btn-square"
+				onClick={startCreate}
+			>
+				<LucidePlus />
+			</DaisyUiButton>
+		</div>
+
+		<DaisyUiCard>
+			<DaisyUiCardBody>
+			<div class="mb-2 flex items-center justify-between">
+				<h2 class="text-base font-semibold">Document list</h2>
 				<DaisyUiButton
 					className="d-btn-primary d-btn-sm"
 					onClick={startCreate}
@@ -302,6 +367,7 @@
 					{m.create()}
 				</DaisyUiButton>
 			</div>
+			</DaisyUiCardBody>
 		</DaisyUiCard>
 
 		{#if isLoading && !documentResult}
@@ -309,38 +375,38 @@
 				<DaisyUiLoading className="d-loading-xl" />
 			</div>
 		{:else}
-			<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MariTable
-					rows={documentList}
-					{columns}
-					{isLoading}
-					bind:pageSize={filterPageSize}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="No documents found"
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={false}
-					useRemoteFilters={true}
-					on:refresh={() => fetchData({ bustCache: true })}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchData();
-					}}
-					on:pageChange={() => fetchData()}
-				>
-					<svelte:fragment slot="rowActions" let:row>
-						{@const typedRow = row as DocumentWithRelations}
-						<td
-							class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100"
+			<DaisyUiCard>
+				<DaisyUiCardBody>
+					<div class="{TableEnum.HEIGHT} overflow-auto">
+						<MariTable
+							rows={documentList}
+							{columns}
+							{isLoading}
+							bind:pageSize={filterPageSize}
+							bind:currentPage
+							totalRowCount={total}
+							showRefreshButton={true}
+							refreshTooltip={m.refresh_data()}
+							emptyMessage="No documents found"
+							showRowActions={true}
+							actionsHeader={m.actions()}
+							actionsVariant="none"
+							enableColumnFilters={false}
+							useRemoteFilters={true}
+							on:refresh={() => fetchData({ bustCache: true })}
+							on:pageSizeChange={() => {
+								currentPage = 1;
+								fetchData();
+							}}
+							on:pageChange={() => fetchData()}
 						>
-							<div class="flex flex-col items-center gap-1">
+							<svelte:fragment slot="rowActions" let:row>
+								{@const typedRow = row as DocumentWithRelations}
+								<td class="w-28 shrink-0 text-right">
+									<div class="flex justify-end gap-1">
 								<DaisyUiTooltip
 									tooltipText={m.view_data()}
-									className="d-tooltip-ghost d-tooltip-right"
+									className="d-tooltip-ghost d-tooltip-top"
 								>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm"
@@ -351,7 +417,7 @@
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
 									tooltipText={m.edit_data()}
-									className="d-tooltip-accent d-tooltip-right"
+									className="d-tooltip-accent d-tooltip-top"
 								>
 									<DaisyUiButton
 										className="d-btn-sm d-btn-ghost d-btn-accent"
@@ -362,7 +428,7 @@
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
 									tooltipText={m.delete_data()}
-									className="d-tooltip-error d-tooltip-right"
+									className="d-tooltip-error d-tooltip-top"
 								>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm d-btn-error"
@@ -372,14 +438,17 @@
 										<LucideTrash2 className="size-5" />
 									</DaisyUiButton>
 								</DaisyUiTooltip>
-							</div>
-						</td>
-					</svelte:fragment>
-				</MariTable>
-			</div>
+									</div>
+								</td>
+							</svelte:fragment>
+						</MariTable>
+					</div>
+				</DaisyUiCardBody>
+			</DaisyUiCard>
 		{/if}
 	{:else}
-		<DaisyUiCard className="p-4">
+		<DaisyUiCard>
+			<DaisyUiCardBody>
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">
 					{#if viewMode === 'view'}
@@ -493,26 +562,79 @@
 				>
 					Document Content
 				</DaisyUiLabel>
-				<div class="overflow-hidden rounded-lg border">
-					{#if viewMode === 'view'}
-						<div class="min-h-[400px] bg-base-100 p-4">
+
+				{#if viewMode === 'view'}
+					<div class="overflow-hidden rounded-lg border">
+						<div class="document-preview-content min-h-[400px] bg-base-100 p-4">
 							{@html documentTextInput ||
 								'<p class="text-base-content/50">No content</p>'}
 						</div>
-					{:else}
-						<MariRichEditor
-							bind:value={documentTextInput}
-							placeholder="Start typing your document content..."
-							showMenuBar={true}
-							documentTitle={selectedDocumentTypeName()}
-							className="min-h-[400px]"
-						/>
-					{/if}
-				</div>
+					</div>
+				{:else}
+					<div class="mb-2 flex gap-2">
+						<button
+							type="button"
+							class="d-btn d-btn-xs {contentTab === 'rich'
+								? 'd-btn-primary'
+								: 'd-btn-ghost'}"
+							onclick={() => (contentTab = 'rich')}
+						>
+							Rich editor
+						</button>
+						<button
+							type="button"
+							class="d-btn d-btn-xs {contentTab === 'html'
+								? 'd-btn-primary'
+								: 'd-btn-ghost'}"
+							onclick={switchToHtmlTab}
+						>
+							HTML
+						</button>
+						<button
+							type="button"
+							class="d-btn d-btn-xs {contentTab === 'preview'
+								? 'd-btn-primary'
+								: 'd-btn-ghost'}"
+							onclick={() => (contentTab = 'preview')}
+						>
+							Preview
+						</button>
+						<button
+							type="button"
+							class="d-btn d-btn-xs d-btn-outline"
+							onclick={handleFormatHtmlClick}
+						>
+							Format HTML
+						</button>
+					</div>
+
+					<div class="overflow-hidden rounded-lg border">
+						{#if contentTab === 'rich'}
+							<MariRichEditor
+								bind:value={documentTextInput}
+								placeholder="Start typing your document content..."
+								showMenuBar={true}
+								documentTitle={selectedDocumentTypeName()}
+								className="min-h-[400px]"
+							/>
+						{:else if contentTab === 'html'}
+							<textarea
+								class="d-textarea d-textarea-bordered h-[400px] w-full font-mono text-sm"
+								bind:value={documentTextInput}
+								placeholder="Edit raw HTML here..."
+							></textarea>
+						{:else}
+							<div class="document-preview-content min-h-[400px] bg-base-100 p-4">
+								{@html documentTextInput ||
+									'<p class="text-base-content/50">No content</p>'}
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 
 			{#if viewMode !== 'view'}
-				<div class="flex justify-end gap-2">
+				<div class="flex justify-end gap-2 border-t border-base-300 pt-4">
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm"
 						onClick={resetForm}
@@ -527,6 +649,27 @@
 					</DaisyUiButton>
 				</div>
 			{/if}
+			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
 </div>
+
+<style>
+	:global(.document-preview-content table) {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	:global(.document-preview-content th),
+	:global(.document-preview-content td) {
+		border: 1px solid #000;
+		padding: 4px 6px;
+		vertical-align: top;
+		text-align: left;
+	}
+
+	:global(.document-preview-content thead th) {
+		background-color: #f5f5f5;
+		font-weight: 600;
+	}
+</style>
