@@ -1,6 +1,7 @@
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { sql } from 'drizzle-orm';
 import {
+	type AnyPgColumn,
 	index,
 	integer,
 	pgTable,
@@ -9,6 +10,7 @@ import {
 	timestamp,
 	varchar
 } from 'drizzle-orm/pg-core';
+import { userTable } from '../auth-table/auth-table';
 
 const timestamps = {
 	createdAt: timestamp('created_at', {
@@ -23,7 +25,23 @@ const timestamps = {
 	})
 		.notNull()
 		.defaultNow()
-		.$onUpdate(() => sql`now()`)
+		.$onUpdate(() => sql`now()`),
+	deletedAt: timestamp('deleted_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	deletedBy: text('deleted_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	})
 } as const;
 
 // Master Tables (alphabetical) - lookup/reference data
@@ -53,7 +71,6 @@ export const categoryTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		updatedBy: text('updated_by'),
 		...timestamps
 	},
 	(table) => [
