@@ -144,12 +144,13 @@ export const updatePatientAttachment = command(
 	}
 );
 
-// delete (hard)
+// delete (soft)
 export const deletePatientAttachment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.patientAttachmentTable)
+			.update(table.patientAttachmentTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientAttachmentTable.id, id));
 		getPatientAttachment().refresh();
 	}

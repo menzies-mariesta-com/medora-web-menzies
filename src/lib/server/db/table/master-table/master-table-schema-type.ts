@@ -1,4 +1,8 @@
-import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type {
+	InferInsertModel,
+	InferSelectModel as DrizzleInferSelectModel,
+	Table
+} from 'drizzle-orm';
 import type {
 	bloodTypeTable,
 	categoryTable,
@@ -28,6 +32,18 @@ import type {
 	weekdayTable
 } from './master-table';
 import type { Infer } from 'zod';
+
+type OptionalAuditKeys =
+	| 'createdBy'
+	| 'updatedBy'
+	| 'deletedBy'
+	| 'deletedAt';
+
+type WithOptionalAudit<T> = Omit<T, Extract<keyof T, OptionalAuditKeys>> &
+	Partial<Pick<T, Extract<keyof T, OptionalAuditKeys>>>;
+
+type InferSelectModel<TTable extends Table> =
+	WithOptionalAudit<DrizzleInferSelectModel<TTable>>;
 
 // Master Tables (alphabetical)
 export type BloodTypeSchema = InferSelectModel<typeof bloodTypeTable>;

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+	type AnyPgColumn,
 	boolean,
 	date,
 	decimal,
@@ -61,7 +62,23 @@ const timestamps = {
 	})
 		.notNull()
 		.defaultNow()
-		.$onUpdate(() => sql`now()`)
+		.$onUpdate(() => sql`now()`),
+	deletedAt: timestamp('deleted_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	deletedBy: text('deleted_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	})
 } as const;
 
 // Information Tables (alphabetical) - business/transactional data
@@ -539,7 +556,6 @@ export const documentTypeTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		createdBy: text('created_by').references(() => userTable.id),
 		...timestamps
 	},
 	(table) => [
@@ -586,7 +602,6 @@ export const documentSettingTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		createdBy: text('created_by').references(() => userTable.id),
 		...timestamps
 	},
 	(table) => [
@@ -617,7 +632,6 @@ export const documentTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		createdBy: text('created_by').references(() => userTable.id),
 		...timestamps
 	},
 	(table) => [
@@ -645,7 +659,6 @@ export const patientDocumentTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		createdBy: text('created_by').references(() => userTable.id),
 		...timestamps
 	},
 	(table) => [
@@ -858,7 +871,6 @@ export const subCategoryTable = pgTable('sub_category', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -877,7 +889,6 @@ export const serviceItemTable = pgTable('service_item', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -905,7 +916,6 @@ export const serviceTaggingTable = pgTable('service_tagging', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -928,8 +938,6 @@ export const serviceOrderTable = pgTable('service_order', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	createdBy: text('created_by').references(() => userTable.id),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps
 });
 
@@ -971,8 +979,6 @@ export const serviceOrderDetailTable = pgTable(
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
-		createdBy: text('created_by').references(() => userTable.id),
-		updatedBy: text('updated_by').references(() => userTable.id),
 		cancelBy: text('cancel_by').references(() => userTable.id),
 		cancelRemark: text('cancel_remark'),
 		...timestamps
@@ -992,7 +998,6 @@ export const storeTable = pgTable('store', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
-	updatedBy: text('updated_by').references(() => userTable.id),
 	...timestamps
 });
 
