@@ -102,12 +102,13 @@ export const updateInsurance = command(
 	}
 );
 
-// delete (hard)
+// delete (soft)
 export const deleteInsurance = command(
 	'unchecked' as const,
 	async ({ id }: { id: string }): Promise<void> => {
 		await ensureDb()
-			.delete(table.insuranceTable)
+			.update(table.insuranceTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.insuranceTable.id, id));
 		getInsurance().refresh();
 	}

@@ -8,6 +8,7 @@ import type {
 	PatientVisitSchema
 } from '$lib/server/db/schema-type';
 import { and, desc, eq } from 'drizzle-orm';
+import { StatusEnum } from '$lib/model/enum/db-link';
 
 export type PatientVitalWithVisit = PatientDiagnosisSchema & {
 	visit: PatientVisitSchema | null;
@@ -146,7 +147,8 @@ export const deletePatientVital = command(
 			.limit(1);
 		if (!existing) throw new Error('Vital not found');
 		await ensureDb()
-			.delete(table.patientDiagnosisTable)
+			.update(table.patientDiagnosisTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientDiagnosisTable.id, id));
 		getPatientVitalsByVisitId({
 			visitId: existing.visitId

@@ -8,7 +8,7 @@ import type {
 	HospitalBranchSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { count, eq } from 'drizzle-orm';
-import { RoleEnum } from '$lib/model/enum/db-link';
+import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -174,7 +174,8 @@ export const deleteBranch = command(
 		if (!branch) throw error(404, 'Branch not found');
 		await ensureCanManageHospital(branch.hospitalId);
 		await ensureDb()
-			.delete(table.hospitalBranchTable)
+			.update(table.hospitalBranchTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.hospitalBranchTable.id, id));
 		getBranchesByHospitalId({
 			hospitalId: branch.hospitalId

@@ -281,12 +281,13 @@ export const updatePatientAllergies = command(
 	}
 );
 
-// delete (hard)
+// delete (soft)
 export const deletePatientAllergies = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
 		await ensureDb()
-			.delete(table.patientAllergyTable)
+			.update(table.patientAllergyTable)
+			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientAllergyTable.id, id));
 		getPatientAllergies().refresh();
 	}
