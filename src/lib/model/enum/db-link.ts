@@ -65,3 +65,9 @@ export enum SeverityEnum {
 export enum AllergyEnum {
 	NO_KNOWN_ALLERGY = 1
 }
+
+export enum CategoryEnum {
+	RADIOLOGY = 1,
+	NURSING_PROCEDURE = 2,
+	LABORATORY = 5
+}
