@@ -3,9 +3,11 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
+import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -30,13 +32,13 @@
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StringUtil } from '$lib/util/string.util.svelte.js';
 
 	const toastService = new ToastService();
 
 	let { data } = $props();
 
 	type AllowedBranch = { id: string; name: string | null };
-	const ALL_BRANCHES_ID = '__all__';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -49,21 +51,10 @@
 		((data?.allowedBranches ?? []) as AllowedBranch[]) ?? []
 	);
 
-	const branchOptions = $derived.by(() => {
-		if (allowedBranches.length > 1) {
-			return [
-				{ id: ALL_BRANCHES_ID, name: 'All branches' },
-				...allowedBranches
-			];
-		}
-		return allowedBranches;
-	});
+	const branchOptions = $derived(allowedBranches);
 
-	let selectedBranchId = $state<string>(branchOptions[0]?.id ?? '');
-
-	const branchIdForTagging = $derived(
-		selectedBranchId === ALL_BRANCHES_ID ? null : selectedBranchId
-	);
+	let selectedBranchIds = $state<string[]>(branchOptions[0] ? [branchOptions[0].id] : []);
+const allowedBranchIdSet = $derived(new Set(allowedBranches.map((b) => b.id)));
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
 	let taggingResult =
@@ -75,6 +66,12 @@
 
 	const taggings = $derived(taggingResult?.data ?? []);
 	const total = $derived(taggingResult?.total ?? 0);
+const serviceOptions = $derived.by(() =>
+	serviceItems.map((s) => ({
+		value: String(s.id),
+		label: StringUtil.serviceOptionDisplayName(s),
+	}))
+);
 
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
@@ -160,10 +157,24 @@
 	}
 
 	async function fetchTaggings(forceRefresh = false) {
-		if (allowedBranches.length === 0) return;
+		if (allowedBranches.length === 0 || selectedBranchIds.length === 0) return;
 		isLoading = true;
 		try {
 			const filters = tableColumnFilters;
+			const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
+				allowedBranchIdSet.has(id)
+			);
+			if (selectedAllowedBranchIds.length === 0) {
+				const pageSize = Number(pageSizeStr) || 10;
+				taggingResult = {
+					data: [],
+					total: 0,
+					page: 1,
+					pageSize,
+					totalPages: 1
+				};
+				return;
+			}
 
 			const paramsBase: {
 				branchId?: string;
@@ -174,8 +185,8 @@
 				id?: number;
 			} = {};
 
-			if (branchIdForTagging) {
-				paramsBase.branchId = branchIdForTagging;
+			if (selectedAllowedBranchIds.length === 1) {
+				paramsBase.branchId = selectedAllowedBranchIds[0];
 			}
 
 			// ID filter
@@ -254,13 +265,9 @@
 
 			let result = await getServiceTaggingPaginated(paginatedParams);
 
-			// When "All branches" is selected, show only rows
-			// for branches the user is allowed to use.
-			if (
-				!branchIdForTagging &&
-				selectedBranchId === ALL_BRANCHES_ID
-			) {
-				const allowedIds = new Set(allowedBranches.map((b) => b.id));
+			// When multiple branches are selected, filter in-memory.
+			if (selectedAllowedBranchIds.length > 1) {
+				const allowedIds = new Set(selectedAllowedBranchIds);
 				const filteredData = result.data.filter((row) =>
 					allowedIds.has(row.branchId)
 				);
@@ -281,7 +288,7 @@
 
 	$effect(() => {
 		const _hospital = hospitalId;
-		const _branchSelection = selectedBranchId;
+		const _branchSelection = selectedBranchIds.join(',');
 		if (
 			!_hospital ||
 			allowedBranches.length === 0 ||
@@ -337,15 +344,43 @@
 	}
 
 	function onBranchChange() {
-		currentPage = 1;
-		fetchTaggings(true);
+		if (selectedBranchIds.length > 0) {
+			currentPage = 1;
+			fetchTaggings(true);
+		} else {
+			taggingResult = {
+				data: [],
+				total: 0,
+				page: 1,
+				pageSize: Number(pageSizeStr) || 10,
+				totalPages: 1
+			};
+		}
 	}
+
+	$effect(() => {
+		const allowedIds = new Set(allowedBranches.map((b) => b.id));
+		const cleaned = selectedBranchIds.filter((id) => allowedIds.has(id));
+		if (
+			cleaned.length === selectedBranchIds.length &&
+			cleaned.every((id, i) => id === selectedBranchIds[i])
+		) {
+			if (cleaned.length > 0 || allowedBranches.length === 0) return;
+		}
+
+		selectedBranchIds =
+			cleaned.length > 0
+				? cleaned
+				: allowedBranches[0]
+					? [allowedBranches[0].id]
+					: [];
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (!selectedBranchId) {
+		if (selectedBranchIds.length === 0) {
 			toastService.addToast(
-				'Please select a branch to manage tagging.',
+				'Please select at least one branch to manage tagging.',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -391,10 +426,9 @@
 			: null;
 		const allowEdit = formAllowEdit;
 
-		const targetBranchIds =
-			selectedBranchId === ALL_BRANCHES_ID
-				? allowedBranches.map((b) => b.id)
-				: [branchIdForTagging].filter((id): id is string => !!id);
+		const targetBranchIds = selectedBranchIds.filter((id) =>
+			allowedBranchIdSet.has(id)
+		);
 		if (targetBranchIds.length === 0) {
 			toastService.addToast(
 				'No branches available for tagging.',
@@ -515,41 +549,46 @@
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
-					<div class="flex flex-wrap gap-4">
-						<div class="flex min-w-48 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium"
-								>Branch<span class="text-error"> *</span></label
-							>
-							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm w-full"
-								bind:value={selectedBranchId}
-								onChange={onBranchChange}
-							>
-								{#each branchOptions as b (b.id)}
-									<option value={b.id}
-										>{b.name ?? 'Unnamed branch'}</option
-									>
-								{/each}
-							</DaisyUiSelect>
+					<div class="min-w-0 flex-1 md:min-w-56">
+						<DaisyUiLabel className="mb-2 block"
+							>Branch <span class="text-error">*</span></DaisyUiLabel
+						>
+						<div
+							class="grid max-h-28 grid-cols-1 gap-1 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-2 lg:grid-cols-2"
+						>
+							{#each branchOptions as b (b.id)}
+								{@const isChecked = selectedBranchIds.includes(b.id)}
+								{@const toggleBranch = () => {
+									if (isChecked) {
+										selectedBranchIds = selectedBranchIds.filter((id) => id !== b.id);
+									} else {
+										selectedBranchIds = [...selectedBranchIds, b.id];
+									}
+									onBranchChange();
+								}}
+								<DaisyUiButton
+									type="button"
+									className="cursor-pointer flex justify-start py-1"
+									onClick={toggleBranch}
+								>
+									<DaisyUiCheckbox checked={isChecked} />
+									<span class="text-xs">{b.name ?? 'Unnamed branch'}</span>
+								</DaisyUiButton>
+							{/each}
 						</div>
+					</div>
 
+					<div class="flex flex-wrap gap-4">
 						<div class="flex min-w-60 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium"
 								>Service<span class="text-error"> *</span></label
 							>
-							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm w-full"
+							<DaisyUiSearchSelect
 								bind:value={formServiceId}
-								optionHeader="Select service"
-							>
-								{#each serviceItems as s (s.id)}
-									<option value={String(s.id)}>
-										{s.serviceName ?? `Service ${s.id}`}{s.serviceCode
-											? ` - ${s.serviceCode}`
-											: ''}
-									</option>
-								{/each}
-							</DaisyUiSelect>
+								options={serviceOptions}
+								placeholder="Select service"
+								className="d-input-sm w-full"
+							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium"

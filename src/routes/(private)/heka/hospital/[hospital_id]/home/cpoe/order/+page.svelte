@@ -29,6 +29,7 @@
 		getServiceItem,
 		getServiceItemPaginated
 	} from '$lib/remote/table/information-table/service-item.remote';
+import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
 	import {
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations
@@ -37,7 +38,8 @@
 	import type {
 		ServiceOrderSchema,
 		ServiceOrderDetailSchema,
-		ServiceItemSchema
+	ServiceItemSchema,
+	ServiceTaggingSchema
 	} from '$lib/server/db/schema-type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MariTable, {
@@ -46,7 +48,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
-	import { StatusEnum } from '$lib/model/enum/db-link';
+import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
@@ -88,6 +90,7 @@
 
 	let pendingItems = $state<PendingItem[]>([]);
 	let branchServices = $state<ServiceItemSchema[]>([]);
+	let branchTaggings = $state<ServiceTaggingSchema[]>([]);
 
 	let isLoadingVisit = $state(false);
 	let isLoadingHistory = $state(false);
@@ -98,6 +101,17 @@ let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let serviceFilter = $state<'all' | 'radiology' | 'laboratory' | 'nursing'>(
 		'all'
 	);
+	type ServiceFilterType = 'all' | 'radiology' | 'laboratory' | 'nursing';
+	let serviceFilterSubCategoryIds = $state<{
+		radiology: Set<number>;
+		nursing: Set<number>;
+		laboratory: Set<number>;
+	}>({
+		radiology: new Set(),
+		nursing: new Set(),
+		laboratory: new Set()
+	});
+	let serviceFilterSubCategoryPromise: Promise<void> | null = null;
 
 	let detailServiceIdInput = $state('');
 	let detailAdvisingDoctorIdInput = $state('');
@@ -126,6 +140,7 @@ let showHistory = $state(false);
 		if (!visitId || !hospitalId) return;
 		isLoadingVisit = true;
 		try {
+			await ensureServiceFilterSubCategoryIdsLoaded();
 			const v = await getPatientVisitById({ id: visitId });
 			if (v) {
 				visit = {
@@ -139,12 +154,40 @@ let showHistory = $state(false);
 			} else {
 				visit = null;
 				branchServices = [];
+				branchTaggings = [];
 				currentOrder = null;
 				pendingItems = [];
 			}
 		} finally {
 			isLoadingVisit = false;
 		}
+	}
+
+	async function ensureServiceFilterSubCategoryIdsLoaded() {
+		if (serviceFilterSubCategoryPromise) {
+			await serviceFilterSubCategoryPromise;
+			return;
+		}
+		serviceFilterSubCategoryPromise = (async () => {
+			const [radiologySubCategories, nursingSubCategories, laboratorySubCategories] =
+				await Promise.all([
+					getSubCategory({ categoryId: CategoryEnum.RADIOLOGY }),
+					getSubCategory({
+						categoryId: CategoryEnum.NURSING_PROCEDURE
+					}),
+					getSubCategory({ categoryId: CategoryEnum.LABORATORY })
+				]);
+			serviceFilterSubCategoryIds = {
+				radiology: new Set(
+					radiologySubCategories.map((s) => s.id)
+				),
+				nursing: new Set(nursingSubCategories.map((s) => s.id)),
+				laboratory: new Set(
+					laboratorySubCategories.map((s) => s.id)
+				)
+			};
+		})();
+		await serviceFilterSubCategoryPromise;
 	}
 
 	$effect(() => {
@@ -178,6 +221,7 @@ let showHistory = $state(false);
 			const taggings = await getServiceTagging({
 				branchId: branchIdForVisit
 			});
+			branchTaggings = taggings;
 			const serviceIds = Array.from(
 				new Set(
 					taggings.map((t) => t.serviceId).filter((id) => id != null)
@@ -185,6 +229,7 @@ let showHistory = $state(false);
 			);
 			if (serviceIds.length === 0) {
 				branchServices = [];
+				branchTaggings = [];
 				return;
 			}
 
@@ -197,6 +242,7 @@ let showHistory = $state(false);
 		} catch (err) {
 			console.error('Failed to load branch services', err);
 			branchServices = [];
+			branchTaggings = [];
 		}
 	}
 
@@ -224,6 +270,10 @@ let showHistory = $state(false);
 	async function searchServices(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
+		await ensureServiceFilterSubCategoryIdsLoaded();
+		const effectiveServiceIds = effectiveServiceIdsForOrderDate(
+			orderDateInput || todayDateString()
+		);
 		const res = await getServiceItemPaginated({
 			hospitalId,
 			serviceName: query.trim(),
@@ -231,11 +281,10 @@ let showHistory = $state(false);
 			page: 1,
 			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
 		});
-		const allowedIds = new Set(branchServices.map((s) => s.id));
 		return res.data
 			.filter(
 				(service) =>
-					allowedIds.has(service.id) &&
+					effectiveServiceIds.has(service.id) &&
 					serviceMatchesFilter(service, serviceFilter)
 			)
 			.map((service) => ({
@@ -279,15 +328,85 @@ let showHistory = $state(false);
 		return trimmed;
 	}
 
+	function toDateOnly(value: unknown): string | null {
+		if (value == null) return null;
+		const str = String(value).trim();
+		if (!str) return null;
+		return str.length >= 10 ? str.slice(0, 10) : null;
+	}
+
+	function pickEffectiveTagging(
+		taggings: ServiceTaggingSchema[],
+		orderDate: string
+	): ServiceTaggingSchema | null {
+		const normalizedOrderDate = toDateOnly(orderDate) ?? todayDateString();
+		const dated: Array<{ tagging: ServiceTaggingSchema; date: string }> =
+			[];
+		const undated: ServiceTaggingSchema[] = [];
+
+		for (const tagging of taggings) {
+			const validDate = toDateOnly(tagging.validDate);
+			if (!validDate) {
+				undated.push(tagging);
+				continue;
+			}
+			if (validDate <= normalizedOrderDate) {
+				dated.push({ tagging, date: validDate });
+			}
+		}
+
+		if (dated.length > 0) {
+			dated.sort((a, b) => {
+				if (a.date === b.date) return b.tagging.id - a.tagging.id;
+				return b.date.localeCompare(a.date);
+			});
+			return dated[0].tagging;
+		}
+
+		if (undated.length > 0) {
+			undated.sort((a, b) => b.id - a.id);
+			return undated[0];
+		}
+
+		return null;
+	}
+
+	function effectiveServiceIdsForOrderDate(orderDate: string): Set<number> {
+		const taggingsByService = new Map<number, ServiceTaggingSchema[]>();
+		for (const tagging of branchTaggings) {
+			if (tagging.serviceId == null) continue;
+			const existing = taggingsByService.get(tagging.serviceId);
+			if (existing) {
+				existing.push(tagging);
+			} else {
+				taggingsByService.set(tagging.serviceId, [tagging]);
+			}
+		}
+
+		const effectiveIds = new Set<number>();
+		for (const [serviceId, serviceTaggings] of taggingsByService) {
+			if (pickEffectiveTagging(serviceTaggings, orderDate)) {
+				effectiveIds.add(serviceId);
+			}
+		}
+		return effectiveIds;
+	}
+
 	function serviceMatchesFilter(
 		service: ServiceItemSchema,
-		filter: typeof serviceFilter
+		filter: ServiceFilterType
 	): boolean {
 		if (filter === 'all') return true;
-		const name = (service.serviceName ?? '').toLowerCase();
-		if (filter === 'radiology') return name.includes('radio');
-		if (filter === 'laboratory') return name.includes('lab');
-		if (filter === 'nursing') return name.includes('nurs');
+		const subCategoryId = service.subCategoryId;
+		if (filter === 'radiology') {
+			return serviceFilterSubCategoryIds.radiology.has(subCategoryId);
+		}
+		if (filter === 'laboratory') {
+			return serviceFilterSubCategoryIds.laboratory.has(subCategoryId);
+		}
+		if (filter === 'nursing') {
+			return serviceFilterSubCategoryIds.nursing.has(subCategoryId);
+		}
 		return true;
 	}
 
@@ -305,8 +424,10 @@ let showHistory = $state(false);
 				branchId: branchIdForVisit,
 				serviceId
 			});
-			const t = taggings[0];
+			const t = pickEffectiveTagging(taggings, orderDateInput);
 			if (!t) {
+				detailServiceAmountInput = '';
+				detailServiceTaxAmountInput = '';
 				detailAmountEditable = true;
 				return;
 			}
@@ -715,6 +836,9 @@ let showHistory = $state(false);
 										type="date"
 										class="d-input d-input-sm d-input-bordered w-40"
 										bind:value={orderDateInput}
+										onchange={async () => {
+											await applyPricingForSelectedService();
+										}}
 									/>
 								</label>
 								<label class="flex flex-col gap-1">
