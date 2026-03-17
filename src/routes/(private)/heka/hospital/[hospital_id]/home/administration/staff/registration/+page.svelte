@@ -148,6 +148,7 @@
 	let photoFile: File | null = $state(null);
 	let photoPreviewUrl: string = $state('');
 	let photoUploading: boolean = $state(false);
+	let removePhotoRequested: boolean = $state(false);
 	let photoInputEl: HTMLInputElement | undefined = $state();
 	let licenseAndSignatureModalOpen = $state(false);
 	let selectedLicenseNo: string = $state('');
@@ -440,6 +441,7 @@
 		selectedSignatureText = detail?.signatureText ?? '';
 		photoPreviewUrl =
 			getStaffPhotoDisplayUrl(staff.photoUrl) ?? staff.photoUrl ?? '';
+		removePhotoRequested = false;
 		// Join/resign dates if we have them on staff - extend schema if needed
 		selectedJoinDate = dateTimeUtil.getTodayDateString();
 		selectedResignDate = '';
@@ -512,6 +514,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = URL.createObjectURL(file);
 		photoFile = file;
+		removePhotoRequested = false;
 		input.value = '';
 	}
 
@@ -519,6 +522,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = '';
 		photoFile = null;
+		removePhotoRequested = true;
 		if (photoInputEl) photoInputEl.value = '';
 	}
 
@@ -751,6 +755,11 @@
 					} finally {
 						photoUploading = false;
 					}
+				} else if (removePhotoRequested) {
+					await updateStaff({
+						id: staffEditId,
+						photoUrl: null
+					});
 				}
 				if (signatureFile && staffDetailId) {
 					const fd = new FormData();
@@ -771,6 +780,7 @@
 					'Staff updated successfully.',
 					StatusColorEnum.SUCCESS
 				);
+				removePhotoRequested = false;
 				isLoading = false;
 				return;
 			}
@@ -1010,6 +1020,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = '';
 		photoFile = null;
+		removePhotoRequested = false;
 		if (photoInputEl) photoInputEl.value = '';
 		licenseAndSignatureModalOpen = false;
 		selectedLicenseNo = '';
@@ -1082,7 +1093,7 @@
 								type="button"
 								className="d-btn-error d-btn-sm"
 								onClick={handleRemovePhoto}
-								disabled={!photoFile}
+								disabled={!photoFile && !photoPreviewUrl}
 							>
 								Remove
 							</DaisyUiButton>

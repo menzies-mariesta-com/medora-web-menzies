@@ -1,4 +1,13 @@
 @import 'tailwindcss';
+
+/* GSAP modal animation wrapper */
+.d-modal-content-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 100%;
+}
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 

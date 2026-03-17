@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
 	import GPrivateHekaNavbarOnly from '$lib/component/global/private/heka/GPrivateHekaNavbarOnly.svelte';
+	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { children, data } = $props();
@@ -28,7 +29,11 @@
 			staffPhotoUrl={currentStaffPhotoUrl}
 		/>
 		<div class="my-main p-3">
-			{@render children?.()}
+			{#key page.url.pathname}
+				<AnimatedPageContent>
+					{@render children?.()}
+				</AnimatedPageContent>
+			{/key}
 		</div>
 		<GPrivateHekaFooterBar />
 	</div>

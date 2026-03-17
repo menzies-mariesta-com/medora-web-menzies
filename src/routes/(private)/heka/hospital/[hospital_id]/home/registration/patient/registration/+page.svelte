@@ -209,6 +209,7 @@
 	let photoFile: File | null = $state(null);
 	let photoPreviewUrl: string = $state('');
 	let photoUploading: boolean = $state(false);
+	let removePhotoRequested: boolean = $state(false);
 	let photoInputEl: HTMLInputElement | undefined = $state();
 
 	let duplicateCheckLoading = $state(false);
@@ -367,6 +368,7 @@
 			) ??
 			(patient as { photoPath?: string }).photoPath ??
 			'';
+		removePhotoRequested = false;
 	}
 
 	let lastLoadedPatientId: string | null = $state(null);
@@ -423,6 +425,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = URL.createObjectURL(file);
 		photoFile = file;
+		removePhotoRequested = false;
 		input.value = '';
 	}
 
@@ -430,6 +433,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = '';
 		photoFile = null;
+		removePhotoRequested = true;
 		if (photoInputEl) photoInputEl.value = '';
 	}
 
@@ -688,12 +692,18 @@
 					} finally {
 						photoUploading = false;
 					}
+				} else if (removePhotoRequested) {
+					await updatePatient({
+						id: currentPatientId,
+						photoPath: null
+					});
 				}
 
 				toastService.addToast(
 					'Patient updated successfully.',
 					StatusColorEnum.SUCCESS
 				);
+				removePhotoRequested = false;
 			} else {
 				// Create: new patient (code is generated on backend from route hospital).
 				// Email is optional, but account creation still requires a unique email, so we
@@ -906,6 +916,7 @@
 		if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
 		photoPreviewUrl = '';
 		photoFile = null;
+		removePhotoRequested = false;
 		if (photoInputEl) photoInputEl.value = '';
 		PatientAttachmentDialogState.stagedAttachments = [];
 	}
@@ -972,7 +983,7 @@
 								type="button"
 								className="d-btn-error d-btn-sm"
 								onClick={handleRemovePhoto}
-								disabled={!photoFile}
+								disabled={!photoFile && !photoPreviewUrl}
 							>
 								Remove
 							</DaisyUiButton>
