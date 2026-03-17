@@ -156,6 +156,10 @@
 		loadVisitTypes();
 	});
 
+	lifeCycleUtil.onDestroy(() => {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+	});
+
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 

@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { SvelteDate } from 'svelte/reactivity';
+import { log } from '$lib/logger';
 
 export class CookieStorageUtil {
 	constructor() {}
@@ -18,7 +19,7 @@ export class CookieStorageUtil {
 				stringValue
 			)}${expires}; path=/`;
 		} catch (error) {
-			console.error(`Error saving cookie "${key}":`, error);
+			log.error(`Error saving cookie "${key}"`, error instanceof Error ? error : undefined);
 		}
 	}
 
@@ -41,7 +42,7 @@ export class CookieStorageUtil {
 			}
 			return null;
 		} catch (error) {
-			console.error(`Error reading cookie "${key}":`, error);
+			log.error(`Error reading cookie "${key}"`, error instanceof Error ? error : undefined);
 			return null;
 		}
 	}
@@ -53,7 +54,7 @@ export class CookieStorageUtil {
 				key
 			)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 		} catch (error) {
-			console.error(`Error removing cookie "${key}":`, error);
+			log.error(`Error removing cookie "${key}"`, error instanceof Error ? error : undefined);
 		}
 	}
 
@@ -67,7 +68,7 @@ export class CookieStorageUtil {
 				document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 			}
 		} catch (error) {
-			console.error('Error clearing cookies:', error);
+			log.error('Error clearing cookies', error instanceof Error ? error : undefined);
 		}
 	}
 

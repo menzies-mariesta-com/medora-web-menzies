@@ -261,6 +261,8 @@
 		);
 	});
 
+	lifeCycleutil.onDestroy(() => {});
+
 	$effect(() => {
 		const id = selectedDoctorId.trim();
 		const hid = hospitalId ?? undefined;

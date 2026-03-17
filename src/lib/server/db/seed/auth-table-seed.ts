@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { CountryCodeData } from '../../../model/data/country-code.data.ts';
 import { StringUtil } from '../../../util/string.util.svelte.ts';
+import { seedLogger } from '$lib/logger';
 
 if (!process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set');
@@ -21,7 +22,7 @@ const db = drizzle(client);
  * npx tsx src/lib/server/db/seed/master-table-seed.ts
  */
 export async function seedAuthTables() {
-	console.log('Seeding auth tables...');
+	seedLogger.info('Seeding auth tables...');
 
 	// 1. Role
 	await db.execute(sql`
@@ -33,16 +34,16 @@ export async function seedAuthTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: role');
+	seedLogger.info('Seeded: role');
 }
 
 // Allow running via `ts-node` / `tsx` / `node` (after build)
 seedAuthTables()
 	.then(() => {
-		console.log('Seeding finished successfully.');
+		seedLogger.info('Auth table seeding finished');
 		process.exit(0);
 	})
 	.catch((error) => {
-		console.error('Error while seeding auth tables:', error);
+		seedLogger.error('Error while seeding auth tables', error instanceof Error ? error : new Error(String(error)));
 		process.exit(1);
 	});

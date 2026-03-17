@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { env } from '$env/dynamic/private';
+import { log } from '$lib/logger';
 
 function createTransporter() {
 	return nodemailer.createTransport({
@@ -31,7 +32,7 @@ export async function sendEmailServer(payload: {
 		});
 		return true;
 	} catch (err) {
-		console.error(err);
+		log.error('Failed to send email', err instanceof Error ? err : new Error(String(err)));
 		return false;
 	}
 }

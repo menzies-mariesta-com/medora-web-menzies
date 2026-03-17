@@ -26,6 +26,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 		ServiceOrderSchema
 	} from '$lib/server/db/schema-type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	type NursingCompleteRow = {
 		id: number;
@@ -65,6 +66,7 @@ let totalRows = $state(0);
 let tableFilters = $state<Record<string, string>>({});
 let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
 
 	const subtotal = $derived(
 		rows.reduce((sum, row) => sum + parseAmount(row.serviceAmount), 0)
@@ -197,14 +199,27 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 		}
 	}
 
+	let mounted = $state(false);
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+		if (visitId) fetchNursingComplete();
+	});
+
 	$effect(() => {
 		const vid = visitId;
+		if (!mounted) return;
 		if (vid) {
 			fetchNursingComplete();
 		} else {
 			visit = null;
 			rows = [];
 		}
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
 	});
 
 	const statusFilterOptions = [

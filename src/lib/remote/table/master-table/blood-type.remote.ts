@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { prerender, query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,14 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getBloodType = query(
+export const getBloodType = prerender(
 	async (): Promise<BloodTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.bloodTypeTable)
 			.where(ne(table.bloodTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.bloodTypeTable.name);
-	}
+	},
+	{ dynamic: true }
 );
 
 export const getBloodTypeCount = query(async (): Promise<number> => {

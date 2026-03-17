@@ -35,6 +35,14 @@ export enum WebRoutesEnum {
 	HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/heka/home/nursing-workbench/emr/vital',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/heka/home/nursing-workbench/emr/diagnosis',
 
+	// CPOE module (navbar auto-hides like nursing EMR)
+	HEKA_HOME_CPOE = '/heka/home/cpoe',
+	HEKA_HOME_CPOE_ORDER = '/heka/home/cpoe/order',
+
+	// Observation module (navbar auto-hides like nursing EMR)
+	HEKA_HOME_OBSERVATION = '/heka/home/observation',
+	HEKA_HOME_OBSERVATION_EMR = '/heka/home/observation/emr',
+
 	// Serice Item
 	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
 	HEKA_HOME_SERVICE_ITEM_SERVICE = '/heka/home/service-item/service',
