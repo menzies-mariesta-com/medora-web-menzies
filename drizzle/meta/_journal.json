@@ -15,6 +15,13 @@
       "when": 1742238385000,
       "tag": "0001_junction_tables_user_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1742238500000,
+      "tag": "0002_unique_constraints_junction_tables",
+      "breakpoints": true
     }
   ]
 }

@@ -410,18 +410,28 @@
 							.staffDetail.bloodTypeId
 					)
 				: '';
-		selectedUserGroups = (
-			(staff as { staffUserGroups?: { userGroupId: number }[] })
-				.staffUserGroups ?? []
-		).map((ug) => ug.userGroupId);
+		// Deduplicate when loading; filter to current hospital's user groups only
+		const userGroupIdsThisHospital = new Set(
+			userGroupData.map((g) => g.id)
+		);
+		selectedUserGroups = [
+			...new Set(
+				(
+					(staff as { staffUserGroups?: { userGroupId: number }[] })
+						.staffUserGroups ?? []
+				)
+					.map((ug) => ug.userGroupId)
+					.filter((id) => userGroupIdsThisHospital.has(id))
+			)
+		];
 		const branchIdsFromStaff = (
 			(staff as { staffBranches?: { branchId: string }[] })
 				.staffBranches ?? []
 		).map((sb) => sb.branchId);
 		const branchIdSet = new Set(branchData.map((b) => b.id));
-		selectedBranchIds = branchIdsFromStaff.filter((id) =>
+		selectedBranchIds = [...new Set(branchIdsFromStaff.filter((id) =>
 			branchIdSet.has(id)
-		);
+		))];
 		isActive = staff.statusId === StatusEnum.ACTIVE;
 		const detail = (
 			staff as {
@@ -709,37 +719,62 @@
 						departmentId: Number(selectedDepartmentId)
 					});
 				}
-				const staffUGs =
-					(staff as { staffUserGroups?: { id: number }[] })
-						.staffUserGroups ?? [];
-				for (const sug of staffUGs) {
+				// Delete existing staff user groups for this hospital, then create for selected
+				const editHospitalId =
+					typeof page.params.hospital_id === 'string'
+						? page.params.hospital_id
+						: '';
+				// Use staff relations from freshly fetched data (avoids stale/cached query results)
+				const staffUserGroupsToDelete = (
+					(staff as {
+						staffUserGroups?: { id: number; userGroupId: number; userGroup?: { hospitalId: string } }[];
+					}).staffUserGroups ?? []
+				).filter(
+					(sug) => sug.userGroup?.hospitalId === editHospitalId
+				);
+				for (const sug of staffUserGroupsToDelete) {
 					await deleteStaffUserGroup({ id: sug.id });
 				}
-				for (const ugId of selectedUserGroups) {
+				// Only create for user groups that exist in this hospital (defensive)
+				const validUserGroupIdSet = new Set(
+					userGroupData.map((g) => g.id)
+				);
+				const uniqueUserGroupIds = [
+					...new Set(
+						selectedUserGroups.filter((id) =>
+							validUserGroupIdSet.has(id)
+						)
+					)
+				];
+				for (const ugId of uniqueUserGroupIds) {
 					await createStaffUserGroup({
 						staffId: staffEditId,
 						userGroupId: ugId
 					});
 				}
-				const editHospitalId =
-					typeof page.params.hospital_id === 'string'
-						? page.params.hospital_id
-						: '';
-				const staffBranches =
+				// Use staff relations from freshly fetched data (avoids stale/cached query results)
+				const staffBranchesToDelete = (
 					(staff as {
-						staffBranches?: { id: number; branchId: string }[];
-					}).staffBranches ?? [];
-				const branchIdsThisHospital = new Set(
-					branchData.map((b) => b.id)
-				);
-				const staffBranchesToDelete = staffBranches.filter((sb) =>
-					branchIdsThisHospital.has(sb.branchId)
+						staffBranches?: { id: number; branchId: string; branch?: { hospitalId: string } }[];
+					}).staffBranches ?? []
+				).filter(
+					(sb) => sb.branch?.hospitalId === editHospitalId
 				);
 				for (const sb of staffBranchesToDelete) {
 					await deleteStaffBranch({ id: sb.id });
 				}
 				if (editHospitalId) {
-					const uniqueBranchIds = [...new Set(selectedBranchIds)];
+					// Only create for branches that exist in this hospital (defensive)
+					const validBranchIdSet = new Set(
+						branchData.map((b) => String(b.id))
+					);
+					const uniqueBranchIds = [
+						...new Set(
+							selectedBranchIds
+								.map((id) => String(id))
+								.filter((id) => validBranchIdSet.has(id))
+						)
+					];
 					for (const branchId of uniqueBranchIds) {
 						await createStaffBranch({
 							staffId: staffEditId,
@@ -866,11 +901,11 @@
 				isLocked,
 				userGroupIds:
 					selectedUserGroups.length > 0
-						? selectedUserGroups
+						? [...new Set(selectedUserGroups)]
 						: undefined,
 				branchIds:
 					selectedBranchIds.length > 0
-						? selectedBranchIds
+						? [...new Set(selectedBranchIds)]
 						: undefined,
 				licenseNo: selectedLicenseNo.trim() || undefined,
 				licenseExpiryDate: selectedLicenseExpiryDate || undefined,

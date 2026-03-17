@@ -132,6 +132,14 @@ function buildSoftDeleteSet(
 	tableDef: unknown,
 	userId: string | null
 ): RowLike {
+	const supportsSoftDelete =
+		hasColumn(tableDef, 'statusId') ||
+		hasColumn(tableDef, 'deletedAt') ||
+		hasColumn(tableDef, 'deletedBy');
+	if (!supportsSoftDelete) {
+		return {};
+	}
+
 	const setValues: RowLike = {};
 	if (hasColumn(tableDef, 'statusId')) {
 		setValues.statusId = StatusEnum.DELETED;
