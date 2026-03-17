@@ -12,13 +12,13 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getCity = query(async (): Promise<CitySchema[]> => {
 	return ensureDb()
 		.select()
 		.from(table.cityTable)
-		.where(eq(table.cityTable.statusId, StatusEnum.ACTIVE))
+		.where(ne(table.cityTable.statusId, StatusEnum.DELETED))
 		.orderBy(table.cityTable.name);
 });
 
@@ -26,7 +26,7 @@ export const getCityCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.cityTable)
-		.where(eq(table.cityTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.cityTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -37,22 +37,22 @@ export const getCityPaginated = query(
 	): Promise<PaginatedResult<CitySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.cityTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.cityTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.cityTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.cityTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -71,7 +71,12 @@ export const getCityById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.cityTable)
-			.where(eq(table.cityTable.id, id));
+			.where(
+				and(
+					eq(table.cityTable.id, id),
+					ne(table.cityTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

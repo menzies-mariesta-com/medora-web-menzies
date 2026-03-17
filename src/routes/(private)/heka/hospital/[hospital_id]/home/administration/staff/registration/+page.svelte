@@ -414,10 +414,14 @@
 			(staff as { staffUserGroups?: { userGroupId: number }[] })
 				.staffUserGroups ?? []
 		).map((ug) => ug.userGroupId);
-		selectedBranchIds = (
+		const branchIdsFromStaff = (
 			(staff as { staffBranches?: { branchId: string }[] })
 				.staffBranches ?? []
 		).map((sb) => sb.branchId);
+		const branchIdSet = new Set(branchData.map((b) => b.id));
+		selectedBranchIds = branchIdsFromStaff.filter((id) =>
+			branchIdSet.has(id)
+		);
 		isActive = staff.statusId === StatusEnum.ACTIVE;
 		const detail = (
 			staff as {
@@ -717,18 +721,26 @@
 						userGroupId: ugId
 					});
 				}
-				const staffBranches =
-					(staff as { staffBranches?: { id: number }[] })
-						.staffBranches ?? [];
-				for (const sb of staffBranches) {
-					await deleteStaffBranch({ id: sb.id });
-				}
 				const editHospitalId =
 					typeof page.params.hospital_id === 'string'
 						? page.params.hospital_id
 						: '';
+				const staffBranches =
+					(staff as {
+						staffBranches?: { id: number; branchId: string }[];
+					}).staffBranches ?? [];
+				const branchIdsThisHospital = new Set(
+					branchData.map((b) => b.id)
+				);
+				const staffBranchesToDelete = staffBranches.filter((sb) =>
+					branchIdsThisHospital.has(sb.branchId)
+				);
+				for (const sb of staffBranchesToDelete) {
+					await deleteStaffBranch({ id: sb.id });
+				}
 				if (editHospitalId) {
-					for (const branchId of selectedBranchIds) {
+					const uniqueBranchIds = [...new Set(selectedBranchIds)];
+					for (const branchId of uniqueBranchIds) {
 						await createStaffBranch({
 							staffId: staffEditId,
 							branchId,

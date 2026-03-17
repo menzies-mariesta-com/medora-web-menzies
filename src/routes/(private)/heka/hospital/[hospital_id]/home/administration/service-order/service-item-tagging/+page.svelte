@@ -80,6 +80,7 @@ const serviceOptions = $derived.by(() =>
 	let formAllowEdit = $state(true);
 	let formActive = $state(true);
 
+
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
@@ -145,6 +146,12 @@ const serviceOptions = $derived.by(() =>
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32',
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
 		}
@@ -245,11 +252,12 @@ const serviceOptions = $derived.by(() =>
 			}
 
 			// Status filter
-			const statusTerm = filters.status?.trim().toLowerCase();
-			if (statusTerm === 'active') {
-				paramsBase.statusId = StatusEnum.ACTIVE;
-			} else if (statusTerm === 'inactive') {
-				paramsBase.statusId = StatusEnum.INACTIVE;
+			const statusVal = filters.status?.trim();
+			if (statusVal) {
+				const num = Number(statusVal);
+				if (num === StatusEnum.ACTIVE || num === StatusEnum.INACTIVE) {
+					paramsBase.statusId = num;
+				}
 			}
 
 			const pageSize = Number(pageSizeStr) || 10;
@@ -537,7 +545,7 @@ const serviceOptions = $derived.by(() =>
 		</DaisyUiCard>
 	{:else}
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h1 class="text-2xl font-bold">Service tagging</h1>
+			<h1 class="text-2xl font-bold">Service Item Tagging</h1>
 			<DaisyUiButton
 				className="d-btn-outline d-btn-sm d-btn-square"
 				onClick={startCreate}
@@ -615,10 +623,10 @@ const serviceOptions = $derived.by(() =>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium">Valid date</label>
-							<input
-								type="date"
+							<DaisyUiInputField
 								bind:value={formValidDate}
-								class="d-input-bordered d-input d-input-sm w-full"
+								inputType="date"
+								className="d-input-sm w-full"
 							/>
 						</div>
 						<div class="flex items-end gap-4">

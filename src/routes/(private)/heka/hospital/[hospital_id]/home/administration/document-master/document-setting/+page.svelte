@@ -37,7 +37,8 @@
 		DocumentTypeSchema,
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
-import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
+	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -85,13 +86,22 @@ import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.u
 	const settingList = $derived(settingResult?.data ?? []);
 	const total = $derived(settingResult?.total ?? 0);
 
+	let tableFilters = $state<Record<string, string>>({});
+
 	async function fetchData(opts?: { bustCache?: boolean }) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
+		const parsedStatusId = tableFilters.status
+			? Number(tableFilters.status)
+			: undefined;
 		try {
 			settingResult = await getDocumentSettingsPaginated({
 				page: currentPage,
 				pageSize,
+				statusId:
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -247,18 +257,50 @@ import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.u
 	}
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
-		{ id: 'id', header: 'ID', widthClass: 'w-16 min-w-[4rem]' },
-		{ id: 'name', header: 'Name', widthClass: 'w-48 min-w-[12rem]' },
+		{
+			id: 'id',
+			header: 'ID',
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false
+		},
+		{
+			id: 'name',
+			header: 'Name',
+			widthClass: 'w-48 min-w-[12rem]',
+			filterable: false
+		},
 		{
 			id: 'documentType',
 			header: 'Document Type',
 			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false,
 			format: (_value, row) => row.documentType?.documentType ?? '—'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'pageSize',
 			header: 'Page',
 			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
 			format: (value, row) =>
 				`${value ?? 'A4'} ${row.pageOrientation === 'landscape' ? '↔' : '↕'}`
 		}
@@ -692,7 +734,7 @@ import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.u
 					showRowActions={true}
 					actionsHeader="Actions"
 					actionsVariant="none"
-					enableColumnFilters={false}
+					enableColumnFilters={true}
 					useRemoteFilters={true}
 					on:refresh={() => fetchData({ bustCache: true })}
 					on:pageSizeChange={() => {
@@ -700,6 +742,11 @@ import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.u
 						fetchData();
 					}}
 					on:pageChange={() => fetchData()}
+					on:filtersChange={(e) => {
+						tableFilters = e.detail.filters;
+						currentPage = 1;
+						fetchData();
+					}}
 				>
 					<svelte:fragment slot="rowActions" let:row>
 						{@const typedRow = row as DocumentSettingWithRelations}

@@ -181,6 +181,7 @@
 		});
 	});
 
+
 	function isCheckInStatus(id: string | null | undefined): boolean {
 		if (!id) return false;
 		const status = statusTaggingData.find((s) => String(s.id) === id);

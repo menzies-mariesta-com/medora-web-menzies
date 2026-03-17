@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, and, ne } from 'drizzle-orm';
 
 export const getMarketplaceAllowedFileExtensions = query(
 	async (): Promise<MarketplaceAllowedFileExtensionSchema[]> => {
@@ -20,9 +20,9 @@ export const getMarketplaceAllowedFileExtensions = query(
 			.select()
 			.from(table.marketplaceAllowedFileExtensionTable)
 			.where(
-				eq(
+				ne(
 					table.marketplaceAllowedFileExtensionTable.statusId,
-					StatusEnum.ACTIVE
+					StatusEnum.DELETED
 				)
 			)
 			.orderBy(table.marketplaceAllowedFileExtensionTable.name);
@@ -32,9 +32,9 @@ export const getMarketplaceAllowedFileExtensions = query(
 export const getMarketplaceAllowedFileExtensionsWithRelations = query(
 	async () => {
 		return ensureDb().query.marketplaceAllowedFileExtensionTable.findMany({
-			where: eq(
+			where: ne(
 				table.marketplaceAllowedFileExtensionTable.statusId,
-				StatusEnum.ACTIVE
+				StatusEnum.DELETED
 			),
 			with: {
 				status: true,
@@ -55,9 +55,9 @@ export const getMarketplaceAllowedFileExtensionCount = query(
 			.select({ count: count() })
 			.from(table.marketplaceAllowedFileExtensionTable)
 			.where(
-				eq(
+				ne(
 					table.marketplaceAllowedFileExtensionTable.statusId,
-					StatusEnum.ACTIVE
+					StatusEnum.DELETED
 				)
 			);
 		return row?.count ?? 0;
@@ -70,22 +70,22 @@ export const getMarketplaceAllowedFileExtensionsPaginated = query(
 		params?: PaginationParams
 	): Promise<PaginatedResult<MarketplaceAllowedFileExtensionSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAllowedFileExtensionTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.marketplaceAllowedFileExtensionTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.marketplaceAllowedFileExtensionTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.marketplaceAllowedFileExtensionTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -108,7 +108,15 @@ export const getMarketplaceAllowedFileExtensionById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.marketplaceAllowedFileExtensionTable)
-			.where(eq(table.marketplaceAllowedFileExtensionTable.id, id));
+			.where(
+				and(
+					eq(table.marketplaceAllowedFileExtensionTable.id, id),
+					ne(
+						table.marketplaceAllowedFileExtensionTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
+			);
 		return row ?? null;
 	}
 );

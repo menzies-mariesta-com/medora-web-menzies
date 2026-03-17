@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { asc, count, eq } from 'drizzle-orm';
+import { asc, and, count, eq, ne } from 'drizzle-orm';
 import { specialization } from '$lib/paraglide/messages';
 
 export type SpecializationWithRelations = Awaited<
@@ -25,7 +25,7 @@ export const getSpecialization = query(
 			.select()
 			.from(table.specializationTable)
 			.where(
-				eq(table.specializationTable.statusId, StatusEnum.ACTIVE)
+				ne(table.specializationTable.statusId, StatusEnum.DELETED)
 			)
 			.orderBy(table.specializationTable.name);
 	}
@@ -33,6 +33,7 @@ export const getSpecialization = query(
 
 export const getSpecializationWithRelations = query(async () => {
 	return ensureDb().query.specializationTable.findMany({
+		where: (t, { ne }) => ne(t.statusId, StatusEnum.DELETED),
 		with: {
 			craftGroup: true,
 			status: true,
@@ -48,7 +49,7 @@ export const getSpecializationCount = query(
 			.select({ count: count() })
 			.from(table.specializationTable)
 			.where(
-				eq(table.specializationTable.statusId, StatusEnum.ACTIVE)
+				ne(table.specializationTable.statusId, StatusEnum.DELETED)
 			);
 		return row?.count ?? 0;
 	}
@@ -61,22 +62,22 @@ export const getSpecializationPaginated = query(
 	): Promise<PaginatedResult<SpecializationSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.specializationTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.specializationTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.specializationTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.specializationTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -99,7 +100,15 @@ export const getSpecializationById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.specializationTable)
-			.where(eq(table.specializationTable.id, id));
+			.where(
+				and(
+					eq(table.specializationTable.id, id),
+					ne(
+						table.specializationTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
+			);
 		return row ?? null;
 	}
 );

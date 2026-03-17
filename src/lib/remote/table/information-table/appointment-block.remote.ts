@@ -7,7 +7,7 @@ import type {
 	AppointmentBlockSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 /** Get all appointment blocks, optionally filtered by staffId and/or hospitalId. Excludes deleted. */
 export const getAppointmentBlock = query(
@@ -17,7 +17,7 @@ export const getAppointmentBlock = query(
 		hospitalId?: string;
 	}): Promise<AppointmentBlockSchema[]> => {
 		const conditions = [
-			eq(table.appointmentBlockTable.statusId, StatusEnum.ACTIVE)
+			ne(table.appointmentBlockTable.statusId, StatusEnum.DELETED)
 		];
 		if (params?.staffId != null && params.staffId !== '') {
 			conditions.push(

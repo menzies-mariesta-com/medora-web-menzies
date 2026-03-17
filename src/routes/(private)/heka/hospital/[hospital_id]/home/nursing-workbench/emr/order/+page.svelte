@@ -49,6 +49,7 @@ import { getSubCategory } from '$lib/remote/table/information-table/sub-category
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
 import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
@@ -97,6 +98,13 @@ import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 
 let currentDetailPage = $state(1);
 let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+const detailPageSizeNum = $derived(Number(detailPageSizeStr) || 10);
+const pagedPendingItems = $derived(
+	pendingItems.slice(
+		(currentDetailPage - 1) * detailPageSizeNum,
+		currentDetailPage * detailPageSizeNum
+	)
+);
 
 	let serviceFilter = $state<'all' | 'radiology' | 'laboratory' | 'nursing'>(
 		'all'
@@ -127,6 +135,7 @@ let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 let showHistory = $state(false);
 
 	const toastService = new ToastService();
+
 
 	function todayDateString(): string {
 		const d = new Date();
@@ -629,6 +638,20 @@ let showHistory = $state(false);
 
 	const historyColumns: MariTableColumn<HistoryItem>[] = [
 		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+		},
+		{
 			id: 'orderNo',
 			header: 'Order No',
 			widthClass: 'w-32',
@@ -832,13 +855,10 @@ let showHistory = $state(false);
 							<div class="flex flex-wrap items-end gap-4 text-sm">
 								<label class="flex flex-col gap-1">
 									<span class="font-medium">Order Date</span>
-									<input
-										type="date"
-										class="d-input d-input-sm d-input-bordered w-40"
+									<DaisyUiInputField
 										bind:value={orderDateInput}
-										onchange={async () => {
-											await applyPricingForSelectedService();
-										}}
+										inputType="date"
+										className="d-input-sm w-40"
 									/>
 								</label>
 								<label class="flex flex-col gap-1">
@@ -1019,17 +1039,19 @@ let showHistory = $state(false);
 								class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
 							>
 								<MariTable
-									rows={pendingItems}
+									rows={pagedPendingItems}
 									columns={detailColumns}
 									isLoading={false}
 									bind:pageSize={detailPageSizeStr}
 									bind:currentPage={currentDetailPage}
+									totalRowCount={pendingItems.length}
 									showRefreshButton={false}
 									emptyMessage="No items."
 									showRowActions={true}
 									actionsHeader="Actions"
 									actionsVariant="none"
 									enableColumnFilters={false}
+									useRemoteFilters={true}
 								>
 									<svelte:fragment slot="rowActions" let:row>
 										<td class="w-28 shrink-0 text-right">

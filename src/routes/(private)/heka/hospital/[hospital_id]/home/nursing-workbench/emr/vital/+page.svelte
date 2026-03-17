@@ -17,6 +17,7 @@
 	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientVitalsByPatientId,
+		getPatientVitalsByPatientIdPaginated,
 		deletePatientVital,
 		type PatientVitalWithVisit
 	} from '$lib/remote/table/information-table/patient-vital.remote';
@@ -30,6 +31,18 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StatusEnum } from '$lib/model/enum/db-link';
+
+	function areFiltersEqual(
+		a: Record<string, string>,
+		b: Record<string, string>
+	): boolean {
+		const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+		for (const k of keys) {
+			if ((a[k] ?? '') !== (b[k] ?? '')) return false;
+		}
+		return true;
+	}
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -51,6 +64,14 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingVitals = $state(false);
+let totalVitals = $state(0);
+let tableFilters = $state<Record<string, string>>({
+	status: String(StatusEnum.ACTIVE)
+});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastLoadedVisitKey = $state('');
+let lastHandledPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+let lastVitalsFetchKey = $state('');
 	const toastService = new ToastService();
 
 	async function openRecordDialog() {
@@ -79,7 +100,9 @@
 				visit?.patientId &&
 				visit?.hospitalId
 			) {
-				await fetchVitals(visit.patientId, visit.hospitalId);
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
 			}
 		} finally {
 			VitalRecordDialogState.patientId = null;
@@ -112,7 +135,9 @@
 				visit?.patientId &&
 				visit?.hospitalId
 			) {
-				await fetchVitals(visit.patientId, visit.hospitalId);
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
 			}
 		} finally {
 			VitalRecordDialogState.vitalId = null;
@@ -133,7 +158,9 @@
 				StatusColorEnum.SUCCESS
 			);
 			if (visit?.patientId && visit?.hospitalId) {
-				await fetchVitals(visit.patientId, visit.hospitalId);
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
 			}
 		} catch (err) {
 			toastService.addToast(
@@ -145,19 +172,28 @@
 		}
 	}
 
-	async function fetchVisit() {
-		if (!visitId || !hospitalId) return;
+	async function fetchVisit(): Promise<{
+		patientId: string;
+		hospitalId: string;
+	} | null> {
+		if (!visitId || !hospitalId) return null;
 		isLoadingVisit = true;
 		try {
 			const v = await getPatientVisitById({ id: visitId });
 			if (v) {
-				visit = {
+				const nextVisit = {
 					patientId: v.patientId,
 					hospitalId: v.hospitalId
 				};
+				visit = nextVisit;
+				return nextVisit;
 			} else {
 				visit = null;
+				return null;
 			}
+		} catch {
+			visit = null;
+			return null;
 		} finally {
 			isLoadingVisit = false;
 		}
@@ -165,14 +201,48 @@
 
 	async function fetchVitals(
 		patientId: string,
-		hospitalIdParam: string
+		hospitalIdParam: string,
+		options?: { force?: boolean }
 	) {
+		console.log('FETCHING VITALS');
+		const pageSize = Number(pageSizeStr) || 10;
+		const requestKey = JSON.stringify({
+			patientId,
+			hospitalIdParam,
+			page: currentPage,
+			pageSize,
+			visitNo: tableFilters.visitNo?.trim() || '',
+			status: tableFilters.status ?? ''
+		});
+		if (!options?.force && requestKey === lastVitalsFetchKey) {
+			return;
+		}
+		lastVitalsFetchKey = requestKey;
 		isLoadingVitals = true;
+		console.log('Refreshing');
 		try {
+			const statusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const result = await getPatientVitalsByPatientIdPaginated({
+				patientId,
+				hospitalId: hospitalIdParam,
+				page: currentPage,
+				pageSize,
+				visitNo: tableFilters.visitNo?.trim() || undefined,
+				statusId:
+					statusId != null && Number.isFinite(statusId)
+						? statusId
+						: undefined
+			});
+			vitals = result.data;
+			totalVitals = result.total;
+		} catch {
 			vitals = await getPatientVitalsByPatientId({
 				patientId,
 				hospitalId: hospitalIdParam
 			});
+			totalVitals = vitals.length;
 		} finally {
 			isLoadingVitals = false;
 		}
@@ -180,13 +250,24 @@
 
 	$effect(() => {
 		const vid = visitId;
-		if (vid) {
-			fetchVisit().then(() => {
-				if (visit?.patientId && visit?.hospitalId) {
-					fetchVitals(visit.patientId, visit.hospitalId);
+		const hid = hospitalId;
+		if (vid && hid) {
+			const visitKey = `${vid}:${hid}`;
+			if (lastLoadedVisitKey === visitKey) {
+				return;
+			}
+			lastLoadedVisitKey = visitKey;
+			(async () => {
+				const resolvedVisit = await fetchVisit();
+				if (resolvedVisit) {
+					await fetchVitals(
+						resolvedVisit.patientId,
+						resolvedVisit.hospitalId
+					);
 				}
-			});
+			})();
 		} else {
+			lastLoadedVisitKey = '';
 			visit = null;
 			vitals = [];
 		}
@@ -216,6 +297,11 @@
 		return v.vitalDateTime ?? v.createdAt;
 	}
 
+	const statusFilterOptions = [
+		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+	];
+
 	const vitalColumns: MariTableColumn<PatientVitalWithVisit>[] = [
 		{
 			id: 'visitNo',
@@ -223,6 +309,21 @@
 			widthClass: 'w-40',
 			filterable: true,
 			format: (_value, row) => row.visit?.visitNo?.trim() || '–'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'date',
@@ -349,7 +450,7 @@
 						Record new vitals
 					</DaisyUiButton>
 				</div>
-				{#if isLoadingVitals}
+				{#if isLoadingVitals && vitals.length === 0}
 					<div class="flex min-h-32 items-center justify-center">
 						<DaisyUiLoading className="d-loading-lg" />
 					</div>
@@ -365,12 +466,54 @@
 							isLoading={isLoadingVitals}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
-							showRefreshButton={false}
+							totalRowCount={totalVitals}
+							showRefreshButton={true}
 							emptyMessage="No vitals."
 							showRowActions={true}
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							useRemoteFilters={true}
+							on:refresh={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(
+										visit.patientId,
+										visit.hospitalId,
+										{ force: true }
+									);
+								}
+							}}
+							on:pageSizeChange={() => {
+								if (pageSizeStr === lastHandledPageSize) {
+									return;
+								}
+								lastHandledPageSize = pageSizeStr;
+								currentPage = 1;
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(visit.patientId, visit.hospitalId);
+								}
+							}}
+							on:pageChange={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(visit.patientId, visit.hospitalId);
+								}
+							}}
+							on:filtersChange={(event) => {
+								const nextFilters = event.detail.filters;
+								if (areFiltersEqual(tableFilters, nextFilters)) {
+									return;
+								}
+								if (filterDebounceTimeout) {
+									clearTimeout(filterDebounceTimeout);
+								}
+								tableFilters = nextFilters;
+								currentPage = 1;
+								filterDebounceTimeout = setTimeout(() => {
+									if (visit?.patientId && visit?.hospitalId) {
+										fetchVitals(visit.patientId, visit.hospitalId);
+									}
+								}, 350);
+							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
 								<td class="w-24 shrink-0 text-right">

@@ -82,7 +82,10 @@ function getSelectedScopeFromRequest(): {
 // get all
 export const getPatient = query(
 	async (): Promise<PatientSchema[]> => {
-		const data = await ensureDb().select().from(table.patientTable);
+		const data = await ensureDb()
+			.select()
+			.from(table.patientTable)
+			.where(ne(table.patientTable.statusId, StatusEnum.DELETED));
 		return data;
 	}
 );
@@ -90,6 +93,7 @@ export const getPatient = query(
 // get all with relations
 export const getPatientWithRelations = query(async () => {
 	return ensureDb().query.patientTable.findMany({
+		where: (t, { ne }) => ne(t.statusId, StatusEnum.DELETED),
 		with: patientWithRelationsWith
 	});
 });
@@ -98,7 +102,8 @@ export const getPatientWithRelations = query(async () => {
 export const getPatientCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.patientTable);
+		.from(table.patientTable)
+		.where(ne(table.patientTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -353,7 +358,12 @@ export const getPatientById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.patientTable)
-			.where(eq(table.patientTable.id, id));
+			.where(
+				and(
+					eq(table.patientTable.id, id),
+					ne(table.patientTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

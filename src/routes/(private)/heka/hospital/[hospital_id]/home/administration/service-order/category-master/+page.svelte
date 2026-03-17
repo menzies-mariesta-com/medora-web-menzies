@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -24,6 +23,8 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
+let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const categories = $derived(categoryResult?.data ?? []);
 	const total = $derived(categoryResult?.total ?? 0);
@@ -45,6 +46,12 @@
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32 min-w-[8rem]',
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
 		}
@@ -54,7 +61,26 @@
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
-			const params = { page: currentPage, pageSize };
+			const parsedStatusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const parsedId = tableFilters.id
+				? Number(tableFilters.id)
+				: undefined;
+			const params = {
+				page: currentPage,
+				pageSize,
+				id:
+					parsedId != null && Number.isFinite(parsedId)
+						? parsedId
+						: undefined,
+				categoryName: tableFilters.categoryName?.trim() || undefined,
+				statusId:
+					parsedStatusId != null &&
+					Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined
+			};
 			if (forceRefresh) {
 				await getCategoryPaginated(params).refresh();
 			}
@@ -72,33 +98,39 @@
 <div class="space-y-6">
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading && categories.length === 0}
-				<DaisyUiLoading className="py-8" />
-			{:else}
-				<div class={TableEnum.HEIGHT}>
-					<MariTable
-						rows={categories}
-						columns={categoryColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage="No categories."
-						showRowActions={false}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={false}
-						on:refresh={() => fetchCategories(true)}
-						on:pageSizeChange={() => {
-							currentPage = 1;
+			<div class={TableEnum.HEIGHT}>
+				<MariTable
+					rows={categories}
+					columns={categoryColumns}
+					{isLoading}
+					bind:pageSize={pageSizeStr}
+					bind:currentPage
+					totalRowCount={total}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage="No categories."
+					showRowActions={false}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchCategories(true)}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchCategories(true);
+					}}
+					on:pageChange={() => fetchCategories(true)}
+					on:filtersChange={(event) => {
+						if (filterDebounceTimeout) {
+							clearTimeout(filterDebounceTimeout);
+						}
+						tableFilters = event.detail.filters;
+						currentPage = 1;
+						filterDebounceTimeout = setTimeout(() => {
 							fetchCategories(true);
-						}}
-						on:pageChange={() => fetchCategories(true)}
-					/>
-				</div>
-			{/if}
+						}, 350);
+					}}
+				/>
+			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

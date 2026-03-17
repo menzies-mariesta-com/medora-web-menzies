@@ -11,6 +11,7 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 	import type {
 		ServiceOrderDetailSchema
 	} from '$lib/server/db/schema-type';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	type HistoryItem = ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -103,6 +104,20 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 				row.advisingDoctorName && row.advisingDoctorName.trim()
 					? row.advisingDoctorName
 					: '–'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28',
+			filterable: false,
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'amountDisplay',

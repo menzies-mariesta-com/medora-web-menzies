@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getPostalCode = query(
 	async (): Promise<PostalCodeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.postalCodeTable)
-			.where(eq(table.postalCodeTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.postalCodeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.postalCodeTable.value);
 	}
 );
@@ -28,7 +28,7 @@ export const getPostalCodeCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.postalCodeTable)
-		.where(eq(table.postalCodeTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.postalCodeTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -39,22 +39,22 @@ export const getPostalCodePaginated = query(
 	): Promise<PaginatedResult<PostalCodeSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.postalCodeTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.postalCodeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.postalCodeTable.value)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.postalCodeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -77,7 +77,12 @@ export const getPostalCodeById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.postalCodeTable)
-			.where(eq(table.postalCodeTable.id, id));
+			.where(
+				and(
+					eq(table.postalCodeTable.id, id),
+					ne(table.postalCodeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

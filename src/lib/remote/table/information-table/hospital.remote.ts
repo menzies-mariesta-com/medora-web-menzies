@@ -7,7 +7,7 @@ import type {
 	HospitalSchemaInsert,
 	HospitalSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
@@ -59,7 +59,10 @@ export const getHospitalWithOwner = query(
 export const getHospitalWithOwnerPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams & { ownerId?: string | null }
+		params?: PaginationParams & {
+			ownerId?: string | null;
+			statusId?: number | null;
+		}
 	): Promise<PaginatedResult<HospitalWithOwner>> => {
 		const event = getRequestEvent();
 		const userRoleId = event?.locals?.userRoleId ?? null;
@@ -73,9 +76,14 @@ export const getHospitalWithOwnerPaginated = query(
 		const db = ensureDb();
 		const hasOwnerFilter =
 			effectiveOwnerId != null && effectiveOwnerId !== '';
-		const whereExpr = hasOwnerFilter
+		let whereExpr = hasOwnerFilter
 			? eq(table.hospitalTable.ownerId, effectiveOwnerId!)
 			: undefined;
+		if (params?.statusId != null) {
+			const statusEq = eq(table.hospitalTable.statusId, params.statusId);
+			whereExpr =
+				whereExpr != null ? and(whereExpr, statusEq) : statusEq;
+		}
 		const baseOpts = {
 			limit,
 			offset,
@@ -86,10 +94,10 @@ export const getHospitalWithOwnerPaginated = query(
 			}
 		};
 		const [data, countResult] = await Promise.all([
-			hasOwnerFilter
+			whereExpr != null
 				? (db.query.hospitalTable.findMany({
 						...baseOpts,
-						where: (h, { eq }) => eq(h.ownerId, effectiveOwnerId!)
+						where: whereExpr
 					}) as Promise<HospitalWithOwner[]>)
 				: (db.query.hospitalTable.findMany(baseOpts) as Promise<
 						HospitalWithOwner[]

@@ -177,7 +177,10 @@ export const getAppointmentById = query(
 		id: number;
 	}): Promise<AppointmentSchema | null> => {
 		const scope = getSelectedScopeFromRequest();
-		const conditions = [eq(table.appointmentTable.id, id)];
+		const conditions = [
+			eq(table.appointmentTable.id, id),
+			ne(table.appointmentTable.statusId, StatusEnum.DELETED)
+		];
 		if (scope.hospitalId)
 			conditions.push(
 				eq(table.appointmentTable.hospitalId, scope.hospitalId)
