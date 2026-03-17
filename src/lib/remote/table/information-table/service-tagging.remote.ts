@@ -36,13 +36,13 @@ export const getServiceTagging = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 		if (params?.serviceId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.serviceId, params.serviceId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceIds && params.serviceIds.length > 0) {
@@ -52,14 +52,14 @@ export const getServiceTagging = query(
 					table.serviceTaggingTable.serviceId,
 					params.serviceIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceAmount != null) {
@@ -67,9 +67,9 @@ export const getServiceTagging = query(
 				whereExpr,
 				eq(
 					table.serviceTaggingTable.serviceAmount,
-					params.serviceAmount
+					String(params.serviceAmount)
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceTaxAmount != null) {
@@ -77,16 +77,16 @@ export const getServiceTagging = query(
 				whereExpr,
 				eq(
 					table.serviceTaggingTable.serviceTaxAmount,
-					params.serviceTaxAmount
+					String(params.serviceTaxAmount)
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -101,7 +101,10 @@ export const getServiceTaggingCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.serviceTaggingTable);
+			.from(table.serviceTaggingTable)
+			.where(
+				ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -132,13 +135,13 @@ export const getServiceTaggingPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 		if (params?.serviceId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.serviceId, params.serviceId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceIds && params.serviceIds.length > 0) {
@@ -148,14 +151,14 @@ export const getServiceTaggingPaginated = query(
 					table.serviceTaggingTable.serviceId,
 					params.serviceIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceAmount != null) {
@@ -163,9 +166,9 @@ export const getServiceTaggingPaginated = query(
 				whereExpr,
 				eq(
 					table.serviceTaggingTable.serviceAmount,
-					params.serviceAmount
+					String(params.serviceAmount)
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceTaxAmount != null) {
@@ -173,16 +176,16 @@ export const getServiceTaggingPaginated = query(
 				whereExpr,
 				eq(
 					table.serviceTaggingTable.serviceTaxAmount,
-					params.serviceTaxAmount
+					String(params.serviceTaxAmount)
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceTaggingTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -219,7 +222,12 @@ export const getServiceTaggingById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceTaggingTable)
-			.where(eq(table.serviceTaggingTable.id, id));
+			.where(
+				and(
+					eq(table.serviceTaggingTable.id, id),
+					ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, inArray, ne } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by categoryId)
 export const getSubCategory = query(
@@ -30,7 +30,7 @@ export const getSubCategory = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.subCategoryTable.categoryId, params.categoryId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -46,7 +46,10 @@ export const getSubCategoryCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.subCategoryTable);
+			.from(table.subCategoryTable)
+			.where(
+				ne(table.subCategoryTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -59,6 +62,9 @@ export const getSubCategoryPaginated = query(
 			categoryId?: number | null;
 			/** When set, only subcategories whose categoryId is in this list (e.g. hospital-level). */
 			categoryIds?: number[];
+			id?: number | null;
+			subCategoryName?: string | null;
+			statusId?: number | null;
 		}
 	): Promise<PaginatedResult<SubCategorySchema>> => {
 		const { page, pageSize, limit, offset } =
@@ -73,11 +79,14 @@ export const getSubCategoryPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.subCategoryTable.categoryId, params.categoryId)
-			);
+			) as typeof whereExpr;
 		}
 		if (params?.categoryIds !== undefined) {
 			if (params.categoryIds.length === 0) {
-				whereExpr = and(whereExpr, eq(table.subCategoryTable.id, -1));
+				whereExpr = and(
+					whereExpr,
+					eq(table.subCategoryTable.id, -1)
+				) as typeof whereExpr;
 			} else {
 				whereExpr = and(
 					whereExpr,
@@ -85,8 +94,33 @@ export const getSubCategoryPaginated = query(
 						table.subCategoryTable.categoryId,
 						params.categoryIds
 					)
-				);
+				) as typeof whereExpr;
 			}
+		}
+
+		if (params?.id != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.subCategoryTable.id, params.id)
+			) as typeof whereExpr;
+		}
+
+		const subCategoryNameTerm = params?.subCategoryName?.trim();
+		if (subCategoryNameTerm) {
+			whereExpr = and(
+				whereExpr,
+				ilike(
+					table.subCategoryTable.subCategoryName,
+					`%${subCategoryNameTerm}%`
+				)
+			) as typeof whereExpr;
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.subCategoryTable.statusId, params.statusId)
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -124,7 +158,12 @@ export const getSubCategoryById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.subCategoryTable)
-			.where(eq(table.subCategoryTable.id, id));
+			.where(
+				and(
+					eq(table.subCategoryTable.id, id),
+					ne(table.subCategoryTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

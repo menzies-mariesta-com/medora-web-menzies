@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getStaffType = query(
 	async (): Promise<StaffTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.staffTypeTable)
-			.where(eq(table.staffTypeTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.staffTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.staffTypeTable.name);
 	}
 );
@@ -28,7 +28,7 @@ export const getStaffTypeCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.staffTypeTable)
-		.where(eq(table.staffTypeTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.staffTypeTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -39,22 +39,22 @@ export const getStaffTypePaginated = query(
 	): Promise<PaginatedResult<StaffTypeSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.staffTypeTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.staffTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.staffTypeTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.staffTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -73,7 +73,12 @@ export const getStaffTypeById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTypeTable)
-			.where(eq(table.staffTypeTable.id, id));
+			.where(
+				and(
+					eq(table.staffTypeTable.id, id),
+					ne(table.staffTypeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

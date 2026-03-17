@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getCraftGroup = query(
 	async (): Promise<CraftGroupSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.craftGroupTable)
-			.where(eq(table.craftGroupTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.craftGroupTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.craftGroupTable.name);
 	}
 );
@@ -28,7 +28,7 @@ export const getCraftGroupCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.craftGroupTable)
-		.where(eq(table.craftGroupTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.craftGroupTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -39,22 +39,22 @@ export const getCraftGroupPaginated = query(
 	): Promise<PaginatedResult<CraftGroupSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.craftGroupTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.craftGroupTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.craftGroupTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.craftGroupTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -77,7 +77,12 @@ export const getCraftGroupById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.craftGroupTable)
-			.where(eq(table.craftGroupTable.id, id));
+			.where(
+				and(
+					eq(table.craftGroupTable.id, id),
+					ne(table.craftGroupTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

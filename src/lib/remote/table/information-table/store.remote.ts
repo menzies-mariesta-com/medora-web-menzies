@@ -30,7 +30,7 @@ export const getStore = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.storeTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -45,7 +45,8 @@ export const getStore = query(
 export const getStoreCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.storeTable);
+		.from(table.storeTable)
+		.where(ne(table.storeTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -67,7 +68,7 @@ export const getStorePaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.storeTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -101,7 +102,12 @@ export const getStoreById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.storeTable)
-			.where(eq(table.storeTable.id, id));
+			.where(
+				and(
+					eq(table.storeTable.id, id),
+					ne(table.storeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

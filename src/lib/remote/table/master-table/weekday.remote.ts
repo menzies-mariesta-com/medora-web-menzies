@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getWeekday = query(
 	async (): Promise<WeekdaySchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.weekdayTable)
-			.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.weekdayTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.weekdayTable.id);
 	}
 );
@@ -28,7 +28,7 @@ export const getWeekdayCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.weekdayTable)
-		.where(eq(table.weekdayTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.weekdayTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -39,22 +39,22 @@ export const getWeekdayPaginated = query(
 	): Promise<PaginatedResult<WeekdaySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.weekdayTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.weekdayTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.weekdayTable.id)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.weekdayTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -73,7 +73,12 @@ export const getWeekdayById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.weekdayTable)
-			.where(eq(table.weekdayTable.id, id));
+			.where(
+				and(
+					eq(table.weekdayTable.id, id),
+					ne(table.weekdayTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

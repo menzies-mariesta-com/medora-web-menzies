@@ -61,6 +61,11 @@
 		 * depend on reactive data in the parent.
 		 */
 		filterOptionsGetter?: () => { value: string; label: string }[];
+	/**
+	 * Optional default filter value for this column.
+	 * Applied once when no value has been set yet.
+	 */
+	defaultFilterValue?: string;
 		/**
 		 * Optional formatter for the cell value.
 		 */
@@ -123,6 +128,41 @@
 	}>();
 
 	let columnFilters = $state<Record<string, string>>({});
+	function getDefaultFilterValue(
+		column: MariTableColumn
+	): string | undefined {
+	return column.defaultFilterValue;
+	}
+
+	$effect(() => {
+		if (!enableColumnFilters) return;
+		const nextFilters = { ...columnFilters };
+		const initialized: Array<{ columnId: string; value: string }> = [];
+
+		for (const column of columns) {
+			if (!(column.filterable ?? true)) continue;
+			if (Object.hasOwn(nextFilters, column.id)) continue;
+			const defaultValue = getDefaultFilterValue(column);
+			if (defaultValue == null || defaultValue === '') continue;
+			nextFilters[column.id] = defaultValue;
+			initialized.push({ columnId: column.id, value: defaultValue });
+		}
+
+		if (initialized.length === 0) return;
+
+		columnFilters = nextFilters;
+		currentPage = 1;
+		if (useRemoteFilters) {
+			for (const item of initialized) {
+				dispatch('filtersChange', {
+					columnId: item.columnId,
+					value: item.value,
+					filters: nextFilters
+				});
+			}
+		}
+	});
+
 
 	const pageSizeNum = $derived(Number(pageSize) || 10);
 

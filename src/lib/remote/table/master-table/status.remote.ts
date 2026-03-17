@@ -11,19 +11,24 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getStatus = query(async (): Promise<StatusSchema[]> => {
+	const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);
 	return ensureDb()
 		.select()
 		.from(table.statusTable)
+		.where(whereExpr)
 		.orderBy(table.statusTable.name);
 });
 
 export const getStatusCount = query(async (): Promise<number> => {
+	const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.statusTable);
+		.from(table.statusTable)
+		.where(whereExpr);
 	return row?.count ?? 0;
 });
 
@@ -34,14 +39,19 @@ export const getStatusPaginated = query(
 	): Promise<PaginatedResult<StatusSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
+		const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.statusTable)
+				.where(whereExpr)
 				.orderBy(table.statusTable.name)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.statusTable)
+			ensureDb()
+				.select({ count: count() })
+				.from(table.statusTable)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -57,10 +67,14 @@ export const getStatusPaginated = query(
 export const getStatusById = query(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<StatusSchema | null> => {
+		const whereExpr = and(
+			eq(table.statusTable.id, id),
+			ne(table.statusTable.id, StatusEnum.DELETED)
+		);
 		const [row] = await ensureDb()
 			.select()
 			.from(table.statusTable)
-			.where(eq(table.statusTable.id, id));
+			.where(whereExpr);
 		return row ?? null;
 	}
 );
