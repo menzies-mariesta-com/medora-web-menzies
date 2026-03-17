@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getStaffShiftType = query(
 	async (): Promise<StaffShiftTypeSchema[]> => {
@@ -20,7 +20,7 @@ export const getStaffShiftType = query(
 			.select()
 			.from(table.staffShiftTypeTable)
 			.where(
-				eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE)
+				ne(table.staffShiftTypeTable.statusId, StatusEnum.DELETED)
 			)
 			.orderBy(table.staffShiftTypeTable.name);
 	}
@@ -32,7 +32,7 @@ export const getStaffShiftTypeCount = query(
 			.select({ count: count() })
 			.from(table.staffShiftTypeTable)
 			.where(
-				eq(table.staffShiftTypeTable.statusId, StatusEnum.ACTIVE)
+				ne(table.staffShiftTypeTable.statusId, StatusEnum.DELETED)
 			);
 		return row?.count ?? 0;
 	}
@@ -45,22 +45,22 @@ export const getStaffShiftTypePaginated = query(
 	): Promise<PaginatedResult<StaffShiftTypeSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.staffShiftTypeTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.staffShiftTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.staffShiftTypeTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.staffShiftTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -83,7 +83,12 @@ export const getStaffShiftTypeById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffShiftTypeTable)
-			.where(eq(table.staffShiftTypeTable.id, id));
+			.where(
+				and(
+					eq(table.staffShiftTypeTable.id, id),
+					ne(table.staffShiftTypeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

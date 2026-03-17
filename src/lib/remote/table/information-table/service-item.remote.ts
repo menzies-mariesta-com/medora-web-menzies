@@ -36,14 +36,14 @@ export const getServiceItem = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.hospitalId, params.hospitalId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.subCategoryId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.subCategoryId, params.subCategoryId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.subCategoryIds && params.subCategoryIds.length > 0) {
@@ -53,14 +53,14 @@ export const getServiceItem = query(
 					table.serviceItemTable.subCategoryId,
 					params.subCategoryIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		const serviceNameTerm = params?.serviceName?.trim();
@@ -69,7 +69,7 @@ export const getServiceItem = query(
 			whereExpr = and(
 				whereExpr,
 				ilike(table.serviceItemTable.serviceName, pattern)
-			);
+			) as typeof whereExpr;
 		}
 
 		const serviceCodeTerm = params?.serviceCode?.trim();
@@ -78,14 +78,14 @@ export const getServiceItem = query(
 			whereExpr = and(
 				whereExpr,
 				ilike(table.serviceItemTable.serviceCode, pattern)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -101,7 +101,10 @@ export const getServiceItemCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.serviceItemTable);
+			.from(table.serviceItemTable)
+			.where(
+				ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -132,13 +135,13 @@ export const getServiceItemPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.hospitalId, params.hospitalId)
-			);
+			) as typeof whereExpr;
 		}
 		if (params?.subCategoryId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.subCategoryId, params.subCategoryId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.subCategoryIds && params.subCategoryIds.length > 0) {
@@ -148,14 +151,14 @@ export const getServiceItemPaginated = query(
 					table.serviceItemTable.subCategoryId,
 					params.subCategoryIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		const serviceNameTerm = params?.serviceName?.trim();
@@ -164,7 +167,7 @@ export const getServiceItemPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				ilike(table.serviceItemTable.serviceName, pattern)
-			);
+			) as typeof whereExpr;
 		}
 
 		const serviceCodeTerm = params?.serviceCode?.trim();
@@ -173,14 +176,14 @@ export const getServiceItemPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				ilike(table.serviceItemTable.serviceCode, pattern)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceItemTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -218,7 +221,12 @@ export const getServiceItemById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceItemTable)
-			.where(eq(table.serviceItemTable.id, id));
+			.where(
+				and(
+					eq(table.serviceItemTable.id, id),
+					ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

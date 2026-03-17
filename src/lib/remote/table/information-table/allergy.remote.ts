@@ -13,7 +13,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike } from 'drizzle-orm';
+import { and, count, eq, ilike, ne } from 'drizzle-orm';
 
 /** Get all active allergies from master (for dropdowns / linking to patient). */
 export const getAllergies = query(
@@ -21,7 +21,7 @@ export const getAllergies = query(
 		return ensureDb()
 			.select()
 			.from(table.allergyTable)
-			.where(eq(table.allergyTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.allergyTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.allergyTable.id);
 	}
 );
@@ -33,7 +33,12 @@ export const getAllergyById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.allergyTable)
-			.where(eq(table.allergyTable.id, id))
+			.where(
+				and(
+					eq(table.allergyTable.id, id),
+					ne(table.allergyTable.statusId, StatusEnum.DELETED)
+				)
+			)
 			.limit(1);
 		return row ?? null;
 	}
@@ -49,9 +54,9 @@ export const getAllergyPaginated = query(
 			normalizePagination(params);
 		const search = params?.search?.trim();
 
-		let whereExpr = eq(
+		let whereExpr = ne(
 			table.allergyTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		if (search) {
 			whereExpr = and(
@@ -97,7 +102,7 @@ export const createAllergy = command(
 				.from(table.allergyTable)
 				.where(
 					and(
-						eq(table.allergyTable.statusId, StatusEnum.ACTIVE),
+						ne(table.allergyTable.statusId, StatusEnum.DELETED),
 						ilike(table.allergyTable.name, name)
 					)
 				)

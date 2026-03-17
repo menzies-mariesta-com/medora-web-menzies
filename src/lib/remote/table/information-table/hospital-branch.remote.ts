@@ -7,7 +7,7 @@ import type {
 	HospitalBranchSchemaInsert,
 	HospitalBranchSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
@@ -47,7 +47,7 @@ async function ensureCanManageHospital(
 	throw error(403, 'Forbidden');
 }
 
-/** List branches for a hospital. */
+/** List branches for a hospital (excludes soft-deleted). */
 export const getBranchesByHospitalId = query(
 	'unchecked' as const,
 	async ({
@@ -58,7 +58,12 @@ export const getBranchesByHospitalId = query(
 		return ensureDb()
 			.select()
 			.from(table.hospitalBranchTable)
-			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId))
+			.where(
+				and(
+					eq(table.hospitalBranchTable.hospitalId, hospitalId),
+					ne(table.hospitalBranchTable.statusId, StatusEnum.DELETED)
+				)
+			)
 			.orderBy(table.hospitalBranchTable.name);
 	}
 );
@@ -67,14 +72,24 @@ export const getBranchesByHospitalId = query(
 export const getBranchesByHospitalIdPaginated = query(
 	'unchecked' as const,
 	async (
-		params: PaginationParams & { hospitalId: string }
+		params: PaginationParams & {
+			hospitalId: string;
+			statusId?: number | null;
+		}
 	): Promise<PaginatedResult<HospitalBranchSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const whereExpr = eq(
+		const hospitalEq = eq(
 			table.hospitalBranchTable.hospitalId,
 			params.hospitalId
 		);
+		let whereExpr = hospitalEq;
+		if (params?.statusId != null) {
+			whereExpr = and(
+				hospitalEq,
+				eq(table.hospitalBranchTable.statusId, params.statusId)
+			) as typeof hospitalEq;
+		}
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()

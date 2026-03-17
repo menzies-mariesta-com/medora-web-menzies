@@ -29,6 +29,7 @@
 		updateDocumentType,
 		deleteDocumentType
 	} from '$lib/remote/table/information-table/document-type.remote';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -48,13 +49,22 @@
 	const docTypeList = $derived(docTypeResult?.data ?? []);
 	const total = $derived(docTypeResult?.total ?? 0);
 
+	let tableFilters = $state<Record<string, string>>({});
+
 	async function fetchData(opts?: { bustCache?: boolean }) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
+		const parsedStatusId = tableFilters.status
+			? Number(tableFilters.status)
+			: undefined;
 		try {
 			docTypeResult = await getDocumentTypesPaginated({
 				page: currentPage,
 				pageSize,
+				statusId:
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -160,23 +170,47 @@
 		{
 			id: 'id',
 			header: 'ID',
-			widthClass: 'w-20 min-w-[5rem]'
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false
 		},
 		{
 			id: 'documentType',
 			header: 'Name',
-			widthClass: 'w-64 min-w-[16rem]'
+			widthClass: 'w-64 min-w-[16rem]',
+			filterable: false
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'createdAt',
 			header: 'Created At',
 			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
 			format: (value) => formatDateTime(value as any)
 		},
 		{
 			id: 'updatedAt',
 			header: 'Updated At',
 			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
 			format: (value) => formatDateTime(value as any)
 		}
 	];
@@ -247,7 +281,7 @@
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
-						enableColumnFilters={false}
+						enableColumnFilters={true}
 						useRemoteFilters={true}
 						on:refresh={() => fetchData({ bustCache: true })}
 						on:pageSizeChange={() => {
@@ -255,6 +289,11 @@
 							fetchData();
 						}}
 						on:pageChange={() => fetchData()}
+						on:filtersChange={(e) => {
+							tableFilters = e.detail.filters;
+							currentPage = 1;
+							fetchData();
+						}}
 					>
 						<svelte:fragment slot="rowActions" let:row>
 							{@const typedRow = row as DocumentTypeSchema}

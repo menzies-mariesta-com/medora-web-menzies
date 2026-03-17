@@ -19,7 +19,10 @@ export const getExternalRefer = query(
 	async (): Promise<ExternalReferSchema[]> => {
 		const data = await ensureDb()
 			.select()
-			.from(table.externalReferTable);
+			.from(table.externalReferTable)
+			.where(
+				ne(table.externalReferTable.statusId, StatusEnum.DELETED)
+			);
 		return data;
 	}
 );
@@ -29,7 +32,10 @@ export const getExternalReferCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.externalReferTable);
+			.from(table.externalReferTable)
+			.where(
+				ne(table.externalReferTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -135,7 +141,12 @@ export const getExternalReferById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.externalReferTable)
-			.where(eq(table.externalReferTable.id, id));
+			.where(
+				and(
+					eq(table.externalReferTable.id, id),
+					ne(table.externalReferTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );
