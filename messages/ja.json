@@ -63,7 +63,7 @@
 	"failed_reset_password": "パスワードのリセットに失敗しました。",
 	"password_reset_success": "パスワードが正常にリセットされました。サインインできます。",
 	"signup": "登録",
-	"version": "v0.0.1",
+	"version": "バージョン",
 	"choose_hospital": "病院を選択",
 	"manage_owners": "オーナー管理",
 	"new_hospital": "新しい病院",
