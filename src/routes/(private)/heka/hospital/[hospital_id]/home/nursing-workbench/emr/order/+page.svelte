@@ -49,6 +49,7 @@ import { getSubCategory } from '$lib/remote/table/information-table/sub-category
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
 import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
+import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
@@ -127,6 +128,7 @@ let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 let showHistory = $state(false);
 
 	const toastService = new ToastService();
+
 
 	function todayDateString(): string {
 		const d = new Date();
@@ -832,13 +834,10 @@ let showHistory = $state(false);
 							<div class="flex flex-wrap items-end gap-4 text-sm">
 								<label class="flex flex-col gap-1">
 									<span class="font-medium">Order Date</span>
-									<input
-										type="date"
-										class="d-input d-input-sm d-input-bordered w-40"
+									<DaisyUiInputField
 										bind:value={orderDateInput}
-										onchange={async () => {
-											await applyPricingForSelectedService();
-										}}
+										inputType="date"
+										className="d-input-sm w-40"
 									/>
 								</label>
 								<label class="flex flex-col gap-1">
