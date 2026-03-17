@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import gsap from 'gsap';
 
 	let {
 		groupName,
@@ -16,6 +17,7 @@
 	}>();
 
 	let dialogEl = $state<HTMLDialogElement | null>(null);
+	let contentEl = $state<HTMLDivElement | null>(null);
 
 	$effect(() => {
 		if (open && dialogEl) {
@@ -26,6 +28,25 @@
 	$effect(() => {
 		if (!open && dialogEl) {
 			dialogEl.close();
+		}
+	});
+
+	$effect(() => {
+		if (open && contentEl) {
+			const target =
+				contentEl.querySelector('.d-modal-box') ??
+				contentEl.firstElementChild ??
+				contentEl;
+			gsap.fromTo(
+				target,
+				{ opacity: 0, scale: 0.96 },
+				{
+					opacity: 1,
+					scale: 1,
+					duration: 0.25,
+					ease: 'power2.out'
+				}
+			);
 		}
 	});
 
@@ -40,7 +61,9 @@
 	class="d-modal {className}"
 	onclose={handleClose}
 >
-	{@render children()}
+	<div bind:this={contentEl} class="d-modal-content-wrapper">
+		{@render children()}
+	</div>
 	<form method="dialog" class="d-modal-backdrop">
 		<button type="submit" aria-label="Close">close</button>
 	</form>
