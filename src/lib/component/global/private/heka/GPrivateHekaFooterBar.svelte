@@ -4,6 +4,7 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { APP_VERSION } from '$lib/version';
 
 	const dateTimeUtil = new DateTimeUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -45,5 +46,5 @@
 		</span>
 	</div>
 
-	<div id="version" class="mr-12">{m.version()}</div>
+	<div id="version" class="mr-12">{m.version()} v{APP_VERSION}</div>
 </DaisyUiFooter>

@@ -63,7 +63,7 @@
 	"failed_reset_password": "Failed to reset password.",
 	"password_reset_success": "Password reset successfully. You can now sign in.",
 	"signup": "Signup",
-	"version": "v0.0.1",
+	"version": "Version",
 	"choose_hospital": "Choose a hospital",
 	"manage_owners": "Manage owners",
 	"new_hospital": "New hospital",
