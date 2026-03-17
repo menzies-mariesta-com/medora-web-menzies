@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -55,12 +56,12 @@
 		<DaisyUiLabel forText="block-date" className="shrink-0 sm:w-28"
 			>Date</DaisyUiLabel
 		>
-		<input
+		<DaisyUiInputField
 			id="block-date"
-			type="date"
 			bind:value={date}
+			inputType="date"
 			min={todayString}
-			class="d-input-bordered d-input d-input-sm max-w-80 flex-1"
+			className="d-input-sm max-w-80 flex-1"
 		/>
 	</div>
 	<div
