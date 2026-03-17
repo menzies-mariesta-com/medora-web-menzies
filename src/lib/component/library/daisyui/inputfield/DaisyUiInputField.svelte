@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CallyDateCalendar from '$lib/component/library/cally/CallyDateCalendar.svelte';
+
 	let {
 		id,
 		className,
@@ -42,9 +44,51 @@
 		required?: boolean;
 		onClick?: () => void;
 	}>();
+
+	const isDateType = $derived(inputType === 'date');
+
+	const popoverId = $derived(
+		isDateType ? `cally-popover-${id ?? crypto.randomUUID().slice(0, 8)}` : ''
+	);
+	const anchorName = $derived(
+		isDateType ? `--cally-anchor-${id ?? popoverId}` : ''
+	);
+
+	function handleCallyChange(next: string) {
+		value = next;
+		const popover = document.getElementById(popoverId) as HTMLDivElement | null;
+		popover?.hidePopover?.();
+	}
 </script>
 
-{#if rawStyle}
+{#if isDateType}
+	<button
+		{id}
+		type="button"
+		popovertarget={popoverId}
+		class="d-input d-input-bordered text-left {className}"
+		style="anchor-name:{anchorName}"
+		{disabled}
+		{hidden}
+	>
+		{value || inputPlaceholderText || 'Pick a date'}
+	</button>
+	<div
+		id={popoverId}
+		popover
+		class="d-dropdown bg-base-100 rounded-box shadow-lg p-3"
+		style="position-anchor:{anchorName}"
+	>
+		<CallyDateCalendar
+			bind:value
+			{min}
+			{max}
+			showOutsideDays={true}
+			className="w-full rounded-box border border-base-300 bg-base-100"
+			onChange={handleCallyChange}
+		/>
+	</div>
+{:else if rawStyle}
 	<input
 		{id}
 		class={className}
