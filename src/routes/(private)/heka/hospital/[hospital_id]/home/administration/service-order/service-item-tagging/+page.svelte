@@ -80,6 +80,7 @@ const serviceOptions = $derived.by(() =>
 	let formAllowEdit = $state(true);
 	let formActive = $state(true);
 
+
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
 	let editingId = $state<number | null>(null);
@@ -615,10 +616,10 @@ const serviceOptions = $derived.by(() =>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
 							<label class="text-sm font-medium">Valid date</label>
-							<input
-								type="date"
+							<DaisyUiInputField
 								bind:value={formValidDate}
-								class="d-input-bordered d-input d-input-sm w-full"
+								inputType="date"
+								className="d-input-sm w-full"
 							/>
 						</div>
 						<div class="flex items-end gap-4">
