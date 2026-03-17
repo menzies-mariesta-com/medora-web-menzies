@@ -755,14 +755,16 @@ export const createStaffWithUser = command(
 			});
 		}
 
-		// Create staff user groups
-		if (payload.userGroupIds && payload.userGroupIds.length > 0) {
-			for (const userGroupId of payload.userGroupIds) {
-				await createStaffUserGroup({
-					staffId: staff.id,
-					userGroupId: Number(userGroupId)
-				});
-			}
+		// Create staff user groups (deduplicate to avoid duplicate entries)
+		const uniqueUserGroupIds =
+			(payload.userGroupIds?.length ?? 0) > 0
+				? [...new Set(payload.userGroupIds!.map(Number))]
+				: [];
+		for (const userGroupId of uniqueUserGroupIds) {
+			await createStaffUserGroup({
+				staffId: staff.id,
+				userGroupId
+			});
 		}
 
 		// Assign staff to hospital when registering from a hospital context
@@ -778,8 +780,8 @@ export const createStaffWithUser = command(
 			payload.branchIds != null &&
 			payload.branchIds.length > 0
 		) {
-			for (const branchId of payload.branchIds) {
-				if (!branchId) continue;
+			const uniqueBranchIds = [...new Set(payload.branchIds.filter(Boolean))];
+			for (const branchId of uniqueBranchIds) {
 				await createStaffBranch({
 					staffId: staff.id,
 					branchId,
