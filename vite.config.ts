@@ -4,8 +4,19 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+	readFileSync(join(__dirname, 'package.json'), 'utf-8')
+) as { version: string };
 
 export default defineConfig({
+	define: {
+		__APP_VERSION__: JSON.stringify(pkg.version)
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
