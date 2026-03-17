@@ -3,6 +3,7 @@
 	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
 	import GPrivateHekaModuleBar from '$lib/component/global/private/heka/GPrivateHekaModuleBar.svelte';
 	import GPrivateHekaNavbar from '$lib/component/global/private/heka/GPrivateHekaNavbar.svelte';
+	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import {
 		setPageData,
@@ -69,7 +70,11 @@
 		{/key}
 	{/if}
 	<div class="my-main p-3" class:my-main-embed={isEmbed}>
-		{@render children?.()}
+		{#key page.url.pathname}
+			<AnimatedPageContent>
+				{@render children?.()}
+			</AnimatedPageContent>
+		{/key}
 	</div>
 	{#if !isEmbed}
 		<GPrivateHekaFooterBar />
