@@ -4,13 +4,14 @@ import * as schema from './schema';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { dbLogger } from '$lib/logger';
 
 const url = env.DATABASE_URL;
 
 // During build (Docker / Vite), DATABASE_URL may be unset; don't hard‑fail there.
 // We only enforce it when the DB is actually used.
 if (!url && env.NODE_ENV === 'production') {
-	console.warn('DATABASE_URL is not set');
+	dbLogger.warn('DATABASE_URL is not set');
 }
 
 // ensureDb() returns this singleton every time — no new connection per call.

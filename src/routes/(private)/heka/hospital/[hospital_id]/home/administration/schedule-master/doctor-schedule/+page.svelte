@@ -65,12 +65,24 @@
 			: undefined
 	);
 
-	const DAYS = await getWeekday();
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+
+	let DAYS = $state<Awaited<ReturnType<typeof getWeekday>>>([]);
 	let DOCTOR_STAFF_LIST = $state<StaffWithRelations[]>([]);
+	let mounted = $state(false);
+
+	const lifeCycleUtil = new LifeCycleUtil();
+	const toastService = new ToastService();
+
+	lifeCycleUtil.onMount(async () => {
+		DAYS = await getWeekday();
+		mounted = true;
+	});
 
 	$effect(() => {
 		const hid = hospitalId;
 		const bid = scopedBranchId;
+		if (!mounted) return;
 		if (hid) {
 			getDoctorStaffList({ hospitalId: hid, branchId: bid }).then(
 				(list) => {
@@ -86,7 +98,9 @@
 		}
 	});
 
-	const toastService = new ToastService();
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+	});
 
 	type DaySchedule = {
 		checked: boolean;
@@ -198,17 +212,21 @@
 	$effect(() => {
 		void loadDoctorSchedules();
 	});
-	let daySchedules = $state<DaySchedule[]>(
-		DAYS.map(() => ({
-			checked: false,
-			fromHour: '0',
-			fromMin: '00',
-			fromAmPm: 'AM' as const,
-			toHour: '0',
-			toMin: '00',
-			toAmPm: 'PM' as const
-		}))
-	);
+	let daySchedules = $state<DaySchedule[]>([]);
+
+	$effect(() => {
+		if (DAYS.length > 0 && daySchedules.length === 0) {
+			daySchedules = DAYS.map(() => ({
+				checked: false,
+				fromHour: '0',
+				fromMin: '00',
+				fromAmPm: 'AM' as const,
+				toHour: '0',
+				toMin: '00',
+				toAmPm: 'PM' as const
+			}));
+		}
+	});
 	let isSaving = $state(false);
 
 	async function loadDoctorSchedules() {

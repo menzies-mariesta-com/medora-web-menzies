@@ -2,6 +2,7 @@ import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 import { SvelteURL } from 'svelte/reactivity';
+import { log } from '$lib/logger';
 
 export class RouterUtil {
 	constructor() {}
@@ -28,7 +29,7 @@ export class RouterUtil {
 			const url = new SvelteURL(path);
 			window.open(url.href, '_blank', 'noopener,noreferrer');
 		} catch (e) {
-			console.error('Invalid external path:', e);
+			log.error('Invalid external path', e instanceof Error ? e : undefined);
 			const currentOrigin = window.location.origin;
 			const fullUrl = path.startsWith('/')
 				? `${currentOrigin}${path}`

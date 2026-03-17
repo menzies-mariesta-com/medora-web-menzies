@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { prerender, query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,14 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getPostalCode = query(
+export const getPostalCode = prerender(
 	async (): Promise<PostalCodeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.postalCodeTable)
 			.where(ne(table.postalCodeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.postalCodeTable.value);
-	}
+	},
+	{ dynamic: true }
 );
 
 export const getPostalCodeCount = query(async (): Promise<number> => {

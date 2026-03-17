@@ -1,3 +1,5 @@
+import { log } from '$lib/logger';
+
 export class BrowserUtil {
 	isMobile(): boolean {
 		return /Mobi|Android/i.test(navigator.userAgent);
@@ -26,15 +28,13 @@ export class BrowserUtil {
 	}
 	copyToClipboard(text: string): void {
 		navigator.clipboard.writeText(text).catch((err) => {
-			console.error('Could not copy text: ', err);
+			log.error('Could not copy text', err instanceof Error ? err : undefined);
 		});
 	}
 	fullScreen(): void {
 		if (!document.fullscreenElement) {
 			document.documentElement.requestFullscreen().catch((err) => {
-				console.error(
-					`Error attempting to enable full-screen mode: ${err.message} (${err.name})`
-				);
+				log.error('Error enabling full-screen mode', err instanceof Error ? err : undefined);
 			});
 		} else {
 			document.exitFullscreen();
