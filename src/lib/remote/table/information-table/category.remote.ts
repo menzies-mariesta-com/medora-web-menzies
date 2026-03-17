@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ilike, ne } from 'drizzle-orm';
 
 // get all (status not deleted)
 export const getCategory = query(
@@ -34,7 +34,8 @@ export const getCategory = query(
 export const getCategoryCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.categoryTable);
+		.from(table.categoryTable)
+		.where(ne(table.categoryTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -42,7 +43,11 @@ export const getCategoryCount = query(async (): Promise<number> => {
 export const getCategoryPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams
+		params?: PaginationParams & {
+			id?: number | null;
+			categoryName?: string | null;
+			statusId?: number | null;
+		}
 	): Promise<PaginatedResult<CategorySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
@@ -50,19 +55,42 @@ export const getCategoryPaginated = query(
 			table.categoryTable.statusId,
 			StatusEnum.DELETED
 		);
+		let whereExpr = notDeleted;
+
+		if (params?.id != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.categoryTable.id, params.id)
+			) as typeof whereExpr;
+		}
+
+		const categoryNameTerm = params?.categoryName?.trim();
+		if (categoryNameTerm) {
+			whereExpr = and(
+				whereExpr,
+				ilike(table.categoryTable.categoryName, `%${categoryNameTerm}%`)
+			) as typeof whereExpr;
+		}
+
+		if (params?.statusId != null) {
+			whereExpr = and(
+				whereExpr,
+				eq(table.categoryTable.statusId, params.statusId)
+			) as typeof whereExpr;
+		}
 
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.categoryTable)
-				.where(notDeleted)
+				.where(whereExpr)
 				.orderBy(table.categoryTable.categoryName)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.categoryTable)
-				.where(notDeleted)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -82,7 +110,12 @@ export const getCategoryById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.categoryTable)
-			.where(eq(table.categoryTable.id, id));
+			.where(
+				and(
+					eq(table.categoryTable.id, id),
+					ne(table.categoryTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

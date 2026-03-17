@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getIdentityType = query(
 	async (): Promise<IdentityTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.identityTypeTable)
-			.where(eq(table.identityTypeTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.identityTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.identityTypeTable.name);
 	}
 );
@@ -29,7 +29,7 @@ export const getIdentityTypeCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.identityTypeTable)
-			.where(eq(table.identityTypeTable.statusId, StatusEnum.ACTIVE));
+			.where(ne(table.identityTypeTable.statusId, StatusEnum.DELETED));
 		return row?.count ?? 0;
 	}
 );
@@ -41,22 +41,22 @@ export const getIdentityTypePaginated = query(
 	): Promise<PaginatedResult<IdentityTypeSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.identityTypeTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.identityTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.identityTypeTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.identityTypeTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -79,7 +79,12 @@ export const getIdentityTypeById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.identityTypeTable)
-			.where(eq(table.identityTypeTable.id, id));
+			.where(
+				and(
+					eq(table.identityTypeTable.id, id),
+					ne(table.identityTypeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

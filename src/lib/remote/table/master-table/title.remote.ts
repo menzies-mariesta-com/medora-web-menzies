@@ -12,13 +12,13 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getTitle = query(async (): Promise<TitleSchema[]> => {
 	return ensureDb()
 		.select()
 		.from(table.titleTable)
-		.where(eq(table.titleTable.statusId, StatusEnum.ACTIVE))
+		.where(ne(table.titleTable.statusId, StatusEnum.DELETED))
 		.orderBy(table.titleTable.name);
 });
 
@@ -26,7 +26,7 @@ export const getTitleCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.titleTable)
-		.where(eq(table.titleTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.titleTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -37,22 +37,22 @@ export const getTitlePaginated = query(
 	): Promise<PaginatedResult<TitleSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.titleTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.titleTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.titleTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.titleTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -71,7 +71,12 @@ export const getTitleById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.titleTable)
-			.where(eq(table.titleTable.id, id));
+			.where(
+				and(
+					eq(table.titleTable.id, id),
+					ne(table.titleTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

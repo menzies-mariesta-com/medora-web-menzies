@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getDocumentSettings = query(
 	async (): Promise<DocumentSettingSchema[]> => {
@@ -20,7 +20,7 @@ export const getDocumentSettings = query(
 			.select()
 			.from(table.documentSettingTable)
 			.where(
-				eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE)
+				ne(table.documentSettingTable.statusId, StatusEnum.DELETED)
 			)
 			.orderBy(table.documentSettingTable.name);
 	}
@@ -28,7 +28,7 @@ export const getDocumentSettings = query(
 
 export const getDocumentSettingsWithRelations = query(async () => {
 	return ensureDb().query.documentSettingTable.findMany({
-		where: eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE),
+		where: ne(table.documentSettingTable.statusId, StatusEnum.DELETED),
 		with: {
 			documentType: true,
 			hospital: true,
@@ -48,7 +48,7 @@ export const getDocumentSettingCount = query(
 			.select({ count: count() })
 			.from(table.documentSettingTable)
 			.where(
-				eq(table.documentSettingTable.statusId, StatusEnum.ACTIVE)
+				ne(table.documentSettingTable.statusId, StatusEnum.DELETED)
 			);
 		return row?.count ?? 0;
 	}
@@ -57,17 +57,25 @@ export const getDocumentSettingCount = query(
 export const getDocumentSettingsPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams
+		params?: PaginationParams & { statusId?: number | null }
 	): Promise<PaginatedResult<DocumentSettingWithRelations>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.documentSettingTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
+		const statusFilter =
+			params?.statusId != null
+				? eq(table.documentSettingTable.statusId, params.statusId)
+				: null;
+		const whereExpr =
+			statusFilter != null
+				? and(notDeletedFilter, statusFilter)
+				: notDeletedFilter;
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.documentSettingTable.findMany({
-				where: activeFilter,
+				where: whereExpr,
 				with: {
 					documentType: true,
 					hospital: true,
@@ -80,7 +88,7 @@ export const getDocumentSettingsPaginated = query(
 			ensureDb()
 				.select({ count: count() })
 				.from(table.documentSettingTable)
-				.where(activeFilter)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -103,7 +111,15 @@ export const getDocumentSettingById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.documentSettingTable)
-			.where(eq(table.documentSettingTable.id, id));
+			.where(
+				and(
+					eq(table.documentSettingTable.id, id),
+					ne(
+						table.documentSettingTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
+			);
 		return row ?? null;
 	}
 );

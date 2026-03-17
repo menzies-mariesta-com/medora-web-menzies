@@ -148,6 +148,7 @@
 			ageDay = String(numD);
 		}
 	});
+
 </script>
 
 <div class="flex flex-col gap-4">

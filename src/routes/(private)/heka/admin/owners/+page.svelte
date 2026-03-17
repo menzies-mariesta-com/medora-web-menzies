@@ -4,10 +4,10 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import {
-		getUsersByRole,
+	getUsersByRolePaginated,
 		deleteUser
 	} from '$lib/remote/table/auth-table/user.remote';
-	import { RoleEnum } from '$lib/model/enum/db-link';
+import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -34,6 +34,9 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
+let totalOwners = $state(0);
+let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const ownerColumns: MariTableColumn<UserSchema>[] = [
 		{
@@ -52,16 +55,53 @@
 			id: 'createdAt',
 			header: m.created(),
 			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
 			format: (value) =>
 				formatDate(value as string | null | undefined)
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-32 min-w-[8rem]',
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
 		}
 	];
 
-	async function loadOwners() {
+	async function loadOwners(forceRefresh = false) {
 		isLoading = true;
 		try {
-			// Show only users with role_id = 2 (OWNER)
-			owners = await getUsersByRole({ roleId: RoleEnum.OWNER });
+			const pageSize = Number(pageSizeStr) || 10;
+			const statusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const params = {
+				roleId: RoleEnum.OWNER,
+				page: currentPage,
+				pageSize,
+				name: tableFilters.name?.trim() || undefined,
+				email: tableFilters.email?.trim() || undefined,
+				statusId:
+					statusId != null && Number.isFinite(statusId)
+						? statusId
+						: undefined
+			};
+			if (forceRefresh) {
+				await getUsersByRolePaginated(params).refresh();
+			}
+			const result = await getUsersByRolePaginated(params);
+			owners = result.data;
+			totalOwners = result.total;
 		} finally {
 			isLoading = false;
 		}
@@ -72,7 +112,7 @@
 			title: m.new_owner(),
 			component: NewOwnerModal
 		});
-		if (result.confirmed) await loadOwners();
+		if (result.confirmed) await loadOwners(true);
 	}
 
 	async function openEditOwnerModal(owner: UserSchema) {
@@ -81,7 +121,7 @@
 			title: m.edit_owner(),
 			component: EditOwnerModal
 		});
-		if (result.confirmed) await loadOwners();
+		if (result.confirmed) await loadOwners(true);
 	}
 
 	async function handleDelete(owner: UserSchema) {
@@ -97,7 +137,7 @@
 				m.owner_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			await loadOwners();
+			await loadOwners(true);
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : m.delete_failed();
@@ -147,11 +187,29 @@
 						{isLoading}
 						bind:pageSize={pageSizeStr}
 						bind:currentPage
+						totalRowCount={totalOwners}
 						showRefreshButton={false}
 						emptyMessage={m.no_owners_yet()}
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
+						enableColumnFilters={true}
+						useRemoteFilters={true}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							loadOwners();
+						}}
+						on:pageChange={() => loadOwners()}
+						on:filtersChange={(event) => {
+							if (filterDebounceTimeout) {
+								clearTimeout(filterDebounceTimeout);
+							}
+							tableFilters = event.detail.filters;
+							currentPage = 1;
+							filterDebounceTimeout = setTimeout(() => {
+								loadOwners();
+							}, 350);
+						}}
 					>
 						<svelte:fragment slot="rowActions" let:row>
 							<td class="text-right">

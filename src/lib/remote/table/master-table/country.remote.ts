@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 // get all
 export const getCountry = query(
@@ -20,7 +20,7 @@ export const getCountry = query(
 		return ensureDb()
 			.select()
 			.from(table.countryTable)
-			.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.countryTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.countryTable.name);
 	}
 );
@@ -30,7 +30,7 @@ export const getCountryCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.countryTable)
-		.where(eq(table.countryTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.countryTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -42,22 +42,22 @@ export const getCountryPaginated = query(
 	): Promise<PaginatedResult<CountrySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.countryTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.countryTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.countryTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.countryTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -77,7 +77,12 @@ export const getCountryById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.countryTable)
-			.where(eq(table.countryTable.id, id));
+			.where(
+				and(
+					eq(table.countryTable.id, id),
+					ne(table.countryTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

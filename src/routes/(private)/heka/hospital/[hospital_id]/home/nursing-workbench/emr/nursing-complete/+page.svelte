@@ -10,9 +10,11 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 	import { getServiceOrder } from '$lib/remote/table/information-table/service-order.remote';
 	import {
 		getServiceOrderDetail,
+	getServiceOrderDetailPaginated,
 		markServiceOrderDetailNursingComplete
 	} from '$lib/remote/table/information-table/service-order-detail.remote';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
@@ -29,6 +31,7 @@
 		id: number;
 		orderNo: string | null;
 		orderDate: string | null;
+	statusId: number | null;
 		serviceName: string;
 		serviceCode: string | null;
 		serviceAmount: string | null;
@@ -58,6 +61,9 @@
 	let isLoading = $state(false);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+let totalRows = $state(0);
+let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	const toastService = new ToastService();
 
 	const subtotal = $derived(
@@ -126,9 +132,21 @@
 			}
 
 			const orderIds = orders.map((o) => o.id);
-			const details = await getServiceOrderDetail({
-				serviceOrderIds: orderIds
+			const pageSize = Number(pageSizeStr) || 10;
+			const statusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const detailsResult = await getServiceOrderDetailPaginated({
+				serviceOrderIds: orderIds,
+				statusId:
+					statusId != null && Number.isFinite(statusId)
+						? statusId
+						: undefined,
+				page: currentPage,
+				pageSize
 			});
+			const details = detailsResult.data;
+			totalRows = detailsResult.total;
 			const services = await getServiceItem({
 				hospitalId: currentVisit.hospitalId,
 				statusId: null
@@ -157,6 +175,7 @@
 					id: detail.id,
 					orderNo: order?.orderNo ?? null,
 					orderDate: order?.orderDate ?? null,
+					statusId: detail.statusId ?? null,
 					serviceName:
 						service?.serviceName ?? `Service #${detail.serviceId}`,
 					serviceCode: service?.serviceCode ?? null,
@@ -172,6 +191,7 @@
 		} catch (error) {
 			console.error('Failed to load nursing complete rows', error);
 			rows = [];
+			totalRows = 0;
 		} finally {
 			isLoading = false;
 		}
@@ -187,22 +207,45 @@
 		}
 	});
 
+	const statusFilterOptions = [
+		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+	];
+
 	const columns: MariTableColumn<NursingCompleteRow>[] = [
 		{
 			id: 'orderNo',
 			header: 'Order No',
-			widthClass: 'w-44 min-w-[11rem]'
+			widthClass: 'w-44 min-w-[11rem]',
+			filterable: false
 		},
 		{
 			id: 'orderDate',
 			header: 'Order Date',
 			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false,
 			format: (value) => formatDate(value as string | null)
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'serviceName',
 			header: 'Service Item',
 			widthClass: 'w-56 min-w-[14rem]',
+			filterable: false,
 			format: (_value, row) =>
 				row.serviceCode
 					? `${row.serviceName} (${row.serviceCode})`
@@ -212,42 +255,49 @@
 			id: 'serviceAmount',
 			header: 'Amount',
 			widthClass: 'w-28 min-w-[7rem]',
+			filterable: false,
 			format: (value) => formatMoney(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceTaxAmount',
 			header: 'Tax',
 			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
 			format: (value) => formatMoney(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceUnit',
 			header: 'Unit',
 			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
 			format: (value) => value ?? 1
 		},
 		{
 			id: 'lineTotal',
 			header: 'Total',
 			widthClass: 'w-28 min-w-[7rem]',
+			filterable: false,
 			format: (value) => formatMoney(Number(value ?? 0))
 		},
 		{
 			id: 'nursingCompleteTime',
 			header: 'Nursing Complete Time',
 			widthClass: 'w-56 min-w-[14rem]',
+			filterable: false,
 			format: (value) => formatDateTime(value as string | null)
 		},
 		{
 			id: 'isUrgent',
 			header: 'Urgent',
 			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
 			format: (value) => ((value as boolean | null) ? 'Yes' : 'No')
 		},
 		{
 			id: 'instruction',
 			header: 'Instruction',
 			widthClass: 'w-56 min-w-[14rem]',
+			filterable: false,
 			format: (value) =>
 				(value as string | null | undefined)?.trim() || '—'
 		}
@@ -324,6 +374,7 @@
 							isLoading={isLoading}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
+							totalRowCount={totalRows}
 							showRefreshButton={true}
 							refreshTooltip="Refresh data"
 							emptyMessage="No service items."
@@ -331,7 +382,23 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							useRemoteFilters={true}
 							on:refresh={() => fetchNursingComplete()}
+							on:pageSizeChange={() => {
+								currentPage = 1;
+								fetchNursingComplete();
+							}}
+							on:pageChange={() => fetchNursingComplete()}
+							on:filtersChange={(event) => {
+								if (filterDebounceTimeout) {
+									clearTimeout(filterDebounceTimeout);
+								}
+								tableFilters = event.detail.filters;
+								currentPage = 1;
+								filterDebounceTimeout = setTimeout(() => {
+									fetchNursingComplete();
+								}, 350);
+							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
 								{@const typedRow = row as NursingCompleteRow}

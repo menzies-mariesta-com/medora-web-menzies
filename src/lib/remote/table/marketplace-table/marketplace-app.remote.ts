@@ -12,11 +12,11 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { count, eq, and, ne } from 'drizzle-orm';
 
 export const getMarketplaceAppsWithRelations = query(async () => {
 	return ensureDb().query.marketplaceAppTable.findMany({
-		where: eq(table.marketplaceAppTable.statusId, StatusEnum.ACTIVE),
+		where: ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED),
 		with: {
 			status: true,
 			forms: true,
@@ -35,7 +35,7 @@ export const getMarketplaceApps = query(
 		return ensureDb()
 			.select()
 			.from(table.marketplaceAppTable)
-			.where(eq(table.marketplaceAppTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.marketplaceAppTable.name);
 	}
 );
@@ -44,7 +44,7 @@ export const getMarketplaceAppCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.marketplaceAppTable)
-		.where(eq(table.marketplaceAppTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -54,22 +54,22 @@ export const getMarketplaceAppsPaginated = query(
 		params?: PaginationParams
 	): Promise<PaginatedResult<MarketplaceAppSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAppTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.marketplaceAppTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.marketplaceAppTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.marketplaceAppTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -88,7 +88,12 @@ export const getMarketplaceAppById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.marketplaceAppTable)
-			.where(eq(table.marketplaceAppTable.id, id));
+			.where(
+				and(
+					eq(table.marketplaceAppTable.id, id),
+					ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

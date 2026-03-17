@@ -145,7 +145,12 @@ export const getNextVisitNo = query(
 // Get All
 export const getPatientVisit = query(
 	async (): Promise<PatientVisitSchema[]> => {
-		return await ensureDb().select().from(table.patientVisitTable);
+		return await ensureDb()
+			.select()
+			.from(table.patientVisitTable)
+			.where(
+				ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
+			);
 	}
 );
 
@@ -160,7 +165,12 @@ export const getPatientVisitById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.patientVisitTable)
-			.where(eq(table.patientVisitTable.id, id));
+			.where(
+				and(
+					eq(table.patientVisitTable.id, id),
+					ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

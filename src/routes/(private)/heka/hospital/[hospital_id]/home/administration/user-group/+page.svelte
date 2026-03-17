@@ -15,6 +15,7 @@
 	import UserGroupPagesModal from '$lib/component/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
 	import type { StatusSchema } from '$lib/server/db/schema-type';
 	import { getStatus } from '$lib/remote/table/master-table/status.remote';
+import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -71,9 +72,19 @@
 			header: m.status(),
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
-				statusOptions.find((s) => s.id === row.statusId)?.name ??
-				String(row.statusId)
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: statusOptions.find((s) => s.id === row.statusId)?.name ??
+							String(row.statusId)
 		}
 	];
 
@@ -82,14 +93,19 @@
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
 		try {
+			const parsedStatusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
 			const params = {
 				hospitalId,
 				page: currentPage,
 				pageSize,
 				name: tableFilters.name?.trim() || undefined,
-				statusId: tableFilters.status
-					? Number(tableFilters.status)
-					: undefined
+				statusId:
+					parsedStatusId != null &&
+					Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined
 			};
 			// After create/update/delete, invalidate cache then fetch so list updates
 			if (forceRefresh) {

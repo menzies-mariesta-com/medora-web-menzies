@@ -133,6 +133,12 @@
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32',
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
 		}
@@ -185,6 +191,7 @@
 
 			const params: {
 				hospitalId?: string;
+				subCategoryId?: number;
 				subCategoryIds?: number[];
 				serviceName?: string;
 				serviceCode?: string;
@@ -205,55 +212,48 @@
 				}
 			}
 
-			// Category / Sub-category filters -> subCategoryIds array
+			// Build remote sub-category scope from selected branch and column filters.
+			let scopedSubCategoryIds: number[] | undefined;
+			if (branchIdForCategory) {
+				scopedSubCategoryIds = subCategories.map((sc) => sc.id);
+			}
+
 			const categoryTerm = filters.category?.trim().toLowerCase();
-			const subCategoryTerm = filters.subCategory
-				?.trim()
-				.toLowerCase();
-
-			let subCategoryIds: number[] | undefined;
-
 			if (categoryTerm) {
-				const matchingCategoryIds = categories
-					.filter((c) =>
-						(c.categoryName ?? '')
+				const idsByCategory = subCategories
+					.filter((sc) =>
+						(categories.find((c) => c.id === sc.categoryId)?.categoryName ?? '')
 							.toLowerCase()
 							.includes(categoryTerm)
 					)
-					.map((c) => c.id);
-
-				if (matchingCategoryIds.length > 0) {
-					const fromCategory = subCategories
-						.filter((sc) =>
-							matchingCategoryIds.includes(sc.categoryId ?? 0)
-						)
-						.map((sc) => sc.id);
-					subCategoryIds = fromCategory;
-				} else {
-					subCategoryIds = [];
-				}
+					.map((sc) => sc.id);
+				scopedSubCategoryIds =
+					scopedSubCategoryIds == null
+						? idsByCategory
+						: scopedSubCategoryIds.filter((id) =>
+								idsByCategory.includes(id)
+							);
 			}
 
+			const subCategoryTerm = filters.subCategory?.trim().toLowerCase();
 			if (subCategoryTerm) {
-				const fromSubCategory = subCategories
+				const selected = subCategories
 					.filter((sc) =>
 						(sc.subCategoryName ?? '')
 							.toLowerCase()
 							.includes(subCategoryTerm)
 					)
 					.map((sc) => sc.id);
-
-				if (subCategoryIds == null) {
-					subCategoryIds = fromSubCategory;
-				} else {
-					subCategoryIds = subCategoryIds.filter((id) =>
-						fromSubCategory.includes(id)
-					);
-				}
+				scopedSubCategoryIds =
+					scopedSubCategoryIds == null
+						? selected
+						: scopedSubCategoryIds.filter((id) =>
+								selected.includes(id)
+							);
 			}
 
-			if (subCategoryIds) {
-				if (subCategoryIds.length === 0) {
+			if (scopedSubCategoryIds) {
+				if (scopedSubCategoryIds.length === 0) {
 					serviceResult = {
 						data: [],
 						total: 0,
@@ -263,7 +263,11 @@
 					};
 					return;
 				}
-				params.subCategoryIds = subCategoryIds;
+				if (scopedSubCategoryIds.length === 1) {
+					params.subCategoryId = scopedSubCategoryIds[0];
+				} else {
+					params.subCategoryIds = scopedSubCategoryIds;
+				}
 			}
 
 			// Service name / code filters
@@ -277,12 +281,10 @@
 				params.serviceCode = codeTerm;
 			}
 
-			// Status filter from text
-			const statusTerm = filters.status?.trim().toLowerCase();
-			if (statusTerm === 'active') {
-				params.statusId = StatusEnum.ACTIVE;
-			} else if (statusTerm === 'inactive') {
-				params.statusId = StatusEnum.INACTIVE;
+			// Status filter from remote select value
+			const statusId = Number(filters.status);
+			if (!Number.isNaN(statusId)) {
+				params.statusId = statusId;
 			}
 
 			const pageSize = Number(pageSizeStr) || 10;
@@ -295,29 +297,8 @@
 				await getServiceItemPaginated(paginatedParams).refresh();
 			}
 
-			const rawResult =
+			serviceResult =
 				await getServiceItemPaginated(paginatedParams);
-
-			// If a specific branch is selected in the module bar,
-			// ensure we only show service items whose sub-category
-			// belongs to categories available for that branch.
-			let data = rawResult.data;
-			if (branchIdForCategory) {
-				const allowedSubCategoryIds = new Set(
-					subCategories.map((sc) => sc.id)
-				);
-				data = data.filter((row) =>
-					allowedSubCategoryIds.has(row.subCategoryId)
-				);
-			}
-
-			const filteredTotal = data.length;
-			serviceResult = {
-				...rawResult,
-				data,
-				total: filteredTotal,
-				totalPages: Math.ceil(filteredTotal / pageSize) || 1
-			};
 		} finally {
 			isLoading = false;
 		}

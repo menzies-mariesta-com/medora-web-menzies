@@ -283,6 +283,7 @@
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32 min-w-[8rem]',
+			defaultFilterValue: 'Active',
 			field: 'status.name',
 			filterable: false
 		},

@@ -1,6 +1,7 @@
 import { command, query } from '$app/server';
 import { error } from '@sveltejs/kit';
-import { and, count, eq } from 'drizzle-orm';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import { and, count, eq, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -25,14 +26,15 @@ async function ensureStaffAndBranchAreInHospital(input: {
 		.where(
 			and(
 				eq(table.hospitalBranchTable.id, input.branchId),
-				eq(table.hospitalBranchTable.hospitalId, input.hospitalId)
+				eq(table.hospitalBranchTable.hospitalId, input.hospitalId),
+				ne(table.hospitalBranchTable.statusId, StatusEnum.DELETED)
 			)
 		)
 		.limit(1);
 	if (!branch)
 		throw error(
 			400,
-			'Branch does not belong to the selected hospital'
+			'Branch does not belong to the selected hospital or is deleted'
 		);
 
 	const [staffHospital] = await ensureDb()
