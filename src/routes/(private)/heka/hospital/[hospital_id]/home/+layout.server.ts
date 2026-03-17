@@ -127,7 +127,8 @@ export const load: LayoutServerLoad = async ({
 		}
 
 		// Staff's user groups for this hospital (for navbar select)
-		const staffUserGroupsForNav = await ensureDb()
+		// Deduplicate by id in case staff_user_group has duplicate entries
+		const staffUserGroupsForNavRaw = await ensureDb()
 			.select({
 				id: table.userGroupTable.id,
 				name: table.userGroupTable.name
@@ -147,6 +148,13 @@ export const load: LayoutServerLoad = async ({
 				)
 			)
 			.orderBy(table.userGroupTable.name);
+		const staffUserGroupsForNav = [
+			...new Map(
+				staffUserGroupsForNavRaw.map((g) => [g.id, g])
+			).values()
+		].sort((a, b) =>
+			(a.name ?? '').localeCompare(b.name ?? '')
+		);
 
 		const navIds = staffUserGroupsForNav.map((g) => g.id);
 		// Resolve selected user group: cookie if valid, else first group
@@ -157,7 +165,8 @@ export const load: LayoutServerLoad = async ({
 				: (navIds[0] ?? null);
 
 		// Staff branches for this hospital (for navbar select)
-		const staffBranchesForNav = await ensureDb()
+		// Deduplicate by id in case staff_branch has duplicate entries
+		const staffBranchesForNavRaw = await ensureDb()
 			.select({
 				id: table.hospitalBranchTable.id,
 				name: table.hospitalBranchTable.name
@@ -177,6 +186,13 @@ export const load: LayoutServerLoad = async ({
 				)
 			)
 			.orderBy(table.hospitalBranchTable.name);
+		const staffBranchesForNav = [
+			...new Map(
+				staffBranchesForNavRaw.map((b) => [b.id, b])
+			).values()
+		].sort((a, b) =>
+			(a.name ?? '').localeCompare(b.name ?? '')
+		);
 		const allHospitalBranches = await ensureDb()
 			.select({ id: table.hospitalBranchTable.id })
 			.from(table.hospitalBranchTable)

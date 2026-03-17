@@ -12,6 +12,7 @@ import {
 	text,
 	timestamp,
 	uuid,
+	unique,
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
@@ -300,18 +301,22 @@ export const staffHospitalTable = pgTable('staff_hospital', {
 	...junctionTimestamps
 });
 
-export const staffBranchTable = pgTable('staff_branch', {
-	id: serial('id').primaryKey(),
-	staffId: uuid('staff_id')
-		.notNull()
-		.references(() => staffTable.id),
-	branchId: uuid('branch_id')
-		.notNull()
-		.references(() => hospitalBranchTable.id, {
-			onDelete: 'cascade'
-		}),
-	...junctionTimestamps
-});
+export const staffBranchTable = pgTable(
+	'staff_branch',
+	{
+		id: serial('id').primaryKey(),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		...junctionTimestamps
+	},
+	(t) => [unique('staff_branch_staff_id_branch_id_unique').on(t.staffId, t.branchId)]
+);
 
 export const staffTable = pgTable('staff', {
 	id: uuid('id')
@@ -381,16 +386,25 @@ export const staffTable = pgTable('staff', {
 	...timestamps
 });
 
-export const staffUserGroupTable = pgTable('staff_user_group', {
-	id: serial('id').primaryKey(),
-	staffId: uuid('staff_id')
-		.notNull()
-		.references(() => staffTable.id),
-	userGroupId: integer('user_group_id')
-		.notNull()
-		.references(() => userGroupTable.id),
-	...junctionTimestamps
-});
+export const staffUserGroupTable = pgTable(
+	'staff_user_group',
+	{
+		id: serial('id').primaryKey(),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id),
+		userGroupId: integer('user_group_id')
+			.notNull()
+			.references(() => userGroupTable.id),
+		...junctionTimestamps
+	},
+	(t) => [
+		unique('staff_user_group_staff_id_user_group_id_unique').on(
+			t.staffId,
+			t.userGroupId
+		)
+	]
+);
 
 export const statusTaggingTable = pgTable('status_tagging', {
 	id: serial('id').primaryKey(),
