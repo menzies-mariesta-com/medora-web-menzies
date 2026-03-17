@@ -12,21 +12,21 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getMarketplaceAppForms = query(
 	'unchecked' as const,
 	async (params?: {
 		appId?: number | null;
 	}): Promise<MarketplaceAppFormSchema[]> => {
-		const baseFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAppFormTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const whereExpr =
 			params?.appId == null
-				? baseFilter
-				: and(baseFilter, eq(table.marketplaceAppFormTable.appId, params.appId));
+				? notDeletedFilter
+				: and(notDeletedFilter, eq(table.marketplaceAppFormTable.appId, params.appId));
 
 		return ensureDb()
 			.select()
@@ -39,9 +39,9 @@ export const getMarketplaceAppForms = query(
 export const getMarketplaceAppFormsWithRelations = query(
 	async () => {
 		return ensureDb().query.marketplaceAppFormTable.findMany({
-			where: eq(
+			where: ne(
 				table.marketplaceAppFormTable.statusId,
-				StatusEnum.ACTIVE
+				StatusEnum.DELETED
 			),
 			with: {
 				app: true,
@@ -60,7 +60,7 @@ export const getMarketplaceAppFormCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.marketplaceAppFormTable)
-		.where(eq(table.marketplaceAppFormTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.marketplaceAppFormTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -70,14 +70,14 @@ export const getMarketplaceAppFormsPaginated = query(
 		params?: PaginationParams & { appId?: number | null }
 	): Promise<PaginatedResult<MarketplaceAppFormSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const baseFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAppFormTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const whereExpr =
 			params?.appId == null
-				? baseFilter
-				: and(baseFilter, eq(table.marketplaceAppFormTable.appId, params.appId));
+				? notDeletedFilter
+				: and(notDeletedFilter, eq(table.marketplaceAppFormTable.appId, params.appId));
 
 		const [data, countResult] = await Promise.all([
 			ensureDb()
@@ -110,7 +110,12 @@ export const getMarketplaceAppFormById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.marketplaceAppFormTable)
-			.where(eq(table.marketplaceAppFormTable.id, id));
+			.where(
+				and(
+					eq(table.marketplaceAppFormTable.id, id),
+					ne(table.marketplaceAppFormTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

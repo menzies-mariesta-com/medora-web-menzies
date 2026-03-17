@@ -8,6 +8,13 @@
       "when": 1772512125499,
       "tag": "0000_add_vital_date_time",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1742238385000,
+      "tag": "0001_junction_tables_user_tracking",
+      "breakpoints": true
     }
   ]
 }

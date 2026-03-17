@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getPosition = query(
 	async (): Promise<PositionSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.positionTable)
-			.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.positionTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.positionTable.name);
 	}
 );
@@ -28,7 +28,7 @@ export const getPositionCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
 		.from(table.positionTable)
-		.where(eq(table.positionTable.statusId, StatusEnum.ACTIVE));
+		.where(ne(table.positionTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -39,22 +39,22 @@ export const getPositionPaginated = query(
 	): Promise<PaginatedResult<PositionSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.positionTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.positionTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 				.orderBy(table.positionTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.positionTable)
-				.where(activeFilter)
+				.where(notDeletedFilter)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -73,7 +73,12 @@ export const getPositionById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.positionTable)
-			.where(eq(table.positionTable.id, id));
+			.where(
+				and(
+					eq(table.positionTable.id, id),
+					ne(table.positionTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

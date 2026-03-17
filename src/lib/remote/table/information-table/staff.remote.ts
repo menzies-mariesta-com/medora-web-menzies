@@ -42,7 +42,10 @@ export type StaffWithRelations = Awaited<
 
 // get all (no relations)
 export const getStaff = query(async (): Promise<StaffSchema[]> => {
-	const data = await ensureDb().select().from(table.staffTable);
+	const data = await ensureDb()
+		.select()
+		.from(table.staffTable)
+		.where(ne(table.staffTable.statusId, StatusEnum.DELETED));
 	return data;
 });
 
@@ -270,7 +273,8 @@ export const getStaffByUserIdWithRelations = query(
 export const getStaffCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.staffTable);
+		.from(table.staffTable)
+		.where(ne(table.staffTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -298,16 +302,15 @@ export const getStaffPaginated = query(
 		// Generic search across name, code, primary phone
 		if (searchTerm) {
 			const pattern = `%${searchTerm}%`;
-			conditions.push(
-				or(
-					ilike(
-						sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName})`,
-						pattern
-					),
-					ilike(table.staffTable.code, pattern),
-					ilike(table.staffTable.phonePrimary, pattern)
-				)
+			const orExpr = or(
+				ilike(
+					sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName})`,
+					pattern
+				),
+				ilike(table.staffTable.code, pattern),
+				ilike(table.staffTable.phonePrimary, pattern)
 			);
+			if (orExpr) conditions.push(orExpr);
 		}
 
 		// Dedicated filters
@@ -408,7 +411,12 @@ export const getStaffById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTable)
-			.where(eq(table.staffTable.id, id));
+			.where(
+				and(
+					eq(table.staffTable.id, id),
+					ne(table.staffTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );
@@ -456,7 +464,12 @@ export const getStaffByUserId = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.staffTable)
-			.where(eq(table.staffTable.userId, userId));
+			.where(
+				and(
+					eq(table.staffTable.userId, userId),
+					ne(table.staffTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

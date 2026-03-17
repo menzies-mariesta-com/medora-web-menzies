@@ -65,7 +65,8 @@ export const getUserGroupByHospitalId = query(
 export const getUserGroupCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()
 		.select({ count: count() })
-		.from(table.userGroupTable);
+		.from(table.userGroupTable)
+		.where(ne(table.userGroupTable.statusId, StatusEnum.DELETED));
 	return row?.count ?? 0;
 });
 
@@ -161,7 +162,12 @@ export const getUserGroupById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.userGroupTable)
-			.where(eq(table.userGroupTable.id, id));
+			.where(
+				and(
+					eq(table.userGroupTable.id, id),
+					ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

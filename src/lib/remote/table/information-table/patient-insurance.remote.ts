@@ -137,7 +137,7 @@ export const deletePatientInsurance = command(
 	}
 );
 
-// delete complete (hard)
+// delete complete (hard) - alias for delete
 export const deletePatientInsuranceComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {

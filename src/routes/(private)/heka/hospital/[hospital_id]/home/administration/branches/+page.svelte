@@ -21,6 +21,7 @@
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -45,6 +46,8 @@
 
 	const branches = $derived(branchResult?.data ?? []);
 	const total = $derived(branchResult?.total ?? 0);
+
+	let tableFilters = $state<Record<string, string>>({});
 
 	const branchColumns: MariTableColumn<HospitalBranchSchema>[] = [
 		{
@@ -76,6 +79,26 @@
 			field: 'email'
 		},
 		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
+		},
+		{
 			id: 'address',
 			header: m.address(),
 			widthClass: 'w-80 min-w-[16rem]',
@@ -89,8 +112,19 @@
 		if (!hospitalId) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
+		const parsedStatusId = tableFilters.status
+			? Number(tableFilters.status)
+			: undefined;
 		try {
-			const params = { hospitalId, page: currentPage, pageSize };
+			const params = {
+				hospitalId,
+				page: currentPage,
+				pageSize,
+				statusId:
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined
+			};
 			if (forceRefresh)
 				await getBranchesByHospitalIdPaginated(params).refresh();
 			branchResult = await getBranchesByHospitalIdPaginated(params);
@@ -177,7 +211,7 @@
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
-						enableColumnFilters={false}
+						enableColumnFilters={true}
 						useRemoteFilters={true}
 						on:refresh={() => fetchBranches(true)}
 						on:pageSizeChange={() => {
@@ -185,6 +219,11 @@
 							fetchBranches(true);
 						}}
 						on:pageChange={() => fetchBranches(true)}
+						on:filtersChange={(e) => {
+							tableFilters = e.detail.filters;
+							currentPage = 1;
+							fetchBranches(true);
+						}}
 					>
 						<svelte:fragment slot="rowActions" let:row>
 							<td class="text-right">
