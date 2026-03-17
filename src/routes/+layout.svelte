@@ -4,6 +4,7 @@
 	import DaisyUiModalBox from '$lib/component/library/daisyui/modal/box/DaisyUiModalBox.svelte';
 	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiToast from '$lib/component/library/daisyui/toast/DaisyUiToast.svelte';
+	import { gsapAnimate } from '$lib/action/gsap.action.svelte';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -58,7 +59,9 @@
 {#if ToastState.length > 0 && !DialogState.current}
 	<DaisyUiToast className="d-toast-top d-toast-end z-[9998]">
 		{#each ToastState as toast (toast.id)}
-			<DaisyUiAlert type={toast.type} message={toast.message} />
+			<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
+				<DaisyUiAlert type={toast.type} message={toast.message} />
+			</div>
 		{/each}
 	</DaisyUiToast>
 {/if}
@@ -93,7 +96,9 @@
 			{#if ToastState.length > 0}
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
-						<DaisyUiAlert type={toast.type} message={toast.message} />
+						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
+							<DaisyUiAlert type={toast.type} message={toast.message} />
+						</div>
 					{/each}
 				</DaisyUiToast>
 			{/if}
@@ -107,7 +112,9 @@
 			{#if ToastState.length > 0}
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
-						<DaisyUiAlert type={toast.type} message={toast.message} />
+						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
+							<DaisyUiAlert type={toast.type} message={toast.message} />
+						</div>
 					{/each}
 				</DaisyUiToast>
 			{/if}

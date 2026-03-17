@@ -7,7 +7,6 @@
 	import LucideFileText from '$lib/component/library/lucide/LucideFileText.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import {
@@ -19,7 +18,6 @@
 	} from '$lib/remote/table/information-table/document.remote';
 	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
 	import {
-		getDocumentSettingById,
 		getDocumentSettingsWithRelations,
 		type DocumentSettingWithRelations
 	} from '$lib/remote/table/information-table/document-setting.remote';
@@ -34,7 +32,6 @@ import {
 	resolveDocumentTemplate
 } from '$lib/util/document-placeholder.util';
 
-	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	const visitIdStr = $derived(
@@ -46,7 +43,9 @@ import {
 	let visit = $state<PatientVisitWithRelations | null>(null);
 	let documents = $state<DocumentWithRelations[]>([]);
 	let documentTypes = $state<DocumentTypeSchema[]>([]);
+	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let isLoading = $state(false);
+	let isPrinting = $state(false);
 	let selectedDocument = $state<DocumentWithRelations | null>(null);
 	let showPreview = $state(false);
 
@@ -67,30 +66,37 @@ import {
 		)
 	);
 
-	async function fetchVisit() {
-		if (!visitId) return;
-		try {
-			visit = await getPatientVisitByIdWithRelations({ id: visitId });
-		} catch (err) {
-			console.error('Failed to fetch visit', err);
-		}
-	}
+	/** Print is ready when visit is loaded (or no visitId) and not currently printing */
+	const canPrint = $derived(
+		!isPrinting && (!visitId || visit !== null)
+	);
 
-	async function fetchDocuments() {
+	async function fetchAllData() {
 		isLoading = true;
 		try {
-			documents = await getDocumentsWithRelations();
-			documentTypes = await getDocumentTypes();
+			const [visitResult, docsResult, typesResult, settingsResult] =
+				await Promise.all([
+					visitId
+						? getPatientVisitByIdWithRelations({ id: visitId })
+						: Promise.resolve(null),
+					getDocumentsWithRelations(),
+					getDocumentTypes(),
+					getDocumentSettingsWithRelations()
+				]);
+			if (visitId) visit = visitResult;
+			documents = docsResult;
+			documentTypes = typesResult;
+			documentSettings = settingsResult;
 		} catch (err) {
-			console.error('Failed to fetch documents', err);
+			console.error('Failed to fetch data', err);
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	lifeCycleUtil.onMount(() => {
-		fetchVisit();
-		fetchDocuments();
+	$effect(() => {
+		// Fetch all data on mount and when visitId changes
+		fetchAllData();
 	});
 
 	function viewDocument(doc: DocumentWithRelations) {
@@ -122,81 +128,112 @@ import {
 	}
 
 	async function printDocument(doc: DocumentWithRelations) {
-		const printWindow = window.open('', '_blank');
-		if (!printWindow) {
+		if (visitId && !visit) {
 			toastService.addToast(
-				'Failed to open print window',
+				'Visit data not loaded yet. Please wait.',
 				StatusColorEnum.ERROR
 			);
 			return;
 		}
 
-		let setting: DocumentSettingSchema | null = null;
+		isPrinting = true;
 		try {
-			if (doc.documentSettingId) {
-				setting = await getDocumentSettingById({
-					id: doc.documentSettingId
-				});
-			} else if (doc.documentTypeId) {
-				// Fallback: find a setting by type/name, then single-item fallback.
-				const allSettings: DocumentSettingWithRelations[] =
-					await getDocumentSettingsWithRelations();
-				const docTypeName =
-					doc.documentType?.documentType?.trim().toLowerCase() ?? '';
-				const matchedByTypeId =
-					allSettings.find((s) => s.documentTypeId === doc.documentTypeId) ??
-					null;
-				const matchedByTypeName =
-					allSettings.find(
-						(s) =>
-							(s.documentType?.documentType ?? '')
-								.trim()
-								.toLowerCase() === docTypeName
-					) ?? null;
-				const matchedByNameOrCode =
-					allSettings.find((s) => {
-						const name = (s.name ?? '').trim().toLowerCase();
-						return (
-							Boolean(docTypeName) &&
-							name.includes(docTypeName)
-						);
-					}) ?? null;
-				const singleSetting =
-					allSettings.length === 1 ? allSettings[0] : null;
-
-				setting =
-					matchedByTypeId ??
-					matchedByTypeName ??
-					matchedByNameOrCode ??
-					singleSetting;
+			// Use hidden iframe so print dialog pops up on top without opening new tab
+			let iframe = document.getElementById(
+				'clinical-document-print-iframe'
+			) as HTMLIFrameElement | null;
+			if (!iframe) {
+				iframe = document.createElement('iframe');
+				iframe.id = 'clinical-document-print-iframe';
+				iframe.style.cssText =
+					'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+				document.body.appendChild(iframe);
 			}
-		} catch (err) {
-			console.error('Failed to load document setting', err);
-		}
+			const printWindow = iframe.contentWindow;
+			if (!printWindow) {
+				toastService.addToast(
+					'Failed to prepare print',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
 
-		const context = buildPlaceholderContext(doc);
-		const documentHtml = applyPlaceholders(doc.documentText, context).trim();
-		const marginTop = setting?.marginTop ?? 20;
-		const marginBottom = setting?.marginBottom ?? 20;
-		const marginLeft = setting?.marginLeft ?? 15;
-		const marginRight = setting?.marginRight ?? 15;
-		const paddingTop = setting?.paddingTop ?? 10;
-		const paddingBottom = setting?.paddingBottom ?? 10;
-		const paddingLeft = setting?.paddingLeft ?? 10;
-		const paddingRight = setting?.paddingRight ?? 10;
-		const pageSize = setting?.pageSize ?? 'A4';
-		const orientation = setting?.pageOrientation ?? 'portrait';
-		const showHeader = setting?.showHeader ?? true;
-		const showFooter = setting?.showFooter ?? true;
-		const headerHtml = applyPlaceholders(setting?.headerHtml, context).trim();
-		const footerHtml = applyPlaceholders(setting?.footerHtml, context).trim();
+			// Use pre-loaded document settings (no async fetch needed)
+			const docTypeName =
+				doc.documentType?.documentType?.trim().toLowerCase() ?? '';
+			const setting: DocumentSettingSchema | null = doc.documentSettingId
+				? (documentSettings.find(
+						(s) => s.id === doc.documentSettingId
+					) as DocumentSettingSchema | null) ??
+					null
+				: doc.documentTypeId
+					? (documentSettings.find(
+							(s) => s.documentTypeId === doc.documentTypeId
+						) as DocumentSettingSchema | null) ??
+						(documentSettings.find(
+							(s) =>
+								(s.documentType?.documentType ?? '')
+									.trim()
+									.toLowerCase() === docTypeName
+						) as DocumentSettingSchema | null) ??
+						(documentSettings.find((s) => {
+							const name = (s.name ?? '').trim().toLowerCase();
+							return (
+								Boolean(docTypeName) && name.includes(docTypeName)
+							);
+						}) as DocumentSettingSchema | null) ??
+						(documentSettings.length === 1
+							? (documentSettings[0] as DocumentSettingSchema)
+							: null)
+					: null;
 
-		const documentTitle =
-			doc.documentNumber ||
-			doc.documentType?.documentType ||
-			'Document';
+			const context = buildPlaceholderContext(doc);
+			const documentHtml = applyPlaceholders(doc.documentText, context).trim();
+			const marginTop = setting?.marginTop ?? 20;
+			const marginBottom = setting?.marginBottom ?? 20;
+			const marginLeft = setting?.marginLeft ?? 15;
+			const marginRight = setting?.marginRight ?? 15;
+			const paddingTop = setting?.paddingTop ?? 10;
+			const paddingBottom = setting?.paddingBottom ?? 10;
+			const paddingLeft = setting?.paddingLeft ?? 10;
+			const paddingRight = setting?.paddingRight ?? 10;
+			const pageSize = setting?.pageSize ?? 'A4';
+			const orientation = setting?.pageOrientation ?? 'portrait';
+			const showHeader = setting?.showHeader ?? true;
+			const showFooter = setting?.showFooter ?? true;
+			const headerHtml = applyPlaceholders(setting?.headerHtml, context).trim();
+			const footerHtml = applyPlaceholders(setting?.footerHtml, context).trim();
 
-		printWindow.document.write(`
+			const documentTitle =
+				doc.documentNumber ||
+				doc.documentType?.documentType ||
+				'Document';
+
+			// Header block: header table + document name underneath
+			const headerBlock =
+				showHeader && headerHtml
+					? `<div class="print-header">
+						<div class="header-table">${headerHtml}</div>
+						<div class="document-name">${documentTitle}</div>
+					</div>`
+					: showHeader
+						? `<div class="print-header"><div class="document-name">${documentTitle}</div></div>`
+						: '';
+
+			const footerBlock =
+				showFooter && footerHtml
+					? `<div class="print-footer">${footerHtml}</div>`
+					: '';
+
+			// Reserve space in @page so content area avoids header/footer on every page
+			const headerSpaceMm = showHeader ? 38 : 0;
+			const footerSpaceMm = showFooter ? 22 : 0;
+			const pageMarginTop = marginTop + headerSpaceMm;
+			const pageMarginBottom = marginBottom + footerSpaceMm;
+			const headerSpacerHeight = showHeader ? 130 : 0;
+			const footerSpacerHeight = showFooter ? 70 : 0;
+
+			printWindow.document.write(`
 			<!DOCTYPE html>
 			<html>
 			<head>
@@ -204,24 +241,35 @@ import {
 				<style>
 					body {
 						font-family: 'Roboto', Arial, sans-serif;
-						margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+						margin: 0;
 						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
 						line-height: 1.6;
 					}
-					.header {
+					.header-spacer {
+						height: ${headerSpacerHeight}px;
+					}
+					.footer-spacer {
+						height: ${footerSpacerHeight}px;
+					}
+					.print-header {
 						text-align: center;
-						margin-bottom: 20px;
-						padding-bottom: 10px;
+						padding: 12px 0 10px 0;
 						border-bottom: 1px solid #ccc;
 					}
-					.content {
-						margin-top: 20px;
+					.header-table {
+						margin-bottom: 6px;
 					}
-					.footer {
-						margin-top: 40px;
+					.document-name {
+						font-weight: 600;
+						font-size: 14px;
+					}
+					.content {
+						margin: 0;
+					}
+					.print-footer {
 						text-align: center;
 						font-size: 10px;
-						color: #666;
+						padding: 10px 0 12px 0;
 					}
 					table {
 						width: 100%;
@@ -241,34 +289,66 @@ import {
 					@media print {
 						@page {
 							size: ${pageSize} ${orientation};
-							margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+							margin: ${pageMarginTop}mm ${marginRight}mm ${pageMarginBottom}mm ${marginLeft}mm;
+						}
+						.print-header {
+							position: fixed;
+							top: 0;
+							left: 0;
+							right: 0;
+							padding: 8mm ${marginRight}mm 10px ${marginLeft}mm;
+						}
+						.print-footer {
+							position: fixed;
+							bottom: 0;
+							left: 0;
+							right: 0;
+							padding: 10px ${marginRight}mm 8mm ${marginLeft}mm;
 						}
 					}
 				</style>
 			</head>
 			<body>
-				${
-					showHeader && headerHtml
-						? `<div class="header">${headerHtml}</div>`
-						: ''
-				}
+				${headerBlock}
+				${showHeader ? '<div class="header-spacer"></div>' : ''}
 				<div class="content">
 					${documentHtml || '<p>No content</p>'}
 				</div>
-				${
-					showFooter && footerHtml
-						? `<div class="footer">${footerHtml}</div>`
-						: ''
-				}
+				${showFooter ? '<div class="footer-spacer"></div>' : ''}
+				${footerBlock}
 			</body>
 			</html>
 		`);
-		printWindow.document.close();
-		printWindow.print();
+			printWindow.document.close();
+			// Wait for iframe to render before opening print dialog
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			printWindow.print();
+		} catch (err) {
+			console.error('Print failed', err);
+			toastService.addToast(
+				'Failed to prepare document for print',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			isPrinting = false;
+		}
 	}
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="flex flex-col gap-4 p-4 relative">
+	{#if isPrinting}
+		<div
+			class="print-loading-overlay"
+			role="status"
+			aria-live="polite"
+			aria-label="Preparing document for print"
+		>
+			<div class="flex flex-col items-center gap-4">
+				<DaisyUiLoading className="d-loading-lg text-primary" />
+				<span class="text-sm font-medium">Preparing document for print...</span>
+			</div>
+		</div>
+	{/if}
 	{#if !visitId}
 		<DaisyUiCard className="p-6">
 			<div class="text-center text-base-content/70">
@@ -330,6 +410,7 @@ import {
 											class="d-btn text-primary d-btn-ghost d-btn-xs"
 											onclick={() => printDocument(doc)}
 											title="Print"
+											disabled={!canPrint}
 										>
 											<LucidePrinter className="w-4 h-4" />
 										</button>
@@ -385,6 +466,7 @@ import {
 											class="d-btn text-info d-btn-ghost d-btn-xs"
 											onclick={() => printDocument(doc)}
 											title="Print"
+											disabled={!canPrint}
 										>
 											<LucidePrinter className="w-4 h-4" />
 										</button>
@@ -439,6 +521,7 @@ import {
 											class="d-btn text-success d-btn-ghost d-btn-xs"
 											onclick={() => printDocument(doc)}
 											title="Print"
+											disabled={!canPrint}
 										>
 											<LucidePrinter className="w-4 h-4" />
 										</button>
@@ -467,6 +550,7 @@ import {
 					<DaisyUiButton
 						className="d-btn-primary d-btn-sm"
 						onClick={() => printDocument(selectedDocument!)}
+						disabled={!canPrint}
 					>
 						<LucidePrinter className="w-4 h-4 mr-1" />
 						Print
@@ -505,6 +589,17 @@ import {
 {/if}
 
 <style>
+	.print-loading-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 9990;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.4);
+		backdrop-filter: blur(2px);
+	}
+
 	:global(.document-preview-content table) {
 		width: 100%;
 		border-collapse: collapse;
