@@ -12,14 +12,14 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getDocumentTypes = query(
 	async (): Promise<DocumentTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.documentTypeTable)
-			.where(eq(table.documentTypeTable.statusId, StatusEnum.ACTIVE))
+			.where(ne(table.documentTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.documentTypeTable.documentType);
 	}
 );
@@ -29,7 +29,7 @@ export const getDocumentTypeCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.documentTypeTable)
-			.where(eq(table.documentTypeTable.statusId, StatusEnum.ACTIVE));
+			.where(ne(table.documentTypeTable.statusId, StatusEnum.DELETED));
 		return row?.count ?? 0;
 	}
 );
@@ -37,26 +37,34 @@ export const getDocumentTypeCount = query(
 export const getDocumentTypesPaginated = query(
 	'unchecked' as const,
 	async (
-		params?: PaginationParams
+		params?: PaginationParams & { statusId?: number | null }
 	): Promise<PaginatedResult<DocumentTypeSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const activeFilter = eq(
+		const notDeletedFilter = ne(
 			table.documentTypeTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
+		const statusFilter =
+			params?.statusId != null
+				? eq(table.documentTypeTable.statusId, params.statusId)
+				: null;
+		const whereExpr =
+			statusFilter != null
+				? and(notDeletedFilter, statusFilter)
+				: notDeletedFilter;
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.documentTypeTable)
-				.where(activeFilter)
+				.where(whereExpr)
 				.orderBy(table.documentTypeTable.documentType)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.documentTypeTable)
-				.where(activeFilter)
+				.where(whereExpr)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -79,7 +87,12 @@ export const getDocumentTypeById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.documentTypeTable)
-			.where(eq(table.documentTypeTable.id, id));
+			.where(
+				and(
+					eq(table.documentTypeTable.id, id),
+					ne(table.documentTypeTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

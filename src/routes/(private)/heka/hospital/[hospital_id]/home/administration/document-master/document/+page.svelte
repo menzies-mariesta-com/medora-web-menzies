@@ -37,6 +37,7 @@
 		type DocumentSettingWithRelations
 	} from '$lib/remote/table/information-table/document-setting.remote';
 	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -77,10 +78,17 @@ let contentTab = $state<ContentTab>('rich');
 	async function fetchData(opts?: { bustCache?: boolean }) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
+		const parsedStatusId = tableFilters.status
+			? Number(tableFilters.status)
+			: undefined;
 		try {
 			documentResult = await getDocumentsPaginatedWithRelations({
 				page: currentPage,
 				pageSize,
+				statusId:
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 		} finally {
@@ -300,44 +308,73 @@ let contentTab = $state<ContentTab>('rich');
 		toastService.addToast('HTML formatted', StatusColorEnum.SUCCESS);
 	}
 
+	let tableFilters = $state<Record<string, string>>({});
+
 	const columns: MariTableColumn<DocumentWithRelations>[] = [
 		{
 			id: 'id',
 			header: 'ID',
-			widthClass: 'w-16 min-w-[4rem]'
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false
 		},
 		{
 			id: 'documentNumber',
 			header: 'Document Name',
-			widthClass: 'w-48 min-w-[12rem]'
+			widthClass: 'w-48 min-w-[12rem]',
+			filterable: false
 		},
 		{
 			id: 'code',
 			header: 'Document Code',
-			widthClass: 'w-32 min-w-[8rem]'
+			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false
 		},
 		{
 			id: 'documentType',
 			header: 'Document Type',
 			widthClass: 'w-32 min-w-[8rem]',
+			filterable: false,
 			format: (_value, row) => row.documentType?.documentType ?? '—'
 		},
 		{
 			id: 'documentSetting',
 			header: 'Document Setting',
 			widthClass: 'w-48 min-w-[12rem]',
+			filterable: false,
 			format: (_value, row) => row.documentSetting?.name ?? '—'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
 		},
 		{
 			id: 'documentText',
 			header: 'Content Preview',
 			widthClass: 'w-64 min-w-[16rem]',
+			filterable: false,
 			format: (value) => truncateText(value as string)
 		},
 		{
 			id: 'createdAt',
 			header: 'Created At',
 			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
 			format: (value) => formatDateTime(value as any)
 		}
 	];
@@ -391,7 +428,7 @@ let contentTab = $state<ContentTab>('rich');
 							showRowActions={true}
 							actionsHeader={m.actions()}
 							actionsVariant="none"
-							enableColumnFilters={false}
+							enableColumnFilters={true}
 							useRemoteFilters={true}
 							on:refresh={() => fetchData({ bustCache: true })}
 							on:pageSizeChange={() => {
@@ -399,6 +436,11 @@ let contentTab = $state<ContentTab>('rich');
 								fetchData();
 							}}
 							on:pageChange={() => fetchData()}
+							on:filtersChange={(e) => {
+								tableFilters = e.detail.filters;
+								currentPage = 1;
+								fetchData();
+							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
 								{@const typedRow = row as DocumentWithRelations}

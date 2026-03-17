@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		getSubCategoryPaginated,
 		deleteSubCategory
@@ -29,6 +28,7 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const toastService = new ToastService();
 
@@ -48,6 +48,8 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let categories = $state<CategorySchema[]>([]);
 	let isLoading = $state(false);
+let tableFilters = $state<Record<string, string>>({});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const subCategories = $derived(subCategoryResult?.data ?? []);
 	const total = $derived(subCategoryResult?.total ?? 0);
@@ -60,11 +62,42 @@
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
-			const categoryIds = categories.map((c) => c.id);
+			let categoryIds = categories.map((c) => c.id);
+			const categoryTerm = tableFilters.category?.trim().toLowerCase();
+			if (categoryTerm) {
+				const matchedCategoryIds = categories
+					.filter((c) =>
+						(c.categoryName ?? '')
+							.toLowerCase()
+							.includes(categoryTerm)
+					)
+					.map((c) => c.id);
+				categoryIds = categoryIds.filter((id) =>
+					matchedCategoryIds.includes(id)
+				);
+			}
+
+			const parsedStatusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const parsedId = tableFilters.id
+				? Number(tableFilters.id)
+				: undefined;
 			const params = {
 				page: currentPage,
 				pageSize,
-				categoryIds
+				categoryIds,
+				id:
+					parsedId != null && Number.isFinite(parsedId)
+						? parsedId
+						: undefined,
+				subCategoryName:
+					tableFilters.subCategoryName?.trim() || undefined,
+				statusId:
+					parsedStatusId != null &&
+					Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined
 			};
 			if (forceRefresh) {
 				await getSubCategoryPaginated(params).refresh();
@@ -157,16 +190,22 @@
 			id: 'status',
 			header: m.status(),
 			widthClass: 'w-32 min-w-[8rem]',
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
-				row.statusId === 1 ? 'Active' : 'Inactive'
+				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
 		}
 	];
 </script>
 
 <div class="space-y-6">
-	<div class="flex items-center justify-between">
+	<div class="flex items-center justify-between mb-2">
 		<h1 class="text-2xl font-bold">{m.sub_category_master}</h1>
-		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
+		<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
 			<LucidePlus />
 			{m.create()}
 		</DaisyUiButton>
@@ -174,54 +213,60 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading && subCategories.length === 0}
-				<DaisyUiLoading className="py-8" />
-			{:else}
-				<div class={TableEnum.HEIGHT}>
-					<MariTable
-						rows={subCategories}
-						columns={subCategoryColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage="No sub-categories. Create one."
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={false}
-						on:refresh={() => fetchSubCategories(true)}
-						on:pageSizeChange={() => {
-							currentPage = 1;
+			<div class={TableEnum.HEIGHT}>
+				<MariTable
+					rows={subCategories}
+					columns={subCategoryColumns}
+					{isLoading}
+					bind:pageSize={pageSizeStr}
+					bind:currentPage
+					totalRowCount={total}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage="No sub-categories. Create one."
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchSubCategories(true)}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchSubCategories(true);
+					}}
+					on:pageChange={() => fetchSubCategories(true)}
+					on:filtersChange={(event) => {
+						if (filterDebounceTimeout) {
+							clearTimeout(filterDebounceTimeout);
+						}
+						tableFilters = event.detail.filters;
+						currentPage = 1;
+						filterDebounceTimeout = setTimeout(() => {
 							fetchSubCategories(true);
-						}}
-						on:pageChange={() => fetchSubCategories(true)}
-					>
-						<svelte:fragment slot="rowActions" let:row>
-							<td class="text-right">
-								<div class="flex justify-end gap-2">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEdit(row as SubCategorySchema)}
-									>
-										<LucidePencil />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() =>
-											handleDelete(row as SubCategorySchema)}
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
-								</div>
-							</td>
-						</svelte:fragment>
-					</MariTable>
-				</div>
-			{/if}
+						}, 350);
+					}}
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row as SubCategorySchema)}
+								>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() =>
+										handleDelete(row as SubCategorySchema)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					</svelte:fragment>
+				</MariTable>
+			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

@@ -33,28 +33,28 @@ export const getServiceOrder = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.visitId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.visitId, params.visitId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -70,7 +70,10 @@ export const getServiceOrderCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.serviceOrderTable);
+			.from(table.serviceOrderTable)
+			.where(
+				ne(table.serviceOrderTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -98,28 +101,28 @@ export const getServiceOrderPaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.branchId, params.branchId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.visitId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.visitId, params.visitId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -157,7 +160,12 @@ export const getServiceOrderById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceOrderTable)
-			.where(eq(table.serviceOrderTable.id, id));
+			.where(
+				and(
+					eq(table.serviceOrderTable.id, id),
+					ne(table.serviceOrderTable.statusId, StatusEnum.DELETED)
+				)
+			);
 		return row ?? null;
 	}
 );

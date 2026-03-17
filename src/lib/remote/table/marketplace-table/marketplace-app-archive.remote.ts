@@ -12,22 +12,22 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 
 export const getMarketplaceAppArchives = query(
 	'unchecked' as const,
 	async (params?: {
 		appId?: number | null;
 	}): Promise<MarketplaceAppArchiveSchema[]> => {
-		const baseFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAppArchiveTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const whereExpr =
 			params?.appId == null
-				? baseFilter
+				? notDeletedFilter
 				: and(
-						baseFilter,
+						notDeletedFilter,
 						eq(table.marketplaceAppArchiveTable.appId, params.appId)
 					);
 
@@ -41,7 +41,7 @@ export const getMarketplaceAppArchives = query(
 
 export const getMarketplaceAppArchivesWithRelations = query(async () => {
 	return ensureDb().query.marketplaceAppArchiveTable.findMany({
-		where: eq(table.marketplaceAppArchiveTable.statusId, StatusEnum.ACTIVE),
+		where: ne(table.marketplaceAppArchiveTable.statusId, StatusEnum.DELETED),
 		with: {
 			app: true,
 			fileExtension: true,
@@ -60,7 +60,7 @@ export const getMarketplaceAppArchiveCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.marketplaceAppArchiveTable)
-			.where(eq(table.marketplaceAppArchiveTable.statusId, StatusEnum.ACTIVE));
+			.where(ne(table.marketplaceAppArchiveTable.statusId, StatusEnum.DELETED));
 		return row?.count ?? 0;
 	}
 );
@@ -71,15 +71,15 @@ export const getMarketplaceAppArchivesPaginated = query(
 		params?: PaginationParams & { appId?: number | null }
 	): Promise<PaginatedResult<MarketplaceAppArchiveSchema>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
-		const baseFilter = eq(
+		const notDeletedFilter = ne(
 			table.marketplaceAppArchiveTable.statusId,
-			StatusEnum.ACTIVE
+			StatusEnum.DELETED
 		);
 		const whereExpr =
 			params?.appId == null
-				? baseFilter
+				? notDeletedFilter
 				: and(
-						baseFilter,
+						notDeletedFilter,
 						eq(table.marketplaceAppArchiveTable.appId, params.appId)
 					);
 		const [data, countResult] = await Promise.all([
@@ -116,7 +116,15 @@ export const getMarketplaceAppArchiveById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.marketplaceAppArchiveTable)
-			.where(eq(table.marketplaceAppArchiveTable.id, id));
+			.where(
+				and(
+					eq(table.marketplaceAppArchiveTable.id, id),
+					ne(
+						table.marketplaceAppArchiveTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
+			);
 		return row ?? null;
 	}
 );

@@ -15,14 +15,16 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, ilike } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { RoleEnum } from '$lib/model/enum/db-link';
 
 // get all
 export const getUser = query(async (): Promise<UserSchema[]> => {
-	const data = await ensureDb().select().from(table.userTable);
+	const data = await ensureDb()
+		.select()
+		.from(table.userTable);
 	return data;
 });
 
@@ -48,7 +50,9 @@ export const getUserPaginated = query(
 				.from(table.userTable)
 				.limit(limit)
 				.offset(offset),
-			ensureDb().select({ count: count() }).from(table.userTable)
+			ensureDb()
+				.select({ count: count() })
+				.from(table.userTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -103,6 +107,56 @@ export const getUsersByRole = query(
 			.select()
 			.from(table.userTable)
 			.where(eq(table.userTable.roleId, roleId));
+	}
+);
+
+export const getUsersByRolePaginated = query(
+	'unchecked' as const,
+	async (
+		params: PaginationParams & {
+			roleId: number;
+			name?: string | null;
+			email?: string | null;
+		}
+	): Promise<PaginatedResult<UserSchema>> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
+		let whereExpr = eq(table.userTable.roleId, params.roleId);
+		const nameTerm = params.name?.trim();
+		if (nameTerm) {
+			whereExpr = and(
+				whereExpr,
+				ilike(table.userTable.name, `%${nameTerm}%`)
+			) as typeof whereExpr;
+		}
+		const emailTerm = params.email?.trim();
+		if (emailTerm) {
+			whereExpr = and(
+				whereExpr,
+				ilike(table.userTable.email, `%${emailTerm}%`)
+			) as typeof whereExpr;
+		}
+
+		const [data, countResult] = await Promise.all([
+			ensureDb()
+				.select()
+				.from(table.userTable)
+				.where(whereExpr)
+				.limit(limit)
+				.offset(offset),
+			ensureDb()
+				.select({ count: count() })
+				.from(table.userTable)
+				.where(whereExpr)
+		]);
+		const total = countResult[0]?.count ?? 0;
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.ceil(total / pageSize) || 1
+		};
 	}
 );
 

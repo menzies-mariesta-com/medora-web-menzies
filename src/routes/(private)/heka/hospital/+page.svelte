@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -24,7 +24,7 @@
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
 	import NewHospitalModal from '$lib/component/snippet/modal/NewHospitalModal.svelte';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
-	import { RoleEnum } from '$lib/model/enum/db-link';
+	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -56,6 +56,26 @@
 			format: (_v, row) => row.owner?.name ?? row.owner?.email ?? '—'
 		},
 		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_v, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: row.statusId === StatusEnum.DELETED
+							? 'Deleted'
+							: `Status ${row.statusId ?? 'Unknown'}`
+		},
+		{
 			id: 'phone',
 			header: m.phone(),
 			widthClass: 'w-36 min-w-[9rem]',
@@ -81,7 +101,7 @@
 		}
 	];
 
-	let { data } = $props();
+	const data = $derived(page.data);
 	const isStaff = $derived(data?.userRoleId === RoleEnum.STAFF);
 	const isSystemAdmin = $derived(
 		data?.userRoleId === RoleEnum.SYSTEM_ADMIN
@@ -93,14 +113,30 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let hospitalResult =
-		$state<PaginatedResult<HospitalWithOwner> | null>(null);
+	let hospitalResult = $state<PaginatedResult<HospitalWithOwner> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
+	let tableFilters = $state<Record<string, string>>({});
 
 	const hospitals = $derived(hospitalResult?.data ?? []);
 	const total = $derived(hospitalResult?.total ?? 0);
+
+	$effect(() => {
+		const d = page.data;
+		if (d?.initialHospitals != null && hospitalResult == null) {
+			hospitalResult = {
+				data: d.initialHospitals,
+				total: d.initialTotal ?? 0,
+				page: d.initialPage ?? 1,
+				pageSize: d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE,
+				totalPages: d.initialTotalPages ?? 1
+			};
+			currentPage = d.initialPage ?? 1;
+			pageSizeStr = String(d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE);
+			isLoading = false;
+		}
+	});
 
 	async function loadHospitals(forceRefresh = false) {
 		isLoading = true;
@@ -110,10 +146,17 @@
 					? (data.user as { id?: string }).id
 					: undefined;
 			const pageSize = Number(pageSizeStr) || 10;
+			const parsedStatusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
 			const params = {
 				page: currentPage,
 				pageSize,
-				...(ownerId != null && { ownerId })
+				...(ownerId != null && { ownerId }),
+				statusId:
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
+						? parsedStatusId
+						: undefined
 			};
 			if (forceRefresh) {
 				await getHospitalWithOwnerPaginated(params).refresh();
@@ -180,7 +223,10 @@
 	}
 
 	lifeCycleUtil.onMount(() => {
-		loadHospitals();
+		// Fetch when we don't have server-loaded data
+		if (page.data?.initialHospitals == null) {
+			loadHospitals();
+		}
 	});
 </script>
 
@@ -217,15 +263,8 @@
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-				{#if isLoading}
-					<DaisyUiLoading className="py-8" />
-				{:else if hospitals.length === 0}
-					<p class="py-8 text-center text-base-content/70">
-						{m.no_hospitals_yet()}
-					</p>
-				{:else}
-					<div class={TableEnum.HEIGHT}>
-						<MariTable
+				<div class={TableEnum.HEIGHT}>
+					<MariTable
 							rows={hospitals}
 							columns={hospitalColumns}
 							{isLoading}
@@ -238,7 +277,7 @@
 							showRowActions={true}
 							actionsHeader={m.actions()}
 							actionsVariant="none"
-							enableColumnFilters={false}
+							enableColumnFilters={true}
 							useRemoteFilters={true}
 							on:refresh={() => loadHospitals(true)}
 							on:pageSizeChange={() => {
@@ -246,6 +285,11 @@
 								loadHospitals(true);
 							}}
 							on:pageChange={() => loadHospitals(true)}
+							on:filtersChange={(e) => {
+								tableFilters = e.detail.filters;
+								currentPage = 1;
+								loadHospitals(true);
+							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
 								<div class="flex justify-end gap-2">
@@ -272,8 +316,7 @@
 								</div>
 							</svelte:fragment>
 						</MariTable>
-					</div>
-				{/if}
+				</div>
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}

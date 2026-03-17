@@ -37,7 +37,7 @@ export const getServiceOrderDetail = query(
 					table.serviceOrderDetailTable.serviceOrderId,
 					params.serviceOrderId
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (
@@ -50,28 +50,28 @@ export const getServiceOrderDetail = query(
 					table.serviceOrderDetailTable.serviceOrderId,
 					params.serviceOrderIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.serviceId, params.serviceId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		return ensureDb()
@@ -86,7 +86,13 @@ export const getServiceOrderDetailCount = query(
 	async (): Promise<number> => {
 		const [row] = await ensureDb()
 			.select({ count: count() })
-			.from(table.serviceOrderDetailTable);
+			.from(table.serviceOrderDetailTable)
+			.where(
+				ne(
+					table.serviceOrderDetailTable.statusId,
+					StatusEnum.DELETED
+				)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -118,7 +124,7 @@ export const getServiceOrderDetailPaginated = query(
 					table.serviceOrderDetailTable.serviceOrderId,
 					params.serviceOrderId
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (
@@ -131,28 +137,28 @@ export const getServiceOrderDetailPaginated = query(
 					table.serviceOrderDetailTable.serviceOrderId,
 					params.serviceOrderIds
 				)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.serviceId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.serviceId, params.serviceId)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.id != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.id, params.id)
-			);
+			) as typeof whereExpr;
 		}
 
 		if (params?.statusId != null) {
 			whereExpr = and(
 				whereExpr,
 				eq(table.serviceOrderDetailTable.statusId, params.statusId)
-			);
+			) as typeof whereExpr;
 		}
 
 		const [data, countResult] = await Promise.all([
@@ -189,7 +195,15 @@ export const getServiceOrderDetailById = query(
 		const [row] = await ensureDb()
 			.select()
 			.from(table.serviceOrderDetailTable)
-			.where(eq(table.serviceOrderDetailTable.id, id));
+			.where(
+				and(
+					eq(table.serviceOrderDetailTable.id, id),
+					ne(
+						table.serviceOrderDetailTable.statusId,
+						StatusEnum.DELETED
+					)
+				)
+			);
 		return row ?? null;
 	}
 );

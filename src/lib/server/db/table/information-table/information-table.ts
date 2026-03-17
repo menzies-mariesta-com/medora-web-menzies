@@ -81,6 +81,31 @@ const timestamps = {
 	})
 } as const;
 
+/** Many-to-many junction tables: timestamps + user tracking, no soft delete. */
+const junctionTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`),
+	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	})
+} as const;
+
 // Information Tables (alphabetical) - business/transactional data
 export const hospitalTable = pgTable('hospital', {
 	id: uuid('id')
@@ -261,7 +286,7 @@ export const staffDepartmentTable = pgTable('staff_department', {
 	departmentId: integer('department_id')
 		.notNull()
 		.references(() => departmentTable.id),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const staffHospitalTable = pgTable('staff_hospital', {
@@ -272,7 +297,7 @@ export const staffHospitalTable = pgTable('staff_hospital', {
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const staffBranchTable = pgTable('staff_branch', {
@@ -285,7 +310,7 @@ export const staffBranchTable = pgTable('staff_branch', {
 		.references(() => hospitalBranchTable.id, {
 			onDelete: 'cascade'
 		}),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const staffTable = pgTable('staff', {
@@ -364,7 +389,7 @@ export const staffUserGroupTable = pgTable('staff_user_group', {
 	userGroupId: integer('user_group_id')
 		.notNull()
 		.references(() => userGroupTable.id),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const statusTaggingTable = pgTable('status_tagging', {
@@ -398,7 +423,7 @@ export const userGroupPageTable = pgTable('user_group_page', {
 		() => userGroupTable.id
 	),
 	pageId: integer('page_id').references(() => pageTable.id),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const userGroupTable = pgTable('user_group', {
@@ -519,7 +544,7 @@ export const patientInsurance = pgTable('patient_insurance', {
 	insuranceId: uuid('insurance_id')
 		.notNull()
 		.references(() => insuranceTable.id),
-	...timestamps
+	...junctionTimestamps
 });
 
 export const patientAllergyTable = pgTable('patient_allergy', {

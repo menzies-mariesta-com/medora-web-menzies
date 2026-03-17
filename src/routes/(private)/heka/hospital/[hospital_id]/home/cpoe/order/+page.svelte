@@ -98,6 +98,13 @@ import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUi
 
 let currentDetailPage = $state(1);
 let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+const detailPageSizeNum = $derived(Number(detailPageSizeStr) || 10);
+const pagedPendingItems = $derived(
+	pendingItems.slice(
+		(currentDetailPage - 1) * detailPageSizeNum,
+		currentDetailPage * detailPageSizeNum
+	)
+);
 
 	let serviceFilter = $state<'all' | 'radiology' | 'laboratory' | 'nursing'>(
 		'all'
@@ -631,6 +638,20 @@ let showHistory = $state(false);
 
 	const historyColumns: MariTableColumn<HistoryItem>[] = [
 		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+		},
+		{
 			id: 'orderNo',
 			header: 'Order No',
 			widthClass: 'w-32',
@@ -1018,17 +1039,19 @@ let showHistory = $state(false);
 								class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
 							>
 								<MariTable
-									rows={pendingItems}
+									rows={pagedPendingItems}
 									columns={detailColumns}
 									isLoading={false}
 									bind:pageSize={detailPageSizeStr}
 									bind:currentPage={currentDetailPage}
+									totalRowCount={pendingItems.length}
 									showRefreshButton={false}
 									emptyMessage="No items."
 									showRowActions={true}
 									actionsHeader="Actions"
 									actionsVariant="none"
 									enableColumnFilters={false}
+									useRemoteFilters={true}
 								>
 									<svelte:fragment slot="rowActions" let:row>
 										<td class="w-28 shrink-0 text-right">

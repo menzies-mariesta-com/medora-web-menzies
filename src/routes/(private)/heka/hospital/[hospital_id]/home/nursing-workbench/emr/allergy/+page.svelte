@@ -14,6 +14,7 @@
 	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getPatientAllergiesByPatientIdWithRelations,
+		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		deletePatientAllergies,
 		type PatientAllergyWithRelations
 	} from '$lib/remote/table/information-table/patient-allergies.remote';
@@ -27,9 +28,18 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 
-	const dateTimeUtil = new DateTimeUtil();
+	function areFiltersEqual(
+		a: Record<string, string>,
+		b: Record<string, string>
+	): boolean {
+		const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+		for (const k of keys) {
+			if ((a[k] ?? '') !== (b[k] ?? '')) return false;
+		}
+		return true;
+	}
+
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
@@ -50,6 +60,14 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingAllergies = $state(false);
+let totalAllergies = $state(0);
+let tableFilters = $state<Record<string, string>>({
+	status: String(StatusEnum.ACTIVE)
+});
+let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastLoadedVisitKey = $state('');
+let lastHandledPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+let lastAllergiesFetchKey = $state('');
 	const toastService = new ToastService();
 
 	async function openAddDialog() {
@@ -60,7 +78,7 @@
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
 		PatientAllergyDialogState.onSaved = () =>
-			fetchAllergies(patientId, hospitalIdParam);
+			fetchAllergies(patientId, hospitalIdParam, { force: true });
 		try {
 			await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
@@ -76,7 +94,9 @@
 				},
 				onConfirm: (data) => {
 					if (data?.saved) {
-						fetchAllergies(patientId, hospitalIdParam);
+						fetchAllergies(patientId, hospitalIdParam, {
+							force: true
+						});
 					}
 				}
 			});
@@ -96,7 +116,7 @@
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
 		PatientAllergyDialogState.onSaved = () =>
-			fetchAllergies(patientId, hospitalIdParam);
+			fetchAllergies(patientId, hospitalIdParam, { force: true });
 		try {
 			await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
@@ -110,7 +130,9 @@
 				},
 				onConfirm: (data) => {
 					if (data?.saved) {
-						fetchAllergies(patientId, hospitalIdParam);
+						fetchAllergies(patientId, hospitalIdParam, {
+							force: true
+						});
 					}
 				}
 			});
@@ -134,7 +156,9 @@
 				StatusColorEnum.SUCCESS
 			);
 			if (visit?.patientId && visit?.hospitalId) {
-				await fetchAllergies(visit.patientId, visit.hospitalId);
+				await fetchAllergies(visit.patientId, visit.hospitalId, {
+					force: true
+				});
 			}
 		} catch (err) {
 			toastService.addToast(
@@ -146,19 +170,28 @@
 		}
 	}
 
-	async function fetchVisit() {
-		if (!visitId || !hospitalId) return;
+	async function fetchVisit(): Promise<{
+		patientId: string;
+		hospitalId: string;
+	} | null> {
+		if (!visitId || !hospitalId) return null;
 		isLoadingVisit = true;
 		try {
 			const v = await getPatientVisitById({ id: visitId });
 			if (v) {
-				visit = {
+				const nextVisit = {
 					patientId: v.patientId,
 					hospitalId: v.hospitalId
 				};
+				visit = nextVisit;
+				return nextVisit;
 			} else {
 				visit = null;
+				return null;
 			}
+		} catch {
+			visit = null;
+			return null;
 		} finally {
 			isLoadingVisit = false;
 		}
@@ -166,19 +199,55 @@
 
 	async function fetchAllergies(
 		patientId: string,
-		hospitalIdParam: string | undefined
+		hospitalIdParam: string | undefined,
+		options?: { force?: boolean }
 	) {
+		console.log('FETCHING ALLERGY');
+		const pageSize = Number(pageSizeStr) || 10;
+		const requestKey = JSON.stringify({
+			patientId,
+			hospitalIdParam,
+			page: currentPage,
+			pageSize,
+			visitNo: tableFilters.visitNo?.trim() || '',
+			severity: tableFilters.severity?.trim() || '',
+			status: tableFilters.status ?? ''
+		});
+		if (!options?.force && requestKey === lastAllergiesFetchKey) {
+			return;
+		}
+		lastAllergiesFetchKey = requestKey;
 		isLoadingAllergies = true;
+		console.log('Refreshing');
 		try {
+			const statusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const result =
+				await getPatientAllergiesByPatientIdWithRelationsPaginated({
+					patientId,
+					hospitalId: hospitalIdParam,
+					page: currentPage,
+					pageSize,
+					visitNo: tableFilters.visitNo?.trim() || undefined,
+					severityName: tableFilters.severity?.trim() || undefined,
+					statusId:
+						statusId != null && Number.isFinite(statusId)
+							? statusId
+							: undefined
+				});
+			patientAllergies = result.data;
+			totalAllergies = result.total;
+		} catch {
 			const data = await getPatientAllergiesByPatientIdWithRelations({
 				patientId
 			});
-			// Scope to this hospital (all visits) like Vital page
 			patientAllergies = hospitalIdParam
 				? data.filter(
 						(row) => row.visit?.hospitalId === hospitalIdParam
 					)
 				: data;
+			totalAllergies = patientAllergies.length;
 		} finally {
 			isLoadingAllergies = false;
 		}
@@ -186,13 +255,24 @@
 
 	$effect(() => {
 		const vid = visitId;
-		if (vid) {
-			fetchVisit().then(() => {
-				if (visit?.patientId && visit?.hospitalId) {
-					fetchAllergies(visit.patientId, visit.hospitalId);
+		const hid = hospitalId;
+		if (vid && hid) {
+			const visitKey = `${vid}:${hid}`;
+			if (lastLoadedVisitKey === visitKey) {
+				return;
+			}
+			lastLoadedVisitKey = visitKey;
+			(async () => {
+				const resolvedVisit = await fetchVisit();
+				if (resolvedVisit) {
+					await fetchAllergies(
+						resolvedVisit.patientId,
+						resolvedVisit.hospitalId
+					);
 				}
-			});
+			})();
 		} else {
+			lastLoadedVisitKey = '';
 			visit = null;
 			patientAllergies = [];
 		}
@@ -204,19 +284,20 @@
 	}
 
 	function formatDateTime(value: string | null | undefined): string {
-		if (value == null || value === '') return '–';
-		const date = dateTimeUtil.parseDate(value);
-		return date
-			? dateTimeUtil.formatDateTime(date, 'en-US', {
-					dateStyle: 'short',
-					timeStyle: 'short'
-				})
-			: '–';
+		if (!value) return '–';
+		try {
+			return new Date(value).toLocaleString('en-US', {
+				dateStyle: 'short',
+				timeStyle: 'short'
+			});
+		} catch {
+			return '–';
+		}
 	}
 
 	const statusFilterOptions = [
-		{ label: 'Active', value: 'Active' },
-		{ label: 'Inactive', value: 'Inactive' }
+		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
 	function getSeverityFilterOptions() {
@@ -253,8 +334,13 @@
 				filterable: true,
 				filterType: 'select',
 				filterOptions: statusFilterOptions,
+				defaultFilterValue: String(StatusEnum.ACTIVE),
 				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: `Status ${row.statusId ?? 'Unknown'}`
 			},
 			{
 				id: 'severity',
@@ -329,7 +415,7 @@
 		/>
 	{:else}
 		<DaisyUiCard>
-			<DaisyUiCardBody className="p-3 m-0">
+			<DaisyUiCardBody className="p-3 m-0 ">
 				<div
 					class="mb-2 flex flex-wrap items-center justify-between gap-3"
 				>
@@ -344,7 +430,7 @@
 						Add allergy
 					</DaisyUiButton>
 				</div>
-				{#if isLoadingAllergies}
+				{#if isLoadingAllergies && patientAllergies.length === 0}
 					<div class="flex min-h-32 items-center justify-center">
 						<DaisyUiLoading className="d-loading-lg" />
 					</div>
@@ -360,16 +446,62 @@
 							isLoading={isLoadingAllergies}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
+							totalRowCount={totalAllergies}
 							showRefreshButton={true}
 							emptyMessage="No allergies."
 							showRowActions={true}
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(visit.patientId, visit.hospitalId);
+									fetchAllergies(
+										visit.patientId,
+										visit.hospitalId,
+										{ force: true }
+									);
 								}
+							}}
+							on:pageSizeChange={() => {
+								if (pageSizeStr === lastHandledPageSize) {
+									return;
+								}
+								lastHandledPageSize = pageSizeStr;
+								currentPage = 1;
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchAllergies(
+										visit.patientId,
+										visit.hospitalId
+									);
+								}
+							}}
+							on:pageChange={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchAllergies(
+										visit.patientId,
+										visit.hospitalId
+									);
+								}
+							}}
+							on:filtersChange={(event) => {
+								const nextFilters = event.detail.filters;
+								if (areFiltersEqual(tableFilters, nextFilters)) {
+									return;
+								}
+								if (filterDebounceTimeout) {
+									clearTimeout(filterDebounceTimeout);
+								}
+								tableFilters = nextFilters;
+								currentPage = 1;
+								filterDebounceTimeout = setTimeout(() => {
+									if (visit?.patientId && visit?.hospitalId) {
+										fetchAllergies(
+											visit.patientId,
+											visit.hospitalId
+										);
+									}
+								}, 350);
 							}}
 						>
 							<svelte:fragment slot="rowActions" let:row>
