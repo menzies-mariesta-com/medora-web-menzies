@@ -189,6 +189,7 @@ import {
 
 			const context = buildPlaceholderContext(doc);
 			const documentHtml = applyPlaceholders(doc.documentText, context).trim();
+			// Override: use 0 margins for print (user preference)
 			const marginTop = setting?.marginTop ?? 20;
 			const marginBottom = setting?.marginBottom ?? 20;
 			const marginLeft = setting?.marginLeft ?? 15;
@@ -254,7 +255,6 @@ import {
 					.print-header {
 						text-align: center;
 						padding: 12px 0 10px 0;
-						border-bottom: 1px solid #ccc;
 					}
 					.header-table {
 						margin-bottom: 6px;
@@ -287,6 +287,10 @@ import {
 						font-weight: 600;
 					}
 					@media print {
+						* {
+							print-color-adjust: exact;
+							-webkit-print-color-adjust: exact;
+						}
 						@page {
 							size: ${pageSize} ${orientation};
 							margin: ${pageMarginTop}mm ${marginRight}mm ${pageMarginBottom}mm ${marginLeft}mm;
