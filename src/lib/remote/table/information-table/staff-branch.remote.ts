@@ -140,7 +140,7 @@ export const createStaffBranch = command(
 	): Promise<StaffBranchSchema> => {
 		await ensureStaffAndBranchAreInHospital(payload);
 		const [existing] = await ensureDb()
-			.select({ id: table.staffBranchTable.id })
+			.select()
 			.from(table.staffBranchTable)
 			.where(
 				and(
@@ -149,9 +149,7 @@ export const createStaffBranch = command(
 				)
 			)
 			.limit(1);
-		if (existing) {
-			throw error(409, 'Staff is already assigned to this branch');
-		}
+		if (existing) return existing;
 
 		const { hospitalId: _hospitalId, ...values } = payload;
 		const [row] = await ensureDb()
