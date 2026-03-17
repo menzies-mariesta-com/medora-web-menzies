@@ -63,7 +63,7 @@
 	"failed_reset_password": "비밀번호 재설정에 실패했습니다.",
 	"password_reset_success": "비밀번호가 성공적으로 재설정되었습니다. 이제 로그인할 수 있습니다.",
 	"signup": "가입",
-	"version": "v0.0.1",
+	"version": "버전",
 	"choose_hospital": "병원 선택",
 	"manage_owners": "소유자 관리",
 	"new_hospital": "새 병원",
