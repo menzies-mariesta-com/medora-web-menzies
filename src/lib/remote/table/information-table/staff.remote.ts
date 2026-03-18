@@ -382,7 +382,9 @@ export const getStaffPaginated = query(
 					staffBranches: { with: { branch: true } },
 					staffHospitals: { with: { hospital: true } },
 					staffDepartments: { with: { department: true } },
-					staffUserGroups: { with: { userGroup: true } }
+					staffUserGroups: { with: { userGroup: true } },
+					createdByUser: true,
+					updatedByUser: true
 				},
 				limit,
 				offset
@@ -609,6 +611,8 @@ export const createStaffWithUser = command(
 		phonePrimaryCountryId?: number;
 		phoneSecondaryCountryId?: number;
 		dateOfBirth?: string;
+		joinDate?: string;
+		resignDate?: string;
 		address?: string;
 		remark?: string;
 		identityNo?: string;
@@ -626,14 +630,14 @@ export const createStaffWithUser = command(
 		cityId?: number;
 		postalCodeId?: number;
 		identityTypeId?: number;
-		joinDate?: string;
-		resignDate?: string;
 		isActive?: boolean;
+		statusId?: number;
 		isSuperAdmin?: boolean;
 		isLocked?: boolean;
 		userGroupIds?: number[];
 		photoUrl?: string;
 		licenseNo?: string;
+		bloodTypeId?: number;
 		licenseExpiryDate?: string;
 		signatureImageUrl?: string;
 		signatureText?: string;
@@ -708,7 +712,8 @@ export const createStaffWithUser = command(
 			payload.licenseNo ||
 			payload.licenseExpiryDate ||
 			payload.signatureImageUrl ||
-			payload.signatureText;
+			payload.signatureText ||
+			payload.bloodTypeId;
 		let staffDetailId: number | undefined;
 		if (hasDetail) {
 			const staffDetail = await createStaffDetail({
@@ -721,12 +726,19 @@ export const createStaffWithUser = command(
 							.split('T')[0]
 					: undefined,
 				signatureImageUrl: payload.signatureImageUrl,
-				signatureText: payload.signatureText
+				signatureText: payload.signatureText,
+				bloodTypeId: payload.bloodTypeId
 			});
 			staffDetailId = staffDetail.id;
 		}
 
 		// Prepare staff payload (only include fields that exist in staffTable)
+		const effectiveStatusId =
+			payload.statusId ??
+			(payload.isActive === false
+				? StatusEnum.INACTIVE
+				: StatusEnum.ACTIVE);
+
 		const staffPayload: StaffSchemaInsert = {
 			userId: user.id,
 			firstName: payload.firstName,
@@ -742,6 +754,12 @@ export const createStaffWithUser = command(
 				: undefined,
 			dateOfBirth: payload.dateOfBirth
 				? new Date(payload.dateOfBirth).toISOString().split('T')[0]
+				: undefined,
+			joinDate: payload.joinDate
+				? new Date(payload.joinDate).toISOString().split('T')[0]
+				: undefined,
+			resignDate: payload.resignDate
+				? new Date(payload.resignDate).toISOString().split('T')[0]
 				: undefined,
 			photoUrl: payload.photoUrl ?? undefined,
 			address: payload.address,
@@ -775,10 +793,7 @@ export const createStaffWithUser = command(
 			specializationId: payload.specializationId
 				? Number(payload.specializationId)
 				: undefined,
-			statusId:
-				payload.isActive === false
-					? StatusEnum.INACTIVE
-					: StatusEnum.ACTIVE
+			statusId: effectiveStatusId
 		};
 
 		// Create staff

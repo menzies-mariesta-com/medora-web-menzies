@@ -1,8 +1,9 @@
 export enum StatusEnum {
 	ACTIVE = 1,
 	INACTIVE = 2,
-	PENDING = 3,
-	DELETED = 4
+	LOCKED = 3,
+	DELETED = 4,
+	PENDING = 5
 }
 
 export enum RoleEnum {
