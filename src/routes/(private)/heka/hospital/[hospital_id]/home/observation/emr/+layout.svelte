@@ -104,7 +104,17 @@
 		</div>
 	</div>
 {:else}
-	{@render children()}
+	<div class="emr-subnav-wrapper">
+		<LVisitInfoBar
+			visitId={selectedVisitId}
+			{hospitalId}
+			onVisitSelected={handleVisitSelected}
+			onVisitReset={handleVisitReset}
+		/>
+		<div class="emr-subnav-content">
+			{@render children()}
+		</div>
+	</div>
 {/if}
 
 <style>

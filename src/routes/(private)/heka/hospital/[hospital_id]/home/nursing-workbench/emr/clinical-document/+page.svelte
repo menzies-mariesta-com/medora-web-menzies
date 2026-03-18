@@ -31,8 +31,10 @@ import {
 	buildDocumentPlaceholderContext,
 	resolveDocumentTemplate
 } from '$lib/util/document-placeholder.util';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -94,9 +96,21 @@ import {
 		}
 	}
 
-	$effect(() => {
-		// Fetch all data on mount and when visitId changes
+	let mounted = $state(false);
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
 		fetchAllData();
+	});
+
+	$effect(() => {
+		const _vid = visitId;
+		if (!mounted) return;
+		fetchAllData();
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
 	});
 
 	function viewDocument(doc: DocumentWithRelations) {

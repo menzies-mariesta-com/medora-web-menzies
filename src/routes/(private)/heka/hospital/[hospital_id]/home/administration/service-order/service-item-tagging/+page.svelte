@@ -34,8 +34,10 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
 
 	let { data } = $props();
 
@@ -324,6 +326,7 @@ const serviceOptions = $derived.by(() =>
 	$effect(() => {
 		const _hospital = hospitalId;
 		const _branchSelection = selectedBranchIds.join(',');
+		if (!mounted) return;
 		if (
 			!_hospital ||
 			allowedBranches.length === 0 ||
