@@ -340,6 +340,8 @@ export const staffTable = pgTable('staff', {
 		'phone_secondary_country_id'
 	).references(() => countryTable.id),
 	dateOfBirth: date('date_of_birth'),
+	joinDate: date('join_date'),
+	resignDate: date('resign_date'),
 	photoUrl: text('photo_url'),
 	address: text('address'),
 	remark: text('remark'),

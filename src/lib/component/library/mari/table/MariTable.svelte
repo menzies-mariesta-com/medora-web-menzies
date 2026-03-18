@@ -107,7 +107,8 @@
 		actionsHeader = 'Actions',
 		enableColumnFilters = false,
 		actionsVariant = 'none',
-		useRemoteFilters = false
+		useRemoteFilters = false,
+		rowTooltipGetter
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -125,6 +126,11 @@
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
 		useRemoteFilters?: boolean;
+		/**
+		 * Optional function to provide a tooltip for each row.
+		 * Return a string to show as the native browser tooltip on row hover.
+		 */
+		rowTooltipGetter?: (row: any, rowIndex: number) => string;
 	}>();
 
 	let columnFilters = $state<Record<string, string>>({});
@@ -485,8 +491,12 @@
 						</tr>
 					{:else}
 						{#each pagedRows as row, index (row.id ?? index)}
+							{@const rowTooltipText = rowTooltipGetter
+								? rowTooltipGetter(row, index)
+								: ''}
 							<tr
 								class="hover:bg-info/20"
+								title={rowTooltipText || undefined}
 								on:click={() => handleRowClick(row)}
 							>
 								{#if hasActionsColumn}
@@ -537,7 +547,7 @@
 									<td
 										class={`${column.widthClass ?? ''} ${column.cellClass ?? ''} ${column.cellClassGetter ? column.cellClassGetter(row, index) : ''}`.trim()}
 									>
-										{getCellValue(row, column, index)}
+											{getCellValue(row, column, index)}
 									</td>
 								{/each}
 							</tr>

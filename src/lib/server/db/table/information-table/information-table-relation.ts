@@ -564,6 +564,18 @@ export const staffTableRelations = relations(
 			fields: [staffTable.staffDetailId],
 			references: [staffDetailTable.id]
 		}),
+		createdByUser: one(userTable, {
+			fields: [staffTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [staffTable.updatedBy],
+			references: [userTable.id]
+		}),
+		deletedByUser: one(userTable, {
+			fields: [staffTable.deletedBy],
+			references: [userTable.id]
+		}),
 		staffBranches: many(staffBranchTable),
 		staffHospitals: many(staffHospitalTable),
 		staffDepartments: many(staffDepartmentTable),
