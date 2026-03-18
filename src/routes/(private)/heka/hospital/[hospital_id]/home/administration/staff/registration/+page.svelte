@@ -49,6 +49,7 @@
 		updateStaff,
 		getStaffByIdWithRelations
 	} from '$lib/remote/table/information-table/staff.remote';
+	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import {
@@ -83,6 +84,18 @@
 	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+
+	const DEFAULT_STAFF_EMAIL_SUFFIX = '@no-email.heka';
+
+	function generateDefaultStaffEmail(): string {
+		const rand = Math.random().toString(36).slice(2, 10);
+		return `staff-${Date.now()}-${rand}${DEFAULT_STAFF_EMAIL_SUFFIX}`;
+	}
+
+	function isDefaultStaffEmail(email: string | null | undefined): boolean {
+		if (!email) return false;
+		return email.endsWith(DEFAULT_STAFF_EMAIL_SUFFIX);
+	}
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -433,6 +446,7 @@
 			branchIdSet.has(id)
 		))];
 		isActive = staff.statusId === StatusEnum.ACTIVE;
+		isLocked = staff.statusId === StatusEnum.LOCKED;
 		const detail = (
 			staff as {
 				staffDetail?: {
@@ -456,9 +470,16 @@
 		photoPreviewUrl =
 			getStaffPhotoDisplayUrl(staff.photoUrl) ?? staff.photoUrl ?? '';
 		removePhotoRequested = false;
-		// Join/resign dates if we have them on staff - extend schema if needed
-		selectedJoinDate = dateTimeUtil.getTodayDateString();
-		selectedResignDate = '';
+		selectedJoinDate = staff.joinDate
+			? typeof staff.joinDate === 'string'
+				? staff.joinDate
+				: new Date(staff.joinDate).toISOString().slice(0, 10)
+			: '';
+		selectedResignDate = staff.resignDate
+			? typeof staff.resignDate === 'string'
+				? staff.resignDate
+				: new Date(staff.resignDate).toISOString().slice(0, 10)
+			: '';
 	}
 
 	async function fetchInitialFieldData() {
@@ -603,6 +624,16 @@
 				: selectedPhoneSecondary;
 		}
 
+		// Derive status from Active/Lock checkboxes
+		let derivedStatusId: StatusEnum;
+		if (isActive) {
+			derivedStatusId = StatusEnum.ACTIVE;
+		} else if (isLocked) {
+			derivedStatusId = StatusEnum.LOCKED;
+		} else {
+			derivedStatusId = StatusEnum.INACTIVE;
+		}
+
 		isLoading = true;
 		try {
 			if (staffEditId) {
@@ -618,9 +649,35 @@
 					isLoading = false;
 					return;
 				}
-				const statusId = isActive
-					? StatusEnum.ACTIVE
-					: StatusEnum.INACTIVE;
+				const previousUser = staff as {
+					user?: { id: string; email?: string | null };
+				};
+				const previousEmail = previousUser.user?.email ?? '';
+				const trimmedNewEmail = selectedEmail.trim();
+				let shouldSendResetForEmailChange = false;
+				let resetEmailTarget: string | null = null;
+				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
+					try {
+						if (previousUser.user?.id) {
+							await updateUser({
+								id: previousUser.user.id,
+								email: trimmedNewEmail
+							});
+						}
+						if (isDefaultStaffEmail(previousEmail)) {
+							shouldSendResetForEmailChange = true;
+							resetEmailTarget = trimmedNewEmail;
+						}
+					} catch (e) {
+						toastService.addToast(
+							'Failed to update staff email.',
+							StatusColorEnum.ERROR
+						);
+						isLoading = false;
+						return;
+					}
+				}
+				const statusId = derivedStatusId;
 				await updateStaff({
 					id: staffEditId,
 					firstName: selectedFirstName.trim(),
@@ -673,6 +730,8 @@
 					specializationId: selectedSpecializationId
 						? Number(selectedSpecializationId)
 						: undefined,
+					joinDate: selectedJoinDate || undefined,
+					resignDate: selectedResignDate || undefined,
 					statusId
 				});
 				const existingDetail = (
@@ -684,6 +743,9 @@
 						id: existingDetail.id,
 						education: selectedEducation.trim() || undefined,
 						designation: selectedDesignation.trim() || undefined,
+						bloodTypeId: selectedBloodTypeId
+							? Number(selectedBloodTypeId)
+							: undefined,
 						licenseNo: selectedLicenseNo.trim() || undefined,
 						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
 						signatureText: selectedSignatureText.trim() || undefined
@@ -691,12 +753,16 @@
 				} else if (
 					selectedEducation ||
 					selectedDesignation ||
+					selectedBloodTypeId ||
 					selectedLicenseNo ||
 					selectedSignatureText
 				) {
 					const newDetail = await createStaffDetail({
 						education: selectedEducation.trim() || undefined,
 						designation: selectedDesignation.trim() || undefined,
+						bloodTypeId: selectedBloodTypeId
+							? Number(selectedBloodTypeId)
+							: undefined,
 						licenseNo: selectedLicenseNo.trim() || undefined,
 						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
 						signatureText: selectedSignatureText.trim() || undefined
@@ -823,6 +889,24 @@
 						});
 					}
 				}
+				if (shouldSendResetForEmailChange && resetEmailTarget) {
+					const { error } = await authClient.requestPasswordReset({
+						email: resetEmailTarget,
+						redirectTo: routerUtil.getResetRedirectUrl()
+					});
+					if (error) {
+						toastService.addToast(
+							error.message ??
+								'Failed to send reset password email.',
+							StatusColorEnum.ERROR
+						);
+					} else {
+						toastService.addToast(
+							'Reset password email has been sent to the staff.',
+							StatusColorEnum.INFO
+						);
+					}
+				}
 				toastService.addToast(
 					'Staff updated successfully.',
 					StatusColorEnum.SUCCESS
@@ -838,8 +922,12 @@
 				page.params.hospital_id
 					? page.params.hospital_id
 					: undefined;
+			const trimmedEmailForCreate = selectedEmail.trim();
+			const emailForCreate = trimmedEmailForCreate
+				? trimmedEmailForCreate
+				: generateDefaultStaffEmail();
 			const result = await createStaffWithUser({
-				email: selectedEmail.trim(),
+				email: emailForCreate,
 				name: fullName,
 				code: selectedStaffCode.trim(),
 				hospitalId: urlHospitalId ?? undefined,
@@ -873,6 +961,9 @@
 				staffTypeId: selectedStaffTypeId
 					? Number(selectedStaffTypeId)
 					: undefined,
+				bloodTypeId: selectedBloodTypeId
+					? Number(selectedBloodTypeId)
+					: undefined,
 				education: selectedEducation.trim() || undefined,
 				designation: selectedDesignation.trim() || undefined,
 				departmentId: selectedDepartmentId
@@ -897,6 +988,7 @@
 				joinDate: selectedJoinDate || undefined,
 				resignDate: selectedResignDate || undefined,
 				isActive,
+				statusId: derivedStatusId,
 				isSuperAdmin,
 				isLocked,
 				userGroupIds:
@@ -1174,7 +1266,6 @@
 							{titleData}
 							{genderData}
 							{maritalStatusData}
-							emailDisabled={isEditMode}
 							bind:selectedStaffCode
 							bind:selectedTitleId
 							bind:selectedFirstName
@@ -1287,6 +1378,7 @@
 				bind:licenseExpiryDate={selectedLicenseExpiryDate}
 				bind:signatureFile
 				bind:signatureText={selectedSignatureText}
+				initialSignatureImageUrl={selectedSignatureImageUrl}
 				viewOnly={isViewMode}
 			/>
 		</form>
