@@ -14,6 +14,7 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		getServiceTaggingPaginated,
+		getServiceTagging,
 		createServiceTagging,
 		updateServiceTagging,
 		deleteServiceTagging
@@ -90,6 +91,10 @@ const serviceOptions = $derived.by(() =>
 	let isSaving = $state(false);
 
 	let tableColumnFilters = $state<Record<string, string>>({});
+
+	let isComparativeMode = $state(false);
+	let comparativeTaggings = $state<ServiceTaggingSchema[]>([]);
+	let isComparativeLoading = $state(false);
 
 	function toDateInputValue(
 		value: ServiceTaggingSchema['validDate']
@@ -296,11 +301,27 @@ const serviceOptions = $derived.by(() =>
 		}
 	}
 
-	let mounted = $state(false);
-
-	lifeCycleUtil.onMount(() => {
-		mounted = true;
-	});
+	async function fetchComparativeTaggings() {
+		if (allowedBranches.length === 0 || selectedBranchIds.length === 0) return;
+		const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
+			allowedBranchIdSet.has(id)
+		);
+		if (selectedAllowedBranchIds.length === 0) return;
+		isComparativeLoading = true;
+		try {
+			const results = await Promise.all(
+				selectedAllowedBranchIds.map((branchId) =>
+					getServiceTagging({
+						branchId,
+						statusId: StatusEnum.ACTIVE
+					})
+				)
+			);
+			comparativeTaggings = results.flat();
+		} finally {
+			isComparativeLoading = false;
+		}
+	}
 
 	$effect(() => {
 		const _hospital = hospitalId;
@@ -318,9 +339,10 @@ const serviceOptions = $derived.by(() =>
 		})();
 	});
 
-	lifeCycleUtil.onDestroy(() => {
-		mounted = false;
-		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+	$effect(() => {
+		if (isComparativeMode && selectedBranchIds.length > 0) {
+			fetchComparativeTaggings();
+		}
 	});
 
 	function resetForm() {
@@ -546,6 +568,65 @@ const serviceOptions = $derived.by(() =>
 		const code = (s.serviceCode ?? '').trim();
 		return code ? `${name} - ${code}` : name;
 	}
+
+	type ComparativeRow = {
+		serviceId: number;
+		serviceName: string;
+		branches: Array<{
+			branchId: string;
+			branchName: string;
+			amount: string | null;
+			tax: string | null;
+			taggingId: number | null;
+		}>;
+	};
+
+	const comparativeRows = $derived.by((): ComparativeRow[] => {
+		if (!isComparativeMode || comparativeTaggings.length === 0) return [];
+		const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
+			allowedBranchIdSet.has(id)
+		);
+		if (selectedAllowedBranchIds.length === 0) return [];
+
+		const byService = new Map<
+			number,
+			Map<string, { amount: string | null; tax: string | null; id: number }>
+		>();
+		for (const t of comparativeTaggings) {
+			if (!selectedAllowedBranchIds.includes(t.branchId)) continue;
+			let serviceMap = byService.get(t.serviceId);
+			if (!serviceMap) {
+				serviceMap = new Map();
+				byService.set(t.serviceId, serviceMap);
+			}
+			serviceMap.set(t.branchId, {
+				amount: t.serviceAmount ?? null,
+				tax: t.serviceTaxAmount ?? null,
+				id: t.id
+			});
+		}
+
+		return Array.from(byService.entries())
+			.map(([serviceId, branchMap]) => {
+				const branches = selectedAllowedBranchIds.map((branchId) => {
+					const data = branchMap.get(branchId);
+					const branch = allowedBranches.find((b) => b.id === branchId);
+					return {
+						branchId,
+						branchName: branch?.name ?? branchId,
+						amount: data?.amount ?? null,
+						tax: data?.tax ?? null,
+						taggingId: data?.id ?? null
+					};
+				});
+				return {
+					serviceId,
+					serviceName: serviceNameById(serviceId),
+					branches
+				};
+			})
+			.sort((a, b) => a.serviceName.localeCompare(b.serviceName));
+	});
 </script>
 
 <div class="space-y-6">
@@ -691,31 +772,114 @@ const serviceOptions = $derived.by(() =>
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-				<div class={TableEnum.HEIGHT}>
-					<MariTable
-						rows={taggings}
-						columns={taggingColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						emptyMessage="No records found"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						actionsHeader={m.actions()}
-						actionsVariant="crud"
-						on:refresh={() => fetchTaggings(true)}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							fetchTaggings(true);
-						}}
-						on:pageChange={() => fetchTaggings(true)}
-						on:filtersChange={handleTableFiltersChange}
-						on:edit={(event) => startEdit(event.detail)}
-						on:delete={(event) => handleDelete(event.detail)}
-					/>
+				<div class="mb-4 flex items-center justify-between gap-4">
+					<label class="flex cursor-pointer items-center gap-3">
+						<input
+							type="checkbox"
+							class="d-toggle d-toggle-primary d-toggle-sm"
+							bind:checked={isComparativeMode}
+						/>
+						<span class="text-sm font-medium">Comparative Mode</span>
+					</label>
+					{#if isComparativeMode}
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={() => fetchComparativeTaggings()}
+							disabled={isComparativeLoading}
+						>
+							Refresh
+						</DaisyUiButton>
+					{/if}
 				</div>
+
+				{#if isComparativeMode}
+					<div class={TableEnum.HEIGHT}>
+						{#if isComparativeLoading}
+							<div class="flex min-h-[200px] items-center justify-center">
+								<DaisyUiLoading />
+							</div>
+						{:else if comparativeRows.length === 0}
+							<div class="flex min-h-[200px] items-center justify-center text-base-content/70">
+								No records found. Select branches and ensure services are tagged.
+							</div>
+						{:else}
+							<div class="overflow-x-auto">
+								<table class="d-table d-table-zebra d-table-pin-rows d-table-pin-cols d-table-sm">
+									<thead>
+										<tr>
+											<th class="sticky left-0 z-10 min-w-[200px] bg-base-200">
+												Service
+											</th>
+											{#each selectedBranchIds.filter((id) =>
+												allowedBranchIdSet.has(id)
+											) as branchId}
+												{@const branch = allowedBranches.find((b) => b.id === branchId)}
+												<th
+													class="min-w-[140px] bg-base-200 text-center"
+													colspan="2"
+												>
+													{branch?.name ?? branchId}
+												</th>
+											{/each}
+										</tr>
+										<tr>
+											<th class="sticky left-0 z-10 bg-base-200"></th>
+											{#each selectedBranchIds.filter((id) =>
+												allowedBranchIdSet.has(id)
+											) as _}
+												<th class="bg-base-200/80 text-xs font-normal">Amount</th>
+												<th class="bg-base-200/80 text-xs font-normal">Tax</th>
+											{/each}
+										</tr>
+									</thead>
+									<tbody>
+										{#each comparativeRows as row (row.serviceId)}
+											<tr>
+												<td class="sticky left-0 z-10 bg-base-100 font-medium">
+													{row.serviceName}
+												</td>
+												{#each row.branches as branch}
+													<td class="text-right tabular-nums">
+														{branch.amount ?? '—'}
+													</td>
+													<td class="text-right tabular-nums">
+														{branch.tax ?? '—'}
+													</td>
+												{/each}
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<div class={TableEnum.HEIGHT}>
+						<MariTable
+							rows={taggings}
+							columns={taggingColumns}
+							{isLoading}
+							bind:pageSize={pageSizeStr}
+							bind:currentPage
+							totalRowCount={total}
+							showRefreshButton={true}
+							emptyMessage="No records found"
+							enableColumnFilters={true}
+							useRemoteFilters={true}
+							actionsHeader={m.actions()}
+							actionsVariant="crud"
+							on:refresh={() => fetchTaggings(true)}
+							on:pageSizeChange={() => {
+								currentPage = 1;
+								fetchTaggings(true);
+							}}
+							on:pageChange={() => fetchTaggings(true)}
+							on:filtersChange={handleTableFiltersChange}
+							on:edit={(event) => startEdit(event.detail)}
+							on:delete={(event) => handleDelete(event.detail)}
+						/>
+					</div>
+				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
