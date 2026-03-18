@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -19,7 +19,7 @@ export type SpecializationWithRelations = Awaited<
 	ReturnType<typeof getSpecializationWithRelations>
 >[number];
 
-export const getSpecialization = prerender(
+export const getSpecialization = query(
 	async (): Promise<SpecializationSchema[]> => {
 		return ensureDb()
 			.select()
@@ -28,8 +28,7 @@ export const getSpecialization = prerender(
 				ne(table.specializationTable.statusId, StatusEnum.DELETED)
 			)
 			.orderBy(table.specializationTable.name);
-	},
-	{ dynamic: true }
+	}
 );
 
 export const getSpecializationWithRelations = query(async () => {

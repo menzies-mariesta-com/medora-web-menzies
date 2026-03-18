@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,13 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getTitle = prerender(async (): Promise<TitleSchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.titleTable)
-		.where(ne(table.titleTable.statusId, StatusEnum.DELETED))
-		.orderBy(table.titleTable.name);
-}, { dynamic: true });
+export const getTitle = query(
+	async (): Promise<TitleSchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.titleTable)
+			.where(ne(table.titleTable.statusId, StatusEnum.DELETED))
+			.orderBy(table.titleTable.name);
+	}
+);
 
 export const getTitleCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()

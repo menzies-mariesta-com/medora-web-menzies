@@ -22,7 +22,7 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	let { confirm, cancel } = $props<DialogSlotProps>();
+	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -32,7 +32,9 @@
 	);
 
 	let result =
-		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
+		$state<PaginatedResult<PatientVisitWithRelations> | null>(
+			null
+		);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let visitTypeOptions = $state<
@@ -44,6 +46,33 @@
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
+
+	function formatVisitDate(value: string | null | undefined): string {
+		if (!value) return '';
+		try {
+			return new Date(value).toLocaleString('en-US', {
+				dateStyle: 'short',
+				timeStyle: 'short'
+			});
+		} catch {
+			return '';
+		}
+	}
+
+	function getPatientAgeYears(
+		dob: string | null | undefined
+	): string {
+		if (!dob) return '—';
+		const birth = new Date(dob);
+		if (Number.isNaN(birth.getTime())) return '—';
+		const today = new Date();
+		let years = today.getFullYear() - birth.getFullYear();
+		const m = today.getMonth() - birth.getMonth();
+		if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+			years -= 1;
+		}
+		return `${years}y`;
+	}
 
 	const visitColumns: MariTableColumn<PatientVisitWithRelations>[] = [
 		{
@@ -69,6 +98,29 @@
 				row.patient
 					? StringUtil.patientDisplayName(row.patient as any)
 					: '—'
+		},
+		{
+			id: 'patientAge',
+			header: 'Age',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.patient
+					? getPatientAgeYears(
+							(row.patient as any).dateOfBirth as
+								| string
+								| null
+								| undefined
+						)
+					: '—'
+		},
+		{
+			id: 'patientGender',
+			header: 'Gender',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.patient?.gender?.name ?? '—'
 		},
 		{
 			id: 'hospitalName',
@@ -98,6 +150,16 @@
 							row.doctor.lastName
 						)
 					: '—'
+		},
+		{
+			id: 'visitDate',
+			header: 'Visit Date',
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			format: (_value, row) =>
+				formatVisitDate(
+					(row as any).createdAt as string | null | undefined
+				)
 		},
 		{
 			id: 'visitType',
@@ -238,10 +300,8 @@
 		</div>
 	{/if}
 
-	<div
-		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
-	>
-		<div />
+	<div class="flex items-center justify-between border-t border-base-200 px-4 py-2">
+		<div></div>
 		<div class="flex gap-2">
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm"
