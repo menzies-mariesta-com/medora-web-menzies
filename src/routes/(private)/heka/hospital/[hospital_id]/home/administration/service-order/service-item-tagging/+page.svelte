@@ -76,6 +76,12 @@ const serviceOptions = $derived.by(() =>
 	}))
 );
 
+let mounted = $state(false);
+
+lifeCycleUtil.onMount(() => {
+	mounted = true;
+});
+
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
 	let formServiceTaxAmount = $state('');

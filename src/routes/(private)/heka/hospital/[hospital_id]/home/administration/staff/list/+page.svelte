@@ -329,6 +329,13 @@
 			actionsVariant="none"
 			enableColumnFilters={true}
 			useRemoteFilters={true}
+			rowTooltipGetter={(row) => {
+				const createdAt = formatDateTime(row.createdAt);
+				const updatedAt = formatDateTime(row.updatedAt);
+				const createdBy = row.createdByUser?.name ?? '—';
+				const updatedBy = row.updatedByUser?.name ?? '—';
+				return `Created by: ${createdBy}\nCreated at: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
+			}}
 			on:refresh={() => fetchStaff(true)}
 			on:pageSizeChange={() => {
 				currentPage = 1;
