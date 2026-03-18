@@ -11,7 +11,42 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
+
+/** Get staff user groups for a staff in a specific hospital (for edit flow). */
+export const getStaffUserGroupByStaffAndHospital = query(
+	'unchecked' as const,
+	async ({
+		staffId,
+		hospitalId
+	}: {
+		staffId: string;
+		hospitalId: string;
+	}): Promise<StaffUserGroupSchema[]> => {
+		return ensureDb()
+			.select({
+				id: table.staffUserGroupTable.id,
+				staffId: table.staffUserGroupTable.staffId,
+				userGroupId: table.staffUserGroupTable.userGroupId,
+				createdAt: table.staffUserGroupTable.createdAt,
+				updatedAt: table.staffUserGroupTable.updatedAt
+			})
+			.from(table.staffUserGroupTable)
+			.innerJoin(
+				table.userGroupTable,
+				eq(
+					table.staffUserGroupTable.userGroupId,
+					table.userGroupTable.id
+				)
+			)
+			.where(
+				and(
+					eq(table.staffUserGroupTable.staffId, staffId),
+					eq(table.userGroupTable.hospitalId, hospitalId)
+				)
+			);
+	}
+);
 
 // get all
 export const getStaffUserGroup = query(
@@ -92,12 +127,24 @@ export const getStaffUserGroupById = query(
 	}
 );
 
-// create
+// create (idempotent: skip if staff+userGroup already exists to avoid duplicates)
 export const createStaffUserGroup = command(
 	'unchecked' as const,
 	async (
 		payload: StaffUserGroupSchemaInsert
 	): Promise<StaffUserGroupSchema> => {
+		const [existing] = await ensureDb()
+			.select()
+			.from(table.staffUserGroupTable)
+			.where(
+				and(
+					eq(table.staffUserGroupTable.staffId, payload.staffId),
+					eq(table.staffUserGroupTable.userGroupId, payload.userGroupId)
+				)
+			)
+			.limit(1);
+		if (existing) return existing;
+
 		const [row] = await ensureDb()
 			.insert(table.staffUserGroupTable)
 			.values(payload)

@@ -215,17 +215,31 @@
 	let duplicateCheckLoading = $state(false);
 
 	async function fetchLookups() {
-		titleData = await getTitle();
-		genderData = await getGender();
-		maritalStatusData = await getMaritalStatus();
-		identityTypeData = await getIdentityType();
-		bloodTypeData = await getBloodType();
-		countryData = await getCountry();
-		stateData = await getState();
-		cityData = await getCity();
-		postalCodeData = await getPostalCode();
-		nationalityData = await getNationality();
-		religionData = await getReligion();
+		[
+			titleData,
+			genderData,
+			maritalStatusData,
+			identityTypeData,
+			bloodTypeData,
+			countryData,
+			stateData,
+			cityData,
+			postalCodeData,
+			nationalityData,
+			religionData
+		] = await Promise.all([
+			getTitle(),
+			getGender(),
+			getMaritalStatus(),
+			getIdentityType(),
+			getBloodType(),
+			getCountry(),
+			getState(),
+			getCity(),
+			getPostalCode(),
+			getNationality(),
+			getReligion()
+		]);
 	}
 
 	async function loadPatientIntoForm(id: string) {

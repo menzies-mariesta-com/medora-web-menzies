@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { prerender, query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,14 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getIdentityType = query(
+export const getIdentityType = prerender(
 	async (): Promise<IdentityTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.identityTypeTable)
 			.where(ne(table.identityTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.identityTypeTable.name);
-	}
+	},
+	{ dynamic: true }
 );
 
 export const getIdentityTypeCount = query(

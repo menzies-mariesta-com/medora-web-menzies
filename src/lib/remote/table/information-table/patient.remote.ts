@@ -407,6 +407,9 @@ export const createPatient = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getPatient().refresh();
+		getPatientWithRelations().refresh();
+		getPatientCount().refresh();
+		getPatientPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -425,6 +428,9 @@ export const updatePatient = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getPatient().refresh();
+		getPatientWithRelations().refresh();
+		getPatientCount().refresh();
+		getPatientPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -438,6 +444,9 @@ export const deletePatient = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientTable.id, id));
 		getPatient().refresh();
+		getPatientWithRelations().refresh();
+		getPatientCount().refresh();
+		getPatientPaginated(undefined).refresh();
 	}
 );
 
@@ -449,6 +458,9 @@ export const deletePatientComplete = command(
 			.delete(table.patientTable)
 			.where(eq(table.patientTable.id, id));
 		getPatient().refresh();
+		getPatientWithRelations().refresh();
+		getPatientCount().refresh();
+		getPatientPaginated(undefined).refresh();
 	}
 );
 
@@ -640,6 +652,9 @@ export const createPatientWithUser = command(
 		if (!patient) throw error(400, 'Failed to create patient.');
 
 		getPatient().refresh();
+		getPatientWithRelations().refresh();
+		getPatientCount().refresh();
+		getPatientPaginated(undefined).refresh();
 
 		return { patient, userId: user.id, generatedPassword };
 	}

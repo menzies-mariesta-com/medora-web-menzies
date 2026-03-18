@@ -5,6 +5,7 @@
 		getSubPages,
 		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
+	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/local/private/heka/visit/LVisitInfoBar.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -19,7 +20,6 @@
 			.replace(/\/+/g, '/') || '/'
 	);
 	const hospitalId = $derived(page.params.hospital_id);
-	const currentSearch = $derived(page.url.search);
 
 	function pathMatches(pageUrl: string | null | undefined): boolean {
 		if (pageUrl == null || pageUrl === '') return false;
@@ -34,17 +34,24 @@
 	function navUrl(pageUrl: string | null | undefined): string | null {
 		if (!pageUrl || !hospitalId) return pageUrl ?? null;
 		const base = hekaHospitalPageUrl(hospitalId, pageUrl);
-		return currentSearch ? `${base}${currentSearch}` : base;
+		const vid = VisitState.visitId;
+		return vid ? `${base}?visitId=${vid}` : base;
 	}
 
-	const selectedVisitId = $derived(
-		page.url.searchParams.get('visitId') ?? ''
-	);
+	$effect(() => {
+		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
+		if (urlVisitId && urlVisitId !== VisitState.visitId) {
+			VisitState.visitId = urlVisitId;
+		}
+	});
+
+	const selectedVisitId = $derived(VisitState.visitId);
 
 	function handleVisitSelected(data: {
 		visitId: number;
 		patientName: string;
 	}) {
+		VisitState.select(data);
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
@@ -56,6 +63,7 @@
 	}
 
 	function handleVisitReset() {
+		VisitState.reset();
 		const search = new URLSearchParams(page.url.search);
 		search.delete('visitId');
 		const base = page.url.pathname;

@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
+import { seedLogger } from '$lib/logger';
 
 if (!process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set');
@@ -20,7 +21,7 @@ const db = drizzle(client);
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
  */
 export async function seedInformationTables() {
-	console.log('Seeding information tables...');
+	seedLogger.info('Seeding information tables...');
 
 	// 1. Modules (depends: status)
 	await db.execute(sql`
@@ -36,7 +37,7 @@ export async function seedInformationTables() {
 
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: module');
+	seedLogger.info('Seeded: module');
 
 	// 2. Hospital (depends: status). id is UUID.
 	// await db.execute(sql`
@@ -45,7 +46,7 @@ export async function seedInformationTables() {
 	// 		('01900000-0000-7000-8000-000000000001'::uuid, 'Pun Hlaing Hospitals', 'phh', 1, 1, 118, 1)
 	// 	ON CONFLICT (id) DO NOTHING;
 	// `);
-	// console.log('Seeded: hospital');
+	// seedLogger.info('Seeded: hospital');
 
 	// 2b. Hospital patient code counter (one row per hospital, start at 0 so first code is 1)
 	await db.execute(sql`
@@ -53,7 +54,7 @@ export async function seedInformationTables() {
 		SELECT id, 0 FROM hospital
 		ON CONFLICT (hospital_id) DO NOTHING;
 	`);
-	console.log('Seeded: hospital_patient_code_counter');
+	seedLogger.info('Seeded: hospital_patient_code_counter');
 
 	// 3. Page (depends: module, status)
 	await db.execute(sql`
@@ -127,7 +128,7 @@ export async function seedInformationTables() {
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: page');
+	seedLogger.info('Seeded: page');
 
 	// 5. Role
 	await db.execute(sql`
@@ -139,7 +140,7 @@ export async function seedInformationTables() {
 			(4, 'Receptionist', 1)
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: role');
+	seedLogger.info('Seeded: role');
 
 	// 6. Status Tagging Type
 	await db.execute(sql`
@@ -148,7 +149,7 @@ export async function seedInformationTables() {
 			(1, 'Doctor Appointment')
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: status tagging type');
+	seedLogger.info('Seeded: status tagging type');
 
 	// 7. status_tagging
 	await db.execute(sql`
@@ -163,7 +164,7 @@ export async function seedInformationTables() {
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: status tagging');
+	seedLogger.info('Seeded: status tagging');
 
 	// 8. Document types (consent, form, instruction, certificate, help)
 	// Note: column is 'name' in old schema, 'document_type' in new schema after migration
@@ -177,7 +178,7 @@ export async function seedInformationTables() {
 			(5, 'Help', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: document_type');
+	seedLogger.info('Seeded: document_type');
 
 	// 9. Document settings (template configurations)
 	await db.execute(sql`
@@ -205,7 +206,7 @@ export async function seedInformationTables() {
 				1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: document_setting');
+	seedLogger.info('Seeded: document_setting');
 
 	// 9. Allergy
 	await db.execute(sql`
@@ -214,15 +215,15 @@ export async function seedInformationTables() {
 			(1, 'No Known Allergy')
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: allergy');
+	seedLogger.info('Seeded: allergy');
 }
 
 seedInformationTables()
 	.then(() => {
-		console.log('Seeding finished successfully.');
+		seedLogger.info('Information table seeding finished');
 		process.exit(0);
 	})
 	.catch((error) => {
-		console.error('Error while seeding information tables:', error);
+		seedLogger.error('Error while seeding information tables', error instanceof Error ? error : new Error(String(error)));
 		process.exit(1);
 	});
