@@ -93,6 +93,11 @@
 		fetchPatients();
 	});
 
+	lifeCycleUtil.onDestroy(() => {
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+		if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+	});
+
 	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 	let isFirstSearchEffect = true;

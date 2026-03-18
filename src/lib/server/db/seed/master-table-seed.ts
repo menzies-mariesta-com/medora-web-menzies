@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { CountryCodeData } from '../../../model/data/country-code.data.ts';
 import { StringUtil } from '../../../util/string.util.svelte.ts';
+import { seedLogger } from '$lib/logger';
 
 if (!process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set');
@@ -21,7 +22,7 @@ const db = drizzle(client);
  * npx tsx src/lib/server/db/seed/master-table-seed.ts
  */
 export async function seedMasterTables() {
-	console.log('Seeding master tables...');
+	seedLogger.info('Seeding master tables...');
 
 	// 1. Statuses
 	await db.execute(sql`
@@ -34,7 +35,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: status');
+	seedLogger.info('Seeded: status');
 
 	// 2. Category (depends: status)
 	await db.execute(sql`
@@ -52,7 +53,7 @@ export async function seedMasterTables() {
 			(10, 'Housekeeping', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: category');
+	seedLogger.info('Seeded: category');
 
 	// 3. Countries
 	await db.execute(sql`
@@ -69,7 +70,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: country');
+	seedLogger.info('Seeded: country');
 
 	// 3. States / Regions
 	await db.execute(sql`
@@ -151,7 +152,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: state');
+	seedLogger.info('Seeded: state');
 
 	// 4. Cities
 	await db.execute(sql`
@@ -695,7 +696,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: city');
+	seedLogger.info('Seeded: city');
 
 	// 5. Genders
 	await db.execute(sql`
@@ -707,7 +708,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: gender');
+	seedLogger.info('Seeded: gender');
 
 	// 6. Identity Types
 	await db.execute(sql`
@@ -719,7 +720,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: identity_type');
+	seedLogger.info('Seeded: identity_type');
 
 	// 7. Marital / marital Status
 	await db.execute(sql`
@@ -732,7 +733,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: marital_status');
+	seedLogger.info('Seeded: marital_status');
 
 	// 10. Craft Groups
 	await db.execute(sql`
@@ -780,7 +781,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: craft_group');
+	seedLogger.info('Seeded: craft_group');
 
 	// 8. Specializations (for doctors / staff) – each linked to craft_group_id
 	await db.execute(sql`
@@ -854,7 +855,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: specialization');
+	seedLogger.info('Seeded: specialization');
 
 	// 9. Blood Types
 	await db.execute(sql`
@@ -871,7 +872,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: blood_type');
+	seedLogger.info('Seeded: blood_type');
 
 	// 10. Nationalities
 	await db.execute(sql`
@@ -885,7 +886,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: nationality');
+	seedLogger.info('Seeded: nationality');
 
 	// 11. Staff Types (legacy category)
 	await db.execute(sql`
@@ -897,7 +898,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: staff_type');
+	seedLogger.info('Seeded: staff_type');
 
 	// 12. Staff Employment Types (formerly staff_type)
 	await db.execute(sql`
@@ -910,7 +911,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: staff_employment_type');
+	seedLogger.info('Seeded: staff_employment_type');
 
 	// 13. Titles
 	await db.execute(sql`
@@ -937,7 +938,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: title');
+	seedLogger.info('Seeded: title');
 
 	// 14. Departments
 	await db.execute(sql`
@@ -948,7 +949,7 @@ export async function seedMasterTables() {
 			(3, 'Pediatrics', 'ped', 1)
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: department');
+	seedLogger.info('Seeded: department');
 
 	// 15. Postal Codes
 	await db.execute(sql`
@@ -1493,7 +1494,7 @@ export async function seedMasterTables() {
 			(469, 533464, 469, 1)
 		ON CONFLICT (id) DO NOTHING;
 		`);
-	console.log('Seeded: postal_code');
+	seedLogger.info('Seeded: postal_code');
 
 	// 14. Weekday
 	await db.execute(sql`
@@ -1509,7 +1510,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: weekday');
+	seedLogger.info('Seeded: weekday');
 
 	// 15. Refer-Type
 	await db.execute(sql`
@@ -1520,7 +1521,7 @@ export async function seedMasterTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
-	console.log('Seeded: refer-type');
+	seedLogger.info('Seeded: refer-type');
 
 	// 16. Unit types (for categorising units: length, weight, etc.)
 	await db.execute(sql`
@@ -1536,7 +1537,7 @@ export async function seedMasterTables() {
 			(8, 'Blood sugar', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: unit_type');
+	seedLogger.info('Seeded: unit_type');
 
 	// 17. Units (for vitals and measurements; unit_type_id links to unit_type)
 	await db.execute(sql`
@@ -1556,7 +1557,7 @@ export async function seedMasterTables() {
 			(12, 'mmol/L', 8, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: unit');
+	seedLogger.info('Seeded: unit');
 
 	// 18. Visit types (for patient_visit)
 	await db.execute(sql`
@@ -1569,7 +1570,7 @@ export async function seedMasterTables() {
 			(5, 'Package', 'PK', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: visit_type');
+	seedLogger.info('Seeded: visit_type');
 
 	// 19. Severity master (lookup for alert severity)
 	await db.execute(sql`
@@ -1581,18 +1582,18 @@ export async function seedMasterTables() {
 			(4, 'No Alert', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: severity');
+	seedLogger.info('Seeded: severity');
 
-	console.log('Master tables seeding completed.');
+	seedLogger.info('Master tables seeding completed');
 }
 
 // Allow running via `ts-node` / `tsx` / `node` (after build)
 seedMasterTables()
 	.then(() => {
-		console.log('Seeding finished successfully.');
+		seedLogger.info('Master table seeding finished');
 		process.exit(0);
 	})
 	.catch((error) => {
-		console.error('Error while seeding master tables:', error);
+		seedLogger.error('Error while seeding master tables', error instanceof Error ? error : new Error(String(error)));
 		process.exit(1);
 	});

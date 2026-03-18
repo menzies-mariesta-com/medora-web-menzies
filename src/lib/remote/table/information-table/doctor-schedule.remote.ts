@@ -348,6 +348,9 @@ export const createDoctorSchedule = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getDoctorSchedule(undefined).refresh();
+		getDoctorScheduleWithRelations(undefined).refresh();
+		getDoctorScheduleCount().refresh();
+		getDoctorSchedulePaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -412,6 +415,9 @@ export const updateDoctorSchedule = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getDoctorSchedule(undefined).refresh();
+		getDoctorScheduleWithRelations(undefined).refresh();
+		getDoctorScheduleCount().refresh();
+		getDoctorSchedulePaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -425,6 +431,9 @@ export const deleteDoctorSchedule = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.doctorScheduleTable.id, id));
 		getDoctorSchedule(undefined).refresh();
+		getDoctorScheduleWithRelations(undefined).refresh();
+		getDoctorScheduleCount().refresh();
+		getDoctorSchedulePaginated(undefined).refresh();
 	}
 );
 
@@ -436,5 +445,8 @@ export const deleteDoctorScheduleComplete = command(
 			.delete(table.doctorScheduleTable)
 			.where(eq(table.doctorScheduleTable.id, id));
 		getDoctorSchedule(undefined).refresh();
+		getDoctorScheduleWithRelations(undefined).refresh();
+		getDoctorScheduleCount().refresh();
+		getDoctorSchedulePaginated(undefined).refresh();
 	}
 );

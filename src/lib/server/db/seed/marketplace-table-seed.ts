@@ -2,6 +2,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
+import { seedLogger } from '$lib/logger';
 
 if (!process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set');
@@ -22,7 +23,7 @@ const db = drizzle(client);
  * npx tsx src/lib/server/db/seed/marketplace-table-seed.ts
  */
 export async function seedMarketplaceTables() {
-	console.log('Seeding marketplace tables...');
+	seedLogger.info('Seeding marketplace tables...');
 
 	await db.execute(sql`
 		INSERT INTO marketplace_allowed_file_extension (id, name, code, status_id)
@@ -33,7 +34,7 @@ export async function seedMarketplaceTables() {
 			(4, 'ZIP', 'zip', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: marketplace_allowed_file_extension');
+	seedLogger.info('Seeded: marketplace_allowed_file_extension');
 
 	await db.execute(sql`
 		INSERT INTO marketplace_app (id, name, code, signature, status_id)
@@ -44,7 +45,7 @@ export async function seedMarketplaceTables() {
 			(4, 'Heka Billing', 'HEKA_BILLING', 'com.heka.billing', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: marketplace_app');
+	seedLogger.info('Seeded: marketplace_app');
 
 	// Each app has a dashboard and multiple pages/forms.
 	await db.execute(sql`
@@ -64,7 +65,7 @@ export async function seedMarketplaceTables() {
 			(12, 'Payment Collection', 'PAYMENT_COLLECTION', 4, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: marketplace_app_form');
+	seedLogger.info('Seeded: marketplace_app_form');
 
 	await db.execute(sql`
 		INSERT INTO marketplace_app_archive (id, version, download_url, app_id, file_extension_id, status_id)
@@ -75,17 +76,17 @@ export async function seedMarketplaceTables() {
 			(4, '1.0.0', 'https://mari-software.fly.dev/downloads/heka-billing-1.0.0.apk', 4, 1, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	console.log('Seeded: marketplace_app_archive');
+	seedLogger.info('Seeded: marketplace_app_archive');
 
-	console.log('Marketplace tables seeding completed.');
+	seedLogger.info('Marketplace tables seeding completed');
 }
 
 seedMarketplaceTables()
 	.then(() => {
-		console.log('Seeding finished successfully.');
+		seedLogger.info('Marketplace table seeding finished');
 		process.exit(0);
 	})
 	.catch((error) => {
-		console.error('Error while seeding marketplace tables:', error);
+		seedLogger.error('Error while seeding marketplace tables', error instanceof Error ? error : new Error(String(error)));
 		process.exit(1);
 	});

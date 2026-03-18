@@ -32,7 +32,8 @@
 import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
 	import {
 		getDoctorStaffPaginated,
-		getStaffByIdWithRelations
+		getStaffByIdWithRelations,
+		getStaffByIdWithRelationsBatched
 	} from '$lib/remote/table/information-table/staff.remote';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
@@ -50,6 +51,8 @@ import { getSubCategory } from '$lib/remote/table/information-table/sub-category
 	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
 import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+import { uiLogger } from '$lib/logger';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
@@ -136,6 +139,7 @@ let showHistory = $state(false);
 
 
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
 
 	function todayDateString(): string {
 		const d = new Date();
@@ -199,8 +203,16 @@ let showHistory = $state(false);
 		await serviceFilterSubCategoryPromise;
 	}
 
+	let mounted = $state(false);
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+		if (visitId) fetchVisit();
+	});
+
 	$effect(() => {
 		const vid = visitId;
+		if (!mounted) return;
 		if (vid) {
 			fetchVisit();
 		} else {
@@ -208,6 +220,10 @@ let showHistory = $state(false);
 			currentOrder = null;
 			pendingItems = [];
 		}
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
 	});
 
 	function resetDetailForm() {
@@ -227,29 +243,22 @@ let showHistory = $state(false);
 		branchIdForVisit: string
 	) {
 		try {
-			const taggings = await getServiceTagging({
-				branchId: branchIdForVisit
-			});
+			const [taggings, allServices] = await Promise.all([
+				getServiceTagging({ branchId: branchIdForVisit }),
+				getServiceItem({ hospitalId: hospitalIdForVisit, statusId: null })
+			]);
 			branchTaggings = taggings;
-			const serviceIds = Array.from(
-				new Set(
-					taggings.map((t) => t.serviceId).filter((id) => id != null)
-				)
+			const serviceIds = new Set(
+				taggings.map((t) => t.serviceId).filter((id) => id != null)
 			);
-			if (serviceIds.length === 0) {
+			if (serviceIds.size === 0) {
 				branchServices = [];
 				branchTaggings = [];
 				return;
 			}
-
-			const allServices = await getServiceItem({
-				hospitalId: hospitalIdForVisit,
-				statusId: null
-			});
-			const idSet = new Set(serviceIds);
-			branchServices = allServices.filter((s) => idSet.has(s.id));
+			branchServices = allServices.filter((s) => serviceIds.has(s.id));
 		} catch (err) {
-			console.error('Failed to load branch services', err);
+			uiLogger.error('Failed to load branch services', err instanceof Error ? err : undefined);
 			branchServices = [];
 			branchTaggings = [];
 		}
@@ -446,7 +455,7 @@ let showHistory = $state(false);
 				t.serviceTaxAmount != null ? String(t.serviceTaxAmount) : '';
 			detailAmountEditable = t.allowEdit ?? true;
 		} catch (err) {
-			console.error('Failed to load pricing for service', err);
+			uiLogger.error('Failed to load pricing for service', err instanceof Error ? err : undefined);
 			detailAmountEditable = true;
 		}
 	}
@@ -701,18 +710,20 @@ let showHistory = $state(false);
 
 			currentOrder = created;
 
-			for (const item of pendingItems) {
-				await createServiceOrderDetail({
-					serviceOrderId: created.id,
-					serviceId: item.serviceId,
-					advisingDoctorId: item.advisingDoctorId,
-					serviceAmount: item.serviceAmount,
-					serviceTaxAmount: item.serviceTaxAmount,
-					serviceUnit: item.serviceUnit,
-					instruction: item.instruction,
-					isUrgent: item.isUrgent
-				} as any);
-			}
+			await Promise.all(
+				pendingItems.map((item) =>
+					createServiceOrderDetail({
+						serviceOrderId: created.id,
+						serviceId: item.serviceId,
+						advisingDoctorId: item.advisingDoctorId,
+						serviceAmount: item.serviceAmount,
+						serviceTaxAmount: item.serviceTaxAmount,
+						serviceUnit: item.serviceUnit,
+						instruction: item.instruction,
+						isUrgent: item.isUrgent
+					} as any)
+				)
+			);
 
 			pendingItems = [];
 			resetDetailForm();
@@ -734,42 +745,42 @@ let showHistory = $state(false);
 		showHistory = true;
 		try {
 			const orders = await getServiceOrder({ visitId });
-			const allDetails: HistoryItem[] = [];
-			const doctorIdSet = new Set<string>();
-
-			for (const order of orders) {
-				const details = await getServiceOrderDetail({
-					serviceOrderId: order.id
-				});
-				for (const d of details) {
-					const docId =
-						(d.advisingDoctorId as string | null | undefined) ?? null;
-					if (docId) doctorIdSet.add(docId);
-					allDetails.push({
-						...d,
-						orderNo: (order.orderNo as string | null | undefined) ?? null,
-						advisingDoctorName: null
-					});
-				}
+			if (orders.length === 0) {
+				historyItems = [];
+				return;
 			}
 
-			// Resolve doctor names for unique IDs
-			const doctorIdList = Array.from(doctorIdSet);
-			const nameEntries = await Promise.all(
-				doctorIdList.map(async (id) => {
-					const name = await getDoctorLabelForValue(id);
-					return [id, name] as const;
-				})
-			);
-			const doctorNameMap = new Map<string, string>(
-				nameEntries.map(([id, name]) => [id, name])
+			const orderIds = orders.map((o) => o.id);
+			const orderNoMap = new Map(
+				orders.map((o) => [o.id, (o.orderNo as string | null | undefined) ?? null])
 			);
 
-			historyItems = allDetails.map((item) => ({
-				...item,
+			const details = await getServiceOrderDetail({
+				serviceOrderIds: orderIds
+			});
+
+			const doctorIdSet = new Set<string>();
+			for (const d of details) {
+				const docId = (d.advisingDoctorId as string | null | undefined) ?? null;
+				if (docId) doctorIdSet.add(docId);
+			}
+
+			const doctorIdList = Array.from(doctorIdSet);
+			const resolvedStaff = await Promise.all(
+				doctorIdList.map((id) => getStaffByIdWithRelationsBatched(id))
+			);
+			const doctorNameMap = new Map<string, string>();
+			doctorIdList.forEach((id, i) => {
+				const staff = resolvedStaff[i];
+				if (staff) doctorNameMap.set(id, StringUtil.doctorOptionDisplayName(staff));
+			});
+
+			historyItems = details.map((d) => ({
+				...d,
+				orderNo: orderNoMap.get(d.serviceOrderId) ?? null,
 				advisingDoctorName:
-					item.advisingDoctorId && doctorNameMap.get(item.advisingDoctorId)
-						? doctorNameMap.get(item.advisingDoctorId) ?? null
+					d.advisingDoctorId && doctorNameMap.get(d.advisingDoctorId)
+						? doctorNameMap.get(d.advisingDoctorId) ?? null
 						: null
 			}));
 		} catch (err) {
