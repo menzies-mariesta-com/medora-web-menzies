@@ -295,7 +295,7 @@
 						name="branchId"
 						onChange={() => branchForm?.requestSubmit()}
 					>
-						{#each staffBranchesForNav as b (b.id)}
+						{#each staffBranchesForNav as b, i (`${b.id}-${i}`)}
 							<option value={b.id}>{b.name ?? ''}</option>
 						{/each}
 					</DaisyUiSelect>
@@ -315,7 +315,7 @@
 						name="userGroupId"
 						onChange={() => userGroupForm?.requestSubmit()}
 					>
-						{#each staffUserGroupsForNav as ug (ug.id)}
+						{#each staffUserGroupsForNav as ug, i (`ug-${ug.id}-${i}`)}
 							<option value={String(ug.id)}>{ug.name ?? ''}</option>
 						{/each}
 					</DaisyUiSelect>

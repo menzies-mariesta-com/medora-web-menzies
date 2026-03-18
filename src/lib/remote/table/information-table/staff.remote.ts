@@ -795,15 +795,16 @@ export const createStaffWithUser = command(
 			);
 		}
 
-		if (payload.userGroupIds && payload.userGroupIds.length > 0) {
-			for (const userGroupId of payload.userGroupIds) {
-				parallelOps.push(
-					createStaffUserGroup({
-						staffId: staff.id,
-						userGroupId: Number(userGroupId)
-					})
-				);
-			}
+		// Create staff user groups (deduplicate to avoid duplicate entries)
+		const uniqueUserGroupIds =
+			(payload.userGroupIds?.length ?? 0) > 0
+				? [...new Set(payload.userGroupIds!.map(Number))]
+				: [];
+		for (const userGroupId of uniqueUserGroupIds) {
+			await createStaffUserGroup({
+				staffId: staff.id,
+				userGroupId
+			});
 		}
 
 		if (payload.hospitalId != null && payload.hospitalId !== '') {
@@ -821,15 +822,13 @@ export const createStaffWithUser = command(
 			payload.branchIds != null &&
 			payload.branchIds.length > 0
 		) {
-			for (const branchId of payload.branchIds) {
-				if (!branchId) continue;
-				parallelOps.push(
-					createStaffBranch({
-						staffId: staff.id,
-						branchId,
-						hospitalId: payload.hospitalId
-					})
-				);
+			const uniqueBranchIds = [...new Set(payload.branchIds.filter(Boolean))];
+			for (const branchId of uniqueBranchIds) {
+				await createStaffBranch({
+					staffId: staff.id,
+					branchId,
+					hospitalId: payload.hospitalId
+				});
 			}
 		}
 
