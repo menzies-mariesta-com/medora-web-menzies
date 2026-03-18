@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,15 +14,14 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getReferType = prerender(
+export const getReferType = query(
 	async (): Promise<ReferTypeSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.referTypeTable)
 			.where(ne(table.referTypeTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.referTypeTable.name);
-	},
-	{ dynamic: true }
+	}
 );
 
 export const getReferTypeCount = query(async (): Promise<number> => {

@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,13 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getCity = prerender(async (): Promise<CitySchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.cityTable)
-		.where(ne(table.cityTable.statusId, StatusEnum.DELETED))
-		.orderBy(table.cityTable.name);
-}, { dynamic: true });
+export const getCity = query(
+	async (): Promise<CitySchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.cityTable)
+			.where(ne(table.cityTable.statusId, StatusEnum.DELETED))
+			.orderBy(table.cityTable.name);
+	}
+);
 
 export const getCityCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()

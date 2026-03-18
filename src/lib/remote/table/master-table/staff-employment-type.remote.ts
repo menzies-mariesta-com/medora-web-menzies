@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,7 +14,7 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getStaffEmploymentType = prerender(
+export const getStaffEmploymentType = query(
 	async (): Promise<StaffEmploymentTypeSchema[]> => {
 		return ensureDb()
 			.select()
@@ -23,8 +23,7 @@ export const getStaffEmploymentType = prerender(
 				ne(table.staffEmploymentTypeTable.statusId, StatusEnum.DELETED)
 			)
 			.orderBy(table.staffEmploymentTypeTable.name);
-	},
-	{ dynamic: true }
+	}
 );
 
 export const getStaffEmploymentTypeCount = query(

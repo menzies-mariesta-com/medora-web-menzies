@@ -1,4 +1,4 @@
-import { prerender, query, command } from '$app/server';
+import { query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,15 +14,14 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getCraftGroup = prerender(
+export const getCraftGroup = query(
 	async (): Promise<CraftGroupSchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.craftGroupTable)
 			.where(ne(table.craftGroupTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.craftGroupTable.name);
-	},
-	{ dynamic: true }
+	}
 );
 
 export const getCraftGroupCount = query(async (): Promise<number> => {
