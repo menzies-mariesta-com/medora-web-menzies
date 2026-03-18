@@ -21,11 +21,16 @@
 		time = `${h}:${mins}:${s}`;
 	}
 
+	/** @type {ReturnType<typeof setInterval> | undefined} */
+	let interval = undefined;
+
 	lifeCycleUtil.onMount(() => {
 		updateTime();
-		const interval = setInterval(updateTime, 1000);
+		interval = setInterval(updateTime, 1000);
+	});
 
-		return () => clearInterval(interval);
+	lifeCycleUtil.onDestroy(() => {
+		if (interval) clearInterval(interval);
 	});
 </script>
 

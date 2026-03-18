@@ -227,6 +227,8 @@ export const createAppointment = command(
 		if (!row) throw new Error('Insert failed');
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
+		getAppointmentCount().refresh();
+		getAppointmentPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -246,6 +248,8 @@ export const updateAppointment = command(
 		if (!row) throw new Error('Update failed');
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
+		getAppointmentCount().refresh();
+		getAppointmentPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -260,6 +264,8 @@ export const deleteAppointment = command(
 			.where(eq(table.appointmentTable.id, id));
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
+		getAppointmentCount().refresh();
+		getAppointmentPaginated(undefined).refresh();
 	}
 );
 
@@ -272,5 +278,7 @@ export const deleteAppointmentComplete = command(
 			.where(eq(table.appointmentTable.id, id));
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
+		getAppointmentCount().refresh();
+		getAppointmentPaginated(undefined).refresh();
 	}
 );

@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { prerender, query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,13 +14,13 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getGender = query(async (): Promise<GenderSchema[]> => {
+export const getGender = prerender(async (): Promise<GenderSchema[]> => {
 	return ensureDb()
 		.select()
 		.from(table.genderTable)
 		.where(ne(table.genderTable.statusId, StatusEnum.DELETED))
 		.orderBy(table.genderTable.name);
-});
+}, { dynamic: true });
 
 export const getGenderCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()

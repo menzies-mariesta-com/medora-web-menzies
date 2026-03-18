@@ -1,4 +1,4 @@
-import { query, command } from '$app/server';
+import { prerender, query, command } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -14,14 +14,15 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getWeekday = query(
+export const getWeekday = prerender(
 	async (): Promise<WeekdaySchema[]> => {
 		return ensureDb()
 			.select()
 			.from(table.weekdayTable)
 			.where(ne(table.weekdayTable.statusId, StatusEnum.DELETED))
 			.orderBy(table.weekdayTable.id);
-	}
+	},
+	{ dynamic: true }
 );
 
 export const getWeekdayCount = query(async (): Promise<number> => {

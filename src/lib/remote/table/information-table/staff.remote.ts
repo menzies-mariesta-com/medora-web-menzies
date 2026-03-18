@@ -421,6 +421,23 @@ export const getStaffById = query(
 	}
 );
 
+/**
+ * Batched version: when called multiple times in the same tick (e.g. resolving
+ * doctor names for a list), all IDs are collected into one DB round-trip.
+ */
+export const getStaffByIdWithRelationsBatched = query.batch(
+	'unchecked' as const,
+	async (ids: string[]) => {
+		if (ids.length === 0) return () => undefined;
+		const results = await ensureDb().query.staffTable.findMany({
+			where: inArray(table.staffTable.id, ids),
+			with: staffWithRelationsWith
+		});
+		const lookup = new Map(results.map((r) => [r.id, r]));
+		return (id: string) => lookup.get(id);
+	}
+);
+
 // get one with relations (for view/edit form)
 export const getStaffByIdWithRelations = query(
 	'unchecked' as const,
@@ -497,6 +514,11 @@ export const createStaff = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getStaff().refresh();
+		getStaffWithRelations().refresh();
+		getStaffCount().refresh();
+		getStaffPaginated(undefined).refresh();
+		getDoctorStaffList(undefined).refresh();
+		getDoctorStaffPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -515,6 +537,11 @@ export const updateStaff = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getStaff().refresh();
+		getStaffWithRelations().refresh();
+		getStaffCount().refresh();
+		getStaffPaginated(undefined).refresh();
+		getDoctorStaffList(undefined).refresh();
+		getDoctorStaffPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -528,6 +555,11 @@ export const deleteStaff = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.staffTable.id, id));
 		getStaff().refresh();
+		getStaffWithRelations().refresh();
+		getStaffCount().refresh();
+		getStaffPaginated(undefined).refresh();
+		getDoctorStaffList(undefined).refresh();
+		getDoctorStaffPaginated(undefined).refresh();
 	}
 );
 
@@ -539,6 +571,11 @@ export const deleteStaffComplete = command(
 			.delete(table.staffTable)
 			.where(eq(table.staffTable.id, id));
 		getStaff().refresh();
+		getStaffWithRelations().refresh();
+		getStaffCount().refresh();
+		getStaffPaginated(undefined).refresh();
+		getDoctorStaffList(undefined).refresh();
+		getDoctorStaffPaginated(undefined).refresh();
 	}
 );
 
@@ -747,39 +784,46 @@ export const createStaffWithUser = command(
 		// Create staff
 		const staff = await createStaff(staffPayload);
 
-		// Create staff departments
+		const parallelOps: Promise<unknown>[] = [];
+
 		if (payload.departmentId) {
-			await createStaffDepartment({
-				staffId: staff.id,
-				departmentId: Number(payload.departmentId)
-			});
-		}
-
-		// Create staff user groups
-		if (payload.userGroupIds && payload.userGroupIds.length > 0) {
-			for (const userGroupId of payload.userGroupIds) {
-				await createStaffUserGroup({
+			parallelOps.push(
+				createStaffDepartment({
 					staffId: staff.id,
-					userGroupId: Number(userGroupId)
-				});
-			}
+					departmentId: Number(payload.departmentId)
+				})
+			);
 		}
 
-		// Assign staff to hospital when registering from a hospital context
-		if (payload.hospitalId != null && payload.hospitalId !== '') {
-			await createStaffHospital({
+		// Create staff user groups (deduplicate to avoid duplicate entries)
+		const uniqueUserGroupIds =
+			(payload.userGroupIds?.length ?? 0) > 0
+				? [...new Set(payload.userGroupIds!.map(Number))]
+				: [];
+		for (const userGroupId of uniqueUserGroupIds) {
+			await createStaffUserGroup({
 				staffId: staff.id,
-				hospitalId: payload.hospitalId
+				userGroupId
 			});
 		}
+
+		if (payload.hospitalId != null && payload.hospitalId !== '') {
+			parallelOps.push(
+				createStaffHospital({
+					staffId: staff.id,
+					hospitalId: payload.hospitalId
+				})
+			);
+		}
+
 		if (
 			payload.hospitalId != null &&
 			payload.hospitalId !== '' &&
 			payload.branchIds != null &&
 			payload.branchIds.length > 0
 		) {
-			for (const branchId of payload.branchIds) {
-				if (!branchId) continue;
+			const uniqueBranchIds = [...new Set(payload.branchIds.filter(Boolean))];
+			for (const branchId of uniqueBranchIds) {
 				await createStaffBranch({
 					staffId: staff.id,
 					branchId,
@@ -787,6 +831,8 @@ export const createStaffWithUser = command(
 				});
 			}
 		}
+
+		await Promise.all(parallelOps);
 
 		return { staff, userId: user.id, generatedPassword };
 	}
