@@ -49,7 +49,9 @@ const patientWithRelationsWith = {
 	visits: true,
 	appointments: true,
 	diagnoses: true,
-	patientDocuments: true
+	patientDocuments: true,
+	createdByUser: true,
+	updatedByUser: true
 } as const;
 
 export type PatientWithRelations = Awaited<
@@ -222,7 +224,9 @@ export const getPatientPaginated = query(
 					visits: true,
 					appointments: true,
 					diagnoses: true,
-					patientDocuments: true
+					patientDocuments: true,
+					createdByUser: true,
+					updatedByUser: true
 				},
 				limit,
 				offset
@@ -391,7 +395,9 @@ export const getPatientByIdWithRelations = query(
 				insurances: { with: { insurance: true } },
 				allergies: true,
 				fatherTitle: true,
-				phonePrimaryCountry: true
+				phonePrimaryCountry: true,
+				createdByUser: true,
+				updatedByUser: true
 			}
 		});
 	}

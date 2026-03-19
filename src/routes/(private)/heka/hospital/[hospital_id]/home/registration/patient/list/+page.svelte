@@ -34,6 +34,7 @@
 	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
 	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -41,6 +42,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	const stringUtil = new StringUtil();
+	const dateTimeUtil = new DateTimeUtil();
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -160,25 +162,7 @@
 		}
 	}
 
-	function formatDate(value: string | null | undefined): string {
-		if (!value) return '—';
-		try {
-			const d = new Date(value);
-			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-		} catch {
-			return '—';
-		}
-	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '—';
-		try {
-			const d = new Date(value);
-			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
-		} catch {
-			return '—';
-		}
-	}
 
 	const PATIENT_COLUMN_COUNT = 12;
 
@@ -253,7 +237,7 @@
 			header: 'Date of birth',
 			widthClass: 'w-36 min-w-[9rem]',
 			filterable: false,
-			format: (value) => formatDate(value)
+			format: (value) => dateTimeUtil.formatDate(value as string)
 		},
 		{
 			id: 'guardian',
@@ -281,14 +265,14 @@
 			header: 'Created at',
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value)
+			format: (value) => dateTimeUtil.formatDateTime(value as string)
 		},
 		{
 			id: 'updatedAt',
 			header: 'Updated at',
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value)
+			format: (value) => dateTimeUtil.formatDateTime(value as string)
 		}
 	];
 
@@ -323,6 +307,9 @@
 			actionsVariant="none"
 			enableColumnFilters={true}
 			useRemoteFilters={true}
+			rowTooltipGetter={(row) => {
+				return StringUtil.tableToolTip(row);
+			}}
 			on:refresh={() => fetchPatients({ bustCache: true })}
 			on:pageSizeChange={() => {
 				currentPage = 1;
