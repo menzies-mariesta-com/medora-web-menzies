@@ -6,28 +6,37 @@ export class DateTimeUtil {
 		return new SvelteDate().toISOString();
 	}
 
+	parseAnyToDate(value: Date | string | number | null | undefined): Date | null {
+		if (!value) return null;
+		const date = new SvelteDate(value as any);
+		return Number.isNaN(date.getTime()) ? null : date;
+	}
+
 	formatDate(
-		date: Date,
+		dateInput: Date | string | number | null | undefined,
 		locale: string = 'en-US',
 		options?: Intl.DateTimeFormatOptions
 	): string {
-		return date.toLocaleDateString(locale, options);
+		const date = this.parseAnyToDate(dateInput);
+		return date ? date.toLocaleDateString(locale, options) : '—';
 	}
 
 	formatTime(
-		date: Date,
+		dateInput: Date | string | number | null | undefined,
 		locale: string = 'en-US',
 		options?: Intl.DateTimeFormatOptions
 	): string {
-		return date.toLocaleTimeString(locale, options);
+		const date = this.parseAnyToDate(dateInput);
+		return date ? date.toLocaleTimeString(locale, options) : '—';
 	}
 
 	formatDateTime(
-		date: Date,
+		dateInput: Date | string | number | null | undefined,
 		locale: string = 'en-US',
 		options?: Intl.DateTimeFormatOptions
 	): string {
-		return date.toLocaleString(locale, options);
+		const date = this.parseAnyToDate(dateInput);
+		return date ? date.toLocaleString(locale, options) : '—';
 	}
 	parseDate(dateString: string): Date | null {
 		const date = new SvelteDate(dateString);
@@ -149,9 +158,13 @@ export class DateTimeUtil {
 		return clonedDate;
 	}
 	formatRelative(
-		date: Date,
-		baseDate: Date = new SvelteDate()
+		dateInput: Date | string | number | null | undefined,
+		baseDateInput: Date | string | number = new SvelteDate()
 	): string {
+		const date = this.parseAnyToDate(dateInput);
+		const baseDate = this.parseAnyToDate(baseDateInput);
+		if (!date || !baseDate) return '—';
+
 		const diffInSeconds = Math.floor(
 			(baseDate.getTime() - date.getTime()) / 1000
 		);
