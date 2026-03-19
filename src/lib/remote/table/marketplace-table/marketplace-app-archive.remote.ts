@@ -39,17 +39,22 @@ export const getMarketplaceAppArchives = query(
 	}
 );
 
-export const getMarketplaceAppArchivesWithRelations = query(async () => {
-	return ensureDb().query.marketplaceAppArchiveTable.findMany({
-		where: ne(table.marketplaceAppArchiveTable.statusId, StatusEnum.DELETED),
-		with: {
-			app: true,
-			fileExtension: true,
-			status: true
-		},
-		orderBy: table.marketplaceAppArchiveTable.createdAt
-	});
-});
+export const getMarketplaceAppArchivesWithRelations = query(
+	async () => {
+		return ensureDb().query.marketplaceAppArchiveTable.findMany({
+			where: ne(
+				table.marketplaceAppArchiveTable.statusId,
+				StatusEnum.DELETED
+			),
+			with: {
+				app: true,
+				fileExtension: true,
+				status: true
+			},
+			orderBy: table.marketplaceAppArchiveTable.createdAt
+		});
+	}
+);
 
 export type MarketplaceAppArchiveWithRelations = Awaited<
 	ReturnType<typeof getMarketplaceAppArchivesWithRelations>
@@ -60,7 +65,12 @@ export const getMarketplaceAppArchiveCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.marketplaceAppArchiveTable)
-			.where(ne(table.marketplaceAppArchiveTable.statusId, StatusEnum.DELETED));
+			.where(
+				ne(
+					table.marketplaceAppArchiveTable.statusId,
+					StatusEnum.DELETED
+				)
+			);
 		return row?.count ?? 0;
 	}
 );
@@ -70,7 +80,8 @@ export const getMarketplaceAppArchivesPaginated = query(
 	async (
 		params?: PaginationParams & { appId?: number | null }
 	): Promise<PaginatedResult<MarketplaceAppArchiveSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const notDeletedFilter = ne(
 			table.marketplaceAppArchiveTable.statusId,
 			StatusEnum.DELETED

@@ -92,7 +92,9 @@
 		return `staff-${Date.now()}-${rand}${DEFAULT_STAFF_EMAIL_SUFFIX}`;
 	}
 
-	function isDefaultStaffEmail(email: string | null | undefined): boolean {
+	function isDefaultStaffEmail(
+		email: string | null | undefined
+	): boolean {
 		if (!email) return false;
 		return email.endsWith(DEFAULT_STAFF_EMAIL_SUFFIX);
 	}
@@ -442,9 +444,11 @@
 				.staffBranches ?? []
 		).map((sb) => sb.branchId);
 		const branchIdSet = new Set(branchData.map((b) => b.id));
-		selectedBranchIds = [...new Set(branchIdsFromStaff.filter((id) =>
-			branchIdSet.has(id)
-		))];
+		selectedBranchIds = [
+			...new Set(
+				branchIdsFromStaff.filter((id) => branchIdSet.has(id))
+			)
+		];
 		isActive = staff.statusId === StatusEnum.ACTIVE;
 		isLocked = staff.statusId === StatusEnum.LOCKED;
 		const detail = (
@@ -792,9 +796,15 @@
 						: '';
 				// Use staff relations from freshly fetched data (avoids stale/cached query results)
 				const staffUserGroupsToDelete = (
-					(staff as {
-						staffUserGroups?: { id: number; userGroupId: number; userGroup?: { hospitalId: string } }[];
-					}).staffUserGroups ?? []
+					(
+						staff as {
+							staffUserGroups?: {
+								id: number;
+								userGroupId: number;
+								userGroup?: { hospitalId: string };
+							}[];
+						}
+					).staffUserGroups ?? []
 				).filter(
 					(sug) => sug.userGroup?.hospitalId === editHospitalId
 				);
@@ -820,12 +830,16 @@
 				}
 				// Use staff relations from freshly fetched data (avoids stale/cached query results)
 				const staffBranchesToDelete = (
-					(staff as {
-						staffBranches?: { id: number; branchId: string; branch?: { hospitalId: string } }[];
-					}).staffBranches ?? []
-				).filter(
-					(sb) => sb.branch?.hospitalId === editHospitalId
-				);
+					(
+						staff as {
+							staffBranches?: {
+								id: number;
+								branchId: string;
+								branch?: { hospitalId: string };
+							}[];
+						}
+					).staffBranches ?? []
+				).filter((sb) => sb.branch?.hospitalId === editHospitalId);
 				for (const sb of staffBranchesToDelete) {
 					await deleteStaffBranch({ id: sb.id });
 				}
@@ -896,8 +910,7 @@
 					});
 					if (error) {
 						toastService.addToast(
-							error.message ??
-								'Failed to send reset password email.',
+							error.message ?? 'Failed to send reset password email.',
 							StatusColorEnum.ERROR
 						);
 					} else {

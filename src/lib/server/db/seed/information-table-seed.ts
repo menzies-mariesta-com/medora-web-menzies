@@ -224,6 +224,9 @@ seedInformationTables()
 		process.exit(0);
 	})
 	.catch((error) => {
-		seedLogger.error('Error while seeding information tables', error instanceof Error ? error : new Error(String(error)));
+		seedLogger.error(
+			'Error while seeding information tables',
+			error instanceof Error ? error : new Error(String(error))
+		);
 		process.exit(1);
 	});

@@ -15,7 +15,7 @@
 	import UserGroupPagesModal from '$lib/component/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
 	import type { StatusSchema } from '$lib/server/db/schema-type';
 	import { getStatus } from '$lib/remote/table/master-table/status.remote';
-import { StatusEnum } from '$lib/model/enum/db-link';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -83,8 +83,8 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 					? 'Active'
 					: row.statusId === StatusEnum.INACTIVE
 						? 'Inactive'
-						: statusOptions.find((s) => s.id === row.statusId)?.name ??
-							String(row.statusId)
+						: (statusOptions.find((s) => s.id === row.statusId)
+								?.name ?? String(row.statusId))
 		}
 	];
 
@@ -102,8 +102,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 				pageSize,
 				name: tableFilters.name?.trim() || undefined,
 				statusId:
-					parsedStatusId != null &&
-					Number.isFinite(parsedStatusId)
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
 						? parsedStatusId
 						: undefined
 			};

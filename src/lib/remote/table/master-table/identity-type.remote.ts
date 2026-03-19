@@ -29,7 +29,9 @@ export const getIdentityTypeCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.identityTypeTable)
-			.where(ne(table.identityTypeTable.statusId, StatusEnum.DELETED));
+			.where(
+				ne(table.identityTypeTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );

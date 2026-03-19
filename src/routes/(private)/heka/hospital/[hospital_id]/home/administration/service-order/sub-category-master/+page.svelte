@@ -28,7 +28,7 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-import { StatusEnum } from '$lib/model/enum/db-link';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const toastService = new ToastService();
 
@@ -48,8 +48,9 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let categories = $state<CategorySchema[]>([]);
 	let isLoading = $state(false);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	const subCategories = $derived(subCategoryResult?.data ?? []);
 	const total = $derived(subCategoryResult?.total ?? 0);
@@ -63,7 +64,9 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
 			let categoryIds = categories.map((c) => c.id);
-			const categoryTerm = tableFilters.category?.trim().toLowerCase();
+			const categoryTerm = tableFilters.category
+				?.trim()
+				.toLowerCase();
 			if (categoryTerm) {
 				const matchedCategoryIds = categories
 					.filter((c) =>
@@ -94,8 +97,7 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 				subCategoryName:
 					tableFilters.subCategoryName?.trim() || undefined,
 				statusId:
-					parsedStatusId != null &&
-					Number.isFinite(parsedStatusId)
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
 						? parsedStatusId
 						: undefined
 			};
@@ -203,9 +205,12 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 </script>
 
 <div class="space-y-6">
-	<div class="flex items-center justify-between mb-2">
+	<div class="mb-2 flex items-center justify-between">
 		<h1 class="text-2xl font-bold">{m.sub_category_master}</h1>
-		<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
+		<DaisyUiButton
+			className="d-btn-primary d-btn-sm"
+			onClick={openCreate}
+		>
 			<LucidePlus />
 			{m.create()}
 		</DaisyUiButton>

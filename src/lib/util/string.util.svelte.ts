@@ -162,7 +162,9 @@ export class StringUtil {
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
 	}
 
-	static serviceOptionDisplayName(service: ServiceItemSchema): string {
+	static serviceOptionDisplayName(
+		service: ServiceItemSchema
+	): string {
 		return `${service.serviceName ?? 'Unknown Service'} (${service.serviceCode ?? '-'})`;
 	}
 

@@ -4,10 +4,10 @@
 	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import {
-	getUsersByRolePaginated,
+		getUsersByRolePaginated,
 		deleteUser
 	} from '$lib/remote/table/auth-table/user.remote';
-import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
+	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -34,9 +34,10 @@ import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
-let totalOwners = $state(0);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let totalOwners = $state(0);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	const ownerColumns: MariTableColumn<UserSchema>[] = [
 		{
