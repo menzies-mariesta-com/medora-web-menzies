@@ -182,7 +182,10 @@
 
 	async function handleSave() {
 		if (!nameInput.trim()) {
-			toastService.addToast('Name is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				'Name is required',
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 
@@ -211,16 +214,25 @@
 
 			if (editingId) {
 				await updateDocumentSetting({ id: editingId, ...payload });
-				toastService.addToast('Document setting updated', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document setting updated',
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				await createDocumentSetting(payload);
-				toastService.addToast('Document setting created', StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					'Document setting created',
+					StatusColorEnum.SUCCESS
+				);
 			}
 			resetForm();
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to save document setting', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to save document setting',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -234,17 +246,26 @@
 
 		try {
 			await deleteDocumentSetting({ id: item.id });
-			toastService.addToast('Document setting deleted', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Document setting deleted',
+				StatusColorEnum.SUCCESS
+			);
 			fetchData({ bustCache: true });
 		} catch (err) {
 			console.error(err);
-			toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Failed to delete',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
 	function copyPlaceholder(placeholder: string) {
 		navigator.clipboard.writeText(placeholder);
-		toastService.addToast(`Copied: ${placeholder}`, StatusColorEnum.INFO);
+		toastService.addToast(
+			`Copied: ${placeholder}`,
+			StatusColorEnum.INFO
+		);
 	}
 
 	function insertPlaceholder(placeholder: string) {
@@ -253,7 +274,10 @@
 		} else if (activeEditorTarget === 'footer') {
 			footerHtml = footerHtml + placeholder;
 		}
-		toastService.addToast(`Inserted: ${placeholder}`, StatusColorEnum.INFO);
+		toastService.addToast(
+			`Inserted: ${placeholder}`,
+			StatusColorEnum.INFO
+		);
 	}
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
@@ -323,392 +347,394 @@
 	{#if viewMode !== 'list'}
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold">
-					{viewMode === 'view'
-						? 'View'
-						: editingId
-							? 'Edit'
-							: 'Create'} Document Setting
-				</h2>
-				<DaisyUiButton
-					className="d-btn-ghost d-btn-sm"
-					onClick={resetForm}
-				>
-					<LucideX className="w-4 h-4" />
-				</DaisyUiButton>
-			</div>
-
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-				<!-- Left Column: Basic Info + Page Layout -->
-				<div class="space-y-4">
-					<div class="rounded-lg bg-base-200 p-4">
-						<h3 class="mb-3 font-medium">Basic Information</h3>
-						<div class="space-y-3">
-							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="name"
-									>Name <span class="text-error">*</span
-									></DaisyUiLabel
-								>
-								<DaisyUiInputField
-									id="name"
-									bind:value={nameInput}
-									inputType="text"
-									inputPlaceholderText="e.g., OPD Consent Form"
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="documentType"
-									>Document Type</DaisyUiLabel
-								>
-								<DaisyUiSelect
-									bind:value={documentTypeIdInput}
-									optionHeader="Select type..."
-									disabled={viewMode === 'view'}
-								>
-									{#each documentTypes as dt (dt.id)}
-										<option value={String(dt.id)}
-											>{dt.documentType}</option
-										>
-									{/each}
-								</DaisyUiSelect>
-							</div>
-							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="description"
-									>Description</DaisyUiLabel
-								>
-								<textarea
-									id="description"
-									bind:value={descriptionInput}
-									placeholder="Optional description..."
-									disabled={viewMode === 'view'}
-									class="d-textarea h-16"
-								></textarea>
-							</div>
-						</div>
-					</div>
-
-					<div class="rounded-lg bg-base-200 p-4">
-						<h3 class="mb-3 font-medium">Page Layout</h3>
-						<div class="grid grid-cols-2 gap-3">
-							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="pageSize"
-									>Page Size</DaisyUiLabel
-								>
-								<DaisyUiSelect
-									bind:value={pageSizeInput}
-									disabled={viewMode === 'view'}
-								>
-									{#each PAGE_SIZES as size}
-										<option value={size}>{size}</option>
-									{/each}
-								</DaisyUiSelect>
-							</div>
-							<div class="flex flex-col gap-1">
-								<DaisyUiLabel forText="pageOrientation"
-									>Orientation</DaisyUiLabel
-								>
-								<DaisyUiSelect
-									bind:value={pageOrientation}
-									disabled={viewMode === 'view'}
-								>
-									{#each ORIENTATIONS as orient}
-										<option value={orient}>{orient}</option>
-									{/each}
-								</DaisyUiSelect>
-							</div>
-						</div>
-
-						<h4 class="mt-4 mb-2 text-sm font-medium">
-							Margins (mm)
-						</h4>
-						<div class="grid grid-cols-4 gap-2">
-							<div class="flex flex-col gap-1">
-								<label
-									for="marginTop"
-									class="text-xs text-base-content/70">Top</label
-								>
-								<input
-									id="marginTop"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={marginTop}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="marginBottom"
-									class="text-xs text-base-content/70">Bottom</label
-								>
-								<input
-									id="marginBottom"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={marginBottom}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="marginLeft"
-									class="text-xs text-base-content/70">Left</label
-								>
-								<input
-									id="marginLeft"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={marginLeft}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="marginRight"
-									class="text-xs text-base-content/70">Right</label
-								>
-								<input
-									id="marginRight"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={marginRight}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-						</div>
-
-						<h4 class="mt-4 mb-2 text-sm font-medium">
-							Padding (mm)
-						</h4>
-						<div class="grid grid-cols-4 gap-2">
-							<div class="flex flex-col gap-1">
-								<label
-									for="paddingTop"
-									class="text-xs text-base-content/70">Top</label
-								>
-								<input
-									id="paddingTop"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={paddingTop}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="paddingBottom"
-									class="text-xs text-base-content/70">Bottom</label
-								>
-								<input
-									id="paddingBottom"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={paddingBottom}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="paddingLeft"
-									class="text-xs text-base-content/70">Left</label
-								>
-								<input
-									id="paddingLeft"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={paddingLeft}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-							<div class="flex flex-col gap-1">
-								<label
-									for="paddingRight"
-									class="text-xs text-base-content/70">Right</label
-								>
-								<input
-									id="paddingRight"
-									type="number"
-									class="d-input-bordered d-input d-input-sm w-full"
-									bind:value={paddingRight}
-									disabled={viewMode === 'view'}
-								/>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Middle Column: Header & Footer Editors -->
-				<div class="space-y-4 lg:col-span-2">
-					<!-- Header Section -->
-					<div class="rounded-lg bg-base-200 p-4">
-						<div class="mb-3 flex items-center justify-between">
-							<div class="flex items-center gap-3">
-								<h3 class="font-medium">Header Section</h3>
-								<label class="flex items-center gap-2 text-sm">
-									<input
-										type="checkbox"
-										class="d-checkbox d-checkbox-sm"
-										bind:checked={showHeader}
-										disabled={viewMode === 'view'}
-									/>
-									Show Header
-								</label>
-							</div>
-							{#if viewMode !== 'view'}
-								<button
-									type="button"
-									class="d-btn d-btn-ghost d-btn-xs"
-									onclick={() => {
-										activeEditorTarget = 'header';
-										showPlaceholderPanel = !showPlaceholderPanel;
-									}}
-								>
-									Insert Placeholder
-								</button>
-							{/if}
-						</div>
-						{#if showHeader}
-							<MariRichEditor
-								bind:value={headerHtml}
-								className="min-h-[150px]"
-								disabled={viewMode === 'view'}
-								showMenuBar={false}
-							/>
-						{:else}
-							<div
-								class="p-4 text-center text-sm text-base-content/50 italic"
-							>
-								Header is disabled
-							</div>
-						{/if}
-					</div>
-
-					<!-- Footer Section -->
-					<div class="rounded-lg bg-base-200 p-4">
-						<div class="mb-3 flex items-center justify-between">
-							<div class="flex items-center gap-3">
-								<h3 class="font-medium">Footer Section</h3>
-								<label class="flex items-center gap-2 text-sm">
-									<input
-										type="checkbox"
-										class="d-checkbox d-checkbox-sm"
-										bind:checked={showFooter}
-										disabled={viewMode === 'view'}
-									/>
-									Show Footer
-								</label>
-							</div>
-							{#if viewMode !== 'view'}
-								<button
-									type="button"
-									class="d-btn d-btn-ghost d-btn-xs"
-									onclick={() => {
-										activeEditorTarget = 'footer';
-										showPlaceholderPanel = !showPlaceholderPanel;
-									}}
-								>
-									Insert Placeholder
-								</button>
-							{/if}
-						</div>
-						{#if showFooter}
-							<MariRichEditor
-								bind:value={footerHtml}
-								className="min-h-[150px]"
-								disabled={viewMode === 'view'}
-								showMenuBar={false}
-							/>
-						{:else}
-							<div
-								class="p-4 text-center text-sm text-base-content/50 italic"
-							>
-								Footer is disabled
-							</div>
-						{/if}
-					</div>
-
-					<!-- Placeholder Panel -->
-					{#if showPlaceholderPanel && viewMode !== 'view'}
-						<div class="rounded-lg bg-base-200 p-4">
-							<div class="mb-3 flex items-center justify-between">
-								<h3 class="font-medium">Template Placeholders</h3>
-								<button
-									type="button"
-									class="d-btn d-btn-ghost d-btn-xs"
-									onclick={() => (showPlaceholderPanel = false)}
-								>
-									<LucideX className="w-3 h-3" />
-								</button>
-							</div>
-							<p class="mb-3 text-xs text-base-content/70">
-								Click to copy, or click "Insert" to add to {activeEditorTarget}
-								editor.
-							</p>
-							<div
-								class="grid max-h-64 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 xl:grid-cols-3"
-							>
-								{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category}
-									<div class="space-y-1">
-										<h4 class="text-xs font-semibold text-primary">
-											{category.category}
-										</h4>
-										{#each category.placeholders as ph}
-											<div
-												class="flex items-center justify-between rounded bg-base-100 px-2 py-1 text-xs"
-											>
-												<div class="min-w-0 flex-1">
-													<code
-														class="font-mono text-[10px] text-primary"
-														>{ph.key}</code
-													>
-													<p class="truncate text-base-content/60">
-														{ph.desc}
-													</p>
-												</div>
-												<div class="ml-2 flex items-center gap-1">
-													<button
-														type="button"
-														class="d-btn p-1 d-btn-ghost d-btn-xs"
-														onclick={() => copyPlaceholder(ph.key)}
-														title="Copy"
-													>
-														<LucideCopy className="w-3 h-3" />
-													</button>
-													<button
-														type="button"
-														class="d-btn p-1 d-btn-xs d-btn-primary"
-														onclick={() => insertPlaceholder(ph.key)}
-														title="Insert"
-													>
-														<LucidePlus className="w-3 h-3" />
-													</button>
-												</div>
-											</div>
-										{/each}
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			{#if viewMode !== 'view'}
-				<div
-					class="mt-6 flex justify-end gap-2 border-t border-base-300 pt-4"
-				>
-					<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}
-						>Cancel</DaisyUiButton
-					>
+				<div class="mb-4 flex items-center justify-between">
+					<h2 class="text-lg font-semibold">
+						{viewMode === 'view'
+							? 'View'
+							: editingId
+								? 'Edit'
+								: 'Create'} Document Setting
+					</h2>
 					<DaisyUiButton
-						className="d-btn-primary d-btn-sm"
-						onClick={handleSave}
+						className="d-btn-ghost d-btn-sm"
+						onClick={resetForm}
 					>
-						{editingId ? 'Update' : 'Create'}
+						<LucideX className="w-4 h-4" />
 					</DaisyUiButton>
 				</div>
-			{/if}
+
+				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+					<!-- Left Column: Basic Info + Page Layout -->
+					<div class="space-y-4">
+						<div class="rounded-lg bg-base-200 p-4">
+							<h3 class="mb-3 font-medium">Basic Information</h3>
+							<div class="space-y-3">
+								<div class="flex flex-col gap-1">
+									<DaisyUiLabel forText="name"
+										>Name <span class="text-error">*</span
+										></DaisyUiLabel
+									>
+									<DaisyUiInputField
+										id="name"
+										bind:value={nameInput}
+										inputType="text"
+										inputPlaceholderText="e.g., OPD Consent Form"
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<DaisyUiLabel forText="documentType"
+										>Document Type</DaisyUiLabel
+									>
+									<DaisyUiSelect
+										bind:value={documentTypeIdInput}
+										optionHeader="Select type..."
+										disabled={viewMode === 'view'}
+									>
+										{#each documentTypes as dt (dt.id)}
+											<option value={String(dt.id)}
+												>{dt.documentType}</option
+											>
+										{/each}
+									</DaisyUiSelect>
+								</div>
+								<div class="flex flex-col gap-1">
+									<DaisyUiLabel forText="description"
+										>Description</DaisyUiLabel
+									>
+									<textarea
+										id="description"
+										bind:value={descriptionInput}
+										placeholder="Optional description..."
+										disabled={viewMode === 'view'}
+										class="d-textarea h-16"
+									></textarea>
+								</div>
+							</div>
+						</div>
+
+						<div class="rounded-lg bg-base-200 p-4">
+							<h3 class="mb-3 font-medium">Page Layout</h3>
+							<div class="grid grid-cols-2 gap-3">
+								<div class="flex flex-col gap-1">
+									<DaisyUiLabel forText="pageSize"
+										>Page Size</DaisyUiLabel
+									>
+									<DaisyUiSelect
+										bind:value={pageSizeInput}
+										disabled={viewMode === 'view'}
+									>
+										{#each PAGE_SIZES as size}
+											<option value={size}>{size}</option>
+										{/each}
+									</DaisyUiSelect>
+								</div>
+								<div class="flex flex-col gap-1">
+									<DaisyUiLabel forText="pageOrientation"
+										>Orientation</DaisyUiLabel
+									>
+									<DaisyUiSelect
+										bind:value={pageOrientation}
+										disabled={viewMode === 'view'}
+									>
+										{#each ORIENTATIONS as orient}
+											<option value={orient}>{orient}</option>
+										{/each}
+									</DaisyUiSelect>
+								</div>
+							</div>
+
+							<h4 class="mt-4 mb-2 text-sm font-medium">
+								Margins (mm)
+							</h4>
+							<div class="grid grid-cols-4 gap-2">
+								<div class="flex flex-col gap-1">
+									<label
+										for="marginTop"
+										class="text-xs text-base-content/70">Top</label
+									>
+									<input
+										id="marginTop"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={marginTop}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="marginBottom"
+										class="text-xs text-base-content/70">Bottom</label
+									>
+									<input
+										id="marginBottom"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={marginBottom}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="marginLeft"
+										class="text-xs text-base-content/70">Left</label
+									>
+									<input
+										id="marginLeft"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={marginLeft}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="marginRight"
+										class="text-xs text-base-content/70">Right</label
+									>
+									<input
+										id="marginRight"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={marginRight}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+							</div>
+
+							<h4 class="mt-4 mb-2 text-sm font-medium">
+								Padding (mm)
+							</h4>
+							<div class="grid grid-cols-4 gap-2">
+								<div class="flex flex-col gap-1">
+									<label
+										for="paddingTop"
+										class="text-xs text-base-content/70">Top</label
+									>
+									<input
+										id="paddingTop"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={paddingTop}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="paddingBottom"
+										class="text-xs text-base-content/70">Bottom</label
+									>
+									<input
+										id="paddingBottom"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={paddingBottom}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="paddingLeft"
+										class="text-xs text-base-content/70">Left</label
+									>
+									<input
+										id="paddingLeft"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={paddingLeft}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+								<div class="flex flex-col gap-1">
+									<label
+										for="paddingRight"
+										class="text-xs text-base-content/70">Right</label
+									>
+									<input
+										id="paddingRight"
+										type="number"
+										class="d-input-bordered d-input d-input-sm w-full"
+										bind:value={paddingRight}
+										disabled={viewMode === 'view'}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Middle Column: Header & Footer Editors -->
+					<div class="space-y-4 lg:col-span-2">
+						<!-- Header Section -->
+						<div class="rounded-lg bg-base-200 p-4">
+							<div class="mb-3 flex items-center justify-between">
+								<div class="flex items-center gap-3">
+									<h3 class="font-medium">Header Section</h3>
+									<label class="flex items-center gap-2 text-sm">
+										<input
+											type="checkbox"
+											class="d-checkbox d-checkbox-sm"
+											bind:checked={showHeader}
+											disabled={viewMode === 'view'}
+										/>
+										Show Header
+									</label>
+								</div>
+								{#if viewMode !== 'view'}
+									<button
+										type="button"
+										class="d-btn d-btn-ghost d-btn-xs"
+										onclick={() => {
+											activeEditorTarget = 'header';
+											showPlaceholderPanel = !showPlaceholderPanel;
+										}}
+									>
+										Insert Placeholder
+									</button>
+								{/if}
+							</div>
+							{#if showHeader}
+								<MariRichEditor
+									bind:value={headerHtml}
+									className="min-h-[150px]"
+									disabled={viewMode === 'view'}
+									showMenuBar={false}
+								/>
+							{:else}
+								<div
+									class="p-4 text-center text-sm text-base-content/50 italic"
+								>
+									Header is disabled
+								</div>
+							{/if}
+						</div>
+
+						<!-- Footer Section -->
+						<div class="rounded-lg bg-base-200 p-4">
+							<div class="mb-3 flex items-center justify-between">
+								<div class="flex items-center gap-3">
+									<h3 class="font-medium">Footer Section</h3>
+									<label class="flex items-center gap-2 text-sm">
+										<input
+											type="checkbox"
+											class="d-checkbox d-checkbox-sm"
+											bind:checked={showFooter}
+											disabled={viewMode === 'view'}
+										/>
+										Show Footer
+									</label>
+								</div>
+								{#if viewMode !== 'view'}
+									<button
+										type="button"
+										class="d-btn d-btn-ghost d-btn-xs"
+										onclick={() => {
+											activeEditorTarget = 'footer';
+											showPlaceholderPanel = !showPlaceholderPanel;
+										}}
+									>
+										Insert Placeholder
+									</button>
+								{/if}
+							</div>
+							{#if showFooter}
+								<MariRichEditor
+									bind:value={footerHtml}
+									className="min-h-[150px]"
+									disabled={viewMode === 'view'}
+									showMenuBar={false}
+								/>
+							{:else}
+								<div
+									class="p-4 text-center text-sm text-base-content/50 italic"
+								>
+									Footer is disabled
+								</div>
+							{/if}
+						</div>
+
+						<!-- Placeholder Panel -->
+						{#if showPlaceholderPanel && viewMode !== 'view'}
+							<div class="rounded-lg bg-base-200 p-4">
+								<div class="mb-3 flex items-center justify-between">
+									<h3 class="font-medium">Template Placeholders</h3>
+									<button
+										type="button"
+										class="d-btn d-btn-ghost d-btn-xs"
+										onclick={() => (showPlaceholderPanel = false)}
+									>
+										<LucideX className="w-3 h-3" />
+									</button>
+								</div>
+								<p class="mb-3 text-xs text-base-content/70">
+									Click to copy, or click "Insert" to add to {activeEditorTarget}
+									editor.
+								</p>
+								<div
+									class="grid max-h-64 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 xl:grid-cols-3"
+								>
+									{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category}
+										<div class="space-y-1">
+											<h4 class="text-xs font-semibold text-primary">
+												{category.category}
+											</h4>
+											{#each category.placeholders as ph}
+												<div
+													class="flex items-center justify-between rounded bg-base-100 px-2 py-1 text-xs"
+												>
+													<div class="min-w-0 flex-1">
+														<code
+															class="font-mono text-[10px] text-primary"
+															>{ph.key}</code
+														>
+														<p class="truncate text-base-content/60">
+															{ph.desc}
+														</p>
+													</div>
+													<div class="ml-2 flex items-center gap-1">
+														<button
+															type="button"
+															class="d-btn p-1 d-btn-ghost d-btn-xs"
+															onclick={() => copyPlaceholder(ph.key)}
+															title="Copy"
+														>
+															<LucideCopy className="w-3 h-3" />
+														</button>
+														<button
+															type="button"
+															class="d-btn p-1 d-btn-xs d-btn-primary"
+															onclick={() =>
+																insertPlaceholder(ph.key)}
+															title="Insert"
+														>
+															<LucidePlus className="w-3 h-3" />
+														</button>
+													</div>
+												</div>
+											{/each}
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				{#if viewMode !== 'view'}
+					<div
+						class="mt-6 flex justify-end gap-2 border-t border-base-300 pt-4"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={resetForm}>Cancel</DaisyUiButton
+						>
+						<DaisyUiButton
+							className="d-btn-primary d-btn-sm"
+							onClick={handleSave}
+						>
+							{editingId ? 'Update' : 'Create'}
+						</DaisyUiButton>
+					</div>
+				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
@@ -721,65 +747,65 @@
 				</div>
 			{:else}
 				<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MariTable
-					rows={settingList}
-					{columns}
-					{isLoading}
-					bind:pageSize={filterPageSize}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip="Refresh"
-					emptyMessage="No document settings found"
-					showRowActions={true}
-					actionsHeader="Actions"
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchData({ bustCache: true })}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchData();
-					}}
-					on:pageChange={() => fetchData()}
-					on:filtersChange={(e) => {
-						tableFilters = e.detail.filters;
-						currentPage = 1;
-						fetchData();
-					}}
-				>
-					<svelte:fragment slot="rowActions" let:row>
-						{@const typedRow = row as DocumentSettingWithRelations}
-						<td class="w-32 shrink-0 text-right">
-							<div class="flex justify-end gap-1">
-								<button
-									type="button"
-									class="d-btn d-btn-ghost d-btn-xs"
-									onclick={() => startView(typedRow)}
-									title="View"
-								>
-									<LucideEye className="w-3 h-3" />
-								</button>
-								<button
-									type="button"
-									class="d-btn d-btn-ghost d-btn-xs d-btn-accent"
-									onclick={() => startEdit(typedRow)}
-									title="Edit"
-								>
-									<LucidePencil className="w-3 h-3" />
-								</button>
-								<button
-									type="button"
-									class="d-btn text-error d-btn-ghost d-btn-xs"
-									onclick={() => handleDelete(typedRow)}
-									title="Delete"
-								>
-									<LucideTrash2 className="w-3 h-3" />
-								</button>
-							</div>
-						</td>
-					</svelte:fragment>
-				</MariTable>
+					<MariTable
+						rows={settingList}
+						{columns}
+						{isLoading}
+						bind:pageSize={filterPageSize}
+						bind:currentPage
+						totalRowCount={total}
+						showRefreshButton={true}
+						refreshTooltip="Refresh"
+						emptyMessage="No document settings found"
+						showRowActions={true}
+						actionsHeader="Actions"
+						actionsVariant="none"
+						enableColumnFilters={true}
+						useRemoteFilters={true}
+						on:refresh={() => fetchData({ bustCache: true })}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchData();
+						}}
+						on:pageChange={() => fetchData()}
+						on:filtersChange={(e) => {
+							tableFilters = e.detail.filters;
+							currentPage = 1;
+							fetchData();
+						}}
+					>
+						<svelte:fragment slot="rowActions" let:row>
+							{@const typedRow = row as DocumentSettingWithRelations}
+							<td class="w-32 shrink-0 text-right">
+								<div class="flex justify-end gap-1">
+									<button
+										type="button"
+										class="d-btn d-btn-ghost d-btn-xs"
+										onclick={() => startView(typedRow)}
+										title="View"
+									>
+										<LucideEye className="w-3 h-3" />
+									</button>
+									<button
+										type="button"
+										class="d-btn d-btn-ghost d-btn-xs d-btn-accent"
+										onclick={() => startEdit(typedRow)}
+										title="Edit"
+									>
+										<LucidePencil className="w-3 h-3" />
+									</button>
+									<button
+										type="button"
+										class="d-btn text-error d-btn-ghost d-btn-xs"
+										onclick={() => handleDelete(typedRow)}
+										title="Delete"
+									>
+										<LucideTrash2 className="w-3 h-3" />
+									</button>
+								</div>
+							</td>
+						</svelte:fragment>
+					</MariTable>
 				</div>
 			{/if}
 		</DaisyUiCardBody>

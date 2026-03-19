@@ -97,7 +97,10 @@
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
 						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
-							<DaisyUiAlert type={toast.type} message={toast.message} />
+							<DaisyUiAlert
+								type={toast.type}
+								message={toast.message}
+							/>
 						</div>
 					{/each}
 				</DaisyUiToast>
@@ -113,7 +116,10 @@
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
 						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
-							<DaisyUiAlert type={toast.type} message={toast.message} />
+							<DaisyUiAlert
+								type={toast.type}
+								message={toast.message}
+							/>
 						</div>
 					{/each}
 				</DaisyUiToast>

@@ -33,16 +33,17 @@ export const marketplaceAppFormTableRelations = relations(
 	})
 );
 
-export const marketplaceAllowedFileExtensionTableRelations = relations(
-	marketplaceAllowedFileExtensionTable,
-	({ one, many }) => ({
-		status: one(statusTable, {
-			fields: [marketplaceAllowedFileExtensionTable.statusId],
-			references: [statusTable.id]
-		}),
-		archives: many(marketplaceAppArchiveTable)
-	})
-);
+export const marketplaceAllowedFileExtensionTableRelations =
+	relations(
+		marketplaceAllowedFileExtensionTable,
+		({ one, many }) => ({
+			status: one(statusTable, {
+				fields: [marketplaceAllowedFileExtensionTable.statusId],
+				references: [statusTable.id]
+			}),
+			archives: many(marketplaceAppArchiveTable)
+		})
+	);
 
 export const marketplaceAppArchiveTableRelations = relations(
 	marketplaceAppArchiveTable,

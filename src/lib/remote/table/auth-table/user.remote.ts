@@ -22,9 +22,7 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 
 // get all
 export const getUser = query(async (): Promise<UserSchema[]> => {
-	const data = await ensureDb()
-		.select()
-		.from(table.userTable);
+	const data = await ensureDb().select().from(table.userTable);
 	return data;
 });
 
@@ -50,9 +48,7 @@ export const getUserPaginated = query(
 				.from(table.userTable)
 				.limit(limit)
 				.offset(offset),
-			ensureDb()
-				.select({ count: count() })
-				.from(table.userTable)
+			ensureDb().select({ count: count() }).from(table.userTable)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {

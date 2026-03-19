@@ -222,7 +222,10 @@
 			if (categoryTerm) {
 				const idsByCategory = subCategories
 					.filter((sc) =>
-						(categories.find((c) => c.id === sc.categoryId)?.categoryName ?? '')
+						(
+							categories.find((c) => c.id === sc.categoryId)
+								?.categoryName ?? ''
+						)
 							.toLowerCase()
 							.includes(categoryTerm)
 					)
@@ -235,7 +238,9 @@
 							);
 			}
 
-			const subCategoryTerm = filters.subCategory?.trim().toLowerCase();
+			const subCategoryTerm = filters.subCategory
+				?.trim()
+				.toLowerCase();
 			if (subCategoryTerm) {
 				const selected = subCategories
 					.filter((sc) =>
@@ -297,8 +302,7 @@
 				await getServiceItemPaginated(paginatedParams).refresh();
 			}
 
-			serviceResult =
-				await getServiceItemPaginated(paginatedParams);
+			serviceResult = await getServiceItemPaginated(paginatedParams);
 		} finally {
 			isLoading = false;
 		}

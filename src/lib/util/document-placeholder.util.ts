@@ -19,7 +19,10 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] = [
 			{ key: '{{patient.gender}}', desc: 'Gender' },
 			{ key: '{{patient.address}}', desc: 'Patient address' },
 			{ key: '{{patient.phone}}', desc: 'Phone number' },
-			{ key: '{{patient.email}}', desc: 'Email address (if available)' }
+			{
+				key: '{{patient.email}}',
+				desc: 'Email address (if available)'
+			}
 		]
 	},
 	{
@@ -74,14 +77,23 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] = [
 			{ key: '{{patient_code}}', desc: 'Alias of {{patient.code}}' },
 			{ key: '{{patient_dob}}', desc: 'Alias of {{patient.dob}}' },
 			{ key: '{{patient_age}}', desc: 'Alias of {{patient.age}}' },
-			{ key: '{{patient_gender}}', desc: 'Alias of {{patient.gender}}' },
+			{
+				key: '{{patient_gender}}',
+				desc: 'Alias of {{patient.gender}}'
+			},
 			{ key: '{{doctor}}', desc: 'Alias of {{doctor.name}}' },
 			{ key: '{{doctor_name}}', desc: 'Alias of {{doctor.name}}' },
 			{ key: '{{visit_no}}', desc: 'Alias of {{visit.no}}' },
 			{ key: '{{visit_date}}', desc: 'Alias of {{visit.date}}' },
 			{ key: '{{visit_time}}', desc: 'Alias of {{visit.time}}' },
-			{ key: '{{visit_datetime}}', desc: 'Alias of {{visit.datetime}}' },
-			{ key: '{{hospital_name}}', desc: 'Alias of {{hospital.name}}' },
+			{
+				key: '{{visit_datetime}}',
+				desc: 'Alias of {{visit.datetime}}'
+			},
+			{
+				key: '{{hospital_name}}',
+				desc: 'Alias of {{hospital.name}}'
+			},
 			{ key: '{{hospital_logo}}', desc: 'Alias of {{hospital.logo}}' }
 		]
 	}
@@ -105,22 +117,26 @@ type VisitLike = {
 		phone?: string | null;
 		email?: string | null;
 	} | null;
-	patient?: (NameParts & {
-		code?: string | null;
-		dateOfBirth?: string | null;
-		gender?: { name?: string | null } | null;
-		address?: string | null;
-		phonePrimary?: string | null;
-		email?: string | null;
-	}) | null;
-	doctor?: (NameParts & {
-		title?: { name?: string | null } | null;
-		specialization?: { name?: string | null } | null;
-		staffDetail?: {
-			licenseNo?: string | null;
-			signatureText?: string | null;
-		} | null;
-	}) | null;
+	patient?:
+		| (NameParts & {
+				code?: string | null;
+				dateOfBirth?: string | null;
+				gender?: { name?: string | null } | null;
+				address?: string | null;
+				phonePrimary?: string | null;
+				email?: string | null;
+		  })
+		| null;
+	doctor?:
+		| (NameParts & {
+				title?: { name?: string | null } | null;
+				specialization?: { name?: string | null } | null;
+				staffDetail?: {
+					licenseNo?: string | null;
+					signatureText?: string | null;
+				} | null;
+		  })
+		| null;
 };
 
 type DocumentLike = {
@@ -181,7 +197,8 @@ export function buildDocumentPlaceholderContext(
 		.trim();
 	const doctorSpecialty = visit?.doctor?.specialization?.name ?? '';
 	const doctorLicense = visit?.doctor?.staffDetail?.licenseNo ?? '';
-	const doctorSignature = visit?.doctor?.staffDetail?.signatureText ?? '';
+	const doctorSignature =
+		visit?.doctor?.staffDetail?.signatureText ?? '';
 	const hospitalName = visit?.hospital?.name ?? '';
 	const hospitalLogo = visit?.hospital?.logoUrl ?? '';
 	const hospitalAddress = visit?.hospital?.address ?? '';
@@ -262,4 +279,3 @@ export function resolveDocumentTemplate(
 	}
 	return result;
 }
-

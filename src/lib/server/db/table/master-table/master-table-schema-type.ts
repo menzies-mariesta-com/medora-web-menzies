@@ -39,11 +39,15 @@ type OptionalAuditKeys =
 	| 'deletedBy'
 	| 'deletedAt';
 
-type WithOptionalAudit<T> = Omit<T, Extract<keyof T, OptionalAuditKeys>> &
+type WithOptionalAudit<T> = Omit<
+	T,
+	Extract<keyof T, OptionalAuditKeys>
+> &
 	Partial<Pick<T, Extract<keyof T, OptionalAuditKeys>>>;
 
-type InferSelectModel<TTable extends Table> =
-	WithOptionalAudit<DrizzleInferSelectModel<TTable>>;
+type InferSelectModel<TTable extends Table> = WithOptionalAudit<
+	DrizzleInferSelectModel<TTable>
+>;
 
 // Master Tables (alphabetical)
 export type BloodTypeSchema = InferSelectModel<typeof bloodTypeTable>;

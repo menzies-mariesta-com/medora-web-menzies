@@ -103,10 +103,7 @@ export const getSpecializationById = query(
 			.where(
 				and(
 					eq(table.specializationTable.id, id),
-					ne(
-						table.specializationTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.specializationTable.statusId, StatusEnum.DELETED)
 				)
 			);
 		return row ?? null;

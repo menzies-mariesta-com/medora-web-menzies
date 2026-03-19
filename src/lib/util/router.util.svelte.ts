@@ -29,7 +29,10 @@ export class RouterUtil {
 			const url = new SvelteURL(path);
 			window.open(url.href, '_blank', 'noopener,noreferrer');
 		} catch (e) {
-			log.error('Invalid external path', e instanceof Error ? e : undefined);
+			log.error(
+				'Invalid external path',
+				e instanceof Error ? e : undefined
+			);
 			const currentOrigin = window.location.origin;
 			const fullUrl = path.startsWith('/')
 				? `${currentOrigin}${path}`

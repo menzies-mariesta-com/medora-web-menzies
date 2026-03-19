@@ -48,78 +48,82 @@ export type PatientAllergyWithRelations = Awaited<
 >[number];
 
 /** Remote paginated table data for EMR allergy page (filters + pagination done server-side). */
-export const getPatientAllergiesByPatientIdWithRelationsPaginated = query(
-	'unchecked' as const,
-	async (
-		params: PaginationParams & {
-			patientId: string;
-			hospitalId?: string;
-			visitNo?: string | null;
-			severityName?: string | null;
-			statusId?: number | null;
+export const getPatientAllergiesByPatientIdWithRelationsPaginated =
+	query(
+		'unchecked' as const,
+		async (
+			params: PaginationParams & {
+				patientId: string;
+				hospitalId?: string;
+				visitNo?: string | null;
+				severityName?: string | null;
+				statusId?: number | null;
+			}
+		): Promise<PaginatedResult<PatientAllergyWithRelations>> => {
+			const { page, pageSize } = normalizePagination(params);
+			const rows =
+				await ensureDb().query.patientAllergyTable.findMany({
+					where: (t, { and, eq, ne }) =>
+						and(
+							eq(t.patientId, params.patientId),
+							ne(t.statusId, StatusEnum.DELETED)
+						),
+					with: {
+						patient: true,
+						allergy: true,
+						severity: true,
+						visit: true,
+						status: true
+					},
+					orderBy: (t, { desc }) => desc(t.id)
+				});
+
+			const visitNoTerm = params.visitNo?.trim().toLowerCase();
+			const severityTerm = params.severityName?.trim().toLowerCase();
+			const filtered = rows.filter((row) => {
+				if (
+					params.hospitalId &&
+					row.visit?.hospitalId !== params.hospitalId
+				) {
+					return false;
+				}
+				if (
+					params.statusId != null &&
+					row.statusId !== params.statusId
+				) {
+					return false;
+				}
+				if (
+					visitNoTerm &&
+					!(row.visit?.visitNo ?? '')
+						.toLowerCase()
+						.includes(visitNoTerm)
+				) {
+					return false;
+				}
+				if (
+					severityTerm &&
+					!(row.severity?.name ?? '')
+						.toLowerCase()
+						.includes(severityTerm)
+				) {
+					return false;
+				}
+				return true;
+			}) as PatientAllergyWithRelations[];
+
+			const total = filtered.length;
+			const offset = (page - 1) * pageSize;
+			const data = filtered.slice(offset, offset + pageSize);
+			return {
+				data,
+				total,
+				page,
+				pageSize,
+				totalPages: Math.ceil(total / pageSize) || 1
+			};
 		}
-	): Promise<PaginatedResult<PatientAllergyWithRelations>> => {
-		const { page, pageSize } = normalizePagination(params);
-		const rows = await ensureDb().query.patientAllergyTable.findMany({
-			where: (t, { and, eq, ne }) =>
-				and(
-					eq(t.patientId, params.patientId),
-					ne(t.statusId, StatusEnum.DELETED)
-				),
-			with: {
-				patient: true,
-				allergy: true,
-				severity: true,
-				visit: true,
-				status: true
-			},
-			orderBy: (t, { desc }) => desc(t.id)
-		});
-
-		const visitNoTerm = params.visitNo?.trim().toLowerCase();
-		const severityTerm = params.severityName?.trim().toLowerCase();
-		const filtered = rows.filter((row) => {
-			if (
-				params.hospitalId &&
-				row.visit?.hospitalId !== params.hospitalId
-			) {
-				return false;
-			}
-			if (
-				params.statusId != null &&
-				row.statusId !== params.statusId
-			) {
-				return false;
-			}
-			if (
-				visitNoTerm &&
-				!(row.visit?.visitNo ?? '').toLowerCase().includes(visitNoTerm)
-			) {
-				return false;
-			}
-			if (
-				severityTerm &&
-				!(row.severity?.name ?? '')
-					.toLowerCase()
-					.includes(severityTerm)
-			) {
-				return false;
-			}
-			return true;
-		}) as PatientAllergyWithRelations[];
-
-		const total = filtered.length;
-		const offset = (page - 1) * pageSize;
-		const data = filtered.slice(offset, offset + pageSize);
-		return {
-			data,
-			total,
-			page,
-			pageSize,
-			totalPages: Math.ceil(total / pageSize) || 1
-		};
-	}
-);
+	);
 
 /** Get all patient allergies (active and inactive) by patientId with allergy, severity, and visit (for EMR allergy page). */
 export const getPatientAllergiesByPatientIdWithRelations = query(
@@ -210,10 +214,7 @@ export const getPatientAllergiesById = query(
 			.where(
 				and(
 					eq(table.patientAllergyTable.id, id),
-					ne(
-						table.patientAllergyTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.patientAllergyTable.statusId, StatusEnum.DELETED)
 				)
 			);
 		return row ?? null;
@@ -234,10 +235,7 @@ export const getPatientAllergiesByPatientId = query(
 			.where(
 				and(
 					eq(table.patientAllergyTable.patientId, patientId),
-					ne(
-						table.patientAllergyTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.patientAllergyTable.statusId, StatusEnum.DELETED)
 				)
 			)
 			.orderBy(table.patientAllergyTable.id);

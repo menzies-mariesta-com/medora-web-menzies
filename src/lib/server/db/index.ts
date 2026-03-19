@@ -92,7 +92,9 @@ function addInsertAudit(
 		}
 		return next;
 	};
-	return Array.isArray(values) ? values.map(patchRow) : patchRow(values);
+	return Array.isArray(values)
+		? values.map(patchRow)
+		: patchRow(values);
 }
 
 function addUpdateAudit(
@@ -157,19 +159,26 @@ function buildSoftDeleteSet(
 	return setValues;
 }
 
-function withAudit(dbInstance: DbInstance, userId: string | null): DbInstance {
+function withAudit(
+	dbInstance: DbInstance,
+	userId: string | null
+): DbInstance {
 	return new Proxy(dbInstance as object, {
 		get(target, prop, receiver) {
 			if (prop === 'insert') {
 				return (tableDef: TableLike) => {
-					const builder = (target as DbInstance).insert(tableDef as never);
+					const builder = (target as DbInstance).insert(
+						tableDef as never
+					);
 					return new Proxy(builder as object, {
 						get(builderTarget, builderProp, builderReceiver) {
 							if (builderProp === 'values') {
 								return (values: unknown) =>
-									(builderTarget as { values: (v: unknown) => unknown }).values(
-										addInsertAudit(tableDef, values, userId)
-									);
+									(
+										builderTarget as {
+											values: (v: unknown) => unknown;
+										}
+									).values(addInsertAudit(tableDef, values, userId));
 							}
 							return Reflect.get(
 								builderTarget,
@@ -183,14 +192,16 @@ function withAudit(dbInstance: DbInstance, userId: string | null): DbInstance {
 
 			if (prop === 'update') {
 				return (tableDef: TableLike) => {
-					const builder = (target as DbInstance).update(tableDef as never);
+					const builder = (target as DbInstance).update(
+						tableDef as never
+					);
 					return new Proxy(builder as object, {
 						get(builderTarget, builderProp, builderReceiver) {
 							if (builderProp === 'set') {
 								return (setValues: unknown) =>
-									(builderTarget as { set: (v: unknown) => unknown }).set(
-										addUpdateAudit(tableDef, setValues, userId)
-									);
+									(
+										builderTarget as { set: (v: unknown) => unknown }
+									).set(addUpdateAudit(tableDef, setValues, userId));
 							}
 							return Reflect.get(
 								builderTarget,

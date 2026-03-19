@@ -235,7 +235,10 @@
 				</div>
 				<div class="flex flex-col gap-4">
 					<div class="flex min-w-0 flex-1 flex-col gap-1">
-						<DaisyUiLabel forText="docTypeName" className="text-sm font-medium">
+						<DaisyUiLabel
+							forText="docTypeName"
+							className="text-sm font-medium"
+						>
 							Name <span class="text-error">*</span>
 						</DaisyUiLabel>
 						<DaisyUiInputField
@@ -246,12 +249,20 @@
 							className="d-input-sm w-full"
 						/>
 					</div>
-					<div class="flex justify-end gap-2 border-t border-base-300 pt-4">
-						<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={resetForm}>
+					<div
+						class="flex justify-end gap-2 border-t border-base-300 pt-4"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={resetForm}
+						>
 							<LucideX className="size-4" />
 							{m.cancel()}
 						</DaisyUiButton>
-						<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={handleSave}>
+						<DaisyUiButton
+							className="d-btn-primary d-btn-sm"
+							onClick={handleSave}
+						>
 							{editingId ? 'Update' : 'Create'}
 						</DaisyUiButton>
 					</div>

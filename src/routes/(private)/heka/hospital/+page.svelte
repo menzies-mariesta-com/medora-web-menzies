@@ -113,7 +113,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let hospitalResult = $state<PaginatedResult<HospitalWithOwner> | null>(null);
+	let hospitalResult =
+		$state<PaginatedResult<HospitalWithOwner> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
@@ -129,11 +130,14 @@
 				data: d.initialHospitals,
 				total: d.initialTotal ?? 0,
 				page: d.initialPage ?? 1,
-				pageSize: d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE,
+				pageSize:
+					d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE,
 				totalPages: d.initialTotalPages ?? 1
 			};
 			currentPage = d.initialPage ?? 1;
-			pageSizeStr = String(d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE);
+			pageSizeStr = String(
+				d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE
+			);
 			isLoading = false;
 		}
 	});
@@ -265,57 +269,57 @@
 			<DaisyUiCardBody>
 				<div class={TableEnum.HEIGHT}>
 					<MariTable
-							rows={hospitals}
-							columns={hospitalColumns}
-							{isLoading}
-							bind:pageSize={pageSizeStr}
-							bind:currentPage
-							totalRowCount={total}
-							showRefreshButton={true}
-							refreshTooltip={m.refresh_data()}
-							emptyMessage={m.no_hospitals_yet()}
-							showRowActions={true}
-							actionsHeader={m.actions()}
-							actionsVariant="none"
-							enableColumnFilters={true}
-							useRemoteFilters={true}
-							on:refresh={() => loadHospitals(true)}
-							on:pageSizeChange={() => {
-								currentPage = 1;
-								loadHospitals(true);
-							}}
-							on:pageChange={() => loadHospitals(true)}
-							on:filtersChange={(e) => {
-								tableFilters = e.detail.filters;
-								currentPage = 1;
-								loadHospitals(true);
-							}}
-						>
-							<svelte:fragment slot="rowActions" let:row>
-								<div class="flex justify-end gap-2">
+						rows={hospitals}
+						columns={hospitalColumns}
+						{isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage
+						totalRowCount={total}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage={m.no_hospitals_yet()}
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={true}
+						useRemoteFilters={true}
+						on:refresh={() => loadHospitals(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							loadHospitals(true);
+						}}
+						on:pageChange={() => loadHospitals(true)}
+						on:filtersChange={(e) => {
+							tableFilters = e.detail.filters;
+							currentPage = 1;
+							loadHospitals(true);
+						}}
+					>
+						<svelte:fragment slot="rowActions" let:row>
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm"
+									onClick={() => goToHospitalHome(row.id)}
+								>
+									{m.enter()}
+								</DaisyUiButton>
+								{#if canManageHospitals}
 									<DaisyUiButton
-										className="d-btn-primary d-btn-sm"
-										onClick={() => goToHospitalHome(row.id)}
+										className="d-btn-ghost d-btn-sm"
+										onClick={() => openEditHospitalModal(row)}
 									>
-										{m.enter()}
+										<LucidePencil />
 									</DaisyUiButton>
-									{#if canManageHospitals}
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEditHospitalModal(row)}
-										>
-											<LucidePencil />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(row)}
-										>
-											<LucideTrash2 />
-										</DaisyUiButton>
-									{/if}
-								</div>
-							</svelte:fragment>
-						</MariTable>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										onClick={() => handleDelete(row)}
+									>
+										<LucideTrash2 />
+									</DaisyUiButton>
+								{/if}
+							</div>
+						</svelte:fragment>
+					</MariTable>
 				</div>
 			</DaisyUiCardBody>
 		</DaisyUiCard>

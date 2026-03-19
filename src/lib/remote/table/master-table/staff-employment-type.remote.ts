@@ -20,7 +20,10 @@ export const getStaffEmploymentType = query(
 			.select()
 			.from(table.staffEmploymentTypeTable)
 			.where(
-				ne(table.staffEmploymentTypeTable.statusId, StatusEnum.DELETED)
+				ne(
+					table.staffEmploymentTypeTable.statusId,
+					StatusEnum.DELETED
+				)
 			)
 			.orderBy(table.staffEmploymentTypeTable.name);
 	}
@@ -32,7 +35,10 @@ export const getStaffEmploymentTypeCount = query(
 			.select({ count: count() })
 			.from(table.staffEmploymentTypeTable)
 			.where(
-				ne(table.staffEmploymentTypeTable.statusId, StatusEnum.DELETED)
+				ne(
+					table.staffEmploymentTypeTable.statusId,
+					StatusEnum.DELETED
+				)
 			);
 		return row?.count ?? 0;
 	}

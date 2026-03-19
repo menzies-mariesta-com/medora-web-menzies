@@ -28,7 +28,10 @@ export const getDocumentSettings = query(
 
 export const getDocumentSettingsWithRelations = query(async () => {
 	return ensureDb().query.documentSettingTable.findMany({
-		where: ne(table.documentSettingTable.statusId, StatusEnum.DELETED),
+		where: ne(
+			table.documentSettingTable.statusId,
+			StatusEnum.DELETED
+		),
 		with: {
 			documentType: true,
 			hospital: true,
@@ -114,10 +117,7 @@ export const getDocumentSettingById = query(
 			.where(
 				and(
 					eq(table.documentSettingTable.id, id),
-					ne(
-						table.documentSettingTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.documentSettingTable.statusId, StatusEnum.DELETED)
 				)
 			);
 		return row ?? null;

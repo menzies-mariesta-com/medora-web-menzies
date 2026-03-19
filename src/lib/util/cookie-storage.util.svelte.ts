@@ -19,7 +19,10 @@ export class CookieStorageUtil {
 				stringValue
 			)}${expires}; path=/`;
 		} catch (error) {
-			log.error(`Error saving cookie "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error saving cookie "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -42,7 +45,10 @@ export class CookieStorageUtil {
 			}
 			return null;
 		} catch (error) {
-			log.error(`Error reading cookie "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error reading cookie "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 			return null;
 		}
 	}
@@ -54,7 +60,10 @@ export class CookieStorageUtil {
 				key
 			)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 		} catch (error) {
-			log.error(`Error removing cookie "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error removing cookie "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -68,7 +77,10 @@ export class CookieStorageUtil {
 				document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 			}
 		} catch (error) {
-			log.error('Error clearing cookies', error instanceof Error ? error : undefined);
+			log.error(
+				'Error clearing cookies',
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 

@@ -7,8 +7,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userRoleId = locals.userRoleId ?? null;
 	const userId = locals.user?.id ?? null;
 	const isOwner = userRoleId === RoleEnum.OWNER;
-	const ownerId =
-		isOwner && userId ? userId : undefined;
+	const ownerId = isOwner && userId ? userId : undefined;
 
 	const result = await getHospitalWithOwnerPaginated({
 		page: 1,
