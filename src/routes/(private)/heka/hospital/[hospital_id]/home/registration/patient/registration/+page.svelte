@@ -56,6 +56,8 @@
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
 	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import { page } from '$app/state';
@@ -251,8 +253,10 @@
 		firstName = patient.firstName ?? '';
 		middleName = patient.middleName ?? '';
 		lastName = patient.lastName ?? '';
-		email =
-			(patient as { user?: { email?: string } }).user?.email ?? '';
+		email = StringUtil.displayEmail(
+			(patient as { user?: { email?: string | null } }).user?.email ??
+				''
+		);
 		selectedGenderId =
 			patient.genderId != null ? String(patient.genderId) : '';
 		selectedMaritalStatusId =
@@ -276,10 +280,28 @@
 				? String(patient.guardianTitleId)
 				: '';
 		guardianName = patient.guardianName ?? '';
+		const guardianPhoneRaw = patient.guardianPhone ?? '';
+		const guardianPhoneCountryId = (
+			patient as { guardianPhoneCountryId?: number | null }
+		).guardianPhoneCountryId;
 		selectedGuardianPhoneCountryId =
-			patient.guardianPhoneCountryId != null
-				? String(patient.guardianPhoneCountryId)
+			guardianPhoneCountryId != null
+				? String(guardianPhoneCountryId)
 				: '';
+		if (guardianPhoneCountryId != null) {
+			const country = countryData.find(
+				(c) => c.id === guardianPhoneCountryId
+			);
+			guardianPhone =
+				country?.countryCallingCode &&
+				guardianPhoneRaw.startsWith(country.countryCallingCode)
+					? guardianPhoneRaw
+							.slice(country.countryCallingCode.length)
+							.trim()
+					: guardianPhoneRaw;
+		} else {
+			guardianPhone = guardianPhoneRaw;
+		}
 		address = patient.address ?? '';
 		remark = patient.remark ?? '';
 		selectedReligionId =
@@ -454,12 +476,8 @@
 	function buildPhonePrimary(): string {
 		if (!selectedPhoneCountryId || !selectedPhone?.trim())
 			return selectedPhone?.trim() ?? '';
-		const country = countryData.find(
-			(c) => String(c.id) === selectedPhoneCountryId
-		);
-		return country?.countryCallingCode
-			? `${country.countryCallingCode}${selectedPhone.trim()}`
-			: selectedPhone.trim();
+		// Store only local number in `phonePrimary`; country calling code is represented by `phonePrimaryCountryId`.
+		return selectedPhone.trim();
 	}
 
 	async function checkDuplicate() {
@@ -567,33 +585,21 @@
 			[firstName, middleName, lastName].filter(Boolean).join(' ') ||
 			firstName;
 
-		// Build phone with country calling code (staff-style)
+		// Store only local number; country calling code lives in *_CountryId columns.
 		let phonePrimary: string | undefined;
 		if (selectedPhoneCountryId && selectedPhone) {
-			const country = countryData.find(
-				(c) => String(c.id) === selectedPhoneCountryId
-			);
-			phonePrimary = country?.countryCallingCode
-				? `${country.countryCallingCode}${selectedPhone.trim()}`
-				: selectedPhone.trim();
+			phonePrimary = selectedPhone.trim();
 		}
 		let phoneSecondary: string | undefined;
 		if (selectedPhoneSecondaryCountryId && selectedPhoneSecondary) {
-			const country = countryData.find(
-				(c) => String(c.id) === selectedPhoneSecondaryCountryId
-			);
-			phoneSecondary = country?.countryCallingCode
-				? `${country.countryCallingCode}${selectedPhoneSecondary.trim()}`
-				: selectedPhoneSecondary.trim();
+			phoneSecondary = selectedPhoneSecondary.trim();
 		}
-		let guardianPhone: string | undefined;
-		if (selectedGuardianPhoneCountryId && guardianPhone) {
-			const country = countryData.find(
-				(c) => String(c.id) === selectedGuardianPhoneCountryId
-			);
-			guardianPhone = country?.countryCallingCode
-				? `${country.countryCallingCode}${guardianPhone.trim()}`
-				: guardianPhone.trim();
+		const guardianPhoneValue = guardianPhone.trim();
+		let guardianPhoneComputed: string | undefined;
+		if (selectedGuardianPhoneCountryId && guardianPhoneValue) {
+			guardianPhoneComputed = guardianPhoneValue;
+		} else if (guardianPhoneValue) {
+			guardianPhoneComputed = guardianPhoneValue;
 		}
 
 		// Client-only submission handler (uses FormData, fetch, etc.)
@@ -613,6 +619,45 @@
 		try {
 			if (currentPatientId) {
 				// Edit: update existing patient
+				const previous = await getPatientByIdWithRelations({
+					id: currentPatientId
+				});
+				const previousUser = previous as {
+					user?: {
+						id?: string;
+						email?: string | null;
+						name?: string | null;
+					};
+				};
+				const previousEmail = previousUser.user?.email ?? '';
+				const previousName = previousUser.user?.name ?? '';
+				const trimmedNewName = fullName.trim();
+				const trimmedNewEmail = email.trim();
+				let shouldSendResetForEmailChange = false;
+				let resetEmailTarget: string | null = null;
+				if (
+					trimmedNewName &&
+					previousUser.user?.id &&
+					trimmedNewName !== previousName
+				) {
+					await updateUser({
+						id: previousUser.user.id,
+						name: trimmedNewName
+					});
+				}
+				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
+					if (previousUser.user?.id) {
+						await updateUser({
+							id: previousUser.user.id,
+							email: trimmedNewEmail
+						});
+					}
+					if (StringUtil.isNoEmail(previousEmail)) {
+						shouldSendResetForEmailChange = true;
+						resetEmailTarget = trimmedNewEmail;
+					}
+				}
+
 				await updatePatient({
 					id: currentPatientId,
 					code: patientCode.trim() || undefined,
@@ -640,7 +685,7 @@
 					identityNo: identityNo.trim() || undefined,
 					dateOfBirth: dateOfBirth || undefined,
 					guardianName: guardianName.trim() || undefined,
-					guardianPhone,
+					guardianPhone: guardianPhoneComputed,
 					guardianPhoneCountryId: selectedGuardianPhoneCountryId
 						? Number(selectedGuardianPhoneCountryId)
 						: undefined,
@@ -718,14 +763,35 @@
 					StatusColorEnum.SUCCESS
 				);
 				removePhotoRequested = false;
+
+				if (shouldSendResetForEmailChange && resetEmailTarget) {
+					const { error } = await authClient.requestPasswordReset({
+						email: resetEmailTarget,
+						redirectTo: routerUtil.getResetRedirectUrl()
+					});
+					if (error) {
+						toastService.addToast(
+							error.message ??
+								'Failed to send reset password email.',
+							StatusColorEnum.ERROR
+						);
+					} else {
+						toastService.addToast(
+							'Reset password email has been sent to the patient.',
+							StatusColorEnum.INFO
+						);
+					}
+				}
 			} else {
 				// Create: new patient (code is generated on backend from route hospital).
 				// Email is optional, but account creation still requires a unique email, so we
 				// pass whatever is provided (or a generated placeholder if blank).
 				const emailValue = email.trim();
+				const usingDefaultEmailForCreate = !emailValue;
 				const result = await createPatientWithUser({
 					email:
-						emailValue || `${crypto.randomUUID()}@placeholder.local`,
+						emailValue ||
+						`${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`,
 					name: fullName,
 					hospitalId: hospitalIdFromUrl ?? '',
 					titleId: selectedTitleId
@@ -752,7 +818,7 @@
 						? Number(selectedGuardianTitleId)
 						: undefined,
 					guardianName: guardianName.trim() || undefined,
-					guardianPhone,
+					guardianPhone: guardianPhoneComputed,
 					guardianPhoneCountryId: selectedGuardianPhoneCountryId
 						? Number(selectedGuardianPhoneCountryId)
 						: undefined,
@@ -792,6 +858,12 @@
 
 				const { patient } = result;
 				patientCode = patient.code ?? '';
+				if (usingDefaultEmailForCreate) {
+					await updateUser({
+						id: result.userId,
+						email: StringUtil.defaultNoEmail(patient.id)
+					});
+				}
 
 				if (photoFile) {
 					photoUploading = true;
@@ -865,6 +937,24 @@
 					`Patient (${patientCode}) created successfully.`,
 					StatusColorEnum.SUCCESS
 				);
+
+				if (emailValue) {
+					const { error } = await authClient.requestPasswordReset({
+						email: emailValue,
+						redirectTo: routerUtil.getResetRedirectUrl()
+					});
+					if (error) {
+						toastService.addToast(
+							error.message ?? 'Failed to send reset link.',
+							StatusColorEnum.ERROR
+						);
+					} else {
+						toastService.addToast(
+							'Reset password email has been sent to the patient.',
+							StatusColorEnum.INFO
+						);
+					}
+				}
 				disableCreateSave = true;
 			}
 		} catch (error: unknown) {
