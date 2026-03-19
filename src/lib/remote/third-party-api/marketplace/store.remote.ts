@@ -24,18 +24,18 @@ export const getStore = query(
 					(archive: any) =>
 						archive.appId === app.id &&
 						archive.statusId === StatusEnum.ACTIVE
-					);
+				);
 				const latestArchive = appArchives[appArchives.length - 1];
-			return {
-				id: String(app.id),
-				packageId: app.code,
-				name: app.name,
-				description: '',
-				iconUrl: '',
-				homepageUrl: latestArchive?.downloadUrl ?? '',
-				createdAt: app.createdAt ?? '',
-				updatedAt: app.updatedAt ?? ''
-			};
+				return {
+					id: String(app.id),
+					packageId: app.code,
+					name: app.name,
+					description: '',
+					iconUrl: '',
+					homepageUrl: latestArchive?.downloadUrl ?? '',
+					createdAt: app.createdAt ?? '',
+					updatedAt: app.updatedAt ?? ''
+				};
 			});
 	}
 );

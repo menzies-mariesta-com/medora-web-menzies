@@ -192,7 +192,11 @@ export const getPatientVisitByIdWithRelations = query(
 				hospital: true,
 				branch: true,
 				doctor: {
-					with: { title: true, specialization: true, staffDetail: true }
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
 				},
 				appointment: true,
 				diagnoses: true,
@@ -416,7 +420,11 @@ export const getPatientVisitPaginatedForEmr = query(
 					hospital: true,
 					branch: true,
 					doctor: {
-						with: { title: true, specialization: true, staffDetail: true }
+						with: {
+							title: true,
+							specialization: true,
+							staffDetail: true
+						}
 					}
 				},
 				orderBy: (t, { desc }) => desc(t.createdAt),

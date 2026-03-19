@@ -32,7 +32,10 @@ export async function sendEmailServer(payload: {
 		});
 		return true;
 	} catch (err) {
-		log.error('Failed to send email', err instanceof Error ? err : new Error(String(err)));
+		log.error(
+			'Failed to send email',
+			err instanceof Error ? err : new Error(String(err))
+		);
 		return false;
 	}
 }

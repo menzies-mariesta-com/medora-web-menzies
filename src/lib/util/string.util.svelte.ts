@@ -6,8 +6,35 @@ import type {
 	IdentityTypeSchema,
 	ServiceItemSchema
 } from '$lib/server/db/schema-type';
+import { DateTimeUtil } from './date-time.util.svelte';
 
 export class StringUtil {
+	static readonly NO_EMAIL_SUFFIX = '@no-email.heka';
+
+	static defaultNoEmail(id: string): string {
+		return `${id}${StringUtil.NO_EMAIL_SUFFIX}`;
+	}
+
+	static isNoEmail(value: string | null | undefined): boolean {
+		if (!value) return false;
+		return value.endsWith(StringUtil.NO_EMAIL_SUFFIX);
+	}
+
+	/** Display rule: treat "no-email" as empty */
+	static displayEmail(value: string | null | undefined): string {
+		if (!value) return '';
+		return StringUtil.isNoEmail(value) ? '' : value;
+	}
+
+	static tableToolTip(row: any): string {
+		const dateTimeUtil = new DateTimeUtil();
+		const createdAt = dateTimeUtil.formatDateTime(row.createdAt);
+		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
+		const createdBy = row.createdByUser?.name ?? '—';
+		const updatedBy = row.updatedByUser?.name ?? '—';
+		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
+	}
+
 	/**
 	 * snake_case / kebab-case → spaces
 	 * ex: trinidad_and_tobago → trinidad and tobago
@@ -162,7 +189,9 @@ export class StringUtil {
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
 	}
 
-	static serviceOptionDisplayName(service: ServiceItemSchema): string {
+	static serviceOptionDisplayName(
+		service: ServiceItemSchema
+	): string {
 		return `${service.serviceName ?? 'Unknown Service'} (${service.serviceCode ?? '-'})`;
 	}
 

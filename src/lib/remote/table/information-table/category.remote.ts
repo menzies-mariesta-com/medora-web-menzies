@@ -68,7 +68,10 @@ export const getCategoryPaginated = query(
 		if (categoryNameTerm) {
 			whereExpr = and(
 				whereExpr,
-				ilike(table.categoryTable.categoryName, `%${categoryNameTerm}%`)
+				ilike(
+					table.categoryTable.categoryName,
+					`%${categoryNameTerm}%`
+				)
 			) as typeof whereExpr;
 		}
 

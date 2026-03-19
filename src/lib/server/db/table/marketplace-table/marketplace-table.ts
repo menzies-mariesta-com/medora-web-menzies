@@ -93,8 +93,12 @@ export const marketplaceAllowedFileExtensionTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		index('marketplace_allowed_file_extension_name_idx').on(table.name),
-		index('marketplace_allowed_file_extension_code_idx').on(table.code),
+		index('marketplace_allowed_file_extension_name_idx').on(
+			table.name
+		),
+		index('marketplace_allowed_file_extension_code_idx').on(
+			table.code
+		),
 		index('marketplace_allowed_file_extension_status_id_idx').on(
 			table.statusId
 		)

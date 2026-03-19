@@ -84,18 +84,7 @@
 	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-
-	const DEFAULT_STAFF_EMAIL_SUFFIX = '@no-email.heka';
-
-	function generateDefaultStaffEmail(): string {
-		const rand = Math.random().toString(36).slice(2, 10);
-		return `staff-${Date.now()}-${rand}${DEFAULT_STAFF_EMAIL_SUFFIX}`;
-	}
-
-	function isDefaultStaffEmail(email: string | null | undefined): boolean {
-		if (!email) return false;
-		return email.endsWith(DEFAULT_STAFF_EMAIL_SUFFIX);
-	}
+	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -292,8 +281,10 @@
 		selectedFirstName = staff.firstName ?? '';
 		selectedMiddleName = staff.middleName ?? '';
 		selectedLastName = staff.lastName ?? '';
-		selectedEmail =
-			(staff as { user?: { email?: string } }).user?.email ?? '';
+		selectedEmail = StringUtil.displayEmail(
+			(staff as { user?: { email?: string | null } }).user?.email ??
+				''
+		);
 		selectedGenderId =
 			staff.genderId != null ? String(staff.genderId) : '';
 		selectedMaritalStatusId =
@@ -442,9 +433,11 @@
 				.staffBranches ?? []
 		).map((sb) => sb.branchId);
 		const branchIdSet = new Set(branchData.map((b) => b.id));
-		selectedBranchIds = [...new Set(branchIdsFromStaff.filter((id) =>
-			branchIdSet.has(id)
-		))];
+		selectedBranchIds = [
+			...new Set(
+				branchIdsFromStaff.filter((id) => branchIdSet.has(id))
+			)
+		];
 		isActive = staff.statusId === StatusEnum.ACTIVE;
 		isLocked = staff.statusId === StatusEnum.LOCKED;
 		const detail = (
@@ -606,22 +599,14 @@
 		// Build phone numbers with country codes
 		let phonePrimary: string | undefined;
 		if (selectedPhoneCountryId && selectedPhone) {
-			const country = countryData.find(
-				(c) => String(c.id) === selectedPhoneCountryId
-			);
-			phonePrimary = country
-				? `${country.countryCallingCode}${selectedPhone}`
-				: selectedPhone;
+			// Store only local number in `phonePrimary`; country code is stored in `phonePrimaryCountryId`.
+			phonePrimary = selectedPhone.trim();
 		}
 
 		let phoneSecondary: string | undefined;
 		if (selectedPhoneSecondaryCountryId && selectedPhoneSecondary) {
-			const country = countryData.find(
-				(c) => String(c.id) === selectedPhoneSecondaryCountryId
-			);
-			phoneSecondary = country
-				? `${country.countryCallingCode}${selectedPhoneSecondary}`
-				: selectedPhoneSecondary;
+			// Store only local number in `phoneSecondary`; country code is stored in `phoneSecondaryCountryId`.
+			phoneSecondary = selectedPhoneSecondary.trim();
 		}
 
 		// Derive status from Active/Lock checkboxes
@@ -650,12 +635,33 @@
 					return;
 				}
 				const previousUser = staff as {
-					user?: { id: string; email?: string | null };
+					user?: { id: string; email?: string | null; name?: string | null };
 				};
 				const previousEmail = previousUser.user?.email ?? '';
+				const previousName = previousUser.user?.name ?? '';
+				const trimmedNewName = fullName.trim();
 				const trimmedNewEmail = selectedEmail.trim();
 				let shouldSendResetForEmailChange = false;
 				let resetEmailTarget: string | null = null;
+				if (
+					trimmedNewName &&
+					previousUser.user?.id &&
+					trimmedNewName !== previousName
+				) {
+					try {
+						await updateUser({
+							id: previousUser.user.id,
+							name: trimmedNewName
+						});
+					} catch {
+						toastService.addToast(
+							'Failed to update staff user name.',
+							StatusColorEnum.ERROR
+						);
+						isLoading = false;
+						return;
+					}
+				}
 				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
 					try {
 						if (previousUser.user?.id) {
@@ -664,7 +670,7 @@
 								email: trimmedNewEmail
 							});
 						}
-						if (isDefaultStaffEmail(previousEmail)) {
+						if (StringUtil.isNoEmail(previousEmail)) {
 							shouldSendResetForEmailChange = true;
 							resetEmailTarget = trimmedNewEmail;
 						}
@@ -792,9 +798,15 @@
 						: '';
 				// Use staff relations from freshly fetched data (avoids stale/cached query results)
 				const staffUserGroupsToDelete = (
-					(staff as {
-						staffUserGroups?: { id: number; userGroupId: number; userGroup?: { hospitalId: string } }[];
-					}).staffUserGroups ?? []
+					(
+						staff as {
+							staffUserGroups?: {
+								id: number;
+								userGroupId: number;
+								userGroup?: { hospitalId: string };
+							}[];
+						}
+					).staffUserGroups ?? []
 				).filter(
 					(sug) => sug.userGroup?.hospitalId === editHospitalId
 				);
@@ -820,12 +832,16 @@
 				}
 				// Use staff relations from freshly fetched data (avoids stale/cached query results)
 				const staffBranchesToDelete = (
-					(staff as {
-						staffBranches?: { id: number; branchId: string; branch?: { hospitalId: string } }[];
-					}).staffBranches ?? []
-				).filter(
-					(sb) => sb.branch?.hospitalId === editHospitalId
-				);
+					(
+						staff as {
+							staffBranches?: {
+								id: number;
+								branchId: string;
+								branch?: { hospitalId: string };
+							}[];
+						}
+					).staffBranches ?? []
+				).filter((sb) => sb.branch?.hospitalId === editHospitalId);
 				for (const sb of staffBranchesToDelete) {
 					await deleteStaffBranch({ id: sb.id });
 				}
@@ -896,8 +912,7 @@
 					});
 					if (error) {
 						toastService.addToast(
-							error.message ??
-								'Failed to send reset password email.',
+							error.message ?? 'Failed to send reset password email.',
 							StatusColorEnum.ERROR
 						);
 					} else {
@@ -923,9 +938,10 @@
 					? page.params.hospital_id
 					: undefined;
 			const trimmedEmailForCreate = selectedEmail.trim();
+			const usingDefaultEmailForCreate = !trimmedEmailForCreate;
 			const emailForCreate = trimmedEmailForCreate
 				? trimmedEmailForCreate
-				: generateDefaultStaffEmail();
+				: `${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`;
 			const result = await createStaffWithUser({
 				email: emailForCreate,
 				name: fullName,
@@ -1005,6 +1021,12 @@
 			});
 
 			const { staff } = result;
+			if (usingDefaultEmailForCreate) {
+				await updateUser({
+					id: result.userId,
+					email: StringUtil.defaultNoEmail(staff.id)
+				});
+			}
 
 			// 2. Upload profile photo and update staff
 			if (photoFile) {

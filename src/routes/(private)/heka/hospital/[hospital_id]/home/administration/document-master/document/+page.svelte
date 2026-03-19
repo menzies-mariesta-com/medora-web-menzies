@@ -61,8 +61,8 @@
 	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
 
-type ContentTab = 'rich' | 'html' | 'preview';
-let contentTab = $state<ContentTab>('rich');
+	type ContentTab = 'rich' | 'html' | 'preview';
+	let contentTab = $state<ContentTab>('rich');
 
 	const documentList = $derived(documentResult?.data ?? []);
 	const total = $derived(documentResult?.total ?? 0);
@@ -394,16 +394,16 @@ let contentTab = $state<ContentTab>('rich');
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-			<div class="mb-2 flex items-center justify-between">
-				<h2 class="text-base font-semibold">Document list</h2>
-				<DaisyUiButton
-					className="d-btn-primary d-btn-sm"
-					onClick={startCreate}
-				>
-					<LucidePlus className="size-5" />
-					{m.create()}
-				</DaisyUiButton>
-			</div>
+				<div class="mb-2 flex items-center justify-between">
+					<h2 class="text-base font-semibold">Document list</h2>
+					<DaisyUiButton
+						className="d-btn-primary d-btn-sm"
+						onClick={startCreate}
+					>
+						<LucidePlus className="size-5" />
+						{m.create()}
+					</DaisyUiButton>
+				</div>
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 
@@ -446,40 +446,40 @@ let contentTab = $state<ContentTab>('rich');
 								{@const typedRow = row as DocumentWithRelations}
 								<td class="w-28 shrink-0 text-right">
 									<div class="flex justify-end gap-1">
-								<DaisyUiTooltip
-									tooltipText={m.view_data()}
-									className="d-tooltip-ghost d-tooltip-top"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => startView(typedRow)}
-									>
-										<LucideEye className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.edit_data()}
-									className="d-tooltip-accent d-tooltip-top"
-								>
-									<DaisyUiButton
-										className="d-btn-sm d-btn-ghost d-btn-accent"
-										onClick={() => startEdit(typedRow)}
-									>
-										<LucidePencil className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText={m.delete_data()}
-									className="d-tooltip-error d-tooltip-top"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm d-btn-error"
-										disabled={isLoading}
-										onClick={() => handleDelete(typedRow.id)}
-									>
-										<LucideTrash2 className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
+										<DaisyUiTooltip
+											tooltipText={m.view_data()}
+											className="d-tooltip-ghost d-tooltip-top"
+										>
+											<DaisyUiButton
+												className="d-btn-ghost d-btn-sm"
+												onClick={() => startView(typedRow)}
+											>
+												<LucideEye className="size-5" />
+											</DaisyUiButton>
+										</DaisyUiTooltip>
+										<DaisyUiTooltip
+											tooltipText={m.edit_data()}
+											className="d-tooltip-accent d-tooltip-top"
+										>
+											<DaisyUiButton
+												className="d-btn-sm d-btn-ghost d-btn-accent"
+												onClick={() => startEdit(typedRow)}
+											>
+												<LucidePencil className="size-5" />
+											</DaisyUiButton>
+										</DaisyUiTooltip>
+										<DaisyUiTooltip
+											tooltipText={m.delete_data()}
+											className="d-tooltip-error d-tooltip-top"
+										>
+											<DaisyUiButton
+												className="d-btn-ghost d-btn-sm d-btn-error"
+												disabled={isLoading}
+												onClick={() => handleDelete(typedRow.id)}
+											>
+												<LucideTrash2 className="size-5" />
+											</DaisyUiButton>
+										</DaisyUiTooltip>
 									</div>
 								</td>
 							</svelte:fragment>
@@ -491,206 +491,212 @@ let contentTab = $state<ContentTab>('rich');
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody>
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold">
-					{#if viewMode === 'view'}
-						View Document
-					{:else if viewMode === 'edit'}
-						Edit Document
-					{:else}
-						Create Document
-					{/if}
-				</h2>
-				<DaisyUiButton
-					className="d-btn-ghost d-btn-sm"
-					onClick={resetForm}
-				>
-					<LucideX className="size-5" />
-					Back to List
-				</DaisyUiButton>
-			</div>
-
-			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="documentType"
-						className="shrink-0 sm:w-32"
-					>
-						Document Type <span class="text-error">*</span>
-					</DaisyUiLabel>
-					<div class="flex-1">
-						<DaisyUiSelect
-							bind:value={documentTypeIdInput}
-							optionHeader="Select document type ..."
-							disabled={viewMode === 'view'}
-						>
-							{#each documentTypes as dt (dt.id)}
-								<option value={String(dt.id)}
-									>{dt.documentType}</option
-								>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="documentCode"
-						className="shrink-0 sm:w-32"
-					>
-						Document Code
-					</DaisyUiLabel>
-					<div class="flex-1">
-						<input
-							id="documentCode"
-							type="text"
-							class="d-input-bordered d-input w-full"
-							placeholder="Enter document code"
-							bind:value={documentCodeInput}
-							disabled={viewMode === 'view'}
-						/>
-					</div>
-				</div>
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="documentSetting"
-						className="shrink-0 sm:w-32"
-					>
-						Document Setting
-					</DaisyUiLabel>
-					<div class="flex-1">
-						<DaisyUiSelect
-							bind:value={documentSettingIdInput}
-							optionHeader="Select document setting ..."
-							disabled={viewMode === 'view'}
-						>
-							{#each documentSettings as ds (ds.id)}
-								<option value={String(ds.id)}>{ds.name}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="documentNumber"
-						className="shrink-0 sm:w-32"
-					>
-						Document Name <span class="text-error">*</span>
-					</DaisyUiLabel>
-					<div class="flex-1">
-						<input
-							id="documentNumber"
-							type="text"
-							class="d-input-bordered d-input w-full"
-							placeholder="Enter document name"
-							bind:value={documentNumberInput}
-							disabled={viewMode === 'view'}
-						/>
-					</div>
-				</div>
-			</div>
-
-			<div class="mb-4">
-				<DaisyUiLabel
-					forText="documentContent"
-					className="mb-2 block"
-				>
-					Document Content
-				</DaisyUiLabel>
-
-				{#if viewMode === 'view'}
-					<div class="overflow-hidden rounded-lg border">
-						<div class="document-preview-content min-h-[400px] bg-base-100 p-4">
-							{@html documentTextInput ||
-								'<p class="text-base-content/50">No content</p>'}
-						</div>
-					</div>
-				{:else}
-					<div class="mb-2 flex gap-2">
-						<button
-							type="button"
-							class="d-btn d-btn-xs {contentTab === 'rich'
-								? 'd-btn-primary'
-								: 'd-btn-ghost'}"
-							onclick={() => (contentTab = 'rich')}
-						>
-							Rich editor
-						</button>
-						<button
-							type="button"
-							class="d-btn d-btn-xs {contentTab === 'html'
-								? 'd-btn-primary'
-								: 'd-btn-ghost'}"
-							onclick={switchToHtmlTab}
-						>
-							HTML
-						</button>
-						<button
-							type="button"
-							class="d-btn d-btn-xs {contentTab === 'preview'
-								? 'd-btn-primary'
-								: 'd-btn-ghost'}"
-							onclick={() => (contentTab = 'preview')}
-						>
-							Preview
-						</button>
-						<button
-							type="button"
-							class="d-btn d-btn-xs d-btn-outline"
-							onclick={handleFormatHtmlClick}
-						>
-							Format HTML
-						</button>
-					</div>
-
-					<div class="overflow-hidden rounded-lg border">
-						{#if contentTab === 'rich'}
-							<MariRichEditor
-								bind:value={documentTextInput}
-								placeholder="Start typing your document content..."
-								showMenuBar={true}
-								documentTitle={selectedDocumentTypeName()}
-								className="min-h-[400px]"
-							/>
-						{:else if contentTab === 'html'}
-							<textarea
-								class="d-textarea d-textarea-bordered h-[400px] w-full font-mono text-sm"
-								bind:value={documentTextInput}
-								placeholder="Edit raw HTML here..."
-							></textarea>
+				<div class="mb-4 flex items-center justify-between">
+					<h2 class="text-lg font-semibold">
+						{#if viewMode === 'view'}
+							View Document
+						{:else if viewMode === 'edit'}
+							Edit Document
 						{:else}
-							<div class="document-preview-content min-h-[400px] bg-base-100 p-4">
-								{@html documentTextInput ||
-									'<p class="text-base-content/50">No content</p>'}
-							</div>
+							Create Document
 						{/if}
-					</div>
-				{/if}
-			</div>
-
-			{#if viewMode !== 'view'}
-				<div class="flex justify-end gap-2 border-t border-base-300 pt-4">
+					</h2>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm"
 						onClick={resetForm}
 					>
-						Cancel
-					</DaisyUiButton>
-					<DaisyUiButton
-						className="d-btn-primary d-btn-sm"
-						onClick={handleSave}
-					>
-						{editingId ? 'Update' : 'Create'}
+						<LucideX className="size-5" />
+						Back to List
 					</DaisyUiButton>
 				</div>
-			{/if}
+
+				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel
+							forText="documentType"
+							className="shrink-0 sm:w-32"
+						>
+							Document Type <span class="text-error">*</span>
+						</DaisyUiLabel>
+						<div class="flex-1">
+							<DaisyUiSelect
+								bind:value={documentTypeIdInput}
+								optionHeader="Select document type ..."
+								disabled={viewMode === 'view'}
+							>
+								{#each documentTypes as dt (dt.id)}
+									<option value={String(dt.id)}
+										>{dt.documentType}</option
+									>
+								{/each}
+							</DaisyUiSelect>
+						</div>
+					</div>
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel
+							forText="documentCode"
+							className="shrink-0 sm:w-32"
+						>
+							Document Code
+						</DaisyUiLabel>
+						<div class="flex-1">
+							<input
+								id="documentCode"
+								type="text"
+								class="d-input-bordered d-input w-full"
+								placeholder="Enter document code"
+								bind:value={documentCodeInput}
+								disabled={viewMode === 'view'}
+							/>
+						</div>
+					</div>
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel
+							forText="documentSetting"
+							className="shrink-0 sm:w-32"
+						>
+							Document Setting
+						</DaisyUiLabel>
+						<div class="flex-1">
+							<DaisyUiSelect
+								bind:value={documentSettingIdInput}
+								optionHeader="Select document setting ..."
+								disabled={viewMode === 'view'}
+							>
+								{#each documentSettings as ds (ds.id)}
+									<option value={String(ds.id)}>{ds.name}</option>
+								{/each}
+							</DaisyUiSelect>
+						</div>
+					</div>
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel
+							forText="documentNumber"
+							className="shrink-0 sm:w-32"
+						>
+							Document Name <span class="text-error">*</span>
+						</DaisyUiLabel>
+						<div class="flex-1">
+							<input
+								id="documentNumber"
+								type="text"
+								class="d-input-bordered d-input w-full"
+								placeholder="Enter document name"
+								bind:value={documentNumberInput}
+								disabled={viewMode === 'view'}
+							/>
+						</div>
+					</div>
+				</div>
+
+				<div class="mb-4">
+					<DaisyUiLabel
+						forText="documentContent"
+						className="mb-2 block"
+					>
+						Document Content
+					</DaisyUiLabel>
+
+					{#if viewMode === 'view'}
+						<div class="overflow-hidden rounded-lg border">
+							<div
+								class="document-preview-content min-h-[400px] bg-base-100 p-4"
+							>
+								{@html documentTextInput ||
+									'<p class="text-base-content/50">No content</p>'}
+							</div>
+						</div>
+					{:else}
+						<div class="mb-2 flex gap-2">
+							<button
+								type="button"
+								class="d-btn d-btn-xs {contentTab === 'rich'
+									? 'd-btn-primary'
+									: 'd-btn-ghost'}"
+								onclick={() => (contentTab = 'rich')}
+							>
+								Rich editor
+							</button>
+							<button
+								type="button"
+								class="d-btn d-btn-xs {contentTab === 'html'
+									? 'd-btn-primary'
+									: 'd-btn-ghost'}"
+								onclick={switchToHtmlTab}
+							>
+								HTML
+							</button>
+							<button
+								type="button"
+								class="d-btn d-btn-xs {contentTab === 'preview'
+									? 'd-btn-primary'
+									: 'd-btn-ghost'}"
+								onclick={() => (contentTab = 'preview')}
+							>
+								Preview
+							</button>
+							<button
+								type="button"
+								class="d-btn d-btn-outline d-btn-xs"
+								onclick={handleFormatHtmlClick}
+							>
+								Format HTML
+							</button>
+						</div>
+
+						<div class="overflow-hidden rounded-lg border">
+							{#if contentTab === 'rich'}
+								<MariRichEditor
+									bind:value={documentTextInput}
+									placeholder="Start typing your document content..."
+									showMenuBar={true}
+									documentTitle={selectedDocumentTypeName()}
+									className="min-h-[400px]"
+								/>
+							{:else if contentTab === 'html'}
+								<textarea
+									class="d-textarea-bordered d-textarea h-[400px] w-full font-mono text-sm"
+									bind:value={documentTextInput}
+									placeholder="Edit raw HTML here..."
+								></textarea>
+							{:else}
+								<div
+									class="document-preview-content min-h-[400px] bg-base-100 p-4"
+								>
+									{@html documentTextInput ||
+										'<p class="text-base-content/50">No content</p>'}
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				{#if viewMode !== 'view'}
+					<div
+						class="flex justify-end gap-2 border-t border-base-300 pt-4"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={resetForm}
+						>
+							Cancel
+						</DaisyUiButton>
+						<DaisyUiButton
+							className="d-btn-primary d-btn-sm"
+							onClick={handleSave}
+						>
+							{editingId ? 'Update' : 'Create'}
+						</DaisyUiButton>
+					</div>
+				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}

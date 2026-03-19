@@ -32,9 +32,7 @@
 	);
 
 	let result =
-		$state<PaginatedResult<PatientVisitWithRelations> | null>(
-			null
-		);
+		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let visitTypeOptions = $state<
@@ -119,8 +117,7 @@
 			header: 'Gender',
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
-			format: (_value, row) =>
-				row.patient?.gender?.name ?? '—'
+			format: (_value, row) => row.patient?.gender?.name ?? '—'
 		},
 		{
 			id: 'hospitalName',
@@ -300,7 +297,9 @@
 		</div>
 	{/if}
 
-	<div class="flex items-center justify-between border-t border-base-200 px-4 py-2">
+	<div
+		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
+	>
 		<div></div>
 		<div class="flex gap-2">
 			<DaisyUiButton

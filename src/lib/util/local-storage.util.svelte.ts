@@ -14,7 +14,10 @@ export class LocalStorageUtil {
 				typeof value === 'string' ? value : JSON.stringify(value);
 			localStorage.setItem(key, stringValue);
 		} catch (error) {
-			log.error(`Error saving to localStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error saving to localStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -33,7 +36,10 @@ export class LocalStorageUtil {
 				return item as unknown as T;
 			}
 		} catch (error) {
-			log.error(`Error reading localStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error reading localStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 			return null;
 		}
 	}
@@ -46,7 +52,10 @@ export class LocalStorageUtil {
 		try {
 			localStorage.removeItem(key);
 		} catch (error) {
-			log.error(`Error removing localStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error removing localStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -58,7 +67,10 @@ export class LocalStorageUtil {
 		try {
 			localStorage.clear();
 		} catch (error) {
-			log.error('Error clearing localStorage', error instanceof Error ? error : undefined);
+			log.error(
+				'Error clearing localStorage',
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -70,7 +82,10 @@ export class LocalStorageUtil {
 		try {
 			return localStorage.getItem(key) !== null;
 		} catch (error) {
-			log.error(`Error checking localStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error checking localStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 			return false;
 		}
 	}
