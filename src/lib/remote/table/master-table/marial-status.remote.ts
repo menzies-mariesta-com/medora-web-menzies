@@ -19,7 +19,9 @@ export const getMaritalStatus = query(
 		return ensureDb()
 			.select()
 			.from(table.maritalStatusTable)
-			.where(ne(table.maritalStatusTable.statusId, StatusEnum.DELETED))
+			.where(
+				ne(table.maritalStatusTable.statusId, StatusEnum.DELETED)
+			)
 			.orderBy(table.maritalStatusTable.name);
 	}
 );

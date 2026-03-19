@@ -9,7 +9,10 @@ export class SessionStorageUtil {
 				typeof value === 'string' ? value : JSON.stringify(value);
 			sessionStorage.setItem(key, stringValue);
 		} catch (error) {
-			log.error(`Error saving to sessionStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error saving to sessionStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -24,7 +27,10 @@ export class SessionStorageUtil {
 				return item as unknown as T;
 			}
 		} catch (error) {
-			log.error(`Error reading sessionStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error reading sessionStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 			return null;
 		}
 	}
@@ -33,7 +39,10 @@ export class SessionStorageUtil {
 		try {
 			sessionStorage.removeItem(key);
 		} catch (error) {
-			log.error(`Error removing sessionStorage key "${key}"`, error instanceof Error ? error : undefined);
+			log.error(
+				`Error removing sessionStorage key "${key}"`,
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 
@@ -41,7 +50,10 @@ export class SessionStorageUtil {
 		try {
 			sessionStorage.clear();
 		} catch (error) {
-			log.error('Error clearing sessionStorage', error instanceof Error ? error : undefined);
+			log.error(
+				'Error clearing sessionStorage',
+				error instanceof Error ? error : undefined
+			);
 		}
 	}
 }

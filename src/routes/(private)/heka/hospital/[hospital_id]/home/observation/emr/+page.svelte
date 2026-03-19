@@ -7,7 +7,9 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 
 	type ObservationRow = {
@@ -19,10 +21,30 @@
 	};
 
 	const defaultColumns: MariTableColumn<ObservationRow>[] = [
-		{ id: 'dateTime', header: 'Date / Time', widthClass: 'w-36', filterable: false },
-		{ id: 'value', header: 'Value', widthClass: 'w-24', filterable: false },
-		{ id: 'unit', header: 'Unit', widthClass: 'w-20', filterable: false },
-		{ id: 'remark', header: 'Remark', widthClass: 'w-40', filterable: false }
+		{
+			id: 'dateTime',
+			header: 'Date / Time',
+			widthClass: 'w-36',
+			filterable: false
+		},
+		{
+			id: 'value',
+			header: 'Value',
+			widthClass: 'w-24',
+			filterable: false
+		},
+		{
+			id: 'unit',
+			header: 'Unit',
+			widthClass: 'w-20',
+			filterable: false
+		},
+		{
+			id: 'remark',
+			header: 'Remark',
+			widthClass: 'w-40',
+			filterable: false
+		}
 	];
 
 	type CardDef = {
@@ -33,15 +55,55 @@
 	};
 
 	const cards: CardDef[] = [
-		{ key: 'vitals', title: 'Vitals', columns: defaultColumns, rows: [] },
-		{ key: 'intake', title: 'Intake', columns: defaultColumns, rows: [] },
-		{ key: 'output', title: 'Output', columns: defaultColumns, rows: [] },
-		{ key: 'blood-sugar', title: 'Blood Sugar', columns: defaultColumns, rows: [] },
-		{ key: 'pain-score', title: 'Pain Score', columns: defaultColumns, rows: [] },
+		{
+			key: 'vitals',
+			title: 'Vitals',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'intake',
+			title: 'Intake',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'output',
+			title: 'Output',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'blood-sugar',
+			title: 'Blood Sugar',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'pain-score',
+			title: 'Pain Score',
+			columns: defaultColumns,
+			rows: []
+		},
 		{ key: 'gcs', title: 'GCS', columns: defaultColumns, rows: [] },
-		{ key: 'neurological', title: 'Neurological', columns: defaultColumns, rows: [] },
-		{ key: 'ventilator', title: 'Ventilator', columns: defaultColumns, rows: [] },
-		{ key: 'others', title: 'Others', columns: defaultColumns, rows: [] }
+		{
+			key: 'neurological',
+			title: 'Neurological',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'ventilator',
+			title: 'Ventilator',
+			columns: defaultColumns,
+			rows: []
+		},
+		{
+			key: 'others',
+			title: 'Others',
+			columns: defaultColumns,
+			rows: []
+		}
 	];
 
 	function handleAdd(key: string) {

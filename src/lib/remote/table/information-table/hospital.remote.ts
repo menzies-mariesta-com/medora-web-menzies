@@ -80,7 +80,10 @@ export const getHospitalWithOwnerPaginated = query(
 			? eq(table.hospitalTable.ownerId, effectiveOwnerId!)
 			: undefined;
 		if (params?.statusId != null) {
-			const statusEq = eq(table.hospitalTable.statusId, params.statusId);
+			const statusEq = eq(
+				table.hospitalTable.statusId,
+				params.statusId
+			);
 			whereExpr =
 				whereExpr != null ? and(whereExpr, statusEq) : statusEq;
 		}

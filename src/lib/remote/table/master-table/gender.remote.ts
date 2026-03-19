@@ -14,15 +14,13 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getGender = query(
-	async (): Promise<GenderSchema[]> => {
-		return ensureDb()
-			.select()
-			.from(table.genderTable)
-			.where(ne(table.genderTable.statusId, StatusEnum.DELETED))
-			.orderBy(table.genderTable.name);
-	}
-);
+export const getGender = query(async (): Promise<GenderSchema[]> => {
+	return ensureDb()
+		.select()
+		.from(table.genderTable)
+		.where(ne(table.genderTable.statusId, StatusEnum.DELETED))
+		.orderBy(table.genderTable.name);
+});
 
 export const getGenderCount = query(async (): Promise<number> => {
 	const [row] = await ensureDb()

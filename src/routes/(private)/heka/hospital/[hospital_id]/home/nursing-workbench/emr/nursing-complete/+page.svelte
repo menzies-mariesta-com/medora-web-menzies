@@ -10,11 +10,11 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-import { StatusEnum } from '$lib/model/enum/db-link';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { getServiceOrder } from '$lib/remote/table/information-table/service-order.remote';
 	import {
 		getServiceOrderDetail,
-	getServiceOrderDetailPaginated,
+		getServiceOrderDetailPaginated,
 		markServiceOrderDetailNursingComplete
 	} from '$lib/remote/table/information-table/service-order-detail.remote';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
@@ -32,7 +32,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 		id: number;
 		orderNo: string | null;
 		orderDate: string | null;
-	statusId: number | null;
+		statusId: number | null;
 		serviceName: string;
 		serviceCode: string | null;
 		serviceAmount: string | null;
@@ -44,10 +44,13 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 		isUrgent: boolean | null;
 	};
 
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: undefined
 	);
@@ -62,9 +65,10 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 	let isLoading = $state(false);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let totalRows = $state(0);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let totalRows = $state(0);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -72,7 +76,10 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 		rows.reduce((sum, row) => sum + parseAmount(row.serviceAmount), 0)
 	);
 	const totalTax = $derived(
-		rows.reduce((sum, row) => sum + parseAmount(row.serviceTaxAmount), 0)
+		rows.reduce(
+			(sum, row) => sum + parseAmount(row.serviceTaxAmount),
+			0
+		)
 	);
 	const grandTotal = $derived(
 		rows.reduce((sum, row) => sum + row.lineTotal, 0)
@@ -271,14 +278,16 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 			header: 'Amount',
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: false,
-			format: (value) => formatMoney(parseAmount(value as string | null))
+			format: (value) =>
+				formatMoney(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceTaxAmount',
 			header: 'Tax',
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
-			format: (value) => formatMoney(parseAmount(value as string | null))
+			format: (value) =>
+				formatMoney(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceUnit',
@@ -355,7 +364,9 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	{:else}
 		<DaisyUiCard>
 			<div class="p-3">
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<div
+					class="mb-3 flex flex-wrap items-center justify-between gap-3"
+				>
 					<div>
 						<h2 class="text-lg font-semibold">Nursing Complete</h2>
 						<p class="text-sm text-base-content/70">
@@ -370,7 +381,8 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 						<span class="rounded bg-base-200 px-2 py-1"
 							>Tax: {formatMoney(totalTax)}</span
 						>
-						<span class="rounded bg-primary/20 px-2 py-1 font-semibold"
+						<span
+							class="rounded bg-primary/20 px-2 py-1 font-semibold"
 							>Grand Total: {formatMoney(grandTotal)}</span
 						>
 					</div>
@@ -384,9 +396,9 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 				{:else}
 					<div class="{TableEnum.HEIGHT} flex flex-col gap-3">
 						<MariTable
-							rows={rows}
+							{rows}
 							{columns}
-							isLoading={isLoading}
+							{isLoading}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
 							totalRowCount={totalRows}
@@ -419,7 +431,7 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 								{@const typedRow = row as NursingCompleteRow}
 								<td class="w-36 min-w-[9rem]">
 									{#if typedRow.nursingCompleteTime}
-										<span class="d-badge d-badge-success d-badge-sm"
+										<span class="d-badge d-badge-sm d-badge-success"
 											>Completed</span
 										>
 									{:else}

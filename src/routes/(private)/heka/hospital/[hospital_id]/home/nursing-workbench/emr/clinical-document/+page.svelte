@@ -9,9 +9,7 @@
 	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import {
-		getPatientVisitByIdWithRelations
-	} from '$lib/remote/table/information-table/patient-visit.remote';
+	import { getPatientVisitByIdWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getDocumentsWithRelations,
 		type DocumentWithRelations
@@ -27,10 +25,10 @@
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
 	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
-import {
-	buildDocumentPlaceholderContext,
-	resolveDocumentTemplate
-} from '$lib/util/document-placeholder.util';
+	import {
+		buildDocumentPlaceholderContext,
+		resolveDocumentTemplate
+	} from '$lib/util/document-placeholder.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const toastService = new ToastService();
@@ -136,7 +134,9 @@ import {
 		return resolveDocumentTemplate(template, context);
 	}
 
-	function getResolvedDocumentHtml(doc: DocumentWithRelations): string {
+	function getResolvedDocumentHtml(
+		doc: DocumentWithRelations
+	): string {
 		const context = buildPlaceholderContext(doc);
 		return applyPlaceholders(doc.documentText, context).trim();
 	}
@@ -175,34 +175,37 @@ import {
 			// Use pre-loaded document settings (no async fetch needed)
 			const docTypeName =
 				doc.documentType?.documentType?.trim().toLowerCase() ?? '';
-			const setting: DocumentSettingSchema | null = doc.documentSettingId
-				? (documentSettings.find(
-						(s) => s.id === doc.documentSettingId
-					) as DocumentSettingSchema | null) ??
-					null
-				: doc.documentTypeId
-					? (documentSettings.find(
-							(s) => s.documentTypeId === doc.documentTypeId
-						) as DocumentSettingSchema | null) ??
-						(documentSettings.find(
-							(s) =>
-								(s.documentType?.documentType ?? '')
-									.trim()
-									.toLowerCase() === docTypeName
-						) as DocumentSettingSchema | null) ??
-						(documentSettings.find((s) => {
-							const name = (s.name ?? '').trim().toLowerCase();
-							return (
-								Boolean(docTypeName) && name.includes(docTypeName)
-							);
-						}) as DocumentSettingSchema | null) ??
-						(documentSettings.length === 1
-							? (documentSettings[0] as DocumentSettingSchema)
-							: null)
-					: null;
+			const setting: DocumentSettingSchema | null =
+				doc.documentSettingId
+					? ((documentSettings.find(
+							(s) => s.id === doc.documentSettingId
+						) as DocumentSettingSchema | null) ?? null)
+					: doc.documentTypeId
+						? ((documentSettings.find(
+								(s) => s.documentTypeId === doc.documentTypeId
+							) as DocumentSettingSchema | null) ??
+							(documentSettings.find(
+								(s) =>
+									(s.documentType?.documentType ?? '')
+										.trim()
+										.toLowerCase() === docTypeName
+							) as DocumentSettingSchema | null) ??
+							(documentSettings.find((s) => {
+								const name = (s.name ?? '').trim().toLowerCase();
+								return (
+									Boolean(docTypeName) && name.includes(docTypeName)
+								);
+							}) as DocumentSettingSchema | null) ??
+							(documentSettings.length === 1
+								? (documentSettings[0] as DocumentSettingSchema)
+								: null))
+						: null;
 
 			const context = buildPlaceholderContext(doc);
-			const documentHtml = applyPlaceholders(doc.documentText, context).trim();
+			const documentHtml = applyPlaceholders(
+				doc.documentText,
+				context
+			).trim();
 			// Override: use 0 margins for print (user preference)
 			const marginTop = setting?.marginTop ?? 20;
 			const marginBottom = setting?.marginBottom ?? 20;
@@ -216,8 +219,14 @@ import {
 			const orientation = setting?.pageOrientation ?? 'portrait';
 			const showHeader = setting?.showHeader ?? true;
 			const showFooter = setting?.showFooter ?? true;
-			const headerHtml = applyPlaceholders(setting?.headerHtml, context).trim();
-			const footerHtml = applyPlaceholders(setting?.footerHtml, context).trim();
+			const headerHtml = applyPlaceholders(
+				setting?.headerHtml,
+				context
+			).trim();
+			const footerHtml = applyPlaceholders(
+				setting?.footerHtml,
+				context
+			).trim();
 
 			const documentTitle =
 				doc.documentNumber ||
@@ -353,7 +362,7 @@ import {
 	}
 </script>
 
-<div class="flex flex-col gap-4 p-4 relative">
+<div class="relative flex flex-col gap-4 p-4">
 	{#if isPrinting}
 		<div
 			class="print-loading-overlay"
@@ -363,7 +372,9 @@ import {
 		>
 			<div class="flex flex-col items-center gap-4">
 				<DaisyUiLoading className="d-loading-lg text-primary" />
-				<span class="text-sm font-medium">Preparing document for print...</span>
+				<span class="text-sm font-medium"
+					>Preparing document for print...</span
+				>
 			</div>
 		</div>
 	{/if}

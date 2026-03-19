@@ -23,8 +23,9 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
-let tableFilters = $state<Record<string, string>>({});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 
 	const categories = $derived(categoryResult?.data ?? []);
 	const total = $derived(categoryResult?.total ?? 0);
@@ -76,8 +77,7 @@ let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 						: undefined,
 				categoryName: tableFilters.categoryName?.trim() || undefined,
 				statusId:
-					parsedStatusId != null &&
-					Number.isFinite(parsedStatusId)
+					parsedStatusId != null && Number.isFinite(parsedStatusId)
 						? parsedStatusId
 						: undefined
 			};
