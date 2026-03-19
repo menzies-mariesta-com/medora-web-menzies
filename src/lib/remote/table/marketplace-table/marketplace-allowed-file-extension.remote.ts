@@ -31,17 +31,19 @@ export const getMarketplaceAllowedFileExtensions = query(
 
 export const getMarketplaceAllowedFileExtensionsWithRelations = query(
 	async () => {
-		return ensureDb().query.marketplaceAllowedFileExtensionTable.findMany({
-			where: ne(
-				table.marketplaceAllowedFileExtensionTable.statusId,
-				StatusEnum.DELETED
-			),
-			with: {
-				status: true,
-				archives: true
-			},
-			orderBy: table.marketplaceAllowedFileExtensionTable.name
-		});
+		return ensureDb().query.marketplaceAllowedFileExtensionTable.findMany(
+			{
+				where: ne(
+					table.marketplaceAllowedFileExtensionTable.statusId,
+					StatusEnum.DELETED
+				),
+				with: {
+					status: true,
+					archives: true
+				},
+				orderBy: table.marketplaceAllowedFileExtensionTable.name
+			}
+		);
 	}
 );
 
@@ -68,8 +70,11 @@ export const getMarketplaceAllowedFileExtensionsPaginated = query(
 	'unchecked' as const,
 	async (
 		params?: PaginationParams
-	): Promise<PaginatedResult<MarketplaceAllowedFileExtensionSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+	): Promise<
+		PaginatedResult<MarketplaceAllowedFileExtensionSchema>
+	> => {
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const notDeletedFilter = ne(
 			table.marketplaceAllowedFileExtensionTable.statusId,
 			StatusEnum.DELETED
@@ -139,7 +144,9 @@ export const createMarketplaceAllowedFileExtension = command(
 export const updateMarketplaceAllowedFileExtension = command(
 	'unchecked' as const,
 	async (
-		payload: MarketplaceAllowedFileExtensionSchemaUpdate & { id: number }
+		payload: MarketplaceAllowedFileExtensionSchemaUpdate & {
+			id: number;
+		}
 	): Promise<MarketplaceAllowedFileExtensionSchema> => {
 		const { id, ...rest } = payload;
 		const [row] = await ensureDb()

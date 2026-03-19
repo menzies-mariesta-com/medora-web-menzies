@@ -59,28 +59,27 @@
 		for (const [_key, list] of map) {
 			list.sort(
 				(a, b) =>
-					(a.sequenceNo ?? 0) - (b.sequenceNo ?? 0) ||
-					a.id - b.id
+					(a.sequenceNo ?? 0) - (b.sequenceNo ?? 0) || a.id - b.id
 			);
 		}
 		return map;
 	});
 
-const depthByPageId = $derived.by(() => {
-	const depthMap = new Map<number, number>();
-	for (const p of allPages) {
-		let depth = 0;
-		let cursor = p.parentId;
-		const guard = new Set<number>();
-		while (cursor != null && !guard.has(cursor)) {
-			guard.add(cursor);
-			depth += 1;
-			cursor = pageById.get(cursor)?.parentId ?? null;
+	const depthByPageId = $derived.by(() => {
+		const depthMap = new Map<number, number>();
+		for (const p of allPages) {
+			let depth = 0;
+			let cursor = p.parentId;
+			const guard = new Set<number>();
+			while (cursor != null && !guard.has(cursor)) {
+				guard.add(cursor);
+				depth += 1;
+				cursor = pageById.get(cursor)?.parentId ?? null;
+			}
+			depthMap.set(p.id, depth);
 		}
-		depthMap.set(p.id, depth);
-	}
-	return depthMap;
-});
+		return depthMap;
+	});
 
 	const sortedPages = $derived.by(() => {
 		return [...allPages].sort((a, b) => {
@@ -105,10 +104,10 @@ const depthByPageId = $derived.by(() => {
 		for (const p of allPages) {
 			const name = (p.name ?? '').toLowerCase();
 			const url = (p.pageUrl ?? '').toLowerCase();
-		const parentName =
-			p.parentId != null
-				? (pageById.get(p.parentId)?.name ?? '').toLowerCase()
-				: '';
+			const parentName =
+				p.parentId != null
+					? (pageById.get(p.parentId)?.name ?? '').toLowerCase()
+					: '';
 			const moduleName =
 				(p.moduleId != null
 					? moduleNameById.get(p.moduleId)
@@ -117,8 +116,8 @@ const depthByPageId = $derived.by(() => {
 			if (
 				name.includes(term) ||
 				url.includes(term) ||
-			moduleName.includes(term) ||
-			parentName.includes(term)
+				moduleName.includes(term) ||
+				parentName.includes(term)
 			) {
 				directMatches.add(p.id);
 			}
@@ -216,26 +215,26 @@ const depthByPageId = $derived.by(() => {
 	}
 
 	function togglePage(pageId: number) {
-	const shouldCheck = !(pageSelected[pageId] ?? false);
-	const descendants: number[] = [];
-	const queue = [pageId];
-	const visited = new Set<number>(queue);
-	while (queue.length > 0) {
-		const current = queue.shift()!;
-		const children = childrenByParentId.get(current) ?? [];
-		for (const child of children) {
-			if (visited.has(child.id)) continue;
-			visited.add(child.id);
-			descendants.push(child.id);
-			queue.push(child.id);
+		const shouldCheck = !(pageSelected[pageId] ?? false);
+		const descendants: number[] = [];
+		const queue = [pageId];
+		const visited = new Set<number>(queue);
+		while (queue.length > 0) {
+			const current = queue.shift()!;
+			const children = childrenByParentId.get(current) ?? [];
+			for (const child of children) {
+				if (visited.has(child.id)) continue;
+				visited.add(child.id);
+				descendants.push(child.id);
+				queue.push(child.id);
+			}
 		}
-	}
 
-	const next = { ...pageSelected, [pageId]: shouldCheck };
-	for (const id of descendants) {
-		next[id] = shouldCheck;
-	}
-	pageSelected = next;
+		const next = { ...pageSelected, [pageId]: shouldCheck };
+		for (const id of descendants) {
+			next[id] = shouldCheck;
+		}
+		pageSelected = next;
 	}
 
 	async function handleSave() {
@@ -351,9 +350,7 @@ const depthByPageId = $derived.by(() => {
 									? (moduleNameById.get(p.moduleId) ?? 'Other')
 									: 'Other'}
 							{@const parentPage =
-								p.parentId != null
-									? pageById.get(p.parentId)
-									: null}
+								p.parentId != null ? pageById.get(p.parentId) : null}
 							{@const depth = depthByPageId.get(p.id) ?? 0}
 							<li class="min-w-0">
 								<label

@@ -48,7 +48,9 @@
 	const isDateType = $derived(inputType === 'date');
 
 	const popoverId = $derived(
-		isDateType ? `cally-popover-${id ?? crypto.randomUUID().slice(0, 8)}` : ''
+		isDateType
+			? `cally-popover-${id ?? crypto.randomUUID().slice(0, 8)}`
+			: ''
 	);
 	const anchorName = $derived(
 		isDateType ? `--cally-anchor-${id ?? popoverId}` : ''
@@ -56,7 +58,9 @@
 
 	function handleCallyChange(next: string) {
 		value = next;
-		const popover = document.getElementById(popoverId) as HTMLDivElement | null;
+		const popover = document.getElementById(
+			popoverId
+		) as HTMLDivElement | null;
 		popover?.hidePopover?.();
 	}
 </script>
@@ -66,7 +70,7 @@
 		{id}
 		type="button"
 		popovertarget={popoverId}
-		class="d-input d-input-bordered text-left {className}"
+		class="d-input-bordered d-input text-left {className}"
 		style="anchor-name:{anchorName}"
 		{disabled}
 		{hidden}
@@ -76,7 +80,7 @@
 	<div
 		id={popoverId}
 		popover
-		class="d-dropdown bg-base-100 rounded-box shadow-lg p-3"
+		class="d-dropdown rounded-box bg-base-100 p-3 shadow-lg"
 		style="position-anchor:{anchorName}"
 	>
 		<CallyDateCalendar

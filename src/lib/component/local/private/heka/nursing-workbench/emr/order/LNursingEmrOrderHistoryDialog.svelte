@@ -1,16 +1,14 @@
 <script lang="ts">
-import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
-import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import type {
-		ServiceOrderDetailSchema
-	} from '$lib/server/db/schema-type';
+	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	type HistoryItem = ServiceOrderDetailSchema & {
@@ -18,14 +16,15 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 		advisingDoctorName: string | null;
 	};
 
-	const { open, onClose, items, isLoading, pageSizeStr, onDelete } = $props<{
-		open: boolean;
-		onClose: () => void;
-		items: HistoryItem[];
-		isLoading: boolean;
-		pageSizeStr: string;
-		onDelete: (row: HistoryItem) => void;
-	}>();
+	const { open, onClose, items, isLoading, pageSizeStr, onDelete } =
+		$props<{
+			open: boolean;
+			onClose: () => void;
+			items: HistoryItem[];
+			isLoading: boolean;
+			pageSizeStr: string;
+			onDelete: (row: HistoryItem) => void;
+		}>();
 
 	const columns: MariTableColumn<HistoryItem>[] = [
 		{
@@ -138,13 +137,9 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 </script>
 
 {#if open}
-	<DaisyUiModal
-		groupName="order-history-modal"
-		open={true}
-		onClose={onClose}
-	>
+	<DaisyUiModal groupName="order-history-modal" open={true} {onClose}>
 		<div
-			class="d-modal-box max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)]"
+			class="d-modal-box h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
 			role="document"
 		>
 			<div class="mb-3 flex items-center justify-between">
@@ -170,8 +165,8 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
 					<MariTable
 						rows={items}
-						columns={columns}
-						isLoading={isLoading}
+						{columns}
+						{isLoading}
 						pageSize={pageSizeStr}
 						currentPage={1}
 						showRefreshButton={false}
@@ -199,4 +194,3 @@ import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoadin
 		</div>
 	</DaisyUiModal>
 {/if}
-

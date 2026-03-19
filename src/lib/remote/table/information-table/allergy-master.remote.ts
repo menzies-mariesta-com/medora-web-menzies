@@ -17,7 +17,10 @@ import { and, count, eq, ne } from 'drizzle-orm';
 // get all
 export const getAllergyMaster = query(
 	async (): Promise<AllergySchema[]> => {
-		const whereExpr = ne(table.allergyTable.statusId, StatusEnum.DELETED);
+		const whereExpr = ne(
+			table.allergyTable.statusId,
+			StatusEnum.DELETED
+		);
 		const data = await ensureDb()
 			.select()
 			.from(table.allergyTable)
@@ -29,7 +32,10 @@ export const getAllergyMaster = query(
 // get count
 export const getAllergyMasterCount = query(
 	async (): Promise<number> => {
-		const whereExpr = ne(table.allergyTable.statusId, StatusEnum.DELETED);
+		const whereExpr = ne(
+			table.allergyTable.statusId,
+			StatusEnum.DELETED
+		);
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.allergyTable)
@@ -46,7 +52,10 @@ export const getAllergyMasterPaginated = query(
 	): Promise<PaginatedResult<AllergySchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const whereExpr = ne(table.allergyTable.statusId, StatusEnum.DELETED);
+		const whereExpr = ne(
+			table.allergyTable.statusId,
+			StatusEnum.DELETED
+		);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
@@ -89,9 +98,7 @@ export const getAllergyMasterById = query(
 // create
 export const createAllergyMaster = command(
 	'unchecked' as const,
-	async (
-		payload: AllergySchemaInsert
-	): Promise<AllergySchema> => {
+	async (payload: AllergySchemaInsert): Promise<AllergySchema> => {
 		const [row] = await ensureDb()
 			.insert(table.allergyTable)
 			.values(payload)

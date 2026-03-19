@@ -55,7 +55,9 @@
 
 <DaisyUiCard className="observation-bento-card">
 	<DaisyUiCardBody className="gap-3 p-4">
-		<DaisyUiCardBodyTitle className="flex items-center justify-between">
+		<DaisyUiCardBodyTitle
+			className="flex items-center justify-between"
+		>
 			<span class="text-sm font-semibold">{title}</span>
 			<DaisyUiTooltip tooltipText="Add" className="d-tooltip-bottom">
 				<DaisyUiButton
@@ -69,15 +71,15 @@
 
 		<div class="observation-table-wrap">
 			<MariTable
-				rows={rows}
-				columns={columns}
-				isLoading={isLoading}
-				emptyMessage={emptyMessage}
+				{rows}
+				{columns}
+				{isLoading}
+				{emptyMessage}
 				showRefreshButton={false}
 				showRowActions={true}
 				actionsVariant="crud"
-				enableColumnFilters={enableColumnFilters}
-				useRemoteFilters={useRemoteFilters}
+				{enableColumnFilters}
+				{useRemoteFilters}
 				{pageSizeOptions}
 				{pageSize}
 				{currentPage}
@@ -85,11 +87,11 @@
 				on:view={(event) => dispatch('view', event.detail)}
 				on:edit={(event) => dispatch('edit', event.detail)}
 				on:delete={(event) => dispatch('delete', event.detail)}
-				on:pageChange={(event) => dispatch('pageChange', event.detail)}
+				on:pageChange={(event) =>
+					dispatch('pageChange', event.detail)}
 				on:pageSizeChange={(event) =>
 					dispatch('pageSizeChange', event.detail)}
 			/>
 		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
-

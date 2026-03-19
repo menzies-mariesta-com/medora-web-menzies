@@ -152,9 +152,7 @@ export const load: LayoutServerLoad = async ({
 			...new Map(
 				staffUserGroupsForNavRaw.map((g) => [g.id, g])
 			).values()
-		].sort((a, b) =>
-			(a.name ?? '').localeCompare(b.name ?? '')
-		);
+		].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
 		const navIds = staffUserGroupsForNav.map((g) => g.id);
 		// Resolve selected user group: cookie if valid, else first group
@@ -190,9 +188,7 @@ export const load: LayoutServerLoad = async ({
 			...new Map(
 				staffBranchesForNavRaw.map((b) => [b.id, b])
 			).values()
-		].sort((a, b) =>
-			(a.name ?? '').localeCompare(b.name ?? '')
-		);
+		].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 		const allHospitalBranches = await ensureDb()
 			.select({ id: table.hospitalBranchTable.id })
 			.from(table.hospitalBranchTable)

@@ -70,7 +70,9 @@
 			Branch <span class="text-error">*</span>
 		</DaisyUiLabel>
 
-		<div class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-2">
+		<div
+			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-2"
+		>
 			{#each branchData as data (data.id)}
 				{@const isChecked = selectedBranchIds.includes(data.id)}
 				{@const toggleBranch = () => {
@@ -101,7 +103,9 @@
 			User Group <span class="text-error">*</span>
 		</DaisyUiLabel>
 
-		<div class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-3 xl:grid-cols-4">
+		<div
+			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-3 xl:grid-cols-4"
+		>
 			{#each userGroupData as data (data.id)}
 				{@const isChecked = selectedUserGroups.includes(data.id)}
 				{@const toggleUserGroup = () => {
@@ -128,14 +132,28 @@
 
 	<!-- Dates -->
 	<div class="flex flex-col gap-4">
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel className="shrink-0 sm:w-36">Join Date</DaisyUiLabel>
-			<DaisyUiInputField bind:value={selectedJoinDate} inputType="date" />
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel className="shrink-0 sm:w-36"
+				>Join Date</DaisyUiLabel
+			>
+			<DaisyUiInputField
+				bind:value={selectedJoinDate}
+				inputType="date"
+			/>
 		</div>
 
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel className="shrink-0 sm:w-36">Resign Date</DaisyUiLabel>
-			<DaisyUiInputField bind:value={selectedResignDate} inputType="date" />
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel className="shrink-0 sm:w-36"
+				>Resign Date</DaisyUiLabel
+			>
+			<DaisyUiInputField
+				bind:value={selectedResignDate}
+				inputType="date"
+			/>
 		</div>
 	</div>
 

@@ -29,7 +29,9 @@ export const getDocumentTypeCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.documentTypeTable)
-			.where(ne(table.documentTypeTable.statusId, StatusEnum.DELETED));
+			.where(
+				ne(table.documentTypeTable.statusId, StatusEnum.DELETED)
+			);
 		return row?.count ?? 0;
 	}
 );

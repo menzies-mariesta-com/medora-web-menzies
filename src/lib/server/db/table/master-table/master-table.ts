@@ -30,18 +30,27 @@ const timestamps = {
 		withTimezone: true,
 		mode: 'string'
 	}),
-	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	}),
-	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	}),
-	deletedBy: text('deleted_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	})
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	deletedBy: text('deleted_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	)
 } as const;
 
 // Master Tables (alphabetical) - lookup/reference data

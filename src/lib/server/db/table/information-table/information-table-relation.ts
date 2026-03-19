@@ -743,7 +743,19 @@ export const patientTableRelations = relations(
 		visits: many(patientVisitTable),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
-		documentSettings: many(documentSettingTable)
+		documentSettings: many(documentSettingTable),
+		createdByUser: one(userTable, {
+			fields: [patientTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [patientTable.updatedBy],
+			references: [userTable.id]
+		}),
+		deletedByUser: one(userTable, {
+			fields: [patientTable.deletedBy],
+			references: [userTable.id]
+		})
 	})
 );
 

@@ -35,25 +35,32 @@ export const getMarketplaceApps = query(
 		return ensureDb()
 			.select()
 			.from(table.marketplaceAppTable)
-			.where(ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED))
+			.where(
+				ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED)
+			)
 			.orderBy(table.marketplaceAppTable.name);
 	}
 );
 
-export const getMarketplaceAppCount = query(async (): Promise<number> => {
-	const [row] = await ensureDb()
-		.select({ count: count() })
-		.from(table.marketplaceAppTable)
-		.where(ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED));
-	return row?.count ?? 0;
-});
+export const getMarketplaceAppCount = query(
+	async (): Promise<number> => {
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.marketplaceAppTable)
+			.where(
+				ne(table.marketplaceAppTable.statusId, StatusEnum.DELETED)
+			);
+		return row?.count ?? 0;
+	}
+);
 
 export const getMarketplaceAppsPaginated = query(
 	'unchecked' as const,
 	async (
 		params?: PaginationParams
 	): Promise<PaginatedResult<MarketplaceAppSchema>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 		const notDeletedFilter = ne(
 			table.marketplaceAppTable.statusId,
 			StatusEnum.DELETED
@@ -84,7 +91,11 @@ export const getMarketplaceAppsPaginated = query(
 
 export const getMarketplaceAppById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<MarketplaceAppSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<MarketplaceAppSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.marketplaceAppTable)
@@ -100,7 +111,9 @@ export const getMarketplaceAppById = query(
 
 export const createMarketplaceApp = command(
 	'unchecked' as const,
-	async (payload: MarketplaceAppSchemaInsert): Promise<MarketplaceAppSchema> => {
+	async (
+		payload: MarketplaceAppSchemaInsert
+	): Promise<MarketplaceAppSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.marketplaceAppTable)
 			.values(payload)

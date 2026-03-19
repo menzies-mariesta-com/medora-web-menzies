@@ -43,7 +43,9 @@ interface LogEntry {
 function parseLevel(value: string | undefined): LogLevel {
 	if (!value) return dev ? LogLevel.DEBUG : LogLevel.INFO;
 	const upper = value.toUpperCase();
-	const match = Object.entries(LEVEL_LABELS).find(([, v]) => v === upper);
+	const match = Object.entries(LEVEL_LABELS).find(
+		([, v]) => v === upper
+	);
 	return match ? (Number(match[0]) as LogLevel) : LogLevel.INFO;
 }
 
@@ -80,10 +82,10 @@ export class Logger {
 	}
 
 	child(subScope: string, meta: LogMeta = {}): Logger {
-		return new Logger(
-			`${this.scope}:${subScope}`,
-			{ ...this.defaultMeta, ...meta }
-		);
+		return new Logger(`${this.scope}:${subScope}`, {
+			...this.defaultMeta,
+			...meta
+		});
 	}
 
 	debug(message: string, meta?: LogMeta): void {
@@ -98,7 +100,11 @@ export class Logger {
 		this.log(LogLevel.WARN, message, meta);
 	}
 
-	error(message: string, errorOrMeta?: Error | LogMeta, meta?: LogMeta): void {
+	error(
+		message: string,
+		errorOrMeta?: Error | LogMeta,
+		meta?: LogMeta
+	): void {
 		if (errorOrMeta instanceof Error) {
 			this.log(LogLevel.ERROR, message, meta, errorOrMeta);
 		} else {
@@ -106,7 +112,11 @@ export class Logger {
 		}
 	}
 
-	fatal(message: string, errorOrMeta?: Error | LogMeta, meta?: LogMeta): void {
+	fatal(
+		message: string,
+		errorOrMeta?: Error | LogMeta,
+		meta?: LogMeta
+	): void {
 		if (errorOrMeta instanceof Error) {
 			this.log(LogLevel.FATAL, message, meta, errorOrMeta);
 		} else {
@@ -118,12 +128,19 @@ export class Logger {
 	 * Measure async operation duration.
 	 * Returns the result of `fn` and logs elapsed time.
 	 */
-	async time<T>(label: string, fn: () => Promise<T>, meta?: LogMeta): Promise<T> {
+	async time<T>(
+		label: string,
+		fn: () => Promise<T>,
+		meta?: LogMeta
+	): Promise<T> {
 		const start = performance.now();
 		try {
 			const result = await fn();
 			const elapsed = (performance.now() - start).toFixed(1);
-			this.info(`${label} completed`, { ...meta, durationMs: elapsed });
+			this.info(`${label} completed`, {
+				...meta,
+				durationMs: elapsed
+			});
 			return result;
 		} catch (err) {
 			const elapsed = (performance.now() - start).toFixed(1);
@@ -136,7 +153,12 @@ export class Logger {
 		}
 	}
 
-	private log(level: LogLevel, message: string, meta?: LogMeta, err?: Error): void {
+	private log(
+		level: LogLevel,
+		message: string,
+		meta?: LogMeta,
+		err?: Error
+	): void {
 		if (level < globalLevel) return;
 
 		const entry: LogEntry = {
@@ -168,7 +190,12 @@ export class Logger {
 		const levelStyle = `color: ${this.browserColor(level)}; font-weight: bold`;
 		const scopeStyle = 'color: #888; font-weight: normal';
 
-		const args: unknown[] = [prefix, levelStyle, scopeStyle, entry.message];
+		const args: unknown[] = [
+			prefix,
+			levelStyle,
+			scopeStyle,
+			entry.message
+		];
 		if (entry.meta) args.push(entry.meta);
 		if (entry.error) args.push(entry.error);
 
@@ -197,13 +224,16 @@ export class Logger {
 			entry.message;
 
 		const extra: string[] = [];
-		if (entry.meta) extra.push(`  meta=${JSON.stringify(entry.meta)}`);
+		if (entry.meta)
+			extra.push(`  meta=${JSON.stringify(entry.meta)}`);
 		if (entry.error) {
 			extra.push(`  error=${entry.error.message}`);
-			if (entry.error.stack) extra.push(`  stack=${entry.error.stack}`);
+			if (entry.error.stack)
+				extra.push(`  stack=${entry.error.stack}`);
 		}
 
-		const output = extra.length > 0 ? `${line}\n${extra.join('\n')}` : line;
+		const output =
+			extra.length > 0 ? `${line}\n${extra.join('\n')}` : line;
 
 		switch (_level) {
 			case LogLevel.WARN:
@@ -220,12 +250,18 @@ export class Logger {
 
 	private browserColor(level: LogLevel): string {
 		switch (level) {
-			case LogLevel.DEBUG: return '#0ea5e9';
-			case LogLevel.INFO: return '#22c55e';
-			case LogLevel.WARN: return '#eab308';
-			case LogLevel.ERROR: return '#ef4444';
-			case LogLevel.FATAL: return '#a855f7';
-			default: return '#888';
+			case LogLevel.DEBUG:
+				return '#0ea5e9';
+			case LogLevel.INFO:
+				return '#22c55e';
+			case LogLevel.WARN:
+				return '#eab308';
+			case LogLevel.ERROR:
+				return '#ef4444';
+			case LogLevel.FATAL:
+				return '#a855f7';
+			default:
+				return '#888';
 		}
 	}
 }

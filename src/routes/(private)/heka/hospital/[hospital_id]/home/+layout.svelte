@@ -31,12 +31,12 @@
 		pathnameForPageMatch().startsWith(
 			WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
 		) ||
-		pathnameForPageMatch().startsWith(
-			WebRoutesEnum.HEKA_HOME_CPOE
-		) ||
-		pathnameForPageMatch().startsWith(
-			WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
-		)
+			pathnameForPageMatch().startsWith(
+				WebRoutesEnum.HEKA_HOME_CPOE
+			) ||
+			pathnameForPageMatch().startsWith(
+				WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
+			)
 	);
 	let emrNavbarOpen = $state(false);
 	let prevInEmrCloneEmr = $state(false);

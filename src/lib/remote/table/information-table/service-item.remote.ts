@@ -102,9 +102,7 @@ export const getServiceItemCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.serviceItemTable)
-			.where(
-				ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
-			);
+			.where(ne(table.serviceItemTable.statusId, StatusEnum.DELETED));
 		return row?.count ?? 0;
 	}
 );

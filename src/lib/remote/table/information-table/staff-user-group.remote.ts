@@ -139,7 +139,10 @@ export const createStaffUserGroup = command(
 			.where(
 				and(
 					eq(table.staffUserGroupTable.staffId, payload.staffId),
-					eq(table.staffUserGroupTable.userGroupId, payload.userGroupId)
+					eq(
+						table.staffUserGroupTable.userGroupId,
+						payload.userGroupId
+					)
 				)
 			)
 			.limit(1);
