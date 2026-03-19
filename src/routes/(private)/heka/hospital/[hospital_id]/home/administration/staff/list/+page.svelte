@@ -34,9 +34,11 @@
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+	const dateTimeUtil = new DateTimeUtil();
 
 	let staffResult =
 		$state<PaginatedResult<StaffWithRelations> | null>(null);
@@ -145,25 +147,7 @@
 		}
 	}
 
-	function formatDate(value: string | null | undefined): string {
-		if (!value) return '—';
-		try {
-			const d = new Date(value);
-			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-		} catch {
-			return '—';
-		}
-	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '—';
-		try {
-			const d = new Date(value);
-			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
-		} catch {
-			return '—';
-		}
-	}
 
 	type StaffDialogMode = 'view' | 'edit';
 	let staffDialog = $state<{
@@ -240,7 +224,7 @@
 			header: m.date_of_birth(),
 			widthClass: 'w-36 min-w-[9rem]',
 			filterable: false,
-			format: (value) => formatDate(value)
+			format: (value) => dateTimeUtil.formatDate(value as string)
 		},
 		{
 			id: 'staffEmploymentType',
@@ -297,14 +281,14 @@
 			header: m.created_at(),
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value)
+			format: (value) => dateTimeUtil.formatDateTime(value as string)
 		},
 		{
 			id: 'updatedAt',
 			header: m.updated_at(),
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value)
+			format: (value) => dateTimeUtil.formatDateTime(value as string)
 		}
 	];
 </script>
@@ -330,11 +314,7 @@
 			enableColumnFilters={true}
 			useRemoteFilters={true}
 			rowTooltipGetter={(row) => {
-				const createdAt = formatDateTime(row.createdAt);
-				const updatedAt = formatDateTime(row.updatedAt);
-				const createdBy = row.createdByUser?.name ?? '—';
-				const updatedBy = row.updatedByUser?.name ?? '—';
-				return `Created by: ${createdBy}\nCreated at: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
+				return StringUtil.tableToolTip(row);
 			}}
 			on:refresh={() => fetchStaff(true)}
 			on:pageSizeChange={() => {
