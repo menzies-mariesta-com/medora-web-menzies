@@ -28,6 +28,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	function areFiltersEqual(
 		a: Record<string, string>,
@@ -71,7 +72,18 @@
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 	let lastAllergiesFetchKey = $state('');
+	let mounted = $state(false);
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+	});
 
 	async function openAddDialog() {
 		if (!visit?.patientId || !visitId) return;
@@ -257,10 +269,10 @@
 	}
 
 	$effect(() => {
-		const vid = visitId;
-		const hid = hospitalId;
-		if (vid && hid) {
-			const visitKey = `${vid}:${hid}`;
+		if (!mounted) return;
+
+		if (visitId && hospitalId) {
+			const visitKey = `${visitId}:${hospitalId}`;
 			if (lastLoadedVisitKey === visitKey) {
 				return;
 			}
@@ -456,6 +468,7 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							bind:columnFilters={tableFilters}
 							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
@@ -501,13 +514,19 @@
 									<div class="flex justify-end gap-1">
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEditDialog(row)}
+											onClick={() =>
+												openEditDialog(
+													row as PatientAllergyWithRelations
+												)}
 										>
 											<LucidePencil className="size-4" />
 										</DaisyUiButton>
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDelete(row)}
+											onClick={() =>
+												handleDelete(
+													row as PatientAllergyWithRelations
+												)}
 										>
 											<LucideTrash2 className="size-4" />
 										</DaisyUiButton>

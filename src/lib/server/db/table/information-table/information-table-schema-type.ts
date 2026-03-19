@@ -41,7 +41,8 @@ import type {
 	documentTable,
 	patientDocumentTable,
 	serviceOrderTable,
-	serviceOrderDetailTable
+	serviceOrderDetailTable,
+	referHistoryTable
 } from './information-table';
 
 type OptionalAuditKeys =
@@ -364,3 +365,9 @@ export type DocumentSettingSchemaInsert = InferInsertModel<
 >;
 export type DocumentSettingSchemaUpdate =
 	Partial<DocumentSettingSchemaInsert>;
+
+export type ReferHistorySchema = InferSelectModel<typeof referHistoryTable>;
+export type ReferHistorySchemaInsert = InferInsertModel<
+	typeof referHistoryTable
+>;
+export type ReferHistorySchemaUpdate = Partial<ReferHistorySchemaInsert>;
