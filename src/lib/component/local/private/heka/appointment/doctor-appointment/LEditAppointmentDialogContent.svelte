@@ -136,7 +136,6 @@
 		return statusTaggingData;
 	});
 
-
 	function isCheckInStatus(id: string | null | undefined): boolean {
 		if (!id) return false;
 		const status = statusTaggingData.find((s) => String(s.id) === id);
@@ -809,13 +808,13 @@
 					<DaisyUiLabel forText="apt-dob" className="shrink-0 sm:w-36"
 						>Date of Birth</DaisyUiLabel
 					>
-				<div class="max-w-80 flex-1">
-					<DaisyUiInputField
-						bind:value={patientDateOfBirth}
-						inputType="date"
-						className="w-full"
-					/>
-				</div>
+					<div class="max-w-80 flex-1">
+						<DaisyUiInputField
+							bind:value={patientDateOfBirth}
+							inputType="date"
+							className="w-full"
+						/>
+					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

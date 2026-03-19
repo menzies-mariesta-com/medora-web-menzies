@@ -68,18 +68,27 @@ const timestamps = {
 		withTimezone: true,
 		mode: 'string'
 	}),
-	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	}),
-	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	}),
-	deletedBy: text('deleted_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	})
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	deletedBy: text('deleted_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	)
 } as const;
 
 /** Many-to-many junction tables: timestamps + user tracking, no soft delete. */
@@ -97,14 +106,20 @@ const junctionTimestamps = {
 		.notNull()
 		.defaultNow()
 		.$onUpdate(() => sql`now()`),
-	createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	}),
-	updatedBy: text('updated_by').references((): AnyPgColumn => userTable.id, {
-		onDelete: 'set null',
-		onUpdate: 'cascade'
-	})
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		}
+	)
 } as const;
 
 // Information Tables (alphabetical) - business/transactional data
@@ -315,7 +330,12 @@ export const staffBranchTable = pgTable(
 			}),
 		...junctionTimestamps
 	},
-	(t) => [unique('staff_branch_staff_id_branch_id_unique').on(t.staffId, t.branchId)]
+	(t) => [
+		unique('staff_branch_staff_id_branch_id_unique').on(
+			t.staffId,
+			t.branchId
+		)
+	]
 );
 
 export const staffTable = pgTable('staff', {

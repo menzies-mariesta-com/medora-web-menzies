@@ -60,14 +60,17 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingAllergies = $state(false);
-let totalAllergies = $state(0);
-let tableFilters = $state<Record<string, string>>({
-	status: String(StatusEnum.ACTIVE)
-});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
-let lastLoadedVisitKey = $state('');
-let lastHandledPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let lastAllergiesFetchKey = $state('');
+	let totalAllergies = $state(0);
+	let tableFilters = $state<Record<string, string>>({
+		status: String(StatusEnum.ACTIVE)
+	});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
+	let lastLoadedVisitKey = $state('');
+	let lastHandledPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
+	let lastAllergiesFetchKey = $state('');
 	const toastService = new ToastService();
 
 	async function openAddDialog() {
@@ -456,11 +459,9 @@ let lastAllergiesFetchKey = $state('');
 							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(
-										visit.patientId,
-										visit.hospitalId,
-										{ force: true }
-									);
+									fetchAllergies(visit.patientId, visit.hospitalId, {
+										force: true
+									});
 								}
 							}}
 							on:pageSizeChange={() => {
@@ -470,18 +471,12 @@ let lastAllergiesFetchKey = $state('');
 								lastHandledPageSize = pageSizeStr;
 								currentPage = 1;
 								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(
-										visit.patientId,
-										visit.hospitalId
-									);
+									fetchAllergies(visit.patientId, visit.hospitalId);
 								}
 							}}
 							on:pageChange={() => {
 								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(
-										visit.patientId,
-										visit.hospitalId
-									);
+									fetchAllergies(visit.patientId, visit.hospitalId);
 								}
 							}}
 							on:filtersChange={(event) => {
@@ -496,10 +491,7 @@ let lastAllergiesFetchKey = $state('');
 								currentPage = 1;
 								filterDebounceTimeout = setTimeout(() => {
 									if (visit?.patientId && visit?.hospitalId) {
-										fetchAllergies(
-											visit.patientId,
-											visit.hospitalId
-										);
+										fetchAllergies(visit.patientId, visit.hospitalId);
 									}
 								}, 350);
 							}}

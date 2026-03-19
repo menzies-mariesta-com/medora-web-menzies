@@ -14,16 +14,14 @@ import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, count, eq, ne } from 'drizzle-orm';
 
-export const getStatus = query(
-	async (): Promise<StatusSchema[]> => {
-		const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);
-		return ensureDb()
-			.select()
-			.from(table.statusTable)
-			.where(whereExpr)
-			.orderBy(table.statusTable.name);
-	}
-);
+export const getStatus = query(async (): Promise<StatusSchema[]> => {
+	const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);
+	return ensureDb()
+		.select()
+		.from(table.statusTable)
+		.where(whereExpr)
+		.orderBy(table.statusTable.name);
+});
 
 export const getStatusCount = query(async (): Promise<number> => {
 	const whereExpr = ne(table.statusTable.id, StatusEnum.DELETED);

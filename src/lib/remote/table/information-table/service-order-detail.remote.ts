@@ -88,10 +88,7 @@ export const getServiceOrderDetailCount = query(
 			.select({ count: count() })
 			.from(table.serviceOrderDetailTable)
 			.where(
-				ne(
-					table.serviceOrderDetailTable.statusId,
-					StatusEnum.DELETED
-				)
+				ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
 			);
 		return row?.count ?? 0;
 	}
@@ -276,7 +273,11 @@ export const deleteServiceOrderDetailComplete = command(
 // mark nursing complete time (once)
 export const markServiceOrderDetailNursingComplete = command(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ServiceOrderDetailSchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<ServiceOrderDetailSchema | null> => {
 		const [updated] = await ensureDb()
 			.update(table.serviceOrderDetailTable)
 			.set({

@@ -126,10 +126,7 @@ export const getPatientVitalById = query(
 			.where(
 				and(
 					eq(table.patientDiagnosisTable.id, id),
-					ne(
-						table.patientDiagnosisTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED)
 				)
 			)
 			.limit(1);
@@ -151,10 +148,7 @@ export const getPatientVitalsByVisitId = query(
 			.where(
 				and(
 					eq(table.patientDiagnosisTable.visitId, visitId),
-					ne(
-						table.patientDiagnosisTable.statusId,
-						StatusEnum.DELETED
-					)
+					ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED)
 				)
 			)
 			.orderBy(desc(table.patientDiagnosisTable.createdAt));

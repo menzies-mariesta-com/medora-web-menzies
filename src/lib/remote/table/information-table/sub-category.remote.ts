@@ -47,9 +47,7 @@ export const getSubCategoryCount = query(
 		const [row] = await ensureDb()
 			.select({ count: count() })
 			.from(table.subCategoryTable)
-			.where(
-				ne(table.subCategoryTable.statusId, StatusEnum.DELETED)
-			);
+			.where(ne(table.subCategoryTable.statusId, StatusEnum.DELETED));
 		return row?.count ?? 0;
 	}
 );

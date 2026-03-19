@@ -26,7 +26,12 @@ export function fadeIn(
 /** Fade in + slide up */
 export function fadeInUp(
 	el: Element,
-	opts?: { duration?: number; delay?: number; y?: number; ease?: string }
+	opts?: {
+		duration?: number;
+		delay?: number;
+		y?: number;
+		ease?: string;
+	}
 ) {
 	return gsap.fromTo(
 		el,

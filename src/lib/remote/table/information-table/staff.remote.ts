@@ -837,7 +837,9 @@ export const createStaffWithUser = command(
 			payload.branchIds != null &&
 			payload.branchIds.length > 0
 		) {
-			const uniqueBranchIds = [...new Set(payload.branchIds.filter(Boolean))];
+			const uniqueBranchIds = [
+				...new Set(payload.branchIds.filter(Boolean))
+			];
 			for (const branchId of uniqueBranchIds) {
 				await createStaffBranch({
 					staffId: staff.id,

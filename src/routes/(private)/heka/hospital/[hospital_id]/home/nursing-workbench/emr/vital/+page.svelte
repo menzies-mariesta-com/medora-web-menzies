@@ -64,14 +64,17 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingVisit = $state(false);
 	let isLoadingVitals = $state(false);
-let totalVitals = $state(0);
-let tableFilters = $state<Record<string, string>>({
-	status: String(StatusEnum.ACTIVE)
-});
-let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
-let lastLoadedVisitKey = $state('');
-let lastHandledPageSize = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-let lastVitalsFetchKey = $state('');
+	let totalVitals = $state(0);
+	let tableFilters = $state<Record<string, string>>({
+		status: String(StatusEnum.ACTIVE)
+	});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
+	let lastLoadedVisitKey = $state('');
+	let lastHandledPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
+	let lastVitalsFetchKey = $state('');
 	const toastService = new ToastService();
 
 	async function openRecordDialog() {
@@ -476,11 +479,9 @@ let lastVitalsFetchKey = $state('');
 							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
-									fetchVitals(
-										visit.patientId,
-										visit.hospitalId,
-										{ force: true }
-									);
+									fetchVitals(visit.patientId, visit.hospitalId, {
+										force: true
+									});
 								}
 							}}
 							on:pageSizeChange={() => {

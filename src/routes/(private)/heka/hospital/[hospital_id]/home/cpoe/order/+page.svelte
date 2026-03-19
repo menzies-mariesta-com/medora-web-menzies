@@ -29,7 +29,7 @@
 		getServiceItem,
 		getServiceItemPaginated
 	} from '$lib/remote/table/information-table/service-item.remote';
-import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
+	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
 	import {
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations,
@@ -39,8 +39,8 @@ import { getSubCategory } from '$lib/remote/table/information-table/sub-category
 	import type {
 		ServiceOrderSchema,
 		ServiceOrderDetailSchema,
-	ServiceItemSchema,
-	ServiceTaggingSchema
+		ServiceItemSchema,
+		ServiceTaggingSchema
 	} from '$lib/server/db/schema-type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MariTable, {
@@ -49,15 +49,18 @@ import { getSubCategory } from '$lib/remote/table/information-table/sub-category
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
-import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
-import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-import { uiLogger } from '$lib/logger';
+	import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
+	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import { uiLogger } from '$lib/logger';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: undefined
 	);
@@ -99,20 +102,26 @@ import { uiLogger } from '$lib/logger';
 	let isLoadingVisit = $state(false);
 	let isLoadingHistory = $state(false);
 
-let currentDetailPage = $state(1);
-let detailPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-const detailPageSizeNum = $derived(Number(detailPageSizeStr) || 10);
-const pagedPendingItems = $derived(
-	pendingItems.slice(
-		(currentDetailPage - 1) * detailPageSizeNum,
-		currentDetailPage * detailPageSizeNum
-	)
-);
-
-	let serviceFilter = $state<'all' | 'radiology' | 'laboratory' | 'nursing'>(
-		'all'
+	let currentDetailPage = $state(1);
+	let detailPageSizeStr = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
-	type ServiceFilterType = 'all' | 'radiology' | 'laboratory' | 'nursing';
+	const detailPageSizeNum = $derived(Number(detailPageSizeStr) || 10);
+	const pagedPendingItems = $derived(
+		pendingItems.slice(
+			(currentDetailPage - 1) * detailPageSizeNum,
+			currentDetailPage * detailPageSizeNum
+		)
+	);
+
+	let serviceFilter = $state<
+		'all' | 'radiology' | 'laboratory' | 'nursing'
+	>('all');
+	type ServiceFilterType =
+		| 'all'
+		| 'radiology'
+		| 'laboratory'
+		| 'nursing';
 	let serviceFilterSubCategoryIds = $state<{
 		radiology: Set<number>;
 		nursing: Set<number>;
@@ -135,8 +144,7 @@ const pagedPendingItems = $derived(
 	let detailAmountEditable = $state(true);
 
 	let historyItems = $state<HistoryItem[]>([]);
-let showHistory = $state(false);
-
+	let showHistory = $state(false);
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -182,22 +190,21 @@ let showHistory = $state(false);
 			return;
 		}
 		serviceFilterSubCategoryPromise = (async () => {
-			const [radiologySubCategories, nursingSubCategories, laboratorySubCategories] =
-				await Promise.all([
-					getSubCategory({ categoryId: CategoryEnum.RADIOLOGY }),
-					getSubCategory({
-						categoryId: CategoryEnum.NURSING_PROCEDURE
-					}),
-					getSubCategory({ categoryId: CategoryEnum.LABORATORY })
-				]);
+			const [
+				radiologySubCategories,
+				nursingSubCategories,
+				laboratorySubCategories
+			] = await Promise.all([
+				getSubCategory({ categoryId: CategoryEnum.RADIOLOGY }),
+				getSubCategory({
+					categoryId: CategoryEnum.NURSING_PROCEDURE
+				}),
+				getSubCategory({ categoryId: CategoryEnum.LABORATORY })
+			]);
 			serviceFilterSubCategoryIds = {
-				radiology: new Set(
-					radiologySubCategories.map((s) => s.id)
-				),
+				radiology: new Set(radiologySubCategories.map((s) => s.id)),
 				nursing: new Set(nursingSubCategories.map((s) => s.id)),
-				laboratory: new Set(
-					laboratorySubCategories.map((s) => s.id)
-				)
+				laboratory: new Set(laboratorySubCategories.map((s) => s.id))
 			};
 		})();
 		await serviceFilterSubCategoryPromise;
@@ -245,7 +252,10 @@ let showHistory = $state(false);
 		try {
 			const [taggings, allServices] = await Promise.all([
 				getServiceTagging({ branchId: branchIdForVisit }),
-				getServiceItem({ hospitalId: hospitalIdForVisit, statusId: null })
+				getServiceItem({
+					hospitalId: hospitalIdForVisit,
+					statusId: null
+				})
 			]);
 			branchTaggings = taggings;
 			const serviceIds = new Set(
@@ -256,9 +266,14 @@ let showHistory = $state(false);
 				branchTaggings = [];
 				return;
 			}
-			branchServices = allServices.filter((s) => serviceIds.has(s.id));
+			branchServices = allServices.filter((s) =>
+				serviceIds.has(s.id)
+			);
 		} catch (err) {
-			uiLogger.error('Failed to load branch services', err instanceof Error ? err : undefined);
+			uiLogger.error(
+				'Failed to load branch services',
+				err instanceof Error ? err : undefined
+			);
 			branchServices = [];
 			branchTaggings = [];
 		}
@@ -311,9 +326,13 @@ let showHistory = $state(false);
 			}));
 	}
 
-	async function getServiceLabelForValue(id: string): Promise<string> {
+	async function getServiceLabelForValue(
+		id: string
+	): Promise<string> {
 		const serviceId = Number(id);
-		const cachedService = branchServices.find((s) => s.id === serviceId);
+		const cachedService = branchServices.find(
+			(s) => s.id === serviceId
+		);
 		if (cachedService) {
 			return `${cachedService.serviceName ?? `Service ${cachedService.id}`}${cachedService.serviceCode ? ` - ${cachedService.serviceCode}` : ''}`;
 		}
@@ -357,9 +376,12 @@ let showHistory = $state(false);
 		taggings: ServiceTaggingSchema[],
 		orderDate: string
 	): ServiceTaggingSchema | null {
-		const normalizedOrderDate = toDateOnly(orderDate) ?? todayDateString();
-		const dated: Array<{ tagging: ServiceTaggingSchema; date: string }> =
-			[];
+		const normalizedOrderDate =
+			toDateOnly(orderDate) ?? todayDateString();
+		const dated: Array<{
+			tagging: ServiceTaggingSchema;
+			date: string;
+		}> = [];
 		const undated: ServiceTaggingSchema[] = [];
 
 		for (const tagging of taggings) {
@@ -389,8 +411,13 @@ let showHistory = $state(false);
 		return null;
 	}
 
-	function effectiveServiceIdsForOrderDate(orderDate: string): Set<number> {
-		const taggingsByService = new Map<number, ServiceTaggingSchema[]>();
+	function effectiveServiceIdsForOrderDate(
+		orderDate: string
+	): Set<number> {
+		const taggingsByService = new Map<
+			number,
+			ServiceTaggingSchema[]
+		>();
 		for (const tagging of branchTaggings) {
 			if (tagging.serviceId == null) continue;
 			const existing = taggingsByService.get(tagging.serviceId);
@@ -420,7 +447,9 @@ let showHistory = $state(false);
 			return serviceFilterSubCategoryIds.radiology.has(subCategoryId);
 		}
 		if (filter === 'laboratory') {
-			return serviceFilterSubCategoryIds.laboratory.has(subCategoryId);
+			return serviceFilterSubCategoryIds.laboratory.has(
+				subCategoryId
+			);
 		}
 		if (filter === 'nursing') {
 			return serviceFilterSubCategoryIds.nursing.has(subCategoryId);
@@ -429,7 +458,9 @@ let showHistory = $state(false);
 	}
 
 	const filteredBranchServices = $derived(
-		branchServices.filter((s) => serviceMatchesFilter(s, serviceFilter))
+		branchServices.filter((s) =>
+			serviceMatchesFilter(s, serviceFilter)
+		)
 	);
 
 	async function applyPricingForSelectedService() {
@@ -455,24 +486,37 @@ let showHistory = $state(false);
 				t.serviceTaxAmount != null ? String(t.serviceTaxAmount) : '';
 			detailAmountEditable = t.allowEdit ?? true;
 		} catch (err) {
-			uiLogger.error('Failed to load pricing for service', err instanceof Error ? err : undefined);
+			uiLogger.error(
+				'Failed to load pricing for service',
+				err instanceof Error ? err : undefined
+			);
 			detailAmountEditable = true;
 		}
 	}
 
-	function buildPendingItem(serviceIdValue: string): Omit<PendingItem, 'id' | 'advisingDoctorName'> | null {
+	function buildPendingItem(
+		serviceIdValue: string
+	): Omit<PendingItem, 'id' | 'advisingDoctorName'> | null {
 		const serviceId = parseNumberOrNull(serviceIdValue);
 		if (!serviceId) {
-			toastService.addToast('Service is required.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Service is required.',
+				StatusColorEnum.ERROR
+			);
 			return null;
 		}
-		const serviceAmount = parseDecimalOrNull(detailServiceAmountInput);
+		const serviceAmount = parseDecimalOrNull(
+			detailServiceAmountInput
+		);
 		const serviceTaxAmount = parseDecimalOrNull(
 			detailServiceTaxAmountInput
 		);
 		const serviceUnit = parseNumberOrNull(detailServiceUnitInput);
 		if (!serviceUnit || serviceUnit < 1) {
-			toastService.addToast('Unit must be at least 1.', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Unit must be at least 1.',
+				StatusColorEnum.ERROR
+			);
 			return null;
 		}
 
@@ -535,7 +579,9 @@ let showHistory = $state(false);
 			);
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Save failed') as string,
+				(err instanceof Error
+					? err.message
+					: 'Save failed') as string,
 				StatusColorEnum.ERROR
 			);
 		}
@@ -566,7 +612,10 @@ let showHistory = $state(false);
 		});
 		if (!result.confirmed) return;
 		pendingItems = pendingItems.filter((item) => item.id !== row.id);
-		toastService.addToast('Item removed from list.', StatusColorEnum.SUCCESS);
+		toastService.addToast(
+			'Item removed from list.',
+			StatusColorEnum.SUCCESS
+		);
 	}
 
 	function formatNumber(
@@ -683,11 +732,12 @@ let showHistory = $state(false);
 				'Add at least one item to the list before saving.',
 				StatusColorEnum.ERROR
 			);
-		 return;
+			return;
 		}
 
 		const dateStr = orderDateInput || todayDateString();
-		const timeStr = orderTimeInput || new Date().toTimeString().slice(0, 5);
+		const timeStr =
+			orderTimeInput || new Date().toTimeString().slice(0, 5);
 
 		try {
 			// Generate next order number for this visit
@@ -695,10 +745,9 @@ let showHistory = $state(false);
 			const visitKey = visit.visitNo || String(visitId);
 			const yearSuffix = dateStr.slice(2, 4);
 			const seq = existingOrders.length + 1;
-			const orderNo = `${yearSuffix}/${visitKey}/${String(seq).padStart(
-				3,
-				'0'
-			)}`;
+			const orderNo = `${yearSuffix}/${visitKey}/${String(
+				seq
+			).padStart(3, '0')}`;
 
 			const created = await createServiceOrder({
 				branchId: visit.branchId,
@@ -733,7 +782,9 @@ let showHistory = $state(false);
 			);
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Save failed') as string,
+				(err instanceof Error
+					? err.message
+					: 'Save failed') as string,
 				StatusColorEnum.ERROR
 			);
 		}
@@ -752,7 +803,10 @@ let showHistory = $state(false);
 
 			const orderIds = orders.map((o) => o.id);
 			const orderNoMap = new Map(
-				orders.map((o) => [o.id, (o.orderNo as string | null | undefined) ?? null])
+				orders.map((o) => [
+					o.id,
+					(o.orderNo as string | null | undefined) ?? null
+				])
 			);
 
 			const details = await getServiceOrderDetail({
@@ -761,7 +815,8 @@ let showHistory = $state(false);
 
 			const doctorIdSet = new Set<string>();
 			for (const d of details) {
-				const docId = (d.advisingDoctorId as string | null | undefined) ?? null;
+				const docId =
+					(d.advisingDoctorId as string | null | undefined) ?? null;
 				if (docId) doctorIdSet.add(docId);
 			}
 
@@ -772,7 +827,11 @@ let showHistory = $state(false);
 			const doctorNameMap = new Map<string, string>();
 			doctorIdList.forEach((id, i) => {
 				const staff = resolvedStaff[i];
-				if (staff) doctorNameMap.set(id, StringUtil.doctorOptionDisplayName(staff));
+				if (staff)
+					doctorNameMap.set(
+						id,
+						StringUtil.doctorOptionDisplayName(staff)
+					);
 			});
 
 			historyItems = details.map((d) => ({
@@ -780,12 +839,14 @@ let showHistory = $state(false);
 				orderNo: orderNoMap.get(d.serviceOrderId) ?? null,
 				advisingDoctorName:
 					d.advisingDoctorId && doctorNameMap.get(d.advisingDoctorId)
-						? doctorNameMap.get(d.advisingDoctorId) ?? null
+						? (doctorNameMap.get(d.advisingDoctorId) ?? null)
 						: null
 			}));
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Load failed') as string,
+				(err instanceof Error
+					? err.message
+					: 'Load failed') as string,
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -815,7 +876,9 @@ let showHistory = $state(false);
 			);
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : 'Delete failed') as string,
+				(err instanceof Error
+					? err.message
+					: 'Delete failed') as string,
 				StatusColorEnum.ERROR
 			);
 		}
@@ -876,14 +939,16 @@ let showHistory = $state(false);
 									<span class="font-medium">Order Time</span>
 									<input
 										type="time"
-										class="d-input d-input-sm d-input-bordered w-32"
+										class="d-input-bordered d-input d-input-sm w-32"
 										bind:value={orderTimeInput}
 									/>
 								</label>
 							</div>
 
 							<!-- Service type radios -->
-							<div class="mt-2 flex flex-wrap items-center gap-6 text-sm">
+							<div
+								class="mt-2 flex flex-wrap items-center gap-6 text-sm"
+							>
 								<div class="font-medium">Service Type</div>
 								<div class="flex flex-wrap gap-6">
 									<label class="inline-flex items-center gap-2">
@@ -916,124 +981,128 @@ let showHistory = $state(false);
 										/>
 										<span>Laboratory</span>
 									</label>
-										<label class="inline-flex items-center gap-2">
-											<input
-												type="radio"
-												name="serviceType"
-												class="d-radio d-radio-sm"
-												value="nursing"
-												bind:group={serviceFilter}
-											/>
-											<span>Nursing</span>
-										</label>
-									</div>
-								</div>
-							</div>
-
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Service Name
-									<DaisyUiSearchSelect
-										bind:value={detailServiceIdInput}
-										placeholder="Select service"
-										searchFn={searchServices}
-										getLabelForValue={getServiceLabelForValue}
-										minSearchLength={0}
-										onChange={async () => {
-											detailServiceAmountInput = '';
-											detailServiceTaxAmountInput = '';
-											detailServiceUnitInput = '1';
-											await applyPricingForSelectedService();
-										}}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Order by (Adv Dr.)
-									<DaisyUiSearchSelect
-										bind:value={detailAdvisingDoctorIdInput}
-										placeholder="Select doctor"
-										className="w-full"
-										searchFn={searchDoctors}
-										getLabelForValue={getDoctorLabelForValue}
-										minSearchLength={0}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Unit
-									<input
-										type="number"
-										step="1"
-										min="1"
-										class="d-input-bordered d-input w-full"
-										bind:value={detailServiceUnitInput}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Service Amount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input-bordered d-input w-full"
-										bind:value={detailServiceAmountInput}
-										disabled={!detailAmountEditable}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Tax Amount
-									<input
-										type="number"
-										step="0.01"
-										class="d-input-bordered d-input w-full"
-										bind:value={detailServiceTaxAmountInput}
-										disabled
-									/>
-								</label>
-							</div>
-
-							<div class="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12">
-								<label
-									class="flex min-w-0 flex-col gap-1 text-sm xl:col-span-7"
-								>
-									Order Instruction
-									<textarea
-										class="d-textarea-bordered d-textarea w-full"
-										rows="2"
-										bind:value={detailInstructionInput}
-									></textarea>
-								</label>
-								<div class="flex items-end xl:col-span-2">
-									<label class="flex items-center gap-2 pb-2 text-sm">
+									<label class="inline-flex items-center gap-2">
 										<input
-											type="checkbox"
-											class="d-checkbox"
-											bind:checked={detailIsUrgentInput}
+											type="radio"
+											name="serviceType"
+											class="d-radio d-radio-sm"
+											value="nursing"
+											bind:group={serviceFilter}
 										/>
-										<span>Urgent</span>
+										<span>Nursing</span>
 									</label>
 								</div>
-								<div class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end">
-									<DaisyUiButton
-										className="d-btn-outline d-btn-sm px-6"
-										onClick={handleAddToList}
-									>
-										Add to list
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-primary d-btn-sm px-8"
-										onClick={handleSaveOrder}
-									>
-										Save
-									</DaisyUiButton>
-									{#if editingDetailId}
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={resetDetailForm}
-										>
-											Cancel
-										</DaisyUiButton>
-									{/if}
-								</div>
 							</div>
+						</div>
+
+						<div
+							class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+						>
+							<label class="flex min-w-0 flex-col gap-1 text-sm">
+								Service Name
+								<DaisyUiSearchSelect
+									bind:value={detailServiceIdInput}
+									placeholder="Select service"
+									searchFn={searchServices}
+									getLabelForValue={getServiceLabelForValue}
+									minSearchLength={0}
+									onChange={async () => {
+										detailServiceAmountInput = '';
+										detailServiceTaxAmountInput = '';
+										detailServiceUnitInput = '1';
+										await applyPricingForSelectedService();
+									}}
+								/>
+							</label>
+							<label class="flex min-w-0 flex-col gap-1 text-sm">
+								Order by (Adv Dr.)
+								<DaisyUiSearchSelect
+									bind:value={detailAdvisingDoctorIdInput}
+									placeholder="Select doctor"
+									className="w-full"
+									searchFn={searchDoctors}
+									getLabelForValue={getDoctorLabelForValue}
+									minSearchLength={0}
+								/>
+							</label>
+							<label class="flex min-w-0 flex-col gap-1 text-sm">
+								Unit
+								<input
+									type="number"
+									step="1"
+									min="1"
+									class="d-input-bordered d-input w-full"
+									bind:value={detailServiceUnitInput}
+								/>
+							</label>
+							<label class="flex min-w-0 flex-col gap-1 text-sm">
+								Service Amount
+								<input
+									type="number"
+									step="0.01"
+									class="d-input-bordered d-input w-full"
+									bind:value={detailServiceAmountInput}
+									disabled={!detailAmountEditable}
+								/>
+							</label>
+							<label class="flex min-w-0 flex-col gap-1 text-sm">
+								Tax Amount
+								<input
+									type="number"
+									step="0.01"
+									class="d-input-bordered d-input w-full"
+									bind:value={detailServiceTaxAmountInput}
+									disabled
+								/>
+							</label>
+						</div>
+
+						<div class="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12">
+							<label
+								class="flex min-w-0 flex-col gap-1 text-sm xl:col-span-7"
+							>
+								Order Instruction
+								<textarea
+									class="d-textarea-bordered d-textarea w-full"
+									rows="2"
+									bind:value={detailInstructionInput}
+								></textarea>
+							</label>
+							<div class="flex items-end xl:col-span-2">
+								<label class="flex items-center gap-2 pb-2 text-sm">
+									<input
+										type="checkbox"
+										class="d-checkbox"
+										bind:checked={detailIsUrgentInput}
+									/>
+									<span>Urgent</span>
+								</label>
+							</div>
+							<div
+								class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end"
+							>
+								<DaisyUiButton
+									className="d-btn-outline d-btn-sm px-6"
+									onClick={handleAddToList}
+								>
+									Add to list
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm px-8"
+									onClick={handleSaveOrder}
+								>
+									Save
+								</DaisyUiButton>
+								{#if editingDetailId}
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										onClick={resetDetailForm}
+									>
+										Cancel
+									</DaisyUiButton>
+								{/if}
+							</div>
+						</div>
 					</div>
 
 					<div>
@@ -1069,23 +1138,15 @@ let showHistory = $state(false);
 											<div class="flex justify-end gap-1">
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm"
-													onClick={() =>
-														startEditDetail(row)}
+													onClick={() => startEditDetail(row)}
 												>
-													<LucidePencil
-														className="size-4"
-													/>
+													<LucidePencil className="size-4" />
 												</DaisyUiButton>
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() =>
-														handleDeleteDetail(
-															row
-														)}
+													onClick={() => handleDeleteDetail(row)}
 												>
-													<LucideTrash2
-														className="size-4"
-													/>
+													<LucideTrash2 className="size-4" />
 												</DaisyUiButton>
 											</div>
 										</td>

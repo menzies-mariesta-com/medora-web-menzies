@@ -6,8 +6,8 @@
 	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -56,8 +56,12 @@ import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/Da
 
 	const branchOptions = $derived(allowedBranches);
 
-	let selectedBranchIds = $state<string[]>(branchOptions[0] ? [branchOptions[0].id] : []);
-const allowedBranchIdSet = $derived(new Set(allowedBranches.map((b) => b.id)));
+	let selectedBranchIds = $state<string[]>(
+		branchOptions[0] ? [branchOptions[0].id] : []
+	);
+	const allowedBranchIdSet = $derived(
+		new Set(allowedBranches.map((b) => b.id))
+	);
 
 	let serviceItems = $state<ServiceItemSchema[]>([]);
 	let taggingResult =
@@ -69,18 +73,18 @@ const allowedBranchIdSet = $derived(new Set(allowedBranches.map((b) => b.id)));
 
 	const taggings = $derived(taggingResult?.data ?? []);
 	const total = $derived(taggingResult?.total ?? 0);
-const serviceOptions = $derived.by(() =>
-	serviceItems.map((s) => ({
-		value: String(s.id),
-		label: StringUtil.serviceOptionDisplayName(s),
-	}))
-);
+	const serviceOptions = $derived.by(() =>
+		serviceItems.map((s) => ({
+			value: String(s.id),
+			label: StringUtil.serviceOptionDisplayName(s)
+		}))
+	);
 
-let mounted = $state(false);
+	let mounted = $state(false);
 
-lifeCycleUtil.onMount(() => {
-	mounted = true;
-});
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
 
 	let formServiceId = $state<string>('');
 	let formServiceAmount = $state('');
@@ -88,7 +92,6 @@ lifeCycleUtil.onMount(() => {
 	let formValidDate = $state('');
 	let formAllowEdit = $state(true);
 	let formActive = $state(true);
-
 
 	type Mode = 'create' | 'edit';
 	let mode = $state<Mode>('create');
@@ -177,12 +180,16 @@ lifeCycleUtil.onMount(() => {
 	}
 
 	async function fetchTaggings(forceRefresh = false) {
-		if (allowedBranches.length === 0 || selectedBranchIds.length === 0) return;
+		if (
+			allowedBranches.length === 0 ||
+			selectedBranchIds.length === 0
+		)
+			return;
 		isLoading = true;
 		try {
 			const filters = tableColumnFilters;
-			const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
-				allowedBranchIdSet.has(id)
+			const selectedAllowedBranchIds = selectedBranchIds.filter(
+				(id) => allowedBranchIdSet.has(id)
 			);
 			if (selectedAllowedBranchIds.length === 0) {
 				const pageSize = Number(pageSizeStr) || 10;
@@ -268,7 +275,10 @@ lifeCycleUtil.onMount(() => {
 			const statusVal = filters.status?.trim();
 			if (statusVal) {
 				const num = Number(statusVal);
-				if (num === StatusEnum.ACTIVE || num === StatusEnum.INACTIVE) {
+				if (
+					num === StatusEnum.ACTIVE ||
+					num === StatusEnum.INACTIVE
+				) {
 					paramsBase.statusId = num;
 				}
 			}
@@ -308,7 +318,11 @@ lifeCycleUtil.onMount(() => {
 	}
 
 	async function fetchComparativeTaggings() {
-		if (allowedBranches.length === 0 || selectedBranchIds.length === 0) return;
+		if (
+			allowedBranches.length === 0 ||
+			selectedBranchIds.length === 0
+		)
+			return;
 		const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
 			allowedBranchIdSet.has(id)
 		);
@@ -410,7 +424,9 @@ lifeCycleUtil.onMount(() => {
 
 	$effect(() => {
 		const allowedIds = new Set(allowedBranches.map((b) => b.id));
-		const cleaned = selectedBranchIds.filter((id) => allowedIds.has(id));
+		const cleaned = selectedBranchIds.filter((id) =>
+			allowedIds.has(id)
+		);
 		if (
 			cleaned.length === selectedBranchIds.length &&
 			cleaned.every((id, i) => id === selectedBranchIds[i])
@@ -588,7 +604,8 @@ lifeCycleUtil.onMount(() => {
 	};
 
 	const comparativeRows = $derived.by((): ComparativeRow[] => {
-		if (!isComparativeMode || comparativeTaggings.length === 0) return [];
+		if (!isComparativeMode || comparativeTaggings.length === 0)
+			return [];
 		const selectedAllowedBranchIds = selectedBranchIds.filter((id) =>
 			allowedBranchIdSet.has(id)
 		);
@@ -596,7 +613,10 @@ lifeCycleUtil.onMount(() => {
 
 		const byService = new Map<
 			number,
-			Map<string, { amount: string | null; tax: string | null; id: number }>
+			Map<
+				string,
+				{ amount: string | null; tax: string | null; id: number }
+			>
 		>();
 		for (const t of comparativeTaggings) {
 			if (!selectedAllowedBranchIds.includes(t.branchId)) continue;
@@ -616,7 +636,9 @@ lifeCycleUtil.onMount(() => {
 			.map(([serviceId, branchMap]) => {
 				const branches = selectedAllowedBranchIds.map((branchId) => {
 					const data = branchMap.get(branchId);
-					const branch = allowedBranches.find((b) => b.id === branchId);
+					const branch = allowedBranches.find(
+						(b) => b.id === branchId
+					);
 					return {
 						branchId,
 						branchName: branch?.name ?? branchId,
@@ -669,7 +691,9 @@ lifeCycleUtil.onMount(() => {
 								{@const isChecked = selectedBranchIds.includes(b.id)}
 								{@const toggleBranch = () => {
 									if (isChecked) {
-										selectedBranchIds = selectedBranchIds.filter((id) => id !== b.id);
+										selectedBranchIds = selectedBranchIds.filter(
+											(id) => id !== b.id
+										);
 									} else {
 										selectedBranchIds = [...selectedBranchIds, b.id];
 									}
@@ -681,7 +705,9 @@ lifeCycleUtil.onMount(() => {
 									onClick={toggleBranch}
 								>
 									<DaisyUiCheckbox checked={isChecked} />
-									<span class="text-xs">{b.name ?? 'Unnamed branch'}</span>
+									<span class="text-xs"
+										>{b.name ?? 'Unnamed branch'}</span
+									>
 								</DaisyUiButton>
 							{/each}
 						</div>
@@ -801,25 +827,34 @@ lifeCycleUtil.onMount(() => {
 				{#if isComparativeMode}
 					<div class={TableEnum.HEIGHT}>
 						{#if isComparativeLoading}
-							<div class="flex min-h-[200px] items-center justify-center">
+							<div
+								class="flex min-h-[200px] items-center justify-center"
+							>
 								<DaisyUiLoading />
 							</div>
 						{:else if comparativeRows.length === 0}
-							<div class="flex min-h-[200px] items-center justify-center text-base-content/70">
-								No records found. Select branches and ensure services are tagged.
+							<div
+								class="flex min-h-[200px] items-center justify-center text-base-content/70"
+							>
+								No records found. Select branches and ensure services
+								are tagged.
 							</div>
 						{:else}
 							<div class="overflow-x-auto">
-								<table class="d-table d-table-zebra d-table-pin-rows d-table-pin-cols d-table-sm">
+								<table
+									class="d-table-pin-rows d-table-pin-cols d-table d-table-zebra d-table-sm"
+								>
 									<thead>
 										<tr>
-											<th class="sticky left-0 z-10 min-w-[200px] bg-base-200">
+											<th
+												class="sticky left-0 z-10 min-w-[200px] bg-base-200"
+											>
 												Service
 											</th>
-											{#each selectedBranchIds.filter((id) =>
-												allowedBranchIdSet.has(id)
-											) as branchId}
-												{@const branch = allowedBranches.find((b) => b.id === branchId)}
+											{#each selectedBranchIds.filter( (id) => allowedBranchIdSet.has(id) ) as branchId}
+												{@const branch = allowedBranches.find(
+													(b) => b.id === branchId
+												)}
 												<th
 													class="min-w-[140px] bg-base-200 text-center"
 													colspan="2"
@@ -830,18 +865,22 @@ lifeCycleUtil.onMount(() => {
 										</tr>
 										<tr>
 											<th class="sticky left-0 z-10 bg-base-200"></th>
-											{#each selectedBranchIds.filter((id) =>
-												allowedBranchIdSet.has(id)
-											) as _}
-												<th class="bg-base-200/80 text-xs font-normal">Amount</th>
-												<th class="bg-base-200/80 text-xs font-normal">Tax</th>
+											{#each selectedBranchIds.filter( (id) => allowedBranchIdSet.has(id) ) as _}
+												<th class="bg-base-200/80 text-xs font-normal"
+													>Amount</th
+												>
+												<th class="bg-base-200/80 text-xs font-normal"
+													>Tax</th
+												>
 											{/each}
 										</tr>
 									</thead>
 									<tbody>
 										{#each comparativeRows as row (row.serviceId)}
 											<tr>
-												<td class="sticky left-0 z-10 bg-base-100 font-medium">
+												<td
+													class="sticky left-0 z-10 bg-base-100 font-medium"
+												>
 													{row.serviceName}
 												</td>
 												{#each row.branches as branch}

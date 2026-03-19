@@ -28,13 +28,19 @@ export class BrowserUtil {
 	}
 	copyToClipboard(text: string): void {
 		navigator.clipboard.writeText(text).catch((err) => {
-			log.error('Could not copy text', err instanceof Error ? err : undefined);
+			log.error(
+				'Could not copy text',
+				err instanceof Error ? err : undefined
+			);
 		});
 	}
 	fullScreen(): void {
 		if (!document.fullscreenElement) {
 			document.documentElement.requestFullscreen().catch((err) => {
-				log.error('Error enabling full-screen mode', err instanceof Error ? err : undefined);
+				log.error(
+					'Error enabling full-screen mode',
+					err instanceof Error ? err : undefined
+				);
 			});
 		} else {
 			document.exitFullscreen();

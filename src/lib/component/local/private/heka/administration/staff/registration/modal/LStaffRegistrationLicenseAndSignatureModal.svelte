@@ -10,36 +10,45 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
-let {
-	open = $bindable(false),
-	licenseNo = $bindable(''),
-	licenseExpiryDate = $bindable(''),
-	signatureFile = $bindable(null as File | null),
-	signatureText = $bindable(''),
-	viewOnly = false,
-	initialSignatureImageUrl
-} = $props<{
-	open?: boolean;
-	licenseNo?: string;
-	licenseExpiryDate?: string;
-	signatureFile?: File | null;
-	signatureText?: string;
-	viewOnly?: boolean;
-	initialSignatureImageUrl?: string;
-}>();
+	let {
+		open = $bindable(false),
+		licenseNo = $bindable(''),
+		licenseExpiryDate = $bindable(''),
+		signatureFile = $bindable(null as File | null),
+		signatureText = $bindable(''),
+		viewOnly = false,
+		initialSignatureImageUrl
+	} = $props<{
+		open?: boolean;
+		licenseNo?: string;
+		licenseExpiryDate?: string;
+		signatureFile?: File | null;
+		signatureText?: string;
+		viewOnly?: boolean;
+		initialSignatureImageUrl?: string;
+	}>();
 
 	const toastService = new ToastService();
 	let signaturePreviewUrl = $state('');
 	let signatureInputEl: HTMLInputElement | undefined = $state();
 
 	$effect(() => {
-	if (!signatureFile && signaturePreviewUrl && !initialSignatureImageUrl) {
-		URL.revokeObjectURL(signaturePreviewUrl);
-		signaturePreviewUrl = '';
-	}
-	if (open && !signatureFile && initialSignatureImageUrl && !signaturePreviewUrl) {
-		signaturePreviewUrl = initialSignatureImageUrl;
-	}
+		if (
+			!signatureFile &&
+			signaturePreviewUrl &&
+			!initialSignatureImageUrl
+		) {
+			URL.revokeObjectURL(signaturePreviewUrl);
+			signaturePreviewUrl = '';
+		}
+		if (
+			open &&
+			!signatureFile &&
+			initialSignatureImageUrl &&
+			!signaturePreviewUrl
+		) {
+			signaturePreviewUrl = initialSignatureImageUrl;
+		}
 	});
 
 	function handleClose() {

@@ -61,11 +61,11 @@
 		 * depend on reactive data in the parent.
 		 */
 		filterOptionsGetter?: () => { value: string; label: string }[];
-	/**
-	 * Optional default filter value for this column.
-	 * Applied once when no value has been set yet.
-	 */
-	defaultFilterValue?: string;
+		/**
+		 * Optional default filter value for this column.
+		 * Applied once when no value has been set yet.
+		 */
+		defaultFilterValue?: string;
 		/**
 		 * Optional formatter for the cell value.
 		 */
@@ -137,13 +137,14 @@
 	function getDefaultFilterValue(
 		column: MariTableColumn
 	): string | undefined {
-	return column.defaultFilterValue;
+		return column.defaultFilterValue;
 	}
 
 	$effect(() => {
 		if (!enableColumnFilters) return;
 		const nextFilters = { ...columnFilters };
-		const initialized: Array<{ columnId: string; value: string }> = [];
+		const initialized: Array<{ columnId: string; value: string }> =
+			[];
 
 		for (const column of columns) {
 			if (!(column.filterable ?? true)) continue;
@@ -168,7 +169,6 @@
 			}
 		}
 	});
-
 
 	const pageSizeNum = $derived(Number(pageSize) || 10);
 
@@ -547,7 +547,7 @@
 									<td
 										class={`${column.widthClass ?? ''} ${column.cellClass ?? ''} ${column.cellClassGetter ? column.cellClassGetter(row, index) : ''}`.trim()}
 									>
-											{getCellValue(row, column, index)}
+										{getCellValue(row, column, index)}
 									</td>
 								{/each}
 							</tr>
