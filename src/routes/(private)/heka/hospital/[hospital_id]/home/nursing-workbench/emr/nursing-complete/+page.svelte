@@ -66,9 +66,14 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let totalRows = $state(0);
-	let tableFilters = $state<Record<string, string>>({});
+	let lastFetchKey: string | null = $state(null);
+	let lastLoadedVisitKey: string = $state('');
+	let tableFilters = $state<Record<string, string>>({
+		status: String(StatusEnum.ACTIVE)
+	});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
+	let initialized: boolean = $state(false);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -111,13 +116,28 @@
 		return date.toLocaleString();
 	}
 
-	async function fetchNursingComplete() {
+	async function fetchNursingComplete(options?: { force?: boolean }) {
 		if (!visitId || !hospitalId) {
 			visit = null;
 			rows = [];
 			return;
 		}
 
+		const pageSize = Number(pageSizeStr) || 10;
+		const requestKey = JSON.stringify({
+			visitId,
+			hospitalId,
+			page: currentPage,
+			pageSize,
+			status: tableFilters.status ?? ''
+		});
+
+		if (!options?.force && requestKey === lastFetchKey) {
+			return;
+		}
+		lastFetchKey = requestKey;
+
+		console.log('FetchingNursingComplete()');
 		isLoading = true;
 		try {
 			const currentVisit = await getPatientVisitById({ id: visitId });
@@ -197,6 +217,7 @@
 					isUrgent: detail.isUrgent ?? null
 				};
 			});
+			initialized = true;
 		} catch (error) {
 			console.error('Failed to load nursing complete rows', error);
 			rows = [];
@@ -210,15 +231,20 @@
 
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
-		if (visitId) fetchNursingComplete();
 	});
 
 	$effect(() => {
-		const vid = visitId;
 		if (!mounted) return;
-		if (vid) {
+
+		if (visitId && hospitalId) {
+			const visitKey = `${visitId}:${hospitalId}`;
+			if (lastLoadedVisitKey === visitKey) {
+				return;
+			}
+			lastLoadedVisitKey = visitKey;
 			fetchNursingComplete();
 		} else {
+			lastLoadedVisitKey = '';
 			visit = null;
 			rows = [];
 		}
@@ -334,7 +360,7 @@
 				'Nursing complete time marked',
 				StatusColorEnum.SUCCESS
 			);
-			await fetchNursingComplete();
+			await fetchNursingComplete({ force: true });
 		} catch (error) {
 			console.error('Failed to mark nursing complete', error);
 			toastService.addToast(
@@ -352,11 +378,7 @@
 			message={'Choose a visit using the "Choose Visit" button above to view nursing complete items.'}
 			className="z-0"
 		/>
-	{:else if isLoading}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visit}
+	{:else if !visit && !isLoading}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
@@ -364,6 +386,16 @@
 	{:else}
 		<DaisyUiCard>
 			<div class="p-3">
+				{#if isLoading && rows.length === 0}
+					<div class="flex min-h-32 items-center justify-center">
+						<DaisyUiLoading className="d-loading-lg" />
+					</div>
+				{:else if !visit}
+					<DaisyUiAlert
+						type={StatusColorEnum.WARNING}
+						message="Visit not found."
+					/>
+				{:else}
 				<div
 					class="mb-3 flex flex-wrap items-center justify-between gap-3"
 				>
@@ -409,18 +441,24 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							bind:columnFilters={tableFilters}
 							useRemoteFilters={true}
-							on:refresh={() => fetchNursingComplete()}
+							on:refresh={() => fetchNursingComplete({ force: true })}
 							on:pageSizeChange={() => {
+								if (!initialized) return;
 								currentPage = 1;
 								fetchNursingComplete();
 							}}
-							on:pageChange={() => fetchNursingComplete()}
+							on:pageChange={() => {
+								if (!initialized) return;
+								fetchNursingComplete();
+							}}
 							on:filtersChange={(event) => {
 								if (filterDebounceTimeout) {
 									clearTimeout(filterDebounceTimeout);
 								}
 								tableFilters = event.detail.filters;
+								if (!initialized) return;
 								currentPage = 1;
 								filterDebounceTimeout = setTimeout(() => {
 									fetchNursingComplete();
@@ -448,7 +486,8 @@
 						</MariTable>
 					</div>
 				{/if}
-			</div>
-		</DaisyUiCard>
-	{/if}
+			{/if}
+		</div>
+	</DaisyUiCard>
+{/if}
 </div>

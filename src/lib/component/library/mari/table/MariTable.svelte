@@ -108,6 +108,7 @@
 		enableColumnFilters = false,
 		actionsVariant = 'none',
 		useRemoteFilters = false,
+		columnFilters = $bindable<Record<string, string>>({}),
 		rowTooltipGetter
 	} = $props<{
 		rows: any[];
@@ -126,6 +127,8 @@
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
 		useRemoteFilters?: boolean;
+		/** Controlled filter state from parent. */
+		columnFilters?: Record<string, string>;
 		/**
 		 * Optional function to provide a tooltip for each row.
 		 * Return a string to show as the native browser tooltip on row hover.
@@ -133,7 +136,7 @@
 		rowTooltipGetter?: (row: any, rowIndex: number) => string;
 	}>();
 
-	let columnFilters = $state<Record<string, string>>({});
+
 	function getDefaultFilterValue(
 		column: MariTableColumn
 	): string | undefined {
@@ -142,9 +145,9 @@
 
 	$effect(() => {
 		if (!enableColumnFilters) return;
+
 		const nextFilters = { ...columnFilters };
-		const initialized: Array<{ columnId: string; value: string }> =
-			[];
+		let changed = false;
 
 		for (const column of columns) {
 			if (!(column.filterable ?? true)) continue;
@@ -152,21 +155,21 @@
 			const defaultValue = getDefaultFilterValue(column);
 			if (defaultValue == null || defaultValue === '') continue;
 			nextFilters[column.id] = defaultValue;
-			initialized.push({ columnId: column.id, value: defaultValue });
+			changed = true;
 		}
 
-		if (initialized.length === 0) return;
+		if (!changed) return;
 
 		columnFilters = nextFilters;
 		currentPage = 1;
+
 		if (useRemoteFilters) {
-			for (const item of initialized) {
-				dispatch('filtersChange', {
-					columnId: item.columnId,
-					value: item.value,
-					filters: nextFilters
-				});
-			}
+			// Dispatch once for the combined set of changes
+			dispatch('filtersChange', {
+				columnId: '__init__',
+				value: '',
+				filters: nextFilters
+			});
 		}
 	});
 

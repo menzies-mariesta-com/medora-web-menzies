@@ -48,6 +48,7 @@
 	let isPrinting = $state(false);
 	let selectedDocument = $state<DocumentWithRelations | null>(null);
 	let showPreview = $state(false);
+	let lastLoadedVisitId = $state<number | null>(null);
 
 	const consentDocuments = $derived(
 		documents.filter(
@@ -102,9 +103,12 @@
 	});
 
 	$effect(() => {
-		const _vid = visitId;
 		if (!mounted) return;
-		fetchAllData();
+
+		if (visitId !== lastLoadedVisitId) {
+			lastLoadedVisitId = visitId;
+			fetchAllData();
+		}
 	});
 
 	lifeCycleUtil.onDestroy(() => {
@@ -389,12 +393,13 @@
 				</p>
 			</div>
 		</DaisyUiCard>
-	{:else if isLoading}
-		<div class="flex items-center justify-center py-12">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			{#if isLoading && documents.length === 0}
+				<div class="lg:col-span-3 flex items-center justify-center py-12">
+					<DaisyUiLoading className="d-loading-lg" />
+				</div>
+			{:else}
 			<!-- Consent Forms -->
 			<DaisyUiCard className="bg-base-100">
 				<div class="border-b border-base-300 p-4">
@@ -561,6 +566,7 @@
 					{/if}
 				</ul>
 			</DaisyUiCard>
+			{/if}
 		</div>
 	{/if}
 </div>
