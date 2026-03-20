@@ -1,5 +1,3 @@
-import { browser, dev } from '$app/environment';
-
 export enum LogLevel {
 	DEBUG = 0,
 	INFO = 1,
@@ -40,7 +38,11 @@ interface LogEntry {
 	env: 'server' | 'client';
 }
 
-function parseLevel(value: string | undefined): LogLevel {
+	const browser =
+		typeof window !== 'undefined' && typeof document !== 'undefined';
+	const dev = process.env.NODE_ENV !== 'production';
+
+	function parseLevel(value: string | undefined): LogLevel {
 	if (!value) return dev ? LogLevel.DEBUG : LogLevel.INFO;
 	const upper = value.toUpperCase();
 	const match = Object.entries(LEVEL_LABELS).find(

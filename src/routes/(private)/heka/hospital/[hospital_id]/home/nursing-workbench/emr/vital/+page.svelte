@@ -25,13 +25,17 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import { vitalTextClass } from '$lib/config/vital.config';
+	import {
+		vitalTextClass,
+		type VitalKey
+	} from '$lib/config/vital.config';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	function areFiltersEqual(
 		a: Record<string, string>,
@@ -75,7 +79,18 @@
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 	let lastVitalsFetchKey = $state('');
+	let mounted = $state(false);
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+	});
 
 	async function openRecordDialog() {
 		if (!visit?.patientId || !visit?.hospitalId || !visitId) return;
@@ -207,7 +222,6 @@
 		hospitalIdParam: string,
 		options?: { force?: boolean }
 	) {
-		console.log('FETCHING VITALS');
 		const pageSize = Number(pageSizeStr) || 10;
 		const requestKey = JSON.stringify({
 			patientId,
@@ -222,7 +236,7 @@
 		}
 		lastVitalsFetchKey = requestKey;
 		isLoadingVitals = true;
-		console.log('Refreshing');
+		console.log('FETCHING VITALS');
 		try {
 			const statusId = tableFilters.status
 				? Number(tableFilters.status)
@@ -252,10 +266,10 @@
 	}
 
 	$effect(() => {
-		const vid = visitId;
-		const hid = hospitalId;
-		if (vid && hid) {
-			const visitKey = `${vid}:${hid}`;
+		if (!mounted) return;
+
+		if (visitId && hospitalId) {
+			const visitKey = `${visitId}:${hospitalId}`;
 			if (lastLoadedVisitKey === visitKey) {
 				return;
 			}
@@ -360,8 +374,8 @@
 					row.bpDiastolic
 				)}`,
 			cellClassGetter: (row) =>
-				vitalTextClass(row.bpSystolic, 'bpSystolic') ||
-				vitalTextClass(row.bpDiastolic, 'bpDiastolic')
+				vitalTextClass(row.bpSystolic, 'bpSystolic' as VitalKey) ||
+				vitalTextClass(row.bpDiastolic, 'bpDiastolic' as VitalKey)
 		},
 		{
 			id: 'pulse',
@@ -369,7 +383,8 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.pulse),
-			cellClassGetter: (row) => vitalTextClass(row.pulse, 'pulse')
+			cellClassGetter: (row) =>
+				vitalTextClass(row.pulse, 'pulse' as VitalKey)
 		},
 		{
 			id: 'temperature',
@@ -378,7 +393,7 @@
 			filterable: false,
 			format: (_value, row) => formatVital(row.temperature),
 			cellClassGetter: (row) =>
-				vitalTextClass(row.temperature, 'temperature')
+				vitalTextClass(row.temperature, 'temperature' as VitalKey)
 		},
 		{
 			id: 'spO2',
@@ -386,7 +401,8 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.spO2),
-			cellClassGetter: (row) => vitalTextClass(row.spO2, 'spO2')
+			cellClassGetter: (row) =>
+				vitalTextClass(row.spO2, 'spO2' as VitalKey)
 		},
 		{
 			id: 'respiration',
@@ -395,7 +411,7 @@
 			filterable: false,
 			format: (_value, row) => formatVital(row.respiration),
 			cellClassGetter: (row) =>
-				vitalTextClass(row.respiration, 'respiration')
+				vitalTextClass(row.respiration, 'respiration' as VitalKey)
 		},
 		{
 			id: 'rbs',
@@ -403,7 +419,8 @@
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.rbs),
-			cellClassGetter: (row) => vitalTextClass(row.rbs, 'rbs')
+			cellClassGetter: (row) =>
+				vitalTextClass(row.rbs, 'rbs' as VitalKey)
 		},
 		{
 			id: 'symptom',
@@ -476,6 +493,7 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
+							bind:columnFilters={tableFilters}
 							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
@@ -521,13 +539,19 @@
 									<div class="flex justify-end gap-1">
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm"
-											onClick={() => openEditDialog(row)}
+											onClick={() =>
+												openEditDialog(
+													row as PatientVitalWithVisit
+												)}
 										>
 											<LucidePencil className="size-4" />
 										</DaisyUiButton>
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() => handleDeleteVital(row)}
+											onClick={() =>
+												handleDeleteVital(
+													row as PatientVitalWithVisit
+												)}
 										>
 											<LucideTrash2 className="size-4" />
 										</DaisyUiButton>

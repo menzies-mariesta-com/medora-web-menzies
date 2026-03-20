@@ -1071,3 +1071,33 @@ export const allergyTable = pgTable('allergy', {
 		.default(StatusEnum.ACTIVE),
 	...timestamps
 });
+
+export const referHistoryTable = pgTable('refer_history', {
+	id: serial('id').primaryKey(),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id),
+	referDate: date('referdate'),
+	fromBranchId: uuid('from_branch_id').references(
+		() => hospitalBranchTable.id
+	),
+	toBranchId: uuid('to_branch_id').references(
+		() => hospitalBranchTable.id
+	),
+	fromReferDoctorId: uuid('from_refer_doctorid').references(
+		() => staffTable.id
+	),
+	toReferDoctorId: uuid('to_refer_doctorid').references(
+		() => staffTable.id
+	),
+	isUrgent: integer('is_urgent').default(YesNoEnum.NO),
+	referRequestNote: text('refer_request_note'),
+	acceptDate: date('accept_date'),
+	// Separate cancel fields (instead of reusing acceptDate/referReplyNote)
+	cancelBy: text('cancel_by').references(() => userTable.id),
+	cancelAt: date('cancel_at'),
+	cancelRemark: text('cancel_remark'),
+	referReplyNote: text('refer_reply_note'),
+	subject: text('subject'),
+	...timestamps
+});
