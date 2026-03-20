@@ -25,7 +25,10 @@ export const getReferHistoryWithRelations = query(async () => {
 			fromBranch: true,
 			toBranch: true,
 			fromReferDoctor: { with: { title: true, specialization: true } },
-			toReferDoctor: { with: { title: true, specialization: true } }
+			toReferDoctor: { with: { title: true, specialization: true } },
+			createdByUser: true,
+			updatedByUser: true,
+			cancelByUser: true
 		},
 		orderBy: [desc(table.referHistoryTable.createdAt)]
 	});
@@ -205,7 +208,10 @@ export const getReferHistoryPaginated = query(
 					fromBranch: true,
 					toBranch: true,
 					fromReferDoctor: { with: { title: true, specialization: true } },
-					toReferDoctor: { with: { title: true, specialization: true } }
+					toReferDoctor: { with: { title: true, specialization: true } },
+					createdByUser: true,
+					updatedByUser: true,
+					cancelByUser: true
 				},
 				orderBy: [desc(table.referHistoryTable.createdAt)],
 				limit,

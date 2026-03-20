@@ -27,6 +27,11 @@
 	const toastService = new ToastService();
 
 	const visitId = $derived(VisitState.visitId);
+	const rowLegends = [
+		{ id: 'active', label: 'Active', colorClass: 'bg-neutral/5' },
+		{ id: 'urgent', label: 'Urgent', colorClass: 'bg-warning/25' },
+		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
+	];
 
 	const columns: MariTableColumn[] = [
 		{ id: 'referDate', header: 'Date', field: 'referDate', filterable: false },
@@ -196,6 +201,13 @@
 				{rows}
 				{totalRowCount}
 				{isLoading}
+				legendItems={rowLegends}
+				rowClassGetter={(row) => {
+					if (row.cancelAt != null) return '!bg-error/15';
+					if (row.isUrgent === YesNoEnum.YES) return '!bg-warning/15';
+					return '!bg-neutral/0';
+				}}
+				rowTooltipGetter={(row) => StringUtil.tableToolTip(row)}
 				bind:pageSize
 				bind:currentPage
 				bind:columnFilters={tableFilters}
