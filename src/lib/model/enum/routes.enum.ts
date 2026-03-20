@@ -38,6 +38,7 @@ export enum WebRoutesEnum {
 	// CPOE module (navbar auto-hides like nursing EMR)
 	HEKA_HOME_CPOE = '/heka/home/cpoe',
 	HEKA_HOME_CPOE_ORDER = '/heka/home/cpoe/order',
+	HEKA_HOME_CPOE_REFER = '/heka/home/cpoe/refer',
 
 	// Observation module (navbar auto-hides like nursing EMR)
 	HEKA_HOME_OBSERVATION = '/heka/home/observation',

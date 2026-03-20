@@ -124,7 +124,12 @@ export async function seedInformationTables() {
 
 
 			-- Observation Module
-			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1)
+			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1),
+
+			-- Refer Module
+			(14, 'Refer', 6, 1, null, '/heka/home/cpoe/refer', 3),
+			(1400001, 'Refer Doctor', 6, 1, 14, '/heka/home/cpoe/refer/doctor', 1),
+			(1400002, 'Referral History', 6, 1, 14, '/heka/home/cpoe/refer/history', 2)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

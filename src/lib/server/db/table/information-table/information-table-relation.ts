@@ -20,6 +20,7 @@ import {
 	patientInsurance,
 	patientTable,
 	patientVisitTable,
+	referHistoryTable,
 	insuranceTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
@@ -403,7 +404,8 @@ export const patientVisitTableRelations = relations(
 		}),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
-		serviceOrders: many(serviceOrderTable)
+		serviceOrders: many(serviceOrderTable),
+		referHistories: many(referHistoryTable)
 	})
 );
 
@@ -743,6 +745,7 @@ export const patientTableRelations = relations(
 		visits: many(patientVisitTable),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
+		referHistories: many(referHistoryTable),
 		documentSettings: many(documentSettingTable),
 		createdByUser: one(userTable, {
 			fields: [patientTable.createdBy],
@@ -1056,6 +1059,44 @@ export const patientDocumentTableRelations = relations(
 		status: one(statusTable, {
 			fields: [patientDocumentTable.statusId],
 			references: [statusTable.id]
+		})
+	})
+);
+
+export const referHistoryTableRelations = relations(
+	referHistoryTable,
+	({ one }) => ({
+		visit: one(patientVisitTable, {
+			fields: [referHistoryTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		fromBranch: one(hospitalBranchTable, {
+			fields: [referHistoryTable.fromBranchId],
+			references: [hospitalBranchTable.id]
+		}),
+		toBranch: one(hospitalBranchTable, {
+			fields: [referHistoryTable.toBranchId],
+			references: [hospitalBranchTable.id]
+		}),
+		fromReferDoctor: one(staffTable, {
+			fields: [referHistoryTable.fromReferDoctorId],
+			references: [staffTable.id]
+		}),
+		toReferDoctor: one(staffTable, {
+			fields: [referHistoryTable.toReferDoctorId],
+			references: [staffTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [referHistoryTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [referHistoryTable.updatedBy],
+			references: [userTable.id]
+		}),
+		cancelByUser: one(userTable, {
+			fields: [referHistoryTable.cancelBy],
+			references: [userTable.id]
 		})
 	})
 );
