@@ -1085,6 +1085,18 @@ export const referHistoryTableRelations = relations(
 		toReferDoctor: one(staffTable, {
 			fields: [referHistoryTable.toReferDoctorId],
 			references: [staffTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [referHistoryTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [referHistoryTable.updatedBy],
+			references: [userTable.id]
+		}),
+		cancelByUser: one(userTable, {
+			fields: [referHistoryTable.cancelBy],
+			references: [userTable.id]
 		})
 	})
 );

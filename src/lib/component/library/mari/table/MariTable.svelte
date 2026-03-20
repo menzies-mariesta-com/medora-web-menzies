@@ -72,6 +72,12 @@
 		format?: (value: any, row: T, rowIndex: number) => any;
 	};
 
+	export type MariTableLegendItem = {
+		id: string;
+		label: string;
+		colorClass: string;
+	};
+
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 	type RowEventDetail = any;
@@ -109,7 +115,9 @@
 		actionsVariant = 'none',
 		useRemoteFilters = false,
 		columnFilters = $bindable<Record<string, string>>({}),
-		rowTooltipGetter
+		rowTooltipGetter,
+		legendItems = [],
+		rowClassGetter
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -129,6 +137,10 @@
 		useRemoteFilters?: boolean;
 		/** Controlled filter state from parent. */
 		columnFilters?: Record<string, string>;
+		/** Optional legend items shown above the table. */
+		legendItems?: MariTableLegendItem[];
+		/** Optional row class generator. Useful for status color mapping with legend. */
+		rowClassGetter?: (row: any, rowIndex: number) => string;
 		/**
 		 * Optional function to provide a tooltip for each row.
 		 * Return a string to show as the native browser tooltip on row hover.
@@ -396,6 +408,20 @@
 			</DaisyUiPagination>
 		</div>
 
+		{#if legendItems.length > 0}
+			<div class="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+				{#each legendItems as legend (legend.id)}
+					<div class="flex items-center gap-2">
+						<span
+							class={`h-5 w-5 rounded-md border border-base-500/500 ${legend.colorClass}`.trim()}
+							aria-hidden="true"
+						></span>
+						{legend.label}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
 		<div class="flex items-center gap-3">
 			<div class="text-sm opacity-80">
 				{#if total > 0}
@@ -426,6 +452,7 @@
 	</div>
 
 	<div class="px-4 py-2">
+
 		<div class="max-h-[60vh] overflow-auto">
 			<DaisyUiTable className="d-table  d-table-zebra d-table-sm">
 				<DaisyUiTableHeader>
@@ -497,8 +524,11 @@
 							{@const rowTooltipText = rowTooltipGetter
 								? rowTooltipGetter(row, index)
 								: ''}
+							{@const customRowClass = rowClassGetter
+								? rowClassGetter(row, index)
+								: ''}
 							<tr
-								class="hover:bg-info/20"
+								class={`hover:bg-info/20 ${customRowClass}`.trim()}
 								title={rowTooltipText || undefined}
 								on:click={() => handleRowClick(row)}
 							>
