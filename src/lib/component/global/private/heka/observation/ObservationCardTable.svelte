@@ -15,11 +15,17 @@
 
 	const dispatch = createEventDispatcher<{
 		add: void;
+		refresh: void;
 		view: Row;
 		edit: Row;
 		delete: Row;
 		pageChange: number;
 		pageSizeChange: number;
+		filtersChange: {
+			columnId: string;
+			value: string;
+			filters: Record<string, string>;
+		};
 	}>();
 
 	let {
@@ -28,24 +34,36 @@
 		columns = [],
 		emptyMessage = 'No records.',
 		isLoading = false,
+		showRefreshButton = false,
+		columnFilters = $bindable<Record<string, string>>({}),
 		pageSizeOptions,
-		pageSize,
-		currentPage,
+		pageSize = $bindable('10'),
+		currentPage = $bindable(1),
 		totalRowCount,
 		useRemoteFilters = false,
-		enableColumnFilters = false
+		enableColumnFilters = false,
+		crudShowView = true,
+		cardClassName = '',
+		tableWrapClassName = 'max-h-72 min-h-0'
 	} = $props<{
 		title: string;
 		rows?: Row[];
 		columns?: MariTableColumn<Row>[];
 		emptyMessage?: string;
 		isLoading?: boolean;
+		showRefreshButton?: boolean;
 		pageSizeOptions?: number[];
 		pageSize?: string;
 		currentPage?: number;
 		totalRowCount?: number;
 		useRemoteFilters?: boolean;
 		enableColumnFilters?: boolean;
+		crudShowView?: boolean;
+		/** Extra classes on the outer card (e.g. grid column span). */
+		cardClassName?: string;
+		/** Classes on the table wrapper (e.g. max-height + overflow). */
+		tableWrapClassName?: string;
+		columnFilters?: Record<string, string>;
 	}>();
 
 	function handleAdd() {
@@ -53,10 +71,12 @@
 	}
 </script>
 
-<DaisyUiCard className="observation-bento-card">
-	<DaisyUiCardBody className="gap-3 p-4">
+<DaisyUiCard
+	className={`observation-bento-card flex min-h-0 min-w-0 max-w-full flex-col${cardClassName ? ` ${cardClassName}` : ''}`}
+>
+	<DaisyUiCardBody className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-3 p-4">
 		<DaisyUiCardBodyTitle
-			className="flex items-center justify-between"
+			className="flex shrink-0 items-center justify-between"
 		>
 			<span class="text-sm font-semibold">{title}</span>
 			<DaisyUiTooltip tooltipText="Add" className="d-tooltip-bottom">
@@ -69,17 +89,24 @@
 			</DaisyUiTooltip>
 		</DaisyUiCardBodyTitle>
 
-		<div class="observation-table-wrap">
+		<div
+			class="observation-table-wrap flex min-h-0 min-w-0 max-w-full flex-1 flex-col{tableWrapClassName
+				? ` ${tableWrapClassName}`
+				: ''}"
+		>
 			<MariTable
+				fillParent={true}
 				{rows}
 				{columns}
 				{isLoading}
 				{emptyMessage}
-				showRefreshButton={false}
+				{showRefreshButton}
+				bind:columnFilters
 				showRowActions={true}
 				actionsVariant="crud"
 				{enableColumnFilters}
 				{useRemoteFilters}
+				{crudShowView}
 				{pageSizeOptions}
 				{pageSize}
 				{currentPage}
@@ -91,6 +118,9 @@
 					dispatch('pageChange', event.detail)}
 				on:pageSizeChange={(event) =>
 					dispatch('pageSizeChange', event.detail)}
+				on:filtersChange={(event) =>
+					dispatch('filtersChange', event.detail)}
+				on:refresh={() => dispatch('refresh')}
 			/>
 		</div>
 	</DaisyUiCardBody>

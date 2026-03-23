@@ -20,6 +20,7 @@
 		hospitalId: string;
 	} | null>(null);
 	let isLoadingVisit = $state(false);
+	let lastLoadedVisitId = $state<number | null>(null);
 
 	async function fetchVisit() {
 		if (!visitId) {
@@ -43,10 +44,12 @@
 	}
 
 	$effect(() => {
-		const id = visitId;
-		if (id) {
+		if (visitId) {
+			if (visitId === lastLoadedVisitId) return;
+			lastLoadedVisitId = visitId;
 			fetchVisit();
 		} else {
+			lastLoadedVisitId = null;
 			visit = null;
 		}
 	});
@@ -91,6 +94,7 @@
 				<div class="flex flex-col">
 					<LPatientAttachmentDialogContent
 						cancel={() => {}}
+						confirm={() => {}}
 						embedded={true}
 					/>
 				</div>

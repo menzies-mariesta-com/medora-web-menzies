@@ -35,13 +35,15 @@ import type {
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
+	supportTicketTable,
 	allergyTable,
 	documentTypeTable,
 	documentSettingTable,
 	documentTable,
 	patientDocumentTable,
 	serviceOrderTable,
-	serviceOrderDetailTable
+	serviceOrderDetailTable,
+	referHistoryTable
 } from './information-table';
 
 type OptionalAuditKeys =
@@ -308,6 +310,15 @@ export type StoreSchema = InferSelectModel<typeof storeTable>;
 export type StoreSchemaInsert = InferInsertModel<typeof storeTable>;
 export type StoreSchemaUpdate = Partial<StoreSchemaInsert>;
 
+export type SupportTicketSchema = InferSelectModel<
+	typeof supportTicketTable
+>;
+export type SupportTicketSchemaInsert = InferInsertModel<
+	typeof supportTicketTable
+>;
+export type SupportTicketSchemaUpdate =
+	Partial<SupportTicketSchemaInsert>;
+
 export type AllergySchema = InferSelectModel<typeof allergyTable>;
 export type AllergySchemaInsert = InferInsertModel<
 	typeof allergyTable
@@ -364,3 +375,9 @@ export type DocumentSettingSchemaInsert = InferInsertModel<
 >;
 export type DocumentSettingSchemaUpdate =
 	Partial<DocumentSettingSchemaInsert>;
+
+export type ReferHistorySchema = InferSelectModel<typeof referHistoryTable>;
+export type ReferHistorySchemaInsert = InferInsertModel<
+	typeof referHistoryTable
+>;
+export type ReferHistorySchemaUpdate = Partial<ReferHistorySchemaInsert>;

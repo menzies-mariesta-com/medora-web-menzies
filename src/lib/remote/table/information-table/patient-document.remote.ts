@@ -12,7 +12,7 @@ import type {
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { and, count, eq } from 'drizzle-orm';
+import { count, eq, ne } from 'drizzle-orm';
 
 // get all
 export const getPatientDocuments = query(
@@ -87,6 +87,36 @@ export const getPatientDocumentsByVisitId = query(
 	}
 );
 
+/** Patient document links for one visit with document + type (observation EMR). */
+export const getPatientDocumentsByVisitIdWithRelations = query(
+	'unchecked' as const,
+	async ({
+		visitId
+	}: {
+		visitId: number;
+	}): Promise<PatientDocumentWithRelations[]> => {
+		const rows = await ensureDb().query.patientDocumentTable.findMany({
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.visitId, visitId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			with: {
+				patient: true,
+				visit: true,
+				document: {
+					with: {
+						documentType: true
+					}
+				},
+				status: true
+			},
+			orderBy: (t, { desc }) => desc(t.id)
+		});
+		return rows as PatientDocumentWithRelations[];
+	}
+);
+
 // get by patient with relations
 export const getPatientDocumentsByPatientIdWithRelations = query(
 	'unchecked' as const,
@@ -155,6 +185,9 @@ export const createPatientDocument = command(
 		getPatientDocumentsByPatientIdWithRelations({
 			patientId: row.patientId
 		}).refresh();
+		getPatientDocumentsByVisitIdWithRelations({
+			visitId: row.visitId
+		}).refresh();
 		return row;
 	}
 );
@@ -176,6 +209,9 @@ export const updatePatientDocument = command(
 		getPatientDocumentsByPatientIdWithRelations({
 			patientId: row.patientId
 		}).refresh();
+		getPatientDocumentsByVisitIdWithRelations({
+			visitId: row.visitId
+		}).refresh();
 		return row;
 	}
 );
@@ -196,6 +232,9 @@ export const inactivatePatientDocument = command(
 			getPatientDocumentsByPatientIdWithRelations({
 				patientId: row.patientId
 			}).refresh();
+			getPatientDocumentsByVisitIdWithRelations({
+				visitId: row.visitId
+			}).refresh();
 		}
 	}
 );
@@ -204,10 +243,26 @@ export const inactivatePatientDocument = command(
 export const deletePatientDocument = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existing] = await ensureDb()
+			.select({
+				patientId: table.patientDocumentTable.patientId,
+				visitId: table.patientDocumentTable.visitId
+			})
+			.from(table.patientDocumentTable)
+			.where(eq(table.patientDocumentTable.id, id))
+			.limit(1);
 		await ensureDb()
 			.update(table.patientDocumentTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientDocumentTable.id, id));
 		getPatientDocuments().refresh();
+		if (existing) {
+			getPatientDocumentsByPatientIdWithRelations({
+				patientId: existing.patientId
+			}).refresh();
+			getPatientDocumentsByVisitIdWithRelations({
+				visitId: existing.visitId
+			}).refresh();
+		}
 	}
 );

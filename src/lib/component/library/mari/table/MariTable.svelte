@@ -72,6 +72,12 @@
 		format?: (value: any, row: T, rowIndex: number) => any;
 	};
 
+	export type MariTableLegendItem = {
+		id: string;
+		label: string;
+		colorClass: string;
+	};
+
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 	type RowEventDetail = any;
@@ -107,8 +113,18 @@
 		actionsHeader = 'Actions',
 		enableColumnFilters = false,
 		actionsVariant = 'none',
+		/** When false and actionsVariant is crud, hide the view (eye) action. */
+		crudShowView = true,
 		useRemoteFilters = false,
-		rowTooltipGetter
+		columnFilters = $bindable<Record<string, string>>({}),
+		rowTooltipGetter,
+		legendItems = [],
+		rowClassGetter,
+		/**
+		 * When true, table fills a flex parent: toolbar stays fixed, only the table
+		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
+		 */
+		fillParent = false
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -125,15 +141,40 @@
 		actionsHeader?: string;
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
+		crudShowView?: boolean;
 		useRemoteFilters?: boolean;
+		/** Controlled filter state from parent. */
+		columnFilters?: Record<string, string>;
+		/** Optional legend items shown above the table. */
+		legendItems?: MariTableLegendItem[];
+		/** Optional row class generator. Useful for status color mapping with legend. */
+		rowClassGetter?: (row: any, rowIndex: number) => string;
 		/**
 		 * Optional function to provide a tooltip for each row.
 		 * Return a string to show as the native browser tooltip on row hover.
 		 */
 		rowTooltipGetter?: (row: any, rowIndex: number) => string;
+		fillParent?: boolean;
 	}>();
 
-	let columnFilters = $state<Record<string, string>>({});
+	const rootClass = $derived(
+		fillParent
+			? 'flex min-h-0 min-w-0 flex-1 flex-col gap-0'
+			: 'flex h-full min-h-[40vh] flex-col gap-0'
+	);
+	/** min-w-0 lets flex children shrink so wide tables scroll inside instead of expanding the card */
+	const tableScrollClass = $derived(
+		fillParent
+			? 'min-h-0 min-w-0 flex-1 overflow-auto'
+			: 'max-h-[60vh] min-w-0 overflow-auto'
+	);
+	const tableSectionClass = $derived(
+		fillParent
+			? 'flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2'
+			: 'min-w-0 px-4 py-2'
+	);
+
+
 	function getDefaultFilterValue(
 		column: MariTableColumn
 	): string | undefined {
@@ -142,9 +183,9 @@
 
 	$effect(() => {
 		if (!enableColumnFilters) return;
+
 		const nextFilters = { ...columnFilters };
-		const initialized: Array<{ columnId: string; value: string }> =
-			[];
+		let changed = false;
 
 		for (const column of columns) {
 			if (!(column.filterable ?? true)) continue;
@@ -152,21 +193,21 @@
 			const defaultValue = getDefaultFilterValue(column);
 			if (defaultValue == null || defaultValue === '') continue;
 			nextFilters[column.id] = defaultValue;
-			initialized.push({ columnId: column.id, value: defaultValue });
+			changed = true;
 		}
 
-		if (initialized.length === 0) return;
+		if (!changed) return;
 
 		columnFilters = nextFilters;
 		currentPage = 1;
+
 		if (useRemoteFilters) {
-			for (const item of initialized) {
-				dispatch('filtersChange', {
-					columnId: item.columnId,
-					value: item.value,
-					filters: nextFilters
-				});
-			}
+			// Dispatch once for the combined set of changes
+			dispatch('filtersChange', {
+				columnId: '__init__',
+				value: '',
+				filters: nextFilters
+			});
 		}
 	});
 
@@ -338,10 +379,10 @@
 	}
 </script>
 
-<div class="flex h-full min-h-[40vh] flex-col gap-0">
-	<!-- Top controls: per page, pagination, summary, refresh -->
+<div class={rootClass}>
+	<!-- Top controls: per page, pagination, summary, refresh (does not scroll) -->
 	<div
-		class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+		class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
@@ -393,6 +434,20 @@
 			</DaisyUiPagination>
 		</div>
 
+		{#if legendItems.length > 0}
+			<div class="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+				{#each legendItems as legend (legend.id)}
+					<div class="flex items-center gap-2">
+						<span
+							class={`h-5 w-5 rounded-md border border-base-500/500 ${legend.colorClass}`.trim()}
+							aria-hidden="true"
+						></span>
+						{legend.label}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
 		<div class="flex items-center gap-3">
 			<div class="text-sm opacity-80">
 				{#if total > 0}
@@ -422,9 +477,12 @@
 		</div>
 	</div>
 
-	<div class="px-4 py-2">
-		<div class="max-h-[60vh] overflow-auto">
-			<DaisyUiTable className="d-table  d-table-zebra d-table-sm">
+	<div class={tableSectionClass}>
+
+		<div class={tableScrollClass}>
+			<DaisyUiTable
+				className="d-table d-table-zebra d-table-sm w-max min-w-full"
+			>
 				<DaisyUiTableHeader>
 					<tr class="sticky top-0 z-30 bg-base-200">
 						{#if hasActionsColumn}
@@ -494,8 +552,11 @@
 							{@const rowTooltipText = rowTooltipGetter
 								? rowTooltipGetter(row, index)
 								: ''}
+							{@const customRowClass = rowClassGetter
+								? rowClassGetter(row, index)
+								: ''}
 							<tr
-								class="hover:bg-info/20"
+								class={`hover:bg-info/20 ${customRowClass}`.trim()}
 								title={rowTooltipText || undefined}
 								on:click={() => handleRowClick(row)}
 							>
@@ -507,12 +568,17 @@
 									>
 										{#if actionsVariant === 'crud'}
 											<div class="flex items-center gap-2">
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
-													onClick={() => dispatch('view', row)}
-												>
-													<LucideEye className="size-4" />
-												</DaisyUiButton>
+												{#if crudShowView}
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-sm"
+														onClick={() =>
+															dispatch('view', row)}
+													>
+														<LucideEye
+															className="size-4"
+														/>
+													</DaisyUiButton>
+												{/if}
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm d-btn-success"
 													onClick={() => dispatch('edit', row)}

@@ -142,6 +142,7 @@
 	let detailIsUrgentInput = $state(false);
 	let editingDetailId = $state<number | null>(null);
 	let detailAmountEditable = $state(true);
+	let lastLoadedVisitId = $state<number | null>(null);
 
 	let historyItems = $state<HistoryItem[]>([]);
 	let showHistory = $state(false);
@@ -218,14 +219,17 @@
 	});
 
 	$effect(() => {
-		const vid = visitId;
 		if (!mounted) return;
-		if (vid) {
-			fetchVisit();
-		} else {
-			visit = null;
-			currentOrder = null;
-			pendingItems = [];
+
+		if (visitId !== lastLoadedVisitId) {
+			lastLoadedVisitId = visitId;
+			if (visitId) {
+				fetchVisit();
+			} else {
+				visit = null;
+				currentOrder = null;
+				pendingItems = [];
+			}
 		}
 	});
 
@@ -716,7 +720,7 @@
 			filterable: false,
 			format: (value) => (value ? String(value) : '–')
 		},
-		...detailColumns
+		...detailColumns as any[]
 	];
 
 	async function handleSaveOrder() {
@@ -896,17 +900,18 @@
 			message={'Choose a visit using the "Choose Visit" button above to place orders.'}
 			className="z-0"
 		/>
-	{:else if isLoadingVisit}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visit}
-		<DaisyUiAlert
-			type={StatusColorEnum.WARNING}
-			message="Visit not found."
-		/>
 	{:else}
 		<div class="flex flex-col gap-4">
+			{#if isLoadingVisit && !visit}
+				<div class="flex min-h-32 items-center justify-center">
+					<DaisyUiLoading className="d-loading-lg" />
+				</div>
+			{:else if !visit}
+				<DaisyUiAlert
+					type={StatusColorEnum.WARNING}
+					message="Visit not found."
+				/>
+			{:else}
 			<DaisyUiCard>
 				<DaisyUiCardBody>
 					<div class="mb-5 flex flex-col gap-4">
@@ -1138,13 +1143,15 @@
 											<div class="flex justify-end gap-1">
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm"
-													onClick={() => startEditDetail(row)}
+													onClick={() =>
+														startEditDetail(row as PendingItem)}
 												>
 													<LucidePencil className="size-4" />
 												</DaisyUiButton>
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() => handleDeleteDetail(row)}
+													onClick={() =>
+														handleDeleteDetail(row as PendingItem)}
 												>
 													<LucideTrash2 className="size-4" />
 												</DaisyUiButton>
@@ -1166,6 +1173,7 @@
 				pageSizeStr={detailPageSizeStr}
 				onDelete={handleDeleteHistoryItem}
 			/>
-		</div>
-	{/if}
-</div>
+				{/if}
+			</div>
+		{/if}
+	</div>

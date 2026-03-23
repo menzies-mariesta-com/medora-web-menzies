@@ -20,6 +20,7 @@ import {
 	patientInsurance,
 	patientTable,
 	patientVisitTable,
+	referHistoryTable,
 	insuranceTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
@@ -27,6 +28,7 @@ import {
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
+	supportTicketTable,
 	staffDetailTable,
 	subCategoryTable,
 	staffBranchTable,
@@ -110,7 +112,8 @@ export const hospitalTableRelations = relations(
 		externalRefers: many(externalReferTable),
 		appointmentBlocks: many(appointmentBlockTable),
 		serviceItems: many(serviceItemTable),
-		documentSettings: many(documentSettingTable)
+		documentSettings: many(documentSettingTable),
+		supportTickets: many(supportTicketTable)
 	})
 );
 
@@ -403,7 +406,8 @@ export const patientVisitTableRelations = relations(
 		}),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
-		serviceOrders: many(serviceOrderTable)
+		serviceOrders: many(serviceOrderTable),
+		referHistories: many(referHistoryTable)
 	})
 );
 
@@ -743,6 +747,7 @@ export const patientTableRelations = relations(
 		visits: many(patientVisitTable),
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
+		referHistories: many(referHistoryTable),
 		documentSettings: many(documentSettingTable),
 		createdByUser: one(userTable, {
 			fields: [patientTable.createdBy],
@@ -906,6 +911,36 @@ export const storeTableRelations = relations(
 	})
 );
 
+export const supportTicketTableRelations = relations(
+	supportTicketTable,
+	({ one }) => ({
+		requester: one(userTable, {
+			fields: [supportTicketTable.requesterId],
+			references: [userTable.id],
+			relationName: 'support_ticket_requester'
+		}),
+		hospital: one(hospitalTable, {
+			fields: [supportTicketTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		assignedTo: one(userTable, {
+			fields: [supportTicketTable.assignedToUserId],
+			references: [userTable.id],
+			relationName: 'support_ticket_assignee'
+		}),
+		createdByUser: one(userTable, {
+			fields: [supportTicketTable.createdBy],
+			references: [userTable.id],
+			relationName: 'support_ticket_created_by'
+		}),
+		updatedByUser: one(userTable, {
+			fields: [supportTicketTable.updatedBy],
+			references: [userTable.id],
+			relationName: 'support_ticket_updated_by'
+		})
+	})
+);
+
 export const serviceOrderTableRelations = relations(
 	serviceOrderTable,
 	({ one, many }) => ({
@@ -1049,6 +1084,10 @@ export const patientDocumentTableRelations = relations(
 			fields: [patientDocumentTable.documentId],
 			references: [documentTable.id]
 		}),
+		patientAttachment: one(patientAttachmentTable, {
+			fields: [patientDocumentTable.patientAttachmentId],
+			references: [patientAttachmentTable.id]
+		}),
 		createdByUser: one(userTable, {
 			fields: [patientDocumentTable.createdBy],
 			references: [userTable.id]
@@ -1056,6 +1095,44 @@ export const patientDocumentTableRelations = relations(
 		status: one(statusTable, {
 			fields: [patientDocumentTable.statusId],
 			references: [statusTable.id]
+		})
+	})
+);
+
+export const referHistoryTableRelations = relations(
+	referHistoryTable,
+	({ one }) => ({
+		visit: one(patientVisitTable, {
+			fields: [referHistoryTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		fromBranch: one(hospitalBranchTable, {
+			fields: [referHistoryTable.fromBranchId],
+			references: [hospitalBranchTable.id]
+		}),
+		toBranch: one(hospitalBranchTable, {
+			fields: [referHistoryTable.toBranchId],
+			references: [hospitalBranchTable.id]
+		}),
+		fromReferDoctor: one(staffTable, {
+			fields: [referHistoryTable.fromReferDoctorId],
+			references: [staffTable.id]
+		}),
+		toReferDoctor: one(staffTable, {
+			fields: [referHistoryTable.toReferDoctorId],
+			references: [staffTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [referHistoryTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [referHistoryTable.updatedBy],
+			references: [userTable.id]
+		}),
+		cancelByUser: one(userTable, {
+			fields: [referHistoryTable.cancelBy],
+			references: [userTable.id]
 		})
 	})
 );

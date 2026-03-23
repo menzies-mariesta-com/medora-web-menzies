@@ -205,6 +205,70 @@ export const getServiceOrderDetailById = query(
 	}
 );
 
+/** Flat list of order line items for a visit (all non-deleted orders + details). */
+export const getServiceOrderDetailRowsForVisit = query(
+	'unchecked' as const,
+	async ({
+		visitId
+	}: {
+		visitId: number;
+	}): Promise<
+		(ServiceOrderDetailSchema & {
+			orderNo: string | null;
+			serviceName: string | null;
+		})[]
+	> => {
+		const orders = await ensureDb().query.serviceOrderTable.findMany({
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.visitId, visitId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			columns: { id: true, orderNo: true },
+			with: {
+				details: {
+					where: (d, { ne }) =>
+						ne(d.statusId, StatusEnum.DELETED),
+					with: {
+						serviceItem: true
+					}
+				}
+			}
+		});
+		const out: (ServiceOrderDetailSchema & {
+			orderNo: string | null;
+			serviceName: string | null;
+		})[] = [];
+		for (const ord of orders) {
+			for (const d of ord.details) {
+				const { serviceItem, ...detailRow } = d;
+				out.push({
+					...detailRow,
+					orderNo: ord.orderNo ?? null,
+					serviceName: serviceItem?.serviceName ?? null
+				});
+			}
+		}
+		out.sort((a, b) => b.id - a.id);
+		return out;
+	}
+);
+
+async function refreshServiceOrderDetailQueriesForVisitByOrderId(
+	serviceOrderId: number
+): Promise<void> {
+	const [ord] = await ensureDb()
+		.select({ visitId: table.serviceOrderTable.visitId })
+		.from(table.serviceOrderTable)
+		.where(eq(table.serviceOrderTable.id, serviceOrderId))
+		.limit(1);
+	if (ord) {
+		getServiceOrderDetailRowsForVisit({
+			visitId: ord.visitId
+		}).refresh();
+	}
+}
+
 // create
 export const createServiceOrderDetail = command(
 	'unchecked' as const,
@@ -219,6 +283,9 @@ export const createServiceOrderDetail = command(
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+		await refreshServiceOrderDetailQueriesForVisitByOrderId(
+			row.serviceOrderId
+		);
 		return row;
 	}
 );
@@ -239,6 +306,9 @@ export const updateServiceOrderDetail = command(
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+		await refreshServiceOrderDetailQueriesForVisitByOrderId(
+			row.serviceOrderId
+		);
 		return row;
 	}
 );
@@ -247,6 +317,13 @@ export const updateServiceOrderDetail = command(
 export const deleteServiceOrderDetail = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existing] = await ensureDb()
+			.select({
+				serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
+			})
+			.from(table.serviceOrderDetailTable)
+			.where(eq(table.serviceOrderDetailTable.id, id))
+			.limit(1);
 		await ensureDb()
 			.update(table.serviceOrderDetailTable)
 			.set({ statusId: StatusEnum.DELETED })
@@ -254,6 +331,11 @@ export const deleteServiceOrderDetail = command(
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+		if (existing) {
+			await refreshServiceOrderDetailQueriesForVisitByOrderId(
+				existing.serviceOrderId
+			);
+		}
 	}
 );
 
@@ -261,12 +343,24 @@ export const deleteServiceOrderDetail = command(
 export const deleteServiceOrderDetailComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existing] = await ensureDb()
+			.select({
+				serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
+			})
+			.from(table.serviceOrderDetailTable)
+			.where(eq(table.serviceOrderDetailTable.id, id))
+			.limit(1);
 		await ensureDb()
 			.delete(table.serviceOrderDetailTable)
 			.where(eq(table.serviceOrderDetailTable.id, id));
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+		if (existing) {
+			await refreshServiceOrderDetailQueriesForVisitByOrderId(
+				existing.serviceOrderId
+			);
+		}
 	}
 );
 
@@ -303,6 +397,11 @@ export const markServiceOrderDetailNursingComplete = command(
 		getServiceOrderDetail(undefined).refresh();
 		getServiceOrderDetailCount().refresh();
 		getServiceOrderDetailPaginated(undefined).refresh();
+		if (updated) {
+			await refreshServiceOrderDetailQueriesForVisitByOrderId(
+				updated.serviceOrderId
+			);
+		}
 		return updated;
 	}
 );
