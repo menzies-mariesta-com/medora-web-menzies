@@ -276,6 +276,7 @@ export const updatePatientVisit = command(
 		if (!row) throw new Error('Update failed');
 
 		getPatientVisit().refresh();
+		getPatientVisitById({ id }).refresh();
 		return row;
 	}
 );

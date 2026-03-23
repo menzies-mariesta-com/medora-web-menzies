@@ -29,6 +29,27 @@
       "when": 1772513000000,
       "tag": "0003_staff_join_resign_date",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773847000000,
+      "tag": "0004_support_ticket",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773900000000,
+      "tag": "0005_patient_visit_clinical_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774000000000,
+      "tag": "0006_patient_document_attachment",
+      "breakpoints": true
     }
   ]
 }
