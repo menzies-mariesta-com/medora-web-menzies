@@ -1129,6 +1129,11 @@ export const referHistoryTable = pgTable('refer_history', {
 	isUrgent: integer('is_urgent').default(YesNoEnum.NO),
 	referRequestNote: text('refer_request_note'),
 	acceptDate: date('accept_date'),
+	/** When the referral was accepted (timezone-aware); use with acceptDate for legacy rows */
+	acceptAt: timestamp('accept_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
 	// Separate cancel fields (instead of reusing acceptDate/referReplyNote)
 	cancelBy: text('cancel_by').references(() => userTable.id),
 	cancelAt: date('cancel_at'),
