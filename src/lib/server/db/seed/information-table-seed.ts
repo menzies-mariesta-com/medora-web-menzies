@@ -208,10 +208,30 @@ export async function seedInformationTables() {
 			(5, 'OP Bill', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
 				'<div><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</div>',
 				'<div style="font-size:9px;text-align:center;">Thank you for choosing {{hospital.name}}</div>',
+				1),
+			(6, 'Nursing Complete (OP) Print', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
+				'<div style="text-align:center;"><strong>{{hospital.name}}</strong><br/><span style="font-size:12px;">{{hospital.address}}</span></div>',
+				'<div style="text-align:center;font-size:10px;">Printed: {{print.date}} {{print.time}} | {{print.by}}</div>',
 				1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: document_setting');
+
+	// 9b. System document for nursing complete print (code used by EMR)
+	await db.execute(sql`
+		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
+		VALUES (
+			90001,
+			2,
+			'NURSING_COMPLETE_PRINT',
+			'<p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
+			'Nursing complete (OP)',
+			6,
+			1
+		)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: document (nursing complete print)');
 
 	// 9. Allergy
 	await db.execute(sql`

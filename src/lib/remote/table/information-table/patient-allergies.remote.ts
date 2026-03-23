@@ -152,6 +152,33 @@ export const getPatientAllergiesByPatientIdWithRelations = query(
 	}
 );
 
+/** All patient allergies linked to a single visit (observation EMR). */
+export const getPatientAllergiesByVisitIdWithRelations = query(
+	'unchecked' as const,
+	async ({
+		visitId
+	}: {
+		visitId: number;
+	}): Promise<PatientAllergyWithRelations[]> => {
+		const rows = await ensureDb().query.patientAllergyTable.findMany({
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.visitId, visitId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			with: {
+				patient: true,
+				allergy: true,
+				severity: true,
+				visit: true,
+				status: true
+			},
+			orderBy: (t, { desc }) => desc(t.id)
+		});
+		return rows as PatientAllergyWithRelations[];
+	}
+);
+
 // get count
 export const getPatientAllergiesCount = query(
 	async (): Promise<number> => {
@@ -363,6 +390,9 @@ export const createPatientAllergies = command(
 		getPatientAllergiesByPatientIdWithRelations({
 			patientId: payload.patientId
 		}).refresh();
+		getPatientAllergiesByVisitIdWithRelations({
+			visitId: payload.visitId
+		}).refresh();
 		return row;
 	}
 );
@@ -384,6 +414,9 @@ export const updatePatientAllergies = command(
 		getPatientAllergiesByPatientIdWithRelations({
 			patientId: row.patientId
 		}).refresh();
+		getPatientAllergiesByVisitIdWithRelations({
+			visitId: row.visitId
+		}).refresh();
 		return row;
 	}
 );
@@ -392,11 +425,27 @@ export const updatePatientAllergies = command(
 export const deletePatientAllergies = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existing] = await ensureDb()
+			.select({
+				visitId: table.patientAllergyTable.visitId,
+				patientId: table.patientAllergyTable.patientId
+			})
+			.from(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id))
+			.limit(1);
 		await ensureDb()
 			.update(table.patientAllergyTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.patientAllergyTable.id, id));
 		getPatientAllergies().refresh();
+		if (existing) {
+			getPatientAllergiesByPatientIdWithRelations({
+				patientId: existing.patientId
+			}).refresh();
+			getPatientAllergiesByVisitIdWithRelations({
+				visitId: existing.visitId
+			}).refresh();
+		}
 	}
 );
 

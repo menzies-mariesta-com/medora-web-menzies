@@ -33,7 +33,11 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] = [
 			{ key: '{{visit.time}}', desc: 'Visit time' },
 			{ key: '{{visit.datetime}}', desc: 'Visit date and time' },
 			{ key: '{{visit.type}}', desc: 'Visit type (OPD/IPD/ED)' },
-			{ key: '{{visit.department}}', desc: 'Department/branch name' }
+			{ key: '{{visit.department}}', desc: 'Department/branch name' },
+			{
+				key: '{{visit.service_lines_table}}',
+				desc: 'HTML table of service order lines for this visit (when loaded for print)'
+			}
 		]
 	},
 	{
@@ -168,10 +172,69 @@ function calcAgeLabel(dob: string | null | undefined): string {
 	return years >= 0 ? String(years) : '';
 }
 
+export type VisitServiceLinePrintRow = {
+	orderNo: string;
+	orderDate: string;
+	statusLabel: string;
+	serviceLabel: string;
+	amount: string;
+	tax: string;
+	unit: string;
+	lineTotal: string;
+	nursingCompleteTime: string;
+	urgent: string;
+	instruction: string;
+};
+
+function escapeHtmlCell(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+/** Builds an HTML table for {{visit.service_lines_table}} in document templates. */
+export function buildVisitServiceLinesTableHtml(
+	rows: VisitServiceLinePrintRow[]
+): string {
+	if (rows.length === 0) {
+		return '<p><em>No service lines for this visit.</em></p>';
+	}
+	const head =
+		'<thead><tr>' +
+		[
+			'Order No',
+			'Order Date',
+			'Status',
+			'Service',
+			'Amount',
+			'Tax',
+			'Unit',
+			'Total',
+			'Nursing complete',
+			'Urgent',
+			'Instruction'
+		]
+			.map((h) => `<th>${escapeHtmlCell(h)}</th>`)
+			.join('') +
+		'</tr></thead>';
+	const bodyRows = rows.map(
+		(r) =>
+			`<tr><td>${escapeHtmlCell(r.orderNo)}</td><td>${escapeHtmlCell(r.orderDate)}</td><td>${escapeHtmlCell(r.statusLabel)}</td><td>${escapeHtmlCell(r.serviceLabel)}</td><td>${escapeHtmlCell(r.amount)}</td><td>${escapeHtmlCell(r.tax)}</td><td>${escapeHtmlCell(r.unit)}</td><td>${escapeHtmlCell(r.lineTotal)}</td><td>${escapeHtmlCell(r.nursingCompleteTime)}</td><td>${escapeHtmlCell(r.urgent)}</td><td>${escapeHtmlCell(r.instruction)}</td></tr>`
+	);
+	return `<table>${head}<tbody>${bodyRows.join('')}</tbody></table>`;
+}
+
 export function buildDocumentPlaceholderContext(
 	visit: VisitLike | null | undefined,
 	document: DocumentLike,
-	options?: { now?: Date; printBy?: string | null }
+	options?: {
+		now?: Date;
+		printBy?: string | null;
+		/** Merged after base map (e.g. {{visit.service_lines_table}} HTML). */
+		extraPlaceholders?: Record<string, string>;
+	}
 ): Record<string, string> {
 	const now = options?.now ?? new Date();
 	const patientName = fullName(visit?.patient);
@@ -227,6 +290,7 @@ export function buildDocumentPlaceholderContext(
 		'{{visit.datetime}}': visitDateTime,
 		'{{visit.type}}': visit?.visitType?.name ?? '',
 		'{{visit.department}}': visit?.branch?.name ?? '',
+		'{{visit.service_lines_table}}': '',
 		'{{doctor.name}}': doctorName,
 		'{{doctor.title}}': doctorTitle,
 		'{{doctor.specialty}}': doctorSpecialty,
@@ -262,6 +326,9 @@ export function buildDocumentPlaceholderContext(
 		'{{hospital_name}}': hospitalName,
 		'{{hospital_logo}}': hospitalLogo
 	};
+
+	const extra = options?.extraPlaceholders ?? {};
+	return { ...base, ...extra };
 }
 
 export function resolveDocumentTemplate(

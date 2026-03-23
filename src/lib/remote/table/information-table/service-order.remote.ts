@@ -12,6 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
+import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
 import { and, count, eq, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by branchId/visitId/status/id)
@@ -184,6 +185,9 @@ export const createServiceOrder = command(
 		getServiceOrder(undefined).refresh();
 		getServiceOrderCount().refresh();
 		getServiceOrderPaginated(undefined).refresh();
+		getServiceOrderDetailRowsForVisit({
+			visitId: row.visitId
+		}).refresh();
 		return row;
 	}
 );
