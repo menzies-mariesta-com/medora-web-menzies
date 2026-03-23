@@ -6,7 +6,10 @@ import {
 	userTable,
 	verificationTable
 } from './auth-table';
-import { staffTable } from '../information-table/information-table';
+import {
+	staffTable,
+	supportTicketTable
+} from '../information-table/information-table';
 import { statusTable } from '../master-table/master-table';
 
 // Auth table relations
@@ -24,6 +27,18 @@ export const userTableRollbackRelations = relations(
 		role: one(roleTable, {
 			fields: [userTable.roleId],
 			references: [roleTable.id]
+		}),
+		supportTicketsRequested: many(supportTicketTable, {
+			relationName: 'support_ticket_requester'
+		}),
+		supportTicketsAssigned: many(supportTicketTable, {
+			relationName: 'support_ticket_assignee'
+		}),
+		supportTicketsCreatedAudit: many(supportTicketTable, {
+			relationName: 'support_ticket_created_by'
+		}),
+		supportTicketsUpdatedAudit: many(supportTicketTable, {
+			relationName: 'support_ticket_updated_by'
 		})
 	})
 );
