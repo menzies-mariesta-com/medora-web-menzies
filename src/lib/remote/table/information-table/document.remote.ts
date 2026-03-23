@@ -41,6 +41,32 @@ export type DocumentWithRelations = Awaited<
 	ReturnType<typeof getDocumentsWithRelations>
 >[number];
 
+/** System / seeded document for EMR print (e.g. nursing complete). */
+export const getDocumentByCode = query(
+	'unchecked' as const,
+	async ({
+		code
+	}: {
+		code: string;
+	}): Promise<DocumentWithRelations | null> => {
+		const trimmed = code.trim();
+		if (!trimmed) return null;
+		const row = await ensureDb().query.documentTable.findFirst({
+			where: and(
+				eq(table.documentTable.code, trimmed),
+				ne(table.documentTable.statusId, StatusEnum.DELETED)
+			),
+			with: {
+				documentType: true,
+				documentSetting: true,
+				status: true,
+				patientDocuments: true
+			}
+		});
+		return row ?? null;
+	}
+);
+
 // get one by id
 export const getDocumentById = query(
 	'unchecked' as const,
