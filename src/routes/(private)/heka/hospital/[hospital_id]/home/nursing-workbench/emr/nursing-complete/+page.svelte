@@ -5,6 +5,7 @@
 	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideCircleCheck from '$lib/component/library/lucide/LucideCircleCheck.svelte';
+	import LucidePrinter from '$lib/component/library/lucide/LucidePrinter.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -13,12 +14,19 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { getServiceOrder } from '$lib/remote/table/information-table/service-order.remote';
 	import {
-		getServiceOrderDetail,
 		getServiceOrderDetailPaginated,
 		markServiceOrderDetailNursingComplete
 	} from '$lib/remote/table/information-table/service-order-detail.remote';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getPatientVisitById,
+		getPatientVisitByIdWithRelations
+	} from '$lib/remote/table/information-table/patient-visit.remote';
+	import { getDocumentByCode } from '$lib/remote/table/information-table/document.remote';
+	import {
+		getDocumentSettingsWithRelations,
+		type DocumentSettingWithRelations
+	} from '$lib/remote/table/information-table/document-setting.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type {
 		ServiceItemSchema,
@@ -27,6 +35,20 @@
 	} from '$lib/server/db/schema-type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE } from '$lib/model/constant/emr-print.constant';
+	import {
+		buildDocumentPlaceholderContext,
+		buildVisitServiceLinesTableHtml,
+		resolveDocumentTemplate
+	} from '$lib/util/document-placeholder.util';
+	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+	import {
+		htmlStringToPdfBlob,
+		uploadPatientAttachmentPdf
+	} from '$lib/util/html-to-pdf.util';
+	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
+	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
+	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
 
 	type NursingCompleteRow = {
 		id: number;
@@ -74,8 +96,18 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 	let initialized: boolean = $state(false);
+	let isPrinting = $state(false);
+	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
+
+	const printByName = $derived(
+		typeof page.data?.printByName === 'string' ? page.data.printByName : ''
+	);
+
+	const canPrintNursing = $derived(
+		!isPrinting && Boolean(visitId && visit && hospitalId)
+	);
 
 	const subtotal = $derived(
 		rows.reduce((sum, row) => sum + parseAmount(row.serviceAmount), 0)
@@ -137,7 +169,6 @@
 		}
 		lastFetchKey = requestKey;
 
-		console.log('FetchingNursingComplete()');
 		isLoading = true;
 		try {
 			const currentVisit = await getPatientVisitById({ id: visitId });
@@ -181,19 +212,19 @@
 				statusId: null
 			});
 
-			const serviceMap = new Map<number, ServiceItemSchema>();
+			const serviceById: Record<number, ServiceItemSchema> = {};
 			for (const service of services) {
-				serviceMap.set(service.id, service);
+				serviceById[service.id] = service;
 			}
 
-			const orderMap = new Map<number, ServiceOrderSchema>();
+			const orderById: Record<number, ServiceOrderSchema> = {};
 			for (const order of orders) {
-				orderMap.set(order.id, order);
+				orderById[order.id] = order;
 			}
 
 			rows = details.map((detail: ServiceOrderDetailSchema) => {
-				const service = serviceMap.get(detail.serviceId);
-				const order = orderMap.get(detail.serviceOrderId);
+				const service = serviceById[detail.serviceId];
+				const order = orderById[detail.serviceOrderId];
 				const amount = parseAmount(detail.serviceAmount);
 				const tax = parseAmount(detail.serviceTaxAmount);
 				const unit = Number(detail.serviceUnit ?? 1);
@@ -231,6 +262,13 @@
 
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
+		getDocumentSettingsWithRelations()
+			.then((s) => {
+				documentSettings = s;
+			})
+			.catch(() => {
+				documentSettings = [];
+			});
 	});
 
 	$effect(() => {
@@ -353,6 +391,155 @@
 		}
 	];
 
+	async function printNursingComplete() {
+		if (!visitId || !visit || !hospitalId) {
+			toastService.addToast(
+				'Select a visit to print.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+
+		isPrinting = true;
+		try {
+			const masterDoc = await getDocumentByCode({
+				code: EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
+			});
+			if (!masterDoc) {
+				toastService.addToast(
+					'Print template not found. Run DB seed or create document code NURSING_COMPLETE_PRINT.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+
+			const visitFull = await getPatientVisitByIdWithRelations({
+				id: visitId
+			});
+			const patientId = visitFull?.patient?.id;
+			if (!visitFull || !patientId) {
+				toastService.addToast(
+					'Visit or patient data missing.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+
+			const printRows = await fetchVisitServiceLinePrintRows({
+				visitId,
+				hospitalId
+			});
+			const tableHtml = buildVisitServiceLinesTableHtml(printRows);
+			const context = buildDocumentPlaceholderContext(
+				visitFull,
+				masterDoc,
+				{
+					printBy: printByName,
+					extraPlaceholders: {
+						'{{visit.service_lines_table}}': tableHtml
+					}
+				}
+			);
+			const documentHtml = resolveDocumentTemplate(
+				masterDoc.documentText,
+				context
+			).trim();
+			const setting = resolveDocumentSettingForDoc(
+				documentSettings,
+				masterDoc
+			);
+			const headerHtml = resolveDocumentTemplate(
+				setting?.headerHtml,
+				context
+			).trim();
+			const footerHtml = resolveDocumentTemplate(
+				setting?.footerHtml,
+				context
+			).trim();
+			const documentTitle =
+				masterDoc.documentNumber ||
+				masterDoc.documentType?.documentType ||
+				'Nursing complete';
+
+			const htmlBrowser = buildPrintDocumentHtml({
+				documentHtml,
+				documentTitle,
+				headerHtml,
+				footerHtml,
+				setting,
+				variant: 'browser'
+			});
+			const htmlPdf = buildPrintDocumentHtml({
+				documentHtml,
+				documentTitle,
+				headerHtml,
+				footerHtml,
+				setting,
+				variant: 'pdfRaster'
+			});
+
+			let iframe = document.getElementById(
+				'nursing-complete-print-iframe'
+			) as HTMLIFrameElement | null;
+			if (!iframe) {
+				iframe = document.createElement('iframe');
+				iframe.id = 'nursing-complete-print-iframe';
+				iframe.style.cssText =
+					'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+				document.body.appendChild(iframe);
+			}
+			const printWindow = iframe.contentWindow;
+			if (!printWindow) {
+				toastService.addToast(
+					'Failed to prepare print',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			printWindow.document.open();
+			printWindow.document.write(htmlBrowser);
+			printWindow.document.close();
+			await new Promise((resolve) => setTimeout(resolve, 150));
+			printWindow.print();
+
+			try {
+				const blob = await htmlStringToPdfBlob(htmlPdf);
+				const safeBase = `nursing-complete-${visit.visitNo || visitId}-${Date.now()}`
+					.replace(/[^\w.-]+/g, '_')
+					.slice(0, 120);
+				const url = await uploadPatientAttachmentPdf(
+					blob,
+					`${safeBase}.pdf`
+				);
+				await persistEmrPrintPdf({
+					patientId,
+					visitId,
+					documentId: masterDoc.id,
+					fileUrl: url,
+					attachmentDescription: `Nursing complete print (visit ${visit.visitNo ?? visitId})`
+				});
+				toastService.addToast(
+					'PDF saved to patient attachments and tagged.',
+					StatusColorEnum.SUCCESS
+				);
+			} catch (saveErr) {
+				console.error('Nursing print PDF save failed', saveErr);
+				toastService.addToast(
+					'Printed, but saving PDF to the patient record failed.',
+					StatusColorEnum.WARNING
+				);
+			}
+		} catch (err) {
+			console.error('Nursing print failed', err);
+			toastService.addToast(
+				'Failed to prepare print',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			isPrinting = false;
+		}
+	}
+
 	async function handleComplete(row: NursingCompleteRow) {
 		try {
 			await markServiceOrderDetailNursingComplete({ id: row.id });
@@ -371,11 +558,26 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
+<div class="relative flex flex-col gap-4">
+	{#if isPrinting}
+		<div
+			class="print-loading-overlay"
+			role="status"
+			aria-live="polite"
+			aria-label="Preparing print and save"
+		>
+			<div class="flex flex-col items-center gap-4">
+				<DaisyUiLoading className="d-loading-lg text-primary" />
+				<span class="text-sm font-medium"
+					>Preparing print and PDF…</span
+				>
+			</div>
+		</div>
+	{/if}
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the "Choose Visit" button above to view nursing complete items.'}
+			message='Choose a visit using the "Choose Visit" button above to view nursing complete items.'
 			className="z-0"
 		/>
 	{:else if !visit && !isLoading}
@@ -406,7 +608,7 @@
 							{visit.visitNo ? `(Visit: ${visit.visitNo})` : ''}
 						</p>
 					</div>
-					<div class="flex flex-wrap gap-2 text-sm">
+					<div class="flex flex-wrap items-center gap-2 text-sm">
 						<span class="rounded bg-base-200 px-2 py-1"
 							>Subtotal: {formatMoney(subtotal)}</span
 						>
@@ -417,6 +619,14 @@
 							class="rounded bg-primary/20 px-2 py-1 font-semibold"
 							>Grand Total: {formatMoney(grandTotal)}</span
 						>
+						<DaisyUiButton
+							className="d-btn-outline d-btn-sm"
+							onClick={printNursingComplete}
+							disabled={!canPrintNursing}
+						>
+							<LucidePrinter className="mr-1 size-4" />
+							Print
+						</DaisyUiButton>
 					</div>
 				</div>
 
@@ -491,3 +701,16 @@
 	</DaisyUiCard>
 {/if}
 </div>
+
+<style>
+	.print-loading-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 9990;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.4);
+		backdrop-filter: blur(2px);
+	}
+</style>

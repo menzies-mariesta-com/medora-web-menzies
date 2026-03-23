@@ -716,6 +716,10 @@ export const patientDocumentTable = pgTable(
 		documentId: integer('document_id')
 			.notNull()
 			.references(() => documentTable.id),
+		/** PDF stored as patient_attachment when printed from EMR */
+		patientAttachmentId: integer('patient_attachment_id').references(
+			() => patientAttachmentTable.id
+		),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -726,7 +730,10 @@ export const patientDocumentTable = pgTable(
 		index('patient_document_visit_id_idx').on(table.visitId),
 		index('patient_document_patient_id_idx').on(table.patientId),
 		index('patient_document_document_id_idx').on(table.documentId),
-		index('patient_document_status_id_idx').on(table.statusId)
+		index('patient_document_status_id_idx').on(table.statusId),
+		index('patient_document_patient_attachment_id_idx').on(
+			table.patientAttachmentId
+		)
 	]
 );
 
@@ -866,6 +873,10 @@ export const patientVisitTable = pgTable('patient_visit', {
 		.notNull()
 		.default(StatusEnum.ACTIVE),
 	visitNo: varchar('visit_no', { length: 128 }),
+	/** Observation / EMR narrative fields (nullable). */
+	chiefComplaint: text('chief_complaint'),
+	patientCondition: text('patient_condition'),
+	diagnosisNotes: text('diagnosis_notes'),
 	...timestamps
 });
 
@@ -1059,6 +1070,31 @@ export const storeTable = pgTable('store', {
 		.references(() => statusTable.id)
 		.notNull()
 		.default(StatusEnum.ACTIVE),
+	...timestamps
+});
+
+/** IT / helpdesk tickets submitted from the global support dialog. */
+export const supportTicketTable = pgTable('support_ticket', {
+	id: serial('id').primaryKey(),
+	subject: varchar('subject', { length: 512 }).notNull(),
+	description: text('description').notNull(),
+	/** Workflow: open | in_progress | resolved | closed */
+	status: varchar('status', { length: 32 }).notNull().default('open'),
+	/** 1 = low … 4 = urgent (app labels) */
+	priority: integer('priority').notNull().default(2),
+	requesterId: text('requester_id')
+		.notNull()
+		.references(() => userTable.id, { onDelete: 'restrict' }),
+	hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
+		onDelete: 'set null'
+	}),
+	/** Page URL when the ticket was created (pathname + search) */
+	contextUrl: text('context_url'),
+	assignedToUserId: text('assigned_to_user_id').references(
+		() => userTable.id,
+		{ onDelete: 'set null' }
+	),
+	resolution: text('resolution'),
 	...timestamps
 });
 

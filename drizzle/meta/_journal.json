@@ -5,21 +5,21 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1772512125499,
+      "when": 1742238385000,
       "tag": "0000_add_vital_date_time",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1742238385000,
+      "when": 1742238500000,
       "tag": "0001_junction_tables_user_tracking",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1742238500000,
+      "when": 1772512125499,
       "tag": "0002_unique_constraints_junction_tables",
       "breakpoints": true
     },
@@ -33,8 +33,29 @@
     {
       "idx": 4,
       "version": "7",
+      "when": 1773847000000,
+      "tag": "0004_support_ticket",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773900000000,
+      "tag": "0005_patient_visit_clinical_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774000000000,
+      "tag": "0006_patient_document_attachment",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
       "when": 1772600000000,
-      "tag": "0005_refer_accept_at",
+      "tag": "0007_refer_accept_at",
       "breakpoints": true
     }
   ]

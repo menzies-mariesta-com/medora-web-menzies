@@ -121,6 +121,9 @@ export const createPatientAttachment = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getPatientAttachment().refresh();
+		getPatientAttachmentByPatientId({
+			patientId: row.patientId
+		}).refresh();
 		return row;
 	}
 );
