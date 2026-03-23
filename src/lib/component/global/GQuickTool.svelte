@@ -14,6 +14,7 @@
 	import type { ThemeEnum } from '$lib/model/enum/theme.enum';
 	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
+	import SupportTicketDialogContent from '../snippet/modal/SupportTicketDialogContent.svelte';
 	import type { FontEnum } from '$lib/model/enum/font.enum';
 	import { FontTool } from '$lib/tool/font.tool.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -43,7 +44,12 @@
 		});
 	}
 
-	function openSupportDialog() {}
+	async function openSupportDialog() {
+		await dialogService.open({
+			component: SupportTicketDialogContent,
+			fullScreen: true
+		});
+	}
 </script>
 
 <DaisyUiFab>

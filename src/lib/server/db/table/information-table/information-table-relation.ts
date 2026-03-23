@@ -28,6 +28,7 @@ import {
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
+	supportTicketTable,
 	staffDetailTable,
 	subCategoryTable,
 	staffBranchTable,
@@ -111,7 +112,8 @@ export const hospitalTableRelations = relations(
 		externalRefers: many(externalReferTable),
 		appointmentBlocks: many(appointmentBlockTable),
 		serviceItems: many(serviceItemTable),
-		documentSettings: many(documentSettingTable)
+		documentSettings: many(documentSettingTable),
+		supportTickets: many(supportTicketTable)
 	})
 );
 
@@ -909,6 +911,36 @@ export const storeTableRelations = relations(
 	})
 );
 
+export const supportTicketTableRelations = relations(
+	supportTicketTable,
+	({ one }) => ({
+		requester: one(userTable, {
+			fields: [supportTicketTable.requesterId],
+			references: [userTable.id],
+			relationName: 'support_ticket_requester'
+		}),
+		hospital: one(hospitalTable, {
+			fields: [supportTicketTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		assignedTo: one(userTable, {
+			fields: [supportTicketTable.assignedToUserId],
+			references: [userTable.id],
+			relationName: 'support_ticket_assignee'
+		}),
+		createdByUser: one(userTable, {
+			fields: [supportTicketTable.createdBy],
+			references: [userTable.id],
+			relationName: 'support_ticket_created_by'
+		}),
+		updatedByUser: one(userTable, {
+			fields: [supportTicketTable.updatedBy],
+			references: [userTable.id],
+			relationName: 'support_ticket_updated_by'
+		})
+	})
+);
+
 export const serviceOrderTableRelations = relations(
 	serviceOrderTable,
 	({ one, many }) => ({
@@ -1051,6 +1083,10 @@ export const patientDocumentTableRelations = relations(
 		document: one(documentTable, {
 			fields: [patientDocumentTable.documentId],
 			references: [documentTable.id]
+		}),
+		patientAttachment: one(patientAttachmentTable, {
+			fields: [patientDocumentTable.patientAttachmentId],
+			references: [patientAttachmentTable.id]
 		}),
 		createdByUser: one(userTable, {
 			fields: [patientDocumentTable.createdBy],

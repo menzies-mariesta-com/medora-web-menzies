@@ -113,11 +113,18 @@
 		actionsHeader = 'Actions',
 		enableColumnFilters = false,
 		actionsVariant = 'none',
+		/** When false and actionsVariant is crud, hide the view (eye) action. */
+		crudShowView = true,
 		useRemoteFilters = false,
 		columnFilters = $bindable<Record<string, string>>({}),
 		rowTooltipGetter,
 		legendItems = [],
-		rowClassGetter
+		rowClassGetter,
+		/**
+		 * When true, table fills a flex parent: toolbar stays fixed, only the table
+		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
+		 */
+		fillParent = false
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -134,6 +141,7 @@
 		actionsHeader?: string;
 		enableColumnFilters?: boolean;
 		actionsVariant?: 'none' | 'crud' | 'select';
+		crudShowView?: boolean;
 		useRemoteFilters?: boolean;
 		/** Controlled filter state from parent. */
 		columnFilters?: Record<string, string>;
@@ -146,7 +154,25 @@
 		 * Return a string to show as the native browser tooltip on row hover.
 		 */
 		rowTooltipGetter?: (row: any, rowIndex: number) => string;
+		fillParent?: boolean;
 	}>();
+
+	const rootClass = $derived(
+		fillParent
+			? 'flex min-h-0 min-w-0 flex-1 flex-col gap-0'
+			: 'flex h-full min-h-[40vh] flex-col gap-0'
+	);
+	/** min-w-0 lets flex children shrink so wide tables scroll inside instead of expanding the card */
+	const tableScrollClass = $derived(
+		fillParent
+			? 'min-h-0 min-w-0 flex-1 overflow-auto'
+			: 'max-h-[60vh] min-w-0 overflow-auto'
+	);
+	const tableSectionClass = $derived(
+		fillParent
+			? 'flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2'
+			: 'min-w-0 px-4 py-2'
+	);
 
 
 	function getDefaultFilterValue(
@@ -353,10 +379,10 @@
 	}
 </script>
 
-<div class="flex h-full min-h-[40vh] flex-col gap-0">
-	<!-- Top controls: per page, pagination, summary, refresh -->
+<div class={rootClass}>
+	<!-- Top controls: per page, pagination, summary, refresh (does not scroll) -->
 	<div
-		class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+		class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
@@ -451,10 +477,12 @@
 		</div>
 	</div>
 
-	<div class="px-4 py-2">
+	<div class={tableSectionClass}>
 
-		<div class="max-h-[60vh] overflow-auto">
-			<DaisyUiTable className="d-table  d-table-zebra d-table-sm">
+		<div class={tableScrollClass}>
+			<DaisyUiTable
+				className="d-table d-table-zebra d-table-sm w-max min-w-full"
+			>
 				<DaisyUiTableHeader>
 					<tr class="sticky top-0 z-30 bg-base-200">
 						{#if hasActionsColumn}
@@ -540,12 +568,17 @@
 									>
 										{#if actionsVariant === 'crud'}
 											<div class="flex items-center gap-2">
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
-													onClick={() => dispatch('view', row)}
-												>
-													<LucideEye className="size-4" />
-												</DaisyUiButton>
+												{#if crudShowView}
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-sm"
+														onClick={() =>
+															dispatch('view', row)}
+													>
+														<LucideEye
+															className="size-4"
+														/>
+													</DaisyUiButton>
+												{/if}
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm d-btn-success"
 													onClick={() => dispatch('edit', row)}
