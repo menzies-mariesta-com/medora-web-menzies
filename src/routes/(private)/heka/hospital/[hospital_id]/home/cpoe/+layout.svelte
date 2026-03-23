@@ -9,6 +9,7 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/local/private/heka/visit/LVisitInfoBar.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { untrack } from 'svelte';
 
 	let { children } = $props();
 
@@ -42,6 +43,15 @@
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
 		if (urlVisitId && urlVisitId !== VisitState.visitId) {
 			VisitState.visitId = urlVisitId;
+		} else if (!urlVisitId && VisitState.visitId) {
+			const vid = VisitState.visitId;
+			untrack(() => {
+				const search = new URLSearchParams(page.url.search);
+				search.set('visitId', vid);
+				const base = page.url.pathname;
+				const url = `${base}?${search.toString()}`;
+				routerUtil.replaceRoute(url);
+			});
 		}
 	});
 

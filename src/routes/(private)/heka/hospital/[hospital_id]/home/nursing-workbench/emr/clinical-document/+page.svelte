@@ -6,30 +6,34 @@
 	import LucidePrinter from '$lib/component/library/lucide/LucidePrinter.svelte';
 	import LucideFileText from '$lib/component/library/lucide/LucideFileText.svelte';
 	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { getPatientVisitByIdWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		getDocumentsWithRelations,
 		type DocumentWithRelations
 	} from '$lib/remote/table/information-table/document.remote';
-	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
 	import {
 		getDocumentSettingsWithRelations,
 		type DocumentSettingWithRelations
 	} from '$lib/remote/table/information-table/document-setting.remote';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type {
-		DocumentTypeSchema,
-		DocumentSettingSchema
-	} from '$lib/server/db/schema-type';
 	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		buildDocumentPlaceholderContext,
+		buildVisitServiceLinesTableHtml,
 		resolveDocumentTemplate
 	} from '$lib/util/document-placeholder.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+	import {
+		htmlStringToPdfBlob,
+		uploadPatientAttachmentPdf
+	} from '$lib/util/html-to-pdf.util';
+	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
+	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
+	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
+	import { createPatientDocument } from '$lib/remote/table/information-table/patient-document.remote';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -38,16 +42,19 @@
 		page.url.searchParams.get('visitId') ?? ''
 	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
-	const hospitalId = $derived(page.params.hospital_id ?? '');
-
 	let visit = $state<PatientVisitWithRelations | null>(null);
 	let documents = $state<DocumentWithRelations[]>([]);
-	let documentTypes = $state<DocumentTypeSchema[]>([]);
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
 	let selectedDocument = $state<DocumentWithRelations | null>(null);
 	let showPreview = $state(false);
+	let lastLoadedVisitId = $state<number | null>(null);
+	let serviceLinesTableHtml = $state('');
+
+	const printByName = $derived(
+		typeof page.data?.printByName === 'string' ? page.data.printByName : ''
+	);
 
 	const consentDocuments = $derived(
 		documents.filter(
@@ -74,19 +81,28 @@
 	async function fetchAllData() {
 		isLoading = true;
 		try {
-			const [visitResult, docsResult, typesResult, settingsResult] =
+			const [visitResult, docsResult, settingsResult] =
 				await Promise.all([
 					visitId
 						? getPatientVisitByIdWithRelations({ id: visitId })
 						: Promise.resolve(null),
 					getDocumentsWithRelations(),
-					getDocumentTypes(),
 					getDocumentSettingsWithRelations()
 				]);
 			if (visitId) visit = visitResult;
 			documents = docsResult;
-			documentTypes = typesResult;
 			documentSettings = settingsResult;
+
+			if (visitId && visitResult?.hospitalId) {
+				const printRows = await fetchVisitServiceLinePrintRows({
+					visitId,
+					hospitalId: visitResult.hospitalId
+				});
+				serviceLinesTableHtml =
+					buildVisitServiceLinesTableHtml(printRows);
+			} else {
+				serviceLinesTableHtml = '';
+			}
 		} catch (err) {
 			console.error('Failed to fetch data', err);
 		} finally {
@@ -102,9 +118,12 @@
 	});
 
 	$effect(() => {
-		const _vid = visitId;
 		if (!mounted) return;
-		fetchAllData();
+
+		if (visitId !== lastLoadedVisitId) {
+			lastLoadedVisitId = visitId;
+			fetchAllData();
+		}
 	});
 
 	lifeCycleUtil.onDestroy(() => {
@@ -123,7 +142,10 @@
 
 	function buildPlaceholderContext(doc: DocumentWithRelations) {
 		return buildDocumentPlaceholderContext(visit, doc, {
-			printBy: ''
+			printBy: printByName,
+			extraPlaceholders: {
+				'{{visit.service_lines_table}}': serviceLinesTableHtml
+			}
 		});
 	}
 
@@ -152,7 +174,6 @@
 
 		isPrinting = true;
 		try {
-			// Use hidden iframe so print dialog pops up on top without opening new tab
 			let iframe = document.getElementById(
 				'clinical-document-print-iframe'
 			) as HTMLIFrameElement | null;
@@ -172,53 +193,13 @@
 				return;
 			}
 
-			// Use pre-loaded document settings (no async fetch needed)
-			const docTypeName =
-				doc.documentType?.documentType?.trim().toLowerCase() ?? '';
-			const setting: DocumentSettingSchema | null =
-				doc.documentSettingId
-					? ((documentSettings.find(
-							(s) => s.id === doc.documentSettingId
-						) as DocumentSettingSchema | null) ?? null)
-					: doc.documentTypeId
-						? ((documentSettings.find(
-								(s) => s.documentTypeId === doc.documentTypeId
-							) as DocumentSettingSchema | null) ??
-							(documentSettings.find(
-								(s) =>
-									(s.documentType?.documentType ?? '')
-										.trim()
-										.toLowerCase() === docTypeName
-							) as DocumentSettingSchema | null) ??
-							(documentSettings.find((s) => {
-								const name = (s.name ?? '').trim().toLowerCase();
-								return (
-									Boolean(docTypeName) && name.includes(docTypeName)
-								);
-							}) as DocumentSettingSchema | null) ??
-							(documentSettings.length === 1
-								? (documentSettings[0] as DocumentSettingSchema)
-								: null))
-						: null;
+			const setting = resolveDocumentSettingForDoc(documentSettings, doc);
 
 			const context = buildPlaceholderContext(doc);
 			const documentHtml = applyPlaceholders(
 				doc.documentText,
 				context
 			).trim();
-			// Override: use 0 margins for print (user preference)
-			const marginTop = setting?.marginTop ?? 20;
-			const marginBottom = setting?.marginBottom ?? 20;
-			const marginLeft = setting?.marginLeft ?? 15;
-			const marginRight = setting?.marginRight ?? 15;
-			const paddingTop = setting?.paddingTop ?? 10;
-			const paddingBottom = setting?.paddingBottom ?? 10;
-			const paddingLeft = setting?.paddingLeft ?? 10;
-			const paddingRight = setting?.paddingRight ?? 10;
-			const pageSize = setting?.pageSize ?? 'A4';
-			const orientation = setting?.pageOrientation ?? 'portrait';
-			const showHeader = setting?.showHeader ?? true;
-			const showFooter = setting?.showFooter ?? true;
 			const headerHtml = applyPlaceholders(
 				setting?.headerHtml,
 				context
@@ -233,123 +214,74 @@
 				doc.documentType?.documentType ||
 				'Document';
 
-			// Header block: header table + document name underneath
-			const headerBlock =
-				showHeader && headerHtml
-					? `<div class="print-header">
-						<div class="header-table">${headerHtml}</div>
-						<div class="document-name">${documentTitle}</div>
-					</div>`
-					: showHeader
-						? `<div class="print-header"><div class="document-name">${documentTitle}</div></div>`
-						: '';
+			const htmlBrowser = buildPrintDocumentHtml({
+				documentHtml,
+				documentTitle,
+				headerHtml,
+				footerHtml,
+				setting,
+				variant: 'browser'
+			});
 
-			const footerBlock =
-				showFooter && footerHtml
-					? `<div class="print-footer">${footerHtml}</div>`
-					: '';
+			const htmlPdf = buildPrintDocumentHtml({
+				documentHtml,
+				documentTitle,
+				headerHtml,
+				footerHtml,
+				setting,
+				variant: 'pdfRaster'
+			});
 
-			// Reserve space in @page so content area avoids header/footer on every page
-			const headerSpaceMm = showHeader ? 38 : 0;
-			const footerSpaceMm = showFooter ? 22 : 0;
-			const pageMarginTop = marginTop + headerSpaceMm;
-			const pageMarginBottom = marginBottom + footerSpaceMm;
-			const headerSpacerHeight = showHeader ? 130 : 0;
-			const footerSpacerHeight = showFooter ? 70 : 0;
-
-			printWindow.document.write(`
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<title>${documentTitle}</title>
-				<style>
-					body {
-						font-family: 'Roboto', Arial, sans-serif;
-						margin: 0;
-						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
-						line-height: 1.6;
-					}
-					.header-spacer {
-						height: ${headerSpacerHeight}px;
-					}
-					.footer-spacer {
-						height: ${footerSpacerHeight}px;
-					}
-					.print-header {
-						text-align: center;
-						padding: 12px 0 10px 0;
-					}
-					.header-table {
-						margin-bottom: 6px;
-					}
-					.document-name {
-						font-weight: 600;
-						font-size: 14px;
-					}
-					.content {
-						margin: 0;
-					}
-					.print-footer {
-						text-align: center;
-						font-size: 10px;
-						padding: 10px 0 12px 0;
-					}
-					table {
-						width: 100%;
-						border-collapse: collapse;
-					}
-					th,
-					td {
-						border: 1px solid #000;
-						padding: 4px 6px;
-						text-align: left;
-						vertical-align: top;
-					}
-					thead th {
-						background-color: #f5f5f5;
-						font-weight: 600;
-					}
-					@media print {
-						* {
-							print-color-adjust: exact;
-							-webkit-print-color-adjust: exact;
-						}
-						@page {
-							size: ${pageSize} ${orientation};
-							margin: ${pageMarginTop}mm ${marginRight}mm ${pageMarginBottom}mm ${marginLeft}mm;
-						}
-						.print-header {
-							position: fixed;
-							top: 0;
-							left: 0;
-							right: 0;
-							padding: 8mm ${marginRight}mm 10px ${marginLeft}mm;
-						}
-						.print-footer {
-							position: fixed;
-							bottom: 0;
-							left: 0;
-							right: 0;
-							padding: 10px ${marginRight}mm 8mm ${marginLeft}mm;
-						}
-					}
-				</style>
-			</head>
-			<body>
-				${headerBlock}
-				${showHeader ? '<div class="header-spacer"></div>' : ''}
-				<div class="content">
-					${documentHtml || '<p>No content</p>'}
-				</div>
-				${showFooter ? '<div class="footer-spacer"></div>' : ''}
-				${footerBlock}
-			</body>
-			</html>
-		`);
+			printWindow.document.open();
+			printWindow.document.write(htmlBrowser);
 			printWindow.document.close();
-			// Wait for iframe to render before opening print dialog
 			await new Promise((resolve) => setTimeout(resolve, 150));
 			printWindow.print();
+
+			const patientId = visit?.patient?.id;
+			if (visitId && patientId) {
+				try {
+					const blob = await htmlStringToPdfBlob(htmlPdf);
+					const safeBase = `${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
+						.replace(/[^\w.-]+/g, '_')
+						.slice(0, 120);
+					const url = await uploadPatientAttachmentPdf(
+						blob,
+						`${safeBase}.pdf`
+					);
+					await persistEmrPrintPdf({
+						patientId,
+						visitId,
+						documentId: doc.id,
+						fileUrl: url,
+						attachmentDescription: `Printed: ${documentTitle} (visit ${visit?.visitNo ?? visitId})`
+					});
+					toastService.addToast(
+						'Saved to patient documents (PDF attached).',
+						StatusColorEnum.SUCCESS
+					);
+				} catch (saveErr) {
+					console.error('Print PDF save failed', saveErr);
+					try {
+						await createPatientDocument({
+							visitId,
+							patientId,
+							documentId: doc.id,
+							statusId: StatusEnum.ACTIVE
+						});
+						toastService.addToast(
+							'Saved to patient documents (PDF upload failed).',
+							StatusColorEnum.WARNING
+						);
+					} catch (tagErr) {
+						console.error('patient_document insert failed', tagErr);
+						toastService.addToast(
+							'Printed, but saving to patient documents failed.',
+							StatusColorEnum.ERROR
+						);
+					}
+				}
+			}
 		} catch (err) {
 			console.error('Print failed', err);
 			toastService.addToast(
@@ -368,12 +300,12 @@
 			class="print-loading-overlay"
 			role="status"
 			aria-live="polite"
-			aria-label="Preparing document for print"
+			aria-label="Preparing print and PDF save"
 		>
 			<div class="flex flex-col items-center gap-4">
 				<DaisyUiLoading className="d-loading-lg text-primary" />
 				<span class="text-sm font-medium"
-					>Preparing document for print...</span
+					>Preparing print and PDF…</span
 				>
 			</div>
 		</div>
@@ -389,12 +321,13 @@
 				</p>
 			</div>
 		</DaisyUiCard>
-	{:else if isLoading}
-		<div class="flex items-center justify-center py-12">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			{#if isLoading && documents.length === 0}
+				<div class="lg:col-span-3 flex items-center justify-center py-12">
+					<DaisyUiLoading className="d-loading-lg" />
+				</div>
+			{:else}
 			<!-- Consent Forms -->
 			<DaisyUiCard className="bg-base-100">
 				<div class="border-b border-base-300 p-4">
@@ -561,6 +494,7 @@
 					{/if}
 				</ul>
 			</DaisyUiCard>
+			{/if}
 		</div>
 	{/if}
 </div>

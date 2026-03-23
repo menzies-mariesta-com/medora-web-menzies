@@ -32,6 +32,22 @@ export class StringUtil {
 		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
 		const createdBy = row.createdByUser?.name ?? '—';
 		const updatedBy = row.updatedByUser?.name ?? '—';
+		// cancelBy: relation may be cancelByUser (refer_history, etc.) or cancelBy (service_order_detail)
+		const cancelByUserRow = row.cancelByUser ?? row.cancelBy;
+		const canceledBy =
+			cancelByUserRow?.name ??
+			(typeof row.cancelBy === 'string' && row.cancelBy.trim()
+				? row.cancelBy
+				: null) ??
+			'—';
+		const canceledAt = dateTimeUtil.formatDateTime(row.cancelAt);
+		const hasCancelInfo =
+			canceledBy !== '—' || (canceledAt ?? '') !== '—';
+
+		if (hasCancelInfo) {
+			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
+		}
+
 		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
 	}
 
