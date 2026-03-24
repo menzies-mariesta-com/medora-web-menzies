@@ -27,6 +27,7 @@ export class DialogService {
 				modalClassName: options.modalClassName,
 				children: options.children,
 				component: options.component,
+				props: options.props,
 				onClose: options.onClose,
 				onConfirm: options.onConfirm as (data?: unknown) => void,
 				onCancel: options.onCancel,
