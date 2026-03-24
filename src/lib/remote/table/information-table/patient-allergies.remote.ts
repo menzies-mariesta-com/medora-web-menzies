@@ -283,7 +283,7 @@ export const getActivePatientAllergiesByPatientId = query(
 			.where(
 				and(
 					eq(table.patientAllergyTable.patientId, patientId),
-					ne(table.patientAllergyTable.statusId, StatusEnum.DELETED)
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
 				)
 			)
 			.orderBy(table.patientAllergyTable.id);

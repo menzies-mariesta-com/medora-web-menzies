@@ -17,7 +17,7 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LCancelReferReasonDialogContent from '$lib/component/local/private/heka/cpoe/refer/LCancelReferReasonDialogContent.svelte';
+	import LReferFeedbackDialogContent from '$lib/component/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
 
 	let rows = $state<ReferHistoryWithRelations[]>([]);
 	let totalRowCount = $state(0);
@@ -25,7 +25,8 @@
 	let pageSize = $state('25');
 	let currentPage = $state(1);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastReferHistoryFetchKey = $state('');
 	let cancellingRowId = $state<number | null>(null);
 	let acceptingRowId = $state<number | null>(null);
@@ -36,18 +37,25 @@
 		page.data.staff?.id != null ? String(page.data.staff.id) : null
 	);
 
-	function isPendingReferRow(row: {
-		acceptDate: unknown;
-		acceptAt?: unknown;
-		cancelAt: unknown;
-	}) {
-		const accepted =
-			row.acceptDate != null ||
-			(row.acceptAt != null && String(row.acceptAt).trim() !== '');
-		return !accepted && row.cancelAt == null;
+	function isAcceptedReferRow(row: ReferHistoryWithRelations) {
+		return row.acceptAt != null && String(row.acceptAt).trim() !== '';
 	}
 
-	function isRecipientDoctor(row: { toReferDoctorId?: string | null }) {
+	function isPendingReferRow(row: ReferHistoryWithRelations) {
+		return !isAcceptedReferRow(row) && row.cancelAt == null;
+	}
+
+	/** Reject sets cancel_at; recipient is to_refer_doctor — match cancel_by user to to-doctor's user. */
+	function isReferRejected(row: ReferHistoryWithRelations) {
+		if (row.cancelAt == null) return false;
+		const uid = row.cancelBy?.trim();
+		const toUserId = row.toReferDoctor?.userId;
+		if (!uid || toUserId == null || String(toUserId).trim() === '')
+			return false;
+		return String(toUserId) === String(uid);
+	}
+
+	function isRecipientDoctor(row: ReferHistoryWithRelations) {
 		if (!currentStaffId || !row.toReferDoctorId) return false;
 		return String(row.toReferDoctorId) === currentStaffId;
 	}
@@ -64,16 +72,9 @@
 		}
 	}
 
-	/** Prefer `accept_at` (timestamptz); fall back to legacy `accept_date`. */
-	function formatAcceptedAt(
-		acceptAt: unknown,
-		acceptDate: unknown
-	): string {
+	function formatAcceptedAt(acceptAt: unknown): string {
 		if (acceptAt != null && String(acceptAt).trim() !== '') {
 			return formatDateTime(acceptAt);
-		}
-		if (acceptDate != null && String(acceptDate).trim() !== '') {
-			return String(acceptDate);
 		}
 		return '—';
 	}
@@ -81,16 +82,27 @@
 	const rowLegends = [
 		{ id: 'active', label: 'Active', colorClass: 'bg-neutral/5' },
 		{ id: 'urgent', label: 'Urgent', colorClass: 'bg-warning/25' },
+		{
+			id: 'accepted',
+			label: 'Accepted',
+			colorClass: 'bg-success/25'
+		},
+		{
+			id: 'rejected',
+			label: 'Rejected',
+			colorClass: 'bg-orange-400/25'
+		},
 		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
 	];
 
 	const columns: MariTableColumn[] = [
 		{
-			id: 'referDate',
-			header: 'Refer date',
-			field: 'referDate',
+			id: 'referAt',
+			header: 'Refer At',
+			field: 'referAt',
 			filterable: false,
-			widthClass: 'min-w-[7rem]'
+			widthClass: 'min-w-[11rem]',
+			format: (v) => formatDateTime(v)
 		},
 		{
 			id: 'subject',
@@ -150,15 +162,29 @@
 			field: 'acceptAt',
 			filterable: false,
 			widthClass: 'min-w-[11rem]',
-			format: (_, row) =>
-				formatAcceptedAt(row.acceptAt, row.acceptDate)
+			format: (_, row) => formatAcceptedAt(row.acceptAt)
 		},
 		{
 			id: 'referReplyNote',
 			header: 'Reply note',
 			field: 'referReplyNote',
 			filterable: false,
-			widthClass: 'min-w-[8rem]'
+			widthClass: 'min-w-[10rem]'
+		},
+		{
+			id: 'cancelRemark',
+			header: 'Cancel reason',
+			field: 'cancelRemark',
+			filterable: false,
+			widthClass: 'min-w-[10rem]'
+		},
+		{
+			id: 'cancelAt',
+			header: 'Canceled At',
+			field: 'cancelAt',
+			filterable: false,
+			widthClass: 'min-w-[11rem]',
+			format: (v) => formatDateTime(v)
 		},
 		{
 			id: 'createdAt',
@@ -167,7 +193,7 @@
 			filterable: false,
 			widthClass: 'min-w-[11rem]',
 			format: (v) => formatDateTime(v)
-		},
+		}
 	];
 
 	async function loadData(options?: { force?: boolean }) {
@@ -210,14 +236,20 @@
 		if (!isPendingReferRow(row)) return;
 
 		const res = await dialogService.open<{
-			cancelReason: string;
+			note: string | null;
 		}>({
 			title: 'Cancel referral',
-			component: LCancelReferReasonDialogContent
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Cancel Reason',
+				placeholder: 'Enter reason for cancelling...',
+				confirmLabel: 'Confirm Cancel',
+				required: true
+			}
 		});
 
 		if (!res.confirmed) return;
-		const cancelReason = res.data?.cancelReason;
+		const cancelReason = res.data?.note;
 		if (!cancelReason) return;
 
 		cancellingRowId = row.id as number;
@@ -246,21 +278,26 @@
 		if (!isPendingReferRow(row)) return;
 
 		const res = await dialogService.open<{
-			cancelReason: string;
+			note: string | null;
 		}>({
 			title: 'Reject referral',
-			component: LCancelReferReasonDialogContent
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Reject Note',
+				placeholder: 'Enter internal note for rejection (optional)...',
+				confirmLabel: 'Confirm Reject',
+				required: false
+			}
 		});
 
 		if (!res.confirmed) return;
-		const cancelReason = res.data?.cancelReason;
-		if (!cancelReason) return;
+		const replyNote = res.data?.note;
 
 		cancellingRowId = row.id as number;
 		try {
 			await rejectReferHistory({
 				id: row.id as number,
-				rejectReason: cancelReason
+				replyNote
 			});
 			toastService.addToast(
 				'Referral rejected.',
@@ -281,10 +318,27 @@
 		if (!row?.id) return;
 		if (!isPendingReferRow(row)) return;
 
+		const res = await dialogService.open<{
+			note: string | null;
+		}>({
+			title: 'Accept referral',
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Reply Note',
+				placeholder: 'Enter internal note for acceptance (optional)...',
+				confirmLabel: 'Confirm Accept',
+				required: false
+			}
+		});
+
+		if (!res.confirmed) return;
+		const replyNote = res.data?.note;
+
 		acceptingRowId = row.id as number;
 		try {
 			await acceptReferHistory({
-				id: row.id as number
+				id: row.id as number,
+				replyNote
 			});
 			toastService.addToast(
 				'Referral accepted.',
@@ -321,7 +375,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" button above to view referral history.'
+			message="Choose a visit using the 'Choose Visit' button above to view referral history."
 			className="z-0"
 		/>
 	{:else}
@@ -335,7 +389,11 @@
 				{isLoading}
 				legendItems={rowLegends}
 				rowClassGetter={(row) => {
-					if (row.cancelAt != null) return '!bg-error/15';
+					if (row.cancelAt != null) {
+						if (isReferRejected(row)) return '!bg-orange-400/15';
+						return '!bg-error/15';
+					}
+					if (isAcceptedReferRow(row)) return '!bg-success/15';
 					if (row.isUrgent === YesNoEnum.YES) return '!bg-warning/15';
 					return '!bg-neutral/0';
 				}}
@@ -357,7 +415,8 @@
 					tableFilters = nextFilters;
 					currentPage = 1;
 
-					if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+					if (filterDebounceTimeout)
+						clearTimeout(filterDebounceTimeout);
 					filterDebounceTimeout = setTimeout(() => {
 						loadData();
 					}, 350);
@@ -367,28 +426,25 @@
 				actionsVariant="none"
 			>
 				<svelte:fragment slot="rowActions" let:row>
-					{#if isRecipientDoctor(row) && isPendingReferRow(row)}
+					{@const typedRow = row as ReferHistoryWithRelations}
+					{#if isRecipientDoctor(typedRow) && isPendingReferRow(typedRow)}
 						<div class="flex flex-wrap items-center gap-1">
 							<DaisyUiButton
 								className="d-btn-ghost d-btn-sm d-btn-success"
-								disabled={
-									acceptingRowId === row.id ||
-									cancellingRowId === row.id
-								}
+								disabled={acceptingRowId === typedRow.id ||
+									cancellingRowId === typedRow.id}
 								onClick={() => {
-									void handleAcceptRow(row);
+									void handleAcceptRow(typedRow);
 								}}
 							>
 								Accept
 							</DaisyUiButton>
 							<DaisyUiButton
 								className="d-btn-ghost d-btn-sm d-btn-error"
-								disabled={
-									cancellingRowId === row.id ||
-									acceptingRowId === row.id
-								}
+								disabled={cancellingRowId === typedRow.id ||
+									acceptingRowId === typedRow.id}
 								onClick={() => {
-									void handleRejectRow(row);
+									void handleRejectRow(typedRow);
 								}}
 							>
 								Reject
@@ -397,12 +453,10 @@
 					{:else}
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={
-								cancellingRowId === row.id ||
-								!isPendingReferRow(row)
-							}
+							disabled={cancellingRowId === typedRow.id ||
+								!isPendingReferRow(typedRow)}
 							onClick={() => {
-								void handleCancelRow(row);
+								void handleCancelRow(typedRow);
 							}}
 						>
 							Cancel

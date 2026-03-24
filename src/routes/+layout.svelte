@@ -82,12 +82,13 @@
 				{#if DialogState.current.component}
 					{@const DialogContent = DialogState.current.component}
 					<DialogContent
-						confirm={(data) => dialogService.confirm(data)}
+						{...DialogState.current.props}
+						confirm={(data: unknown) => dialogService.confirm(data)}
 						cancel={() => dialogService.cancel()}
 					/>
 				{:else if DialogState.current.children}
 					{@render DialogState.current.children({
-						confirm: (data) => dialogService.confirm(data),
+						confirm: (data: unknown) => dialogService.confirm(data),
 						cancel: () => dialogService.cancel()
 					})}
 				{/if}
@@ -137,7 +138,8 @@
 					{/if}
 					{@const DialogContent = DialogState.current.component}
 					<DialogContent
-						confirm={(data) => dialogService.confirm(data)}
+						{...DialogState.current.props}
+						confirm={(data: unknown) => dialogService.confirm(data)}
 						cancel={() => dialogService.cancel()}
 					/>
 				{:else if DialogState.current.children}

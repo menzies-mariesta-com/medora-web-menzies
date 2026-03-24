@@ -16,15 +16,66 @@ import { and, count, eq } from 'drizzle-orm';
 
 const BRANCH_ALL_VALUE = '__all__';
 
-function getSelectedBranchConstraintForStaff(): string | null {
+async function getSelectedBranchConstraintForStaff(hospitalId: string): Promise<string | null> {
 	try {
 		const event = getRequestEvent();
 		const roleId = event.locals.userRoleId ?? null;
-		if (roleId !== RoleEnum.STAFF) return null;
+		const staffId = event.locals.staff?.id ?? null;
+		if (roleId !== RoleEnum.STAFF || !staffId) return null;
 		const selected =
 			event.cookies.get('heka_selected_branch_id') ?? null;
-		if (!selected || selected === BRANCH_ALL_VALUE) return null;
-		return selected;
+		
+		const staffBranchesForNavRaw = await ensureDb()
+			.select({
+				id: table.hospitalBranchTable.id,
+				name: table.hospitalBranchTable.name
+			})
+			.from(table.staffBranchTable)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(
+					table.staffBranchTable.branchId,
+					table.hospitalBranchTable.id
+				)
+			)
+			.where(
+				and(
+					eq(table.staffBranchTable.staffId, staffId),
+					eq(table.hospitalBranchTable.hospitalId, hospitalId)
+				)
+			);
+			
+		const staffBranchesForNav = [
+			...new Map(
+				staffBranchesForNavRaw.map((b) => [b.id, b])
+			).values()
+		].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+			
+		const allHospitalBranchesRaw = await ensureDb()
+			.select({ id: table.hospitalBranchTable.id })
+			.from(table.hospitalBranchTable)
+			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
+			
+		const allHospitalBranchIds = allHospitalBranchesRaw.map((b) => b.id);
+		const staffBranchIdSet = new Set(staffBranchesForNav.map((b) => b.id));
+		const hasAllBranchesAccess =
+			allHospitalBranchIds.length > 0 &&
+			allHospitalBranchIds.every((id) => staffBranchIdSet.has(id));
+			
+		const branchNavIds = staffBranchesForNav.map((b) => b.id);
+		if (hasAllBranchesAccess) {
+			branchNavIds.unshift(BRANCH_ALL_VALUE);
+		}
+		
+		const fallbackSelectedId =
+			staffBranchesForNav.length === 1
+				? staffBranchesForNav[0].id
+				: selected != null && branchNavIds.includes(selected)
+					? selected
+					: (branchNavIds[0] ?? null);
+
+		if (!fallbackSelectedId || fallbackSelectedId === BRANCH_ALL_VALUE) return null;
+		return fallbackSelectedId;
 	} catch {
 		return null;
 	}
@@ -320,7 +371,7 @@ export const createDoctorSchedule = command(
 		payload: DoctorScheduleSchemaInsert
 	): Promise<DoctorScheduleSchema> => {
 		const selectedBranchConstraint =
-			getSelectedBranchConstraintForStaff();
+			await getSelectedBranchConstraintForStaff(payload.hospitalId);
 		if (
 			selectedBranchConstraint &&
 			payload.branchId !== selectedBranchConstraint
@@ -374,7 +425,7 @@ export const updateDoctorSchedule = command(
 			rest.fromShiftTime ?? existing.fromShiftTime;
 		const nextToShiftTime = rest.toShiftTime ?? existing.toShiftTime;
 		const selectedBranchConstraint =
-			getSelectedBranchConstraintForStaff();
+			await getSelectedBranchConstraintForStaff(nextHospitalId);
 		if (
 			selectedBranchConstraint &&
 			nextBranchId !== selectedBranchConstraint
