@@ -159,7 +159,7 @@
 		try {
 			await createReferHistory({
 				visitId: parseInt(visitId, 10),
-				referDate: new Date().toISOString().split('T')[0],
+				referAt: new Date().toISOString(),
 				toBranchId: toBranchId.trim(),
 				toReferDoctorId: toReferDoctorId.trim(),
 				subject: subject.trim(),

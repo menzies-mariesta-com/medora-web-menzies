@@ -143,7 +143,13 @@ export const createReferHistory = command(
  */
 export const acceptReferHistory = command(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ReferHistorySchema> => {
+	async ({
+		id,
+		replyNote
+	}: {
+		id: number;
+		replyNote?: string;
+	}): Promise<ReferHistorySchema> => {
 		const staffId =
 			getRequestEvent()?.locals?.staff?.id != null
 				? String(getRequestEvent()!.locals!.staff!.id)
@@ -154,7 +160,6 @@ export const acceptReferHistory = command(
 
 		const [existing] = await ensureDb()
 			.select({
-				acceptDate: table.referHistoryTable.acceptDate,
 				acceptAt: table.referHistoryTable.acceptAt,
 				cancelAt: table.referHistoryTable.cancelAt,
 				toReferDoctorId: table.referHistoryTable.toReferDoctorId,
@@ -171,9 +176,8 @@ export const acceptReferHistory = command(
 			throw error(404, 'Referral not found');
 		}
 		const alreadyAccepted =
-			existing.acceptDate != null ||
-			(existing.acceptAt != null &&
-				String(existing.acceptAt).trim() !== '');
+			existing.acceptAt != null &&
+			String(existing.acceptAt).trim() !== '';
 		if (alreadyAccepted) {
 			throw error(400, 'Referral already accepted');
 		}
@@ -188,14 +192,13 @@ export const acceptReferHistory = command(
 		}
 
 		const nowIso = new Date().toISOString();
-		const today = nowIso.split('T')[0];
 		const [row] = await ensureDb()
 			.update(table.referHistoryTable)
-			.set({ acceptDate: today, acceptAt: nowIso })
+			.set({ acceptAt: nowIso, referReplyNote: replyNote })
 			.where(
 				and(
 					eq(table.referHistoryTable.id, id),
-					isNull(table.referHistoryTable.acceptDate),
+					isNull(table.referHistoryTable.acceptAt),
 					isNull(table.referHistoryTable.cancelAt)
 				)
 			)
@@ -251,10 +254,10 @@ export const rejectReferHistory = command(
 	'unchecked' as const,
 	async ({
 		id,
-		rejectReason
+		replyNote
 	}: {
 		id: number;
-		rejectReason: string;
+		replyNote?: string;
 	}): Promise<void> => {
 		const staffId =
 			getRequestEvent()?.locals?.staff?.id != null
@@ -264,7 +267,7 @@ export const rejectReferHistory = command(
 			throw error(401, 'Unauthorized');
 		}
 
-		const cancelDate = new Date().toISOString().split('T')[0];
+		const cancelDate = new Date().toISOString();
 		const userId =
 			getRequestEvent()?.locals?.user?.id != null
 				? String(getRequestEvent()?.locals?.user?.id)
@@ -281,7 +284,7 @@ export const rejectReferHistory = command(
 			.where(
 				and(
 					eq(table.referHistoryTable.id, id),
-					isNull(table.referHistoryTable.acceptDate),
+					isNull(table.referHistoryTable.acceptAt),
 					isNull(table.referHistoryTable.cancelAt)
 				)
 			)
@@ -301,13 +304,13 @@ export const rejectReferHistory = command(
 			.update(table.referHistoryTable)
 			.set({
 				cancelAt: cancelDate,
-				cancelRemark: rejectReason,
+				referReplyNote: replyNote,
 				cancelBy: userId
 			})
 			.where(
 				and(
 					eq(table.referHistoryTable.id, id),
-					isNull(table.referHistoryTable.acceptDate),
+					isNull(table.referHistoryTable.acceptAt),
 					isNull(table.referHistoryTable.cancelAt)
 				)
 			)
@@ -336,7 +339,7 @@ export const rejectReferHistory = command(
 				eventType: ReferNotificationEventType.REJECTED,
 				severity: StatusColorEnum.ERROR,
 				title: 'Referral rejected',
-				message: `Referral rejected: ${rejectReason}`,
+				message: `Referral rejected${replyNote ? `: ${replyNote}` : ''}`,
 				link,
 				visitId: existing.visitId,
 				referHistoryId: id
@@ -371,7 +374,7 @@ export const cancelReferHistory = command(
 	'unchecked' as const,
 	async (payload: { id: number; cancelReason: string }): Promise<void> => {
 		const { id, cancelReason } = payload;
-		const cancelDate = new Date().toISOString().split('T')[0];
+		const cancelDate = new Date().toISOString();
 		const userId =
 			getRequestEvent()?.locals?.user?.id != null
 				? String(getRequestEvent()?.locals?.user?.id)
@@ -388,7 +391,7 @@ export const cancelReferHistory = command(
 			.where(
 				and(
 					eq(table.referHistoryTable.id, id),
-					isNull(table.referHistoryTable.acceptDate),
+					isNull(table.referHistoryTable.acceptAt),
 					isNull(table.referHistoryTable.cancelAt)
 				)
 			)
@@ -406,7 +409,7 @@ export const cancelReferHistory = command(
 			.where(
 				and(
 					eq(table.referHistoryTable.id, id),
-					isNull(table.referHistoryTable.acceptDate),
+					isNull(table.referHistoryTable.acceptAt),
 					isNull(table.referHistoryTable.cancelAt)
 				)
 			)
@@ -462,12 +465,8 @@ export const getReferHistoryPaginated = query(
 	'unchecked' as const,
 	async (
 		params?: PaginationParams & {
-			visitId?: number;
-			/**
-			 * MariTable column filter map: { [columnId]: string }.
-			 * We apply a subset server-side for now.
-			 */
 			filters?: Record<string, string>;
+			visitId?: number;
 		}
 	): Promise<PaginatedResult<ReferHistoryWithRelations>> => {
 		const { page, pageSize, limit, offset } = normalizePagination(params);
@@ -507,22 +506,12 @@ export const getReferHistoryPaginated = query(
 			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 		}
 
-		// referDate (stored as DATE)
-		const referDate = filters.referDate?.trim();
-		if (referDate) {
+		// referAt (timestamptz)
+		const referAtFilter = filters.referAt?.trim();
+		if (referAtFilter) {
 			const expr = ilike(
-				sql`${table.referHistoryTable.referDate}::text`,
-				`%${referDate}%`
-			);
-			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
-		}
-
-		// acceptDate (stored as DATE)
-		const acceptDate = filters.acceptDate?.trim();
-		if (acceptDate) {
-			const expr = ilike(
-				sql`${table.referHistoryTable.acceptDate}::text`,
-				`%${acceptDate}%`
+				sql`${table.referHistoryTable.referAt}::text`,
+				`%${referAtFilter}%`
 			);
 			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 		}
@@ -577,12 +566,12 @@ export const getReferHistoryPaginated = query(
 			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 		}
 
-		// cancelRemark (column id cancelReason in UI)
-		const cancelReason = filters.cancelReason?.trim();
-		if (cancelReason) {
+		// cancelRemark
+		const cancelRemark = filters.cancelRemark?.trim();
+		if (cancelRemark) {
 			const expr = ilike(
 				table.referHistoryTable.cancelRemark,
-				`%${cancelReason}%`
+				`%${cancelRemark}%`
 			);
 			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 		}

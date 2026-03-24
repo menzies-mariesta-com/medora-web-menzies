@@ -30,16 +30,6 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
-	function areFiltersEqual(
-		a: Record<string, string>,
-		b: Record<string, string>
-	): boolean {
-		const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-		for (const k of keys) {
-			if ((a[k] ?? '') !== (b[k] ?? '')) return false;
-		}
-		return true;
-	}
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -468,7 +458,7 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
-							bind:columnFilters={tableFilters}
+							columnFilters={tableFilters}
 							useRemoteFilters={true}
 							on:refresh={() => {
 								if (visit?.patientId && visit?.hospitalId) {
@@ -493,14 +483,10 @@
 								}
 							}}
 							on:filtersChange={(event) => {
-								const nextFilters = event.detail.filters;
-								if (areFiltersEqual(tableFilters, nextFilters)) {
-									return;
-								}
 								if (filterDebounceTimeout) {
 									clearTimeout(filterDebounceTimeout);
 								}
-								tableFilters = nextFilters;
+								tableFilters = event.detail.filters;
 								currentPage = 1;
 								filterDebounceTimeout = setTimeout(() => {
 									if (visit?.patientId && visit?.hospitalId) {

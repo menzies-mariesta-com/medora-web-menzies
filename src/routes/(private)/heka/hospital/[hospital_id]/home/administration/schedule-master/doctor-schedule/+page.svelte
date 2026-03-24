@@ -215,8 +215,10 @@
 	let daySchedules = $state<DaySchedule[]>([]);
 
 	$effect(() => {
-		if (DAYS.length > 0 && daySchedules.length === 0) {
-			daySchedules = DAYS.map(() => ({
+		// Ensure the index-based bindings below (daySchedules[i].*) never
+		// encounter `undefined` while DAYS is being initialized/updated.
+		if (DAYS.length > 0 && daySchedules.length < DAYS.length) {
+			const fallback: DaySchedule = {
 				checked: false,
 				fromHour: '0',
 				fromMin: '00',
@@ -224,7 +226,8 @@
 				toHour: '0',
 				toMin: '00',
 				toAmPm: 'PM' as const
-			}));
+			};
+			daySchedules = DAYS.map((_, i) => daySchedules[i] ?? fallback);
 		}
 	});
 	let isSaving = $state(false);
@@ -729,80 +732,82 @@
 						</tr>
 					</DaisyUiTableHeader>
 					<DaisyUiTableBody>
-						{#each DAYS as day, i (day.id)}
-							<tr>
-								<td>
-									<label
-										class="flex cursor-pointer items-center gap-2"
-									>
-										<DaisyUiCheckbox
-											bind:checked={daySchedules[i].checked}
-										/>
-										<span>{day.name}</span>
-									</label>
-								</td>
-								<td>
-									<div class="flex items-center gap-1">
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].fromHour}
+						{#if daySchedules.length === DAYS.length}
+							{#each DAYS as day, i (day.id)}
+								<tr>
+									<td>
+										<label
+											class="flex cursor-pointer items-center gap-2"
 										>
-											{#each HOURS as h (h)}
-												<option value={h}>{h}</option>
-											{/each}
-										</select>
-										<span>:</span>
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].fromMin}
-										>
-											{#each MINUTES as m (m)}
-												<option value={m}>{m}</option>
-											{/each}
-										</select>
-										<span>:</span>
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].fromAmPm}
-										>
-											{#each AM_PM as ap (ap)}
-												<option value={ap}>{ap}</option>
-											{/each}
-										</select>
-									</div>
-								</td>
-								<td>
-									<div class="flex items-center gap-1">
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].toHour}
-										>
-											{#each HOURS as h (h)}
-												<option value={h}>{h}</option>
-											{/each}
-										</select>
-										<span>:</span>
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].toMin}
-										>
-											{#each MINUTES as m (m)}
-												<option value={m}>{m}</option>
-											{/each}
-										</select>
-										<span>:</span>
-										<select
-											class="d-select w-16 d-select-sm"
-											bind:value={daySchedules[i].toAmPm}
-										>
-											{#each AM_PM as ap (ap)}
-												<option value={ap}>{ap}</option>
-											{/each}
-										</select>
-									</div>
-								</td>
-							</tr>
-						{/each}
+											<DaisyUiCheckbox
+												bind:checked={daySchedules[i].checked}
+											/>
+											<span>{day.name}</span>
+										</label>
+									</td>
+									<td>
+										<div class="flex items-center gap-1">
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].fromHour}
+											>
+												{#each HOURS as h (h)}
+													<option value={h}>{h}</option>
+												{/each}
+											</select>
+											<span>:</span>
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].fromMin}
+											>
+												{#each MINUTES as m (m)}
+													<option value={m}>{m}</option>
+												{/each}
+											</select>
+											<span>:</span>
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].fromAmPm}
+											>
+												{#each AM_PM as ap (ap)}
+													<option value={ap}>{ap}</option>
+												{/each}
+											</select>
+										</div>
+									</td>
+									<td>
+										<div class="flex items-center gap-1">
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].toHour}
+											>
+												{#each HOURS as h (h)}
+													<option value={h}>{h}</option>
+												{/each}
+											</select>
+											<span>:</span>
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].toMin}
+											>
+												{#each MINUTES as m (m)}
+													<option value={m}>{m}</option>
+												{/each}
+											</select>
+											<span>:</span>
+											<select
+												class="d-select w-16 d-select-sm"
+												bind:value={daySchedules[i].toAmPm}
+											>
+												{#each AM_PM as ap (ap)}
+													<option value={ap}>{ap}</option>
+												{/each}
+											</select>
+										</div>
+									</td>
+								</tr>
+							{/each}
+						{/if}
 					</DaisyUiTableBody>
 				</DaisyUiTable>
 			</div>
