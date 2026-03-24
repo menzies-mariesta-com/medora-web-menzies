@@ -6,12 +6,12 @@
 	import DaisyUiNavbarStart from '$lib/component/library/daisyui/navbar/start/DaisyUiNavbarStart.svelte';
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideBell from '$lib/component/library/lucide/LucideBell.svelte';
 	import LucideUser from '$lib/component/library/lucide/LucideUser.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/snippet/modal/AccountModal.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import HekaNotifications from './HekaNotifications.svelte';
 
 	let {
 		title = 'Hospitals',
@@ -58,9 +58,7 @@
 			tooltipText="Notification"
 			className="d-tooltip-left"
 		>
-			<DaisyUiButton className="d-btn-circle">
-				<LucideBell />
-			</DaisyUiButton>
+			<HekaNotifications />
 		</DaisyUiTooltip>
 		<DaisyUiTooltip tooltipText="Account" className="d-tooltip-left">
 			<DaisyUiButton

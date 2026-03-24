@@ -6,6 +6,7 @@
 	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
+	import { page } from '$app/state';
 	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
 	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
 	import { getCountry } from '$lib/remote/table/master-table/country.remote';
@@ -75,6 +76,12 @@
 			: isView
 				? 'View external refer'
 				: 'Edit external refer'
+	);
+
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+			? page.params.hospital_id
+			: null
 	);
 
 	// Selected objects and filtered lists (one-by-one like staff registration)
@@ -220,7 +227,7 @@
 					phone: phone.trim() || null,
 					email: email.trim() || null,
 					referTypeId: ReferTypeEnum.EXTERNAL,
-					hospitalId: null,
+					hospitalId: hospitalId,
 					countryId: countryId ? parseInt(countryId, 10) : null,
 					stateId: stateId ? parseInt(stateId, 10) : null,
 					cityId: cityId ? parseInt(cityId, 10) : null,
@@ -246,7 +253,7 @@
 					phone: phone.trim() || null,
 					email: email.trim() || null,
 					referTypeId: ReferTypeEnum.EXTERNAL,
-					hospitalId: null,
+					hospitalId: hospitalId,
 					countryId: countryId ? parseInt(countryId, 10) : null,
 					stateId: stateId ? parseInt(stateId, 10) : null,
 					cityId: cityId ? parseInt(cityId, 10) : null,

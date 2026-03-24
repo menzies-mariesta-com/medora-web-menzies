@@ -651,7 +651,7 @@
 							actionsHeader="Actions"
 							actionsVariant="none"
 							enableColumnFilters={true}
-							bind:columnFilters={tableFilters}
+							columnFilters={tableFilters}
 							useRemoteFilters={true}
 							on:refresh={() => fetchNursingComplete({ force: true })}
 							on:pageSizeChange={() => {
