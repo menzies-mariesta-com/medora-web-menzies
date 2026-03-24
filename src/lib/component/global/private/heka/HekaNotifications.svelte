@@ -128,17 +128,20 @@
 		}
 
 		// Route known refer notifications
-		if (
-			item.eventType.startsWith('REFER_') &&
-			item.link &&
-			item.visitId != null
-		) {
-			VisitState.visitId = String(item.visitId);
+		let finalLink = item.link;
+		if (item.visitId != null) {
+			if (finalLink) {
+				const url = new URL(finalLink, window.location.origin);
+				url.searchParams.set('visitId', String(item.visitId));
+				finalLink = url.pathname + url.search;
+			} else if (item.eventType.startsWith('REFER_')) {
+				VisitState.visitId = String(item.visitId);
+			}
 		}
 
-		if (!item.link) return;
+		if (!finalLink) return;
 		closeNotificationsModal();
-		routerUtil.goToRoute(item.link);
+		routerUtil.goToRoute(finalLink);
 	}
 
 	async function handleMarkAllRead() {

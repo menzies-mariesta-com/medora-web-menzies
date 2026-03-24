@@ -41,7 +41,7 @@
 
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
-		if (urlVisitId && urlVisitId !== VisitState.visitId) {
+		if (urlVisitId && urlVisitId !== untrack(() => VisitState.visitId)) {
 			VisitState.visitId = urlVisitId;
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;

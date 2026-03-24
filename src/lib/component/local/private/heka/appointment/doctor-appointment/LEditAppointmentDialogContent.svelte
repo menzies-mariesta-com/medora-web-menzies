@@ -168,15 +168,8 @@
 			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
 		});
 		const list = res.data.map((p) => {
-			const titleName = (p as { title?: { name?: string } }).title
-				?.name;
 			return {
-				label: `${p.code} - ${StringUtil.fullNameWithTitle(
-					titleName ?? undefined,
-					p.firstName,
-					p.middleName,
-					p.lastName
-				)}`,
+				label: StringUtil.patientOptionDisplayName(p),
 				value: String(p.id)
 			};
 		});
@@ -189,14 +182,7 @@
 	): Promise<string> {
 		const p = await getPatientByIdWithRelations({ id });
 		if (!p) return '';
-		const titleName = (p as { title?: { name?: string } }).title
-			?.name;
-		return `${p.code} - ${StringUtil.fullNameWithTitle(
-			titleName ?? undefined,
-			p.firstName,
-			p.middleName,
-			p.lastName
-		)}`;
+		return StringUtil.patientOptionDisplayName(p);
 	}
 
 	// Default patient mode after load based on whether appointment has a linked patient

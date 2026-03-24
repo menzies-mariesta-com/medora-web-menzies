@@ -109,7 +109,7 @@ export async function seedInformationTables() {
 			(4, 'Doctor Appointment', 3, 1, null, '/heka/home/appointment/doctor-appointment', 1),
 
 			-- Nursing Workbench Module
-			(8, 'EMR', 4, 1, null, '/heka/home/nursing-workbench/emr', 1),
+			(8, 'Nursing OPD', 4, 1, null, '/heka/home/nursing-workbench/emr', 1),
 			(800001, 'Vital', 4, 1, 8, '/heka/home/nursing-workbench/emr/vital', 1),
 			(800002, 'Allergy', 4, 1, 8, '/heka/home/nursing-workbench/emr/allergy', 2),
 			(800003, 'Nursing Complete', 4, 1, 8, '/heka/home/nursing-workbench/emr/nursing-complete', 7),

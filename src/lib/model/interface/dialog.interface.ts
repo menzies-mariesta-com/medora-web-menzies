@@ -14,7 +14,8 @@ export interface DialogOpenOptions<T = unknown> {
 	/** Tailwind classes for the modal box (e.g. max-w-4xl max-h-[90vh]) */
 	modalClassName?: string;
 	children?: Snippet<[DialogSlotProps]>;
-	component?: Component<DialogSlotProps>;
+	component?: Component<DialogSlotProps & any>;
+	props?: Record<string, any>;
 	onClose?: () => void;
 	onConfirm?: (data?: T) => void;
 	onCancel?: () => void;
@@ -28,7 +29,8 @@ export interface DialogInterface {
 	fullScreen?: boolean;
 	modalClassName?: string;
 	children?: Snippet<[DialogSlotProps]>;
-	component?: Component<DialogSlotProps>;
+	component?: Component<DialogSlotProps & any>;
+	props?: Record<string, any>;
 	onClose?: () => void;
 	onConfirm?: (data?: unknown) => void;
 	onCancel?: () => void;
