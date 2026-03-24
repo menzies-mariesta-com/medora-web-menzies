@@ -1,8 +1,12 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import {
+		acceptReferHistory,
 		cancelReferHistory,
-		getReferHistoryPaginated
+		getReferHistoryPaginated,
+		rejectReferHistory,
+		type ReferHistoryWithRelations
 	} from '$lib/remote/table/information-table/refer-history.remote';
 	import MariTable from '$lib/component/library/mari/table/MariTable.svelte';
 	import type { MariTableColumn } from '$lib/component/library/mari/table/MariTable.svelte';
@@ -13,39 +17,127 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LCancelReferReasonDialogContent from '$lib/component/local/private/heka/cpoe/refer/LCancelReferReasonDialogContent.svelte';
+	import LReferFeedbackDialogContent from '$lib/component/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
 
-	let rows = $state<any[]>([]);
+	let rows = $state<ReferHistoryWithRelations[]>([]);
 	let totalRowCount = $state(0);
 	let isLoading = $state(false);
-	let pageSize = $state('10');
+	let pageSize = $state('25');
 	let currentPage = $state(1);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastReferHistoryFetchKey = $state('');
 	let cancellingRowId = $state<number | null>(null);
+	let acceptingRowId = $state<number | null>(null);
 	const toastService = new ToastService();
 
 	const visitId = $derived(VisitState.visitId);
+	const currentStaffId = $derived(
+		page.data.staff?.id != null ? String(page.data.staff.id) : null
+	);
+
+	function isAcceptedReferRow(row: ReferHistoryWithRelations) {
+		return row.acceptAt != null && String(row.acceptAt).trim() !== '';
+	}
+
+	function isPendingReferRow(row: ReferHistoryWithRelations) {
+		return !isAcceptedReferRow(row) && row.cancelAt == null;
+	}
+
+	/** Reject sets cancel_at; recipient is to_refer_doctor — match cancel_by user to to-doctor's user. */
+	function isReferRejected(row: ReferHistoryWithRelations) {
+		if (row.cancelAt == null) return false;
+		const uid = row.cancelBy?.trim();
+		const toUserId = row.toReferDoctor?.userId;
+		if (!uid || toUserId == null || String(toUserId).trim() === '')
+			return false;
+		return String(toUserId) === String(uid);
+	}
+
+	function isRecipientDoctor(row: ReferHistoryWithRelations) {
+		if (!currentStaffId || !row.toReferDoctorId) return false;
+		return String(row.toReferDoctorId) === currentStaffId;
+	}
+
+	function formatDateTime(iso: unknown): string {
+		if (iso == null || String(iso).trim() === '') return '—';
+		try {
+			return new Intl.DateTimeFormat(undefined, {
+				dateStyle: 'short',
+				timeStyle: 'short'
+			}).format(new Date(String(iso)));
+		} catch {
+			return String(iso);
+		}
+	}
+
+	function formatAcceptedAt(acceptAt: unknown): string {
+		if (acceptAt != null && String(acceptAt).trim() !== '') {
+			return formatDateTime(acceptAt);
+		}
+		return '—';
+	}
+
 	const rowLegends = [
 		{ id: 'active', label: 'Active', colorClass: 'bg-neutral/5' },
 		{ id: 'urgent', label: 'Urgent', colorClass: 'bg-warning/25' },
+		{
+			id: 'accepted',
+			label: 'Accepted',
+			colorClass: 'bg-success/25'
+		},
+		{
+			id: 'rejected',
+			label: 'Rejected',
+			colorClass: 'bg-orange-400/25'
+		},
 		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
 	];
 
 	const columns: MariTableColumn[] = [
-		{ id: 'referDate', header: 'Date', field: 'referDate', filterable: false },
-		{ id: 'subject', header: 'Subject', field: 'subject', filterable: false },
+		{
+			id: 'referAt',
+			header: 'Refer At',
+			field: 'referAt',
+			filterable: false,
+			widthClass: 'min-w-[11rem]',
+			format: (v) => formatDateTime(v)
+		},
+		{
+			id: 'subject',
+			header: 'Subject',
+			field: 'subject',
+			filterable: false,
+			widthClass: 'min-w-[8rem]'
+		},
+		{
+			id: 'fromBranch',
+			header: 'From branch',
+			field: 'fromBranch.name',
+			filterable: false,
+			widthClass: 'min-w-[8rem]'
+		},
+		{
+			id: 'fromReferDoctor',
+			header: 'From doctor',
+			filterable: false,
+			widthClass: 'min-w-[10rem]',
+			format: (_, row) =>
+				`${StringUtil.doctorOptionDisplayName(row.fromReferDoctor)}`
+		},
 		{
 			id: 'toBranch',
-			header: 'To Branch',
+			header: 'To branch',
 			field: 'toBranch.name',
-			filterable: false
+			filterable: false,
+			widthClass: 'min-w-[8rem]'
 		},
 		{
 			id: 'toReferDoctor',
-			header: 'To Doctor',
+			header: 'To doctor',
 			filterable: false,
+			widthClass: 'min-w-[10rem]',
 			format: (_, row) =>
 				`${StringUtil.doctorOptionDisplayName(row.toReferDoctor)}`
 		},
@@ -54,44 +146,53 @@
 			header: 'Urgent',
 			field: 'isUrgent',
 			filterable: false,
+			widthClass: 'min-w-[6rem]',
 			format: (v) => (v === YesNoEnum.YES ? 'Yes' : 'No')
 		},
 		{
 			id: 'referRequestNote',
-			header: 'Request Note',
+			header: 'Request note',
 			field: 'referRequestNote',
-			filterable: false
+			filterable: false,
+			widthClass: 'min-w-[10rem]'
 		},
 		{
-			id: 'acceptDate',
-			header: 'Accept Date',
-			field: 'acceptDate',
-			filterable: false
+			id: 'acceptAt',
+			header: 'Accepted At',
+			field: 'acceptAt',
+			filterable: false,
+			widthClass: 'min-w-[11rem]',
+			format: (_, row) => formatAcceptedAt(row.acceptAt)
 		},
 		{
 			id: 'referReplyNote',
-			header: 'Reply Note',
+			header: 'Reply note',
 			field: 'referReplyNote',
-			filterable: false
+			filterable: false,
+			widthClass: 'min-w-[10rem]'
 		},
 		{
-			id: 'cancelBy',
-			header: 'Cancel By',
-			field: 'cancelBy',
+			id: 'cancelRemark',
+			header: 'Cancel reason',
+			field: 'cancelRemark',
 			filterable: false,
-			format: (v) => (v ? String(v) : '—')
+			widthClass: 'min-w-[10rem]'
 		},
 		{
 			id: 'cancelAt',
-			header: 'Cancel At',
+			header: 'Canceled At',
 			field: 'cancelAt',
-			filterable: false
+			filterable: false,
+			widthClass: 'min-w-[11rem]',
+			format: (v) => formatDateTime(v)
 		},
 		{
-			id: 'cancelReason',
-			header: 'Cancel Reason',
-			field: 'cancelRemark',
-			filterable: false
+			id: 'createdAt',
+			header: 'Created At',
+			field: 'createdAt',
+			filterable: false,
+			widthClass: 'min-w-[11rem]',
+			format: (v) => formatDateTime(v)
 		}
 	];
 
@@ -130,20 +231,25 @@
 		}
 	}
 
-	async function handleCancelRow(row: any) {
+	async function handleCancelRow(row: ReferHistoryWithRelations) {
 		if (!row?.id) return;
-		if (row.acceptDate != null) return; // already accepted
-		if (row.cancelAt != null) return; // already cancelled
+		if (!isPendingReferRow(row)) return;
 
 		const res = await dialogService.open<{
-			cancelReason: string;
+			note: string | null;
 		}>({
 			title: 'Cancel referral',
-			component: LCancelReferReasonDialogContent
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Cancel Reason',
+				placeholder: 'Enter reason for cancelling...',
+				confirmLabel: 'Confirm Cancel',
+				required: true
+			}
 		});
 
 		if (!res.confirmed) return;
-		const cancelReason = res.data?.cancelReason;
+		const cancelReason = res.data?.note;
 		if (!cancelReason) return;
 
 		cancellingRowId = row.id as number;
@@ -167,11 +273,91 @@
 		}
 	}
 
+	async function handleRejectRow(row: ReferHistoryWithRelations) {
+		if (!row?.id) return;
+		if (!isPendingReferRow(row)) return;
+
+		const res = await dialogService.open<{
+			note: string | null;
+		}>({
+			title: 'Reject referral',
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Reject Note',
+				placeholder: 'Enter internal note for rejection (optional)...',
+				confirmLabel: 'Confirm Reject',
+				required: false
+			}
+		});
+
+		if (!res.confirmed) return;
+		const replyNote = res.data?.note;
+
+		cancellingRowId = row.id as number;
+		try {
+			await rejectReferHistory({
+				id: row.id as number,
+				replyNote
+			});
+			toastService.addToast(
+				'Referral rejected.',
+				StatusColorEnum.SUCCESS
+			);
+			await loadData({ force: true });
+		} catch (err) {
+			toastService.addToast(
+				err instanceof Error ? err.message : 'Reject failed',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			cancellingRowId = null;
+		}
+	}
+
+	async function handleAcceptRow(row: ReferHistoryWithRelations) {
+		if (!row?.id) return;
+		if (!isPendingReferRow(row)) return;
+
+		const res = await dialogService.open<{
+			note: string | null;
+		}>({
+			title: 'Accept referral',
+			component: LReferFeedbackDialogContent,
+			props: {
+				label: 'Reply Note',
+				placeholder: 'Enter internal note for acceptance (optional)...',
+				confirmLabel: 'Confirm Accept',
+				required: false
+			}
+		});
+
+		if (!res.confirmed) return;
+		const replyNote = res.data?.note;
+
+		acceptingRowId = row.id as number;
+		try {
+			await acceptReferHistory({
+				id: row.id as number,
+				replyNote
+			});
+			toastService.addToast(
+				'Referral accepted.',
+				StatusColorEnum.SUCCESS
+			);
+			await loadData({ force: true });
+		} catch (err) {
+			toastService.addToast(
+				err instanceof Error ? err.message : 'Accept failed',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			acceptingRowId = null;
+		}
+	}
+
 	$effect(() => {
 		// Re-run when page, pageSize, or visitId changes
-		currentPage;
-		pageSize;
-		visitId;
+		void [currentPage, pageSize, visitId];
 		if (!visitId) {
 			rows = [];
 			totalRowCount = 0;
@@ -189,12 +375,12 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the "Choose Visit" button above to view referral history.'}
+			message="Choose a visit using the 'Choose Visit' button above to view referral history."
 			className="z-0"
 		/>
 	{:else}
 		<div
-			class="flex-1 overflow-hidden rounded-lg border border-base-200 bg-base-100 shadow-sm"
+			class="flex-1 overflow-x-auto overflow-y-hidden rounded-lg border border-base-200 bg-base-100 shadow-sm"
 		>
 			<MariTable
 				{columns}
@@ -203,7 +389,11 @@
 				{isLoading}
 				legendItems={rowLegends}
 				rowClassGetter={(row) => {
-					if (row.cancelAt != null) return '!bg-error/15';
+					if (row.cancelAt != null) {
+						if (isReferRejected(row)) return '!bg-orange-400/15';
+						return '!bg-error/15';
+					}
+					if (isAcceptedReferRow(row)) return '!bg-success/15';
 					if (row.isUrgent === YesNoEnum.YES) return '!bg-warning/15';
 					return '!bg-neutral/0';
 				}}
@@ -225,7 +415,8 @@
 					tableFilters = nextFilters;
 					currentPage = 1;
 
-					if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+					if (filterDebounceTimeout)
+						clearTimeout(filterDebounceTimeout);
 					filterDebounceTimeout = setTimeout(() => {
 						loadData();
 					}, 350);
@@ -234,21 +425,43 @@
 				actionsHeader="Actions"
 				actionsVariant="none"
 			>
-				<svelte:fragment slot="rowActions" let:row let:rowIndex>
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm d-btn-error"
-						disabled={
-							cancellingRowId === row.id ||
-							row.acceptDate != null ||
-							row.cancelAt != null
-						}
-						onClick={(e) => {
-							e.stopPropagation();
-							handleCancelRow(row);
-						}}
-					>
-						Cancel
-					</DaisyUiButton>
+				<svelte:fragment slot="rowActions" let:row>
+					{@const typedRow = row as ReferHistoryWithRelations}
+					{#if isRecipientDoctor(typedRow) && isPendingReferRow(typedRow)}
+						<div class="flex flex-wrap items-center gap-1">
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-success"
+								disabled={acceptingRowId === typedRow.id ||
+									cancellingRowId === typedRow.id}
+								onClick={() => {
+									void handleAcceptRow(typedRow);
+								}}
+							>
+								Accept
+							</DaisyUiButton>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-error"
+								disabled={cancellingRowId === typedRow.id ||
+									acceptingRowId === typedRow.id}
+								onClick={() => {
+									void handleRejectRow(typedRow);
+								}}
+							>
+								Reject
+							</DaisyUiButton>
+						</div>
+					{:else}
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm d-btn-error"
+							disabled={cancellingRowId === typedRow.id ||
+								!isPendingReferRow(typedRow)}
+							onClick={() => {
+								void handleCancelRow(typedRow);
+							}}
+						>
+							Cancel
+						</DaisyUiButton>
+					{/if}
 				</svelte:fragment>
 			</MariTable>
 		</div>

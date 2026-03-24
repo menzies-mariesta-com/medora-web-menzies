@@ -1113,7 +1113,12 @@ export const referHistoryTable = pgTable('refer_history', {
 	visitId: integer('visit_id')
 		.notNull()
 		.references(() => patientVisitTable.id),
-	referDate: date('referdate'),
+	referAt: timestamp('refer_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
 	fromBranchId: uuid('from_branch_id').references(
 		() => hospitalBranchTable.id
 	),
@@ -1128,10 +1133,17 @@ export const referHistoryTable = pgTable('refer_history', {
 	),
 	isUrgent: integer('is_urgent').default(YesNoEnum.NO),
 	referRequestNote: text('refer_request_note'),
-	acceptDate: date('accept_date'),
-	// Separate cancel fields (instead of reusing acceptDate/referReplyNote)
+	/** When the referral was accepted (timezone-aware) */
+	acceptAt: timestamp('accept_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	// Separate cancel fields (instead of reusing referReplyNote)
 	cancelBy: text('cancel_by').references(() => userTable.id),
-	cancelAt: date('cancel_at'),
+	cancelAt: timestamp('cancel_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
 	cancelRemark: text('cancel_remark'),
 	referReplyNote: text('refer_reply_note'),
 	subject: text('subject'),

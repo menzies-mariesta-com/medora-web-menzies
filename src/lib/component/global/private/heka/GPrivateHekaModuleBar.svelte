@@ -11,7 +11,6 @@
 	import DaisyUiNavbarEnd from '$lib/component/library/daisyui/navbar/end/DaisyUiNavbarEnd.svelte';
 	import DaisyUiNavbarStart from '$lib/component/library/daisyui/navbar/start/DaisyUiNavbarStart.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideBell from '$lib/component/library/lucide/LucideBell.svelte';
 	import LucidePanelTopClose from '$lib/component/library/lucide/LucidePanelTopClose.svelte';
 	import LucideUser from '$lib/component/library/lucide/LucideUser.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
@@ -35,6 +34,7 @@
 	import LucideSearch from '$lib/component/library/lucide/LucideSearch.svelte';
 	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
 	import { tick } from 'svelte';
+	import HekaNotifications from './HekaNotifications.svelte';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -126,9 +126,9 @@
 	function parentChainLabel(p: PageSchema): string {
 		const chain: string[] = [];
 		let cursor = p.parentId ?? null;
-		const guard = new Set<number>();
-		while (cursor != null && !guard.has(cursor)) {
-			guard.add(cursor);
+		const guard: Record<number, true> = {};
+		while (cursor != null && !guard[cursor]) {
+			guard[cursor] = true;
 			const parent = orderedPageList.find((x) => x.id === cursor);
 			if (!parent) break;
 			chain.unshift(parent.name ?? String(parent.id));
@@ -325,9 +325,7 @@
 				tooltipText="Notification"
 				className="d-tooltip-left"
 			>
-				<DaisyUiButton className="d-btn-circle">
-					<LucideBell />
-				</DaisyUiButton>
+				<HekaNotifications hospitalId={hospitalId} />
 			</DaisyUiTooltip>
 			<DaisyUiTooltip
 				tooltipText="Account"
@@ -462,7 +460,6 @@
 	open={searchDialogOpen}
 	onClose={closeSearchDialog}
 >
-	{#snippet children()}
 		<div class="d-modal-box flex max-h-[80vh] flex-col gap-3">
 			<h3 class="text-lg font-semibold">
 				Search modules &amp; pages
@@ -505,5 +502,4 @@
 				<p class="text-sm text-base-content/60">No matches.</p>
 			{/if}
 		</div>
-	{/snippet}
 </DaisyUiModal>
