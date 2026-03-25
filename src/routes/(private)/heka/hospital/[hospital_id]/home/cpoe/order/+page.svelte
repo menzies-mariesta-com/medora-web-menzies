@@ -81,6 +81,7 @@
 	type PendingItem = {
 		id: number;
 		serviceId: number;
+		serviceName: string;
 		advisingDoctorId: string | null;
 		advisingDoctorName: string | null;
 		serviceAmount: string | null;
@@ -93,6 +94,7 @@
 	type HistoryItem = ServiceOrderDetailSchema & {
 		orderNo: string | null;
 		advisingDoctorName: string | null;
+		serviceName: string;
 	};
 
 	let pendingItems = $state<PendingItem[]>([]);
@@ -350,8 +352,12 @@
 		return `${service.serviceName ?? `Service ${service.id}`}${service.serviceCode ? ` - ${service.serviceCode}` : ''}`;
 	}
 
-	function parseNumberOrNull(value: string): number | null {
-		const trimmed = value.trim();
+	function parseNumberOrNull(
+		value: string | number | null | undefined
+	): number | null {
+		if (value == null) return null;
+		const trimmed =
+			typeof value === 'string' ? value.trim() : String(value).trim();
 		if (!trimmed) return null;
 		const n = Number(trimmed);
 		return Number.isFinite(n) ? n : null;
@@ -500,7 +506,7 @@
 
 	function buildPendingItem(
 		serviceIdValue: string
-	): Omit<PendingItem, 'id' | 'advisingDoctorName'> | null {
+	): Omit<PendingItem, 'id' | 'advisingDoctorName' | 'serviceName'> | null {
 		const serviceId = parseNumberOrNull(serviceIdValue);
 		if (!serviceId) {
 			toastService.addToast(
@@ -550,6 +556,8 @@
 					);
 				}
 
+				let serviceName = await getServiceLabelForValue(singleServiceId);
+
 				// Assign a local incremental id
 				const nextId =
 					pendingItems.length === 0
@@ -558,7 +566,8 @@
 				const newItem: PendingItem = {
 					...built,
 					id: nextId,
-					advisingDoctorName: doctorName
+					advisingDoctorName: doctorName,
+					serviceName
 				};
 
 				if (editingDetailId) {
@@ -641,6 +650,13 @@
 			widthClass: 'w-16',
 			filterable: false,
 			format: (_value, row, index) => String(index + 1)
+		},
+		{
+			id: 'serviceName',
+			header: 'Service Name',
+			widthClass: 'w-64',
+			filterable: false,
+			format: (_value, row) => row.serviceName || '–'
 		},
 		{
 			id: 'instruction',
@@ -739,7 +755,16 @@
 			return;
 		}
 
-		const dateStr = orderDateInput || todayDateString();
+		const today = todayDateString();
+		const dateStr =
+			toDateOnly(orderDateInput || today) ?? today;
+		if (dateStr < today) {
+			toastService.addToast(
+				'Order date cannot be in the past.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		const timeStr =
 			orderTimeInput || new Date().toTimeString().slice(0, 5);
 
@@ -838,13 +863,27 @@
 					);
 			});
 
+			const serviceIdSet = new Set<number>();
+			for (const d of details) {
+				if (d.serviceId) serviceIdSet.add(d.serviceId);
+			}
+			const serviceIdList = Array.from(serviceIdSet);
+			const resolvedServices = await Promise.all(
+				serviceIdList.map((id) => getServiceLabelForValue(String(id)))
+			);
+			const serviceNameMap = new Map<number, string>();
+			serviceIdList.forEach((id, i) => {
+				serviceNameMap.set(id, resolvedServices[i]);
+			});
+
 			historyItems = details.map((d) => ({
 				...d,
 				orderNo: orderNoMap.get(d.serviceOrderId) ?? null,
 				advisingDoctorName:
 					d.advisingDoctorId && doctorNameMap.get(d.advisingDoctorId)
 						? (doctorNameMap.get(d.advisingDoctorId) ?? null)
-						: null
+						: null,
+				serviceName: d.serviceId ? (serviceNameMap.get(d.serviceId) ?? '') : ''
 			}));
 		} catch (err) {
 			toastService.addToast(
@@ -897,7 +936,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the "Choose Visit" button above to place orders.'}
+			message="Choose a visit using the 'Choose Visit' button above to place orders."
 			className="z-0"
 		/>
 	{:else}
@@ -937,6 +976,7 @@
 									<DaisyUiInputField
 										bind:value={orderDateInput}
 										inputType="date"
+										min={todayDateString()}
 										className="d-input-sm w-40"
 									/>
 								</label>

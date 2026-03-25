@@ -201,7 +201,8 @@ export class StringUtil {
 		)}`;
 	}
 
-	static doctorOptionDisplayName(doctor: StaffWithRelations): string {
+	static doctorOptionDisplayName(doctor: StaffWithRelations | null): string {
+		if (!doctor) return 'Unknown Doctor';
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
 	}
 
