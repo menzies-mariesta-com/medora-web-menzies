@@ -13,10 +13,17 @@ import {
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { env } from '$env/dynamic/private';
 
 const passwordHashUtil = new PasswordHashUtil();
+const trustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
+	.split(',')
+	.map((v) => v.trim())
+	.filter(Boolean);
 
 export const auth = betterAuth({
+	baseURL: env.BETTER_AUTH_BASE_URL || 'http://localhost:5173',
+	trustedOrigins,
 	database: drizzleAdapter(db!, {
 		provider: 'pg',
 		schema: {

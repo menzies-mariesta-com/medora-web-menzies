@@ -111,6 +111,11 @@
 
 	const dateTimeUtil = new DateTimeUtil();
 	const toastService = new ToastService();
+	const hasCancelledAppointments = $derived.by(() =>
+		appointmentSlots.some(
+			(s: AppointmentSlot) => s.slotState === 'cancel'
+		)
+	);
 
 	/** Local YYYY-MM-DD so column dates match schedule slot dates (no UTC shift). */
 	function toLocalDateString(d: Date): string {
@@ -823,11 +828,13 @@
 				></span>
 				check-in
 			</div>
-			<div class="flex items-center gap-2">
-				<span class="h-5 w-5 rounded-md bg-neutral" aria-hidden="true"
-				></span>
-				cancel
-			</div>
+			{#if hasCancelledAppointments}
+				<div class="flex items-center gap-2">
+					<span class="h-5 w-5 rounded-md bg-neutral" aria-hidden="true"
+					></span>
+					cancel
+				</div>
+			{/if}
 			<div class="flex items-center gap-2">
 				<span
 					class="h-5 w-5 rounded-md bg-primary/30"
