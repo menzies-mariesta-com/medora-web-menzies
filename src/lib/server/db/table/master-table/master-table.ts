@@ -168,6 +168,46 @@ export const departmentTable = pgTable(
 	]
 );
 
+export const diagnosisTypeTable = pgTable(
+	'diagnosis_type',
+	{
+		id: serial('id').primaryKey(),
+		name: varchar('name', { length: 512 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('diagnosis_type_name_idx').on(table.name),
+		index('diagnosis_type_status_id_idx').on(table.statusId)
+	]
+);
+
+/** EMR / visit form identifiers (which form or section: chief complaint, patient condition, etc.). */
+export const formNameTable = pgTable(
+	'form_name',
+	{
+		id: serial('id').primaryKey(),
+		code: varchar('code', { length: 128 }).notNull().unique(),
+		name: varchar('name', { length: 512 }),
+		/** Grouping, e.g. observation_emr_visit, registration. */
+		formType: varchar('form_type', { length: 128 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('form_name_code_idx').on(table.code),
+		index('form_name_name_idx').on(table.name),
+		index('form_name_form_type_idx').on(table.formType),
+		index('form_name_status_id_idx').on(table.statusId)
+	]
+);
+
 export const genderTable = pgTable(
 	'gender',
 	{

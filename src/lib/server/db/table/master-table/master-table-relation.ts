@@ -9,6 +9,7 @@ import {
 	pageTable,
 	patientTable,
 	patientVisitTable,
+	diagnosisTable,
 	staffDepartmentTable,
 	staffDetailTable,
 	staffTable,
@@ -22,6 +23,8 @@ import {
 	countryTable,
 	craftGroupTable,
 	departmentTable,
+	diagnosisTypeTable,
+	formNameTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -107,6 +110,27 @@ export const departmentTableRelations = relations(
 		staffDepartments: many(staffDepartmentTable),
 		hospitalDepartments: many(hospitalDepartmentTable),
 		staffs: many(staffTable)
+	})
+);
+
+export const diagnosisTypeTableRelations = relations(
+	diagnosisTypeTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [diagnosisTypeTable.statusId],
+			references: [statusTable.id]
+		}),
+		diagnosisRecords: many(diagnosisTable)
+	})
+);
+
+export const formNameTableRelations = relations(
+	formNameTable,
+	({ one }) => ({
+		status: one(statusTable, {
+			fields: [formNameTable.statusId],
+			references: [statusTable.id]
+		})
 	})
 );
 
@@ -203,7 +227,8 @@ export const statusTableRelations = relations(
 		statusTaggingTypes: many(statusTaggingTypeTable),
 		craftGroups: many(craftGroupTable),
 		staffDetails: many(staffDetailTable),
-		patients: many(patientTable)
+		patients: many(patientTable),
+		formNames: many(formNameTable)
 	})
 );
 

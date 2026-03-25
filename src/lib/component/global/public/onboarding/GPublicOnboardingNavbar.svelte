@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+	import { onMount } from 'svelte';
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiNavbar from '$lib/component/library/daisyui/navbar/DaisyUiNavbar.svelte';
 	import DaisyUiNavbarEnd from '$lib/component/library/daisyui/navbar/end/DaisyUiNavbarEnd.svelte';
@@ -11,7 +12,17 @@
 	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
 
 	const routerUtil = new RouterUtil();
-	const session = authClient.useSession();
+	let sessionData = $state<{
+		user: {
+			name?: string | null;
+			email: string;
+		};
+	} | null>(null);
+
+	onMount(async () => {
+		const { data } = await authClient.getSession();
+		sessionData = data ?? null;
+	});
 
 	async function handleSignOut() {
 		await authClient.signOut();
@@ -39,10 +50,10 @@
 	</DaisyUiNavbarCenter>
 
 	<DaisyUiNavbarEnd className="gap-3">
-		{#if $session.data}
+		{#if sessionData}
 			<div class="my-ft-small flex items-center gap-2">
 				<span class="opacity-70">
-					{$session.data.user.name ?? $session.data.user.email}
+					{sessionData.user.name ?? sessionData.user.email}
 				</span>
 			</div>
 			<DaisyUiButton onClick={handleSignOut}
