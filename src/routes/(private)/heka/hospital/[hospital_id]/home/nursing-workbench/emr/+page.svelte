@@ -1,20 +1,24 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import {
+		hekaHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import { getSubPages } from '$lib/state/page.state.svelte';
 
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	const hospitalId = $derived(page.params.hospital_id);
 
-	// Fallback when server didn't redirect (e.g. client nav): redirect to first sub-page
+	// Fallback when server didn't redirect (e.g. client nav)
 	lifeCycleUtil.onMount(() => {
-		const first = getSubPages()[0];
-		if (first?.pageUrl && hospitalId)
+		if (hospitalId)
 			routerUtil.replaceRoute(
-				hekaHospitalPageUrl(hospitalId, first.pageUrl)
+				hekaHospitalPageUrl(
+					hospitalId,
+					WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
+				)
 			);
 	});
 </script>
