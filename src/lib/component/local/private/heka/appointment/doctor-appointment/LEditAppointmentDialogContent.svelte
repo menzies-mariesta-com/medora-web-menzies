@@ -23,6 +23,7 @@
 	import { EditAppointmentDialogState } from '$lib/state/edit-appointment-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type { AppointmentSchemaUpdate } from '$lib/server/db/schema-type';
 	import type { TitleSchema } from '$lib/server/db/schema-type';
@@ -34,6 +35,8 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+
+	import LCancelAppointmentRemarkDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LCancelAppointmentRemarkDialogContent.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -146,6 +149,27 @@
 			.replace(/[\s_-]/g, '');
 		return raw === 'checkin';
 	}
+
+	function isCancelStatusTaggingId(
+		id: number | null | undefined
+	): boolean {
+		if (id == null) return false;
+		const status = statusTaggingData.find((s) => s.id === id);
+		if (!status) return false;
+		const raw = (status.code ?? status.name ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]/g, '');
+		return raw === 'cancel' || raw === 'cancelled';
+	}
+
+	const isCancelSelected = $derived.by(() => {
+		const raw = selectedStatusTaggingId?.trim();
+		if (!raw) return false;
+		const id = Number(raw);
+		if (!Number.isFinite(id)) return false;
+		return isCancelStatusTaggingId(id);
+	});
 
 	// When in "new" patient mode, clear "Check In" if currently selected
 	$effect(() => {
@@ -426,6 +450,8 @@
 			if (String(a.appointmentDate).slice(0, 10) !== dateStr)
 				continue;
 			if (a.id === excludeId) continue;
+			// Cancelled appointments should not block a new appointment.
+			if (isCancelStatusTaggingId(a.statusTaggingId ?? null)) continue;
 			const aFrom = String(a.fromTime ?? '').trim();
 			const aTo = String(a.toTime ?? '').trim();
 			if (!aFrom || !aTo) continue;
@@ -466,19 +492,11 @@
 			const currentSeq = currentStatus?.sequenceNo ?? null;
 			const nextSeq = nextStatus?.sequenceNo ?? null;
 			const currentIsCancel =
-				currentStatus &&
-				isCheckInStatus(String(currentStatusId)) === false &&
-				(currentStatus.code ?? currentStatus.name ?? '')
-					.trim()
-					.toLowerCase()
-					.replace(/[\s_-]/g, '') === 'cancel';
+				isCancelStatusTaggingId(currentStatusId) &&
+				isCheckInStatus(String(currentStatusId)) === false;
 			const nextIsCancel =
-				nextStatus &&
-				isCheckInStatus(String(nextStatusId)) === false &&
-				(nextStatus.code ?? nextStatus.name ?? '')
-					.trim()
-					.toLowerCase()
-					.replace(/[\s_-]/g, '') === 'cancel';
+				isCancelStatusTaggingId(nextStatusId) &&
+				isCheckInStatus(String(nextStatusId)) === false;
 
 			// Enforce step-by-step only between unconfirmed/confirmed/check-in (exclude cancel).
 			if (!currentIsCancel && !nextIsCancel) {
@@ -499,6 +517,21 @@
 			);
 			const nextIsCheckIn = isCheckInStatus(String(nextStatusId));
 			becomesCheckIn = !currentIsCheckIn && nextIsCheckIn;
+		}
+
+		const nextIsCancelSelected =
+			nextStatusId != null && isCancelStatusTaggingId(nextStatusId);
+
+		let cancelRemark: string | null = null;
+		if (nextIsCancelSelected) {
+			const result = await dialogService.open<{
+				cancelRemark: string;
+			}>({
+				title: 'Cancel remark',
+				component: LCancelAppointmentRemarkDialogContent
+			});
+			if (!result.confirmed || !result.data?.cancelRemark) return;
+			cancelRemark = result.data.cancelRemark;
 		}
 
 		const overlap = await hasOverlap(
@@ -548,7 +581,10 @@
 				statusTaggingId: selectedStatusTaggingId
 					? parseInt(selectedStatusTaggingId, 10)
 					: null,
-				remark: appointmentRemark.trim() || null
+				remark: appointmentRemark.trim() || null,
+				cancelRemark: nextIsCancelSelected
+					? cancelRemark?.trim() || null
+					: null
 			};
 			await updateAppointment(payload);
 
@@ -904,8 +940,10 @@
 			>
 				<DaisyUiLabel
 					forText="apt-remark"
-					className="shrink-0 sm:w-36">Remark</DaisyUiLabel
+					className="shrink-0 sm:w-36"
 				>
+					Remark
+				</DaisyUiLabel>
 				<div class="max-w-80 flex-1">
 					<DaisyUiTextarea
 						id="apt-remark"

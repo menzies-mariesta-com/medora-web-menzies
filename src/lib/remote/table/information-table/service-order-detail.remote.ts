@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNull, ne } from 'drizzle-orm';
 
 // get all (optionally filtered by serviceOrderId/serviceId/status/id)
 export const getServiceOrderDetail = query(
@@ -403,5 +403,205 @@ export const markServiceOrderDetailNursingComplete = command(
 			);
 		}
 		return updated;
+	}
+);
+
+const MAX_NURSING_COMPLETE_BATCH = 100;
+
+/** Lines on this visit not yet marked nursing complete (respects optional detail status filter). */
+export const getNursingIncompleteLineCountForVisit = query(
+	'unchecked' as const,
+	async ({
+		visitId,
+		hospitalId,
+		statusId
+	}: {
+		visitId: number;
+		hospitalId: string;
+		statusId?: number | null;
+	}): Promise<number> => {
+		const [visitRow] = await ensureDb()
+			.select({ id: table.patientVisitTable.id })
+			.from(table.patientVisitTable)
+			.where(
+				and(
+					eq(table.patientVisitTable.id, visitId),
+					eq(table.patientVisitTable.hospitalId, hospitalId)
+				)
+			)
+			.limit(1);
+
+		if (!visitRow) return 0;
+
+		const orders = await ensureDb()
+			.select({ id: table.serviceOrderTable.id })
+			.from(table.serviceOrderTable)
+			.where(
+				and(
+					eq(table.serviceOrderTable.visitId, visitId),
+					ne(table.serviceOrderTable.statusId, StatusEnum.DELETED)
+				)
+			);
+
+		const orderIds = orders.map((o) => o.id);
+		if (orderIds.length === 0) return 0;
+
+		const detailWhere = buildNursingIncompleteDetailWhere(
+			orderIds,
+			statusId
+		);
+		const [row] = await ensureDb()
+			.select({ count: count() })
+			.from(table.serviceOrderDetailTable)
+			.where(detailWhere);
+		return row?.count ?? 0;
+	}
+);
+
+function buildNursingIncompleteDetailWhere(
+	orderIds: number[],
+	statusId?: number | null
+) {
+	const notDeleted = ne(
+		table.serviceOrderDetailTable.statusId,
+		StatusEnum.DELETED
+	);
+	let whereExpr = and(
+		notDeleted,
+		inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
+		isNull(table.serviceOrderDetailTable.nursingCompleteTime)
+	) as ReturnType<typeof and>;
+	if (statusId != null && Number.isFinite(statusId)) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceOrderDetailTable.statusId, statusId)
+		) as typeof whereExpr;
+	}
+	return whereExpr;
+}
+
+/** Mark up to `batchSize` incomplete lines for the visit (oldest order first, then detail id). */
+export const markServiceOrderDetailNursingCompleteBatch = command(
+	'unchecked' as const,
+	async ({
+		visitId,
+		hospitalId,
+		batchSize,
+		statusId
+	}: {
+		visitId: number;
+		hospitalId: string;
+		batchSize: number;
+		statusId?: number | null;
+	}): Promise<{
+		markedCount: number;
+		remainingIncompleteCount: number;
+	}> => {
+		const capped = Math.min(
+			Math.max(1, Math.floor(batchSize)),
+			MAX_NURSING_COMPLETE_BATCH
+		);
+
+		const [visitRow] = await ensureDb()
+			.select({ id: table.patientVisitTable.id })
+			.from(table.patientVisitTable)
+			.where(
+				and(
+					eq(table.patientVisitTable.id, visitId),
+					eq(table.patientVisitTable.hospitalId, hospitalId)
+				)
+			)
+			.limit(1);
+
+		if (!visitRow) {
+			return { markedCount: 0, remainingIncompleteCount: 0 };
+		}
+
+		const orders = await ensureDb()
+			.select({ id: table.serviceOrderTable.id })
+			.from(table.serviceOrderTable)
+			.where(
+				and(
+					eq(table.serviceOrderTable.visitId, visitId),
+					ne(table.serviceOrderTable.statusId, StatusEnum.DELETED)
+				)
+			)
+			.orderBy(
+				asc(table.serviceOrderTable.orderDate),
+				asc(table.serviceOrderTable.id)
+			);
+
+		const orderIds = orders.map((o) => o.id);
+		if (orderIds.length === 0) {
+			return { markedCount: 0, remainingIncompleteCount: 0 };
+		}
+
+		const detailWhere = buildNursingIncompleteDetailWhere(
+			orderIds,
+			statusId
+		);
+
+		const [remainingBefore] = await ensureDb()
+			.select({ count: count() })
+			.from(table.serviceOrderDetailTable)
+			.where(detailWhere);
+
+		const totalIncomplete = remainingBefore?.count ?? 0;
+		if (totalIncomplete === 0) {
+			return { markedCount: 0, remainingIncompleteCount: 0 };
+		}
+
+		const candidates = await ensureDb()
+			.select({
+				id: table.serviceOrderDetailTable.id,
+				serviceOrderId:
+					table.serviceOrderDetailTable.serviceOrderId
+			})
+			.from(table.serviceOrderDetailTable)
+			.where(detailWhere)
+			.orderBy(
+				asc(table.serviceOrderDetailTable.serviceOrderId),
+				asc(table.serviceOrderDetailTable.id)
+			)
+			.limit(capped);
+
+		if (candidates.length === 0) {
+			return { markedCount: 0, remainingIncompleteCount: totalIncomplete };
+		}
+
+		const ids = candidates.map((c) => c.id);
+		const now = new Date().toISOString();
+		const updated = await ensureDb()
+			.update(table.serviceOrderDetailTable)
+			.set({
+				nursingCompleteTime: now
+			} as ServiceOrderDetailSchemaUpdate)
+			.where(inArray(table.serviceOrderDetailTable.id, ids))
+			.returning({
+				id: table.serviceOrderDetailTable.id,
+				serviceOrderId:
+					table.serviceOrderDetailTable.serviceOrderId
+			});
+
+		getServiceOrderDetail(undefined).refresh();
+		getServiceOrderDetailCount().refresh();
+		getServiceOrderDetailPaginated(undefined).refresh();
+
+		const orderIdsTouched = new Set(
+			updated.map((r) => r.serviceOrderId)
+		);
+		for (const oid of orderIdsTouched) {
+			await refreshServiceOrderDetailQueriesForVisitByOrderId(oid);
+		}
+
+		const remainingIncompleteCount = Math.max(
+			0,
+			totalIncomplete - updated.length
+		);
+
+		return {
+			markedCount: updated.length,
+			remainingIncompleteCount
+		};
 	}
 );

@@ -1584,6 +1584,29 @@ export async function seedMasterTables() {
 	`);
 	seedLogger.info('Seeded: severity');
 
+	// 20. Diagnosis type (lookup)
+	await db.execute(sql`
+		INSERT INTO diagnosis_type (id, name, status_id)
+		VALUES
+			(1, 'Provisional', 1),
+			(2, 'Final', 1),
+			(3, 'Chronic', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: diagnosis_type');
+
+	// 21. Form name (which EMR / visit form or section)
+	await db.execute(sql`
+		INSERT INTO form_name (id, code, name, form_type, status_id)
+		VALUES
+			(1, 'chief_complaint', 'Chief complaint', 'observation_emr_visit', 1),
+			(2, 'patient_condition', 'Patient condition', 'observation_emr_visit', 1),
+			(3, 'diagnosis_notes', 'Diagnosis notes', 'observation_emr_visit', 1),
+			(4, 'patient_registration', 'Patient registration', 'registration', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: form_name');
+
 	seedLogger.info('Master tables seeding completed');
 }
 

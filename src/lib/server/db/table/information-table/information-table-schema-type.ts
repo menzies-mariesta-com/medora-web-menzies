@@ -30,6 +30,8 @@ import type {
 	patientTable,
 	patientVisitTable,
 	patientDiagnosisTable,
+	diagnosisTable,
+	patientFormEntryTable,
 	appointmentBlockTable,
 	subCategoryTable,
 	serviceItemTable,
@@ -278,6 +280,22 @@ export type PatientDiagnosisSchemaInsert = InferInsertModel<
 >;
 export type PatientDiagnosisSchemaUpdate =
 	Partial<PatientDiagnosisSchemaInsert>;
+
+export type DiagnosisSchema = InferSelectModel<typeof diagnosisTable>;
+export type DiagnosisSchemaInsert = InferInsertModel<
+	typeof diagnosisTable
+>;
+export type DiagnosisSchemaUpdate =
+	Partial<DiagnosisSchemaInsert>;
+
+export type PatientFormEntrySchema = InferSelectModel<
+	typeof patientFormEntryTable
+>;
+export type PatientFormEntrySchemaInsert = InferInsertModel<
+	typeof patientFormEntryTable
+>;
+export type PatientFormEntrySchemaUpdate =
+	Partial<PatientFormEntrySchemaInsert>;
 
 export type SubCategorySchema = InferSelectModel<
 	typeof subCategoryTable
