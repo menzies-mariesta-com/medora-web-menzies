@@ -16,7 +16,7 @@
 			routerUtil.replaceRoute(
 				hekaHospitalPageUrl(
 					hospitalId,
-					WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
+					WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
 				)
 			);
 	});

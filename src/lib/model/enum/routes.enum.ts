@@ -32,6 +32,7 @@ export enum WebRoutesEnum {
 	// Nursing Workbench module (navbar auto-hides; sub-pages: Vital, Diagnosis)
 	HEKA_HOME_NURSING_WORKBENCH = '/heka/home/nursing-workbench',
 	HEKA_HOME_NURSING_WORKBENCH_EMR = '/heka/home/nursing-workbench/emr',
+	HEKA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD = '/heka/home/nursing-workbench/emr/patient-visit-history-dashboard',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/heka/home/nursing-workbench/emr/vital',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/heka/home/nursing-workbench/emr/diagnosis',
 
@@ -43,6 +44,7 @@ export enum WebRoutesEnum {
 	// Observation module (navbar auto-hides like nursing EMR)
 	HEKA_HOME_OBSERVATION = '/heka/home/observation',
 	HEKA_HOME_OBSERVATION_EMR = '/heka/home/observation/emr',
+	HEKA_HOME_OBSERVATION_EMR_PATIENT_VISIT_HISTORY_DASHBOARD = '/heka/home/observation/emr/patient-visit-history-dashboard',
 
 	// Serice Item
 	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
