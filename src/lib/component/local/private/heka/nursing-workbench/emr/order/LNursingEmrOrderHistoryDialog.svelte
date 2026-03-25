@@ -14,6 +14,7 @@
 	type HistoryItem = ServiceOrderDetailSchema & {
 		orderNo: string | null;
 		advisingDoctorName: string | null;
+		serviceName: string;
 	};
 
 	const { open, onClose, items, isLoading, pageSizeStr, onDelete } =
@@ -40,6 +41,13 @@
 			widthClass: 'w-16',
 			filterable: false,
 			format: (_value, _row, index) => String(index + 1)
+		},
+		{
+			id: 'serviceName',
+			header: 'Service Name',
+			widthClass: 'w-64',
+			filterable: false,
+			format: (_value, row) => row.serviceName || '–'
 		},
 		{
 			id: 'instruction',
