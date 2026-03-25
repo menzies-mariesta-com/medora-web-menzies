@@ -32,6 +32,8 @@ import {
 	identityTypeTable,
 	maritalStatusTable,
 	nationalityTable,
+	diagnosisTypeTable,
+	formNameTable,
 	postalCodeTable,
 	positionTable,
 	referTypeTable,
@@ -824,6 +826,8 @@ export const appointmentTable = pgTable('appointment', {
 		() => statusTaggingTable.id
 	),
 	remark: text('remark'),
+	/** Reason required when appointment status is "Cancel". */
+	cancelRemark: text('cancel_remark'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
@@ -932,6 +936,67 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	}),
 	...timestamps
 });
+
+/** Patient visit diagnosis classification (Provisional / Final / Chronic). */
+export const diagnosisTable = pgTable('diagnosis', {
+	id: serial('id').primaryKey(),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id),
+	patientId: uuid('patient_id')
+		.notNull()
+		.references(() => patientTable.id),
+	visitId: integer('visit_id')
+		.notNull()
+		.references(() => patientVisitTable.id),
+	diagnosisTypeId: integer('diagnosis_type_id')
+		.notNull()
+		.references(() => diagnosisTypeTable.id),
+	description: text('description'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
+}, (table) => [
+	index('diagnosis_branch_id_idx').on(table.branchId),
+	index('diagnosis_patient_id_idx').on(table.patientId),
+	index('diagnosis_visit_id_idx').on(table.visitId),
+	index('diagnosis_diagnosis_type_id_idx').on(table.diagnosisTypeId)
+]);
+
+/** Visit form entries (chief complaint, patient condition, etc.) linked to form_name master. */
+export const patientFormEntryTable = pgTable(
+	'patient_form_entry',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		formNameId: integer('form_name_id')
+			.notNull()
+			.references(() => formNameTable.id),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('patient_form_entry_branch_id_idx').on(table.branchId),
+		index('patient_form_entry_patient_id_idx').on(table.patientId),
+		index('patient_form_entry_visit_id_idx').on(table.visitId),
+		index('patient_form_entry_form_name_id_idx').on(table.formNameId),
+		index('patient_form_entry_status_id_idx').on(table.statusId)
+	]
+);
 
 export const subCategoryTable = pgTable('sub_category', {
 	id: serial('id').primaryKey(),

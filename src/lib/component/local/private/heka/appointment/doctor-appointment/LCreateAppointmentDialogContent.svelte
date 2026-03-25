@@ -192,6 +192,19 @@
 		return raw === 'checkin';
 	}
 
+	function isCancelStatusTaggingId(
+		id: number | null | undefined
+	): boolean {
+		if (id == null) return false;
+		const status = statusTaggingData.find((s) => s.id === id);
+		if (!status) return false;
+		const raw = (status.code ?? status.name ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]/g, '');
+		return raw === 'cancel' || raw === 'cancelled';
+	}
+
 	// When in "new" patient mode, clear "Check In" if currently selected
 	$effect(() => {
 		if (patientMode === 'new' && selectedStatusTaggingId) {
@@ -373,6 +386,8 @@
 			if (String(a.appointmentDate).slice(0, 10) !== dateStr)
 				continue;
 			if (excludeId != null && a.id === excludeId) continue;
+			// Cancelled appointments should not block a new appointment.
+			if (isCancelStatusTaggingId(a.statusTaggingId ?? null)) continue;
 			const aFrom = String(a.fromTime ?? '').trim();
 			const aTo = String(a.toTime ?? '').trim();
 			if (!aFrom || !aTo) continue;
