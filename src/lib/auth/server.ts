@@ -13,6 +13,7 @@ import {
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { BETTER_AUTH_SECRET } from '$env/static/private';
 import { env } from '$env/dynamic/private';
 
 const passwordHashUtil = new PasswordHashUtil();
@@ -22,6 +23,7 @@ const trustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
 	.filter(Boolean);
 
 export const auth = betterAuth({
+	secret: BETTER_AUTH_SECRET,
 	baseURL: env.BETTER_AUTH_BASE_URL || 'http://localhost:5173',
 	trustedOrigins,
 	database: drizzleAdapter(db!, {
