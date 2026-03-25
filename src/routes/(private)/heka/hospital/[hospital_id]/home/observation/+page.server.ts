@@ -7,15 +7,11 @@ import {
 
 export const load: PageServerLoad = async ({ params }) => {
 	const hospitalId = params.hospital_id;
-	if (hospitalId) {
-		throw redirect(
-			302,
-			hekaHospitalPageUrl(
-				hospitalId,
-				WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
-			)
-		);
-	}
-
-	return {};
+	throw redirect(
+		302,
+		hekaHospitalPageUrl(
+			hospitalId,
+			WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
+		)
+	);
 };
