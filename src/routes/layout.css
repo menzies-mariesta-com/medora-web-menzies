@@ -1,12 +1,21 @@
 @import 'tailwindcss';
 
 /* GSAP modal animation wrapper */
+.d-modal {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+}
 .d-modal-content-wrapper {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
-	min-height: 100%;
+	/* Ensure vertical centering is based on viewport height */
+	min-height: 100dvh;
+	height: 100dvh;
+	padding: 0;
 }
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';

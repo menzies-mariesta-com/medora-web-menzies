@@ -117,6 +117,7 @@ export async function seedInformationTables() {
 			(800005, 'Clinical Document', 4, 1, 8, '/heka/home/nursing-workbench/emr/clinical-document', 4),
 			(800006, 'Patient Attachment', 4, 1, 8, '/heka/home/nursing-workbench/emr/patient-attachment', 3),
 			(800007, 'Order', 4, 1, 8, '/heka/home/nursing-workbench/emr/order', 6),
+			(800008, 'Patient Visit History Dashboard', 4, 1, 8, '/heka/home/nursing-workbench/emr/patient-visit-history-dashboard', 7),
 
 			-- CPOE Module
 			(11, 'Order', 6, 1, null, '/heka/home/cpoe/order', 1),
@@ -125,6 +126,7 @@ export async function seedInformationTables() {
 
 			-- Observation Module
 			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1),
+			(1300001, 'Patient Visit History Dashboard', 7, 1, 13, '/heka/home/observation/emr/patient-visit-history-dashboard', 1),
 
 			-- Refer Module
 			(14, 'Refer', 6, 1, null, '/heka/home/cpoe/refer', 3),

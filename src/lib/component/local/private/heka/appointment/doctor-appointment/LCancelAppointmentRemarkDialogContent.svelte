@@ -34,12 +34,7 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 	>
-		<DaisyUiLabel
-			forText="cancel-remark-dialog"
-			className="shrink-0 sm:w-36"
-		>
-			Cancel remark <span class="text-error">*</span>
-		</DaisyUiLabel>
+		
 		<div class="min-w-0 flex-1">
 			<DaisyUiTextarea
 				id="cancel-remark-dialog"
