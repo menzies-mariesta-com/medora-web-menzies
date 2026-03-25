@@ -72,7 +72,7 @@
 		<DaisyUiModal
 			groupName="dialog-modal"
 			open={true}
-			onClose={() => dialogService.close()}
+			onClose={() => dialogService.cancel()}
 			className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
 		>
 			<div
@@ -110,7 +110,7 @@
 		<DaisyUiModal
 			groupName="dialog-modal"
 			open={true}
-			onClose={() => dialogService.close()}
+			onClose={() => dialogService.cancel()}
 		>
 			{#if ToastState.length > 0}
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
@@ -126,7 +126,7 @@
 			{/if}
 			<DaisyUiModalBox
 				className={DialogState.current.modalClassName}
-				onClose={() => dialogService.close()}
+				onClose={() => dialogService.cancel()}
 				showCloseButton={!DialogState.current.component}
 			>
 				{#if DialogState.current.component}

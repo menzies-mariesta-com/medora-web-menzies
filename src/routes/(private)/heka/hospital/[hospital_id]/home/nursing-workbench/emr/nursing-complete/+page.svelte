@@ -14,8 +14,10 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { getServiceOrder } from '$lib/remote/table/information-table/service-order.remote';
 	import {
+		getNursingIncompleteLineCountForVisit,
 		getServiceOrderDetailPaginated,
-		markServiceOrderDetailNursingComplete
+		markServiceOrderDetailNursingComplete,
+		markServiceOrderDetailNursingCompleteBatch
 	} from '$lib/remote/table/information-table/service-order-detail.remote';
 	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
 	import {
@@ -97,6 +99,8 @@
 		null;
 	let initialized: boolean = $state(false);
 	let isPrinting = $state(false);
+	let nursingIncompleteCount = $state(0);
+	let isBatchCompleting = $state(false);
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -107,6 +111,20 @@
 
 	const canPrintNursing = $derived(
 		!isPrinting && Boolean(visitId && visit && hospitalId)
+	);
+
+	const pageSizeNumber = $derived(
+		Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE
+	);
+
+	const canCompleteNextBatch = $derived(
+		Boolean(
+			visitId &&
+				visit &&
+				hospitalId &&
+				nursingIncompleteCount > 0 &&
+				!isBatchCompleting
+		)
 	);
 
 	const subtotal = $derived(
@@ -148,10 +166,36 @@
 		return date.toLocaleString();
 	}
 
+	function statusFilterDetailStatusId(): number | undefined {
+		const statusId = tableFilters.status
+			? Number(tableFilters.status)
+			: undefined;
+		return statusId != null && Number.isFinite(statusId)
+			? statusId
+			: undefined;
+	}
+
+	async function refreshNursingIncompleteCount() {
+		if (!visitId || !hospitalId) {
+			nursingIncompleteCount = 0;
+			return;
+		}
+		try {
+			nursingIncompleteCount = await getNursingIncompleteLineCountForVisit({
+				visitId,
+				hospitalId,
+				statusId: statusFilterDetailStatusId()
+			});
+		} catch {
+			nursingIncompleteCount = 0;
+		}
+	}
+
 	async function fetchNursingComplete(options?: { force?: boolean }) {
 		if (!visitId || !hospitalId) {
 			visit = null;
 			rows = [];
+			nursingIncompleteCount = 0;
 			return;
 		}
 
@@ -175,6 +219,8 @@
 			if (!currentVisit) {
 				visit = null;
 				rows = [];
+				nursingIncompleteCount = 0;
+				totalRows = 0;
 				return;
 			}
 
@@ -188,6 +234,8 @@
 			const orders = await getServiceOrder({ visitId });
 			if (orders.length === 0) {
 				rows = [];
+				totalRows = 0;
+				await refreshNursingIncompleteCount();
 				return;
 			}
 
@@ -249,10 +297,12 @@
 				};
 			});
 			initialized = true;
+			await refreshNursingIncompleteCount();
 		} catch (error) {
 			console.error('Failed to load nursing complete rows', error);
 			rows = [];
 			totalRows = 0;
+			nursingIncompleteCount = 0;
 		} finally {
 			isLoading = false;
 		}
@@ -556,6 +606,46 @@
 			);
 		}
 	}
+
+	async function handleCompleteNextBatch() {
+		if (!visitId || !hospitalId || nursingIncompleteCount === 0) return;
+		isBatchCompleting = true;
+		try {
+			const { markedCount, remainingIncompleteCount } =
+				await markServiceOrderDetailNursingCompleteBatch({
+					visitId,
+					hospitalId,
+					batchSize: pageSizeNumber,
+					statusId: statusFilterDetailStatusId()
+				});
+			if (markedCount === 0) {
+				toastService.addToast(
+					'No lines could be marked complete.',
+					StatusColorEnum.WARNING
+				);
+			} else if (remainingIncompleteCount > 0) {
+				toastService.addToast(
+					`Marked ${markedCount} complete (${remainingIncompleteCount} still incomplete — use Complete next batch again).`,
+					StatusColorEnum.SUCCESS
+				);
+			} else {
+				toastService.addToast(
+					`Marked ${markedCount} complete. All filtered lines are done.`,
+					StatusColorEnum.SUCCESS
+				);
+			}
+			nursingIncompleteCount = remainingIncompleteCount;
+			await fetchNursingComplete({ force: true });
+		} catch (error) {
+			console.error('Failed batch nursing complete', error);
+			toastService.addToast(
+				'Failed to complete batch',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			isBatchCompleting = false;
+		}
+	}
 </script>
 
 <div class="relative flex flex-col gap-4">
@@ -627,6 +717,16 @@
 							<LucidePrinter className="mr-1 size-4" />
 							Print
 						</DaisyUiButton>
+						{#if nursingIncompleteCount > 1}
+							<DaisyUiButton
+								className="d-btn-primary d-btn-sm"
+								onClick={handleCompleteNextBatch}
+								disabled={!canCompleteNextBatch}
+							>
+								<LucideCircleCheck className="mr-1 size-4" />
+								Complete next batch (up to {pageSizeNumber})
+							</DaisyUiButton>
+						{/if}
 					</div>
 				</div>
 
