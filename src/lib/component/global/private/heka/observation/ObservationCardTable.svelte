@@ -7,6 +7,7 @@
 	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
+	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/library/mari/table/MariTable.svelte';
@@ -43,6 +44,7 @@
 		useRemoteFilters = false,
 		enableColumnFilters = false,
 		crudShowView = true,
+		rowActionsVariant = 'crud',
 		cardClassName = '',
 		tableWrapClassName = 'max-h-72 min-h-0'
 	} = $props<{
@@ -59,6 +61,12 @@
 		useRemoteFilters?: boolean;
 		enableColumnFilters?: boolean;
 		crudShowView?: boolean;
+		/**
+		 * Controls which row action icons are shown.
+		 * - "crud": view/edit/delete buttons (MariTable default)
+		 * - "view": eye icon only (custom slot rendering)
+		 */
+		rowActionsVariant?: 'crud' | 'view';
 		/** Extra classes on the outer card (e.g. grid column span). */
 		cardClassName?: string;
 		/** Classes on the table wrapper (e.g. max-height + overflow). */
@@ -103,7 +111,7 @@
 				{showRefreshButton}
 				bind:columnFilters
 				showRowActions={true}
-				actionsVariant="crud"
+				actionsVariant={rowActionsVariant === 'crud' ? 'crud' : 'none'}
 				{enableColumnFilters}
 				{useRemoteFilters}
 				{crudShowView}
@@ -121,7 +129,18 @@
 				on:filtersChange={(event) =>
 					dispatch('filtersChange', event.detail)}
 				on:refresh={() => dispatch('refresh')}
-			/>
+			>
+				<svelte:fragment slot="rowActions" let:row>
+					{#if rowActionsVariant === 'view'}
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={() => dispatch('view', row)}
+						>
+							<LucideEye className="size-4" />
+						</DaisyUiButton>
+					{/if}
+				</svelte:fragment>
+			</MariTable>
 		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>

@@ -2,6 +2,8 @@
 	import LDoctorAppointmentCalendar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
 	import LDoctorAppointmentProfileBar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
 	import LDoctorAppointmentStatistics from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
+	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import LCancelAppointmentHistoryDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
 	import { getAppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
 	import { getDoctorSchedule } from '$lib/remote/table/information-table/doctor-schedule.remote';
 	import {
@@ -43,6 +45,8 @@
 		ReturnType<typeof getAppointmentWithRelations>
 	>[number];
 	let appointments = $state<AppointmentWithRelations[]>([]);
+	let isCancelHistoryOpen = $state(false);
+	let isCancelHistoryLoading = $state(false);
 	let selectDate = $state(new Date().toISOString().slice(0, 10));
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
 	let timeFormat = $state<'24h' | '12h'>('24h');
@@ -78,9 +82,11 @@
 		);
 		if (!doctor) return [];
 		return (doctor.staffBranches ?? [])
-			.map((sb) => sb.branch)
-			.filter((b): b is NonNullable<typeof b> => b != null)
-			.map((b) => ({ id: b.id, name: b.name ?? null }));
+			.map((sb: any) => sb.branch)
+			.filter(
+				(b: any): b is NonNullable<typeof b> => b != null
+			)
+			.map((b: any) => ({ id: b.id, name: b.name ?? null }));
 	});
 	const effectiveBranchId = $derived.by(() => {
 		if (!isAllBranchMode) {
@@ -101,7 +107,11 @@
 			selectedAppointmentBranchId = '';
 			return;
 		}
-		if (!options.some((b) => b.id === selectedAppointmentBranchId)) {
+		if (
+			!options.some(
+				(b: any) => b.id === selectedAppointmentBranchId
+			)
+		) {
 			selectedAppointmentBranchId = options[0].id;
 		}
 	});
@@ -162,6 +172,41 @@
 		return 'unconfirmed';
 	}
 
+	const cancelAppointments = $derived.by(() => {
+		if (!selectedDoctorId.trim()) return [];
+		return appointments
+			.filter((a) => {
+				if (String(a.staffId) !== selectedDoctorId) return false;
+				if (effectiveBranchId) {
+					if (String(a.branchId) !== String(effectiveBranchId))
+						return false;
+				}
+				return (
+					toSlotState(
+						a.statusTagging?.code ?? a.statusTagging?.name
+					) === 'cancel'
+				);
+			})
+			.sort((a, b) => {
+				const d1 = String(a.appointmentDate ?? '');
+				const d2 = String(b.appointmentDate ?? '');
+				const t1 = String(a.fromTime ?? '');
+				const t2 = String(b.fromTime ?? '');
+				return d2.localeCompare(d1) || t2.localeCompare(t1);
+			});
+	});
+
+	async function openCancelHistory() {
+		if (!selectedDoctorId.trim()) return;
+		isCancelHistoryOpen = true;
+		isCancelHistoryLoading = true;
+		try {
+			appointments = await getAppointmentWithRelations();
+		} finally {
+			isCancelHistoryLoading = false;
+		}
+	}
+
 	/** Appointments for selected doctor in visible date range → calendar highlights by state and patient name. */
 	const appointmentSlots = $derived.by(() => {
 		const dateSet = new Set(visibleDates);
@@ -191,7 +236,9 @@
 					a.statusTagging?.code ?? a.statusTagging?.name
 				)
 			}))
-			.filter((s) => s.startTime && s.endTime);
+			// Cancelled appointments should not appear in the timeline and must
+			// not block creating a new appointment in the same slot.
+			.filter((s) => s.startTime && s.endTime && s.slotState !== 'cancel');
 	});
 
 	/** Blocked slots for the calendar (from DB), with blockId for edit/delete. */
@@ -312,6 +359,15 @@
 		/>
 	</div>
 	<div class="w-full min-w-0">
+		<div class="mb-3 flex justify-end">
+			<DaisyUiButton
+				className="d-btn-ghost d-btn-sm"
+				disabled={!selectedDoctorId.trim()}
+				onClick={openCancelHistory}
+			>
+				Cancel appointment history
+			</DaisyUiButton>
+		</div>
 		<LDoctorAppointmentCalendar
 			{selectDate}
 			{viewBy}
@@ -367,5 +423,11 @@
 			}}
 		/>
 		<LDoctorAppointmentStatistics />
+		<LCancelAppointmentHistoryDialogContent
+			open={isCancelHistoryOpen}
+			onClose={() => (isCancelHistoryOpen = false)}
+			items={cancelAppointments}
+			isLoading={isCancelHistoryLoading}
+		/>
 	</div>
 </section>

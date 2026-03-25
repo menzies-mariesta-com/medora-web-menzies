@@ -10,6 +10,8 @@ import type {
 	countryTable,
 	craftGroupTable,
 	departmentTable,
+	diagnosisTypeTable,
+	formNameTable,
 	genderTable,
 	identityTypeTable,
 	maritalStatusTable,
@@ -79,6 +81,21 @@ export type DepartmentSchemaInsert = InferInsertModel<
 	typeof departmentTable
 >;
 export type DepartmentSchemaUpdate = Partial<DepartmentSchemaInsert>;
+
+export type DiagnosisTypeSchema = InferSelectModel<
+	typeof diagnosisTypeTable
+>;
+export type DiagnosisTypeSchemaInsert = InferInsertModel<
+	typeof diagnosisTypeTable
+>;
+export type DiagnosisTypeSchemaUpdate =
+	Partial<DiagnosisTypeSchemaInsert>;
+
+export type FormNameSchema = InferSelectModel<typeof formNameTable>;
+export type FormNameSchemaInsert = InferInsertModel<
+	typeof formNameTable
+>;
+export type FormNameSchemaUpdate = Partial<FormNameSchemaInsert>;
 
 export type GenderSchema = InferSelectModel<typeof genderTable>;
 export type GenderSchemaInsert = InferInsertModel<typeof genderTable>;

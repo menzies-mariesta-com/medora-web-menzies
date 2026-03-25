@@ -1,6 +1,8 @@
 import { relations } from 'drizzle-orm';
 import {
 	appointmentTable,
+	diagnosisTable,
+	patientFormEntryTable,
 	documentTable,
 	documentTypeTable,
 	documentSettingTable,
@@ -44,6 +46,8 @@ import {
 import {
 	categoryTable,
 	cityTable,
+	diagnosisTypeTable,
+	formNameTable,
 	countryTable,
 	departmentTable,
 	genderTable,
@@ -407,7 +411,35 @@ export const patientVisitTableRelations = relations(
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
 		serviceOrders: many(serviceOrderTable),
-		referHistories: many(referHistoryTable)
+		referHistories: many(referHistoryTable),
+		classificationDiagnoses: many(diagnosisTable),
+		formEntries: many(patientFormEntryTable)
+	})
+);
+
+export const diagnosisTableRelations = relations(
+	diagnosisTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [diagnosisTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [diagnosisTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [diagnosisTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		diagnosisType: one(diagnosisTypeTable, {
+			fields: [diagnosisTable.diagnosisTypeId],
+			references: [diagnosisTypeTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [diagnosisTable.statusId],
+			references: [statusTable.id]
+		})
 	})
 );
 
@@ -461,6 +493,32 @@ export const patientDiagnosisTableRelations = relations(
 		rbsUnit: one(unitTable, {
 			fields: [patientDiagnosisTable.rbsUnitId],
 			references: [unitTable.id]
+		})
+	})
+);
+
+export const patientFormEntryTableRelations = relations(
+	patientFormEntryTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [patientFormEntryTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [patientFormEntryTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [patientFormEntryTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		formName: one(formNameTable, {
+			fields: [patientFormEntryTable.formNameId],
+			references: [formNameTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [patientFormEntryTable.statusId],
+			references: [statusTable.id]
 		})
 	})
 );
