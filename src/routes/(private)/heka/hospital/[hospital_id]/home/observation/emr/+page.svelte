@@ -350,9 +350,22 @@
 	}
 
 	/** Same refresh strategy as nursing OPD allergy (patient-wide list). */
-	async function reloadAllergiesForVisit() {
+	async function reloadAllergiesForVisit(
+		eOrOptions?:
+			| CustomEvent<void>
+			| {
+					skipRowLoading?: boolean;
+				}
+	) {
+		const skipRowLoading =
+			typeof eOrOptions === 'object' &&
+			eOrOptions !== null &&
+			'skipRowLoading' in eOrOptions
+				? eOrOptions.skipRowLoading
+				: false;
+
 		if (!visitRow?.patientId) return;
-		await fetchAllergies({ force: true });
+		await fetchAllergies({ force: true, skipRowLoading });
 	}
 
 	async function reloadVitalsForVisit() {
@@ -854,10 +867,8 @@
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
-		PatientAllergyDialogState.onSaved = () =>
-			reloadAllergiesForVisit();
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
@@ -869,13 +880,11 @@
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadAllergiesForVisit();
+				onConfirm: async (data) => {
+					if (data?.saved)
+						await reloadAllergiesForVisit({ skipRowLoading: true });
 				}
 			});
-			if (result?.confirmed && result.data?.saved) {
-				await reloadAllergiesForVisit();
-			}
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
@@ -889,27 +898,27 @@
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
-		PatientAllergyDialogState.onSaved = () =>
-			reloadAllergiesForVisit();
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
 				modalClassName:
 					'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
+					PatientAllergyDialogState.patientId = null;
+					PatientAllergyDialogState.visitId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadAllergiesForVisit();
+				onConfirm: async (data) => {
+					if (data?.saved)
+						await reloadAllergiesForVisit({ skipRowLoading: true });
 				}
 			});
-			if (result?.confirmed && result.data?.saved) {
-				await reloadAllergiesForVisit();
-			}
 		} finally {
+			PatientAllergyDialogState.patientId = null;
+			PatientAllergyDialogState.visitId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -956,10 +965,10 @@
 				modalClassName:
 					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
+					VitalRecordDialogState.patientId = null;
+					VitalRecordDialogState.hospitalId = null;
+					VitalRecordDialogState.visitId = null;
 					VitalRecordDialogState.vitalId = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadVitalsForVisit();
 				}
 			});
 			if (result?.confirmed && result.data?.saved) {
@@ -989,9 +998,6 @@
 					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
 					VitalRecordDialogState.vitalId = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadVitalsForVisit();
 				}
 			});
 			if (result?.confirmed && result.data?.saved) {
@@ -1591,12 +1597,11 @@
 				rows={documents}
 				columns={documentColumns}
 				isLoading={isLoadingGrid}
-				rowActionsVariant="view"
+				showRowActions={false}
 				showRefreshButton={true}
 				emptyMessage="No documents linked to this visit."
 				on:add={openDocumentAdd}
 				on:refresh={reloadDocumentsForVisit}
-				on:view={(e) => openDocumentView(e.detail)}
 			/>
 		</div>
 	{/if}
