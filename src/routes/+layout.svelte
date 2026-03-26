@@ -78,7 +78,7 @@
 			groupName="dialog-modal"
 			open={true}
 			onClose={() => dialogService.cancel()}
-			className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
+			className="!max-w-none !w-[100dvw] !h-[100dvh] !min-h-[100dvh]"
 		>
 			<div
 				class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"

@@ -30,8 +30,11 @@
 		[StatusColorEnum.ERROR]: LucideCircleX
 	};
 
-	const alertClass = `d-alert  ${typeClassMap[type]} ${className}`;
-	const Icon = iconMap[type];
+	// `type`/`className` are props; compute derived values reactively.
+	const alertClass = $derived(
+		`d-alert ${typeClassMap[type]} ${className ?? ''}`.trim()
+	);
+	const Icon = $derived(() => iconMap[type]);
 </script>
 
 <div role="alert" class="{alertClass} flex items-center shadow-lg">
