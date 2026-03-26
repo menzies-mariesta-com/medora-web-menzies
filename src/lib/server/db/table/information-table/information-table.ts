@@ -870,7 +870,9 @@ export const patientVisitTable = pgTable('patient_visit', {
 		() => appointmentTable.id
 	),
 	doctorId: uuid('doctor_id').references(() => staffTable.id),
-	statusTypeId: integer('status_type_id'),
+	statusTaggingId: integer('status_tagging_id').references(
+		() => statusTaggingTable.id
+	),
 	visitTypeId: integer('visit_type_id').references(
 		() => visitTypeTable.id
 	),

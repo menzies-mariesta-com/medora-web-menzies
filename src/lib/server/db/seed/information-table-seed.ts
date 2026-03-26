@@ -153,7 +153,8 @@ export async function seedInformationTables() {
 	await db.execute(sql`
 		INSERT INTO status_tagging_type (id, name)
 		VALUES
-			(1, 'Doctor Appointment')
+			(1, 'Doctor Appointment'),
+			(2, 'Visit')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	seedLogger.info('Seeded: status tagging type');
@@ -167,7 +168,13 @@ export async function seedInformationTables() {
 			(1, 'Unconfirmed', 'unconfirmed', 1, 1),
 			(2, 'Confirmed', 'confirmed', 2, 1),
 			(3, 'Check In', 'check_in', 3, 1),
-			(4, 'Cancelled', 'cancel', 4, 1)
+			(4, 'Cancelled', 'cancel', 4, 1),
+
+			-- Visit Status (order is important)
+			(5, 'Open', 'open', 1, 2),
+			(6, 'Vital', 'vital', 2, 2),
+			(7, 'Seen', 'seen', 3, 2),
+			(8, 'Closed', 'closed', 4, 2)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
