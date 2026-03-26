@@ -1,34 +1,34 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		getUserGroupPaginated,
 		deleteUserGroup,
 		type UserGroupSchema
-	} from '$lib/remote/table/information-table/user-group.remote';
+	} from '$lib/tool/remote/table/information-table/user-group.http.tool.svelte';
 	import { UserGroupModalState } from '$lib/state/user-group-modal.state.svelte';
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
-	import UserGroupFormModal from '$lib/component/local/private/heka/administration/user-group/UserGroupFormModal.svelte';
-	import UserGroupPagesModal from '$lib/component/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
+	import UserGroupFormModal from '$lib/component/own/local/private/heka/administration/user-group/UserGroupFormModal.svelte';
+	import UserGroupPagesModal from '$lib/component/own/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
 	import type { StatusSchema } from '$lib/server/db/schema-type';
-	import { getStatus } from '$lib/remote/table/master-table/status.remote';
+	import { getStatus } from '$lib/tool/remote/table/master-table/status.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucideList from '$lib/component/library/lucide/LucideList.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideList from '$lib/component/own/library/lucide/LucideList.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 

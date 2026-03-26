@@ -1,18 +1,18 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -21,14 +21,14 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 	import {
 		getDocumentTypesPaginated,
 		createDocumentType,
 		updateDocumentType,
 		deleteDocumentType
-	} from '$lib/remote/table/information-table/document-type.remote';
+	} from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
