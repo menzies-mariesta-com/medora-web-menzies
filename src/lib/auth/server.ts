@@ -14,6 +14,7 @@ import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { env } from '$env/dynamic/private';
+import { authLogger } from '$lib/logger';
 
 const passwordHashUtil = new PasswordHashUtil();
 const trustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
@@ -21,8 +22,21 @@ const trustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
 	.map((v) => v.trim())
 	.filter(Boolean);
 
+/** Placeholder only when env is missing (e.g. Docker build). Production must set BETTER_AUTH_SECRET. */
+const BETTER_AUTH_SECRET_PLACEHOLDER =
+	'heka-build-placeholder-better-auth-secret-min-32-chars!!';
+
+function resolveBetterAuthSecret(): string {
+	const s = env.BETTER_AUTH_SECRET?.trim();
+	if (s) return s;
+	authLogger.warn(
+		'BETTER_AUTH_SECRET is not set; using a placeholder. Set BETTER_AUTH_SECRET in production.'
+	);
+	return BETTER_AUTH_SECRET_PLACEHOLDER;
+}
+
 export const auth = betterAuth({
-	secret: env.BETTER_AUTH_SECRET,
+	secret: resolveBetterAuthSecret(),
 	baseURL: env.BETTER_AUTH_BASE_URL || 'http://localhost:5173',
 	trustedOrigins,
 	session: {
