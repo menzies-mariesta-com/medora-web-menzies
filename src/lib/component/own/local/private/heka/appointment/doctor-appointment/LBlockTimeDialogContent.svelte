@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -9,6 +10,7 @@
 	let startTime = $state('');
 	let endTime = $state('');
 	let remark = $state('');
+	let isConfirming = $state(false);
 
 	function toHHmm(s: string): string {
 		if (!s) return '';
@@ -39,7 +41,8 @@
 		);
 	});
 
-	function handleConfirm() {
+	async function handleConfirm() {
+		if (isConfirming) return;
 		const d = date.trim();
 		const from = toHHmm(startTime);
 		const to = toHHmm(endTime);
@@ -48,7 +51,12 @@
 		if (!r) return;
 		if (to <= from) return;
 		if (isBlockStartInPast) return;
-		confirm({ date: d, startTime: from, endTime: to, remark: r });
+		isConfirming = true;
+		try {
+			await confirm({ date: d, startTime: from, endTime: to, remark: r });
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -117,21 +125,34 @@
 	<div
 		class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4"
 	>
-		<button type="button" class="d-btn" onclick={() => cancel()}>
+		<button
+			type="button"
+			class="d-btn"
+			onclick={() => cancel()}
+			disabled={isConfirming}
+		>
 			Cancel
 		</button>
 		<button
 			type="button"
 			class="d-btn d-btn-error"
 			onclick={() => handleConfirm()}
-			disabled={!date.trim() ||
+			disabled={isConfirming ||
+				!date.trim() ||
 				!startTime ||
 				!endTime ||
 				!remark.trim() ||
 				toHHmm(endTime) <= toHHmm(startTime) ||
 				isBlockStartInPast}
 		>
-			Block time
+			{#if isConfirming}
+				<span class="inline-flex items-center gap-2">
+					<DaisyUiLoading className="d-loading-sm" />
+					Loading…
+				</span>
+			{:else}
+				Block time
+			{/if}
 		</button>
 	</div>
 </div>

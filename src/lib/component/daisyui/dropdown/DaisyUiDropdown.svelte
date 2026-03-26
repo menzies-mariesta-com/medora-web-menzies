@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
 	let openDropdown: HTMLDetailsElement | null = null;
 </script>
 
@@ -11,24 +11,6 @@
 	}>();
 
 	let detailsElement: HTMLDetailsElement;
-
-	function handleInnerClick(event: MouseEvent) {
-		if (!detailsElement || !detailsElement.open) return;
-
-		const target = event.target as HTMLElement | null;
-		if (!target) return;
-
-		// Don't interfere with the summary toggle itself
-		if (target.closest('summary')) return;
-
-		// Close the dropdown when clicking any actionable item inside (e.g. button or link)
-		if (target.closest('button, a, [data-dropdown-close]')) {
-			detailsElement.open = false;
-			if (openDropdown === detailsElement) {
-				openDropdown = null;
-			}
-		}
-	}
 
 	function handleToggle() {
 		if (!detailsElement) return;
@@ -46,20 +28,36 @@
 	function handleDocumentClick(event: MouseEvent) {
 		if (!detailsElement || !detailsElement.open) return;
 
-		const target = event.target as Node | null;
-		if (target && !detailsElement.contains(target)) {
+		const target = event.target as HTMLElement | null;
+		if (!target) return;
+
+		const clickedInside = detailsElement.contains(target);
+
+		// Click outside closes the dropdown.
+		if (!clickedInside) {
 			detailsElement.open = false;
-			if (openDropdown === detailsElement) {
-				openDropdown = null;
-			}
+			if (openDropdown === detailsElement) openDropdown = null;
+			return;
+		}
+
+		// Click inside:
+		// - don't interfere with the summary toggle
+		// - close when clicking actionable items (buttons/links/custom close targets)
+		if (target.closest('summary')) return;
+
+		if (target.closest('button, a, [data-dropdown-close]')) {
+			detailsElement.open = false;
+			if (openDropdown === detailsElement) openDropdown = null;
 		}
 	}
 
 	onMount(() => {
 		document.addEventListener('click', handleDocumentClick);
+		detailsElement?.addEventListener('toggle', handleToggle);
 
 		return () => {
 			document.removeEventListener('click', handleDocumentClick);
+			detailsElement?.removeEventListener('toggle', handleToggle);
 			if (openDropdown === detailsElement) {
 				openDropdown = null;
 			}
@@ -67,11 +65,6 @@
 	});
 </script>
 
-<details
-	bind:this={detailsElement}
-	class="d-dropdown {className}"
-	on:click={handleInnerClick}
-	on:toggle={handleToggle}
->
+<details bind:this={detailsElement} class="d-dropdown {className}">
 	{@render children()}
 </details>

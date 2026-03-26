@@ -105,7 +105,7 @@
 		open={true}
 		onClose={handleClose}
 		className={showEditIframe
-			? '!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]'
+			? '!max-w-none !w-[100dvw] !h-[100dvh] !min-h-[100dvh]'
 			: ''}
 	>
 		{#if showEditIframe}

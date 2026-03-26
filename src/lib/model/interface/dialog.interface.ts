@@ -2,7 +2,7 @@ import type { Component, Snippet } from 'svelte';
 import type { DialogVariantEnum } from '../enum/dialog.enum';
 
 export interface DialogSlotProps {
-	confirm: (data?: unknown) => void;
+	confirm: (data?: unknown) => void | Promise<void>;
 	cancel: () => void;
 }
 
@@ -17,7 +17,7 @@ export interface DialogOpenOptions<T = unknown> {
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;
 	onClose?: () => void;
-	onConfirm?: (data?: T) => void;
+	onConfirm?: (data?: T) => void | Promise<void>;
 	onCancel?: () => void;
 }
 
@@ -32,7 +32,12 @@ export interface DialogInterface {
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;
 	onClose?: () => void;
-	onConfirm?: (data?: unknown) => void;
+	onConfirm?: (data?: unknown) => void | Promise<void>;
 	onCancel?: () => void;
+	/**
+	 * Set to true when an async confirm action is running, so the UI can
+	 * disable confirm/cancel and show a loading indicator.
+	 */
+	confirmPending?: boolean;
 	_resolve?: (result: { confirmed: boolean; data?: unknown }) => void;
 }

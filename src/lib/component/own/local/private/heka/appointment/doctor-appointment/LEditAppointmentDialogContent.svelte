@@ -101,6 +101,7 @@
 	let referTypeData = $state<ReferTypeSchema[]>([]);
 	let externalReferData = $state<ExternalReferSchema[]>([]);
 	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
+	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID = 1;
 
 	let patientMode = $state<'existing' | 'new'>('existing');
 	let selectedPatientId = $state('');
@@ -126,9 +127,15 @@
 	);
 
 	const availableStatusTaggingData = $derived.by(() => {
+		const doctorAppointmentStatusTaggings =
+			statusTaggingData.filter(
+				(s) =>
+					s.statusTaggingTypeId ===
+					DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID
+			);
 		// For new patients (no linked account), hide "Check In" status
 		if (patientMode === 'new') {
-			return statusTaggingData.filter((s) => {
+			return doctorAppointmentStatusTaggings.filter((s) => {
 				const raw = (s.code ?? s.name ?? '')
 					.trim()
 					.toLowerCase()
@@ -136,7 +143,7 @@
 				return raw !== 'checkin';
 			});
 		}
-		return statusTaggingData;
+		return doctorAppointmentStatusTaggings;
 	});
 
 	function isCheckInStatus(id: string | null | undefined): boolean {
@@ -552,11 +559,33 @@
 		}
 
 		const overlap = await hasOverlap(
-			String(staffIdVal),
-			manualAppointmentDate,
-			manualFromTime,
-			toTime,
-			appointmentId
+			// When the user only changes status to "Check In" (Confirmed → Check In),
+			// the time range is unchanged, so we allow the update without re-validating overlap.
+			// Overlap validation still applies when date/time are actually edited.
+			(() => {
+				const prevDate = String(latest?.appointmentDate ?? '').slice(
+					0,
+					10
+				);
+				const prevFrom = toHHmm(String(latest?.fromTime ?? ''));
+				const prevTo = toHHmm(String(latest?.toTime ?? ''));
+				const nextDateUnchanged = prevDate === manualAppointmentDate;
+				const nextFromUnchanged = prevFrom === manualFromTime;
+				const nextToUnchanged = prevTo === toTime;
+				const onlyStatusToCheckIn = becomesCheckIn;
+
+				return !onlyStatusToCheckIn ||
+					!(nextDateUnchanged && nextFromUnchanged && nextToUnchanged)
+					? (async () =>
+							await hasOverlap(
+								String(staffIdVal),
+								manualAppointmentDate,
+								manualFromTime,
+								toTime,
+								appointmentId
+							))()
+					: Promise.resolve(false);
+			})()
 		);
 		if (overlap) {
 			toastService.addToast(
@@ -624,8 +653,10 @@
 						hospitalId,
 						branchId: effectiveBranchId,
 						appointmentId,
-						doctorId: String(staffIdVal),
-						statusTypeId: null,
+						// Check-in creates the visit, but "Seen" should be reached only
+						// after a doctor account assigns the visit (doctorId set later).
+						doctorId: null,
+						statusTaggingId: null,
 						// Default to OPD visit type (see master-table seed: id=1, code 'O').
 						visitTypeId: 1,
 						statusId: undefined
@@ -642,7 +673,7 @@
 				'Appointment updated.',
 				StatusColorEnum.SUCCESS
 			);
-			confirm({ updated: true });
+			await confirm({ updated: true });
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error
@@ -669,7 +700,7 @@
 				'Appointment deleted.',
 				StatusColorEnum.SUCCESS
 			);
-			confirm({ deleted: true });
+			await confirm({ deleted: true });
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error

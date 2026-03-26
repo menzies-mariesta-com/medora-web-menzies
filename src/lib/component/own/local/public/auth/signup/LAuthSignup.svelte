@@ -317,9 +317,10 @@
 				<DaisyUiButton
 					type="submit"
 					className="d-btn-primary w-full"
-					disabled={isLoading}
+					loading={isLoading}
+					loadingText={m.signing_up()}
 				>
-					{isLoading ? m.signing_up() : m.sign_up()}
+					{m.sign_up()}
 				</DaisyUiButton>
 
 				<div class="my-ft-small flex flex-col gap-3">

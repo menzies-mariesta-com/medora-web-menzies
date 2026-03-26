@@ -133,6 +133,7 @@
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		if (!patientId || !visitId) {
 			toastService.addToast(
 				'No visit selected.',
@@ -150,6 +151,15 @@
 			return;
 		}
 
+		isSubmitting = true;
+		try {
+			await submitPatientAllergy(severityIdNum);
+		} finally {
+			isSubmitting = false;
+		}
+	}
+
+	async function submitPatientAllergy(severityIdNum: number) {
 		let allergyId: number;
 
 		if (isEditMode && patientAllergyId) {
@@ -237,7 +247,7 @@
 				StatusColorEnum.SUCCESS
 			);
 			PatientAllergyDialogState.onSaved?.();
-			confirm({ saved: true });
+			await confirm({ saved: true });
 			return;
 		}
 
@@ -337,7 +347,6 @@
 			}
 		}
 
-		isSubmitting = true;
 		try {
 			await createPatientAllergies({
 				visitId,
@@ -352,7 +361,7 @@
 				StatusColorEnum.SUCCESS
 			);
 			PatientAllergyDialogState.onSaved?.();
-			confirm({ saved: true });
+			await confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
@@ -360,8 +369,6 @@
 					: 'Failed to add allergy.') as string,
 				StatusColorEnum.ERROR
 			);
-		} finally {
-			isSubmitting = false;
 		}
 	}
 </script>
@@ -527,19 +534,16 @@
 			type="button"
 			className="d-btn-ghost"
 			onClick={() => cancel()}
+			disabled={isSubmitting}
 		>
 			Cancel
 		</DaisyUiButton>
 		<DaisyUiButton
 			type="submit"
 			className="d-btn-primary"
-			disabled={isSubmitting}
+			loading={isSubmitting}
 		>
-			{isSubmitting
-				? 'Saving…'
-				: isEditMode
-					? 'Update'
-					: 'Add allergy'}
+			{isEditMode ? 'Update' : 'Add allergy'}
 		</DaisyUiButton>
 	</div>
 </form>

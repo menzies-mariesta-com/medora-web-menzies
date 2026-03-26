@@ -16,13 +16,17 @@
 	);
 	let typedDescription = $state('');
 
+	let isConfirming = $state(false);
+
 	function handleCancel() {
+		if (isConfirming) return;
 		ObservationDiagnosisDeleteConfirmDialogState.expectedDescription =
 			null;
 		cancel();
 	}
 
-	function handleConfirmDelete() {
+	async function handleConfirmDelete() {
+		if (isConfirming) return;
 		const expected = (expectedDescription ?? '').trim();
 		const typed = typedDescription.trim();
 		if (!expected || typed !== expected) {
@@ -34,7 +38,12 @@
 		}
 		ObservationDiagnosisDeleteConfirmDialogState.expectedDescription =
 			null;
-		confirm({ confirmed: true });
+		isConfirming = true;
+		try {
+			await confirm({ confirmed: true });
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -62,6 +71,7 @@
 			type="button"
 			className="d-btn-ghost"
 			onClick={handleCancel}
+				disabled={isConfirming}
 		>
 			{m.observation_emr_cancel()}
 		</DaisyUiButton>
@@ -69,6 +79,8 @@
 			type="button"
 			className="d-btn d-btn-error"
 			onClick={handleConfirmDelete}
+				disabled={isConfirming}
+				loading={isConfirming}
 		>
 			Inactivate
 		</DaisyUiButton>

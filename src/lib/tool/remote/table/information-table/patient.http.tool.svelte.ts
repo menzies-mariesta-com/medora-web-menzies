@@ -3,7 +3,7 @@ import { remoteHttpClient } from '$lib/tool/remote/remote-http-client.tool.svelt
 const moduleSuffix = 'table/information-table/patient.remote.ts';
 
 function invokeOnce<T>(fn: string, args: unknown[]): Promise<T> {
-	return remoteHttpClient.postJson<T>('/api/remote/invoke', {
+	return remoteHttpClient.postRemoteInvoke<T>({
 		module: moduleSuffix,
 		fn,
 		args
@@ -88,3 +88,4 @@ export const updatePatient = (...args: any[]): any => {
 	return p;
 };
 
+export type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';

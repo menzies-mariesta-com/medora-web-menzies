@@ -30,8 +30,8 @@
 		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		getPatientAllergiesByPatientIdWithRelations,
 		deletePatientAllergies,
-		type PatientAllergyWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
+	import type { PatientAllergyWithRelations } from '$lib/remote/table/information-table/patient-allergies.remote';
 	import {
 		getPatientVitalsByVisitId,
 		deletePatientVital
@@ -41,18 +41,18 @@
 	import {
 		getPatientDocumentsByVisitIdWithRelations,
 		deletePatientDocument,
-		type PatientDocumentWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
+	import type { PatientDocumentWithRelations } from '$lib/remote/table/information-table/patient-document.remote';
 	import {
 		getDiagnosesByVisitId,
 		deleteDiagnosis,
-		type DiagnosisWithType
 	} from '$lib/tool/remote/table/information-table/diagnosis.http.tool.svelte';
+	import type { DiagnosisWithType } from '$lib/remote/table/information-table/diagnosis.remote';
 	import {
 		getPatientFormEntriesByVisitIdAndFormCode,
 		deletePatientFormEntry,
-		type PatientFormEntryWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
+	import type { PatientFormEntryWithRelations } from '$lib/remote/table/information-table/patient-form-entry.remote';
 	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
 	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import MariTable, {
@@ -80,6 +80,12 @@
 			page.params.hospital_id
 			? page.params.hospital_id
 			: undefined
+	);
+
+	const cpoeOrderRedirectHref = $derived(
+		hospitalId && visitId
+			? `/heka/hospital/${hospitalId}/home/cpoe/order?visitId=${visitId}`
+			: ''
 	);
 
 	let visitRow = $state<Awaited<
@@ -248,7 +254,8 @@
 			});
 			const filtered = hospitalIdParam
 				? data.filter(
-						(row) => row.visit?.hospitalId === hospitalIdParam
+							(row: PatientAllergyWithRelations) =>
+								row.visit?.hospitalId === hospitalIdParam
 					)
 				: data;
 			allergies = filtered;
@@ -343,9 +350,22 @@
 	}
 
 	/** Same refresh strategy as nursing OPD allergy (patient-wide list). */
-	async function reloadAllergiesForVisit() {
+	async function reloadAllergiesForVisit(
+		eOrOptions?:
+			| CustomEvent<void>
+			| {
+					skipRowLoading?: boolean;
+				}
+	) {
+		const skipRowLoading =
+			typeof eOrOptions === 'object' &&
+			eOrOptions !== null &&
+			'skipRowLoading' in eOrOptions
+				? eOrOptions.skipRowLoading
+				: false;
+
 		if (!visitRow?.patientId) return;
-		await fetchAllergies({ force: true });
+		await fetchAllergies({ force: true, skipRowLoading });
 	}
 
 	async function reloadVitalsForVisit() {
@@ -847,10 +867,8 @@
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
-		PatientAllergyDialogState.onSaved = () =>
-			reloadAllergiesForVisit();
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
@@ -862,13 +880,11 @@
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadAllergiesForVisit();
+				onConfirm: async (data) => {
+					if (data?.saved)
+						await reloadAllergiesForVisit({ skipRowLoading: true });
 				}
 			});
-			if (result?.confirmed && result.data?.saved) {
-				await reloadAllergiesForVisit();
-			}
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
@@ -882,27 +898,27 @@
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
-		PatientAllergyDialogState.onSaved = () =>
-			reloadAllergiesForVisit();
 		try {
-			const result = await dialogService.open<{ saved?: boolean }>({
+			await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
 				component: LPatientAllergyDialogContent,
 				fullScreen: false,
 				modalClassName:
 					'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
+					PatientAllergyDialogState.patientId = null;
+					PatientAllergyDialogState.visitId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadAllergiesForVisit();
+				onConfirm: async (data) => {
+					if (data?.saved)
+						await reloadAllergiesForVisit({ skipRowLoading: true });
 				}
 			});
-			if (result?.confirmed && result.data?.saved) {
-				await reloadAllergiesForVisit();
-			}
 		} finally {
+			PatientAllergyDialogState.patientId = null;
+			PatientAllergyDialogState.visitId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -949,10 +965,10 @@
 				modalClassName:
 					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
+					VitalRecordDialogState.patientId = null;
+					VitalRecordDialogState.hospitalId = null;
+					VitalRecordDialogState.visitId = null;
 					VitalRecordDialogState.vitalId = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadVitalsForVisit();
 				}
 			});
 			if (result?.confirmed && result.data?.saved) {
@@ -982,9 +998,6 @@
 					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
 					VitalRecordDialogState.vitalId = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadVitalsForVisit();
 				}
 			});
 			if (result?.confirmed && result.data?.saved) {
@@ -1564,9 +1577,12 @@
 				columns={orderColumns}
 				isLoading={isLoadingGrid}
 				crudShowView={false}
+				showRowActions={false}
+				addButtonVariant="redirect"
+				redirectHref={cpoeOrderRedirectHref}
+				redirectButtonText={m.observation_emr_order_history()}
 				showRefreshButton={true}
 				emptyMessage="No order lines for this visit."
-				on:add={openOrderLineAdd}
 				on:refresh={reloadOrdersForVisit}
 				on:edit={(e) => openOrderLineEdit(e.detail)}
 				on:delete={(e) => handleOrderLineDelete(e.detail)}
@@ -1581,12 +1597,11 @@
 				rows={documents}
 				columns={documentColumns}
 				isLoading={isLoadingGrid}
-				rowActionsVariant="view"
+				showRowActions={false}
 				showRefreshButton={true}
 				emptyMessage="No documents linked to this visit."
 				on:add={openDocumentAdd}
 				on:refresh={reloadDocumentsForVisit}
-				on:view={(e) => openDocumentView(e.detail)}
 			/>
 		</div>
 	{/if}

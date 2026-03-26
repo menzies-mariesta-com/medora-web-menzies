@@ -1217,9 +1217,10 @@
 					<DaisyUiButton
 						type="submit"
 						className="d-btn-primary d-btn-wide"
-						disabled={isLoading || disableCreateSave}
+						loading={isLoading}
+						disabled={disableCreateSave}
 					>
-						{isLoading ? 'Saving...' : 'Save'}
+						Save
 					</DaisyUiButton>
 					{#if disableCreateSave}
 						<DaisyUiButton

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiModalBox from '$lib/component/daisyui/modal/box/DaisyUiModalBox.svelte';
 	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiToast from '$lib/component/daisyui/toast/DaisyUiToast.svelte';
@@ -31,6 +33,9 @@
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
 	);
+
+	/** Dynamic paths from Paraglide are `string`; widen for `resolve` typing. */
+	const resolvePathname = resolve as (pathname: string) => string;
 
 	lifeCycleUtil.onMount(() => {
 		// set data
@@ -73,7 +78,7 @@
 			groupName="dialog-modal"
 			open={true}
 			onClose={() => dialogService.cancel()}
-			className="!max-w-none !w-[100vw] !h-[100dvh] !min-h-[100dvh]"
+			className="!max-w-none !w-[100dvw] !h-[100dvh] !min-h-[100dvh]"
 		>
 			<div
 				class="d-modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
@@ -164,6 +169,7 @@
 							<button
 								type="button"
 								class="d-btn"
+								disabled={DialogState.current.confirmPending}
 								onclick={() => dialogService.cancel()}
 							>
 								{m.cancel()}
@@ -171,9 +177,17 @@
 							<button
 								type="button"
 								class="d-btn d-btn-primary"
+								disabled={DialogState.current.confirmPending}
 								onclick={() => dialogService.confirm()}
 							>
-								{m.ok()}
+								{#if DialogState.current.confirmPending}
+									<span class="inline-flex items-center gap-2">
+										<DaisyUiLoading className="d-loading-sm" />
+										Loading…
+									</span>
+								{:else}
+									{m.ok()}
+								{/if}
 							</button>
 						{:else}
 							<button
@@ -193,8 +207,12 @@
 
 <!-- Language -->
 <div style="display:none">
-	{#each locales as locale}
-		<a href={localizeHref(page.url.pathname, { locale })}>
+	{#each locales as locale (locale)}
+		<a
+			href={resolvePathname(
+				localizeHref(page.url.pathname, { locale })
+			)}
+		>
 			{locale}
 		</a>
 	{/each}
