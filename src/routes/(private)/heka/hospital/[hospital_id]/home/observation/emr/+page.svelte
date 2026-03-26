@@ -30,8 +30,8 @@
 		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		getPatientAllergiesByPatientIdWithRelations,
 		deletePatientAllergies,
-		type PatientAllergyWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
+	import type { PatientAllergyWithRelations } from '$lib/remote/table/information-table/patient-allergies.remote';
 	import {
 		getPatientVitalsByVisitId,
 		deletePatientVital
@@ -41,18 +41,18 @@
 	import {
 		getPatientDocumentsByVisitIdWithRelations,
 		deletePatientDocument,
-		type PatientDocumentWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
+	import type { PatientDocumentWithRelations } from '$lib/remote/table/information-table/patient-document.remote';
 	import {
 		getDiagnosesByVisitId,
 		deleteDiagnosis,
-		type DiagnosisWithType
 	} from '$lib/tool/remote/table/information-table/diagnosis.http.tool.svelte';
+	import type { DiagnosisWithType } from '$lib/remote/table/information-table/diagnosis.remote';
 	import {
 		getPatientFormEntriesByVisitIdAndFormCode,
 		deletePatientFormEntry,
-		type PatientFormEntryWithRelations
 	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
+	import type { PatientFormEntryWithRelations } from '$lib/remote/table/information-table/patient-form-entry.remote';
 	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
 	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import MariTable, {
@@ -80,6 +80,12 @@
 			page.params.hospital_id
 			? page.params.hospital_id
 			: undefined
+	);
+
+	const cpoeOrderRedirectHref = $derived(
+		hospitalId && visitId
+			? `/heka/hospital/${hospitalId}/home/cpoe/order?visitId=${visitId}`
+			: ''
 	);
 
 	let visitRow = $state<Awaited<
@@ -248,7 +254,8 @@
 			});
 			const filtered = hospitalIdParam
 				? data.filter(
-						(row) => row.visit?.hospitalId === hospitalIdParam
+							(row: PatientAllergyWithRelations) =>
+								row.visit?.hospitalId === hospitalIdParam
 					)
 				: data;
 			allergies = filtered;
@@ -1564,9 +1571,12 @@
 				columns={orderColumns}
 				isLoading={isLoadingGrid}
 				crudShowView={false}
+				showRowActions={false}
+				addButtonVariant="redirect"
+				redirectHref={cpoeOrderRedirectHref}
+				redirectButtonText={m.observation_emr_order_history()}
 				showRefreshButton={true}
 				emptyMessage="No order lines for this visit."
-				on:add={openOrderLineAdd}
 				on:refresh={reloadOrdersForVisit}
 				on:edit={(e) => openOrderLineEdit(e.detail)}
 				on:delete={(e) => handleOrderLineDelete(e.detail)}

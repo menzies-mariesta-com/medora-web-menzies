@@ -38,6 +38,17 @@
 				WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
 			)
 	);
+	// Appointment module UX: hide the module bar navbar automatically.
+	const isInAppointmentModule = $derived(
+		pathnameForPageMatch().startsWith('/heka/home/appointment')
+	);
+	let appointmentNavbarOpen = $state(false);
+	let prevInAppointmentModule = $state(false);
+	$effect(() => {
+		if (isInAppointmentModule && !prevInAppointmentModule)
+			appointmentNavbarOpen = false;
+		prevInAppointmentModule = isInAppointmentModule;
+	});
 	let emrNavbarOpen = $state(false);
 	let prevInEmrCloneEmr = $state(false);
 	$effect(() => {
@@ -54,7 +65,7 @@
 <div class="my-app">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
-		{#key `${hospitalId}-${(data?.staffUserGroupsForNav ?? []).map((g) => g.id).join(',')}-${(data?.staffBranchesForNav ?? []).map((b) => b.id).join(',')}`}
+		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}`}
 			<GPrivateHekaModuleBar
 				{hospitalId}
 				hospitalName={data?.currentHospitalName ?? null}
@@ -63,14 +74,24 @@
 				staffId={currentStaffId}
 				staffPhotoUrl={currentStaffPhotoUrl}
 				userRoleId={data?.userRoleId ?? null}
-				staffUserGroupsForNav={data?.staffUserGroupsForNav ?? []}
+				staffUserGroupsForNav={(data as any)?.staffUserGroupsForNav ?? []}
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}
-				staffBranchesForNav={data?.staffBranchesForNav ?? []}
+				staffBranchesForNav={(data as any)?.staffBranchesForNav ?? []}
 				selectedBranchId={data?.selectedBranchId ?? null}
-				navbarVisible={isInEmrCloneEmr ? emrNavbarOpen : undefined}
-				onToggleNavbar={isInEmrCloneEmr
-					? () => (emrNavbarOpen = !emrNavbarOpen)
-					: undefined}
+				navbarVisible={
+					isInAppointmentModule
+						? appointmentNavbarOpen
+						: isInEmrCloneEmr
+							? emrNavbarOpen
+							: undefined
+				}
+				onToggleNavbar={
+					isInAppointmentModule
+						? () => (appointmentNavbarOpen = !appointmentNavbarOpen)
+						: isInEmrCloneEmr
+							? () => (emrNavbarOpen = !emrNavbarOpen)
+							: undefined
+				}
 			/>
 		{/key}
 	{/if}

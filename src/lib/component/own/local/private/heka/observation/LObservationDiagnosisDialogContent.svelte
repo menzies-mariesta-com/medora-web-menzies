@@ -126,7 +126,7 @@
 				StatusColorEnum.SUCCESS
 			);
 			ObservationDiagnosisDialogState.onSaved?.();
-			confirm({ saved: true });
+			await confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
@@ -207,6 +207,7 @@
 			type="button"
 			className="d-btn d-btn-primary"
 			disabled={isSubmitting}
+			loading={isSubmitting}
 			onClick={() => void handleSubmit()}
 		>
 			{m.observation_emr_save()}

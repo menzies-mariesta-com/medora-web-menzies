@@ -47,6 +47,7 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		if (!formSubCategoryName?.trim()) {
 			toastService.addToast(
 				'Sub-category name is required.',
@@ -177,9 +178,9 @@
 		<DaisyUiButton
 			type="submit"
 			className="d-btn-primary"
-			disabled={isSubmitting}
+			loading={isSubmitting}
 		>
-			{isSubmitting ? 'Saving…' : isEdit ? 'Save' : 'Create'}
+			{isEdit ? 'Save' : 'Create'}
 		</DaisyUiButton>
 	</div>
 </form>

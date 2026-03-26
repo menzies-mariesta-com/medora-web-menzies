@@ -129,9 +129,9 @@
 		<DaisyUiButton
 			type="submit"
 			className="d-btn-primary"
-			disabled={isSubmitting}
+			loading={isSubmitting}
 		>
-			{isSubmitting ? 'Updating…' : 'Update'}
+			Update
 		</DaisyUiButton>
 	</div>
 </form>

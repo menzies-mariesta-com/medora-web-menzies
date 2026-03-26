@@ -29,8 +29,11 @@ export class DialogService {
 				component: options.component,
 				props: options.props,
 				onClose: options.onClose,
-				onConfirm: options.onConfirm as (data?: unknown) => void,
+				onConfirm: options.onConfirm as
+					| ((data?: unknown) => void | Promise<void>)
+					| undefined,
 				onCancel: options.onCancel,
+				confirmPending: false,
 				_resolve: resolve as DialogInterface['_resolve']
 			};
 			DialogState.current = dialog;
@@ -41,9 +44,19 @@ export class DialogService {
 		this._resolveAndClose({ confirmed: false });
 	}
 
-	confirm(data?: unknown): void {
+	async confirm(data?: unknown): Promise<void> {
 		const current = DialogState.current;
-		current?.onConfirm?.(data);
+		if (!current) return;
+		if (current.confirmPending) return;
+
+		current.confirmPending = true;
+		try {
+			// `onConfirm` may perform async work (delete/update/etc).
+			// Keep the dialog open + show a loading indicator until it finishes.
+			await current.onConfirm?.(data);
+		} catch (err) {
+			console.error('[dialogService] onConfirm failed', err);
+		}
 		this._resolveAndClose({ confirmed: true, data });
 	}
 

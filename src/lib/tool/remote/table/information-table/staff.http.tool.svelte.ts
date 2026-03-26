@@ -1,5 +1,7 @@
 import { remoteHttpClient } from '$lib/tool/remote/remote-http-client.tool.svelte';
 
+export type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
+
 const moduleSuffix = 'table/information-table/staff.remote.ts';
 
 function invokeOnce<T>(fn: string, args: unknown[]): Promise<T> {

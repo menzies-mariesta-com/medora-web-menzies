@@ -13,6 +13,7 @@
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
 	import BranchFormModal from '$lib/component/own/local/private/heka/administration/branches/BranchFormModal.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -30,6 +31,13 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+
+	const createLock = createActionLock();
+	const editLock = createActionLock();
+	const deleteLock = createActionLock();
+
+	let editingBranchId = $state<string | null>(null);
+	let deletingBranchId = $state<string | null>(null);
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -138,51 +146,71 @@
 	});
 
 	async function openCreate() {
-		BranchModalState.hospitalId = hospitalId;
-		BranchModalState.branchId = null;
-		const result = await dialogService.open({
-			title: m.new_branch(),
-			component: BranchFormModal
+		await createLock.run(async () => {
+			BranchModalState.hospitalId = hospitalId;
+			BranchModalState.branchId = null;
+			const result = await dialogService.open({
+				title: m.new_branch(),
+				component: BranchFormModal
+			});
+			if (result.confirmed) fetchBranches(true);
 		});
-		if (result.confirmed) fetchBranches(true);
 	}
 
 	async function openEdit(row: HospitalBranchSchema) {
-		BranchModalState.hospitalId = hospitalId;
-		BranchModalState.branchId = row.id;
-		const result = await dialogService.open({
-			title: m.edit_branch(),
-			component: BranchFormModal
+		await editLock.run(async () => {
+			editingBranchId = row.id;
+			try {
+				BranchModalState.hospitalId = hospitalId;
+				BranchModalState.branchId = row.id;
+				const result = await dialogService.open({
+					title: m.edit_branch(),
+					component: BranchFormModal
+				});
+				if (result.confirmed) fetchBranches(true);
+			} finally {
+				editingBranchId = null;
+			}
 		});
-		if (result.confirmed) fetchBranches(true);
 	}
 
 	async function handleDelete(row: HospitalBranchSchema) {
-		const result = await dialogService.open({
-			title: m.delete_branch(),
-			message: `Delete "${row.name ?? row.code ?? 'this branch'}"? This cannot be undone.`,
-			variant: DialogVariantEnum.CONFIRM
+		await deleteLock.run(async () => {
+			deletingBranchId = row.id;
+			try {
+				const result = await dialogService.open({
+					title: m.delete_branch(),
+					message: `Delete "${row.name ?? row.code ?? 'this branch'}"? This cannot be undone.`,
+					variant: DialogVariantEnum.CONFIRM
+				});
+				if (!result.confirmed) return;
+				try {
+					await deleteBranch({ id: row.id });
+					toastService.addToast(
+						m.branch_deleted(),
+						StatusColorEnum.SUCCESS
+					);
+					fetchBranches(true);
+				} catch (err) {
+					const msg =
+						err instanceof Error ? err.message : m.delete_failed();
+					toastService.addToast(msg, StatusColorEnum.ERROR);
+				}
+			} finally {
+				deletingBranchId = null;
+			}
 		});
-		if (!result.confirmed) return;
-		try {
-			await deleteBranch({ id: row.id });
-			toastService.addToast(
-				m.branch_deleted(),
-				StatusColorEnum.SUCCESS
-			);
-			fetchBranches(true);
-		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : m.delete_failed();
-			toastService.addToast(msg, StatusColorEnum.ERROR);
-		}
 	}
 </script>
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="text-2xl font-bold">{m.branches()}</h1>
-		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
+		<DaisyUiButton
+			className="d-btn-primary"
+			onClick={openCreate}
+			loading={createLock.pending}
+		>
 			<LucidePlus />
 			{m.new_branch()}
 		</DaisyUiButton>
@@ -226,17 +254,24 @@
 						}}
 					>
 						<svelte:fragment slot="rowActions" let:row>
+							{@const branch = row as HospitalBranchSchema}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEdit(row)}
+										onClick={() => openEdit(branch)}
+										loading={editingBranchId === branch.id}
+										disabled={deletingBranchId === branch.id}
+										loadingText=""
 									>
 										<LucidePencil />
 									</DaisyUiButton>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row)}
+										onClick={() => handleDelete(branch)}
+										loading={deletingBranchId === branch.id}
+										disabled={deletingBranchId === branch.id}
+										loadingText=""
 									>
 										<LucideTrash2 />
 									</DaisyUiButton>
