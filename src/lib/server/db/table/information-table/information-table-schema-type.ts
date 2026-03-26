@@ -285,8 +285,7 @@ export type DiagnosisSchema = InferSelectModel<typeof diagnosisTable>;
 export type DiagnosisSchemaInsert = InferInsertModel<
 	typeof diagnosisTable
 >;
-export type DiagnosisSchemaUpdate =
-	Partial<DiagnosisSchemaInsert>;
+export type DiagnosisSchemaUpdate = Partial<DiagnosisSchemaInsert>;
 
 export type PatientFormEntrySchema = InferSelectModel<
 	typeof patientFormEntryTable
@@ -394,8 +393,11 @@ export type DocumentSettingSchemaInsert = InferInsertModel<
 export type DocumentSettingSchemaUpdate =
 	Partial<DocumentSettingSchemaInsert>;
 
-export type ReferHistorySchema = InferSelectModel<typeof referHistoryTable>;
+export type ReferHistorySchema = InferSelectModel<
+	typeof referHistoryTable
+>;
 export type ReferHistorySchemaInsert = InferInsertModel<
 	typeof referHistoryTable
 >;
-export type ReferHistorySchemaUpdate = Partial<ReferHistorySchemaInsert>;
+export type ReferHistorySchemaUpdate =
+	Partial<ReferHistorySchemaInsert>;

@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		getServiceTaggingPaginated,
@@ -18,9 +18,9 @@
 		createServiceTagging,
 		updateServiceTagging,
 		deleteServiceTagging
-	} from '$lib/remote/table/information-table/service-tagging.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
+	} from '$lib/tool/remote/table/information-table/service-tagging.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import { getServiceItem } from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
 	import type {
 		ServiceItemSchema,
 		ServiceTaggingSchema
@@ -30,7 +30,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';

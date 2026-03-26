@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiFieldset from '$lib/component/library/daisyui/fieldset/DaisyUiFieldset.svelte';
-	import DaisyUiFieldsetLegend from '$lib/component/library/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiJoin from '$lib/component/library/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiLink from '$lib/component/library/daisyui/link/DaisyUiLink.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import LucideEyeOff from '$lib/component/library/lucide/LucideEyeOff.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiFieldset from '$lib/component/daisyui/fieldset/DaisyUiFieldset.svelte';
+	import DaisyUiFieldsetLegend from '$lib/component/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiJoin from '$lib/component/daisyui/join/DaisyUiJoin.svelte';
+	import DaisyUiLink from '$lib/component/daisyui/link/DaisyUiLink.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucideEyeOff from '$lib/component/own/library/lucide/LucideEyeOff.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';

@@ -47,7 +47,10 @@ export const getSupportTicketSession = query(
 	}
 );
 
-function requireUser(): { userId: string; userRoleId: number | null } {
+function requireUser(): {
+	userId: string;
+	userRoleId: number | null;
+} {
 	const event = getRequestEvent();
 	const user = event?.locals?.user;
 	if (!user?.id) throw error(401, 'Unauthorized');
@@ -61,7 +64,9 @@ function isSystemAdmin(roleId: number | null): boolean {
 	return roleId === RoleEnum.SYSTEM_ADMIN;
 }
 
-const activeTicketCondition = isNull(table.supportTicketTable.deletedAt);
+const activeTicketCondition = isNull(
+	table.supportTicketTable.deletedAt
+);
 
 export const createSupportTicket = command(
 	'unchecked' as const,
@@ -178,7 +183,10 @@ export const getAllSupportTicketsPaginated = query(
 	): Promise<PaginatedResult<SupportTicketSchema>> => {
 		const { userRoleId } = requireUser();
 		if (!isSystemAdmin(userRoleId)) {
-			throw error(403, 'Only system administrators can view all tickets');
+			throw error(
+				403,
+				'Only system administrators can view all tickets'
+			);
 		}
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
@@ -253,7 +261,10 @@ export const updateSupportTicket = command(
 	}): Promise<SupportTicketSchema> => {
 		const { userRoleId } = requireUser();
 		if (!isSystemAdmin(userRoleId)) {
-			throw error(403, 'Only system administrators can update tickets');
+			throw error(
+				403,
+				'Only system administrators can update tickets'
+			);
 		}
 		const { id, status, assignedToUserId, resolution } = payload;
 		if (

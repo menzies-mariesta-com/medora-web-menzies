@@ -30,7 +30,10 @@ function parsePendingCount(argv) {
 
 const pendingCount = parsePendingCount(process.argv);
 const journal = JSON.parse(
-	fs.readFileSync(path.join(root, 'drizzle/meta/_journal.json'), 'utf8')
+	fs.readFileSync(
+		path.join(root, 'drizzle/meta/_journal.json'),
+		'utf8'
+	)
 );
 const entries = journal.entries;
 if (!Array.isArray(entries) || entries.length <= pendingCount) {
@@ -44,7 +47,9 @@ const applied = entries.slice(0, -pendingCount);
 const pending = entries.slice(-pendingCount);
 
 const maxWhen = Math.max(...applied.map((e) => e.when));
-const markerEntry = applied.reduce((a, b) => (a.when >= b.when ? a : b));
+const markerEntry = applied.reduce((a, b) =>
+	a.when >= b.when ? a : b
+);
 
 const sqlPath = path.join(root, 'drizzle', `${markerEntry.tag}.sql`);
 const query = fs.readFileSync(sqlPath).toString();
@@ -62,7 +67,9 @@ for (const p of pending) {
 }
 console.log('');
 console.log('CREATE SCHEMA IF NOT EXISTS drizzle;');
-console.log('CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (');
+console.log(
+	'CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations ('
+);
 console.log('\tid SERIAL PRIMARY KEY,');
 console.log('\thash text NOT NULL,');
 console.log('\tcreated_at bigint');

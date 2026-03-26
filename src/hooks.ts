@@ -20,7 +20,9 @@ function deLocalizePathname(input: string | URL): string {
 		parts.shift();
 	}
 	const fallbackPath = `/${parts.join('/')}`;
-	return fallbackPath === '/' ? '/' : fallbackPath.replace(/\/+$/, '');
+	return fallbackPath === '/'
+		? '/'
+		: fallbackPath.replace(/\/+$/, '');
 }
 
 export const reroute = (request: { url: string | URL }) =>

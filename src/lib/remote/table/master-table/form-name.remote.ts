@@ -26,9 +26,7 @@ export const getFormName = query(
 
 export const getFormNameByFormType = query(
 	'unchecked' as const,
-	async (params: {
-		formType: string;
-	}): Promise<FormNameSchema[]> => {
+	async (params: { formType: string }): Promise<FormNameSchema[]> => {
 		const term = params.formType.trim();
 		if (!term) return [];
 		return ensureDb()
@@ -89,11 +87,7 @@ export const getFormNamePaginated = query(
 
 export const getFormNameById = query(
 	'unchecked' as const,
-	async ({
-		id
-	}: {
-		id: number;
-	}): Promise<FormNameSchema | null> => {
+	async ({ id }: { id: number }): Promise<FormNameSchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.formNameTable)
@@ -129,9 +123,7 @@ export const getFormNameByCode = query(
 
 export const createFormName = command(
 	'unchecked' as const,
-	async (
-		payload: FormNameSchemaInsert
-	): Promise<FormNameSchema> => {
+	async (payload: FormNameSchemaInsert): Promise<FormNameSchema> => {
 		const [row] = await ensureDb()
 			.insert(table.formNameTable)
 			.values(payload)

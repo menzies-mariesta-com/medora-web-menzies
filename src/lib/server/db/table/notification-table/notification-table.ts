@@ -9,9 +9,7 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 import { StatusEnum } from '../../../../model/enum/db-link';
-import {
-	StatusColorEnum as StatusColorEnumValue
-} from '../../../../model/enum/color.enum';
+import { StatusColorEnum as StatusColorEnumValue } from '../../../../model/enum/color.enum';
 
 import { userTable } from '../auth-table/auth-table';
 import {
@@ -109,4 +107,3 @@ export const notificationTable = pgTable('notification', {
 		onUpdate: 'cascade'
 	})
 });
-

@@ -12,7 +12,15 @@ import type {
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { error } from '@sveltejs/kit';
-import { and, count, eq, isNull, desc, ilike, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	eq,
+	isNull,
+	desc,
+	ilike,
+	sql
+} from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { StatusColorEnum } from '$lib/model/enum/color.enum';
 import { YesNoEnum } from '$lib/model/enum/db-link';
@@ -43,7 +51,9 @@ export const getReferHistoryWithRelations = query(async () => {
 			},
 			fromBranch: true,
 			toBranch: true,
-			fromReferDoctor: { with: { title: true, specialization: true } },
+			fromReferDoctor: {
+				with: { title: true, specialization: true }
+			},
 			toReferDoctor: { with: { title: true, specialization: true } },
 			createdByUser: true,
 			updatedByUser: true,
@@ -57,16 +67,22 @@ export type ReferHistoryWithRelations = Awaited<
 	ReturnType<typeof getReferHistoryWithRelations>
 >[number];
 
-export const getReferHistory = query(async (): Promise<ReferHistorySchema[]> => {
-	return ensureDb()
-		.select()
-		.from(table.referHistoryTable)
-		.where(isNull(table.referHistoryTable.deletedAt)); // soft delete: only non-deleted rows
-});
+export const getReferHistory = query(
+	async (): Promise<ReferHistorySchema[]> => {
+		return ensureDb()
+			.select()
+			.from(table.referHistoryTable)
+			.where(isNull(table.referHistoryTable.deletedAt)); // soft delete: only non-deleted rows
+	}
+);
 
 export const getReferHistoryById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<ReferHistorySchema | null> => {
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<ReferHistorySchema | null> => {
 		const [row] = await ensureDb()
 			.select()
 			.from(table.referHistoryTable)
@@ -77,7 +93,9 @@ export const getReferHistoryById = query(
 
 export const createReferHistory = command(
 	'unchecked' as const,
-	async (payload: ReferHistorySchemaInsert): Promise<ReferHistorySchema> => {
+	async (
+		payload: ReferHistorySchemaInsert
+	): Promise<ReferHistorySchema> => {
 		// UI historically omitted referring doctor; accept/cancel notifications need this FK.
 		const sessionStaffId =
 			getRequestEvent()?.locals?.staff?.id != null
@@ -188,7 +206,10 @@ export const acceptReferHistory = command(
 			!existing.toReferDoctorId ||
 			staffId !== String(existing.toReferDoctorId)
 		) {
-			throw error(403, 'Only the receiving doctor can accept this referral');
+			throw error(
+				403,
+				'Only the receiving doctor can accept this referral'
+			);
 		}
 
 		const nowIso = new Date().toISOString();
@@ -231,7 +252,7 @@ export const acceptReferHistory = command(
 			await ensureDb().insert(table.notificationTable).values({
 				recipientStaffId,
 				hospitalId,
-					eventType: ReferNotificationEventType.ACCEPTED,
+				eventType: ReferNotificationEventType.ACCEPTED,
 				severity: StatusColorEnum.SUCCESS,
 				title: 'Referral accepted',
 				message,
@@ -297,7 +318,10 @@ export const rejectReferHistory = command(
 			!existing.toReferDoctorId ||
 			staffId !== String(existing.toReferDoctorId)
 		) {
-			throw error(403, 'Only the receiving doctor can reject this referral');
+			throw error(
+				403,
+				'Only the receiving doctor can reject this referral'
+			);
 		}
 
 		await ensureDb()
@@ -333,17 +357,19 @@ export const rejectReferHistory = command(
 				? `/heka/hospital/${hospitalId}/home/cpoe/refer/history`
 				: null;
 
-			await ensureDb().insert(table.notificationTable).values({
-				recipientStaffId,
-				hospitalId,
-				eventType: ReferNotificationEventType.REJECTED,
-				severity: StatusColorEnum.ERROR,
-				title: 'Referral rejected',
-				message: `Referral rejected${replyNote ? `: ${replyNote}` : ''}`,
-				link,
-				visitId: existing.visitId,
-				referHistoryId: id
-			});
+			await ensureDb()
+				.insert(table.notificationTable)
+				.values({
+					recipientStaffId,
+					hospitalId,
+					eventType: ReferNotificationEventType.REJECTED,
+					severity: StatusColorEnum.ERROR,
+					title: 'Referral rejected',
+					message: `Referral rejected${replyNote ? `: ${replyNote}` : ''}`,
+					link,
+					visitId: existing.visitId,
+					referHistoryId: id
+				});
 		}
 
 		getReferHistoryWithRelations().refresh();
@@ -372,7 +398,10 @@ export const updateReferHistory = command(
 
 export const cancelReferHistory = command(
 	'unchecked' as const,
-	async (payload: { id: number; cancelReason: string }): Promise<void> => {
+	async (payload: {
+		id: number;
+		cancelReason: string;
+	}): Promise<void> => {
 		const { id, cancelReason } = payload;
 		const cancelDate = new Date().toISOString();
 		const userId =
@@ -433,7 +462,11 @@ export const cancelReferHistory = command(
 		let recipientStaffId: string | null = null;
 		if (cancellerStaffId && toId && cancellerStaffId === toId) {
 			recipientStaffId = fromId ?? null;
-		} else if (cancellerStaffId && fromId && cancellerStaffId === fromId) {
+		} else if (
+			cancellerStaffId &&
+			fromId &&
+			cancellerStaffId === fromId
+		) {
 			recipientStaffId = toId ?? null;
 		}
 
@@ -469,7 +502,8 @@ export const getReferHistoryPaginated = query(
 			visitId?: number;
 		}
 	): Promise<PaginatedResult<ReferHistoryWithRelations>> => {
-		const { page, pageSize, limit, offset } = normalizePagination(params);
+		const { page, pageSize, limit, offset } =
+			normalizePagination(params);
 
 		let whereExpr: SQL | undefined;
 		const visitId = params?.visitId;
@@ -502,7 +536,10 @@ export const getReferHistoryPaginated = query(
 		// subject (text input filter)
 		const subject = filters.subject?.trim();
 		if (subject) {
-			const expr = ilike(table.referHistoryTable.subject, `%${subject}%`);
+			const expr = ilike(
+				table.referHistoryTable.subject,
+				`%${subject}%`
+			);
 			whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 		}
 
@@ -587,8 +624,12 @@ export const getReferHistoryPaginated = query(
 					},
 					fromBranch: true,
 					toBranch: true,
-					fromReferDoctor: { with: { title: true, specialization: true } },
-					toReferDoctor: { with: { title: true, specialization: true } },
+					fromReferDoctor: {
+						with: { title: true, specialization: true }
+					},
+					toReferDoctor: {
+						with: { title: true, specialization: true }
+					},
 					createdByUser: true,
 					updatedByUser: true,
 					cancelByUser: true

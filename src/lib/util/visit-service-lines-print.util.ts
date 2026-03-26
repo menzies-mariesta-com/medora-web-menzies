@@ -45,7 +45,9 @@ export async function fetchVisitServiceLinePrintRows(params: {
 	if (orders.length === 0) return [];
 
 	const orderIds = orders.map((o) => o.id);
-	const details = await getServiceOrderDetail({ serviceOrderIds: orderIds });
+	const details = await getServiceOrderDetail({
+		serviceOrderIds: orderIds
+	});
 	const services = await getServiceItem({
 		hospitalId,
 		statusId: null

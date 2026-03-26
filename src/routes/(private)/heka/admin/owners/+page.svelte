@@ -1,12 +1,12 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import {
-		getUsersByRolePaginated,
-		deleteUser
-	} from '$lib/remote/table/auth-table/user.remote';
+		deleteUser,
+		getUsersByRolePaginated
+	} from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -14,16 +14,16 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { UserSchema } from '$lib/server/db/schema-type';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import NewOwnerModal from '$lib/component/snippet/modal/NewOwnerModal.svelte';
-	import EditOwnerModal from '$lib/component/snippet/modal/EditOwnerModal.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import NewOwnerModal from '$lib/component/own/snippet/modal/NewOwnerModal.svelte';
+	import EditOwnerModal from '$lib/component/own/snippet/modal/EditOwnerModal.svelte';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -66,20 +66,28 @@
 			widthClass: 'w-32 min-w-[8rem]',
 			filterType: 'select',
 			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				{
+					label: m.active_label(),
+					value: String(StatusEnum.ACTIVE)
+				},
+				{
+					label: m.inactive_label(),
+					value: String(StatusEnum.INACTIVE)
+				}
 			],
 			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
+					? m.active_label()
 					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
+						? m.inactive_label()
+						: `${m.status()} ${row.statusId ?? m.unknown_label()}`
 		}
 	];
 
 	async function loadOwners(forceRefresh = false) {
+		// HTTP wrapper uses `cache: no-store`, so `forceRefresh` is implicit.
+		void forceRefresh;
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
@@ -97,9 +105,6 @@
 						? statusId
 						: undefined
 			};
-			if (forceRefresh) {
-				await getUsersByRolePaginated(params).refresh();
-			}
 			const result = await getUsersByRolePaginated(params);
 			owners = result.data;
 			totalOwners = result.total;
@@ -128,7 +133,9 @@
 	async function handleDelete(owner: UserSchema) {
 		const result = await dialogService.open({
 			title: m.delete_owner(),
-			message: `Delete "${owner.name ?? owner.email}"? This will remove their account and they will no longer be able to sign in.`,
+			message: `${m.delete_owner_confirm_prefix()} "${
+				owner.name ?? owner.email
+			}"${m.delete_owner_confirm_suffix()}`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
