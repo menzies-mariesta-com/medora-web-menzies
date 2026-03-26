@@ -15,7 +15,7 @@ import type {
 
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne, ilike, or, sql } from 'drizzle-orm';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { error } from '@sveltejs/kit';
 const BRANCH_ALL_VALUE = '__all__';
 
@@ -50,6 +50,33 @@ function getSelectedBranchFromRequest(): string | null {
 		const event = getRequestEvent();
 		const raw = event.cookies.get('heka_selected_branch_id') ?? null;
 		return raw === BRANCH_ALL_VALUE ? null : raw;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * When the logged-in user is a Doctor (staff_type DOCTOR), EMR visit list must only
+ * include visits where they are the attending doctor OR they are the receiving
+ * doctor on a non-cancelled referral for that visit.
+ */
+function getDoctorEmrVisitScopeFilter(): ReturnType<typeof or> | null {
+	try {
+		const event = getRequestEvent();
+		const staff = event.locals.staff;
+		if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR) {
+			return null;
+		}
+		const doctorId = staff.id;
+		return or(
+			eq(table.patientVisitTable.doctorId, doctorId),
+			sql`EXISTS (
+				SELECT 1 FROM refer_history rh
+				WHERE rh.visit_id = ${table.patientVisitTable.id}
+				AND rh.to_refer_doctorid = ${doctorId}
+				AND rh.cancel_at IS NULL
+			)`
+		);
 	} catch {
 		return null;
 	}
@@ -409,6 +436,11 @@ export const getPatientVisitPaginatedForEmr = query(
 				whereExpr,
 				eq(table.patientVisitTable.visitTypeId, params.visitTypeId)
 			);
+		}
+
+		const doctorScope = getDoctorEmrVisitScopeFilter();
+		if (doctorScope) {
+			whereExpr = and(whereExpr, doctorScope);
 		}
 
 		const [data, countResult] = await Promise.all([

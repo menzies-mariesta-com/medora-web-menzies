@@ -7,7 +7,7 @@ function invokeOnce<T>(
 	args: unknown[],
 	fetchFn?: typeof fetch
 ): Promise<T> {
-	return remoteHttpClient.postJson<T>('/api/remote/invoke', {
+	return remoteHttpClient.postRemoteInvoke<T>({
 		module: moduleSuffix,
 		fn,
 		args
