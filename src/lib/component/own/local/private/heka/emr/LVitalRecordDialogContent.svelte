@@ -4,6 +4,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { UnitEnum } from '$lib/model/enum/db-link';
+	import { VitalEnum } from '$lib/model/enum/vital.enum';
 	import {
 		createPatientVital,
 		getPatientVitalById,
@@ -117,6 +118,7 @@
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		if (!patientId || !hospitalId || !visitId) {
 			toastService.addToast(
 				'No visit selected.',
@@ -197,7 +199,7 @@
 					StatusColorEnum.SUCCESS
 				);
 			}
-			confirm({ saved: true });
+			await confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
@@ -279,10 +281,10 @@
 					id="vital-temp"
 					bind:value={temperature}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('temperature')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.TEMPERATURE)}
 					min="0"
 					step="any"
-					className={vitalInputClass(temperature, 'temperature')}
+					className={vitalInputClass(temperature, VitalEnum.TEMPERATURE)}
 				/>
 			</div>
 		</div>
@@ -298,10 +300,10 @@
 					id="vital-bp-sys"
 					bind:value={bpSystolic}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('bpSystolic')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.BP_SYSTOLIC)}
 					min="0"
 					step="any"
-					className={vitalInputClass(bpSystolic, 'bpSystolic')}
+					className={vitalInputClass(bpSystolic, VitalEnum.BP_SYSTOLIC)}
 				/>
 			</div>
 		</div>
@@ -317,10 +319,10 @@
 					id="vital-bp-dia"
 					bind:value={bpDiastolic}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('bpDiastolic')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.BP_DIASTOLIC)}
 					min="0"
 					step="any"
-					className={vitalInputClass(bpDiastolic, 'bpDiastolic')}
+					className={vitalInputClass(bpDiastolic, VitalEnum.BP_DIASTOLIC)}
 				/>
 			</div>
 		</div>
@@ -335,10 +337,10 @@
 					id="vital-pulse"
 					bind:value={pulse}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('pulse')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.PULSE)}
 					min="0"
 					step="any"
-					className={vitalInputClass(pulse, 'pulse')}
+					className={vitalInputClass(pulse, VitalEnum.PULSE)}
 				/>
 			</div>
 		</div>
@@ -353,10 +355,13 @@
 					id="vital-resp"
 					bind:value={respiration}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('respiration')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.RESPIRATION)}
 					min="0"
 					step="any"
-					className={vitalInputClass(respiration, 'respiration')}
+					className={vitalInputClass(
+						respiration,
+						VitalEnum.RESPIRATION
+					)}
 				/>
 			</div>
 		</div>
@@ -371,11 +376,11 @@
 					id="vital-spo2"
 					bind:value={spO2}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('spO2')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.SP_O2)}
 					min="0"
 					max="100"
 					step="any"
-					className={vitalInputClass(spO2, 'spO2')}
+					className={vitalInputClass(spO2, VitalEnum.SP_O2)}
 				/>
 			</div>
 		</div>
@@ -390,10 +395,10 @@
 					id="vital-rbs"
 					bind:value={rbs}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder('rbs')}
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.RBS)}
 					min="0"
 					step="any"
-					className={vitalInputClass(rbs, 'rbs')}
+					className={vitalInputClass(rbs, VitalEnum.RBS)}
 				/>
 			</div>
 		</div>
@@ -460,13 +465,9 @@
 		<DaisyUiButton
 			type="submit"
 			className="d-btn-primary d-btn-wide"
-			disabled={isSubmitting}
+			loading={isSubmitting}
 		>
-			{isSubmitting
-				? 'Saving…'
-				: isEditMode
-					? 'Update vitals'
-					: 'Save vitals'}
+			{isEditMode ? 'Update vitals' : 'Save vitals'}
 		</DaisyUiButton>
 		<DaisyUiButton
 			type="button"

@@ -83,7 +83,8 @@
 	>;
 	let activeStates = $state<ActiveStates>({});
 	let fontSize = $state(14);
-	let fontFamily = $state('');
+	// Default editor font to match UI expectation.
+	let fontFamily = $state('Adwaita-sans, sans-serif');
 	let textColor = $state('#000000');
 	let bgColor = $state('');
 	let isInTable = $state(false);
@@ -988,12 +989,49 @@ ${content}
 			activeMenu = null;
 		}
 	}
+
+	function handleEditorShortcuts(e: KeyboardEvent) {
+		// Only handle common editor shortcuts when user is holding Ctrl/Cmd.
+		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+
+		const k = e.key.toLowerCase();
+		if (k === 'b') {
+			e.preventDefault();
+			e.stopPropagation();
+			void handleCommand({ detail: { name: 'bold' } } as any);
+		} else if (k === 'i') {
+			e.preventDefault();
+			e.stopPropagation();
+			void handleCommand({ detail: { name: 'italic' } } as any);
+		} else if (k === 'u') {
+			e.preventDefault();
+			e.stopPropagation();
+			void handleCommand({ detail: { name: 'underline' } } as any);
+		} else if (k === 'z') {
+			e.preventDefault();
+			e.stopPropagation();
+			handleUndo();
+		} else if (k === 'y') {
+			e.preventDefault();
+			e.stopPropagation();
+			handleRedo();
+		} else if (k === 'a') {
+			e.preventDefault();
+			e.stopPropagation();
+			handleSelectAll();
+		} else if (k === 'p') {
+			e.preventDefault();
+			e.stopPropagation();
+			exportAsPdf();
+		}
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="flex flex-col gap-2 {className}"
 	on:keydown={handleMenuKeydown}
+	style={`font-family:${fontFamily};`}
 >
 	{#if showMenuBar}
 		<!-- Menu Bar -->
@@ -1188,6 +1226,7 @@ ${content}
 			bind:this={editorElement}
 			{placeholder}
 			on:input={syncFromDom}
+			on:keydown={handleEditorShortcuts}
 		></div>
 	</div>
 

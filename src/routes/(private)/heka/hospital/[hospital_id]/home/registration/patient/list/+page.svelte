@@ -7,7 +7,8 @@
 	import {
 		getPatientPaginated,
 		deletePatient,
-		getPatientByIdWithRelations
+		getPatientByIdWithRelations,
+		type PatientWithRelations
 	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeletePatientConfirmState } from '$lib/state/delete-patient-confirm.state.svelte';
@@ -16,7 +17,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
 	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import type { PatientWithRelations } from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -42,6 +42,7 @@
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 
 	const stringUtil = new StringUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -56,7 +57,15 @@
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 	let isLoading = $state(false);
+	let deletingId = $state<string | null>(null);
 	let tableFilters = $state<Record<string, string>>({});
+
+	const refreshLock = createActionLock();
+	const tableFetchLock = createActionLock();
+	const filterFetchLock = createActionLock();
+	const deleteLock = createActionLock();
+	const dialogCloseLock = createActionLock();
+	const emrSelectLock = createActionLock();
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
@@ -113,55 +122,68 @@
 		if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
 		searchDebounceTimeout = setTimeout(() => {
 			currentPage = 1;
-			fetchPatients();
+			void filterFetchLock.run(async () => fetchPatients());
 		}, 350);
 		return () => {
 			if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
 		};
 	});
 
-	function handlePageSizeChange() {
-		currentPage = 1;
-		fetchPatients();
+	async function handleTableRefresh() {
+		await refreshLock.run(async () =>
+			fetchPatients({ bustCache: true })
+		);
 	}
 
-	function goToPage(p: number) {
-		currentPage = p;
-		fetchPatients();
+	async function handleTablePageChange() {
+		await tableFetchLock.run(async () => fetchPatients());
+	}
+
+	async function handleTablePageSizeChange() {
+		currentPage = 1;
+		await tableFetchLock.run(async () => fetchPatients());
 	}
 
 	async function handleDelete(patientId: string) {
-		try {
-			const patient = await getPatientByIdWithRelations({
-				id: patientId
-			});
-			const patientEmail =
-				(patient as { user?: { email?: string } })?.user?.email ??
-				'(no email)';
-			DeletePatientConfirmState.pending = {
-				id: patientId,
-				email: patientEmail
-			};
-			const result = await dialogService.open({
-				component: DeletePatientConfirmModal
-			});
-			if (result.confirmed && typeof result.data === 'string') {
-				await deletePatient({ id: result.data });
-				await fetchPatients();
+		await deleteLock.run(async () => {
+			deletingId = patientId;
+			try {
+				const patient = await getPatientByIdWithRelations({
+					id: patientId
+				});
+				const patientEmail =
+					(patient as { user?: { email?: string } })?.user
+						?.email ?? '(no email)';
+				DeletePatientConfirmState.pending = {
+					id: patientId,
+					email: patientEmail
+				};
+				const result = await dialogService.open({
+					component: DeletePatientConfirmModal
+				});
+				if (result.confirmed && typeof result.data === 'string') {
+					await deletePatient({ id: result.data });
+					await fetchPatients();
+					toastService.addToast(
+						'Patient deleted.',
+						StatusColorEnum.SUCCESS
+					);
+				}
+			} catch (err) {
+				console.error(err);
 				toastService.addToast(
-					'Patient deleted.',
-					StatusColorEnum.SUCCESS
+					'Failed to delete patient.',
+					StatusColorEnum.ERROR
 				);
+			} finally {
+				DeletePatientConfirmState.pending = null;
+				deletingId = null;
 			}
-		} catch (err) {
-			console.error(err);
-			toastService.addToast(
-				'Failed to delete patient.',
-				StatusColorEnum.ERROR
-			);
-		} finally {
-			DeletePatientConfirmState.pending = null;
-		}
+		});
+	}
+
+	function rowActionDisabled(rowId: string) {
+		return isLoading || deletingId === rowId;
 	}
 
 	const PATIENT_COLUMN_COUNT = 12;
@@ -203,7 +225,15 @@
 
 	function closePatientDialog() {
 		patientDialog = null;
-		fetchPatients({ bustCache: true });
+		void dialogCloseLock.run(async () =>
+			fetchPatients({ bustCache: true })
+		);
+	}
+
+	function handleSelectForEmr(patient: PatientWithRelations) {
+		void emrSelectLock.run(() => {
+			selectForEmrPatient(patient);
+		});
 	}
 
 	const patientColumns: MariTableColumn<PatientWithRelations>[] = [
@@ -322,12 +352,9 @@
 			rowTooltipGetter={(row) => {
 				return StringUtil.tableToolTip(row);
 			}}
-			on:refresh={() => fetchPatients({ bustCache: true })}
-			on:pageSizeChange={() => {
-				currentPage = 1;
-				fetchPatients();
-			}}
-			on:pageChange={() => fetchPatients()}
+			on:refresh={handleTableRefresh}
+			on:pageSizeChange={handleTablePageSizeChange}
+			on:pageChange={handleTablePageChange}
 			on:filtersChange={(event) => {
 				if (filterDebounceTimeout) {
 					clearTimeout(filterDebounceTimeout);
@@ -335,11 +362,12 @@
 				tableFilters = event.detail.filters;
 				currentPage = 1;
 				filterDebounceTimeout = setTimeout(() => {
-					fetchPatients();
+					void filterFetchLock.run(async () => fetchPatients());
 				}, 350);
 			}}
 		>
 			<svelte:fragment slot="rowActions" let:row>
+				{@const patientRow = row as PatientWithRelations}
 				<div class="flex flex-col items-center gap-1">
 					<DaisyUiTooltip
 						tooltipText="view data"
@@ -347,7 +375,8 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm"
-							onClick={() => viewData(row.id)}
+							disabled={rowActionDisabled(patientRow.id)}
+							onClick={() => viewData(patientRow.id)}
 						>
 							<LucideEye className="size-5" />
 						</DaisyUiButton>
@@ -358,7 +387,8 @@
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-accent"
-							onClick={() => editData(row.id)}
+							disabled={rowActionDisabled(patientRow.id)}
+							onClick={() => editData(patientRow.id)}
 						>
 							<LucidePencil className="size-5" />
 						</DaisyUiButton>
@@ -370,7 +400,8 @@
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-info"
-								onClick={() => selectForEmrPatient(row)}
+								disabled={rowActionDisabled(patientRow.id)}
+								onClick={() => handleSelectForEmr(patientRow)}
 							>
 								<LucideChevronRight className="size-5" />
 							</DaisyUiButton>
@@ -382,8 +413,8 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm"
-							disabled={isLoading}
-							onClick={() => openPatientCard(row.id)}
+							disabled={rowActionDisabled(patientRow.id)}
+							onClick={() => openPatientCard(patientRow.id)}
 						>
 							<LucidePrinter className="size-5" />
 						</DaisyUiButton>
@@ -394,8 +425,10 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={isLoading}
-							onClick={() => handleDelete(row.id)}
+							disabled={rowActionDisabled(patientRow.id)}
+							loading={deletingId === patientRow.id}
+							loadingText=""
+							onClick={() => handleDelete(patientRow.id)}
 						>
 							<LucideTrash2 className="size-5" />
 						</DaisyUiButton>

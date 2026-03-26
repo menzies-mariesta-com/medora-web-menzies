@@ -25,24 +25,29 @@
 			return;
 		}
 		isLoading = true;
-		const { error } = await authClient.requestPasswordReset({
-			email: trimmed,
-			redirectTo: routerUtil.getResetRedirectUrl()
-		});
-		isLoading = false;
+		try {
+			const { error } = await authClient.requestPasswordReset({
+				email: trimmed,
+				redirectTo: routerUtil.getResetRedirectUrl()
+			});
 
-		if (error) {
+			if (error) {
+				toastService.addToast(
+					error.message ?? 'Failed to send reset link.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+
 			toastService.addToast(
-				error.message ?? 'Failed to send reset link.',
-				StatusColorEnum.ERROR
+				'If an account exists for this email, a password reset link has been sent.',
+				StatusColorEnum.INFO
 			);
-			return;
+
+			await confirm({ email: trimmed });
+		} finally {
+			isLoading = false;
 		}
-		toastService.addToast(
-			'If an account exists for this email, a password reset link has been sent.',
-			StatusColorEnum.INFO
-		);
-		confirm({ email: trimmed });
 	}
 </script>
 
@@ -54,6 +59,7 @@
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={() => cancel()}
+			disabled={isLoading}
 		>
 			<LucideX className="size-5" />
 		</DaisyUiButton>
@@ -82,8 +88,9 @@
 				onClick={() => handleConfirm()}
 				className="d-btn d-btn-primary"
 				disabled={isLoading}
+				loading={isLoading}
 			>
-				{isLoading ? 'Sending…' : 'Apply'}
+				Apply
 			</DaisyUiButton>
 		</div>
 	</div>

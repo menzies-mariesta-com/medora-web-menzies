@@ -9,6 +9,7 @@
 	} from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -29,6 +30,13 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+
+	const createLock = createActionLock();
+	const editLock = createActionLock();
+	const deleteLock = createActionLock();
+
+	let editingOwnerId = $state<string | null>(null);
+	let deletingOwnerId = $state<string | null>(null);
 
 	let owners = $state<UserSchema[]>([]);
 	let currentPage = $state(1);
@@ -114,43 +122,61 @@
 	}
 
 	async function openNewOwnerModal() {
-		const result = await dialogService.open({
-			title: m.new_owner(),
-			component: NewOwnerModal
+		await createLock.run(async () => {
+			const result = await dialogService.open({
+				title: m.new_owner(),
+				component: NewOwnerModal
+			});
+			if (result.confirmed) await loadOwners(true);
 		});
-		if (result.confirmed) await loadOwners(true);
 	}
 
 	async function openEditOwnerModal(owner: UserSchema) {
-		EditOwnerModalState.owner = owner;
-		const result = await dialogService.open({
-			title: m.edit_owner(),
-			component: EditOwnerModal
+		await editLock.run(async () => {
+			editingOwnerId = owner.id;
+			try {
+				EditOwnerModalState.owner = owner;
+				const result = await dialogService.open({
+					title: m.edit_owner(),
+					component: EditOwnerModal
+				});
+				if (result.confirmed) await loadOwners(true);
+			} finally {
+				editingOwnerId = null;
+			}
 		});
-		if (result.confirmed) await loadOwners(true);
 	}
 
 	async function handleDelete(owner: UserSchema) {
-		const result = await dialogService.open({
-			title: m.delete_owner(),
-			message: `${m.delete_owner_confirm_prefix()} "${
-				owner.name ?? owner.email
-			}"${m.delete_owner_confirm_suffix()}`,
-			variant: DialogVariantEnum.CONFIRM
+		await deleteLock.run(async () => {
+			deletingOwnerId = owner.id;
+			try {
+				const result = await dialogService.open({
+					title: m.delete_owner(),
+					message: `${m.delete_owner_confirm_prefix()} "${
+						owner.name ?? owner.email
+					}"${m.delete_owner_confirm_suffix()}`,
+					variant: DialogVariantEnum.CONFIRM
+				});
+				if (!result.confirmed) return;
+				try {
+					await deleteUser({ id: owner.id });
+					toastService.addToast(
+						m.owner_deleted(),
+						StatusColorEnum.SUCCESS
+					);
+					await loadOwners(true);
+				} catch (err) {
+					const msg =
+						err instanceof Error
+							? err.message
+							: m.delete_failed();
+					toastService.addToast(msg, StatusColorEnum.ERROR);
+				}
+			} finally {
+				deletingOwnerId = null;
+			}
 		});
-		if (!result.confirmed) return;
-		try {
-			await deleteUser({ id: owner.id });
-			toastService.addToast(
-				m.owner_deleted(),
-				StatusColorEnum.SUCCESS
-			);
-			await loadOwners(true);
-		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : m.delete_failed();
-			toastService.addToast(msg, StatusColorEnum.ERROR);
-		}
 	}
 
 	function formatDate(s: string | null | undefined): string {
@@ -173,6 +199,8 @@
 		<DaisyUiButton
 			className="d-btn-primary"
 			onClick={openNewOwnerModal}
+			loading={createLock.pending}
+			disabled={editLock.pending || deleteLock.pending}
 		>
 			<LucidePlus />
 			{m.new_owner()}
@@ -220,17 +248,39 @@
 						}}
 					>
 						<svelte:fragment slot="rowActions" let:row>
+							{@const ownerRow = row as UserSchema}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEditOwnerModal(row)}
+										onClick={() =>
+											openEditOwnerModal(ownerRow)}
+										loading={editingOwnerId === ownerRow.id}
+										disabled={
+											createLock.pending ||
+											deleteLock.pending ||
+											(editLock.pending &&
+												editingOwnerId !== ownerRow.id)
+										}
+										loadingText=""
 									>
 										<LucidePencil />
 									</DaisyUiButton>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row)}
+										onClick={() =>
+											handleDelete(ownerRow)}
+										loading={
+											deletingOwnerId === ownerRow.id
+										}
+										disabled={
+											createLock.pending ||
+											editLock.pending ||
+											(deleteLock.pending &&
+												deletingOwnerId !==
+													ownerRow.id)
+										}
+										loadingText=""
 									>
 										<LucideTrash2 />
 									</DaisyUiButton>

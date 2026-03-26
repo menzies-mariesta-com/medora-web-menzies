@@ -14,9 +14,11 @@
 	const message = $derived(DeactivationRemarkDialogState.message);
 
 	let deactivationRemark = $state('');
+	let isSubmitting = $state(false);
 
-	function handleSubmit(e: SubmitEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		const trimmed = deactivationRemark.trim();
 		if (!trimmed) {
 			toastService.addToast(
@@ -26,10 +28,16 @@
 			return;
 		}
 		DeactivationRemarkDialogState.message = null;
-		confirm({ deactivationRemark: trimmed });
+		isSubmitting = true;
+		try {
+			await confirm({ deactivationRemark: trimmed });
+		} finally {
+			isSubmitting = false;
+		}
 	}
 
 	function handleCancel() {
+		if (isSubmitting) return;
 		DeactivationRemarkDialogState.message = null;
 		cancel();
 	}
@@ -62,10 +70,15 @@
 			type="button"
 			className="d-btn-ghost"
 			onClick={handleCancel}
+			disabled={isSubmitting}
 		>
 			Cancel
 		</DaisyUiButton>
-		<DaisyUiButton type="submit" className="d-btn-primary">
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary"
+			loading={isSubmitting}
+		>
 			Continue
 		</DaisyUiButton>
 	</div>

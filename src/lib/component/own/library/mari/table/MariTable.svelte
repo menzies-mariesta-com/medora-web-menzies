@@ -229,7 +229,7 @@
 	const filteredRows = $derived(
 		useRemoteFilters
 			? rows
-			: rows.filter((row, index) => {
+			: rows.filter((row: any, index: number) => {
 					for (const column of columns) {
 						const rawFilter = columnFilters[column.id];
 						const filter = rawFilter
@@ -475,11 +475,13 @@
 			</div>
 
 			{#if showRefreshButton}
-				<DaisyUiTooltip text={refreshTooltip}>
+				<DaisyUiTooltip tooltipText={refreshTooltip}>
 					<DaisyUiButton
 						className="d-btn-sm d-btn-primary"
 						onClick={handleRefresh}
 						disabled={isLoading}
+						loading={isLoading}
+						loadingText=""
 					>
 						<LucideRefreshCcw className="size-5" />
 					</DaisyUiButton>

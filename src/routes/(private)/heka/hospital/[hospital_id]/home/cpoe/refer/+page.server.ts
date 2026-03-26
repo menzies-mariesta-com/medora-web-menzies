@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getPageWithFetch } from '$lib/tool/remote/table/information-table/page.http.tool.svelte';
+import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
 import {
 	hekaHospitalPageUrl,
 	WebRoutesEnum
@@ -10,9 +10,10 @@ function normPath(p: string | null | undefined): string {
 	return (p ?? '').replace(/\/$/, '') || '/';
 }
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ parent, params }) => {
 	const hospitalId = params.hospital_id;
-	const pages = await getPageWithFetch(fetch);
+	const { pageData } = await parent();
+	const pages = (pageData ?? []) as PageWithRelations[];
 	const referPage = pages.find(
 		(p) => normPath(p.pageUrl) === WebRoutesEnum.HEKA_HOME_CPOE_REFER
 	);

@@ -1382,9 +1382,10 @@
 						className="d-btn-wide {isEditMode
 							? 'd-btn-accent'
 							: 'd-btn-primary'}"
-						disabled={isLoading || (!isEditMode && disableCreateSave)}
+						loading={isLoading}
+						disabled={!isEditMode && disableCreateSave}
 					>
-						{isLoading ? 'Saving...' : isEditMode ? 'Edit' : 'Save'}
+						{isEditMode ? 'Edit' : 'Save'}
 					</DaisyUiButton>
 					{#if !isEditMode && disableCreateSave}
 						<DaisyUiButton

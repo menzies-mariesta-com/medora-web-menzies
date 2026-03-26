@@ -88,3 +88,4 @@ export const updatePatient = (...args: any[]): any => {
 	return p;
 };
 
+export type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
