@@ -40,6 +40,7 @@
 	>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
+	let isConfirming = $state(false);
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
@@ -227,15 +228,21 @@
 		fetchPatients({ bustCache: true });
 	}
 
-	function selectPatient(v: PatientVisitWithRelations) {
+	async function selectPatient(v: PatientVisitWithRelations) {
+		if (isConfirming) return;
+		isConfirming = true;
 		const patient = v.patient;
 		const patientName = patient
 			? StringUtil.patientDisplayName(patient as any)
 			: '';
-		confirm({
-			visitId: v.id,
-			patientName
-		});
+		try {
+			await confirm({
+				visitId: v.id,
+				patientName
+			});
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -247,6 +254,7 @@
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={cancel}
+			disabled={isConfirming}
 		>
 			<LucideX className="size-5" />
 		</DaisyUiButton>
@@ -263,7 +271,7 @@
 			<MariTable
 				rows={visits}
 				columns={visitColumns}
-				{isLoading}
+				isLoading={isLoading || isConfirming}
 				bind:pageSize={pageSizeStr}
 				bind:currentPage
 				totalRowCount={total}
@@ -292,7 +300,7 @@
 					}, 350);
 				}}
 				on:select={(event) =>
-					selectPatient(event.detail as PatientVisitWithRelations)}
+					void selectPatient(event.detail as PatientVisitWithRelations)}
 			/>
 		</div>
 	{/if}
@@ -305,6 +313,7 @@
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm"
 				onClick={cancel}
+				disabled={isConfirming}
 			>
 				Cancel
 			</DaisyUiButton>

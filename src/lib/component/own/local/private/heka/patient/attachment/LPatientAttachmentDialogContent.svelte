@@ -93,6 +93,7 @@
 	let attachmentFiles: File[] = $state([]);
 	let attachmentInputEl: HTMLInputElement | undefined = $state();
 	let description = $state('');
+	let isAddingToList = $state(false);
 	let isSubmitting = $state(false);
 	let existingAttachments: PatientAttachmentSchema[] = $state([]);
 	let isLoadingExisting = $state(false);
@@ -299,9 +300,16 @@
 		}
 	}
 
-	function handleStagingSubmit(e: SubmitEvent) {
+	async function handleStagingSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		addStaged();
+		if (isAddingToList) return;
+		isAddingToList = true;
+		try {
+			addStaged();
+			await new Promise((r) => setTimeout(r, 0));
+		} finally {
+			isAddingToList = false;
+		}
 	}
 
 	function fileNameFromUrl(url: string | null): string {
@@ -417,6 +425,7 @@
 									<DaisyUiButton
 										type="submit"
 										className="d-btn-primary d-btn-wide"
+										loading={isAddingToList}
 									>
 										Add to List
 									</DaisyUiButton>
@@ -544,15 +553,11 @@
 									<DaisyUiButton
 										type="submit"
 										className="d-btn-primary d-btn-wide"
-										disabled={isSubmitting ||
-											attachmentFiles.length === 0}
+										loading={isSubmitting}
+										disabled={attachmentFiles.length === 0}
+										loadingText="Uploading..."
 									>
-										{#if isSubmitting}
-											<DaisyUiLoading className="d-loading-sm mr-2" />
-										{/if}
-										{isSubmitting
-											? 'Uploading...'
-											: 'Add attachment(s)'}
+										Add attachment(s)
 									</DaisyUiButton>
 								</div>
 							</form>

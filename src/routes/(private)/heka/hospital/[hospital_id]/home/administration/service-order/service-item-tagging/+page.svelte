@@ -31,8 +31,11 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
@@ -98,6 +101,8 @@
 	let editingId = $state<number | null>(null);
 	let isLoading = $state(false);
 	let isSaving = $state(false);
+	const deleteLock = createActionLock();
+	let deletingId = $state<number | null>(null);
 
 	let tableColumnFilters = $state<Record<string, string>>({});
 
@@ -299,7 +304,8 @@
 			// When multiple branches are selected, filter in-memory.
 			if (selectedAllowedBranchIds.length > 1) {
 				const allowedIds = new Set(selectedAllowedBranchIds);
-				const filteredData = result.data.filter((row) =>
+				const filteredData = result.data.filter(
+					(row: ServiceTaggingSchema) =>
 					allowedIds.has(row.branchId)
 				);
 				const totalFiltered = filteredData.length;
@@ -555,26 +561,32 @@
 	}
 
 	async function handleDelete(row: ServiceTaggingSchema) {
-		const result = await dialogService.open({
-			title: 'Delete service tagging',
-			message: `Delete tagging for this service?`,
-			variant: DialogVariantEnum.CONFIRM
+		await deleteLock.run(async () => {
+			deletingId = row.id;
+			try {
+				const result = await dialogService.open({
+					title: 'Delete service tagging',
+					message: `Delete tagging for this service?`,
+					variant: DialogVariantEnum.CONFIRM
+				});
+				if (!result.confirmed) return;
+
+				await deleteServiceTagging({ id: row.id });
+				toastService.addToast(
+					'Service tagging deleted.',
+					StatusColorEnum.SUCCESS
+				);
+				await fetchTaggings(true);
+			} catch (err) {
+				const msg =
+					err instanceof Error
+						? err.message
+						: 'Failed to delete service tagging.';
+				toastService.addToast(msg, StatusColorEnum.ERROR);
+			} finally {
+				deletingId = null;
+			}
 		});
-		if (!result.confirmed) return;
-		try {
-			await deleteServiceTagging({ id: row.id });
-			toastService.addToast(
-				'Service tagging deleted.',
-				StatusColorEnum.SUCCESS
-			);
-			await fetchTaggings(true);
-		} catch (err) {
-			const msg =
-				err instanceof Error
-					? err.message
-					: 'Failed to delete service tagging.';
-			toastService.addToast(msg, StatusColorEnum.ERROR);
-		}
 	}
 	function branchNameById(id: string | null | undefined): string {
 		if (!id) return '—';
@@ -789,13 +801,10 @@
 						<DaisyUiButton
 							type="submit"
 							className="d-btn-primary d-btn-sm"
-							disabled={isSaving}
+							loading={isSaving}
+							loadingText={m.service_item_saving()}
 						>
-							{isSaving
-								? 'Saving…'
-								: mode === 'create'
-									? 'Create'
-									: 'Save'}
+							{mode === 'create' ? 'Create' : 'Save'}
 						</DaisyUiButton>
 					</div>
 				</form>
@@ -912,7 +921,8 @@
 							enableColumnFilters={true}
 							useRemoteFilters={true}
 							actionsHeader={m.actions()}
-							actionsVariant="crud"
+							showRowActions={true}
+							actionsVariant="none"
 							on:refresh={() => fetchTaggings(true)}
 							on:pageSizeChange={() => {
 								currentPage = 1;
@@ -920,9 +930,30 @@
 							}}
 							on:pageChange={() => fetchTaggings(true)}
 							on:filtersChange={handleTableFiltersChange}
-							on:edit={(event) => startEdit(event.detail)}
-							on:delete={(event) => handleDelete(event.detail)}
-						/>
+						>
+							<svelte:fragment slot="rowActions" let:row>
+								{@const taggingRow = row as ServiceTaggingSchema}
+								<div class="flex items-center gap-2">
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm d-btn-accent"
+										onClick={() => startEdit(taggingRow)}
+										disabled={isLoading || isSaving || deleteLock.pending}
+										loadingText=""
+									>
+										<LucidePencil className="size-4" />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm d-btn-error"
+										onClick={() => handleDelete(taggingRow)}
+										loading={deletingId === taggingRow.id}
+										loadingText=""
+										disabled={isLoading || isSaving || deleteLock.pending}
+									>
+										<LucideTrash2 className="size-4" />
+									</DaisyUiButton>
+								</div>
+							</svelte:fragment>
+						</MariTable>
 					</div>
 				{/if}
 			</DaisyUiCardBody>

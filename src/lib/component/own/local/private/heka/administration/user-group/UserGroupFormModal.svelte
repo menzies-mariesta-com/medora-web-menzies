@@ -41,6 +41,7 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		if (!formName?.trim()) {
 			toastService.addToast(
 				'Name is required.',
@@ -134,9 +135,9 @@
 		<DaisyUiButton
 			type="submit"
 			className="d-btn-primary"
-			disabled={isSubmitting}
+			loading={isSubmitting}
 		>
-			{isSubmitting ? 'Saving…' : isEdit ? 'Save' : 'Create'}
+			{isEdit ? 'Save' : 'Create'}
 		</DaisyUiButton>
 	</div>
 </form>

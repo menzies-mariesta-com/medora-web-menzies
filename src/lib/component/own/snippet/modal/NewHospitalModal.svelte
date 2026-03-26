@@ -202,6 +202,7 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		const n = name.trim();
 		if (!n) {
 			toastService.addToast(
@@ -331,7 +332,7 @@
 
 {#if isLoading}
 	<div class="flex items-center justify-center py-8">
-		<span class="d-loading d-loading-lg d-loading-spinner" />
+		<span class="d-loading d-loading-lg d-loading-spinner"></span>
 	</div>
 {:else}
 	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
@@ -616,15 +617,9 @@
 			<DaisyUiButton
 				type="submit"
 				className="d-btn-primary"
-				disabled={isSubmitting}
+				loading={isSubmitting}
 			>
-				{isSubmitting
-					? editId != null
-						? 'Updating…'
-						: 'Creating…'
-					: editId != null
-						? 'Update'
-						: 'Create'}
+				{editId != null ? 'Update' : 'Create'}
 			</DaisyUiButton>
 		</div>
 	</form>

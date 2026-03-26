@@ -118,9 +118,10 @@
 				<DaisyUiButton
 					type="submit"
 					className="d-btn-primary w-full"
-					disabled={isLoading}
+					loading={isLoading}
+					loadingText={m.signing_in()}
 				>
-					{isLoading ? m.signing_in() : m.login()}
+					{m.login()}
 				</DaisyUiButton>
 
 				<!-- external links -->

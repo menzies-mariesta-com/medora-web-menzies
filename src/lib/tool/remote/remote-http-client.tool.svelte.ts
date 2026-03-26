@@ -18,14 +18,20 @@ async function postJson<T>(
 		body: body ? JSON.stringify(body) : undefined
 	});
 
+	const text = await res.text().catch(() => '');
+
 	if (!res.ok) {
-		const text = await res.text().catch(() => '');
 		throw new Error(
 			text || `Request failed: ${res.status} ${res.statusText}`
 		);
 	}
 
-	return (await res.json()) as T;
+	const trimmed = text.trim();
+	if (!trimmed) {
+		return undefined as T;
+	}
+
+	return JSON.parse(trimmed) as T;
 }
 
 export const remoteHttpClient = {

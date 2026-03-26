@@ -161,9 +161,10 @@
 					<DaisyUiButton
 						type="submit"
 						className="d-btn-primary w-full"
-						disabled={isLoading}
+						loading={isLoading}
+						loadingText={m.resetting()}
 					>
-						{isLoading ? m.resetting() : m.reset_password()}
+						{m.reset_password()}
 					</DaisyUiButton>
 				</DaisyUiFieldset>
 			</form>
@@ -193,9 +194,10 @@
 					<DaisyUiButton
 						type="submit"
 						className="d-btn-primary w-full"
-						disabled={isLoading}
+						loading={isLoading}
+						loadingText={m.sending()}
 					>
-						{isLoading ? m.sending() : m.send_reset_link()}
+						{m.send_reset_link()}
 					</DaisyUiButton>
 
 					<div class="my-ft-small">
