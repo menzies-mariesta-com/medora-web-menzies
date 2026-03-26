@@ -5,7 +5,7 @@ export type { StaffWithRelations } from '$lib/remote/table/information-table/sta
 const moduleSuffix = 'table/information-table/staff.remote.ts';
 
 function invokeOnce<T>(fn: string, args: unknown[]): Promise<T> {
-	return remoteHttpClient.postJson<T>('/api/remote/invoke', {
+	return remoteHttpClient.postRemoteInvoke<T>({
 		module: moduleSuffix,
 		fn,
 		args
