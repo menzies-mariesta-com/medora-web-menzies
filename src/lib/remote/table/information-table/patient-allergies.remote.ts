@@ -12,7 +12,7 @@ import type {
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 
 // get all
 export const getPatientAllergies = query(
@@ -287,6 +287,30 @@ export const getActivePatientAllergiesByPatientId = query(
 				)
 			)
 			.orderBy(table.patientAllergyTable.id);
+	}
+);
+
+/**
+ * Return patientIds that have at least one active allergy.
+ * Used for lightweight "allergy present" indicators in EMR lists.
+ */
+export const getActivePatientAllergiesPatientIdsByPatientIds = query(
+	'unchecked' as const,
+	async ({ patientIds }: { patientIds: string[] }): Promise<string[]> => {
+		const ids = patientIds.filter((id) => !!id);
+		if (ids.length === 0) return [];
+
+		const rows = await ensureDb()
+			.select({ patientId: table.patientAllergyTable.patientId })
+			.from(table.patientAllergyTable)
+			.where(
+				and(
+					inArray(table.patientAllergyTable.patientId, ids),
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
+				)
+			);
+
+		return Array.from(new Set(rows.map((r) => r.patientId)));
 	}
 );
 

@@ -3,13 +3,18 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucideTriangleAlert from '$lib/component/own/library/lucide/LucideTriangleAlert.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import {
 		getPatientVisitPaginatedForEmr,
 		type PatientVisitWithRelations
 	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import { getVisitType } from '$lib/remote/table/information-table/visit-type.remote';
+	import {
+		getActivePatientAllergiesPatientIdsByPatientIds
+	} from '$lib/remote/table/information-table/patient-allergies.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
@@ -40,6 +45,7 @@
 	>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
+	let activeAllergyPatientIds = $state<Set<string>>(new Set());
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
@@ -76,7 +82,7 @@
 		{
 			id: 'visitNo',
 			header: 'Visit No',
-			widthClass: 'w-28 min-w-[6rem]',
+			widthClass: 'w-32',
 			filterable: false,
 			field: 'visitNo'
 		},
@@ -177,7 +183,32 @@
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: false,
 			field: 'status.name'
-		}
+		},
+		{
+			id: 'alert',
+			header: m.observation_emr_alert(),
+			widthClass: 'w-14 min-w-[3.5rem]',
+			filterable: false,
+			format: () => '—',
+			cellComponentGetter: (row) => {
+				const patientId = row.patient?.id;
+				if (patientId == null) return null;
+
+				return activeAllergyPatientIds.has(String(patientId))
+					? {
+							component: LucideTriangleAlert,
+							props: { className: 'size-4' }
+						}
+					: null;
+			},
+			cellClassGetter: (row) => {
+				const patientId = row.patient?.id;
+				if (!patientId) return 'text-base-content/60';
+				return activeAllergyPatientIds.has(String(patientId))
+					? 'text-warning font-semibold'
+					: 'text-base-content/60';
+			}
+		},
 	];
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
@@ -198,6 +229,16 @@
 					: undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
+
+			const patientIds = result.data
+				.map((row) => row.patient?.id)
+				.map((id) => (id != null ? String(id) : ''))
+				.filter((id) => id.trim() !== '');
+			const activePatientIds =
+				await getActivePatientAllergiesPatientIdsByPatientIds({
+					patientIds
+				});
+			activeAllergyPatientIds = new Set(activePatientIds);
 		} finally {
 			isLoading = false;
 		}
