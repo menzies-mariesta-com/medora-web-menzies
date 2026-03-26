@@ -56,7 +56,9 @@ export function toBaseMessages(
 	});
 }
 
-function chunkContentToString(content: AIMessageChunk['content']): string {
+function chunkContentToString(
+	content: AIMessageChunk['content']
+): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) {
 		return content

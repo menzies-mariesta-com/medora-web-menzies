@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { getCategoryPaginated } from '$lib/remote/table/information-table/category.remote';
+	import { getCategoryPaginated } from '$lib/tool/remote/table/information-table/category.http.tool.svelte';
 	import type { CategorySchema } from '$lib/server/db/schema-type';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	let { data } = $props();

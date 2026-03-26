@@ -10,7 +10,9 @@ export function resolveDocumentSettingForDoc(
 	const docTypeName =
 		doc.documentType?.documentType?.trim().toLowerCase() ?? '';
 	if (doc.documentSettingId) {
-		const s = documentSettings.find((x) => x.id === doc.documentSettingId);
+		const s = documentSettings.find(
+			(x) => x.id === doc.documentSettingId
+		);
 		return (s as DocumentSettingSchema | undefined) ?? null;
 	}
 	if (doc.documentTypeId) {

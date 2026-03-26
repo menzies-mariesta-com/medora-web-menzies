@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import LucidePrinter from '$lib/component/library/lucide/LucidePrinter.svelte';
-	import LucideFileText from '$lib/component/library/lucide/LucideFileText.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { getPatientVisitByIdWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
+	import { getPatientVisitByIdWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
 		getDocumentsWithRelations,
 		type DocumentWithRelations
-	} from '$lib/remote/table/information-table/document.remote';
+	} from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
 	import {
 		getDocumentSettingsWithRelations,
 		type DocumentSettingWithRelations
-	} from '$lib/remote/table/information-table/document-setting.remote';
+	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
+	import type { PatientVisitWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
 		buildDocumentPlaceholderContext,
 		buildVisitServiceLinesTableHtml,
@@ -32,7 +32,7 @@
 	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
 	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
-	import { createPatientDocument } from '$lib/remote/table/information-table/patient-document.remote';
+	import { createPatientDocument } from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const toastService = new ToastService();
@@ -53,7 +53,9 @@
 	let serviceLinesTableHtml = $state('');
 
 	const printByName = $derived(
-		typeof page.data?.printByName === 'string' ? page.data.printByName : ''
+		typeof page.data?.printByName === 'string'
+			? page.data.printByName
+			: ''
 	);
 
 	const consentDocuments = $derived(
@@ -193,7 +195,10 @@
 				return;
 			}
 
-			const setting = resolveDocumentSettingForDoc(documentSettings, doc);
+			const setting = resolveDocumentSettingForDoc(
+				documentSettings,
+				doc
+			);
 
 			const context = buildPlaceholderContext(doc);
 			const documentHtml = applyPlaceholders(
@@ -242,9 +247,10 @@
 			if (visitId && patientId) {
 				try {
 					const blob = await htmlStringToPdfBlob(htmlPdf);
-					const safeBase = `${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
-						.replace(/[^\w.-]+/g, '_')
-						.slice(0, 120);
+					const safeBase =
+						`${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
+							.replace(/[^\w.-]+/g, '_')
+							.slice(0, 120);
 					const url = await uploadPatientAttachmentPdf(
 						blob,
 						`${safeBase}.pdf`
@@ -324,176 +330,179 @@
 	{:else}
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 			{#if isLoading && documents.length === 0}
-				<div class="lg:col-span-3 flex items-center justify-center py-12">
+				<div
+					class="flex items-center justify-center py-12 lg:col-span-3"
+				>
 					<DaisyUiLoading className="d-loading-lg" />
 				</div>
 			{:else}
-			<!-- Consent Forms -->
-			<DaisyUiCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-primary" />
-						Consent Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{consentDocuments.length} document{consentDocuments.length !==
-						1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="d-menu p-2">
-					{#if consentDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No consent forms available</span
-							>
-						</li>
-					{:else}
-						{#each consentDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between py-2"
+				<!-- Consent Forms -->
+				<DaisyUiCard className="bg-base-100">
+					<div class="border-b border-base-300 p-4">
+						<h3 class="flex items-center gap-2 text-lg font-semibold">
+							<LucideFileText className="w-5 h-5 text-primary" />
+							Consent Forms
+						</h3>
+						<p class="mt-1 text-sm text-base-content/60">
+							{consentDocuments.length} document{consentDocuments.length !==
+							1
+								? 's'
+								: ''} available
+						</p>
+					</div>
+					<ul class="d-menu p-2">
+						{#if consentDocuments.length === 0}
+							<li class="d-disabled">
+								<span class="text-sm text-base-content/50"
+									>No consent forms available</span
 								>
-									<span class="flex-1 truncate text-sm">
-										{doc.documentNumber || `Consent #${doc.id}`}
-									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn d-btn-ghost d-btn-xs"
-											onclick={() => viewDocument(doc)}
-											title="View"
-										>
-											<LucideEye className="w-4 h-4" />
-										</button>
-										<button
-											type="button"
-											class="d-btn text-primary d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
-								</div>
 							</li>
-						{/each}
-					{/if}
-				</ul>
-			</DaisyUiCard>
+						{:else}
+							{#each consentDocuments as doc (doc.id)}
+								<li>
+									<div
+										class="flex w-full items-center justify-between py-2"
+									>
+										<span class="flex-1 truncate text-sm">
+											{doc.documentNumber || `Consent #${doc.id}`}
+										</span>
+										<div class="flex items-center gap-1">
+											<button
+												type="button"
+												class="d-btn d-btn-ghost d-btn-xs"
+												onclick={() => viewDocument(doc)}
+												title="View"
+											>
+												<LucideEye className="w-4 h-4" />
+											</button>
+											<button
+												type="button"
+												class="d-btn text-primary d-btn-ghost d-btn-xs"
+												onclick={() => printDocument(doc)}
+												title="Print"
+												disabled={!canPrint}
+											>
+												<LucidePrinter className="w-4 h-4" />
+											</button>
+										</div>
+									</div>
+								</li>
+							{/each}
+						{/if}
+					</ul>
+				</DaisyUiCard>
 
-			<!-- Instruction Forms -->
-			<DaisyUiCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-info" />
-						Instruction Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{instructionDocuments.length} document{instructionDocuments.length !==
-						1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="d-menu p-2">
-					{#if instructionDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No instruction forms available</span
-							>
-						</li>
-					{:else}
-						{#each instructionDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between py-2"
+				<!-- Instruction Forms -->
+				<DaisyUiCard className="bg-base-100">
+					<div class="border-b border-base-300 p-4">
+						<h3 class="flex items-center gap-2 text-lg font-semibold">
+							<LucideFileText className="w-5 h-5 text-info" />
+							Instruction Forms
+						</h3>
+						<p class="mt-1 text-sm text-base-content/60">
+							{instructionDocuments.length} document{instructionDocuments.length !==
+							1
+								? 's'
+								: ''} available
+						</p>
+					</div>
+					<ul class="d-menu p-2">
+						{#if instructionDocuments.length === 0}
+							<li class="d-disabled">
+								<span class="text-sm text-base-content/50"
+									>No instruction forms available</span
 								>
-									<span class="flex-1 truncate text-sm">
-										{doc.documentNumber || `Instruction #${doc.id}`}
-									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn d-btn-ghost d-btn-xs"
-											onclick={() => viewDocument(doc)}
-											title="View"
-										>
-											<LucideEye className="w-4 h-4" />
-										</button>
-										<button
-											type="button"
-											class="d-btn text-info d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
-								</div>
 							</li>
-						{/each}
-					{/if}
-				</ul>
-			</DaisyUiCard>
+						{:else}
+							{#each instructionDocuments as doc (doc.id)}
+								<li>
+									<div
+										class="flex w-full items-center justify-between py-2"
+									>
+										<span class="flex-1 truncate text-sm">
+											{doc.documentNumber || `Instruction #${doc.id}`}
+										</span>
+										<div class="flex items-center gap-1">
+											<button
+												type="button"
+												class="d-btn d-btn-ghost d-btn-xs"
+												onclick={() => viewDocument(doc)}
+												title="View"
+											>
+												<LucideEye className="w-4 h-4" />
+											</button>
+											<button
+												type="button"
+												class="d-btn text-info d-btn-ghost d-btn-xs"
+												onclick={() => printDocument(doc)}
+												title="Print"
+												disabled={!canPrint}
+											>
+												<LucidePrinter className="w-4 h-4" />
+											</button>
+										</div>
+									</div>
+								</li>
+							{/each}
+						{/if}
+					</ul>
+				</DaisyUiCard>
 
-			<!-- Forms -->
-			<DaisyUiCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-success" />
-						Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{formDocuments.length} document{formDocuments.length !== 1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="d-menu p-2">
-					{#if formDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No forms available</span
-							>
-						</li>
-					{:else}
-						{#each formDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between py-2"
+				<!-- Forms -->
+				<DaisyUiCard className="bg-base-100">
+					<div class="border-b border-base-300 p-4">
+						<h3 class="flex items-center gap-2 text-lg font-semibold">
+							<LucideFileText className="w-5 h-5 text-success" />
+							Forms
+						</h3>
+						<p class="mt-1 text-sm text-base-content/60">
+							{formDocuments.length} document{formDocuments.length !==
+							1
+								? 's'
+								: ''} available
+						</p>
+					</div>
+					<ul class="d-menu p-2">
+						{#if formDocuments.length === 0}
+							<li class="d-disabled">
+								<span class="text-sm text-base-content/50"
+									>No forms available</span
 								>
-									<span class="flex-1 truncate text-sm">
-										{doc.documentNumber || `Form #${doc.id}`}
-									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn d-btn-ghost d-btn-xs"
-											onclick={() => viewDocument(doc)}
-											title="View"
-										>
-											<LucideEye className="w-4 h-4" />
-										</button>
-										<button
-											type="button"
-											class="d-btn text-success d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
-								</div>
 							</li>
-						{/each}
-					{/if}
-				</ul>
-			</DaisyUiCard>
+						{:else}
+							{#each formDocuments as doc (doc.id)}
+								<li>
+									<div
+										class="flex w-full items-center justify-between py-2"
+									>
+										<span class="flex-1 truncate text-sm">
+											{doc.documentNumber || `Form #${doc.id}`}
+										</span>
+										<div class="flex items-center gap-1">
+											<button
+												type="button"
+												class="d-btn d-btn-ghost d-btn-xs"
+												onclick={() => viewDocument(doc)}
+												title="View"
+											>
+												<LucideEye className="w-4 h-4" />
+											</button>
+											<button
+												type="button"
+												class="d-btn text-success d-btn-ghost d-btn-xs"
+												onclick={() => printDocument(doc)}
+												title="Print"
+												disabled={!canPrint}
+											>
+												<LucidePrinter className="w-4 h-4" />
+											</button>
+										</div>
+									</div>
+								</li>
+							{/each}
+						{/if}
+					</ul>
+				</DaisyUiCard>
 			{/if}
 		</div>
 	{/if}

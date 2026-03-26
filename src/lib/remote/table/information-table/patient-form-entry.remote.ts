@@ -24,12 +24,17 @@ export type PatientFormEntryWithRelations = PatientFormEntrySchema & {
 
 export const getPatientFormEntryById = query(
 	'unchecked' as const,
-	async ({ id }: { id: number }): Promise<PatientFormEntryWithRelations | null> => {
-		const row = await ensureDb().query.patientFormEntryTable.findFirst({
-			where: (t, { and, eq, ne }) =>
-				and(eq(t.id, id), ne(t.statusId, StatusEnum.DELETED)),
-			with: { formName: true }
-		});
+	async ({
+		id
+	}: {
+		id: number;
+	}): Promise<PatientFormEntryWithRelations | null> => {
+		const row =
+			await ensureDb().query.patientFormEntryTable.findFirst({
+				where: (t, { and, eq, ne }) =>
+					and(eq(t.id, id), ne(t.statusId, StatusEnum.DELETED)),
+				with: { formName: true }
+			});
 		return row as PatientFormEntryWithRelations | null;
 	}
 );
@@ -60,7 +65,9 @@ export const getPatientFormEntriesByVisitIdAndFormCode = query(
 	}
 );
 
-async function getFormNameIdByCode(code: string): Promise<number | null> {
+async function getFormNameIdByCode(
+	code: string
+): Promise<number | null> {
 	const row = await ensureDb().query.formNameTable.findFirst({
 		where: (t, { and, eq, ne }) =>
 			and(eq(t.code, code.trim()), ne(t.statusId, StatusEnum.DELETED))
@@ -81,7 +88,8 @@ async function ensureFormNameIdByCode(code: string): Promise<number> {
 			statusId: StatusEnum.ACTIVE
 		})
 		.returning({ id: table.formNameTable.id });
-	if (!created) throw new Error(`Unable to create form name: ${normalizedCode}`);
+	if (!created)
+		throw new Error(`Unable to create form name: ${normalizedCode}`);
 	return created.id;
 }
 

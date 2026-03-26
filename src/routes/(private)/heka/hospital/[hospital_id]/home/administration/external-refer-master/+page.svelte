@@ -1,35 +1,35 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/library/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
+	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import {
 		getExternalReferPaginated,
 		deleteExternalRefer
-	} from '$lib/remote/table/information-table/external-refer.remote';
+	} from '$lib/tool/remote/table/information-table/external-refer.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { ExternalReferWithRelations } from '$lib/remote/table/information-table/external-refer.remote';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import LExternalReferMasterModal from '$lib/component/local/private/heka/administration/external-refer-master/LExternalReferMasterModal.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { ExternalReferWithRelations } from '$lib/tool/remote/table/information-table/external-refer.http.tool.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
+	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import LExternalReferMasterModal from '$lib/component/own/local/private/heka/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 

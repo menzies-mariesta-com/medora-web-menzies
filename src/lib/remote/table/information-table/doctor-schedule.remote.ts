@@ -16,7 +16,9 @@ import { and, count, eq } from 'drizzle-orm';
 
 const BRANCH_ALL_VALUE = '__all__';
 
-async function getSelectedBranchConstraintForStaff(hospitalId: string): Promise<string | null> {
+async function getSelectedBranchConstraintForStaff(
+	hospitalId: string
+): Promise<string | null> {
 	try {
 		const event = getRequestEvent();
 		const roleId = event.locals.userRoleId ?? null;
@@ -24,7 +26,7 @@ async function getSelectedBranchConstraintForStaff(hospitalId: string): Promise<
 		if (roleId !== RoleEnum.STAFF || !staffId) return null;
 		const selected =
 			event.cookies.get('heka_selected_branch_id') ?? null;
-		
+
 		const staffBranchesForNavRaw = await ensureDb()
 			.select({
 				id: table.hospitalBranchTable.id,
@@ -44,29 +46,33 @@ async function getSelectedBranchConstraintForStaff(hospitalId: string): Promise<
 					eq(table.hospitalBranchTable.hospitalId, hospitalId)
 				)
 			);
-			
+
 		const staffBranchesForNav = [
 			...new Map(
 				staffBranchesForNavRaw.map((b) => [b.id, b])
 			).values()
 		].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-			
+
 		const allHospitalBranchesRaw = await ensureDb()
 			.select({ id: table.hospitalBranchTable.id })
 			.from(table.hospitalBranchTable)
 			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
-			
-		const allHospitalBranchIds = allHospitalBranchesRaw.map((b) => b.id);
-		const staffBranchIdSet = new Set(staffBranchesForNav.map((b) => b.id));
+
+		const allHospitalBranchIds = allHospitalBranchesRaw.map(
+			(b) => b.id
+		);
+		const staffBranchIdSet = new Set(
+			staffBranchesForNav.map((b) => b.id)
+		);
 		const hasAllBranchesAccess =
 			allHospitalBranchIds.length > 0 &&
 			allHospitalBranchIds.every((id) => staffBranchIdSet.has(id));
-			
+
 		const branchNavIds = staffBranchesForNav.map((b) => b.id);
 		if (hasAllBranchesAccess) {
 			branchNavIds.unshift(BRANCH_ALL_VALUE);
 		}
-		
+
 		const fallbackSelectedId =
 			staffBranchesForNav.length === 1
 				? staffBranchesForNav[0].id
@@ -74,7 +80,11 @@ async function getSelectedBranchConstraintForStaff(hospitalId: string): Promise<
 					? selected
 					: (branchNavIds[0] ?? null);
 
-		if (!fallbackSelectedId || fallbackSelectedId === BRANCH_ALL_VALUE) return null;
+		if (
+			!fallbackSelectedId ||
+			fallbackSelectedId === BRANCH_ALL_VALUE
+		)
+			return null;
 		return fallbackSelectedId;
 	} catch {
 		return null;

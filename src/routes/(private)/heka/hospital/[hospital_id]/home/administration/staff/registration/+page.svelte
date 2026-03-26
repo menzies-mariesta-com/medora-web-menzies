@@ -1,30 +1,30 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/library/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiSkeleton from '$lib/component/daisyui/skeleton/DaisyUiSkeleton.svelte';
 
 	import {
 		getSpecialization,
 		getSpecializationWithRelations,
 		type SpecializationWithRelations
-	} from '$lib/remote/table/master-table/specialization.remote';
-	import { getStaffType } from '$lib/remote/table/master-table/staff-type.remote';
-	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
-	import { getUserGroupByHospitalId } from '$lib/remote/table/information-table/user-group.remote';
-	import { getCountry } from '$lib/remote/table/master-table/country.remote';
-	import { getGender } from '$lib/remote/table/master-table/gender.remote';
-	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
-	import { getMaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
+	} from '$lib/tool/remote/table/master-table/specialization.http.tool.svelte';
+	import { getStaffType } from '$lib/tool/remote/table/master-table/staff-type.http.tool.svelte';
+	import { getDepartment } from '$lib/tool/remote/table/master-table/department.http.tool.svelte';
+	import { getUserGroupByHospitalId } from '$lib/tool/remote/table/information-table/user-group.http.tool.svelte';
+	import { getCountry } from '$lib/tool/remote/table/master-table/country.http.tool.svelte';
+	import { getGender } from '$lib/tool/remote/table/master-table/gender.http.tool.svelte';
+	import { getIdentityType } from '$lib/tool/remote/table/master-table/identity-type.http.tool.svelte';
+	import { getMaritalStatus } from '$lib/tool/remote/table/master-table/marial-status.http.tool.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { getStaffEmploymentType } from '$lib/remote/table/master-table/staff-employment-type.remote';
-	import { getState } from '$lib/remote/table/master-table/state.remote';
-	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
+	import { getStaffEmploymentType } from '$lib/tool/remote/table/master-table/staff-employment-type.http.tool.svelte';
+	import { getState } from '$lib/tool/remote/table/master-table/state.http.tool.svelte';
+	import { getCity } from '$lib/tool/remote/table/master-table/city.http.tool.svelte';
+	import { getPostalCode } from '$lib/tool/remote/table/master-table/postal-code.http.tool.svelte';
 	import { browser } from '$app/environment';
-	import { getBranchesByHospitalId } from '$lib/remote/table/information-table/hospital-branch.remote';
+	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
 	import type {
 		BloodTypeSchema,
 		CitySchema,
@@ -43,46 +43,46 @@
 		TitleSchema,
 		UserGroupSchema
 	} from '$lib/server/db/schema-type';
-	import { getTitle } from '$lib/remote/table/master-table/title.remote';
+	import { getTitle } from '$lib/tool/remote/table/master-table/title.http.tool.svelte';
 	import {
 		createStaffWithUser,
 		updateStaff,
 		getStaffByIdWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
-	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
+	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import { updateUser } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import {
 		createStaffDetail,
 		updateStaffDetail
-	} from '$lib/remote/table/information-table/staff-detail.remote';
+	} from '$lib/tool/remote/table/information-table/staff-detail.http.tool.svelte';
 	import {
 		createStaffDepartment,
 		deleteStaffDepartment
-	} from '$lib/remote/table/information-table/staff-department.remote';
+	} from '$lib/tool/remote/table/information-table/staff-department.http.tool.svelte';
 	import {
 		createStaffUserGroup,
 		deleteStaffUserGroup
-	} from '$lib/remote/table/information-table/staff-user-group.remote';
+	} from '$lib/tool/remote/table/information-table/staff-user-group.http.tool.svelte';
 	import {
 		createStaffBranch,
 		deleteStaffBranch
-	} from '$lib/remote/table/information-table/staff-branch.remote';
+	} from '$lib/tool/remote/table/information-table/staff-branch.http.tool.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
+	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
-	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
-	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
-	import LStaffRegistrationThirdColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationThirdColumn.svelte';
-	import LStaffRegistrationSecondColumn from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationSecondColumn.svelte';
-	import LStaffRegistrationMoreInfo from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
-	import LStaffRegistrationPermissions from '$lib/component/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
-	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
-	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
-	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
+	import { getBloodType } from '$lib/tool/remote/table/master-table/blood-type.http.tool.svelte';
+	import { getNationality } from '$lib/tool/remote/table/master-table/nationality.http.tool.svelte';
+	import LStaffRegistrationThirdColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationThirdColumn.svelte';
+	import LStaffRegistrationSecondColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationSecondColumn.svelte';
+	import LStaffRegistrationMoreInfo from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
+	import LStaffRegistrationPermissions from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationPermissions.svelte';
+	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiFileInput from '$lib/component/daisyui/fileinput/DaisyUiFileInput.svelte';
+	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
@@ -635,7 +635,11 @@
 					return;
 				}
 				const previousUser = staff as {
-					user?: { id: string; email?: string | null; name?: string | null };
+					user?: {
+						id: string;
+						email?: string | null;
+						name?: string | null;
+					};
 				};
 				const previousEmail = previousUser.user?.email ?? '';
 				const previousName = previousUser.user?.name ?? '';

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getPage } from '$lib/remote/table/information-table/page.remote';
+import { getPageWithFetch } from '$lib/tool/remote/table/information-table/page.http.tool.svelte';
 import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 
 const STAFF_INDEX_PATH = '/heka/home/administration/staff';
@@ -9,9 +9,9 @@ function normPath(p: string | null | undefined): string {
 	return (p ?? '').replace(/\/$/, '') || '/';
 }
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, fetch }) => {
 	const hospitalId = params.hospital_id;
-	const pages = await getPage();
+	const pages = await getPageWithFetch(fetch);
 	const staffPage = pages.find(
 		(p) => normPath(p.pageUrl) === STAFF_INDEX_PATH
 	);

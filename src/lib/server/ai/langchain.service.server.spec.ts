@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HumanMessage } from '@langchain/core/messages';
-import { invokeChat, toBaseMessages } from './langchain.service.server';
+import {
+	invokeChat,
+	toBaseMessages
+} from './langchain.service.server';
 
 vi.mock('./llm.server.ts', () => ({
 	getChatModel: vi.fn(() => ({

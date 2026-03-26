@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiModalBox from '$lib/component/library/daisyui/modal/box/DaisyUiModalBox.svelte';
-	import DaisyUiModal from '$lib/component/library/daisyui/modal/DaisyUiModal.svelte';
-	import DaisyUiToast from '$lib/component/library/daisyui/toast/DaisyUiToast.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiModalBox from '$lib/component/daisyui/modal/box/DaisyUiModalBox.svelte';
+	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
+	import DaisyUiToast from '$lib/component/daisyui/toast/DaisyUiToast.svelte';
 	import { gsapAnimate } from '$lib/action/gsap.action.svelte';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -11,7 +11,7 @@
 	import { DialogState } from '$lib/state/dialog.state.svelte';
 	import { ToastState } from '$lib/state/toast.state.svelte';
 	import './layout.css';
-	import GQuickTool from '$lib/component/global/GQuickTool.svelte';
+	import GQuickTool from '$lib/component/own/global/GQuickTool.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
 	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';

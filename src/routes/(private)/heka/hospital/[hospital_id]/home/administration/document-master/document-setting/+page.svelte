@@ -1,22 +1,22 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import LucideX from '$lib/component/library/lucide/LucideX.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import LucideCopy from '$lib/component/library/lucide/LucideCopy.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import MariRichEditor from '$lib/component/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
+	import MariRichEditor from '$lib/component/own/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -24,15 +24,15 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import {
 		getDocumentSettingsPaginated,
 		createDocumentSetting,
 		updateDocumentSetting,
 		deleteDocumentSetting,
 		type DocumentSettingWithRelations
-	} from '$lib/remote/table/information-table/document-setting.remote';
-	import { getDocumentTypes } from '$lib/remote/table/information-table/document-type.remote';
+	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
+	import { getDocumentTypes } from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
 	import type {
 		DocumentTypeSchema,
 		DocumentSettingSchema

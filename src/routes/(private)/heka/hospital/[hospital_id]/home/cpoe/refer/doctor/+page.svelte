@@ -4,21 +4,21 @@
 	import {
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
-	import { getBranchesByHospitalId } from '$lib/remote/table/information-table/hospital-branch.remote';
-	import { createReferHistory } from '$lib/remote/table/information-table/refer-history.remote';
+	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
+	import { createReferHistory } from '$lib/tool/remote/table/information-table/refer-history.http.tool.svelte';
 	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLabel from '$lib/component/library/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import DaisyUiCheckbox from '$lib/component/library/daisyui/checkbox/DaisyUiCheckbox.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
 
@@ -60,7 +60,9 @@
 
 	lifeCycle.onMount(async () => {
 		if (hospitalId) {
-			const branchData = await getBranchesByHospitalId({ hospitalId });
+			const branchData = await getBranchesByHospitalId({
+				hospitalId
+			});
 			branches = branchData;
 		}
 	});
@@ -144,7 +146,10 @@
 			return;
 		}
 		if (!subject.trim()) {
-			toastService.addToast('Subject is required.', StatusColorEnum.WARNING);
+			toastService.addToast(
+				'Subject is required.',
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		if (!referRequestNote.trim()) {
@@ -203,7 +208,9 @@
 	{/if}
 
 	<div class="flex flex-col gap-4">
-		<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+		<div
+			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
 			<DaisyUiLabel forText="to-branch" className="shrink-0 sm:w-40">
 				Destination Branch <span class="text-error">*</span>
 			</DaisyUiLabel>
@@ -221,8 +228,13 @@
 			</DaisyUiSelect>
 		</div>
 
-		<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="to-doctor-search" className="shrink-0 sm:w-40">
+		<div
+			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="to-doctor-search"
+				className="shrink-0 sm:w-40"
+			>
 				Destination Doctor <span class="text-error">*</span>
 			</DaisyUiLabel>
 			<div class="min-w-0 flex-1">
@@ -238,8 +250,13 @@
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-			<DaisyUiLabel forText="refer-subject" className="shrink-0 sm:w-40">
+		<div
+			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<DaisyUiLabel
+				forText="refer-subject"
+				className="shrink-0 sm:w-40"
+			>
 				Subject <span class="text-error">*</span>
 			</DaisyUiLabel>
 			<DaisyUiInputField
@@ -251,7 +268,9 @@
 			/>
 		</div>
 
-		<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+		<div
+			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
 			<DaisyUiLabel forText="is-urgent" className="shrink-0 sm:w-40"
 				>Urgent</DaisyUiLabel
 			>
@@ -261,13 +280,15 @@
 			</label>
 		</div>
 
-		<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+		<div
+			class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
 			<DaisyUiLabel forText="refer-note" className="shrink-0 sm:w-40">
 				Referral note <span class="text-error">*</span>
 			</DaisyUiLabel>
 			<textarea
 				id="refer-note"
-				class="d-textarea d-textarea-bordered min-h-24 flex-1"
+				class="d-textarea-bordered d-textarea min-h-24 flex-1"
 				bind:value={referRequestNote}
 				required
 				placeholder="Enter referral details…"

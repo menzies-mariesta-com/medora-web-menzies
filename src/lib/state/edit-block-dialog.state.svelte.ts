@@ -4,4 +4,11 @@ export const EditBlockDialogState = $state<{
 	date: string;
 	startTime: string;
 	endTime: string;
-}>({ blockId: null, date: '', startTime: '', endTime: '' });
+	remark: string;
+}>({
+	blockId: null,
+	date: '',
+	startTime: '',
+	endTime: '',
+	remark: ''
+});

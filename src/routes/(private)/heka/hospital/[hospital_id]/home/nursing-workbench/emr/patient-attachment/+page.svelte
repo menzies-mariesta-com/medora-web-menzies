@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import LPatientAttachmentDialogContent from '$lib/component/own/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''

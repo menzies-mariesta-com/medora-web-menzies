@@ -1,40 +1,40 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiSearchSelect from '$lib/component/library/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
 		getServiceOrder,
 		createServiceOrder
-	} from '$lib/remote/table/information-table/service-order.remote';
+	} from '$lib/tool/remote/table/information-table/service-order.http.tool.svelte';
 	import {
 		getServiceOrderDetail,
 		createServiceOrderDetail,
 		updateServiceOrderDetail,
 		deleteServiceOrderDetail
-	} from '$lib/remote/table/information-table/service-order-detail.remote';
-	import { getServiceTagging } from '$lib/remote/table/information-table/service-tagging.remote';
+	} from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
+	import { getServiceTagging } from '$lib/tool/remote/table/information-table/service-tagging.http.tool.svelte';
 	import {
 		getServiceItem,
 		getServiceItemPaginated
-	} from '$lib/remote/table/information-table/service-item.remote';
-	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
+	} from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
+	import { getSubCategory } from '$lib/tool/remote/table/information-table/sub-category.http.tool.svelte';
 	import {
 		getDoctorStaffPaginated,
 		getStaffByIdWithRelations,
 		getStaffByIdWithRelationsBatched
-	} from '$lib/remote/table/information-table/staff.remote';
+	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
 		ServiceOrderSchema,
@@ -45,12 +45,12 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import LNursingEmrOrderHistoryDialog from '$lib/component/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
+	import LNursingEmrOrderHistoryDialog from '$lib/component/own/local/private/heka/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
 	import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { uiLogger } from '$lib/logger';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
@@ -506,7 +506,10 @@
 
 	function buildPendingItem(
 		serviceIdValue: string
-	): Omit<PendingItem, 'id' | 'advisingDoctorName' | 'serviceName'> | null {
+	): Omit<
+		PendingItem,
+		'id' | 'advisingDoctorName' | 'serviceName'
+	> | null {
 		const serviceId = parseNumberOrNull(serviceIdValue);
 		if (!serviceId) {
 			toastService.addToast(
@@ -556,7 +559,8 @@
 					);
 				}
 
-				let serviceName = await getServiceLabelForValue(singleServiceId);
+				let serviceName =
+					await getServiceLabelForValue(singleServiceId);
 
 				// Assign a local incremental id
 				const nextId =
@@ -736,7 +740,7 @@
 			filterable: false,
 			format: (value) => (value ? String(value) : '–')
 		},
-		...detailColumns as any[]
+		...(detailColumns as any[])
 	];
 
 	async function handleSaveOrder() {
@@ -756,8 +760,7 @@
 		}
 
 		const today = todayDateString();
-		const dateStr =
-			toDateOnly(orderDateInput || today) ?? today;
+		const dateStr = toDateOnly(orderDateInput || today) ?? today;
 		if (dateStr < today) {
 			toastService.addToast(
 				'Order date cannot be in the past.',
@@ -883,7 +886,9 @@
 					d.advisingDoctorId && doctorNameMap.get(d.advisingDoctorId)
 						? (doctorNameMap.get(d.advisingDoctorId) ?? null)
 						: null,
-				serviceName: d.serviceId ? (serviceNameMap.get(d.serviceId) ?? '') : ''
+				serviceName: d.serviceId
+					? (serviceNameMap.get(d.serviceId) ?? '')
+					: ''
 			}));
 		} catch (err) {
 			toastService.addToast(
@@ -951,269 +956,271 @@
 					message="Visit not found."
 				/>
 			{:else}
-			<DaisyUiCard>
-				<DaisyUiCardBody>
-					<div class="mb-5 flex flex-col gap-4">
-						<div
-							class="flex flex-wrap items-center justify-between gap-3"
-						>
-							<DaisyUiCardBodyTitle className="mb-0">
-								Order
-							</DaisyUiCardBodyTitle>
-							<DaisyUiButton
-								className="d-btn-outline d-btn-sm"
-								onClick={handleShowHistory}
+				<DaisyUiCard>
+					<DaisyUiCardBody>
+						<div class="mb-5 flex flex-col gap-4">
+							<div
+								class="flex flex-wrap items-center justify-between gap-3"
 							>
-								Order history
-							</DaisyUiButton>
-						</div>
+								<DaisyUiCardBodyTitle className="mb-0">
+									Order
+								</DaisyUiCardBodyTitle>
+								<DaisyUiButton
+									className="d-btn-outline d-btn-sm"
+									onClick={handleShowHistory}
+								>
+									Order history
+								</DaisyUiButton>
+							</div>
 
-						<div class="flex flex-col gap-4 border-b pb-4">
-							<!-- Order date & time -->
-							<div class="flex flex-wrap items-end gap-4 text-sm">
-								<label class="flex flex-col gap-1">
-									<span class="font-medium">Order Date</span>
-									<DaisyUiInputField
-										bind:value={orderDateInput}
-										inputType="date"
-										min={todayDateString()}
-										className="d-input-sm w-40"
+							<div class="flex flex-col gap-4 border-b pb-4">
+								<!-- Order date & time -->
+								<div class="flex flex-wrap items-end gap-4 text-sm">
+									<label class="flex flex-col gap-1">
+										<span class="font-medium">Order Date</span>
+										<DaisyUiInputField
+											bind:value={orderDateInput}
+											inputType="date"
+											min={todayDateString()}
+											className="d-input-sm w-40"
+										/>
+									</label>
+									<label class="flex flex-col gap-1">
+										<span class="font-medium">Order Time</span>
+										<input
+											type="time"
+											class="d-input-bordered d-input d-input-sm w-32"
+											bind:value={orderTimeInput}
+										/>
+									</label>
+								</div>
+
+								<!-- Service type radios -->
+								<div
+									class="mt-2 flex flex-wrap items-center gap-6 text-sm"
+								>
+									<div class="font-medium">Service Type</div>
+									<div class="flex flex-wrap gap-6">
+										<label class="inline-flex items-center gap-2">
+											<input
+												type="radio"
+												name="serviceType"
+												class="d-radio d-radio-sm"
+												value="all"
+												bind:group={serviceFilter}
+											/>
+											<span>All Services</span>
+										</label>
+										<label class="inline-flex items-center gap-2">
+											<input
+												type="radio"
+												name="serviceType"
+												class="d-radio d-radio-sm"
+												value="radiology"
+												bind:group={serviceFilter}
+											/>
+											<span>Radiology</span>
+										</label>
+										<label class="inline-flex items-center gap-2">
+											<input
+												type="radio"
+												name="serviceType"
+												class="d-radio d-radio-sm"
+												value="laboratory"
+												bind:group={serviceFilter}
+											/>
+											<span>Laboratory</span>
+										</label>
+										<label class="inline-flex items-center gap-2">
+											<input
+												type="radio"
+												name="serviceType"
+												class="d-radio d-radio-sm"
+												value="nursing"
+												bind:group={serviceFilter}
+											/>
+											<span>Nursing</span>
+										</label>
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+							>
+								<label class="flex min-w-0 flex-col gap-1 text-sm">
+									Service Name
+									<DaisyUiSearchSelect
+										bind:value={detailServiceIdInput}
+										placeholder="Select service"
+										searchFn={searchServices}
+										getLabelForValue={getServiceLabelForValue}
+										minSearchLength={0}
+										onChange={async () => {
+											detailServiceAmountInput = '';
+											detailServiceTaxAmountInput = '';
+											detailServiceUnitInput = '1';
+											await applyPricingForSelectedService();
+										}}
 									/>
 								</label>
-								<label class="flex flex-col gap-1">
-									<span class="font-medium">Order Time</span>
+								<label class="flex min-w-0 flex-col gap-1 text-sm">
+									Order by (Adv Dr.)
+									<DaisyUiSearchSelect
+										bind:value={detailAdvisingDoctorIdInput}
+										placeholder="Select doctor"
+										className="w-full"
+										searchFn={searchDoctors}
+										getLabelForValue={getDoctorLabelForValue}
+										minSearchLength={0}
+									/>
+								</label>
+								<label class="flex min-w-0 flex-col gap-1 text-sm">
+									Unit
 									<input
-										type="time"
-										class="d-input-bordered d-input d-input-sm w-32"
-										bind:value={orderTimeInput}
+										type="number"
+										step="1"
+										min="1"
+										class="d-input-bordered d-input w-full"
+										bind:value={detailServiceUnitInput}
+									/>
+								</label>
+								<label class="flex min-w-0 flex-col gap-1 text-sm">
+									Service Amount
+									<input
+										type="number"
+										step="0.01"
+										class="d-input-bordered d-input w-full"
+										bind:value={detailServiceAmountInput}
+										disabled={!detailAmountEditable}
+									/>
+								</label>
+								<label class="flex min-w-0 flex-col gap-1 text-sm">
+									Tax Amount
+									<input
+										type="number"
+										step="0.01"
+										class="d-input-bordered d-input w-full"
+										bind:value={detailServiceTaxAmountInput}
+										disabled
 									/>
 								</label>
 							</div>
 
-							<!-- Service type radios -->
 							<div
-								class="mt-2 flex flex-wrap items-center gap-6 text-sm"
+								class="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12"
 							>
-								<div class="font-medium">Service Type</div>
-								<div class="flex flex-wrap gap-6">
-									<label class="inline-flex items-center gap-2">
+								<label
+									class="flex min-w-0 flex-col gap-1 text-sm xl:col-span-7"
+								>
+									Order Instruction
+									<textarea
+										class="d-textarea-bordered d-textarea w-full"
+										rows="2"
+										bind:value={detailInstructionInput}
+									></textarea>
+								</label>
+								<div class="flex items-end xl:col-span-2">
+									<label class="flex items-center gap-2 pb-2 text-sm">
 										<input
-											type="radio"
-											name="serviceType"
-											class="d-radio d-radio-sm"
-											value="all"
-											bind:group={serviceFilter}
+											type="checkbox"
+											class="d-checkbox"
+											bind:checked={detailIsUrgentInput}
 										/>
-										<span>All Services</span>
+										<span>Urgent</span>
 									</label>
-									<label class="inline-flex items-center gap-2">
-										<input
-											type="radio"
-											name="serviceType"
-											class="d-radio d-radio-sm"
-											value="radiology"
-											bind:group={serviceFilter}
-										/>
-										<span>Radiology</span>
-									</label>
-									<label class="inline-flex items-center gap-2">
-										<input
-											type="radio"
-											name="serviceType"
-											class="d-radio d-radio-sm"
-											value="laboratory"
-											bind:group={serviceFilter}
-										/>
-										<span>Laboratory</span>
-									</label>
-									<label class="inline-flex items-center gap-2">
-										<input
-											type="radio"
-											name="serviceType"
-											class="d-radio d-radio-sm"
-											value="nursing"
-											bind:group={serviceFilter}
-										/>
-										<span>Nursing</span>
-									</label>
+								</div>
+								<div
+									class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end"
+								>
+									<DaisyUiButton
+										className="d-btn-outline d-btn-sm px-6"
+										onClick={handleAddToList}
+									>
+										Add to list
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-primary d-btn-sm px-8"
+										onClick={handleSaveOrder}
+									>
+										Save
+									</DaisyUiButton>
+									{#if editingDetailId}
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm"
+											onClick={resetDetailForm}
+										>
+											Cancel
+										</DaisyUiButton>
+									{/if}
 								</div>
 							</div>
 						</div>
 
-						<div
-							class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-						>
-							<label class="flex min-w-0 flex-col gap-1 text-sm">
-								Service Name
-								<DaisyUiSearchSelect
-									bind:value={detailServiceIdInput}
-									placeholder="Select service"
-									searchFn={searchServices}
-									getLabelForValue={getServiceLabelForValue}
-									minSearchLength={0}
-									onChange={async () => {
-										detailServiceAmountInput = '';
-										detailServiceTaxAmountInput = '';
-										detailServiceUnitInput = '1';
-										await applyPricingForSelectedService();
-									}}
-								/>
-							</label>
-							<label class="flex min-w-0 flex-col gap-1 text-sm">
-								Order by (Adv Dr.)
-								<DaisyUiSearchSelect
-									bind:value={detailAdvisingDoctorIdInput}
-									placeholder="Select doctor"
-									className="w-full"
-									searchFn={searchDoctors}
-									getLabelForValue={getDoctorLabelForValue}
-									minSearchLength={0}
-								/>
-							</label>
-							<label class="flex min-w-0 flex-col gap-1 text-sm">
-								Unit
-								<input
-									type="number"
-									step="1"
-									min="1"
-									class="d-input-bordered d-input w-full"
-									bind:value={detailServiceUnitInput}
-								/>
-							</label>
-							<label class="flex min-w-0 flex-col gap-1 text-sm">
-								Service Amount
-								<input
-									type="number"
-									step="0.01"
-									class="d-input-bordered d-input w-full"
-									bind:value={detailServiceAmountInput}
-									disabled={!detailAmountEditable}
-								/>
-							</label>
-							<label class="flex min-w-0 flex-col gap-1 text-sm">
-								Tax Amount
-								<input
-									type="number"
-									step="0.01"
-									class="d-input-bordered d-input w-full"
-									bind:value={detailServiceTaxAmountInput}
-									disabled
-								/>
-							</label>
-						</div>
-
-						<div class="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12">
-							<label
-								class="flex min-w-0 flex-col gap-1 text-sm xl:col-span-7"
-							>
-								Order Instruction
-								<textarea
-									class="d-textarea-bordered d-textarea w-full"
-									rows="2"
-									bind:value={detailInstructionInput}
-								></textarea>
-							</label>
-							<div class="flex items-end xl:col-span-2">
-								<label class="flex items-center gap-2 pb-2 text-sm">
-									<input
-										type="checkbox"
-										class="d-checkbox"
-										bind:checked={detailIsUrgentInput}
-									/>
-									<span>Urgent</span>
-								</label>
-							</div>
-							<div
-								class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end"
-							>
-								<DaisyUiButton
-									className="d-btn-outline d-btn-sm px-6"
-									onClick={handleAddToList}
+						<div>
+							<h2 class="mb-2 text-base font-semibold">
+								Order items (pending list)
+							</h2>
+							{#if pendingItems.length === 0}
+								<p class="text-sm text-base-content/70">
+									No items added yet. Use &quot;Add to list&quot;
+									above to prepare items before saving the order.
+								</p>
+							{:else}
+								<div
+									class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
 								>
-									Add to list
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-primary d-btn-sm px-8"
-									onClick={handleSaveOrder}
-								>
-									Save
-								</DaisyUiButton>
-								{#if editingDetailId}
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={resetDetailForm}
+									<MariTable
+										rows={pagedPendingItems}
+										columns={detailColumns}
+										isLoading={false}
+										bind:pageSize={detailPageSizeStr}
+										bind:currentPage={currentDetailPage}
+										totalRowCount={pendingItems.length}
+										showRefreshButton={false}
+										emptyMessage="No items."
+										showRowActions={true}
+										actionsHeader="Actions"
+										actionsVariant="none"
+										enableColumnFilters={false}
+										useRemoteFilters={true}
 									>
-										Cancel
-									</DaisyUiButton>
-								{/if}
-							</div>
+										<svelte:fragment slot="rowActions" let:row>
+											<td class="w-28 shrink-0 text-right">
+												<div class="flex justify-end gap-1">
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-sm"
+														onClick={() =>
+															startEditDetail(row as PendingItem)}
+													>
+														<LucidePencil className="size-4" />
+													</DaisyUiButton>
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-error d-btn-sm"
+														onClick={() =>
+															handleDeleteDetail(row as PendingItem)}
+													>
+														<LucideTrash2 className="size-4" />
+													</DaisyUiButton>
+												</div>
+											</td>
+										</svelte:fragment>
+									</MariTable>
+								</div>
+							{/if}
 						</div>
-					</div>
+					</DaisyUiCardBody>
+				</DaisyUiCard>
 
-					<div>
-						<h2 class="mb-2 text-base font-semibold">
-							Order items (pending list)
-						</h2>
-						{#if pendingItems.length === 0}
-							<p class="text-sm text-base-content/70">
-								No items added yet. Use &quot;Add to list&quot; above
-								to prepare items before saving the order.
-							</p>
-						{:else}
-							<div
-								class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
-							>
-								<MariTable
-									rows={pagedPendingItems}
-									columns={detailColumns}
-									isLoading={false}
-									bind:pageSize={detailPageSizeStr}
-									bind:currentPage={currentDetailPage}
-									totalRowCount={pendingItems.length}
-									showRefreshButton={false}
-									emptyMessage="No items."
-									showRowActions={true}
-									actionsHeader="Actions"
-									actionsVariant="none"
-									enableColumnFilters={false}
-									useRemoteFilters={true}
-								>
-									<svelte:fragment slot="rowActions" let:row>
-										<td class="w-28 shrink-0 text-right">
-											<div class="flex justify-end gap-1">
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm"
-													onClick={() =>
-														startEditDetail(row as PendingItem)}
-												>
-													<LucidePencil className="size-4" />
-												</DaisyUiButton>
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() =>
-														handleDeleteDetail(row as PendingItem)}
-												>
-													<LucideTrash2 className="size-4" />
-												</DaisyUiButton>
-											</div>
-										</td>
-									</svelte:fragment>
-								</MariTable>
-							</div>
-						{/if}
-					</div>
-				</DaisyUiCardBody>
-			</DaisyUiCard>
-
-			<LNursingEmrOrderHistoryDialog
-				open={showHistory}
-				onClose={closeHistory}
-				items={historyItems}
-				isLoading={isLoadingHistory}
-				pageSizeStr={detailPageSizeStr}
-				onDelete={handleDeleteHistoryItem}
-			/>
-				{/if}
-			</div>
-		{/if}
-	</div>
+				<LNursingEmrOrderHistoryDialog
+					open={showHistory}
+					onClose={closeHistory}
+					items={historyItems}
+					isLoading={isLoadingHistory}
+					pageSizeStr={detailPageSizeStr}
+					onDelete={handleDeleteHistoryItem}
+				/>
+			{/if}
+		</div>
+	{/if}
+</div>
