@@ -42,6 +42,16 @@
 		 */
 		cellClassGetter?: (row: T, rowIndex: number) => string;
 		/**
+		 * Optional getter for rendering a custom Svelte component per cell.
+		 * When provided, it takes precedence over the default value rendering.
+		 */
+		cellComponentGetter?:
+			| ((
+					row: T,
+					rowIndex: number
+				) => { component: any; props?: Record<string, any> } | null)
+			| undefined;
+		/**
 		 * Whether this column should show a filter control when column filters are enabled.
 		 * Defaults to true.
 		 */
@@ -607,10 +617,18 @@
 								{/if}
 
 								{#each columns as column (column.id)}
+									{@const cellComponent = column.cellComponentGetter
+										? column.cellComponentGetter(row, index)
+										: null}
 									<td
 										class={`${column.widthClass ?? ''} ${column.cellClass ?? ''} ${column.cellClassGetter ? column.cellClassGetter(row, index) : ''}`.trim()}
 									>
-										{getCellValue(row, column, index)}
+										{#if cellComponent && cellComponent.component}
+											{@const Component = cellComponent.component}
+											<Component {...(cellComponent.props ?? {})} />
+										{:else}
+											{getCellValue(row, column, index)}
+										{/if}
 									</td>
 								{/each}
 							</tr>

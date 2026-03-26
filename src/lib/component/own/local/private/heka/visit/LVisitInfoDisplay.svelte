@@ -2,10 +2,14 @@
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import LucideTriangleAlert from '$lib/component/own/library/lucide/LucideTriangleAlert.svelte';
 	import {
 		getPatientVisitByIdWithRelations,
 		type PatientVisitWithRelations
 	} from '$lib/remote/table/information-table/patient-visit.remote';
+	import {
+		getActivePatientAllergiesPatientIdsByPatientIds
+	} from '$lib/remote/table/information-table/patient-allergies.remote';
 
 	let {
 		visitId = '',
@@ -19,6 +23,8 @@
 
 	let visit = $state<PatientVisitWithRelations | null>(null);
 	let isLoading = $state(false);
+	let hasActiveAllergies = $state(false);
+	let alert = $state(false);
 
 	const visitIdNum = $derived(visitId ? Number(visitId) : 0);
 
@@ -38,6 +44,37 @@
 				if (!cancelled) isLoading = false;
 			}
 		})();
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		const patientId = visit?.patient?.id;
+		if (!patientId) {
+			hasActiveAllergies = false;
+			return;
+		}
+
+		let cancelled = false;
+		hasActiveAllergies = false;
+
+		(async () => {
+			const activeIds =
+				await getActivePatientAllergiesPatientIdsByPatientIds({
+					patientIds: [String(patientId)]
+				});
+			if (!cancelled) {
+				hasActiveAllergies = activeIds.includes(String(patientId));
+				alert = true;
+			}
+		})().catch(() => {
+			if (!cancelled) {
+				hasActiveAllergies = false;
+				alert = false;
+			}
+		});
+
 		return () => {
 			cancelled = true;
 		};
@@ -206,6 +243,25 @@
 						>
 						<span class="font-medium text-base-content">
 							{visitDate}
+						</span>
+					</div>
+				{/if}
+
+				{#if alert}
+					<div class="flex flex-wrap items-center gap-1">
+						<span class="font-normal text-base-content/60"
+							>Alert:</span
+						>
+						<span class="font-medium text-base-content">
+							{#if hasActiveAllergies}
+								<span
+									aria-label={m.observation_emr_allergies()}
+									title={m.observation_emr_allergies()}
+									class="inline-flex items-center text-warning"
+								>
+									<LucideTriangleAlert className="size-4" />
+								</span>
+							{/if}
 						</span>
 					</div>
 				{/if}
