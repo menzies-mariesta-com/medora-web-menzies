@@ -12,6 +12,13 @@ export enum RoleEnum {
 	STAFF = 3
 }
 
+/** Matches `staff_type` master seed (e.g. NURSE=1, EMPLOYEE=2, DOCTOR=3). */
+export enum StaffTypeEnum {
+	NURSE = 1,
+	EMPLOYEE = 2,
+	DOCTOR = 3
+}
+
 export enum YesNoEnum {
 	YES = 1,
 	NO = 0
