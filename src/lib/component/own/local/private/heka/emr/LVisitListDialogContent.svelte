@@ -337,18 +337,4 @@
 			/>
 		</div>
 	{/if}
-
-	<div
-		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
-	>
-		<div></div>
-		<div class="flex gap-2">
-			<DaisyUiButton
-				className="d-btn-ghost d-btn-sm"
-				onClick={cancel}
-			>
-				Cancel
-			</DaisyUiButton>
-		</div>
-	</div>
 </div>
