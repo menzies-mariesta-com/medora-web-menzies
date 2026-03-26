@@ -103,7 +103,9 @@ export function buildPrintDocumentHtml(params: {
 						}
 					}`;
 
-	const bodyMinWidth = isPdf ? 'min-width: 720px; max-width: 800px;' : '';
+	const bodyMinWidth = isPdf
+		? 'min-width: 720px; max-width: 800px;'
+		: '';
 
 	return `<!DOCTYPE html>
 			<html>

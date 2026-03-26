@@ -1,21 +1,18 @@
 <script lang="ts">
-	import LDoctorAppointmentCalendar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
-	import LDoctorAppointmentProfileBar from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
-	import LDoctorAppointmentStatistics from '$lib/component/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import LCancelAppointmentHistoryDialogContent from '$lib/component/local/private/heka/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
-	import { getAppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
-	import { getDoctorSchedule } from '$lib/remote/table/information-table/doctor-schedule.remote';
+	import LDoctorAppointmentCalendar from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentCalendar.svelte';
+	import LDoctorAppointmentProfileBar from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentProfileBar.svelte';
+	import LDoctorAppointmentStatistics from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import LCancelAppointmentHistoryDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
+	import { getAppointmentWithRelations } from '$lib/tool/remote/table/information-table/appointment.http.tool.svelte';
+	import { getDoctorSchedule } from '$lib/tool/remote/table/information-table/doctor-schedule.http.tool.svelte';
 	import {
 		createAppointmentBlock,
 		deleteAppointmentBlock,
 		getAppointmentBlock,
 		updateAppointmentBlock
-	} from '$lib/remote/table/information-table/appointment-block.remote';
-	import {
-		getDoctorStaffList,
-		type StaffWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
+	} from '$lib/tool/remote/table/information-table/appointment-block.http.tool.svelte';
+	import { getDoctorStaffList } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { AppointmentBlockSchema } from '$lib/server/db/schema-type';
 	import type { DoctorScheduleSchema } from '$lib/server/db/schema-type';
@@ -39,7 +36,7 @@
 		navbarSelectedBranchId === '__all__'
 	);
 
-	let doctorList = $state<StaffWithRelations[]>([]);
+	let doctorList = $state<any[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
 	type AppointmentWithRelations = Awaited<
 		ReturnType<typeof getAppointmentWithRelations>
@@ -83,9 +80,7 @@
 		if (!doctor) return [];
 		return (doctor.staffBranches ?? [])
 			.map((sb: any) => sb.branch)
-			.filter(
-				(b: any): b is NonNullable<typeof b> => b != null
-			)
+			.filter((b: any): b is NonNullable<typeof b> => b != null)
 			.map((b: any) => ({ id: b.id, name: b.name ?? null }));
 	});
 	const effectiveBranchId = $derived.by(() => {
@@ -108,9 +103,7 @@
 			return;
 		}
 		if (
-			!options.some(
-				(b: any) => b.id === selectedAppointmentBranchId
-			)
+			!options.some((b: any) => b.id === selectedAppointmentBranchId)
 		) {
 			selectedAppointmentBranchId = options[0].id;
 		}
@@ -210,35 +203,39 @@
 	/** Appointments for selected doctor in visible date range → calendar highlights by state and patient name. */
 	const appointmentSlots = $derived.by(() => {
 		const dateSet = new Set(visibleDates);
-		return appointments
-			.filter(
-				(a) =>
-					String(a.staffId) === selectedDoctorId &&
-					(effectiveBranchId
-						? String(a.branchId) === effectiveBranchId
-						: true) &&
-					a.statusId !== StatusEnum.DELETED &&
-					a.appointmentDate != null &&
-					dateSet.has(String(a.appointmentDate).slice(0, 10))
-			)
-			.map((a) => ({
-				appointmentId: a.id,
-				date: String(a.appointmentDate).slice(0, 10),
-				startTime: String(a.fromTime ?? '').trim(),
-				endTime: String(a.toTime ?? '').trim(),
-				patientCode: a.patient?.code?.trim() ?? '',
-				patientName:
-					a.patientName?.trim() ??
-					(a.patient
-						? StringUtil.patientDisplayName(a.patient as any)
-						: ''),
-				slotState: toSlotState(
-					a.statusTagging?.code ?? a.statusTagging?.name
+		return (
+			appointments
+				.filter(
+					(a) =>
+						String(a.staffId) === selectedDoctorId &&
+						(effectiveBranchId
+							? String(a.branchId) === effectiveBranchId
+							: true) &&
+						a.statusId !== StatusEnum.DELETED &&
+						a.appointmentDate != null &&
+						dateSet.has(String(a.appointmentDate).slice(0, 10))
 				)
-			}))
-			// Cancelled appointments should not appear in the timeline and must
-			// not block creating a new appointment in the same slot.
-			.filter((s) => s.startTime && s.endTime && s.slotState !== 'cancel');
+				.map((a) => ({
+					appointmentId: a.id,
+					date: String(a.appointmentDate).slice(0, 10),
+					startTime: String(a.fromTime ?? '').trim(),
+					endTime: String(a.toTime ?? '').trim(),
+					patientCode: a.patient?.code?.trim() ?? '',
+					patientName:
+						a.patientName?.trim() ??
+						(a.patient
+							? StringUtil.patientDisplayName(a.patient as any)
+							: ''),
+					slotState: toSlotState(
+						a.statusTagging?.code ?? a.statusTagging?.name
+					)
+				}))
+				// Cancelled appointments should not appear in the timeline and must
+				// not block creating a new appointment in the same slot.
+				.filter(
+					(s) => s.startTime && s.endTime && s.slotState !== 'cancel'
+				)
+		);
 	});
 
 	/** Blocked slots for the calendar (from DB), with blockId for edit/delete. */
@@ -254,7 +251,8 @@
 				blockId: b.id,
 				date: String(b.blockDate).slice(0, 10),
 				startTime: String(b.fromTime).trim(),
-				endTime: String(b.toTime).trim()
+				endTime: String(b.toTime).trim(),
+				remark: String((b as any).remark ?? '').trim()
 			}))
 	);
 
@@ -322,22 +320,22 @@
 		}
 		getDoctorSchedule(
 			hid ? { hospitalId: hid, branchId: bid } : undefined
-		).then((all) => {
+		).then((all: any[]) => {
 			doctorSchedules = all.filter(
-				(s) =>
+				(s: any) =>
 					String(s.staffId) === String(id) &&
 					s.statusId !== StatusEnum.INACTIVE &&
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
-		getAppointmentWithRelations().then((all) => {
-			appointments = all;
+		getAppointmentWithRelations().then((all: any[]) => {
+			appointments = all as any;
 		});
 		getAppointmentBlock({
 			staffId: id,
 			hospitalId: hid ?? undefined
-		}).then((all) => {
-			appointmentBlocks = all;
+		}).then((all: any[]) => {
+			appointmentBlocks = all as any;
 		});
 	});
 </script>
@@ -389,7 +387,8 @@
 						hospitalId: hospitalId ?? undefined,
 						blockDate: block.date,
 						fromTime: block.startTime,
-						toTime: block.endTime
+						toTime: block.endTime,
+						remark: (block as any).remark ?? ''
 					});
 					appointmentBlocks = [...appointmentBlocks, created];
 				} catch {
@@ -402,7 +401,8 @@
 						id: payload.id,
 						blockDate: payload.date,
 						fromTime: payload.startTime,
-						toTime: payload.endTime
+						toTime: payload.endTime,
+						remark: (payload as any).remark ?? ''
 					});
 					appointmentBlocks = appointmentBlocks.map((b) =>
 						b.id === payload.id ? updated : b

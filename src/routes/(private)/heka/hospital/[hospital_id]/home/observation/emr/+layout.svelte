@@ -7,7 +7,7 @@
 	} from '$lib/state/page.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import LVisitInfoBar from '$lib/component/local/private/heka/visit/LVisitInfoBar.svelte';
+	import LVisitInfoBar from '$lib/component/own/local/private/heka/visit/LVisitInfoBar.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
 
@@ -41,7 +41,10 @@
 
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
-		if (urlVisitId && urlVisitId !== untrack(() => VisitState.visitId)) {
+		if (
+			urlVisitId &&
+			urlVisitId !== untrack(() => VisitState.visitId)
+		) {
 			VisitState.visitId = urlVisitId;
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;

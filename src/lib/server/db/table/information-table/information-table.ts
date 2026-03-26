@@ -845,6 +845,8 @@ export const appointmentBlockTable = pgTable('appointment_block', {
 	blockDate: date('block_date').notNull(),
 	fromTime: time('from_time').notNull(),
 	toTime: time('to_time').notNull(),
+	/** Required remark describing why this time is blocked. */
+	remark: text('remark'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
@@ -938,32 +940,36 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 });
 
 /** Patient visit diagnosis classification (Provisional / Final / Chronic). */
-export const diagnosisTable = pgTable('diagnosis', {
-	id: serial('id').primaryKey(),
-	branchId: uuid('branch_id')
-		.notNull()
-		.references(() => hospitalBranchTable.id),
-	patientId: uuid('patient_id')
-		.notNull()
-		.references(() => patientTable.id),
-	visitId: integer('visit_id')
-		.notNull()
-		.references(() => patientVisitTable.id),
-	diagnosisTypeId: integer('diagnosis_type_id')
-		.notNull()
-		.references(() => diagnosisTypeTable.id),
-	description: text('description'),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	...timestamps
-}, (table) => [
-	index('diagnosis_branch_id_idx').on(table.branchId),
-	index('diagnosis_patient_id_idx').on(table.patientId),
-	index('diagnosis_visit_id_idx').on(table.visitId),
-	index('diagnosis_diagnosis_type_id_idx').on(table.diagnosisTypeId)
-]);
+export const diagnosisTable = pgTable(
+	'diagnosis',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		diagnosisTypeId: integer('diagnosis_type_id')
+			.notNull()
+			.references(() => diagnosisTypeTable.id),
+		description: text('description'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('diagnosis_branch_id_idx').on(table.branchId),
+		index('diagnosis_patient_id_idx').on(table.patientId),
+		index('diagnosis_visit_id_idx').on(table.visitId),
+		index('diagnosis_diagnosis_type_id_idx').on(table.diagnosisTypeId)
+	]
+);
 
 /** Visit form entries (chief complaint, patient condition, etc.) linked to form_name master. */
 export const patientFormEntryTable = pgTable(

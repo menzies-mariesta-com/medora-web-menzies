@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
-	import GPrivateHekaModuleBar from '$lib/component/global/private/heka/GPrivateHekaModuleBar.svelte';
-	import GPrivateHekaNavbar from '$lib/component/global/private/heka/GPrivateHekaNavbar.svelte';
-	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
+	import GPrivateHekaFooterBar from '$lib/component/own/global/private/heka/GPrivateHekaFooterBar.svelte';
+	import GPrivateHekaModuleBar from '$lib/component/own/global/private/heka/GPrivateHekaModuleBar.svelte';
+	import GPrivateHekaNavbar from '$lib/component/own/global/private/heka/GPrivateHekaNavbar.svelte';
+	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import {
 		setPageData,

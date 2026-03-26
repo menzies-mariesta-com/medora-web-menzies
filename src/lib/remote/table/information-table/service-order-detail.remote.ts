@@ -12,7 +12,15 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, asc, count, eq, inArray, isNull, ne } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	eq,
+	inArray,
+	isNull,
+	ne
+} from 'drizzle-orm';
 
 // get all (optionally filtered by serviceOrderId/serviceId/status/id)
 export const getServiceOrderDetail = query(
@@ -227,8 +235,7 @@ export const getServiceOrderDetailRowsForVisit = query(
 			columns: { id: true, orderNo: true },
 			with: {
 				details: {
-					where: (d, { ne }) =>
-						ne(d.statusId, StatusEnum.DELETED),
+					where: (d, { ne }) => ne(d.statusId, StatusEnum.DELETED),
 					with: {
 						serviceItem: true
 					}
@@ -554,8 +561,7 @@ export const markServiceOrderDetailNursingCompleteBatch = command(
 		const candidates = await ensureDb()
 			.select({
 				id: table.serviceOrderDetailTable.id,
-				serviceOrderId:
-					table.serviceOrderDetailTable.serviceOrderId
+				serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
 			})
 			.from(table.serviceOrderDetailTable)
 			.where(detailWhere)
@@ -566,7 +572,10 @@ export const markServiceOrderDetailNursingCompleteBatch = command(
 			.limit(capped);
 
 		if (candidates.length === 0) {
-			return { markedCount: 0, remainingIncompleteCount: totalIncomplete };
+			return {
+				markedCount: 0,
+				remainingIncompleteCount: totalIncomplete
+			};
 		}
 
 		const ids = candidates.map((c) => c.id);
@@ -579,8 +588,7 @@ export const markServiceOrderDetailNursingCompleteBatch = command(
 			.where(inArray(table.serviceOrderDetailTable.id, ids))
 			.returning({
 				id: table.serviceOrderDetailTable.id,
-				serviceOrderId:
-					table.serviceOrderDetailTable.serviceOrderId
+				serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
 			});
 
 		getServiceOrderDetail(undefined).refresh();

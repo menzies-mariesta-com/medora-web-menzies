@@ -11,7 +11,9 @@ export type ChatModelOverrides = {
  * Factory for a {@link ChatOpenAI} instance using app env + optional overrides.
  * Server-only.
  */
-export function getChatModel(overrides?: ChatModelOverrides): ChatOpenAI {
+export function getChatModel(
+	overrides?: ChatModelOverrides
+): ChatOpenAI {
 	const cfg = getOpenAiConfig();
 	return new ChatOpenAI({
 		apiKey: cfg.apiKey,

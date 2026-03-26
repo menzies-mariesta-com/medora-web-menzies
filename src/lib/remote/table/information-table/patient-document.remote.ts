@@ -95,24 +95,26 @@ export const getPatientDocumentsByVisitIdWithRelations = query(
 	}: {
 		visitId: number;
 	}): Promise<PatientDocumentWithRelations[]> => {
-		const rows = await ensureDb().query.patientDocumentTable.findMany({
-			where: (t, { and, eq, ne }) =>
-				and(
-					eq(t.visitId, visitId),
-					ne(t.statusId, StatusEnum.DELETED)
-				),
-			with: {
-				patient: true,
-				visit: true,
-				document: {
-					with: {
-						documentType: true
-					}
+		const rows = await ensureDb().query.patientDocumentTable.findMany(
+			{
+				where: (t, { and, eq, ne }) =>
+					and(
+						eq(t.visitId, visitId),
+						ne(t.statusId, StatusEnum.DELETED)
+					),
+				with: {
+					patient: true,
+					visit: true,
+					document: {
+						with: {
+							documentType: true
+						}
+					},
+					status: true
 				},
-				status: true
-			},
-			orderBy: (t, { desc }) => desc(t.id)
-		});
+				orderBy: (t, { desc }) => desc(t.id)
+			}
+		);
 		return rows as PatientDocumentWithRelations[];
 	}
 );

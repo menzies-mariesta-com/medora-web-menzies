@@ -11,7 +11,9 @@ export const VisitState = (() => {
 
 	if (typeof window !== 'undefined') {
 		const storedVisit = window.sessionStorage.getItem('heka_visitId');
-		const storedName = window.sessionStorage.getItem('heka_patientName');
+		const storedName = window.sessionStorage.getItem(
+			'heka_patientName'
+		);
 		if (storedVisit) visitId = storedVisit;
 		if (storedName) patientName = storedName;
 	}
@@ -22,14 +24,16 @@ export const VisitState = (() => {
 		},
 		set visitId(v: string) {
 			visitId = v;
-			if (typeof window !== 'undefined') window.sessionStorage.setItem('heka_visitId', v);
+			if (typeof window !== 'undefined')
+				window.sessionStorage.setItem('heka_visitId', v);
 		},
 		get patientName() {
 			return patientName;
 		},
 		set patientName(v: string) {
 			patientName = v;
-			if (typeof window !== 'undefined') window.sessionStorage.setItem('heka_patientName', v);
+			if (typeof window !== 'undefined')
+				window.sessionStorage.setItem('heka_patientName', v);
 		},
 
 		select(data: { visitId: number | string; patientName: string }) {
@@ -37,7 +41,10 @@ export const VisitState = (() => {
 			patientName = data.patientName;
 			if (typeof window !== 'undefined') {
 				window.sessionStorage.setItem('heka_visitId', visitId);
-				window.sessionStorage.setItem('heka_patientName', patientName);
+				window.sessionStorage.setItem(
+					'heka_patientName',
+					patientName
+				);
 			}
 		},
 

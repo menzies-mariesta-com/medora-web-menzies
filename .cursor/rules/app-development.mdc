@@ -1,0 +1,74 @@
+---
+description: App Development folder structure + CRUD flow standards
+alwaysApply: true
+---
+
+# App Development
+
+## Main dev areas
+- Focus on `src/lib/` and `src/routes/`.
+
+## `src/lib/` (import via `$lib/*`, reusable code)
+- Use `$lib/...` imports for everything under `src/lib/`.
+
+### `asset/`
+- Static assets only (`font`, `style`, `image` as `webp|svg`, `video` as `gif|mp4`, keep `<10MB`).
+
+### `component/` (UI)
+- Target layout: `src/lib/component/{daisyui,d3,own}`.
+- `daisyui/`: DaisyUI component wrappers (e.g. `DaisyUiTable`, etc.)
+- `d3/`: d3-specific components/logic.
+- `own/`: app-specific components.
+- Migration mapping: move `src/lib/component/local/*`, `global/*`, and `snippet/*` under `src/lib/component/own/` (preserve behavior; update imports).
+- Prefer fewer “micro” components where it would cause unnecessary rerenders.
+
+### `config/`
+- Server-only env getters (`*.config.ts`, e.g. `app.config.ts`).
+
+### `model/`
+- Constrain data shape:
+  - `enum/*.enum.ts` (prefer enums “everywhere possible”)
+  - `interface/*.interface.ts` (DB/schema structures)
+  - `type/*.type.ts` (external/3rd-party shapes)
+
+### `remote/`
+- DB CRUD. Mirror schema folder structure one-to-one.
+
+### `server/`
+- Schemas/seed/migrations only; no CRUD.
+
+### `service/`
+- Setup-required helpers; start with a “how to setup” comment; include schema/relation/type blocks per table.
+
+### `state/`
+- Only `$state` variables (global-ish state), no side-effectful stores.
+
+### `tool/`
+- Project business-logic helpers (`*.tool.svelte.ts`).
+
+### `util/`
+- Reusable helpers for other projects (`*.util.svelte.ts`).
+
+## `src/routes/` (UI + endpoints)
+- `(public)`: pages accessible anywhere.
+- `(private)`: pages require authentication.
+- `api`: route endpoints, usually `+server.ts`.
+- API route groups must mirror the page route groups:
+  - `src/routes/api/(public)/**` for endpoints used by `src/routes/(public)/**`
+  - `src/routes/api/(private)/**` for endpoints used by `src/routes/(private)/**`
+
+## Internationalization
+- Any user-visible strings must come from Paraglide messages:
+  - Use `m.*()` from `$lib/paraglide/messages`.
+  - Translation source-of-truth keys live in `messages/<locale>.json` (e.g. `messages/en.json`), and are compiled by `npm run paraglide`.
+
+## Data CRUD flow (strict contract)
+- `(public|private)/.../+page.svelte` must call HTTP endpoints under `src/routes/api/.../+server.ts`.
+- The endpoint path must live under the matching API route group:
+  - private pages -> `src/routes/api/(private)/.../+server.ts`
+  - public pages -> `src/routes/api/(public)/.../+server.ts`
+- The endpoint calls the appropriate DB CRUD function under `src/lib/remote/...`.
+- Pages should not import `$lib/remote/**` directly.
+
+## E2E
+- Keep `e2e/` tests aligned with the ongoing continuous development cycle.

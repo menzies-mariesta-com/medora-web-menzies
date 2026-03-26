@@ -1,37 +1,37 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/library/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
+	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import {
 		getStaffPaginated,
 		deleteStaff,
 		getStaffByIdWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
+	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeleteStaffConfirmState } from '$lib/state/delete-staff-confirm.state.svelte';
-	import DeleteStaffConfirmModal from '$lib/component/snippet/modal/DeleteStaffConfirmModal.svelte';
+	import DeleteStaffConfirmModal from '$lib/component/own/snippet/modal/DeleteStaffConfirmModal.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { StaffWithRelations } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
+	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
-	import LStaffListViewEditModal from '$lib/component/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
+	import LStaffListViewEditModal from '$lib/component/own/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
@@ -146,8 +146,6 @@
 			DeleteStaffConfirmState.pending = null;
 		}
 	}
-
-
 
 	type StaffDialogMode = 'view' | 'edit';
 	let staffDialog = $state<{

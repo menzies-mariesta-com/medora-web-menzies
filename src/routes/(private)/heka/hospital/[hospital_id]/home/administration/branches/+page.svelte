@@ -1,30 +1,30 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 	import {
 		getBranchesByHospitalIdPaginated,
 		deleteBranch
-	} from '$lib/remote/table/information-table/hospital-branch.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	} from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
-	import BranchFormModal from '$lib/component/local/private/heka/administration/branches/BranchFormModal.svelte';
+	import BranchFormModal from '$lib/component/own/local/private/heka/administration/branches/BranchFormModal.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 

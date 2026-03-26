@@ -20,7 +20,9 @@ export const getDiagnosisTypes = query(
 		return ensureDb()
 			.select()
 			.from(table.diagnosisTypeTable)
-			.where(ne(table.diagnosisTypeTable.statusId, StatusEnum.DELETED))
+			.where(
+				ne(table.diagnosisTypeTable.statusId, StatusEnum.DELETED)
+			)
 			.orderBy(table.diagnosisTypeTable.name);
 	}
 );
@@ -51,7 +53,10 @@ export const getDiagnosesByVisitId = query(
 	}): Promise<DiagnosisWithType[]> => {
 		return (await ensureDb().query.diagnosisTable.findMany({
 			where: (t, { and, eq, ne }) =>
-				and(eq(t.visitId, visitId), ne(t.statusId, StatusEnum.DELETED)),
+				and(
+					eq(t.visitId, visitId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
 			with: { diagnosisType: true },
 			orderBy: (t, { desc }) => desc(t.createdAt)
 		})) as DiagnosisWithType[];

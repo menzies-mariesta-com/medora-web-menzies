@@ -5,7 +5,9 @@ import { jsPDF } from 'jspdf';
  * Rasterizes HTML (full document string) to a multi-page A4 PDF in the browser.
  * For use only in the browser (client-side).
  */
-export async function htmlStringToPdfBlob(html: string): Promise<Blob> {
+export async function htmlStringToPdfBlob(
+	html: string
+): Promise<Blob> {
 	const iframe = document.createElement('iframe');
 	iframe.setAttribute('title', 'pdf-render');
 	iframe.style.cssText =
