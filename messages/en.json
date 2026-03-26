@@ -264,6 +264,7 @@
 	"service_items_title": "Service items",
 	"service_item_category_label": "Category",
 	"service_item_sub_category_label": "Sub-category",
+	"sub_category_master": "Sub-category master",
 	"service_item_active_label": "Active",
 	"service_item_inactive_label": "Inactive",
 	"service_item_all_categories": "All categories",
