@@ -3,13 +3,19 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucideTriangleAlert from '$lib/component/own/library/lucide/LucideTriangleAlert.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import {
 		getPatientVisitPaginatedForEmr,
-		type PatientVisitWithRelations
+		type PatientVisitWithRelationsForEmr,
+		type VisitStatusCode
 	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import { getVisitType } from '$lib/remote/table/information-table/visit-type.remote';
+	import {
+		getActivePatientAllergiesPatientIdsByPatientIds
+	} from '$lib/remote/table/information-table/patient-allergies.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
@@ -32,7 +38,7 @@
 	);
 
 	let result =
-		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
+		$state<PaginatedResult<PatientVisitWithRelationsForEmr> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let visitTypeOptions = $state<
@@ -40,10 +46,27 @@
 	>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
+	let isConfirming = $state(false);
+	let activeAllergyPatientIds = $state<Set<string>>(new Set());
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
+
+	const visitStatusOptions: { value: VisitStatusCode; label: string }[] =
+		[
+			{ value: 'open', label: 'Open' },
+			{ value: 'vital', label: 'Vital' },
+			{ value: 'seen', label: 'Seen' },
+			{ value: 'closed', label: 'Closed' }
+		];
+
+	function formatVisitStatus(status: VisitStatusCode | null | undefined) {
+		return (
+			visitStatusOptions.find((o) => o.value === status)?.label ??
+			'—'
+		);
+	}
 
 	function formatVisitDate(value: string | null | undefined): string {
 		if (!value) return '';
@@ -72,11 +95,12 @@
 		return `${years}y`;
 	}
 
-	const visitColumns: MariTableColumn<PatientVisitWithRelations>[] = [
+	const visitColumns: MariTableColumn<PatientVisitWithRelationsForEmr>[] =
+		[
 		{
 			id: 'visitNo',
 			header: 'Visit No',
-			widthClass: 'w-28 min-w-[6rem]',
+			widthClass: 'w-32',
 			filterable: false,
 			field: 'visitNo'
 		},
@@ -172,12 +196,40 @@
 			field: 'visitType.name'
 		},
 		{
-			id: 'status',
-			header: 'Status',
+			id: 'visitStatus',
+			header: 'Visit Status',
 			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: () => visitStatusOptions,
+			field: 'visitStatus',
+			format: (_value, row) => formatVisitStatus(row.visitStatus)
+		},
+		{
+			id: 'alert',
+			header: m.observation_emr_alert(),
+			widthClass: 'w-14 min-w-[3.5rem]',
 			filterable: false,
-			field: 'status.name'
-		}
+			format: () => '—',
+			cellComponentGetter: (row) => {
+				const patientId = row.patient?.id;
+				if (patientId == null) return null;
+
+				return activeAllergyPatientIds.has(String(patientId))
+					? {
+							component: LucideTriangleAlert,
+							props: { className: 'size-4' }
+						}
+					: null;
+			},
+			cellClassGetter: (row) => {
+				const patientId = row.patient?.id;
+				if (!patientId) return 'text-base-content/60';
+				return activeAllergyPatientIds.has(String(patientId))
+					? 'text-warning font-semibold'
+					: 'text-base-content/60';
+			}
+		},
 	];
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
@@ -196,8 +248,20 @@
 				visitTypeId: tableFilters.visitType
 					? Number(tableFilters.visitType)
 					: undefined,
+				visitStatus: (tableFilters.visitStatus?.trim() ||
+					undefined) as VisitStatusCode | undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
+
+			const patientIds = result.data
+				.map((row) => row.patient?.id)
+				.map((id) => (id != null ? String(id) : ''))
+				.filter((id) => id.trim() !== '');
+			const activePatientIds =
+				await getActivePatientAllergiesPatientIdsByPatientIds({
+					patientIds
+				});
+			activeAllergyPatientIds = new Set(activePatientIds);
 		} finally {
 			isLoading = false;
 		}
@@ -227,15 +291,21 @@
 		fetchPatients({ bustCache: true });
 	}
 
-	function selectPatient(v: PatientVisitWithRelations) {
+	async function selectPatient(v: PatientVisitWithRelationsForEmr) {
+		if (isConfirming) return;
+		isConfirming = true;
 		const patient = v.patient;
 		const patientName = patient
 			? StringUtil.patientDisplayName(patient as any)
 			: '';
-		confirm({
-			visitId: v.id,
-			patientName
-		});
+		try {
+			await confirm({
+				visitId: v.id,
+				patientName
+			});
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -247,6 +317,7 @@
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={cancel}
+			disabled={isConfirming}
 		>
 			<LucideX className="size-5" />
 		</DaisyUiButton>
@@ -263,7 +334,7 @@
 			<MariTable
 				rows={visits}
 				columns={visitColumns}
-				{isLoading}
+				isLoading={isLoading || isConfirming}
 				bind:pageSize={pageSizeStr}
 				bind:currentPage
 				totalRowCount={total}
@@ -292,7 +363,9 @@
 					}, 350);
 				}}
 				on:select={(event) =>
-					selectPatient(event.detail as PatientVisitWithRelations)}
+					void selectPatient(
+						event.detail as PatientVisitWithRelationsForEmr
+					)}
 			/>
 		</div>
 	{/if}
@@ -305,6 +378,7 @@
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm"
 				onClick={cancel}
+				disabled={isConfirming}
 			>
 				Cancel
 			</DaisyUiButton>

@@ -34,16 +34,46 @@
 	let types = $state<Awaited<ReturnType<typeof getDiagnosisTypes>>>(
 		[]
 	);
-	let diagnosisTypeIdStr = $state('');
+	let selectedDiagnosisTypeIds = $state<number[]>([]);
 	let description = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
 	let isSubmitting = $state(false);
 	let loadSeq = 0;
 
+	const allDiagnosisTypesSelected = $derived(
+		types.length > 0 && selectedDiagnosisTypeIds.length === types.length
+	);
+
+	function resetDiagnosisForm() {
+		selectedDiagnosisTypeIds = [];
+		description = '';
+		statusIdStr = String(StatusEnum.ACTIVE);
+	}
+
+	async function loadDiagnosisTypes() {
+		const rows = await getDiagnosisTypes();
+		types = rows;
+	}
+
+	async function loadDiagnosisByIdForEdit(did: number, seq: number) {
+		const row = await getDiagnosisById({ id: did });
+		if (seq !== loadSeq) return;
+		if (!row) {
+			toastService.addToast(
+				m.observation_emr_diagnosis_not_found(),
+				StatusColorEnum.ERROR
+			);
+			cancel();
+			return;
+		}
+
+		selectedDiagnosisTypeIds = [Number(row.diagnosisTypeId)];
+		description = row.description ?? '';
+		statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
+	}
+
 	$effect(() => {
-		void getDiagnosisTypes().then((rows) => {
-			types = rows;
-		});
+		void loadDiagnosisTypes();
 	});
 
 	$effect(() => {
@@ -53,26 +83,11 @@
 		const did = diagnosisId;
 		if (!vid || !bid || !pid) return;
 		const seq = ++loadSeq;
-		if (!did) {
-			diagnosisTypeIdStr = '';
-			description = '';
-			statusIdStr = String(StatusEnum.ACTIVE);
+		if (did == null) {
+			resetDiagnosisForm();
 			return;
 		}
-		void getDiagnosisById({ id: did }).then((row) => {
-			if (seq !== loadSeq) return;
-			if (!row) {
-				toastService.addToast(
-					m.observation_emr_diagnosis_not_found(),
-					StatusColorEnum.ERROR
-				);
-				cancel();
-				return;
-			}
-			diagnosisTypeIdStr = String(row.diagnosisTypeId);
-			description = row.description ?? '';
-			statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
-		});
+		void loadDiagnosisByIdForEdit(did, seq);
 	});
 
 	async function handleSubmit() {
@@ -86,16 +101,31 @@
 			);
 			return;
 		}
-		const typeId = Number(diagnosisTypeIdStr);
-		if (!typeId) {
+		const statusId = Number(statusIdStr) || StatusEnum.ACTIVE;
+		const normalizedDescription = description.trim();
+
+		const selectedTypeIds = selectedDiagnosisTypeIds.filter(
+			(id): id is number => Number.isFinite(id) && id > 0
+		);
+		if (isEdit) {
+			// In edit mode, backend expects exactly one `diagnosisTypeId`.
+			if (selectedTypeIds.length !== 1) {
+				toastService.addToast(
+					m.observation_emr_diagnosis_type_required(),
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+		} else if (selectedTypeIds.length === 0) {
+			// In add mode, backend requires at least one selected type.
 			toastService.addToast(
 				m.observation_emr_diagnosis_type_required(),
 				StatusColorEnum.ERROR
 			);
 			return;
 		}
-		const statusId = Number(statusIdStr) || StatusEnum.ACTIVE;
-		const normalizedDescription = description.trim();
+
+		const typeId = selectedTypeIds[0];
 		isSubmitting = true;
 		try {
 			if (isEdit && diagnosisId != null) {
@@ -109,24 +139,28 @@
 					statusId
 				});
 			} else {
-				await createDiagnosis({
-					branchId: bid,
-					patientId: pid,
-					visitId: vid,
-					diagnosisTypeId: typeId,
-					description:
-						normalizedDescription.length > 0
-							? normalizedDescription
-							: null,
-					statusId: StatusEnum.ACTIVE
-				});
+				// Backend requires a single `diagnosisTypeId` per diagnosis record.
+				// In add mode, create one record per selected type.
+				for (const diagnosisTypeId of selectedTypeIds) {
+					await createDiagnosis({
+						branchId: bid,
+						patientId: pid,
+						visitId: vid,
+						diagnosisTypeId,
+						description:
+							normalizedDescription.length > 0
+								? normalizedDescription
+								: null,
+						statusId
+					});
+				}
 			}
 			toastService.addToast(
 				m.observation_emr_saved(),
 				StatusColorEnum.SUCCESS
 			);
 			ObservationDiagnosisDialogState.onSaved?.();
-			confirm({ saved: true });
+			await confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
@@ -146,17 +180,57 @@
 			{m.observation_emr_diagnosis_type_label()}
 		</legend>
 		<div class="flex flex-wrap gap-4">
+			<label class="d-label cursor-pointer justify-start gap-3">
+				<input
+					type="checkbox"
+					name="diagnosis-type-id-all"
+					class="d-checkbox shrink-0 d-checkbox-sm d-checkbox-primary"
+					checked={allDiagnosisTypesSelected}
+					disabled={isSubmitting || isEdit}
+					onchange={() => {
+						if (isEdit) return;
+						if (allDiagnosisTypesSelected) {
+							selectedDiagnosisTypeIds = [];
+							return;
+						}
+						selectedDiagnosisTypeIds = types.map((t) => Number(t.id));
+					}}
+				/>
+				<span class="text-sm">All</span>
+			</label>
+
 			{#each types as t (t.id)}
 				<label class="d-label cursor-pointer justify-start gap-3">
 					<input
-						type="radio"
+						type="checkbox"
 						name="diagnosis-type-id"
-						class="d-radio shrink-0 d-radio-sm d-radio-primary"
+						class="d-checkbox shrink-0 d-checkbox-sm d-checkbox-primary"
 						value={String(t.id)}
-						checked={diagnosisTypeIdStr === String(t.id)}
+						checked={selectedDiagnosisTypeIds.includes(Number(t.id))}
 						disabled={isSubmitting}
-						onchange={() => {
-							diagnosisTypeIdStr = String(t.id);
+						onchange={(event) => {
+							const checked = (event.currentTarget as HTMLInputElement).checked;
+							const typeId = Number(t.id);
+
+							if (isEdit) {
+								// In edit mode, selection must effectively be single.
+								// Keep exactly one selected even if the user tries to uncheck.
+								selectedDiagnosisTypeIds = [typeId];
+								return;
+							}
+
+							if (checked) {
+								if (!selectedDiagnosisTypeIds.includes(typeId)) {
+									selectedDiagnosisTypeIds = [
+										...selectedDiagnosisTypeIds,
+										typeId
+									];
+								}
+							} else {
+								selectedDiagnosisTypeIds = selectedDiagnosisTypeIds.filter(
+									(id) => id !== typeId
+								);
+							}
 						}}
 					/>
 					<span class="text-sm">{t.name ?? '–'}</span>
@@ -207,6 +281,7 @@
 			type="button"
 			className="d-btn d-btn-primary"
 			disabled={isSubmitting}
+			loading={isSubmitting}
 			onClick={() => void handleSubmit()}
 		>
 			{m.observation_emr_save()}

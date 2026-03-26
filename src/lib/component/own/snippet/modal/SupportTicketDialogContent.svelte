@@ -439,11 +439,10 @@
 				<DaisyUiButton
 					type="submit"
 					className="d-btn d-btn-primary"
-					disabled={isSubmittingNew}
+					loading={isSubmittingNew}
+					loadingText={m.support_submitting()}
 				>
-					{isSubmittingNew
-						? m.support_submitting()
-						: m.support_submit_ticket()}
+					{m.support_submit_ticket()}
 				</DaisyUiButton>
 			</div>
 		</form>

@@ -968,7 +968,7 @@
 								<DaisyUiButton
 									className="d-btn-outline d-btn-sm"
 									onClick={handleShowHistory}
-								>
+								> 
 									Order history
 								</DaisyUiButton>
 							</div>

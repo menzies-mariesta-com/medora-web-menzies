@@ -3,7 +3,7 @@ import { remoteHttpClient } from '$lib/tool/remote/remote-http-client.tool.svelt
 const moduleSuffix = 'table/information-table/diagnosis.remote.ts';
 
 function invokeOnce<T>(fn: string, args: unknown[]): Promise<T> {
-	return remoteHttpClient.postJson<T>('/api/remote/invoke', {
+	return remoteHttpClient.postRemoteInvoke<T>({
 		module: moduleSuffix,
 		fn,
 		args

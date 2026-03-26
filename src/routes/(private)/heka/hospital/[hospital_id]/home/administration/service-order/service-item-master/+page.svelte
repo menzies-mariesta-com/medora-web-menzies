@@ -38,6 +38,7 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 
 	const toastService = new ToastService();
 
@@ -89,6 +90,8 @@
 	let editingId = $state<number | null>(null);
 	let isLoading = $state(false);
 	let isSaving = $state(false);
+	const deleteLock = createActionLock();
+	let deletingId = $state<number | null>(null);
 
 	let tableColumnFilters = $state<Record<string, string>>({});
 
@@ -484,28 +487,35 @@
 	}
 
 	async function handleDelete(row: ServiceItemSchema) {
-		const result = await dialogService.open({
-			title: m.service_item_delete_confirm_title(),
-			message: `${m.service_item_delete_confirm_prefix()} "${
-				row.serviceName ?? m.service_item_this_service_item_fallback()
-			}"${m.service_item_delete_confirm_suffix()}`,
-			variant: DialogVariantEnum.CONFIRM
+		await deleteLock.run(async () => {
+			deletingId = row.id;
+			try {
+				const result = await dialogService.open({
+					title: m.service_item_delete_confirm_title(),
+					message: `${m.service_item_delete_confirm_prefix()} "${
+						row.serviceName ?? m.service_item_this_service_item_fallback()
+					}"${m.service_item_delete_confirm_suffix()}`,
+					variant: DialogVariantEnum.CONFIRM
+				});
+				if (!result.confirmed) return;
+				try {
+					await deleteServiceItem({ id: row.id });
+					toastService.addToast(
+						m.service_item_deleted_success(),
+						StatusColorEnum.SUCCESS
+					);
+					await fetchServiceItems(true);
+				} catch (err) {
+					const msg =
+						err instanceof Error
+							? err.message
+							: m.service_item_failed_to_delete();
+					toastService.addToast(msg, StatusColorEnum.ERROR);
+				}
+			} finally {
+				deletingId = null;
+			}
 		});
-		if (!result.confirmed) return;
-		try {
-			await deleteServiceItem({ id: row.id });
-			toastService.addToast(
-				m.service_item_deleted_success(),
-				StatusColorEnum.SUCCESS
-			);
-			await fetchServiceItems(true);
-		} catch (err) {
-			const msg =
-				err instanceof Error
-					? err.message
-					: m.service_item_failed_to_delete();
-			toastService.addToast(msg, StatusColorEnum.ERROR);
-		}
 	}
 
 	function categoryNameById(id: number | null | undefined): string {
@@ -638,13 +648,12 @@
 					<DaisyUiButton
 						type="submit"
 						className="d-btn-primary d-btn-sm"
-						disabled={isSaving}
+						loading={isSaving}
+						loadingText={m.service_item_saving()}
 					>
-						{isSaving
-							? m.service_item_saving()
-							: mode === 'create'
-								? m.service_item_create_button()
-								: m.service_item_save_button()}
+						{mode === 'create'
+							? m.service_item_create_button()
+							: m.service_item_save_button()}
 					</DaisyUiButton>
 				</div>
 			</form>
@@ -666,7 +675,8 @@
 					enableColumnFilters={true}
 					useRemoteFilters={true}
 					actionsHeader={m.actions()}
-					actionsVariant="crud"
+					showRowActions={true}
+					actionsVariant="none"
 					on:refresh={() => fetchServiceItems(true)}
 					on:pageSizeChange={() => {
 						currentPage = 1;
@@ -674,9 +684,30 @@
 					}}
 					on:pageChange={() => fetchServiceItems(true)}
 					on:filtersChange={handleTableFiltersChange}
-					on:edit={(event) => startEdit(event.detail)}
-					on:delete={(event) => handleDelete(event.detail)}
-				/>
+				>
+					<svelte:fragment slot="rowActions" let:row>
+						{@const serviceRow = row as ServiceItemSchema}
+						<div class="flex items-center gap-2">
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-accent"
+								onClick={() => startEdit(serviceRow)}
+								disabled={isLoading || isSaving || deleteLock.pending}
+								loadingText=""
+							>
+								<LucidePencil className="size-4" />
+							</DaisyUiButton>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-error"
+								onClick={() => handleDelete(serviceRow)}
+								loading={deletingId === serviceRow.id}
+								loadingText=""
+								disabled={isLoading || isSaving || deleteLock.pending}
+							>
+								<LucideTrash2 className="size-4" />
+							</DaisyUiButton>
+						</div>
+					</svelte:fragment>
+				</MariTable>
 			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>

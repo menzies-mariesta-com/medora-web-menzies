@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import { EditBlockDialogState } from '$lib/state/edit-block-dialog.state.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -12,6 +13,7 @@
 	let startTime = $state('');
 	let endTime = $state('');
 	let remark = $state('');
+	let isConfirming = $state(false);
 
 	$effect(() => {
 		date = EditBlockDialogState.date;
@@ -47,7 +49,8 @@
 		);
 	});
 
-	function handleConfirm() {
+	async function handleConfirm() {
+		if (isConfirming) return;
 		const d = date.trim();
 		const from = toHHmm(startTime);
 		const to = toHHmm(endTime);
@@ -56,13 +59,18 @@
 		if (!r) return;
 		if (to <= from) return;
 		if (isBlockStartInPast) return;
-		confirm({
-			id: blockId,
-			date: d,
-			startTime: from,
-			endTime: to,
-			remark: r
-		});
+		isConfirming = true;
+		try {
+			await confirm({
+				id: blockId,
+				date: d,
+				startTime: from,
+				endTime: to,
+				remark: r
+			});
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -133,19 +141,36 @@
 	<div
 		class="d-modal-action flex justify-end gap-2 border-t border-base-300 pt-4"
 	>
-		<button type="button" class="d-btn" onclick={() => cancel()}
-			>Cancel</button
+		<button
+			type="button"
+			class="d-btn"
+			onclick={() => cancel()}
+			disabled={isConfirming}
 		>
+			Cancel
+		</button>
 		<button
 			type="button"
 			class="d-btn d-btn-error"
 			onclick={() => handleConfirm()}
-			disabled={!date.trim() ||
+			disabled={
+				isConfirming ||
+				!date.trim() ||
 				!startTime ||
 				!endTime ||
 				!remark.trim() ||
 				toHHmm(endTime) <= toHHmm(startTime) ||
-				isBlockStartInPast}>Save</button
+				isBlockStartInPast
+			}
 		>
+			{#if isConfirming}
+				<span class="inline-flex items-center gap-2">
+					<DaisyUiLoading className="d-loading-sm" />
+					Loading…
+				</span>
+			{:else}
+				Save
+			{/if}
+		</button>
 	</div>
 </div>

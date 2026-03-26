@@ -19,6 +19,7 @@
 	import MariRichEditor from '$lib/component/own/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -30,8 +31,8 @@
 		createDocumentSetting,
 		updateDocumentSetting,
 		deleteDocumentSetting,
-		type DocumentSettingWithRelations
 	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
+	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
 	import { getDocumentTypes } from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
 	import type {
 		DocumentTypeSchema,
@@ -56,6 +57,9 @@
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
 	let isLoading = $state(false);
+	const saveLock = createActionLock();
+	const deleteLock = createActionLock();
+	let deletingId = $state<number | null>(null);
 
 	type ViewMode = 'list' | 'create' | 'edit' | 'view';
 	let viewMode = $state<ViewMode>('list');
@@ -188,76 +192,82 @@
 			);
 			return;
 		}
+		await saveLock.run(async () => {
+			try {
+				const payload = {
+					name: nameInput.trim(),
+					documentTypeId: documentTypeIdInput
+						? Number(documentTypeIdInput)
+						: null,
+					description: descriptionInput.trim() || null,
+					marginTop,
+					marginBottom,
+					marginLeft,
+					marginRight,
+					paddingTop,
+					paddingBottom,
+					paddingLeft,
+					paddingRight,
+					pageSize: pageSizeInput,
+					pageOrientation,
+					showHeader,
+					showFooter,
+					headerHtml: headerHtml || null,
+					footerHtml: footerHtml || null
+				};
 
-		try {
-			const payload = {
-				name: nameInput.trim(),
-				documentTypeId: documentTypeIdInput
-					? Number(documentTypeIdInput)
-					: null,
-				description: descriptionInput.trim() || null,
-				marginTop,
-				marginBottom,
-				marginLeft,
-				marginRight,
-				paddingTop,
-				paddingBottom,
-				paddingLeft,
-				paddingRight,
-				pageSize: pageSizeInput,
-				pageOrientation,
-				showHeader,
-				showFooter,
-				headerHtml: headerHtml || null,
-				footerHtml: footerHtml || null
-			};
-
-			if (editingId) {
-				await updateDocumentSetting({ id: editingId, ...payload });
+				if (editingId) {
+					await updateDocumentSetting({
+						id: editingId,
+						...payload
+					});
+					toastService.addToast(
+						'Document setting updated',
+						StatusColorEnum.SUCCESS
+					);
+				} else {
+					await createDocumentSetting(payload);
+					toastService.addToast(
+						'Document setting created',
+						StatusColorEnum.SUCCESS
+					);
+				}
+				resetForm();
+				fetchData({ bustCache: true });
+			} catch (err) {
+				console.error(err);
 				toastService.addToast(
-					'Document setting updated',
-					StatusColorEnum.SUCCESS
-				);
-			} else {
-				await createDocumentSetting(payload);
-				toastService.addToast(
-					'Document setting created',
-					StatusColorEnum.SUCCESS
+					'Failed to save document setting',
+					StatusColorEnum.ERROR
 				);
 			}
-			resetForm();
-			fetchData({ bustCache: true });
-		} catch (err) {
-			console.error(err);
-			toastService.addToast(
-				'Failed to save document setting',
-				StatusColorEnum.ERROR
-			);
-		}
+		});
 	}
 
 	async function handleDelete(item: DocumentSettingSchema) {
-		const result = await dialogService.open({
-			title: 'Confirm delete',
-			message: `Delete "${item.name}"?`,
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!result?.confirmed) return;
+		await deleteLock.run(async () => {
+			deletingId = item.id;
+			try {
+				const result = await dialogService.open({
+					title: 'Confirm delete',
+					message: `Delete "${item.name}"?`,
+					variant: DialogVariantEnum.CONFIRM
+				});
+				if (!result?.confirmed) return;
 
-		try {
-			await deleteDocumentSetting({ id: item.id });
-			toastService.addToast(
-				'Document setting deleted',
-				StatusColorEnum.SUCCESS
-			);
-			fetchData({ bustCache: true });
-		} catch (err) {
-			console.error(err);
-			toastService.addToast(
-				'Failed to delete',
-				StatusColorEnum.ERROR
-			);
-		}
+				await deleteDocumentSetting({ id: item.id });
+				toastService.addToast(
+					'Document setting deleted',
+					StatusColorEnum.SUCCESS
+				);
+				fetchData({ bustCache: true });
+			} catch (err) {
+				console.error(err);
+				toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
+			} finally {
+				deletingId = null;
+			}
+		});
 	}
 
 	function copyPlaceholder(placeholder: string) {
@@ -269,11 +279,27 @@
 	}
 
 	function insertPlaceholder(placeholder: string) {
-		if (activeEditorTarget === 'header') {
-			headerHtml = headerHtml + placeholder;
-		} else if (activeEditorTarget === 'footer') {
-			footerHtml = footerHtml + placeholder;
+		function appendPlaceholderToHtml(
+			currentHtml: string,
+			nextPlaceholder: string
+		): string {
+			const current = currentHtml ?? '';
+			const trimmed = current.trim();
+			if (!trimmed) return nextPlaceholder;
+
+			const lastChar = trimmed[trimmed.length - 1] ?? '';
+			const needsSpace =
+				!/\s/.test(lastChar) && lastChar !== '>';
+
+			return current + (needsSpace ? ' ' : '') + nextPlaceholder;
 		}
+
+		if (activeEditorTarget === 'header') {
+			headerHtml = appendPlaceholderToHtml(headerHtml, placeholder);
+		} else if (activeEditorTarget === 'footer') {
+			footerHtml = appendPlaceholderToHtml(footerHtml, placeholder);
+		}
+
 		toastService.addToast(
 			`Inserted: ${placeholder}`,
 			StatusColorEnum.INFO
@@ -456,7 +482,7 @@
 									<input
 										id="marginTop"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={marginTop}
 										disabled={viewMode === 'view'}
 									/>
@@ -469,7 +495,7 @@
 									<input
 										id="marginBottom"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={marginBottom}
 										disabled={viewMode === 'view'}
 									/>
@@ -482,7 +508,7 @@
 									<input
 										id="marginLeft"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={marginLeft}
 										disabled={viewMode === 'view'}
 									/>
@@ -495,7 +521,7 @@
 									<input
 										id="marginRight"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={marginRight}
 										disabled={viewMode === 'view'}
 									/>
@@ -514,7 +540,7 @@
 									<input
 										id="paddingTop"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={paddingTop}
 										disabled={viewMode === 'view'}
 									/>
@@ -527,7 +553,7 @@
 									<input
 										id="paddingBottom"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={paddingBottom}
 										disabled={viewMode === 'view'}
 									/>
@@ -540,7 +566,7 @@
 									<input
 										id="paddingLeft"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={paddingLeft}
 										disabled={viewMode === 'view'}
 									/>
@@ -553,7 +579,7 @@
 									<input
 										id="paddingRight"
 										type="number"
-										class="d-input-bordered d-input d-input-sm w-full"
+										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
 										bind:value={paddingRight}
 										disabled={viewMode === 'view'}
 									/>
@@ -597,7 +623,9 @@
 									bind:value={headerHtml}
 									className="min-h-[150px]"
 									disabled={viewMode === 'view'}
-									showMenuBar={false}
+									showMenuBar={true}
+									showPreview={true}
+									documentTitle="Header"
 								/>
 							{:else}
 								<div
@@ -641,7 +669,9 @@
 									bind:value={footerHtml}
 									className="min-h-[150px]"
 									disabled={viewMode === 'view'}
-									showMenuBar={false}
+									showMenuBar={true}
+									showPreview={true}
+									documentTitle="Footer"
 								/>
 							{:else}
 								<div
@@ -725,11 +755,16 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm"
-							onClick={resetForm}>Cancel</DaisyUiButton
+							onClick={resetForm}
+							disabled={saveLock.pending || deleteLock.pending}
 						>
+							Cancel
+						</DaisyUiButton>
 						<DaisyUiButton
 							className="d-btn-primary d-btn-sm"
 							onClick={handleSave}
+							loading={saveLock.pending}
+							disabled={isLoading}
 						>
 							{editingId ? 'Update' : 'Create'}
 						</DaisyUiButton>
@@ -778,30 +813,31 @@
 							{@const typedRow = row as DocumentSettingWithRelations}
 							<td class="w-32 shrink-0 text-right">
 								<div class="flex justify-end gap-1">
-									<button
-										type="button"
-										class="d-btn d-btn-ghost d-btn-xs"
-										onclick={() => startView(typedRow)}
-										title="View"
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-xs"
+										onClick={() => startView(typedRow)}
+										disabled={deleteLock.pending}
+										loadingText=""
 									>
 										<LucideEye className="w-3 h-3" />
-									</button>
-									<button
-										type="button"
-										class="d-btn d-btn-ghost d-btn-xs d-btn-accent"
-										onclick={() => startEdit(typedRow)}
-										title="Edit"
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-xs d-btn-accent"
+										onClick={() => startEdit(typedRow)}
+										disabled={deleteLock.pending}
+										loadingText=""
 									>
 										<LucidePencil className="w-3 h-3" />
-									</button>
-									<button
-										type="button"
-										class="d-btn text-error d-btn-ghost d-btn-xs"
-										onclick={() => handleDelete(typedRow)}
-										title="Delete"
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-xs d-btn-error"
+										onClick={() => handleDelete(typedRow)}
+										loading={deletingId === typedRow.id}
+										loadingText=""
+										disabled={deleteLock.pending || isLoading}
 									>
 										<LucideTrash2 className="w-3 h-3" />
-									</button>
+									</DaisyUiButton>
 								</div>
 							</td>
 						</svelte:fragment>
@@ -811,3 +847,12 @@
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>
+
+<style>
+	/* Native number spinners are small/janky on some browsers; bump their clickable area. */
+	.heka-number-input::-webkit-inner-spin-button,
+	.heka-number-input::-webkit-outer-spin-button {
+		height: 1.25rem;
+		opacity: 1;
+	}
+</style>

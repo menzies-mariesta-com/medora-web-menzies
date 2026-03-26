@@ -5,19 +5,14 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { getPatientVisitByIdWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import {
-		getDocumentsWithRelations,
-		type DocumentWithRelations
-	} from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
-	import {
-		getDocumentSettingsWithRelations,
-		type DocumentSettingWithRelations
-	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
+	import { getDocumentsWithRelations } from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
+	import { getDocumentSettingsWithRelations } from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PatientVisitWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
+	import type { DocumentWithRelations } from '$lib/remote/table/information-table/document.remote';
+	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
 	import {
 		buildDocumentPlaceholderContext,
 		buildVisitServiceLinesTableHtml,
@@ -34,6 +29,7 @@
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
 	import { createPatientDocument } from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -47,6 +43,7 @@
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
+	const printLock = createActionLock();
 	let selectedDocument = $state<DocumentWithRelations | null>(null);
 	let showPreview = $state(false);
 	let lastLoadedVisitId = $state<number | null>(null);
@@ -132,11 +129,6 @@
 		mounted = false;
 	});
 
-	function viewDocument(doc: DocumentWithRelations) {
-		selectedDocument = doc;
-		showPreview = true;
-	}
-
 	function closePreview() {
 		showPreview = false;
 		selectedDocument = null;
@@ -173,130 +165,131 @@
 			);
 			return;
 		}
-
-		isPrinting = true;
-		try {
-			let iframe = document.getElementById(
-				'clinical-document-print-iframe'
-			) as HTMLIFrameElement | null;
-			if (!iframe) {
-				iframe = document.createElement('iframe');
-				iframe.id = 'clinical-document-print-iframe';
-				iframe.style.cssText =
-					'position:absolute;width:0;height:0;border:0;visibility:hidden;';
-				document.body.appendChild(iframe);
-			}
-			const printWindow = iframe.contentWindow;
-			if (!printWindow) {
-				toastService.addToast(
-					'Failed to prepare print',
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-
-			const setting = resolveDocumentSettingForDoc(
-				documentSettings,
-				doc
-			);
-
-			const context = buildPlaceholderContext(doc);
-			const documentHtml = applyPlaceholders(
-				doc.documentText,
-				context
-			).trim();
-			const headerHtml = applyPlaceholders(
-				setting?.headerHtml,
-				context
-			).trim();
-			const footerHtml = applyPlaceholders(
-				setting?.footerHtml,
-				context
-			).trim();
-
-			const documentTitle =
-				doc.documentNumber ||
-				doc.documentType?.documentType ||
-				'Document';
-
-			const htmlBrowser = buildPrintDocumentHtml({
-				documentHtml,
-				documentTitle,
-				headerHtml,
-				footerHtml,
-				setting,
-				variant: 'browser'
-			});
-
-			const htmlPdf = buildPrintDocumentHtml({
-				documentHtml,
-				documentTitle,
-				headerHtml,
-				footerHtml,
-				setting,
-				variant: 'pdfRaster'
-			});
-
-			printWindow.document.open();
-			printWindow.document.write(htmlBrowser);
-			printWindow.document.close();
-			await new Promise((resolve) => setTimeout(resolve, 150));
-			printWindow.print();
-
-			const patientId = visit?.patient?.id;
-			if (visitId && patientId) {
-				try {
-					const blob = await htmlStringToPdfBlob(htmlPdf);
-					const safeBase =
-						`${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
-							.replace(/[^\w.-]+/g, '_')
-							.slice(0, 120);
-					const url = await uploadPatientAttachmentPdf(
-						blob,
-						`${safeBase}.pdf`
-					);
-					await persistEmrPrintPdf({
-						patientId,
-						visitId,
-						documentId: doc.id,
-						fileUrl: url,
-						attachmentDescription: `Printed: ${documentTitle} (visit ${visit?.visitNo ?? visitId})`
-					});
+		await printLock.run(async () => {
+			isPrinting = true;
+			try {
+				let iframe = document.getElementById(
+					'clinical-document-print-iframe'
+				) as HTMLIFrameElement | null;
+				if (!iframe) {
+					iframe = document.createElement('iframe');
+					iframe.id = 'clinical-document-print-iframe';
+					iframe.style.cssText =
+						'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+					document.body.appendChild(iframe);
+				}
+				const printWindow = iframe.contentWindow;
+				if (!printWindow) {
 					toastService.addToast(
-						'Saved to patient documents (PDF attached).',
-						StatusColorEnum.SUCCESS
+						'Failed to prepare print',
+						StatusColorEnum.ERROR
 					);
-				} catch (saveErr) {
-					console.error('Print PDF save failed', saveErr);
+					return;
+				}
+
+				const setting = resolveDocumentSettingForDoc(
+					documentSettings,
+					doc
+				);
+
+				const context = buildPlaceholderContext(doc);
+				const documentHtml = applyPlaceholders(
+					doc.documentText,
+					context
+				).trim();
+				const headerHtml = applyPlaceholders(
+					setting?.headerHtml,
+					context
+				).trim();
+				const footerHtml = applyPlaceholders(
+					setting?.footerHtml,
+					context
+				).trim();
+
+				const documentTitle =
+					doc.documentNumber ||
+					doc.documentType?.documentType ||
+					'Document';
+
+				const htmlBrowser = buildPrintDocumentHtml({
+					documentHtml,
+					documentTitle,
+					headerHtml,
+					footerHtml,
+					setting,
+					variant: 'browser'
+				});
+
+				const htmlPdf = buildPrintDocumentHtml({
+					documentHtml,
+					documentTitle,
+					headerHtml,
+					footerHtml,
+					setting,
+					variant: 'pdfRaster'
+				});
+
+				printWindow.document.open();
+				printWindow.document.write(htmlBrowser);
+				printWindow.document.close();
+				await new Promise((resolve) => setTimeout(resolve, 150));
+				printWindow.print();
+
+				const patientId = visit?.patient?.id;
+				if (visitId && patientId) {
 					try {
-						await createPatientDocument({
-							visitId,
+						const blob = await htmlStringToPdfBlob(htmlPdf);
+						const safeBase =
+							`${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
+								.replace(/[^\w.-]+/g, '_')
+								.slice(0, 120);
+						const url = await uploadPatientAttachmentPdf(
+							blob,
+							`${safeBase}.pdf`
+						);
+						await persistEmrPrintPdf({
 							patientId,
+							visitId,
 							documentId: doc.id,
-							statusId: StatusEnum.ACTIVE
+							fileUrl: url,
+							attachmentDescription: `Printed: ${documentTitle} (visit ${visit?.visitNo ?? visitId})`
 						});
 						toastService.addToast(
-							'Saved to patient documents (PDF upload failed).',
-							StatusColorEnum.WARNING
+							'Saved to patient documents (PDF attached).',
+							StatusColorEnum.SUCCESS
 						);
-					} catch (tagErr) {
-						console.error('patient_document insert failed', tagErr);
-						toastService.addToast(
-							'Printed, but saving to patient documents failed.',
-							StatusColorEnum.ERROR
-						);
+					} catch (saveErr) {
+						console.error('Print PDF save failed', saveErr);
+						try {
+							await createPatientDocument({
+								visitId,
+								patientId,
+								documentId: doc.id,
+								statusId: StatusEnum.ACTIVE
+							});
+							toastService.addToast(
+								'Saved to patient documents (PDF upload failed).',
+								StatusColorEnum.WARNING
+							);
+						} catch (tagErr) {
+							console.error('patient_document insert failed', tagErr);
+							toastService.addToast(
+								'Printed, but saving to patient documents failed.',
+								StatusColorEnum.ERROR
+							);
+						}
 					}
 				}
+			} catch (err) {
+				console.error('Print failed', err);
+				toastService.addToast(
+					'Failed to prepare document for print',
+					StatusColorEnum.ERROR
+				);
+			} finally {
+				isPrinting = false;
 			}
-		} catch (err) {
-			console.error('Print failed', err);
-			toastService.addToast(
-				'Failed to prepare document for print',
-				StatusColorEnum.ERROR
-			);
-		} finally {
-			isPrinting = false;
-		}
+		});
 	}
 </script>
 
@@ -369,14 +362,6 @@
 										<div class="flex items-center gap-1">
 											<button
 												type="button"
-												class="d-btn d-btn-ghost d-btn-xs"
-												onclick={() => viewDocument(doc)}
-												title="View"
-											>
-												<LucideEye className="w-4 h-4" />
-											</button>
-											<button
-												type="button"
 												class="d-btn text-primary d-btn-ghost d-btn-xs"
 												onclick={() => printDocument(doc)}
 												title="Print"
@@ -423,14 +408,6 @@
 											{doc.documentNumber || `Instruction #${doc.id}`}
 										</span>
 										<div class="flex items-center gap-1">
-											<button
-												type="button"
-												class="d-btn d-btn-ghost d-btn-xs"
-												onclick={() => viewDocument(doc)}
-												title="View"
-											>
-												<LucideEye className="w-4 h-4" />
-											</button>
 											<button
 												type="button"
 												class="d-btn text-info d-btn-ghost d-btn-xs"
@@ -481,14 +458,6 @@
 										<div class="flex items-center gap-1">
 											<button
 												type="button"
-												class="d-btn d-btn-ghost d-btn-xs"
-												onclick={() => viewDocument(doc)}
-												title="View"
-											>
-												<LucideEye className="w-4 h-4" />
-											</button>
-											<button
-												type="button"
 												class="d-btn text-success d-btn-ghost d-btn-xs"
 												onclick={() => printDocument(doc)}
 												title="Print"
@@ -523,6 +492,7 @@
 						className="d-btn-primary d-btn-sm"
 						onClick={() => printDocument(selectedDocument!)}
 						disabled={!canPrint}
+						loading={printLock.pending}
 					>
 						<LucidePrinter className="w-4 h-4 mr-1" />
 						Print

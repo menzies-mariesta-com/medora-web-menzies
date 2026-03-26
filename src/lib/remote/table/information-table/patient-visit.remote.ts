@@ -15,9 +15,11 @@ import type {
 
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne, ilike, or, sql } from 'drizzle-orm';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { error } from '@sveltejs/kit';
 const BRANCH_ALL_VALUE = '__all__';
+
+export type VisitStatusCode = 'open' | 'vital' | 'seen' | 'closed';
 
 /* =========================================================
    TYPES
@@ -45,11 +47,99 @@ export type PatientVisitWithRelations = Awaited<
 	ReturnType<typeof getPatientVisitWithRelations>
 >[number];
 
+export type PatientVisitWithRelationsForEmr = PatientVisitWithRelations & {
+	visitStatus: VisitStatusCode;
+};
+
+async function getVisitStatusTaggingIds(): Promise<{
+	openId: number | null;
+	vitalId: number | null;
+	seenId: number | null;
+	closedId: number | null;
+}> {
+	const rows = await ensureDb()
+		.select({
+			id: table.statusTaggingTable.id,
+			code: table.statusTaggingTable.code
+		})
+		.from(table.statusTaggingTable)
+		.leftJoin(
+			table.statusTaggingTypeTable,
+			eq(
+				table.statusTaggingTable.statusTaggingTypeId,
+				table.statusTaggingTypeTable.id
+			)
+		)
+		.where(sql`${table.statusTaggingTypeTable.name} ILIKE 'Visit'`);
+
+	const byCode = new Map<string, number>();
+	for (const r of rows) {
+		if (r.code && r.id != null) byCode.set(String(r.code), r.id);
+	}
+	return {
+		openId: byCode.get('open') ?? null,
+		vitalId: byCode.get('vital') ?? null,
+		seenId: byCode.get('seen') ?? null,
+		closedId: byCode.get('closed') ?? null
+	};
+}
+
+	async function resolveVisitStatusCode(params: {
+		hasVitals: boolean;
+		statusTaggingId: number | null | undefined;
+	}): Promise<VisitStatusCode> {
+	// Status precedence (highest wins):
+	// - Closed (future/manual)
+	// - Seen (doctor assigned)
+	// - Vital (vital filled)
+	// - Open (default)
+	const tagging = await getVisitStatusTaggingIds();
+	if (
+		tagging.closedId != null &&
+		params.statusTaggingId === tagging.closedId
+	)
+		return 'closed';
+	// "Seen" should only change when the visit's status tagging is updated
+	// by doctor selection/assignment flow.
+	if (tagging.seenId != null && params.statusTaggingId === tagging.seenId)
+		return 'seen';
+	if (params.hasVitals) return 'vital';
+	return 'open';
+}
+
 function getSelectedBranchFromRequest(): string | null {
 	try {
 		const event = getRequestEvent();
 		const raw = event.cookies.get('heka_selected_branch_id') ?? null;
 		return raw === BRANCH_ALL_VALUE ? null : raw;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * When the logged-in user is a Doctor (staff_type DOCTOR), EMR visit list must only
+ * include visits where they are the attending doctor OR they are the receiving
+ * doctor on a non-cancelled referral for that visit.
+ */
+function getDoctorEmrVisitScopeFilter(): ReturnType<typeof or> | null {
+	try {
+		const event = getRequestEvent();
+		const staff = event.locals.staff;
+		if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR) {
+			return null;
+		}
+		const doctorId = staff.id;
+		return or(
+			eq(table.patientVisitTable.doctorId, doctorId),
+			sql`EXISTS (
+				SELECT 1 FROM refer_history rh
+				WHERE rh.visit_id = ${table.patientVisitTable.id}
+				AND rh.to_refer_doctorid = ${doctorId}
+				AND rh.cancel_at IS NULL
+				AND rh.accept_at IS NOT NULL
+			)`
+		);
 	} catch {
 		return null;
 	}
@@ -242,10 +332,17 @@ export const createPatientVisit = command(
 			visitTypeId: payload.visitTypeId
 		});
 
+		const visitStatusTagging = await getVisitStatusTaggingIds();
+		const statusTaggingId =
+			payload.doctorId && visitStatusTagging.seenId != null
+				? visitStatusTagging.seenId
+				: visitStatusTagging.openId;
+
 		const values: PatientVisitSchemaInsert = {
 			...payload,
 			branchId,
-			visitNo
+			visitNo,
+			statusTaggingId
 		};
 		const [row] = await ensureDb()
 			.insert(table.patientVisitTable)
@@ -267,9 +364,38 @@ export const updatePatientVisit = command(
 	): Promise<PatientVisitSchema> => {
 		const { id, ...rest } = payload;
 
+		// If doctorId is set, ensure visit status is at least "Seen".
+		const visitStatusTagging = await getVisitStatusTaggingIds();
+		const [{ statusTaggingId: currentStatusTaggingId } = {}] =
+			await ensureDb()
+				.select({
+					statusTaggingId:
+						table.patientVisitTable.statusTaggingId
+				})
+				.from(table.patientVisitTable)
+				.where(eq(table.patientVisitTable.id, id))
+				.limit(1);
+
+		const doctorIdVal = (rest as any).doctorId as
+			| string
+			| null
+			| undefined;
+
+		// Upgrade to "Seen" when doctor is assigned.
+		// Do not downgrade if already "Closed".
+		const setSeen =
+			doctorIdVal != null &&
+			visitStatusTagging.seenId != null &&
+			currentStatusTaggingId !== visitStatusTagging.closedId;
+
 		const [row] = await ensureDb()
 			.update(table.patientVisitTable)
-			.set(rest)
+			.set({
+				...rest,
+				...(setSeen && {
+					statusTaggingId: visitStatusTagging.seenId
+				})
+			})
 			.where(eq(table.patientVisitTable.id, id))
 			.returning();
 
@@ -296,8 +422,9 @@ export const getPatientVisitPaginatedForEmr = query(
 			branchName?: string;
 			doctorName?: string;
 			visitTypeId?: number | null;
+			visitStatus?: VisitStatusCode;
 		}
-	): Promise<PaginatedResult<PatientVisitWithRelations>> => {
+	): Promise<PaginatedResult<PatientVisitWithRelationsForEmr>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
 
@@ -411,6 +538,76 @@ export const getPatientVisitPaginatedForEmr = query(
 			);
 		}
 
+		// Visit status filter (computed)
+		const visitStatus = params?.visitStatus;
+		if (visitStatus) {
+			const tagging = await getVisitStatusTaggingIds();
+
+			if (visitStatus === 'seen') {
+				whereExpr = and(
+					whereExpr,
+					tagging.seenId != null
+						? eq(
+								table.patientVisitTable.statusTaggingId,
+								tagging.seenId
+							)
+						: sql`1=0` as any
+				);
+			} else if (visitStatus === 'vital') {
+				whereExpr = and(
+					whereExpr,
+					// Vital only when not already "Seen"/"Closed"
+					tagging.seenId != null
+						? sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.seenId}` as any
+						: sql`1=1` as any,
+					tagging.closedId != null
+						? sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedId}` as any
+						: sql`1=1` as any,
+					sql`EXISTS (
+						SELECT 1 FROM patient_diagnosis pd
+						WHERE pd.visit_id = ${table.patientVisitTable.id}
+						AND pd.vital_date_time IS NOT NULL
+						AND pd.status_id <> ${StatusEnum.DELETED}
+					)` as any
+				);
+			} else if (visitStatus === 'open') {
+				whereExpr = and(
+					whereExpr,
+					// Open only when not already "Seen"/"Closed"
+					tagging.seenId != null
+						? sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.seenId}` as any
+						: sql`1=1` as any,
+					tagging.closedId != null
+						? sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedId}` as any
+						: sql`1=1` as any,
+					sql`NOT EXISTS (
+						SELECT 1 FROM patient_diagnosis pd
+						WHERE pd.visit_id = ${table.patientVisitTable.id}
+						AND pd.vital_date_time IS NOT NULL
+						AND pd.status_id <> ${StatusEnum.DELETED}
+					)` as any
+				);
+			} else if (visitStatus === 'closed') {
+				if (tagging.closedId != null) {
+					whereExpr = and(
+						whereExpr,
+						eq(
+							table.patientVisitTable.statusTaggingId,
+							tagging.closedId
+						)
+					);
+				} else {
+					// No "Closed" tagging configured yet; return empty set.
+					whereExpr = and(whereExpr, sql`1=0` as any);
+				}
+			}
+		}
+
+		const doctorScope = getDoctorEmrVisitScopeFilter();
+		if (doctorScope) {
+			whereExpr = and(whereExpr, doctorScope);
+		}
+
 		const [data, countResult] = await Promise.all([
 			ensureDb().query.patientVisitTable.findMany({
 				where: whereExpr,
@@ -438,10 +635,49 @@ export const getPatientVisitPaginatedForEmr = query(
 				.where(whereExpr)
 		]);
 
+		const visitIds = data.map((d) => d.id).filter((id) => id != null);
+		const vitalsByVisitId = new Set<number>();
+		if (visitIds.length) {
+			const vitalRows = await ensureDb()
+				.select({ visitId: table.patientDiagnosisTable.visitId })
+				.from(table.patientDiagnosisTable)
+				.where(
+					and(
+						sql`${table.patientDiagnosisTable.visitId} IN (${sql.join(
+							visitIds.map((id) => sql`${id}`),
+							sql`, `
+						)})` as any,
+						// "Vital" must be backed by a vital record in this exact visit.
+						// We treat rows with vital_date_time as vitals.
+						sql`${table.patientDiagnosisTable.vitalDateTime} IS NOT NULL` as any,
+						ne(
+							table.patientDiagnosisTable.statusId,
+							StatusEnum.DELETED
+						)
+					)
+				);
+			for (const r of vitalRows) vitalsByVisitId.add(r.visitId);
+		}
+
+		const dataWithStatus: PatientVisitWithRelationsForEmr[] =
+			await Promise.all(
+				(data as PatientVisitWithRelations[]).map(async (row) => {
+					const hasVitals = vitalsByVisitId.has(row.id);
+					const visitStatus = await resolveVisitStatusCode({
+						hasVitals,
+						statusTaggingId: (row as any).statusTaggingId as
+							| number
+							| null
+							| undefined
+					});
+					return { ...(row as any), visitStatus };
+				})
+			);
+
 		const total = countResult[0]?.count ?? 0;
 
 		return {
-			data: data as PatientVisitWithRelations[],
+			data: dataWithStatus,
 			total,
 			page,
 			pageSize,

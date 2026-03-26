@@ -4,6 +4,7 @@
 	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
 	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import {
 		getStaffPaginated,
 		deleteStaff,
@@ -39,6 +40,15 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 	const dateTimeUtil = new DateTimeUtil();
+
+	const viewLock = createActionLock();
+	const editLock = createActionLock();
+	const deleteLock = createActionLock();
+	const refreshLock = createActionLock();
+
+	let viewingStaffId = $state<string | null>(null);
+	let editingStaffId = $state<string | null>(null);
+	let deletingStaffId = $state<string | null>(null);
 
 	let staffResult =
 		$state<PaginatedResult<StaffWithRelations> | null>(null);
@@ -116,35 +126,39 @@
 	});
 
 	async function handleDelete(staffId: string) {
-		try {
-			const staff = await getStaffByIdWithRelations({ id: staffId });
-			const staffEmail =
-				(staff as { user?: { email?: string } })?.user?.email ??
-				'(no email)';
-			DeleteStaffConfirmState.pending = {
-				id: staffId,
-				email: staffEmail
-			};
-			const result = await dialogService.open({
-				component: DeleteStaffConfirmModal
-			});
-			if (result.confirmed && typeof result.data === 'string') {
-				await deleteStaff({ id: result.data });
-				await fetchStaff(true);
+		await deleteLock.run(async () => {
+			deletingStaffId = staffId;
+			try {
+				const staff = await getStaffByIdWithRelations({ id: staffId });
+				const staffEmail =
+					(staff as { user?: { email?: string } })?.user?.email ??
+					'(no email)';
+				DeleteStaffConfirmState.pending = {
+					id: staffId,
+					email: staffEmail
+				};
+				const result = await dialogService.open({
+					component: DeleteStaffConfirmModal
+				});
+				if (result.confirmed && typeof result.data === 'string') {
+					await deleteStaff({ id: result.data });
+					await fetchStaff(true);
+					toastService.addToast(
+						m.staff_deleted(),
+						StatusColorEnum.SUCCESS
+					);
+				}
+			} catch (err) {
+				console.error(err);
 				toastService.addToast(
-					m.staff_deleted(),
-					StatusColorEnum.SUCCESS
+					m.failed_delete_staff(),
+					StatusColorEnum.ERROR
 				);
+			} finally {
+				DeleteStaffConfirmState.pending = null;
+				deletingStaffId = null;
 			}
-		} catch (err) {
-			console.error(err);
-			toastService.addToast(
-				m.failed_delete_staff(),
-				StatusColorEnum.ERROR
-			);
-		} finally {
-			DeleteStaffConfirmState.pending = null;
-		}
+		});
 	}
 
 	type StaffDialogMode = 'view' | 'edit';
@@ -152,6 +166,9 @@
 		mode: StaffDialogMode;
 		staffId: string;
 	} | null>(null);
+
+	/** Resolves when the full-screen staff dialog closes (mirrors `await dialogService.open` on branches). */
+	let staffDialogCloseResolver: (() => void) | null = null;
 
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
@@ -162,16 +179,40 @@
 			: ''
 	);
 
-	function viewData(id: string) {
-		staffDialog = { mode: 'view', staffId: id };
+	async function viewData(id: string) {
+		await viewLock.run(async () => {
+			viewingStaffId = id;
+			editingStaffId = null;
+			try {
+				staffDialog = { mode: 'view', staffId: id };
+				await new Promise<void>((resolve) => {
+					staffDialogCloseResolver = resolve;
+				});
+			} finally {
+				viewingStaffId = null;
+			}
+		});
 	}
 
-	function editData(id: string) {
-		staffDialog = { mode: 'edit', staffId: id };
+	async function editData(id: string) {
+		await editLock.run(async () => {
+			editingStaffId = id;
+			viewingStaffId = null;
+			try {
+				staffDialog = { mode: 'edit', staffId: id };
+				await new Promise<void>((resolve) => {
+					staffDialogCloseResolver = resolve;
+				});
+			} finally {
+				editingStaffId = null;
+			}
+		});
 	}
 
 	function closeStaffDialog() {
 		staffDialog = null;
+		staffDialogCloseResolver?.();
+		staffDialogCloseResolver = null;
 		fetchStaff(true);
 	}
 
@@ -314,7 +355,10 @@
 			rowTooltipGetter={(row) => {
 				return StringUtil.tableToolTip(row);
 			}}
-			on:refresh={() => fetchStaff(true)}
+			on:refresh={() =>
+				refreshLock.run(async () => {
+					await fetchStaff(true);
+				})}
 			on:pageSizeChange={() => {
 				currentPage = 1;
 				fetchStaff();
@@ -332,6 +376,7 @@
 			}}
 		>
 			<svelte:fragment slot="rowActions" let:row>
+				{@const staffRow = row as StaffWithRelations}
 				<div class="flex flex-col items-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.view_data()}
@@ -339,7 +384,14 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm"
-							onClick={() => viewData(row.id)}
+							onClick={() => viewData(staffRow.id)}
+							loading={viewingStaffId === staffRow.id}
+							disabled={
+								isLoading ||
+								editingStaffId === staffRow.id ||
+								deletingStaffId === staffRow.id
+							}
+							loadingText=""
 						>
 							<LucideEye className="size-5" />
 						</DaisyUiButton>
@@ -350,7 +402,14 @@
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-accent"
-							onClick={() => editData(row.id)}
+							onClick={() => editData(staffRow.id)}
+							loading={editingStaffId === staffRow.id}
+							disabled={
+								isLoading ||
+								viewingStaffId === staffRow.id ||
+								deletingStaffId === staffRow.id
+							}
+							loadingText=""
 						>
 							<LucidePencil className="size-5" />
 						</DaisyUiButton>
@@ -361,8 +420,14 @@
 					>
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={isLoading}
-							onClick={() => handleDelete(row.id)}
+							onClick={() => handleDelete(staffRow.id)}
+							loading={deletingStaffId === staffRow.id}
+							disabled={
+								isLoading ||
+								viewingStaffId === staffRow.id ||
+								editingStaffId === staffRow.id
+							}
+							loadingText=""
 						>
 							<LucideTrash2 className="size-5" />
 						</DaisyUiButton>
