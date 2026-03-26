@@ -1,5 +1,5 @@
 <script lang="ts">
-	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
+	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 
 	let { children } = $props();
 </script>

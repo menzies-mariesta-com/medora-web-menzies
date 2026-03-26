@@ -7,7 +7,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
-import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
+import type { PageWithRelations } from '$lib/tool/remote/table/information-table/page.http.tool.svelte';
 import { and, eq, inArray } from 'drizzle-orm';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
@@ -28,12 +28,13 @@ export const load: LayoutServerLoad = async ({
 	params,
 	cookies
 }) => {
-	const fullPages = (await ensureDb().query.pageTable.findMany({
-		with: {
-			module: true,
-			status: true
-		}
-	})) as unknown as PageWithRelations[];
+	try {
+		const fullPages = (await ensureDb().query.pageTable.findMany({
+			with: {
+				module: true,
+				status: true
+			}
+		})) as unknown as PageWithRelations[];
 
 	const userRoleId = locals.userRoleId ?? null;
 	const staffId = locals.staff?.id ?? null;
@@ -309,4 +310,28 @@ export const load: LayoutServerLoad = async ({
 		selectedBranchId: null,
 		allowedBranches: []
 	};
+	} catch (err) {
+		// Let SvelteKit redirects/errors bubble up unchanged.
+		const maybe = err as Record<string, unknown>;
+		if (
+			typeof maybe === 'object' &&
+			maybe != null &&
+			typeof maybe.status === 'number' &&
+			typeof maybe.location === 'string'
+		) {
+			throw err;
+		}
+
+		console.error('[heka hospital home] DB/navigation load failed', err);
+
+		return {
+			pageData: [],
+			currentHospitalName: null,
+			staffUserGroupsForNav: [],
+			selectedUserGroupId: null,
+			staffBranchesForNav: [],
+			selectedBranchId: null,
+			allowedBranches: []
+		};
+	}
 };

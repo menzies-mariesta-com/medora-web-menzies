@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import {
 		getHospitalWithOwnerPaginated,
 		deleteHospital,
 		type HospitalWithOwner
-	} from '$lib/remote/table/information-table/hospital.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	} from '$lib/tool/remote/table/information-table/hospital.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import { hekaHospitalHome } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -19,14 +19,14 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import NewHospitalModal from '$lib/component/snippet/modal/NewHospitalModal.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import NewHospitalModal from '$lib/component/own/snippet/modal/NewHospitalModal.svelte';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import LucideUserCog from '$lib/component/library/lucide/LucideUserCog.svelte';
+	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';

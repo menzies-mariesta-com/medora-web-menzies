@@ -31,4 +31,3 @@ export type NotificationSchemaInsert = InferInsertModel<
 >;
 export type NotificationSchemaUpdate =
 	Partial<NotificationSchemaInsert>;
-

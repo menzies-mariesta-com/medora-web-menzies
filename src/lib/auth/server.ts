@@ -25,6 +25,12 @@ export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
 	baseURL: env.BETTER_AUTH_BASE_URL || 'http://localhost:5173',
 	trustedOrigins,
+	session: {
+		// Hard 30-minute session lifetime (no auto refresh extension),
+		// so users are logged out automatically after inactivity/usage.
+		expiresIn: 60 * 30,
+		disableSessionRefresh: true
+	},
 	database: drizzleAdapter(db!, {
 		provider: 'pg',
 		schema: {

@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import ObservationCardTable from '$lib/component/global/private/heka/observation/ObservationCardTable.svelte';
-	import ObservationStubCard from '$lib/component/global/private/heka/observation/ObservationStubCard.svelte';
-	import LObservationPatientDocumentDialogContent from '$lib/component/local/private/heka/observation/LObservationPatientDocumentDialogContent.svelte';
-	import LObservationOrderLineDialogContent from '$lib/component/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
-	import LObservationDiagnosisDialogContent from '$lib/component/local/private/heka/observation/LObservationDiagnosisDialogContent.svelte';
-	import LObservationFormEntryDialogContent from '$lib/component/local/private/heka/observation/LObservationFormEntryDialogContent.svelte';
-	import LObservationDiagnosisDeleteConfirmDialogContent from '$lib/component/local/private/heka/observation/LObservationDiagnosisDeleteConfirmDialogContent.svelte';
-	import LObservationFormEntryDeleteConfirmDialogContent from '$lib/component/local/private/heka/observation/LObservationFormEntryDeleteConfirmDialogContent.svelte';
-	import LVitalRecordDialogContent from '$lib/component/local/private/heka/emr/LVitalRecordDialogContent.svelte';
-	import LPatientAllergyDialogContent from '$lib/component/local/private/heka/emr/LPatientAllergyDialogContent.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import ObservationCardTable from '$lib/component/own/global/private/heka/observation/ObservationCardTable.svelte';
+	import ObservationStubCard from '$lib/component/own/global/private/heka/observation/ObservationStubCard.svelte';
+	import LObservationPatientDocumentDialogContent from '$lib/component/own/local/private/heka/observation/LObservationPatientDocumentDialogContent.svelte';
+	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
+	import LObservationDiagnosisDialogContent from '$lib/component/own/local/private/heka/observation/LObservationDiagnosisDialogContent.svelte';
+	import LObservationFormEntryDialogContent from '$lib/component/own/local/private/heka/observation/LObservationFormEntryDialogContent.svelte';
+	import LObservationDiagnosisDeleteConfirmDialogContent from '$lib/component/own/local/private/heka/observation/LObservationDiagnosisDeleteConfirmDialogContent.svelte';
+	import LObservationFormEntryDeleteConfirmDialogContent from '$lib/component/own/local/private/heka/observation/LObservationFormEntryDeleteConfirmDialogContent.svelte';
+	import LVitalRecordDialogContent from '$lib/component/own/local/private/heka/emr/LVitalRecordDialogContent.svelte';
+	import LPatientAllergyDialogContent from '$lib/component/own/local/private/heka/emr/LPatientAllergyDialogContent.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -25,39 +25,39 @@
 	import { ObservationFormEntryDeleteConfirmDialogState } from '$lib/state/observation-form-entry-delete-confirm-dialog.state.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
 		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		getPatientAllergiesByPatientIdWithRelations,
 		deletePatientAllergies,
 		type PatientAllergyWithRelations
-	} from '$lib/remote/table/information-table/patient-allergies.remote';
+	} from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
 	import {
 		getPatientVitalsByVisitId,
 		deletePatientVital
-	} from '$lib/remote/table/information-table/patient-vital.remote';
-	import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
-	import { deleteServiceOrderDetail } from '$lib/remote/table/information-table/service-order-detail.remote';
+	} from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
+	import { getServiceOrderDetailRowsForVisit } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
+	import { deleteServiceOrderDetail } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
 	import {
 		getPatientDocumentsByVisitIdWithRelations,
 		deletePatientDocument,
 		type PatientDocumentWithRelations
-	} from '$lib/remote/table/information-table/patient-document.remote';
+	} from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
 	import {
 		getDiagnosesByVisitId,
 		deleteDiagnosis,
 		type DiagnosisWithType
-	} from '$lib/remote/table/information-table/diagnosis.remote';
+	} from '$lib/tool/remote/table/information-table/diagnosis.http.tool.svelte';
 	import {
 		getPatientFormEntriesByVisitIdAndFormCode,
 		deletePatientFormEntry,
 		type PatientFormEntryWithRelations
-	} from '$lib/remote/table/information-table/patient-form-entry.remote';
+	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
 	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
 	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
@@ -90,8 +90,12 @@
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
 	let documents = $state<PatientDocumentWithRelations[]>([]);
 	let visitDiagnoses = $state<DiagnosisWithType[]>([]);
-	let chiefComplaintEntries = $state<PatientFormEntryWithRelations[]>([]);
-	let patientConditionEntries = $state<PatientFormEntryWithRelations[]>([]);
+	let chiefComplaintEntries = $state<PatientFormEntryWithRelations[]>(
+		[]
+	);
+	let patientConditionEntries = $state<
+		PatientFormEntryWithRelations[]
+	>([]);
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
@@ -118,8 +122,9 @@
 	let lastHandledAllergyPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
-	let allergyFilterDebounceTimeout: ReturnType<typeof setTimeout> | null =
-		null;
+	let allergyFilterDebounceTimeout: ReturnType<
+		typeof setTimeout
+	> | null = null;
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -162,7 +167,9 @@
 		}
 	}
 
-	function getVitalDisplayDate(v: PatientDiagnosisSchema): string | null {
+	function getVitalDisplayDate(
+		v: PatientDiagnosisSchema
+	): string | null {
 		return v.vitalDateTime ?? v.createdAt ?? null;
 	}
 
@@ -183,9 +190,10 @@
 		});
 	}
 
-	async function fetchAllergies(
-		options?: { force?: boolean; skipRowLoading?: boolean }
-	) {
+	async function fetchAllergies(options?: {
+		force?: boolean;
+		skipRowLoading?: boolean;
+	}) {
 		const patientId = visitRow?.patientId;
 		const hospitalIdParam = visitRow?.hospitalId ?? hospitalId;
 		if (!patientId || !hospitalIdParam) {
@@ -218,7 +226,8 @@
 				page: allergyCurrentPage,
 				pageSize,
 				visitNo: allergyColumnFilters.visitNo?.trim() || undefined,
-				severityName: allergyColumnFilters.severity?.trim() || undefined,
+				severityName:
+					allergyColumnFilters.severity?.trim() || undefined,
 				statusId:
 					statusId != null && Number.isFinite(statusId)
 						? statusId
@@ -256,9 +265,12 @@
 			getPatientVisitById({ id: visitId }).refresh();
 			getPatientVitalsByVisitId({ visitId }).refresh();
 			getServiceOrderDetailRowsForVisit({ visitId }).refresh();
-			getPatientDocumentsByVisitIdWithRelations({ visitId }).refresh();
+			getPatientDocumentsByVisitIdWithRelations({
+				visitId
+			}).refresh();
 
-			let v: Awaited<ReturnType<typeof getPatientVisitById>> | null = null;
+			let v: Awaited<ReturnType<typeof getPatientVisitById>> | null =
+				null;
 			try {
 				v = await getPatientVisitById({ id: visitId });
 			} catch {
@@ -296,10 +308,11 @@
 					})) as OrderDetailVisitRow[];
 				})(),
 				(async () => {
-					documents =
-						await getPatientDocumentsByVisitIdWithRelations({
+					documents = await getPatientDocumentsByVisitIdWithRelations(
+						{
 							visitId
-						});
+						}
+					);
 				})(),
 				(async () => {
 					visitDiagnoses = await getDiagnosesByVisitId({
@@ -363,7 +376,9 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getPatientDocumentsByVisitIdWithRelations({ visitId }).refresh();
+			getPatientDocumentsByVisitIdWithRelations({
+				visitId
+			}).refresh();
 			documents = await getPatientDocumentsByVisitIdWithRelations({
 				visitId
 			});
@@ -534,8 +549,7 @@
 				header: 'Deactivation remark',
 				widthClass: 'min-w-32',
 				filterable: false,
-				format: (_value, row) =>
-					formatText(row.deactivationRemark),
+				format: (_value, row) => formatText(row.deactivationRemark),
 				cellClass: 'max-w-48 truncate'
 			},
 			{
@@ -543,16 +557,14 @@
 				header: 'Created',
 				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 				filterable: false,
-				format: (_value, row) =>
-					formatDateTime(row.createdAt ?? null)
+				format: (_value, row) => formatDateTime(row.createdAt ?? null)
 			},
 			{
 				id: 'updatedAt',
 				header: 'Updated',
 				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 				filterable: false,
-				format: (_value, row) =>
-					formatDateTime(row.updatedAt ?? null)
+				format: (_value, row) => formatDateTime(row.updatedAt ?? null)
 			}
 		];
 
@@ -715,8 +727,7 @@
 					return formatText(
 						[d?.code, d?.documentNumber]
 							.filter(Boolean)
-							.join(' · ') ||
-							(d?.id != null ? `ID ${d.id}` : null)
+							.join(' · ') || (d?.id != null ? `ID ${d.id}` : null)
 					);
 				}
 			},
@@ -745,8 +756,7 @@
 				header: 'Linked',
 				widthClass: 'w-36',
 				filterable: false,
-				format: (_value, row) =>
-					formatDateTime(row.createdAt ?? null)
+				format: (_value, row) => formatDateTime(row.createdAt ?? null)
 			}
 		];
 
@@ -787,59 +797,58 @@
 			header: 'Created',
 			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 			filterable: false,
-			format: (_value, row) =>
-				formatDateTime(row.createdAt ?? null)
+			format: (_value, row) => formatDateTime(row.createdAt ?? null)
 		},
 		{
 			id: 'updatedAt',
 			header: 'Updated',
 			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 			filterable: false,
-			format: (_value, row) =>
-				formatDateTime(row.updatedAt ?? null)
+			format: (_value, row) => formatDateTime(row.updatedAt ?? null)
 		}
 	];
 
-	const formEntryColumns: MariTableColumn<PatientFormEntryWithRelations>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'description',
-			header: 'Description',
-			widthClass: 'min-w-[12rem]',
-			filterable: false,
-			format: (_value, row) => formatText(row.description),
-			cellClass: 'max-w-80 truncate'
-		},
-		{
-			id: 'createdAt',
-			header: 'Created',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) =>
-				formatDateTime(row.createdAt ?? null)
-		}
-	];
+	const formEntryColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
+		[
+			{
+				id: 'status',
+				header: 'Status',
+				widthClass: 'w-28 min-w-[7rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: statusFilterOptions,
+				defaultFilterValue: 'active',
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: `Status ${row.statusId ?? 'Unknown'}`
+			},
+			{
+				id: 'description',
+				header: 'Description',
+				widthClass: 'min-w-[12rem]',
+				filterable: false,
+				format: (_value, row) => formatText(row.description),
+				cellClass: 'max-w-80 truncate'
+			},
+			{
+				id: 'createdAt',
+				header: 'Created',
+				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+				filterable: false,
+				format: (_value, row) => formatDateTime(row.createdAt ?? null)
+			}
+		];
 
 	async function openAllergyAdd() {
 		if (!visitRow?.patientId || !visitId) return;
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = visitId;
 		PatientAllergyDialogState.patientAllergyId = null;
-		PatientAllergyDialogState.onSaved = () => reloadAllergiesForVisit();
+		PatientAllergyDialogState.onSaved = () =>
+			reloadAllergiesForVisit();
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
 				title: 'Add allergy to patient',
@@ -873,7 +882,8 @@
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
 		PatientAllergyDialogState.patientAllergyId = row.id;
-		PatientAllergyDialogState.onSaved = () => reloadAllergiesForVisit();
+		PatientAllergyDialogState.onSaved = () =>
+			reloadAllergiesForVisit();
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
 				title: 'Edit patient allergy',
@@ -898,7 +908,9 @@
 		}
 	}
 
-	async function handleAllergyDelete(row: PatientAllergyWithRelations) {
+	async function handleAllergyDelete(
+		row: PatientAllergyWithRelations
+	) {
 		const result = await dialogService.open({
 			title: 'Remove allergy',
 			message: `Remove "${row.allergy?.name ?? 'this allergy'}" from patient? This cannot be undone.`,
@@ -923,7 +935,8 @@
 	}
 
 	async function openVitalAdd() {
-		if (!visitRow?.patientId || !visitRow.hospitalId || !visitId) return;
+		if (!visitRow?.patientId || !visitRow.hospitalId || !visitId)
+			return;
 		VitalRecordDialogState.patientId = visitRow.patientId;
 		VitalRecordDialogState.hospitalId = visitRow.hospitalId;
 		VitalRecordDialogState.visitId = visitId;
@@ -954,7 +967,8 @@
 	}
 
 	async function openVitalEdit(v: PatientDiagnosisSchema) {
-		if (!visitRow?.patientId || !visitRow.hospitalId || !visitId) return;
+		if (!visitRow?.patientId || !visitRow.hospitalId || !visitId)
+			return;
 		VitalRecordDialogState.patientId = visitRow.patientId;
 		VitalRecordDialogState.hospitalId = visitRow.hospitalId;
 		VitalRecordDialogState.visitId = visitId;
@@ -990,7 +1004,10 @@
 		if (!result.confirmed) return;
 		try {
 			await deletePatientVital({ id: v.id });
-			toastService.addToast('Vital deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Vital deleted.',
+				StatusColorEnum.SUCCESS
+			);
 			await reloadVitalsForVisit();
 		} catch (err) {
 			toastService.addToast(
@@ -1003,7 +1020,8 @@
 	}
 
 	async function openDiagnosisAdd() {
-		if (!visitRow?.patientId || !visitRow.branchId || !visitId) return;
+		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
+			return;
 		ObservationDiagnosisDialogState.patientId = visitRow.patientId;
 		ObservationDiagnosisDialogState.branchId = visitRow.branchId;
 		ObservationDiagnosisDialogState.visitId = visitId;
@@ -1038,7 +1056,8 @@
 	}
 
 	async function openDiagnosisEdit(row: DiagnosisWithType) {
-		if (!visitRow?.patientId || !visitRow.branchId || !visitId) return;
+		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
+			return;
 		ObservationDiagnosisDialogState.patientId = visitRow.patientId;
 		ObservationDiagnosisDialogState.branchId = visitRow.branchId;
 		ObservationDiagnosisDialogState.visitId = visitId;
@@ -1084,7 +1103,8 @@
 			title: 'Delete diagnosis',
 			component: LObservationDiagnosisDeleteConfirmDialogContent,
 			fullScreen: false,
-			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+			modalClassName:
+				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
 			onClose: () => {
 				ObservationDiagnosisDeleteConfirmDialogState.expectedDescription =
 					null;
@@ -1108,14 +1128,18 @@
 		}
 	}
 
-	async function openFormEntryAdd(formCode: 'chief_complaint' | 'patient_condition') {
-		if (!visitRow?.patientId || !visitRow.branchId || !visitId) return;
+	async function openFormEntryAdd(
+		formCode: 'chief_complaint' | 'patient_condition'
+	) {
+		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
+			return;
 		ObservationFormEntryDialogState.entryId = null;
 		ObservationFormEntryDialogState.visitId = visitId;
 		ObservationFormEntryDialogState.branchId = visitRow.branchId;
 		ObservationFormEntryDialogState.patientId = visitRow.patientId;
 		ObservationFormEntryDialogState.formCode = formCode;
-		ObservationFormEntryDialogState.onSaved = () => reloadFormEntriesForVisit();
+		ObservationFormEntryDialogState.onSaved = () =>
+			reloadFormEntriesForVisit();
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
 				title:
@@ -1124,7 +1148,8 @@
 						: m.observation_emr_patient_condition(),
 				component: LObservationFormEntryDialogContent,
 				fullScreen: false,
-				modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
 			});
 			if (result?.confirmed && result.data?.saved) {
 				await reloadFormEntriesForVisit();
@@ -1139,8 +1164,11 @@
 		}
 	}
 
-	async function openFormEntryEdit(row: PatientFormEntryWithRelations) {
-		if (!visitRow?.patientId || !visitRow.branchId || !visitId) return;
+	async function openFormEntryEdit(
+		row: PatientFormEntryWithRelations
+	) {
+		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
+			return;
 		const code = row.formName?.code;
 		if (!code) return;
 		ObservationFormEntryDialogState.entryId = row.id;
@@ -1148,7 +1176,8 @@
 		ObservationFormEntryDialogState.branchId = visitRow.branchId;
 		ObservationFormEntryDialogState.patientId = visitRow.patientId;
 		ObservationFormEntryDialogState.formCode = code;
-		ObservationFormEntryDialogState.onSaved = () => reloadFormEntriesForVisit();
+		ObservationFormEntryDialogState.onSaved = () =>
+			reloadFormEntriesForVisit();
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
 				title:
@@ -1157,7 +1186,8 @@
 						: m.observation_emr_patient_condition(),
 				component: LObservationFormEntryDialogContent,
 				fullScreen: false,
-				modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
 			});
 			if (result?.confirmed && result.data?.saved) {
 				await reloadFormEntriesForVisit();
@@ -1169,7 +1199,9 @@
 		}
 	}
 
-	async function handleFormEntryDelete(row: PatientFormEntryWithRelations) {
+	async function handleFormEntryDelete(
+		row: PatientFormEntryWithRelations
+	) {
 		const requiredDescription = row.description?.trim() ?? '';
 		if (!requiredDescription) {
 			toastService.addToast(
@@ -1184,7 +1216,8 @@
 			title: 'Delete entry',
 			component: LObservationFormEntryDeleteConfirmDialogContent,
 			fullScreen: false,
-			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+			modalClassName:
+				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
 			onClose: () => {
 				ObservationFormEntryDeleteConfirmDialogState.expectedDescription =
 					null;
@@ -1193,11 +1226,16 @@
 		if (!result.confirmed || !result.data?.confirmed) return;
 		try {
 			await deletePatientFormEntry({ id: row.id });
-			toastService.addToast('Entry deleted.', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				'Entry deleted.',
+				StatusColorEnum.SUCCESS
+			);
 			await reloadFormEntriesForVisit();
 		} catch (err) {
 			toastService.addToast(
-				(err instanceof Error ? err.message : m.observation_emr_delete_failed()) as string,
+				(err instanceof Error
+					? err.message
+					: m.observation_emr_delete_failed()) as string,
 				StatusColorEnum.ERROR
 			);
 		}
@@ -1209,26 +1247,30 @@
 		ObservationOrderLineDialogState.hospitalId = hospitalId;
 		ObservationOrderLineDialogState.branchId = visitRow.branchId;
 		ObservationOrderLineDialogState.detailId = null;
-		ObservationOrderLineDialogState.onSaved = () => reloadOrdersForVisit();
-		void dialogService.open<{ saved?: boolean }>({
-			title: m.observation_emr_add_order_line(),
-			component: LObservationOrderLineDialogContent,
-			fullScreen: false,
-			modalClassName: 'max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto',
-			onClose: () => {
+		ObservationOrderLineDialogState.onSaved = () =>
+			reloadOrdersForVisit();
+		void dialogService
+			.open<{ saved?: boolean }>({
+				title: m.observation_emr_add_order_line(),
+				component: LObservationOrderLineDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationOrderLineDialogState.detailId = null;
+					ObservationOrderLineDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadOrdersForVisit();
+				}
+			})
+			.finally(() => {
+				ObservationOrderLineDialogState.visitId = null;
+				ObservationOrderLineDialogState.hospitalId = null;
+				ObservationOrderLineDialogState.branchId = null;
 				ObservationOrderLineDialogState.detailId = null;
 				ObservationOrderLineDialogState.onSaved = null;
-			},
-			onConfirm: (data) => {
-				if (data?.saved) void reloadOrdersForVisit();
-			}
-		}).finally(() => {
-			ObservationOrderLineDialogState.visitId = null;
-			ObservationOrderLineDialogState.hospitalId = null;
-			ObservationOrderLineDialogState.branchId = null;
-			ObservationOrderLineDialogState.detailId = null;
-			ObservationOrderLineDialogState.onSaved = null;
-		});
+			});
 	}
 
 	function openOrderLineEdit(row: OrderDetailVisitRow) {
@@ -1237,26 +1279,30 @@
 		ObservationOrderLineDialogState.hospitalId = hospitalId;
 		ObservationOrderLineDialogState.branchId = visitRow.branchId;
 		ObservationOrderLineDialogState.detailId = row.id;
-		ObservationOrderLineDialogState.onSaved = () => reloadOrdersForVisit();
-		void dialogService.open<{ saved?: boolean }>({
-			title: m.observation_emr_edit_order_line(),
-			component: LObservationOrderLineDialogContent,
-			fullScreen: false,
-			modalClassName: 'max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto',
-			onClose: () => {
+		ObservationOrderLineDialogState.onSaved = () =>
+			reloadOrdersForVisit();
+		void dialogService
+			.open<{ saved?: boolean }>({
+				title: m.observation_emr_edit_order_line(),
+				component: LObservationOrderLineDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationOrderLineDialogState.detailId = null;
+					ObservationOrderLineDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadOrdersForVisit();
+				}
+			})
+			.finally(() => {
+				ObservationOrderLineDialogState.visitId = null;
+				ObservationOrderLineDialogState.hospitalId = null;
+				ObservationOrderLineDialogState.branchId = null;
 				ObservationOrderLineDialogState.detailId = null;
 				ObservationOrderLineDialogState.onSaved = null;
-			},
-			onConfirm: (data) => {
-				if (data?.saved) void reloadOrdersForVisit();
-			}
-		}).finally(() => {
-			ObservationOrderLineDialogState.visitId = null;
-			ObservationOrderLineDialogState.hospitalId = null;
-			ObservationOrderLineDialogState.branchId = null;
-			ObservationOrderLineDialogState.detailId = null;
-			ObservationOrderLineDialogState.onSaved = null;
-		});
+			});
 	}
 
 	async function handleOrderLineDelete(row: OrderDetailVisitRow) {
@@ -1286,57 +1332,67 @@
 	function openDocumentAdd() {
 		if (!visitRow?.patientId || !visitId) return;
 		ObservationPatientDocumentDialogState.visitId = visitId;
-		ObservationPatientDocumentDialogState.patientId = visitRow.patientId;
+		ObservationPatientDocumentDialogState.patientId =
+			visitRow.patientId;
 		ObservationPatientDocumentDialogState.patientDocumentId = null;
 		ObservationPatientDocumentDialogState.onSaved = () =>
 			reloadDocumentsForVisit();
-		void dialogService.open<{ saved?: boolean }>({
-			title: m.observation_emr_add_document_link(),
-			component: LObservationPatientDocumentDialogContent,
-			fullScreen: false,
-			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
-			onClose: () => {
+		void dialogService
+			.open<{ saved?: boolean }>({
+				title: m.observation_emr_add_document_link(),
+				component: LObservationPatientDocumentDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationPatientDocumentDialogState.patientDocumentId =
+						null;
+					ObservationPatientDocumentDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadDocumentsForVisit();
+				}
+			})
+			.finally(() => {
+				ObservationPatientDocumentDialogState.visitId = null;
+				ObservationPatientDocumentDialogState.patientId = null;
 				ObservationPatientDocumentDialogState.patientDocumentId =
 					null;
 				ObservationPatientDocumentDialogState.onSaved = null;
-			},
-			onConfirm: (data) => {
-				if (data?.saved) void reloadDocumentsForVisit();
-			}
-		}).finally(() => {
-			ObservationPatientDocumentDialogState.visitId = null;
-			ObservationPatientDocumentDialogState.patientId = null;
-			ObservationPatientDocumentDialogState.patientDocumentId = null;
-			ObservationPatientDocumentDialogState.onSaved = null;
-		});
+			});
 	}
 
 	function openDocumentEdit(row: PatientDocumentWithRelations) {
 		if (!visitRow?.patientId || !visitId) return;
 		ObservationPatientDocumentDialogState.visitId = visitId;
-		ObservationPatientDocumentDialogState.patientId = visitRow.patientId;
+		ObservationPatientDocumentDialogState.patientId =
+			visitRow.patientId;
 		ObservationPatientDocumentDialogState.patientDocumentId = row.id;
 		ObservationPatientDocumentDialogState.onSaved = () =>
 			reloadDocumentsForVisit();
-		void dialogService.open<{ saved?: boolean }>({
-			title: m.observation_emr_edit_document_link(),
-			component: LObservationPatientDocumentDialogContent,
-			fullScreen: false,
-			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
-			onClose: () => {
+		void dialogService
+			.open<{ saved?: boolean }>({
+				title: m.observation_emr_edit_document_link(),
+				component: LObservationPatientDocumentDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationPatientDocumentDialogState.patientDocumentId =
+						null;
+					ObservationPatientDocumentDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadDocumentsForVisit();
+				}
+			})
+			.finally(() => {
+				ObservationPatientDocumentDialogState.visitId = null;
+				ObservationPatientDocumentDialogState.patientId = null;
 				ObservationPatientDocumentDialogState.patientDocumentId =
 					null;
 				ObservationPatientDocumentDialogState.onSaved = null;
-			},
-			onConfirm: (data) => {
-				if (data?.saved) void reloadDocumentsForVisit();
-			}
-		}).finally(() => {
-			ObservationPatientDocumentDialogState.visitId = null;
-			ObservationPatientDocumentDialogState.patientId = null;
-			ObservationPatientDocumentDialogState.patientDocumentId = null;
-			ObservationPatientDocumentDialogState.onSaved = null;
-		});
+			});
 	}
 
 	function openDocumentView(row: PatientDocumentWithRelations) {
@@ -1345,7 +1401,9 @@
 		openDocumentEdit(row);
 	}
 
-	async function handleDocumentDelete(row: PatientDocumentWithRelations) {
+	async function handleDocumentDelete(
+		row: PatientDocumentWithRelations
+	) {
 		const result = await dialogService.open({
 			title: 'Remove document link',
 			message: m.observation_emr_delete_document(),

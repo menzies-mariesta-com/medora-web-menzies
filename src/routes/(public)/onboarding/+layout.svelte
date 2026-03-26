@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import GPublicOnboardingFooterBar from '$lib/component/global/public/onboarding/GPublicOnboardingFooterBar.svelte';
-	import GPublicOnboardingNavbar from '$lib/component/global/public/onboarding/GPublicOnboardingNavbar.svelte';
-	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
+	import GPublicOnboardingFooterBar from '$lib/component/own/global/public/onboarding/GPublicOnboardingFooterBar.svelte';
+	import GPublicOnboardingNavbar from '$lib/component/own/global/public/onboarding/GPublicOnboardingNavbar.svelte';
+	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 
 	let { children } = $props();
 </script>

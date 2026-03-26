@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import GPrivateHekaFooterBar from '$lib/component/global/private/heka/GPrivateHekaFooterBar.svelte';
-	import GPrivateHekaNavbarOnly from '$lib/component/global/private/heka/GPrivateHekaNavbarOnly.svelte';
-	import AnimatedPageContent from '$lib/component/library/gsap/AnimatedPageContent.svelte';
+	import GPrivateHekaFooterBar from '$lib/component/own/global/private/heka/GPrivateHekaFooterBar.svelte';
+	import GPrivateHekaNavbarOnly from '$lib/component/own/global/private/heka/GPrivateHekaNavbarOnly.svelte';
+	import AnimatedPageContent from '$lib/component/own/library/gsap/AnimatedPageContent.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { children, data } = $props();

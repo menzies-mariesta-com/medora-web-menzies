@@ -1,43 +1,45 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiPagination from '$lib/component/library/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/library/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
+	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import {
 		getPatientPaginated,
 		deletePatient,
 		getPatientByIdWithRelations
-	} from '$lib/remote/table/information-table/patient.remote';
+	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeletePatientConfirmState } from '$lib/state/delete-patient-confirm.state.svelte';
-	import DeletePatientConfirmModal from '$lib/component/snippet/modal/DeletePatientConfirmModal.svelte';
+	import DeletePatientConfirmModal from '$lib/component/own/snippet/modal/DeletePatientConfirmModal.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/library/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucideEye from '$lib/component/library/lucide/LucideEye.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { PatientWithRelations } from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import {
 		hekaHospitalPageUrl,
 		WebRoutesEnum
 	} from '$lib/model/enum/routes.enum';
-	import LPatientListViewEditModal from '$lib/component/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
-	import LucideRefreshCcw from '$lib/component/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronRight from '$lib/component/library/lucide/LucideChevronRight.svelte';
-	import LucideChevronLeft from '$lib/component/library/lucide/LucideChevronLeft.svelte';
+	import LPatientListViewEditModal from '$lib/component/own/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
+	import LPatientCardPrintModal from '$lib/component/own/local/private/heka/patient/list/LPatientCardPrintModal.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -162,8 +164,6 @@
 		}
 	}
 
-
-
 	const PATIENT_COLUMN_COUNT = 12;
 
 	type PatientDialogMode = 'view' | 'edit';
@@ -171,6 +171,18 @@
 		mode: PatientDialogMode;
 		patientId: string;
 	} | null>(null);
+
+	let patientCardDialog = $state<{
+		patientId: string;
+	} | null>(null);
+
+	function openPatientCard(id: string) {
+		patientCardDialog = { patientId: id };
+	}
+
+	function closePatientCardDialog() {
+		patientCardDialog = null;
+	}
 
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
@@ -365,6 +377,18 @@
 						</DaisyUiTooltip>
 					{/if}
 					<DaisyUiTooltip
+						tooltipText="patient card / print"
+						className="d-tooltip-info d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							disabled={isLoading}
+							onClick={() => openPatientCard(row.id)}
+						>
+							<LucidePrinter className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip
 						tooltipText="delete data"
 						className="d-tooltip-error d-tooltip-right"
 					>
@@ -388,5 +412,12 @@
 		{patientDialog}
 		{patientDialogIframeSrc}
 		{closePatientDialog}
+	/>
+{/if}
+
+{#if patientCardDialog}
+	<LPatientCardPrintModal
+		patientId={patientCardDialog.patientId}
+		onClose={closePatientCardDialog}
 	/>
 {/if}

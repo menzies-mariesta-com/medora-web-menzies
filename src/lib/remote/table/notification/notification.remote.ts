@@ -59,9 +59,10 @@ export const getNotificationUnreadCount = query(
 
 export const getNotificationsLatest = query(
 	'unchecked' as const,
-	async (
-		params?: { hospitalId?: string; limit?: number }
-	): Promise<NotificationListItem[]> => {
+	async (params?: {
+		hospitalId?: string;
+		limit?: number;
+	}): Promise<NotificationListItem[]> => {
 		const limit = Math.max(1, Math.min(20, params?.limit ?? 5));
 		const recipientStaffId = requireRecipientStaffId();
 
@@ -114,7 +115,10 @@ export const getNotificationsPaginated = query(
 		let whereExpr = whereBase;
 		const readFilter = params?.read ?? 'all';
 		if (readFilter === 'unread') {
-			whereExpr = and(whereBase, isNull(table.notificationTable.readAt));
+			whereExpr = and(
+				whereBase,
+				isNull(table.notificationTable.readAt)
+			);
 		} else if (readFilter === 'read') {
 			whereExpr = and(
 				whereBase,
@@ -169,7 +173,10 @@ export const markNotificationRead = command(
 			.where(
 				and(
 					eq(table.notificationTable.id, id),
-					eq(table.notificationTable.recipientStaffId, recipientStaffId),
+					eq(
+						table.notificationTable.recipientStaffId,
+						recipientStaffId
+					),
 					isNull(table.notificationTable.deletedAt)
 				)
 			);
@@ -182,10 +189,7 @@ export const markAllNotificationsRead = command(
 		const recipientStaffId = requireRecipientStaffId();
 
 		const whereExpr = and(
-			eq(
-				table.notificationTable.recipientStaffId,
-				recipientStaffId
-			),
+			eq(table.notificationTable.recipientStaffId, recipientStaffId),
 			ne(table.notificationTable.statusId, StatusEnum.DELETED),
 			isNull(table.notificationTable.deletedAt),
 			isNull(table.notificationTable.readAt)
@@ -197,4 +201,3 @@ export const markAllNotificationsRead = command(
 			.where(whereExpr);
 	}
 );
-
