@@ -206,7 +206,7 @@
 
 <div class="space-y-6">
 	<div class="mb-2 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">{m.sub_category_master}</h1>
+		<h1 class="text-2xl font-bold">{m.sub_category_master()}</h1>
 		<DaisyUiButton
 			className="d-btn-primary d-btn-sm"
 			onClick={openCreate}
