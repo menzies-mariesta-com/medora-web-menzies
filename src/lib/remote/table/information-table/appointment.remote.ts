@@ -14,6 +14,51 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne } from 'drizzle-orm';
 const BRANCH_ALL_VALUE = '__all__';
+const MAX_APPOINTMENT_YEARS_AHEAD = 1;
+
+function toDateOnly(value: unknown): Date | null {
+	if (!value) return null;
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime())) return null;
+		return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+	}
+	if (typeof value === 'string') {
+		// appointment_date is stored as a date (YYYY-MM-DD). Parse as a local date-only value.
+		const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+		if (!m) return null;
+		const y = Number(m[1]);
+		const mo = Number(m[2]) - 1;
+		const d = Number(m[3]);
+		const dt = new Date(y, mo, d);
+		// Guard against invalid dates like 2026-02-31 rolling over.
+		if (
+			dt.getFullYear() !== y ||
+			dt.getMonth() !== mo ||
+			dt.getDate() !== d
+		)
+			return null;
+		return dt;
+	}
+	return null;
+}
+
+function assertAppointmentNotTooFarAhead(appointmentDate: unknown): void {
+	const apptDay = toDateOnly(appointmentDate);
+	if (!apptDay) return;
+	const today = new Date();
+	const todayDay = new Date(
+		today.getFullYear(),
+		today.getMonth(),
+		today.getDate()
+	);
+	const maxDay = new Date(todayDay);
+	maxDay.setFullYear(maxDay.getFullYear() + MAX_APPOINTMENT_YEARS_AHEAD);
+	if (apptDay.getTime() > maxDay.getTime()) {
+		throw new Error(
+			`Appointment date cannot be more than ${MAX_APPOINTMENT_YEARS_AHEAD} year(s) in advance`
+		);
+	}
+}
 
 function getSelectedScopeFromRequest(): {
 	hospitalId: string | null;
@@ -215,6 +260,7 @@ export const createAppointment = command(
 		if (!hospitalId) throw new Error('Hospital is required');
 		const branchId = payload.branchId ?? scope.branchId ?? null;
 		if (!branchId) throw new Error('Branch is required');
+		assertAppointmentNotTooFarAhead(payload.appointmentDate);
 		const values: AppointmentSchemaInsert = {
 			...payload,
 			hospitalId,
@@ -240,6 +286,11 @@ export const updateAppointment = command(
 		payload: AppointmentSchemaUpdate & { id: number }
 	): Promise<AppointmentSchema> => {
 		const { id, ...rest } = payload;
+		if ('appointmentDate' in rest) {
+			assertAppointmentNotTooFarAhead(
+				(rest as AppointmentSchemaUpdate).appointmentDate
+			);
+		}
 		const [row] = await ensureDb()
 			.update(table.appointmentTable)
 			.set(rest as AppointmentSchemaUpdate)

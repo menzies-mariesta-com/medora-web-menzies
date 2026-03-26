@@ -22,11 +22,19 @@
 		fontTool.getFont() ?? FontEnum.ADWAITA_SANS
 	);
 
-	function handleConfirm() {
-		confirm({
-			theme: currentTheme,
-			font: currentFont
-		});
+	let isConfirming = $state(false);
+
+	async function handleConfirm() {
+		if (isConfirming) return;
+		isConfirming = true;
+		try {
+			await confirm({
+				theme: currentTheme,
+				font: currentFont
+			});
+		} finally {
+			isConfirming = false;
+		}
 	}
 </script>
 
@@ -38,6 +46,7 @@
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={() => cancel()}
+			disabled={isConfirming}
 		>
 			<LucideX className="size-5" />
 		</DaisyUiButton>
@@ -72,12 +81,18 @@
 		</DaisyUiSelect>
 
 		<div class="d-modal-action mt-2">
-			<DaisyUiButton className="d-btn" onClick={() => cancel()}>
+			<DaisyUiButton
+				className="d-btn"
+				onClick={() => cancel()}
+				disabled={isConfirming}
+			>
 				Cancel
 			</DaisyUiButton>
 			<DaisyUiButton
 				onClick={() => handleConfirm()}
 				className="d-btn d-btn-primary"
+				disabled={isConfirming}
+				loading={isConfirming}
 			>
 				OK
 			</DaisyUiButton>

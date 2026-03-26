@@ -642,7 +642,7 @@
 				'Appointment updated.',
 				StatusColorEnum.SUCCESS
 			);
-			confirm({ updated: true });
+			await confirm({ updated: true });
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error
@@ -669,7 +669,7 @@
 				'Appointment deleted.',
 				StatusColorEnum.SUCCESS
 			);
-			confirm({ deleted: true });
+			await confirm({ deleted: true });
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error

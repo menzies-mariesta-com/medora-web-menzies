@@ -97,7 +97,8 @@
 	let {
 		activeStates = {},
 		fontSize = 14,
-		fontFamily = '',
+		// Default to Adwaita Sans to match expected editor behavior.
+		fontFamily = 'Adwaita-sans, sans-serif',
 		isInTable = false,
 		textColor = '#000000',
 		bgColor = ''
@@ -309,20 +310,21 @@
 	<div class="flex items-center rounded border border-base-300">
 		<button
 			type="button"
-			class="px-2 py-1 hover:bg-base-300"
+			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
 			on:mousedown|preventDefault
-			on:click={() => execute('fontSizeDecrease')}
+			on:click|preventDefault|stopPropagation={() =>
+				execute('fontSizeDecrease')}
 		>
-			<span class="text-sm font-bold">−</span>
+			<span class="text-base font-bold leading-none">−</span>
 		</button>
 		<input
 			type="text"
 			inputmode="numeric"
 			pattern="[0-9]*"
 			value={fontSize}
-			class="h-7 w-8 border-x border-base-300 bg-transparent text-center text-sm font-medium"
+			class="h-8 w-14 border-x border-base-300 bg-transparent text-center text-base font-medium"
 			style="outline: none; box-shadow: none;"
-			on:change={(e) => {
+			on:input={(e) => {
 				const target = e.currentTarget as HTMLInputElement;
 				const val = Number(target.value);
 				if (!Number.isNaN(val) && val >= 8 && val <= 200)
@@ -331,11 +333,12 @@
 		/>
 		<button
 			type="button"
-			class="px-2 py-1 hover:bg-base-300"
+			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
 			on:mousedown|preventDefault
-			on:click={() => execute('fontSizeIncrease')}
+			on:click|preventDefault|stopPropagation={() =>
+				execute('fontSizeIncrease')}
 		>
-			<span class="text-sm font-bold">+</span>
+			<span class="text-base font-bold leading-none">+</span>
 		</button>
 	</div>
 

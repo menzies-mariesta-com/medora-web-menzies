@@ -11,9 +11,11 @@
 	const toastService = new ToastService();
 
 	let cancelReason = $state('');
+	let isSubmitting = $state(false);
 
-	function handleSubmit(e: SubmitEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
+		if (isSubmitting) return;
 		const trimmed = cancelReason.trim();
 		if (!trimmed) {
 			toastService.addToast(
@@ -22,10 +24,16 @@
 			);
 			return;
 		}
-		confirm({ cancelReason: trimmed });
+		isSubmitting = true;
+		try {
+			await confirm({ cancelReason: trimmed });
+		} finally {
+			isSubmitting = false;
+		}
 	}
 
 	function handleCancelClick() {
+		if (isSubmitting) return;
 		cancel();
 	}
 </script>
@@ -55,10 +63,15 @@
 			type="button"
 			className="d-btn-ghost"
 			onClick={handleCancelClick}
+			disabled={isSubmitting}
 		>
 			Cancel
 		</DaisyUiButton>
-		<DaisyUiButton type="submit" className="d-btn-primary">
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary"
+			loading={isSubmitting}
+		>
 			Confirm Cancel
 		</DaisyUiButton>
 	</div>

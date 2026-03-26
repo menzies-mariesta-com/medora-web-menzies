@@ -78,7 +78,7 @@
 				StatusColorEnum.SUCCESS
 			);
 			ObservationVisitTextDialogState.onSaved?.();
-			confirm({ saved: true });
+			await confirm({ saved: true });
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
@@ -106,12 +106,20 @@
 		/>
 	</div>
 	<div class="flex flex-wrap justify-end gap-2">
-		<DaisyUiButton className="d-btn-ghost" onClick={() => cancel()}>
+		<DaisyUiButton
+			className="d-btn-ghost"
+			onClick={() => {
+				if (isSubmitting) return;
+				cancel();
+			}}
+			disabled={isSubmitting}
+		>
 			{m.observation_emr_cancel()}
 		</DaisyUiButton>
 		<DaisyUiButton
 			className="d-btn-primary"
 			disabled={isSubmitting}
+			loading={isSubmitting}
 			onClick={handleSave}
 		>
 			{m.observation_emr_save()}
