@@ -1,42 +1,41 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
-	import LVitalRecordDialogContent from '$lib/component/local/private/heka/emr/LVitalRecordDialogContent.svelte';
-	import DaisyUiCollapseTitle from '$lib/component/library/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
-	import DaisyUiCollapseContent from '$lib/component/library/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
-	import { getPatientVisitById } from '$lib/remote/table/information-table/patient-visit.remote';
+	import LVitalRecordDialogContent from '$lib/component/own/local/private/heka/emr/LVitalRecordDialogContent.svelte';
+	import DaisyUiCollapseTitle from '$lib/component/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
+	import DaisyUiCollapseContent from '$lib/component/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
 		getPatientVitalsByPatientId,
 		getPatientVitalsByPatientIdPaginated,
 		deletePatientVital,
 		type PatientVitalWithVisit
-	} from '$lib/remote/table/information-table/patient-vital.remote';
+	} from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
 	} from '$lib/config/vital.config';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -526,9 +525,7 @@
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm"
 											onClick={() =>
-												openEditDialog(
-													row as PatientVitalWithVisit
-												)}
+												openEditDialog(row as PatientVitalWithVisit)}
 										>
 											<LucidePencil className="size-4" />
 										</DaisyUiButton>

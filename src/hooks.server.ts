@@ -5,14 +5,25 @@ import { auth } from '$lib/auth/server';
 import { ensureDb } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getStaffByUserIdWithRelations } from '$lib/remote/table/information-table/staff.remote';
 import { RoleEnum } from '$lib/model/enum/db-link';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const session = await auth.api.getSession({
-		headers: event.request.headers
-	});
+	let session: Awaited<ReturnType<typeof auth.api.getSession>>;
+	try {
+		session = await auth.api.getSession({
+			headers: event.request.headers
+		});
+	} catch (err) {
+		// If the DB is temporarily unreachable (DNS/network), Better Auth should not
+		// crash the whole request with a 500. Treat the user as logged out.
+		console.error('[auth] Failed to get session', err);
+		session = null;
+	}
+
+	// Expiry is enforced by Better Auth from the session row `expires_at` (including
+	// the one-time +30m extension in `/api/session/extend`). Do not cap by
+	// `created_at` or extensions would still log the user out at T+30m.
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
@@ -40,26 +51,34 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return svelteKitHandler({
-		event,
-		resolve: (e) =>
-			paraglideMiddleware(
-				e.request,
-				({
-					request,
-					locale
-				}: {
-					request: globalThis.Request;
-					locale: string;
-				}) => {
-					e.request = request;
-					return resolve(e, {
-						transformPageChunk: ({ html }) =>
-							html.replace('%paraglide.lang%', locale)
-					});
-				}
-			),
-		auth,
-		building
-	});
+	const basePath =
+		(auth as { options?: { basePath?: string } }).options?.basePath ??
+		'/api/auth';
+	const pathname = event.url.pathname;
+	const authPrefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
+
+	// Better Auth's `svelteKitHandler` checks request origin against `baseURL`.
+	// When you access the app via different hosts (e.g. `localhost` vs LAN IP),
+	// that origin check can fail and SvelteKit will return 404 for `/api/auth/*`.
+	// Here we route by pathname only to keep auth endpoints working as expected.
+	if (!building && (pathname === basePath || pathname.startsWith(authPrefix))) {
+		return auth.handler(event.request);
+	}
+
+	return paraglideMiddleware(
+		event.request,
+		({
+			request,
+			locale
+		}: {
+			request: globalThis.Request;
+			locale: string;
+		}) => {
+			event.request = request;
+			return resolve(event, {
+				transformPageChunk: ({ html }) =>
+					html.replace('%paraglide.lang%', locale)
+			});
+		}
+	);
 };

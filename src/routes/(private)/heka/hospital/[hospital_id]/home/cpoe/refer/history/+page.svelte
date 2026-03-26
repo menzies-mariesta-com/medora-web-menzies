@@ -7,17 +7,17 @@
 		getReferHistoryPaginated,
 		rejectReferHistory,
 		type ReferHistoryWithRelations
-	} from '$lib/remote/table/information-table/refer-history.remote';
-	import MariTable from '$lib/component/library/mari/table/MariTable.svelte';
-	import type { MariTableColumn } from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/tool/remote/table/information-table/refer-history.http.tool.svelte';
+	import MariTable from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LReferFeedbackDialogContent from '$lib/component/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
+	import LReferFeedbackDialogContent from '$lib/component/own/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
 
 	let rows = $state<ReferHistoryWithRelations[]>([]);
 	let totalRowCount = $state(0);
@@ -284,7 +284,8 @@
 			component: LReferFeedbackDialogContent,
 			props: {
 				label: 'Reject Note',
-				placeholder: 'Enter internal note for rejection (optional)...',
+				placeholder:
+					'Enter internal note for rejection (optional)...',
 				confirmLabel: 'Confirm Reject',
 				required: false
 			}
@@ -325,7 +326,8 @@
 			component: LReferFeedbackDialogContent,
 			props: {
 				label: 'Reply Note',
-				placeholder: 'Enter internal note for acceptance (optional)...',
+				placeholder:
+					'Enter internal note for acceptance (optional)...',
 				confirmLabel: 'Confirm Accept',
 				required: false
 			}

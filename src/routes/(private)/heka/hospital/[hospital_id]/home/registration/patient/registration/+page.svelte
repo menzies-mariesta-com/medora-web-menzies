@@ -1,16 +1,16 @@
 <script lang="ts">
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/library/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/library/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiSkeleton from '$lib/component/library/daisyui/skeleton/DaisyUiSkeleton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiSkeleton from '$lib/component/daisyui/skeleton/DaisyUiSkeleton.svelte';
 
-	import LPatientRegistrationFirstColumn from '$lib/component/local/private/heka/patient/registration/LPatientRegistrationFirstColumn.svelte';
-	import LPatientRegistrationSecondColumn from '$lib/component/local/private/heka/patient/registration/LPatientRegistrationSecondColumn.svelte';
-	import LPatientRegistrationThirdColumn from '$lib/component/local/private/heka/patient/registration/LPatientRegistrationThirdColumn.svelte';
-	import LPatientRegistrationMoreInfo from '$lib/component/local/private/heka/patient/registration/LPatientRegistrationMoreInfo.svelte';
-	import LPatientRegistrationStatus from '$lib/component/local/private/heka/patient/registration/LPatientRegistrationStatus.svelte';
+	import LPatientRegistrationFirstColumn from '$lib/component/own/local/private/heka/patient/registration/LPatientRegistrationFirstColumn.svelte';
+	import LPatientRegistrationSecondColumn from '$lib/component/own/local/private/heka/patient/registration/LPatientRegistrationSecondColumn.svelte';
+	import LPatientRegistrationThirdColumn from '$lib/component/own/local/private/heka/patient/registration/LPatientRegistrationThirdColumn.svelte';
+	import LPatientRegistrationMoreInfo from '$lib/component/own/local/private/heka/patient/registration/LPatientRegistrationMoreInfo.svelte';
+	import LPatientRegistrationStatus from '$lib/component/own/local/private/heka/patient/registration/LPatientRegistrationStatus.svelte';
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
@@ -19,17 +19,17 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 
-	import { getGender } from '$lib/remote/table/master-table/gender.remote';
-	import { getMaritalStatus } from '$lib/remote/table/master-table/marial-status.remote';
-	import { getTitle } from '$lib/remote/table/master-table/title.remote';
-	import { getIdentityType } from '$lib/remote/table/master-table/identity-type.remote';
-	import { getBloodType } from '$lib/remote/table/master-table/blood-type.remote';
-	import { getCountry } from '$lib/remote/table/master-table/country.remote';
-	import { getState } from '$lib/remote/table/master-table/state.remote';
-	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
-	import { getNationality } from '$lib/remote/table/master-table/nationality.remote';
-	import { getReligion } from '$lib/remote/table/master-table/religion.remote';
+	import { getGender } from '$lib/tool/remote/table/master-table/gender.http.tool.svelte';
+	import { getMaritalStatus } from '$lib/tool/remote/table/master-table/marial-status.http.tool.svelte';
+	import { getTitle } from '$lib/tool/remote/table/master-table/title.http.tool.svelte';
+	import { getIdentityType } from '$lib/tool/remote/table/master-table/identity-type.http.tool.svelte';
+	import { getBloodType } from '$lib/tool/remote/table/master-table/blood-type.http.tool.svelte';
+	import { getCountry } from '$lib/tool/remote/table/master-table/country.http.tool.svelte';
+	import { getState } from '$lib/tool/remote/table/master-table/state.http.tool.svelte';
+	import { getCity } from '$lib/tool/remote/table/master-table/city.http.tool.svelte';
+	import { getPostalCode } from '$lib/tool/remote/table/master-table/postal-code.http.tool.svelte';
+	import { getNationality } from '$lib/tool/remote/table/master-table/nationality.http.tool.svelte';
+	import { getReligion } from '$lib/tool/remote/table/master-table/religion.http.tool.svelte';
 
 	import type {
 		BloodTypeSchema,
@@ -50,22 +50,23 @@
 		updatePatient,
 		getPatientByIdWithRelations,
 		getDuplicatePatients
-	} from '$lib/remote/table/information-table/patient.remote';
-	import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
-	import { createPatientAttachment } from '$lib/remote/table/information-table/patient-attachment.remote';
+	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
+	import { createPatientAttachment } from '$lib/tool/remote/table/information-table/patient-attachment.http.tool.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
+	import { updateUser } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import DaisyUiDivider from '$lib/component/library/daisyui/divider/DaisyUiDivider.svelte';
-	import DaisyUiFileInput from '$lib/component/library/daisyui/fileinput/DaisyUiFileInput.svelte';
+	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
+	import DaisyUiFileInput from '$lib/component/daisyui/fileinput/DaisyUiFileInput.svelte';
 	import { page } from '$app/state';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import LPatientAttachmentDialogContent from '$lib/component/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
+	import LPatientAttachmentDialogContent from '$lib/component/own/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
 	import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
-	import LPatientCheckDuplicateDialogContent from '$lib/component/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
+	import LPatientCheckDuplicateDialogContent from '$lib/component/own/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import LPatientCardPrintModal from '$lib/component/own/local/private/heka/patient/list/LPatientCardPrintModal.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -79,6 +80,18 @@
 	const stagedAttachmentCount = $derived(
 		PatientAttachmentDialogState.stagedAttachments.length
 	);
+
+	let patientCardDialog = $state<{
+		patientId: string;
+	} | null>(null);
+
+	function openPatientCardDialog(id: string) {
+		patientCardDialog = { patientId: id };
+	}
+
+	function closePatientCardDialog() {
+		patientCardDialog = null;
+	}
 
 	// Lookup data
 	let titleData: TitleSchema[] = $state([]);
@@ -521,7 +534,7 @@
 				});
 				if (result.confirmed && result.data) {
 					handleSelectDuplicatePatient(
-						result.data as PatientWithRelations
+							result.data as any
 					);
 				}
 				PatientDuplicateModalState.duplicates = [];
@@ -538,7 +551,7 @@
 	}
 
 	function handleSelectDuplicatePatient(
-		patient: PatientWithRelations
+		patient: any
 	) {
 		routerUtil.replaceRoute(
 			`${page.url.pathname}?edit=${patient.id}`
@@ -771,8 +784,7 @@
 					});
 					if (error) {
 						toastService.addToast(
-							error.message ??
-								'Failed to send reset password email.',
+							error.message ?? 'Failed to send reset password email.',
 							StatusColorEnum.ERROR
 						);
 					} else {
@@ -1110,6 +1122,18 @@
 								({stagedAttachmentCount})
 							{/if}
 						</DaisyUiButton>
+
+						<DaisyUiButton
+							type="button"
+							className="d-btn-ghost d-btn-sm gap-2"
+							disabled={!currentPatientId}
+							onClick={() =>
+								currentPatientId && openPatientCardDialog(currentPatientId)
+							}
+						>
+							<LucidePrinter className="size-5" />
+							Card
+						</DaisyUiButton>
 					</div>
 				</div>
 
@@ -1212,3 +1236,10 @@
 		</form>
 	</DaisyUiCardBody>
 </DaisyUiCard>
+
+{#if patientCardDialog}
+	<LPatientCardPrintModal
+		patientId={patientCardDialog.patientId}
+		onClose={closePatientCardDialog}
+	/>
+{/if}

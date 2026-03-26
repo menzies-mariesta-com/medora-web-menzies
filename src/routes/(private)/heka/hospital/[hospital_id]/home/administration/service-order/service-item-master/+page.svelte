@@ -1,28 +1,28 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/library/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiTable from '$lib/component/library/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/library/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/library/daisyui/table/body/DaisyUiTableBody.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiInputField from '$lib/component/library/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/library/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/library/daisyui/textarea/DaisyUiTextarea.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import DaisyUiTable from '$lib/component/daisyui/table/DaisyUiTable.svelte';
+	import DaisyUiTableHeader from '$lib/component/daisyui/table/head/DaisyUiTableHeader.svelte';
+	import DaisyUiTableBody from '$lib/component/daisyui/table/body/DaisyUiTableBody.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		getServiceItemPaginated,
 		createServiceItem,
 		updateServiceItem,
 		deleteServiceItem
-	} from '$lib/remote/table/information-table/service-item.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import { getCategory } from '$lib/remote/table/information-table/category.remote';
-	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
+	} from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import { getCategory } from '$lib/tool/remote/table/information-table/category.http.tool.svelte';
+	import { getSubCategory } from '$lib/tool/remote/table/information-table/sub-category.http.tool.svelte';
 	import type {
 		CategorySchema,
 		SubCategorySchema,
@@ -33,9 +33,9 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePencil from '$lib/component/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -100,7 +100,7 @@
 		},
 		{
 			id: 'category',
-			header: 'Category',
+			header: m.service_item_category_label(),
 			widthClass: 'w-40',
 			format: (_value, row) =>
 				categoryNameById(
@@ -112,7 +112,7 @@
 		},
 		{
 			id: 'subCategory',
-			header: 'Sub-category',
+			header: m.service_item_sub_category_label(),
 			widthClass: 'w-40',
 			format: (_value, row) => subCategoryNameById(row.subCategoryId)
 		},
@@ -135,12 +135,20 @@
 			widthClass: 'w-32',
 			filterType: 'select',
 			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				{
+					label: m.service_item_active_label(),
+					value: String(StatusEnum.ACTIVE)
+				},
+				{
+					label: m.service_item_inactive_label(),
+					value: String(StatusEnum.INACTIVE)
+				}
 			],
 			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE ? 'Active' : 'Inactive'
+				row.statusId === StatusEnum.ACTIVE
+					? m.service_item_active_label()
+					: m.service_item_inactive_label()
 		}
 	];
 
@@ -185,6 +193,8 @@
 	}
 
 	async function fetchServiceItems(forceRefresh = false) {
+		// HTTP wrapper uses `cache: no-store`, so forceRefresh is implicit.
+		void forceRefresh;
 		isLoading = true;
 		try {
 			const filters = tableColumnFilters;
@@ -298,9 +308,6 @@
 				page: currentPage,
 				pageSize
 			};
-			if (forceRefresh) {
-				await getServiceItemPaginated(paginatedParams).refresh();
-			}
 
 			serviceResult = await getServiceItemPaginated(paginatedParams);
 		} finally {
@@ -373,7 +380,7 @@
 		e.preventDefault();
 		if (!hospitalId) {
 			toastService.addToast(
-				'Hospital context is missing.',
+				m.service_item_hospital_context_missing(),
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -383,7 +390,7 @@
 			: null;
 		if (!subCategoryId) {
 			toastService.addToast(
-				'Please select category and sub-category.',
+				m.service_item_select_category_sub_category_required(),
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -391,7 +398,7 @@
 		const name = formServiceName.trim();
 		if (!name) {
 			toastService.addToast(
-				'Service name is required.',
+				m.service_item_service_name_required(),
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -408,7 +415,7 @@
 		);
 		if (duplicateByName) {
 			toastService.addToast(
-				'Service name already exists.',
+				m.service_item_service_name_already_exists(),
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -425,7 +432,7 @@
 			);
 			if (duplicateByCode) {
 				toastService.addToast(
-					'Service code already exists.',
+					m.service_item_service_code_already_exists(),
 					StatusColorEnum.ERROR
 				);
 				return;
@@ -447,7 +454,7 @@
 					statusId
 				});
 				toastService.addToast(
-					'Service item created.',
+					m.service_item_created_success(),
 					StatusColorEnum.SUCCESS
 				);
 			} else if (mode === 'edit' && editingId != null) {
@@ -459,7 +466,7 @@
 					statusId
 				});
 				toastService.addToast(
-					'Service item updated.',
+					m.service_item_updated_success(),
 					StatusColorEnum.SUCCESS
 				);
 			}
@@ -469,7 +476,7 @@
 			const msg =
 				err instanceof Error
 					? err.message
-					: 'Failed to save service item.';
+					: m.service_item_failed_to_save();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		} finally {
 			isSaving = false;
@@ -478,15 +485,17 @@
 
 	async function handleDelete(row: ServiceItemSchema) {
 		const result = await dialogService.open({
-			title: 'Delete service item',
-			message: `Delete "${row.serviceName ?? 'this service item'}"?`,
+			title: m.service_item_delete_confirm_title(),
+			message: `${m.service_item_delete_confirm_prefix()} "${
+				row.serviceName ?? m.service_item_this_service_item_fallback()
+			}"${m.service_item_delete_confirm_suffix()}`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
 		try {
 			await deleteServiceItem({ id: row.id });
 			toastService.addToast(
-				'Service item deleted.',
+				m.service_item_deleted_success(),
 				StatusColorEnum.SUCCESS
 			);
 			await fetchServiceItems(true);
@@ -494,7 +503,7 @@
 			const msg =
 				err instanceof Error
 					? err.message
-					: 'Failed to delete service item.';
+					: m.service_item_failed_to_delete();
 			toastService.addToast(msg, StatusColorEnum.ERROR);
 		}
 	}
@@ -516,7 +525,7 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Service items</h1>
+		<h1 class="text-2xl font-bold">{m.service_items_title()}</h1>
 		<DaisyUiButton
 			className="d-btn-outline d-btn-sm d-btn-square"
 			onClick={startCreate}
@@ -530,12 +539,14 @@
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium">Category</label>
+						<label class="text-sm font-medium"
+							>{m.service_item_category_label()}</label
+						>
 						<DaisyUiSelect
 							className="d-select d-select-bordered d-select-sm w-full"
 							bind:value={selectedCategoryId}
 							onChange={onCategoryChange}
-							optionHeader="All categories"
+							optionHeader={m.service_item_all_categories()}
 						>
 							{#each categories as cat (cat.id)}
 								<option value={String(cat.id)}
@@ -545,12 +556,14 @@
 						</DaisyUiSelect>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium">Sub-category</label>
+						<label class="text-sm font-medium"
+							>{m.service_item_sub_category_label()}</label
+						>
 						<DaisyUiSelect
 							className="d-select d-select-bordered d-select-sm w-full"
 							bind:value={selectedSubCategoryId}
 							onChange={onSubCategoryChange}
-							optionHeader="Select sub-category"
+							optionHeader={m.service_item_select_sub_category()}
 						>
 							{#each filteredSubCategories as sc (sc.id)}
 								<option value={String(sc.id)}
@@ -562,22 +575,28 @@
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
 						<label class="text-sm font-medium">
-							Service name<span class="text-error"> *</span>
+							{m.service_item_service_name_label()}<span
+								class="text-error"
+							>
+								*</span
+							>
 						</label>
 						<DaisyUiInputField
 							bind:value={formServiceName}
 							inputType="text"
-							inputPlaceholderText="Service name"
+							inputPlaceholderText={m.service_item_service_name_placeholder()}
 							required
 							className="d-input-sm w-full"
 						/>
 					</div>
 					<div class="flex min-w-40 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium">Service code</label>
+						<label class="text-sm font-medium"
+							>{m.service_item_service_code_label()}</label
+						>
 						<DaisyUiInputField
 							bind:value={formServiceCode}
 							inputType="text"
-							inputPlaceholderText="Code (optional)"
+							inputPlaceholderText={m.service_item_service_code_placeholder()}
 							className="d-input-sm w-full"
 						/>
 					</div>
@@ -585,10 +604,12 @@
 
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-56 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium">Remark</label>
+						<label class="text-sm font-medium"
+							>{m.service_item_remark_label()}</label
+						>
 						<DaisyUiTextarea
 							bind:value={formRemark}
-							placeholder="Remark (optional)"
+							placeholder={m.service_item_remark_placeholder()}
 							className="h-24 w-full"
 						/>
 					</div>
@@ -599,7 +620,7 @@
 								bind:checked={formActive}
 								class="d-checkbox d-checkbox-sm"
 							/>
-							<span>Active</span>
+							<span>{m.service_item_active_label()}</span>
 						</label>
 					</div>
 				</div>
@@ -620,10 +641,10 @@
 						disabled={isSaving}
 					>
 						{isSaving
-							? 'Saving…'
+							? m.service_item_saving()
 							: mode === 'create'
-								? 'Create'
-								: 'Save'}
+								? m.service_item_create_button()
+								: m.service_item_save_button()}
 					</DaisyUiButton>
 				</div>
 			</form>
@@ -641,7 +662,7 @@
 					bind:currentPage
 					totalRowCount={total}
 					showRefreshButton={true}
-					emptyMessage="No records found"
+					emptyMessage={m.service_item_no_records_found()}
 					enableColumnFilters={true}
 					useRemoteFilters={true}
 					actionsHeader={m.actions()}

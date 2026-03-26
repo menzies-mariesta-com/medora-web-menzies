@@ -6,7 +6,9 @@ export class DateTimeUtil {
 		return new SvelteDate().toISOString();
 	}
 
-	parseAnyToDate(value: Date | string | number | null | undefined): Date | null {
+	parseAnyToDate(
+		value: Date | string | number | null | undefined
+	): Date | null {
 		if (!value) return null;
 		const date = new SvelteDate(value as any);
 		return Number.isNaN(date.getTime()) ? null : date;

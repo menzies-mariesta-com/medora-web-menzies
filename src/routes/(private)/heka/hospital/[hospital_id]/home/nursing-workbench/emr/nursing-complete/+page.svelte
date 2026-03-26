@@ -1,34 +1,34 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiAlert from '$lib/component/library/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiButton from '$lib/component/library/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/library/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiLoading from '$lib/component/library/daisyui/loading/DaisyUiLoading.svelte';
-	import LucideCircleCheck from '$lib/component/library/lucide/LucideCircleCheck.svelte';
-	import LucidePrinter from '$lib/component/library/lucide/LucidePrinter.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
+	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import MariTable, {
 		type MariTableColumn
-	} from '$lib/component/library/mari/table/MariTable.svelte';
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import { getServiceOrder } from '$lib/remote/table/information-table/service-order.remote';
+	import { getServiceOrder } from '$lib/tool/remote/table/information-table/service-order.http.tool.svelte';
 	import {
 		getNursingIncompleteLineCountForVisit,
 		getServiceOrderDetailPaginated,
 		markServiceOrderDetailNursingComplete,
 		markServiceOrderDetailNursingCompleteBatch
-	} from '$lib/remote/table/information-table/service-order-detail.remote';
-	import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
+	} from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
+	import { getServiceItem } from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
 	import {
 		getPatientVisitById,
 		getPatientVisitByIdWithRelations
-	} from '$lib/remote/table/information-table/patient-visit.remote';
-	import { getDocumentByCode } from '$lib/remote/table/information-table/document.remote';
+	} from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import { getDocumentByCode } from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
 	import {
 		getDocumentSettingsWithRelations,
 		type DocumentSettingWithRelations
-	} from '$lib/remote/table/information-table/document-setting.remote';
+	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type {
 		ServiceItemSchema,
@@ -106,7 +106,9 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const printByName = $derived(
-		typeof page.data?.printByName === 'string' ? page.data.printByName : ''
+		typeof page.data?.printByName === 'string'
+			? page.data.printByName
+			: ''
 	);
 
 	const canPrintNursing = $derived(
@@ -120,10 +122,10 @@
 	const canCompleteNextBatch = $derived(
 		Boolean(
 			visitId &&
-				visit &&
-				hospitalId &&
-				nursingIncompleteCount > 0 &&
-				!isBatchCompleting
+			visit &&
+			hospitalId &&
+			nursingIncompleteCount > 0 &&
+			!isBatchCompleting
 		)
 	);
 
@@ -181,11 +183,12 @@
 			return;
 		}
 		try {
-			nursingIncompleteCount = await getNursingIncompleteLineCountForVisit({
-				visitId,
-				hospitalId,
-				statusId: statusFilterDetailStatusId()
-			});
+			nursingIncompleteCount =
+				await getNursingIncompleteLineCountForVisit({
+					visitId,
+					hospitalId,
+					statusId: statusFilterDetailStatusId()
+				});
 		} catch {
 			nursingIncompleteCount = 0;
 		}
@@ -554,9 +557,10 @@
 
 			try {
 				const blob = await htmlStringToPdfBlob(htmlPdf);
-				const safeBase = `nursing-complete-${visit.visitNo || visitId}-${Date.now()}`
-					.replace(/[^\w.-]+/g, '_')
-					.slice(0, 120);
+				const safeBase =
+					`nursing-complete-${visit.visitNo || visitId}-${Date.now()}`
+						.replace(/[^\w.-]+/g, '_')
+						.slice(0, 120);
 				const url = await uploadPatientAttachmentPdf(
 					blob,
 					`${safeBase}.pdf`
@@ -608,7 +612,8 @@
 	}
 
 	async function handleCompleteNextBatch() {
-		if (!visitId || !hospitalId || nursingIncompleteCount === 0) return;
+		if (!visitId || !hospitalId || nursingIncompleteCount === 0)
+			return;
 		isBatchCompleting = true;
 		try {
 			const { markedCount, remainingIncompleteCount } =
@@ -667,7 +672,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" button above to view nursing complete items.'
+			message={'Choose a visit using the "Choose Visit" button above to view nursing complete items.'}
 			className="z-0"
 		/>
 	{:else if !visit && !isLoading}
@@ -688,118 +693,119 @@
 						message="Visit not found."
 					/>
 				{:else}
-				<div
-					class="mb-3 flex flex-wrap items-center justify-between gap-3"
-				>
-					<div>
-						<h2 class="text-lg font-semibold">Nursing Complete</h2>
-						<p class="text-sm text-base-content/70">
-							Service items and charges for this visit
-							{visit.visitNo ? `(Visit: ${visit.visitNo})` : ''}
-						</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2 text-sm">
-						<span class="rounded bg-base-200 px-2 py-1"
-							>Subtotal: {formatMoney(subtotal)}</span
-						>
-						<span class="rounded bg-base-200 px-2 py-1"
-							>Tax: {formatMoney(totalTax)}</span
-						>
-						<span
-							class="rounded bg-primary/20 px-2 py-1 font-semibold"
-							>Grand Total: {formatMoney(grandTotal)}</span
-						>
-						<DaisyUiButton
-							className="d-btn-outline d-btn-sm"
-							onClick={printNursingComplete}
-							disabled={!canPrintNursing}
-						>
-							<LucidePrinter className="mr-1 size-4" />
-							Print
-						</DaisyUiButton>
-						{#if nursingIncompleteCount > 1}
-							<DaisyUiButton
-								className="d-btn-primary d-btn-sm"
-								onClick={handleCompleteNextBatch}
-								disabled={!canCompleteNextBatch}
+					<div
+						class="mb-3 flex flex-wrap items-center justify-between gap-3"
+					>
+						<div>
+							<h2 class="text-lg font-semibold">Nursing Complete</h2>
+							<p class="text-sm text-base-content/70">
+								Service items and charges for this visit
+								{visit.visitNo ? `(Visit: ${visit.visitNo})` : ''}
+							</p>
+						</div>
+						<div class="flex flex-wrap items-center gap-2 text-sm">
+							<span class="rounded bg-base-200 px-2 py-1"
+								>Subtotal: {formatMoney(subtotal)}</span
 							>
-								<LucideCircleCheck className="mr-1 size-4" />
-								Complete next batch (up to {pageSizeNumber})
+							<span class="rounded bg-base-200 px-2 py-1"
+								>Tax: {formatMoney(totalTax)}</span
+							>
+							<span
+								class="rounded bg-primary/20 px-2 py-1 font-semibold"
+								>Grand Total: {formatMoney(grandTotal)}</span
+							>
+							<DaisyUiButton
+								className="d-btn-outline d-btn-sm"
+								onClick={printNursingComplete}
+								disabled={!canPrintNursing}
+							>
+								<LucidePrinter className="mr-1 size-4" />
+								Print
 							</DaisyUiButton>
-						{/if}
+							{#if nursingIncompleteCount > 1}
+								<DaisyUiButton
+									className="d-btn-primary d-btn-sm"
+									onClick={handleCompleteNextBatch}
+									disabled={!canCompleteNextBatch}
+								>
+									<LucideCircleCheck className="mr-1 size-4" />
+									Complete next batch (up to {pageSizeNumber})
+								</DaisyUiButton>
+							{/if}
+						</div>
 					</div>
-				</div>
 
-				{#if rows.length === 0}
-					<DaisyUiAlert
-						type={StatusColorEnum.INFO}
-						message="No service items found for this visit yet."
-					/>
-				{:else}
-					<div class="{TableEnum.HEIGHT} flex flex-col gap-3">
-						<MariTable
-							{rows}
-							{columns}
-							{isLoading}
-							bind:pageSize={pageSizeStr}
-							bind:currentPage
-							totalRowCount={totalRows}
-							showRefreshButton={true}
-							refreshTooltip="Refresh data"
-							emptyMessage="No service items."
-							showRowActions={true}
-							actionsHeader="Actions"
-							actionsVariant="none"
-							enableColumnFilters={true}
-							columnFilters={tableFilters}
-							useRemoteFilters={true}
-							on:refresh={() => fetchNursingComplete({ force: true })}
-							on:pageSizeChange={() => {
-								if (!initialized) return;
-								currentPage = 1;
-								fetchNursingComplete();
-							}}
-							on:pageChange={() => {
-								if (!initialized) return;
-								fetchNursingComplete();
-							}}
-							on:filtersChange={(event) => {
-								if (filterDebounceTimeout) {
-									clearTimeout(filterDebounceTimeout);
-								}
-								tableFilters = event.detail.filters;
-								if (!initialized) return;
-								currentPage = 1;
-								filterDebounceTimeout = setTimeout(() => {
+					{#if rows.length === 0}
+						<DaisyUiAlert
+							type={StatusColorEnum.INFO}
+							message="No service items found for this visit yet."
+						/>
+					{:else}
+						<div class="{TableEnum.HEIGHT} flex flex-col gap-3">
+							<MariTable
+								{rows}
+								{columns}
+								{isLoading}
+								bind:pageSize={pageSizeStr}
+								bind:currentPage
+								totalRowCount={totalRows}
+								showRefreshButton={true}
+								refreshTooltip="Refresh data"
+								emptyMessage="No service items."
+								showRowActions={true}
+								actionsHeader="Actions"
+								actionsVariant="none"
+								enableColumnFilters={true}
+								columnFilters={tableFilters}
+								useRemoteFilters={true}
+								on:refresh={() =>
+									fetchNursingComplete({ force: true })}
+								on:pageSizeChange={() => {
+									if (!initialized) return;
+									currentPage = 1;
 									fetchNursingComplete();
-								}, 350);
-							}}
-						>
-							<svelte:fragment slot="rowActions" let:row>
-								{@const typedRow = row as NursingCompleteRow}
-								<td class="w-36 min-w-[9rem]">
-									{#if typedRow.nursingCompleteTime}
-										<span class="d-badge d-badge-sm d-badge-success"
-											>Completed</span
-										>
-									{:else}
-										<DaisyUiButton
-											className="d-btn-primary d-btn-xs"
-											onClick={() => handleComplete(typedRow)}
-										>
-											<LucideCircleCheck className="size-3.5" />
-											Complete
-										</DaisyUiButton>
-									{/if}
-								</td>
-							</svelte:fragment>
-						</MariTable>
-					</div>
+								}}
+								on:pageChange={() => {
+									if (!initialized) return;
+									fetchNursingComplete();
+								}}
+								on:filtersChange={(event) => {
+									if (filterDebounceTimeout) {
+										clearTimeout(filterDebounceTimeout);
+									}
+									tableFilters = event.detail.filters;
+									if (!initialized) return;
+									currentPage = 1;
+									filterDebounceTimeout = setTimeout(() => {
+										fetchNursingComplete();
+									}, 350);
+								}}
+							>
+								<svelte:fragment slot="rowActions" let:row>
+									{@const typedRow = row as NursingCompleteRow}
+									<td class="w-36 min-w-[9rem]">
+										{#if typedRow.nursingCompleteTime}
+											<span class="d-badge d-badge-sm d-badge-success"
+												>Completed</span
+											>
+										{:else}
+											<DaisyUiButton
+												className="d-btn-primary d-btn-xs"
+												onClick={() => handleComplete(typedRow)}
+											>
+												<LucideCircleCheck className="size-3.5" />
+												Complete
+											</DaisyUiButton>
+										{/if}
+									</td>
+								</svelte:fragment>
+							</MariTable>
+						</div>
+					{/if}
 				{/if}
-			{/if}
-		</div>
-	</DaisyUiCard>
-{/if}
+			</div>
+		</DaisyUiCard>
+	{/if}
 </div>
 
 <style>
