@@ -79,3 +79,8 @@ export enum CategoryEnum {
 	NURSING_PROCEDURE = 2,
 	LABORATORY = 5
 }
+
+export enum StatusTaggingTypeEnum {
+	DOCTOR_APPOINTMENT = 1,
+	VISIT = 2
+}

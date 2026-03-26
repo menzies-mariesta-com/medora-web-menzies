@@ -9,7 +9,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import {
 		getPatientVisitPaginatedForEmr,
-		type PatientVisitWithRelations
+		type PatientVisitWithRelationsForEmr,
+		type VisitStatusCode
 	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import { getVisitType } from '$lib/remote/table/information-table/visit-type.remote';
 	import {
@@ -37,7 +38,7 @@
 	);
 
 	let result =
-		$state<PaginatedResult<PatientVisitWithRelations> | null>(null);
+		$state<PaginatedResult<PatientVisitWithRelationsForEmr> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let visitTypeOptions = $state<
@@ -51,6 +52,21 @@
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
+
+	const visitStatusOptions: { value: VisitStatusCode; label: string }[] =
+		[
+			{ value: 'open', label: 'Open' },
+			{ value: 'vital', label: 'Vital' },
+			{ value: 'seen', label: 'Seen' },
+			{ value: 'closed', label: 'Closed' }
+		];
+
+	function formatVisitStatus(status: VisitStatusCode | null | undefined) {
+		return (
+			visitStatusOptions.find((o) => o.value === status)?.label ??
+			'—'
+		);
+	}
 
 	function formatVisitDate(value: string | null | undefined): string {
 		if (!value) return '';
@@ -79,7 +95,8 @@
 		return `${years}y`;
 	}
 
-	const visitColumns: MariTableColumn<PatientVisitWithRelations>[] = [
+	const visitColumns: MariTableColumn<PatientVisitWithRelationsForEmr>[] =
+		[
 		{
 			id: 'visitNo',
 			header: 'Visit No',
@@ -179,11 +196,14 @@
 			field: 'visitType.name'
 		},
 		{
-			id: 'status',
-			header: 'Status',
+			id: 'visitStatus',
+			header: 'Visit Status',
 			widthClass: 'w-28 min-w-[7rem]',
-			filterable: false,
-			field: 'status.name'
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: () => visitStatusOptions,
+			field: 'visitStatus',
+			format: (_value, row) => formatVisitStatus(row.visitStatus)
 		},
 		{
 			id: 'alert',
@@ -228,6 +248,8 @@
 				visitTypeId: tableFilters.visitType
 					? Number(tableFilters.visitType)
 					: undefined,
+				visitStatus: (tableFilters.visitStatus?.trim() ||
+					undefined) as VisitStatusCode | undefined,
 				...(opts?.bustCache && { _t: Date.now() })
 			});
 
@@ -269,7 +291,7 @@
 		fetchPatients({ bustCache: true });
 	}
 
-	async function selectPatient(v: PatientVisitWithRelations) {
+	async function selectPatient(v: PatientVisitWithRelationsForEmr) {
 		if (isConfirming) return;
 		isConfirming = true;
 		const patient = v.patient;
@@ -341,7 +363,9 @@
 					}, 350);
 				}}
 				on:select={(event) =>
-					void selectPatient(event.detail as PatientVisitWithRelations)}
+					void selectPatient(
+						event.detail as PatientVisitWithRelationsForEmr
+					)}
 			/>
 		</div>
 	{/if}

@@ -31,6 +31,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StatusTaggingTypeEnum } from '$lib/model/enum/db-link';
 
 	let { confirm, cancel } = $props();
 
@@ -94,6 +95,7 @@
 	let referTypeData = $state<ReferTypeSchema[]>([]);
 	let externalReferData = $state<ExternalReferSchema[]>([]);
 	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
+	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID = StatusTaggingTypeEnum.DOCTOR_APPOINTMENT;
 
 	// Form state
 	let patientMode = $state<'existing' | 'new'>('existing');
@@ -170,7 +172,12 @@
 	const availableStatusTaggingData = $derived.by(() => {
 		// Cancel is only available in edit dialog, never on create.
 		// For new patients (no linked account), also hide "Check In".
-		return statusTaggingData.filter((s) => {
+		const doctorAppointmentTaggings = statusTaggingData.filter(
+			(s) =>
+				s.statusTaggingTypeId ===
+				DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID
+		);
+		return doctorAppointmentTaggings.filter((s) => {
 			const raw = (s.code ?? s.name ?? '')
 				.trim()
 				.toLowerCase()
@@ -488,8 +495,10 @@
 						hospitalId,
 						branchId: selectedBranchId,
 						appointmentId: created.id,
-						doctorId: staffId.trim() || null,
-						statusTypeId: null,
+						// Check-in creates the visit, but "Seen" should be reached only
+						// after a doctor account assigns the visit (doctorId set later).
+						doctorId: null,
+						statusTaggingId: null,
 						// Default to OPD visit type (see master-table seed: id=1, code 'O').
 						visitTypeId: 1,
 						statusId: undefined
