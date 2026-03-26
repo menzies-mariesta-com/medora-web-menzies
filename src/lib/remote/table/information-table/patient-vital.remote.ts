@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 export type PatientVitalWithVisit = PatientDiagnosisSchema & {
@@ -167,6 +167,74 @@ export const createPatientVital = command(
 			.returning();
 
 		if (!row) throw new Error('Insert failed');
+
+		// Bump visit status to at least "Vital" unless already "Seen/Closed".
+		// Seen is derived from doctor assignment; Closed is manual/future.
+		try {
+			const visit = await ensureDb()
+				.select({
+					doctorId: table.patientVisitTable.doctorId,
+					statusTaggingId: table.patientVisitTable.statusTaggingId
+				})
+				.from(table.patientVisitTable)
+				.where(eq(table.patientVisitTable.id, payload.visitId))
+				.limit(1);
+
+			const doctorId = visit[0]?.doctorId ?? null;
+			const taggingRows = await ensureDb()
+				.select({
+					id: table.statusTaggingTable.id,
+					code: table.statusTaggingTable.code
+				})
+				.from(table.statusTaggingTable)
+				.leftJoin(
+					table.statusTaggingTypeTable,
+					eq(
+						table.statusTaggingTable.statusTaggingTypeId,
+						table.statusTaggingTypeTable.id
+					)
+				)
+				.where(sql`${table.statusTaggingTypeTable.name} ILIKE 'Visit'`);
+
+			const byCode = new Map<string, number>();
+			for (const r of taggingRows) {
+				if (r.code && r.id != null) byCode.set(String(r.code), r.id);
+			}
+
+			const vitalId = byCode.get('vital') ?? null;
+			const seenId = byCode.get('seen') ?? null;
+			const closedId = byCode.get('closed') ?? null;
+
+			const currentStatusTaggingId =
+				visit[0]?.statusTaggingId ?? null;
+			const isClosed =
+				closedId != null &&
+				currentStatusTaggingId != null &&
+				currentStatusTaggingId === closedId;
+
+			// Upgrade rules:
+			// - If doctor is assigned => status must be "Seen"
+			// - Else => status can be "Vital" (but never downgrade from Seen/Closed)
+			if (doctorId) {
+				if (seenId != null && !isClosed) {
+					await ensureDb()
+						.update(table.patientVisitTable)
+						.set({ statusTaggingId: seenId })
+						.where(eq(table.patientVisitTable.id, payload.visitId));
+				}
+			} else if (
+				vitalId != null &&
+				!isClosed &&
+				currentStatusTaggingId !== seenId
+			) {
+				await ensureDb()
+					.update(table.patientVisitTable)
+					.set({ statusTaggingId: vitalId })
+					.where(eq(table.patientVisitTable.id, payload.visitId));
+			}
+		} catch {
+			// non-blocking
+		}
 
 		getPatientVitalsByVisitId({ visitId: payload.visitId }).refresh();
 		getPatientVitalsByPatientId({
