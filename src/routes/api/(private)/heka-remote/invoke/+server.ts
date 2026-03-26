@@ -8,7 +8,7 @@ type InvokeBody = {
 };
 
 // Eagerly load all remote modules so we can invoke them by (module suffix + export name).
-// This keeps client-side code simple: pages call `/api/remote/invoke` and provide `module` + `fn`.
+// Client calls this via `remoteHttpClient.postRemoteInvoke` (see `REMOTE_INVOKE_URL`).
 const remoteModules = import.meta.glob('$lib/remote/**/*.remote.ts', {
 	eager: true
 }) as Record<string, Record<string, unknown>>;
@@ -46,6 +46,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// Do NOT call `.refresh()` here.
 	// SvelteKit remote-query `.refresh()` is only valid when executed inside the
 	// command/form remote function context. In our setup, the client-side wrapper
-	// re-invokes `/api/remote/invoke` when a `.refresh()` is requested.
+	// re-invokes this endpoint when a `.refresh()` is requested.
 	return json(await ret);
 };
