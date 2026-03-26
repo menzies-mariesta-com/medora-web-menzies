@@ -17,10 +17,31 @@ import { env } from '$env/dynamic/private';
 import { authLogger } from '$lib/logger';
 
 const passwordHashUtil = new PasswordHashUtil();
-const trustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
-	.split(',')
-	.map((v) => v.trim())
-	.filter(Boolean);
+const baseURL = env.BETTER_AUTH_BASE_URL || 'http://localhost:5173';
+
+function normalizeOrigin(value: string | null | undefined): string | null {
+	if (!value) return null;
+	try {
+		return new URL(value).origin;
+	} catch {
+		return null;
+	}
+}
+
+const trustedOrigins = Array.from(
+	new Set(
+		[
+			normalizeOrigin(baseURL),
+			normalizeOrigin(env.BETTER_AUTH_URL),
+			...(env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
+				.split(',')
+				.map((v) => v.trim())
+				.filter(Boolean)
+				.map((v) => normalizeOrigin(v))
+				.filter((v): v is string => Boolean(v))
+		].filter((v): v is string => Boolean(v))
+	)
+);
 
 /** Placeholder only when env is missing (e.g. Docker build). Production must set BETTER_AUTH_SECRET. */
 const BETTER_AUTH_SECRET_PLACEHOLDER =
@@ -37,7 +58,7 @@ function resolveBetterAuthSecret(): string {
 
 export const auth = betterAuth({
 	secret: resolveBetterAuthSecret(),
-	baseURL: env.BETTER_AUTH_BASE_URL || 'http://localhost:5173',
+	baseURL,
 	trustedOrigins,
 	session: {
 		// Hard 30-minute session lifetime (no auto refresh extension),
