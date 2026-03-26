@@ -41,17 +41,18 @@
 
 	const isAsync = $derived(!!searchFn);
 	const optionsList = $derived(isAsync ? optionsFromServer : options);
+	const listboxId = 'daisyui-search-select-listbox';
 	/** When nothing selected (value empty), show '' so placeholder is visible; otherwise show option label or cached label. */
 	const displayLabel = $derived(
 		!value?.trim()
 			? ''
-			: (optionsList.find((o) => o.value === value)?.label ??
+			: (optionsList.find((o: Option) => o.value === value)?.label ??
 					cachedLabelForValue)
 	);
 	const filtered = $derived(
 		isAsync
 			? optionsList
-			: options.filter((o) =>
+			: options.filter((o: Option) =>
 					o.label.toLowerCase().includes(search.toLowerCase())
 				)
 	);
@@ -84,7 +85,7 @@
 		search = displayLabel;
 		if (isAsync && searchFn && search.length >= minSearchLength) {
 			isLoading = true;
-			searchFn(search).then((r) => {
+			searchFn(search).then((r: Option[]) => {
 				optionsFromServer = r;
 				isLoading = false;
 			});
@@ -132,8 +133,8 @@
 	$effect(() => {
 		const v = value?.trim();
 		if (!isAsync || !v || !getLabelForValue) return;
-		if (optionsList.some((o) => o.value === v)) return;
-		getLabelForValue(v).then((label) => {
+		if (optionsList.some((o: Option) => o.value === v)) return;
+		getLabelForValue(v).then((label: string) => {
 			cachedLabelForValue = label;
 		});
 	});
@@ -156,6 +157,7 @@
 		onfocus={handleFocus}
 		onblur={handleInputBlur}
 		role="combobox"
+		aria-controls={listboxId}
 		aria-expanded={open}
 		aria-haspopup="listbox"
 		aria-autocomplete="list"
@@ -163,6 +165,7 @@
 
 	{#if open}
 		<ul
+			id={listboxId}
 			class="d-menu absolute z-50 mt-1 flex max-h-60 w-full flex-row overflow-auto rounded-box border bg-base-100 shadow-lg"
 			role="listbox"
 		>
@@ -178,7 +181,11 @@
 				</li>
 			{:else}
 				{#each filtered as option (option.value)}
-					<li role="option" class="w-full">
+					<li
+						role="option"
+						class="w-full"
+						aria-selected={option.value === value}
+					>
 						<button
 							type="button"
 							class="w-full justify-start text-left"

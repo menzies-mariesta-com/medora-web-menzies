@@ -130,6 +130,7 @@
 		rowTooltipGetter,
 		legendItems = [],
 		rowClassGetter,
+		rowActions,
 		/**
 		 * When true, table fills a flex parent: toolbar stays fixed, only the table
 		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
@@ -164,6 +165,11 @@
 		 * Return a string to show as the native browser tooltip on row hover.
 		 */
 		rowTooltipGetter?: (row: any, rowIndex: number) => string;
+		/**
+		 * Optional named slot renderer for custom per-row actions.
+		 * Provided by parents via `<svelte:fragment slot="rowActions" let:row let:rowIndex />`.
+		 */
+		rowActions?: (slotProps: { row: any; rowIndex: number }) => any;
 		fillParent?: boolean;
 	}>();
 
@@ -518,7 +524,7 @@
 										<select
 											class="d-select w-full d-select-sm"
 											value={columnFilters[column.id] ?? ''}
-											on:change={(event) =>
+											onchange={(event) =>
 												handleFilterInputEvent(column.id, event)}
 										>
 											<option value="">All</option>
@@ -534,7 +540,7 @@
 											type="text"
 											placeholder={column.header}
 											value={columnFilters[column.id] ?? ''}
-											on:input={(event) =>
+											oninput={(event) =>
 												handleFilterInputEvent(column.id, event)}
 										/>
 									{/if}
@@ -570,13 +576,15 @@
 							<tr
 								class={`hover:bg-info/20 ${customRowClass}`.trim()}
 								title={rowTooltipText || undefined}
-								on:click={() => handleRowClick(row)}
+								onclick={() => handleRowClick(row)}
 							>
 								{#if hasActionsColumn}
 									<td
 										class="px-1 whitespace-nowrap"
 										style="width: 1%;"
-										on:click|stopPropagation
+										onclick={(event) =>
+											event.stopPropagation()
+										}
 									>
 										{#if actionsVariant === 'crud'}
 											<div class="flex items-center gap-2">
@@ -609,11 +617,7 @@
 												Select
 											</DaisyUiButton>
 										{:else}
-											<slot
-												name="rowActions"
-												{row}
-												rowIndex={index}
-											/>
+											{@render rowActions?.({ row, rowIndex: index })}
 										{/if}
 									</td>
 								{/if}
