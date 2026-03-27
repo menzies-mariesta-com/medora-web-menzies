@@ -333,10 +333,10 @@ export const createPatientVisit = command(
 		});
 
 		const visitStatusTagging = await getVisitStatusTaggingIds();
+		// "Seen" must happen only when the doctor selects the visit in the list dialog.
+		// So by default we always create the visit as "Open" (unless caller explicitly provides statusTaggingId).
 		const statusTaggingId =
-			payload.doctorId && visitStatusTagging.seenId != null
-				? visitStatusTagging.seenId
-				: visitStatusTagging.openId;
+			payload.statusTaggingId ?? visitStatusTagging.openId;
 
 		const values: PatientVisitSchemaInsert = {
 			...payload,
@@ -364,38 +364,53 @@ export const updatePatientVisit = command(
 	): Promise<PatientVisitSchema> => {
 		const { id, ...rest } = payload;
 
-		// If doctorId is set, ensure visit status is at least "Seen".
-		const visitStatusTagging = await getVisitStatusTaggingIds();
-		const [{ statusTaggingId: currentStatusTaggingId } = {}] =
-			await ensureDb()
-				.select({
-					statusTaggingId:
-						table.patientVisitTable.statusTaggingId
-				})
-				.from(table.patientVisitTable)
-				.where(eq(table.patientVisitTable.id, id))
-				.limit(1);
-
-		const doctorIdVal = (rest as any).doctorId as
-			| string
+		// Enforce up-to-down progression for status_tagging_id when it is
+		// explicitly provided by the caller:
+		// Open(1) -> Vital(2) -> Seen(3) -> Closed(4)
+		const nextStatusTaggingId = (rest as any).statusTaggingId as
+			| number
 			| null
 			| undefined;
 
-		// Upgrade to "Seen" when doctor is assigned.
-		// Do not downgrade if already "Closed".
-		const setSeen =
-			doctorIdVal != null &&
-			visitStatusTagging.seenId != null &&
-			currentStatusTaggingId !== visitStatusTagging.closedId;
+		if (nextStatusTaggingId == null) {
+			// If the caller didn't explicitly set status, avoid accidentally
+			// downgrading/clearing it.
+			delete (rest as any).statusTaggingId;
+		} else {
+			const visitStatusTagging = await getVisitStatusTaggingIds();
+			const [{ statusTaggingId: currentStatusTaggingId } = {}] =
+				await ensureDb()
+					.select({
+						statusTaggingId:
+							table.patientVisitTable.statusTaggingId
+					})
+					.from(table.patientVisitTable)
+					.where(eq(table.patientVisitTable.id, id))
+					.limit(1);
+
+			const orderOf = (sId: number | null | undefined): number => {
+				if (sId == null) return 1; // treat null as Open
+				if (visitStatusTagging.openId != null && sId === visitStatusTagging.openId) return 1;
+				if (visitStatusTagging.vitalId != null && sId === visitStatusTagging.vitalId) return 2;
+				if (visitStatusTagging.seenId != null && sId === visitStatusTagging.seenId) return 3;
+				if (
+					visitStatusTagging.closedId != null &&
+					sId === visitStatusTagging.closedId
+				)
+					return 4;
+				return 1;
+			};
+
+			const currentOrder = orderOf(currentStatusTaggingId);
+			const nextOrder = orderOf(nextStatusTaggingId);
+			if (nextOrder < currentOrder) {
+				(rest as any).statusTaggingId = currentStatusTaggingId;
+			}
+		}
 
 		const [row] = await ensureDb()
 			.update(table.patientVisitTable)
-			.set({
-				...rest,
-				...(setSeen && {
-					statusTaggingId: visitStatusTagging.seenId
-				})
-			})
+			.set(rest)
 			.where(eq(table.patientVisitTable.id, id))
 			.returning();
 
@@ -404,6 +419,49 @@ export const updatePatientVisit = command(
 		getPatientVisit().refresh();
 		getPatientVisitById({ id }).refresh();
 		return row;
+	}
+);
+
+/**
+ * Doctor selects a visit in the Visit List dialog:
+ * - sets patient_visit.status_tagging_id to "Seen"
+ * - never overrides "Closed"
+ */
+export const markPatientVisitSeenOnDoctorSelect = command(
+	'unchecked' as const,
+	async ({ visitId }: { visitId: number }): Promise<void> => {
+		const event = getRequestEvent();
+		const staff = event.locals.staff;
+		if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR) return;
+
+		const visitStatusTagging = await getVisitStatusTaggingIds();
+		if (visitStatusTagging.seenId == null) return;
+
+		const [current] = await ensureDb()
+			.select({
+				statusTaggingId: table.patientVisitTable.statusTaggingId
+			})
+			.from(table.patientVisitTable)
+			.where(eq(table.patientVisitTable.id, visitId))
+			.limit(1);
+
+		if (!current) return;
+
+		if (
+			visitStatusTagging.closedId != null &&
+			current.statusTaggingId === visitStatusTagging.closedId
+		)
+			return;
+
+		if (current.statusTaggingId === visitStatusTagging.seenId) return;
+
+		await ensureDb()
+			.update(table.patientVisitTable)
+			.set({ statusTaggingId: visitStatusTagging.seenId })
+			.where(eq(table.patientVisitTable.id, visitId));
+
+		getPatientVisit().refresh();
+		getPatientVisitById({ id: visitId }).refresh();
 	}
 );
 

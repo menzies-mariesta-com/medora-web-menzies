@@ -653,9 +653,9 @@
 						hospitalId,
 						branchId: effectiveBranchId,
 						appointmentId,
-						// Check-in creates the visit, but "Seen" should be reached only
-						// after a doctor account assigns the visit (doctorId set later).
-						doctorId: null,
+						// Check-in creates the visit and assigns the appointment doctor.
+						// "Seen" is updated only when the doctor selects the visit in the list dialog.
+						doctorId: String(staffIdVal),
 						statusTaggingId: null,
 						// Default to OPD visit type (see master-table seed: id=1, code 'O').
 						visitTypeId: 1,
