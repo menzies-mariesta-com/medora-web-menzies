@@ -2,7 +2,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-	import LucideTriangleAlert from '$lib/component/own/library/lucide/LucideTriangleAlert.svelte';
+	import LVisitAlertIndicators from '$lib/component/own/local/private/heka/emr/LVisitAlertIndicators.svelte';
 	import {
 		getPatientVisitByIdWithRelations,
 		type PatientVisitWithRelations
@@ -10,6 +10,9 @@
 	import {
 		getActivePatientAllergiesPatientIdsByPatientIds
 	} from '$lib/remote/table/information-table/patient-allergies.remote';
+	import {
+		getAbnormalVitalVisitIdsByVisitIds
+	} from '$lib/remote/table/information-table/patient-vital.remote';
 
 	let {
 		visitId = '',
@@ -24,7 +27,8 @@
 	let visit = $state<PatientVisitWithRelations | null>(null);
 	let isLoading = $state(false);
 	let hasActiveAllergies = $state(false);
-	let alert = $state(false);
+	let hasAbnormalVital = $state(false);
+	const showAlerts = $derived(hasActiveAllergies || hasAbnormalVital);
 
 	const visitIdNum = $derived(visitId ? Number(visitId) : 0);
 
@@ -66,12 +70,39 @@
 				});
 			if (!cancelled) {
 				hasActiveAllergies = activeIds.includes(String(patientId));
-				alert = true;
 			}
 		})().catch(() => {
 			if (!cancelled) {
 				hasActiveAllergies = false;
-				alert = false;
+			}
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		const currentVisitId = visit?.id;
+		if (!currentVisitId) {
+			hasAbnormalVital = false;
+			return;
+		}
+
+		let cancelled = false;
+		hasAbnormalVital = false;
+
+		(async () => {
+			const abnormalVisitIds =
+				await getAbnormalVitalVisitIdsByVisitIds({
+					visitIds: [currentVisitId]
+				});
+			if (!cancelled) {
+				hasAbnormalVital = abnormalVisitIds.includes(currentVisitId);
+			}
+		})().catch(() => {
+			if (!cancelled) {
+				hasAbnormalVital = false;
 			}
 		});
 
@@ -247,21 +278,16 @@
 					</div>
 				{/if}
 
-				{#if alert}
+				{#if showAlerts}
 					<div class="flex flex-wrap items-center gap-1">
 						<span class="font-normal text-base-content/60"
 							>Alert:</span
 						>
 						<span class="font-medium text-base-content">
-							{#if hasActiveAllergies}
-								<span
-									aria-label={m.observation_emr_allergies()}
-									title={m.observation_emr_allergies()}
-									class="inline-flex items-center text-warning"
-								>
-									<LucideTriangleAlert className="size-4" />
-								</span>
-							{/if}
+							<LVisitAlertIndicators
+								hasVitalAlert={hasAbnormalVital}
+								hasAllergyAlert={hasActiveAllergies}
+							/>
 						</span>
 					</div>
 				{/if}
