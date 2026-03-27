@@ -11,7 +11,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { AllergyEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { and, count, eq, inArray, ne } from 'drizzle-orm';
 
 // get all
@@ -306,7 +306,11 @@ export const getActivePatientAllergiesPatientIdsByPatientIds = query(
 			.where(
 				and(
 					inArray(table.patientAllergyTable.patientId, ids),
-					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE)
+					eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE),
+					ne(
+						table.patientAllergyTable.allergyId,
+						AllergyEnum.NO_KNOWN_ALLERGY
+					)
 				)
 			);
 
