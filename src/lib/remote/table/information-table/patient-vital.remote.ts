@@ -11,13 +11,48 @@ import type {
 	PaginatedResult,
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
+import { VITAL_REFERENCE_RANGES } from '$lib/config/vital.config';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
 export type PatientVitalWithVisit = PatientDiagnosisSchema & {
 	visit: PatientVisitSchema | null;
 };
+
+/**
+ * Return visit IDs that have at least one abnormal vital value.
+ * "Abnormal" means value is lower than min or higher than max range.
+ */
+export const getAbnormalVitalVisitIdsByVisitIds = query(
+	'unchecked' as const,
+	async ({ visitIds }: { visitIds: number[] }): Promise<number[]> => {
+		const ids = visitIds.filter((id) => Number.isInteger(id) && id > 0);
+		if (ids.length === 0) return [];
+
+		const pd = table.patientDiagnosisTable;
+		const rows = await ensureDb()
+			.select({ visitId: pd.visitId })
+			.from(pd)
+			.where(
+				and(
+					inArray(pd.visitId, ids),
+					ne(pd.statusId, StatusEnum.DELETED),
+					sql`(
+						(${pd.temperature} IS NOT NULL AND (${pd.temperature} < ${VITAL_REFERENCE_RANGES.temperature.min} OR ${pd.temperature} > ${VITAL_REFERENCE_RANGES.temperature.max}))
+						OR (${pd.respiration} IS NOT NULL AND (${pd.respiration} < ${VITAL_REFERENCE_RANGES.respiration.min} OR ${pd.respiration} > ${VITAL_REFERENCE_RANGES.respiration.max}))
+						OR (${pd.pulse} IS NOT NULL AND (${pd.pulse} < ${VITAL_REFERENCE_RANGES.pulse.min} OR ${pd.pulse} > ${VITAL_REFERENCE_RANGES.pulse.max}))
+						OR (${pd.bpSystolic} IS NOT NULL AND (${pd.bpSystolic} < ${VITAL_REFERENCE_RANGES.bpSystolic.min} OR ${pd.bpSystolic} > ${VITAL_REFERENCE_RANGES.bpSystolic.max}))
+						OR (${pd.bpDiastolic} IS NOT NULL AND (${pd.bpDiastolic} < ${VITAL_REFERENCE_RANGES.bpDiastolic.min} OR ${pd.bpDiastolic} > ${VITAL_REFERENCE_RANGES.bpDiastolic.max}))
+						OR (${pd.spO2} IS NOT NULL AND (${pd.spO2} < ${VITAL_REFERENCE_RANGES.spO2.min} OR ${pd.spO2} > ${VITAL_REFERENCE_RANGES.spO2.max}))
+						OR (${pd.rbs} IS NOT NULL AND (${pd.rbs} < ${VITAL_REFERENCE_RANGES.rbs.min} OR ${pd.rbs} > ${VITAL_REFERENCE_RANGES.rbs.max}))
+					)`
+				)
+			);
+
+		return Array.from(new Set(rows.map((r) => r.visitId)));
+	}
+);
 
 /** Get all vitals for a patient across all visits, ordered by createdAt desc (newest first). */
 export const getPatientVitalsByPatientId = query(

@@ -2,8 +2,7 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideTriangleAlert from '$lib/component/own/library/lucide/LucideTriangleAlert.svelte';
+	import LVisitAlertIndicators from '$lib/component/own/local/private/heka/emr/LVisitAlertIndicators.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -17,6 +16,7 @@
 	import {
 		getActivePatientAllergiesPatientIdsByPatientIds
 	} from '$lib/remote/table/information-table/patient-allergies.remote';
+	import { getAbnormalVitalVisitIdsByVisitIds } from '$lib/remote/table/information-table/patient-vital.remote';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
@@ -49,6 +49,7 @@
 	let tableFilters = $state<Record<string, string>>({});
 	let isConfirming = $state(false);
 	let activeAllergyPatientIds = $state<Set<string>>(new Set());
+	let abnormalVitalVisitIds = $state<Set<number>>(new Set());
 
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
@@ -214,21 +215,33 @@
 			format: () => '—',
 			cellComponentGetter: (row) => {
 				const patientId = row.patient?.id;
-				if (patientId == null) return null;
+				const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
+				if (patientId == null && !hasAbnormalVital) return null;
+				const hasAllergyAlert = activeAllergyPatientIds.has(
+					String(patientId)
+				);
 
-				return activeAllergyPatientIds.has(String(patientId))
+				return hasAbnormalVital || hasAllergyAlert
 					? {
-							component: LucideTriangleAlert,
-							props: { className: 'size-4' }
+							component: LVisitAlertIndicators,
+							props: { hasVitalAlert: hasAbnormalVital, hasAllergyAlert }
 						}
 					: null;
 			},
 			cellClassGetter: (row) => {
 				const patientId = row.patient?.id;
-				if (!patientId) return 'text-base-content/60';
-				return activeAllergyPatientIds.has(String(patientId))
-					? 'text-warning font-semibold'
-					: 'text-base-content/60';
+				const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
+				if (!patientId && !hasAbnormalVital) return 'text-base-content/60';
+				const hasAllergyAlert = activeAllergyPatientIds.has(
+					String(patientId)
+				);
+				if (hasAbnormalVital && hasAllergyAlert) {
+					return 'text-error font-semibold';
+				}
+				if (hasAbnormalVital || hasAllergyAlert) {
+					return 'text-warning font-semibold';
+				}
+				return 'text-base-content/60';
 			}
 		},
 	];
@@ -258,11 +271,21 @@
 				.map((row) => row.patient?.id)
 				.map((id) => (id != null ? String(id) : ''))
 				.filter((id) => id.trim() !== '');
-			const activePatientIds =
-				await getActivePatientAllergiesPatientIdsByPatientIds({
-					patientIds
-				});
-			activeAllergyPatientIds = new Set(activePatientIds);
+			const visitIds = result.data.map((row) => row.id);
+
+			const [activeAllergyPatientIdsFromApi, abnormalVitalVisitIdsFromApi] =
+				await Promise.all([
+					getActivePatientAllergiesPatientIdsByPatientIds({
+						patientIds
+					}),
+					getAbnormalVitalVisitIdsByVisitIds({ visitIds })
+				]);
+			activeAllergyPatientIds = new Set(
+				activeAllergyPatientIdsFromApi.map(String)
+			);
+			abnormalVitalVisitIds = new Set(
+				abnormalVitalVisitIdsFromApi.map(Number)
+			);
 		} finally {
 			isLoading = false;
 		}
