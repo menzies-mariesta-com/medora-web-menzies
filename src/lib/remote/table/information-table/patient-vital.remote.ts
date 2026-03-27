@@ -169,18 +169,15 @@ export const createPatientVital = command(
 		if (!row) throw new Error('Insert failed');
 
 		// Bump visit status to at least "Vital" unless already "Seen/Closed".
-		// Seen is derived from doctor assignment; Closed is manual/future.
 		try {
 			const visit = await ensureDb()
 				.select({
-					doctorId: table.patientVisitTable.doctorId,
 					statusTaggingId: table.patientVisitTable.statusTaggingId
 				})
 				.from(table.patientVisitTable)
 				.where(eq(table.patientVisitTable.id, payload.visitId))
 				.limit(1);
 
-			const doctorId = visit[0]?.doctorId ?? null;
 			const taggingRows = await ensureDb()
 				.select({
 					id: table.statusTaggingTable.id,
@@ -211,22 +208,15 @@ export const createPatientVital = command(
 				closedId != null &&
 				currentStatusTaggingId != null &&
 				currentStatusTaggingId === closedId;
+			const isSeen =
+				seenId != null &&
+				currentStatusTaggingId != null &&
+				currentStatusTaggingId === seenId;
 
 			// Upgrade rules:
-			// - If doctor is assigned => status must be "Seen"
-			// - Else => status can be "Vital" (but never downgrade from Seen/Closed)
-			if (doctorId) {
-				if (seenId != null && !isClosed) {
-					await ensureDb()
-						.update(table.patientVisitTable)
-						.set({ statusTaggingId: seenId })
-						.where(eq(table.patientVisitTable.id, payload.visitId));
-				}
-			} else if (
-				vitalId != null &&
-				!isClosed &&
-				currentStatusTaggingId !== seenId
-			) {
+			// - If already "Seen" or "Closed", do not downgrade.
+			// - Otherwise, set to "Vital".
+			if (vitalId != null && !isClosed && !isSeen) {
 				await ensureDb()
 					.update(table.patientVisitTable)
 					.set({ statusTaggingId: vitalId })
