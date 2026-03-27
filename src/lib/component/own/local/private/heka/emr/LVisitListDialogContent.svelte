@@ -9,6 +9,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import {
 		getPatientVisitPaginatedForEmr,
+		markPatientVisitSeenOnDoctorSelect,
 		type PatientVisitWithRelationsForEmr,
 		type VisitStatusCode
 	} from '$lib/remote/table/information-table/patient-visit.remote';
@@ -299,6 +300,10 @@
 			? StringUtil.patientDisplayName(patient as any)
 			: '';
 		try {
+			// Doctor explicitly selecting a visit should mark it as "Seen".
+			await markPatientVisitSeenOnDoctorSelect({
+				visitId: v.id
+			});
 			await confirm({
 				visitId: v.id,
 				patientName
