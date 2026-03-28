@@ -26,8 +26,9 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 
 	let {
-		hospitalId: hospitalIdProp = undefined
-	}: { hospitalId?: string | null } = $props();
+		hospitalId: hospitalIdProp = undefined,
+		triggerClassName = ''
+	}: { hospitalId?: string | null; triggerClassName?: string } = $props();
 
 	const routeHospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -215,7 +216,7 @@
 <div class="z-50 overflow-visible">
 	<!-- indicator-item must come first (DaisyUI); overflow-visible avoids clipping the badge on d-btn-circle -->
 	<DaisyUiButton
-		className="d-btn-circle overflow-visible"
+		className={`d-btn-circle overflow-visible ${triggerClassName}`.trim()}
 		onClick={() => void openModalAndLoad()}
 	>
 		<DaisyUiIndicator className="relative overflow-visible">
@@ -226,7 +227,7 @@
 					{clampCount(unreadCount)}
 				</DaisyUiIndicatorItem>
 			{/if}
-			<LucideBell className="size-5" />
+			<LucideBell className="size-6" />
 		</DaisyUiIndicator>
 	</DaisyUiButton>
 </div>
