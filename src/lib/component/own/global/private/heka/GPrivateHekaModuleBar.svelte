@@ -46,6 +46,8 @@
 		pageList,
 		staffId = null,
 		staffPhotoUrl = null,
+		/** Shown next to the profile control (staff full name or user name/email). */
+		staffDisplayName = null,
 		userRoleId = null,
 		staffUserGroupsForNav = [],
 		selectedUserGroupId = null,
@@ -61,6 +63,7 @@
 		pageList: PageSchema[];
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
+		staffDisplayName?: string | null;
 		userRoleId?: number | null;
 		staffUserGroupsForNav?: StaffUserGroupForNav[];
 		selectedUserGroupId?: number | null;
@@ -265,6 +268,10 @@
 	const selectedBranchIdStr = $derived(selectedBranchId ?? '');
 	let userGroupForm: HTMLFormElement | undefined = $state();
 	let branchForm: HTMLFormElement | undefined = $state();
+
+	/** Same outline on every interactive control in the top and module bars. */
+	const navBarControlBorder =
+		'border-2 border-primary/45 hover:border-primary';
 </script>
 
 {#if isNavbarVisible}
@@ -291,7 +298,7 @@
 				>
 					<DaisyUiSelect
 						value={selectedBranchIdStr}
-						className="d-select-sm min-w-36"
+						className="d-select min-w-36 {navBarControlBorder}"
 						name="branchId"
 						onChange={() => branchForm?.requestSubmit()}
 					>
@@ -311,7 +318,7 @@
 				>
 					<DaisyUiSelect
 						value={selectedUserGroupIdStr}
-						className="d-select-sm min-w-36"
+						className="d-select min-w-36 {navBarControlBorder}"
 						name="userGroupId"
 						onChange={() => userGroupForm?.requestSubmit()}
 					>
@@ -325,24 +332,49 @@
 				tooltipText="Notification"
 				className="d-tooltip-left"
 			>
-				<HekaNotifications {hospitalId} />
+				<HekaNotifications
+					{hospitalId}
+					triggerClassName={navBarControlBorder}
+				/>
 			</DaisyUiTooltip>
 			<DaisyUiTooltip
 				tooltipText="Account"
 				className="d-tooltip-left"
 			>
 				<DaisyUiButton
-					className="d-btn-circle overflow-hidden p-0"
+					className={staffDisplayName?.trim()
+						? `flex min-w-0 max-w-[14rem] items-center gap-2 rounded-full d-btn-ghost h-auto min-h-9 p-1 normal-case ${navBarControlBorder}`
+						: `d-btn-circle shrink-0 overflow-hidden p-0 ${navBarControlBorder}`}
 					onClick={openAccountModal}
 				>
-					{#if hasProfilePhoto}
-						<img
-							src={profilePhotoDisplayUrl}
-							alt="Profile"
-							class="size-full object-cover"
-						/>
+					{#if staffDisplayName?.trim()}
+						<span
+							class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300"
+							aria-hidden="true"
+						>
+							{#if hasProfilePhoto}
+								<img
+									src={profilePhotoDisplayUrl}
+									alt=""
+									class="size-full object-cover"
+								/>
+							{:else}
+								<LucideUser className="size-5" />
+							{/if}
+						</span>
+						<span class="truncate text-left text-sm font-medium">
+							{staffDisplayName.trim()}
+						</span>
 					{:else}
-						<LucideUser />
+						{#if hasProfilePhoto}
+							<img
+								src={profilePhotoDisplayUrl}
+								alt="Profile"
+								class="size-full object-cover"
+							/>
+						{:else}
+							<LucideUser />
+						{/if}
 					{/if}
 				</DaisyUiButton>
 			</DaisyUiTooltip>
@@ -360,7 +392,7 @@
 
 <!-- module bar start  -->
 
-<DaisyUiNavbar className="flex border-t border-neutral/32 gap-3">
+<DaisyUiNavbar className="flex border-t border-primary/25 gap-3">
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
 			tooltipText="close top panel"
@@ -391,7 +423,9 @@
 			<div>
 				<DaisyUiDropdown>
 					<DaisyUiDropdownButton
-						className={activeModuleId === m.id ? 'd-btn-accent' : ''}
+						className={activeModuleId === m.id
+							? `d-btn-accent ${navBarControlBorder}`
+							: navBarControlBorder}
 					>
 						{m?.name}
 					</DaisyUiDropdownButton>
@@ -424,7 +458,7 @@
 	<div>
 		<DaisyUiTooltip
 			tooltipText="Home"
-			className="d-tooltip-secondary d-tooltip-bottom"
+			className="d-tooltip-secondary d-tooltip-left"
 		>
 			<DaisyUiButton
 				className="d-btn-secondary d-btn-square"
@@ -442,7 +476,7 @@
 	<div>
 		<DaisyUiTooltip
 			tooltipText="Search (Ctrl+K)"
-			className="d-tooltip-secondary d-tooltip-bottom"
+			className="d-tooltip-secondary d-tooltip-left"
 		>
 			<DaisyUiButton
 				className="d-btn-secondary d-btn-square"
