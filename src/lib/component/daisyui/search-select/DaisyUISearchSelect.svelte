@@ -166,7 +166,7 @@
 	{#if open}
 		<ul
 			id={listboxId}
-			class="d-menu absolute z-50 mt-1 flex max-h-60 w-full flex-row overflow-auto rounded-box border bg-base-100 shadow-lg"
+			class="d-menu absolute z-50 mt-1 flex max-h-60 w-full flex-col overflow-y-auto overflow-x-hidden rounded-box border bg-base-100 shadow-lg"
 			role="listbox"
 		>
 			{#if isLoading}
