@@ -11,6 +11,8 @@
 		getPageData,
 		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
+	import { StringUtil } from '$lib/util/string.util.svelte';
+	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
 
 	let { children, data } = $props();
 
@@ -60,6 +62,25 @@
 		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ??
 			null
 	);
+
+	/** Display name in module bar: `user.name` (auth `user` table) first, then staff legal name, then email. */
+	const staffDisplayName = $derived.by(() => {
+		const u = (data as { user?: { name?: string | null; email?: string | null } | null })
+			?.user;
+		if (u?.name?.trim()) return u.name.trim();
+		const s = data?.staff as StaffWithRelations | null | undefined;
+		if (s) {
+			const name = StringUtil.fullNameWithTitle(
+				s.title?.name ?? null,
+				s.firstName,
+				s.middleName,
+				s.lastName
+			).trim();
+			if (name) return name;
+		}
+		if (u?.email?.trim()) return u.email.trim();
+		return null;
+	});
 </script>
 
 <div class="my-app">
@@ -73,6 +94,7 @@
 				pageList={pageData}
 				staffId={currentStaffId}
 				staffPhotoUrl={currentStaffPhotoUrl}
+				staffDisplayName={staffDisplayName}
 				userRoleId={data?.userRoleId ?? null}
 				staffUserGroupsForNav={(data as any)?.staffUserGroupsForNav ?? []}
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}

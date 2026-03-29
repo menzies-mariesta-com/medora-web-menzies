@@ -13,7 +13,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ilike, ne } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, ne } from 'drizzle-orm';
 
 /** Get all active allergies from master (for dropdowns / linking to patient). */
 export const getAllergies = query(
@@ -70,7 +70,7 @@ export const getAllergyPaginated = query(
 				.select()
 				.from(table.allergyTable)
 				.where(whereExpr)
-				.orderBy(table.allergyTable.id)
+				.orderBy(desc(table.allergyTable.id))
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
