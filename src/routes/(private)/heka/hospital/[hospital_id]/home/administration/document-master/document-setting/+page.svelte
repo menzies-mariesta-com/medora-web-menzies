@@ -308,10 +308,15 @@
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
 		{
-			id: 'id',
-			header: 'ID',
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false
+			id: 'displayNo',
+			header: 'No',
+			widthClass: 'w-14 min-w-[3.5rem]',
+			filterable: false,
+			format: (_v, _row, rowIndex) =>
+				(currentPage - 1) *
+					(Number(filterPageSize) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
+				rowIndex +
+				1
 		},
 		{
 			id: 'name',

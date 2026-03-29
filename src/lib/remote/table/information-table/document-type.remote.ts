@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, desc, eq, ne } from 'drizzle-orm';
 
 export const getDocumentTypes = query(
 	async (): Promise<DocumentTypeSchema[]> => {
@@ -60,7 +60,7 @@ export const getDocumentTypesPaginated = query(
 				.select()
 				.from(table.documentTypeTable)
 				.where(whereExpr)
-				.orderBy(table.documentTypeTable.documentType)
+				.orderBy(desc(table.documentTypeTable.createdAt))
 				.limit(limit)
 				.offset(offset),
 			ensureDb()

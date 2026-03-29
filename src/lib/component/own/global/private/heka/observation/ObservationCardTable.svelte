@@ -73,7 +73,7 @@
 		 * - "view": eye icon only (custom slot rendering)
 		 */
 		rowActionsVariant?: 'crud' | 'view';
-		addButtonVariant?: 'add' | 'redirect';
+		addButtonVariant?: 'add' | 'redirect' | 'none';
 		/** Used when `addButtonVariant === 'redirect'`. */
 		redirectHref?: string;
 		/**

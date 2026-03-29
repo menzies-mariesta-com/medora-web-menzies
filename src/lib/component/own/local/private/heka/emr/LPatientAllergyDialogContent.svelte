@@ -9,7 +9,6 @@
 		getAllergyPaginated,
 		createAllergy
 	} from '$lib/remote/table/information-table/allergy.remote';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { getSeverities } from '$lib/remote/table/master-table/severity.remote';
 	import {
 		createPatientAllergies,
@@ -68,7 +67,8 @@
 		const res = await getAllergyPaginated({
 			search: query.trim() || undefined,
 			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
+			/** Master list can be long; load enough rows for a scrollable dropdown. */
+			pageSize: 50
 		});
 		// Keep a small local cache for label lookups in this dialog session
 		allergies = res.data;
@@ -263,7 +263,18 @@
 
 			try {
 				const created = await createAllergy({ name });
-				allergyId = created.id;
+				// Requirement: creating a new master allergy should NOT automatically
+				// add it to the patient's allergy table. Only "Select from list" + Save
+				// should create a patient allergy row.
+				allergies = [created, ...allergies];
+				selectedAllergyId = String(created.id);
+				newAllergyName = '';
+				allergyMode = 'existing';
+				toastService.addToast(
+					'Added to allergy master. Now select it and click Save to add to patient.',
+					StatusColorEnum.SUCCESS
+				);
+				return;
 			} catch (error: unknown) {
 				let message: string | null = null;
 
