@@ -148,6 +148,7 @@ export const getDocumentsPaginatedWithRelations = query(
 					status: true,
 					patientDocuments: true
 				},
+				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,
 				offset
 			}),
