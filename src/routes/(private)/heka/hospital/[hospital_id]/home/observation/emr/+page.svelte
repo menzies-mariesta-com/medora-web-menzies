@@ -4,7 +4,6 @@
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import ObservationCardTable from '$lib/component/own/global/private/heka/observation/ObservationCardTable.svelte';
 	import ObservationStubCard from '$lib/component/own/global/private/heka/observation/ObservationStubCard.svelte';
-	import LObservationPatientDocumentDialogContent from '$lib/component/own/local/private/heka/observation/LObservationPatientDocumentDialogContent.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
 	import LObservationDiagnosisDialogContent from '$lib/component/own/local/private/heka/observation/LObservationDiagnosisDialogContent.svelte';
 	import LObservationFormEntryDialogContent from '$lib/component/own/local/private/heka/observation/LObservationFormEntryDialogContent.svelte';
@@ -17,7 +16,6 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { ObservationPatientDocumentDialogState } from '$lib/state/observation-patient-document-dialog.state.svelte';
 	import { ObservationOrderLineDialogState } from '$lib/state/observation-order-line-dialog.state.svelte';
 	import { ObservationDiagnosisDialogState } from '$lib/state/observation-diagnosis-dialog.state.svelte';
 	import { ObservationDiagnosisDeleteConfirmDialogState } from '$lib/state/observation-diagnosis-delete-confirm-dialog.state.svelte';
@@ -38,10 +36,7 @@
 	} from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
 	import { getServiceOrderDetailRowsForVisit } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
 	import { deleteServiceOrderDetail } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import {
-		getPatientDocumentsByVisitIdWithRelations,
-		deletePatientDocument,
-	} from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
+	import { getPatientDocumentsByVisitIdWithRelations } from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
 	import type { PatientDocumentWithRelations } from '$lib/remote/table/information-table/patient-document.remote';
 	import {
 		getDiagnosesByVisitId,
@@ -1342,103 +1337,6 @@
 		}
 	}
 
-	function openDocumentAdd() {
-		if (!visitRow?.patientId || !visitId) return;
-		ObservationPatientDocumentDialogState.visitId = visitId;
-		ObservationPatientDocumentDialogState.patientId =
-			visitRow.patientId;
-		ObservationPatientDocumentDialogState.patientDocumentId = null;
-		ObservationPatientDocumentDialogState.onSaved = () =>
-			reloadDocumentsForVisit();
-		void dialogService
-			.open<{ saved?: boolean }>({
-				title: m.observation_emr_add_document_link(),
-				component: LObservationPatientDocumentDialogContent,
-				fullScreen: false,
-				modalClassName:
-					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
-				onClose: () => {
-					ObservationPatientDocumentDialogState.patientDocumentId =
-						null;
-					ObservationPatientDocumentDialogState.onSaved = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadDocumentsForVisit();
-				}
-			})
-			.finally(() => {
-				ObservationPatientDocumentDialogState.visitId = null;
-				ObservationPatientDocumentDialogState.patientId = null;
-				ObservationPatientDocumentDialogState.patientDocumentId =
-					null;
-				ObservationPatientDocumentDialogState.onSaved = null;
-			});
-	}
-
-	function openDocumentEdit(row: PatientDocumentWithRelations) {
-		if (!visitRow?.patientId || !visitId) return;
-		ObservationPatientDocumentDialogState.visitId = visitId;
-		ObservationPatientDocumentDialogState.patientId =
-			visitRow.patientId;
-		ObservationPatientDocumentDialogState.patientDocumentId = row.id;
-		ObservationPatientDocumentDialogState.onSaved = () =>
-			reloadDocumentsForVisit();
-		void dialogService
-			.open<{ saved?: boolean }>({
-				title: m.observation_emr_edit_document_link(),
-				component: LObservationPatientDocumentDialogContent,
-				fullScreen: false,
-				modalClassName:
-					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
-				onClose: () => {
-					ObservationPatientDocumentDialogState.patientDocumentId =
-						null;
-					ObservationPatientDocumentDialogState.onSaved = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadDocumentsForVisit();
-				}
-			})
-			.finally(() => {
-				ObservationPatientDocumentDialogState.visitId = null;
-				ObservationPatientDocumentDialogState.patientId = null;
-				ObservationPatientDocumentDialogState.patientDocumentId =
-					null;
-				ObservationPatientDocumentDialogState.onSaved = null;
-			});
-	}
-
-	function openDocumentView(row: PatientDocumentWithRelations) {
-		// "View" currently reuses the same dialog as edit.
-		// If you later add a dedicated read-only dialog, swap it here.
-		openDocumentEdit(row);
-	}
-
-	async function handleDocumentDelete(
-		row: PatientDocumentWithRelations
-	) {
-		const result = await dialogService.open({
-			title: 'Remove document link',
-			message: m.observation_emr_delete_document(),
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!result.confirmed) return;
-		try {
-			await deletePatientDocument({ id: row.id });
-			toastService.addToast(
-				m.observation_emr_document_deleted(),
-				StatusColorEnum.SUCCESS
-			);
-			await reloadDocumentsForVisit();
-		} catch (err) {
-			toastService.addToast(
-				(err instanceof Error
-					? err.message
-					: m.observation_emr_delete_failed()) as string,
-				StatusColorEnum.ERROR
-			);
-		}
-	}
 </script>
 
 <svelte:head>
@@ -1598,9 +1496,9 @@
 				columns={documentColumns}
 				isLoading={isLoadingGrid}
 				showRowActions={false}
+				addButtonVariant="none"
 				showRefreshButton={true}
 				emptyMessage="No documents linked to this visit."
-				on:add={openDocumentAdd}
 				on:refresh={reloadDocumentsForVisit}
 			/>
 		</div>

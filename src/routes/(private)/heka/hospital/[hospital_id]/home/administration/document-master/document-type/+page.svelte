@@ -168,10 +168,15 @@
 
 	const columns: MariTableColumn<DocumentTypeSchema>[] = [
 		{
-			id: 'id',
-			header: 'ID',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false
+			id: 'displayNo',
+			header: 'No',
+			widthClass: 'w-14 min-w-[3.5rem]',
+			filterable: false,
+			format: (_v, _row, rowIndex) =>
+				(currentPage - 1) *
+					(Number(filterPageSize) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
+				rowIndex +
+				1
 		},
 		{
 			id: 'documentType',
