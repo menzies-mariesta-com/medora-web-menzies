@@ -84,7 +84,7 @@ export const getDocumentSettingsPaginated = query(
 					hospital: true,
 					status: true
 				},
-				orderBy: table.documentSettingTable.name,
+				orderBy: (t, { desc }) => desc(t.createdAt),
 				limit,
 				offset
 			}),
