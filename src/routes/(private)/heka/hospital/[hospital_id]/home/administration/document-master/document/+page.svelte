@@ -447,7 +447,7 @@
 								fetchData();
 							}}
 						>
-							<svelte:fragment slot="rowActions" let:row>
+							{#snippet rowActions(row, rowIndex)}
 								{@const typedRow = row as DocumentWithRelations}
 								<td class="w-28 shrink-0 text-right">
 									<div class="flex justify-end gap-1">
@@ -487,7 +487,7 @@
 										</DaisyUiTooltip>
 									</div>
 								</td>
-							</svelte:fragment>
+							{/snippet}
 						</MariTable>
 					</div>
 				</DaisyUiCardBody>

@@ -184,7 +184,7 @@
 						actionsVariant="none"
 						enableColumnFilters={false}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							<td class="w-24 shrink-0 text-right">
 								<div class="flex justify-end gap-1">
 									<DaisyUiButton
@@ -195,7 +195,7 @@
 									</DaisyUiButton>
 								</div>
 							</td>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 			{/if}

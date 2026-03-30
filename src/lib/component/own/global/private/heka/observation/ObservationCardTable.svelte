@@ -9,6 +9,10 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -21,6 +25,10 @@
 		view: Row;
 		edit: Row;
 		delete: Row;
+		move: {
+			row: Row;
+			toFormCode: string;
+		};
 		pageChange: number;
 		pageSizeChange: number;
 		filtersChange: {
@@ -51,7 +59,11 @@
 		tableWrapClassName = 'max-h-72 min-h-0',
 		addButtonVariant = 'add',
 		redirectHref = '',
-		redirectButtonText = ''
+		redirectButtonText = '',
+		enableMoveAction = false,
+		moveToLabel = '',
+		moveToFormCode = '',
+		moveDirection = 'down'
 	} = $props<{
 		title: string;
 		rows?: Row[];
@@ -81,6 +93,14 @@
 		 * If empty, falls back to `title`.
 		 */
 		redirectButtonText?: string;
+		/** When enabled, adds a move icon to the actions column (and renders custom edit/delete too). */
+		enableMoveAction?: boolean;
+		/** Tooltip text: `move to {moveToLabel}` */
+		moveToLabel?: string;
+		/** Target form code to pass back in the `move` event. */
+		moveToFormCode?: string;
+		/** Controls whether we use an up or down move icon. */
+		moveDirection?: 'up' | 'down';
 		/** Extra classes on the outer card (e.g. grid column span). */
 		cardClassName?: string;
 		/** Classes on the table wrapper (e.g. max-height + overflow). */
@@ -118,13 +138,18 @@
 					</DaisyUiButton>
 				</DaisyUiTooltip>
 			{:else if addButtonVariant === 'redirect'}
-				<DaisyUiButton
-					className="d-btn-outline d-btn-xs"
-					onClick={handleRedirect}
-					disabled={!redirectHref}
+				<DaisyUiTooltip
+					tooltipText={redirectButtonText || title}
+					className="d-tooltip-bottom"
 				>
-					{redirectButtonText || title}
-				</DaisyUiButton>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-xs d-btn-square"
+						onClick={handleRedirect}
+						disabled={!redirectHref}
+					>
+						<LucidePlus className="size-3.5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
 			{/if}
 		</DaisyUiCardBodyTitle>
 
@@ -143,11 +168,13 @@
 				bind:columnFilters
 				showRowActions={showRowActions}
 				actionsVariant={
-					showRowActions
-						? rowActionsVariant === 'crud'
-							? 'crud'
+					enableMoveAction
+						? 'none'
+						: showRowActions
+							? rowActionsVariant === 'crud'
+								? 'crud'
+								: 'none'
 							: 'none'
-						: 'none'
 				}
 				{enableColumnFilters}
 				{useRemoteFilters}
@@ -167,8 +194,55 @@
 					dispatch('filtersChange', event.detail)}
 				on:refresh={() => dispatch('refresh')}
 			>
-				<svelte:fragment slot="rowActions" let:row>
-					{#if showRowActions && rowActionsVariant === 'view'}
+				{#snippet rowActions(row, rowIndex)}
+					{#if enableMoveAction}
+						<div class="flex items-center gap-2">
+							{#if crudShowView}
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => dispatch('view', row)}
+								>
+									<LucideEye className="size-4" />
+								</DaisyUiButton>
+							{/if}
+
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-sm d-btn-success"
+								onClick={() => dispatch('edit', row)}
+							>
+								<LucidePencil className="size-4" />
+							</DaisyUiButton>
+
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-error d-btn-sm"
+								onClick={() => dispatch('delete', row)}
+							>
+								<LucideTrash2 className="size-4" />
+							</DaisyUiButton>
+
+							<DaisyUiTooltip
+								tooltipText={`move to ${moveToLabel || ''}`.trim()}
+								className="d-tooltip-bottom"
+							>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									disabled={!moveToFormCode}
+									onClick={() =>
+										dispatch('move', {
+											row,
+											toFormCode: moveToFormCode
+										})
+									}
+								>
+									{#if moveDirection === 'up'}
+										<LucideChevronLeft className="size-4" />
+									{:else}
+										<LucideChevronRight className="size-4" />
+									{/if}
+								</DaisyUiButton>
+							</DaisyUiTooltip>
+						</div>
+					{:else if showRowActions && rowActionsVariant === 'view'}
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm"
 							onClick={() => dispatch('view', row)}
@@ -176,7 +250,7 @@
 							<LucideEye className="size-4" />
 						</DaisyUiButton>
 					{/if}
-				</svelte:fragment>
+				{/snippet}
 			</MariTable>
 		</div>
 	</DaisyUiCardBody>
