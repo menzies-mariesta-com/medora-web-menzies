@@ -94,7 +94,10 @@
 			const res = await fetch('/api/session/extend', {
 				method: 'POST',
 				credentials: 'include',
-				headers: { 'content-type': 'application/json' }
+				headers: {
+					'content-type': 'application/json',
+					'x-heka-ui-session-extend': '1'
+				}
 			});
 			if (!res.ok) {
 				const text = await res.text().catch(() => '');

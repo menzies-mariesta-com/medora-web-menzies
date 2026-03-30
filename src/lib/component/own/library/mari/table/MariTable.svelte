@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, type Snippet } from 'svelte';
 
 	import DaisyUiTable from '$lib/component/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableHeader from '$lib/component/daisyui/table/head/DaisyUiTableHeader.svelte';
@@ -134,7 +134,8 @@
 		 * When true, table fills a flex parent: toolbar stays fixed, only the table
 		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
 		 */
-		fillParent = false
+		fillParent = false,
+		rowActions
 	} = $props<{
 		rows: any[];
 		columns: MariTableColumn[];
@@ -165,6 +166,8 @@
 		 */
 		rowTooltipGetter?: (row: any, rowIndex: number) => string;
 		fillParent?: boolean;
+		/** Custom actions cell when `actionsVariant` is `none` but the actions column is shown. */
+		rowActions?: Snippet<[any, number]>;
 	}>();
 
 	const rootClass = $derived(
@@ -518,7 +521,7 @@
 										<select
 											class="d-select w-full d-select-sm"
 											value={columnFilters[column.id] ?? ''}
-											on:change={(event) =>
+											onchange={(event) =>
 												handleFilterInputEvent(column.id, event)}
 										>
 											<option value="">All</option>
@@ -534,7 +537,7 @@
 											type="text"
 											placeholder={column.header}
 											value={columnFilters[column.id] ?? ''}
-											on:input={(event) =>
+											oninput={(event) =>
 												handleFilterInputEvent(column.id, event)}
 										/>
 									{/if}
@@ -570,13 +573,13 @@
 							<tr
 								class={`hover:bg-info/20 ${customRowClass}`.trim()}
 								title={rowTooltipText || undefined}
-								on:click={() => handleRowClick(row)}
+								onclick={() => handleRowClick(row)}
 							>
 								{#if hasActionsColumn}
 									<td
 										class="px-1 whitespace-nowrap"
 										style="width: 1%;"
-										on:click|stopPropagation
+										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}
 											<div class="flex items-center gap-2">
@@ -609,11 +612,7 @@
 												Select
 											</DaisyUiButton>
 										{:else}
-											<slot
-												name="rowActions"
-												{row}
-												rowIndex={index}
-											/>
+											{@render rowActions?.(row, index)}
 										{/if}
 									</td>
 								{/if}
