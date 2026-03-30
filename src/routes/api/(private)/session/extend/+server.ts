@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm/sql/expressions/conditions';
 
 /** Must not live under `/api/auth/*` — `hooks.server.ts` forwards that prefix to Better Auth only. */
 const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
-const EXTEND_SECONDS = 30 * 60;
+const EXTEND_SECONDS = 60 * 60 * 2;
 const UI_ONLY_HEADER = 'x-heka-ui-session-extend';
 
 export const POST: RequestHandler = async ({ request, locals, cookies }) => {
