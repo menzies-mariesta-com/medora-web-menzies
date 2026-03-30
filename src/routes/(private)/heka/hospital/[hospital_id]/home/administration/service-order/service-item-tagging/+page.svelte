@@ -931,7 +931,7 @@
 							on:pageChange={() => fetchTaggings(true)}
 							on:filtersChange={handleTableFiltersChange}
 						>
-							<svelte:fragment slot="rowActions" let:row>
+							{#snippet rowActions(row, rowIndex)}
 								{@const taggingRow = row as ServiceTaggingSchema}
 								<div class="flex items-center gap-2">
 									<DaisyUiButton
@@ -952,7 +952,7 @@
 										<LucideTrash2 className="size-4" />
 									</DaisyUiButton>
 								</div>
-							</svelte:fragment>
+							{/snippet}
 						</MariTable>
 					</div>
 				{/if}

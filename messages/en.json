@@ -189,6 +189,8 @@
 	"observation_emr_choose_visit": "Choose a visit using the 'Choose Visit' button above to view observation data.",
 	"observation_emr_chief_complaint": "Chief complaint",
 	"observation_emr_patient_condition": "Patient condition",
+	"observation_emr_allergies": "Observation EMR Allergies",
+	"observation_emr_allergy_empty": "No allergies for this visit.",
 	"observation_emr_alert": "Alert",
 	"observation_emr_diagnosis": "Diagnosis",
 	"observation_emr_diagnosis_notes": "Diagnosis notes",
