@@ -427,7 +427,7 @@
 				actionsHeader="Actions"
 				actionsVariant="none"
 			>
-				<svelte:fragment slot="rowActions" let:row>
+				{#snippet rowActions(row, rowIndex)}
 					{@const typedRow = row as ReferHistoryWithRelations}
 					{#if isRecipientDoctor(typedRow) && isPendingReferRow(typedRow)}
 						<div class="flex flex-wrap items-center gap-1">
@@ -464,7 +464,7 @@
 							Cancel
 						</DaisyUiButton>
 					{/if}
-				</svelte:fragment>
+				{/snippet}
 			</MariTable>
 		</div>
 	{/if}

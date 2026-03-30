@@ -295,7 +295,7 @@
 							loadHospitals(true);
 						}}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							<div class="flex justify-end gap-2">
 								<DaisyUiButton
 									className="d-btn-primary d-btn-sm"
@@ -318,7 +318,7 @@
 									</DaisyUiButton>
 								{/if}
 							</div>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 			</DaisyUiCardBody>
