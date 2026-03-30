@@ -781,7 +781,7 @@
 									}, 350);
 								}}
 							>
-								<svelte:fragment slot="rowActions" let:row>
+								{#snippet rowActions(row, rowIndex)}
 									{@const typedRow = row as NursingCompleteRow}
 									<td class="w-36 min-w-[9rem]">
 										{#if typedRow.nursingCompleteTime}
@@ -798,7 +798,7 @@
 											</DaisyUiButton>
 										{/if}
 									</td>
-								</svelte:fragment>
+								{/snippet}
 							</MariTable>
 						</div>
 					{/if}

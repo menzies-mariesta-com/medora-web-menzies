@@ -375,7 +375,7 @@
 				}, 350);
 			}}
 		>
-			<svelte:fragment slot="rowActions" let:row>
+			{#snippet rowActions(row, rowIndex)}
 				{@const staffRow = row as StaffWithRelations}
 				<div class="flex flex-col items-center gap-1">
 					<DaisyUiTooltip
@@ -433,7 +433,7 @@
 						</DaisyUiButton>
 					</DaisyUiTooltip>
 				</div>
-			</svelte:fragment>
+			{/snippet}
 		</MariTable>
 	</div>
 {/if}

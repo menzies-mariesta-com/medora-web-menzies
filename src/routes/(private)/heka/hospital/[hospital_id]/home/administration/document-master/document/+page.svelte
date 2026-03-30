@@ -14,7 +14,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariRichEditor from '$lib/component/own/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
+	import TinyMceEditor from '$lib/component/own/tinymce/TinyMceEditor.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -66,14 +66,6 @@
 
 	const documentList = $derived(documentResult?.data ?? []);
 	const total = $derived(documentResult?.total ?? 0);
-
-	const selectedDocumentTypeName = $derived(() => {
-		if (!documentTypeIdInput) return 'Document';
-		const dt = documentTypes.find(
-			(d) => String(d.id) === documentTypeIdInput
-		);
-		return dt?.documentType || 'Document';
-	});
 
 	async function fetchData(opts?: { bustCache?: boolean }) {
 		isLoading = true;
@@ -447,7 +439,7 @@
 								fetchData();
 							}}
 						>
-							<svelte:fragment slot="rowActions" let:row>
+							{#snippet rowActions(row, rowIndex)}
 								{@const typedRow = row as DocumentWithRelations}
 								<td class="w-28 shrink-0 text-right">
 									<div class="flex justify-end gap-1">
@@ -487,7 +479,7 @@
 										</DaisyUiTooltip>
 									</div>
 								</td>
-							</svelte:fragment>
+							{/snippet}
 						</MariTable>
 					</div>
 				</DaisyUiCardBody>
@@ -659,12 +651,15 @@
 
 						<div class="overflow-hidden rounded-lg border">
 							{#if contentTab === 'rich'}
-								<MariRichEditor
+								<TinyMceEditor
 									bind:value={documentTextInput}
 									placeholder="Start typing your document content..."
-									showMenuBar={true}
-									documentTitle={selectedDocumentTypeName()}
-									className="min-h-[400px]"
+									className="min-h-[400px] p-1"
+									conf={{
+										height: 400,
+										min_height: 380,
+										menubar: true
+									}}
 								/>
 							{:else if contentTab === 'html'}
 								<textarea

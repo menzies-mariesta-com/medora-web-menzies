@@ -2,12 +2,10 @@
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
-	import {
-		getPatientVisitWithRelations,
-		getPatientVisitByIdWithRelations,
-		type PatientVisitWithRelations
+	import type {
+		PatientVisitWithRelations
 	} from '$lib/remote/table/information-table/patient-visit.remote';
-	import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
+	import { remoteInvoke } from '$lib/api/remote-invoke-client';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -55,6 +53,11 @@
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	let mounted = $state(false);
+
+	const PATIENT_VISIT_MODULE =
+		'table/information-table/patient-visit.remote.ts';
+	const SERVICE_ORDER_DETAIL_MODULE =
+		'table/information-table/service-order-detail.remote.ts';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -188,8 +191,10 @@
 
 	async function loadSidebarOrders(visitIdValue: number) {
 		try {
-			const orders = await getServiceOrderDetailRowsForVisit({
-				visitId: visitIdValue
+			const orders = await remoteInvoke<any[]>({
+				module: SERVICE_ORDER_DETAIL_MODULE,
+				fn: 'getServiceOrderDetailRowsForVisit',
+				args: [{ visitId: visitIdValue }]
 			});
 			labOrderResults = orders.map((row: any, i: number) => {
 				const service =
@@ -222,8 +227,12 @@
 		isLoading = true;
 		loadError = '';
 		try {
-			const selectedVisit = await getPatientVisitByIdWithRelations({
-				id: visitIdValue
+			const selectedVisit = await remoteInvoke<
+				PatientVisitWithRelations | null
+			>({
+				module: PATIENT_VISIT_MODULE,
+				fn: 'getPatientVisitByIdWithRelations',
+				args: [{ id: visitIdValue }]
 			});
 			visitRow = selectedVisit;
 
@@ -233,7 +242,11 @@
 				return;
 			}
 
-			const allVisits = await getPatientVisitWithRelations();
+			const allVisits = await remoteInvoke<PatientVisitWithRelations[]>({
+				module: PATIENT_VISIT_MODULE,
+				fn: 'getPatientVisitWithRelations',
+				args: []
+			});
 
 			const patientVisits = allVisits
 				.filter(
@@ -540,7 +553,7 @@
 									on:refresh={() => loadDashboard(visitId)}
 									on:rowClick={(e) => selectVisit(e.detail)}
 								>
-									<svelte:fragment slot="rowActions" let:row>
+									{#snippet rowActions(row, rowIndex)}
 										<div class="flex flex-wrap items-center gap-1">
 											<DaisyUiButton
 												className="d-btn-ghost d-btn-sm gap-1"
@@ -574,7 +587,7 @@
 												{m.visit_history_print_visit_label()}
 											</DaisyUiButton>
 										</div>
-									</svelte:fragment>
+									{/snippet}
 								</MariTable>
 							</div>
 						{/if}

@@ -16,7 +16,7 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import MariRichEditor from '$lib/component/own/library/mari/text-editor/rich-editor/MariRichEditor.svelte';
+	import TinyMceEditor from '$lib/component/own/tinymce/TinyMceEditor.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -25,7 +25,8 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import { remoteInvoke } from '$lib/api/remote-invoke-client';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import {
 		getDocumentSettingsPaginated,
 		createDocumentSetting,
@@ -33,9 +34,8 @@
 		deleteDocumentSetting,
 	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
-	import { getDocumentTypes } from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
+	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 	import type {
-		DocumentTypeSchema,
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
@@ -43,6 +43,37 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+
+	const DOCUMENT_SETTING_MODULE =
+		'table/information-table/document-setting.remote.ts';
+	const DOCUMENT_TYPE_MODULE =
+		'table/information-table/document-type.remote.ts';
+
+	async function createDocumentSettingApi(
+		payload: any
+	) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'createDocumentSetting',
+			args: [payload]
+		});
+	}
+
+	async function updateDocumentSettingApi(payload: any) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'updateDocumentSetting',
+			args: [payload]
+		});
+	}
+
+	async function deleteDocumentSettingApi(payload: { id: number }) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'deleteDocumentSetting',
+			args: [payload]
+		});
+	}
 
 	const PAGE_SIZES = ['A4', 'A5', 'Letter', 'Legal'] as const;
 	const ORIENTATIONS = ['portrait', 'landscape'] as const;
@@ -99,15 +130,23 @@
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			settingResult = await getDocumentSettingsPaginated({
-				page: currentPage,
-				pageSize,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			settingResult =
+				await remoteInvoke<PaginatedResult<DocumentSettingWithRelations>>({
+					module: DOCUMENT_SETTING_MODULE,
+					fn: 'getDocumentSettingsPaginated',
+					args: [
+						{
+							page: currentPage,
+							pageSize,
+							statusId:
+								parsedStatusId != null &&
+								Number.isFinite(parsedStatusId)
+									? parsedStatusId
+									: undefined,
+							...(opts?.bustCache && { _t: Date.now() })
+						}
+					]
+				});
 		} finally {
 			isLoading = false;
 		}
@@ -115,7 +154,11 @@
 
 	async function fetchDocumentTypes() {
 		try {
-			documentTypes = await getDocumentTypes();
+			documentTypes = await remoteInvoke<DocumentTypeSchema[]>({
+				module: DOCUMENT_TYPE_MODULE,
+				fn: 'getDocumentTypes',
+				args: []
+			});
 		} catch (err) {
 			console.error('Failed to load document types', err);
 		}
@@ -217,7 +260,7 @@
 				};
 
 				if (editingId) {
-					await updateDocumentSetting({
+					await updateDocumentSettingApi({
 						id: editingId,
 						...payload
 					});
@@ -226,7 +269,7 @@
 						StatusColorEnum.SUCCESS
 					);
 				} else {
-					await createDocumentSetting(payload);
+					await createDocumentSettingApi(payload);
 					toastService.addToast(
 						'Document setting created',
 						StatusColorEnum.SUCCESS
@@ -255,7 +298,7 @@
 				});
 				if (!result?.confirmed) return;
 
-				await deleteDocumentSetting({ id: item.id });
+				await deleteDocumentSettingApi({ id: item.id });
 				toastService.addToast(
 					'Document setting deleted',
 					StatusColorEnum.SUCCESS
@@ -455,7 +498,7 @@
 										bind:value={pageSizeInput}
 										disabled={viewMode === 'view'}
 									>
-										{#each PAGE_SIZES as size}
+										{#each PAGE_SIZES as size (size)}
 											<option value={size}>{size}</option>
 										{/each}
 									</DaisyUiSelect>
@@ -468,7 +511,7 @@
 										bind:value={pageOrientation}
 										disabled={viewMode === 'view'}
 									>
-										{#each ORIENTATIONS as orient}
+										{#each ORIENTATIONS as orient (orient)}
 											<option value={orient}>{orient}</option>
 										{/each}
 									</DaisyUiSelect>
@@ -624,13 +667,15 @@
 								{/if}
 							</div>
 							{#if showHeader}
-								<MariRichEditor
+								<TinyMceEditor
 									bind:value={headerHtml}
-									className="min-h-[150px]"
+									className="min-h-[150px] p-1"
 									disabled={viewMode === 'view'}
-									showMenuBar={true}
-									showPreview={true}
-									documentTitle="Header"
+									conf={{
+										height: 150,
+										min_height: 120,
+										menubar: true
+									}}
 								/>
 							{:else}
 								<div
@@ -670,13 +715,15 @@
 								{/if}
 							</div>
 							{#if showFooter}
-								<MariRichEditor
+								<TinyMceEditor
 									bind:value={footerHtml}
-									className="min-h-[150px]"
+									className="min-h-[150px] p-1"
 									disabled={viewMode === 'view'}
-									showMenuBar={true}
-									showPreview={true}
-									documentTitle="Footer"
+									conf={{
+										height: 150,
+										min_height: 120,
+										menubar: true
+									}}
 								/>
 							{:else}
 								<div
@@ -707,12 +754,12 @@
 								<div
 									class="grid max-h-64 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 xl:grid-cols-3"
 								>
-									{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category}
+									{#each DOCUMENT_TEMPLATE_PLACEHOLDERS as category (category.category)}
 										<div class="space-y-1">
 											<h4 class="text-xs font-semibold text-primary">
 												{category.category}
 											</h4>
-											{#each category.placeholders as ph}
+											{#each category.placeholders as ph (ph.key)}
 												<div
 													class="flex items-center justify-between rounded bg-base-100 px-2 py-1 text-xs"
 												>
@@ -814,7 +861,7 @@
 							fetchData();
 						}}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							{@const typedRow = row as DocumentSettingWithRelations}
 							<td class="w-32 shrink-0 text-right">
 								<div class="flex justify-end gap-1">
@@ -845,7 +892,7 @@
 									</DaisyUiButton>
 								</div>
 							</td>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 			{/if}
