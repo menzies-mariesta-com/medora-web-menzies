@@ -1,9 +1,9 @@
 ---
-description: App Development folder structure + CRUD flow standards
+description: 
 alwaysApply: true
 ---
 
-# App Development
+# SvelteKit App Development
 
 ## Main dev areas
 - Focus on `src/lib/` and `src/routes/`.
@@ -69,6 +69,13 @@ alwaysApply: true
   - public pages -> `src/routes/api/(public)/.../+server.ts`
 - The endpoint calls the appropriate DB CRUD function under `src/lib/remote/...`.
 - Pages should not import `$lib/remote/**` directly.
+
+## Client vs Remote Invocation (enforced)
+- Only `+server.ts` files under `src/routes/api/**` may import and execute `$lib/remote/**` (runtime DB/remote logic).
+- Client/UI code under `src/routes/**` and `src/lib/component/**` must not import `$lib/remote/**` at runtime.
+- Type-only imports from `$lib/remote/**` are allowed, but client code must not import/execute remote functions/queries.
+- Client/UI code must not import `$lib/tool/remote/**`.
+- Client/UI code must call API handlers via `fetch` to `src/routes/api/.../+server.ts` (commonly through an API invoke endpoint).
 
 ## E2E
 - Keep `e2e/` tests aligned with the ongoing continuous development cycle.

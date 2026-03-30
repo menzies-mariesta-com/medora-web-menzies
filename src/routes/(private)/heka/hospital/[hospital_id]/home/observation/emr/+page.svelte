@@ -45,6 +45,7 @@
 	import type { DiagnosisWithType } from '$lib/remote/table/information-table/diagnosis.remote';
 	import {
 		getPatientFormEntriesByVisitIdAndFormCode,
+		createPatientFormEntry,
 		deletePatientFormEntry,
 	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
 	import type { PatientFormEntryWithRelations } from '$lib/remote/table/information-table/patient-form-entry.remote';
@@ -1249,6 +1250,53 @@
 		}
 	}
 
+	async function handleFormEntryMove(
+		detail: {
+			row: PatientFormEntryWithRelations;
+			toFormCode: string;
+		}
+	) {
+		const { row, toFormCode } = detail;
+		const allowedFormCodes = new Set([
+			'chief_complaint',
+			'patient_condition'
+		]);
+		if (!allowedFormCodes.has(toFormCode)) return;
+
+		const targetFormCode =
+			toFormCode as 'chief_complaint' | 'patient_condition';
+
+		const currentCode = row.formName?.code;
+		if (currentCode === targetFormCode) return;
+
+		try {
+			// Soft-delete from the source list, then recreate under the target form code.
+			await deletePatientFormEntry({ id: row.id });
+			await createPatientFormEntry({
+				branchId: row.branchId,
+				patientId: row.patientId,
+				visitId: row.visitId,
+				description: row.description ?? null,
+				statusId: row.statusId,
+				formCode: targetFormCode
+			});
+			toastService.addToast(
+				m.observation_emr_saved(),
+				StatusColorEnum.SUCCESS
+			);
+			await reloadFormEntriesForVisit();
+		} catch (err) {
+			const msg =
+				err instanceof Error
+					? err.message
+					: m.observation_emr_delete_failed();
+			toastService.addToast(
+				msg as string,
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
 	function openOrderLineAdd() {
 		if (!visitRow?.branchId || !hospitalId || !visitId) return;
 		ObservationOrderLineDialogState.visitId = visitId;
@@ -1368,6 +1416,10 @@
 				columns={formEntryColumns}
 				isLoading={isLoadingGrid}
 				crudShowView={false}
+				enableMoveAction={true}
+				moveToLabel={m.observation_emr_patient_condition()}
+				moveToFormCode="patient_condition"
+				moveDirection="down"
 				showRefreshButton={true}
 				enableColumnFilters={true}
 				emptyMessage="No chief complaint entries."
@@ -1375,6 +1427,7 @@
 				on:refresh={reloadFormEntriesForVisit}
 				on:edit={(e) => openFormEntryEdit(e.detail)}
 				on:delete={(e) => handleFormEntryDelete(e.detail)}
+				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_patient_condition()}
@@ -1382,6 +1435,10 @@
 				columns={formEntryColumns}
 				isLoading={isLoadingGrid}
 				crudShowView={false}
+				enableMoveAction={true}
+				moveToLabel={m.observation_emr_chief_complaint()}
+				moveToFormCode="chief_complaint"
+				moveDirection="up"
 				showRefreshButton={true}
 				enableColumnFilters={true}
 				emptyMessage="No patient condition entries."
@@ -1389,6 +1446,7 @@
 				on:refresh={reloadFormEntriesForVisit}
 				on:edit={(e) => openFormEntryEdit(e.detail)}
 				on:delete={(e) => handleFormEntryDelete(e.detail)}
+				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_diagnosis()}

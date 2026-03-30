@@ -230,7 +230,7 @@
 							}, 350);
 						}}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton
@@ -255,7 +255,7 @@
 									</DaisyUiButton>
 								</div>
 							</td>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 				{#if totalPages > 1}

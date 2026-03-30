@@ -275,7 +275,7 @@
 			}}
 			on:pageChange={() => fetchRefer()}
 		>
-			<svelte:fragment slot="rowActions" let:row>
+			{#snippet rowActions(row, rowIndex)}
 				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
 					<div class="flex flex-col items-center gap-1">
 						<DaisyUiTooltip
@@ -314,7 +314,7 @@
 						</DaisyUiTooltip>
 					</div>
 				</td>
-			</svelte:fragment>
+			{/snippet}
 		</MariTable>
 	</div>
 {/if}

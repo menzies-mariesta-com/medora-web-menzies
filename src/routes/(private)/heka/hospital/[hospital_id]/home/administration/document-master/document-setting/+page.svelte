@@ -24,6 +24,9 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { remoteInvoke } from '$lib/api/remote-invoke-client';
+	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
 	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import {
 		getDocumentSettingsPaginated,
@@ -32,9 +35,8 @@
 		deleteDocumentSetting,
 	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
-	import { getDocumentTypes } from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
+	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
 	import type {
-		DocumentTypeSchema,
 		DocumentSettingSchema
 	} from '$lib/server/db/schema-type';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
@@ -42,6 +44,37 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+
+	const DOCUMENT_SETTING_MODULE =
+		'table/information-table/document-setting.remote.ts';
+	const DOCUMENT_TYPE_MODULE =
+		'table/information-table/document-type.remote.ts';
+
+	async function createDocumentSettingApi(
+		payload: any
+	) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'createDocumentSetting',
+			args: [payload]
+		});
+	}
+
+	async function updateDocumentSettingApi(payload: any) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'updateDocumentSetting',
+			args: [payload]
+		});
+	}
+
+	async function deleteDocumentSettingApi(payload: { id: number }) {
+		return remoteInvoke({
+			module: DOCUMENT_SETTING_MODULE,
+			fn: 'deleteDocumentSetting',
+			args: [payload]
+		});
+	}
 
 	const PAGE_SIZES = ['A4', 'A5', 'Letter', 'Legal'] as const;
 	const ORIENTATIONS = ['portrait', 'landscape'] as const;
@@ -98,15 +131,23 @@
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			settingResult = await getDocumentSettingsPaginated({
-				page: currentPage,
-				pageSize,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			settingResult =
+				await remoteInvoke<PaginatedResult<DocumentSettingWithRelations>>({
+					module: DOCUMENT_SETTING_MODULE,
+					fn: 'getDocumentSettingsPaginated',
+					args: [
+						{
+							page: currentPage,
+							pageSize,
+							statusId:
+								parsedStatusId != null &&
+								Number.isFinite(parsedStatusId)
+									? parsedStatusId
+									: undefined,
+							...(opts?.bustCache && { _t: Date.now() })
+						}
+					]
+				});
 		} finally {
 			isLoading = false;
 		}
@@ -114,7 +155,11 @@
 
 	async function fetchDocumentTypes() {
 		try {
-			documentTypes = await getDocumentTypes();
+			documentTypes = await remoteInvoke<DocumentTypeSchema[]>({
+				module: DOCUMENT_TYPE_MODULE,
+				fn: 'getDocumentTypes',
+				args: []
+			});
 		} catch (err) {
 			console.error('Failed to load document types', err);
 		}
@@ -216,7 +261,7 @@
 				};
 
 				if (editingId) {
-					await updateDocumentSetting({
+					await updateDocumentSettingApi({
 						id: editingId,
 						...payload
 					});
@@ -225,7 +270,7 @@
 						StatusColorEnum.SUCCESS
 					);
 				} else {
-					await createDocumentSetting(payload);
+					await createDocumentSettingApi(payload);
 					toastService.addToast(
 						'Document setting created',
 						StatusColorEnum.SUCCESS
@@ -254,7 +299,7 @@
 				});
 				if (!result?.confirmed) return;
 
-				await deleteDocumentSetting({ id: item.id });
+				await deleteDocumentSettingApi({ id: item.id });
 				toastService.addToast(
 					'Document setting deleted',
 					StatusColorEnum.SUCCESS
@@ -817,7 +862,7 @@
 							fetchData();
 						}}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							{@const typedRow = row as DocumentSettingWithRelations}
 							<td class="w-32 shrink-0 text-right">
 								<div class="flex justify-end gap-1">
@@ -848,7 +893,7 @@
 									</DaisyUiButton>
 								</div>
 							</td>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 			{/if}

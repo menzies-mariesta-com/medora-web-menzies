@@ -247,7 +247,7 @@
 							}, 350);
 						}}
 					>
-						<svelte:fragment slot="rowActions" let:row>
+						{#snippet rowActions(row, rowIndex)}
 							{@const ownerRow = row as UserSchema}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
@@ -286,7 +286,7 @@
 									</DaisyUiButton>
 								</div>
 							</td>
-						</svelte:fragment>
+						{/snippet}
 					</MariTable>
 				</div>
 			{/if}
