@@ -84,7 +84,7 @@
 		"html2canvas": "^1.4.1",
 		"jsbarcode": "^3.12.3",
 		"jspdf": "^4.2.1",
-		"nodemailer": "^8.0.0",
+		"nodemailer": "^8.0.4",
 		"phse-ui": "^0.0.1",
 		"qrcode": "^1.5.4",
 		"uuidv7": "^1.1.0",
