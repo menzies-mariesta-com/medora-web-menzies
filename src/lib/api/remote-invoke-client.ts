@@ -42,7 +42,7 @@ async function postJson<T>(
 }
 
 /**
- * Invoke an exported function from a `$lib/remote/**/*.remote.ts` module via
+ * Invoke an exported function from a `$lib/remote/<path>/*.remote.ts` module via
  * `/api/heka-remote/invoke`.
  *
  * Note: This is client-side only. Server-side endpoints must import and call
