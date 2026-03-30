@@ -27,7 +27,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { remoteInvoke } from '$lib/api/remote-invoke-client';
 	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import {
 		getDocumentSettingsPaginated,
 		createDocumentSetting,
