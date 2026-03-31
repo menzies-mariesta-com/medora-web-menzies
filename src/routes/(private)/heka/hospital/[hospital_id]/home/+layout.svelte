@@ -38,6 +38,9 @@
 			) ||
 			pathnameForPageMatch().startsWith(
 				WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
+			) ||
+			pathnameForPageMatch().startsWith(
+				WebRoutesEnum.HEKA_HOME_BILLING
 			)
 	);
 	// Appointment module UX: hide the module bar navbar automatically.

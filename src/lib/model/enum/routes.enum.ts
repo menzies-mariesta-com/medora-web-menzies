@@ -46,6 +46,10 @@ export enum WebRoutesEnum {
 	HEKA_HOME_OBSERVATION_EMR = '/heka/home/observation/emr',
 	HEKA_HOME_OBSERVATION_EMR_PATIENT_VISIT_HISTORY_DASHBOARD = '/heka/home/observation/emr/patient-visit-history-dashboard',
 
+	// Billing module (navbar auto-hides like nursing EMR)
+	HEKA_HOME_BILLING = '/heka/home/billing',
+	HEKA_HOME_BILLING_OP_BILLING = '/heka/home/billing/op-billing',
+
 	// Serice Item
 	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
 	HEKA_HOME_SERVICE_ITEM_SERVICE = '/heka/home/service-item/service',
