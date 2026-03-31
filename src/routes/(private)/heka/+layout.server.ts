@@ -8,7 +8,11 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
-		throw redirect(302, WebRoutesEnum.LOGIN);
+		const redirectTo = `${url.pathname}${url.search}`;
+		throw redirect(
+			302,
+			`${WebRoutesEnum.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`
+		);
 	}
 	// If session exists and we're on exactly /heka, redirect appropriately by role
 	if (

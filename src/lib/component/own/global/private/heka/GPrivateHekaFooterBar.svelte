@@ -163,7 +163,7 @@
 					disabled={extendDisabled}
 					onClick={() => void extendSessionOnce()}
 				>
-					{isExtending ? 'Extending...' : 'Extend +30m'}
+					{isExtending ? 'Extending...' : 'Extend +2h'}
 				</DaisyUiButton>
 				{#if extendError}
 					<span class="text-xs text-error" role="alert">{extendError}</span>
