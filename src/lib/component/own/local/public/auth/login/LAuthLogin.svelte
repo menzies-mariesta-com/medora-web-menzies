@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
@@ -20,6 +21,23 @@
 	import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
+
+	function sanitizeRedirectTo(redirectTo: string | null) {
+		if (!redirectTo) return WebRoutesEnum.HEKA_HOSPITAL;
+		const value = redirectTo.trim();
+		const lower = value.toLowerCase();
+
+		if (!value.startsWith('/')) return WebRoutesEnum.HEKA_HOSPITAL;
+		if (value.startsWith('//')) return WebRoutesEnum.HEKA_HOSPITAL;
+		if (lower.startsWith('http:') || lower.startsWith('https:'))
+			return WebRoutesEnum.HEKA_HOSPITAL;
+
+		return value;
+	}
+
+	let redirectTarget = $derived(
+		sanitizeRedirectTo(page.url.searchParams.get('redirectTo'))
+	);
 
 	function openResetPasswordModal() {
 		dialogService.open({
@@ -52,7 +70,7 @@
 		const { data, error } = await authClient.signIn.email({
 			email,
 			password,
-			callbackURL: WebRoutesEnum.HEKA_HOSPITAL
+			callbackURL: redirectTarget
 		});
 		isLoading = false;
 
@@ -64,7 +82,7 @@
 			return;
 		}
 		if (data) {
-			await goto(WebRoutesEnum.HEKA_HOSPITAL);
+			await goto(redirectTarget);
 		}
 	}
 </script>
