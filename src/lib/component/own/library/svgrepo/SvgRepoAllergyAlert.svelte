@@ -2,7 +2,8 @@
 	let { className } = $props<{
 		className?: string;
 	}>();
-</script>w
+</script>
+
 
 <svg
 	viewBox="0 0 512 512"

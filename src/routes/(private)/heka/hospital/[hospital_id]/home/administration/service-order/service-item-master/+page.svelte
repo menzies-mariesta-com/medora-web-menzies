@@ -98,8 +98,13 @@
 	const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
 		{
 			id: 'id',
-			header: m.id(),
-			widthClass: 'w-20'
+			header: 'No.',
+			widthClass: 'w-20',
+			filterable: false,
+			format: (_value, _row, rowIndex) => {
+				const pageSize = Number(pageSizeStr) || 10;
+				return (currentPage - 1) * pageSize + rowIndex + 1;
+			}
 		},
 		{
 			id: 'category',
