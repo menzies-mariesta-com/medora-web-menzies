@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import type {
 		PatientVisitWithRelations
@@ -15,7 +15,8 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -63,6 +64,7 @@
 		page.url.searchParams.get('visitId') ?? ''
 	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	let visitRow = $state<PatientVisitWithRelations | null>(null);
 	let tableRows = $state<VisitTableRow[]>([]);
@@ -314,6 +316,23 @@
 		routerUtil.replaceRoute(url);
 	}
 
+	function goToCaseSheet(row: VisitTableRow) {
+		const vid = row.visitId;
+		if (!vid || !hospitalId) {
+			selectVisit(row);
+			return;
+		}
+
+		const query = `?visitId=${vid}`;
+		const path =
+			moduleKey === 'observation'
+				? `/heka/hospital/${hospitalId}/home/observation/emr${query}`
+				: `/heka/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet${query}`;
+
+		VisitState.visitId = String(vid);
+		routerUtil.goToRoute(path);
+	}
+
 	function escapeHtml(value: unknown): string {
 		return String(value ?? '')
 			.replaceAll('&', '&amp;')
@@ -345,16 +364,22 @@
     <style>
       @page { size: 100mm 60mm; margin: 4mm; }
       * { box-sizing: border-box; }
-      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: #111827; font-size: 11px; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: #111827; font-size: 10px; }
       .header { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 6px; }
       .logo { width: 72px; height: auto; max-height: 28px; object-fit: contain; }
-      h1 { margin: 0; font-size: 13px; font-weight: 700; }
-      table { width: 100%; border-collapse: collapse; font-size: 10px; }
-      td { padding: 3px 0; vertical-align: top; }
-      td.k { width: 34%; font-weight: 600; color: #374151; padding-right: 6px; }
-      .barcode-wrap { margin-top: 6px; display: flex; justify-content: center; }
+      h1 { margin: 0; font-size: 12px; font-weight: 700; }
+      .label-rows { display: flex; flex-direction: column; gap: 3px; font-size: 9px; }
+      .label-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; align-items: start; }
+      .pair { min-width: 0; }
+      .k { font-weight: 600; color: #374151; }
+      .left, .right { display: flex; gap: 4px; min-width: 0; }
+      /* Right column should start at a fixed X (not flush-right). */
+      .right { justify-content: flex-start; padding-left: 6px; }
+      .v { font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; }
+      .right .v { text-align: left; }
+      .barcode-wrap { margin-top: 6px; display: flex; justify-content: center; width: 100%; }
       svg#visit-label-barcode { max-width: 100%; height: auto; }
-      .foot { margin-top: 4px; font-size: 8px; color: #6b7280; text-align: right; }
+      .foot { margin-top: 3px; font-size: 7px; color: #6b7280; text-align: right; }
     </style>
   </head>
   <body>
@@ -362,16 +387,20 @@
       <img class="logo" src="${escapeHtml(HekaLogo)}" alt="" />
       <h1>${escapeHtml(heading)}</h1>
     </div>
-    <table>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_patient())}</td><td>${escapeHtml(row.patientDisplayName)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_patient_code())}</td><td>${escapeHtml(row.patientCode)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_dob())}</td><td>${escapeHtml(row.patientDobLabel)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_visit_no())}</td><td>${escapeHtml(row.visitNo)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_visit_date())}</td><td>${escapeHtml(row.visitDateLabel)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_doctor())}</td><td>${escapeHtml(row.doctorName)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_branch())}</td><td>${escapeHtml(row.branchName)}</td></tr>
-      <tr><td class="k">${escapeHtml(m.visit_history_visit_label_hospital())}</td><td>${escapeHtml(row.hospitalName)}</td></tr>
-    </table>
+    <div class="label-rows">
+      <div class="label-row">
+        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_patient())}</span><span class="v">${escapeHtml(row.patientDisplayName)}</span></div>
+        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_dob())}</span><span class="v">${escapeHtml(row.patientDobLabel)}</span></div>
+      </div>
+      <div class="label-row">
+        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_patient_code())}</span><span class="v">${escapeHtml(row.patientCode)}</span></div>
+        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_doctor())}</span><span class="v">${escapeHtml(row.doctorName)}</span></div>
+      </div>
+      <div class="label-row">
+        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_visit_no())}</span><span class="v">${escapeHtml(row.visitNo)}</span></div>
+        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_visit_date())}</span><span class="v">${escapeHtml(row.visitDateLabel)}</span></div>
+      </div>
+    </div>
     <div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>
     <div class="foot">${escapeHtml(printedAt)}</div>
   </body>
@@ -412,7 +441,7 @@
 					width: 1.25,
 					height: 40,
 					displayValue: true,
-					fontSize: 10,
+					fontSize: 9,
 					margin: 2
 				});
 			} catch {
@@ -422,7 +451,7 @@
 						width: 1.25,
 						height: 40,
 						displayValue: true,
-						fontSize: 10,
+						fontSize: 9,
 						margin: 2
 					});
 				} catch {
@@ -554,38 +583,46 @@
 									on:rowClick={(e) => selectVisit(e.detail)}
 								>
 									{#snippet rowActions(row, rowIndex)}
-										<div class="flex flex-wrap items-center gap-1">
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm gap-1"
-												onClick={() =>
-													selectVisit(row as VisitTableRow)}
+										<div class="flex items-center gap-1">
+											<DaisyUiTooltip
+												tooltipText="Open case sheet"
+												className="d-tooltip-right"
 											>
-												View Case Sheet
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													class="h-4 w-4"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke="currentColor"
-													stroke-width="2"
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-sm d-btn-square"
+													onClick={() =>
+														goToCaseSheet(row as VisitTableRow)}
 												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M9 5l7 7-7 7"
-													/>
-												</svg>
-											</DaisyUiButton>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm gap-1"
-												onClick={() =>
-													void printVisitLabel(
-														row as VisitTableRow
-													)}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														class="h-4 w-4"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke="currentColor"
+														stroke-width="2"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M9 5l7 7-7 7"
+														/>
+													</svg>
+												</DaisyUiButton>
+											</DaisyUiTooltip>
+											<DaisyUiTooltip
+												tooltipText={m.visit_history_print_visit_label()}
+												className="d-tooltip-right"
 											>
-												<LucidePrinter className="size-4" />
-												{m.visit_history_print_visit_label()}
-											</DaisyUiButton>
+												<DaisyUiButton
+													className="d-btn-ghost d-btn-sm d-btn-square"
+													onClick={() =>
+														void printVisitLabel(
+															row as VisitTableRow
+														)}
+												>
+													<LucidePrinter className="size-4" />
+												</DaisyUiButton>
+											</DaisyUiTooltip>
 										</div>
 									{/snippet}
 								</MariTable>
@@ -816,7 +853,7 @@
 								<div class="min-w-0">
 									<p class="font-semibold">Amoxicillin 500mg</p>
 									<p class="text-xs text-base-content/70">
-										{`1 capsule · 3× daily · 7 days (sample)`}
+										1 capsule · 3× daily · 7 days (sample)
 									</p>
 								</div>
 							</li>
@@ -844,7 +881,7 @@
 								<div class="min-w-0">
 									<p class="font-semibold">Paracetamol 500mg</p>
 									<p class="text-xs text-base-content/70">
-										{`As needed for fever (sample)`}
+										As needed for fever (sample)
 									</p>
 								</div>
 							</li>

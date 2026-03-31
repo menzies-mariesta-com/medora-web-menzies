@@ -242,17 +242,56 @@ export const getServiceOrderDetailRowsForVisit = query(
 				}
 			}
 		});
+
+		// Preload sub-category names for all service items on this visit.
+		const subCategoryIds = new Set<number>();
+		for (const ord of orders) {
+			for (const d of ord.details) {
+				const sid = d.serviceItem?.subCategoryId;
+				if (sid != null) subCategoryIds.add(sid);
+			}
+		}
+
+		let subCategoryNameById = new Map<number, string | null>();
+		if (subCategoryIds.size > 0) {
+			const subCategories = await ensureDb()
+				.select({
+					id: table.subCategoryTable.id,
+					name: table.subCategoryTable.subCategoryName
+				})
+				.from(table.subCategoryTable)
+				.where(
+					inArray(
+						table.subCategoryTable.id,
+						Array.from(subCategoryIds)
+					)
+				);
+			subCategoryNameById = new Map(
+				subCategories.map((row) => [row.id, row.name])
+			);
+		}
+
 		const out: (ServiceOrderDetailSchema & {
 			orderNo: string | null;
 			serviceName: string | null;
+			subCategoryId: number | null;
+			subCategoryName: string | null;
 		})[] = [];
+
 		for (const ord of orders) {
 			for (const d of ord.details) {
 				const { serviceItem, ...detailRow } = d;
+				const subCategoryId = serviceItem?.subCategoryId ?? null;
+				const subCategoryName =
+					subCategoryId != null
+						? subCategoryNameById.get(subCategoryId) ?? null
+						: null;
 				out.push({
 					...detailRow,
 					orderNo: ord.orderNo ?? null,
-					serviceName: serviceItem?.serviceName ?? null
+					serviceName: serviceItem?.serviceName ?? null,
+					subCategoryId,
+					subCategoryName
 				});
 			}
 		}

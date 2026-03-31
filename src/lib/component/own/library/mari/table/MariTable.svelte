@@ -12,10 +12,11 @@
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
+import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 
 	export type MariTableColumn<T = any> = {
 		/**
@@ -584,33 +585,53 @@
 										{#if actionsVariant === 'crud'}
 											<div class="flex items-center gap-2">
 												{#if crudShowView}
-													<DaisyUiButton
-														className="d-btn-ghost d-btn-sm"
-														onClick={() => dispatch('view', row)}
+													<DaisyUiTooltip
+														tooltipText="View"
+														className="d-tooltip-right"
 													>
-														<LucideEye className="size-4" />
-													</DaisyUiButton>
+														<DaisyUiButton
+															className="d-btn-ghost d-btn-sm d-btn-square"
+															onClick={() => dispatch('view', row)}
+														>
+															<LucideEye className="size-4" />
+														</DaisyUiButton>
+													</DaisyUiTooltip>
 												{/if}
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-sm d-btn-success"
-													onClick={() => dispatch('edit', row)}
+												<DaisyUiTooltip
+													tooltipText="Edit"
+													className="d-tooltip-right"
 												>
-													<LucidePencil className="size-4" />
-												</DaisyUiButton>
-												<DaisyUiButton
-													className="d-btn-ghost d-btn-error d-btn-sm"
-													onClick={() => dispatch('delete', row)}
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-sm d-btn-square d-btn-success"
+														onClick={() => dispatch('edit', row)}
+													>
+														<LucidePencil className="size-4" />
+													</DaisyUiButton>
+												</DaisyUiTooltip>
+												<DaisyUiTooltip
+													tooltipText="Delete"
+													className="d-tooltip-right"
 												>
-													<LucideTrash2 className="size-4" />
-												</DaisyUiButton>
+													<DaisyUiButton
+														className="d-btn-ghost d-btn-error d-btn-sm d-btn-square"
+														onClick={() => dispatch('delete', row)}
+													>
+														<LucideTrash2 className="size-4" />
+													</DaisyUiButton>
+												</DaisyUiTooltip>
 											</div>
 										{:else if actionsVariant === 'select'}
-											<DaisyUiButton
-												className="d-btn-primary d-btn-sm"
-												onClick={() => dispatch('select', row)}
+											<DaisyUiTooltip
+												tooltipText="Select"
+												className="d-tooltip-right"
 											>
-												Select
-											</DaisyUiButton>
+												<DaisyUiButton
+													className="d-btn-primary d-btn-sm d-btn-square"
+													onClick={() => dispatch('select', row)}
+												>
+													<LucideCircleCheck className="size-4" />
+												</DaisyUiButton>
+											</DaisyUiTooltip>
 										{:else}
 											{@render rowActions?.(row, index)}
 										{/if}
