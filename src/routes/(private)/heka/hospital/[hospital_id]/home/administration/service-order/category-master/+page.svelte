@@ -33,9 +33,13 @@
 	const categoryColumns: MariTableColumn<CategorySchema>[] = [
 		{
 			id: 'id',
-			header: m.id(),
+			header: 'No.',
 			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false
+			filterable: false,
+			format: (_value, _row, rowIndex) => {
+				const pageSize = Number(pageSizeStr) || 10;
+				return (currentPage - 1) * pageSize + rowIndex + 1;
+			}
 		},
 		{
 			id: 'categoryName',
