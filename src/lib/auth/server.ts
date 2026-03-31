@@ -61,9 +61,9 @@ export const auth = betterAuth({
 	baseURL,
 	trustedOrigins,
 	session: {
-		// Hard 30-minute session lifetime (no auto refresh extension),
+		// Hard 2-hour session lifetime (no auto refresh extension),
 		// so users are logged out automatically after inactivity/usage.
-		expiresIn: 60 * 30,
+		expiresIn: 60 * 60 * 2,
 		disableSessionRefresh: true
 	},
 	database: drizzleAdapter(db!, {

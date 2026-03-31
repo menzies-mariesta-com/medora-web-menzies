@@ -9,10 +9,14 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-export const load: LayoutServerLoad = async ({ locals, params }) => {
+export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	const hospitalId = params.hospital_id;
 	if (!locals.user) {
-		throw redirect(302, WebRoutesEnum.LOGIN);
+		const redirectTo = `${url.pathname}${url.search}`;
+		throw redirect(
+			302,
+			`${WebRoutesEnum.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`
+		);
 	}
 
 	// Staff may only access their assigned hospitals
