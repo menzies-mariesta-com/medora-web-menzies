@@ -8,7 +8,11 @@ const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
 
 export const load: LayoutServerLoad = async ({ locals, url, cookies }) => {
 	if (!locals.user) {
-		throw redirect(302, WebRoutesEnum.LOGIN);
+		const redirectTo = `${url.pathname}${url.search}`;
+		throw redirect(
+			302,
+			`${WebRoutesEnum.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`
+		);
 	}
 	// Staff cannot access hospital list (CRUD); redirect to their assigned hospital
 	if (
