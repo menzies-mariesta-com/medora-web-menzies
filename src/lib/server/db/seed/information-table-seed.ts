@@ -49,13 +49,7 @@ export async function seedInformationTables() {
 	// `);
 	// seedLogger.info('Seeded: hospital');
 
-	// 2b. Hospital patient code counter (one row per hospital, start at 0 so first code is 1)
-	await db.execute(sql`
-		INSERT INTO hospital_patient_code_counter (hospital_id, last_number)
-		SELECT id, 0 FROM hospital
-		ON CONFLICT (hospital_id) DO NOTHING;
-	`);
-	seedLogger.info('Seeded: hospital_patient_code_counter');
+	// 2b. Financial year (per hospital) and prefix configuration seeds can be added here later per environment.
 
 	// 3. Page (depends: module, status)
 	await db.execute(sql`
@@ -135,7 +129,11 @@ export async function seedInformationTables() {
 			-- Refer Module
 			(14, 'Refer', 6, 1, null, '/heka/home/cpoe/refer', 3),
 			(1400001, 'Refer Doctor', 6, 1, 14, '/heka/home/cpoe/refer/doctor', 1),
-			(1400002, 'Referral History', 6, 1, 14, '/heka/home/cpoe/refer/history', 2)
+			(1400002, 'Referral History', 6, 1, 14, '/heka/home/cpoe/refer/history', 2),
+
+			-- Administration: Financial Year & Prefix Configuration
+			(15, 'Financial Year', 1, 1, null, '/heka/home/administration/financial-year', 8),
+			(16, 'Prefix Configuration', 1, 1, null, '/heka/home/administration/prefix-configuration', 9)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

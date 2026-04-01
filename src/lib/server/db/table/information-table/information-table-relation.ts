@@ -11,8 +11,10 @@ import {
 	appointmentBlockTable,
 	hospitalBranchTable,
 	hospitalDepartmentTable,
-	hospitalPatientCodeCounterTable,
 	hospitalTable,
+	financialYearTable,
+	prefixFormatTable,
+	prefixCounterTable,
 	moduleTable,
 	pageTable,
 	patientAllergyTable,
@@ -110,8 +112,9 @@ export const hospitalTableRelations = relations(
 			references: [postalCodeTable.id]
 		}),
 		userGroups: many(userGroupTable),
+		financialYears: many(financialYearTable),
+		prefixFormats: many(prefixFormatTable),
 		hospitalDepartments: many(hospitalDepartmentTable),
-		patientCodeCounter: one(hospitalPatientCodeCounterTable),
 		staffHospitals: many(staffHospitalTable),
 		patients: many(patientTable),
 		appointments: many(appointmentTable),
@@ -163,15 +166,49 @@ export const hospitalBranchTableRelations = relations(
 		serviceTaggings: many(serviceTaggingTable),
 		serviceOrders: many(serviceOrderTable),
 		opBillings: many(opBillingTable)
+		prefixCounters: many(prefixCounterTable)
 	})
 );
 
-export const hospitalPatientCodeCounterTableRelations = relations(
-	hospitalPatientCodeCounterTable,
+export const financialYearTableRelations = relations(
+	financialYearTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [financialYearTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		prefixCounters: many(prefixCounterTable)
+	})
+);
+
+export const prefixFormatTableRelations = relations(
+	prefixFormatTable,
 	({ one }) => ({
 		hospital: one(hospitalTable, {
-			fields: [hospitalPatientCodeCounterTable.hospitalId],
+			fields: [prefixFormatTable.hospitalId],
 			references: [hospitalTable.id]
+		})
+	})
+);
+
+export const prefixCounterTableRelations = relations(
+	prefixCounterTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [prefixCounterTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [prefixCounterTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		financialYear: one(financialYearTable, {
+			fields: [prefixCounterTable.financialYearId],
+			references: [financialYearTable.id]
+		}),
+		visitType: one(visitTypeTable, {
+			fields: [prefixCounterTable.visitTypeId],
+			references: [visitTypeTable.id]
 		})
 	})
 );
