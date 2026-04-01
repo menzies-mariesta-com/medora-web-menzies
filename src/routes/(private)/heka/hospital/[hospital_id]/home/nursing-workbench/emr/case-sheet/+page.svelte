@@ -21,6 +21,7 @@
 	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
 	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import { m } from '$lib/paraglide/messages';
+	import { formatNumberDisplay } from '$lib/util/number-display.util';
 import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 import { getUserByIdWithStaff } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
@@ -87,18 +88,6 @@ let userNameById = $state<Record<string, string>>({});
 	function formatText(value: string | null | undefined): string {
 		if (value == null || value === '') return '–';
 		return String(value);
-	}
-
-	function formatNumber(
-		value: number | string | null | undefined
-	): string {
-		if (value == null || value === '') return '–';
-		const n = Number(value);
-		if (!Number.isFinite(n)) return String(value);
-		return n.toLocaleString('en-US', {
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 2
-		});
 	}
 
 	function formatUserName(userId: string | null | undefined): string {
@@ -598,7 +587,7 @@ let userNameById = $state<Record<string, string>>({});
 												{formatDateTime(row.updatedAt as string | null | undefined)}
 											</p>
 										</td>
-										<td>{formatNumber(row.serviceAmount)}</td>
+										<td>{formatNumberDisplay(row.serviceAmount)}</td>
 										<td>
 											{row.serviceUnit != null
 												? String(row.serviceUnit)

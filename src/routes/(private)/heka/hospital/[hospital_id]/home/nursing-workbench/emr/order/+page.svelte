@@ -35,6 +35,7 @@
 		getStaffByIdWithRelations,
 		getStaffByIdWithRelationsBatched
 	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
 		ServiceOrderSchema,
@@ -635,18 +636,6 @@
 		);
 	}
 
-	function formatNumber(
-		value: number | string | null | undefined
-	): string {
-		if (value == null || value === '') return '–';
-		const n = Number(value);
-		if (!Number.isFinite(n)) return String(value);
-		return n.toLocaleString('en-US', {
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 2
-		});
-	}
-
 	const detailColumns: MariTableColumn<PendingItem>[] = [
 		{
 			id: 'serviceId',
@@ -676,7 +665,7 @@
 			header: 'Service Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => formatNumber(value as any)
+			format: (value) => formatNumberDisplay(value as any)
 		},
 		{
 			id: 'serviceUnit',
@@ -690,7 +679,7 @@
 			header: 'Tax',
 			widthClass: 'w-24',
 			filterable: false,
-			format: (value) => formatNumber(value as any)
+			format: (value) => formatNumberDisplay(value as any)
 		},
 		{
 			id: 'isUrgent',
@@ -714,7 +703,7 @@
 			header: 'Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => formatNumber(value as any)
+			format: (value) => formatNumberDisplay(value as any)
 		}
 	];
 

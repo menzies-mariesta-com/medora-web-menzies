@@ -6,7 +6,6 @@
 	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import MariTable, {
 		type MariTableColumn
@@ -37,6 +36,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
+	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const toastService = new ToastService();
@@ -59,9 +59,15 @@
 
 	const branchOptions = $derived(allowedBranches);
 
-	let selectedBranchIds = $state<string[]>(
-		branchOptions[0] ? [branchOptions[0].id] : []
-	);
+	let branchSelectionInitialized = $state(false);
+	let selectedBranchIds = $state<string[]>([]);
+	$effect(() => {
+		if (branchSelectionInitialized) return;
+		const first = branchOptions[0];
+		if (!first) return;
+		selectedBranchIds = [first.id];
+		branchSelectionInitialized = true;
+	});
 	const allowedBranchIdSet = $derived(
 		new Set(allowedBranches.map((b) => b.id))
 	);
@@ -145,13 +151,13 @@
 			id: 'serviceAmount',
 			header: 'Amount',
 			widthClass: 'w-32',
-			field: 'serviceAmount'
+			format: (_v, row) => formatNumberDisplay(row.serviceAmount)
 		},
 		{
 			id: 'serviceTaxAmount',
 			header: 'Tax amount',
 			widthClass: 'w-32',
-			field: 'serviceTaxAmount'
+			format: (_v, row) => formatNumberDisplay(row.serviceTaxAmount)
 		},
 		{
 			id: 'validDate',
@@ -697,12 +703,14 @@
 		<DaisyUiCard>
 			<DaisyUiCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
-					<div class="min-w-0 flex-1 md:min-w-56">
-						<DaisyUiLabel className="mb-2 block"
-							>Branch <span class="text-error">*</span></DaisyUiLabel
-						>
+					<fieldset class="min-w-0 flex-1 md:min-w-56">
+						<legend class="mb-2 block text-sm font-medium">
+							Branch <span class="text-error">*</span>
+						</legend>
 						<div
 							class="grid max-h-28 grid-cols-1 gap-1 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-2 lg:grid-cols-2"
+							role="group"
+							aria-label="Branches"
 						>
 							{#each branchOptions as b (b.id)}
 								{@const isChecked = selectedBranchIds.includes(b.id)}
@@ -728,14 +736,15 @@
 								</DaisyUiButton>
 							{/each}
 						</div>
-					</div>
+					</fieldset>
 
 					<div class="flex flex-wrap gap-4">
 						<div class="flex min-w-60 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium"
+							<label class="text-sm font-medium" for="tagging-form-service"
 								>Service<span class="text-error"> *</span></label
 							>
 							<DaisyUiSearchSelect
+								inputId="tagging-form-service"
 								bind:value={formServiceId}
 								options={serviceOptions}
 								placeholder="Select service"
@@ -743,10 +752,11 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium"
+							<label class="text-sm font-medium" for="tagging-form-amount"
 								>Amount<span class="text-error"> *</span></label
 							>
 							<DaisyUiInputField
+								id="tagging-form-amount"
 								bind:value={formServiceAmount}
 								inputType="number"
 								step="0.01"
@@ -756,8 +766,11 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium">Tax amount</label>
+							<label class="text-sm font-medium" for="tagging-form-tax"
+								>Tax amount</label
+							>
 							<DaisyUiInputField
+								id="tagging-form-tax"
 								bind:value={formServiceTaxAmount}
 								inputType="number"
 								step="0.01"
@@ -766,8 +779,11 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium">Valid date</label>
+							<label class="text-sm font-medium" for="tagging-form-valid-date"
+								>Valid date</label
+							>
 							<DaisyUiInputField
+								id="tagging-form-valid-date"
 								bind:value={formValidDate}
 								inputType="date"
 								className="d-input-sm w-full"
@@ -899,10 +915,14 @@
 												</td>
 												{#each row.branches as branch}
 													<td class="text-right tabular-nums">
-														{branch.amount ?? '—'}
+														{branch.amount != null
+															? formatNumberDisplay(branch.amount)
+															: '—'}
 													</td>
 													<td class="text-right tabular-nums">
-														{branch.tax ?? '—'}
+														{branch.tax != null
+															? formatNumberDisplay(branch.tax)
+															: '—'}
 													</td>
 												{/each}
 											</tr>
