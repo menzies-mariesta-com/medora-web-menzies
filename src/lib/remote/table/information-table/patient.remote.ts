@@ -22,6 +22,8 @@ import {
 	accountTable
 } from '$lib/server/db/table/auth-table/auth-table';
 import { getHospitalById } from '$lib/remote/table/information-table/hospital.remote';
+import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { generatePrefix } from '$lib/tool/prefix/prefix-generator.tool.svelte';
 
 const patientWithRelationsWith = {
 	user: true,
@@ -109,31 +111,44 @@ export const getPatientCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-/**
- * Returns next patient code for the given hospital: Hospital Code + next sequential number (e.g. "phh1", "phh2").
- * Uses hospital_patient_code_counter for atomic, race-free numbering per hospital (each hospital starts at 1).
- */
 export const getNextPatientCode = query(
 	'unchecked' as const,
 	async ({ hospitalId }: { hospitalId: string }): Promise<string> => {
-		const hospital = (await getHospitalById({
-			id: hospitalId
-		})) as HospitalSchema | null;
-		const hospitalCode = (
-			hospital?.code?.trim() ?? hospitalId
-		).toUpperCase();
-		const yearSuffix = new Date().getFullYear().toString().slice(-2);
-		const counter = table.hospitalPatientCodeCounterTable;
-		const [row] = await ensureDb()
-			.insert(counter)
-			.values({ hospitalId, lastNumber: 1 })
-			.onConflictDoUpdate({
-				target: counter.hospitalId,
-				set: { lastNumber: sql`${counter.lastNumber} + 1` }
+		const db = ensureDb();
+		const today = new Date();
+
+		const [financialYear] = await db
+			.select({
+				id: table.financialYearTable.id,
+				startDate: table.financialYearTable.startDate,
+				endDate: table.financialYearTable.endDate
 			})
-			.returning({ lastNumber: counter.lastNumber });
-		const nextNumber = row?.lastNumber ?? 1;
-		return `${yearSuffix}${hospitalCode}${String(nextNumber).padStart(8, '0')}`;
+			.from(table.financialYearTable)
+			.where(
+				and(
+					eq(table.financialYearTable.hospitalId, hospitalId),
+					sql`${table.financialYearTable.startDate} <= ${today}`,
+					sql`${table.financialYearTable.endDate} >= ${today}`
+				)
+			)
+			.limit(1);
+
+		if (!financialYear) {
+			throw error(
+				400,
+				'Financial year is not configured for this hospital.'
+			);
+		}
+
+		const code = await generatePrefix({
+			hospitalId,
+			branchId: null,
+			financialYearId: financialYear.id,
+			prefixKey: PREFIX_PURPOSE_STORAGE.PATIENT_CODE,
+			context: {}
+		});
+
+		return code;
 	}
 );
 

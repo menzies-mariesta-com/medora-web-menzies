@@ -1,6 +1,8 @@
 import { command, query, getRequestEvent } from '$app/server';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
+import { generatePrefix } from '$lib/tool/prefix/prefix-generator.tool.svelte';
 
 import type {
 	PatientVisitSchema,
@@ -201,34 +203,41 @@ export const getNextVisitNo = query(
 			visitType.code?.trim() || 'V'
 		).toUpperCase();
 
-		const fullYear = new Date().getFullYear();
-		const yearSuffix = String(fullYear).slice(-2);
+		const db = ensureDb();
+		const today = new Date();
 
-		const counter = table.hospitalVisitCodeCounterTable;
-		const [row] = await ensureDb()
-			.insert(counter)
-			.values({
-				hospitalId,
-				branchId,
-				visitTypeId,
-				year: fullYear,
-				lastNumber: 1
+		const [financialYear] = await db
+			.select({
+				id: table.financialYearTable.id,
+				startDate: table.financialYearTable.startDate,
+				endDate: table.financialYearTable.endDate
 			})
-			.onConflictDoUpdate({
-				target: [
-					counter.hospitalId,
-					counter.branchId,
-					counter.visitTypeId,
-					counter.year
-				],
-				set: { lastNumber: sql`${counter.lastNumber} + 1` }
-			})
-			.returning({ lastNumber: counter.lastNumber });
+			.from(table.financialYearTable)
+			.where(
+				and(
+					eq(table.financialYearTable.hospitalId, hospitalId),
+					sql`${table.financialYearTable.startDate} <= ${today}`,
+					sql`${table.financialYearTable.endDate} >= ${today}`
+				)
+			)
+			.limit(1);
 
-		const nextNumber = row?.lastNumber ?? 1;
-		const orderPart = String(nextNumber).padStart(6, '0');
+		if (!financialYear) {
+			throw error(
+				400,
+				'Financial year is not configured for this hospital.'
+			);
+		}
 
-		return `${visitTypeCode}${yearSuffix}${hospitalCode}-${branchCode}${orderPart}`;
+		const prefix = await generatePrefix({
+			hospitalId,
+			branchId,
+			financialYearId: financialYear.id,
+			prefixKey: PREFIX_PURPOSE_STORAGE.VISIT_NO,
+			context: { visitTypeId }
+		});
+
+		return prefix;
 	}
 );
 
