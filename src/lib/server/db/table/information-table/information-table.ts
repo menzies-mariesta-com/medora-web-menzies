@@ -21,9 +21,11 @@ import {
 	StatusEnum,
 	YesNoEnum
 } from '../../../../model/enum/db-link';
+import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
+	billingDiscountTypeTable,
 	categoryTable,
 	cityTable,
 	countryTable,
@@ -1128,6 +1130,140 @@ export const serviceOrderDetailTable = pgTable(
 		cancelRemark: text('cancel_remark'),
 		...timestamps
 	}
+);
+
+/**
+ * OP billing header for a visit: persisted totals and visit-level discount.
+ * Lines are stored in `op_billing_line` (snapshot of services billed).
+ */
+export const opBillingTable = pgTable(
+	'op_billing',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+		billNo: varchar('bill_no', { length: 128 }),
+		/** Sum of `op_billing_line.line_total` before visit-level discount. */
+		linesSubtotal: decimal('lines_subtotal', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountTypeId: integer('discount_type_id')
+			.notNull()
+			.references(() => billingDiscountTypeTable.id)
+			.default(BillingDiscountTypeEnum.NONE),
+		/** When `discount_type_id` is PERCENT, stores 0–100. */
+		discountPercent: decimal('discount_percent', {
+			precision: 5,
+			scale: 2
+		}),
+		/** Money removed at visit level (fixed amount, or computed % at save time). */
+		discountAmount: decimal('discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		/** Payable total after visit-level discount. */
+		totalAmount: decimal('total_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountedByStaffId: uuid('discounted_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		discountedAt: timestamp('discounted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		printedByStaffId: uuid('printed_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		printedAt: timestamp('printed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('op_billing_visit_id_idx').on(table.visitId),
+		index('op_billing_hospital_id_idx').on(table.hospitalId),
+		index('op_billing_branch_id_idx').on(table.branchId),
+		index('op_billing_bill_no_idx').on(table.billNo),
+		index('op_billing_status_id_idx').on(table.statusId),
+		index('op_billing_discount_type_id_idx').on(table.discountTypeId)
+	]
+);
+
+/** Snapshot of each service line on an OP bill (immutable billing record). */
+export const opBillingLineTable = pgTable(
+	'op_billing_line',
+	{
+		id: serial('id').primaryKey(),
+		opBillingId: integer('op_billing_id')
+			.notNull()
+			.references(() => opBillingTable.id, { onDelete: 'cascade' }),
+		lineIndex: integer('line_index').notNull(),
+		serviceOrderDetailId: integer('service_order_detail_id').references(
+			() => serviceOrderDetailTable.id,
+			{ onDelete: 'set null' }
+		),
+		serviceId: integer('service_id')
+			.notNull()
+			.references(() => serviceItemTable.id, { onDelete: 'restrict' }),
+		serviceNameSnapshot: varchar('service_name_snapshot', {
+			length: 512
+		}),
+		subCategoryId: integer('sub_category_id').references(
+			() => subCategoryTable.id,
+			{ onDelete: 'set null' }
+		),
+		subCategoryNameSnapshot: varchar('sub_category_name_snapshot', {
+			length: 512
+		}),
+		orderNoSnapshot: varchar('order_no_snapshot', { length: 128 }),
+		discount: decimal('discount', { precision: 14, scale: 2 }),
+		serviceAmount: decimal('service_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceTaxAmount: decimal('service_tax_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceUnit: integer('service_unit'),
+		/** (amount + tax − line discount) × unit — stored for reporting/print. */
+		lineTotal: decimal('line_total', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		...timestamps
+	},
+	(table) => [
+		index('op_billing_line_op_billing_id_idx').on(table.opBillingId),
+		index('op_billing_line_service_id_idx').on(table.serviceId),
+		index(
+			'op_billing_line_service_order_detail_id_idx'
+		).on(table.serviceOrderDetailId)
+	]
 );
 
 export const storeTable = pgTable('store', {

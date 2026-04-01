@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { D3Util, type BarChartOptions } from '$lib/util/d3.util';
+	import { formatIntegerDisplay } from '$lib/util/number-display.util';
 
 	type DailyVisitCount = {
 		date: string;
@@ -39,7 +40,7 @@
 
 	function displayOrNA(value: number | null | undefined): string {
 		if (value == null) return 'N/A';
-		return value.toLocaleString();
+		return formatIntegerDisplay(value, 'N/A');
 	}
 
 	function checkInRatioText(ratio: CheckInRatio | undefined): string {

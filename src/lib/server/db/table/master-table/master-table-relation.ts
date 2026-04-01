@@ -9,6 +9,7 @@ import {
 	pageTable,
 	patientTable,
 	patientVisitTable,
+	opBillingTable,
 	diagnosisTable,
 	staffDepartmentTable,
 	staffDetailTable,
@@ -19,6 +20,7 @@ import {
 } from '../information-table/information-table';
 import {
 	bloodTypeTable,
+	billingDiscountTypeTable,
 	cityTable,
 	countryTable,
 	craftGroupTable,
@@ -56,6 +58,17 @@ export const bloodTypeTableRelations = relations(
 			fields: [bloodTypeTable.statusId],
 			references: [statusTable.id]
 		})
+	})
+);
+
+export const billingDiscountTypeTableRelations = relations(
+	billingDiscountTypeTable,
+	({ one, many }) => ({
+		status: one(statusTable, {
+			fields: [billingDiscountTypeTable.statusId],
+			references: [statusTable.id]
+		}),
+		opBillings: many(opBillingTable)
 	})
 );
 

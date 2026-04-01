@@ -42,6 +42,8 @@ import type {
 	documentTypeTable,
 	documentSettingTable,
 	documentTable,
+	opBillingLineTable,
+	opBillingTable,
 	patientDocumentTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
@@ -383,6 +385,19 @@ export type ServiceOrderDetailSchemaInsert = InferInsertModel<
 >;
 export type ServiceOrderDetailSchemaUpdate =
 	Partial<ServiceOrderDetailSchemaInsert>;
+
+export type OpBillingSchema = InferSelectModel<typeof opBillingTable>;
+export type OpBillingSchemaInsert = InferInsertModel<typeof opBillingTable>;
+export type OpBillingSchemaUpdate = Partial<OpBillingSchemaInsert>;
+
+export type OpBillingLineSchema = InferSelectModel<
+	typeof opBillingLineTable
+>;
+export type OpBillingLineSchemaInsert = InferInsertModel<
+	typeof opBillingLineTable
+>;
+export type OpBillingLineSchemaUpdate =
+	Partial<OpBillingLineSchemaInsert>;
 
 export type DocumentSettingSchema = InferSelectModel<
 	typeof documentSettingTable

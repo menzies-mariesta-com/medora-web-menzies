@@ -5,6 +5,7 @@ import type {
 } from 'drizzle-orm';
 import type {
 	bloodTypeTable,
+	billingDiscountTypeTable,
 	categoryTable,
 	cityTable,
 	countryTable,
@@ -57,6 +58,15 @@ export type BloodTypeSchemaInsert = InferInsertModel<
 	typeof bloodTypeTable
 >;
 export type BloodTypeSchemaUpdate = Partial<BloodTypeSchemaInsert>;
+
+export type BillingDiscountTypeSchema = InferSelectModel<
+	typeof billingDiscountTypeTable
+>;
+export type BillingDiscountTypeSchemaInsert = InferInsertModel<
+	typeof billingDiscountTypeTable
+>;
+export type BillingDiscountTypeSchemaUpdate =
+	Partial<BillingDiscountTypeSchemaInsert>;
 
 export type CategorySchema = InferSelectModel<typeof categoryTable>;
 export type CategorySchemaInsert = InferInsertModel<
