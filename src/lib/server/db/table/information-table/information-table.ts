@@ -7,10 +7,10 @@ import {
 	foreignKey,
 	integer,
 	pgTable,
-	primaryKey,
 	serial,
 	text,
 	timestamp,
+	jsonb,
 	uuid,
 	unique,
 	time,
@@ -46,7 +46,6 @@ import {
 	statusTable,
 	titleTable,
 	unitTable,
-	unitTypeTable,
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
@@ -185,48 +184,91 @@ export const hospitalBranchTable = pgTable('hospital_branch', {
 	...timestamps
 });
 
-/** Per-hospital atomic counter for patient codes (Hospital Code + number). Each hospital starts at 1. */
-export const hospitalPatientCodeCounterTable = pgTable(
-	'hospital_patient_code_counter',
+/** Financial year per hospital (e.g. FY24-25). */
+export const financialYearTable = pgTable(
+	'financial_year',
 	{
-		hospitalId: uuid('hospital_id')
-			.primaryKey()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		lastNumber: integer('last_number').notNull().default(0),
-		...timestamps
-	}
-);
-
-/** Per-hospital/branch/visit-type/year atomic counter for visit numbers. */
-export const hospitalVisitCodeCounterTable = pgTable(
-	'hospital_visit_code_counter',
-	{
+		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		branchId: uuid('branch_id')
-			.notNull()
-			.references(() => hospitalBranchTable.id, {
-				onDelete: 'cascade'
-			}),
-		visitTypeId: integer('visit_type_id')
-			.notNull()
-			.references(() => visitTypeTable.id),
-		year: integer('year').notNull(),
-		lastNumber: integer('last_number').notNull().default(0),
+		code: varchar('code', { length: 128 }), // e.g. "FY24-25"
+		startDate: date('start_date'),
+		endDate: date('end_date'),
 		...timestamps
 	},
 	(table) => [
-		primaryKey({
-			columns: [
-				table.hospitalId,
-				table.branchId,
-				table.visitTypeId,
-				table.year
-			]
-		})
+		unique('financial_year_hospital_code_unique').on(
+			table.hospitalId,
+			table.code
+		)
 	]
 );
+
+/** Format template per hospital + purpose key (no counter). */
+export const prefixFormatTable = pgTable(
+	'prefix_format',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		key: varchar('key', { length: 128 }).notNull(),
+		description: text('description'),
+		format: jsonb('format').notNull(),
+		/** Which dimensions participate in {@link prefixCounterTable.scopeKey} (hospital + key always). */
+		counterIncludeBranch: integer('counter_include_branch')
+			.notNull()
+			.default(YesNoEnum.NO),
+		counterIncludeFinancialYear: integer('counter_include_financial_year')
+			.notNull()
+			.default(YesNoEnum.YES),
+		counterIncludeVisitType: integer('counter_include_visit_type')
+			.notNull()
+			.default(YesNoEnum.NO),
+		...timestamps
+	},
+	(table) => [
+		unique('prefix_format_hospital_key_unique').on(table.hospitalId, table.key)
+	]
+);
+
+/**
+ * Running number per scope (hospital / branch / financial year / visit type × purpose).
+ * `scopeKey` is unique; use {@link buildPrefixCounterScopeKey} from `$lib/tool/prefix/prefix-counter-scope.util`.
+ */
+export const prefixCounterTable = pgTable('prefix_counter', {
+	id: serial('id').primaryKey(),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	branchId: uuid('branch_id').references(() => hospitalBranchTable.id, {
+		onDelete: 'cascade'
+	}),
+	financialYearId: integer('financial_year_id').references(
+		() => financialYearTable.id,
+		{ onDelete: 'set null' }
+	),
+	visitTypeId: integer('visit_type_id').references(() => visitTypeTable.id, {
+		onDelete: 'set null'
+	}),
+	key: varchar('key', { length: 128 }).notNull(),
+	scopeKey: text('scope_key').notNull().unique(),
+	lastNo: integer('last_no').notNull().default(0),
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+});
 
 export const hospitalDepartmentTable = pgTable(
 	'hospital_department',
