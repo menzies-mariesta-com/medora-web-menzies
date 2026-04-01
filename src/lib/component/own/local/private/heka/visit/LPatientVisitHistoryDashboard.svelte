@@ -7,6 +7,10 @@ import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import { remoteInvoke } from '$lib/api/remote-invoke-client';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import {
+		formatIntegerDisplay,
+		formatNumberDisplay
+	} from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
@@ -202,9 +206,13 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 				const service =
 					row.serviceName ?? `Service ${row.serviceId ?? ''}`;
 				const amount =
-					row.serviceAmount != null ? String(row.serviceAmount) : '';
+					row.serviceAmount != null
+						? formatNumberDisplay(row.serviceAmount)
+						: '';
 				const unit =
-					row.serviceUnit != null ? String(row.serviceUnit) : '';
+					row.serviceUnit != null
+						? formatIntegerDisplay(row.serviceUnit)
+						: '';
 				const subtitle = [
 					amount && unit ? `${amount} × ${unit}` : amount
 				]

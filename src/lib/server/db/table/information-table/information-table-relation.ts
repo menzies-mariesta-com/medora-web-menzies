@@ -26,6 +26,8 @@ import {
 	patientVisitTable,
 	referHistoryTable,
 	insuranceTable,
+	opBillingLineTable,
+	opBillingTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
 	staffDepartmentTable,
@@ -71,7 +73,8 @@ import {
 	unitTable,
 	visitTypeTable,
 	weekdayTable,
-	severityTable
+	severityTable,
+	billingDiscountTypeTable
 } from '../master-table/master-table';
 import { userTable } from '../auth-table/auth-table';
 
@@ -120,7 +123,8 @@ export const hospitalTableRelations = relations(
 		appointmentBlocks: many(appointmentBlockTable),
 		serviceItems: many(serviceItemTable),
 		documentSettings: many(documentSettingTable),
-		supportTickets: many(supportTicketTable)
+		supportTickets: many(supportTicketTable),
+		opBillings: many(opBillingTable)
 	})
 );
 
@@ -161,6 +165,7 @@ export const hospitalBranchTableRelations = relations(
 		stores: many(storeTable),
 		serviceTaggings: many(serviceTaggingTable),
 		serviceOrders: many(serviceOrderTable),
+		opBillings: many(opBillingTable)
 		prefixCounters: many(prefixCounterTable)
 	})
 );
@@ -448,6 +453,7 @@ export const patientVisitTableRelations = relations(
 		diagnoses: many(patientDiagnosisTable),
 		patientDocuments: many(patientDocumentTable),
 		serviceOrders: many(serviceOrderTable),
+		opBillings: many(opBillingTable),
 		referHistories: many(referHistoryTable),
 		classificationDiagnoses: many(diagnosisTable),
 		formEntries: many(patientFormEntryTable)
@@ -946,7 +952,8 @@ export const subCategoryTableRelations = relations(
 			fields: [subCategoryTable.statusId],
 			references: [statusTable.id]
 		}),
-		serviceItems: many(serviceItemTable)
+		serviceItems: many(serviceItemTable),
+		opBillingLines: many(opBillingLineTable)
 	})
 );
 
@@ -966,7 +973,8 @@ export const serviceItemTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		serviceTaggings: many(serviceTaggingTable),
-		serviceOrderDetails: many(serviceOrderDetailTable)
+		serviceOrderDetails: many(serviceOrderDetailTable),
+		opBillingLines: many(opBillingLineTable)
 	})
 );
 
@@ -1065,7 +1073,7 @@ export const serviceOrderTableRelations = relations(
 
 export const serviceOrderDetailTableRelations = relations(
 	serviceOrderDetailTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		serviceOrder: one(serviceOrderTable, {
 			fields: [serviceOrderDetailTable.serviceOrderId],
 			references: [serviceOrderTable.id]
@@ -1088,6 +1096,80 @@ export const serviceOrderDetailTableRelations = relations(
 		}),
 		cancelBy: one(userTable, {
 			fields: [serviceOrderDetailTable.cancelBy],
+			references: [userTable.id]
+		}),
+		opBillingLines: many(opBillingLineTable)
+	})
+);
+
+export const opBillingTableRelations = relations(
+	opBillingTable,
+	({ one, many }) => ({
+		visit: one(patientVisitTable, {
+			fields: [opBillingTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		hospital: one(hospitalTable, {
+			fields: [opBillingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [opBillingTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		discountType: one(billingDiscountTypeTable, {
+			fields: [opBillingTable.discountTypeId],
+			references: [billingDiscountTypeTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [opBillingTable.statusId],
+			references: [statusTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [opBillingTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [opBillingTable.updatedBy],
+			references: [userTable.id]
+		}),
+		discountedByStaff: one(staffTable, {
+			fields: [opBillingTable.discountedByStaffId],
+			references: [staffTable.id]
+		}),
+		printedByStaff: one(staffTable, {
+			fields: [opBillingTable.printedByStaffId],
+			references: [staffTable.id]
+		}),
+		lines: many(opBillingLineTable)
+	})
+);
+
+export const opBillingLineTableRelations = relations(
+	opBillingLineTable,
+	({ one }) => ({
+		opBilling: one(opBillingTable, {
+			fields: [opBillingLineTable.opBillingId],
+			references: [opBillingTable.id]
+		}),
+		serviceItem: one(serviceItemTable, {
+			fields: [opBillingLineTable.serviceId],
+			references: [serviceItemTable.id]
+		}),
+		subCategory: one(subCategoryTable, {
+			fields: [opBillingLineTable.subCategoryId],
+			references: [subCategoryTable.id]
+		}),
+		serviceOrderDetail: one(serviceOrderDetailTable, {
+			fields: [opBillingLineTable.serviceOrderDetailId],
+			references: [serviceOrderDetailTable.id]
+		}),
+		createdByUser: one(userTable, {
+			fields: [opBillingLineTable.createdBy],
+			references: [userTable.id]
+		}),
+		updatedByUser: one(userTable, {
+			fields: [opBillingLineTable.updatedBy],
 			references: [userTable.id]
 		})
 	})

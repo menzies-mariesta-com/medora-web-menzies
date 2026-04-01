@@ -10,6 +10,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { formatNumberDisplay } from '$lib/util/number-display.util';
 
 	type HistoryItem = ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -63,15 +64,7 @@
 			header: 'Service Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => {
-				if (value == null || value === '') return '–';
-				const n = Number(value);
-				if (!Number.isFinite(n)) return String(value);
-				return n.toLocaleString('en-US', {
-					minimumFractionDigits: 0,
-					maximumFractionDigits: 2
-				});
-			}
+			format: (value) => formatNumberDisplay(value as any)
 		},
 		{
 			id: 'serviceUnit',
@@ -85,15 +78,7 @@
 			header: 'Tax',
 			widthClass: 'w-24',
 			filterable: false,
-			format: (value) => {
-				if (value == null || value === '') return '–';
-				const n = Number(value);
-				if (!Number.isFinite(n)) return String(value);
-				return n.toLocaleString('en-US', {
-					minimumFractionDigits: 0,
-					maximumFractionDigits: 2
-				});
-			}
+			format: (value) => formatNumberDisplay(value as any)
 		},
 		{
 			id: 'isUrgent',
@@ -131,15 +116,7 @@
 			header: 'Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => {
-				if (value == null || value === '') return '–';
-				const n = Number(value);
-				if (!Number.isFinite(n)) return String(value);
-				return n.toLocaleString('en-US', {
-					minimumFractionDigits: 0,
-					maximumFractionDigits: 2
-				});
-			}
+			format: (value) => formatNumberDisplay(value as any)
 		}
 	];
 </script>
