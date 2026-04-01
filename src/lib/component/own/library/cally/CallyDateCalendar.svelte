@@ -14,7 +14,7 @@
 		showOutsideDays = false,
 		showWeekNumbers = false,
 		className,
-		onChange
+		onChange: onValueChange
 	} = $props<{
 		/** Selected date in ISO format YYYY-MM-DD */
 		value?: string;
@@ -132,21 +132,63 @@
 		};
 	});
 
+	/**
+	 * Cally dispatches `change` on the `<calendar-date>` host after updating its internal value.
+	 * Svelte delegates `change` and patches `currentTarget`; reading `.value` in that path can be wrong.
+	 * Use a native listener on the host + optional microtask so Atomico's prop commit is visible.
+	 */
+	$effect(() => {
+		if (!calendarEl) return;
+		const el = calendarEl;
+
+		function readIsoFromHost(host: HTMLElement): string {
+			const h = host as HTMLElement & { value?: unknown };
+			const v = h.value;
+			if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+			const attr = host.getAttribute('value');
+			if (typeof attr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(attr)) return attr;
+			return '';
+		}
+
+		function commitFromDetail(ev: Event) {
+			const d = (ev as CustomEvent<unknown>).detail;
+			if (d == null) return '';
+			if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+			if (
+				typeof d === 'object' &&
+				d !== null &&
+				'toString' in d &&
+				typeof (d as { toString: () => string }).toString === 'function'
+			) {
+				const s = (d as { toString: () => string }).toString();
+				if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+			}
+			return '';
+		}
+
+		function onHostChange(this: HTMLElement, ev: Event) {
+			const host = this;
+			const apply = () => {
+				let next = readIsoFromHost(host);
+				if (!next) next = commitFromDetail(ev);
+				if (!next) return;
+				value = next;
+				onValueChange?.(next);
+			};
+			apply();
+			queueMicrotask(apply);
+		}
+
+		el.addEventListener('change', onHostChange);
+		return () => el.removeEventListener('change', onHostChange);
+	});
+
 	onMount(async () => {
 		if (browser) {
 			await import('cally');
 			callyLoaded = true;
 		}
 	});
-
-	function handleChange(event: Event) {
-		const target = event.target as HTMLElement & { value?: string };
-		const next = target?.value ?? '';
-		value = next;
-		if (typeof onChange === 'function') {
-			onChange(next);
-		}
-	}
 
 	function handleFocusDay(event: Event) {
 		const customEvent = event as CustomEvent<Date | string>;
@@ -218,7 +260,6 @@
 		first-day-of-week={firstDayOfWeek}
 		show-outside-days={showOutsideDays}
 		show-week-numbers={showWeekNumbers}
-		onchange={handleChange}
 	>
 		<span slot="previous" aria-label="Previous">
 			<LucideChevronLeft className="size-4" />
@@ -232,7 +273,10 @@
 				<select
 					class="d-select d-select-sm d-select-bordered min-w-28"
 					bind:value={yearSelectValue}
-					onchange={handleYearSelect}
+					onchange={(e) => {
+						e.stopPropagation();
+						handleYearSelect(e);
+					}}
 				>
 					{#each yearOptions as year (year)}
 						<option value={String(year)}>{year}</option>
@@ -242,7 +286,10 @@
 				<select
 					class="d-select d-select-sm d-select-bordered min-w-28"
 					bind:value={monthSelectValue}
-					onchange={handleMonthSelect}
+					onchange={(e) => {
+						e.stopPropagation();
+						handleMonthSelect(e);
+					}}
 				>
 					{#each monthOptions as month (month.value)}
 						<option value={month.value}>{month.label}</option>

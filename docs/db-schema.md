@@ -170,14 +170,23 @@ erDiagram
     int country_id FK
     int status_id FK
   }
-  hospital_patient_code_counter {
-    uuid hospital_id PK
+  financial_year {
+    int id PK
+    uuid hospital_id FK
   }
-  hospital_visit_code_counter {
+  prefix_format {
+    int id PK
+    uuid hospital_id FK
+    boolean counter_include_branch
+    boolean counter_include_financial_year
+    boolean counter_include_visit_type
+  }
+  prefix_counter {
+    int id PK
     uuid hospital_id FK
     uuid branch_id FK
+    int financial_year_id FK
     int visit_type_id FK
-    int year
   }
   hospital_department {
     int id PK
@@ -551,10 +560,11 @@ erDiagram
   postal_code ||--o{ hospital_branch : "postal_code_id"
   status ||--o{ hospital_branch : "status_id"
 
-  hospital ||--o{ hospital_patient_code_counter : "hospital_id"
-  hospital ||--o{ hospital_visit_code_counter : "hospital_id"
-  hospital_branch ||--o{ hospital_visit_code_counter : "branch_id"
-  visit_type ||--o{ hospital_visit_code_counter : "visit_type_id"
+  hospital ||--o{ prefix_format : "hospital_id"
+  hospital ||--o{ prefix_counter : "hospital_id"
+  hospital_branch ||--o{ prefix_counter : "branch_id"
+  financial_year ||--o{ prefix_counter : "financial_year_id"
+  visit_type ||--o{ prefix_counter : "visit_type_id"
   hospital ||--o{ hospital_department : "hospital_id"
   department ||--o{ hospital_department : "department_id"
 
