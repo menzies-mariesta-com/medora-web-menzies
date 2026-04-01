@@ -11,6 +11,8 @@
 		onChange,
 		className,
 		disabled,
+		/** Sets `id` on the combobox input (for `<label for>`). */
+		inputId,
 		/** When set, search is done via this async function (server-side). Options prop is ignored for the dropdown list. */
 		searchFn,
 		/** When using searchFn, call this to get the label for the selected value (e.g. when value is set but not in last search results). */
@@ -24,6 +26,7 @@
 		onChange?: (value: string) => void;
 		className?: string;
 		disabled?: boolean;
+		inputId?: string;
 		searchFn?: (query: string) => Promise<Option[]>;
 		getLabelForValue?: (value: string) => Promise<string>;
 		debounceMs?: number;
@@ -147,6 +150,7 @@
 
 <div class="relative w-full" bind:this={containerEl}>
 	<input
+		id={inputId}
 		type="text"
 		class="d-input-bordered d-input w-full {className ?? ''}"
 		bind:this={inputEl}

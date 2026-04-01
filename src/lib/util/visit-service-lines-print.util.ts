@@ -2,6 +2,7 @@ import { getServiceOrder } from '$lib/remote/table/information-table/service-ord
 import { getServiceOrderDetail } from '$lib/remote/table/information-table/service-order-detail.remote';
 import { getServiceItem } from '$lib/remote/table/information-table/service-item.remote';
 import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.util';
+import { formatMoneyAmount } from '$lib/util/number-display.util';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	ServiceItemSchema,
@@ -12,13 +13,6 @@ import type {
 function parseAmount(value: string | null | undefined): number {
 	const num = Number(value ?? 0);
 	return Number.isFinite(num) ? num : 0;
-}
-
-function formatMoney(value: number): string {
-	return value.toLocaleString(undefined, {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2
-	});
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -86,10 +80,10 @@ export async function fetchVisitServiceLinePrintRows(params: {
 			orderDate: formatDate(order?.orderDate ?? null),
 			statusLabel,
 			serviceLabel,
-			amount: formatMoney(amount),
-			tax: formatMoney(tax),
+			amount: formatMoneyAmount(amount),
+			tax: formatMoneyAmount(tax),
 			unit: String(detail.serviceUnit ?? 1),
-			lineTotal: formatMoney(lineTotal),
+			lineTotal: formatMoneyAmount(lineTotal),
 			nursingCompleteTime: formatDateTime(
 				detail.nursingCompleteTime ?? null
 			),

@@ -36,6 +36,7 @@
 		ServiceOrderSchema
 	} from '$lib/server/db/schema-type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE } from '$lib/model/constant/emr-print.constant';
 	import {
@@ -145,13 +146,6 @@
 	function parseAmount(value: string | null | undefined): number {
 		const num = Number(value ?? 0);
 		return Number.isFinite(num) ? num : 0;
-	}
-
-	function formatMoney(value: number): string {
-		return value.toLocaleString(undefined, {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2
-		});
 	}
 
 	function formatDate(value: string | null | undefined): string {
@@ -396,7 +390,7 @@
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: false,
 			format: (value) =>
-				formatMoney(parseAmount(value as string | null))
+				formatMoneyAmount(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceTaxAmount',
@@ -404,7 +398,7 @@
 			widthClass: 'w-24 min-w-[6rem]',
 			filterable: false,
 			format: (value) =>
-				formatMoney(parseAmount(value as string | null))
+				formatMoneyAmount(parseAmount(value as string | null))
 		},
 		{
 			id: 'serviceUnit',
@@ -418,7 +412,7 @@
 			header: 'Total',
 			widthClass: 'w-28 min-w-[7rem]',
 			filterable: false,
-			format: (value) => formatMoney(Number(value ?? 0))
+			format: (value) => formatMoneyAmount(Number(value ?? 0))
 		},
 		{
 			id: 'nursingCompleteTime',
@@ -705,14 +699,14 @@
 						</div>
 						<div class="flex flex-wrap items-center gap-2 text-sm">
 							<span class="rounded bg-base-200 px-2 py-1"
-								>Subtotal: {formatMoney(subtotal)}</span
+								>Subtotal: {formatMoneyAmount(subtotal)}</span
 							>
 							<span class="rounded bg-base-200 px-2 py-1"
-								>Tax: {formatMoney(totalTax)}</span
+								>Tax: {formatMoneyAmount(totalTax)}</span
 							>
 							<span
 								class="rounded bg-primary/20 px-2 py-1 font-semibold"
-								>Grand Total: {formatMoney(grandTotal)}</span
+								>Grand Total: {formatMoneyAmount(grandTotal)}</span
 							>
 							<DaisyUiButton
 								className="d-btn-outline d-btn-sm"
