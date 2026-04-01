@@ -59,6 +59,7 @@
 		type VitalKey
 	} from '$lib/config/vital.config';
 	import { m } from '$lib/paraglide/messages';
+	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -178,18 +179,6 @@
 	function formatText(value: string | null | undefined): string {
 		if (value == null || value === '') return '–';
 		return String(value);
-	}
-
-	function formatNumber(
-		value: number | string | null | undefined
-	): string {
-		if (value == null || value === '') return '–';
-		const n = Number(value);
-		if (!Number.isFinite(n)) return String(value);
-		return n.toLocaleString('en-US', {
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 2
-		});
 	}
 
 	async function fetchAllergies(options?: {
@@ -700,7 +689,7 @@
 			header: 'Amount',
 			widthClass: 'w-24',
 			filterable: false,
-			format: (_value, row) => formatNumber(row.serviceAmount)
+			format: (_value, row) => formatNumberDisplay(row.serviceAmount)
 		},
 		{
 			id: 'serviceUnit',

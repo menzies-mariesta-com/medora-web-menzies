@@ -71,6 +71,26 @@ export const bloodTypeTable = pgTable(
 	]
 );
 
+/** OP billing visit-level discount mode (None / Percent / Amount). Seeded in `master-table-seed`. */
+export const billingDiscountTypeTable = pgTable(
+	'billing_discount_type',
+	{
+		id: serial('id').primaryKey(),
+		code: varchar('code', { length: 64 }).notNull().unique(),
+		name: varchar('name', { length: 512 }).notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('billing_discount_type_code_idx').on(table.code),
+		index('billing_discount_type_name_idx').on(table.name),
+		index('billing_discount_type_status_id_idx').on(table.statusId)
+	]
+);
+
 export const categoryTable = pgTable(
 	'category',
 	{

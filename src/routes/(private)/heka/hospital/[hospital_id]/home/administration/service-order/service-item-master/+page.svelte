@@ -554,10 +554,11 @@
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium"
+						<label class="text-sm font-medium" for="service-item-form-category"
 							>{m.service_item_category_label()}</label
 						>
 						<DaisyUiSelect
+							id="service-item-form-category"
 							className="d-select d-select-bordered d-select-sm w-full"
 							bind:value={selectedCategoryId}
 							onChange={onCategoryChange}
@@ -571,10 +572,11 @@
 						</DaisyUiSelect>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium"
+						<label class="text-sm font-medium" for="service-item-form-subcategory"
 							>{m.service_item_sub_category_label()}</label
 						>
 						<DaisyUiSelect
+							id="service-item-form-subcategory"
 							className="d-select d-select-bordered d-select-sm w-full"
 							bind:value={selectedSubCategoryId}
 							onChange={onSubCategoryChange}
@@ -589,7 +591,7 @@
 						</DaisyUiSelect>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium">
+						<label class="text-sm font-medium" for="service-item-form-name">
 							{m.service_item_service_name_label()}<span
 								class="text-error"
 							>
@@ -597,6 +599,7 @@
 							>
 						</label>
 						<DaisyUiInputField
+							id="service-item-form-name"
 							bind:value={formServiceName}
 							inputType="text"
 							inputPlaceholderText={m.service_item_service_name_placeholder()}
@@ -605,10 +608,11 @@
 						/>
 					</div>
 					<div class="flex min-w-40 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium"
+						<label class="text-sm font-medium" for="service-item-form-code"
 							>{m.service_item_service_code_label()}</label
 						>
 						<DaisyUiInputField
+							id="service-item-form-code"
 							bind:value={formServiceCode}
 							inputType="text"
 							inputPlaceholderText={m.service_item_service_code_placeholder()}
@@ -619,10 +623,11 @@
 
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-56 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium"
+						<label class="text-sm font-medium" for="service-item-form-remark"
 							>{m.service_item_remark_label()}</label
 						>
 						<DaisyUiTextarea
+							id="service-item-form-remark"
 							bind:value={formRemark}
 							placeholder={m.service_item_remark_placeholder()}
 							className="h-24 w-full"

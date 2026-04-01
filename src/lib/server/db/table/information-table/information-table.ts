@@ -7,10 +7,10 @@ import {
 	foreignKey,
 	integer,
 	pgTable,
-	primaryKey,
 	serial,
 	text,
 	timestamp,
+	jsonb,
 	uuid,
 	unique,
 	time,
@@ -21,9 +21,11 @@ import {
 	StatusEnum,
 	YesNoEnum
 } from '../../../../model/enum/db-link';
+import { BillingDiscountTypeEnum } from '../../../../model/enum/billing-discount-type.enum';
 import { userTable } from '../auth-table/auth-table';
 import {
 	bloodTypeTable,
+	billingDiscountTypeTable,
 	categoryTable,
 	cityTable,
 	countryTable,
@@ -46,7 +48,6 @@ import {
 	statusTable,
 	titleTable,
 	unitTable,
-	unitTypeTable,
 	visitTypeTable,
 	weekdayTable
 } from '../master-table/master-table';
@@ -185,48 +186,91 @@ export const hospitalBranchTable = pgTable('hospital_branch', {
 	...timestamps
 });
 
-/** Per-hospital atomic counter for patient codes (Hospital Code + number). Each hospital starts at 1. */
-export const hospitalPatientCodeCounterTable = pgTable(
-	'hospital_patient_code_counter',
+/** Financial year per hospital (e.g. FY24-25). */
+export const financialYearTable = pgTable(
+	'financial_year',
 	{
-		hospitalId: uuid('hospital_id')
-			.primaryKey()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		lastNumber: integer('last_number').notNull().default(0),
-		...timestamps
-	}
-);
-
-/** Per-hospital/branch/visit-type/year atomic counter for visit numbers. */
-export const hospitalVisitCodeCounterTable = pgTable(
-	'hospital_visit_code_counter',
-	{
+		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		branchId: uuid('branch_id')
-			.notNull()
-			.references(() => hospitalBranchTable.id, {
-				onDelete: 'cascade'
-			}),
-		visitTypeId: integer('visit_type_id')
-			.notNull()
-			.references(() => visitTypeTable.id),
-		year: integer('year').notNull(),
-		lastNumber: integer('last_number').notNull().default(0),
+		code: varchar('code', { length: 128 }), // e.g. "FY24-25"
+		startDate: date('start_date'),
+		endDate: date('end_date'),
 		...timestamps
 	},
 	(table) => [
-		primaryKey({
-			columns: [
-				table.hospitalId,
-				table.branchId,
-				table.visitTypeId,
-				table.year
-			]
-		})
+		unique('financial_year_hospital_code_unique').on(
+			table.hospitalId,
+			table.code
+		)
 	]
 );
+
+/** Format template per hospital + purpose key (no counter). */
+export const prefixFormatTable = pgTable(
+	'prefix_format',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		key: varchar('key', { length: 128 }).notNull(),
+		description: text('description'),
+		format: jsonb('format').notNull(),
+		/** Which dimensions participate in {@link prefixCounterTable.scopeKey} (hospital + key always). */
+		counterIncludeBranch: integer('counter_include_branch')
+			.notNull()
+			.default(YesNoEnum.NO),
+		counterIncludeFinancialYear: integer('counter_include_financial_year')
+			.notNull()
+			.default(YesNoEnum.YES),
+		counterIncludeVisitType: integer('counter_include_visit_type')
+			.notNull()
+			.default(YesNoEnum.NO),
+		...timestamps
+	},
+	(table) => [
+		unique('prefix_format_hospital_key_unique').on(table.hospitalId, table.key)
+	]
+);
+
+/**
+ * Running number per scope (hospital / branch / financial year / visit type × purpose).
+ * `scopeKey` is unique; use {@link buildPrefixCounterScopeKey} from `$lib/tool/prefix/prefix-counter-scope.util`.
+ */
+export const prefixCounterTable = pgTable('prefix_counter', {
+	id: serial('id').primaryKey(),
+	hospitalId: uuid('hospital_id')
+		.notNull()
+		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+	branchId: uuid('branch_id').references(() => hospitalBranchTable.id, {
+		onDelete: 'cascade'
+	}),
+	financialYearId: integer('financial_year_id').references(
+		() => financialYearTable.id,
+		{ onDelete: 'set null' }
+	),
+	visitTypeId: integer('visit_type_id').references(() => visitTypeTable.id, {
+		onDelete: 'set null'
+	}),
+	key: varchar('key', { length: 128 }).notNull(),
+	scopeKey: text('scope_key').notNull().unique(),
+	lastNo: integer('last_no').notNull().default(0),
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+});
 
 export const hospitalDepartmentTable = pgTable(
 	'hospital_department',
@@ -1128,6 +1172,140 @@ export const serviceOrderDetailTable = pgTable(
 		cancelRemark: text('cancel_remark'),
 		...timestamps
 	}
+);
+
+/**
+ * OP billing header for a visit: persisted totals and visit-level discount.
+ * Lines are stored in `op_billing_line` (snapshot of services billed).
+ */
+export const opBillingTable = pgTable(
+	'op_billing',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+		billNo: varchar('bill_no', { length: 128 }),
+		/** Sum of `op_billing_line.line_total` before visit-level discount. */
+		linesSubtotal: decimal('lines_subtotal', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountTypeId: integer('discount_type_id')
+			.notNull()
+			.references(() => billingDiscountTypeTable.id)
+			.default(BillingDiscountTypeEnum.NONE),
+		/** When `discount_type_id` is PERCENT, stores 0–100. */
+		discountPercent: decimal('discount_percent', {
+			precision: 5,
+			scale: 2
+		}),
+		/** Money removed at visit level (fixed amount, or computed % at save time). */
+		discountAmount: decimal('discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		/** Payable total after visit-level discount. */
+		totalAmount: decimal('total_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountedByStaffId: uuid('discounted_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		discountedAt: timestamp('discounted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		printedByStaffId: uuid('printed_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		printedAt: timestamp('printed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('op_billing_visit_id_idx').on(table.visitId),
+		index('op_billing_hospital_id_idx').on(table.hospitalId),
+		index('op_billing_branch_id_idx').on(table.branchId),
+		index('op_billing_bill_no_idx').on(table.billNo),
+		index('op_billing_status_id_idx').on(table.statusId),
+		index('op_billing_discount_type_id_idx').on(table.discountTypeId)
+	]
+);
+
+/** Snapshot of each service line on an OP bill (immutable billing record). */
+export const opBillingLineTable = pgTable(
+	'op_billing_line',
+	{
+		id: serial('id').primaryKey(),
+		opBillingId: integer('op_billing_id')
+			.notNull()
+			.references(() => opBillingTable.id, { onDelete: 'cascade' }),
+		lineIndex: integer('line_index').notNull(),
+		serviceOrderDetailId: integer('service_order_detail_id').references(
+			() => serviceOrderDetailTable.id,
+			{ onDelete: 'set null' }
+		),
+		serviceId: integer('service_id')
+			.notNull()
+			.references(() => serviceItemTable.id, { onDelete: 'restrict' }),
+		serviceNameSnapshot: varchar('service_name_snapshot', {
+			length: 512
+		}),
+		subCategoryId: integer('sub_category_id').references(
+			() => subCategoryTable.id,
+			{ onDelete: 'set null' }
+		),
+		subCategoryNameSnapshot: varchar('sub_category_name_snapshot', {
+			length: 512
+		}),
+		orderNoSnapshot: varchar('order_no_snapshot', { length: 128 }),
+		discount: decimal('discount', { precision: 14, scale: 2 }),
+		serviceAmount: decimal('service_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceTaxAmount: decimal('service_tax_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceUnit: integer('service_unit'),
+		/** (amount + tax − line discount) × unit — stored for reporting/print. */
+		lineTotal: decimal('line_total', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		...timestamps
+	},
+	(table) => [
+		index('op_billing_line_op_billing_id_idx').on(table.opBillingId),
+		index('op_billing_line_service_id_idx').on(table.serviceId),
+		index(
+			'op_billing_line_service_order_detail_id_idx'
+		).on(table.serviceOrderDetailId)
+	]
 );
 
 export const storeTable = pgTable('store', {
