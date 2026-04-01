@@ -165,7 +165,7 @@ export const hospitalBranchTableRelations = relations(
 		stores: many(storeTable),
 		serviceTaggings: many(serviceTaggingTable),
 		serviceOrders: many(serviceOrderTable),
-		opBillings: many(opBillingTable)
+		opBillings: many(opBillingTable),
 		prefixCounters: many(prefixCounterTable)
 	})
 );
