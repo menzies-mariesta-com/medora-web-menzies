@@ -153,13 +153,6 @@ export const createHospital = command(
 			.values(values)
 			.returning();
 		if (!inserted) throw new Error('Failed to create hospital');
-		// Initialize per-hospital patient code counter
-		await ensureDb()
-			.insert(table.hospitalPatientCodeCounterTable)
-			.values({
-				hospitalId: inserted.id,
-				lastNumber: 0
-			});
 		getHospital().refresh();
 		getHospitalWithOwner(undefined).refresh();
 		return inserted;

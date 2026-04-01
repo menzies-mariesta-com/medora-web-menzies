@@ -6,8 +6,10 @@ import type {
 import type {
 	hospitalBranchTable,
 	hospitalDepartmentTable,
-	hospitalPatientCodeCounterTable,
 	hospitalTable,
+	financialYearTable,
+	prefixFormatTable,
+	prefixCounterTable,
 	moduleTable,
 	pageTable,
 	staffDetailTable,
@@ -42,6 +44,8 @@ import type {
 	documentTypeTable,
 	documentSettingTable,
 	documentTable,
+	opBillingLineTable,
+	opBillingTable,
 	patientDocumentTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
@@ -89,14 +93,24 @@ export type HospitalSchemaInsert = InferInsertModel<
 >;
 export type HospitalSchemaUpdate = Partial<HospitalSchemaInsert>;
 
-export type HospitalPatientCodeCounterSchema = InferSelectModel<
-	typeof hospitalPatientCodeCounterTable
+export type FinancialYearSchema = InferSelectModel<typeof financialYearTable>;
+export type FinancialYearSchemaInsert = InferInsertModel<
+	typeof financialYearTable
 >;
-export type HospitalPatientCodeCounterSchemaInsert = InferInsertModel<
-	typeof hospitalPatientCodeCounterTable
+export type FinancialYearSchemaUpdate =
+	Partial<FinancialYearSchemaInsert>;
+
+export type PrefixFormatSchema = InferSelectModel<typeof prefixFormatTable>;
+export type PrefixFormatSchemaInsert = InferInsertModel<
+	typeof prefixFormatTable
 >;
-export type HospitalPatientCodeCounterSchemaUpdate =
-	Partial<HospitalPatientCodeCounterSchemaInsert>;
+export type PrefixFormatSchemaUpdate = Partial<PrefixFormatSchemaInsert>;
+
+export type PrefixCounterSchema = InferSelectModel<typeof prefixCounterTable>;
+export type PrefixCounterSchemaInsert = InferInsertModel<
+	typeof prefixCounterTable
+>;
+export type PrefixCounterSchemaUpdate = Partial<PrefixCounterSchemaInsert>;
 
 export type ModuleSchema = InferSelectModel<typeof moduleTable>;
 export type ModuleSchemaInsert = InferInsertModel<typeof moduleTable>;
@@ -383,6 +397,19 @@ export type ServiceOrderDetailSchemaInsert = InferInsertModel<
 >;
 export type ServiceOrderDetailSchemaUpdate =
 	Partial<ServiceOrderDetailSchemaInsert>;
+
+export type OpBillingSchema = InferSelectModel<typeof opBillingTable>;
+export type OpBillingSchemaInsert = InferInsertModel<typeof opBillingTable>;
+export type OpBillingSchemaUpdate = Partial<OpBillingSchemaInsert>;
+
+export type OpBillingLineSchema = InferSelectModel<
+	typeof opBillingLineTable
+>;
+export type OpBillingLineSchemaInsert = InferInsertModel<
+	typeof opBillingLineTable
+>;
+export type OpBillingLineSchemaUpdate =
+	Partial<OpBillingLineSchemaInsert>;
 
 export type DocumentSettingSchema = InferSelectModel<
 	typeof documentSettingTable

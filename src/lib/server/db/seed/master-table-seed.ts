@@ -37,6 +37,17 @@ export async function seedMasterTables() {
 
 	seedLogger.info('Seeded: status');
 
+	// 1b. Billing discount type (OP billing visit-level discount mode; depends: status)
+	await db.execute(sql`
+		INSERT INTO billing_discount_type (id, code, name, status_id)
+		VALUES
+			(1, 'none', 'None', 1),
+			(2, 'percent', 'Percent', 1),
+			(3, 'amount', 'Amount', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: billing_discount_type');
+
 	// 2. Category (depends: status)
 	await db.execute(sql`
 		INSERT INTO category (id, category_name, status_id)

@@ -35,7 +35,7 @@
 	{@render children()}
 {:else if subPages.length > 0}
 	<div class="patient-subnav-wrapper">
-		<nav role="tablist" class="patient-subnav-tabs">
+		<div role="tablist" class="patient-subnav-tabs">
 			{#each subPages as sub (sub.id)}
 				<button
 					type="button"
@@ -50,7 +50,7 @@
 					{sub.name ?? m.untitled()}
 				</button>
 			{/each}
-		</nav>
+		</div>
 		<div class="patient-subnav-content">
 			{@render children()}
 		</div>
