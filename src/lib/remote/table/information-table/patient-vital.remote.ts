@@ -46,6 +46,7 @@ export const getAbnormalVitalVisitIdsByVisitIds = query(
 						OR (${pd.bpDiastolic} IS NOT NULL AND (${pd.bpDiastolic} < ${VITAL_REFERENCE_RANGES.bpDiastolic.min} OR ${pd.bpDiastolic} > ${VITAL_REFERENCE_RANGES.bpDiastolic.max}))
 						OR (${pd.spO2} IS NOT NULL AND (${pd.spO2} < ${VITAL_REFERENCE_RANGES.spO2.min} OR ${pd.spO2} > ${VITAL_REFERENCE_RANGES.spO2.max}))
 						OR (${pd.rbs} IS NOT NULL AND (${pd.rbs} < ${VITAL_REFERENCE_RANGES.rbs.min} OR ${pd.rbs} > ${VITAL_REFERENCE_RANGES.rbs.max}))
+						OR (${pd.bmi} IS NOT NULL AND (${pd.bmi} < ${VITAL_REFERENCE_RANGES.bmi.min} OR ${pd.bmi} > ${VITAL_REFERENCE_RANGES.bmi.max}))
 					)`
 				)
 			);

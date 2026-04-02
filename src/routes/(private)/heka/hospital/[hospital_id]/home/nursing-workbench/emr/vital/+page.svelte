@@ -29,6 +29,7 @@
 		vitalTextClass,
 		type VitalKey
 	} from '$lib/config/vital.config';
+	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -352,6 +353,15 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.weight)
+		},
+		{
+			id: 'bmi',
+			header: m.emr_vital_bmi(),
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.bmi),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bmi, 'bmi' as VitalKey)
 		},
 		{
 			id: 'bp',

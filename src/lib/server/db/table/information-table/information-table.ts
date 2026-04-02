@@ -975,6 +975,8 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	),
 	rbs: decimal('rbs', { precision: 10, scale: 2 }),
 	rbsUnitId: integer('rbs_unit_id').references(() => unitTable.id),
+	/** Body mass index (kg/m²); may be calculated from height (cm) and weight (kg) or entered manually. */
+	bmi: decimal('bmi', { precision: 10, scale: 2 }),
 	symptom: text('symptom'),
 	description: text('description'),
 	remark: text('remark'),

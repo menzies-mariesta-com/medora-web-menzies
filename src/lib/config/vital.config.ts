@@ -12,7 +12,8 @@ export type VitalKey =
 	| VitalEnum.BP_SYSTOLIC
 	| VitalEnum.BP_DIASTOLIC
 	| VitalEnum.SP_O2
-	| VitalEnum.RBS;
+	| VitalEnum.RBS
+	| VitalEnum.BMI;
 
 export const VITAL_REFERENCE_RANGES: Record<
 	VitalKey,
@@ -24,8 +25,28 @@ export const VITAL_REFERENCE_RANGES: Record<
 	[VitalEnum.BP_SYSTOLIC]: { min: 90, max: 120 },
 	[VitalEnum.BP_DIASTOLIC]: { min: 60, max: 90 },
 	[VitalEnum.SP_O2]: { min: 95, max: 100 },
-	[VitalEnum.RBS]: { min: 74, max: 140 }
+	[VitalEnum.RBS]: { min: 74, max: 140 },
+	/** WHO adult range (kg/m²). */
+	[VitalEnum.BMI]: { min: 18.5, max: 24.9 }
 };
+
+/**
+ * BMI from height in centimeters and weight in kilograms.
+ * Returns null if inputs are missing or invalid.
+ */
+export function computeBmiFromCmKg(
+	heightCm: number | null,
+	weightKg: number | null
+): number | null {
+	if (heightCm == null || weightKg == null) return null;
+	if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg))
+		return null;
+	if (heightCm <= 0 || weightKg <= 0) return null;
+	const m = heightCm / 100;
+	const v = weightKg / (m * m);
+	if (!Number.isFinite(v)) return null;
+	return Math.round(v * 100) / 100;
+}
 
 export function getVitalPlaceholder(key: VitalKey): string {
 	const { min, max } = VITAL_REFERENCE_RANGES[key];

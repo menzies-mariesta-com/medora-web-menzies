@@ -5,5 +5,6 @@ export enum VitalEnum {
 	BP_SYSTOLIC = 'bpSystolic',
 	BP_DIASTOLIC = 'bpDiastolic',
 	SP_O2 = 'spO2',
-	RBS = 'rbs'
+	RBS = 'rbs',
+	BMI = 'bmi'
 }
