@@ -1,7 +1,6 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
@@ -828,12 +827,7 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading && !settingResult}
-				<div class="flex justify-center py-8">
-					<DaisyUiLoading />
-				</div>
-			{:else}
-				<div class="{TableEnum.HEIGHT} overflow-auto">
+			<div class="{TableEnum.HEIGHT} overflow-auto">
 					<MariTable
 						rows={settingList}
 						{columns}
@@ -895,7 +889,6 @@
 						{/snippet}
 					</MariTable>
 				</div>
-			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

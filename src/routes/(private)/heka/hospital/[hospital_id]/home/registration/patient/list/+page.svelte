@@ -17,7 +17,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
 	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -43,6 +42,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	const stringUtil = new StringUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -240,7 +240,7 @@
 		{
 			id: 'code',
 			header: 'Patient Code',
-			widthClass: 'w-32 min-w-[8rem]',
+			widthClass: TableRowEnum.PATIENT_CODE_WIDTH,
 			filterable: true
 		},
 		{
@@ -329,12 +329,7 @@
 	}
 </script>
 
-{#if isLoading && !patientResult}
-	<div class="flex items-center justify-center">
-		<DaisyUiLoading className="d-loading-xl" />
-	</div>
-{:else}
-	<div class={TableEnum.HEIGHT}>
+<div class={TableEnum.HEIGHT}>
 		<MariTable
 			rows={patientList}
 			columns={patientColumns}
@@ -437,7 +432,6 @@
 			{/snippet}
 		</MariTable>
 	</div>
-{/if}
 
 <!-- Full-screen view/edit patient dialog -->
 {#if patientDialog}

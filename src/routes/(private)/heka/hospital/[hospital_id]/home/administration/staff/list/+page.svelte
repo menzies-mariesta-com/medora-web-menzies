@@ -17,7 +17,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import type { StaffWithRelations } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
@@ -332,12 +331,7 @@
 	];
 </script>
 
-{#if isLoading && !staffResult}
-	<div class="flex items-center justify-center">
-		<DaisyUiLoading className="d-loading-xl" />
-	</div>
-{:else}
-	<div class={TableEnum.HEIGHT}>
+<div class={TableEnum.HEIGHT}>
 		<MariTable
 			rows={staffList}
 			columns={staffColumns}
@@ -436,7 +430,6 @@
 			{/snippet}
 		</MariTable>
 	</div>
-{/if}
 
 <!-- Full-screen view/edit staff dialog -->
 {#if staffDialog}

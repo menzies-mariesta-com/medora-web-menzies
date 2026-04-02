@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import ObservationCardTable from '$lib/component/own/global/private/heka/observation/ObservationCardTable.svelte';
 	import ObservationStubCard from '$lib/component/own/global/private/heka/observation/ObservationStubCard.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
@@ -62,6 +61,7 @@
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	type OrderDetailVisitRow = ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -497,7 +497,7 @@
 			{
 				id: 'visitNo',
 				header: 'Visit No',
-				widthClass: 'w-40',
+				widthClass: TableRowEnum.VISIT_NO_WIDTH,
 				filterable: true,
 				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
 			},
@@ -1396,11 +1396,7 @@
 			message={m.observation_emr_choose_visit()}
 			className="z-0"
 		/>
-	{:else if isLoadingVisit && !visitRow}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visitRow}
+	{:else if !visitRow && !isLoadingVisit}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message={m.observation_emr_visit_not_found()}
@@ -1412,7 +1408,7 @@
 				title={m.observation_emr_chief_complaint()}
 				rows={chiefComplaintEntries}
 				columns={formEntryColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}
 				moveToLabel={m.observation_emr_patient_condition()}
@@ -1431,7 +1427,7 @@
 				title={m.observation_emr_patient_condition()}
 				rows={patientConditionEntries}
 				columns={formEntryColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}
 				moveToLabel={m.observation_emr_chief_complaint()}
@@ -1450,7 +1446,7 @@
 				title={m.observation_emr_diagnosis()}
 				rows={visitDiagnoses}
 				columns={diagnosisColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage={m.observation_emr_diagnosis_empty()}
@@ -1466,7 +1462,7 @@
 				title={m.observation_emr_allergies()}
 				rows={allergies}
 				columns={allergyColumns}
-				isLoading={isLoadingGrid || isLoadingAllergies}
+				isLoading={isLoadingGrid || isLoadingAllergies || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				enableColumnFilters={true}
@@ -1513,7 +1509,7 @@
 				tableWrapClassName="max-h-96 min-h-0"
 				rows={vitals}
 				columns={vitalColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage="No vitals for this visit."
@@ -1529,7 +1525,7 @@
 				title={m.observation_emr_order_history()}
 				rows={orderLines}
 				columns={orderColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRowActions={false}
 				addButtonVariant="redirect"
@@ -1550,7 +1546,7 @@
 				title={m.observation_emr_document_history()}
 				rows={documents}
 				columns={documentColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				showRowActions={false}
 				addButtonVariant="none"
 				showRefreshButton={true}
