@@ -5,7 +5,6 @@
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
@@ -29,6 +28,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -320,7 +320,7 @@
 			{
 				id: 'visitNo',
 				header: 'Visit No',
-				widthClass: 'w-40',
+				widthClass: TableRowEnum.VISIT_NO_WIDTH,
 				filterable: true,
 				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
 			},
@@ -408,11 +408,7 @@
 			message={'Choose a visit using the "Choose Visit" button above to add or view allergies.'}
 			className="z-0"
 		/>
-	{:else if isLoadingVisit}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visit}
+	{:else if !visit && !isLoadingVisit}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
@@ -434,11 +430,11 @@
 						Add allergy
 					</DaisyUiButton>
 				</div>
-				{#if isLoadingAllergies && patientAllergies.length === 0}
-					<div class="flex min-h-32 items-center justify-center">
-						<DaisyUiLoading className="d-loading-lg" />
+				{#if !visit}
+					<div class="flex min-h-32 items-center justify-center text-sm text-base-content/70">
+						Loading visit…
 					</div>
-				{:else if patientAllergies.length === 0}
+				{:else if patientAllergies.length === 0 && !isLoadingAllergies}
 					<p class="text-sm text-base-content/70">
 						No allergies recorded for this patient yet.
 					</p>
@@ -447,7 +443,7 @@
 						<MariTable
 							rows={patientAllergies}
 							columns={allergyColumns}
-							isLoading={isLoadingAllergies}
+							isLoading={isLoadingVisit || isLoadingAllergies}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
 							totalRowCount={totalAllergies}

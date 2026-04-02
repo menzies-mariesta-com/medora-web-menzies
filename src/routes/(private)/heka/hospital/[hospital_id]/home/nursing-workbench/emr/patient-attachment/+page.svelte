@@ -79,11 +79,7 @@
 			type={StatusColorEnum.INFO}
 			message={'Choose a visit using the "Choose Visit" bar above to manage patient attachments.'}
 		/>
-	{:else if isLoadingVisit}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visit}
+	{:else if !visit && !isLoadingVisit}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
@@ -91,6 +87,12 @@
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody className="m-0 p-1">
+				{#if !visit}
+					<div class="flex min-h-32 items-center justify-center gap-2 text-sm text-base-content/70">
+						<DaisyUiLoading className="d-loading-md" />
+						Loading visit…
+					</div>
+				{:else}
 				<div class="flex flex-col">
 					<LPatientAttachmentDialogContent
 						cancel={() => {}}
@@ -98,6 +100,7 @@
 						embedded={true}
 					/>
 				</div>
+				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	{/if}
