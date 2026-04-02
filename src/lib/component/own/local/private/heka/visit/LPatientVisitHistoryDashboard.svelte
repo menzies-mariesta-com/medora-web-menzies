@@ -650,19 +650,33 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 									Selected visit record
 								</p>
 								<h3 class="mt-1 text-lg font-bold">
-									Clinical Case Sheet: {visitRow.visitNo?.trim()
-										? visitRow.visitNo.trim()
-										: String(visitRow.id)}
+									Clinical Case Sheet: {visitRow
+										? visitRow.visitNo?.trim()
+											? visitRow.visitNo.trim()
+											: String(visitRow.id)
+										: isLoading
+											? '…'
+											: '—'}
 								</h3>
 							</div>
 							<div class="text-end text-sm text-base-content/70">
 								<div>
-									{datetimeUtil.formatDateTime(visitRow.createdAt)}
+									{#if visitRow}
+										{datetimeUtil.formatDateTime(
+											visitRow.createdAt
+										)}
+									{:else}
+										—
+									{/if}
 								</div>
 								<div class="font-medium text-primary">
-									{StringUtil.doctorOptionDisplayName(
-										visitRow.doctor as any
-									)}
+									{#if visitRow}
+										{StringUtil.doctorOptionDisplayName(
+											visitRow.doctor as any
+										)}
+									{:else}
+										—
+									{/if}
 								</div>
 							</div>
 						</div>
