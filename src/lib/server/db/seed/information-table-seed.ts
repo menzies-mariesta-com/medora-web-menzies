@@ -132,8 +132,8 @@ export async function seedInformationTables() {
 			(1400002, 'Referral History', 6, 1, 14, '/heka/home/cpoe/refer/history', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
-			(15, 'Financial Year', 1, 1, null, '/heka/home/administration/financial-year', 8),
-			(16, 'Prefix Configuration', 1, 1, null, '/heka/home/administration/prefix-configuration', 9)
+			(16, 'Prefix Configuration', 1, 1, null, '/heka/home/administration/prefix-configuration', 9),
+			(17, 'Financial Year', 1, 1, null, '/heka/home/administration/financial-year', 8)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
