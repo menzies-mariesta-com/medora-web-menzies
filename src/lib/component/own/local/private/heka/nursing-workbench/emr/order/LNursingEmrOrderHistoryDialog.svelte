@@ -2,7 +2,6 @@
 	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MariTable, {
 		type MariTableColumn
@@ -138,11 +137,7 @@
 					Close
 				</DaisyUiButton>
 			</div>
-			{#if isLoading}
-				<div class="flex min-h-24 items-center justify-center">
-					<DaisyUiLoading className="d-loading-lg" />
-				</div>
-			{:else if items.length === 0}
+			{#if items.length === 0 && !isLoading}
 				<p class="text-sm text-base-content/70">
 					No service items for this visit yet.
 				</p>

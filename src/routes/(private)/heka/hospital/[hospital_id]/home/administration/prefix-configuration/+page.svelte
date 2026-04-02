@@ -5,7 +5,6 @@
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -319,11 +318,7 @@
 	];
 </script>
 
-{#if isLoading}
-	<div class="flex justify-center py-10">
-		<DaisyUiLoading className="d-loading-lg" />
-	</div>
-{:else if viewMode === 'list'}
+{#if viewMode === 'list'}
 	<div class="mb-4 flex items-center justify-between">
 		<div>
 			<h1 class="text-lg font-semibold">
@@ -339,6 +334,7 @@
 		<MariTable
 			{columns}
 			rows={purposeListRows}
+			{isLoading}
 			showRowActions={true}
 			actionsVariant="none"
 		>

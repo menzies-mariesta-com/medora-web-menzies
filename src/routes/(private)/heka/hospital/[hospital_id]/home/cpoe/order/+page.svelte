@@ -5,7 +5,6 @@
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -935,15 +934,34 @@
 		/>
 	{:else}
 		<div class="flex flex-col gap-4">
-			{#if isLoadingVisit && !visit}
-				<div class="flex min-h-32 items-center justify-center">
-					<DaisyUiLoading className="d-loading-lg" />
-				</div>
-			{:else if !visit}
+			{#if !visit && !isLoadingVisit}
 				<DaisyUiAlert
 					type={StatusColorEnum.WARNING}
 					message="Visit not found."
 				/>
+			{:else if !visit}
+				<DaisyUiCard>
+					<DaisyUiCardBody>
+						<DaisyUiCardBodyTitle className="mb-0">Order</DaisyUiCardBodyTitle>
+						<div
+							class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
+						>
+							<MariTable
+								rows={[]}
+								columns={detailColumns}
+								isLoading={true}
+								bind:pageSize={detailPageSizeStr}
+								bind:currentPage={currentDetailPage}
+								totalRowCount={0}
+								showRefreshButton={false}
+								emptyMessage="Loading…"
+								showRowActions={false}
+								enableColumnFilters={false}
+								useRemoteFilters={false}
+							/>
+						</div>
+					</DaisyUiCardBody>
+				</DaisyUiCard>
 			{:else}
 				<DaisyUiCard>
 					<DaisyUiCardBody>

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import type {
 		PatientVisitWithRelations
 	} from '$lib/remote/table/information-table/patient-visit.remote';
@@ -25,6 +24,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	let datetimeUtil = new DateTimeUtil();
 
@@ -138,7 +138,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 		{
 			id: 'visitNo',
 			header: 'Visit No',
-			widthClass: 'w-48',
+			widthClass: TableRowEnum.VISIT_NO_WIDTH,
 			filterable: false,
 			field: 'visitNo'
 		},
@@ -509,17 +509,13 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 			message={m.observation_emr_choose_visit()}
 			className="z-0 border-l-4 border-info shadow-sm"
 		/>
-	{:else if isLoading && !visitRow}
-		<div class="flex min-h-64 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
 	{:else if loadError}
 		<DaisyUiAlert
 			type={StatusColorEnum.ERROR}
 			message={loadError}
 			className="z-0 border-l-4 border-error shadow-sm"
 		/>
-	{:else if !visitRow}
+	{:else if !visitRow && !isLoading}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message={m.observation_emr_visit_not_found()}
