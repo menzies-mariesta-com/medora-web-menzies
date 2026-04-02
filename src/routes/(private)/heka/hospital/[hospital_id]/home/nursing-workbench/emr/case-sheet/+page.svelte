@@ -171,6 +171,13 @@ let userNameById = $state<Record<string, string>>({});
 		}
 
 		isLoading = true;
+		visitRow = null;
+		allergies = [];
+		vitals = [];
+		orderLines = [];
+		visitDiagnoses = [];
+		chiefComplaintEntries = [];
+		patientConditionEntries = [];
 		try {
 			let v: PatientVisitWithRelations | null = null;
 			try {
@@ -357,17 +364,24 @@ let userNameById = $state<Record<string, string>>({});
 			message={m.nursing_case_sheet_choose_visit()}
 			className="z-0"
 		/>
-	{:else if isLoading}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visitRow}
+	{:else if !visitRow && !isLoading}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message={m.observation_emr_visit_not_found()}
 			className="z-0"
 		/>
 	{:else}
+		{#if isLoading && !visitRow}
+			<div
+				class="no-print mb-3 flex items-center gap-2 text-sm text-base-content/70"
+				role="status"
+				aria-live="polite"
+			>
+				<DaisyUiLoading className="d-loading-sm" />
+				Loading case sheet…
+			</div>
+		{/if}
+		{#if visitRow}
 		<article class="case-sheet-document">
 			<header class="case-sheet-header">
 				<h2 class="case-sheet-doc-title">
@@ -616,6 +630,7 @@ let userNameById = $state<Record<string, string>>({});
 				})}
 			</footer>
 		</article>
+		{/if}
 	{/if}
 </div>
 

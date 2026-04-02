@@ -483,6 +483,7 @@ export const getPatientVisitPaginatedForEmr = query(
 	async (
 		params?: PaginationParams & {
 			hospitalId?: string;
+			visitNo?: string;
 			patientName?: string;
 			patientCode?: string;
 			hospitalName?: string;
@@ -540,6 +541,15 @@ export const getPatientVisitPaginatedForEmr = query(
 		}
 
 		// Specific column filters (each filters only its own field)
+		const visitNoTerm = params?.visitNo?.trim();
+		if (visitNoTerm) {
+			const pattern = `%${visitNoTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.patientVisitTable.visitNo, pattern)
+			);
+		}
+
 		const patientCodeTerm = params?.patientCode?.trim();
 		if (patientCodeTerm) {
 			const pattern = `%${patientCodeTerm}%`;

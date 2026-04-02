@@ -5,7 +5,6 @@
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -37,6 +36,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -226,7 +226,6 @@
 		}
 		lastVitalsFetchKey = requestKey;
 		isLoadingVitals = true;
-		console.log('FETCHING VITALS');
 		try {
 			const statusId = tableFilters.status
 				? Number(tableFilters.status)
@@ -313,7 +312,7 @@
 		{
 			id: 'visitNo',
 			header: 'Visit No',
-			widthClass: 'w-40',
+			widthClass: TableRowEnum.VISIT_NO_WIDTH,
 			filterable: true,
 			format: (_value, row) => row.visit?.visitNo?.trim() || '–'
 		},
@@ -443,11 +442,7 @@
 			message={"Choose a visit using the 'Choose Visit' button above to record vitals."}
 			className="z-0"
 		/>
-	{:else if isLoadingVisit}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visit}
+	{:else if !visit && !isLoadingVisit}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
@@ -469,11 +464,11 @@
 						Record new vitals
 					</DaisyUiButton>
 				</div>
-				{#if isLoadingVitals && vitals.length === 0}
-					<div class="flex min-h-32 items-center justify-center">
-						<DaisyUiLoading className="d-loading-lg" />
+				{#if !visit}
+					<div class="flex min-h-32 items-center justify-center text-sm text-base-content/70">
+						Loading visit…
 					</div>
-				{:else if vitals.length === 0}
+				{:else if vitals.length === 0 && !isLoadingVitals}
 					<p class="text-sm text-base-content/70">
 						No vitals recorded for this patient yet.
 					</p>
@@ -482,7 +477,7 @@
 						<MariTable
 							rows={vitals}
 							columns={vitalColumns}
-							isLoading={isLoadingVitals}
+							isLoading={isLoadingVisit || isLoadingVitals}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage
 							totalRowCount={totalVitals}
