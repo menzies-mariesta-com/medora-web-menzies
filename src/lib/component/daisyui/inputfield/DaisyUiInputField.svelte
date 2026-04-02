@@ -21,7 +21,8 @@
 		hidden,
 		disabled,
 		required,
-		onClick
+		onClick,
+		oninput
 	} = $props<{
 		id?: string;
 		className?: string;
@@ -43,6 +44,7 @@
 		disabled?: boolean;
 		required?: boolean;
 		onClick?: () => void;
+		oninput?: (e: Event) => void;
 	}>();
 
 	const isDateType = $derived(inputType === 'date');
@@ -109,6 +111,7 @@
 		bind:value
 		aria-label={ariaLabel}
 		onclick={onClick}
+		{oninput}
 		{required}
 		{checked}
 		{hidden}
@@ -135,5 +138,6 @@
 		{hidden}
 		{disabled}
 		onclick={onClick}
+		{oninput}
 	/>
 {/if}
