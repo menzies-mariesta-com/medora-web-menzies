@@ -509,6 +509,7 @@ let userNameById = $state<Record<string, string>>({});
 									<th>{m.nursing_case_sheet_col_date()}</th>
 									<th>{m.nursing_case_sheet_col_height_cm()}</th>
 									<th>{m.nursing_case_sheet_col_weight_kg()}</th>
+									<th>{m.nursing_case_sheet_col_bmi()}</th>
 									<th>{m.nursing_case_sheet_col_bp()}</th>
 									<th>{m.nursing_case_sheet_col_pulse()}</th>
 									<th>{m.nursing_case_sheet_col_temp()}</th>
@@ -526,6 +527,7 @@ let userNameById = $state<Record<string, string>>({});
 										>
 										<td>{formatVital(row.height)}</td>
 										<td>{formatVital(row.weight)}</td>
+										<td>{formatVital(row.bmi)}</td>
 										<td
 											>{formatVital(
 												row.bpSystolic

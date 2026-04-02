@@ -612,6 +612,15 @@
 			format: (_value, row) => formatVital(row.weight)
 		},
 		{
+			id: 'bmi',
+			header: m.emr_vital_bmi(),
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.bmi),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bmi, 'bmi' as VitalKey)
+		},
+		{
 			id: 'bp',
 			header: 'BP (mmHg)',
 			widthClass: 'w-24 min-w-[6rem]',
