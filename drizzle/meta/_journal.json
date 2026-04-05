@@ -113,6 +113,13 @@
       "when": 1775250000000,
       "tag": "0017_patient_diagnosis_bmi",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775300000000,
+      "tag": "0018_patient_visit_clinical_signed_at",
+      "breakpoints": true
     }
   ]
 }

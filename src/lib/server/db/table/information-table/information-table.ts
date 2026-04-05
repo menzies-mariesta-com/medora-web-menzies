@@ -929,6 +929,11 @@ export const patientVisitTable = pgTable('patient_visit', {
 	chiefComplaint: text('chief_complaint'),
 	patientCondition: text('patient_condition'),
 	diagnosisNotes: text('diagnosis_notes'),
+	/** Set once from Observation EMR “Save as signed”; locks visit-scoped clinical edits across Observation / Nursing / CPOE. */
+	clinicalSignedAt: timestamp('clinical_signed_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
 	...timestamps
 });
 

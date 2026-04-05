@@ -8,6 +8,7 @@
 	import {
 		getAppointment,
 		getAppointmentById,
+		getAppointmentCancelEligibility,
 		updateAppointment,
 		deleteAppointment
 	} from '$lib/remote/table/information-table/appointment.remote';
@@ -548,6 +549,13 @@
 
 		let cancelRemark: string | null = null;
 		if (nextIsCancelSelected) {
+			const elig = await getAppointmentCancelEligibility({
+				appointmentId
+			});
+			if (!elig.allowed) {
+				toastService.addToast(elig.message, StatusColorEnum.ERROR);
+				return;
+			}
 			const result = await dialogService.open<{
 				cancelRemark: string;
 			}>({
@@ -558,35 +566,29 @@
 			cancelRemark = result.data.cancelRemark;
 		}
 
-		const overlap = await hasOverlap(
-			// When the user only changes status to "Check In" (Confirmed → Check In),
-			// the time range is unchanged, so we allow the update without re-validating overlap.
-			// Overlap validation still applies when date/time are actually edited.
-			(() => {
-				const prevDate = String(latest?.appointmentDate ?? '').slice(
-					0,
-					10
-				);
-				const prevFrom = toHHmm(String(latest?.fromTime ?? ''));
-				const prevTo = toHHmm(String(latest?.toTime ?? ''));
-				const nextDateUnchanged = prevDate === manualAppointmentDate;
-				const nextFromUnchanged = prevFrom === manualFromTime;
-				const nextToUnchanged = prevTo === toTime;
-				const onlyStatusToCheckIn = becomesCheckIn;
+		// When the user only changes status to "Check In" (Confirmed → Check In),
+		// the time range is unchanged, so we allow the update without re-validating overlap.
+		// Overlap validation still applies when date/time are actually edited.
+		const overlap = await (() => {
+			const prevDate = String(latest?.appointmentDate ?? '').slice(0, 10);
+			const prevFrom = toHHmm(String(latest?.fromTime ?? ''));
+			const prevTo = toHHmm(String(latest?.toTime ?? ''));
+			const nextDateUnchanged = prevDate === manualAppointmentDate;
+			const nextFromUnchanged = prevFrom === manualFromTime;
+			const nextToUnchanged = prevTo === toTime;
+			const onlyStatusToCheckIn = becomesCheckIn;
 
-				return !onlyStatusToCheckIn ||
-					!(nextDateUnchanged && nextFromUnchanged && nextToUnchanged)
-					? (async () =>
-							await hasOverlap(
-								String(staffIdVal),
-								manualAppointmentDate,
-								manualFromTime,
-								toTime,
-								appointmentId
-							))()
-					: Promise.resolve(false);
-			})()
-		);
+			return !onlyStatusToCheckIn ||
+				!(nextDateUnchanged && nextFromUnchanged && nextToUnchanged)
+				? hasOverlap(
+						String(staffIdVal),
+						manualAppointmentDate,
+						manualFromTime,
+						toTime,
+						appointmentId
+					)
+				: Promise.resolve(false);
+		})();
 		if (overlap) {
 			toastService.addToast(
 				'This time overlaps an existing appointment.',

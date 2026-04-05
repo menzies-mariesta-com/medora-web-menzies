@@ -22,7 +22,12 @@
 	import { ObservationFormEntryDeleteConfirmDialogState } from '$lib/state/observation-form-entry-delete-confirm-dialog.state.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import {
+		getPatientVisitById,
+		signPatientVisitClinical
+	} from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import { VisitState } from '$lib/state/visit.state.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import {
 		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		getPatientAllergiesByPatientIdWithRelations,
@@ -85,6 +90,10 @@
 			: ''
 	);
 
+	const clinicalVisitReadOnly = $derived(
+		VisitState.isClinicalVisitReadOnly
+	);
+
 	let visitRow = $state<Awaited<
 		ReturnType<typeof getPatientVisitById>
 	> | null>(null);
@@ -102,6 +111,7 @@
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
+	let isSigningClinical = $state(false);
 	/** Loading only the allergy table (nursing OPD–style patient-wide list). */
 	let isLoadingAllergies = $state(false);
 	let mounted = $state(false);
@@ -460,6 +470,35 @@
 			}
 		})();
 	});
+
+	async function handleSaveAsSigned() {
+		if (!visitId) return;
+		const result = await dialogService.open({
+			title: m.observation_save_as_signed(),
+			message: m.observation_save_as_signed_confirm(),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!result.confirmed) return;
+		isSigningClinical = true;
+		try {
+			const row = await signPatientVisitClinical({ visitId });
+			VisitState.setClinicalSignedAtFromVisit(
+				row.clinicalSignedAt ?? new Date().toISOString()
+			);
+			await refreshAllForVisit();
+			toastService.addToast(
+				m.observation_save_as_signed_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (err) {
+			toastService.addErrorToast(
+				'Could not save this visit as signed',
+				err
+			);
+		} finally {
+			isSigningClinical = false;
+		}
+	}
 
 	async function openCaseSheetInfo() {
 		await dialogService.open({
@@ -1403,6 +1442,17 @@
 			className="z-0"
 		/>
 	{:else}
+		<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
+			{#if !clinicalVisitReadOnly}
+				<DaisyUiButton
+					className="d-btn-warning d-btn-sm"
+					disabled={isSigningClinical || isLoadingVisit}
+					onClick={handleSaveAsSigned}
+				>
+					{isSigningClinical ? '…' : m.observation_save_as_signed()}
+				</DaisyUiButton>
+			{/if}
+		</div>
 		<div class="observation-emr-grid">
 			<ObservationCardTable
 				title={m.observation_emr_chief_complaint()}

@@ -48,3 +48,30 @@
 @import '../lib/asset/style/font.style.css';
 @import '../lib/asset/style/app-layout.style.css';
 @import '../lib/asset/style/daisyui.style.css';
+
+/*
+ * Clinically signed visit: block edits on controls; show “disabled” cursor over the area.
+ * (pointer-events: none on controls makes their own cursor invisible — container + exemptions fix that.)
+ */
+.clinical-visit-locked {
+	cursor: not-allowed;
+}
+.clinical-visit-locked :is(
+		button,
+		input:not([type='hidden']),
+		select,
+		textarea,
+		[role='combobox']
+	) {
+	pointer-events: none;
+}
+/* Pagination & table toolbars: still clickable, normal pointer */
+.clinical-visit-locked .d-join,
+.clinical-visit-locked .d-join :is(button, a),
+.clinical-visit-locked .mari-table-toolbar,
+.clinical-visit-locked .mari-table-toolbar :is(button, select, input, a),
+.clinical-visit-locked .mari-table-header-filters,
+.clinical-visit-locked .mari-table-header-filters :is(select, input) {
+	pointer-events: auto;
+	cursor: pointer;
+}

@@ -15,6 +15,7 @@ import { VITAL_REFERENCE_RANGES } from '$lib/config/vital.config';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 export type PatientVitalWithVisit = PatientDiagnosisSchema & {
 	visit: PatientVisitSchema | null;
@@ -197,6 +198,7 @@ export const createPatientVital = command(
 	async (
 		payload: PatientDiagnosisSchemaInsert
 	): Promise<PatientDiagnosisSchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const [row] = await ensureDb()
 			.insert(table.patientDiagnosisTable)
 			.values(payload)
@@ -290,6 +292,7 @@ export const updatePatientVital = command(
 			.where(eq(table.patientDiagnosisTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Vital not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		const [row] = await ensureDb()
 			.update(table.patientDiagnosisTable)
 			.set(data)
@@ -321,6 +324,7 @@ export const deletePatientVital = command(
 			.where(eq(table.patientDiagnosisTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Vital not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		await ensureDb()
 			.update(table.patientDiagnosisTable)
 			.set({ statusId: StatusEnum.DELETED })

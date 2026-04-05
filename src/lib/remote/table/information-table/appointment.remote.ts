@@ -12,6 +12,12 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
+import {
+	getPatientVisit,
+	getPatientVisitPaginatedForEmr
+} from '$lib/remote/table/information-table/patient-visit.remote';
+import { visitHasBlockingClinicalData } from '$lib/server/visit-blocking-clinical.server';
+import { error } from '@sveltejs/kit';
 import { and, count, eq, ne } from 'drizzle-orm';
 const BRANCH_ALL_VALUE = '__all__';
 const MAX_APPOINTMENT_YEARS_AHEAD = 1;
@@ -40,6 +46,59 @@ function toDateOnly(value: unknown): Date | null {
 		return dt;
 	}
 	return null;
+}
+
+/** Matches doctor-appointment UI: cancel / cancelled status tagging. */
+async function isAppointmentCancelStatusTaggingId(
+	statusTaggingId: number
+): Promise<boolean> {
+	const row = await ensureDb().query.statusTaggingTable.findFirst({
+		where: (t, { eq: eqId }) => eqId(t.id, statusTaggingId)
+	});
+	if (!row) return false;
+	const raw = (row.code ?? row.name ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]/g, '');
+	return raw === 'cancel' || raw === 'cancelled';
+}
+
+/** Visit created at check-in is linked by appointment_id; cancel/soft-delete should not leave it active. */
+async function inactivatePatientVisitsForAppointment(
+	appointmentId: number
+): Promise<void> {
+	await ensureDb()
+		.update(table.patientVisitTable)
+		.set({ statusId: StatusEnum.INACTIVE })
+		.where(
+			and(
+				eq(table.patientVisitTable.appointmentId, appointmentId),
+				eq(table.patientVisitTable.statusId, StatusEnum.ACTIVE)
+			)
+		);
+}
+
+/** Blocks cancel / soft-delete when any linked active visit has vitals, allergies, EMR data, etc. */
+async function assertLinkedVisitsAllowAppointmentCancellation(
+	appointmentId: number
+): Promise<void> {
+	const visits = await ensureDb()
+		.select({ id: table.patientVisitTable.id })
+		.from(table.patientVisitTable)
+		.where(
+			and(
+				eq(table.patientVisitTable.appointmentId, appointmentId),
+				eq(table.patientVisitTable.statusId, StatusEnum.ACTIVE)
+			)
+		);
+	for (const { id: vid } of visits) {
+		if (await visitHasBlockingClinicalData(vid)) {
+			throw error(
+				400,
+				'Cannot cancel: this visit has vitals, allergies, or other clinical records. Remove or resolve those first.'
+			);
+		}
+	}
 }
 
 function assertAppointmentNotTooFarAhead(appointmentDate: unknown): void {
@@ -213,6 +272,36 @@ export type AppointmentWithRelations = Awaited<
 	ReturnType<typeof getAppointmentWithRelations>
 >[number];
 
+/** UI hint before cancel remark: whether linked visit(s) allow cancellation. */
+export const getAppointmentCancelEligibility = query(
+	'unchecked' as const,
+	async ({
+		appointmentId
+	}: {
+		appointmentId: number;
+	}): Promise<{ allowed: true } | { allowed: false; message: string }> => {
+		const visits = await ensureDb()
+			.select({ id: table.patientVisitTable.id })
+			.from(table.patientVisitTable)
+			.where(
+				and(
+					eq(table.patientVisitTable.appointmentId, appointmentId),
+					eq(table.patientVisitTable.statusId, StatusEnum.ACTIVE)
+				)
+			);
+		for (const { id: vid } of visits) {
+			if (await visitHasBlockingClinicalData(vid)) {
+				return {
+					allowed: false,
+					message:
+						'Cannot cancel: this visit has vitals, allergies, or other clinical records. Remove or resolve those first.'
+				};
+			}
+		}
+		return { allowed: true };
+	}
+);
+
 // get one
 export const getAppointmentById = query(
 	'unchecked' as const,
@@ -291,12 +380,31 @@ export const updateAppointment = command(
 				(rest as AppointmentSchemaUpdate).appointmentDate
 			);
 		}
+		const nextTagging = (rest as AppointmentSchemaUpdate).statusTaggingId;
+		if (
+			nextTagging != null &&
+			typeof nextTagging === 'number' &&
+			(await isAppointmentCancelStatusTaggingId(nextTagging))
+		) {
+			await assertLinkedVisitsAllowAppointmentCancellation(id);
+		}
 		const [row] = await ensureDb()
 			.update(table.appointmentTable)
 			.set(rest as AppointmentSchemaUpdate)
 			.where(eq(table.appointmentTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');
+
+		if (
+			nextTagging != null &&
+			typeof nextTagging === 'number' &&
+			(await isAppointmentCancelStatusTaggingId(nextTagging))
+		) {
+			await inactivatePatientVisitsForAppointment(id);
+			getPatientVisit().refresh();
+			getPatientVisitPaginatedForEmr().refresh();
+		}
+
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
 		getAppointmentCount().refresh();
@@ -309,10 +417,14 @@ export const updateAppointment = command(
 export const deleteAppointment = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		await assertLinkedVisitsAllowAppointmentCancellation(id);
 		await ensureDb()
 			.update(table.appointmentTable)
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.appointmentTable.id, id));
+		await inactivatePatientVisitsForAppointment(id);
+		getPatientVisit().refresh();
+		getPatientVisitPaginatedForEmr().refresh();
 		getAppointment().refresh();
 		getAppointmentWithRelations().refresh();
 		getAppointmentCount().refresh();

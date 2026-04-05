@@ -305,7 +305,10 @@
 				fetchData({ bustCache: true });
 			} catch (err) {
 				console.error(err);
-				toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
+				toastService.addErrorToast(
+					'Could not delete this document setting',
+					err
+				);
 			} finally {
 				deletingId = null;
 			}
@@ -315,8 +318,9 @@
 	function copyPlaceholder(placeholder: string) {
 		navigator.clipboard.writeText(placeholder);
 		toastService.addToast(
-			`Copied: ${placeholder}`,
-			StatusColorEnum.INFO
+			'Placeholder copied to clipboard',
+			StatusColorEnum.INFO,
+			placeholder
 		);
 	}
 

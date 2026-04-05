@@ -58,9 +58,25 @@ export const getAppointmentWithRelations = (...args: any[]): any => {
 	return p;
 };
 
+/**
+ * Single POST to `getAppointmentWithRelations` (same payload as `.refresh()` on the handle).
+ * Use after create/update/cancel/delete so the calendar always reads fresh rows from the DB.
+ */
+export function refetchAppointmentWithRelations(
+	...args: unknown[]
+): Promise<unknown> {
+	return invokeOnce('getAppointmentWithRelations', args);
+}
+
 export const updateAppointment = (...args: any[]): any => {
 	const p: any = invokeOnce<any>('updateAppointment', args);
 	p.refresh = () => invokeOnce<any>('updateAppointment', args);
+	return p;
+};
+
+export const getAppointmentCancelEligibility = (...args: any[]): any => {
+	const p: any = invokeOnce<any>('getAppointmentCancelEligibility', args);
+	p.refresh = () => invokeOnce<any>('getAppointmentCancelEligibility', args);
 	return p;
 };
 

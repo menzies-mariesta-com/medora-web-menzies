@@ -10,6 +10,7 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LBlockTimeDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LBlockTimeDialogContent.svelte';
 	import LCreateAppointmentDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LCreateAppointmentDialogContent.svelte';
@@ -22,7 +23,11 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { deleteAppointment } from '$lib/remote/table/information-table/appointment.remote';
+	import {
+		deleteAppointment,
+		getAppointmentCancelEligibility
+	} from '$lib/remote/table/information-table/appointment.remote';
+	import { tick } from 'svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
@@ -74,7 +79,10 @@
 		/** Called after a block is updated. */
 		onBlockUpdated,
 		/** Called after a block is deleted. */
-		onBlockDeleted
+		onBlockDeleted,
+		/** Refetch appointments/blocks view (toolbar refresh). */
+		onRefreshAppointments,
+		isRefreshAppointmentsLoading = false
 	} = $props<{
 		selectDate: string;
 		viewBy?: 'day' | 'week' | 'month';
@@ -109,6 +117,9 @@
 		}) => void | Promise<void>;
 		/** Called when user deletes a block. */
 		onBlockDeleted?: (blockId: number) => void | Promise<void>;
+		/** Refetch appointment list for the calendar (after cancel/edit or manual refresh). */
+		onRefreshAppointments?: () => void | Promise<void>;
+		isRefreshAppointmentsLoading?: boolean;
 	}>();
 
 	let selectedAppointmentId = $state<number | null>(null);
@@ -355,14 +366,33 @@
 		);
 	}
 
-	/** True if the current cell is the start cell of an appointment range. */
-	function isCellAppointmentStart(
+	/**
+	 * First time-column row (HH:mm) that overlaps this appointment on the calendar grid.
+	 * Used for the slip print control: `fromTime` may not match any row (e.g. after edit
+	 * or manual entry) even though the appointment still paints on the first overlapping row.
+	 */
+	function getFirstGridTimeSlotOverlappingAppointment(
+		slot: AppointmentSlot
+	): string | null {
+		const start = toHHmm(slot.startTime);
+		const end = toHHmm(slot.endTime);
+		if (!start || !end || start >= end) return null;
+		for (const ts of timeSlots) {
+			const t = toHHmm(ts);
+			if (start <= t && t < end) return ts;
+		}
+		return null;
+	}
+
+	/** True if this cell is the first grid row that overlaps the appointment (slip print row). */
+	function isSlipPrintCellForAppointment(
 		dateString: string,
 		timeSlot: string
 	): boolean {
 		const slot = getCellAppointmentSlot(dateString, timeSlot);
 		if (!slot) return false;
-		return toHHmm(timeSlot) === toHHmm(slot.startTime);
+		const first = getFirstGridTimeSlotOverlappingAppointment(slot);
+		return first != null && toHHmm(timeSlot) === first;
 	}
 
 	/** Slot state for a cell that is inside an appointment (first matching slot). Defaults to 'unconfirmed'. */
@@ -687,6 +717,7 @@
 			}
 		});
 		if (result?.confirmed) {
+			await tick();
 			await onAppointmentCreated?.();
 		}
 	}
@@ -711,6 +742,7 @@
 			}
 		});
 		if (result?.confirmed) {
+			await tick();
 			await onAppointmentCreated?.();
 		}
 	}
@@ -729,6 +761,7 @@
 		EditAppointmentDialogState.branchId = null;
 		if (result?.confirmed) {
 			selectedAppointmentId = null;
+			await tick();
 			await onAppointmentCreated?.();
 		}
 	}
@@ -759,13 +792,26 @@
 
 	async function handleDeleteSelected() {
 		if (selectedAppointmentId == null) return;
+		const elig = await getAppointmentCancelEligibility({
+			appointmentId: selectedAppointmentId
+		});
+		if (!elig.allowed) {
+			toastService.addToast(elig.message, StatusColorEnum.ERROR);
+			return;
+		}
 		if (!confirm('Delete this appointment?')) return;
 		try {
 			await deleteAppointment({ id: selectedAppointmentId });
 			selectedAppointmentId = null;
+			await tick();
 			await onAppointmentCreated?.();
-		} catch {
-			// toast or ignore
+		} catch (e) {
+			toastService.addToast(
+				e instanceof Error
+					? e.message
+					: 'Failed to delete appointment.',
+				StatusColorEnum.ERROR
+			);
 		}
 	}
 
@@ -809,6 +855,26 @@
 				</DaisyUiTooltip>
 			</div>
 			<div>
+				<DaisyUiTooltip
+					tooltipText="Refresh appointments from server"
+					className="d-tooltip-left d-tooltip-info"
+				>
+					<DaisyUiButton
+						className="d-btn-info d-btn-square"
+						onClick={() => void onRefreshAppointments?.()}
+						disabled={!canInteractWithCalendar ||
+							isRefreshAppointmentsLoading}
+					>
+						<span
+							class={isRefreshAppointmentsLoading
+								? 'inline-block animate-spin'
+								: ''}
+						>
+							<LucideRefreshCcw />
+						</span>
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+
 				<DaisyUiTooltip
 					tooltipText="create appointment (pick date & time)"
 					className="d-tooltip-left d-tooltip-primary"
@@ -904,7 +970,7 @@
 								)}
 								{@const showPrintSlip =
 									cellAptSlot?.slotState === 'check-in' &&
-									isCellAppointmentStart(
+									isSlipPrintCellForAppointment(
 										cell.dateString,
 										timeSlot
 									)}
