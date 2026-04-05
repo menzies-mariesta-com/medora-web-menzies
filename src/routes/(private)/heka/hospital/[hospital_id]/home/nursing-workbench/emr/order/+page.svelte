@@ -95,6 +95,7 @@
 		orderNo: string | null;
 		advisingDoctorName: string | null;
 		serviceName: string;
+		subCategoryName: string;
 	};
 
 	let pendingItems = $state<PendingItem[]>([]);
@@ -124,15 +125,10 @@
 		| 'radiology'
 		| 'laboratory'
 		| 'nursing';
-	let serviceFilterSubCategoryIds = $state<{
-		radiology: Set<number>;
-		nursing: Set<number>;
-		laboratory: Set<number>;
-	}>({
-		radiology: new Set(),
-		nursing: new Set(),
-		laboratory: new Set()
-	});
+	/** Maps `service_item.sub_category_id` → `sub_category.category_id` (Radiology=1, Nursing=2, Laboratory=5). */
+	let subCategoryIdToCategoryId = $state<Map<number, number>>(
+		new Map()
+	);
 	let serviceFilterSubCategoryPromise: Promise<void> | null = null;
 
 	let detailServiceIdInput = $state('');
@@ -193,22 +189,12 @@
 			return;
 		}
 		serviceFilterSubCategoryPromise = (async () => {
-			const [
-				radiologySubCategories,
-				nursingSubCategories,
-				laboratorySubCategories
-			] = await Promise.all([
-				getSubCategory({ categoryId: CategoryEnum.RADIOLOGY }),
-				getSubCategory({
-					categoryId: CategoryEnum.NURSING_PROCEDURE
-				}),
-				getSubCategory({ categoryId: CategoryEnum.LABORATORY })
-			]);
-			serviceFilterSubCategoryIds = {
-				radiology: new Set(radiologySubCategories.map((s) => s.id)),
-				nursing: new Set(nursingSubCategories.map((s) => s.id)),
-				laboratory: new Set(laboratorySubCategories.map((s) => s.id))
-			};
+			const all = await getSubCategory({});
+			const map = new Map<number, number>();
+			for (const s of all) {
+				map.set(Number(s.id), Number(s.categoryId));
+			}
+			subCategoryIdToCategoryId = map;
 		})();
 		await serviceFilterSubCategoryPromise;
 	}
@@ -452,17 +438,18 @@
 		filter: ServiceFilterType
 	): boolean {
 		if (filter === 'all') return true;
-		const subCategoryId = service.subCategoryId;
+		const subCategoryId = Number(service.subCategoryId);
+		if (!Number.isFinite(subCategoryId)) return false;
+		const catId = subCategoryIdToCategoryId.get(subCategoryId);
+		if (catId === undefined) return false;
 		if (filter === 'radiology') {
-			return serviceFilterSubCategoryIds.radiology.has(subCategoryId);
+			return catId === CategoryEnum.RADIOLOGY;
 		}
 		if (filter === 'laboratory') {
-			return serviceFilterSubCategoryIds.laboratory.has(
-				subCategoryId
-			);
+			return catId === CategoryEnum.LABORATORY;
 		}
 		if (filter === 'nursing') {
-			return serviceFilterSubCategoryIds.nursing.has(subCategoryId);
+			return catId === CategoryEnum.NURSING_PROCEDURE;
 		}
 		return true;
 	}
@@ -595,11 +582,9 @@
 				StatusColorEnum.SUCCESS
 			);
 		} catch (err) {
-			toastService.addToast(
-				(err instanceof Error
-					? err.message
-					: 'Save failed') as string,
-				StatusColorEnum.ERROR
+			toastService.addErrorToast(
+				'Could not add this item to the order list',
+				err
 			);
 		}
 	}
@@ -801,17 +786,15 @@
 				StatusColorEnum.SUCCESS
 			);
 		} catch (err) {
-			toastService.addToast(
-				(err instanceof Error
-					? err.message
-					: 'Save failed') as string,
-				StatusColorEnum.ERROR
+			toastService.addErrorToast(
+				'Could not save service order and line items',
+				err
 			);
 		}
 	}
 
 	async function handleShowHistory() {
-		if (!visitId) return;
+		if (!visitId || !hospitalId) return;
 		isLoadingHistory = true;
 		showHistory = true;
 		try {
@@ -867,6 +850,31 @@
 				serviceNameMap.set(id, resolvedServices[i]);
 			});
 
+			const allSubCats = await getSubCategory({});
+			const subCatNameById = new Map(
+				allSubCats.map((s) => [
+					Number(s.id),
+					(s.subCategoryName ?? '').trim() || '–'
+				])
+			);
+
+			const resolvedServiceRows = await Promise.all(
+				serviceIdList.map((id) =>
+					getServiceItem({ id, hospitalId, statusId: null })
+				)
+			);
+			const serviceSubCategoryNameMap = new Map<number, string>();
+			serviceIdList.forEach((id, i) => {
+				const rows = resolvedServiceRows[i];
+				const svc = rows?.[0];
+				if (!svc) {
+					serviceSubCategoryNameMap.set(id, '–');
+					return;
+				}
+				const nm = subCatNameById.get(Number(svc.subCategoryId));
+				serviceSubCategoryNameMap.set(id, nm ?? '–');
+			});
+
 			historyItems = details.map((d) => ({
 				...d,
 				orderNo: orderNoMap.get(d.serviceOrderId) ?? null,
@@ -876,7 +884,10 @@
 						: null,
 				serviceName: d.serviceId
 					? (serviceNameMap.get(d.serviceId) ?? '')
-					: ''
+					: '',
+				subCategoryName: d.serviceId
+					? (serviceSubCategoryNameMap.get(d.serviceId) ?? '–')
+					: '–'
 			}));
 		} catch (err) {
 			toastService.addToast(
@@ -1062,6 +1073,7 @@
 										placeholder="Select service"
 										searchFn={searchServices}
 										getLabelForValue={getServiceLabelForValue}
+										invalidateKey={serviceFilter}
 										minSearchLength={0}
 										onChange={async () => {
 											detailServiceAmountInput = '';

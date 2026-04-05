@@ -264,9 +264,9 @@
 			);
 			await loadData({ force: true });
 		} catch (err) {
-			toastService.addToast(
-				err instanceof Error ? err.message : 'Cancel failed',
-				StatusColorEnum.ERROR
+			toastService.addErrorToast(
+				'Could not cancel this referral',
+				err
 			);
 		} finally {
 			cancellingRowId = null;
@@ -306,9 +306,9 @@
 			);
 			await loadData({ force: true });
 		} catch (err) {
-			toastService.addToast(
-				err instanceof Error ? err.message : 'Reject failed',
-				StatusColorEnum.ERROR
+			toastService.addErrorToast(
+				'Could not reject this referral',
+				err
 			);
 		} finally {
 			cancellingRowId = null;
@@ -348,9 +348,9 @@
 			);
 			await loadData({ force: true });
 		} catch (err) {
-			toastService.addToast(
-				err instanceof Error ? err.message : 'Accept failed',
-				StatusColorEnum.ERROR
+			toastService.addErrorToast(
+				'Could not accept this referral',
+				err
 			);
 		} finally {
 			acceptingRowId = null;

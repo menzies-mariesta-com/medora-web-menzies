@@ -47,8 +47,10 @@
 
 	// Internal Cally value: "from/to"
 	let internalValue = $state('');
+	const monthsCount = $derived.by(() => Math.max(1, Math.floor(months ?? 1)));
 
 	let callyLoaded = $state(false);
+	let calendarEl: HTMLElement | null = $state(null);
 
 	onMount(async () => {
 		if (browser) {
@@ -59,24 +61,63 @@
 
 	// Keep internal range string in sync when parent updates from/to
 	$effect(() => {
-		if (from || to) {
-			internalValue = `${from ?? ''}/${to ?? ''}`;
-		}
+		const next =
+			(from && to) || from || to ? `${from ?? ''}/${to ?? ''}` : '';
+		if (internalValue !== next) internalValue = next;
 	});
 
-	function handleChange(event: Event) {
-		const target = event.target as HTMLElement & { value?: string };
-		const raw = target?.value ?? '';
-		internalValue = raw;
-
-		const [startRaw = '', endRaw = ''] = raw.split('/');
-		from = startRaw;
-		to = endRaw;
-
-		if (typeof onChange === 'function') {
-			onChange({ from: startRaw, to: endRaw, raw });
-		}
+	function isIsoDate(raw: string): boolean {
+		return /^\d{4}-\d{2}-\d{2}$/.test(raw);
 	}
+
+	function normalizeRangeRaw(raw: string): { from: string; to: string; raw: string } | null {
+		if (!raw) return { from: '', to: '', raw: '' };
+		const [startRaw = '', endRaw = ''] = raw.split('/');
+		const start = startRaw.trim();
+		const end = endRaw.trim();
+		if (start && !isIsoDate(start)) return null;
+		if (end && !isIsoDate(end)) return null;
+		const normalizedRaw = start || end ? `${start}/${end}` : '';
+		return { from: start, to: end, raw: normalizedRaw };
+	}
+
+	/**
+	 * Cally dispatches `change` on the `<calendar-range>` host after updating its internal value.
+	 * Svelte delegates `change`; reading `event.target.value` can be wrong for custom elements.
+	 * Use a native listener on the host + microtask to reliably read the committed host value.
+	 */
+	$effect(() => {
+		if (!calendarEl) return;
+		const el = calendarEl;
+
+		function readRawFromHost(host: HTMLElement): string {
+			const h = host as HTMLElement & { value?: unknown };
+			const v = h.value;
+			if (typeof v === 'string') return v;
+			const attr = host.getAttribute('value');
+			return typeof attr === 'string' ? attr : '';
+		}
+
+		function onHostChange(this: HTMLElement, ev: Event) {
+			const host = this;
+			const apply = () => {
+				const candidate = readRawFromHost(host);
+				const normalized = normalizeRangeRaw(candidate);
+				if (!normalized) return;
+
+				internalValue = normalized.raw;
+				from = normalized.from;
+				to = normalized.to;
+				onChange?.({ from: normalized.from, to: normalized.to, raw: normalized.raw });
+			};
+
+			apply();
+			queueMicrotask(apply);
+		}
+
+		el.addEventListener('change', onHostChange);
+		return () => el.removeEventListener('change', onHostChange);
+	});
 </script>
 
 <!-- example usage -->
@@ -94,6 +135,7 @@
 
 {#if callyLoaded}
 	<calendar-range
+		bind:this={calendarEl}
 		class="d-cally {className}"
 		value={internalValue}
 		{min}
@@ -103,7 +145,6 @@
 		first-day-of-week={firstDayOfWeek}
 		show-outside-days={showOutsideDays}
 		show-week-numbers={showWeekNumbers}
-		onchange={handleChange}
 	>
 		<span slot="previous" aria-label="Previous">
 			<LucideChevronLeft className="size-4" />
@@ -112,10 +153,9 @@
 			<LucideChevronRight className="size-4" />
 		</span>
 
-		<calendar-month></calendar-month>
-		{#if months > 1}
-			<calendar-month offset={1}></calendar-month>
-		{/if}
+		{#each Array.from({ length: monthsCount }) as _, i (i)}
+			<calendar-month offset={i}></calendar-month>
+		{/each}
 	</calendar-range>
 
 	<!-- legend -->

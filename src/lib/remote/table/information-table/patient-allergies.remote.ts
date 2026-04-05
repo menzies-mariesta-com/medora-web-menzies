@@ -13,6 +13,7 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { AllergyEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { and, count, eq, inArray, ne } from 'drizzle-orm';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 // get all
 export const getPatientAllergies = query(
@@ -409,6 +410,7 @@ export const createPatientAllergies = command(
 	async (
 		payload: PatientAllergiesSchemaInsert
 	): Promise<PatientAllergiesSchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const [row] = await ensureDb()
 			.insert(table.patientAllergyTable)
 			.values(payload)
@@ -432,6 +434,13 @@ export const updatePatientAllergies = command(
 		payload: { id: number } & PatientAllergiesSchemaUpdate
 	): Promise<PatientAllergiesSchema> => {
 		const { id, ...rest } = payload;
+		const [pre] = await ensureDb()
+			.select({ visitId: table.patientAllergyTable.visitId })
+			.from(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id))
+			.limit(1);
+		if (!pre) throw new Error('Allergy not found');
+		await assertVisitNotClinicallySigned(pre.visitId);
 		const [row] = await ensureDb()
 			.update(table.patientAllergyTable)
 			.set(rest as PatientAllergiesSchemaUpdate)
@@ -461,6 +470,8 @@ export const deletePatientAllergies = command(
 			.from(table.patientAllergyTable)
 			.where(eq(table.patientAllergyTable.id, id))
 			.limit(1);
+		if (existing)
+			await assertVisitNotClinicallySigned(existing.visitId);
 		await ensureDb()
 			.update(table.patientAllergyTable)
 			.set({ statusId: StatusEnum.DELETED })
@@ -481,6 +492,13 @@ export const deletePatientAllergies = command(
 export const deletePatientAllergiesComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existing] = await ensureDb()
+			.select({ visitId: table.patientAllergyTable.visitId })
+			.from(table.patientAllergyTable)
+			.where(eq(table.patientAllergyTable.id, id))
+			.limit(1);
+		if (existing)
+			await assertVisitNotClinicallySigned(existing.visitId);
 		await ensureDb()
 			.delete(table.patientAllergyTable)
 			.where(eq(table.patientAllergyTable.id, id));
