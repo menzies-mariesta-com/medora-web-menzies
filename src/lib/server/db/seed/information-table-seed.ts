@@ -244,6 +244,17 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: document (nursing complete print)');
 
+	// 8c. Subcategories for EMR/CPOE order “Service Type” filter testing (category_id: 1=RADIOLOGY, 2=NURSING, 5=LAB)
+	await db.execute(sql`
+		INSERT INTO sub_category (id, category_id, sub_category_name, status_id)
+		VALUES
+			(90001, 1, '[Dev test] Radiology — General', 1),
+			(90002, 2, '[Dev test] Nursing — General', 1),
+			(90003, 5, '[Dev test] Laboratory — General', 1)
+		ON CONFLICT (id) DO NOTHING;
+	`);
+	seedLogger.info('Seeded: sub_category (dev test rows for order service-type filter)');
+
 	// 9. Allergy
 	await db.execute(sql`
 		INSERT INTO allergy (id, name)

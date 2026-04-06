@@ -18,7 +18,9 @@
 		/** When using searchFn, call this to get the label for the selected value (e.g. when value is set but not in last search results). */
 		getLabelForValue,
 		debounceMs = 300,
-		minSearchLength = 0
+		minSearchLength = 0,
+		/** When this value changes (e.g. a parent filter), the async option list is cleared so the next search uses fresh results. */
+		invalidateKey
 	} = $props<{
 		options?: Option[];
 		placeholder?: string;
@@ -31,6 +33,7 @@
 		getLabelForValue?: (value: string) => Promise<string>;
 		debounceMs?: number;
 		minSearchLength?: number;
+		invalidateKey?: unknown;
 	}>();
 
 	let search = $state('');
@@ -145,6 +148,11 @@
 	// Clear cached label when value is cleared
 	$effect(() => {
 		if (!value?.trim()) cachedLabelForValue = '';
+	});
+
+	$effect(() => {
+		void invalidateKey;
+		if (isAsync) optionsFromServer = [];
 	});
 </script>
 

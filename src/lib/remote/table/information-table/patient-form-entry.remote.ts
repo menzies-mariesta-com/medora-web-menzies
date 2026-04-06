@@ -9,6 +9,7 @@ import type {
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, eq, ne } from 'drizzle-orm';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 function prettifyFormCode(code: string): string {
 	return code
@@ -100,6 +101,7 @@ export const createPatientFormEntry = command(
 			formCode: string;
 		}
 	): Promise<PatientFormEntrySchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const formNameId = await ensureFormNameIdByCode(payload.formCode);
 		const { formCode: _formCode, ...rest } = payload;
 		const [row] = await ensureDb()
@@ -132,6 +134,7 @@ export const updatePatientFormEntry = command(
 			.where(eq(table.patientFormEntryTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Form entry not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		const formName = await ensureDb().query.formNameTable.findFirst({
 			where: (t, { eq }) => eq(t.id, existing.formNameId)
 		});
@@ -164,6 +167,7 @@ export const deletePatientFormEntry = command(
 			.where(eq(table.patientFormEntryTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Form entry not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		const formName = await ensureDb().query.formNameTable.findFirst({
 			where: (t, { eq }) => eq(t.id, existing.formNameId)
 		});
