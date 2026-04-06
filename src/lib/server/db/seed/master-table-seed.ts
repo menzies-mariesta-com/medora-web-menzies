@@ -61,7 +61,10 @@ export async function seedMasterTables() {
 			(7, 'Doctor Fees', 1),
 			(8, 'Cathlab', 1),
 			(9, 'Endoscopy', 1),
-			(10, 'Housekeeping', 1)
+			(10, 'Housekeeping', 1),
+			(11, 'General Supply', 1),
+			(12, 'Pharmacy Supply', 1),
+			(13, 'Medical Supply', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: category');
@@ -1545,7 +1548,9 @@ export async function seedMasterTables() {
 			(5, 'Temperature', 1),
 			(6, 'Percentage', 1),
 			(7, 'Respiration', 1),
-			(8, 'Blood sugar', 1)
+			(8, 'Blood sugar', 1),
+			(9, 'Count / Pack', 1),
+			(10, 'Volume', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: unit_type');
@@ -1565,7 +1570,17 @@ export async function seedMasterTables() {
 			(9, '%', 6, 1),
 			(10, '/min', 7, 1),
 			(11, 'mg/dL', 8, 1),
-			(12, 'mmol/L', 8, 1)
+			(12, 'mmol/L', 8, 1),
+			(13, 'tablet', 9, 1),
+			(14, 'capsule', 9, 1),
+			(15, 'ampoule', 9, 1),
+			(16, 'vial', 9, 1),
+			(17, 'strip', 9, 1),
+			(18, 'box', 9, 1),
+			(19, 'bottle', 9, 1),
+			(20, 'piece', 9, 1),
+			(21, 'ml', 10, 1),
+			(22, 'L', 10, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: unit');

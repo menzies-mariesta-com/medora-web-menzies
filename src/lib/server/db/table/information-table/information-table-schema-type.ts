@@ -36,6 +36,7 @@ import type {
 	patientFormEntryTable,
 	appointmentBlockTable,
 	subCategoryTable,
+	itemMasterTable,
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
@@ -318,6 +319,12 @@ export type SubCategorySchemaInsert = InferInsertModel<
 >;
 export type SubCategorySchemaUpdate =
 	Partial<SubCategorySchemaInsert>;
+
+export type ItemMasterSchema = InferSelectModel<typeof itemMasterTable>;
+export type ItemMasterSchemaInsert = InferInsertModel<
+	typeof itemMasterTable
+>;
+export type ItemMasterSchemaUpdate = Partial<ItemMasterSchemaInsert>;
 
 export type ServiceItemSchema = InferSelectModel<
 	typeof serviceItemTable
