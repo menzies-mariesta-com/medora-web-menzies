@@ -12,6 +12,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogState } from '$lib/state/dialog.state.svelte';
 	import { ToastState } from '$lib/state/toast.state.svelte';
+	import { dismissToast } from '$lib/service/toast.service.svelte';
 	import './layout.css';
 	import GQuickTool from '$lib/component/own/global/GQuickTool.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -64,8 +65,17 @@
 {#if ToastState.length > 0 && !DialogState.current}
 	<DaisyUiToast className="d-toast-top d-toast-end z-[9998]">
 		{#each ToastState as toast (toast.id)}
-			<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
-				<DaisyUiAlert type={toast.type} message={toast.message} />
+			<div
+				class="w-full max-w-[min(100vw-2rem,36rem)]"
+				use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}
+			>
+				<DaisyUiAlert
+					type={toast.type}
+					message={toast.message}
+					detail={toast.detail}
+					showToastActions
+					onDismissToast={() => dismissToast(toast.id)}
+				/>
 			</div>
 		{/each}
 	</DaisyUiToast>
@@ -102,10 +112,16 @@
 			{#if ToastState.length > 0}
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
-						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
+						<div
+							class="w-full max-w-[min(100vw-2rem,36rem)]"
+							use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}
+						>
 							<DaisyUiAlert
 								type={toast.type}
 								message={toast.message}
+								detail={toast.detail}
+								showToastActions
+								onDismissToast={() => dismissToast(toast.id)}
 							/>
 						</div>
 					{/each}
@@ -121,10 +137,16 @@
 			{#if ToastState.length > 0}
 				<DaisyUiToast className="d-toast-top d-toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
-						<div use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}>
+						<div
+							class="w-full max-w-[min(100vw-2rem,36rem)]"
+							use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}
+						>
 							<DaisyUiAlert
 								type={toast.type}
 								message={toast.message}
+								detail={toast.detail}
+								showToastActions
+								onDismissToast={() => dismissToast(toast.id)}
 							/>
 						</div>
 					{/each}

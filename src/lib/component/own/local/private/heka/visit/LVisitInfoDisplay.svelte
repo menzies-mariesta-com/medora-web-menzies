@@ -13,6 +13,7 @@
 	import {
 		getAbnormalVitalVisitIdsByVisitIds
 	} from '$lib/remote/table/information-table/patient-vital.remote';
+	import { VisitState } from '$lib/state/visit.state.svelte';
 
 	let {
 		visitId = '',
@@ -51,6 +52,16 @@
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	$effect(() => {
+		if (!visit) {
+			VisitState.setClinicalSignedAtFromVisit(null);
+			return;
+		}
+		VisitState.setClinicalSignedAtFromVisit(
+			visit.clinicalSignedAt ?? null
+		);
 	});
 
 	$effect(() => {

@@ -58,3 +58,9 @@ export const updatePatientVisit = (...args: any[]): any => {
 	return p;
 };
 
+export const signPatientVisitClinical = (...args: any[]): any => {
+	const p: any = invokeOnce<any>('signPatientVisitClinical', args);
+	p.refresh = () => invokeOnce<any>('signPatientVisitClinical', args);
+	return p;
+};
+

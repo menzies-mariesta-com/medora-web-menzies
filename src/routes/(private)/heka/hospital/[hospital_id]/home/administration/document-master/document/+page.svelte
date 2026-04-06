@@ -296,7 +296,11 @@
 
 	function handleFormatHtmlClick() {
 		documentTextInput = formatHtmlForEditor(documentTextInput);
-		toastService.addToast('HTML formatted', StatusColorEnum.SUCCESS);
+		toastService.addToast(
+			'Document HTML formatted',
+			StatusColorEnum.SUCCESS,
+			'Indentation and line breaks were normalized so the editor is easier to read.'
+		);
 	}
 
 	let tableFilters = $state<Record<string, string>>({});

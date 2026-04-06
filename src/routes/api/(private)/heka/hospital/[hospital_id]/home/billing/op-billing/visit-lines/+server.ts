@@ -1,7 +1,6 @@
 import type { RequestHandler } from './$types';
 import { error, json } from '@sveltejs/kit';
 import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
-import { getPatientVisitByIdWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -105,48 +104,47 @@ async function upsertOpBillingSnapshot(opts: {
 
 	const totalAmount = Math.max(0, linesSubtotal - discountAmount);
 
-	await db.transaction(async (tx) => {
-		// Hard-replace snapshot lines to reflect what is included right now.
-		await tx
-			.delete(table.opBillingLineTable)
-			.where(eq(table.opBillingLineTable.opBillingId, billingId));
+	// Neon HTTP driver does not support transactions; perform operations sequentially.
+	// Hard-replace snapshot lines to reflect what is included right now.
+	await db
+		.delete(table.opBillingLineTable)
+		.where(eq(table.opBillingLineTable.opBillingId, billingId));
 
-		if (opts.rows.length > 0) {
-			await tx.insert(table.opBillingLineTable).values(
-				opts.rows.map((r: any, idx: number) => ({
-					opBillingId: billingId,
-					lineIndex: idx + 1,
-					serviceOrderDetailId: r.id ?? null,
-					serviceId: r.serviceId,
-					serviceNameSnapshot: r.serviceName ?? null,
-					subCategoryId: r.subCategoryId ?? null,
-					subCategoryNameSnapshot: r.subCategoryName ?? null,
-					orderNoSnapshot: r.orderNo ?? null,
-					discount: r.discount ?? null,
-					serviceAmount: r.serviceAmount ?? null,
-					serviceTaxAmount: r.serviceTaxAmount ?? null,
-					serviceUnit: r.serviceUnit ?? null,
-					lineTotal: computeLineTotal(r).toFixed(2),
-					createdAt: opts.nowIso,
-					updatedAt: opts.nowIso,
-					createdBy: opts.userId,
-					updatedBy: opts.userId
-				}))
-			);
-		}
-
-		await tx
-			.update(table.opBillingTable)
-			.set({
-				branchId: opts.branchId,
-				linesSubtotal: linesSubtotal.toFixed(2),
-				discountAmount: discountAmount.toFixed(2),
-				totalAmount: totalAmount.toFixed(2),
+	if (opts.rows.length > 0) {
+		await db.insert(table.opBillingLineTable).values(
+			opts.rows.map((r: any, idx: number) => ({
+				opBillingId: billingId,
+				lineIndex: idx + 1,
+				serviceOrderDetailId: r.id ?? null,
+				serviceId: r.serviceId,
+				serviceNameSnapshot: r.serviceName ?? null,
+				subCategoryId: r.subCategoryId ?? null,
+				subCategoryNameSnapshot: r.subCategoryName ?? null,
+				orderNoSnapshot: r.orderNo ?? null,
+				discount: r.discount ?? null,
+				serviceAmount: r.serviceAmount ?? null,
+				serviceTaxAmount: r.serviceTaxAmount ?? null,
+				serviceUnit: r.serviceUnit ?? null,
+				lineTotal: computeLineTotal(r).toFixed(2),
+				createdAt: opts.nowIso,
 				updatedAt: opts.nowIso,
+				createdBy: opts.userId,
 				updatedBy: opts.userId
-			})
-			.where(eq(table.opBillingTable.id, billingId));
-	});
+			}))
+		);
+	}
+
+	await db
+		.update(table.opBillingTable)
+		.set({
+			branchId: opts.branchId,
+			linesSubtotal: linesSubtotal.toFixed(2),
+			discountAmount: discountAmount.toFixed(2),
+			totalAmount: totalAmount.toFixed(2),
+			updatedAt: opts.nowIso,
+			updatedBy: opts.userId
+		})
+		.where(eq(table.opBillingTable.id, billingId));
 
 	const billingRow = await db.query.opBillingTable.findFirst({
 		where: eq(table.opBillingTable.id, billingId),
@@ -180,7 +178,21 @@ export const GET: RequestHandler = async ({ url, params, locals }) => {
 
 	const [rows, visitRow] = await Promise.all([
 		getServiceOrderDetailRowsForVisit({ visitId }),
-		getPatientVisitByIdWithRelations({ id: visitId })
+		ensureDb().query.patientVisitTable.findFirst({
+			where: (t, { eq }) => eq(t.id, visitId),
+			with: {
+				patient: { with: { title: true, gender: true } },
+				hospital: true,
+				branch: true,
+				doctor: {
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
+				}
+			}
+		})
 	]);
 	if (!visitRow) {
 		return json({ error: 'Visit not found', items: [], visit: null }, { status: 404 });
@@ -239,7 +251,21 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
 		throw error(400, 'Invalid visitId');
 	}
 
-	const visitRow = await getPatientVisitByIdWithRelations({ id: visitId });
+	const visitRow = await ensureDb().query.patientVisitTable.findFirst({
+		where: (t, { eq }) => eq(t.id, visitId),
+		with: {
+			patient: { with: { title: true, gender: true } },
+			hospital: true,
+			branch: true,
+			doctor: {
+				with: {
+					title: true,
+					specialization: true,
+					staffDetail: true
+				}
+			}
+		}
+	});
 	if (!visitRow) throw error(404, 'Visit not found');
 	if (String(visitRow.hospitalId ?? '') !== hospitalId) {
 		throw error(400, 'Visit does not belong to hospital');

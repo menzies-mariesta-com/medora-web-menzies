@@ -8,6 +8,8 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import LVisitInfoBar from '$lib/component/own/local/private/heka/visit/LVisitInfoBar.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { untrack } from 'svelte';
 
@@ -59,6 +61,9 @@
 	});
 
 	const selectedVisitId = $derived(VisitState.visitId);
+	const clinicalVisitReadOnly = $derived(
+		VisitState.isClinicalVisitReadOnly
+	);
 
 	function handleVisitSelected(data: {
 		visitId: number;
@@ -112,12 +117,31 @@
 				</button>
 			{/each}
 		</div>
-		<div class="emr-subnav-content">
+		{#if clinicalVisitReadOnly}
+			<DaisyUiAlert
+				type={StatusColorEnum.WARNING}
+				message={m.clinical_visit_signed_banner()}
+				className="mb-2"
+			/>
+		{/if}
+		<div
+			class="emr-subnav-content"
+			class:clinical-visit-locked={clinicalVisitReadOnly}
+		>
 			{@render children()}
 		</div>
 	</div>
 {:else}
-	{@render children()}
+	{#if clinicalVisitReadOnly}
+		<DaisyUiAlert
+			type={StatusColorEnum.WARNING}
+			message={m.clinical_visit_signed_banner()}
+			className="mb-2"
+		/>
+	{/if}
+	<div class:clinical-visit-locked={clinicalVisitReadOnly}>
+		{@render children()}
+	</div>
 {/if}
 
 <style>

@@ -13,6 +13,7 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { count, eq, ne } from 'drizzle-orm';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 // get all
 export const getPatientDocuments = query(
@@ -178,6 +179,7 @@ export const createPatientDocument = command(
 	async (
 		payload: PatientDocumentSchemaInsert
 	): Promise<PatientDocumentSchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const [row] = await ensureDb()
 			.insert(table.patientDocumentTable)
 			.values(payload)
@@ -201,6 +203,13 @@ export const updatePatientDocument = command(
 		payload: { id: number } & PatientDocumentSchemaUpdate
 	): Promise<PatientDocumentSchema> => {
 		const { id, ...rest } = payload;
+		const [pre] = await ensureDb()
+			.select({ visitId: table.patientDocumentTable.visitId })
+			.from(table.patientDocumentTable)
+			.where(eq(table.patientDocumentTable.id, id))
+			.limit(1);
+		if (!pre) throw new Error('Patient document not found');
+		await assertVisitNotClinicallySigned(pre.visitId);
 		const [row] = await ensureDb()
 			.update(table.patientDocumentTable)
 			.set(rest as PatientDocumentSchemaUpdate)
@@ -222,6 +231,12 @@ export const updatePatientDocument = command(
 export const inactivatePatientDocument = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [pre] = await ensureDb()
+			.select({ visitId: table.patientDocumentTable.visitId })
+			.from(table.patientDocumentTable)
+			.where(eq(table.patientDocumentTable.id, id))
+			.limit(1);
+		if (pre) await assertVisitNotClinicallySigned(pre.visitId);
 		const [row] = await ensureDb()
 			.update(table.patientDocumentTable)
 			.set({
@@ -253,6 +268,8 @@ export const deletePatientDocument = command(
 			.from(table.patientDocumentTable)
 			.where(eq(table.patientDocumentTable.id, id))
 			.limit(1);
+		if (existing)
+			await assertVisitNotClinicallySigned(existing.visitId);
 		await ensureDb()
 			.update(table.patientDocumentTable)
 			.set({ statusId: StatusEnum.DELETED })

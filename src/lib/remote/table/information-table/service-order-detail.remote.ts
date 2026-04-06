@@ -21,6 +21,7 @@ import {
 	isNull,
 	ne
 } from 'drizzle-orm';
+import { assertVisitNotClinicallySignedByServiceOrderId } from '$lib/server/visit-clinical-lock.server';
 
 // get all (optionally filtered by serviceOrderId/serviceId/status/id)
 export const getServiceOrderDetail = query(
@@ -321,6 +322,9 @@ export const createServiceOrderDetail = command(
 	async (
 		payload: ServiceOrderDetailSchemaInsert
 	): Promise<ServiceOrderDetailSchema> => {
+		await assertVisitNotClinicallySignedByServiceOrderId(
+			payload.serviceOrderId
+		);
 		const [row] = await ensureDb()
 			.insert(table.serviceOrderDetailTable)
 			.values(payload)
@@ -343,6 +347,17 @@ export const updateServiceOrderDetail = command(
 		payload: ServiceOrderDetailSchemaUpdate & { id: number }
 	): Promise<ServiceOrderDetailSchema> => {
 		const { id, ...rest } = payload;
+		const [existingDetail] = await ensureDb()
+			.select({
+				serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
+			})
+			.from(table.serviceOrderDetailTable)
+			.where(eq(table.serviceOrderDetailTable.id, id))
+			.limit(1);
+		if (!existingDetail) throw new Error('Service order detail not found');
+		await assertVisitNotClinicallySignedByServiceOrderId(
+			existingDetail.serviceOrderId
+		);
 		const [row] = await ensureDb()
 			.update(table.serviceOrderDetailTable)
 			.set(rest as ServiceOrderDetailSchemaUpdate)
@@ -370,6 +385,10 @@ export const deleteServiceOrderDetail = command(
 			.from(table.serviceOrderDetailTable)
 			.where(eq(table.serviceOrderDetailTable.id, id))
 			.limit(1);
+		if (existing)
+			await assertVisitNotClinicallySignedByServiceOrderId(
+				existing.serviceOrderId
+			);
 		await ensureDb()
 			.update(table.serviceOrderDetailTable)
 			.set({ statusId: StatusEnum.DELETED })
@@ -396,6 +415,10 @@ export const deleteServiceOrderDetailComplete = command(
 			.from(table.serviceOrderDetailTable)
 			.where(eq(table.serviceOrderDetailTable.id, id))
 			.limit(1);
+		if (existing)
+			await assertVisitNotClinicallySignedByServiceOrderId(
+				existing.serviceOrderId
+			);
 		await ensureDb()
 			.delete(table.serviceOrderDetailTable)
 			.where(eq(table.serviceOrderDetailTable.id, id));

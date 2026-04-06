@@ -4,7 +4,8 @@
 	import LDoctorAppointmentStatistics from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import LCancelAppointmentHistoryDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
-	import { getAppointmentWithRelations } from '$lib/tool/remote/table/information-table/appointment.http.tool.svelte';
+	import type { AppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
+	import { refetchAppointmentWithRelations } from '$lib/tool/remote/table/information-table/appointment.http.tool.svelte';
 	import { getDoctorSchedule } from '$lib/tool/remote/table/information-table/doctor-schedule.http.tool.svelte';
 	import {
 		createAppointmentBlock,
@@ -38,12 +39,12 @@
 
 	let doctorList = $state<any[]>([]);
 	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
-	type AppointmentWithRelations = Awaited<
-		ReturnType<typeof getAppointmentWithRelations>
-	>[number];
 	let appointments = $state<AppointmentWithRelations[]>([]);
+	/** Invalidates stale list fetches so a slow $effect response cannot overwrite after create/edit refresh. */
+	let appointmentsFetchGen = 0;
 	let isCancelHistoryOpen = $state(false);
 	let isCancelHistoryLoading = $state(false);
+	let isAppointmentToolbarRefreshing = $state(false);
 	let selectDate = $state(new Date().toISOString().slice(0, 10));
 	let viewBy = $state<'day' | 'week' | 'month'>('day');
 	let timeFormat = $state<'24h' | '12h'>('24h');
@@ -189,12 +190,63 @@
 			});
 	});
 
+	function listParamsForAppointments():
+		| { hospitalId: string; branchId: string }
+		| { hospitalId: string }
+		| undefined {
+		const hid = hospitalId ?? undefined;
+		const bid = effectiveBranchId ?? undefined;
+		if (!hid) return undefined;
+		if (bid) return { hospitalId: hid, branchId: bid };
+		return { hospitalId: hid };
+	}
+
+	/** After create/edit/cancel/delete: bump generation so this load wins over any in-flight $effect fetch, then refetch. */
+	async function reloadCalendarAfterAppointmentMutation(): Promise<void> {
+		appointmentsFetchGen++;
+		await loadAppointmentsForCalendar();
+	}
+
+	/** Single loader for calendar + cancel history; avoids stale $effect fetches overwriting after cancel/edit. */
+	async function loadAppointmentsForCalendar(): Promise<void> {
+		const id = selectedDoctorId.trim();
+		if (!id) {
+			appointmentsFetchGen++;
+			appointments = [];
+			return;
+		}
+		const myGen = ++appointmentsFetchGen;
+		const listParams = listParamsForAppointments();
+		const all = (await refetchAppointmentWithRelations(
+			listParams
+		)) as AppointmentWithRelations[];
+		if (myGen !== appointmentsFetchGen) return;
+		appointments = all as AppointmentWithRelations[];
+	}
+
+	async function refreshAppointmentsToolbar() {
+		if (!selectedDoctorId.trim()) return;
+		const id = selectedDoctorId.trim();
+		const hid = hospitalId ?? undefined;
+		isAppointmentToolbarRefreshing = true;
+		try {
+			await loadAppointmentsForCalendar();
+			const blocks = await getAppointmentBlock({
+				staffId: id,
+				hospitalId: hid ?? undefined
+			});
+			appointmentBlocks = blocks as AppointmentBlockSchema[];
+		} finally {
+			isAppointmentToolbarRefreshing = false;
+		}
+	}
+
 	async function openCancelHistory() {
 		if (!selectedDoctorId.trim()) return;
 		isCancelHistoryOpen = true;
 		isCancelHistoryLoading = true;
 		try {
-			appointments = await getAppointmentWithRelations();
+			await loadAppointmentsForCalendar();
 		} finally {
 			isCancelHistoryLoading = false;
 		}
@@ -313,6 +365,7 @@
 		const hid = hospitalId ?? undefined;
 		const bid = effectiveBranchId ?? undefined;
 		if (!id) {
+			appointmentsFetchGen++;
 			doctorSchedules = [];
 			appointments = [];
 			appointmentBlocks = [];
@@ -328,9 +381,7 @@
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
-		getAppointmentWithRelations().then((all: any[]) => {
-			appointments = all as any;
-		});
+		void loadAppointmentsForCalendar();
 		getAppointmentBlock({
 			staffId: id,
 			hospitalId: hid ?? undefined
@@ -377,9 +428,9 @@
 			{appointmentSlots}
 			{blockSlots}
 			{slotDurationMinutes}
-			onAppointmentCreated={async () => {
-				appointments = await getAppointmentWithRelations();
-			}}
+			onAppointmentCreated={reloadCalendarAfterAppointmentMutation}
+			onRefreshAppointments={refreshAppointmentsToolbar}
+			isRefreshAppointmentsLoading={isAppointmentToolbarRefreshing}
 			onBlockCreated={async (block) => {
 				try {
 					const created = await createAppointmentBlock({

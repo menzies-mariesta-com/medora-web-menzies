@@ -64,6 +64,19 @@
 		return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 	}
 
+	/** Align with calendar grid / DB time parsing (e.g. "9:00" → "09:00"). */
+	function toHHmm(t: string): string {
+		if (!t) return '';
+		const parts = String(t).trim().split(':');
+		const h = parts[0]
+			? String(Number(parts[0])).padStart(2, '0')
+			: '00';
+		const m = parts[1]
+			? String(Number(parts[1])).padStart(2, '0')
+			: '00';
+		return `${h}:${m}`;
+	}
+
 	/** Number of slots to book (1 = slotDurationMinutes, 2 = 2× slotDurationMinutes, etc.). */
 	let slotCount = $state(1);
 
@@ -227,6 +240,19 @@
 					selectedStatusTaggingId = '';
 				}
 			}
+		}
+	});
+
+	// Default to first doctor-appointment status (usually Unconfirmed) so create always sends statusTaggingId.
+	$effect(() => {
+		const opts = availableStatusTaggingData;
+		if (opts.length === 0) return;
+		const cur = selectedStatusTaggingId?.trim();
+		if (
+			!cur ||
+			!opts.some((s) => String(s.id) === cur)
+		) {
+			selectedStatusTaggingId = String(opts[0].id);
 		}
 	});
 
@@ -428,11 +454,13 @@
 			return;
 		}
 		if (!effectiveDate || !effectiveFromTime || !toTime) return;
+		const fromNorm = toHHmm(effectiveFromTime);
+		const toNorm = toHHmm(toTime);
 		const overlap = await hasOverlap(
 			staffId.trim(),
 			effectiveDate,
-			effectiveFromTime,
-			toTime
+			fromNorm,
+			toNorm
 		);
 		if (overlap) {
 			toastService.addToast(
@@ -447,8 +475,8 @@
 				hospitalId: hospitalId || '',
 				branchId: selectedBranchId,
 				appointmentDate: effectiveDate,
-				fromTime: effectiveFromTime,
-				toTime,
+				fromTime: fromNorm,
+				toTime: toNorm,
 				patientId: selectedPatientId?.trim() || null,
 				staffId: staffId?.trim() || null,
 				patientTitleId: selectedPatientTitleId

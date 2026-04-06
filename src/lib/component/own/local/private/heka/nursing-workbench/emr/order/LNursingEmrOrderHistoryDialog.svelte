@@ -15,6 +15,7 @@
 		orderNo: string | null;
 		advisingDoctorName: string | null;
 		serviceName: string;
+		subCategoryName: string;
 	};
 
 	const { open, onClose, items, isLoading, pageSizeStr, onDelete } =
@@ -50,20 +51,20 @@
 			format: (_value, row) => row.serviceName || '–'
 		},
 		{
+			id: 'subCategoryName',
+			header: 'Sub category',
+			widthClass: 'w-48',
+			filterable: false,
+			format: (_value, row) =>
+				row.subCategoryName?.trim() ? row.subCategoryName : '–'
+		},
+		{
 			id: 'instruction',
 			header: 'Description',
 			widthClass: 'w-64',
 			filterable: false,
 			format: (_value, row) =>
-				(row.instruction as string | null | undefined)?.trim() ||
-				`Service ${row.serviceId ?? ''}`
-		},
-		{
-			id: 'serviceAmount',
-			header: 'Service Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
+				(row.instruction as string | null | undefined)?.trim() || '–'
 		},
 		{
 			id: 'serviceUnit',
@@ -109,13 +110,6 @@
 						: row.statusId === StatusEnum.DELETED
 							? 'Deleted'
 							: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'amountDisplay',
-			header: 'Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
 		}
 	];
 </script>
