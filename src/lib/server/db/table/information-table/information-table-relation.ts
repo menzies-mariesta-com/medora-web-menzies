@@ -37,6 +37,7 @@ import {
 	supportTicketTable,
 	staffDetailTable,
 	subCategoryTable,
+	itemMasterTable,
 	staffBranchTable,
 	staffHospitalTable,
 	staffTable,
@@ -937,7 +938,8 @@ export const categoryTableRelations = relations(
 			fields: [categoryTable.statusId],
 			references: [statusTable.id]
 		}),
-		subCategories: many(subCategoryTable)
+		subCategories: many(subCategoryTable),
+		itemMasters: many(itemMasterTable)
 	})
 );
 
@@ -954,6 +956,24 @@ export const subCategoryTableRelations = relations(
 		}),
 		serviceItems: many(serviceItemTable),
 		opBillingLines: many(opBillingLineTable)
+	})
+);
+
+export const itemMasterTableRelations = relations(
+	itemMasterTable,
+	({ one }) => ({
+		category: one(categoryTable, {
+			fields: [itemMasterTable.categoryId],
+			references: [categoryTable.id]
+		}),
+		unit: one(unitTable, {
+			fields: [itemMasterTable.unitId],
+			references: [unitTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [itemMasterTable.statusId],
+			references: [statusTable.id]
+		})
 	})
 );
 
@@ -1002,6 +1022,14 @@ export const storeTableRelations = relations(
 		branch: one(hospitalBranchTable, {
 			fields: [storeTable.branchId],
 			references: [hospitalBranchTable.id]
+		}),
+		userGroup: one(userGroupTable, {
+			fields: [storeTable.userGroupId],
+			references: [userGroupTable.id]
+		}),
+		department: one(departmentTable, {
+			fields: [storeTable.departmentId],
+			references: [departmentTable.id]
 		}),
 		status: one(statusTable, {
 			fields: [storeTable.statusId],

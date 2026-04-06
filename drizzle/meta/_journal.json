@@ -120,6 +120,34 @@
       "when": 1775300000000,
       "tag": "0018_patient_visit_clinical_signed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775400000000,
+      "tag": "0019_store_user_group_or_department",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775500000000,
+      "tag": "0020_item_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0021_item_master_barcode",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775700000000,
+      "tag": "0022_unit_inventory_unit_types",
+      "breakpoints": true
     }
   ]
 }

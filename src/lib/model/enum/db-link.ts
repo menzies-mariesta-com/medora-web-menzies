@@ -45,7 +45,11 @@ export enum UnitTypeEnum {
 	TEMPERATURE = 5,
 	PERCENTAGE = 6,
 	RESPIRATION = 7,
-	BLOOD_SUGAR = 8
+	BLOOD_SUGAR = 8,
+	/** Count / pack (tablets, boxes, etc.) — Item Master / inventory. */
+	COUNT_PACK = 9,
+	/** Volume (ml, L) — Item Master / inventory. */
+	VOLUME = 10
 }
 
 export enum UnitEnum {
@@ -60,7 +64,17 @@ export enum UnitEnum {
 	PERCENT = 9,
 	PER_MIN = 10,
 	MG_DL = 11,
-	MMOL_L = 12
+	MMOL_L = 12,
+	TABLET = 13,
+	CAPSULE = 14,
+	AMPOULE = 15,
+	VIAL = 16,
+	STRIP = 17,
+	BOX = 18,
+	BOTTLE = 19,
+	PIECE = 20,
+	ML = 21,
+	LITER = 22
 }
 
 export enum SeverityEnum {
@@ -77,7 +91,11 @@ export enum AllergyEnum {
 export enum CategoryEnum {
 	RADIOLOGY = 1,
 	NURSING_PROCEDURE = 2,
-	LABORATORY = 5
+	LABORATORY = 5,
+	/** Item Master: `category` rows for supply type (see item_master). */
+	GENERAL_SUPPLY = 11,
+	PHARMACY_SUPPLY = 12,
+	MEDICAL_SUPPLY = 13
 }
 
 export enum StatusTaggingTypeEnum {
