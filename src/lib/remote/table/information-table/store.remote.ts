@@ -11,14 +11,40 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, ne } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
 
-// get all (optionally filtered by branchId)
+function assertStoreOwnerXor(payload: {
+	userGroupId?: number | null;
+	departmentId?: number | null;
+}): void {
+	const ug = payload.userGroupId ?? null;
+	const dep = payload.departmentId ?? null;
+	const hasUg = ug != null;
+	const hasDep = dep != null;
+	if (hasUg === hasDep) {
+		throw new Error(
+			'Store must be linked to exactly one of user group or department.'
+		);
+	}
+}
+
+async function branchIdsForHospital(
+	hospitalId: string
+): Promise<string[]> {
+	const rows = await ensureDb()
+		.select({ id: table.hospitalBranchTable.id })
+		.from(table.hospitalBranchTable)
+		.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
+	return rows.map((r) => r.id);
+}
+
+// get all (optionally filtered by branchId and/or hospitalId)
 export const getStore = query(
 	'unchecked' as const,
 	async (params?: {
 		branchId?: string | null;
+		hospitalId?: string | null;
 	}): Promise<StoreSchema[]> => {
 		const notDeleted = ne(
 			table.storeTable.statusId,
@@ -30,6 +56,15 @@ export const getStore = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.storeTable.branchId, params.branchId)
+			) as typeof whereExpr;
+		} else if (params?.hospitalId != null && params.hospitalId !== '') {
+			const ids = await branchIdsForHospital(params.hospitalId);
+			if (ids.length === 0) {
+				return [];
+			}
+			whereExpr = and(
+				whereExpr,
+				inArray(table.storeTable.branchId, ids)
 			) as typeof whereExpr;
 		}
 
@@ -50,7 +85,7 @@ export const getStoreCount = query(async (): Promise<number> => {
 	return row?.count ?? 0;
 });
 
-// get paginated
+// get paginated (optional hospitalId scopes to that hospital's branches; name filter)
 export const getStorePaginated = query(
 	'unchecked' as const,
 	async (
@@ -68,6 +103,36 @@ export const getStorePaginated = query(
 			whereExpr = and(
 				whereExpr,
 				eq(table.storeTable.branchId, params.branchId)
+			) as typeof whereExpr;
+		} else if (params?.hospitalId != null && params.hospitalId !== '') {
+			const ids = await branchIdsForHospital(params.hospitalId);
+			if (ids.length === 0) {
+				return {
+					data: [],
+					total: 0,
+					page,
+					pageSize,
+					totalPages: 1
+				};
+			}
+			whereExpr = and(
+				whereExpr,
+				inArray(table.storeTable.branchId, ids)
+			) as typeof whereExpr;
+		}
+
+		const nameFilter = params?.name?.trim();
+		if (nameFilter) {
+			whereExpr = and(
+				whereExpr,
+				ilike(table.storeTable.storeName, `%${nameFilter}%`)
+			) as typeof whereExpr;
+		}
+
+		if (typeof params?.statusId === 'number') {
+			whereExpr = and(
+				whereExpr,
+				eq(table.storeTable.statusId, params.statusId)
 			) as typeof whereExpr;
 		}
 
@@ -116,6 +181,10 @@ export const getStoreById = query(
 export const createStore = command(
 	'unchecked' as const,
 	async (payload: StoreSchemaInsert): Promise<StoreSchema> => {
+		assertStoreOwnerXor({
+			userGroupId: payload.userGroupId,
+			departmentId: payload.departmentId
+		});
 		const [row] = await ensureDb()
 			.insert(table.storeTable)
 			.values(payload)
@@ -135,9 +204,33 @@ export const updateStore = command(
 		payload: StoreSchemaUpdate & { id: number }
 	): Promise<StoreSchema> => {
 		const { id, ...rest } = payload;
+		const [existing] = await ensureDb()
+			.select()
+			.from(table.storeTable)
+			.where(eq(table.storeTable.id, id));
+		if (!existing) throw new Error('Store not found');
+		const nextUg =
+			rest.userGroupId !== undefined
+				? rest.userGroupId
+				: existing.userGroupId;
+		const nextDep =
+			rest.departmentId !== undefined
+				? rest.departmentId
+				: existing.departmentId;
+		assertStoreOwnerXor({
+			userGroupId: nextUg,
+			departmentId: nextDep
+		});
+		const setObj: StoreSchemaUpdate = { ...rest };
+		if (rest.userGroupId !== undefined && rest.userGroupId != null) {
+			setObj.departmentId = null;
+		}
+		if (rest.departmentId !== undefined && rest.departmentId != null) {
+			setObj.userGroupId = null;
+		}
 		const [row] = await ensureDb()
 			.update(table.storeTable)
-			.set(rest as StoreSchemaUpdate)
+			.set(setObj)
 			.where(eq(table.storeTable.id, id))
 			.returning();
 		if (!row) throw new Error('Update failed');

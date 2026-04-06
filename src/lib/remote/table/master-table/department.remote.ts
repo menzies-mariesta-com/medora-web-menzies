@@ -12,7 +12,7 @@ import type {
 	PaginationParams
 } from '$lib/remote/table/pagination-type';
 import { normalizePagination } from '$lib/remote/table/pagination-type';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, ilike, ne } from 'drizzle-orm';
 
 export const getDepartment = query(
 	async (): Promise<DepartmentSchema[]> => {
@@ -39,22 +39,39 @@ export const getDepartmentPaginated = query(
 	): Promise<PaginatedResult<DepartmentSchema>> => {
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
-		const notDeletedFilter = ne(
-			table.departmentTable.statusId,
-			StatusEnum.DELETED
-		);
+		const conditions = [
+			ne(table.departmentTable.statusId, StatusEnum.DELETED)
+		];
+		const nameFilter = params?.name?.trim();
+		if (nameFilter) {
+			conditions.push(
+				ilike(table.departmentTable.name, `%${nameFilter}%`)
+			);
+		}
+		const codeFilter = params?.code?.trim();
+		if (codeFilter) {
+			conditions.push(
+				ilike(table.departmentTable.code, `%${codeFilter}%`)
+			);
+		}
+		if (typeof params?.statusId === 'number') {
+			conditions.push(
+				eq(table.departmentTable.statusId, params.statusId)
+			);
+		}
+		const whereClause = and(...conditions);
 		const [data, countResult] = await Promise.all([
 			ensureDb()
 				.select()
 				.from(table.departmentTable)
-				.where(notDeletedFilter)
+				.where(whereClause)
 				.orderBy(table.departmentTable.name)
 				.limit(limit)
 				.offset(offset),
 			ensureDb()
 				.select({ count: count() })
 				.from(table.departmentTable)
-				.where(notDeletedFilter)
+				.where(whereClause)
 		]);
 		const total = countResult[0]?.count ?? 0;
 		return {
@@ -98,6 +115,7 @@ export const createDepartment = command(
 			.returning();
 		if (!row) throw new Error('Insert failed');
 		getDepartment().refresh();
+		getDepartmentPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -118,6 +136,7 @@ export const updateDepartment = command(
 			.returning();
 		if (!row) throw new Error('Update failed');
 		getDepartment().refresh();
+		getDepartmentPaginated(undefined).refresh();
 		return row;
 	}
 );
@@ -130,6 +149,7 @@ export const deleteDepartment = command(
 			.set({ statusId: StatusEnum.DELETED })
 			.where(eq(table.departmentTable.id, id));
 		getDepartment().refresh();
+		getDepartmentPaginated(undefined).refresh();
 	}
 );
 
@@ -140,5 +160,6 @@ export const deleteDepartmentComplete = command(
 			.delete(table.departmentTable)
 			.where(eq(table.departmentTable.id, id));
 		getDepartment().refresh();
+		getDepartmentPaginated(undefined).refresh();
 	}
 );
