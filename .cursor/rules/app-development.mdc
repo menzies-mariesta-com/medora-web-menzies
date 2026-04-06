@@ -61,6 +61,7 @@ alwaysApply: true
 - Any user-visible strings must come from Paraglide messages:
   - Use `m.*()` from `$lib/paraglide/messages`.
   - Translation source-of-truth keys live in `messages/<locale>.json` (e.g. `messages/en.json`), and are compiled by `npm run paraglide`.
+  - Do **not** import `$lib/paraglide/messages/<key>.js` — Paraglide compiles to the barrel only; those paths break Vite/SSR. If TypeScript lags on new keys, use `const msg = m as Record<string, (inputs?: object) => string>` (in `<script lang="ts">`) and `msg.your_key()`.
 
 ## Data CRUD flow (strict contract)
 - `(public|private)/.../+page.svelte` must call HTTP endpoints under `src/routes/api/.../+server.ts`.

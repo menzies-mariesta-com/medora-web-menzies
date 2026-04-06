@@ -9,6 +9,7 @@ import type {
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, eq, ne } from 'drizzle-orm';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 export type DiagnosisWithType = DiagnosisSchema & {
 	diagnosisType: DiagnosisTypeSchema | null;
@@ -68,6 +69,7 @@ export const createDiagnosis = command(
 	async (
 		payload: DiagnosisSchemaInsert
 	): Promise<DiagnosisSchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const [row] = await ensureDb()
 			.insert(table.diagnosisTable)
 			.values(payload)
@@ -92,6 +94,7 @@ export const updateDiagnosis = command(
 			.where(eq(table.diagnosisTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Diagnosis not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		const [row] = await ensureDb()
 			.update(table.diagnosisTable)
 			.set(data)
@@ -113,6 +116,7 @@ export const deleteDiagnosis = command(
 			.where(eq(table.diagnosisTable.id, id))
 			.limit(1);
 		if (!existing) throw new Error('Diagnosis not found');
+		await assertVisitNotClinicallySigned(existing.visitId);
 		await ensureDb()
 			.update(table.diagnosisTable)
 			.set({ statusId: StatusEnum.INACTIVE })

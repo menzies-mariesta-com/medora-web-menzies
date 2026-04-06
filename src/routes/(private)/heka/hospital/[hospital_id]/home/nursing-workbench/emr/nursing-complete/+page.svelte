@@ -677,11 +677,7 @@
 	{:else}
 		<DaisyUiCard>
 			<div class="p-3">
-				{#if isLoading && rows.length === 0}
-					<div class="flex min-h-32 items-center justify-center">
-						<DaisyUiLoading className="d-loading-lg" />
-					</div>
-				{:else if !visit}
+				{#if !visit}
 					<DaisyUiAlert
 						type={StatusColorEnum.WARNING}
 						message="Visit not found."
@@ -729,7 +725,7 @@
 						</div>
 					</div>
 
-					{#if rows.length === 0}
+					{#if rows.length === 0 && !isLoading}
 						<DaisyUiAlert
 							type={StatusColorEnum.INFO}
 							message="No service items found for this visit yet."

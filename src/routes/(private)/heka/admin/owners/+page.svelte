@@ -2,7 +2,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		deleteUser,
 		getUsersByRolePaginated
@@ -209,9 +208,7 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading}
-				<DaisyUiLoading className="py-8" />
-			{:else if owners.length === 0}
+			{#if owners.length === 0 && !isLoading}
 				<p class="py-8 text-center text-base-content/70">
 					{m.no_owners_yet()}
 				</p>

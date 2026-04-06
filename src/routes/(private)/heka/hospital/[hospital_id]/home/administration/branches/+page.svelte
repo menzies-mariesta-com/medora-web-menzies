@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
 	import {
 		getBranchesByHospitalIdPaginated,
@@ -218,9 +217,7 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading}
-				<DaisyUiLoading className="py-8" />
-			{:else if branches.length === 0}
+			{#if branches.length === 0 && !isLoading}
 				<p class="py-8 text-center text-base-content/70">
 					{m.no_branches_yet()}
 				</p>

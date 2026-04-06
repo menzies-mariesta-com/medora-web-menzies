@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import ObservationCardTable from '$lib/component/own/global/private/heka/observation/ObservationCardTable.svelte';
 	import ObservationStubCard from '$lib/component/own/global/private/heka/observation/ObservationStubCard.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
@@ -23,7 +22,12 @@
 	import { ObservationFormEntryDeleteConfirmDialogState } from '$lib/state/observation-form-entry-delete-confirm-dialog.state.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import {
+		getPatientVisitById,
+		signPatientVisitClinical
+	} from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import { VisitState } from '$lib/state/visit.state.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import {
 		getPatientAllergiesByPatientIdWithRelationsPaginated,
 		getPatientAllergiesByPatientIdWithRelations,
@@ -62,6 +66,7 @@
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	type OrderDetailVisitRow = ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -85,6 +90,10 @@
 			: ''
 	);
 
+	const clinicalVisitReadOnly = $derived(
+		VisitState.isClinicalVisitReadOnly
+	);
+
 	let visitRow = $state<Awaited<
 		ReturnType<typeof getPatientVisitById>
 	> | null>(null);
@@ -102,6 +111,7 @@
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
+	let isSigningClinical = $state(false);
 	/** Loading only the allergy table (nursing OPD–style patient-wide list). */
 	let isLoadingAllergies = $state(false);
 	let mounted = $state(false);
@@ -461,6 +471,35 @@
 		})();
 	});
 
+	async function handleSaveAsSigned() {
+		if (!visitId) return;
+		const result = await dialogService.open({
+			title: m.observation_save_as_signed(),
+			message: m.observation_save_as_signed_confirm(),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!result.confirmed) return;
+		isSigningClinical = true;
+		try {
+			const row = await signPatientVisitClinical({ visitId });
+			VisitState.setClinicalSignedAtFromVisit(
+				row.clinicalSignedAt ?? new Date().toISOString()
+			);
+			await refreshAllForVisit();
+			toastService.addToast(
+				m.observation_save_as_signed_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (err) {
+			toastService.addErrorToast(
+				'Could not save this visit as signed',
+				err
+			);
+		} finally {
+			isSigningClinical = false;
+		}
+	}
+
 	async function openCaseSheetInfo() {
 		await dialogService.open({
 			title: m.observation_emr_casesheet_stub_title(),
@@ -497,7 +536,7 @@
 			{
 				id: 'visitNo',
 				header: 'Visit No',
-				widthClass: 'w-40',
+				widthClass: TableRowEnum.VISIT_NO_WIDTH,
 				filterable: true,
 				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
 			},
@@ -610,6 +649,15 @@
 			widthClass: 'w-20 min-w-[5rem]',
 			filterable: false,
 			format: (_value, row) => formatVital(row.weight)
+		},
+		{
+			id: 'bmi',
+			header: m.emr_vital_bmi(),
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.bmi),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bmi, 'bmi' as VitalKey)
 		},
 		{
 			id: 'bp',
@@ -1387,23 +1435,30 @@
 			message={m.observation_emr_choose_visit()}
 			className="z-0"
 		/>
-	{:else if isLoadingVisit && !visitRow}
-		<div class="flex min-h-32 items-center justify-center">
-			<DaisyUiLoading className="d-loading-lg" />
-		</div>
-	{:else if !visitRow}
+	{:else if !visitRow && !isLoadingVisit}
 		<DaisyUiAlert
 			type={StatusColorEnum.WARNING}
 			message={m.observation_emr_visit_not_found()}
 			className="z-0"
 		/>
 	{:else}
+		<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
+			{#if !clinicalVisitReadOnly}
+				<DaisyUiButton
+					className="d-btn-warning d-btn-sm"
+					disabled={isSigningClinical || isLoadingVisit}
+					onClick={handleSaveAsSigned}
+				>
+					{isSigningClinical ? '…' : m.observation_save_as_signed()}
+				</DaisyUiButton>
+			{/if}
+		</div>
 		<div class="observation-emr-grid">
 			<ObservationCardTable
 				title={m.observation_emr_chief_complaint()}
 				rows={chiefComplaintEntries}
 				columns={formEntryColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}
 				moveToLabel={m.observation_emr_patient_condition()}
@@ -1422,7 +1477,7 @@
 				title={m.observation_emr_patient_condition()}
 				rows={patientConditionEntries}
 				columns={formEntryColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}
 				moveToLabel={m.observation_emr_chief_complaint()}
@@ -1441,7 +1496,7 @@
 				title={m.observation_emr_diagnosis()}
 				rows={visitDiagnoses}
 				columns={diagnosisColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage={m.observation_emr_diagnosis_empty()}
@@ -1457,7 +1512,7 @@
 				title={m.observation_emr_allergies()}
 				rows={allergies}
 				columns={allergyColumns}
-				isLoading={isLoadingGrid || isLoadingAllergies}
+				isLoading={isLoadingGrid || isLoadingAllergies || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				enableColumnFilters={true}
@@ -1504,7 +1559,7 @@
 				tableWrapClassName="max-h-96 min-h-0"
 				rows={vitals}
 				columns={vitalColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage="No vitals for this visit."
@@ -1520,7 +1575,7 @@
 				title={m.observation_emr_order_history()}
 				rows={orderLines}
 				columns={orderColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				showRowActions={false}
 				addButtonVariant="redirect"
@@ -1541,7 +1596,7 @@
 				title={m.observation_emr_document_history()}
 				rows={documents}
 				columns={documentColumns}
-				isLoading={isLoadingGrid}
+				isLoading={isLoadingGrid || isLoadingVisit}
 				showRowActions={false}
 				addButtonVariant="none"
 				showRefreshButton={true}

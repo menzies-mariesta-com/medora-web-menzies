@@ -19,6 +19,7 @@ import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { and, count, eq, ne, ilike, or, sql } from 'drizzle-orm';
 import { StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { error } from '@sveltejs/kit';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 const BRANCH_ALL_VALUE = '__all__';
 
 export type VisitStatusCode = 'open' | 'vital' | 'seen' | 'closed';
@@ -361,6 +362,11 @@ export const createPatientVisit = command(
 		if (!row) throw new Error('Insert failed');
 
 		getPatientVisit().refresh();
+		getPatientVisitWithRelations().refresh();
+		getPatientVisitById({ id: row.id }).refresh();
+		getPatientVisitByIdWithRelations({ id: row.id }).refresh();
+		// EMR visit list dialog uses this query; without refresh, new check-in visits stay invisible until reload.
+		getPatientVisitPaginatedForEmr().refresh();
 		return row;
 	}
 );
@@ -372,6 +378,8 @@ export const updatePatientVisit = command(
 		payload: { id: number } & PatientVisitSchemaUpdate
 	): Promise<PatientVisitSchema> => {
 		const { id, ...rest } = payload;
+
+		await assertVisitNotClinicallySigned(id);
 
 		// Enforce up-to-down progression for status_tagging_id when it is
 		// explicitly provided by the caller:
@@ -431,6 +439,50 @@ export const updatePatientVisit = command(
 	}
 );
 
+/** One-way: mark visit as clinically signed from Observation EMR; locks visit-scoped edits. */
+export const signPatientVisitClinical = command(
+	'unchecked' as const,
+	async ({
+		visitId
+	}: {
+		visitId: number;
+	}): Promise<PatientVisitSchema> => {
+		const [cur] = await ensureDb()
+			.select({
+				clinicalSignedAt: table.patientVisitTable.clinicalSignedAt
+			})
+			.from(table.patientVisitTable)
+			.where(eq(table.patientVisitTable.id, visitId))
+			.limit(1);
+		if (!cur) throw new Error('Visit not found');
+		if (
+			cur.clinicalSignedAt != null &&
+			String(cur.clinicalSignedAt).trim() !== ''
+		) {
+			throw new Error('This visit is already saved as signed.');
+		}
+
+		const visitStatusTagging = await getVisitStatusTaggingIds();
+		const [row] = await ensureDb()
+			.update(table.patientVisitTable)
+			.set({
+				clinicalSignedAt: sql`now()`,
+				...(visitStatusTagging.closedId != null
+					? { statusTaggingId: visitStatusTagging.closedId }
+					: {})
+			})
+			.where(eq(table.patientVisitTable.id, visitId))
+			.returning();
+		if (!row) throw new Error('Update failed');
+
+		getPatientVisit().refresh();
+		getPatientVisitById({ id: visitId }).refresh();
+		getPatientVisitByIdWithRelations({ id: visitId }).refresh();
+		getPatientVisitPaginatedForEmr().refresh();
+		return row;
+	}
+);
+
 /**
  * Doctor selects a visit in the Visit List dialog:
  * - sets patient_visit.status_tagging_id to "Seen"
@@ -483,6 +535,7 @@ export const getPatientVisitPaginatedForEmr = query(
 	async (
 		params?: PaginationParams & {
 			hospitalId?: string;
+			visitNo?: string;
 			patientName?: string;
 			patientCode?: string;
 			hospitalName?: string;
@@ -495,9 +548,10 @@ export const getPatientVisitPaginatedForEmr = query(
 		const { page, pageSize, limit, offset } =
 			normalizePagination(params);
 
-		let whereExpr: any = ne(
-			table.patientVisitTable.statusId,
-			StatusEnum.DELETED
+		// Hide soft-deleted and inactive (e.g. appointment cancel after check-in) visits.
+		let whereExpr: any = and(
+			ne(table.patientVisitTable.statusId, StatusEnum.DELETED),
+			ne(table.patientVisitTable.statusId, StatusEnum.INACTIVE)
 		);
 
 		// Hospital filter
@@ -540,6 +594,15 @@ export const getPatientVisitPaginatedForEmr = query(
 		}
 
 		// Specific column filters (each filters only its own field)
+		const visitNoTerm = params?.visitNo?.trim();
+		if (visitNoTerm) {
+			const pattern = `%${visitNoTerm}%`;
+			whereExpr = and(
+				whereExpr,
+				ilike(table.patientVisitTable.visitNo, pattern)
+			);
+		}
+
 		const patientCodeTerm = params?.patientCode?.trim();
 		if (patientCodeTerm) {
 			const pattern = `%${patientCodeTerm}%`;

@@ -15,8 +15,11 @@
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import {
+		computeBmiFromCmKg,
 		getVitalPlaceholder,
+		toNumber,
 		vitalInputClass
 	} from '$lib/config/vital.config';
 
@@ -33,6 +36,9 @@
 	let isSubmitting = $state(false);
 	let height = $state('');
 	let weight = $state('');
+	let bmi = $state('');
+	/** When true, height/weight changes do not overwrite the BMI field (manual entry or loaded override). */
+	let bmiUserOverridden = $state(false);
 	let bpSystolic = $state('');
 	let bpDiastolic = $state('');
 	let pulse = $state('');
@@ -94,6 +100,22 @@
 				if (v) {
 					height = asStr(v.height);
 					weight = asStr(v.weight);
+					const hNum = toNumber(v.height);
+					const wNum = toNumber(v.weight);
+					const calc = computeBmiFromCmKg(hNum, wNum);
+					const stored = toNumber(v.bmi);
+					if (stored != null) {
+						bmi = String(stored);
+						bmiUserOverridden =
+							calc == null ||
+							Math.abs(stored - calc) > 0.051;
+					} else if (calc != null) {
+						bmi = String(calc);
+						bmiUserOverridden = false;
+					} else {
+						bmi = '';
+						bmiUserOverridden = false;
+					}
 					bpSystolic = asStr(v.bpSystolic);
 					bpDiastolic = asStr(v.bpDiastolic);
 					pulse = asStr(v.pulse);
@@ -116,6 +138,28 @@
 		}
 	});
 
+	$effect(() => {
+		void height;
+		void weight;
+		if (bmiUserOverridden) return;
+		const hNum = toNumber(height);
+		const wNum = toNumber(weight);
+		const calc = computeBmiFromCmKg(hNum, wNum);
+		bmi = calc != null ? String(calc) : '';
+	});
+
+	function onBmiManualInput() {
+		bmiUserOverridden = true;
+	}
+
+	function useCalculatedBmi() {
+		bmiUserOverridden = false;
+		const hNum = toNumber(height);
+		const wNum = toNumber(weight);
+		const calc = computeBmiFromCmKg(hNum, wNum);
+		bmi = calc != null ? String(calc) : '';
+	}
+
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (isSubmitting) return;
@@ -137,6 +181,7 @@
 			asStr(spO2).trim() ||
 			asStr(respiration).trim() ||
 			asStr(rbs).trim() ||
+			asStr(bmi).trim() ||
 			asStr(symptom).trim() ||
 			asStr(description).trim() ||
 			asStr(remark).trim();
@@ -175,6 +220,7 @@
 				: undefined,
 			rbs: parseDecimal(asStr(rbs)) ?? undefined,
 			rbsUnitId: asStr(rbs).trim() ? UnitEnum.MG_DL : undefined,
+			bmi: parseDecimal(asStr(bmi)) ?? undefined,
 			symptom: asStr(symptom).trim() || undefined,
 			description: asStr(description).trim() || undefined,
 			remark: asStr(remark).trim() || undefined,
@@ -268,6 +314,37 @@
 					min="0"
 					step="any"
 				/>
+			</div>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<DaisyUiLabel forText="vital-bmi" className="shrink-0 sm:w-36 pt-2"
+				>{m.emr_vital_bmi()}</DaisyUiLabel
+			>
+			<div
+				class="flex min-w-0 max-w-md flex-1 flex-col gap-2 sm:flex-row sm:items-center"
+			>
+				<DaisyUiInputField
+					id="vital-bmi"
+					bind:value={bmi}
+					inputType="number"
+					inputPlaceholderText={getVitalPlaceholder(VitalEnum.BMI)}
+					min="0"
+					step="any"
+					className={vitalInputClass(bmi, VitalEnum.BMI)}
+					oninput={onBmiManualInput}
+				/>
+				<DaisyUiButton
+					type="button"
+					className="d-btn-ghost d-btn-sm shrink-0 whitespace-nowrap"
+					disabled={isSubmitting ||
+						!toNumber(height) ||
+						!toNumber(weight)}
+					onClick={useCalculatedBmi}
+				>
+					{m.emr_vital_bmi_use_calculated()}
+				</DaisyUiButton>
 			</div>
 		</div>
 		<div

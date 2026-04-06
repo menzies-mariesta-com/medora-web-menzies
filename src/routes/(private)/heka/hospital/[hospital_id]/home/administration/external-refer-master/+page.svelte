@@ -14,7 +14,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
 	import type { ExternalReferWithRelations } from '$lib/tool/remote/table/information-table/external-refer.http.tool.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
@@ -247,12 +246,7 @@
 	</DaisyUiButton>
 </div>
 
-{#if isLoading && !referResult}
-	<div class="flex items-center justify-center">
-		<DaisyUiLoading className="d-loading-xl" />
-	</div>
-{:else}
-	<div class="{TableEnum.HEIGHT} overflow-auto">
+<div class="{TableEnum.HEIGHT} overflow-auto">
 		<MariTable
 			rows={referList}
 			columns={referColumns}
@@ -317,7 +311,6 @@
 			{/snippet}
 		</MariTable>
 	</div>
-{/if}
 
 {#if modalState}
 	<LExternalReferMasterModal {modalState} onClose={closeModal} />

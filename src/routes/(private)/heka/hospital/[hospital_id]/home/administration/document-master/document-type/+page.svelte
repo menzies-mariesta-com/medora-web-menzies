@@ -2,7 +2,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -278,12 +277,7 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading && !docTypeResult}
-				<div class="flex items-center justify-center py-8">
-					<DaisyUiLoading className="d-loading-xl" />
-				</div>
-			{:else}
-				<div class="{TableEnum.HEIGHT} overflow-auto">
+			<div class="{TableEnum.HEIGHT} overflow-auto">
 					<MariTable
 						rows={docTypeList}
 						{columns}
@@ -343,7 +337,6 @@
 						{/snippet}
 					</MariTable>
 				</div>
-			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

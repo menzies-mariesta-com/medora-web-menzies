@@ -1,7 +1,6 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -297,7 +296,11 @@
 
 	function handleFormatHtmlClick() {
 		documentTextInput = formatHtmlForEditor(documentTextInput);
-		toastService.addToast('HTML formatted', StatusColorEnum.SUCCESS);
+		toastService.addToast(
+			'Document HTML formatted',
+			StatusColorEnum.SUCCESS,
+			'Indentation and line breaks were normalized so the editor is easier to read.'
+		);
 	}
 
 	let tableFilters = $state<Record<string, string>>({});
@@ -404,12 +407,7 @@
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 
-		{#if isLoading && !documentResult}
-			<div class="flex items-center justify-center">
-				<DaisyUiLoading className="d-loading-xl" />
-			</div>
-		{:else}
-			<DaisyUiCard>
+		<DaisyUiCard>
 				<DaisyUiCardBody>
 					<div class="{TableEnum.HEIGHT} overflow-auto">
 						<MariTable
@@ -484,7 +482,6 @@
 					</div>
 				</DaisyUiCardBody>
 			</DaisyUiCard>
-		{/if}
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody>

@@ -8,6 +8,8 @@
 export const VisitState = (() => {
 	let visitId = $state('');
 	let patientName = $state('');
+	/** ISO timestamp from `patient_visit.clinical_signed_at` when the selected visit is locked. */
+	let clinicalSignedAt = $state<string | null>(null);
 
 	if (typeof window !== 'undefined') {
 		const storedVisit = window.sessionStorage.getItem('heka_visitId');
@@ -36,6 +38,20 @@ export const VisitState = (() => {
 				window.sessionStorage.setItem('heka_patientName', v);
 		},
 
+		get clinicalSignedAt() {
+			return clinicalSignedAt;
+		},
+
+		/** Call when `getPatientVisitByIdWithRelations` (or equivalent) loads the current visit row. */
+		setClinicalSignedAtFromVisit(iso: string | null | undefined) {
+			const next = iso == null || String(iso).trim() === '' ? null : String(iso);
+			clinicalSignedAt = next;
+		},
+
+		get isClinicalVisitReadOnly() {
+			return clinicalSignedAt != null && clinicalSignedAt !== '';
+		},
+
 		select(data: { visitId: number | string; patientName: string }) {
 			visitId = String(data.visitId);
 			patientName = data.patientName;
@@ -51,6 +67,7 @@ export const VisitState = (() => {
 		reset() {
 			visitId = '';
 			patientName = '';
+			clinicalSignedAt = null;
 			if (typeof window !== 'undefined') {
 				window.sessionStorage.removeItem('heka_visitId');
 				window.sessionStorage.removeItem('heka_patientName');
