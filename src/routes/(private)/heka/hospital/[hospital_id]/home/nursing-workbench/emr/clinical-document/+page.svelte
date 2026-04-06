@@ -321,14 +321,20 @@
 			</div>
 		</DaisyUiCard>
 	{:else}
-		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-			{#if isLoading && documents.length === 0}
-				<div
-					class="flex items-center justify-center py-12 lg:col-span-3"
-				>
-					<DaisyUiLoading className="d-loading-lg" />
-				</div>
-			{:else}
+		<div
+			class="grid grid-cols-1 gap-4 lg:grid-cols-3"
+			class:opacity-60={isLoading}
+			class:pointer-events-none={isLoading}
+			aria-busy={isLoading}
+		>
+				{#if isLoading}
+					<div
+						class="no-print flex items-center gap-2 lg:col-span-3 text-sm text-base-content/70"
+					>
+						<DaisyUiLoading className="d-loading-sm" />
+						Loading documents…
+					</div>
+				{/if}
 				<!-- Consent Forms -->
 				<DaisyUiCard className="bg-base-100">
 					<div class="border-b border-base-300 p-4">
@@ -472,7 +478,6 @@
 						{/if}
 					</ul>
 				</DaisyUiCard>
-			{/if}
 		</div>
 	{/if}
 </div>

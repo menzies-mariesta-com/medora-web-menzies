@@ -395,7 +395,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 <div class={rootClass}>
 	<!-- Top controls: per page, pagination, summary, refresh (does not scroll) -->
 	<div
-		class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+		class="mari-table-toolbar flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
@@ -500,7 +500,9 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 				className="d-table d-table-zebra d-table-sm w-max min-w-full"
 			>
 				<DaisyUiTableHeader>
-					<tr class="sticky top-0 z-30 bg-base-200">
+					<tr
+						class="mari-table-header-filters sticky top-0 z-30 bg-base-200"
+					>
 						{#if hasActionsColumn}
 							<th
 								class="px-1 text-left whitespace-nowrap"

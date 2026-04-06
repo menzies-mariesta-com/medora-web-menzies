@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import {
 		getUserGroupPaginated,
 		deleteUserGroup,
@@ -194,10 +193,7 @@
 
 	<DaisyUiCard>
 		<DaisyUiCardBody>
-			{#if isLoading && groups.length === 0}
-				<DaisyUiLoading className="py-8" />
-			{:else}
-				<div class={TableEnum.HEIGHT}>
+			<div class={TableEnum.HEIGHT}>
 					<MariTable
 						rows={groups}
 						columns={userGroupColumns}
@@ -282,7 +278,6 @@
 						</DaisyUiButton>
 					</div>
 				{/if}
-			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

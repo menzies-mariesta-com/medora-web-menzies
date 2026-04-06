@@ -929,6 +929,11 @@ export const patientVisitTable = pgTable('patient_visit', {
 	chiefComplaint: text('chief_complaint'),
 	patientCondition: text('patient_condition'),
 	diagnosisNotes: text('diagnosis_notes'),
+	/** Set once from Observation EMR “Save as signed”; locks visit-scoped clinical edits across Observation / Nursing / CPOE. */
+	clinicalSignedAt: timestamp('clinical_signed_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
 	...timestamps
 });
 
@@ -975,6 +980,8 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	),
 	rbs: decimal('rbs', { precision: 10, scale: 2 }),
 	rbsUnitId: integer('rbs_unit_id').references(() => unitTable.id),
+	/** Body mass index (kg/m²); may be calculated from height (cm) and weight (kg) or entered manually. */
+	bmi: decimal('bmi', { precision: 10, scale: 2 }),
 	symptom: text('symptom'),
 	description: text('description'),
 	remark: text('remark'),

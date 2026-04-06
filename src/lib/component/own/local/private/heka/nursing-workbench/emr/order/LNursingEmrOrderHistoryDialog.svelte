@@ -2,7 +2,6 @@
 	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MariTable, {
 		type MariTableColumn
@@ -16,6 +15,7 @@
 		orderNo: string | null;
 		advisingDoctorName: string | null;
 		serviceName: string;
+		subCategoryName: string;
 	};
 
 	const { open, onClose, items, isLoading, pageSizeStr, onDelete } =
@@ -51,20 +51,20 @@
 			format: (_value, row) => row.serviceName || '–'
 		},
 		{
+			id: 'subCategoryName',
+			header: 'Sub category',
+			widthClass: 'w-48',
+			filterable: false,
+			format: (_value, row) =>
+				row.subCategoryName?.trim() ? row.subCategoryName : '–'
+		},
+		{
 			id: 'instruction',
 			header: 'Description',
 			widthClass: 'w-64',
 			filterable: false,
 			format: (_value, row) =>
-				(row.instruction as string | null | undefined)?.trim() ||
-				`Service ${row.serviceId ?? ''}`
-		},
-		{
-			id: 'serviceAmount',
-			header: 'Service Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
+				(row.instruction as string | null | undefined)?.trim() || '–'
 		},
 		{
 			id: 'serviceUnit',
@@ -110,13 +110,6 @@
 						: row.statusId === StatusEnum.DELETED
 							? 'Deleted'
 							: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'amountDisplay',
-			header: 'Amount',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
 		}
 	];
 </script>
@@ -138,11 +131,7 @@
 					Close
 				</DaisyUiButton>
 			</div>
-			{#if isLoading}
-				<div class="flex min-h-24 items-center justify-center">
-					<DaisyUiLoading className="d-loading-lg" />
-				</div>
-			{:else if items.length === 0}
+			{#if items.length === 0 && !isLoading}
 				<p class="text-sm text-base-content/70">
 					No service items for this visit yet.
 				</p>

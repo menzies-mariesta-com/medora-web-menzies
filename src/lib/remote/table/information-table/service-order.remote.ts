@@ -14,6 +14,7 @@ import type {
 import { normalizePagination } from '$lib/remote/table/pagination-type';
 import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
 import { and, count, eq, ne } from 'drizzle-orm';
+import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.server';
 
 // get all (optionally filtered by branchId/visitId/status/id)
 export const getServiceOrder = query(
@@ -177,6 +178,7 @@ export const createServiceOrder = command(
 	async (
 		payload: ServiceOrderSchemaInsert
 	): Promise<ServiceOrderSchema> => {
+		await assertVisitNotClinicallySigned(payload.visitId);
 		const [row] = await ensureDb()
 			.insert(table.serviceOrderTable)
 			.values(payload)
@@ -199,6 +201,13 @@ export const updateServiceOrder = command(
 		payload: ServiceOrderSchemaUpdate & { id: number }
 	): Promise<ServiceOrderSchema> => {
 		const { id, ...rest } = payload;
+		const [existingOrd] = await ensureDb()
+			.select({ visitId: table.serviceOrderTable.visitId })
+			.from(table.serviceOrderTable)
+			.where(eq(table.serviceOrderTable.id, id))
+			.limit(1);
+		if (!existingOrd) throw new Error('Service order not found');
+		await assertVisitNotClinicallySigned(existingOrd.visitId);
 		const [row] = await ensureDb()
 			.update(table.serviceOrderTable)
 			.set(rest as ServiceOrderSchemaUpdate)
@@ -216,6 +225,13 @@ export const updateServiceOrder = command(
 export const deleteServiceOrder = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existingOrd] = await ensureDb()
+			.select({ visitId: table.serviceOrderTable.visitId })
+			.from(table.serviceOrderTable)
+			.where(eq(table.serviceOrderTable.id, id))
+			.limit(1);
+		if (existingOrd)
+			await assertVisitNotClinicallySigned(existingOrd.visitId);
 		await ensureDb()
 			.update(table.serviceOrderTable)
 			.set({ statusId: StatusEnum.DELETED })
@@ -230,6 +246,13 @@ export const deleteServiceOrder = command(
 export const deleteServiceOrderComplete = command(
 	'unchecked' as const,
 	async ({ id }: { id: number }): Promise<void> => {
+		const [existingOrd] = await ensureDb()
+			.select({ visitId: table.serviceOrderTable.visitId })
+			.from(table.serviceOrderTable)
+			.where(eq(table.serviceOrderTable.id, id))
+			.limit(1);
+		if (existingOrd)
+			await assertVisitNotClinicallySigned(existingOrd.visitId);
 		await ensureDb()
 			.delete(table.serviceOrderTable)
 			.where(eq(table.serviceOrderTable.id, id));

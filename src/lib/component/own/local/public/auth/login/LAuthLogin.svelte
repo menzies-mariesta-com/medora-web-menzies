@@ -75,10 +75,7 @@
 		isLoading = false;
 
 		if (error) {
-			toastService.addToast(
-				error.message ?? m.invalid_email_password(),
-				StatusColorEnum.ERROR
-			);
+			toastService.addErrorToast('Sign-in failed', error);
 			return;
 		}
 		if (data) {
