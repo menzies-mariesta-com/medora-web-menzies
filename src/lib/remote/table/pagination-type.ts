@@ -24,11 +24,19 @@ export type PaginationParams = {
 	patientPhonePrimary?: string;
 	/** Optional user group filters (name, status) for server-side filtering. */
 	name?: string;
+	/** Optional code filter (e.g. department code). */
+	code?: string;
+	/** Optional item code filter (Item Master SKU / code). */
+	itemCode?: string;
+	/** Optional barcode filter (Item Master; partial match). */
+	barcode?: string;
 	statusId?: number;
 	/** Optional hospital id to scope list data (e.g. under /heka/hospital/[id]/home/). */
 	hospitalId?: string;
 	/** Optional branch id to scope list data inside a hospital. */
 	branchId?: string;
+	/** Optional category id (e.g. Item Master supply category). */
+	categoryId?: number;
 	/** Optional cache-busting key; when set, bypasses client cache (e.g. after edit). */
 	_t?: number;
 };

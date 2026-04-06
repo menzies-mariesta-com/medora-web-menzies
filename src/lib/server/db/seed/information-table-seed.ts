@@ -133,7 +133,13 @@ export async function seedInformationTables() {
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/heka/home/administration/prefix-configuration', 9),
-			(17, 'Financial Year', 1, 1, null, '/heka/home/administration/financial-year', 8)
+			(17, 'Financial Year', 1, 1, null, '/heka/home/administration/financial-year', 8),
+
+			-- master department catalog; store per branch linked to user group XOR department
+			(18, 'Departments', 1, 1, null, '/heka/home/administration/departments', 10),
+			(19, 'Stores', 1, 1, null, '/heka/home/administration/stores', 11),
+
+			(20, 'Item Master', 1, 1, null, '/heka/home/administration/item-master', 12)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
 	type AnyPgColumn,
 	boolean,
+	check,
 	date,
 	decimal,
 	foreignKey,
@@ -13,6 +14,7 @@ import {
 	jsonb,
 	uuid,
 	unique,
+	uniqueIndex,
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
@@ -1070,6 +1072,47 @@ export const subCategoryTable = pgTable('sub_category', {
 	...timestamps
 });
 
+/**
+ * Inventory / supply item catalog. Category must be one of the Item Master rows in
+ * `category` (ids 11–13: General, Pharmacy, Medical Supply — see seed / migration).
+ */
+export const itemMasterTable = pgTable(
+	'item_master',
+	{
+		id: serial('id').primaryKey(),
+		itemName: varchar('item_name', { length: 512 }).notNull(),
+		categoryId: integer('category_id')
+			.notNull()
+			.references(() => categoryTable.id, { onDelete: 'restrict' }),
+		itemCode: varchar('item_code', { length: 128 }),
+		/** EAN/UPC/Code128 or internal barcode; unique when not null. */
+		barcode: varchar('barcode', { length: 128 }),
+		unitId: integer('unit_id').references(() => unitTable.id, {
+			onDelete: 'set null'
+		}),
+		description: text('description'),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('item_master_category_id_idx').on(t.categoryId),
+		index('item_master_item_name_idx').on(t.itemName),
+		index('item_master_status_id_idx').on(t.statusId),
+		index('item_master_barcode_idx').on(t.barcode),
+		uniqueIndex('item_master_barcode_unique')
+			.on(t.barcode)
+			.where(sql`${t.barcode} IS NOT NULL`),
+		check(
+			'item_master_category_supply_chk',
+			sql`(${t.categoryId}) IN (11, 12, 13)`
+		)
+	]
+);
+
 export const serviceItemTable = pgTable('service_item', {
 	id: serial('id').primaryKey(),
 	hospitalId: uuid('hospital_id')
@@ -1315,21 +1358,39 @@ export const opBillingLineTable = pgTable(
 	]
 );
 
-export const storeTable = pgTable('store', {
-	id: serial('id').primaryKey(),
-	branchId: uuid('branch_id')
-		.notNull()
-		.references(() => hospitalBranchTable.id, {
-			onDelete: 'cascade'
-		}),
-	storeName: varchar('store_name', { length: 512 }),
-	remark: text('remark'),
-	statusId: integer('status_id')
-		.references(() => statusTable.id)
-		.notNull()
-		.default(StatusEnum.ACTIVE),
-	...timestamps
-});
+export const storeTable = pgTable(
+	'store',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		/** Exactly one of `userGroupId` or `departmentId` must be set (DB CHECK). */
+		userGroupId: integer('user_group_id').references(
+			() => userGroupTable.id,
+			{ onDelete: 'restrict' }
+		),
+		departmentId: integer('department_id').references(
+			() => departmentTable.id,
+			{ onDelete: 'restrict' }
+		),
+		storeName: varchar('store_name', { length: 512 }),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		check(
+			'store_user_group_xor_department_chk',
+			sql`(((${t.userGroupId} IS NOT NULL)::int) + ((${t.departmentId} IS NOT NULL)::int)) = 1`
+		)
+	]
+);
 
 /** IT / helpdesk tickets submitted from the global support dialog. */
 export const supportTicketTable = pgTable('support_ticket', {
