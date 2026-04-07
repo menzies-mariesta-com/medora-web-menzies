@@ -4,10 +4,6 @@
 	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import {
-		createUserGroup,
-		updateUserGroup
-	} from '$lib/remote/table/information-table/user-group.remote';
 	import { UserGroupModalState } from '$lib/state/user-group-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -21,9 +17,9 @@
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 
-	const state = $derived(UserGroupModalState);
+	const modalState = $derived(UserGroupModalState);
 	const isEdit = $derived(
-		state.mode === 'edit' && state.editGroup != null
+		modalState.mode === 'edit' && modalState.editGroup != null
 	);
 
 	$effect(() => {
@@ -39,6 +35,10 @@
 		}
 	});
 
+	function apiUrl(hospitalId: string): string {
+		return `/api/heka/hospital/${hospitalId}/home/administration/user-group`;
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (isSubmitting) return;
@@ -49,7 +49,7 @@
 			);
 			return;
 		}
-		if (!state.hospitalId) {
+		if (!modalState.hospitalId) {
 			toastService.addToast(
 				'Hospital context is missing.',
 				StatusColorEnum.ERROR
@@ -61,22 +61,46 @@
 			: StatusEnum.INACTIVE;
 		isSubmitting = true;
 		try {
-			if (state.mode === 'create') {
-				await createUserGroup({
-					name: formName.trim(),
-					statusId,
-					hospitalId: state.hospitalId
+			const url = apiUrl(modalState.hospitalId);
+			if (modalState.mode === 'create') {
+				const res = await fetch(url, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					cache: 'no-store',
+					credentials: 'include',
+					body: JSON.stringify({
+						name: formName.trim(),
+						statusId
+					})
 				});
+				const text = await res.text().catch(() => '');
+				if (!res.ok) {
+					throw new Error(
+						text || `Request failed: ${res.status} ${res.statusText}`
+					);
+				}
 				toastService.addToast(
 					'User group created.',
 					StatusColorEnum.SUCCESS
 				);
-			} else if (state.editGroup) {
-				await updateUserGroup({
-					id: state.editGroup.id,
-					name: formName.trim(),
-					statusId
+			} else if (modalState.editGroup) {
+				const res = await fetch(url, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					cache: 'no-store',
+					credentials: 'include',
+					body: JSON.stringify({
+						id: modalState.editGroup.id,
+						name: formName.trim(),
+						statusId
+					})
 				});
+				const text = await res.text().catch(() => '');
+				if (!res.ok) {
+					throw new Error(
+						text || `Request failed: ${res.status} ${res.statusText}`
+					);
+				}
 				toastService.addToast(
 					'User group updated.',
 					StatusColorEnum.SUCCESS

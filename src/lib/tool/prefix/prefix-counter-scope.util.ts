@@ -6,6 +6,8 @@ export type PrefixCounterScopeFlags = {
 	includeBranch: boolean;
 	includeFinancialYear: boolean;
 	includeVisitType: boolean;
+	/** When true, append context `visitId` to scope key when the generator provides it. */
+	includeVisit: boolean;
 };
 
 /** Defaults when no `prefix_format` row exists (matches built-in purposes). */
@@ -16,18 +18,29 @@ export function defaultCounterScopeForPrefixKey(
 		return {
 			includeBranch: true,
 			includeFinancialYear: true,
-			includeVisitType: true
+			includeVisitType: true,
+			includeVisit: false
+		};
+	}
+	if (prefixKey === 'ORDER_NO') {
+		return {
+			includeBranch: false,
+			includeFinancialYear: false,
+			includeVisitType: false,
+			// Legacy: sequence 001, 002… per patient visit.
+			includeVisit: true
 		};
 	}
 	return {
 		includeBranch: false,
 		includeFinancialYear: true,
-		includeVisitType: false
+		includeVisitType: false,
+		includeVisit: false
 	};
 }
 
 export function defaultCounterScopeForStorageKey(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO'
+	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO'
 ): PrefixCounterScopeFlags {
 	return defaultCounterScopeForPrefixKey(storageKey);
 }
@@ -43,6 +56,11 @@ export function buildPrefixCounterScopeKey(params: {
 	financialYearId: number | null;
 	visitTypeId: number | null;
 	scope: PrefixCounterScopeFlags;
+	/**
+	 * When {@link PrefixCounterScopeFlags.includeVisit} is true and this is set
+	 * (e.g. service order creation passes visit id), scope key includes the visit.
+	 */
+	visitIdForScope?: number | null;
 }): string {
 	const b = params.scope.includeBranch ? (params.branchId ?? '') : '';
 	const fy = params.scope.includeFinancialYear
@@ -55,11 +73,19 @@ export function buildPrefixCounterScopeKey(params: {
 			? ''
 			: String(params.visitTypeId)
 		: '';
-	return [
+	const parts = [
 		params.hospitalId,
 		b,
 		fy,
 		params.prefixKey,
 		vt
-	].join('|');
+	];
+	if (
+		params.scope.includeVisit &&
+		params.visitIdForScope != null &&
+		Number.isFinite(params.visitIdForScope)
+	) {
+		parts.push(String(params.visitIdForScope));
+	}
+	return parts.join('|');
 }

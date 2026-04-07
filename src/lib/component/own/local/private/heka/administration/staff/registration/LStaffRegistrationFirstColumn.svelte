@@ -3,11 +3,10 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import type {
-		GenderSchema,
-		MaritalStatusSchema,
-		TitleSchema
-	} from '$lib/server/db/schema-type';
-	import type { string } from 'zod';
+		PatientRegGenderRow,
+		PatientRegMaritalStatusRow,
+		PatientRegTitleRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 
 	let {
 		titleData,
@@ -23,9 +22,9 @@
 		selectedMaritalStatusId = $bindable(),
 		emailDisabled = false
 	} = $props<{
-		titleData: TitleSchema[];
-		genderData: GenderSchema[];
-		maritalStatusData: MaritalStatusSchema[];
+		titleData: PatientRegTitleRow[];
+		genderData: PatientRegGenderRow[];
+		maritalStatusData: PatientRegMaritalStatusRow[];
 		selectedStaffCode?: string;
 		selectedTitleId?: string;
 		selectedFirstName?: string;

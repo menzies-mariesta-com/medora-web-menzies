@@ -9,27 +9,10 @@
 	import { page } from '$app/state';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import { getCountry } from '$lib/remote/table/master-table/country.remote';
-	import { getTitle } from '$lib/remote/table/master-table/title.remote';
-	import { getState } from '$lib/remote/table/master-table/state.remote';
-	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
-	import {
-		getExternalReferByIdWithRelations,
-		createExternalRefer,
-		updateExternalRefer
-	} from '$lib/remote/table/information-table/external-refer.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ReferTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import type { ExternalReferSchemaInsert } from '$lib/server/db/schema-type';
-	import type {
-		CountrySchema,
-		StateSchema,
-		CitySchema,
-		PostalCodeSchema
-	} from '$lib/server/db/schema-type';
 
 	type DialogMode = 'create' | 'view' | 'edit';
 
@@ -44,13 +27,36 @@
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
 
-	let countries = $state<Awaited<ReturnType<typeof getCountry>>>([]);
-	let titles = $state<Awaited<ReturnType<typeof getTitle>>>([]);
-	let states = $state<Awaited<ReturnType<typeof getState>>>([]);
-	let cities = $state<Awaited<ReturnType<typeof getCity>>>([]);
-	let postalCodes = $state<Awaited<ReturnType<typeof getPostalCode>>>(
-		[]
-	);
+	type CountryRow = {
+		id: number;
+		name: string | null;
+		code: string | null;
+		countryCallingCode: string | null;
+	};
+	type TitleRow = { id: number; name: string | null };
+	type StateRow = { id: number; name: string | null; countryId: number | null };
+	type CityRow = { id: number; name: string | null; code: string | null; stateId: number | null };
+	type PostalCodeRow = { id: number; value: unknown; cityId: number | null };
+	type ExternalReferRow = {
+		id: number;
+		titleId: number | null;
+		name: string | null;
+		address: string | null;
+		phoneCountryId: number | null;
+		phone: string | null;
+		email: string | null;
+		countryId: number | null;
+		stateId: number | null;
+		cityId: number | null;
+		postalCodeId: number | null;
+		statusId: number | null;
+	};
+
+	let countries = $state<CountryRow[]>([]);
+	let titles = $state<TitleRow[]>([]);
+	let states = $state<StateRow[]>([]);
+	let cities = $state<CityRow[]>([]);
+	let postalCodes = $state<PostalCodeRow[]>([]);
 
 	let titleId = $state('');
 	let name = $state('');
@@ -88,18 +94,17 @@
 	// Selected objects and filtered lists (one-by-one like staff registration)
 	const selectedCountry = $derived(
 		countries.find((c) => String(c.id) === countryId) ??
-			({} as CountrySchema)
+			({} as CountryRow)
 	);
 	const selectedState = $derived(
-		states.find((s) => String(s.id) === stateId) ??
-			({} as StateSchema)
+		states.find((s) => String(s.id) === stateId) ?? ({} as StateRow)
 	);
 	const selectedCity = $derived(
-		cities.find((c) => String(c.id) === cityId) ?? ({} as CitySchema)
+		cities.find((c) => String(c.id) === cityId) ?? ({} as CityRow)
 	);
 	const selectedPostalCode = $derived(
 		postalCodes.find((p) => String(p.id) === postalCodeId) ??
-			({} as PostalCodeSchema)
+			({} as PostalCodeRow)
 	);
 	const filteredStateData = $derived(
 		selectedCountry?.id
@@ -171,22 +176,30 @@
 	});
 
 	lifeCycle.onMount(async () => {
-		const [count, titlesData, st, cit, postal, refer] =
-			await Promise.all([
-				getCountry(),
-				getTitle(),
-				getState(),
-				getCity(),
-				getPostalCode(),
-				modalState.id != null
-					? getExternalReferByIdWithRelations({ id: modalState.id })
-					: Promise.resolve(null)
-			]);
-		countries = count;
-		titles = titlesData;
-		states = st;
-		cities = cit;
-		postalCodes = postal;
+		const hospitalId = page.params.hospital_id;
+		const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/external-refer-master`;
+
+		const metaRes = await fetch(`${baseUrl}?meta=1`, { method: 'GET' });
+		if (!metaRes.ok) throw new Error(await metaRes.text());
+		const meta = (await metaRes.json()) as {
+			countries: CountryRow[];
+			titles: TitleRow[];
+			states: StateRow[];
+			cities: CityRow[];
+			postalCodes: PostalCodeRow[];
+		};
+		countries = meta.countries ?? [];
+		titles = meta.titles ?? [];
+		states = meta.states ?? [];
+		cities = meta.cities ?? [];
+		postalCodes = meta.postalCodes ?? [];
+
+		let refer: ExternalReferRow | null = null;
+		if (modalState.id != null) {
+			const referRes = await fetch(`${baseUrl}?id=${modalState.id}`, { method: 'GET' });
+			if (!referRes.ok) throw new Error(await referRes.text());
+			refer = (await referRes.json()) as ExternalReferRow | null;
+		}
 		if (refer) {
 			titleId = refer.titleId != null ? String(refer.titleId) : '';
 			name = refer.name ?? '';
@@ -217,52 +230,53 @@
 		if (isView) return;
 		isSubmitting = true;
 		try {
+			const hospitalId = page.params.hospital_id;
+			const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/external-refer-master`;
 			if (isCreate) {
-				const payload: ExternalReferSchemaInsert = {
-					titleId: titleId ? parseInt(titleId, 10) : null,
-					name: name.trim() || null,
-					address: address.trim() || null,
-					phoneCountryId: phoneCountryId
-						? parseInt(phoneCountryId, 10)
-						: null,
-					phone: phone.trim() || null,
-					email: email.trim() || null,
-					referTypeId: ReferTypeEnum.EXTERNAL,
-					hospitalId: hospitalId,
-					countryId: countryId ? parseInt(countryId, 10) : null,
-					stateId: stateId ? parseInt(stateId, 10) : null,
-					cityId: cityId ? parseInt(cityId, 10) : null,
-					postalCodeId: postalCodeId
-						? parseInt(postalCodeId, 10)
-						: null,
-					statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
-				};
-				await createExternalRefer(payload);
+				const res = await fetch(baseUrl, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						titleId: titleId ? parseInt(titleId, 10) : null,
+						name: name.trim() || null,
+						address: address.trim() || null,
+						phoneCountryId: phoneCountryId ? parseInt(phoneCountryId, 10) : null,
+						phone: phone.trim() || null,
+						email: email.trim() || null,
+						referTypeId: ReferTypeEnum.EXTERNAL,
+						countryId: countryId ? parseInt(countryId, 10) : null,
+						stateId: stateId ? parseInt(stateId, 10) : null,
+						cityId: cityId ? parseInt(cityId, 10) : null,
+						postalCodeId: postalCodeId ? parseInt(postalCodeId, 10) : null,
+						statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
+					})
+				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'External refer created.',
 					StatusColorEnum.SUCCESS
 				);
 			} else if (isEdit && modalState.id != null) {
-				await updateExternalRefer({
-					id: modalState.id,
-					titleId: titleId ? parseInt(titleId, 10) : null,
-					name: name.trim() || null,
-					address: address.trim() || null,
-					phoneCountryId: phoneCountryId
-						? parseInt(phoneCountryId, 10)
-						: null,
-					phone: phone.trim() || null,
-					email: email.trim() || null,
-					referTypeId: ReferTypeEnum.EXTERNAL,
-					hospitalId: hospitalId,
-					countryId: countryId ? parseInt(countryId, 10) : null,
-					stateId: stateId ? parseInt(stateId, 10) : null,
-					cityId: cityId ? parseInt(cityId, 10) : null,
-					postalCodeId: postalCodeId
-						? parseInt(postalCodeId, 10)
-						: null,
-					statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
+				const res = await fetch(baseUrl, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						id: modalState.id,
+						titleId: titleId ? parseInt(titleId, 10) : null,
+						name: name.trim() || null,
+						address: address.trim() || null,
+						phoneCountryId: phoneCountryId ? parseInt(phoneCountryId, 10) : null,
+						phone: phone.trim() || null,
+						email: email.trim() || null,
+						referTypeId: ReferTypeEnum.EXTERNAL,
+						countryId: countryId ? parseInt(countryId, 10) : null,
+						stateId: stateId ? parseInt(stateId, 10) : null,
+						cityId: cityId ? parseInt(cityId, 10) : null,
+						postalCodeId: postalCodeId ? parseInt(postalCodeId, 10) : null,
+						statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
+					})
 				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'External refer updated.',
 					StatusColorEnum.SUCCESS

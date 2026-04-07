@@ -6,27 +6,23 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import type { DiagnosisWithType } from '$lib/remote/table/information-table/diagnosis.remote';
-	import type { PatientAllergyWithRelations } from '$lib/remote/table/information-table/patient-allergies.remote';
-	import type { PatientFormEntryWithRelations } from '$lib/remote/table/information-table/patient-form-entry.remote';
-	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
-	import { getServiceOrderDetailRowsForVisit } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import { getDiagnosesByVisitId } from '$lib/tool/remote/table/information-table/diagnosis.http.tool.svelte';
-	import { getPatientAllergiesByPatientIdWithRelations } from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
-	import {
-		getPatientFormEntriesByVisitIdAndFormCode,
-	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
-	import { getPatientVisitByIdWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import { getPatientVitalsByVisitId } from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
-	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
-	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
+	import type {
+		PatientDiagnosisListRow,
+		ServiceOrderDetailListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { m } from '$lib/paraglide/messages';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
-import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-import { getUserByIdWithStaff } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 
-	type OrderDetailVisitRow = ServiceOrderDetailSchema & {
+	// Refactor note: this page now fetches via mirrored `/api/heka/hospital/.../case-sheet`.
+	// Keep lightweight local types to avoid importing removed remote tool layers.
+	type PatientVisitWithRelations = any;
+	type PatientAllergyWithRelations = any;
+	type DiagnosisWithType = any;
+	type PatientFormEntryWithRelations = any;
+
+	type OrderDetailVisitRow = ServiceOrderDetailListRow & {
 		orderNo: string | null;
 		serviceName: string | null;
 	};
@@ -42,7 +38,7 @@ import { getUserByIdWithStaff } from '$lib/tool/remote/table/auth-table/user.htt
 
 	let visitRow = $state<PatientVisitWithRelations | null>(null);
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
-	let vitals = $state<PatientDiagnosisSchema[]>([]);
+	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
 	let visitDiagnoses = $state<DiagnosisWithType[]>([]);
 	let chiefComplaintEntries = $state<PatientFormEntryWithRelations[]>(
@@ -54,7 +50,6 @@ import { getUserByIdWithStaff } from '$lib/tool/remote/table/auth-table/user.htt
 
 	let isLoading = $state(false);
 	let mounted = $state(false);
-let userNameById = $state<Record<string, string>>({});
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	lifeCycleUtil.onMount(() => {
@@ -81,7 +76,7 @@ let userNameById = $state<Record<string, string>>({});
 		}
 	}
 
-	function getVitalDisplayDate(v: PatientDiagnosisSchema): string | null {
+	function getVitalDisplayDate(v: PatientDiagnosisListRow): string | null {
 		return v.vitalDateTime ?? v.createdAt ?? null;
 	}
 
@@ -92,9 +87,6 @@ let userNameById = $state<Record<string, string>>({});
 
 	function formatUserName(userId: string | null | undefined): string {
 		if (!userId) return '–';
-		const cached = userNameById[userId];
-		if (cached) return cached;
-		// Fallback to id until loaded
 		return userId;
 	}
 
@@ -128,7 +120,7 @@ let userNameById = $state<Record<string, string>>({});
 		return { enteredAt, enteredBy: enteredBy ?? null, updatedAt, updatedBy: updatedBy ?? null };
 	}
 
-	function vitalStatusLabel(row: PatientDiagnosisSchema): string {
+	function vitalStatusLabel(row: PatientDiagnosisListRow): string {
 		return row.statusId === StatusEnum.ACTIVE
 			? m.nursing_case_sheet_status_active()
 			: row.statusId === StatusEnum.INACTIVE
@@ -179,140 +171,30 @@ let userNameById = $state<Record<string, string>>({});
 		chiefComplaintEntries = [];
 		patientConditionEntries = [];
 		try {
-			let v: PatientVisitWithRelations | null = null;
-			try {
-				getPatientVisitByIdWithRelations({ id: visitId }).refresh();
-				v = await getPatientVisitByIdWithRelations({ id: visitId });
-			} catch {
-				v = null;
-			}
-			visitRow = v;
-			if (!v) {
-				allergies = [];
-				vitals = [];
-				orderLines = [];
-				visitDiagnoses = [];
-				chiefComplaintEntries = [];
-				patientConditionEntries = [];
+			if (!hospitalId) {
+				visitRow = null;
 				return;
 			}
 
-			const hospitalIdParam = v.hospitalId ?? hospitalId ?? '';
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet?visitId=${visitId}`
+			);
+			if (!res.ok) throw new Error(`Failed to load case sheet (${res.status})`);
+			const data = await res.json();
 
-			// Preload all distinct user ids referenced in this visit's data for name display.
-			const userIds = new Set<string>();
-
-			getPatientVitalsByVisitId({ visitId }).refresh();
-			getServiceOrderDetailRowsForVisit({ visitId }).refresh();
-			getDiagnosesByVisitId({ visitId }).refresh();
-			getPatientAllergiesByPatientIdWithRelations({
-				patientId: v.patientId
-			}).refresh();
-
-			await Promise.all([
-				(async () => {
-					const data =
-						await getPatientAllergiesByPatientIdWithRelations({
-							patientId: v.patientId
-						});
-					const scoped = hospitalIdParam
-						? data.filter(
-								(row: PatientAllergyWithRelations) =>
-									row.visit?.hospitalId === hospitalIdParam
-							)
-						: data;
-					allergies = scoped.filter(
-						(row: PatientAllergyWithRelations) =>
-							row.statusId === StatusEnum.ACTIVE
-					);
-					for (const row of allergies) {
-						if (row.createdBy) userIds.add(row.createdBy);
-						if (row.updatedBy) userIds.add(row.updatedBy);
-					}
-				})(),
-				(async () => {
-					vitals = await getPatientVitalsByVisitId({ visitId });
-					for (const row of vitals) {
-						if (row.createdBy) userIds.add(row.createdBy as string);
-						if (row.updatedBy) userIds.add(row.updatedBy as string);
-					}
-				})(),
-				(async () => {
-					orderLines = (await getServiceOrderDetailRowsForVisit({
-						visitId
-					})) as OrderDetailVisitRow[];
-					for (const row of orderLines) {
-						if (row.createdBy) userIds.add(row.createdBy as string);
-						if (row.updatedBy) userIds.add(row.updatedBy as string);
-					}
-				})(),
-				(async () => {
-					visitDiagnoses = await getDiagnosesByVisitId({
-						visitId
-					});
-					for (const row of visitDiagnoses) {
-						if (row.createdBy) userIds.add(row.createdBy as string);
-						if (row.updatedBy) userIds.add(row.updatedBy as string);
-					}
-				})(),
-				(async () => {
-					try {
-						getPatientFormEntriesByVisitIdAndFormCode({
-							visitId,
-							formCode: 'chief_complaint'
-						}).refresh();
-						getPatientFormEntriesByVisitIdAndFormCode({
-							visitId,
-							formCode: 'patient_condition'
-						}).refresh();
-						chiefComplaintEntries =
-							await getPatientFormEntriesByVisitIdAndFormCode({
-								visitId,
-								formCode: 'chief_complaint'
-							});
-						patientConditionEntries =
-							await getPatientFormEntriesByVisitIdAndFormCode({
-								visitId,
-								formCode: 'patient_condition'
-							});
-						for (const row of chiefComplaintEntries) {
-							if (row.createdBy) userIds.add(row.createdBy as string);
-							if (row.updatedBy) userIds.add(row.updatedBy as string);
-						}
-						for (const row of patientConditionEntries) {
-							if (row.createdBy) userIds.add(row.createdBy as string);
-							if (row.updatedBy) userIds.add(row.updatedBy as string);
-						}
-					} catch {
-						chiefComplaintEntries = [];
-						patientConditionEntries = [];
-					}
-				})()
-			]);
-
-			// Load names for all collected userIds in parallel and cache them.
-			if (userIds.size > 0) {
-				const entries: [string, string][] = [];
-				await Promise.all(
-					Array.from(userIds).map(async (id) => {
-						try {
-							const u = await getUserByIdWithStaff({ id });
-							if (!u) return;
-							const name =
-								u.staff?.firstName || u.name || id;
-							entries.push([id, name]);
-						} catch {
-							// ignore failures, keep id as fallback
-						}
-					})
-				);
-				if (entries.length > 0) {
-					userNameById = {
-						...userNameById,
-						...Object.fromEntries(entries)
-					};
-				}
-			}
+			visitRow = data.visitRow ?? null;
+			allergies = Array.isArray(data.allergies) ? data.allergies : [];
+			vitals = Array.isArray(data.vitals) ? data.vitals : [];
+			orderLines = Array.isArray(data.orderLines) ? data.orderLines : [];
+			visitDiagnoses = Array.isArray(data.visitDiagnoses)
+				? data.visitDiagnoses
+				: [];
+			chiefComplaintEntries = Array.isArray(data.chiefComplaintEntries)
+				? data.chiefComplaintEntries
+				: [];
+			patientConditionEntries = Array.isArray(data.patientConditionEntries)
+				? data.patientConditionEntries
+				: [];
 		} finally {
 			isLoading = false;
 		}

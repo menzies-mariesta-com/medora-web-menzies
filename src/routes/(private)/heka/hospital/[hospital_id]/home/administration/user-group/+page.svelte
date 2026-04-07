@@ -3,17 +3,11 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		getUserGroupPaginated,
-		deleteUserGroup,
-		type UserGroupSchema
-	} from '$lib/tool/remote/table/information-table/user-group.http.tool.svelte';
+	import type { StaffRegUserGroupRow } from '$lib/model/type/heka/staff-reg-ui.type';
 	import { UserGroupModalState } from '$lib/state/user-group-modal.state.svelte';
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
 	import UserGroupFormModal from '$lib/component/own/local/private/heka/administration/user-group/UserGroupFormModal.svelte';
 	import UserGroupPagesModal from '$lib/component/own/local/private/heka/administration/user-group/UserGroupPagesModal.svelte';
-	import type { StatusSchema } from '$lib/server/db/schema-type';
-	import { getStatus } from '$lib/tool/remote/table/master-table/status.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -41,18 +35,17 @@
 			: ''
 	);
 
-	let groups = $state<UserGroupSchema[]>([]);
+	let groups = $state<StaffRegUserGroupRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
-	let statusOptions = $state<StatusSchema[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const userGroupColumns: MariTableColumn<UserGroupSchema>[] = [
+	const userGroupColumns: MariTableColumn<StaffRegUserGroupRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
@@ -82,12 +75,15 @@
 					? 'Active'
 					: row.statusId === StatusEnum.INACTIVE
 						? 'Inactive'
-						: (statusOptions.find((s) => s.id === row.statusId)
-								?.name ?? String(row.statusId))
+						: String(row.statusId)
 		}
 	];
 
-	async function fetchGroups(forceRefresh = false) {
+	function apiUrl(path: string): string {
+		return `/api/heka/hospital/${hospitalId}/home/administration/user-group${path}`;
+	}
+
+	async function fetchGroups() {
 		if (!hospitalId) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
@@ -105,27 +101,49 @@
 						? parsedStatusId
 						: undefined
 			};
-			// After create/update/delete, invalidate cache then fetch so list updates
-			if (forceRefresh) {
-				await getUserGroupPaginated(params).refresh();
+			const url = new URL(apiUrl(''), window.location.origin);
+			url.searchParams.set('page', String(params.page ?? 1));
+			url.searchParams.set('pageSize', String(params.pageSize ?? 10));
+			if (params.name) url.searchParams.set('name', params.name);
+			if (typeof params.statusId === 'number')
+				url.searchParams.set('statusId', String(params.statusId));
+
+			const res = await fetch(url.toString(), {
+				method: 'GET',
+				headers: { accept: 'application/json' },
+				cache: 'no-store',
+				credentials: 'include'
+			});
+			const text = await res.text().catch(() => '');
+			if (!res.ok) {
+				throw new Error(
+					text || `Request failed: ${res.status} ${res.statusText}`
+				);
 			}
-			const result = await getUserGroupPaginated(params);
-			groups = result.data;
-			total = result.total;
-			totalPages = result.totalPages;
+			const parsed = text.trim()
+				? (JSON.parse(text) as {
+						data: StaffRegUserGroupRow[];
+						total: number;
+						totalPages: number;
+					})
+				: { data: [], total: 0, totalPages: 1 };
+
+			groups = parsed.data ?? [];
+			total = parsed.total ?? 0;
+			totalPages = parsed.totalPages ?? 1;
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	async function loadStatusOptions() {
-		statusOptions = await getStatus();
-	}
-
 	lifeCycleUtil.onMount(() => {
-		loadStatusOptions();
 		fetchGroups();
 	});
+
+	function goToPage(p: number) {
+		currentPage = Math.max(1, Math.min(totalPages, p));
+		fetchGroups();
+	}
 
 	async function openCreate() {
 		UserGroupModalState.mode = 'create';
@@ -135,10 +153,10 @@
 			title: m.new_user_group(),
 			component: UserGroupFormModal
 		});
-		if (result.confirmed) fetchGroups(true);
+		if (result.confirmed) fetchGroups();
 	}
 
-	async function openEdit(row: UserGroupSchema) {
+	async function openEdit(row: StaffRegUserGroupRow) {
 		UserGroupModalState.mode = 'edit';
 		UserGroupModalState.editGroup = row;
 		UserGroupModalState.hospitalId = hospitalId;
@@ -146,10 +164,10 @@
 			title: m.edit_user_group(),
 			component: UserGroupFormModal
 		});
-		if (result.confirmed) fetchGroups(true);
+		if (result.confirmed) fetchGroups();
 	}
 
-	async function handleDelete(row: UserGroupSchema) {
+	async function handleDelete(row: StaffRegUserGroupRow) {
 		const result = await dialogService.open({
 			title: m.delete_user_group(),
 			message: `Delete "${row.name ?? 'this group'}"?`,
@@ -157,12 +175,24 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteUserGroup({ id: row.id });
+			const res = await fetch(apiUrl(''), {
+				method: 'DELETE',
+				headers: { 'content-type': 'application/json' },
+				cache: 'no-store',
+				credentials: 'include',
+				body: JSON.stringify({ id: row.id })
+			});
+			const text = await res.text().catch(() => '');
+			if (!res.ok) {
+				throw new Error(
+					text || `Request failed: ${res.status} ${res.statusText}`
+				);
+			}
 			toastService.addToast(
 				m.user_group_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			fetchGroups(true);
+			fetchGroups();
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : m.delete_failed();
@@ -170,7 +200,7 @@
 		}
 	}
 
-	async function openPagesModal(row: UserGroupSchema) {
+	async function openPagesModal(row: StaffRegUserGroupRow) {
 		UserGroupPagesModalState.group = row;
 		const result = await dialogService.open({
 			title: m.manage_page_access(),
@@ -178,7 +208,7 @@
 			modalClassName:
 				'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
-		if (result.confirmed) fetchGroups(true);
+		if (result.confirmed) fetchGroups();
 	}
 </script>
 
@@ -209,7 +239,7 @@
 						actionsVariant="none"
 						enableColumnFilters={true}
 						useRemoteFilters={true}
-						on:refresh={() => fetchGroups(true)}
+						on:refresh={() => fetchGroups()}
 						on:pageSizeChange={() => {
 							currentPage = 1;
 							fetchGroups();

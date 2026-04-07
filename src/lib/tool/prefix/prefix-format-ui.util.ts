@@ -2,13 +2,15 @@ import type {
 	PrefixFieldPath,
 	PrefixFormatPart,
 	PrefixFormatSpec
-} from '$lib/tool/prefix/prefix-generator.tool.svelte';
+} from '$lib/model/type/heka/prefix-format.type';
 
 const KNOWN_FIELD_PATHS: readonly PrefixFieldPath[] = [
 	'financial_year.code',
 	'hospital.code',
 	'branch.code',
-	'visit_type.code'
+	'visit_type.code',
+	'order_date.year_2digit',
+	'visit.order_key'
 ];
 
 function isPrefixFieldPath(s: string): s is PrefixFieldPath {
@@ -33,7 +35,7 @@ export function defaultFormatParts(): UiFormatPart[] {
 
 /** Default template when saving a purpose for the first time. */
 export function defaultFormatPartsForStorageKey(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO'
+	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO'
 ): UiFormatPart[] {
 	if (storageKey === 'VISIT_NO') {
 		return [
@@ -42,6 +44,15 @@ export function defaultFormatPartsForStorageKey(
 			{ id: newPartId(), kind: 'field', path: 'branch.code' },
 			{ id: newPartId(), kind: 'field', path: 'visit_type.code' },
 			{ id: newPartId(), kind: 'sequence', padStart: 6 }
+		];
+	}
+	if (storageKey === 'ORDER_NO') {
+		return [
+			{ id: newPartId(), kind: 'field', path: 'order_date.year_2digit' },
+			{ id: newPartId(), kind: 'literal', value: '/' },
+			{ id: newPartId(), kind: 'field', path: 'visit.order_key' },
+			{ id: newPartId(), kind: 'literal', value: '/' },
+			{ id: newPartId(), kind: 'sequence', padStart: 3 }
 		];
 	}
 	return [
@@ -57,9 +68,9 @@ const FIELD_PATHS_PATIENT: readonly PrefixFieldPath[] = [
 	'branch.code'
 ];
 
-/** Field dropdown options; patient codes omit visit type (not passed at generation). */
+/** Field dropdown options; patient omits visit type by default (optional via format). */
 export function fieldPathsForEdit(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO',
+	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO',
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
 	const base =
@@ -169,7 +180,9 @@ const PREVIEW_BY_PATH: Record<PrefixFieldPath, string> = {
 	'financial_year.code': 'FY25',
 	'hospital.code': 'HOSP',
 	'branch.code': 'BR01',
-	'visit_type.code': 'OP'
+	'visit_type.code': 'OP',
+	'order_date.year_2digit': '26',
+	'visit.order_key': 'V-1001'
 };
 
 export function previewExample(parts: UiFormatPart[]): string {

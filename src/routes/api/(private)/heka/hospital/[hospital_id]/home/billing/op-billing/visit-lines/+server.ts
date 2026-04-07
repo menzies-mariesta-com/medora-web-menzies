@@ -1,6 +1,5 @@
-import type { RequestHandler } from './$types';
-import { error, json } from '@sveltejs/kit';
-import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { getServiceOrderDetailRowsForVisit } from '$lib/server/heka/observation/observation-emr.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';

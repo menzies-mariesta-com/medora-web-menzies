@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import { createOwner } from '$lib/remote/table/auth-table/user.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { authClient } from '$lib/auth/client';
@@ -37,7 +36,16 @@
 		}
 		isSubmitting = true;
 		try {
-			await createOwner({ name: n, email: em });
+			const res = await fetch('/api/heka/auth/user', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ name: n, email: em })
+			});
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Create failed: ${res.status}`);
+			}
 			toastService.addToast(
 				'Owner created.',
 				StatusColorEnum.SUCCESS

@@ -1,13 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import {
-		acceptReferHistory,
-		cancelReferHistory,
-		getReferHistoryPaginated,
-		rejectReferHistory,
-		type ReferHistoryWithRelations
-	} from '$lib/tool/remote/table/information-table/refer-history.http.tool.svelte';
 	import MariTable from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
@@ -18,6 +11,27 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LReferFeedbackDialogContent from '$lib/component/own/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
+
+	type ReferHistoryWithRelations = {
+		id: number;
+		visitId: number;
+		referAt: string | null;
+		subject: string | null;
+		fromBranch: { name?: string | null } | null;
+		toBranch: { name?: string | null } | null;
+		fromReferDoctorId: string | null;
+		toReferDoctorId: string | null;
+		fromReferDoctor: any;
+		toReferDoctor: any;
+		isUrgent: number | null;
+		referRequestNote: string | null;
+		referReplyNote: string | null;
+		acceptAt: string | null;
+		cancelAt: string | null;
+		cancelBy: string | null;
+		cancelRemark: string | null;
+		createdAt: string | null;
+	};
 
 	let rows = $state<ReferHistoryWithRelations[]>([]);
 	let totalRowCount = $state(0);
@@ -33,6 +47,12 @@
 	const toastService = new ToastService();
 
 	const visitId = $derived(VisitState.visitId);
+	const hospitalId = $derived(page.params.hospital_id);
+	const referHistoryApiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/cpoe/refer/history`
+			: ''
+	);
 	const currentStaffId = $derived(
 		page.data.staff?.id != null ? String(page.data.staff.id) : null
 	);
@@ -216,14 +236,20 @@
 
 		isLoading = true;
 		try {
-			const res = await getReferHistoryPaginated({
-				page: currentPage,
-				pageSize: parseInt(pageSize, 10),
-				visitId: visitId ? parseInt(visitId, 10) : undefined,
-				filters: tableFilters
-			});
-			rows = res.data;
-			totalRowCount = res.total;
+			const url = new URL(referHistoryApiBase, window.location.origin);
+			url.searchParams.set('mode', 'referHistory.paginated');
+			url.searchParams.set('visitId', String(visitId));
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(parseInt(pageSize, 10)));
+			url.searchParams.set('filters', JSON.stringify(tableFilters ?? {}));
+			const r = await fetch(url.toString(), { method: 'GET' });
+			if (!r.ok) throw new Error(`Failed to load history (${r.status})`);
+			const res = (await r.json()) as {
+				data: ReferHistoryWithRelations[];
+				total: number;
+			};
+			rows = res.data ?? [];
+			totalRowCount = res.total ?? 0;
 		} catch (e) {
 			console.error(e);
 		} finally {
@@ -254,10 +280,16 @@
 
 		cancellingRowId = row.id as number;
 		try {
-			await cancelReferHistory({
-				id: row.id as number,
-				cancelReason
+			const r = await fetch(referHistoryApiBase, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'referHistory.cancel',
+					id: row.id as number,
+					cancelReason
+				})
 			});
+			if (!r.ok) throw new Error(`Cancel failed (${r.status})`);
 			toastService.addToast(
 				'Referral cancelled.',
 				StatusColorEnum.SUCCESS
@@ -296,10 +328,16 @@
 
 		cancellingRowId = row.id as number;
 		try {
-			await rejectReferHistory({
-				id: row.id as number,
-				replyNote
+			const r = await fetch(referHistoryApiBase, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'referHistory.reject',
+					id: row.id as number,
+					replyNote
+				})
 			});
+			if (!r.ok) throw new Error(`Reject failed (${r.status})`);
 			toastService.addToast(
 				'Referral rejected.',
 				StatusColorEnum.SUCCESS
@@ -338,10 +376,16 @@
 
 		acceptingRowId = row.id as number;
 		try {
-			await acceptReferHistory({
-				id: row.id as number,
-				replyNote
+			const r = await fetch(referHistoryApiBase, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'referHistory.accept',
+					id: row.id as number,
+					replyNote
+				})
 			});
+			if (!r.ok) throw new Error(`Accept failed (${r.status})`);
 			toastService.addToast(
 				'Referral accepted.',
 				StatusColorEnum.SUCCESS

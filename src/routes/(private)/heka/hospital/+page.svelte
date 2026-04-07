@@ -6,12 +6,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import {
-		getHospitalWithOwnerPaginated,
-		deleteHospital,
-		type HospitalWithOwner
-	} from '$lib/tool/remote/table/information-table/hospital.http.tool.svelte';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { hekaHospitalHome } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -30,6 +25,17 @@
 	import { m } from '$lib/paraglide/messages';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+
+	type HospitalWithOwner = {
+		id: string;
+		name: string | null;
+		code: string | null;
+		address: string | null;
+		phone: string | null;
+		email: string | null;
+		statusId: number | null;
+		owner?: { id: string; name: string | null; email: string } | null;
+	};
 
 	const hospitalColumns: MariTableColumn<HospitalWithOwner>[] = [
 		{
@@ -154,18 +160,21 @@
 				? Number(tableFilters.status)
 				: undefined;
 			const params = {
-				page: currentPage,
-				pageSize,
+				page: String(currentPage),
+				pageSize: String(pageSize),
 				...(ownerId != null && { ownerId }),
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined
+				...(parsedStatusId != null &&
+					Number.isFinite(parsedStatusId) && {
+						statusId: String(parsedStatusId)
+					}),
+				...(forceRefresh && { _t: String(Date.now()) })
 			};
-			if (forceRefresh) {
-				await getHospitalWithOwnerPaginated(params).refresh();
-			}
-			hospitalResult = await getHospitalWithOwnerPaginated(params);
+			const url = new URL('/api/heka/hospital', window.location.origin);
+			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+
+			const res = await fetch(url, { method: 'GET' });
+			if (!res.ok) throw new Error(await res.text());
+			hospitalResult = (await res.json()) as PaginatedResult<HospitalWithOwner>;
 		} finally {
 			isLoading = false;
 		}
@@ -213,7 +222,12 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteHospital({ id: h.id });
+			const res = await fetch('/api/heka/hospital', {
+				method: 'DELETE',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ id: h.id })
+			});
+			if (!res.ok) throw new Error(await res.text());
 			toastService.addToast(
 				m.hospital_deleted(),
 				StatusColorEnum.SUCCESS

@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import { updateUser } from '$lib/remote/table/auth-table/user.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
@@ -55,7 +54,16 @@
 		}
 		isSubmitting = true;
 		try {
-			await updateUser({ id: o.id, name: n, email: em });
+			const res = await fetch('/api/heka/auth/user', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ id: o.id, name: n, email: em })
+			});
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Update failed: ${res.status}`);
+			}
 			toastService.addToast(
 				'Owner updated.',
 				StatusColorEnum.SUCCESS

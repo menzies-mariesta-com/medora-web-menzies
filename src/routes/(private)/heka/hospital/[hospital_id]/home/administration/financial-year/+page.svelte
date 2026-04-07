@@ -21,19 +21,10 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import { remoteInvoke } from '$lib/api/remote-invoke-client';
-	import type { FinancialYearSchema } from '$lib/server/db/schema-type';
-	import {
-		getFinancialYearByHospital,
-		createFinancialYear,
-		updateFinancialYear,
-		deleteFinancialYear
-	} from '$lib/tool/remote/table/information-table/financial-year.http.tool.svelte';
+	import type { FinancialYearListRow } from '$lib/model/type/heka/ui-rows.type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
-
-	const MODULE_SUFFIX = 'table/information-table/financial-year.remote.ts';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id
@@ -41,7 +32,29 @@
 			: ''
 	);
 
-	let items = $state<FinancialYearSchema[]>([]);
+	async function apiFetch<T>(
+		url: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(url, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				...(init?.body ? { 'content-type': 'application/json' } : {})
+			}
+		});
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
+
+	function financialYearApiUrl() {
+		return `/api/heka/hospital/${hospitalId}/home/administration/financial-year`;
+	}
+
+	let items = $state<FinancialYearListRow[]>([]);
 	let isLoading = $state(false);
 	let viewMode = $state<'list' | 'create' | 'edit'>('list');
 	let editingId = $state<number | null>(null);
@@ -57,11 +70,7 @@
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			items = await remoteInvoke<FinancialYearSchema[]>({
-				module: MODULE_SUFFIX,
-				fn: 'getFinancialYearByHospital',
-				args: [{ hospitalId }]
-			});
+			items = await apiFetch<FinancialYearListRow[]>(financialYearApiUrl());
 		} finally {
 			isLoading = false;
 		}
@@ -84,7 +93,7 @@
 		viewMode = 'create';
 	}
 
-	function startEdit(item: FinancialYearSchema) {
+	function startEdit(item: FinancialYearListRow) {
 		viewMode = 'edit';
 		editingId = item.id;
 		codeInput = item.code ?? '';
@@ -119,19 +128,24 @@
 				return;
 			}
 			const payload = {
-				hospitalId,
 				code: codeInput.trim(),
 				startDate: startDateInput || null,
 				endDate: endDateInput || null
 			};
 			if (editingId != null) {
-				await updateFinancialYear({ id: editingId, ...payload });
+				await apiFetch(financialYearApiUrl(), {
+					method: 'PUT',
+					body: JSON.stringify({ id: editingId, ...payload })
+				});
 				toastService.addToast(
 					'Financial year updated',
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createFinancialYear(payload);
+				await apiFetch(financialYearApiUrl(), {
+					method: 'POST',
+					body: JSON.stringify(payload)
+				});
 				toastService.addToast(
 					'Financial year created',
 					StatusColorEnum.SUCCESS
@@ -142,7 +156,7 @@
 		});
 	}
 
-	async function handleDelete(item: FinancialYearSchema) {
+	async function handleDelete(item: FinancialYearListRow) {
 		await deleteLock.run(async () => {
 			const result = await dialogService.open({
 				title: 'Delete financial year',
@@ -150,7 +164,10 @@
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (!result.confirmed) return;
-			await deleteFinancialYear({ id: item.id });
+			await apiFetch(financialYearApiUrl(), {
+				method: 'DELETE',
+				body: JSON.stringify({ id: item.id })
+			});
 			toastService.addToast(
 				'Financial year deleted',
 				StatusColorEnum.SUCCESS
@@ -159,7 +176,7 @@
 		});
 	}
 
-	const columns: MariTableColumn<FinancialYearSchema>[] = [
+	const columns: MariTableColumn<FinancialYearListRow>[] = [
 		{
 			id: 'code',
 			header: 'Code',

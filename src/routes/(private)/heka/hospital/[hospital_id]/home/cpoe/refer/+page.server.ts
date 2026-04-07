@@ -1,10 +1,16 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
 import {
 	hekaHospitalPageUrl,
 	WebRoutesEnum
 } from '$lib/model/enum/routes.enum';
+
+type PageWithRelations = {
+	id: number;
+	parentId: number | null;
+	sequenceNo: number | null;
+	pageUrl: string | null;
+};
 
 function normPath(p: string | null | undefined): string {
 	return (p ?? '').replace(/\/$/, '') || '/';

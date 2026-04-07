@@ -1,15 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ObservationDiagnosisDialogState } from '$lib/state/observation-diagnosis-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import {
-		createDiagnosis,
-		getDiagnosisById,
-		getDiagnosisTypes,
-		updateDiagnosis
-	} from '$lib/remote/table/information-table/diagnosis.remote';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
@@ -21,6 +16,8 @@
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
+	const hospitalId = $derived(page.params.hospital_id ?? '');
+
 	const visitId = $derived(ObservationDiagnosisDialogState.visitId);
 	const branchId = $derived(ObservationDiagnosisDialogState.branchId);
 	const patientId = $derived(
@@ -31,9 +28,19 @@
 	);
 	const isEdit = $derived(diagnosisId != null);
 
-	let types = $state<Awaited<ReturnType<typeof getDiagnosisTypes>>>(
-		[]
-	);
+	type DiagnosisType = {
+		id: number;
+		name: string | null;
+	};
+
+	type DiagnosisRow = {
+		id: number;
+		diagnosisTypeId: number | null;
+		description: string | null;
+		statusId: number | null;
+	};
+
+	let types = $state<DiagnosisType[]>([]);
 	let selectedDiagnosisTypeIds = $state<number[]>([]);
 	let description = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
@@ -50,13 +57,51 @@
 		statusIdStr = String(StatusEnum.ACTIVE);
 	}
 
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const url = new URL(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			location.origin
+		);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				url.searchParams.set(k, v);
+			}
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: unknown) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode,
+					...(payload as Record<string, unknown>)
+				})
+			}
+		);
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	async function loadDiagnosisTypes() {
-		const rows = await getDiagnosisTypes();
+		const rows = await apiGet<DiagnosisType[]>('diagnosis.types');
 		types = rows;
 	}
 
 	async function loadDiagnosisByIdForEdit(did: number, seq: number) {
-		const row = await getDiagnosisById({ id: did });
+		const row = await apiGet<DiagnosisRow | null>('diagnosis.get', {
+			id: String(did)
+		});
 		if (seq !== loadSeq) return;
 		if (!row) {
 			toastService.addToast(
@@ -129,29 +174,33 @@
 		isSubmitting = true;
 		try {
 			if (isEdit && diagnosisId != null) {
-				await updateDiagnosis({
-					id: diagnosisId,
-					diagnosisTypeId: typeId,
-					description:
-						normalizedDescription.length > 0
-							? normalizedDescription
-							: null,
-					statusId
-				});
-			} else {
-				// Backend requires a single `diagnosisTypeId` per diagnosis record.
-				// In add mode, create one record per selected type.
-				for (const diagnosisTypeId of selectedTypeIds) {
-					await createDiagnosis({
-						branchId: bid,
-						patientId: pid,
-						visitId: vid,
-						diagnosisTypeId,
+				await apiPost('diagnosis.update', {
+					payload: {
+						id: diagnosisId,
+						diagnosisTypeId: typeId,
 						description:
 							normalizedDescription.length > 0
 								? normalizedDescription
 								: null,
 						statusId
+					}
+				});
+			} else {
+				// Backend requires a single `diagnosisTypeId` per diagnosis record.
+				// In add mode, create one record per selected type.
+				for (const diagnosisTypeId of selectedTypeIds) {
+					await apiPost('diagnosis.create', {
+						payload: {
+							branchId: bid,
+							patientId: pid,
+							visitId: vid,
+							diagnosisTypeId,
+							description:
+								normalizedDescription.length > 0
+									? normalizedDescription
+									: null,
+							statusId
+						}
 					});
 				}
 			}

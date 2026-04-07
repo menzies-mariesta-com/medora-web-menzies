@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
@@ -24,54 +25,52 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { remoteInvoke } from '$lib/api/remote-invoke-client';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
-	import {
-		getDocumentSettingsPaginated,
-		createDocumentSetting,
-		updateDocumentSetting,
-		deleteDocumentSetting,
-	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
-	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
-		DocumentSettingSchema
-	} from '$lib/server/db/schema-type';
+		DocumentSettingRow,
+		DocumentSettingWithRelations,
+		DocumentTypeRow
+	} from '$lib/model/type/document-setting.type';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	const DOCUMENT_SETTING_MODULE =
-		'table/information-table/document-setting.remote.ts';
-	const DOCUMENT_TYPE_MODULE =
-		'table/information-table/document-type.remote.ts';
+	const hospitalId = $derived(page.params.hospital_id ?? '');
 
-	async function createDocumentSettingApi(
-		payload: any
-	) {
-		return remoteInvoke({
-			module: DOCUMENT_SETTING_MODULE,
-			fn: 'createDocumentSetting',
-			args: [payload]
+	async function apiFetch<T>(
+		url: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(url, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				...(init?.body ? { 'content-type': 'application/json' } : {})
+			}
 		});
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
 	}
 
-	async function updateDocumentSettingApi(payload: any) {
-		return remoteInvoke({
-			module: DOCUMENT_SETTING_MODULE,
-			fn: 'updateDocumentSetting',
-			args: [payload]
-		});
+	function documentSettingApiUrl(params?: Record<string, string | number>) {
+		const base = `/api/heka/hospital/${hospitalId}/home/administration/document-master/document-setting`;
+		if (!params) return base;
+		const usp = new URLSearchParams();
+		for (const [k, v] of Object.entries(params)) {
+			if (v == null) continue;
+			usp.set(k, String(v));
+		}
+		const qs = usp.toString();
+		return qs ? `${base}?${qs}` : base;
 	}
 
-	async function deleteDocumentSettingApi(payload: { id: number }) {
-		return remoteInvoke({
-			module: DOCUMENT_SETTING_MODULE,
-			fn: 'deleteDocumentSetting',
-			args: [payload]
-		});
+	function documentTypeApiUrl() {
+		return `/api/heka/hospital/${hospitalId}/home/administration/document-master/document-type`;
 	}
 
 	const PAGE_SIZES = ['A4', 'A5', 'Letter', 'Legal'] as const;
@@ -81,7 +80,7 @@
 		$state<PaginatedResult<DocumentSettingWithRelations> | null>(
 			null
 		);
-	let documentTypes = $state<DocumentTypeSchema[]>([]);
+	let documentTypes = $state<DocumentTypeRow[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -123,41 +122,37 @@
 	let tableFilters = $state<Record<string, string>>({});
 
 	async function fetchData(opts?: { bustCache?: boolean }) {
+		if (!hospitalId) return;
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
 		const parsedStatusId = tableFilters.status
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			settingResult =
-				await remoteInvoke<PaginatedResult<DocumentSettingWithRelations>>({
-					module: DOCUMENT_SETTING_MODULE,
-					fn: 'getDocumentSettingsPaginated',
-					args: [
-						{
-							page: currentPage,
-							pageSize,
-							statusId:
-								parsedStatusId != null &&
-								Number.isFinite(parsedStatusId)
-									? parsedStatusId
-									: undefined,
-							...(opts?.bustCache && { _t: Date.now() })
-						}
-					]
-				});
+			settingResult = await apiFetch<
+				PaginatedResult<DocumentSettingWithRelations>
+			>(
+				documentSettingApiUrl({
+					page: currentPage,
+					pageSize,
+					...(parsedStatusId != null &&
+					Number.isFinite(parsedStatusId)
+						? { statusId: parsedStatusId }
+						: {}),
+					...(opts?.bustCache ? { _t: Date.now() } : {})
+				})
+			);
 		} finally {
 			isLoading = false;
 		}
 	}
 
 	async function fetchDocumentTypes() {
+		if (!hospitalId) return;
 		try {
-			documentTypes = await remoteInvoke<DocumentTypeSchema[]>({
-				module: DOCUMENT_TYPE_MODULE,
-				fn: 'getDocumentTypes',
-				args: []
-			});
+			documentTypes = await apiFetch<DocumentTypeRow[]>(
+				documentTypeApiUrl()
+			);
 		} catch (err) {
 			console.error('Failed to load document types', err);
 		}
@@ -237,6 +232,7 @@
 		await saveLock.run(async () => {
 			try {
 				const payload = {
+					hospitalId,
 					name: nameInput.trim(),
 					documentTypeId: documentTypeIdInput
 						? Number(documentTypeIdInput)
@@ -259,16 +255,19 @@
 				};
 
 				if (editingId) {
-					await updateDocumentSettingApi({
-						id: editingId,
-						...payload
+					await apiFetch(documentSettingApiUrl(), {
+						method: 'PUT',
+						body: JSON.stringify({ id: editingId, ...payload })
 					});
 					toastService.addToast(
 						'Document setting updated',
 						StatusColorEnum.SUCCESS
 					);
 				} else {
-					await createDocumentSettingApi(payload);
+					await apiFetch(documentSettingApiUrl(), {
+						method: 'POST',
+						body: JSON.stringify(payload)
+					});
 					toastService.addToast(
 						'Document setting created',
 						StatusColorEnum.SUCCESS
@@ -286,7 +285,7 @@
 		});
 	}
 
-	async function handleDelete(item: DocumentSettingSchema) {
+	async function handleDelete(item: DocumentSettingRow) {
 		await deleteLock.run(async () => {
 			deletingId = item.id;
 			try {
@@ -297,7 +296,10 @@
 				});
 				if (!result?.confirmed) return;
 
-				await deleteDocumentSettingApi({ id: item.id });
+				await apiFetch(documentSettingApiUrl(), {
+					method: 'DELETE',
+					body: JSON.stringify({ id: item.id })
+				});
 				toastService.addToast(
 					'Document setting deleted',
 					StatusColorEnum.SUCCESS

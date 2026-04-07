@@ -3,15 +3,10 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		getDepartmentPaginated,
-		deleteDepartment
-	} from '$lib/tool/remote/table/master-table/department.http.tool.svelte';
-	import type { DepartmentSchema } from '$lib/server/db/schema-type';
+	import type { StatusListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type { StaffRegDepartmentRow } from '$lib/model/type/heka/staff-reg-ui.type';
 	import { DepartmentModalState } from '$lib/state/department-modal.state.svelte';
 	import DepartmentFormModal from '$lib/component/own/local/private/heka/administration/department/DepartmentFormModal.svelte';
-	import type { StatusSchema } from '$lib/server/db/schema-type';
-	import { getStatus } from '$lib/tool/remote/table/master-table/status.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -31,18 +26,29 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let rows = $state<DepartmentSchema[]>([]);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+	const deptApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/administration/departments`
+			: ''
+	);
+
+	let rows = $state<StaffRegDepartmentRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
-	let statusOptions = $state<StatusSchema[]>([]);
+	let statusOptions = $state<StatusListRow[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const departmentColumns: MariTableColumn<DepartmentSchema>[] = [
+	const departmentColumns: MariTableColumn<StaffRegDepartmentRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
@@ -84,27 +90,40 @@
 		}
 	];
 
-	async function fetchRows(forceRefresh = false) {
+	async function fetchRows(_forceRefresh = false) {
+		if (!deptApi) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
 		try {
 			const parsedStatusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const params = {
-				page: currentPage,
-				pageSize,
-				name: tableFilters.name?.trim() || undefined,
-				code: tableFilters.code?.trim() || undefined,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined
-			};
-			if (forceRefresh) {
-				await getDepartmentPaginated(params).refresh();
+			const qs = new URLSearchParams();
+			qs.set('page', String(currentPage));
+			qs.set('pageSize', String(pageSize));
+			const name = tableFilters.name?.trim();
+			const code = tableFilters.code?.trim();
+			if (name) qs.set('name', name);
+			if (code) qs.set('code', code);
+			if (
+				parsedStatusId != null &&
+				Number.isFinite(parsedStatusId)
+			) {
+				qs.set('statusId', String(parsedStatusId));
 			}
-			const result = await getDepartmentPaginated(params);
+			const res = await fetch(`${deptApi}?${qs.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Load failed: ${res.status}`);
+			}
+			const result = (await res.json()) as {
+				data: StaffRegDepartmentRow[];
+				total: number;
+				totalPages: number;
+			};
 			rows = result.data;
 			total = result.total;
 			totalPages = result.totalPages;
@@ -119,7 +138,12 @@
 	}
 
 	async function loadStatusOptions() {
-		statusOptions = await getStatus();
+		const res = await fetch('/api/heka/master/status', {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok) return;
+		statusOptions = await res.json();
 	}
 
 	lifeCycleUtil.onMount(() => {
@@ -134,33 +158,41 @@
 			title: m.new_department(),
 			component: DepartmentFormModal
 		});
-		if (result.confirmed) fetchRows(true);
+		if (result.confirmed) fetchRows();
 	}
 
-	async function openEdit(row: DepartmentSchema) {
+	async function openEdit(row: StaffRegDepartmentRow) {
 		DepartmentModalState.mode = 'edit';
 		DepartmentModalState.editDepartment = row;
 		const result = await dialogService.open({
 			title: m.edit_department(),
 			component: DepartmentFormModal
 		});
-		if (result.confirmed) fetchRows(true);
+		if (result.confirmed) fetchRows();
 	}
 
-	async function handleDelete(row: DepartmentSchema) {
+	async function handleDelete(row: StaffRegDepartmentRow) {
 		const result = await dialogService.open({
 			title: m.delete_department(),
 			message: `Delete "${row.name ?? row.code ?? m.departments()}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
+		if (!deptApi) return;
 		try {
-			await deleteDepartment({ id: row.id });
+			const res = await fetch(
+				`${deptApi}?id=${encodeURIComponent(String(row.id))}`,
+				{ method: 'DELETE', credentials: 'include' }
+			);
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Delete failed: ${res.status}`);
+			}
 			toastService.addToast(
 				m.department_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			fetchRows(true);
+			fetchRows();
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : m.delete_failed();
@@ -196,7 +228,7 @@
 					actionsVariant="none"
 					enableColumnFilters={true}
 					useRemoteFilters={true}
-					on:refresh={() => fetchRows(true)}
+					on:refresh={() => fetchRows()}
 					on:pageSizeChange={() => {
 						currentPage = 1;
 						fetchRows();

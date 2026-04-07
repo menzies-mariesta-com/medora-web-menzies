@@ -13,12 +13,7 @@
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/own/library/lucide/LucideEyeOff.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import { getCountry } from '$lib/tool/remote/table/master-table/country.http.tool.svelte';
-	import { getGender } from '$lib/tool/remote/table/master-table/gender.http.tool.svelte';
 	import { PasswordTool } from '$lib/tool/password.tool.svelte';
-	import { createStaff } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import { updateUser } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
-	import { RoleEnum } from '$lib/model/enum/db-link';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -30,17 +25,13 @@
 	const passwordTool = new PasswordTool();
 	const toastService = new ToastService();
 
-	let countryData: any[] = [];
-	let genderData: any[] = [];
-	try {
-		countryData = await getCountry();
-		genderData = await getGender();
-	} catch (err) {
-		// Avoid crashing SSR on transient DB/network failures.
-		console.error('[signup] Failed to load country/gender options', err);
-		countryData = [];
-		genderData = [];
-	}
+	let {
+		countries: countryData = [],
+		genders: genderData = []
+	}: {
+		countries?: { id: number; name: string | null; code: string; imageUrl?: string | null; countryCallingCode?: string | null }[];
+		genders?: { id: number; name: string | null }[];
+	} = $props();
 
 	let selectedCountryId = $state('');
 	let selectedGenderId = $state('');
@@ -150,20 +141,23 @@
 				: undefined;
 
 			try {
-				await updateUser({
-					id: data.user.id,
-					roleId: RoleEnum.OWNER
+				const res = await fetch('/api/heka/auth/signup-owner-profile', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						firstName,
+						middleName,
+						lastName,
+						countryId,
+						genderId,
+						phonePrimary:
+							(fd.get('phonePrimary') as string) || undefined
+					})
 				});
-				await createStaff({
-					userId: data.user.id,
-					firstName,
-					middleName,
-					lastName,
-					countryId,
-					genderId,
-					phonePrimary:
-						(fd.get('phonePrimary') as string) || undefined
-				});
+				if (!res.ok) {
+					const text = await res.text();
+					throw new Error(text || m.profile_create_failed());
+				}
 			} catch (err) {
 				const message =
 					err instanceof Error
@@ -225,15 +219,15 @@
 						optionHeader={m.select_country()}
 						className="bg-base-200"
 					>
-						{#each countryData as data}
-							<option value={String(data.id)} class="gap-5">
+						{#each countryData as c (c.id)}
+							<option value={String(c.id)} class="gap-5">
 								<DaisyUiAvatar
-									src={data.imageUrl}
-									alt={data.name}
+									src={c.imageUrl ?? undefined}
+									alt={c.name ?? undefined}
 									className="w-5"
 								/>
-								{data.name}
-								[ {data.code.toUpperCase()} ]
+								{c.name}
+								[ {c.code.toUpperCase()} ]
 							</option>
 						{/each}
 					</DaisyUiSelect>
@@ -246,9 +240,9 @@
 							className="max-w-20 bg-base-200"
 							optionHeader={m.select_country_code()}
 						>
-							{#each countryData as data}
-								<option value={String(data.id)} class="gap-5">
-									{data.countryCallingCode}
+							{#each countryData as c (c.id)}
+								<option value={String(c.id)} class="gap-5">
+									{c.countryCallingCode}
 								</option>
 							{/each}
 						</DaisyUiSelect>
@@ -276,9 +270,9 @@
 						optionHeader={m.select_gender()}
 						className="bg-base-200"
 					>
-						{#each genderData as data}
-							<option value={String(data.id)} class="gap-5">
-								{data.name}
+						{#each genderData as g (g.id)}
+							<option value={String(g.id)} class="gap-5">
+								{g.name}
 							</option>
 						{/each}
 					</DaisyUiSelect>

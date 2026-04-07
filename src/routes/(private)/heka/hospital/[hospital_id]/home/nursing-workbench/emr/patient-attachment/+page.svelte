@@ -8,12 +8,18 @@
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LPatientAttachmentDialogContent from '$lib/component/own/local/private/heka/patient/attachment/LPatientAttachmentDialogContent.svelte';
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
+	);
 
 	let visit = $state<{
 		patientId: string;
@@ -21,29 +27,51 @@
 	} | null>(null);
 	let isLoadingVisit = $state(false);
 	let lastLoadedVisitId = $state<number | null>(null);
+	let mounted = $state(false);
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+	});
+
+	function apiBase(): string {
+		return hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/patient-attachment`
+			: '';
+	}
+
+	async function apiGet<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
 
 	async function fetchVisit() {
-		if (!visitId) {
+		if (!visitId || !hospitalId) {
 			visit = null;
 			return;
 		}
 		isLoadingVisit = true;
 		try {
-			const v = await getPatientVisitById({ id: visitId });
-			if (v) {
-				visit = {
-					patientId: v.patientId,
-					hospitalId: v.hospitalId
-				};
-			} else {
-				visit = null;
-			}
+			const base = apiBase();
+			if (!base) return;
+			const res = await apiGet<{ data: { patientId: string; hospitalId: string } | null }>(
+				`${base}?action=visitBasics&visitId=${visitId}`
+			);
+			visit = res.data;
 		} finally {
 			isLoadingVisit = false;
 		}
 	}
 
 	$effect(() => {
+		if (!mounted) return;
 		if (visitId) {
 			if (visitId === lastLoadedVisitId) return;
 			lastLoadedVisitId = visitId;
@@ -59,7 +87,8 @@
 			PatientAttachmentDialogState.viewOnly = false;
 			PatientAttachmentDialogState.stagedAttachments = [];
 			PatientAttachmentDialogState.pending = {
-				patientId: visit.patientId
+				patientId: visit.patientId,
+				hospitalId: visit.hospitalId
 			};
 		} else {
 			PatientAttachmentDialogState.pending = null;
@@ -77,7 +106,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the "Choose Visit" bar above to manage patient attachments.'}
+			message='Choose a visit using the "Choose Visit" bar above to manage patient attachments.'
 		/>
 	{:else if !visit && !isLoadingVisit}
 		<DaisyUiAlert
