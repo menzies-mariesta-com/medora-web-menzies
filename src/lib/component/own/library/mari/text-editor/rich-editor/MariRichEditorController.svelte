@@ -173,7 +173,7 @@
 	<select
 		class="d-select-bordered d-select h-7 min-h-0 w-32 d-select-xs text-xs"
 		value={fontFamily}
-		on:change={handleFontFamilyChange}
+		onchange={handleFontFamilyChange}
 	>
 		{#each FONT_FAMILIES as font (font.value)}
 			<option value={font.value}>{font.label}</option>
@@ -185,7 +185,7 @@
 		<button
 			type="button"
 			class="d-btn flex items-center gap-1 border border-base-300 px-2 d-btn-ghost d-btn-xs"
-			on:click={() => {
+			onclick={() => {
 				showHeadingDropdown = !showHeadingDropdown;
 				showColorDropdown = false;
 			}}
@@ -216,7 +216,7 @@
 					class="block w-full px-3 py-1 text-left text-sm hover:bg-base-200 {activeStates.paragraph
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('paragraph');
 						showHeadingDropdown = false;
 					}}>Paragraph</button
@@ -226,7 +226,7 @@
 					class="block w-full px-3 py-1 text-left text-lg font-bold hover:bg-base-200 {activeStates.heading1
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading1');
 						showHeadingDropdown = false;
 					}}>Heading 1</button
@@ -236,7 +236,7 @@
 					class="block w-full px-3 py-1 text-left text-base font-bold hover:bg-base-200 {activeStates.heading2
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading2');
 						showHeadingDropdown = false;
 					}}>Heading 2</button
@@ -246,7 +246,7 @@
 					class="block w-full px-3 py-1 text-left text-sm font-bold hover:bg-base-200 {activeStates.heading3
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading3');
 						showHeadingDropdown = false;
 					}}>Heading 3</button
@@ -256,7 +256,7 @@
 					class="block w-full px-3 py-1 text-left text-sm font-semibold hover:bg-base-200 {activeStates.heading4
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading4');
 						showHeadingDropdown = false;
 					}}>Heading 4</button
@@ -266,7 +266,7 @@
 					class="block w-full px-3 py-1 text-left text-xs font-semibold hover:bg-base-200 {activeStates.heading5
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading5');
 						showHeadingDropdown = false;
 					}}>Heading 5</button
@@ -276,7 +276,7 @@
 					class="block w-full px-3 py-1 text-left text-xs hover:bg-base-200 {activeStates.heading6
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('heading6');
 						showHeadingDropdown = false;
 					}}>Heading 6</button
@@ -287,7 +287,7 @@
 					class="block w-full px-3 py-1 text-left font-mono text-xs hover:bg-base-200 {activeStates.code
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('code');
 						showHeadingDropdown = false;
 					}}>Code Block</button
@@ -297,7 +297,7 @@
 					class="block w-full px-3 py-1 text-left text-xs italic hover:bg-base-200 {activeStates.blockquote
 						? 'bg-primary/20'
 						: ''}"
-					on:click={() => {
+					onclick={() => {
 						execute('blockquote');
 						showHeadingDropdown = false;
 					}}>Blockquote</button
@@ -311,9 +311,12 @@
 		<button
 			type="button"
 			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
-			on:mousedown|preventDefault
-			on:click|preventDefault|stopPropagation={() =>
-				execute('fontSizeDecrease')}
+			onmousedown={(e) => e.preventDefault()}
+			onclick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				execute('fontSizeDecrease');
+			}}
 		>
 			<span class="text-base font-bold leading-none">−</span>
 		</button>
@@ -324,7 +327,7 @@
 			value={fontSize}
 			class="h-8 w-14 border-x border-base-300 bg-transparent text-center text-base font-medium"
 			style="outline: none; box-shadow: none;"
-			on:input={(e) => {
+			oninput={(e) => {
 				const target = e.currentTarget as HTMLInputElement;
 				const val = Number(target.value);
 				if (!Number.isNaN(val) && val >= 8 && val <= 200)
@@ -334,9 +337,12 @@
 		<button
 			type="button"
 			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
-			on:mousedown|preventDefault
-			on:click|preventDefault|stopPropagation={() =>
-				execute('fontSizeIncrease')}
+			onmousedown={(e) => e.preventDefault()}
+			onclick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				execute('fontSizeIncrease');
+			}}
 		>
 			<span class="text-base font-bold leading-none">+</span>
 		</button>
@@ -353,8 +359,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('bold')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('bold')}
 			>
 				<DaisyUiTooltip tooltipText="Bold (Ctrl+B)"
 					><LucideBold className="size-4" /></DaisyUiTooltip
@@ -368,8 +374,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('italic')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('italic')}
 			>
 				<DaisyUiTooltip tooltipText="Italic (Ctrl+I)"
 					><LucideItalic className="size-4" /></DaisyUiTooltip
@@ -383,8 +389,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('underline')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('underline')}
 			>
 				<DaisyUiTooltip tooltipText="Underline (Ctrl+U)"
 					><LucideUnderline className="size-4" /></DaisyUiTooltip
@@ -398,8 +404,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('strikeThrough')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('strikeThrough')}
 			>
 				<DaisyUiTooltip tooltipText="Strikethrough"
 					><LucideStrikeThrough className="size-4" /></DaisyUiTooltip
@@ -417,8 +423,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('subscript')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('subscript')}
 				disabled={activeStates.superscript}
 			>
 				<DaisyUiTooltip tooltipText="Subscript"
@@ -433,8 +439,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('superscript')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('superscript')}
 				disabled={activeStates.subscript}
 			>
 				<DaisyUiTooltip tooltipText="Superscript"
@@ -458,7 +464,7 @@
 					type="color"
 					class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
 					value={textColor}
-					on:input={handleTextColorChange}
+					oninput={handleTextColorChange}
 				/>
 			</label>
 		</DaisyUiTooltip>
@@ -485,7 +491,7 @@
 					type="color"
 					class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
 					value={bgColor || '#ffffff'}
-					on:input={handleBgColorChange}
+					oninput={handleBgColorChange}
 				/>
 			</label>
 		</DaisyUiTooltip>
@@ -502,8 +508,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('justifyLeft')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('justifyLeft')}
 			>
 				<DaisyUiTooltip tooltipText="Align Left"
 					><LucideTextAlignStart className="size-4" /></DaisyUiTooltip
@@ -517,8 +523,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('justifyCenter')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('justifyCenter')}
 			>
 				<DaisyUiTooltip tooltipText="Align Center"
 					><LucideAlignCenter className="size-4" /></DaisyUiTooltip
@@ -532,8 +538,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('justifyRight')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('justifyRight')}
 			>
 				<DaisyUiTooltip tooltipText="Align Right"
 					><LucideTextAlignEnd className="size-4" /></DaisyUiTooltip
@@ -547,8 +553,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('justifyFull')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('justifyFull')}
 			>
 				<DaisyUiTooltip tooltipText="Justify"
 					><LucideTextAlignJustify
@@ -570,8 +576,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('insertOrderedList')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('insertOrderedList')}
 			>
 				<DaisyUiTooltip tooltipText="Numbered List"
 					><LucideListOrdered className="size-4" /></DaisyUiTooltip
@@ -585,8 +591,8 @@
 		>
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('insertUnorderedList')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('insertUnorderedList')}
 			>
 				<DaisyUiTooltip tooltipText="Bulleted List"
 					><LucideList className="size-4" /></DaisyUiTooltip
@@ -596,8 +602,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('outdent')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('outdent')}
 			>
 				<DaisyUiTooltip tooltipText="Decrease Indent">
 					<svg
@@ -618,8 +624,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('indent')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('indent')}
 			>
 				<DaisyUiTooltip tooltipText="Increase Indent">
 					<svg
@@ -646,8 +652,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('link')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('link')}
 			>
 				<DaisyUiTooltip tooltipText="Insert Link"
 					><LucideLink className="size-4" /></DaisyUiTooltip
@@ -657,8 +663,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('unlink')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('unlink')}
 			>
 				<DaisyUiTooltip tooltipText="Remove Link">
 					<svg
@@ -684,8 +690,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('image')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('image')}
 			>
 				<DaisyUiTooltip tooltipText="Insert Image"
 					><LucideImage className="size-4" /></DaisyUiTooltip
@@ -695,8 +701,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('table')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('table')}
 			>
 				<DaisyUiTooltip tooltipText="Insert Table"
 					><LucideTable2 className="size-4" /></DaisyUiTooltip
@@ -706,8 +712,8 @@
 		<DaisyUiJoinItem className="d-btn-xs h-7">
 			<button
 				type="button"
-				on:mousedown|preventDefault
-				on:click={() => execute('horizontalRule')}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={() => execute('horizontalRule')}
 			>
 				<DaisyUiTooltip tooltipText="Horizontal Line">
 					<svg
@@ -731,8 +737,8 @@
 	<button
 		type="button"
 		class="d-btn h-7 d-btn-ghost d-btn-xs"
-		on:mousedown|preventDefault
-		on:click={() => execute('removeFormat')}
+		onmousedown={(e) => e.preventDefault()}
+		onclick={() => execute('removeFormat')}
 	>
 		<DaisyUiTooltip tooltipText="Clear Formatting">
 			<svg
@@ -757,8 +763,8 @@
 			<DaisyUiJoinItem className="d-btn-xs h-7">
 				<button
 					type="button"
-					on:mousedown|preventDefault
-					on:click={() => execute('tableAddRowBelow')}
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => execute('tableAddRowBelow')}
 				>
 					<DaisyUiTooltip tooltipText="Add Row"
 						><span class="text-[10px] font-semibold">+Row</span
@@ -769,8 +775,8 @@
 			<DaisyUiJoinItem className="d-btn-xs h-7">
 				<button
 					type="button"
-					on:mousedown|preventDefault
-					on:click={() => execute('tableRemoveRow')}
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => execute('tableRemoveRow')}
 				>
 					<DaisyUiTooltip tooltipText="Delete Row"
 						><span class="text-[10px] font-semibold">−Row</span
@@ -781,8 +787,8 @@
 			<DaisyUiJoinItem className="d-btn-xs h-7">
 				<button
 					type="button"
-					on:mousedown|preventDefault
-					on:click={() => execute('tableAddColRight')}
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => execute('tableAddColRight')}
 				>
 					<DaisyUiTooltip tooltipText="Add Column"
 						><span class="text-[10px] font-semibold">+Col</span
@@ -793,8 +799,8 @@
 			<DaisyUiJoinItem className="d-btn-xs h-7">
 				<button
 					type="button"
-					on:mousedown|preventDefault
-					on:click={() => execute('tableRemoveCol')}
+					onmousedown={(e) => e.preventDefault()}
+					onclick={() => execute('tableRemoveCol')}
 				>
 					<DaisyUiTooltip tooltipText="Delete Column"
 						><span class="text-[10px] font-semibold">−Col</span
@@ -808,7 +814,7 @@
 
 <!-- Click outside to close dropdowns -->
 <svelte:window
-	on:click={(e) => {
+	onclick={(e) => {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.relative')) {
 			showHeadingDropdown = false;

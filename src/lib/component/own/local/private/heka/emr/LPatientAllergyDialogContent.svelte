@@ -1,24 +1,9 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		getAllergies,
-		getAllergyById,
-		getAllergyPaginated,
-		createAllergy
-	} from '$lib/remote/table/information-table/allergy.remote';
-	import { getSeverities } from '$lib/remote/table/master-table/severity.remote';
-	import {
-		createPatientAllergies,
-		getPatientAllergiesById,
-		updatePatientAllergies,
-		getActivePatientAllergiesByPatientId,
-		inactivateAllPatientAllergiesForPatient,
-		inactivateOtherPatientAllergiesForPatient,
-		inactivatePatientAllergiesByAllergyIdForPatient
-	} from '$lib/remote/table/information-table/patient-allergies.remote';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeactivationRemarkDialogState } from '$lib/state/deactivation-remark-dialog.state.svelte';
 	import { AllergyEnum, StatusEnum } from '$lib/model/enum/db-link';
@@ -34,6 +19,18 @@
 
 	type DeactivationRemarkResult = { deactivationRemark: string };
 
+	type AllergyRow = { id: number; name?: string | null };
+	type SeverityRow = { id: number; name?: string | null };
+	type PatientAllergyRow = {
+		id: number;
+		allergyId: number;
+		severityId: number;
+		statusId: number;
+		reaction?: string | null;
+		remark?: string | null;
+		deactivationRemark?: string | null;
+	};
+
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const patientId = $derived(PatientAllergyDialogState.patientId);
@@ -43,12 +40,88 @@
 	);
 	const isEditMode = $derived(!!patientAllergyId);
 
-	let allergies = $state<Awaited<ReturnType<typeof getAllergies>>>(
-		[]
+	const hospitalIdEffective = $derived(
+		(
+			PatientAllergyDialogState.hospitalId?.trim() ||
+			(typeof page.params?.hospital_id === 'string'
+				? page.params.hospital_id
+				: '')
+		).trim()
 	);
-	let severities = $state<Awaited<ReturnType<typeof getSeverities>>>(
-		[]
-	);
+
+	function obsEmrBase(): string {
+		const h = hospitalIdEffective;
+		if (!h) return '';
+		return `/api/heka/hospital/${encodeURIComponent(h)}/home/observation/emr`;
+	}
+
+	async function parseApi(res: Response): Promise<unknown> {
+		const text = await res.text();
+		let data: unknown;
+		try {
+			data = text ? JSON.parse(text) : null;
+		} catch {
+			throw new Error(text || res.statusText);
+		}
+		if (!res.ok) {
+			const d = data as { message?: string; error?: string } | null;
+			const msg =
+				(typeof d?.message === 'string' && d.message) ||
+				(typeof d?.error === 'string' && d.error) ||
+				text ||
+				res.statusText;
+			throw new Error(msg);
+		}
+		return data;
+	}
+
+	async function emrPost(body: Record<string, unknown>): Promise<unknown> {
+		const base = obsEmrBase();
+		if (!base) throw new Error('Hospital context missing.');
+		const r = await fetch(base, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		return parseApi(r);
+	}
+
+	async function fetchAllergyMasterList(): Promise<AllergyRow[]> {
+		const base = obsEmrBase();
+		if (!base) return [];
+		const r = await fetch(`${base}?mode=allergyMaster.list`);
+		return (await parseApi(r)) as AllergyRow[];
+	}
+
+	async function fetchSeverities(): Promise<SeverityRow[]> {
+		const r = await fetch('/api/heka/master/lookup?kind=severity');
+		return (await parseApi(r)) as SeverityRow[];
+	}
+
+	async function fetchPatientAllergyById(
+		id: number
+	): Promise<PatientAllergyRow | null> {
+		const base = obsEmrBase();
+		if (!base) return null;
+		const r = await fetch(
+			`${base}?mode=patientAllergy.byId&id=${encodeURIComponent(String(id))}`
+		);
+		return (await parseApi(r)) as PatientAllergyRow | null;
+	}
+
+	async function fetchActivePatientAllergies(
+		pid: string
+	): Promise<PatientAllergyRow[]> {
+		const base = obsEmrBase();
+		if (!base) return [];
+		const r = await fetch(
+			`${base}?mode=patientAllergy.activeByPatient&patientId=${encodeURIComponent(pid)}`
+		);
+		return (await parseApi(r)) as PatientAllergyRow[];
+	}
+
+	let allergies = $state<AllergyRow[]>([]);
+	let severities = $state<SeverityRow[]>([]);
 	let isSubmitting = $state(false);
 	/** 'existing' = pick from master, 'new' = add to master then link */
 	let allergyMode = $state<'existing' | 'new'>('existing');
@@ -64,13 +137,19 @@
 	async function searchAllergies(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getAllergyPaginated({
-			search: query.trim() || undefined,
-			page: 1,
-			/** Master list can be long; load enough rows for a scrollable dropdown. */
-			pageSize: 50
+		const base = obsEmrBase();
+		if (!base) return [];
+		const q = new URLSearchParams({
+			mode: 'allergyMaster.paginated',
+			page: '1',
+			pageSize: '50'
 		});
-		// Keep a small local cache for label lookups in this dialog session
+		const t = query.trim();
+		if (t) q.set('search', t);
+		const r = await fetch(`${base}?${q}`);
+		const res = (await parseApi(r)) as {
+			data: AllergyRow[];
+		};
 		allergies = res.data;
 		return res.data.map((a) => ({
 			value: String(a.id),
@@ -85,17 +164,30 @@
 		if (!id) return '';
 		const local = allergies.find((a) => a.id === id);
 		if (local) return local.name ?? '–';
-		const row = await getAllergyById({ id });
+		const base = obsEmrBase();
+		if (!base) return '–';
+		const r = await fetch(
+			`${base}?mode=allergyMaster.byId&id=${encodeURIComponent(String(id))}`
+		);
+		const row = (await parseApi(r)) as AllergyRow | null;
 		return row?.name ?? '–';
 	}
 
 	$effect(() => {
-		getAllergies().then((data) => {
-			allergies = data;
-		});
-		getSeverities().then((data) => {
-			severities = data;
-		});
+		const h = hospitalIdEffective;
+		void (async () => {
+			if (!h) return;
+			try {
+				const [a, s] = await Promise.all([
+					fetchAllergyMasterList(),
+					fetchSeverities()
+				]);
+				allergies = a;
+				severities = s;
+			} catch (e) {
+				console.error(e);
+			}
+		})();
 	});
 
 	const allergyNameForEdit = $derived(
@@ -107,8 +199,10 @@
 
 	$effect(() => {
 		const id = patientAllergyId;
-		if (id) {
-			getPatientAllergiesById({ id }).then((row) => {
+		const h = hospitalIdEffective;
+		if (id && h) {
+			void (async () => {
+				const row = await fetchPatientAllergyById(id);
 				if (row) {
 					selectedAllergyId = String(row.allergyId);
 					allergyMode = 'existing';
@@ -118,8 +212,8 @@
 					remark = row.remark ?? '';
 					deactivationRemark = row.deactivationRemark ?? '';
 				}
-			});
-		} else {
+			})();
+		} else if (!id) {
 			selectedAllergyId = '';
 			newAllergyName = '';
 			severityId = '';
@@ -134,9 +228,9 @@
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (isSubmitting) return;
-		if (!patientId || !visitId) {
+		if (!patientId || !visitId || !hospitalIdEffective) {
 			toastService.addToast(
-				'No visit selected.',
+				'No visit or hospital context.',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -160,6 +254,14 @@
 	}
 
 	async function submitPatientAllergy(severityIdNum: number) {
+		if (!obsEmrBase()) {
+			toastService.addToast(
+				'Hospital context missing.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
 		let allergyId: number;
 
 		if (isEditMode && patientAllergyId) {
@@ -182,11 +284,7 @@
 
 			// When changing status to Active, apply No Known Allergy rules
 			if (newStatusId === StatusEnum.ACTIVE && patientId) {
-				const activeList = await getActivePatientAllergiesByPatientId(
-					{
-						patientId
-					}
-				);
+				const activeList = await fetchActivePatientAllergies(patientId);
 				const othersActive = activeList.filter(
 					(r) => r.id !== patientAllergyId
 				);
@@ -202,7 +300,8 @@
 							});
 						if (!result.confirmed || !result.data?.deactivationRemark)
 							return;
-						await inactivateOtherPatientAllergiesForPatient({
+						await emrPost({
+							mode: 'patientAllergy.inactivateOthers',
 							patientId,
 							excludeId: patientAllergyId,
 							deactivationRemark: result.data.deactivationRemark
@@ -222,7 +321,8 @@
 							});
 						if (!result.confirmed || !result.data?.deactivationRemark)
 							return;
-						await inactivatePatientAllergiesByAllergyIdForPatient({
+						await emrPost({
+							mode: 'patientAllergy.inactivateByAllergyId',
 							patientId,
 							allergyId: AllergyEnum.NO_KNOWN_ALLERGY,
 							deactivationRemark: result.data.deactivationRemark
@@ -231,7 +331,8 @@
 				}
 			}
 
-			await updatePatientAllergies({
+			await emrPost({
+				mode: 'patientAllergy.update',
 				id: patientAllergyId,
 				severityId: severityIdNum,
 				statusId: newStatusId,
@@ -262,7 +363,10 @@
 			}
 
 			try {
-				const created = await createAllergy({ name });
+				const created = (await emrPost({
+					mode: 'allergyMaster.create',
+					name
+				})) as AllergyRow;
 				// Requirement: creating a new master allergy should NOT automatically
 				// add it to the patient's allergy table. Only "Select from list" + Save
 				// should create a patient allergy row.
@@ -276,27 +380,10 @@
 				);
 				return;
 			} catch (error: unknown) {
-				let message: string | null = null;
-
-				if (error && typeof error === 'object') {
-					const err = error as {
-						message?: string;
-						body?: { message?: string };
-					};
-
-					// SvelteKit remote command wraps server errors in HttpError;
-					// original message is usually at error.body.message.
-					if (err.body && typeof err.body.message === 'string') {
-						message = err.body.message;
-					} else if (typeof err.message === 'string') {
-						message = err.message;
-					}
-				}
-
-				if (!message) {
-					message = 'Failed to create allergy. Please try again.';
-				}
-
+				const message =
+					error instanceof Error
+						? error.message
+						: 'Failed to create allergy. Please try again.';
 				toastService.addToast(message, StatusColorEnum.ERROR);
 				return;
 			}
@@ -314,9 +401,7 @@
 
 		// When adding "No Known Allergy" (id 1), check existing active allergies and show combined confirm + deactivation remark before inactivating them
 		if (allergyId === AllergyEnum.NO_KNOWN_ALLERGY && patientId) {
-			const existing = await getActivePatientAllergiesByPatientId({
-				patientId
-			});
+			const existing = await fetchActivePatientAllergies(patientId);
 			if (existing.length > 0) {
 				DeactivationRemarkDialogState.message = `This patient has ${existing.length} existing allergy record(s). Adding "No Known Allergy" will mark them as inactive. Enter deactivation remark below to continue.`;
 				const result =
@@ -326,7 +411,8 @@
 					});
 				if (!result.confirmed || !result.data?.deactivationRemark)
 					return;
-				await inactivateAllPatientAllergiesForPatient({
+				await emrPost({
+					mode: 'patientAllergy.inactivateAll',
 					patientId,
 					deactivationRemark: result.data.deactivationRemark
 				});
@@ -335,9 +421,7 @@
 
 		// When adding any other allergy, if patient has active "No Known Allergy", show combined confirm + deactivation remark and inactivate it
 		if (allergyId !== AllergyEnum.NO_KNOWN_ALLERGY && patientId) {
-			const activeList = await getActivePatientAllergiesByPatientId({
-				patientId
-			});
+			const activeList = await fetchActivePatientAllergies(patientId);
 			const noKnownActive = activeList.filter(
 				(r) => r.allergyId === AllergyEnum.NO_KNOWN_ALLERGY
 			);
@@ -350,7 +434,8 @@
 					});
 				if (!result.confirmed || !result.data?.deactivationRemark)
 					return;
-				await inactivatePatientAllergiesByAllergyIdForPatient({
+				await emrPost({
+					mode: 'patientAllergy.inactivateByAllergyId',
 					patientId,
 					allergyId: AllergyEnum.NO_KNOWN_ALLERGY,
 					deactivationRemark: result.data.deactivationRemark
@@ -359,7 +444,8 @@
 		}
 
 		try {
-			await createPatientAllergies({
+			await emrPost({
+				mode: 'patientAllergy.create',
 				visitId,
 				patientId,
 				allergyId,

@@ -13,13 +13,7 @@
 	import DaisyUiCollapseTitle from '$lib/component/daisyui/collapse/title/DaisyUiCollapseTitle.svelte';
 	import DaisyUiCollapseContent from '$lib/component/daisyui/collapse/content/DaisyUiCollapseContent.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import {
-		getPatientVitalsByPatientId,
-		getPatientVitalsByPatientIdPaginated,
-		deletePatientVital,
-		type PatientVitalWithVisit
-	} from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
+	import type { PatientDiagnosisListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -37,6 +31,10 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+
+	type PatientVitalWithVisit = PatientDiagnosisListRow & {
+		visit?: { id: number; visitNo: string | null } | null;
+	};
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -72,6 +70,21 @@
 	let mounted = $state(false);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
+
+	function apiBase(): string {
+		return hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/vital`
+			: '';
+	}
+
+	async function apiGet<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
 
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
@@ -160,7 +173,10 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deletePatientVital({ id: v.id });
+			const base = apiBase();
+			if (!base) throw new Error('Missing hospital context');
+			const res = await fetch(`${base}?id=${v.id}`, { method: 'DELETE' });
+			if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
 			toastService.addToast(
 				'Vital deleted.',
 				StatusColorEnum.SUCCESS
@@ -187,19 +203,18 @@
 		if (!visitId || !hospitalId) return null;
 		isLoadingVisit = true;
 		try {
-			const v = await getPatientVisitById({ id: visitId });
-			if (v) {
-				const nextVisit = {
-					patientId: v.patientId,
-					hospitalId: v.hospitalId
-				};
-				visit = nextVisit;
-				return nextVisit;
-			} else {
+			const base = apiBase();
+			if (!base) return null;
+			const res = await apiGet<{ data: { patientId: string; hospitalId: string } | null }>(
+				`${base}?action=visitBasics&visitId=${visitId}`
+			);
+			if (!res.data) {
 				visit = null;
 				return null;
 			}
-		} catch {
+			visit = res.data;
+			return res.data;
+		} catch (_err) {
 			visit = null;
 			return null;
 		} finally {
@@ -212,6 +227,8 @@
 		hospitalIdParam: string,
 		options?: { force?: boolean }
 	) {
+		const base = apiBase();
+		if (!base) return;
 		const pageSize = Number(pageSizeStr) || 10;
 		const requestKey = JSON.stringify({
 			patientId,
@@ -227,28 +244,24 @@
 		lastVitalsFetchKey = requestKey;
 		isLoadingVitals = true;
 		try {
-			const statusId = tableFilters.status
-				? Number(tableFilters.status)
-				: undefined;
-			const result = await getPatientVitalsByPatientIdPaginated({
-				patientId,
-				hospitalId: hospitalIdParam,
-				page: currentPage,
-				pageSize,
-				visitNo: tableFilters.visitNo?.trim() || undefined,
-				statusId:
-					statusId != null && Number.isFinite(statusId)
-						? statusId
-						: undefined
-			});
+			const statusIdStr = tableFilters.status?.trim() || '';
+			const visitNo = tableFilters.visitNo?.trim() || '';
+			const url = new URL(base, globalThis.location?.origin ?? 'http://local');
+			url.searchParams.set('patientId', patientId);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+			if (visitNo) url.searchParams.set('visitNo', visitNo);
+			if (statusIdStr) url.searchParams.set('statusId', statusIdStr);
+
+			const result = await apiGet<{
+				data: PatientVitalWithVisit[];
+				total: number;
+			}>(url.pathname + url.search);
 			vitals = result.data;
 			totalVitals = result.total;
-		} catch {
-			vitals = await getPatientVitalsByPatientId({
-				patientId,
-				hospitalId: hospitalIdParam
-			});
-			totalVitals = vitals.length;
+		} catch (_err) {
+			vitals = [];
+			totalVitals = 0;
 		} finally {
 			isLoadingVitals = false;
 		}
@@ -439,7 +452,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message={"Choose a visit using the 'Choose Visit' button above to record vitals."}
+			message="Choose a visit using the 'Choose Visit' button above to record vitals."
 			className="z-0"
 		/>
 	{:else if !visit && !isLoadingVisit}

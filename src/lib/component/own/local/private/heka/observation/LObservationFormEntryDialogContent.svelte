@@ -1,14 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ObservationFormEntryDialogState } from '$lib/state/observation-form-entry-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import {
-		createPatientFormEntry,
-		getPatientFormEntryById,
-		updatePatientFormEntry
-	} from '$lib/remote/table/information-table/patient-form-entry.remote';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
@@ -17,6 +13,8 @@
 
 	const toastService = new ToastService();
 	let { confirm, cancel }: DialogSlotProps = $props();
+
+	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	const entryId = $derived(ObservationFormEntryDialogState.entryId);
 	const visitId = $derived(ObservationFormEntryDialogState.visitId);
@@ -32,6 +30,48 @@
 	let isSubmitting = $state(false);
 	let loadSeq = 0;
 
+	type FormEntryRow = {
+		id: number;
+		description: string | null;
+		statusId: number | null;
+	};
+
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const url = new URL(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			location.origin
+		);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				url.searchParams.set(k, v);
+			}
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: unknown) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode,
+					...(payload as Record<string, unknown>)
+				})
+			}
+		);
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	$effect(() => {
 		const id = entryId;
 		if (!id) {
@@ -40,7 +80,9 @@
 			return;
 		}
 		const seq = ++loadSeq;
-		void getPatientFormEntryById({ id })
+		void apiGet<FormEntryRow | null>('formEntry.get', {
+			id: String(id)
+		})
 			.then((row) => {
 				if (seq !== loadSeq) return;
 				if (!row) {
@@ -89,19 +131,23 @@
 		isSubmitting = true;
 		try {
 			if (isEdit && entryId != null) {
-				await updatePatientFormEntry({
-					id: entryId,
-					description: desc,
-					statusId: Number(statusIdStr) || StatusEnum.ACTIVE
+				await apiPost('formEntry.update', {
+					payload: {
+						id: entryId,
+						description: desc,
+						statusId: Number(statusIdStr) || StatusEnum.ACTIVE
+					}
 				});
 			} else {
-				await createPatientFormEntry({
-					branchId: bid,
-					patientId: pid,
-					visitId: vid,
-					formCode: fcode,
-					description: desc,
-					statusId: StatusEnum.ACTIVE
+				await apiPost('formEntry.create', {
+					payload: {
+						branchId: bid,
+						patientId: pid,
+						visitId: vid,
+						formCode: fcode,
+						description: desc,
+						statusId: StatusEnum.ACTIVE
+					}
 				});
 			}
 			ObservationFormEntryDialogState.onSaved?.();

@@ -6,17 +6,14 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { getPatientVisitByIdWithRelations } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import { getDocumentsWithRelations } from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
-	import { getDocumentSettingsWithRelations } from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { DocumentSettingWithRelations } from '$lib/remote/table/information-table/document-setting.remote';
-	import type { DocumentWithRelations } from '$lib/remote/table/information-table/document.remote';
-	import type { PatientVisitWithRelations } from '$lib/remote/table/information-table/patient-visit.remote';
+	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
+	import type { ClinicalDocumentRow } from '$lib/model/type/heka/document-print.type';
 	import {
 		buildDocumentPlaceholderContext,
 		buildVisitServiceLinesTableHtml,
-		resolveDocumentTemplate
+		resolveDocumentTemplate,
+		type VisitLike
 	} from '$lib/util/document-placeholder.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
@@ -27,7 +24,6 @@
 	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
 	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
-	import { createPatientDocument } from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 
@@ -38,13 +34,19 @@
 		page.url.searchParams.get('visitId') ?? ''
 	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
-	let visit = $state<PatientVisitWithRelations | null>(null);
-	let documents = $state<DocumentWithRelations[]>([]);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+	let visit = $state<VisitLike | null>(null);
+	let documents = $state<ClinicalDocumentRow[]>([]);
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
 	const printLock = createActionLock();
-	let selectedDocument = $state<DocumentWithRelations | null>(null);
+	let selectedDocument = $state<ClinicalDocumentRow | null>(null);
 	let showPreview = $state(false);
 	let lastLoadedVisitId = $state<number | null>(null);
 	let serviceLinesTableHtml = $state('');
@@ -80,22 +82,26 @@
 	async function fetchAllData() {
 		isLoading = true;
 		try {
-			const [visitResult, docsResult, settingsResult] =
-				await Promise.all([
-					visitId
-						? getPatientVisitByIdWithRelations({ id: visitId })
-						: Promise.resolve(null),
-					getDocumentsWithRelations(),
-					getDocumentSettingsWithRelations()
-				]);
-			if (visitId) visit = visitResult;
-			documents = docsResult;
-			documentSettings = settingsResult;
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/clinical-document?mode=bootstrap&visitId=${visitId}`
+			);
+			if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+			const payload = (await res.json()) as {
+				visit?: VisitLike | null;
+				documents?: ClinicalDocumentRow[];
+				documentSettings?: DocumentSettingWithRelations[];
+			};
 
-			if (visitId && visitResult?.hospitalId) {
+			if (visitId) visit = payload.visit ?? null;
+			documents = Array.isArray(payload.documents) ? payload.documents : [];
+			documentSettings = Array.isArray(payload.documentSettings)
+				? payload.documentSettings
+				: [];
+
+			if (visitId && payload.visit?.hospitalId) {
 				const printRows = await fetchVisitServiceLinePrintRows({
 					visitId,
-					hospitalId: visitResult.hospitalId
+					hospitalId: payload.visit.hospitalId
 				});
 				serviceLinesTableHtml =
 					buildVisitServiceLinesTableHtml(printRows);
@@ -134,7 +140,7 @@
 		selectedDocument = null;
 	}
 
-	function buildPlaceholderContext(doc: DocumentWithRelations) {
+	function buildPlaceholderContext(doc: ClinicalDocumentRow) {
 		return buildDocumentPlaceholderContext(visit, doc, {
 			printBy: printByName,
 			extraPlaceholders: {
@@ -150,14 +156,12 @@
 		return resolveDocumentTemplate(template, context);
 	}
 
-	function getResolvedDocumentHtml(
-		doc: DocumentWithRelations
-	): string {
+	function getResolvedDocumentHtml(doc: ClinicalDocumentRow): string {
 		const context = buildPlaceholderContext(doc);
 		return applyPlaceholders(doc.documentText, context).trim();
 	}
 
-	async function printDocument(doc: DocumentWithRelations) {
+	async function printDocument(doc: ClinicalDocumentRow) {
 		if (visitId && !visit) {
 			toastService.addToast(
 				'Visit data not loaded yet. Please wait.',
@@ -248,6 +252,7 @@
 							`${safeBase}.pdf`
 						);
 						await persistEmrPrintPdf({
+							hospitalId,
 							patientId,
 							visitId,
 							documentId: doc.id,
@@ -261,12 +266,23 @@
 					} catch (saveErr) {
 						console.error('Print PDF save failed', saveErr);
 						try {
-							await createPatientDocument({
-								visitId,
-								patientId,
-								documentId: doc.id,
-								statusId: StatusEnum.ACTIVE
-							});
+							const tagRes = await fetch(
+								`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/clinical-document`,
+								{
+									method: 'POST',
+									headers: { 'content-type': 'application/json' },
+									body: JSON.stringify({
+										mode: 'patientDocument.create',
+										payload: {
+											visitId,
+											patientId,
+											documentId: doc.id,
+											statusId: StatusEnum.ACTIVE
+										}
+									})
+								}
+							);
+							if (!tagRes.ok) throw new Error(`Tag failed (${tagRes.status})`);
 							toastService.addToast(
 								'Saved to patient documents (PDF upload failed).',
 								StatusColorEnum.WARNING

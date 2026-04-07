@@ -1,0 +1,31 @@
+---
+description: Mandatory data stack — pages hit mirrored API; API hits server-only modules
+alwaysApply: true
+---
+
+# Pages → API → Server-only (mandatory)
+
+Use this chain for any DB-backed behavior that pages need.
+
+```text
+src/routes/(public|private)/**/+page.svelte  →  src/routes/api/**/+server.ts  →  $lib/server/**
+               (UI)                                   (HTTP)                  (server-only)
+```
+
+## Rules
+
+1. **UI (`+page.svelte`, components)** — Must never import server-only code. Use `fetch()` to `src/routes/api/**/+server.ts` endpoints. Type API payloads with **`$lib/model/type/**`**, not **`$lib/server/db/schema-type`** (Drizzle `*Schema`); see `.cursor/rules/app-development.mdc` → **Types: UI / JSON vs Drizzle schema**.
+2. **API (`src/routes/api/**/+server.ts`)** — Centralized endpoints that mirror the page folder structure. Parse request, authz, call server-only modules, return `json(...)`.
+3. **Server-only modules (`$lib/server/**`)** — DB queries/commands and auth helpers used by API endpoints and `+page.server.ts` only.
+
+## Forbidden
+
+- **Importing server-only modules in UI**: any `import ... from '$lib/server/...'` in `.svelte` files or client-only modules.
+- **Removed layers**: any import from `$lib/remote/**` or `$lib/tool/remote/**`.
+- **Remote gateways**: do not add endpoints like `/api/heka-remote/invoke` or `/api/remote/*` dispatchers. Prefer explicit, mirrored endpoints.
+
+## When adding a feature
+
+1. Add/extend server-only logic under `$lib/server/**`.
+2. Expose `+server.ts` under the correct `src/routes/api/(public|private)/...` path that mirrors the page.
+3. Call the API from the page/component using `fetch()`.

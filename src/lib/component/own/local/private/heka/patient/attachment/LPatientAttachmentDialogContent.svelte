@@ -17,21 +17,11 @@
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		createPatientAttachment,
-		getPatientAttachmentByPatientId,
-		deletePatientAttachmentComplete
-	} from '$lib/remote/table/information-table/patient-attachment.remote';
-	import {
-		getPatientByIdWithRelations,
-		type PatientWithRelations
-	} from '$lib/remote/table/information-table/patient.remote';
-	import type { PatientAttachmentSchema } from '$lib/server/db/schema-type';
+	import type { PatientAttachmentListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { getPatientAttachmentDisplayUrl } from '$lib/util/staff-photo.util';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { browser } from '$app/environment';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const dateTimeUtil = new DateTimeUtil();
 	function formatAttachmentDateTime(
@@ -95,11 +85,26 @@
 	let description = $state('');
 	let isAddingToList = $state(false);
 	let isSubmitting = $state(false);
-	let existingAttachments: PatientAttachmentSchema[] = $state([]);
+	let existingAttachments: PatientAttachmentListRow[] = $state([]);
 	let isLoadingExisting = $state(false);
 	let deletingId: number | null = $state(null);
 	let patientLabel: string = $state('');
 	let isLoadingPatient = $state(false);
+
+	function apiBase(): string {
+		return payload && 'hospitalId' in payload && payload.hospitalId
+			? `/api/heka/hospital/${payload.hospitalId}/home/nursing-workbench/emr/patient-attachment`
+			: '';
+	}
+
+	async function apiGet<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
 
 	function handleFileChange(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -140,9 +145,15 @@
 	async function loadExisting(patientId: string) {
 		isLoadingExisting = true;
 		try {
-			existingAttachments = await getPatientAttachmentByPatientId({
-				patientId
-			});
+			const base = apiBase();
+			if (!base) {
+				existingAttachments = [];
+				return;
+			}
+			const res = await apiGet<{ data: PatientAttachmentListRow[] }>(
+				`${base}?patientId=${encodeURIComponent(patientId)}`
+			);
+			existingAttachments = res.data ?? [];
 		} finally {
 			isLoadingExisting = false;
 		}
@@ -151,23 +162,27 @@
 	async function loadPatientLabel(patientId: string) {
 		isLoadingPatient = true;
 		try {
-			const patient = await getPatientByIdWithRelations({
-				id: patientId
-			});
-			if (patient) {
-				patientLabel = StringUtil.patientDisplayName(
-					patient as PatientWithRelations
-				);
-			} else {
+			const base = apiBase();
+			if (!base) {
 				patientLabel = patientId;
+				return;
 			}
+			const res = await apiGet<{ data: { label: string } | null }>(
+				`${base}?action=patientLabel&patientId=${encodeURIComponent(patientId)}`
+			);
+			patientLabel = res.data?.label ?? patientId;
 		} finally {
 			isLoadingPatient = false;
 		}
 	}
 
 	$effect(() => {
-		if (isExistingPatient && payload && 'patientId' in payload) {
+		if (
+			isExistingPatient &&
+			payload &&
+			'patientId' in payload &&
+			'hospitalId' in payload
+		) {
 			loadExisting(payload.patientId);
 			loadPatientLabel(payload.patientId);
 		} else {
@@ -209,7 +224,10 @@
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (!browser) return;
-		if (!payload || !('patientId' in payload)) return;
+		if (!payload || !('patientId' in payload) || !('hospitalId' in payload))
+			return;
+		const base = apiBase();
+		if (!base) return;
 		if (attachmentFiles.length === 0) {
 			toastService.addToast(
 				'Please choose one or more files to upload.',
@@ -221,7 +239,7 @@
 		isSubmitting = true;
 		const patientId = payload.patientId;
 		const desc = description.trim() || undefined;
-		const created: PatientAttachmentSchema[] = [];
+		const created: PatientAttachmentListRow[] = [];
 		try {
 			for (const file of attachmentFiles) {
 				const fd = new FormData();
@@ -238,12 +256,27 @@
 					);
 					continue;
 				}
-				const row = await createPatientAttachment({
-					patientId,
-					fileUrl: data.url,
-					description: desc
+				const createRes = await fetch(base, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						patientId,
+						fileUrl: data.url,
+						description: desc
+					})
 				});
-				created.push(row);
+				const createData = await createRes
+					.json()
+					.catch(() => ({} as any));
+				if (!createRes.ok || !createData?.data) {
+					toastService.addToast(
+						createData?.error ??
+							`Save failed for ${file.name}.`,
+						StatusColorEnum.ERROR
+					);
+					continue;
+				}
+				created.push(createData.data as PatientAttachmentListRow);
 			}
 			if (created.length > 0) {
 				existingAttachments = [...existingAttachments, ...created];
@@ -279,10 +312,14 @@
 		}
 	}
 
-	async function removeExisting(att: PatientAttachmentSchema) {
+	async function removeExisting(att: PatientAttachmentListRow) {
 		deletingId = att.id;
 		try {
-			await deletePatientAttachmentComplete({ id: att.id });
+			const base = apiBase();
+			if (!base) throw new Error('Missing hospital context');
+			const res = await fetch(`${base}?id=${att.id}`, { method: 'DELETE' });
+			if (!res.ok)
+				throw new Error(await res.text().catch(() => res.statusText));
 			existingAttachments = existingAttachments.filter(
 				(a) => a.id !== att.id
 			);
@@ -453,7 +490,7 @@
 									</DaisyUiBadge>
 								</div>
 								<DaisyUiList className="gap-1">
-									{#each stagedAttachments as item, i}
+									{#each stagedAttachments as item, i (i)}
 										<DaisyUiListRow
 											className="flex items-center justify-between gap-2"
 										>
@@ -619,10 +656,12 @@
 										</span>
 										<div class="flex shrink-0 items-center gap-1">
 											{#if att.fileUrl}
-												<a
-													href={getPatientAttachmentDisplayUrl(
+												{@const rawHref =
+													getPatientAttachmentDisplayUrl(
 														att.fileUrl
 													) ?? att.fileUrl}
+												<a
+													href={rawHref}
 													target="_blank"
 													rel="noopener noreferrer"
 													class="d-btn d-btn-circle d-btn-ghost d-btn-xs"

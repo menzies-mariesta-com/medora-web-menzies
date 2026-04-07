@@ -8,14 +8,11 @@
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
-	import {
-		getPatientByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-
-	type PatientWithRelations = any;
+	import { page } from '$app/state';
+	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 
 	let { patientId, onClose } = $props<{
 		patientId: string;
@@ -28,6 +25,19 @@
 	let isLoading = $state(true);
 	let fetchError = $state<string | null>(null);
 
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
+	);
+
+	function patientListApiBase(hospitalId: string) {
+		return `/api/heka/hospital/${encodeURIComponent(
+			hospitalId
+		)}/home/registration/patient/list`;
+	}
+
 	onMount(() => {
 		let cancelled = false;
 
@@ -37,9 +47,15 @@
 
 		(async () => {
 			try {
-				const data = await getPatientByIdWithRelations({ id: patientId });
+				if (!hospitalId) throw new Error('Hospital is required');
+				const res = await fetch(
+					`${patientListApiBase(hospitalId)}?id=${encodeURIComponent(patientId)}&_t=${Date.now()}`
+				);
+				if (!res.ok)
+					throw new Error(`Failed to load patient details (${res.status})`);
+				const data = (await res.json()) as PatientWithRelations | null;
 				if (cancelled) return;
-				patient = data as PatientWithRelations;
+				patient = data;
 			} catch (err) {
 				if (cancelled) return;
 				fetchError =
@@ -67,7 +83,7 @@
 
 	const patientPhotoUrl = $derived.by(() => {
 		if (!patient) return '';
-		return getPatientPhotoDisplayUrl((patient as any).photoPath) ?? '';
+		return getPatientPhotoDisplayUrl(patient.photoPath) ?? '';
 	});
 
 	const patientInitials = $derived.by(() => {
@@ -131,9 +147,7 @@
 		if (!patient) return;
 
 		const title = 'Patient card';
-		const photoUrl = getPatientPhotoDisplayUrl(
-			(patient as any).photoPath
-		);
+		const photoUrl = getPatientPhotoDisplayUrl(patient.photoPath);
 		const photoHtml = photoUrl
 			? `<img class="photo" src="${escapeHtml(
 					photoUrl

@@ -1030,7 +1030,7 @@ ${content}
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="flex flex-col gap-2 {className}"
-	on:keydown={handleMenuKeydown}
+	onkeydown={handleMenuKeydown}
 	style={`font-family:${fontFamily};`}
 >
 	{#if showMenuBar}
@@ -1045,7 +1045,7 @@ ${content}
 					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'file'
 						? 'bg-base-300'
 						: ''}"
-					on:click={() => toggleMenu('file')}
+					onclick={() => toggleMenu('file')}
 				>
 					File
 				</button>
@@ -1056,7 +1056,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={exportAsPdf}
+							onclick={exportAsPdf}
 						>
 							<span class="w-4">📄</span>
 							<span>Export as PDF</span>
@@ -1067,7 +1067,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={exportAsHtml}
+							onclick={exportAsHtml}
 						>
 							<span class="w-4">🌐</span>
 							<span>Export as HTML</span>
@@ -1075,7 +1075,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={exportAsMarkdown}
+							onclick={exportAsMarkdown}
 						>
 							<span class="w-4">📝</span>
 							<span>Export as Markdown</span>
@@ -1091,7 +1091,7 @@ ${content}
 					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'edit'
 						? 'bg-base-300'
 						: ''}"
-					on:click={() => toggleMenu('edit')}
+					onclick={() => toggleMenu('edit')}
 				>
 					Edit
 				</button>
@@ -1102,7 +1102,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={handleUndo}
+							onclick={handleUndo}
 						>
 							<span class="w-4">↩️</span>
 							<span>Undo</span>
@@ -1113,7 +1113,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={handleRedo}
+							onclick={handleRedo}
 						>
 							<span class="w-4">↪️</span>
 							<span>Redo</span>
@@ -1125,7 +1125,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={handleSelectAll}
+							onclick={handleSelectAll}
 						>
 							<span class="w-4">📋</span>
 							<span>Select All</span>
@@ -1144,7 +1144,7 @@ ${content}
 					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'view'
 						? 'bg-base-300'
 						: ''}"
-					on:click={() => toggleMenu('view')}
+					onclick={() => toggleMenu('view')}
 				>
 					View
 				</button>
@@ -1155,7 +1155,7 @@ ${content}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
-							on:click={() => {
+							onclick={() => {
 								showPreview = !showPreview;
 								activeMenu = null;
 							}}
@@ -1174,7 +1174,7 @@ ${content}
 					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'help'
 						? 'bg-base-300'
 						: ''}"
-					on:click={() => toggleMenu('help')}
+					onclick={() => toggleMenu('help')}
 				>
 					Help
 				</button>
@@ -1216,7 +1216,7 @@ ${content}
 	<!-- Editor surface styled to match preview (.prose inside a rounded, bordered card) -->
 	<div
 		class="mt-2 rounded-box border border-base-300 bg-base-100 p-4"
-		on:click={closeMenus}
+		onclick={closeMenus}
 	>
 		<div
 			class="prose max-w-none focus:outline-none {editorClassName} {disabled
@@ -1225,8 +1225,8 @@ ${content}
 			contenteditable={!disabled}
 			bind:this={editorElement}
 			{placeholder}
-			on:input={syncFromDom}
-			on:keydown={handleEditorShortcuts}
+			oninput={syncFromDom}
+			onkeydown={handleEditorShortcuts}
 		></div>
 	</div>
 
@@ -1272,7 +1272,7 @@ ${content}
 				<button
 					type="button"
 					class="d-btn d-btn-ghost"
-					on:click={() => {
+					onclick={() => {
 						showLinkDialog = false;
 						linkUrl = '';
 						linkText = '';
@@ -1283,7 +1283,7 @@ ${content}
 				<button
 					type="button"
 					class="d-btn d-btn-primary"
-					on:click={insertLink}
+					onclick={insertLink}
 					disabled={!linkUrl}
 				>
 					Insert Link
@@ -1292,8 +1292,8 @@ ${content}
 		</div>
 		<div
 			class="d-modal-backdrop"
-			on:click={() => (showLinkDialog = false)}
-			on:keydown={(e) =>
+			onclick={() => (showLinkDialog = false)}
+			onkeydown={(e) =>
 				e.key === 'Escape' && (showLinkDialog = false)}
 			role="button"
 			tabindex="-1"
@@ -1308,14 +1308,15 @@ ${content}
 			<h3 class="mb-4 text-lg font-bold">Insert Image</h3>
 			<div class="space-y-4">
 				<div>
-					<label class="d-label">
+					<label class="d-label" for="mari-rich-insert-image-file">
 						<span class="d-label-text">Upload Image</span>
 					</label>
 					<input
+						id="mari-rich-insert-image-file"
 						type="file"
 						accept="image/*"
 						class="d-file-input-bordered d-file-input w-full"
-						on:change={handleImageUpload}
+						onchange={handleImageUpload}
 					/>
 				</div>
 				<div class="d-divider">OR</div>
@@ -1360,7 +1361,7 @@ ${content}
 				<button
 					type="button"
 					class="d-btn d-btn-ghost"
-					on:click={() => {
+					onclick={() => {
 						showImageDialog = false;
 						imageUrl = '';
 						imageAlt = '';
@@ -1371,7 +1372,7 @@ ${content}
 				<button
 					type="button"
 					class="d-btn d-btn-primary"
-					on:click={insertImage}
+					onclick={insertImage}
 					disabled={!imageUrl}
 				>
 					Insert Image
@@ -1380,8 +1381,8 @@ ${content}
 		</div>
 		<div
 			class="d-modal-backdrop"
-			on:click={() => (showImageDialog = false)}
-			on:keydown={(e) =>
+			onclick={() => (showImageDialog = false)}
+			onkeydown={(e) =>
 				e.key === 'Escape' && (showImageDialog = false)}
 			role="button"
 			tabindex="-1"

@@ -4,11 +4,6 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createBranch,
-		getBranchById,
-		updateBranch
-	} from '$lib/remote/table/information-table/hospital-branch.remote';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -31,9 +26,70 @@
 	const branchId = $derived(BranchModalState.branchId);
 	const isEdit = $derived(branchId != null && branchId !== '');
 
+	async function fetchBranchById(id: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/administration/branches?id=${encodeURIComponent(id)}`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branch (${res.status})`);
+		}
+		return (await res.json()) as unknown;
+	}
+
+	async function createBranchViaApi(input: {
+		hospitalId: string;
+		name: string;
+		code?: string;
+		address?: string;
+		phone?: string;
+		email?: string;
+	}) {
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/administration/branches`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(input)
+			}
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to create branch (${res.status})`);
+		}
+		return (await res.json().catch(() => null)) as unknown;
+	}
+
+	async function updateBranchViaApi(input: {
+		id: string;
+		name: string;
+		code?: string;
+		address?: string;
+		phone?: string;
+		email?: string;
+	}) {
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/administration/branches`,
+			{
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(input)
+			}
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to update branch (${res.status})`);
+		}
+		return (await res.json().catch(() => null)) as unknown;
+	}
+
 	lifeCycleUtil.onMount(async () => {
 		if (isEdit && branchId) {
-			const branch = await getBranchById({ id: branchId });
+			const branch = (await fetchBranchById(branchId)) as {
+				name?: string | null;
+				code?: string | null;
+				address?: string | null;
+				phone?: string | null;
+				email?: string | null;
+			} | null;
 			if (branch) {
 				name = branch.name ?? '';
 				code = branch.code ?? '';
@@ -71,7 +127,7 @@
 		isSubmitting = true;
 		try {
 			if (isEdit && branchId) {
-				await updateBranch({
+				await updateBranchViaApi({
 					id: branchId,
 					name: name.trim(),
 					code: code.trim() || undefined,
@@ -84,7 +140,7 @@
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createBranch({
+				await createBranchViaApi({
 					hospitalId,
 					name: name.trim(),
 					code: code.trim() || undefined,

@@ -19,43 +19,23 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 
-	import { getGender } from '$lib/tool/remote/table/master-table/gender.http.tool.svelte';
-	import { getMaritalStatus } from '$lib/tool/remote/table/master-table/marial-status.http.tool.svelte';
-	import { getTitle } from '$lib/tool/remote/table/master-table/title.http.tool.svelte';
-	import { getIdentityType } from '$lib/tool/remote/table/master-table/identity-type.http.tool.svelte';
-	import { getBloodType } from '$lib/tool/remote/table/master-table/blood-type.http.tool.svelte';
-	import { getCountry } from '$lib/tool/remote/table/master-table/country.http.tool.svelte';
-	import { getState } from '$lib/tool/remote/table/master-table/state.http.tool.svelte';
-	import { getCity } from '$lib/tool/remote/table/master-table/city.http.tool.svelte';
-	import { getPostalCode } from '$lib/tool/remote/table/master-table/postal-code.http.tool.svelte';
-	import { getNationality } from '$lib/tool/remote/table/master-table/nationality.http.tool.svelte';
-	import { getReligion } from '$lib/tool/remote/table/master-table/religion.http.tool.svelte';
-
 	import type {
-		BloodTypeSchema,
-		CitySchema,
-		CountrySchema,
-		GenderSchema,
-		MaritalStatusSchema,
-		IdentityTypeSchema,
-		NationalitySchema,
-		PostalCodeSchema,
-		ReligionSchema,
-		StateSchema,
-		TitleSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegBloodTypeRow,
+		PatientRegCityRow,
+		PatientRegCountryRow,
+		PatientRegGenderRow,
+		PatientRegIdentityTypeRow,
+		PatientRegMaritalStatusRow,
+		PatientRegNationalityRow,
+		PatientRegPostalCodeRow,
+		PatientRegReligionRow,
+		PatientRegStateRow,
+		PatientRegTitleRow
+	} from '$lib/model/type/heka/patient-reg-master.type';
 
-	import {
-		createPatientWithUser,
-		updatePatient,
-		getPatientByIdWithRelations,
-		getDuplicatePatients
-	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
-	import { createPatientAttachment } from '$lib/tool/remote/table/information-table/patient-attachment.http.tool.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
-	import { updateUser } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
 	import DaisyUiFileInput from '$lib/component/daisyui/fileinput/DaisyUiFileInput.svelte';
@@ -94,17 +74,17 @@
 	}
 
 	// Lookup data
-	let titleData: TitleSchema[] = $state([]);
-	let genderData: GenderSchema[] = $state([]);
-	let maritalStatusData: MaritalStatusSchema[] = $state([]);
-	let identityTypeData: IdentityTypeSchema[] = $state([]);
-	let bloodTypeData: BloodTypeSchema[] = $state([]);
-	let countryData: CountrySchema[] = $state([]);
-	let stateData: StateSchema[] = $state([]);
-	let cityData: CitySchema[] = $state([]);
-	let postalCodeData: PostalCodeSchema[] = $state([]);
-	let nationalityData: NationalitySchema[] = $state([]);
-	let religionData: ReligionSchema[] = $state([]);
+	let titleData: PatientRegTitleRow[] = $state([]);
+	let genderData: PatientRegGenderRow[] = $state([]);
+	let maritalStatusData: PatientRegMaritalStatusRow[] = $state([]);
+	let identityTypeData: PatientRegIdentityTypeRow[] = $state([]);
+	let bloodTypeData: PatientRegBloodTypeRow[] = $state([]);
+	let countryData: PatientRegCountryRow[] = $state([]);
+	let stateData: PatientRegStateRow[] = $state([]);
+	let cityData: PatientRegCityRow[] = $state([]);
+	let postalCodeData: PatientRegPostalCodeRow[] = $state([]);
+	let nationalityData: PatientRegNationalityRow[] = $state([]);
+	let religionData: PatientRegReligionRow[] = $state([]);
 
 	// Form state
 	let patientCode: string = $state('');
@@ -113,6 +93,121 @@
 			page.params.hospital_id) ||
 			''
 	);
+
+	function registrationPatientApiBase(): string {
+		const h = hospitalIdFromUrl;
+		return h
+			? `/api/heka/hospital/${h}/home/registration/patient/registration`
+			: '';
+	}
+
+	function nursingPatientAttachmentApiBase(): string {
+		const h = hospitalIdFromUrl;
+		return h
+			? `/api/heka/hospital/${h}/home/nursing-workbench/emr/patient-attachment`
+			: '';
+	}
+
+	async function fetchMasterLookup<T>(kind: string): Promise<T[]> {
+		const r = await fetch(`/api/heka/master/lookup?kind=${kind}`);
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Lookup failed');
+		}
+		return r.json();
+	}
+
+	async function apiGetPatientByIdForForm(
+		id: string
+	): Promise<any | null> {
+		const base = registrationPatientApiBase();
+		if (!base) return null;
+		const r = await fetch(`${base}?id=${encodeURIComponent(id)}`);
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Failed to load patient');
+		}
+		return (await r.json()) as any | null;
+	}
+
+	async function apiUpdateUserJson(body: {
+		id: string;
+		name?: string;
+		email?: string;
+	}) {
+		const r = await fetch('/api/heka/auth/user', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'User update failed');
+		}
+		return r.json();
+	}
+
+	async function apiUpdatePatient(body: Record<string, unknown>) {
+		const base = registrationPatientApiBase();
+		if (!base) throw new Error('Missing hospital context');
+		const r = await fetch(base, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Patient update failed');
+		}
+		return r.json();
+	}
+
+	async function apiCreatePatientWithUser(body: Record<string, unknown>) {
+		const base = registrationPatientApiBase();
+		if (!base) throw new Error('Missing hospital context');
+		const r = await fetch(base, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ mode: 'create', ...body })
+		});
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Create patient failed');
+		}
+		return r.json() as Promise<{
+			patient: { id: string; code?: string | null };
+			userId: string;
+			generatedPassword: string;
+		}>;
+	}
+
+	async function apiGetDuplicatePatients(payload: Record<string, unknown>) {
+		const base = registrationPatientApiBase();
+		if (!base) throw new Error('Missing hospital context');
+		const r = await fetch(base, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ mode: 'duplicates', ...payload })
+		});
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Duplicate check failed');
+		}
+		const j = (await r.json()) as { data: unknown[] };
+		return j.data;
+	}
+
+	async function apiCreatePatientAttachment(body: {
+		patientId: string;
+		fileUrl: string;
+		description?: string;
+	}) {
+		const base = nursingPatientAttachmentApiBase();
+		if (!base) throw new Error('Missing hospital context');
+		const r = await fetch(base, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		if (!r.ok) {
+			throw new Error((await r.text()) || 'Attachment save failed');
+		}
+		return r.json();
+	}
 	let selectedTitleId: string = $state('');
 	let firstName: string = $state('');
 	let middleName: string = $state('');
@@ -147,20 +242,20 @@
 	// Derived: selected objects and filtered lists (staff-style cascading)
 	let selectedCountry = $derived(
 		countryData.find((c) => String(c.id) === selectedCountryId) ??
-			({} as CountrySchema)
+			({} as PatientRegCountryRow)
 	);
 	let selectedState = $derived(
 		stateData.find((s) => String(s.id) === selectedStateId) ??
-			({} as StateSchema)
+			({} as PatientRegStateRow)
 	);
 	let selectedCity = $derived(
 		cityData.find((c) => String(c.id) === selectedCityId) ??
-			({} as CitySchema)
+			({} as PatientRegCityRow)
 	);
 	let selectedPostalCode = $derived(
 		postalCodeData.find(
 			(p) => String(p.id) === selectedPostalCodeId
-		) ?? ({} as PostalCodeSchema)
+		) ?? ({} as PatientRegPostalCodeRow)
 	);
 	let filteredStateData = $derived(
 		selectedCountry?.id
@@ -243,22 +338,22 @@
 			nationalityData,
 			religionData
 		] = await Promise.all([
-			getTitle(),
-			getGender(),
-			getMaritalStatus(),
-			getIdentityType(),
-			getBloodType(),
-			getCountry(),
-			getState(),
-			getCity(),
-			getPostalCode(),
-			getNationality(),
-			getReligion()
+			fetchMasterLookup<PatientRegTitleRow>('title'),
+			fetchMasterLookup<PatientRegGenderRow>('gender'),
+			fetchMasterLookup<PatientRegMaritalStatusRow>('maritalStatus'),
+			fetchMasterLookup<PatientRegIdentityTypeRow>('identityType'),
+			fetchMasterLookup<PatientRegBloodTypeRow>('bloodType'),
+			fetchMasterLookup<PatientRegCountryRow>('country'),
+			fetchMasterLookup<PatientRegStateRow>('state'),
+			fetchMasterLookup<PatientRegCityRow>('city'),
+			fetchMasterLookup<PatientRegPostalCodeRow>('postalCode'),
+			fetchMasterLookup<PatientRegNationalityRow>('nationality'),
+			fetchMasterLookup<PatientRegReligionRow>('religion')
 		]);
 	}
 
 	async function loadPatientIntoForm(id: string) {
-		const patient = await getPatientByIdWithRelations({ id });
+		const patient = await apiGetPatientByIdForForm(id);
 		if (!patient) return;
 		patientCode = patient.code ?? '';
 		selectedTitleId =
@@ -504,7 +599,7 @@
 		}
 		duplicateCheckLoading = true;
 		try {
-			const list = await getDuplicatePatients({
+			const list = await apiGetDuplicatePatients({
 				titleId: selectedTitleId ? Number(selectedTitleId) : null,
 				firstName: firstName.trim(),
 				middleName: middleName.trim(),
@@ -526,7 +621,7 @@
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				PatientDuplicateModalState.duplicates = list;
+				PatientDuplicateModalState.duplicates = list as any;
 				const result = await dialogService.open({
 					title: 'Duplicate patients found',
 					fullScreen: true,
@@ -564,7 +659,8 @@
 		if (currentPatientId) {
 			PatientAttachmentDialogState.stagedAttachments = [];
 			PatientAttachmentDialogState.pending = {
-				patientId: currentPatientId
+				patientId: currentPatientId,
+				hospitalId: hospitalIdFromUrl
 			};
 		} else {
 			// New patient: stage attachments; they will be saved when registration is submitted
@@ -632,9 +728,16 @@
 		try {
 			if (currentPatientId) {
 				// Edit: update existing patient
-				const previous = await getPatientByIdWithRelations({
-					id: currentPatientId
-				});
+				const previous = await apiGetPatientByIdForForm(
+					currentPatientId
+				);
+				if (!previous) {
+					toastService.addToast(
+						'Patient not found.',
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
 				const previousUser = previous as {
 					user?: {
 						id?: string;
@@ -653,14 +756,14 @@
 					previousUser.user?.id &&
 					trimmedNewName !== previousName
 				) {
-					await updateUser({
+					await apiUpdateUserJson({
 						id: previousUser.user.id,
 						name: trimmedNewName
 					});
 				}
 				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
 					if (previousUser.user?.id) {
-						await updateUser({
+						await apiUpdateUserJson({
 							id: previousUser.user.id,
 							email: trimmedNewEmail
 						});
@@ -671,7 +774,7 @@
 					}
 				}
 
-				await updatePatient({
+				await apiUpdatePatient({
 					id: currentPatientId,
 					code: patientCode.trim() || undefined,
 					titleId: selectedTitleId
@@ -754,7 +857,7 @@
 								StatusColorEnum.ERROR
 							);
 						} else if (data.url) {
-							await updatePatient({
+							await apiUpdatePatient({
 								id: currentPatientId,
 								photoPath: data.url
 							});
@@ -765,7 +868,7 @@
 						photoUploading = false;
 					}
 				} else if (removePhotoRequested) {
-					await updatePatient({
+					await apiUpdatePatient({
 						id: currentPatientId,
 						photoPath: null
 					});
@@ -800,7 +903,7 @@
 				// pass whatever is provided (or a generated placeholder if blank).
 				const emailValue = email.trim();
 				const usingDefaultEmailForCreate = !emailValue;
-				const result = await createPatientWithUser({
+				const result = await apiCreatePatientWithUser({
 					email:
 						emailValue ||
 						`${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`,
@@ -871,7 +974,7 @@
 				const { patient } = result;
 				patientCode = patient.code ?? '';
 				if (usingDefaultEmailForCreate) {
-					await updateUser({
+					await apiUpdateUserJson({
 						id: result.userId,
 						email: StringUtil.defaultNoEmail(patient.id)
 					});
@@ -893,7 +996,7 @@
 								StatusColorEnum.ERROR
 							);
 						} else if (data.url) {
-							await updatePatient({
+							await apiUpdatePatient({
 								id: patient.id,
 								photoPath: data.url
 							});
@@ -917,7 +1020,7 @@
 					const data = await res.json().catch(() => ({}));
 					if (res.ok && data.url) {
 						try {
-							await createPatientAttachment({
+							await apiCreatePatientAttachment({
 								patientId: patient.id,
 								fileUrl: data.url,
 								description: item.description.trim() || undefined

@@ -6,25 +6,17 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createHospital,
-		getHospitalById,
-		updateHospital
-	} from '$lib/remote/table/information-table/hospital.remote';
-	import { getUsersByRole } from '$lib/remote/table/auth-table/user.remote';
 	import { RoleEnum } from '$lib/model/enum/db-link';
-	import { getCountry } from '$lib/remote/table/master-table/country.remote';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
-	import { getState } from '$lib/remote/table/master-table/state.remote';
-	import { getCity } from '$lib/remote/table/master-table/city.remote';
-	import { getPostalCode } from '$lib/remote/table/master-table/postal-code.remote';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { CountrySchema } from '$lib/server/db/schema-type';
-	import type { StateSchema } from '$lib/server/db/schema-type';
-	import type { CitySchema } from '$lib/server/db/schema-type';
-	import type { PostalCodeSchema } from '$lib/server/db/schema-type';
-	import type { UserSchema } from '$lib/server/db/schema-type';
+	import type {
+		PatientRegCityRow,
+		PatientRegCountryRow,
+		PatientRegPostalCodeRow,
+		PatientRegStateRow
+	} from '$lib/model/type/heka/patient-reg-master.type';
+	import type { UserListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -50,11 +42,11 @@
 	let isLoading = $state(false);
 	let editId = $state<string | null>(null);
 
-	let countries = $state<CountrySchema[]>([]);
-	let states = $state<StateSchema[]>([]);
-	let cities = $state<CitySchema[]>([]);
-	let postalCodes = $state<PostalCodeSchema[]>([]);
-	let owners = $state<UserSchema[]>([]);
+	let countries = $state<PatientRegCountryRow[]>([]);
+	let states = $state<PatientRegStateRow[]>([]);
+	let cities = $state<PatientRegCityRow[]>([]);
+	let postalCodes = $state<PatientRegPostalCodeRow[]>([]);
+	let owners = $state<UserListRow[]>([]);
 	let ownerId = $state<string>('');
 
 	/** When current user is OWNER, ownerId is forced to their id; only SYSTEM_ADMIN can choose owner. */
@@ -119,58 +111,72 @@
 			statesData,
 			citiesData,
 			postalCodesData,
-			ownersData
+			ownersRes
 		] = await Promise.all([
-			getCountry(),
-			getState(),
-			getCity(),
-			getPostalCode(),
-			getUsersByRole({ roleId: RoleEnum.OWNER })
+			fetch('/api/heka/master/lookup?kind=country').then((r) => r.json()),
+			fetch('/api/heka/master/lookup?kind=state').then((r) => r.json()),
+			fetch('/api/heka/master/lookup?kind=city').then((r) => r.json()),
+			fetch('/api/heka/master/lookup?kind=postalCode').then((r) =>
+				r.json()
+			),
+			fetch(
+				`/api/heka/auth/user?roleId=${RoleEnum.OWNER}&all=1`
+			).then((r) => r.json())
 		]);
 		countries = countriesData;
 		states = statesData;
 		cities = citiesData;
 		postalCodes = postalCodesData;
-		owners = ownersData;
+		owners = ownersRes as UserListRow[];
 	}
 
 	async function loadHospitalForEdit(id: string) {
-		const h = await getHospitalById({ id });
-		if (!h) return;
+		const r = await fetch(
+			`/api/heka/hospital?id=${encodeURIComponent(id)}`
+		);
+		const h = (await r.json()) as Record<string, unknown> | null;
+		if (!h || typeof h !== 'object') return;
 		const loadedCountryId =
-			h.countryId != null ? String(h.countryId) : '';
-		const loadedStateId = h.stateId != null ? String(h.stateId) : '';
-		const loadedCityId = h.cityId != null ? String(h.cityId) : '';
+			h.countryId != null && h.countryId !== ''
+				? String(h.countryId)
+				: '';
+		const loadedStateId =
+			h.stateId != null && h.stateId !== ''
+				? String(h.stateId)
+				: '';
+		const loadedCityId =
+			h.cityId != null && h.cityId !== '' ? String(h.cityId) : '';
 		const loadedPostalCodeId =
-			h.postalCodeId != null ? String(h.postalCodeId) : '';
+			h.postalCodeId != null && h.postalCodeId !== ''
+				? String(h.postalCodeId)
+				: '';
 		// Set prev values first so cascade $effect won't clear child fields when we assign below
 		prevCountryId = loadedCountryId;
 		prevStateId = loadedStateId;
 		prevCityId = loadedCityId;
-		name = h.name ?? '';
-		code = h.code ?? '';
-		address = h.address ?? '';
-		email = h.email ?? '';
-		website = h.website ?? '';
+		name = (h.name as string | null | undefined) ?? '';
+		code = (h.code as string | null | undefined) ?? '';
+		address = (h.address as string | null | undefined) ?? '';
+		email = (h.email as string | null | undefined) ?? '';
+		website = (h.website as string | null | undefined) ?? '';
 		postalCodeId = loadedPostalCodeId;
 		cityId = loadedCityId;
 		stateId = loadedStateId;
 		countryId = loadedCountryId;
 		ownerId = isOwnerUser
 			? currentUserId
-			: ((h as { ownerId?: string | null }).ownerId ?? '');
-		logoUrl = h.logoUrl ?? '';
-		description = h.description ?? '';
-		establishedDate = h.establishedDate ?? '';
-		const phoneCountryIdRaw = (
-			h as { phoneCountryId?: number | null }
-		).phoneCountryId;
+			: String((h.ownerId as string | null | undefined) ?? '');
+		logoUrl = (h.logoUrl as string | null | undefined) ?? '';
+		description = (h.description as string | null | undefined) ?? '';
+		establishedDate =
+			(h.establishedDate as string | null | undefined) ?? '';
+		const phoneCountryIdRaw = h.phoneCountryId as number | null | undefined;
 		if (phoneCountryIdRaw != null) {
 			phoneCountryId = String(phoneCountryIdRaw);
 			const country = countries.find(
 				(c) => c.id === phoneCountryIdRaw
 			);
-			const fullPhone = h.phone ?? '';
+			const fullPhone = (h.phone as string | null | undefined) ?? '';
 			phone =
 				country?.countryCallingCode &&
 				fullPhone.startsWith(country.countryCallingCode)
@@ -178,7 +184,7 @@
 					: fullPhone;
 		} else {
 			phoneCountryId = '';
-			const fullPhone = h.phone ?? '';
+			const fullPhone = (h.phone as string | null | undefined) ?? '';
 			const match = countries.find(
 				(c) =>
 					c.countryCallingCode &&
@@ -232,47 +238,47 @@
 			: ownerId.trim() || undefined;
 		isSubmitting = true;
 		try {
+			const body = {
+				name: n,
+				code: code.trim() || undefined,
+				address: address.trim() || undefined,
+				phone: phoneWithCode,
+				phoneCountryId: num(phoneCountryId),
+				email: email.trim() || undefined,
+				website: website.trim() || undefined,
+				ownerId: effectiveOwnerId,
+				postalCodeId: num(postalCodeId),
+				cityId: num(cityId),
+				stateId: num(stateId),
+				countryId: num(countryId),
+				logoUrl: logoUrl.trim() || undefined,
+				description: description.trim() || undefined,
+				establishedDate: establishedDate.trim() || undefined
+			};
 			if (id != null) {
-				await updateHospital({
-					id,
-					name: n,
-					code: code.trim() || undefined,
-					address: address.trim() || undefined,
-					phone: phoneWithCode,
-					phoneCountryId: num(phoneCountryId),
-					email: email.trim() || undefined,
-					website: website.trim() || undefined,
-					ownerId: effectiveOwnerId,
-					postalCodeId: num(postalCodeId),
-					cityId: num(cityId),
-					stateId: num(stateId),
-					countryId: num(countryId),
-					logoUrl: logoUrl.trim() || undefined,
-					description: description.trim() || undefined,
-					establishedDate: establishedDate.trim() || undefined
+				const res = await fetch('/api/heka/hospital', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ id, ...body })
 				});
+				if (!res.ok) {
+					const t = await res.text();
+					throw new Error(t || 'Update failed');
+				}
 				toastService.addToast(
 					'Hospital updated.',
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createHospital({
-					name: n,
-					code: code.trim() || undefined,
-					address: address.trim() || undefined,
-					phone: phoneWithCode,
-					phoneCountryId: num(phoneCountryId),
-					email: email.trim() || undefined,
-					website: website.trim() || undefined,
-					ownerId: effectiveOwnerId,
-					postalCodeId: num(postalCodeId),
-					cityId: num(cityId),
-					stateId: num(stateId),
-					countryId: num(countryId),
-					logoUrl: logoUrl.trim() || undefined,
-					description: description.trim() || undefined,
-					establishedDate: establishedDate.trim() || undefined
+				const res = await fetch('/api/heka/hospital', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
 				});
+				if (!res.ok) {
+					const t = await res.text();
+					throw new Error(t || 'Create failed');
+				}
 				toastService.addToast(
 					'Hospital created.',
 					StatusColorEnum.SUCCESS

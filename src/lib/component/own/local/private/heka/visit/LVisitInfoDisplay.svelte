@@ -3,29 +3,21 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/heka/emr/LVisitAlertIndicators.svelte';
-	import {
-		getPatientVisitByIdWithRelations,
-		type PatientVisitWithRelations
-	} from '$lib/remote/table/information-table/patient-visit.remote';
-	import {
-		getActivePatientAllergiesPatientIdsByPatientIds
-	} from '$lib/remote/table/information-table/patient-allergies.remote';
-	import {
-		getAbnormalVitalVisitIdsByVisitIds
-	} from '$lib/remote/table/information-table/patient-vital.remote';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 
 	let {
 		visitId = '',
+		hospitalId = '',
 		title = m.selected_visit(),
 		emptyLabel = m.no_visit_selected()
 	} = $props<{
 		visitId?: string;
+		hospitalId?: string;
 		title?: string;
 		emptyLabel?: string;
 	}>();
 
-	let visit = $state<PatientVisitWithRelations | null>(null);
+	let visit = $state<any>(null);
 	let isLoading = $state(false);
 	let hasActiveAllergies = $state(false);
 	let hasAbnormalVital = $state(false);
@@ -35,7 +27,11 @@
 
 	$effect(() => {
 		const id = visitIdNum;
-		if (!id || Number.isNaN(id)) {
+		const hid =
+			typeof hospitalId === 'string' && hospitalId.trim() !== ''
+				? hospitalId.trim()
+				: '';
+		if (!id || Number.isNaN(id) || !hid) {
 			visit = null;
 			return;
 		}
@@ -43,8 +39,30 @@
 		(async () => {
 			isLoading = true;
 			try {
-				const v = await getPatientVisitByIdWithRelations({ id });
-				if (!cancelled) visit = v;
+				const qs = new URLSearchParams({
+					mode: 'visit.bar',
+					visitId: String(id)
+				});
+				const r = await fetch(
+					`/api/heka/hospital/${encodeURIComponent(hid)}/home/emr/visit-list?${qs}`
+				);
+				if (!r.ok) throw new Error('visit bar failed');
+				const pack = (await r.json()) as {
+					visit: any;
+					hasActiveAllergies: boolean;
+					hasAbnormalVital: boolean;
+				};
+				if (!cancelled) {
+					visit = pack.visit;
+					hasActiveAllergies = pack.hasActiveAllergies;
+					hasAbnormalVital = pack.hasAbnormalVital;
+				}
+			} catch {
+				if (!cancelled) {
+					visit = null;
+					hasActiveAllergies = false;
+					hasAbnormalVital = false;
+				}
 			} finally {
 				if (!cancelled) isLoading = false;
 			}
@@ -60,66 +78,11 @@
 			return;
 		}
 		VisitState.setClinicalSignedAtFromVisit(
-			visit.clinicalSignedAt ?? null
+			visit.clinicalSignedAt != null &&
+				typeof visit.clinicalSignedAt === 'string'
+				? visit.clinicalSignedAt
+				: null
 		);
-	});
-
-	$effect(() => {
-		const patientId = visit?.patient?.id;
-		if (!patientId) {
-			hasActiveAllergies = false;
-			return;
-		}
-
-		let cancelled = false;
-		hasActiveAllergies = false;
-
-		(async () => {
-			const activeIds =
-				await getActivePatientAllergiesPatientIdsByPatientIds({
-					patientIds: [String(patientId)]
-				});
-			if (!cancelled) {
-				hasActiveAllergies = activeIds.includes(String(patientId));
-			}
-		})().catch(() => {
-			if (!cancelled) {
-				hasActiveAllergies = false;
-			}
-		});
-
-		return () => {
-			cancelled = true;
-		};
-	});
-
-	$effect(() => {
-		const currentVisitId = visit?.id;
-		if (!currentVisitId) {
-			hasAbnormalVital = false;
-			return;
-		}
-
-		let cancelled = false;
-		hasAbnormalVital = false;
-
-		(async () => {
-			const abnormalVisitIds =
-				await getAbnormalVitalVisitIdsByVisitIds({
-					visitIds: [currentVisitId]
-				});
-			if (!cancelled) {
-				hasAbnormalVital = abnormalVisitIds.includes(currentVisitId);
-			}
-		})().catch(() => {
-			if (!cancelled) {
-				hasAbnormalVital = false;
-			}
-		});
-
-		return () => {
-			cancelled = true;
-		};
 	});
 
 	function formatDate(

@@ -6,22 +6,16 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createStore,
-		getStoreById,
-		updateStore
-	} from '$lib/remote/table/information-table/store.remote';
-	import { getBranchesByHospitalId } from '$lib/remote/table/information-table/hospital-branch.remote';
-	import { getUserGroupByHospitalId } from '$lib/remote/table/information-table/user-group.remote';
-	import { getDepartment } from '$lib/remote/table/master-table/department.remote';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
-	import type { UserGroupSchema } from '$lib/server/db/schema-type';
-	import type { DepartmentSchema } from '$lib/server/db/schema-type';
+	import type {
+		StaffRegDepartmentRow,
+		StaffRegHospitalBranchRow,
+		StaffRegUserGroupRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 	import { m } from '$lib/paraglide/messages';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -29,9 +23,9 @@
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	let branchRows = $state<HospitalBranchSchema[]>([]);
-	let userGroups = $state<UserGroupSchema[]>([]);
-	let departments = $state<DepartmentSchema[]>([]);
+	let branchRows = $state<StaffRegHospitalBranchRow[]>([]);
+	let userGroups = $state<StaffRegUserGroupRow[]>([]);
+	let departments = $state<StaffRegDepartmentRow[]>([]);
 
 	let branchId = $state('');
 	let storeName = $state('');
@@ -43,11 +37,50 @@
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 
-	const state = $derived(StoreModalState);
-	const hospitalId = $derived(state.hospitalId ?? '');
+	const modalState = $derived(StoreModalState);
+	const hospitalId = $derived(modalState.hospitalId ?? '');
 	const isEdit = $derived(
-		state.mode === 'edit' && state.editStore != null
+		modalState.mode === 'edit' && modalState.editStore != null
 	);
+
+	type StoreLookups = {
+		userGroups: StaffRegUserGroupRow[];
+		departments: StaffRegDepartmentRow[];
+		statuses: unknown[];
+	};
+
+	async function fetchBranchesAll(hid: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branches (${res.status})`);
+		}
+		return (await res.json()) as StaffRegHospitalBranchRow[];
+	}
+
+	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/stores?mode=lookups`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load lookups (${res.status})`);
+		}
+		return (await res.json()) as StoreLookups;
+	}
+
+	async function fetchStoreById(hid: string, id: number) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/stores?id=${encodeURIComponent(String(id))}`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load store (${res.status})`);
+		}
+		return (await res.json()) as any;
+	}
 
 	lifeCycleUtil.onMount(async () => {
 		if (!hospitalId) {
@@ -57,19 +90,19 @@
 		const editing =
 			StoreModalState.mode === 'edit' && StoreModalState.editStore != null;
 		try {
-			const [branches, groups, depts] = await Promise.all([
-				getBranchesByHospitalId({ hospitalId }),
-				getUserGroupByHospitalId({ hospitalId }),
-				getDepartment()
+			const [branches, lookups] = await Promise.all([
+				fetchBranchesAll(hospitalId),
+				fetchStoreLookups(hospitalId)
 			]);
 			branchRows = branches;
-			userGroups = groups;
-			departments = depts;
+			userGroups = lookups.userGroups ?? [];
+			departments = lookups.departments ?? [];
 
 			if (editing && StoreModalState.editStore) {
-				const s = await getStoreById({
-					id: StoreModalState.editStore.id
-				});
+				const s = await fetchStoreById(
+					hospitalId,
+					StoreModalState.editStore.id
+				);
 				if (s) {
 					branchId = s.branchId;
 					storeName = s.storeName ?? '';
@@ -144,31 +177,53 @@
 
 		isSubmitting = true;
 		try {
-			if (state.mode === 'create') {
-				await createStore({
-					branchId,
-					storeName: storeName.trim(),
-					remark: remark.trim() || null,
-					userGroupId: linkKindStr === 'user_group' ? ugId : null,
-					departmentId:
-						linkKindStr === 'department' ? depId : null,
-					statusId
-				});
+			if (modalState.mode === 'create') {
+				const res = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+					{
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							branchId,
+							storeName: storeName.trim(),
+							remark: remark.trim() || null,
+							userGroupId:
+								linkKindStr === 'user_group' ? ugId : null,
+							departmentId:
+								linkKindStr === 'department' ? depId : null,
+							statusId
+						})
+					}
+				);
+				if (!res.ok) {
+					throw new Error(`Create failed (${res.status})`);
+				}
 				toastService.addToast(
 					m.store_created(),
 					StatusColorEnum.SUCCESS
 				);
-			} else if (state.editStore) {
-				await updateStore({
-					id: state.editStore.id,
-					branchId,
-					storeName: storeName.trim(),
-					remark: remark.trim() || null,
-					userGroupId: linkKindStr === 'user_group' ? ugId : null,
-					departmentId:
-						linkKindStr === 'department' ? depId : null,
-					statusId
-				});
+			} else if (modalState.editStore) {
+				const res = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+					{
+						method: 'PUT',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							id: modalState.editStore.id,
+							branchId,
+							storeName: storeName.trim(),
+							remark: remark.trim() || null,
+							userGroupId:
+								linkKindStr === 'user_group' ? ugId : null,
+							departmentId:
+								linkKindStr === 'department' ? depId : null,
+							statusId
+						})
+					}
+				);
+				if (!res.ok) {
+					throw new Error(`Update failed (${res.status})`);
+				}
 				toastService.addToast(
 					m.store_updated(),
 					StatusColorEnum.SUCCESS
@@ -205,7 +260,7 @@
 						bind:value={branchId}
 						optionHeader=""
 					>
-						{#each branchRows as b}
+						{#each branchRows as b (b.id)}
 							<option value={b.id}>{b.name ?? b.code ?? b.id}</option>
 						{/each}
 					</DaisyUiSelect>
@@ -273,7 +328,7 @@
 							bind:value={userGroupIdStr}
 							optionHeader=""
 						>
-							{#each userGroups as g}
+							{#each userGroups as g (g.id)}
 								<option value={String(g.id)}>{g.name ?? g.id}</option>
 							{/each}
 						</DaisyUiSelect>
@@ -295,7 +350,7 @@
 							bind:value={departmentIdStr}
 							optionHeader=""
 						>
-							{#each departments as d}
+							{#each departments as d (d.id)}
 								<option value={String(d.id)}>{d.name ?? d.code ?? d.id}</option>
 							{/each}
 						</DaisyUiSelect>

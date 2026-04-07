@@ -9,7 +9,6 @@
 	import { authClient } from '$lib/auth/client';
 	import { goto } from '$app/navigation';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import { updateStaff } from '$lib/remote/table/information-table/staff.remote';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -72,10 +71,19 @@
 		});
 		if (result.confirmed) {
 			try {
-				await updateStaff({
-					id: staffId,
-					statusId: StatusEnum.INACTIVE
+				const res = await fetch('/api/heka/staff/self', {
+					method: 'PATCH',
+					headers: { 'content-type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({
+						staffId,
+						statusId: StatusEnum.INACTIVE
+					})
 				});
+				if (!res.ok) {
+					const t = await res.text().catch(() => '');
+					throw new Error(t || `Update failed: ${res.status}`);
+				}
 				toastService.addToast(
 					'Account deactivated.',
 					StatusColorEnum.SUCCESS

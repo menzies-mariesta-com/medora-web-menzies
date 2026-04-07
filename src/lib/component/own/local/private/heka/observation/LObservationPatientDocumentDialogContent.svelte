@@ -1,18 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ObservationPatientDocumentDialogState } from '$lib/state/observation-patient-document-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import {
-		getDocumentsWithRelations,
-		type DocumentWithRelations
-	} from '$lib/remote/table/information-table/document.remote';
-	import {
-		createPatientDocument,
-		updatePatientDocument,
-		getPatientDocumentById
-	} from '$lib/remote/table/information-table/patient-document.remote';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
@@ -22,6 +14,8 @@
 	const toastService = new ToastService();
 
 	let { confirm, cancel }: DialogSlotProps = $props();
+
+	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	const visitId = $derived(
 		ObservationPatientDocumentDialogState.visitId
@@ -39,6 +33,70 @@
 	let isSubmitting = $state(false);
 	let loadSeq = $state(0);
 
+	type DocumentWithRelations = {
+		id: number;
+		code: string | null;
+		documentNumber: string | null;
+		documentType?: { documentType?: string | null } | null;
+	};
+
+	type PatientDocRow = {
+		id: number;
+		documentId: number | null;
+		statusId: number | null;
+	};
+
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const url = new URL(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			location.origin
+		);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				url.searchParams.set(k, v);
+			}
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: unknown) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode,
+					...(payload as Record<string, unknown>)
+				})
+			}
+		);
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	let cachedDocuments: DocumentWithRelations[] | null = null;
+	let documentsPromise: Promise<DocumentWithRelations[]> | null = null;
+	async function getAllDocuments(): Promise<DocumentWithRelations[]> {
+		if (cachedDocuments) return cachedDocuments;
+		if (!documentsPromise) {
+			documentsPromise = apiGet<DocumentWithRelations[]>(
+				'documentMaster.list'
+			).then((rows) => {
+				cachedDocuments = rows;
+				return rows;
+			});
+		}
+		return documentsPromise;
+	}
+
 	const statusOptions = [
 		{ value: String(StatusEnum.ACTIVE), label: 'Active' },
 		{ value: String(StatusEnum.INACTIVE), label: 'Inactive' }
@@ -48,7 +106,7 @@
 		query: string
 	): Promise<{ label: string; value: string }[]> {
 		const q = query.trim().toLowerCase();
-		const all = await getDocumentsWithRelations();
+		const all = await getAllDocuments();
 		return all
 			.filter((d: DocumentWithRelations) => {
 				if (!q) return true;
@@ -77,7 +135,7 @@
 	async function getDocumentLabelForValue(
 		id: string
 	): Promise<string> {
-		const all = await getDocumentsWithRelations();
+		const all = await getAllDocuments();
 		const d = all.find(
 			(x: DocumentWithRelations) => String(x.id) === id
 		);
@@ -98,7 +156,10 @@
 		}
 		const seq = ++loadSeq;
 		(async () => {
-			const row = await getPatientDocumentById({ id: pid });
+			const row = await apiGet<PatientDocRow | null>(
+				'patientDocument.get',
+				{ id: String(pid) }
+			);
 			if (seq !== loadSeq || !row) return;
 			documentIdInput = String(row.documentId);
 			statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
@@ -126,17 +187,12 @@
 		isSubmitting = true;
 		try {
 			if (isEdit && patientDocumentId != null) {
-				await updatePatientDocument({
-					id: patientDocumentId,
-					documentId: docId,
-					statusId
+				await apiPost('patientDocument.update', {
+					payload: { id: patientDocumentId, documentId: docId, statusId }
 				});
 			} else {
-				await createPatientDocument({
-					visitId,
-					patientId,
-					documentId: docId,
-					statusId
+				await apiPost('patientDocument.create', {
+					payload: { visitId, patientId, documentId: docId, statusId }
 				});
 			}
 			toastService.addToast(

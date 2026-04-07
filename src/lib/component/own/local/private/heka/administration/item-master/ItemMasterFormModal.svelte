@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
@@ -6,22 +7,16 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createItemMaster,
-		getItemMasterById,
-		getItemMasterCategories,
-		getUnitById,
-		getUnitTypesForItemMaster,
-		getUnitsForItemMaster,
-		updateItemMaster
-	} from '$lib/remote/table/information-table/item-master.remote';
 	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import type { CategorySchema } from '$lib/server/db/schema-type';
-	import type { UnitSchema } from '$lib/server/db/schema-type';
-	import type { UnitTypeSchema } from '$lib/server/db/schema-type';
+	import type {
+		CategoryListRow,
+		ItemMasterListRow,
+		UnitListRow,
+		UnitTypeListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum, UnitTypeEnum } from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
 
@@ -30,9 +25,33 @@
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	let categories = $state<CategorySchema[]>([]);
-	let unitTypes = $state<UnitTypeSchema[]>([]);
-	let units = $state<UnitSchema[]>([]);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+	const itemMasterApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/administration/item-master`
+			: ''
+	);
+
+	async function apiGet<T>(path: string): Promise<T> {
+		if (!itemMasterApi) throw new Error('Hospital context missing');
+		const res = await fetch(`${itemMasterApi}${path}`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok) {
+			const t = await res.text().catch(() => '');
+			throw new Error(t || `Request failed: ${res.status}`);
+		}
+		return res.json() as Promise<T>;
+	}
+
+	let categories = $state<CategoryListRow[]>([]);
+	let unitTypes = $state<UnitTypeListRow[]>([]);
+	let units = $state<UnitListRow[]>([]);
 
 	let itemName = $state('');
 	let categoryIdStr = $state('');
@@ -46,9 +65,9 @@
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 
-	const state = $derived(ItemMasterModalState);
+	const modalState = $derived(ItemMasterModalState);
 	const isEdit = $derived(
-		state.mode === 'edit' && state.editItem != null
+		modalState.mode === 'edit' && modalState.editItem != null
 	);
 
 	async function loadUnitsForSelectedType(preserveUnitId: boolean) {
@@ -60,11 +79,13 @@
 			return;
 		}
 		const prevUnit = preserveUnitId ? unitIdStr : '';
-		units = await getUnitsForItemMaster({ unitTypeId: tid });
+		units = await apiGet<UnitListRow[]>(
+			`?mode=units&unitTypeId=${encodeURIComponent(String(tid))}`
+		);
 		if (
 			preserveUnitId &&
 			prevUnit !== '' &&
-			units.some((u) => String(u.id) === prevUnit)
+			units.some((u: UnitListRow) => String(u.id) === prevUnit)
 		) {
 			unitIdStr = prevUnit;
 		} else if (!preserveUnitId) {
@@ -82,8 +103,8 @@
 			ItemMasterModalState.editItem != null;
 		try {
 			const [cats, types] = await Promise.all([
-				getItemMasterCategories(),
-				getUnitTypesForItemMaster()
+				apiGet<CategoryListRow[]>('?mode=categories'),
+				apiGet<UnitTypeListRow[]>('?mode=unitTypes')
 			]);
 			categories = cats;
 			unitTypes = types;
@@ -93,9 +114,9 @@
 				types[0];
 
 			if (editing && ItemMasterModalState.editItem) {
-				const row = await getItemMasterById({
-					id: ItemMasterModalState.editItem.id
-				});
+				const row = await apiGet<ItemMasterListRow | null>(
+					`?id=${encodeURIComponent(String(ItemMasterModalState.editItem.id))}`
+				);
 				if (row) {
 					itemName = row.itemName ?? '';
 					categoryIdStr = String(row.categoryId);
@@ -109,9 +130,9 @@
 
 					if (row.unitId != null) {
 						unitIdStr = String(row.unitId);
-						const unit = await getUnitById({
-							id: row.unitId
-						});
+						const unit = await apiGet<UnitListRow | null>(
+							`?mode=unitById&id=${encodeURIComponent(String(row.unitId))}`
+						);
 						if (unit?.unitTypeId != null) {
 							unitTypeIdStr = String(unit.unitTypeId);
 							await loadUnitsForSelectedType(true);
@@ -166,33 +187,43 @@
 
 		isSubmitting = true;
 		try {
-			if (state.mode === 'create') {
-				await createItemMaster({
-					itemName: itemName.trim(),
-					categoryId: catId,
-					itemCode: itemCode.trim() || null,
-					barcode: barcode.trim() || null,
-					unitId: unitIdParsed,
-					description: description.trim() || null,
-					remark: remark.trim() || null,
-					statusId
+			if (!itemMasterApi) throw new Error('Hospital context missing');
+			const body = {
+				itemName: itemName.trim(),
+				categoryId: catId,
+				itemCode: itemCode.trim() || null,
+				barcode: barcode.trim() || null,
+				unitId: unitIdParsed,
+				description: description.trim() || null,
+				remark: remark.trim() || null,
+				statusId
+			};
+			if (modalState.mode === 'create') {
+				const res = await fetch(itemMasterApi, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(body)
 				});
+				if (!res.ok) {
+					const t = await res.text().catch(() => '');
+					throw new Error(t || `Create failed: ${res.status}`);
+				}
 				toastService.addToast(
 					m.item_master_created(),
 					StatusColorEnum.SUCCESS
 				);
-			} else if (state.editItem) {
-				await updateItemMaster({
-					id: state.editItem.id,
-					itemName: itemName.trim(),
-					categoryId: catId,
-					itemCode: itemCode.trim() || null,
-					barcode: barcode.trim() || null,
-					unitId: unitIdParsed,
-					description: description.trim() || null,
-					remark: remark.trim() || null,
-					statusId
+			} else if (modalState.editItem) {
+				const res = await fetch(itemMasterApi, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({ ...body, id: modalState.editItem.id })
 				});
+				if (!res.ok) {
+					const t = await res.text().catch(() => '');
+					throw new Error(t || `Update failed: ${res.status}`);
+				}
 				toastService.addToast(
 					m.item_master_updated(),
 					StatusColorEnum.SUCCESS

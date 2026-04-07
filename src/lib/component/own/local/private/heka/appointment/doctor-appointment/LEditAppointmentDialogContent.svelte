@@ -5,34 +5,23 @@
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		getAppointment,
-		getAppointmentById,
-		getAppointmentCancelEligibility,
-		updateAppointment,
-		deleteAppointment
-	} from '$lib/remote/table/information-table/appointment.remote';
-	import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
-	import {
-		getPatientPaginated,
-		getPatientByIdWithRelations
-	} from '$lib/remote/table/information-table/patient.remote';
-	import { getTitle } from '$lib/remote/table/master-table/title.remote';
-	import { getReferType } from '$lib/remote/table/master-table/refer-type.remote';
-	import { getExternalRefer } from '$lib/remote/table/information-table/external-refer.remote';
-	import { getStatusTagging } from '$lib/remote/table/information-table/status-tagging.remote';
 	import { EditAppointmentDialogState } from '$lib/state/edit-appointment-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import type { AppointmentSchemaUpdate } from '$lib/server/db/schema-type';
-	import type { TitleSchema } from '$lib/server/db/schema-type';
 	import type {
-		ExternalReferSchema,
-		ReferTypeSchema,
-		StatusTaggingSchema
-	} from '$lib/server/db/schema-type';
+		AppointmentUpdatePayload,
+		AppointmentWithRelations
+	} from '$lib/model/type/heka/appointment.type';
+	import type { PatientRegTitleRow } from '$lib/model/type/heka/patient-reg-master.type';
+	import type {
+		ExternalReferListRow,
+		ReferTypeListRow,
+		StatusTaggingListRow
+	} from '$lib/model/type/heka/ui-rows.type';
+	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -46,6 +35,40 @@
 			page.params.hospital_id) ||
 			''
 	);
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/appointment/doctor-appointment`
+			: ''
+	);
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string | undefined>
+	): Promise<T> {
+		const sp = new URLSearchParams();
+		sp.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				if (v != null && v !== '') sp.set(k, v);
+			}
+		}
+		const res = await fetch(`${apiBase}?${sp.toString()}`, {
+			method: 'GET'
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+	async function apiPost<T>(
+		mode: string,
+		body?: Record<string, unknown>
+	): Promise<T> {
+		const res = await fetch(apiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...(body ?? {}) })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
@@ -98,10 +121,10 @@
 			: ''
 	);
 
-	let titleData = $state<TitleSchema[]>([]);
-	let referTypeData = $state<ReferTypeSchema[]>([]);
-	let externalReferData = $state<ExternalReferSchema[]>([]);
-	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
+	let titleData = $state<PatientRegTitleRow[]>([]);
+	let referTypeData = $state<ReferTypeListRow[]>([]);
+	let externalReferData = $state<ExternalReferListRow[]>([]);
+	let statusTaggingData = $state<StatusTaggingListRow[]>([]);
 	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID = 1;
 
 	let patientMode = $state<'existing' | 'new'>('existing');
@@ -192,14 +215,15 @@
 	async function searchPatients(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getPatientPaginated({
-			search: query.trim(),
-			hospitalId: hospitalId || undefined,
-			branchId: selectedBranchId || undefined,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		const list = res.data.map((p) => {
+		const res = await apiGet<PaginatedResult<PatientWithRelations>>(
+			'patient.paginated',
+			{
+				search: query.trim() || undefined,
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		const list = (res.data ?? []).map((p) => {
 			return {
 				label: StringUtil.patientOptionDisplayName(p),
 				value: String(p.id)
@@ -212,7 +236,9 @@
 	async function getPatientLabelForValue(
 		id: string
 	): Promise<string> {
-		const p = await getPatientByIdWithRelations({ id });
+		const p = await apiGet<PatientWithRelations | null>('patient.byId', {
+			id
+		});
 		if (!p) return '';
 		return StringUtil.patientOptionDisplayName(p);
 	}
@@ -358,12 +384,14 @@
 	lifeCycle.onMount(async () => {
 		// When DB is temporarily unreachable, avoid crashing the whole page.
 		const results = await Promise.allSettled([
-			getTitle(),
-			getReferType(),
-			getExternalRefer(),
-			getStatusTagging(),
+			apiGet<PatientRegTitleRow[]>('title.list'),
+			apiGet<ReferTypeListRow[]>('referType.list'),
+			apiGet<ExternalReferListRow[]>('externalRefer.list'),
+			apiGet<StatusTaggingListRow[]>('statusTagging.list'),
 			appointmentId != null
-				? getAppointmentById({ id: appointmentId })
+				? apiGet<AppointmentWithRelations | null>('appointment.byId', {
+						id: String(appointmentId)
+					})
 				: Promise.resolve(null)
 		]);
 
@@ -440,21 +468,22 @@
 	$effect(() => {
 		const id = selectedPatientId?.trim();
 		if (!id) return;
-		getPatientByIdWithRelations({ id }).then((p) => {
-			if (!p) return;
-			const titleName = (p as { title?: { name?: string } }).title
-				?.name;
-			patientName = StringUtil.fullNameWithTitle(
-				titleName ?? undefined,
-				p.firstName ?? '',
-				p.middleName ?? '',
-				p.lastName ?? ''
-			);
-			if (p.titleId != null)
-				selectedPatientTitleId = String(p.titleId);
-			if (p.dateOfBirth != null)
-				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
-		});
+		apiGet<PatientWithRelations | null>('patient.byId', { id }).then(
+			(p) => {
+				if (!p) return;
+				const titleName = p.title?.name;
+				patientName = StringUtil.fullNameWithTitle(
+					titleName ?? undefined,
+					p.firstName ?? '',
+					p.middleName ?? '',
+					p.lastName ?? ''
+				);
+				if (p.titleId != null)
+					selectedPatientTitleId = String(p.titleId);
+				if (p.dateOfBirth != null)
+					patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
+			}
+		);
 	});
 
 	async function hasOverlap(
@@ -464,7 +493,12 @@
 		to: string,
 		excludeId: number
 	): Promise<boolean> {
-		const all = await getAppointment();
+		const all = await apiGet<AppointmentWithRelations[]>(
+			'appointment.list',
+			{
+				branchId: selectedBranchId || undefined
+			}
+		);
 		const [fromH, fromM] = (from || '00:00').split(':').map(Number);
 		const [toH, toM] = (to || '00:00').split(':').map(Number);
 		const startMin = fromH * 60 + (fromM || 0);
@@ -490,14 +524,24 @@
 	}
 
 	async function handleUpdate() {
-		if (appointmentId == null) return;
+		if (
+			appointmentId == null ||
+			typeof appointmentId !== 'number' ||
+			!Number.isFinite(appointmentId)
+		)
+			return;
 		if (
 			!manualAppointmentDate.trim() ||
 			!manualFromTime.trim() ||
 			!toTime
 		)
 			return;
-		const latest = await getAppointmentById({ id: appointmentId });
+		const latest = await apiGet<AppointmentWithRelations | null>(
+			'appointment.byId',
+			{
+				id: String(appointmentId)
+			}
+		);
 		const staffIdVal = latest?.staffId;
 		if (!staffIdVal) return;
 
@@ -549,9 +593,9 @@
 
 		let cancelRemark: string | null = null;
 		if (nextIsCancelSelected) {
-			const elig = await getAppointmentCancelEligibility({
-				appointmentId
-			});
+			const elig = await apiPost<
+				{ allowed: true } | { allowed: false; message: string }
+			>('appointment.cancelEligibility', { appointmentId });
 			if (!elig.allowed) {
 				toastService.addToast(elig.message, StatusColorEnum.ERROR);
 				return;
@@ -598,7 +642,7 @@
 		}
 		isSubmitting = true;
 		try {
-			const payload: AppointmentSchemaUpdate & { id: number } = {
+			const payload: AppointmentUpdatePayload = {
 				id: appointmentId,
 				appointmentDate: manualAppointmentDate,
 				fromTime: manualFromTime,
@@ -634,7 +678,9 @@
 					? cancelRemark?.trim() || null
 					: null
 			};
-			await updateAppointment(payload);
+			await apiPost('appointment.update', {
+				payload: { ...payload, hospitalId }
+			});
 
 			// When status newly becomes "Check In" for an existing patient, create a patient visit.
 			const effectivePatientId =
@@ -650,18 +696,17 @@
 				effectiveBranchId
 			) {
 				try {
-					await createPatientVisit({
-						patientId: effectivePatientId,
-						hospitalId,
-						branchId: effectiveBranchId,
-						appointmentId,
-						// Check-in creates the visit and assigns the appointment doctor.
-						// "Seen" is updated only when the doctor selects the visit in the list dialog.
-						doctorId: String(staffIdVal),
-						statusTaggingId: null,
-						// Default to OPD visit type (see master-table seed: id=1, code 'O').
-						visitTypeId: 1,
-						statusId: undefined
+					await apiPost('patientVisit.create', {
+						payload: {
+							patientId: effectivePatientId,
+							hospitalId,
+							branchId: effectiveBranchId,
+							appointmentId,
+							doctorId: String(staffIdVal),
+							statusTaggingId: null,
+							visitTypeId: 1,
+							statusId: undefined
+						}
 					});
 				} catch (e) {
 					console.error(
@@ -689,7 +734,12 @@
 	}
 
 	async function handleDelete() {
-		if (appointmentId == null) return;
+		if (
+			appointmentId == null ||
+			typeof appointmentId !== 'number' ||
+			!Number.isFinite(appointmentId)
+		)
+			return;
 		if (
 			typeof window !== 'undefined' &&
 			!window.confirm('Delete this appointment?')
@@ -697,7 +747,7 @@
 			return;
 		isDeleting = true;
 		try {
-			await deleteAppointment({ id: appointmentId });
+			await apiPost('appointment.delete', { id: appointmentId });
 			toastService.addToast(
 				'Appointment deleted.',
 				StatusColorEnum.SUCCESS

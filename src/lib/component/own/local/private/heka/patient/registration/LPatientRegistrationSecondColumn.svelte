@@ -4,11 +4,10 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import type {
-		BloodTypeSchema,
-		CountrySchema,
-		IdentityTypeSchema,
-		TitleSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegCountryRow,
+		PatientRegIdentityTypeRow,
+		PatientRegTitleRow
+	} from '$lib/model/type/heka/patient-reg-master.type';
 
 	let {
 		titleData,
@@ -29,9 +28,9 @@
 		guardianName = $bindable(),
 		guardianPhone = $bindable()
 	} = $props<{
-		titleData: TitleSchema[];
-		countryData: CountrySchema[];
-		identityTypeData: IdentityTypeSchema[];
+		titleData: PatientRegTitleRow[];
+		countryData: PatientRegCountryRow[];
+		identityTypeData: PatientRegIdentityTypeRow[];
 		selectedPhoneCountryId?: string;
 		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;

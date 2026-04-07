@@ -1,4 +1,4 @@
-import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 
 /** State for the duplicate-patients dialog (used with dialog service). Set before opening. */
 export const PatientDuplicateModalState = $state<{
