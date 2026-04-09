@@ -18,6 +18,8 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { and, eq, ilike, ne, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 
+const NO_EMAIL_SUFFIX = '@no-email.heka';
+
 /** Registration view/edit: include the same relation edges as duplicate-check where the form uses FKs + lookups (avoids “empty” nested data vs duplicate flow). */
 const patientFormWith = {
 	user: true,
@@ -259,6 +261,55 @@ export async function updatePatientInHospital(
 	return row;
 }
 
+/**
+ * Staff-side user update for a patient in a hospital.
+ * Avoid calling `/api/heka/auth/user` from patient registration UI, since that endpoint blocks non-self updates.
+ */
+export async function updatePatientUserInHospital(
+	event: RequestEvent,
+	params: {
+		hospitalId: string;
+		patientId: string;
+		userName?: string | null;
+		userEmail?: string | null;
+	}
+) {
+	const { hospitalId, patientId, userName, userEmail } = params;
+	await ensureCanAccessHospital(event, hospitalId);
+	if (!patientId) throw error(400, 'patientId is required');
+
+	const patient = await ensureDb().query.patientTable.findFirst({
+		where: and(
+			eq(table.patientTable.id, patientId),
+			eq(table.patientTable.hospitalId, hospitalId),
+			ne(table.patientTable.statusId, StatusEnum.DELETED)
+		),
+		columns: { id: true, userId: true }
+	});
+	if (!patient) throw error(404, 'Patient not found');
+	if (!patient.userId) throw error(400, 'Patient user is missing');
+
+	const updates: Record<string, unknown> = {};
+	if (typeof userName === 'string') updates.name = userName;
+	if (typeof userEmail === 'string') updates.email = userEmail;
+	if (Object.keys(updates).length === 0) return { ok: true };
+
+	await ensureDb()
+		.update(userTable)
+		.set(updates as any)
+		.where(eq(userTable.id, patient.userId));
+
+	// Keep credential accountId in sync when updating email.
+	if (typeof userEmail === 'string' && userEmail.trim()) {
+		await ensureDb()
+			.update(accountTable)
+			.set({ accountId: userEmail.trim() } as any)
+			.where(eq(accountTable.userId, patient.userId));
+	}
+
+	return { ok: true };
+}
+
 function generateRandomPassword(length: number = 16): string {
 	const charset =
 		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
@@ -432,6 +483,19 @@ export async function createPatientWithUserInHospital(
 		.returning();
 
 	if (!patient) throw error(400, 'Failed to create patient.');
+
+	// Normalize placeholder no-email into a stable patientId-based "no-email" value.
+	if (payload.email?.endsWith(NO_EMAIL_SUFFIX)) {
+		const stableNoEmail = `${patient.id}${NO_EMAIL_SUFFIX}`;
+		await ensureDb()
+			.update(userTable)
+			.set({ email: stableNoEmail } as any)
+			.where(eq(userTable.id, user.id));
+		await ensureDb()
+			.update(accountTable)
+			.set({ accountId: stableNoEmail } as any)
+			.where(eq(accountTable.userId, user.id));
+	}
 
 	return { patient, userId: user.id, generatedPassword };
 }

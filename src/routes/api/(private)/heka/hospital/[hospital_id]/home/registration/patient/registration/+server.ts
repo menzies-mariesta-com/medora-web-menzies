@@ -222,12 +222,27 @@ export async function PUT(event: RequestEvent) {
 		throw error(400, 'hospitalId mismatch');
 	}
 	const updates: Record<string, unknown> = { ...body };
+	// Optional: update linked auth user fields (allowed for staff within hospital).
+	const userName =
+		typeof updates.userName === 'string' ? String(updates.userName) : null;
+	const userEmail =
+		typeof updates.userEmail === 'string' ? String(updates.userEmail) : null;
 	delete updates.id;
 	delete updates.hospitalId;
+	delete updates.userName;
+	delete updates.userEmail;
 	const row = await reg.updatePatientInHospital(event, {
 		hospitalId,
 		id,
 		...(updates as PatientSchemaUpdate)
 	});
+	if (userName != null || userEmail != null) {
+		await reg.updatePatientUserInHospital(event, {
+			hospitalId,
+			patientId: id,
+			userName,
+			userEmail
+		});
+	}
 	return json(row);
 }

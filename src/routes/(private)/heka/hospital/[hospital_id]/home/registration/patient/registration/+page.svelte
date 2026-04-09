@@ -133,15 +133,11 @@
 		name?: string;
 		email?: string;
 	}) {
-		const r = await fetch('/api/heka/auth/user', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body)
-		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'User update failed');
-		}
-		return r.json();
+		// NOTE: Patient registration should not call `/api/heka/auth/user` because
+		// that endpoint blocks non-self updates (403). Linked patient user updates
+		// are handled via the patient registration API endpoint instead.
+		void body;
+		throw new Error('User update is handled by patient registration endpoint');
 	}
 
 	async function apiUpdatePatient(body: Record<string, unknown>) {
@@ -751,31 +747,25 @@
 				const trimmedNewEmail = email.trim();
 				let shouldSendResetForEmailChange = false;
 				let resetEmailTarget: string | null = null;
-				if (
-					trimmedNewName &&
-					previousUser.user?.id &&
-					trimmedNewName !== previousName
-				) {
-					await apiUpdateUserJson({
-						id: previousUser.user.id,
-						name: trimmedNewName
-					});
-				}
+				const userNameUpdate =
+					trimmedNewName && trimmedNewName !== previousName
+						? trimmedNewName
+						: undefined;
 				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
-					if (previousUser.user?.id) {
-						await apiUpdateUserJson({
-							id: previousUser.user.id,
-							email: trimmedNewEmail
-						});
-					}
 					if (StringUtil.isNoEmail(previousEmail)) {
 						shouldSendResetForEmailChange = true;
 						resetEmailTarget = trimmedNewEmail;
 					}
 				}
+				const userEmailUpdate =
+					trimmedNewEmail && trimmedNewEmail !== previousEmail
+						? trimmedNewEmail
+						: undefined;
 
 				await apiUpdatePatient({
 					id: currentPatientId,
+					userName: userNameUpdate,
+					userEmail: userEmailUpdate,
 					code: patientCode.trim() || undefined,
 					titleId: selectedTitleId
 						? Number(selectedTitleId)
@@ -973,12 +963,7 @@
 
 				const { patient } = result;
 				patientCode = patient.code ?? '';
-				if (usingDefaultEmailForCreate) {
-					await apiUpdateUserJson({
-						id: result.userId,
-						email: StringUtil.defaultNoEmail(patient.id)
-					});
-				}
+				// For create: server normalizes placeholder no-email to patientId@no-email.heka.
 
 				if (photoFile) {
 					photoUploading = true;

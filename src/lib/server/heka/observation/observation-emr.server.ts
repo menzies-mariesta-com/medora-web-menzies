@@ -517,31 +517,50 @@ export async function getAllergyMasterPaginated(
 export async function createAllergyMaster(
 	payload: AllergySchemaInsert
 ): Promise<AllergySchema> {
-	const name = payload.name?.trim();
-	if (name) {
-		const [existing] = await ensureDb()
-			.select()
-			.from(table.allergyTable)
-			.where(
-				and(
-					ne(table.allergyTable.statusId, StatusEnum.DELETED),
-					ilike(table.allergyTable.name, name)
-				)
+	// Normalize to reduce case/whitespace duplicates and align with likely DB uniqueness rules.
+	const nameRaw = typeof payload.name === 'string' ? payload.name : '';
+	const name = nameRaw.replace(/\s+/g, ' ').trim();
+	if (!name) throw error(400, 'Allergy name is required.');
+
+	const normalized = name.toLocaleLowerCase();
+
+	// Best-effort pre-check (still race-prone, so we also handle insert conflicts below).
+	const [existing] = await ensureDb()
+		.select()
+		.from(table.allergyTable)
+		.where(
+			and(
+				ne(table.allergyTable.statusId, StatusEnum.DELETED),
+				sql`lower(${table.allergyTable.name}) = ${normalized}`
 			)
-			.limit(1);
-		if (existing) {
+		)
+		.limit(1);
+	if (existing) {
+		throw error(
+			400,
+			'An allergy with this name already exists in the master list.'
+		);
+	}
+
+	try {
+		const [row] = await ensureDb()
+			.insert(table.allergyTable)
+			.values({ ...payload, name })
+			.returning();
+		if (!row) throw error(400, 'Failed to create allergy.');
+		return row;
+	} catch (err) {
+		// If DB has a uniqueness constraint on name (or lower(name)), report a clean 400.
+		// (Drizzle wraps pg errors; message is the most portable signal here.)
+		const msg = err instanceof Error ? err.message : String(err);
+		if (/duplicate key|unique constraint|already exists/i.test(msg)) {
 			throw error(
 				400,
 				'An allergy with this name already exists in the master list.'
 			);
 		}
+		throw err;
 	}
-	const [row] = await ensureDb()
-		.insert(table.allergyTable)
-		.values({ ...payload, name })
-		.returning();
-	if (!row) throw error(400, 'Failed to create allergy.');
-	return row;
 }
 
 export async function getPatientAllergyRowById(input: {
