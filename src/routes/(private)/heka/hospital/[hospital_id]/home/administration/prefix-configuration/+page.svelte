@@ -25,10 +25,9 @@
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { remoteInvoke } from '$lib/api/remote-invoke-client';
-	import type { PrefixFormatSchema } from '$lib/server/db/schema-type';
+	import type { PrefixFieldPath } from '$lib/model/type/heka/prefix-format.type';
+	import type { PrefixFormatListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
-	import type { PrefixFieldPath } from '$lib/tool/prefix/prefix-generator.tool.svelte';
 	import {
 		defaultFormatPartsForStorageKey,
 		fieldPathsForEdit,
@@ -39,16 +38,9 @@
 		type UiFormatPart
 	} from '$lib/tool/prefix/prefix-format-ui.util';
 	import { defaultCounterScopeForStorageKey } from '$lib/tool/prefix/prefix-counter-scope.util';
-	import {
-		createPrefixConfiguration,
-		updatePrefixConfiguration
-	} from '$lib/tool/remote/table/information-table/prefix-configuration.http.tool.svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
-
-	const MODULE_SUFFIX =
-		'table/information-table/prefix-configuration.remote.ts';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' && page.params.hospital_id
@@ -56,12 +48,34 @@
 			: ''
 	);
 
+	async function apiFetch<T>(
+		url: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(url, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				...(init?.body ? { 'content-type': 'application/json' } : {})
+			}
+		});
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
+
+	function prefixConfigurationApiUrl() {
+		return `/api/heka/hospital/${hospitalId}/home/administration/prefix-configuration`;
+	}
+
 	type PurposeListRow = {
 		purpose: PrefixPurposeDefinition;
-		config: PrefixFormatSchema | null;
+		config: PrefixFormatListRow | null;
 	};
 
-	let items = $state<PrefixFormatSchema[]>([]);
+	let items = $state<PrefixFormatListRow[]>([]);
 	let isLoading = $state(false);
 	let viewMode = $state<'list' | 'edit'>('list');
 	let editingId = $state<number | null>(null);
@@ -71,13 +85,14 @@
 	let counterIncludeBranch = $state(false);
 	let counterIncludeFinancialYear = $state(true);
 	let counterIncludeVisitType = $state(false);
+	let counterIncludeVisit = $state(false);
 	let formatParts = $state<UiFormatPart[]>(defaultFormatPartsForStorageKey('PATIENT_CODE'));
 
 	const formatPreview = $derived(previewExample(formatParts));
 
 	function findActiveConfigForKey(
 		storageKey: string
-	): PrefixFormatSchema | null {
+	): PrefixFormatListRow | null {
 		return (
 			items.find(
 				(r) => r.key === storageKey && r.deletedAt == null
@@ -103,19 +118,24 @@
 
 	function purposeLabel(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') return m.prefix_configuration_purpose_patient();
-		return m.prefix_configuration_purpose_visit();
+		if (p.id === 'visit') return m.prefix_configuration_purpose_visit();
+		return m.prefix_configuration_purpose_order();
 	}
 
 	function purposeHelp(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') {
 			return m.prefix_configuration_purpose_patient_help();
 		}
-		return m.prefix_configuration_purpose_visit_help();
+		if (p.id === 'visit') {
+			return m.prefix_configuration_purpose_visit_help();
+		}
+		return m.prefix_configuration_purpose_order_help();
 	}
 
 	function editTitle(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') return m.prefix_configuration_edit_patient_title();
-		return m.prefix_configuration_edit_visit_title();
+		if (p.id === 'visit') return m.prefix_configuration_edit_visit_title();
+		return m.prefix_configuration_edit_order_title();
 	}
 
 	function fieldPathLabel(path: PrefixFieldPath): string {
@@ -128,6 +148,10 @@
 				return m.prefix_configuration_field_branch();
 			case 'visit_type.code':
 				return m.prefix_configuration_field_visit_type();
+			case 'order_date.year_2digit':
+				return m.prefix_configuration_field_order_date_yy();
+			case 'visit.order_key':
+				return m.prefix_configuration_field_visit_order_key();
 		}
 	}
 
@@ -183,11 +207,9 @@
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			items = await remoteInvoke<PrefixFormatSchema[]>({
-				module: MODULE_SUFFIX,
-				fn: 'getPrefixConfigurationByHospital',
-				args: [{ hospitalId }]
-			});
+			items = await apiFetch<PrefixFormatListRow[]>(
+				prefixConfigurationApiUrl()
+			);
 		} finally {
 			isLoading = false;
 		}
@@ -223,10 +245,14 @@
 			counterIncludeVisitType =
 				row.counterIncludeVisitType === YesNoEnum.YES ||
 				(row.counterIncludeVisitType == null && scopeDefaults.includeVisitType);
+			counterIncludeVisit =
+				row.counterIncludeVisit === YesNoEnum.YES ||
+				(row.counterIncludeVisit == null && scopeDefaults.includeVisit);
 		} else {
 			counterIncludeBranch = scopeDefaults.includeBranch;
 			counterIncludeFinancialYear = scopeDefaults.includeFinancialYear;
 			counterIncludeVisitType = scopeDefaults.includeVisitType;
+			counterIncludeVisit = scopeDefaults.includeVisit;
 		}
 		const parsed = row
 			? formatSpecToUi(row.format ?? {})
@@ -265,7 +291,6 @@
 				return;
 			}
 			const payload = {
-				hospitalId,
 				key: purpose.storageKey,
 				description: descriptionInput.trim() || null,
 				format: parsedFormat,
@@ -273,16 +298,23 @@
 				counterIncludeFinancialYear: counterIncludeFinancialYear
 					? YesNoEnum.YES
 					: YesNoEnum.NO,
-				counterIncludeVisitType: counterIncludeVisitType ? YesNoEnum.YES : YesNoEnum.NO
+				counterIncludeVisitType: counterIncludeVisitType ? YesNoEnum.YES : YesNoEnum.NO,
+				counterIncludeVisit: counterIncludeVisit ? YesNoEnum.YES : YesNoEnum.NO
 			};
 			if (editingId != null) {
-				await updatePrefixConfiguration({ id: editingId, ...payload });
+				await apiFetch(prefixConfigurationApiUrl(), {
+					method: 'PUT',
+					body: JSON.stringify({ id: editingId, ...payload })
+				});
 				toastService.addToast(
 					m.prefix_configuration_updated(),
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createPrefixConfiguration(payload);
+				await apiFetch(prefixConfigurationApiUrl(), {
+					method: 'POST',
+					body: JSON.stringify(payload)
+				});
 				toastService.addToast(
 					m.prefix_configuration_created(),
 					StatusColorEnum.SUCCESS
@@ -442,6 +474,18 @@
 											/>
 											<span class="text-sm"
 												>{m.prefix_configuration_counter_scope_visit_type()}</span
+											>
+										</label>
+										<label
+											class="d-label cursor-pointer justify-start gap-2 py-0"
+										>
+											<input
+												type="checkbox"
+												class="d-checkbox d-checkbox-sm"
+												bind:checked={counterIncludeVisit}
+											/>
+											<span class="text-sm"
+												>{m.prefix_configuration_counter_scope_visit()}</span
 											>
 										</label>
 									</div>

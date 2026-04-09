@@ -24,8 +24,8 @@ export async function visitHasBlockingClinicalData(
 	if (String(v.patientCondition ?? '').trim()) return true;
 	if (String(v.diagnosisNotes ?? '').trim()) return true;
 
-	const notDel = (statusCol: typeof t.patientDiagnosisTable.statusId) =>
-		ne(statusCol, StatusEnum.DELETED);
+	/** Per-table status columns are distinct Drizzle types but comparable to DELETED. */
+	const notDel = (statusCol: unknown) => ne(statusCol as any, StatusEnum.DELETED);
 
 	const [
 		nPd,

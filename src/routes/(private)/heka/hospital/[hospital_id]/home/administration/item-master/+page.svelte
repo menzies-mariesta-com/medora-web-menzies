@@ -1,18 +1,14 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		getItemMasterPaginated,
-		deleteItemMaster,
-		getItemMasterCategories,
-		getUnitsForItemMaster
-	} from '$lib/tool/remote/table/information-table/item-master.http.tool.svelte';
 	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
 	import ItemMasterFormModal from '$lib/component/own/local/private/heka/administration/item-master/ItemMasterFormModal.svelte';
-	import type { ItemMasterSchema } from '$lib/server/db/schema-type';
-	import type { StatusSchema } from '$lib/server/db/schema-type';
-	import { getStatus } from '$lib/tool/remote/table/master-table/status.http.tool.svelte';
+	import type {
+		ItemMasterListRow,
+		StatusListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -32,13 +28,24 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
-	let rows = $state<ItemMasterSchema[]>([]);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+	const itemMasterApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/administration/item-master`
+			: ''
+	);
+
+	let rows = $state<ItemMasterListRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
-	let statusOptions = $state<StatusSchema[]>([]);
+	let statusOptions = $state<StatusListRow[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
@@ -47,10 +54,23 @@
 	let unitNameById = $state<Map<number, string>>(new Map());
 
 	async function loadLookups() {
-		const [cats, u] = await Promise.all([
-			getItemMasterCategories(),
-			getUnitsForItemMaster()
+		if (!itemMasterApi) return;
+		const [catsRes, unitsRes] = await Promise.all([
+			fetch(`${itemMasterApi}?mode=categories`, {
+				credentials: 'include',
+				cache: 'no-store'
+			}),
+			fetch(`${itemMasterApi}?mode=units`, {
+				credentials: 'include',
+				cache: 'no-store'
+			})
 		]);
+		if (!catsRes.ok || !unitsRes.ok) return;
+		const cats = (await catsRes.json()) as {
+			id: number;
+			categoryName?: string | null;
+		}[];
+		const u = (await unitsRes.json()) as { id: number; name?: string | null }[];
 		categoryNameById = new Map(
 			cats.map((c) => [c.id, c.categoryName ?? String(c.id)])
 		);
@@ -59,7 +79,7 @@
 		);
 	}
 
-	const columns: MariTableColumn<ItemMasterSchema>[] = [
+	const columns: MariTableColumn<ItemMasterListRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
@@ -143,7 +163,8 @@
 		}
 	];
 
-	async function fetchRows(forceRefresh = false) {
+	async function fetchRows(_forceRefresh = false) {
+		if (!itemMasterApi) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
 		try {
@@ -153,26 +174,40 @@
 			const parsedCategoryId = tableFilters.categoryId
 				? Number(tableFilters.categoryId)
 				: undefined;
-			const params = {
-				page: currentPage,
-				pageSize,
-				name: tableFilters.itemName?.trim() || undefined,
-				itemCode: tableFilters.itemCode?.trim() || undefined,
-				barcode: tableFilters.barcode?.trim() || undefined,
-				categoryId:
-					parsedCategoryId != null &&
-					Number.isFinite(parsedCategoryId)
-						? parsedCategoryId
-						: undefined,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined
-			};
-			if (forceRefresh) {
-				await getItemMasterPaginated(params).refresh();
+			const qs = new URLSearchParams();
+			qs.set('page', String(currentPage));
+			qs.set('pageSize', String(pageSize));
+			const name = tableFilters.itemName?.trim();
+			const itemCode = tableFilters.itemCode?.trim();
+			const barcode = tableFilters.barcode?.trim();
+			if (name) qs.set('name', name);
+			if (itemCode) qs.set('itemCode', itemCode);
+			if (barcode) qs.set('barcode', barcode);
+			if (
+				parsedCategoryId != null &&
+				Number.isFinite(parsedCategoryId)
+			) {
+				qs.set('categoryId', String(parsedCategoryId));
 			}
-			const result = await getItemMasterPaginated(params);
+			if (
+				parsedStatusId != null &&
+				Number.isFinite(parsedStatusId)
+			) {
+				qs.set('statusId', String(parsedStatusId));
+			}
+			const res = await fetch(`${itemMasterApi}?${qs.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Load failed: ${res.status}`);
+			}
+			const result = (await res.json()) as {
+				data: ItemMasterListRow[];
+				total: number;
+				totalPages: number;
+			};
 			rows = result.data;
 			total = result.total;
 			totalPages = result.totalPages;
@@ -187,7 +222,12 @@
 	}
 
 	async function loadStatusOptions() {
-		statusOptions = await getStatus();
+		const res = await fetch('/api/heka/master/status', {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok) return;
+		statusOptions = await res.json();
 	}
 
 	lifeCycleUtil.onMount(async () => {
@@ -205,11 +245,11 @@
 		});
 		if (result.confirmed) {
 			await loadLookups();
-			fetchRows(true);
+			fetchRows();
 		}
 	}
 
-	async function openEdit(row: ItemMasterSchema) {
+	async function openEdit(row: ItemMasterListRow) {
 		ItemMasterModalState.mode = 'edit';
 		ItemMasterModalState.editItem = row;
 		const result = await dialogService.open({
@@ -218,24 +258,32 @@
 		});
 		if (result.confirmed) {
 			await loadLookups();
-			fetchRows(true);
+			fetchRows();
 		}
 	}
 
-	async function handleDelete(row: ItemMasterSchema) {
+	async function handleDelete(row: ItemMasterListRow) {
 		const result = await dialogService.open({
 			title: m.delete_item_master(),
 			message: `Delete "${row.itemName ?? m.item_master()}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
+		if (!itemMasterApi) return;
 		try {
-			await deleteItemMaster({ id: row.id });
+			const res = await fetch(
+				`${itemMasterApi}?id=${encodeURIComponent(String(row.id))}`,
+				{ method: 'DELETE', credentials: 'include' }
+			);
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Delete failed: ${res.status}`);
+			}
 			toastService.addToast(
 				m.item_master_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			fetchRows(true);
+			fetchRows();
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : m.delete_failed();
@@ -271,7 +319,7 @@
 					actionsVariant="none"
 					enableColumnFilters={true}
 					useRemoteFilters={true}
-					on:refresh={() => fetchRows(true)}
+					on:refresh={() => fetchRows()}
 					on:pageSizeChange={() => {
 						currentPage = 1;
 						fetchRows();

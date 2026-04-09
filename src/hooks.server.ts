@@ -5,7 +5,8 @@ import { auth } from '$lib/auth/server';
 import { ensureDb } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { getStaffByUserIdWithRelations } from '$lib/remote/table/information-table/staff.remote';
+import { getStaffByUserIdWithRelations } from '$lib/server/heka/administration/staff.server';
+import type { StaffSessionRow } from '$lib/model/type/heka/staff.type';
 import { RoleEnum } from '$lib/model/enum/db-link';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -35,10 +36,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
-		const staff = await getStaffByUserIdWithRelations({
-			userId: session.user.id
-		});
-		event.locals.staff = staff ?? null;
+		let staff: Awaited<ReturnType<typeof getStaffByUserIdWithRelations>> = null;
+		try {
+			staff = await getStaffByUserIdWithRelations(session.user.id);
+		} catch (err) {
+			// Staff lookup should never take the whole request down (favicon, auth redirects, etc.)
+			// This can fail if seed data isn't present yet or DB connectivity is flaky.
+			console.error('[staff] Failed to load staff by user id', err);
+			staff = null;
+		}
+		event.locals.staff = (staff ?? null) as StaffSessionRow | null;
 		if (
 			event.locals.userRoleId === RoleEnum.STAFF &&
 			staff?.staffHospitals?.length

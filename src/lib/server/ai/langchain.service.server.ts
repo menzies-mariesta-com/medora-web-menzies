@@ -1,5 +1,6 @@
 import {
 	AIMessage,
+	AIMessageChunk,
 	type BaseMessage,
 	HumanMessage,
 	SystemMessage

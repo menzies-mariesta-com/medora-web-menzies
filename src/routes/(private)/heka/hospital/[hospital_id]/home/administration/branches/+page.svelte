@@ -3,12 +3,8 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
-	import {
-		getBranchesByHospitalIdPaginated,
-		deleteBranch
-	} from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { StaffRegHospitalBranchRow } from '$lib/model/type/heka/staff-reg-ui.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
 	import BranchFormModal from '$lib/component/own/local/private/heka/administration/branches/BranchFormModal.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -46,7 +42,7 @@
 	);
 
 	let branchResult =
-		$state<PaginatedResult<HospitalBranchSchema> | null>(null);
+		$state<PaginatedResult<StaffRegHospitalBranchRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
@@ -56,7 +52,7 @@
 
 	let tableFilters = $state<Record<string, string>>({});
 
-	const branchColumns: MariTableColumn<HospitalBranchSchema>[] = [
+	const branchColumns: MariTableColumn<StaffRegHospitalBranchRow>[] = [
 		{
 			id: 'name',
 			header: m.name(),
@@ -123,18 +119,28 @@
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			const params = {
-				hospitalId,
-				page: currentPage,
-				pageSize,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined
-			};
-			if (forceRefresh)
-				await getBranchesByHospitalIdPaginated(params).refresh();
-			branchResult = await getBranchesByHospitalIdPaginated(params);
+			const url = new URL(
+				`/api/heka/hospital/${hospitalId}/home/administration/branches`,
+				globalThis.location?.origin ?? 'http://localhost'
+			);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+
+			const statusId =
+				parsedStatusId != null && Number.isFinite(parsedStatusId)
+					? parsedStatusId
+					: undefined;
+			if (statusId != null) url.searchParams.set('statusId', String(statusId));
+
+			const res = await fetch(url.pathname + url.search, {
+				method: 'GET',
+				cache: forceRefresh ? 'no-store' : 'default'
+			});
+			if (!res.ok) {
+				throw new Error(`Failed to load branches (${res.status})`);
+			}
+			branchResult =
+				(await res.json()) as PaginatedResult<StaffRegHospitalBranchRow>;
 		} finally {
 			isLoading = false;
 		}
@@ -156,7 +162,7 @@
 		});
 	}
 
-	async function openEdit(row: HospitalBranchSchema) {
+	async function openEdit(row: StaffRegHospitalBranchRow) {
 		await editLock.run(async () => {
 			editingBranchId = row.id;
 			try {
@@ -173,7 +179,7 @@
 		});
 	}
 
-	async function handleDelete(row: HospitalBranchSchema) {
+	async function handleDelete(row: StaffRegHospitalBranchRow) {
 		await deleteLock.run(async () => {
 			deletingBranchId = row.id;
 			try {
@@ -184,7 +190,17 @@
 				});
 				if (!result.confirmed) return;
 				try {
-					await deleteBranch({ id: row.id });
+					const res = await fetch(
+						`/api/heka/hospital/${hospitalId}/home/administration/branches`,
+						{
+							method: 'DELETE',
+							headers: { 'content-type': 'application/json' },
+							body: JSON.stringify({ id: row.id })
+						}
+					);
+					if (!res.ok) {
+						throw new Error(`Failed to delete branch (${res.status})`);
+					}
 					toastService.addToast(
 						m.branch_deleted(),
 						StatusColorEnum.SUCCESS
@@ -251,7 +267,7 @@
 						}}
 					>
 						{#snippet rowActions(row, rowIndex)}
-							{@const branch = row as HospitalBranchSchema}
+							{@const branch = row as StaffRegHospitalBranchRow}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton

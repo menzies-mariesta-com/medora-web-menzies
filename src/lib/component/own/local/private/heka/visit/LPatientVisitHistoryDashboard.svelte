@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
+	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import type {
-		PatientVisitWithRelations
-	} from '$lib/remote/table/information-table/patient-visit.remote';
-	import { remoteInvoke } from '$lib/api/remote-invoke-client';
+		PatientVisitWithRelationsLite,
+		VisitDashboardPayload
+	} from '$lib/model/type/visit-dashboard.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import {
 		formatIntegerDisplay,
@@ -59,18 +59,13 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 	const lifeCycleUtil = new LifeCycleUtil();
 	let mounted = $state(false);
 
-	const PATIENT_VISIT_MODULE =
-		'table/information-table/patient-visit.remote.ts';
-	const SERVICE_ORDER_DETAIL_MODULE =
-		'table/information-table/service-order-detail.remote.ts';
-
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
-	let visitRow = $state<PatientVisitWithRelations | null>(null);
+	let visitRow = $state<PatientVisitWithRelationsLite | null>(null);
 	let tableRows = $state<VisitTableRow[]>([]);
 	let labOrderResults = $state<LabOrderRow[]>([]);
 	let isLoading = $state(false);
@@ -107,7 +102,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 	}
 
 	function primaryDiagnosisLabel(
-		v: PatientVisitWithRelations
+		v: PatientVisitWithRelationsLite
 	): string {
 		const notes = v.diagnosisNotes?.trim();
 		if (notes) return truncate(notes, 42) || '—';
@@ -195,80 +190,41 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 		}
 	}
 
-	async function loadSidebarOrders(visitIdValue: number) {
-		try {
-			const orders = await remoteInvoke<any[]>({
-				module: SERVICE_ORDER_DETAIL_MODULE,
-				fn: 'getServiceOrderDetailRowsForVisit',
-				args: [{ visitId: visitIdValue }]
-			});
-			labOrderResults = orders.map((row: any, i: number) => {
-				const service =
-					row.serviceName ?? `Service ${row.serviceId ?? ''}`;
-				const amount =
-					row.serviceAmount != null
-						? formatNumberDisplay(row.serviceAmount)
-						: '';
-				const unit =
-					row.serviceUnit != null
-						? formatIntegerDisplay(row.serviceUnit)
-						: '';
-				const subtitle = [
-					amount && unit ? `${amount} × ${unit}` : amount
-				]
-					.filter(Boolean)
-					.join(' ');
-				const date = datetimeUtil.formatDateTime(row.createdAt);
-				return {
-					id: row.id,
-					title: service,
-					subtitle:
-						subtitle || row.instruction?.trim() || 'Order line',
-					accent: labAccentFromIndex(i),
-					date: date
-				} satisfies LabOrderRow;
-			});
-		} catch {
-			labOrderResults = [];
+	async function apiFetch<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
 		}
+		return (await res.json()) as T;
+	}
+
+	function dashboardApiUrl(visitIdValue: number): string {
+		const suffix =
+			moduleKey === 'observation'
+				? 'observation/emr/patient-visit-history-dashboard'
+				: 'nursing-workbench/emr/patient-visit-history-dashboard';
+		return `/api/heka/hospital/${hospitalId}/home/${suffix}?visitId=${visitIdValue}`;
 	}
 
 	async function loadDashboard(visitIdValue: number) {
 		isLoading = true;
 		loadError = '';
 		try {
-			const selectedVisit = await remoteInvoke<
-				PatientVisitWithRelations | null
-			>({
-				module: PATIENT_VISIT_MODULE,
-				fn: 'getPatientVisitByIdWithRelations',
-				args: [{ id: visitIdValue }]
-			});
-			visitRow = selectedVisit;
+			if (!hospitalId) throw new Error('Missing hospital context');
 
-			if (!selectedVisit) {
+			const payload = await apiFetch<VisitDashboardPayload>(
+				dashboardApiUrl(visitIdValue)
+			);
+			visitRow = payload.selectedVisit;
+
+			if (!payload.selectedVisit) {
 				tableRows = [];
 				labOrderResults = [];
 				return;
 			}
 
-			const allVisits = await remoteInvoke<PatientVisitWithRelations[]>({
-				module: PATIENT_VISIT_MODULE,
-				fn: 'getPatientVisitWithRelations',
-				args: []
-			});
-
-			const patientVisits = allVisits
-				.filter(
-					(row) =>
-						row.patientId === selectedVisit.patientId &&
-						row.hospitalId === selectedVisit.hospitalId
-				)
-				.sort(
-					(a, b) =>
-						new Date(b.createdAt ?? 0).getTime() -
-						new Date(a.createdAt ?? 0).getTime()
-				);
+			const patientVisits = payload.patientVisits;
 
 			tableRows = patientVisits.map((v) => {
 				const diag = primaryDiagnosisLabel(v);
@@ -304,7 +260,32 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 
 			visitCurrentPage = 1;
 
-			await loadSidebarOrders(visitIdValue);
+			labOrderResults = payload.orderLines.map((row, i) => {
+				const service =
+					row.serviceName ?? `Service ${row.serviceId ?? ''}`;
+				const amount =
+					row.serviceAmount != null
+						? formatNumberDisplay(row.serviceAmount)
+						: '';
+				const unit =
+					row.serviceUnit != null
+						? formatIntegerDisplay(row.serviceUnit)
+						: '';
+				const subtitle = [
+					amount && unit ? `${amount} × ${unit}` : amount
+				]
+					.filter(Boolean)
+					.join(' ');
+				const date = datetimeUtil.formatDateTime(row.createdAt);
+				return {
+					id: row.id,
+					title: service,
+					subtitle:
+						subtitle || row.instruction?.trim() || 'Order line',
+					accent: labAccentFromIndex(i),
+					date: date
+				} satisfies LabOrderRow;
+			});
 		} catch (err) {
 			loadError =
 				err instanceof Error

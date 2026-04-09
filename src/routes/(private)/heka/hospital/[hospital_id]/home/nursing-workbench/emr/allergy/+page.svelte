@@ -10,13 +10,7 @@
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import LPatientAllergyDialogContent from '$lib/component/own/local/private/heka/emr/LPatientAllergyDialogContent.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import {
-		getPatientAllergiesByPatientIdWithRelations,
-		getPatientAllergiesByPatientIdWithRelationsPaginated,
-		deletePatientAllergies,
-		type PatientAllergyWithRelations
-	} from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
+	type PatientAllergyWithRelations = any;
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -80,6 +74,8 @@
 		const hospitalIdParam = visit.hospitalId;
 		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = visitId;
+		PatientAllergyDialogState.hospitalId =
+			hospitalIdParam ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = null;
 		PatientAllergyDialogState.onSaved = () =>
 			fetchAllergies(patientId, hospitalIdParam, { force: true });
@@ -93,6 +89,7 @@
 				onClose: () => {
 					PatientAllergyDialogState.patientId = null;
 					PatientAllergyDialogState.visitId = null;
+					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
@@ -107,6 +104,7 @@
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
+			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -118,6 +116,8 @@
 		const hospitalIdParam = visit.hospitalId;
 		PatientAllergyDialogState.patientId = patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
+		PatientAllergyDialogState.hospitalId =
+			hospitalIdParam ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = row.id;
 		PatientAllergyDialogState.onSaved = () =>
 			fetchAllergies(patientId, hospitalIdParam, { force: true });
@@ -129,6 +129,7 @@
 				modalClassName:
 					'max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto',
 				onClose: () => {
+					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
@@ -141,6 +142,7 @@
 				}
 			});
 		} finally {
+			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -154,7 +156,11 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deletePatientAllergies({ id: row.id });
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?id=${row.id}`,
+				{ method: 'DELETE' }
+			);
+			if (!res.ok) throw new Error(`Delete failed (${res.status})`);
 			toastService.addToast(
 				'Allergy removed.',
 				StatusColorEnum.SUCCESS
@@ -181,7 +187,11 @@
 		if (!visitId || !hospitalId) return null;
 		isLoadingVisit = true;
 		try {
-			const v = await getPatientVisitById({ id: visitId });
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?mode=visit.get&visitId=${visitId}`
+			);
+			if (!res.ok) throw new Error(`Visit load failed (${res.status})`);
+			const v = await res.json();
 			if (v) {
 				const nextVisit = {
 					patientId: v.patientId,
@@ -206,7 +216,6 @@
 		hospitalIdParam: string | undefined,
 		options?: { force?: boolean }
 	) {
-		console.log('FETCHING ALLERGY');
 		const pageSize = Number(pageSizeStr) || 10;
 		const requestKey = JSON.stringify({
 			patientId,
@@ -222,36 +231,31 @@
 		}
 		lastAllergiesFetchKey = requestKey;
 		isLoadingAllergies = true;
-		console.log('Refreshing');
 		try {
 			const statusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const result =
-				await getPatientAllergiesByPatientIdWithRelationsPaginated({
-					patientId,
-					hospitalId: hospitalIdParam,
-					page: currentPage,
-					pageSize,
-					visitNo: tableFilters.visitNo?.trim() || undefined,
-					severityName: tableFilters.severity?.trim() || undefined,
-					statusId:
-						statusId != null && Number.isFinite(statusId)
-							? statusId
-							: undefined
-				});
+			const qs = new URLSearchParams({
+				mode: 'allergy.listPaginated',
+				patientId,
+				page: String(currentPage),
+				pageSize: String(pageSize)
+			});
+			if (tableFilters.visitNo?.trim()) qs.set('visitNo', tableFilters.visitNo.trim());
+			if (tableFilters.severity?.trim()) qs.set('severityName', tableFilters.severity.trim());
+			if (statusId != null && Number.isFinite(statusId)) qs.set('statusId', String(statusId));
+
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?${qs.toString()}`
+			);
+			if (!res.ok) throw new Error(`Allergy load failed (${res.status})`);
+			const result = await res.json();
 			patientAllergies = result.data;
 			totalAllergies = result.total;
-		} catch {
-			const data = await getPatientAllergiesByPatientIdWithRelations({
-				patientId
-			});
-			patientAllergies = hospitalIdParam
-				? data.filter(
-						(row) => row.visit?.hospitalId === hospitalIdParam
-					)
-				: data;
-			totalAllergies = patientAllergies.length;
+		} catch (err) {
+			console.error(err);
+			patientAllergies = [];
+			totalAllergies = 0;
 		} finally {
 			isLoadingAllergies = false;
 		}

@@ -6,76 +6,34 @@
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiSkeleton from '$lib/component/daisyui/skeleton/DaisyUiSkeleton.svelte';
 
-	import {
-		getSpecialization,
-		getSpecializationWithRelations,
-		type SpecializationWithRelations
-	} from '$lib/tool/remote/table/master-table/specialization.http.tool.svelte';
-	import { getStaffType } from '$lib/tool/remote/table/master-table/staff-type.http.tool.svelte';
-	import { getDepartment } from '$lib/tool/remote/table/master-table/department.http.tool.svelte';
-	import { getUserGroupByHospitalId } from '$lib/tool/remote/table/information-table/user-group.http.tool.svelte';
-	import { getCountry } from '$lib/tool/remote/table/master-table/country.http.tool.svelte';
-	import { getGender } from '$lib/tool/remote/table/master-table/gender.http.tool.svelte';
-	import { getIdentityType } from '$lib/tool/remote/table/master-table/identity-type.http.tool.svelte';
-	import { getMaritalStatus } from '$lib/tool/remote/table/master-table/marial-status.http.tool.svelte';
-	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { getStaffEmploymentType } from '$lib/tool/remote/table/master-table/staff-employment-type.http.tool.svelte';
-	import { getState } from '$lib/tool/remote/table/master-table/state.http.tool.svelte';
-	import { getCity } from '$lib/tool/remote/table/master-table/city.http.tool.svelte';
-	import { getPostalCode } from '$lib/tool/remote/table/master-table/postal-code.http.tool.svelte';
-	import { browser } from '$app/environment';
-	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
+	import type { SpecializationWithRelations } from '$lib/model/type/specialization-with-relations.type';
 	import type {
-		BloodTypeSchema,
-		CitySchema,
-		CountrySchema,
-		DepartmentSchema,
-		GenderSchema,
-		HospitalBranchSchema,
-		IdentityTypeSchema,
-		MaritalStatusSchema,
-		NationalitySchema,
-		PostalCodeSchema,
-		SpecializationSchema,
-		StaffEmploymentTypeSchema,
-		StaffTypeSchema,
-		StateSchema,
-		TitleSchema,
-		UserGroupSchema
-	} from '$lib/server/db/schema-type';
-	import { getTitle } from '$lib/tool/remote/table/master-table/title.http.tool.svelte';
-	import {
-		createStaffWithUser,
-		updateStaff,
-		getStaffByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import { updateUser } from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
+		PatientRegBloodTypeRow,
+		PatientRegCityRow,
+		PatientRegCountryRow,
+		PatientRegGenderRow,
+		PatientRegIdentityTypeRow,
+		PatientRegMaritalStatusRow,
+		PatientRegNationalityRow,
+		PatientRegPostalCodeRow,
+		PatientRegStateRow,
+		PatientRegTitleRow,
+		StaffRegDepartmentRow,
+		StaffRegHospitalBranchRow,
+		StaffRegStaffEmploymentTypeRow,
+		StaffRegStaffTypeRow,
+		StaffRegUserGroupRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import {
-		createStaffDetail,
-		updateStaffDetail
-	} from '$lib/tool/remote/table/information-table/staff-detail.http.tool.svelte';
-	import {
-		createStaffDepartment,
-		deleteStaffDepartment
-	} from '$lib/tool/remote/table/information-table/staff-department.http.tool.svelte';
-	import {
-		createStaffUserGroup,
-		deleteStaffUserGroup
-	} from '$lib/tool/remote/table/information-table/staff-user-group.http.tool.svelte';
-	import {
-		createStaffBranch,
-		deleteStaffBranch
-	} from '$lib/tool/remote/table/information-table/staff-branch.http.tool.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import LAdministrationStaffRegistrationFirstColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationFirstColumn.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
-	import { getBloodType } from '$lib/tool/remote/table/master-table/blood-type.http.tool.svelte';
-	import { getNationality } from '$lib/tool/remote/table/master-table/nationality.http.tool.svelte';
 	import LStaffRegistrationThirdColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationThirdColumn.svelte';
 	import LStaffRegistrationSecondColumn from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationSecondColumn.svelte';
 	import LStaffRegistrationMoreInfo from '$lib/component/own/local/private/heka/administration/staff/registration/LStaffRegistrationMoreInfo.svelte';
@@ -89,24 +47,24 @@
 	let routerUtil = new RouterUtil();
 	const dateTimeUtil = new DateTimeUtil();
 	// data list
-	let titleData: TitleSchema[] = $state([]);
-	let staffTypeData: StaffTypeSchema[] = $state([]);
-	let departmentData: DepartmentSchema[] = $state([]);
-	let branchData: HospitalBranchSchema[] = $state([]);
+	let titleData: PatientRegTitleRow[] = $state([]);
+	let staffTypeData: StaffRegStaffTypeRow[] = $state([]);
+	let departmentData: StaffRegDepartmentRow[] = $state([]);
+	let branchData: StaffRegHospitalBranchRow[] = $state([]);
 	let specializationData: SpecializationWithRelations[] = $state([]);
-	let genderData: GenderSchema[] = $state([]);
-	let maritalStatusData: MaritalStatusSchema[] = $state([]);
-	let countryData: CountrySchema[] = $state([]);
-	let bloodTypeData: BloodTypeSchema[] = $state([]);
-	let identityTypeData: IdentityTypeSchema[] = $state([]);
-	let userGroupData: UserGroupSchema[] = $state([]);
-	let staffEmploymentTypeData: StaffEmploymentTypeSchema[] = $state(
+	let genderData: PatientRegGenderRow[] = $state([]);
+	let maritalStatusData: PatientRegMaritalStatusRow[] = $state([]);
+	let countryData: PatientRegCountryRow[] = $state([]);
+	let bloodTypeData: PatientRegBloodTypeRow[] = $state([]);
+	let identityTypeData: PatientRegIdentityTypeRow[] = $state([]);
+	let userGroupData: StaffRegUserGroupRow[] = $state([]);
+	let staffEmploymentTypeData: StaffRegStaffEmploymentTypeRow[] = $state(
 		[]
 	);
-	let stateData: StateSchema[] = $state([]);
-	let cityData: CitySchema[] = $state([]);
-	let postalCodeData: PostalCodeSchema[] = $state([]);
-	let nationalityData: NationalitySchema[] = $state([]);
+	let stateData: PatientRegStateRow[] = $state([]);
+	let cityData: PatientRegCityRow[] = $state([]);
+	let postalCodeData: PatientRegPostalCodeRow[] = $state([]);
+	let nationalityData: PatientRegNationalityRow[] = $state([]);
 
 	// select value list
 	let selectedTitleId: string = $state('');
@@ -174,20 +132,20 @@
 	// Get selected objects from IDs
 	let selectedCountry = $derived(
 		countryData.find((c) => String(c.id) === selectedCountryId) ||
-			({} as CountrySchema)
+			({} as PatientRegCountryRow)
 	);
 	let selectedState = $derived(
 		stateData.find((s) => String(s.id) === selectedStateId) ||
-			({} as StateSchema)
+			({} as PatientRegStateRow)
 	);
 	let selectedCity = $derived(
 		cityData.find((c) => String(c.id) === selectedCityId) ||
-			({} as CitySchema)
+			({} as PatientRegCityRow)
 	);
 	let selectedPostalCode = $derived(
 		postalCodeData.find(
 			(p) => String(p.id) === selectedPostalCodeId
-		) || ({} as PostalCodeSchema)
+		) || ({} as PatientRegPostalCodeRow)
 	);
 
 	// Filtered data based on selections
@@ -271,8 +229,44 @@
 		loadStaffIntoForm(id);
 	});
 
+	function staffRegistrationApiUrl(
+		hid: string,
+		params: Record<string, string>
+	) {
+		const usp = new URLSearchParams(params);
+		return `/api/heka/hospital/${hid}/home/administration/staff/registration?${usp.toString()}`;
+	}
+
+	async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
+		const res = await fetch(url, {
+			credentials: 'include',
+			cache: 'no-store',
+			...init
+		});
+		if (!res.ok) {
+			const data = await res.json().catch(() => ({}));
+			throw new Error(
+				(data && typeof data.error === 'string' && data.error) ||
+					`Request failed (${res.status})`
+			);
+		}
+		return (await res.json()) as T;
+	}
+
 	async function loadStaffIntoForm(id: string) {
-		const staff = await getStaffByIdWithRelations({ id });
+		const hid =
+			typeof page.params.hospital_id === 'string'
+				? page.params.hospital_id
+				: '';
+		const staff = hid
+			? await getJson<any>(
+					staffRegistrationApiUrl(hid, {
+						mode: 'staff',
+						id
+					}),
+					{ method: 'GET' }
+				)
+			: null;
 		if (!staff) return;
 		staffEditId = editId ? id : null;
 		selectedStaffCode = staff.code ?? '';
@@ -480,30 +474,46 @@
 			typeof page.params.hospital_id === 'string'
 				? page.params.hospital_id
 				: '';
-		titleData = await getTitle();
-		staffTypeData = await getStaffType();
-		departmentData = await getDepartment();
-		branchData = currentHospitalId
-			? await getBranchesByHospitalId({
-					hospitalId: currentHospitalId
-				})
-			: [];
-		specializationData = await getSpecializationWithRelations();
-		genderData = await getGender();
-		maritalStatusData = await getMaritalStatus();
-		countryData = await getCountry();
-		identityTypeData = await getIdentityType();
-		userGroupData = currentHospitalId
-			? await getUserGroupByHospitalId({
-					hospitalId: currentHospitalId
-				})
-			: [];
-		staffEmploymentTypeData = await getStaffEmploymentType();
-		stateData = await getState();
-		cityData = await getCity();
-		postalCodeData = await getPostalCode();
-		bloodTypeData = await getBloodType();
-		nationalityData = await getNationality();
+		if (!currentHospitalId) return;
+
+		const lookups = await getJson<{
+			titleData: PatientRegTitleRow[];
+			staffTypeData: StaffRegStaffTypeRow[];
+			departmentData: StaffRegDepartmentRow[];
+			branchData: StaffRegHospitalBranchRow[];
+			specializationData: SpecializationWithRelations[];
+			genderData: PatientRegGenderRow[];
+			maritalStatusData: PatientRegMaritalStatusRow[];
+			countryData: PatientRegCountryRow[];
+			bloodTypeData: PatientRegBloodTypeRow[];
+			identityTypeData: PatientRegIdentityTypeRow[];
+			userGroupData: StaffRegUserGroupRow[];
+			staffEmploymentTypeData: StaffRegStaffEmploymentTypeRow[];
+			stateData: PatientRegStateRow[];
+			cityData: PatientRegCityRow[];
+			postalCodeData: PatientRegPostalCodeRow[];
+			nationalityData: PatientRegNationalityRow[];
+		}>(
+			staffRegistrationApiUrl(currentHospitalId, { mode: 'lookups' }),
+			{ method: 'GET' }
+		);
+
+		titleData = lookups.titleData;
+		staffTypeData = lookups.staffTypeData;
+		departmentData = lookups.departmentData;
+		branchData = lookups.branchData;
+		specializationData = lookups.specializationData;
+		genderData = lookups.genderData;
+		maritalStatusData = lookups.maritalStatusData;
+		countryData = lookups.countryData;
+		identityTypeData = lookups.identityTypeData;
+		userGroupData = lookups.userGroupData;
+		staffEmploymentTypeData = lookups.staffEmploymentTypeData;
+		stateData = lookups.stateData;
+		cityData = lookups.cityData;
+		postalCodeData = lookups.postalCodeData;
+		bloodTypeData = lookups.bloodTypeData;
+		nationalityData = lookups.nationalityData;
 		// Load staff when view/edit id is in URL (effect also handles URL changes; this covers initial mount with params)
 		const id = viewId || editId;
 		if (id && typeof id === 'string') {
@@ -622,296 +632,184 @@
 		isLoading = true;
 		try {
 			if (staffEditId) {
-				// --- EDIT MODE: update existing staff ---
-				const staff = await getStaffByIdWithRelations({
-					id: staffEditId
-				});
-				if (!staff) {
-					toastService.addToast(
-						'Staff not found.',
-						StatusColorEnum.ERROR
-					);
-					isLoading = false;
-					return;
-				}
-				const previousUser = staff as {
-					user?: {
-						id: string;
-						email?: string | null;
-						name?: string | null;
-					};
-				};
-				const previousEmail = previousUser.user?.email ?? '';
-				const previousName = previousUser.user?.name ?? '';
-				const trimmedNewName = fullName.trim();
-				const trimmedNewEmail = selectedEmail.trim();
-				let shouldSendResetForEmailChange = false;
-				let resetEmailTarget: string | null = null;
-				if (
-					trimmedNewName &&
-					previousUser.user?.id &&
-					trimmedNewName !== previousName
-				) {
-					try {
-						await updateUser({
-							id: previousUser.user.id,
-							name: trimmedNewName
-						});
-					} catch {
-						toastService.addToast(
-							'Failed to update staff user name.',
-							StatusColorEnum.ERROR
-						);
-						isLoading = false;
-						return;
-					}
-				}
-				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
-					try {
-						if (previousUser.user?.id) {
-							await updateUser({
-								id: previousUser.user.id,
-								email: trimmedNewEmail
-							});
-						}
-						if (StringUtil.isNoEmail(previousEmail)) {
-							shouldSendResetForEmailChange = true;
-							resetEmailTarget = trimmedNewEmail;
-						}
-					} catch (e) {
-						toastService.addToast(
-							'Failed to update staff email.',
-							StatusColorEnum.ERROR
-						);
-						isLoading = false;
-						return;
-					}
-				}
-				const statusId = derivedStatusId;
-				await updateStaff({
-					id: staffEditId,
-					firstName: selectedFirstName.trim(),
-					middleName: selectedMiddleName.trim() || undefined,
-					lastName: selectedLastName.trim(),
-					code: selectedStaffCode.trim() || undefined,
-					phonePrimary: phonePrimary || undefined,
-					phoneSecondary: phoneSecondary || undefined,
-					phonePrimaryCountryId: selectedPhoneCountryId
-						? Number(selectedPhoneCountryId)
-						: undefined,
-					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
-						? Number(selectedPhoneSecondaryCountryId)
-						: undefined,
-					dateOfBirth: selectedDateOfBirth || undefined,
-					address: selectedAddress || undefined,
-					remark: selectedRemark || undefined,
-					identityNo: selectedIdentityNumber.trim() || undefined,
-					titleId: selectedTitleId
-						? Number(selectedTitleId)
-						: undefined,
-					genderId: selectedGenderId
-						? Number(selectedGenderId)
-						: undefined,
-					maritalStatusId: selectedMaritalStatusId
-						? Number(selectedMaritalStatusId)
-						: undefined,
-					staffEmploymentTypeId: selectedStaffEmploymentTypeId
-						? Number(selectedStaffEmploymentTypeId)
-						: undefined,
-					staffTypeId: selectedStaffTypeId
-						? Number(selectedStaffTypeId)
-						: undefined,
-					countryId: selectedCountryId
-						? Number(selectedCountryId)
-						: undefined,
-					stateId: selectedStateId
-						? Number(selectedStateId)
-						: undefined,
-					cityId: selectedCityId ? Number(selectedCityId) : undefined,
-					postalCodeId: selectedPostalCodeId
-						? Number(selectedPostalCodeId)
-						: undefined,
-					nationalityId: selectedNationalityId
-						? Number(selectedNationalityId)
-						: undefined,
-					identityTypeId: selectedIdentityTypeId
-						? Number(selectedIdentityTypeId)
-						: undefined,
-					specializationId: selectedSpecializationId
-						? Number(selectedSpecializationId)
-						: undefined,
-					joinDate: selectedJoinDate || undefined,
-					resignDate: selectedResignDate || undefined,
-					statusId
-				});
-				const existingDetail = (
-					staff as { staffDetail?: { id: number } }
-				).staffDetail;
-				let staffDetailId: number | undefined = existingDetail?.id;
-				if (existingDetail?.id) {
-					await updateStaffDetail({
-						id: existingDetail.id,
-						education: selectedEducation.trim() || undefined,
-						designation: selectedDesignation.trim() || undefined,
-						bloodTypeId: selectedBloodTypeId
-							? Number(selectedBloodTypeId)
-							: undefined,
-						licenseNo: selectedLicenseNo.trim() || undefined,
-						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
-						signatureText: selectedSignatureText.trim() || undefined
-					});
-				} else if (
-					selectedEducation ||
-					selectedDesignation ||
-					selectedBloodTypeId ||
-					selectedLicenseNo ||
-					selectedSignatureText
-				) {
-					const newDetail = await createStaffDetail({
-						education: selectedEducation.trim() || undefined,
-						designation: selectedDesignation.trim() || undefined,
-						bloodTypeId: selectedBloodTypeId
-							? Number(selectedBloodTypeId)
-							: undefined,
-						licenseNo: selectedLicenseNo.trim() || undefined,
-						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
-						signatureText: selectedSignatureText.trim() || undefined
-					});
-					staffDetailId = newDetail.id;
-					await updateStaff({
-						id: staffEditId,
-						staffDetailId: newDetail.id
-					});
-				}
-				const staffDepts =
-					(staff as { staffDepartments?: { id: number }[] })
-						.staffDepartments ?? [];
-				for (const sd of staffDepts) {
-					await deleteStaffDepartment({ id: sd.id });
-				}
-				if (selectedDepartmentId) {
-					await createStaffDepartment({
-						staffId: staffEditId,
-						departmentId: Number(selectedDepartmentId)
-					});
-				}
-				// Delete existing staff user groups for this hospital, then create for selected
-				const editHospitalId =
+				const hid =
 					typeof page.params.hospital_id === 'string'
 						? page.params.hospital_id
 						: '';
-				// Use staff relations from freshly fetched data (avoids stale/cached query results)
-				const staffUserGroupsToDelete = (
-					(
-						staff as {
-							staffUserGroups?: {
-								id: number;
-								userGroupId: number;
-								userGroup?: { hospitalId: string };
-							}[];
-						}
-					).staffUserGroups ?? []
-				).filter(
-					(sug) => sug.userGroup?.hospitalId === editHospitalId
-				);
-				for (const sug of staffUserGroupsToDelete) {
-					await deleteStaffUserGroup({ id: sug.id });
-				}
-				// Only create for user groups that exist in this hospital (defensive)
-				const validUserGroupIdSet = new Set(
-					userGroupData.map((g) => g.id)
-				);
-				const uniqueUserGroupIds = [
-					...new Set(
-						selectedUserGroups.filter((id) =>
-							validUserGroupIdSet.has(id)
+				const staff = hid
+					? await getJson<any>(
+							staffRegistrationApiUrl(hid, {
+								mode: 'staff',
+								id: staffEditId
+							}),
+							{ method: 'GET' }
 						)
-					)
-				];
-				for (const ugId of uniqueUserGroupIds) {
-					await createStaffUserGroup({
-						staffId: staffEditId,
-						userGroupId: ugId
-					});
+					: null;
+				if (!staff) {
+					toastService.addToast('Staff not found.', StatusColorEnum.ERROR);
+					return;
 				}
-				// Use staff relations from freshly fetched data (avoids stale/cached query results)
-				const staffBranchesToDelete = (
-					(
-						staff as {
-							staffBranches?: {
-								id: number;
-								branchId: string;
-								branch?: { hospitalId: string };
-							}[];
-						}
-					).staffBranches ?? []
-				).filter((sb) => sb.branch?.hospitalId === editHospitalId);
-				for (const sb of staffBranchesToDelete) {
-					await deleteStaffBranch({ id: sb.id });
-				}
-				if (editHospitalId) {
-					// Only create for branches that exist in this hospital (defensive)
-					const validBranchIdSet = new Set(
-						branchData.map((b) => String(b.id))
-					);
-					const uniqueBranchIds = [
-						...new Set(
-							selectedBranchIds
-								.map((id) => String(id))
-								.filter((id) => validBranchIdSet.has(id))
-						)
-					];
-					for (const branchId of uniqueBranchIds) {
-						await createStaffBranch({
-							staffId: staffEditId,
-							branchId,
-							hospitalId: editHospitalId
-						});
+
+				const previousEmail =
+					(staff as { user?: { email?: string | null } }).user?.email ??
+					'';
+				const previousName =
+					(staff as { user?: { name?: string | null } }).user?.name ?? '';
+				const userId =
+					(staff as { user?: { id?: string | null } }).user?.id ?? '';
+
+				const trimmedNewName = fullName.trim();
+				const trimmedNewEmail = selectedEmail.trim();
+				const shouldSendResetForEmailChange =
+					trimmedNewEmail &&
+					trimmedNewEmail !== previousEmail &&
+					StringUtil.isNoEmail(previousEmail);
+
+				await getJson(
+					staffRegistrationApiUrl(hid, { mode: 'update' }),
+					{
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							id: staffEditId,
+							user: {
+								id: userId,
+								name:
+									trimmedNewName && trimmedNewName !== previousName
+										? trimmedNewName
+										: undefined,
+								email:
+									trimmedNewEmail && trimmedNewEmail !== previousEmail
+										? trimmedNewEmail
+										: undefined
+							},
+							staff: {
+								firstName: selectedFirstName.trim(),
+								middleName: selectedMiddleName.trim() || undefined,
+								lastName: selectedLastName.trim(),
+								code: selectedStaffCode.trim() || undefined,
+								phonePrimary: phonePrimary || undefined,
+								phoneSecondary: phoneSecondary || undefined,
+								phonePrimaryCountryId: selectedPhoneCountryId
+									? Number(selectedPhoneCountryId)
+									: undefined,
+								phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
+									? Number(selectedPhoneSecondaryCountryId)
+									: undefined,
+								dateOfBirth: selectedDateOfBirth || undefined,
+								address: selectedAddress || undefined,
+								remark: selectedRemark || undefined,
+								identityNo: selectedIdentityNumber.trim() || undefined,
+								titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
+								genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+								maritalStatusId: selectedMaritalStatusId
+									? Number(selectedMaritalStatusId)
+									: undefined,
+								staffEmploymentTypeId: selectedStaffEmploymentTypeId
+									? Number(selectedStaffEmploymentTypeId)
+									: undefined,
+								staffTypeId: selectedStaffTypeId
+									? Number(selectedStaffTypeId)
+									: undefined,
+								countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
+								stateId: selectedStateId ? Number(selectedStateId) : undefined,
+								cityId: selectedCityId ? Number(selectedCityId) : undefined,
+								postalCodeId: selectedPostalCodeId
+									? Number(selectedPostalCodeId)
+									: undefined,
+								nationalityId: selectedNationalityId
+									? Number(selectedNationalityId)
+									: undefined,
+								identityTypeId: selectedIdentityTypeId
+									? Number(selectedIdentityTypeId)
+									: undefined,
+								specializationId: selectedSpecializationId
+									? Number(selectedSpecializationId)
+									: undefined,
+								joinDate: selectedJoinDate || undefined,
+								resignDate: selectedResignDate || undefined,
+								statusId: derivedStatusId
+							},
+							departmentId: selectedDepartmentId
+								? Number(selectedDepartmentId)
+								: null,
+							userGroupIds: [...new Set(selectedUserGroups)],
+							branchIds: [...new Set(selectedBranchIds.map(String))],
+							staffDetail: {
+								education: selectedEducation.trim() || undefined,
+								designation: selectedDesignation.trim() || undefined,
+								bloodTypeId: selectedBloodTypeId
+									? Number(selectedBloodTypeId)
+									: undefined,
+								licenseNo: selectedLicenseNo.trim() || undefined,
+								licenseExpiryDate: selectedLicenseExpiryDate || undefined,
+								signatureText: selectedSignatureText.trim() || undefined
+							}
+						})
 					}
-				}
+				);
+
 				if (photoFile) {
 					photoUploading = true;
 					try {
-						const fd = new FormData();
-						fd.set('photo', photoFile);
+						const uploadFd = new FormData();
+						uploadFd.set('photo', photoFile);
 						const res = await fetch('/api/upload/staff-photo', {
 							method: 'POST',
-							body: fd
+							body: uploadFd
 						});
 						const data = await res.json().catch(() => ({}));
 						if (res.ok && data.url) {
-							await updateStaff({
-								id: staffEditId,
-								photoUrl: data.url
-							});
+							await getJson(
+								staffRegistrationApiUrl(hid, { mode: 'update' }),
+								{
+									method: 'POST',
+									headers: { 'content-type': 'application/json' },
+									body: JSON.stringify({
+										id: staffEditId,
+										staff: { photoUrl: data.url }
+									})
+								}
+							);
 						}
 					} finally {
 						photoUploading = false;
 					}
 				} else if (removePhotoRequested) {
-					await updateStaff({
-						id: staffEditId,
-						photoUrl: null
+					await getJson(staffRegistrationApiUrl(hid, { mode: 'update' }), {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							id: staffEditId,
+							staff: { photoUrl: null }
+						})
 					});
 				}
-				if (signatureFile && staffDetailId) {
-					const fd = new FormData();
-					fd.set('signature', signatureFile);
+
+				if (signatureFile) {
+					const uploadFd = new FormData();
+					uploadFd.set('signature', signatureFile);
 					const res = await fetch('/api/upload/staff-signature', {
 						method: 'POST',
-						body: fd
+						body: uploadFd
 					});
 					const data = await res.json().catch(() => ({}));
 					if (res.ok && data.url) {
-						await updateStaffDetail({
-							id: staffDetailId,
-							signatureImageUrl: data.url
+						await getJson(staffRegistrationApiUrl(hid, { mode: 'update' }), {
+							method: 'POST',
+							headers: { 'content-type': 'application/json' },
+							body: JSON.stringify({
+								id: staffEditId,
+								staff: {},
+								staffDetail: { signatureImageUrl: data.url }
+							})
 						});
 					}
 				}
-				if (shouldSendResetForEmailChange && resetEmailTarget) {
+
+				if (shouldSendResetForEmailChange) {
 					const { error } = await authClient.requestPasswordReset({
-						email: resetEmailTarget,
+						email: trimmedNewEmail,
 						redirectTo: routerUtil.getResetRedirectUrl()
 					});
 					if (error) {
@@ -926,12 +824,9 @@
 						);
 					}
 				}
-				toastService.addToast(
-					'Staff updated successfully.',
-					StatusColorEnum.SUCCESS
-				);
+
+				toastService.addToast('Staff updated successfully.', StatusColorEnum.SUCCESS);
 				removePhotoRequested = false;
-				isLoading = false;
 				return;
 			}
 
@@ -946,89 +841,91 @@
 			const emailForCreate = trimmedEmailForCreate
 				? trimmedEmailForCreate
 				: `${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`;
-			const result = await createStaffWithUser({
-				email: emailForCreate,
-				name: fullName,
-				code: selectedStaffCode.trim(),
-				hospitalId: urlHospitalId ?? undefined,
-				firstName: selectedFirstName.trim(),
-				middleName: selectedMiddleName.trim() || undefined,
-				lastName: selectedLastName.trim(),
-				phonePrimary,
-				phoneSecondary: phoneSecondary || undefined,
-				phonePrimaryCountryId: selectedPhoneCountryId
-					? Number(selectedPhoneCountryId)
-					: undefined,
-				phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
-					? Number(selectedPhoneSecondaryCountryId)
-					: undefined,
-				dateOfBirth: selectedDateOfBirth || undefined,
-				address: selectedAddress || undefined,
-				remark: selectedRemark || undefined,
-				identityNo: selectedIdentityNumber.trim() || undefined,
-				titleId: selectedTitleId
-					? Number(selectedTitleId)
-					: undefined,
-				genderId: selectedGenderId
-					? Number(selectedGenderId)
-					: undefined,
-				maritalStatusId: selectedMaritalStatusId
-					? Number(selectedMaritalStatusId)
-					: undefined,
-				staffEmploymentTypeId: selectedStaffEmploymentTypeId
-					? Number(selectedStaffEmploymentTypeId)
-					: undefined,
-				staffTypeId: selectedStaffTypeId
-					? Number(selectedStaffTypeId)
-					: undefined,
-				bloodTypeId: selectedBloodTypeId
-					? Number(selectedBloodTypeId)
-					: undefined,
-				education: selectedEducation.trim() || undefined,
-				designation: selectedDesignation.trim() || undefined,
-				departmentId: selectedDepartmentId
-					? Number(selectedDepartmentId)
-					: undefined,
-				specializationId: selectedSpecializationId
-					? Number(selectedSpecializationId)
-					: undefined,
-				countryId: selectedCountryId
-					? Number(selectedCountryId)
-					: undefined,
-				stateId: selectedStateId
-					? Number(selectedStateId)
-					: undefined,
-				cityId: selectedCityId ? Number(selectedCityId) : undefined,
-				postalCodeId: selectedPostalCodeId
-					? Number(selectedPostalCodeId)
-					: undefined,
-				identityTypeId: selectedIdentityTypeId
-					? Number(selectedIdentityTypeId)
-					: undefined,
-				joinDate: selectedJoinDate || undefined,
-				resignDate: selectedResignDate || undefined,
-				isActive,
-				statusId: derivedStatusId,
-				isSuperAdmin,
-				isLocked,
-				userGroupIds:
-					selectedUserGroups.length > 0
-						? [...new Set(selectedUserGroups)]
+			if (!urlHospitalId) throw new Error('Hospital is required');
+
+			const result = await getJson<{
+				staff: { id: string; staffDetailId?: number | null };
+				userId: string;
+				generatedPassword: string;
+			}>(staffRegistrationApiUrl(urlHospitalId, { mode: 'create' }), {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					email: emailForCreate,
+					name: fullName,
+					code: selectedStaffCode.trim() || undefined,
+					firstName: selectedFirstName.trim(),
+					middleName: selectedMiddleName.trim() || undefined,
+					lastName: selectedLastName.trim(),
+					phonePrimary,
+					phoneSecondary: phoneSecondary || undefined,
+					phonePrimaryCountryId: selectedPhoneCountryId
+						? Number(selectedPhoneCountryId)
 						: undefined,
-				branchIds:
-					selectedBranchIds.length > 0
-						? [...new Set(selectedBranchIds)]
+					phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
+						? Number(selectedPhoneSecondaryCountryId)
 						: undefined,
-				licenseNo: selectedLicenseNo.trim() || undefined,
-				licenseExpiryDate: selectedLicenseExpiryDate || undefined,
-				signatureText: selectedSignatureText.trim() || undefined
+					dateOfBirth: selectedDateOfBirth || undefined,
+					joinDate: selectedJoinDate || undefined,
+					resignDate: selectedResignDate || undefined,
+					address: selectedAddress || undefined,
+					remark: selectedRemark || undefined,
+					identityNo: selectedIdentityNumber.trim() || undefined,
+					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
+					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+					maritalStatusId: selectedMaritalStatusId
+						? Number(selectedMaritalStatusId)
+						: undefined,
+					staffEmploymentTypeId: selectedStaffEmploymentTypeId
+						? Number(selectedStaffEmploymentTypeId)
+						: undefined,
+					staffTypeId: selectedStaffTypeId
+						? Number(selectedStaffTypeId)
+						: undefined,
+					departmentId: selectedDepartmentId
+						? Number(selectedDepartmentId)
+						: undefined,
+					specializationId: selectedSpecializationId
+						? Number(selectedSpecializationId)
+						: undefined,
+					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
+					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					cityId: selectedCityId ? Number(selectedCityId) : undefined,
+					postalCodeId: selectedPostalCodeId
+						? Number(selectedPostalCodeId)
+						: undefined,
+					nationalityId: selectedNationalityId
+						? Number(selectedNationalityId)
+						: undefined,
+					identityTypeId: selectedIdentityTypeId
+						? Number(selectedIdentityTypeId)
+						: undefined,
+					statusId: derivedStatusId,
+					userGroupIds: [...new Set(selectedUserGroups)],
+					branchIds: [...new Set(selectedBranchIds.map(String))],
+					staffDetail: {
+						education: selectedEducation.trim() || undefined,
+						designation: selectedDesignation.trim() || undefined,
+						bloodTypeId: selectedBloodTypeId
+							? Number(selectedBloodTypeId)
+							: undefined,
+						licenseNo: selectedLicenseNo.trim() || undefined,
+						licenseExpiryDate: selectedLicenseExpiryDate || undefined,
+						signatureText: selectedSignatureText.trim() || undefined
+					}
+				})
 			});
 
-			const { staff } = result;
+			const staffId = result.staff.id;
 			if (usingDefaultEmailForCreate) {
-				await updateUser({
-					id: result.userId,
-					email: StringUtil.defaultNoEmail(staff.id)
+				await getJson(staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }), {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						id: staffId,
+						user: { id: result.userId, email: StringUtil.defaultNoEmail(staffId) },
+						staff: {}
+					})
 				});
 			}
 
@@ -1051,7 +948,17 @@
 						return;
 					}
 					if (data.url) {
-						await updateStaff({ id: staff.id, photoUrl: data.url });
+						await getJson(
+							staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }),
+							{
+								method: 'POST',
+								headers: { 'content-type': 'application/json' },
+								body: JSON.stringify({
+									id: staffId,
+									staff: { photoUrl: data.url }
+								})
+							}
+						);
 					}
 				} finally {
 					photoUploading = false;
@@ -1075,20 +982,18 @@
 					return;
 				}
 				if (data.url) {
-					if (staff.staffDetailId) {
-						await updateStaffDetail({
-							id: staff.staffDetailId,
-							signatureImageUrl: data.url
-						});
-					} else {
-						const detail = await createStaffDetail({
-							signatureImageUrl: data.url
-						});
-						await updateStaff({
-							id: staff.id,
-							staffDetailId: detail.id
-						});
-					}
+					await getJson(
+						staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }),
+						{
+							method: 'POST',
+							headers: { 'content-type': 'application/json' },
+							body: JSON.stringify({
+								id: staffId,
+								staff: {},
+								staffDetail: { signatureImageUrl: data.url }
+							})
+						}
+					);
 				}
 			}
 

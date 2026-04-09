@@ -1,12 +1,20 @@
 import { YesNoEnum } from '$lib/model/enum/db-link';
-import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
-import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
-import type {
-	CountrySchema,
-	IdentityTypeSchema,
-	ServiceItemSchema
-} from '$lib/server/db/schema-type';
+import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
+import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 import { DateTimeUtil } from './date-time.util.svelte';
+
+type PhoneCountryInput =
+	| {
+			countryCallingCode?: string | null;
+			phoneCode?: string | null;
+	  }
+	| null
+	| undefined;
+
+type ServiceItemDisplay = {
+	serviceName?: string | null;
+	serviceCode?: string | null;
+};
 
 export class StringUtil {
 	static readonly NO_EMAIL_SUFFIX = '@no-email.heka';
@@ -164,11 +172,14 @@ export class StringUtil {
 	}
 
 	static fullPhoneNo(
-		phoneCountry?: CountrySchema | null,
+		phoneCountry?: PhoneCountryInput,
 		phone?: string | null
 	): string {
-		if (phoneCountry && phone) {
-			return `${phoneCountry.countryCallingCode}${phone}`;
+		const pc = phoneCountry ?? null;
+		const code =
+			pc == null ? '' : (pc.countryCallingCode ?? pc.phoneCode ?? '');
+		if (phoneCountry && phone && code) {
+			return `${code}${phone}`;
 		} else if (phone) {
 			return `${phone}`;
 		}
@@ -176,7 +187,7 @@ export class StringUtil {
 	}
 
 	static fullIdentity(
-		identityType: IdentityTypeSchema | null,
+		identityType: { name?: string | null } | null,
 		identityNo: string | null
 	): string {
 		if (identityType && identityNo) {
@@ -192,7 +203,7 @@ export class StringUtil {
 		return `${patient.code} - ${this.patientDisplayName(patient)} - ${this.fullPhoneNo(
 			patient.phonePrimaryCountry,
 			patient.phonePrimary
-		)} - ${this.fullIdentity(patient.identityType, patient.identityNo)} - ${this.fullNameWithTitle(
+		)} - ${this.fullIdentity(patient.identityType ?? null, patient.identityNo ?? null)} - ${this.fullNameWithTitle(
 			patient.fatherTitle?.name ?? null,
 			patient.fatherName,
 			null,
@@ -208,9 +219,7 @@ export class StringUtil {
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
 	}
 
-	static serviceOptionDisplayName(
-		service: ServiceItemSchema
-	): string {
+	static serviceOptionDisplayName(service: ServiceItemDisplay): string {
 		return `${service.serviceName ?? 'Unknown Service'} (${service.serviceCode ?? '-'})`;
 	}
 

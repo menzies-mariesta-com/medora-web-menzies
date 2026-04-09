@@ -23,10 +23,6 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		deleteAppointment,
-		getAppointmentCancelEligibility
-	} from '$lib/remote/table/information-table/appointment.remote';
 	import { tick } from 'svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
@@ -59,6 +55,7 @@
 	};
 
 	let {
+		hospitalId = '',
 		selectDate,
 		viewBy = 'day',
 		timeFormat = '24h',
@@ -84,6 +81,7 @@
 		onRefreshAppointments,
 		isRefreshAppointmentsLoading = false
 	} = $props<{
+		hospitalId?: string;
 		selectDate: string;
 		viewBy?: 'day' | 'week' | 'month';
 		/** Display time column as 24h (e.g. 14:00) or 12h (e.g. 2:00 PM). */
@@ -346,8 +344,9 @@
 				toHHmm(s.startTime) <= t &&
 				t < toHHmm(s.endTime)
 		);
-		const id = (slot as AppointmentSlot | undefined)?.appointmentId;
-		return id != null ? id : null;
+		const raw = (slot as AppointmentSlot | undefined)?.appointmentId;
+		const n = typeof raw === 'number' ? raw : Number(raw);
+		return raw != null && Number.isFinite(n) ? n : null;
 	}
 
 	/** Appointment slot for a cell that is inside an appointment (first matching slot), or null. */
@@ -597,8 +596,29 @@
 	}
 
 	const canInteractWithCalendar = $derived(
-		!!selectedDoctorId?.trim() && !!activeBranchId?.trim()
+		!!hospitalId?.trim() &&
+			!!selectedDoctorId?.trim() &&
+			!!activeBranchId?.trim()
 	);
+
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/appointment/doctor-appointment`
+			: ''
+	);
+
+	async function apiPost<T>(
+		mode: string,
+		body?: Record<string, unknown>
+	): Promise<T> {
+		const res = await fetch(apiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...(body ?? {}) })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	/** Creating is allowed only when doctor is selected, cell is not blocked, has no appointment, and is not in the past. */
 	function canCreateInCell(
@@ -792,16 +812,19 @@
 
 	async function handleDeleteSelected() {
 		if (selectedAppointmentId == null) return;
-		const elig = await getAppointmentCancelEligibility({
-			appointmentId: selectedAppointmentId
-		});
+		const elig = await apiPost<{
+			allowed: true;
+		} | { allowed: false; message: string }>(
+			'appointment.cancelEligibility',
+			{ appointmentId: selectedAppointmentId }
+		);
 		if (!elig.allowed) {
 			toastService.addToast(elig.message, StatusColorEnum.ERROR);
 			return;
 		}
 		if (!confirm('Delete this appointment?')) return;
 		try {
-			await deleteAppointment({ id: selectedAppointmentId });
+			await apiPost('appointment.delete', { id: selectedAppointmentId });
 			selectedAppointmentId = null;
 			await tick();
 			await onAppointmentCreated?.();

@@ -3,18 +3,13 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		getStorePaginated,
-		deleteStore
-	} from '$lib/tool/remote/table/information-table/store.http.tool.svelte';
-	import type { StoreSchema } from '$lib/server/db/schema-type';
-	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
-	import { getUserGroupByHospitalId } from '$lib/tool/remote/table/information-table/user-group.http.tool.svelte';
-	import { getDepartment } from '$lib/tool/remote/table/master-table/department.http.tool.svelte';
+	import type { StoreListRow, StatusListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type {
+		StaffRegDepartmentRow,
+		StaffRegUserGroupRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import StoreFormModal from '$lib/component/own/local/private/heka/administration/store/StoreFormModal.svelte';
-	import type { StatusSchema } from '$lib/server/db/schema-type';
-	import { getStatus } from '$lib/tool/remote/table/master-table/status.http.tool.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -41,13 +36,13 @@
 			: ''
 	);
 
-	let stores = $state<StoreSchema[]>([]);
+	let stores = $state<StoreListRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
-	let statusOptions = $state<StatusSchema[]>([]);
+	let statusOptions = $state<StatusListRow[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
@@ -56,25 +51,56 @@
 	let userGroupNameById = $state<Map<number, string>>(new Map());
 	let departmentNameById = $state<Map<number, string>>(new Map());
 
+	type StoreLookups = {
+		userGroups: StaffRegUserGroupRow[];
+		departments: StaffRegDepartmentRow[];
+		statuses: StatusListRow[];
+	};
+
+	async function fetchBranchesAll(hid: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branches (${res.status})`);
+		}
+		return (await res.json()) as { id: string; name?: string | null; code?: string | null }[];
+	}
+
+	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/stores?mode=lookups`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load lookups (${res.status})`);
+		}
+		return (await res.json()) as StoreLookups;
+	}
+
 	async function loadLookups() {
 		if (!hospitalId) return;
-		const [branches, ugs, depts] = await Promise.all([
-			getBranchesByHospitalId({ hospitalId }),
-			getUserGroupByHospitalId({ hospitalId }),
-			getDepartment()
+		const [branches, lookups] = await Promise.all([
+			fetchBranchesAll(hospitalId),
+			fetchStoreLookups(hospitalId)
 		]);
 		branchNameById = new Map(
 			branches.map((b) => [b.id, b.name ?? b.code ?? b.id])
 		);
 		userGroupNameById = new Map(
-			ugs.map((g) => [g.id, g.name ?? String(g.id)])
+			lookups.userGroups.map((g) => [g.id, g.name ?? String(g.id)])
 		);
 		departmentNameById = new Map(
-			depts.map((d) => [d.id, d.name ?? d.code ?? String(d.id)])
+			lookups.departments.map((d) => [
+				d.id,
+				d.name ?? d.code ?? String(d.id)
+			])
 		);
+		statusOptions = lookups.statuses;
 	}
 
-	const storeColumns: MariTableColumn<StoreSchema>[] = [
+	const storeColumns: MariTableColumn<StoreListRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
@@ -146,6 +172,14 @@
 		}
 	];
 
+	type StoresPaginatedResponse = {
+		data: StoreListRow[];
+		total: number;
+		page: number;
+		pageSize: number;
+		totalPages: number;
+	};
+
 	async function fetchStores(forceRefresh = false) {
 		if (!hospitalId) return;
 		isLoading = true;
@@ -154,23 +188,27 @@
 			const parsedStatusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const params = {
-				hospitalId,
-				page: currentPage,
-				pageSize,
-				name: tableFilters.storeName?.trim() || undefined,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined
-			};
-			if (forceRefresh) {
-				await getStorePaginated(params).refresh();
+			const sp = new URLSearchParams();
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			const name = tableFilters.storeName?.trim() || '';
+			if (name) sp.set('name', name);
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				sp.set('statusId', String(parsedStatusId));
 			}
-			const result = await getStorePaginated(params);
-			stores = result.data;
-			total = result.total;
-			totalPages = result.totalPages;
+			if (forceRefresh) sp.set('_t', String(Date.now()));
+
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/administration/stores?${sp.toString()}`,
+				{ method: 'GET' }
+			);
+			if (!res.ok) {
+				throw new Error(`Failed to load stores (${res.status})`);
+			}
+			const result = (await res.json()) as StoresPaginatedResponse;
+			stores = result.data ?? [];
+			total = result.total ?? 0;
+			totalPages = result.totalPages ?? 1;
 		} finally {
 			isLoading = false;
 		}
@@ -181,12 +219,7 @@
 		fetchStores();
 	}
 
-	async function loadStatusOptions() {
-		statusOptions = await getStatus();
-	}
-
 	lifeCycleUtil.onMount(async () => {
-		await loadStatusOptions();
 		if (hospitalId) {
 			await loadLookups();
 			fetchStores();
@@ -207,7 +240,7 @@
 		}
 	}
 
-	async function openEdit(row: StoreSchema) {
+	async function openEdit(row: StoreListRow) {
 		StoreModalState.mode = 'edit';
 		StoreModalState.editStore = row;
 		StoreModalState.hospitalId = hospitalId;
@@ -221,7 +254,7 @@
 		}
 	}
 
-	async function handleDelete(row: StoreSchema) {
+	async function handleDelete(row: StoreListRow) {
 		const result = await dialogService.open({
 			title: m.delete_store(),
 			message: `Delete "${row.storeName ?? m.stores()}"?`,
@@ -229,7 +262,17 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteStore({ id: row.id });
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+				{
+					method: 'DELETE',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ id: row.id })
+				}
+			);
+			if (!res.ok) {
+				throw new Error(`Delete failed (${res.status})`);
+			}
 			toastService.addToast(
 				m.store_deleted(),
 				StatusColorEnum.SUCCESS

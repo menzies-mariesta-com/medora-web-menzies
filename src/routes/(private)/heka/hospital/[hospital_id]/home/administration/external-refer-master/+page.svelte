@@ -5,15 +5,10 @@
 	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
 	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import {
-		getExternalReferPaginated,
-		deleteExternalRefer
-	} from '$lib/tool/remote/table/information-table/external-refer.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import type { ExternalReferWithRelations } from '$lib/tool/remote/table/information-table/external-refer.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
@@ -60,17 +55,42 @@
 			: undefined
 	);
 
+	type ExternalReferWithRelations = {
+		id: number;
+		title?: { id: number; name: string | null } | null;
+		name: string | null;
+		address: string | null;
+		country?: { id: number; name: string | null } | null;
+		state?: { id: number; name: string | null } | null;
+		city?: { id: number; name: string | null } | null;
+		postalCode?: { id: number; value: unknown } | null;
+		phoneCountry?: { id: number; countryCallingCode: string | null } | null;
+		phone: string | null;
+		email: string | null;
+		status?: { id: number; name: string | null } | null;
+		statusId: number | null;
+		createdAt?: string | null;
+		updatedAt?: string | null;
+	};
+
 	async function fetchRefer(opts?: { bustCache?: boolean }) {
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
 		try {
-			referResult = await getExternalReferPaginated({
-				page: currentPage,
-				pageSize,
-				search: searchInput.trim() || undefined,
-				hospitalId: hospitalId ?? undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			if (!hospitalId) throw new Error('Hospital is required');
+			const url = new URL(
+				`/api/heka/hospital/${hospitalId}/home/administration/external-refer-master`,
+				window.location.origin
+			);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+			if (searchInput.trim()) url.searchParams.set('search', searchInput.trim());
+			if (opts?.bustCache) url.searchParams.set('_t', String(Date.now()));
+
+			const res = await fetch(url, { method: 'GET' });
+			if (!res.ok) throw new Error(await res.text());
+			referResult =
+				(await res.json()) as PaginatedResult<ExternalReferWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -107,7 +127,16 @@
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
-				await deleteExternalRefer({ id: referId });
+				if (!hospitalId) throw new Error('Hospital is required');
+				const res = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/administration/external-refer-master`,
+					{
+						method: 'DELETE',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ id: referId })
+					}
+				);
+				if (!res.ok) throw new Error(await res.text());
 				await fetchRefer();
 				toastService.addToast(
 					m.external_refer_deleted(),
@@ -123,10 +152,16 @@
 		}
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '—';
+	function formatDateTime(value: unknown): string {
+		if (value == null || value === '') return '—';
+		const s =
+			typeof value === 'string'
+				? value
+				: value instanceof Date
+					? value.toISOString()
+					: String(value);
 		try {
-			const d = new Date(value);
+			const d = new Date(s);
 			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
 		} catch {
 			return '—';
@@ -208,13 +243,13 @@
 				id: 'createdAt',
 				header: m.created_at(),
 				widthClass: 'w-40 min-w-[10rem]',
-				format: (value) => formatDateTime(value as any)
+				format: (value) => formatDateTime(value)
 			},
 			{
 				id: 'updatedAt',
 				header: m.updated_at(),
 				widthClass: 'w-40 min-w-[10rem]',
-				format: (value) => formatDateTime(value as any)
+				format: (value) => formatDateTime(value)
 			}
 		];
 

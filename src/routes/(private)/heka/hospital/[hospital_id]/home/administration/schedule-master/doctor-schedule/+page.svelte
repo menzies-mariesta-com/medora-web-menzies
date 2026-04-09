@@ -11,18 +11,12 @@
 	import DaisyUiTable from '$lib/component/daisyui/table/DaisyUiTable.svelte';
 	import DaisyUiTableBody from '$lib/component/daisyui/table/body/DaisyUiTableBody.svelte';
 	import DaisyUiTableHeader from '$lib/component/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import {
-		createDoctorSchedule,
-		getDoctorSchedule,
-		updateDoctorSchedule
-	} from '$lib/tool/remote/table/information-table/doctor-schedule.http.tool.svelte';
-	import { getWeekday } from '$lib/tool/remote/table/master-table/weekday.http.tool.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import DaisyUiSkeleton from '$lib/component/daisyui/skeleton/DaisyUiSkeleton.svelte';
-	import type { DoctorScheduleSchema } from '$lib/server/db/schema-type';
+	import type { DoctorScheduleListRow } from '$lib/model/type/heka/ui-rows.type';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
@@ -30,14 +24,8 @@
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import {
-		type StaffWithRelations,
-		getDoctorStaffList,
-		getDoctorStaffPaginated,
-		getStaffByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
-	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
+	import type { StaffRegHospitalBranchRow } from '$lib/model/type/heka/staff-reg-ui.type';
 
 	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
 	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -67,15 +55,72 @@
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
-	let DAYS = $state<Awaited<ReturnType<typeof getWeekday>>>([]);
-	let DOCTOR_STAFF_LIST = $state<StaffWithRelations[]>([]);
+	type Weekday = { id: number; name: string | null };
+	type DoctorStaff = StaffWithRelations & {
+		photoUrl?: string | null;
+		staffBranches?: { branch: { id: string; name: string | null } | null }[];
+	};
+	let DAYS = $state<Weekday[]>([]);
+	let DOCTOR_STAFF_LIST = $state<DoctorStaff[]>([]);
 	let mounted = $state(false);
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/administration/schedule-master/doctor-schedule`
+			: ''
+	);
+
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string | undefined>
+	): Promise<T> {
+		const sp = new URLSearchParams();
+		sp.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				if (v != null && v !== '') sp.set(k, v);
+			}
+		}
+		const res = await fetch(`${apiBase}?${sp.toString()}`, {
+			method: 'GET'
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(
+		mode: string,
+		body?: Record<string, unknown>
+	): Promise<T> {
+		const res = await fetch(apiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...(body ?? {}) })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function fetchBranchesAll(hid: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branches (${res.status})`);
+		}
+		return (await res.json()) as StaffRegHospitalBranchRow[];
+	}
+
 	lifeCycleUtil.onMount(async () => {
-		DAYS = await getWeekday();
+		if (apiBase) {
+			DAYS = await apiGet<Weekday[]>('weekday.list');
+		} else {
+			DAYS = [];
+		}
 		mounted = true;
 	});
 
@@ -84,12 +129,12 @@
 		const bid = scopedBranchId;
 		if (!mounted) return;
 		if (hid) {
-			getDoctorStaffList({ hospitalId: hid, branchId: bid }).then(
-				(list) => {
-					DOCTOR_STAFF_LIST = list;
-				}
-			);
-			getBranchesByHospitalId({ hospitalId: hid }).then((list) => {
+			apiGet<DoctorStaff[]>('doctor.list', {
+				branchId: bid
+			}).then((list) => {
+				DOCTOR_STAFF_LIST = list;
+			});
+			fetchBranchesAll(hid).then((list) => {
 				branchData = list;
 			});
 		} else {
@@ -123,16 +168,21 @@
 
 	let staffId = $state('');
 	let selectedBranchId = $state('');
-	let branchData = $state<HospitalBranchSchema[]>([]);
+	let branchData = $state<StaffRegHospitalBranchRow[]>([]);
 	async function searchDoctors(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getDoctorStaffPaginated({
-			search: query.trim(),
-			hospitalId: hospitalId,
-			branchId: scopedBranchId,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
+		const res = await apiGet<{
+			data: DoctorStaff[];
+			total: number;
+			page: number;
+			pageSize: number;
+			totalPages: number;
+		}>('doctor.paginated', {
+			search: query.trim() || undefined,
+			branchId: scopedBranchId ?? undefined,
+			page: '1',
+			pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
 		});
 		return res.data.map((staff) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
@@ -141,7 +191,9 @@
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await getStaffByIdWithRelations({ id });
+		const staff = await apiGet<DoctorStaff | null>('doctor.byId', {
+			id
+		});
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -174,7 +226,7 @@
 			? getStaffPhotoDisplayUrl(selectedStaff.photoUrl)
 			: undefined
 	);
-	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
+	let doctorSchedules = $state<DoctorScheduleListRow[]>([]);
 	const scheduleGroups = $derived<DoctorScheduleGroup[]>(
 		Object.values(
 			doctorSchedules.reduce(
@@ -238,11 +290,12 @@
 			doctorSchedules = [];
 			return;
 		}
-		const hid = hospitalId ?? undefined;
 		const bid = scopedBranchId ?? undefined;
-		const all = await getDoctorSchedule(
-			hid ? { hospitalId: hid, branchId: bid } : undefined
-		);
+		const all = apiBase
+			? await apiGet<DoctorScheduleListRow[]>('doctorSchedule.list', {
+					branchId: bid
+				})
+			: [];
 		doctorSchedules = all.filter(
 			(s) =>
 				s.staffId === id &&
@@ -293,7 +346,7 @@
 			group.scheduleIds.includes(s.id)
 		);
 		const firstInGroup = groupSchedules[0] as
-			| (DoctorScheduleSchema & {
+			| (DoctorScheduleListRow & {
 					slotDurationMinutes?: number | null;
 			  })
 			| undefined;
@@ -342,9 +395,8 @@
 				group.scheduleIds.includes(s.id)
 			);
 			for (const s of groupSchedules) {
-				await updateDoctorSchedule({
-					id: s.id,
-					statusId: StatusEnum.INACTIVE
+				await apiPost('doctorSchedule.update', {
+					payload: { id: s.id, statusId: StatusEnum.INACTIVE }
 				});
 			}
 			await loadDoctorSchedules();
@@ -449,9 +501,8 @@
 						(s.toDate ?? null) === origTo
 				);
 				for (const s of existingGroup) {
-					await updateDoctorSchedule({
-						id: s.id,
-						statusId: StatusEnum.INACTIVE
+					await apiPost('doctorSchedule.update', {
+						payload: { id: s.id, statusId: StatusEnum.INACTIVE }
 					});
 				}
 			}
@@ -468,16 +519,17 @@
 					day.toMin,
 					day.toAmPm
 				);
-				await createDoctorSchedule({
-					staffId: staffId.trim(),
-					hospitalId: hid,
-					branchId: selectedBranchId.trim(),
-					weekdayId: DAYS[i].id,
-					fromDate: fromDate.trim() || null,
-					toDate: noEndDate ? null : toDate?.trim() || null,
-					fromShiftTime,
-					toShiftTime,
-					slotDurationMinutes: parsedSlot
+				await apiPost('doctorSchedule.create', {
+					payload: {
+						staffId: staffId.trim(),
+						branchId: selectedBranchId.trim(),
+						weekdayId: DAYS[i].id,
+						fromDate: fromDate.trim() || null,
+						toDate: noEndDate ? null : toDate?.trim() || null,
+						fromShiftTime,
+						toShiftTime,
+						slotDurationMinutes: parsedSlot
+					}
 				});
 			}
 			editingGroupKey = null;

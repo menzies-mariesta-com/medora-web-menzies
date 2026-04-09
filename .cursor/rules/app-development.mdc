@@ -28,14 +28,20 @@ alwaysApply: true
 ### `model/`
 - Constrain data shape:
   - `enum/*.enum.ts` (prefer enums “everywhere possible”)
-  - `interface/*.interface.ts` (DB/schema structures)
-  - `type/*.type.ts` (external/3rd-party shapes)
+  - `interface/*.interface.ts` (shared object contracts where an interface fits)
+  - `type/*.type.ts` (API/JSON shapes for UI, pagination wrappers, external/3rd-party types)
 
-### `remote/`
-- DB CRUD. Mirror schema folder structure one-to-one.
+#### Types: UI / JSON vs Drizzle schema (even in a very static project)
+- **Do not** import `$lib/server/db/schema-type` (Drizzle `*Schema` / `InferSelectModel` aliases) from **UI or any client-shipped module**: `.svelte` files, client `*.svelte.ts`, `$lib/state/**`, or utilities that must stay server-free.
+- **Use `$lib/model/type/**`** for shapes that pages and components get from `fetch()` (mirrored API). That documents the **HTTP contract**; Drizzle types document the **database** layer and optional/JSON mismatches are common (e.g. audit columns, dates as strings over the wire).
+- **`$lib/server/db/schema-type` and `*Schema` types belong in** `$lib/server/**`, `src/routes/api/**/+server.ts`, and `+page.server.ts` — anywhere that already runs only on the server next to queries.
+- Rationale stays the same whether the schema changes often or rarely: a **clear boundary** (UI ↔ model types ↔ API ↔ server/DB types) keeps refactors predictable and avoids coupling every screen to the full DB type graph.
 
 ### `server/`
-- Schemas/seed/migrations only; no CRUD.
+- **Server-only code**. May include:
+ - DB schemas/seed/migrations
+ - DB query/command modules used by `src/routes/api/**/+server.ts` and `+page.server.ts`
+ - Authentication/authorization helpers that must never run in the browser
 
 ### `service/`
 - Setup-required helpers; start with a “how to setup” comment; include schema/relation/type blocks per table.
@@ -64,19 +70,24 @@ alwaysApply: true
   - Do **not** import `$lib/paraglide/messages/<key>.js` — Paraglide compiles to the barrel only; those paths break Vite/SSR. If TypeScript lags on new keys, use `const msg = m as Record<string, (inputs?: object) => string>` (in `<script lang="ts">`) and `msg.your_key()`.
 
 ## Data CRUD flow (strict contract)
-- `(public|private)/.../+page.svelte` must call HTTP endpoints under `src/routes/api/.../+server.ts`.
-- The endpoint path must live under the matching API route group:
-  - private pages -> `src/routes/api/(private)/.../+server.ts`
-  - public pages -> `src/routes/api/(public)/.../+server.ts`
-- The endpoint calls the appropriate DB CRUD function under `src/lib/remote/...`.
-- Pages should not import `$lib/remote/**` directly.
+- **Stack:** Pages/UI → API → Server-only modules → DB. See `.cursor/rules/remote-api-pages-flow.mdc` (updated contract).
+- Client/UI under `src/routes/**` and `src/lib/component/**` must reach DB-backed data **only** via HTTP to `src/routes/api/**/+server.ts`.
+- API endpoint folder structure must mirror the page folder structure:
+ - `src/routes/(private)/...` pages use `src/routes/api/(private)/.../+server.ts`
+ - `src/routes/(public)/...` pages use `src/routes/api/(public)/.../+server.ts`
+- `+page.server.ts` is **optional**; add it only when needed (auth/redirects, SSR-only initial data, etc.).
 
-## Client vs Remote Invocation (enforced)
-- Only `+server.ts` files under `src/routes/api/**` may import and execute `$lib/remote/**` (runtime DB/remote logic).
-- Client/UI code under `src/routes/**` and `src/lib/component/**` must not import `$lib/remote/**` at runtime.
-- Type-only imports from `$lib/remote/**` are allowed, but client code must not import/execute remote functions/queries.
-- Client/UI code must not import `$lib/tool/remote/**`.
-- Client/UI code must call API handlers via `fetch` to `src/routes/api/.../+server.ts` (commonly through an API invoke endpoint).
+## Client vs Server invocation (enforced)
+- **Allowed server runtime code**: `src/routes/api/**/+server.ts` and `+page.server.ts` may import and execute server-only modules under `$lib/server/**`.
+- **Forbidden in browser/runtime UI**:
+ - Any import from `$lib/server/**` inside `.svelte` components or client-side modules (including `$lib/server/db/schema-type` — use `$lib/model/type/**` for UI; see **Types: UI / JSON vs Drizzle schema** under `model/`).
+ - Any import from `$lib/remote/**` or `$lib/tool/remote/**` (these layers are removed).
+- Prefer direct `fetch()` to the mirrored `src/routes/api/**` endpoint from the page/component.
+
+## Quick compliance audit (keep the tree static)
+- **Goal:** No `$lib/server/**` (including `schema-type`) in UI or client `*.svelte.ts` / `*.svelte` under `src/`. Server-only code stays in `$lib/server/**`, `+server.ts`, `+page.server.ts`, `hooks.server.ts`, etc.
+- **Automated:** included in `pnpm run check`; standalone: `pnpm run check:ui-boundary` (`scripts/check-ui-boundary.mjs`) — fails if any `*.svelte` / `*.svelte.ts` outside `src/lib/server/**` references `$lib/server`, or if `src/lib/tool/**` does.
+- **DB inside “tools”:** no `ensureDb` / `$lib/server/db` in `src/lib/tool/**` — prefix generation lives in `$lib/server/heka/prefix/prefix-generator.server.ts`; shared **types** live in `$lib/model/type/heka/prefix-format.type.ts`.
 
 ## E2E
 - Keep `e2e/` tests aligned with the ongoing continuous development cycle.

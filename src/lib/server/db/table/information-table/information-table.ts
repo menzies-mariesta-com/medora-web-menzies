@@ -230,6 +230,10 @@ export const prefixFormatTable = pgTable(
 		counterIncludeVisitType: integer('counter_include_visit_type')
 			.notNull()
 			.default(YesNoEnum.NO),
+		/** When YES, append context visit id to {@link prefixCounterTable.scopeKey} when provided (e.g. ORDER_NO). */
+		counterIncludeVisit: integer('counter_include_visit')
+			.notNull()
+			.default(YesNoEnum.NO),
 		...timestamps
 	},
 	(table) => [
@@ -238,7 +242,7 @@ export const prefixFormatTable = pgTable(
 );
 
 /**
- * Running number per scope (hospital / branch / financial year / visit type × purpose).
+ * Running number per scope (hospital / branch / financial year / visit type / visit × purpose).
  * `scopeKey` is unique; use {@link buildPrefixCounterScopeKey} from `$lib/tool/prefix/prefix-counter-scope.util`.
  */
 export const prefixCounterTable = pgTable('prefix_counter', {

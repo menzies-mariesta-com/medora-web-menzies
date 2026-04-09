@@ -6,7 +6,7 @@
 	import DaisyUiTableHeader from '$lib/component/daisyui/table/head/DaisyUiTableHeader.svelte';
 	import DaisyUiTableBody from '$lib/component/daisyui/table/body/DaisyUiTableBody.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import type { PatientWithRelations } from '$lib/remote/table/information-table/patient.remote';
+	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 

@@ -3,10 +3,10 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import type {
-		GenderSchema,
-		MaritalStatusSchema,
-		TitleSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegGenderRow,
+		PatientRegMaritalStatusRow,
+		PatientRegTitleRow
+	} from '$lib/model/type/heka/patient-reg-master.type';
 
 	let {
 		titleData,
@@ -21,9 +21,9 @@
 		selectedGenderId = $bindable(),
 		selectedMaritalStatusId = $bindable()
 	} = $props<{
-		titleData: TitleSchema[];
-		genderData: GenderSchema[];
-		maritalStatusData: MaritalStatusSchema[];
+		titleData: PatientRegTitleRow[];
+		genderData: PatientRegGenderRow[];
+		maritalStatusData: PatientRegMaritalStatusRow[];
 		patientCode?: string;
 		selectedTitleId?: string;
 		firstName?: string;

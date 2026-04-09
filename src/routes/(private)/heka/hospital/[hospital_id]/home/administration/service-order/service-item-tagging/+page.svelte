@@ -11,19 +11,11 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import {
-		getServiceTaggingPaginated,
-		getServiceTagging,
-		createServiceTagging,
-		updateServiceTagging,
-		deleteServiceTagging
-	} from '$lib/tool/remote/table/information-table/service-tagging.http.tool.svelte';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import { getServiceItem } from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
-		ServiceItemSchema,
-		ServiceTaggingSchema
-	} from '$lib/server/db/schema-type';
+		ServiceItemListRow,
+		ServiceTaggingListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -72,9 +64,9 @@
 		new Set(allowedBranches.map((b) => b.id))
 	);
 
-	let serviceItems = $state<ServiceItemSchema[]>([]);
+	let serviceItems = $state<ServiceItemListRow[]>([]);
 	let taggingResult =
-		$state<PaginatedResult<ServiceTaggingSchema> | null>(null);
+		$state<PaginatedResult<ServiceTaggingListRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
@@ -113,18 +105,18 @@
 	let tableColumnFilters = $state<Record<string, string>>({});
 
 	let isComparativeMode = $state(false);
-	let comparativeTaggings = $state<ServiceTaggingSchema[]>([]);
+	let comparativeTaggings = $state<ServiceTaggingListRow[]>([]);
 	let isComparativeLoading = $state(false);
 
 	function toDateInputValue(
-		value: ServiceTaggingSchema['validDate']
+		value: ServiceTaggingListRow['validDate']
 	): string {
 		if (!value) return '';
 		const str = String(value);
 		return str.length >= 10 ? str.slice(0, 10) : str;
 	}
 
-	const taggingColumns: MariTableColumn<ServiceTaggingSchema>[] = [
+	const taggingColumns: MariTableColumn<ServiceTaggingListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -189,13 +181,31 @@
 		}
 	];
 
+	async function fetchJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				'content-type': 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	async function fetchServiceItems() {
 		if (!hospitalId) return;
 		// Load all service items for this hospital; you can later filter by category/sub-category if needed.
-		serviceItems = await getServiceItem({ hospitalId });
+		serviceItems = await fetchJson<ServiceItemListRow[]>(
+			`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master?mode=all`
+		);
 	}
 
 	async function fetchTaggings(forceRefresh = false) {
+		void forceRefresh;
 		if (
 			allowedBranches.length === 0 ||
 			selectedBranchIds.length === 0
@@ -306,17 +316,34 @@
 				pageSize
 			};
 
-			if (forceRefresh) {
-				await getServiceTaggingPaginated(paginatedParams).refresh();
-			}
+			const qs = new URLSearchParams();
+			qs.set('page', String(paginatedParams.page));
+			qs.set('pageSize', String(paginatedParams.pageSize));
+			if (paginatedParams.id != null) qs.set('id', String(paginatedParams.id));
+			if (paginatedParams.branchId)
+				qs.set('branchId', paginatedParams.branchId);
+			if (paginatedParams.serviceIds?.length)
+				qs.set('serviceIds', paginatedParams.serviceIds.join(','));
+			if (paginatedParams.serviceAmount != null)
+				qs.set('serviceAmount', String(paginatedParams.serviceAmount));
+			if (paginatedParams.serviceTaxAmount != null)
+				qs.set(
+					'serviceTaxAmount',
+					String(paginatedParams.serviceTaxAmount)
+				);
+			if (paginatedParams.statusId != null)
+				qs.set('statusId', String(paginatedParams.statusId));
 
-			let result = await getServiceTaggingPaginated(paginatedParams);
+			let result =
+				await fetchJson<PaginatedResult<ServiceTaggingListRow>>(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging?${qs.toString()}`
+				);
 
 			// When multiple branches are selected, filter in-memory.
 			if (selectedAllowedBranchIds.length > 1) {
 				const allowedIds = new Set(selectedAllowedBranchIds);
 				const filteredData = result.data.filter(
-					(row: ServiceTaggingSchema) =>
+					(row: ServiceTaggingListRow) =>
 					allowedIds.has(row.branchId)
 				);
 				const totalFiltered = filteredData.length;
@@ -348,10 +375,13 @@
 		try {
 			const results = await Promise.all(
 				selectedAllowedBranchIds.map((branchId) =>
-					getServiceTagging({
-						branchId,
-						statusId: StatusEnum.ACTIVE
-					})
+					fetchJson<ServiceTaggingListRow[]>(
+						`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging?mode=all&branchId=${encodeURIComponent(
+							branchId
+						)}&statusId=${encodeURIComponent(
+							String(StatusEnum.ACTIVE)
+						)}`
+					)
 				)
 			);
 			comparativeTaggings = results.flat();
@@ -397,7 +427,7 @@
 		resetForm();
 	}
 
-	function startEdit(row: ServiceTaggingSchema) {
+	function startEdit(row: ServiceTaggingListRow) {
 		mode = 'edit';
 		editingId = row.id;
 		formServiceId = String(row.serviceId);
@@ -525,9 +555,36 @@
 			if (mode === 'create') {
 				await Promise.all(
 					targetBranchIds.map((branchId) =>
-						createServiceTagging({
-							branchId,
-							serviceId,
+						fetchJson(
+							`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging`,
+							{
+								method: 'POST',
+								body: JSON.stringify({
+									branchId,
+									serviceId,
+									serviceAmount: serviceAmountNum.toString(),
+									serviceTaxAmount: taxStr
+										? serviceTaxAmountNum.toString()
+										: null,
+									validDate,
+									allowEdit,
+									statusId
+								})
+							}
+						)
+					)
+				);
+				toastService.addToast(
+					'Service tagging created.',
+					StatusColorEnum.SUCCESS
+				);
+			} else if (mode === 'edit' && editingId != null) {
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging`,
+					{
+						method: 'PUT',
+						body: JSON.stringify({
+							id: editingId,
 							serviceAmount: serviceAmountNum.toString(),
 							serviceTaxAmount: taxStr
 								? serviceTaxAmountNum.toString()
@@ -536,23 +593,8 @@
 							allowEdit,
 							statusId
 						})
-					)
+					}
 				);
-				toastService.addToast(
-					'Service tagging created.',
-					StatusColorEnum.SUCCESS
-				);
-			} else if (mode === 'edit' && editingId != null) {
-				await updateServiceTagging({
-					id: editingId,
-					serviceAmount: serviceAmountNum.toString(),
-					serviceTaxAmount: taxStr
-						? serviceTaxAmountNum.toString()
-						: null,
-					validDate,
-					allowEdit,
-					statusId
-				});
 				toastService.addToast(
 					'Service tagging updated.',
 					StatusColorEnum.SUCCESS
@@ -571,7 +613,7 @@
 		}
 	}
 
-	async function handleDelete(row: ServiceTaggingSchema) {
+	async function handleDelete(row: ServiceTaggingListRow) {
 		await deleteLock.run(async () => {
 			deletingId = row.id;
 			try {
@@ -582,7 +624,13 @@
 				});
 				if (!result.confirmed) return;
 
-				await deleteServiceTagging({ id: row.id });
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging`,
+					{
+						method: 'DELETE',
+						body: JSON.stringify({ id: row.id })
+					}
+				);
 				toastService.addToast(
 					'Service tagging deleted.',
 					StatusColorEnum.SUCCESS
@@ -957,7 +1005,7 @@
 							on:filtersChange={handleTableFiltersChange}
 						>
 							{#snippet rowActions(row, rowIndex)}
-								{@const taggingRow = row as ServiceTaggingSchema}
+								{@const taggingRow = row as ServiceTaggingListRow}
 								<div class="flex items-center gap-2">
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm d-btn-accent"

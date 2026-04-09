@@ -5,18 +5,13 @@
 	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
-	import {
-		getStaffPaginated,
-		deleteStaff,
-		getStaffByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeleteStaffConfirmState } from '$lib/state/delete-staff-confirm.state.svelte';
 	import DeleteStaffConfirmModal from '$lib/component/own/snippet/modal/DeleteStaffConfirmModal.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import type { StaffWithRelations } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
@@ -72,25 +67,30 @@
 			: undefined
 	);
 
+	function staffListApiBase(hospitalId: string) {
+		return `/api/heka/hospital/${encodeURIComponent(
+			hospitalId
+		)}/home/administration/staff/list`;
+	}
+
 	async function fetchStaff(forceRefresh = false) {
+		if (!hospitalId) return;
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
-		const params = {
-			page: currentPage,
-			pageSize,
-			search: searchInput.trim() || undefined,
-			hospitalId: hospitalId ?? undefined,
-			staffCode: tableFilters.code?.trim() || undefined,
-			staffName: tableFilters.name?.trim() || undefined,
-			staffPhonePrimary:
-				tableFilters.phonePrimary?.trim() || undefined
-		};
 		try {
-			// After create/update/delete or dialog close, invalidate cache then fetch so list updates
-			if (forceRefresh) {
-				await getStaffPaginated(params).refresh();
-			}
-			staffResult = await getStaffPaginated(params);
+			const sp = new URLSearchParams();
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			if (searchInput.trim()) sp.set('search', searchInput.trim());
+			if (tableFilters.code?.trim()) sp.set('staffCode', tableFilters.code.trim());
+			if (tableFilters.name?.trim()) sp.set('staffName', tableFilters.name.trim());
+			if (tableFilters.phonePrimary?.trim())
+				sp.set('staffPhonePrimary', tableFilters.phonePrimary.trim());
+			if (forceRefresh) sp.set('_t', String(Date.now()));
+
+			const res = await fetch(`${staffListApiBase(hospitalId)}?${sp.toString()}`);
+			if (!res.ok) throw new Error(`Failed to fetch staff list (${res.status})`);
+			staffResult = (await res.json()) as PaginatedResult<StaffWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -125,10 +125,16 @@
 	});
 
 	async function handleDelete(staffId: string) {
+		if (!hospitalId) return;
 		await deleteLock.run(async () => {
 			deletingStaffId = staffId;
 			try {
-				const staff = await getStaffByIdWithRelations({ id: staffId });
+				const res = await fetch(
+					`${staffListApiBase(hospitalId)}?id=${encodeURIComponent(staffId)}&_t=${Date.now()}`
+				);
+				if (!res.ok) throw new Error(`Failed to load staff (${res.status})`);
+				const staff = (await res.json()) as StaffWithRelations | null;
+				if (!staff) throw new Error('Staff not found');
 				const staffEmail =
 					(staff as { user?: { email?: string } })?.user?.email ??
 					'(no email)';
@@ -140,7 +146,13 @@
 					component: DeleteStaffConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {
-					await deleteStaff({ id: result.data });
+					const delRes = await fetch(staffListApiBase(hospitalId), {
+						method: 'DELETE',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ id: result.data })
+					});
+					if (!delRes.ok)
+						throw new Error(`Failed to delete staff (${delRes.status})`);
 					await fetchStaff(true);
 					toastService.addToast(
 						m.staff_deleted(),

@@ -22,20 +22,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import {
-		getDocumentsPaginatedWithRelations,
-		createDocument,
-		updateDocument,
-		deleteDocument,
-		type DocumentWithRelations
-	} from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
-	import { getDocumentTypes } from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
-	import {
-		getDocumentSettingsWithRelations,
-		type DocumentSettingWithRelations
-	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -43,8 +31,8 @@
 
 	let documentResult =
 		$state<PaginatedResult<DocumentWithRelations> | null>(null);
-	let documentTypes = $state<DocumentTypeSchema[]>([]);
-	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
+	let documentTypes = $state<DocumentTypeRow[]>([]);
+	let documentSettings = $state<DocumentSettingRow[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -63,6 +51,21 @@
 	type ContentTab = 'rich' | 'html' | 'preview';
 	let contentTab = $state<ContentTab>('rich');
 
+	type DocumentTypeRow = { id: number; documentType: string | null };
+	type DocumentSettingRow = { id: number; name: string };
+	type DocumentWithRelations = {
+		id: number;
+		documentTypeId: number;
+		documentSettingId: number | null;
+		code: string | null;
+		documentNumber: string | null;
+		documentText: string | null;
+		statusId: number | null;
+		createdAt?: string | null;
+		documentType?: { id: number; documentType: string | null } | null;
+		documentSetting?: { id: number; name: string } | null;
+	};
+
 	const documentList = $derived(documentResult?.data ?? []);
 	const total = $derived(documentResult?.total ?? 0);
 
@@ -73,15 +76,21 @@
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			documentResult = await getDocumentsPaginatedWithRelations({
-				page: currentPage,
-				pageSize,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			const hospitalId = page.params.hospital_id;
+			const url = new URL(
+				`/api/heka/hospital/${hospitalId}/home/administration/document-master/document`,
+				window.location.origin
+			);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				url.searchParams.set('statusId', String(parsedStatusId));
+			}
+			if (opts?.bustCache) url.searchParams.set('_t', String(Date.now()));
+
+			const res = await fetch(url, { method: 'GET' });
+			if (!res.ok) throw new Error(await res.text());
+			documentResult = (await res.json()) as PaginatedResult<DocumentWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -89,7 +98,13 @@
 
 	async function fetchDocumentTypes() {
 		try {
-			documentTypes = await getDocumentTypes();
+			const hospitalId = page.params.hospital_id;
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/administration/document-master/document-type`,
+				{ method: 'GET' }
+			);
+			if (!res.ok) throw new Error(await res.text());
+			documentTypes = (await res.json()) as DocumentTypeRow[];
 		} catch (err) {
 			console.error('Failed to load document types', err);
 		}
@@ -97,7 +112,22 @@
 
 	async function fetchDocumentSettings() {
 		try {
-			documentSettings = await getDocumentSettingsWithRelations();
+			const hospitalId = page.params.hospital_id;
+			const url = new URL(
+				`/api/heka/hospital/${hospitalId}/home/administration/document-master/document-setting`,
+				window.location.origin
+			);
+			url.searchParams.set('page', '1');
+			url.searchParams.set('pageSize', '200');
+			url.searchParams.set('_t', String(Date.now()));
+
+			const res = await fetch(url, { method: 'GET' });
+			if (!res.ok) throw new Error(await res.text());
+			const result = (await res.json()) as PaginatedResult<any>;
+			documentSettings = (result.data ?? []).map((r: any) => ({
+				id: Number(r.id),
+				name: String(r.name ?? '')
+			}));
 		} catch (err) {
 			console.error('Failed to load document settings', err);
 		}
@@ -171,6 +201,8 @@
 			return;
 		}
 		try {
+			const hospitalId = page.params.hospital_id;
+			const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/document-master/document`;
 			const payload = {
 				documentTypeId: Number(documentTypeIdInput),
 				documentSettingId: documentSettingIdInput
@@ -182,16 +214,23 @@
 			};
 
 			if (editingId) {
-				await updateDocument({
-					id: editingId,
-					...payload
+				const res = await fetch(baseUrl, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ id: editingId, ...payload })
 				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'Document updated',
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createDocument(payload);
+				const res = await fetch(baseUrl, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify(payload)
+				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'Document created',
 					StatusColorEnum.SUCCESS
@@ -216,7 +255,16 @@
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
-				await deleteDocument({ id });
+				const hospitalId = page.params.hospital_id;
+				const res = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/administration/document-master/document`,
+					{
+						method: 'DELETE',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ id })
+					}
+				);
+				if (!res.ok) throw new Error(await res.text());
 				await fetchData({ bustCache: true });
 				toastService.addToast(
 					'Document deleted',

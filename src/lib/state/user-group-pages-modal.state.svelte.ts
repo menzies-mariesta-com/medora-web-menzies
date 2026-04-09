@@ -1,6 +1,6 @@
-import type { UserGroupSchema } from '$lib/server/db/schema-type';
+import type { StaffRegUserGroupRow } from '$lib/model/type/heka/staff-reg-ui.type';
 
 /** Set before opening Manage pages modal for a user group. */
 export const UserGroupPagesModalState = $state<{
-	group: UserGroupSchema | null;
+	group: StaffRegUserGroupRow | null;
 }>({ group: null });

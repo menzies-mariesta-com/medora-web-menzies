@@ -6,7 +6,7 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import type { AppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
+	import type { AppointmentWithRelations } from '$lib/model/type/heka/appointment.type';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	type CancelHistoryItem = AppointmentWithRelations;
@@ -29,7 +29,7 @@
 		const name =
 			row.patientName?.trim() ??
 			(row.patient
-				? StringUtil.patientDisplayName(row.patient as any)
+				? StringUtil.patientDisplayName(row.patient)
 				: '');
 		if (code && name) return `${code} – ${name}`;
 		return name || code || '–';

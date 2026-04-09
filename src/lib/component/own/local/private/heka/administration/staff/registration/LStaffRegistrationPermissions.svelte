@@ -4,9 +4,9 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import type {
-		HospitalBranchSchema,
-		UserGroupSchema
-	} from '$lib/server/db/schema-type';
+		StaffRegHospitalBranchRow,
+		StaffRegUserGroupRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 
 	let {
 		branchData,
@@ -19,8 +19,8 @@
 		isSuperAdmin = $bindable(),
 		isLocked = $bindable()
 	} = $props<{
-		branchData: HospitalBranchSchema[];
-		userGroupData: UserGroupSchema[];
+		branchData: StaffRegHospitalBranchRow[];
+		userGroupData: StaffRegUserGroupRow[];
 		selectedBranchIds?: string[];
 		selectedUserGroups?: number[];
 		selectedJoinDate?: string;
@@ -159,25 +159,37 @@
 
 	<!-- ✅ Status -->
 	<div class="flex flex-col gap-3">
-		<label
-			class="flex cursor-pointer items-center gap-2"
-			on:click={handleActiveClick}
-		>
-			<DaisyUiCheckbox bind:checked={isActive} />
-			<span>Active</span>
-		</label>
+		<div class="flex cursor-pointer items-center gap-2">
+			<DaisyUiCheckbox
+				id="staff-reg-perm-active"
+				bind:checked={isActive}
+				onCheckedChange={handleActiveClick}
+			/>
+			<label class="cursor-pointer select-none" for="staff-reg-perm-active"
+				>Active</label
+			>
+		</div>
 
-		<label
-			class="flex cursor-pointer items-center gap-2"
-			on:click={handleLockClick}
-		>
-			<DaisyUiCheckbox bind:checked={isLocked} />
-			<span>Lock</span>
-		</label>
+		<div class="flex cursor-pointer items-center gap-2">
+			<DaisyUiCheckbox
+				id="staff-reg-perm-lock"
+				bind:checked={isLocked}
+				onCheckedChange={handleLockClick}
+			/>
+			<label class="cursor-pointer select-none" for="staff-reg-perm-lock"
+				>Lock</label
+			>
+		</div>
 
-		<label class="flex cursor-pointer items-center gap-2">
-			<DaisyUiCheckbox bind:checked={isSuperAdmin} />
-			<span>Super Admin</span>
-		</label>
+		<div class="flex cursor-pointer items-center gap-2">
+			<DaisyUiCheckbox
+				id="staff-reg-perm-superadmin"
+				bind:checked={isSuperAdmin}
+			/>
+			<label
+				class="cursor-pointer select-none"
+				for="staff-reg-perm-superadmin">Super Admin</label
+			>
+		</div>
 	</div>
 </div>
