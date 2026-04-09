@@ -36,7 +36,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
-		const staff = await getStaffByUserIdWithRelations(session.user.id);
+		let staff: Awaited<ReturnType<typeof getStaffByUserIdWithRelations>> = null;
+		try {
+			staff = await getStaffByUserIdWithRelations(session.user.id);
+		} catch (err) {
+			// Staff lookup should never take the whole request down (favicon, auth redirects, etc.)
+			// This can fail if seed data isn't present yet or DB connectivity is flaky.
+			console.error('[staff] Failed to load staff by user id', err);
+			staff = null;
+		}
 		event.locals.staff = (staff ?? null) as StaffSessionRow | null;
 		if (
 			event.locals.userRoleId === RoleEnum.STAFF &&
