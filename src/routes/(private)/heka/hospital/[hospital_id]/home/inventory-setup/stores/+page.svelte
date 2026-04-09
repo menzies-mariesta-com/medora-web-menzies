@@ -9,7 +9,7 @@
 		StaffRegUserGroupRow
 	} from '$lib/model/type/heka/staff-reg-ui.type';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
-	import StoreFormModal from '$lib/component/own/local/private/heka/administration/store/StoreFormModal.svelte';
+	import StoreFormModal from '$lib/component/own/local/private/heka/inventory-setup/store/StoreFormModal.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -70,7 +70,7 @@
 
 	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
 		const res = await fetch(
-			`/api/heka/hospital/${hid}/home/administration/stores?mode=lookups`,
+			`/api/heka/hospital/${hid}/home/inventory-setup/stores?mode=lookups`,
 			{ method: 'GET' }
 		);
 		if (!res.ok) {
@@ -199,7 +199,7 @@
 			if (forceRefresh) sp.set('_t', String(Date.now()));
 
 			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/administration/stores?${sp.toString()}`,
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?${sp.toString()}`,
 				{ method: 'GET' }
 			);
 			if (!res.ok) {
@@ -263,7 +263,7 @@
 		if (!result.confirmed) return;
 		try {
 			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores`,
 				{
 					method: 'DELETE',
 					headers: { 'content-type': 'application/json' },
