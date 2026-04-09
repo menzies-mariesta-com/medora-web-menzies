@@ -132,6 +132,7 @@ function prettifyFormCode(code: string): string {
 
 export type PatientFormEntryWithRelations = PatientFormEntrySchema & {
 	formName: FormNameSchema | null;
+	visit?: PatientVisitSchema | null;
 };
 
 export async function getPatientFormEntryById(input: {
@@ -163,6 +164,37 @@ export async function getPatientFormEntriesByVisitIdAndFormCode(input: {
 		with: { formName: true },
 		orderBy: (t, { desc }) => desc(t.createdAt)
 	})) as PatientFormEntryWithRelations[];
+}
+
+export async function getPatientFormEntriesByPatientIdAndFormCode(input: {
+	patientId: string;
+	formCode: string;
+	hospitalId?: string;
+}): Promise<PatientFormEntryWithRelations[]> {
+	const patientId = input.patientId.trim();
+	if (!patientId) return [];
+
+	const code = input.formCode.trim();
+	if (!code) return [];
+
+	const formNameId = await getFormNameIdByCode(code);
+	if (!formNameId) return [];
+
+	const rows = (await ensureDb().query.patientFormEntryTable.findMany({
+		where: (t, { and, eq, ne }) =>
+			and(
+				eq(t.patientId, patientId),
+				eq(t.formNameId, formNameId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
+		with: { formName: true, visit: true },
+		orderBy: (t, { desc }) => desc(t.createdAt)
+	})) as PatientFormEntryWithRelations[];
+
+	if (input.hospitalId) {
+		return rows.filter((r) => r.visit?.hospitalId === input.hospitalId);
+	}
+	return rows;
 }
 
 async function getFormNameIdByCode(code: string): Promise<number | null> {
@@ -436,17 +468,22 @@ export async function getPatientAllergiesByPatientIdWithRelationsPaginated(input
 	return { data: filtered.slice(offset, offset + pageSize), total: filtered.length };
 }
 
-export async function deletePatientAllergies(input: { id: number }): Promise<void> {
+export async function deletePatientAllergies(
+	input: { id: number; skipClinicalLock?: boolean }
+): Promise<void> {
+	const { skipClinicalLock, ...rest } = input;
 	const [existing] = await ensureDb()
 		.select({ visitId: table.patientAllergyTable.visitId })
 		.from(table.patientAllergyTable)
-		.where(eq(table.patientAllergyTable.id, input.id))
+		.where(eq(table.patientAllergyTable.id, rest.id))
 		.limit(1);
-	if (existing) await assertVisitNotClinicallySigned(existing.visitId);
+	if (existing && !skipClinicalLock) {
+		await assertVisitNotClinicallySigned(existing.visitId);
+	}
 	await ensureDb()
 		.update(table.patientAllergyTable)
 		.set({ statusId: StatusEnum.DELETED })
-		.where(eq(table.patientAllergyTable.id, input.id));
+		.where(eq(table.patientAllergyTable.id, rest.id));
 }
 
 export async function listAllergiesMaster(): Promise<AllergySchema[]> {
@@ -653,9 +690,12 @@ export async function inactivatePatientAllergiesByAllergyIdForPatient(input: {
 }
 
 export async function createPatientAllergyRecord(
-	payload: PatientAllergiesSchemaInsert
+	payload: PatientAllergiesSchemaInsert,
+	opts?: { skipClinicalLock?: boolean }
 ): Promise<PatientAllergiesSchema> {
-	await assertVisitNotClinicallySigned(payload.visitId);
+	if (!opts?.skipClinicalLock) {
+		await assertVisitNotClinicallySigned(payload.visitId);
+	}
 	const [row] = await ensureDb()
 		.insert(table.patientAllergyTable)
 		.values(payload)
@@ -665,7 +705,8 @@ export async function createPatientAllergyRecord(
 }
 
 export async function updatePatientAllergyRecord(
-	payload: { id: number } & PatientAllergiesSchemaUpdate
+	payload: { id: number } & PatientAllergiesSchemaUpdate,
+	opts?: { skipClinicalLock?: boolean }
 ): Promise<PatientAllergiesSchema> {
 	const { id, ...rest } = payload;
 	const [pre] = await ensureDb()
@@ -674,7 +715,9 @@ export async function updatePatientAllergyRecord(
 		.where(eq(table.patientAllergyTable.id, id))
 		.limit(1);
 	if (!pre) throw new Error('Allergy not found');
-	await assertVisitNotClinicallySigned(pre.visitId);
+	if (!opts?.skipClinicalLock) {
+		await assertVisitNotClinicallySigned(pre.visitId);
+	}
 	const [row] = await ensureDb()
 		.update(table.patientAllergyTable)
 		.set(rest as PatientAllergiesSchemaUpdate)
@@ -713,6 +756,10 @@ export async function deletePatientVital(input: { id: number }): Promise<void> {
 		.where(eq(table.patientDiagnosisTable.id, input.id));
 }
 
+/**
+ * All non-deleted service order lines for the visit (no nursing-complete filter).
+ * OP billing and other consumers use this as-is so charges can be captured before nursing marks lines complete.
+ */
 export async function getServiceOrderDetailRowsForVisit(input: {
 	visitId: number;
 }): Promise<
@@ -798,9 +845,12 @@ export async function getServiceOrderDetailById(input: {
 }
 
 export async function createServiceOrderDetail(
-	payload: ServiceOrderDetailSchemaInsert
+	payload: ServiceOrderDetailSchemaInsert,
+	opts?: { skipClinicalLock?: boolean }
 ): Promise<ServiceOrderDetailSchema> {
-	await assertVisitNotClinicallySignedByServiceOrderId(payload.serviceOrderId);
+	if (!opts?.skipClinicalLock) {
+		await assertVisitNotClinicallySignedByServiceOrderId(payload.serviceOrderId);
+	}
 	const [row] = await ensureDb()
 		.insert(table.serviceOrderDetailTable)
 		.values(payload)
@@ -809,9 +859,10 @@ export async function createServiceOrderDetail(
 	return row;
 }
 
-export async function updateServiceOrderDetail(payload: {
-	id: number;
-} & ServiceOrderDetailSchemaUpdate): Promise<ServiceOrderDetailSchema> {
+export async function updateServiceOrderDetail(
+	payload: { id: number } & ServiceOrderDetailSchemaUpdate,
+	opts?: { skipClinicalLock?: boolean }
+): Promise<ServiceOrderDetailSchema> {
 	const { id, ...rest } = payload;
 	const [existingDetail] = await ensureDb()
 		.select({ serviceOrderId: table.serviceOrderDetailTable.serviceOrderId })
@@ -819,7 +870,11 @@ export async function updateServiceOrderDetail(payload: {
 		.where(eq(table.serviceOrderDetailTable.id, id))
 		.limit(1);
 	if (!existingDetail) throw new Error('Service order detail not found');
-	await assertVisitNotClinicallySignedByServiceOrderId(existingDetail.serviceOrderId);
+	if (!opts?.skipClinicalLock) {
+		await assertVisitNotClinicallySignedByServiceOrderId(
+			existingDetail.serviceOrderId
+		);
+	}
 	const [row] = await ensureDb()
 		.update(table.serviceOrderDetailTable)
 		.set(rest)
@@ -829,17 +884,22 @@ export async function updateServiceOrderDetail(payload: {
 	return row;
 }
 
-export async function deleteServiceOrderDetail(input: { id: number }): Promise<void> {
+export async function deleteServiceOrderDetail(
+	input: { id: number; skipClinicalLock?: boolean }
+): Promise<void> {
+	const { skipClinicalLock, id } = input;
 	const [existing] = await ensureDb()
 		.select({ serviceOrderId: table.serviceOrderDetailTable.serviceOrderId })
 		.from(table.serviceOrderDetailTable)
-		.where(eq(table.serviceOrderDetailTable.id, input.id))
+		.where(eq(table.serviceOrderDetailTable.id, id))
 		.limit(1);
-	if (existing) await assertVisitNotClinicallySignedByServiceOrderId(existing.serviceOrderId);
+	if (existing && !skipClinicalLock) {
+		await assertVisitNotClinicallySignedByServiceOrderId(existing.serviceOrderId);
+	}
 	await ensureDb()
 		.update(table.serviceOrderDetailTable)
 		.set({ statusId: StatusEnum.DELETED })
-		.where(eq(table.serviceOrderDetailTable.id, input.id));
+		.where(eq(table.serviceOrderDetailTable.id, id));
 }
 
 export async function getServiceOrder(input: {
@@ -894,7 +954,8 @@ export async function createServiceOrder(
 		orderTime: string;
 		/** Ignored; order number is always allocated server-side from prefix configuration. */
 		orderNo?: string | null;
-	}
+	},
+	opts?: { skipClinicalLock?: boolean }
 ): Promise<ServiceOrderSchema> {
 	const hospitalIdParam = event.params.hospital_id;
 	const hospitalId =
@@ -913,25 +974,37 @@ export async function createServiceOrder(
 		throw error(400, 'Branch does not match this visit');
 	}
 
-	await assertVisitNotClinicallySigned(payload.visitId);
+	if (!opts?.skipClinicalLock) {
+		await assertVisitNotClinicallySigned(payload.visitId);
+	}
 
 	const financialYear = await financialYearForHospitalOnDate(
 		hospitalId,
 		payload.orderDate
 	);
 	const visitTypeId = visit.visitTypeId ?? undefined;
-	const orderNo = await generatePrefix({
-		hospitalId,
-		branchId: payload.branchId,
-		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.ORDER_NO,
-		context: {
-			...(visitTypeId != null ? { visitTypeId } : {}),
-			orderDate: payload.orderDate,
-			visitId: payload.visitId,
-			visitNo: visit.visitNo ?? null
-		}
-	});
+	let orderNo: string;
+	try {
+		orderNo = await generatePrefix({
+			hospitalId,
+			branchId: payload.branchId,
+			financialYearId: financialYear.id,
+			prefixKey: PREFIX_PURPOSE_STORAGE.ORDER_NO,
+			context: {
+				...(visitTypeId != null ? { visitTypeId } : {}),
+				orderDate: payload.orderDate,
+				visitId: payload.visitId,
+				visitNo: visit.visitNo ?? null
+			}
+		});
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		// Provide an actionable error instead of a generic 500 stack trace.
+		throw error(
+			400,
+			`Unable to generate Order No (ORDER_NO). Configure prefix format for this hospital. (${msg})`
+		);
+	}
 
 	const [row] = await ensureDb()
 		.insert(table.serviceOrderTable)

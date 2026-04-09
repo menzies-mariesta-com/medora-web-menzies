@@ -87,6 +87,7 @@
 	let grandTotal = $state(0);
 	let visitSummary = $state<VisitSummary | null>(null);
 	let billingMeta = $state<BillingMeta | null>(null);
+	let nursingIncompleteCount = $state(0);
 
 	let isDiscountModalOpen = $state(false);
 	let discountType = $state<BillingDiscountTypeEnum>(BillingDiscountTypeEnum.NONE);
@@ -120,6 +121,16 @@
 	});
 
 	const hasDiscount = $derived(discountValue > 0);
+
+	/** Bill was printed (closed); visit-level discount is frozen. */
+	const visitLevelDiscountLocked = $derived.by(() => {
+		const p = billingMeta?.printedAt;
+		return p != null && String(p).trim() !== '';
+	});
+
+	const billCloseBlockedByNursing = $derived.by(
+		() => Number(nursingIncompleteCount ?? 0) > 0
+	);
 
 	function lineTotal(line: BillingLine): number {
 		const amount = Number(line.serviceAmount ?? 0) || 0;
@@ -207,6 +218,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			nursingIncompleteCount = 0;
 			loadError = '';
 			return;
 		}
@@ -217,6 +229,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			nursingIncompleteCount = 0;
 			loadError = '';
 			return;
 		}
@@ -239,12 +252,14 @@
 				items?: BillingLine[];
 				visit?: VisitSummary | null;
 				billing?: BillingMeta | null;
+				nursingIncompleteCount?: number | null;
 			};
 			const lines = (data.items ?? []).map((row) => ({
 				...row
 			}));
 			visitSummary = data.visit ?? null;
 			billingMeta = data.billing ?? null;
+			nursingIncompleteCount = Number(data.nursingIncompleteCount ?? 0) || 0;
 			const grouped = groupLines(lines);
 			groups = grouped;
 			grandTotal = grouped.reduce((sum, g) => sum + g.subtotal, 0);
@@ -268,6 +283,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			nursingIncompleteCount = 0;
 			loadError = tr(msg.op_billing_load_failed, 'Failed to load billing lines.');
 		} finally {
 			isLoading = false;
@@ -276,6 +292,7 @@
 
 	async function applyDiscount() {
 		if (!visitId) return;
+		if (visitLevelDiscountLocked) return;
 		const visitNumeric = Number(visitId);
 		if (!visitNumeric || !Number.isFinite(visitNumeric) || visitNumeric <= 0) return;
 
@@ -307,7 +324,27 @@
 		try {
 			const res = await postOpBillingUpdate(payload);
 			if (!res.ok) {
-				loadError = tr(msg.op_billing_discount_save_failed, 'Failed to save discount.');
+				if (res.status === 403) {
+					try {
+						const j = (await res.json()) as { message?: string };
+						loadError =
+							(typeof j?.message === 'string' && j.message.trim()) ||
+							tr(
+								msg.op_billing_discount_locked_after_print,
+								'This bill was printed; the visit-level discount cannot be changed.'
+							);
+					} catch {
+						loadError = tr(
+							msg.op_billing_discount_locked_after_print,
+							'This bill was printed; the visit-level discount cannot be changed.'
+						);
+					}
+				} else {
+					loadError = tr(
+						msg.op_billing_discount_save_failed,
+						'Failed to save discount.'
+					);
+				}
 				return;
 			}
 			isDiscountModalOpen = false;
@@ -318,14 +355,54 @@
 		}
 	}
 
+	async function closeOpBill() {
+		if (!visitId) return;
+		if (visitLevelDiscountLocked) return;
+		if (billCloseBlockedByNursing) return;
+		const visitNumeric = Number(visitId);
+		if (!visitNumeric || !Number.isFinite(visitNumeric) || visitNumeric <= 0)
+			return;
+		try {
+			const res = await postOpBillingUpdate({
+				action: 'printed',
+				visitId: visitNumeric
+			});
+			if (!res.ok) {
+				if (res.status === 403) {
+					try {
+						const j = (await res.json()) as { message?: string };
+						loadError =
+							(typeof j?.message === 'string' && j.message.trim()) ||
+							tr(
+								msg.op_billing_bill_close_blocked_nursing,
+								'Nursing complete is not finished; bill cannot be closed.'
+							);
+					} catch {
+						loadError = tr(
+							msg.op_billing_bill_close_blocked_nursing,
+							'Nursing complete is not finished; bill cannot be closed.'
+						);
+					}
+				}
+				return;
+			}
+			await loadBillingLines(String(visitNumeric));
+		} catch {
+			// silent
+		}
+	}
+
 	function printOpBill() {
 		if (!groups.length || !visitId) return;
+		if (billCloseBlockedByNursing) return;
 
 		const visitNumeric = Number(visitId);
 		if (visitNumeric && Number.isFinite(visitNumeric) && visitNumeric > 0) {
-			void postOpBillingUpdate({ action: 'printed', visitId: visitNumeric }).catch(() => {
-				// silent
-			});
+			void postOpBillingUpdate({ action: 'printed', visitId: visitNumeric })
+				.then(() => loadBillingLines(String(visitNumeric)))
+				.catch(() => {
+					// silent
+				});
 		}
 
 		const v = visitSummary;
@@ -632,6 +709,12 @@
 		if (!browser) return;
 		void loadBillingLines(visitId);
 	});
+
+	$effect(() => {
+		if (visitLevelDiscountLocked && isDiscountModalOpen) {
+			isDiscountModalOpen = false;
+		}
+	});
 </script>
 
 <DaisyUiCard>
@@ -639,15 +722,49 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<DaisyUiCardBodyTitle>{msg.op_billing_title()}</DaisyUiCardBodyTitle>
 			{#if visitId && groups.length > 0 && !isLoading && !loadError}
-				<DaisyUiTooltip tooltipText={msg.op_billing_print_bill()} className="d-tooltip-left">
-					<DaisyUiButton
-						className="d-btn-outline d-btn-sm gap-2"
-						onClick={() => printOpBill()}
+				<div class="flex flex-wrap items-center gap-2">
+					<DaisyUiTooltip
+						tooltipText={visitLevelDiscountLocked
+							? tr(
+									msg.op_billing_bill_already_closed_tooltip,
+									'Bill is already closed.'
+								)
+							: billCloseBlockedByNursing
+								? tr(
+										msg.op_billing_bill_close_blocked_nursing,
+										'Nursing complete is not finished; bill cannot be closed.'
+									)
+								: tr(msg.op_billing_bill_close, 'Bill close')}
+						className="d-tooltip-left"
 					>
-						<LucidePrinter className="size-4" />
-						{msg.op_billing_print_bill()}
-					</DaisyUiButton>
-				</DaisyUiTooltip>
+						<DaisyUiButton
+							className="d-btn-outline d-btn-sm"
+							disabled={visitLevelDiscountLocked || billCloseBlockedByNursing}
+							onClick={() => void closeOpBill()}
+						>
+							{tr(msg.op_billing_bill_close, 'Bill close')}
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+
+					<DaisyUiTooltip
+						tooltipText={billCloseBlockedByNursing
+							? tr(
+									msg.op_billing_bill_close_blocked_nursing,
+									'Nursing complete is not finished; bill cannot be closed.'
+								)
+							: msg.op_billing_print_bill()}
+						className="d-tooltip-left"
+					>
+						<DaisyUiButton
+							className="d-btn-outline d-btn-sm gap-2"
+							disabled={billCloseBlockedByNursing}
+							onClick={() => printOpBill()}
+						>
+							<LucidePrinter className="size-4" />
+							{msg.op_billing_print_bill()}
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+				</div>
 			{/if}
 		</div>
 		{#if !visitId}
@@ -689,12 +806,20 @@
 							</div>
 
 							<DaisyUiTooltip
-								tooltipText={tr(msg.op_billing_discount_open, 'Discount')}
+								tooltipText={visitLevelDiscountLocked
+									? tr(
+											msg.op_billing_discount_locked_tooltip,
+											'Discount is locked after the bill is printed.'
+										)
+									: tr(msg.op_billing_discount_open, 'Discount')}
 								className="d-tooltip-left"
 							>
 								<DaisyUiButton
 									className="d-btn-primary d-btn-sm d-btn-circle"
-									onClick={() => (isDiscountModalOpen = true)}
+									disabled={visitLevelDiscountLocked}
+									onClick={() => {
+										if (!visitLevelDiscountLocked) isDiscountModalOpen = true;
+									}}
 								>
 									<LucideStrikeThrough className="size-4" />
 								</DaisyUiButton>
@@ -860,6 +985,7 @@
 				</DaisyUiButton>
 				<DaisyUiButton
 					className="d-btn-primary"
+					disabled={visitLevelDiscountLocked}
 					onClick={() => void applyDiscount()}
 				>
 					{tr(msg.op_billing_discount_apply, 'Apply')}
