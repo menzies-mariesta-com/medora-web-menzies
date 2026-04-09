@@ -57,8 +57,23 @@
 			qs.set(k, String(v));
 		}
 		const res = await fetch(`${baseApi}?${qs.toString()}`);
-		if (!res.ok) throw new Error(`Request failed (${res.status})`);
+		if (!res.ok) throw new Error(await readFailedResponseMessage(res));
 		return (await res.json()) as T;
+	}
+
+	async function readFailedResponseMessage(res: Response): Promise<string> {
+		const text = await res.text();
+		try {
+			const j = text ? (JSON.parse(text) as { message?: string }) : null;
+			if (j?.message && String(j.message).trim()) {
+				return String(j.message).trim();
+			}
+		} catch {
+			// ignore JSON parse
+		}
+		const t = text?.trim();
+		if (t) return t;
+		return `Request failed (${res.status})`;
 	}
 
 	async function apiPost<T>(body: any): Promise<T> {
@@ -67,7 +82,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!res.ok) throw new Error(`Request failed (${res.status})`);
+		if (!res.ok) throw new Error(await readFailedResponseMessage(res));
 		return (await res.json()) as T;
 	}
 
@@ -84,7 +99,7 @@
 		const qs = new URLSearchParams({ mode: 'orderLine.list' });
 		for (const id of serviceOrderIds) qs.append('serviceOrderIds', String(id));
 		return fetch(`${baseApi}?${qs.toString()}`).then(async (r) => {
-			if (!r.ok) throw new Error(`Request failed (${r.status})`);
+			if (!r.ok) throw new Error(await readFailedResponseMessage(r));
 			return (await r.json()) as any[];
 		});
 	};

@@ -77,6 +77,7 @@
 		PatientAllergyDialogState.hospitalId =
 			hospitalIdParam ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = null;
+		PatientAllergyDialogState.emrMutationViaNursingWorkbench = true;
 		PatientAllergyDialogState.onSaved = () =>
 			fetchAllergies(patientId, hospitalIdParam, { force: true });
 		try {
@@ -91,6 +92,7 @@
 					PatientAllergyDialogState.visitId = null;
 					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
+					PatientAllergyDialogState.emrMutationViaNursingWorkbench = false;
 					PatientAllergyDialogState.onSaved = null;
 				},
 				onConfirm: (data) => {
@@ -106,6 +108,7 @@
 			PatientAllergyDialogState.visitId = null;
 			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
+			PatientAllergyDialogState.emrMutationViaNursingWorkbench = false;
 			PatientAllergyDialogState.onSaved = null;
 		}
 	}
@@ -119,6 +122,7 @@
 		PatientAllergyDialogState.hospitalId =
 			hospitalIdParam ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = row.id;
+		PatientAllergyDialogState.emrMutationViaNursingWorkbench = true;
 		PatientAllergyDialogState.onSaved = () =>
 			fetchAllergies(patientId, hospitalIdParam, { force: true });
 		try {
@@ -131,6 +135,7 @@
 				onClose: () => {
 					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
+					PatientAllergyDialogState.emrMutationViaNursingWorkbench = false;
 					PatientAllergyDialogState.onSaved = null;
 				},
 				onConfirm: (data) => {
@@ -144,6 +149,7 @@
 		} finally {
 			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
+			PatientAllergyDialogState.emrMutationViaNursingWorkbench = false;
 			PatientAllergyDialogState.onSaved = null;
 		}
 	}

@@ -55,6 +55,15 @@
 		return `/api/heka/hospital/${encodeURIComponent(h)}/home/observation/emr`;
 	}
 
+	function emrMutationBase(): string {
+		const h = hospitalIdEffective;
+		if (!h) return '';
+		if (PatientAllergyDialogState.emrMutationViaNursingWorkbench) {
+			return `/api/heka/hospital/${encodeURIComponent(h)}/home/nursing-workbench/emr/allergy`;
+		}
+		return obsEmrBase();
+	}
+
 	async function parseApi(res: Response): Promise<unknown> {
 		const text = await res.text();
 		let data: unknown;
@@ -76,7 +85,7 @@
 	}
 
 	async function emrPost(body: Record<string, unknown>): Promise<unknown> {
-		const base = obsEmrBase();
+		const base = emrMutationBase();
 		if (!base) throw new Error('Hospital context missing.');
 		const r = await fetch(base, {
 			method: 'POST',

@@ -7,10 +7,16 @@ export const PatientAllergyDialogState = $state<{
 	patientAllergyId: number | null;
 	/** Called when the dialog saves successfully. Used to refresh the list when nested dialogs replace DialogState (e.g. deactivation remark). */
 	onSaved: (() => void) | null;
+	/**
+	 * When true, allergy mutations POST to nursing-workbench EMR (still clinically signed)
+	 * instead of observation EMR, which stays locked after “Save as signed”.
+	 */
+	emrMutationViaNursingWorkbench: boolean;
 }>({
 	patientId: null,
 	visitId: null,
 	hospitalId: null,
 	patientAllergyId: null,
-	onSaved: null
+	onSaved: null,
+	emrMutationViaNursingWorkbench: false
 });
