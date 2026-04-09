@@ -11,6 +11,7 @@ import {
 	patientVisitTable,
 	opBillingTable,
 	diagnosisTable,
+	itemUnitMasterTable,
 	staffDepartmentTable,
 	staffDetailTable,
 	staffTable,
@@ -376,7 +377,7 @@ export const unitTypeTableRelations = relations(
 	})
 );
 
-export const unitTableRelations = relations(unitTable, ({ one }) => ({
+export const unitTableRelations = relations(unitTable, ({ one, many }) => ({
 	unitType: one(unitTypeTable, {
 		fields: [unitTable.unitTypeId],
 		references: [unitTypeTable.id]
@@ -384,6 +385,12 @@ export const unitTableRelations = relations(unitTable, ({ one }) => ({
 	status: one(statusTable, {
 		fields: [unitTable.statusId],
 		references: [statusTable.id]
+	}),
+	itemUnitMastersAsPurchase: many(itemUnitMasterTable, {
+		relationName: 'item_unit_master_purchase_unit'
+	}),
+	itemUnitMastersAsIssue: many(itemUnitMasterTable, {
+		relationName: 'item_unit_master_issue_unit'
 	})
 }));
 

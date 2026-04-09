@@ -12,7 +12,7 @@
 		pathnameForPageMatch
 	} from '$lib/state/page.state.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import type { StaffWithRelations } from '$lib/remote/table/information-table/staff.remote';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 
 	let { children, data } = $props();
 

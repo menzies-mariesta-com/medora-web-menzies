@@ -7,7 +7,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
-import type { PageWithRelations } from '$lib/tool/remote/table/information-table/page.http.tool.svelte';
+import type { PageWithRelations } from '$lib/model/type/heka/page.type';
 import { and, eq, inArray } from 'drizzle-orm';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';

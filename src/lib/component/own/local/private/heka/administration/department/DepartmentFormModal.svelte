@@ -1,13 +1,10 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import {
-		createDepartment,
-		updateDepartment
-	} from '$lib/remote/table/master-table/department.remote';
 	import { DepartmentModalState } from '$lib/state/department-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -18,14 +15,25 @@
 
 	const toastService = new ToastService();
 
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+	const deptApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/administration/departments`
+			: ''
+	);
+
 	let formName = $state('');
 	let formCode = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 
-	const state = $derived(DepartmentModalState);
+	const modalState = $derived(DepartmentModalState);
 	const isEdit = $derived(
-		state.mode === 'edit' && state.editDepartment != null
+		modalState.mode === 'edit' && modalState.editDepartment != null
 	);
 
 	$effect(() => {
@@ -55,23 +63,42 @@
 			: StatusEnum.INACTIVE;
 		isSubmitting = true;
 		try {
-			if (state.mode === 'create') {
-				await createDepartment({
-					name: formName.trim(),
-					code: formCode.trim() || null,
-					statusId
+			if (!deptApi) throw new Error('Hospital context missing');
+			if (modalState.mode === 'create') {
+				const res = await fetch(deptApi, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({
+						name: formName.trim(),
+						code: formCode.trim() || null,
+						statusId
+					})
 				});
+				if (!res.ok) {
+					const t = await res.text().catch(() => '');
+					throw new Error(t || `Create failed: ${res.status}`);
+				}
 				toastService.addToast(
 					m.department_created(),
 					StatusColorEnum.SUCCESS
 				);
-			} else if (state.editDepartment) {
-				await updateDepartment({
-					id: state.editDepartment.id,
-					name: formName.trim(),
-					code: formCode.trim() || null,
-					statusId
+			} else if (modalState.editDepartment) {
+				const res = await fetch(deptApi, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({
+						id: modalState.editDepartment.id,
+						name: formName.trim(),
+						code: formCode.trim() || null,
+						statusId
+					})
 				});
+				if (!res.ok) {
+					const t = await res.text().catch(() => '');
+					throw new Error(t || `Update failed: ${res.status}`);
+				}
 				toastService.addToast(
 					m.department_updated(),
 					StatusColorEnum.SUCCESS

@@ -3,16 +3,11 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		getSubCategoryPaginated,
-		deleteSubCategory
-	} from '$lib/tool/remote/table/information-table/sub-category.http.tool.svelte';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import { getCategory } from '$lib/tool/remote/table/information-table/category.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
-		CategorySchema,
-		SubCategorySchema
-	} from '$lib/server/db/schema-type';
+		CategoryListRow,
+		SubCategoryListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import SubCategoryFormModal from '$lib/component/own/local/private/heka/administration/category/SubCategoryFormModal.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -43,10 +38,10 @@
 	/** Data is always fetched at hospital level (no branch filter). */
 
 	let subCategoryResult =
-		$state<PaginatedResult<SubCategorySchema> | null>(null);
+		$state<PaginatedResult<SubCategoryListRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let categories = $state<CategorySchema[]>([]);
+	let categories = $state<CategoryListRow[]>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
@@ -55,13 +50,33 @@
 	const subCategories = $derived(subCategoryResult?.data ?? []);
 	const total = $derived(subCategoryResult?.total ?? 0);
 
+	async function fetchJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				'content-type': 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	async function fetchCategories() {
-		categories = await getCategory();
+		if (!hospitalId) return;
+		categories = await fetchJson<CategoryListRow[]>(
+			`/api/heka/hospital/${hospitalId}/home/administration/service-order/category-master?mode=all`
+		);
 	}
 
 	async function fetchSubCategories(forceRefresh = false) {
+		void forceRefresh;
 		isLoading = true;
 		try {
+			if (!hospitalId) return;
 			const pageSize = Number(pageSizeStr) || 10;
 			let categoryIds = categories.map((c) => c.id);
 			const categoryTerm = tableFilters.category
@@ -101,10 +116,22 @@
 						? parsedStatusId
 						: undefined
 			};
-			if (forceRefresh) {
-				await getSubCategoryPaginated(params).refresh();
-			}
-			subCategoryResult = await getSubCategoryPaginated(params);
+
+			const qs = new URLSearchParams();
+			qs.set('page', String(params.page));
+			qs.set('pageSize', String(params.pageSize));
+			qs.set('categoryIds', categoryIds.join(','));
+			if (params.id != null) qs.set('id', String(params.id));
+			if (params.subCategoryName)
+				qs.set('subCategoryName', params.subCategoryName);
+			if (params.statusId != null)
+				qs.set('statusId', String(params.statusId));
+
+			subCategoryResult = await fetchJson<
+				PaginatedResult<SubCategoryListRow>
+			>(
+				`/api/heka/hospital/${hospitalId}/home/administration/service-order/sub-category-master?${qs.toString()}`
+			);
 		} finally {
 			isLoading = false;
 		}
@@ -130,7 +157,7 @@
 		}
 	}
 
-	async function openEdit(row: SubCategorySchema) {
+	async function openEdit(row: SubCategoryListRow) {
 		SubCategoryModalState.mode = 'edit';
 		SubCategoryModalState.editRow = row;
 		SubCategoryModalState.defaultCategoryId = null;
@@ -144,7 +171,7 @@
 		}
 	}
 
-	async function handleDelete(row: SubCategorySchema) {
+	async function handleDelete(row: SubCategoryListRow) {
 		const result = await dialogService.open({
 			title: 'Delete sub-category',
 			message: `Delete "${row.subCategoryName ?? 'this sub-category'}"?`,
@@ -152,7 +179,14 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteSubCategory({ id: row.id });
+			if (!hospitalId) throw new Error('Missing hospital context');
+			await fetchJson<{ ok: true }>(
+				`/api/heka/hospital/${hospitalId}/home/administration/service-order/sub-category-master`,
+				{
+					method: 'DELETE',
+					body: JSON.stringify({ id: row.id })
+				}
+			);
 			toastService.addToast(
 				'Sub-category deleted.',
 				StatusColorEnum.SUCCESS
@@ -170,7 +204,7 @@
 		return cat?.categoryName ?? `#${id}`;
 	}
 
-	const subCategoryColumns: MariTableColumn<SubCategorySchema>[] = [
+	const subCategoryColumns: MariTableColumn<SubCategoryListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -261,14 +295,14 @@
 							<div class="flex justify-end gap-2">
 								<DaisyUiButton
 									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row as SubCategorySchema)}
+									onClick={() => openEdit(row as SubCategoryListRow)}
 								>
 									<LucidePencil />
 								</DaisyUiButton>
 								<DaisyUiButton
 									className="d-btn-ghost d-btn-error d-btn-sm"
 									onClick={() =>
-										handleDelete(row as SubCategorySchema)}
+										handleDelete(row as SubCategoryListRow)}
 								>
 									<LucideTrash2 />
 								</DaisyUiButton>

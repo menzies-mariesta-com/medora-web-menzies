@@ -1,0 +1,379 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
+	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
+	import type { StoreListRow, StatusListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type {
+		StaffRegDepartmentRow,
+		StaffRegUserGroupRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
+	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
+	import StoreFormModal from '$lib/component/own/local/private/heka/inventory-setup/store/StoreFormModal.svelte';
+	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
+
+	const lifeCycleUtil = new LifeCycleUtil();
+	const toastService = new ToastService();
+
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+
+	let stores = $state<StoreListRow[]>([]);
+	let total = $state(0);
+	let totalPages = $state(1);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let isLoading = $state(false);
+	let statusOptions = $state<StatusListRow[]>([]);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
+
+	let branchNameById = $state<Map<string, string>>(new Map());
+	let userGroupNameById = $state<Map<number, string>>(new Map());
+	let departmentNameById = $state<Map<number, string>>(new Map());
+
+	type StoreLookups = {
+		userGroups: StaffRegUserGroupRow[];
+		departments: StaffRegDepartmentRow[];
+		statuses: StatusListRow[];
+	};
+
+	async function fetchBranchesAll(hid: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branches (${res.status})`);
+		}
+		return (await res.json()) as { id: string; name?: string | null; code?: string | null }[];
+	}
+
+	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/inventory-setup/stores?mode=lookups`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load lookups (${res.status})`);
+		}
+		return (await res.json()) as StoreLookups;
+	}
+
+	async function loadLookups() {
+		if (!hospitalId) return;
+		const [branches, lookups] = await Promise.all([
+			fetchBranchesAll(hospitalId),
+			fetchStoreLookups(hospitalId)
+		]);
+		branchNameById = new Map(
+			branches.map((b) => [b.id, b.name ?? b.code ?? b.id])
+		);
+		userGroupNameById = new Map(
+			lookups.userGroups.map((g) => [g.id, g.name ?? String(g.id)])
+		);
+		departmentNameById = new Map(
+			lookups.departments.map((d) => [
+				d.id,
+				d.name ?? d.code ?? String(d.id)
+			])
+		);
+		statusOptions = lookups.statuses;
+	}
+
+	const storeColumns: MariTableColumn<StoreListRow>[] = [
+		{
+			id: 'id',
+			header: m.id(),
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false
+		},
+		{
+			id: 'storeName',
+			header: m.store_name(),
+			widthClass: 'w-56 min-w-[12rem]',
+			filterable: true,
+			field: 'storeName'
+		},
+		{
+			id: 'branch',
+			header: m.branches(),
+			widthClass: 'w-44 min-w-[10rem]',
+			filterable: false,
+			format: (_v, row) =>
+				branchNameById.get(row.branchId) ?? '—'
+		},
+		{
+			id: 'linkType',
+			header: m.link_type(),
+			widthClass: 'w-36 min-w-[8rem]',
+			filterable: false,
+			format: (_v, row) =>
+				row.userGroupId != null
+					? m.linked_user_group()
+					: m.linked_department()
+		},
+		{
+			id: 'linked',
+			header: m.name(),
+			widthClass: 'w-48 min-w-[12rem]',
+			filterable: false,
+			format: (_v, row) => {
+				if (row.userGroupId != null) {
+					return (
+						userGroupNameById.get(row.userGroupId) ?? '—'
+					);
+				}
+				if (row.departmentId != null) {
+					return (
+						departmentNameById.get(row.departmentId) ?? '—'
+					);
+				}
+				return '—';
+			}
+		},
+		{
+			id: 'status',
+			header: m.status(),
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+			],
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: (statusOptions.find((s) => s.id === row.statusId)
+								?.name ?? String(row.statusId))
+		}
+	];
+
+	type StoresPaginatedResponse = {
+		data: StoreListRow[];
+		total: number;
+		page: number;
+		pageSize: number;
+		totalPages: number;
+	};
+
+	async function fetchStores(forceRefresh = false) {
+		if (!hospitalId) return;
+		isLoading = true;
+		const pageSize = Number(pageSizeStr) || 10;
+		try {
+			const parsedStatusId = tableFilters.status
+				? Number(tableFilters.status)
+				: undefined;
+			const sp = new URLSearchParams();
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			const name = tableFilters.storeName?.trim() || '';
+			if (name) sp.set('name', name);
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				sp.set('statusId', String(parsedStatusId));
+			}
+			if (forceRefresh) sp.set('_t', String(Date.now()));
+
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?${sp.toString()}`,
+				{ method: 'GET' }
+			);
+			if (!res.ok) {
+				throw new Error(`Failed to load stores (${res.status})`);
+			}
+			const result = (await res.json()) as StoresPaginatedResponse;
+			stores = result.data ?? [];
+			total = result.total ?? 0;
+			totalPages = result.totalPages ?? 1;
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	function goToPage(p: number) {
+		currentPage = Math.max(1, Math.min(p, totalPages));
+		fetchStores();
+	}
+
+	lifeCycleUtil.onMount(async () => {
+		if (hospitalId) {
+			await loadLookups();
+			fetchStores();
+		}
+	});
+
+	async function openCreate() {
+		StoreModalState.mode = 'create';
+		StoreModalState.editStore = null;
+		StoreModalState.hospitalId = hospitalId;
+		const result = await dialogService.open({
+			title: m.new_store(),
+			component: StoreFormModal
+		});
+		if (result.confirmed) {
+			await loadLookups();
+			fetchStores(true);
+		}
+	}
+
+	async function openEdit(row: StoreListRow) {
+		StoreModalState.mode = 'edit';
+		StoreModalState.editStore = row;
+		StoreModalState.hospitalId = hospitalId;
+		const result = await dialogService.open({
+			title: m.edit_store(),
+			component: StoreFormModal
+		});
+		if (result.confirmed) {
+			await loadLookups();
+			fetchStores(true);
+		}
+	}
+
+	async function handleDelete(row: StoreListRow) {
+		const result = await dialogService.open({
+			title: m.delete_store(),
+			message: `Delete "${row.storeName ?? m.stores()}"?`,
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!result.confirmed) return;
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores`,
+				{
+					method: 'DELETE',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ id: row.id })
+				}
+			);
+			if (!res.ok) {
+				throw new Error(`Delete failed (${res.status})`);
+			}
+			toastService.addToast(
+				m.store_deleted(),
+				StatusColorEnum.SUCCESS
+			);
+			fetchStores(true);
+		} catch (err) {
+			const msg =
+				err instanceof Error ? err.message : m.delete_failed();
+			toastService.addToast(msg, StatusColorEnum.ERROR);
+		}
+	}
+</script>
+
+<div class="space-y-6">
+	<div class="flex flex-wrap items-center justify-between gap-4">
+		<h1 class="text-2xl font-bold">{m.stores()}</h1>
+		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
+			<LucidePlus />
+			{m.new_store()}
+		</DaisyUiButton>
+	</div>
+
+	<DaisyUiCard>
+		<DaisyUiCardBody>
+			<div class={TableEnum.HEIGHT}>
+				<MariTable
+					rows={stores}
+					columns={storeColumns}
+					{isLoading}
+					bind:pageSize={pageSizeStr}
+					bind:currentPage
+					totalRowCount={total}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage={m.no_stores_create()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchStores(true)}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchStores();
+					}}
+					on:pageChange={() => fetchStores()}
+					on:filtersChange={(event) => {
+						if (filterDebounceTimeout) {
+							clearTimeout(filterDebounceTimeout);
+						}
+						tableFilters = event.detail.filters;
+						currentPage = 1;
+						filterDebounceTimeout = setTimeout(() => {
+							fetchStores();
+						}, 350);
+					}}
+				>
+					{#snippet rowActions(row, _rowIndex)}
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row)}
+								>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					{/snippet}
+				</MariTable>
+			</div>
+			{#if totalPages > 1}
+				<div class="mt-4 flex justify-center gap-2">
+					<DaisyUiButton
+						className="d-btn-sm"
+						disabled={currentPage <= 1}
+						onClick={() => goToPage(currentPage - 1)}
+					>
+						{m.previous()}
+					</DaisyUiButton>
+					<span class="flex items-center px-2">
+						{m.page()}
+						{currentPage}
+						{m.of()}
+						{totalPages}
+					</span>
+					<DaisyUiButton
+						className="d-btn-sm"
+						disabled={currentPage >= totalPages}
+						onClick={() => goToPage(currentPage + 1)}
+					>
+						{m.next()}
+					</DaisyUiButton>
+				</div>
+			{/if}
+		</DaisyUiCardBody>
+	</DaisyUiCard>
+</div>

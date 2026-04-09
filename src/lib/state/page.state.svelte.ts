@@ -1,11 +1,11 @@
 import { page } from '$app/state';
 import type {
-	ModuleSchema,
-	PageSchema
-} from '$lib/server/db/schema-type';
-import type { PageWithRelations } from '$lib/remote/table/information-table/page.remote';
+	HekaPageModuleRow,
+	HekaPageRow,
+	PageWithRelations
+} from '$lib/model/type/heka/page.type';
 
-export type PageTreeItem = PageSchema & { children: PageTreeItem[] };
+export type PageTreeItem = HekaPageRow & { children: PageTreeItem[] };
 
 let fullPageData = $state<PageWithRelations[]>([]);
 
@@ -14,14 +14,14 @@ export function setPageData(data: PageWithRelations[]) {
 }
 
 /** Use in reactive context, e.g. $derived(getPageData()) */
-export function getPageData(): PageSchema[] {
+export function getPageData(): HekaPageRow[] {
 	return fullPageData.map(
 		({ module: _m, status: _s, ...p }) => p
-	) as PageSchema[];
+	);
 }
 
 /** Use in reactive context, e.g. $derived(getUniqueModuleData()) */
-export function getUniqueModuleData(): ModuleSchema[] {
+export function getUniqueModuleData(): HekaPageModuleRow[] {
 	return Array.from(
 		new Map(
 			fullPageData
@@ -34,11 +34,11 @@ export function getUniqueModuleData(): ModuleSchema[] {
 				)
 				.map((p) => [p.module.id, p.module])
 		).values()
-	) as ModuleSchema[];
+	);
 }
 
 function buildPageTree(
-	pages: PageSchema[],
+	pages: HekaPageRow[],
 	parentId: number | null = null
 ): PageTreeItem[] {
 	return pages
@@ -82,11 +82,11 @@ export function pathnameForPageMatch(): string {
  * so we get Staff, not Registration. When we're on the section index (e.g. /staff), use exact match.
  * Use in reactive context, e.g. $derived(getCurrentParentPage()).
  */
-export function getCurrentParentPage(): PageSchema | null {
+export function getCurrentParentPage(): HekaPageRow | null {
 	const path = normPath(pathnameForPageMatch());
 	const data = getPageData();
 	// 1. Longest strict prefix: we're under /staff/registration → parent is Staff
-	let best: PageSchema | null = null;
+	let best: HekaPageRow | null = null;
 	let bestLen = -1;
 	for (const p of data) {
 		const u = normPath(p.pageUrl);
@@ -109,7 +109,7 @@ export function getCurrentParentPage(): PageSchema | null {
  * Ordered by sequenceNo.
  * Use in reactive context, e.g. $derived(getSubPages()).
  */
-export function getSubPages(): PageSchema[] {
+export function getSubPages(): HekaPageRow[] {
 	const parent = getCurrentParentPage();
 	if (!parent) return [];
 	return getPageData()

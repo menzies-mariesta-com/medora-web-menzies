@@ -3,14 +3,14 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import type {
-		BloodTypeSchema,
-		CitySchema,
-		CountrySchema,
-		NationalitySchema,
-		PostalCodeSchema,
-		ReligionSchema,
-		StateSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegBloodTypeRow,
+		PatientRegCityRow,
+		PatientRegCountryRow,
+		PatientRegNationalityRow,
+		PatientRegPostalCodeRow,
+		PatientRegReligionRow,
+		PatientRegStateRow
+	} from '$lib/model/type/heka/patient-reg-master.type';
 
 	let {
 		countryData,
@@ -37,19 +37,19 @@
 		showCheckDuplicate = false,
 		onCheckDuplicate
 	} = $props<{
-		countryData: CountrySchema[];
-		bloodTypeData: BloodTypeSchema[];
-		stateData: StateSchema[];
-		cityData: CitySchema[];
-		postalCodeData: PostalCodeSchema[];
-		nationalityData: NationalitySchema[];
-		religionData: ReligionSchema[];
-		filteredStateData: StateSchema[];
-		filteredCityData: CitySchema[];
-		filteredPostalCodeData: PostalCodeSchema[];
-		selectedCountry: CountrySchema;
-		selectedState: StateSchema;
-		selectedCity: CitySchema;
+		countryData: PatientRegCountryRow[];
+		bloodTypeData: PatientRegBloodTypeRow[];
+		stateData: PatientRegStateRow[];
+		cityData: PatientRegCityRow[];
+		postalCodeData: PatientRegPostalCodeRow[];
+		nationalityData: PatientRegNationalityRow[];
+		religionData: PatientRegReligionRow[];
+		filteredStateData: PatientRegStateRow[];
+		filteredCityData: PatientRegCityRow[];
+		filteredPostalCodeData: PatientRegPostalCodeRow[];
+		selectedCountry: PatientRegCountryRow;
+		selectedState: PatientRegStateRow;
+		selectedCity: PatientRegCityRow;
 		selectedCountryId?: string;
 		selectedBloodTypeId?: string;
 		selectedStateId?: string;

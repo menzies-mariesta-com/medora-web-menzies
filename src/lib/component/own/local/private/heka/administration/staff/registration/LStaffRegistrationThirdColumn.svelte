@@ -3,17 +3,16 @@
 	import DaisyUiJoin from '$lib/component/daisyui/join/DaisyUiJoin.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
-	import type { SpecializationWithRelations } from '$lib/remote/table/master-table/specialization.remote';
+	import type { SpecializationWithRelations } from '$lib/model/type/specialization-with-relations.type';
 	import type {
-		CitySchema,
-		CountrySchema,
-		DepartmentSchema,
-		IdentityTypeSchema,
-		NationalitySchema,
-		PostalCodeSchema,
-		SpecializationSchema,
-		StateSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegCityRow,
+		PatientRegCountryRow,
+		PatientRegIdentityTypeRow,
+		PatientRegNationalityRow,
+		PatientRegPostalCodeRow,
+		PatientRegStateRow,
+		StaffRegDepartmentRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 
 	let {
 		countryData,
@@ -40,20 +39,20 @@
 		selectedIdentityNumber = $bindable(),
 		selectedNationalityId = $bindable()
 	} = $props<{
-		countryData: CountrySchema[];
-		stateData: StateSchema[];
-		cityData: CitySchema[];
-		nationalityData: NationalitySchema[];
-		postalCodeData: PostalCodeSchema[];
-		departmentData: DepartmentSchema[];
+		countryData: PatientRegCountryRow[];
+		stateData: PatientRegStateRow[];
+		cityData: PatientRegCityRow[];
+		nationalityData: PatientRegNationalityRow[];
+		postalCodeData: PatientRegPostalCodeRow[];
+		departmentData: StaffRegDepartmentRow[];
 		specializationData: SpecializationWithRelations[];
-		identityTypeData: IdentityTypeSchema[];
-		filteredStateData: StateSchema[];
-		filteredCityData: CitySchema[];
-		filteredPostalCodeData: PostalCodeSchema[];
-		selectedCountry: CountrySchema;
-		selectedState: StateSchema;
-		selectedCity: CitySchema;
+		identityTypeData: PatientRegIdentityTypeRow[];
+		filteredStateData: PatientRegStateRow[];
+		filteredCityData: PatientRegCityRow[];
+		filteredPostalCodeData: PatientRegPostalCodeRow[];
+		selectedCountry: PatientRegCountryRow;
+		selectedState: PatientRegStateRow;
+		selectedCity: PatientRegCityRow;
 		selectedCountryId?: string;
 		selectedStateId?: string;
 		selectedCityId?: string;

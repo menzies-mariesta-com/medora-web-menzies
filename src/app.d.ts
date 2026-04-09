@@ -1,7 +1,5 @@
 /// <reference types="vite/client" />
 
-/** Injected at build time by Vite from package.json */
-declare const __APP_VERSION__: string;
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { Session, User } from 'better-auth';
@@ -10,16 +8,19 @@ declare module '*?raw' {
 	const text: string;
 	export default text;
 }
-import type { StaffSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
+import type { StaffSessionRow } from '$lib/model/type/heka/staff.type';
 
 declare global {
+	/** Injected at build time by Vite from package.json (`vite.config` define). */
+	const __APP_VERSION__: string;
+
 	namespace App {
 		// interface Error {}
 		interface Locals {
 			session?: Session | null;
 			user?: User | null;
 			/** Staff record linked to the logged-in user (1:1). */
-			staff?: StaffSchema | null;
+			staff?: StaffSessionRow | null;
 			/** User's role id (from user.role_id). Used for STAFF vs OWNER/SYSTEM_ADMIN. */
 			userRoleId?: number | null;
 			/** When user is STAFF, only these hospital ids (UUIDs) are allowed; else null = all. */

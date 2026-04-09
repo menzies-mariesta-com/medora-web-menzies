@@ -22,39 +22,12 @@
 	import { ObservationFormEntryDeleteConfirmDialogState } from '$lib/state/observation-form-entry-delete-confirm-dialog.state.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
-	import {
-		getPatientVisitById,
-		signPatientVisitClinical
-	} from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import {
-		getPatientAllergiesByPatientIdWithRelationsPaginated,
-		getPatientAllergiesByPatientIdWithRelations,
-		deletePatientAllergies,
-	} from '$lib/tool/remote/table/information-table/patient-allergies.http.tool.svelte';
-	import type { PatientAllergyWithRelations } from '$lib/remote/table/information-table/patient-allergies.remote';
-	import {
-		getPatientVitalsByVisitId,
-		deletePatientVital
-	} from '$lib/tool/remote/table/information-table/patient-vital.http.tool.svelte';
-	import { getServiceOrderDetailRowsForVisit } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import { deleteServiceOrderDetail } from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import { getPatientDocumentsByVisitIdWithRelations } from '$lib/tool/remote/table/information-table/patient-document.http.tool.svelte';
-	import type { PatientDocumentWithRelations } from '$lib/remote/table/information-table/patient-document.remote';
-	import {
-		getDiagnosesByVisitId,
-		deleteDiagnosis,
-	} from '$lib/tool/remote/table/information-table/diagnosis.http.tool.svelte';
-	import type { DiagnosisWithType } from '$lib/remote/table/information-table/diagnosis.remote';
-	import {
-		getPatientFormEntriesByVisitIdAndFormCode,
-		createPatientFormEntry,
-		deletePatientFormEntry,
-	} from '$lib/tool/remote/table/information-table/patient-form-entry.http.tool.svelte';
-	import type { PatientFormEntryWithRelations } from '$lib/remote/table/information-table/patient-form-entry.remote';
-	import type { PatientDiagnosisSchema } from '$lib/server/db/schema-type';
-	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
+	import type {
+		PatientDiagnosisListRow,
+		ServiceOrderDetailListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -68,7 +41,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
-	type OrderDetailVisitRow = ServiceOrderDetailSchema & {
+	type OrderDetailVisitRow = ServiceOrderDetailListRow & {
 		orderNo: string | null;
 		serviceName: string | null;
 	};
@@ -94,11 +67,9 @@
 		VisitState.isClinicalVisitReadOnly
 	);
 
-	let visitRow = $state<Awaited<
-		ReturnType<typeof getPatientVisitById>
-	> | null>(null);
+	let visitRow = $state<PatientVisitRow | null>(null);
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
-	let vitals = $state<PatientDiagnosisSchema[]>([]);
+	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
 	let documents = $state<PatientDocumentWithRelations[]>([]);
 	let visitDiagnoses = $state<DiagnosisWithType[]>([]);
@@ -142,6 +113,39 @@
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
+	type PatientAllergyWithRelations = any;
+	type PatientDocumentWithRelations = any;
+	type DiagnosisWithType = any;
+	type PatientFormEntryWithRelations = any;
+	type PatientVisitRow = any;
+
+	function getApiBase(): string {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		return `/api/heka/hospital/${hid}/home/observation/emr`;
+	}
+
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const url = new URL(getApiBase(), location.origin);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: Record<string, unknown>) {
+		const res = await fetch(getApiBase(), {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...payload })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	function areFiltersEqual(
 		a: Record<string, string>,
 		b: Record<string, string>
@@ -181,7 +185,7 @@
 	}
 
 	function getVitalDisplayDate(
-		v: PatientDiagnosisSchema
+		v: PatientDiagnosisListRow
 	): string | null {
 		return v.vitalDateTime ?? v.createdAt ?? null;
 	}
@@ -221,32 +225,24 @@
 			const statusId = allergyColumnFilters.status
 				? Number(allergyColumnFilters.status)
 				: undefined;
-			const params = {
-				patientId,
-				hospitalId: hospitalIdParam,
-				page: allergyCurrentPage,
-				pageSize,
-				visitNo: allergyColumnFilters.visitNo?.trim() || undefined,
-				severityName:
-					allergyColumnFilters.severity?.trim() || undefined,
-				statusId:
-					statusId != null && Number.isFinite(statusId)
-						? statusId
-						: undefined
-			};
-			getPatientAllergiesByPatientIdWithRelationsPaginated(
-				params
-			).refresh();
-			const result =
-				await getPatientAllergiesByPatientIdWithRelationsPaginated(
-					params
-				);
+			const result = await apiGet<{ data: PatientAllergyWithRelations[]; total: number }>(
+				'allergy.listPaginated',
+				{
+					patientId,
+					page: String(allergyCurrentPage),
+					pageSize: String(pageSize),
+					visitNo: allergyColumnFilters.visitNo?.trim() || '',
+					severityName: allergyColumnFilters.severity?.trim() || '',
+					statusId: statusId != null && Number.isFinite(statusId) ? String(statusId) : ''
+				}
+			);
 			allergies = result.data;
 			allergyTotal = result.total;
 		} catch {
-			const data = await getPatientAllergiesByPatientIdWithRelations({
-				patientId
-			});
+			const data = await apiGet<PatientAllergyWithRelations[]>(
+				'allergy.list',
+				{ patientId }
+			);
 			const filtered = hospitalIdParam
 				? data.filter(
 							(row: PatientAllergyWithRelations) =>
@@ -264,17 +260,11 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getPatientVisitById({ id: visitId }).refresh();
-			getPatientVitalsByVisitId({ visitId }).refresh();
-			getServiceOrderDetailRowsForVisit({ visitId }).refresh();
-			getPatientDocumentsByVisitIdWithRelations({
-				visitId
-			}).refresh();
-
-			let v: Awaited<ReturnType<typeof getPatientVisitById>> | null =
-				null;
+			let v: PatientVisitRow | null = null;
 			try {
-				v = await getPatientVisitById({ id: visitId });
+				v = await apiGet<PatientVisitRow | null>('visit.get', {
+					visitId: String(visitId)
+				});
 			} catch {
 				visitRow = null;
 				allergies = [];
@@ -296,43 +286,55 @@
 				documents = [];
 				return;
 			}
-			getPatientAllergiesByPatientIdWithRelations({
-				patientId: v.patientId
-			}).refresh();
 			await Promise.all([
 				fetchAllergies({ force: true, skipRowLoading: true }),
 				(async () => {
-					vitals = await getPatientVitalsByVisitId({ visitId });
-				})(),
-				(async () => {
-					orderLines = (await getServiceOrderDetailRowsForVisit({
-						visitId
-					})) as OrderDetailVisitRow[];
-				})(),
-				(async () => {
-					documents = await getPatientDocumentsByVisitIdWithRelations(
-						{
-							visitId
-						}
+					vitals = await apiGet<PatientDiagnosisListRow[]>(
+						'vital.listByVisit',
+						{ visitId: String(visitId) }
 					);
 				})(),
 				(async () => {
-					visitDiagnoses = await getDiagnosesByVisitId({
-						visitId
-					});
+					orderLines = (await apiGet<OrderDetailVisitRow[]>(
+						'orderLine.list',
+						{ visitId: String(visitId) }
+					)) as OrderDetailVisitRow[];
+				})(),
+				(async () => {
+					documents = await apiGet<PatientDocumentWithRelations[]>(
+						'patientDocument.visitList',
+						{ visitId: String(visitId) }
+					);
+				})(),
+				(async () => {
+					visitDiagnoses = await apiGet<DiagnosisWithType[]>(
+						'diagnosis.list',
+						{ visitId: String(visitId) }
+					);
 				})(),
 				(async () => {
 					try {
-						chiefComplaintEntries =
-							await getPatientFormEntriesByVisitIdAndFormCode({
-								visitId,
-								formCode: 'chief_complaint'
-							});
-						patientConditionEntries =
-							await getPatientFormEntriesByVisitIdAndFormCode({
-								visitId,
+						chiefComplaintEntries = await apiGet<
+							PatientFormEntryWithRelations[]
+						>('formEntry.list', {
+							visitId: String(visitId),
+							formCode: 'chief_complaint'
+						});
+						if (v?.patientId) {
+							patientConditionEntries = await apiGet<
+								PatientFormEntryWithRelations[]
+							>('formEntry.patientList', {
+								patientId: String(v.patientId),
 								formCode: 'patient_condition'
 							});
+						} else {
+							patientConditionEntries = await apiGet<
+								PatientFormEntryWithRelations[]
+							>('formEntry.list', {
+								visitId: String(visitId),
+								formCode: 'patient_condition'
+							});
+						}
 					} catch {
 						chiefComplaintEntries = [];
 						patientConditionEntries = [];
@@ -367,8 +369,10 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getPatientVitalsByVisitId({ visitId }).refresh();
-			vitals = await getPatientVitalsByVisitId({ visitId });
+			vitals = await apiGet<PatientDiagnosisListRow[]>(
+				'vital.listByVisit',
+				{ visitId: String(visitId) }
+			);
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -378,10 +382,10 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getServiceOrderDetailRowsForVisit({ visitId }).refresh();
-			orderLines = await getServiceOrderDetailRowsForVisit({
-				visitId
-			});
+			orderLines = await apiGet<OrderDetailVisitRow[]>(
+				'orderLine.list',
+				{ visitId: String(visitId) }
+			);
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -391,12 +395,10 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getPatientDocumentsByVisitIdWithRelations({
-				visitId
-			}).refresh();
-			documents = await getPatientDocumentsByVisitIdWithRelations({
-				visitId
-			});
+			documents = await apiGet<PatientDocumentWithRelations[]>(
+				'patientDocument.visitList',
+				{ visitId: String(visitId) }
+			);
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -406,8 +408,10 @@
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			getDiagnosesByVisitId({ visitId }).refresh();
-			visitDiagnoses = await getDiagnosesByVisitId({ visitId });
+			visitDiagnoses = await apiGet<DiagnosisWithType[]>(
+				'diagnosis.list',
+				{ visitId: String(visitId) }
+			);
 		} finally {
 			isLoadingGrid = false;
 		}
@@ -418,24 +422,27 @@
 		isLoadingGrid = true;
 		try {
 			try {
-				getPatientFormEntriesByVisitIdAndFormCode({
-					visitId,
+				chiefComplaintEntries = await apiGet<
+					PatientFormEntryWithRelations[]
+				>('formEntry.list', {
+					visitId: String(visitId),
 					formCode: 'chief_complaint'
-				}).refresh();
-				getPatientFormEntriesByVisitIdAndFormCode({
-					visitId,
-					formCode: 'patient_condition'
-				}).refresh();
-				chiefComplaintEntries =
-					await getPatientFormEntriesByVisitIdAndFormCode({
-						visitId,
-						formCode: 'chief_complaint'
-					});
-				patientConditionEntries =
-					await getPatientFormEntriesByVisitIdAndFormCode({
-						visitId,
+				});
+				if (visitRow?.patientId) {
+					patientConditionEntries = await apiGet<
+						PatientFormEntryWithRelations[]
+					>('formEntry.patientList', {
+						patientId: String(visitRow.patientId),
 						formCode: 'patient_condition'
 					});
+				} else {
+					patientConditionEntries = await apiGet<
+						PatientFormEntryWithRelations[]
+					>('formEntry.list', {
+						visitId: String(visitId),
+						formCode: 'patient_condition'
+					});
+				}
 			} catch {
 				chiefComplaintEntries = [];
 				patientConditionEntries = [];
@@ -481,7 +488,7 @@
 		if (!result.confirmed) return;
 		isSigningClinical = true;
 		try {
-			const row = await signPatientVisitClinical({ visitId });
+			const row = await apiPost<any>('visit.sign', { visitId });
 			VisitState.setClinicalSignedAtFromVisit(
 				row.clinicalSignedAt ?? new Date().toISOString()
 			);
@@ -612,7 +619,7 @@
 			}
 		];
 
-	const vitalColumns: MariTableColumn<PatientDiagnosisSchema>[] = [
+	const vitalColumns: MariTableColumn<PatientDiagnosisListRow>[] = [
 		{
 			id: 'status',
 			header: 'Status',
@@ -895,10 +902,32 @@
 			}
 		];
 
+	const patientConditionColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
+		[
+			{
+				id: 'visitNo',
+				header: 'Visit No',
+				widthClass: TableRowEnum.VISIT_NO_WIDTH,
+				filterable: false,
+				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
+			},
+			{
+				id: 'visitDate',
+				header: 'Visit date',
+				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+				filterable: false,
+				format: (_value, row) =>
+					formatDateTime(row.visit?.createdAt ?? null)
+			},
+			...formEntryColumns
+		];
+
 	async function openAllergyAdd() {
 		if (!visitRow?.patientId || !visitId) return;
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = visitId;
+		PatientAllergyDialogState.hospitalId =
+			visitRow.hospitalId ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = null;
 		try {
 			await dialogService.open<{ saved?: boolean }>({
@@ -910,6 +939,7 @@
 				onClose: () => {
 					PatientAllergyDialogState.patientId = null;
 					PatientAllergyDialogState.visitId = null;
+					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
@@ -921,6 +951,7 @@
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
+			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -930,6 +961,8 @@
 		if (!visitRow?.patientId) return;
 		PatientAllergyDialogState.patientId = visitRow.patientId;
 		PatientAllergyDialogState.visitId = row.visitId;
+		PatientAllergyDialogState.hospitalId =
+			visitRow.hospitalId ?? hospitalId ?? null;
 		PatientAllergyDialogState.patientAllergyId = row.id;
 		try {
 			await dialogService.open<{ saved?: boolean }>({
@@ -941,6 +974,7 @@
 				onClose: () => {
 					PatientAllergyDialogState.patientId = null;
 					PatientAllergyDialogState.visitId = null;
+					PatientAllergyDialogState.hospitalId = null;
 					PatientAllergyDialogState.patientAllergyId = null;
 					PatientAllergyDialogState.onSaved = null;
 				},
@@ -952,6 +986,7 @@
 		} finally {
 			PatientAllergyDialogState.patientId = null;
 			PatientAllergyDialogState.visitId = null;
+			PatientAllergyDialogState.hospitalId = null;
 			PatientAllergyDialogState.patientAllergyId = null;
 			PatientAllergyDialogState.onSaved = null;
 		}
@@ -967,7 +1002,7 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deletePatientAllergies({ id: row.id });
+			await apiPost('allergy.delete', { id: row.id });
 			toastService.addToast(
 				'Allergy removed.',
 				StatusColorEnum.SUCCESS
@@ -1015,7 +1050,7 @@
 		}
 	}
 
-	async function openVitalEdit(v: PatientDiagnosisSchema) {
+	async function openVitalEdit(v: PatientDiagnosisListRow) {
 		if (!visitRow?.patientId || !visitRow.hospitalId || !visitId)
 			return;
 		VitalRecordDialogState.patientId = visitRow.patientId;
@@ -1041,7 +1076,7 @@
 		}
 	}
 
-	async function handleVitalDelete(v: PatientDiagnosisSchema) {
+	async function handleVitalDelete(v: PatientDiagnosisListRow) {
 		const result = await dialogService.open({
 			title: 'Delete vital',
 			message: `Delete vital record from ${formatDateTime(getVitalDisplayDate(v) ?? null)}?`,
@@ -1049,7 +1084,7 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deletePatientVital({ id: v.id });
+			await apiPost('vital.delete', { id: v.id });
 			toastService.addToast(
 				'Vital deleted.',
 				StatusColorEnum.SUCCESS
@@ -1158,7 +1193,7 @@
 		});
 		if (!result.confirmed || !result.data?.confirmed) return;
 		try {
-			await deleteDiagnosis({ id: row.id });
+			await apiPost('diagnosis.delete', { id: row.id });
 			toastService.addToast(
 				'Diagnosis inactivated.',
 				StatusColorEnum.SUCCESS
@@ -1271,7 +1306,7 @@
 		});
 		if (!result.confirmed || !result.data?.confirmed) return;
 		try {
-			await deletePatientFormEntry({ id: row.id });
+			await apiPost('formEntry.delete', { id: row.id });
 			toastService.addToast(
 				'Entry deleted.',
 				StatusColorEnum.SUCCESS
@@ -1308,14 +1343,16 @@
 
 		try {
 			// Soft-delete from the source list, then recreate under the target form code.
-			await deletePatientFormEntry({ id: row.id });
-			await createPatientFormEntry({
-				branchId: row.branchId,
-				patientId: row.patientId,
-				visitId: row.visitId,
-				description: row.description ?? null,
-				statusId: row.statusId,
-				formCode: targetFormCode
+			await apiPost('formEntry.delete', { id: row.id });
+			await apiPost('formEntry.create', {
+				payload: {
+					branchId: row.branchId,
+					patientId: row.patientId,
+					visitId: row.visitId,
+					description: row.description ?? null,
+					statusId: row.statusId,
+					formCode: targetFormCode
+				}
 			});
 			toastService.addToast(
 				m.observation_emr_saved(),
@@ -1406,7 +1443,7 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteServiceOrderDetail({ id: row.id });
+			await apiPost('orderLine.deleteDetail', { id: row.id });
 			toastService.addToast(
 				m.observation_emr_order_line_deleted(),
 				StatusColorEnum.SUCCESS
@@ -1476,7 +1513,7 @@
 			<ObservationCardTable
 				title={m.observation_emr_patient_condition()}
 				rows={patientConditionEntries}
-				columns={formEntryColumns}
+				columns={patientConditionColumns}
 				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}

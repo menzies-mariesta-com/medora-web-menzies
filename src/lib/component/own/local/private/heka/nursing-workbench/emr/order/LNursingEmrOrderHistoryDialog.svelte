@@ -7,11 +7,11 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import type { ServiceOrderDetailSchema } from '$lib/server/db/schema-type';
+	import type { ServiceOrderDetailListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 
-	type HistoryItem = ServiceOrderDetailSchema & {
+	type HistoryItem = ServiceOrderDetailListRow & {
 		orderNo: string | null;
 		advisingDoctorName: string | null;
 		serviceName: string;

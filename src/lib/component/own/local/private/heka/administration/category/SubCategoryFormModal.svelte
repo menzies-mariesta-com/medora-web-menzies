@@ -3,15 +3,12 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import {
-		createSubCategory,
-		updateSubCategory
-	} from '$lib/remote/table/information-table/sub-category.remote';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
+	import { page } from '$app/state';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -22,10 +19,31 @@
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 
-	const state = $derived(SubCategoryModalState);
+	const modalState = $derived(SubCategoryModalState);
 	const isEdit = $derived(
-		state.mode === 'edit' && state.editRow != null
+		modalState.mode === 'edit' && modalState.editRow != null
 	);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
+
+	async function fetchJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				'content-type': 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	$effect(() => {
 		const s = SubCategoryModalState;
@@ -57,7 +75,7 @@
 		}
 		const categoryId = formCategoryId ? Number(formCategoryId) : null;
 		if (
-			state.mode === 'create' &&
+			modalState.mode === 'create' &&
 			(categoryId == null || Number.isNaN(categoryId))
 		) {
 			toastService.addToast(
@@ -71,22 +89,36 @@
 			: StatusEnum.INACTIVE;
 		isSubmitting = true;
 		try {
-			if (state.mode === 'create' && categoryId != null) {
-				await createSubCategory({
-					categoryId,
-					subCategoryName: formSubCategoryName.trim(),
-					statusId
-				});
+			if (!hospitalId)
+				throw new Error('Missing hospital context for sub-category');
+			if (modalState.mode === 'create' && categoryId != null) {
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/sub-category-master`,
+					{
+						method: 'POST',
+						body: JSON.stringify({
+							categoryId,
+							subCategoryName: formSubCategoryName.trim(),
+							statusId
+						})
+					}
+				);
 				toastService.addToast(
 					'Sub-category created.',
 					StatusColorEnum.SUCCESS
 				);
-			} else if (state.editRow) {
-				await updateSubCategory({
-					id: state.editRow.id,
-					subCategoryName: formSubCategoryName.trim(),
-					statusId
-				});
+			} else if (modalState.editRow) {
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/sub-category-master`,
+					{
+						method: 'PUT',
+						body: JSON.stringify({
+							id: modalState.editRow.id,
+							subCategoryName: formSubCategoryName.trim(),
+							statusId
+						})
+					}
+				);
 				toastService.addToast(
 					'Sub-category updated.',
 					StatusColorEnum.SUCCESS
@@ -122,8 +154,8 @@
 						required
 					>
 						<option value="">Select category…</option>
-						{#if state.categoryOptions?.length}
-							{#each state.categoryOptions as cat (cat.id)}
+						{#if modalState.categoryOptions?.length}
+							{#each modalState.categoryOptions as cat (cat.id)}
 								<option value={cat.id}
 									>{cat.categoryName ?? `Category ${cat.id}`}</option
 								>

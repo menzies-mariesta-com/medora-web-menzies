@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type {
-		ModuleSchema,
-		PageSchema
-	} from '$lib/server/db/schema-type';
+		HekaPageModuleRow,
+		HekaPageRow
+	} from '$lib/model/type/heka/page.type';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDropdownButton from '$lib/component/daisyui/dropdown/button/DaisyUiDropdownButton.svelte';
 	import DaisyUiDropdownContent from '$lib/component/daisyui/dropdown/content/DaisyUiDropdownContent.svelte';
@@ -59,8 +59,8 @@
 	}: {
 		hospitalId?: string | null;
 		hospitalName?: string | null;
-		moduleList: ModuleSchema[];
-		pageList: PageSchema[];
+		moduleList: HekaPageModuleRow[];
+		pageList: HekaPageRow[];
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
 		staffDisplayName?: string | null;
@@ -124,9 +124,9 @@
 	}
 
 	// Search results: include all allowed pages (parent + sub-pages), with module name.
-	type SearchEntry = { page: PageSchema; moduleName: string };
+	type SearchEntry = { page: HekaPageRow; moduleName: string };
 
-	function parentChainLabel(p: PageSchema): string {
+	function parentChainLabel(p: HekaPageRow): string {
 		const chain: string[] = [];
 		let cursor = p.parentId ?? null;
 		const guard: Record<number, true> = {};
@@ -161,7 +161,7 @@
 
 	const currentSearch = $derived(page.url.search);
 
-	function goToPage(p: PageSchema) {
+	function goToPage(p: HekaPageRow) {
 		closeSearchDialog();
 		const base =
 			hospitalId && p.pageUrl != null
@@ -203,7 +203,7 @@
 		return activePage?.moduleId ?? null;
 	});
 
-	function isPageActive(p: PageSchema): boolean {
+	function isPageActive(p: HekaPageRow): boolean {
 		if (!activeDbPageUrl || !p.pageUrl) return false;
 		if (activeDbPageUrl === p.pageUrl) return true;
 		const base = p.pageUrl.endsWith('/')
