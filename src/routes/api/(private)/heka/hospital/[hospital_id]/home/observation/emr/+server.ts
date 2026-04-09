@@ -70,6 +70,19 @@ export const GET: RequestHandler = async (event) => {
 			const formCode = event.url.searchParams.get('formCode') ?? '';
 			return json(await obs.getPatientFormEntriesByVisitIdAndFormCode({ visitId, formCode }));
 		}
+		case 'formEntry.patientList': {
+			const patientId = event.url.searchParams.get('patientId') ?? '';
+			if (!patientId.trim()) throw error(400, 'patientId is required');
+			const formCode = event.url.searchParams.get('formCode') ?? '';
+			if (!formCode.trim()) throw error(400, 'formCode is required');
+			return json(
+				await obs.getPatientFormEntriesByPatientIdAndFormCode({
+					patientId,
+					formCode,
+					hospitalId
+				})
+			);
+		}
 		case 'formEntry.get': {
 			const id = Number(event.url.searchParams.get('id') ?? '0');
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
