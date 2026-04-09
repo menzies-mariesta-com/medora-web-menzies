@@ -62,7 +62,7 @@
 
 	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
 		const res = await fetch(
-			`/api/heka/hospital/${hid}/home/administration/stores?mode=lookups`,
+			`/api/heka/hospital/${hid}/home/inventory-setup/stores?mode=lookups`,
 			{ method: 'GET' }
 		);
 		if (!res.ok) {
@@ -73,7 +73,7 @@
 
 	async function fetchStoreById(hid: string, id: number) {
 		const res = await fetch(
-			`/api/heka/hospital/${hid}/home/administration/stores?id=${encodeURIComponent(String(id))}`,
+			`/api/heka/hospital/${hid}/home/inventory-setup/stores?id=${encodeURIComponent(String(id))}`,
 			{ method: 'GET' }
 		);
 		if (!res.ok) {
@@ -179,7 +179,7 @@
 		try {
 			if (modalState.mode === 'create') {
 				const res = await fetch(
-					`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+					`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores`,
 					{
 						method: 'POST',
 						headers: { 'content-type': 'application/json' },
@@ -204,7 +204,7 @@
 				);
 			} else if (modalState.editStore) {
 				const res = await fetch(
-					`/api/heka/hospital/${hospitalId}/home/administration/stores`,
+					`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores`,
 					{
 						method: 'PUT',
 						headers: { 'content-type': 'application/json' },

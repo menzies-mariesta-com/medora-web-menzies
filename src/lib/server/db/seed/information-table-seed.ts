@@ -34,7 +34,8 @@ export async function seedInformationTables() {
 			(5, 'Service Item', 5, 1, '/heka/home/service-item', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(6, 'CPOE', 6, 1, '/heka/home/cpoe', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(7, 'Observation', 7, 1, '/heka/home/observation', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
-			(8, 'Billing', 8, 1, '/heka/home/billing', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-text"><path d="M4 2h16v20l-4-2-4 2-4-2-4 2z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>')
+			(8, 'Billing', 8, 1, '/heka/home/billing', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-text"><path d="M4 2h16v20l-4-2-4 2-4-2-4 2z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>'),
+			(9, 'Inventory Setup', 9, 1, '/heka/home/inventory-setup', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>')
 
 		ON CONFLICT (id) DO NOTHING;
 	`);
@@ -137,9 +138,14 @@ export async function seedInformationTables() {
 
 			-- master department catalog; store per branch linked to user group XOR department
 			(18, 'Departments', 1, 1, null, '/heka/home/administration/departments', 10),
-			(19, 'Stores', 1, 1, null, '/heka/home/administration/stores', 11),
 
-			(20, 'Item Master', 1, 1, null, '/heka/home/administration/item-master', 12)
+			-- Inventory Setup (parent); children: stores, item master, pharmacy generic, unit master, item unit master
+			(22, 'Inventory Setup', 9, 1, null, '/heka/home/inventory-setup', 1),
+			(19, 'Stores', 9, 1, 22, '/heka/home/inventory-setup/stores', 1),
+			(20, 'Item Master', 9, 1, 22, '/heka/home/inventory-setup/item-master', 2),
+			(21, 'Pharmacy Generic', 9, 1, 22, '/heka/home/inventory-setup/pharmacy-generic', 3),
+			(23, 'Unit Master', 9, 1, 22, '/heka/home/inventory-setup/unit-master', 4),
+			(24, 'Item Unit Master', 9, 1, 22, '/heka/home/inventory-setup/item-unit-master', 5)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

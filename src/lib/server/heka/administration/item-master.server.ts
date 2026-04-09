@@ -8,16 +8,30 @@ import type {
 	UnitTypeSchema
 } from '$lib/server/db/schema-type';
 import {
+	CategoryEnum,
+	StatusEnum
+} from '$lib/model/enum/db-link';
+import {
 	ITEM_MASTER_CATEGORY_IDS,
 	isItemMasterCategoryId
 } from '$lib/model/enum/item-master-category.enum';
-import { StatusEnum } from '$lib/model/enum/db-link';
 import {
 	normalizePagination,
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, eq, ilike, inArray, ne } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray, isNull, ne } from 'drizzle-orm';
+import { getPharmacyGenericById } from '$lib/server/heka/administration/pharmacy-generic.server';
+import { alias } from 'drizzle-orm/pg-core';
+import { StringUtil } from '$lib/util/string.util.svelte';
+
+export type ItemMasterListPayload = ItemMasterSchema & {
+	pharmacyGenericName: string | null;
+	itemUnitMasterIds?: number[];
+};
+
+const purchaseUnitAlias = alias(table.unitTable, 'item_unit_purchase');
+const issueUnitAlias = alias(table.unitTable, 'item_unit_issue');
 
 function assertItemMasterCategory(categoryId: number): void {
 	if (!isItemMasterCategoryId(categoryId)) {
@@ -32,7 +46,12 @@ function normalizeBarcode(value: string | null | undefined): string | null {
 	return t ? t : null;
 }
 
+function hospitalItemScope(hospitalId: string) {
+	return eq(table.itemMasterTable.hospitalId, hospitalId);
+}
+
 async function assertBarcodeAvailable(
+	hospitalId: string,
 	barcode: string | null,
 	excludeItemId?: number
 ): Promise<void> {
@@ -42,6 +61,7 @@ async function assertBarcodeAvailable(
 		.from(table.itemMasterTable)
 		.where(
 			and(
+				hospitalItemScope(hospitalId),
 				eq(table.itemMasterTable.barcode, barcode),
 				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
 			)
@@ -50,6 +70,27 @@ async function assertBarcodeAvailable(
 	if (existing && existing.id !== excludeItemId) {
 		throw new Error('This barcode is already assigned to another item.');
 	}
+}
+
+async function resolvePharmacyGenericIdForWrite(input: {
+	hospitalId: string;
+	categoryId: number;
+	pharmacyGenericId: number | null | undefined;
+}): Promise<number | null> {
+	if (input.categoryId === CategoryEnum.PHARMACY_SUPPLY) {
+		const gid = input.pharmacyGenericId;
+		if (gid == null || !Number.isFinite(gid)) {
+			throw new Error(
+				'Pharmacy generic is required for Pharmacy Supply items.'
+			);
+		}
+		const g = await getPharmacyGenericById(input.hospitalId, { id: gid });
+		if (!g) {
+			throw new Error('Invalid or inactive pharmacy generic.');
+		}
+		return gid;
+	}
+	return null;
 }
 
 export async function getItemMasterCategories() {
@@ -100,10 +141,14 @@ export async function getUnitById(input: {
 }
 
 export async function getItemMasterPaginated(
+	hospitalId: string,
 	params?: PaginationParams
-): Promise<PaginatedResult<ItemMasterSchema>> {
+): Promise<PaginatedResult<ItemMasterListPayload>> {
 	const { page, pageSize, limit, offset } = normalizePagination(params);
-	const conditions = [ne(table.itemMasterTable.statusId, StatusEnum.DELETED)];
+	const conditions = [
+		hospitalItemScope(hospitalId),
+		ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
+	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
 		conditions.push(ilike(table.itemMasterTable.itemName, `%${nameFilter}%`));
@@ -123,20 +168,36 @@ export async function getItemMasterPaginated(
 		conditions.push(eq(table.itemMasterTable.statusId, params.statusId));
 	}
 	const whereClause = and(...conditions);
-	const [data, countResult] = await Promise.all([
-		ensureDb()
-			.select()
-			.from(table.itemMasterTable)
-			.where(whereClause)
-			.orderBy(asc(table.itemMasterTable.itemName))
-			.limit(limit)
-			.offset(offset),
-		ensureDb()
-			.select({ count: count() })
-			.from(table.itemMasterTable)
-			.where(whereClause)
-	]);
-	const total = countResult[0]?.count ?? 0;
+
+	const rows = await ensureDb()
+		.select({
+			item: table.itemMasterTable,
+			pharmacyGenericName: table.pharmacyGenericTable.name
+		})
+		.from(table.itemMasterTable)
+		.leftJoin(
+			table.pharmacyGenericTable,
+			eq(
+				table.itemMasterTable.pharmacyGenericId,
+				table.pharmacyGenericTable.id
+			)
+		)
+		.where(whereClause)
+		.orderBy(asc(table.itemMasterTable.itemName))
+		.limit(limit)
+		.offset(offset);
+
+	const data: ItemMasterListPayload[] = rows.map((r) => ({
+		...r.item,
+		pharmacyGenericName: r.pharmacyGenericName ?? null
+	}));
+
+	const [countResult] = await ensureDb()
+		.select({ count: count() })
+		.from(table.itemMasterTable)
+		.where(whereClause);
+	const total = countResult?.count ?? 0;
+
 	return {
 		data,
 		total,
@@ -147,21 +208,163 @@ export async function getItemMasterPaginated(
 }
 
 export async function getItemMasterById(input: {
+	hospitalId: string;
 	id: number;
-}): Promise<ItemMasterSchema | null> {
+}): Promise<ItemMasterListPayload | null> {
 	const [row] = await ensureDb()
-		.select()
+		.select({
+			item: table.itemMasterTable,
+			pharmacyGenericName: table.pharmacyGenericTable.name
+		})
 		.from(table.itemMasterTable)
+		.leftJoin(
+			table.pharmacyGenericTable,
+			eq(
+				table.itemMasterTable.pharmacyGenericId,
+				table.pharmacyGenericTable.id
+			)
+		)
 		.where(
 			and(
+				hospitalItemScope(input.hospitalId),
 				eq(table.itemMasterTable.id, input.id),
 				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
 			)
 		);
-	return row ?? null;
+	if (!row) return null;
+
+	const links = await ensureDb()
+		.select({ itemUnitMasterId: table.itemMasterItemUnitMasterTable.itemUnitMasterId })
+		.from(table.itemMasterItemUnitMasterTable)
+		.where(
+			and(
+				eq(table.itemMasterItemUnitMasterTable.hospitalId, input.hospitalId),
+				eq(table.itemMasterItemUnitMasterTable.itemMasterId, input.id),
+				isNull(table.itemMasterItemUnitMasterTable.deletedAt)
+			)
+		)
+		.orderBy(asc(table.itemMasterItemUnitMasterTable.id));
+	const itemUnitMasterIds = links
+		.map((l) => l.itemUnitMasterId)
+		.filter((id): id is number => typeof id === 'number');
+
+	return {
+		...row.item,
+		pharmacyGenericName: row.pharmacyGenericName ?? null,
+		itemUnitMasterIds
+	};
+}
+
+export async function listItemUnitMastersForItemMaster(hospitalId: string): Promise<
+	{ id: number; conversionDisplay: string }[]
+> {
+	const rows = await ensureDb()
+		.select({
+			id: table.itemUnitMasterTable.id,
+			purchaseFactor: table.itemUnitMasterTable.purchaseConversionFactor,
+			issueFactor: table.itemUnitMasterTable.issueConversionFactor,
+			purchaseUnitName: purchaseUnitAlias.name,
+			issueUnitName: issueUnitAlias.name
+		})
+		.from(table.itemUnitMasterTable)
+		.leftJoin(
+			purchaseUnitAlias,
+			eq(table.itemUnitMasterTable.purchaseUnitId, purchaseUnitAlias.id)
+		)
+		.leftJoin(
+			issueUnitAlias,
+			eq(table.itemUnitMasterTable.issueUnitId, issueUnitAlias.id)
+		)
+		.where(
+			and(
+				eq(table.itemUnitMasterTable.hospitalId, hospitalId),
+				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED),
+				ne(purchaseUnitAlias.statusId, StatusEnum.DELETED),
+				ne(issueUnitAlias.statusId, StatusEnum.DELETED)
+			)
+		)
+		.orderBy(asc(purchaseUnitAlias.name), asc(issueUnitAlias.name));
+
+	return rows.map((r) => ({
+		id: r.id,
+		conversionDisplay: StringUtil.itemUnitConversionDisplay({
+			purchaseUnitName: r.purchaseUnitName ?? '',
+			issueUnitName: r.issueUnitName ?? '',
+			purchaseFactor: Number(r.purchaseFactor),
+			issueFactor: Number(r.issueFactor)
+		})
+	}));
+}
+
+export async function setItemUnitMastersForItem(
+	hospitalId: string,
+	input: { itemMasterId: number; itemUnitMasterIds: number[] }
+): Promise<void> {
+	const uniqueIds = Array.from(
+		new Set(
+			(input.itemUnitMasterIds ?? [])
+				.map((x) => Number(x))
+				.filter((n) => Number.isFinite(n) && n > 0)
+		)
+	);
+
+	// Validate item exists in hospital
+	const [item] = await ensureDb()
+		.select({ id: table.itemMasterTable.id })
+		.from(table.itemMasterTable)
+		.where(
+			and(
+				eq(table.itemMasterTable.hospitalId, hospitalId),
+				eq(table.itemMasterTable.id, input.itemMasterId),
+				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	if (!item) throw new Error('Item not found.');
+
+	// Validate conversions belong to hospital
+	if (uniqueIds.length > 0) {
+		const allowed = await ensureDb()
+			.select({ id: table.itemUnitMasterTable.id })
+			.from(table.itemUnitMasterTable)
+			.where(
+				and(
+					eq(table.itemUnitMasterTable.hospitalId, hospitalId),
+					inArray(table.itemUnitMasterTable.id, uniqueIds),
+					ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
+				)
+			);
+		const allowedIds = new Set(allowed.map((r) => r.id));
+		for (const id of uniqueIds) {
+			if (!allowedIds.has(id)) {
+				throw new Error('Invalid unit conversion selection.');
+			}
+		}
+	}
+
+	// Replace links
+	await ensureDb()
+		.delete(table.itemMasterItemUnitMasterTable)
+		.where(
+			and(
+				eq(table.itemMasterItemUnitMasterTable.hospitalId, hospitalId),
+				eq(table.itemMasterItemUnitMasterTable.itemMasterId, input.itemMasterId)
+			)
+		);
+
+	if (uniqueIds.length === 0) return;
+
+	await ensureDb().insert(table.itemMasterItemUnitMasterTable).values(
+		uniqueIds.map((id) => ({
+			hospitalId,
+			itemMasterId: input.itemMasterId,
+			itemUnitMasterId: id
+		}))
+	);
 }
 
 export async function getItemMasterByBarcode(input: {
+	hospitalId: string;
 	barcode: string;
 }): Promise<ItemMasterSchema | null> {
 	const b = normalizeBarcode(input.barcode);
@@ -171,6 +374,7 @@ export async function getItemMasterByBarcode(input: {
 		.from(table.itemMasterTable)
 		.where(
 			and(
+				hospitalItemScope(input.hospitalId),
 				eq(table.itemMasterTable.barcode, b),
 				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
 			)
@@ -179,44 +383,104 @@ export async function getItemMasterByBarcode(input: {
 }
 
 export async function createItemMaster(
-	payload: ItemMasterSchemaInsert
+	hospitalId: string,
+	payload: Omit<ItemMasterSchemaInsert, 'hospitalId' | 'pharmacyGenericId'> & {
+		pharmacyGenericId?: number | null;
+	}
 ): Promise<ItemMasterSchema> {
 	assertItemMasterCategory(payload.categoryId);
 	const barcode = normalizeBarcode(payload.barcode);
-	await assertBarcodeAvailable(barcode);
+	await assertBarcodeAvailable(hospitalId, barcode);
+
+	const categoryId = payload.categoryId;
+	const pharmacyGenericId = await resolvePharmacyGenericIdForWrite({
+		hospitalId,
+		categoryId,
+		pharmacyGenericId: payload.pharmacyGenericId
+	});
+
 	const [row] = await ensureDb()
 		.insert(table.itemMasterTable)
-		.values({ ...payload, barcode })
+		.values({
+			...payload,
+			hospitalId,
+			barcode,
+			pharmacyGenericId
+		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	return row;
 }
 
 export async function updateItemMaster(
+	hospitalId: string,
 	payload: ItemMasterSchemaUpdate & { id: number }
 ): Promise<ItemMasterSchema> {
 	const { id, ...rest } = payload;
+
+	const [existingRow] = await ensureDb()
+		.select()
+		.from(table.itemMasterTable)
+		.where(
+			and(
+				hospitalItemScope(hospitalId),
+				eq(table.itemMasterTable.id, id),
+				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
+			)
+		);
+	if (!existingRow) throw new Error('Item not found.');
+
 	if (rest.categoryId != null) {
 		assertItemMasterCategory(rest.categoryId);
 	}
-	let setPayload = { ...rest } as ItemMasterSchemaUpdate;
+
+	const nextCategoryId = rest.categoryId ?? existingRow.categoryId;
+	let nextPharmacyGenericId = existingRow.pharmacyGenericId;
+	if (
+		rest.categoryId !== undefined &&
+		rest.categoryId !== CategoryEnum.PHARMACY_SUPPLY
+	) {
+		nextPharmacyGenericId = null;
+	} else if (rest.pharmacyGenericId !== undefined) {
+		nextPharmacyGenericId = rest.pharmacyGenericId;
+	}
+
+	const finalPharmacyGenericId = await resolvePharmacyGenericIdForWrite({
+		hospitalId,
+		categoryId: nextCategoryId,
+		pharmacyGenericId: nextPharmacyGenericId
+	});
+
+	const setPayload: ItemMasterSchemaUpdate = { ...rest };
 	if (rest.barcode !== undefined) {
 		const barcode = normalizeBarcode(rest.barcode);
-		await assertBarcodeAvailable(barcode, id);
-		setPayload = { ...setPayload, barcode };
+		await assertBarcodeAvailable(hospitalId, barcode, id);
+		setPayload.barcode = barcode;
 	}
+	setPayload.pharmacyGenericId = finalPharmacyGenericId;
+
 	const [row] = await ensureDb()
 		.update(table.itemMasterTable)
 		.set(setPayload)
-		.where(eq(table.itemMasterTable.id, id))
+		.where(
+			and(hospitalItemScope(hospitalId), eq(table.itemMasterTable.id, id))
+		)
 		.returning();
 	if (!row) throw new Error('Update failed');
 	return row;
 }
 
-export async function deleteItemMaster(input: { id: number }): Promise<void> {
+export async function deleteItemMaster(input: {
+	hospitalId: string;
+	id: number;
+}): Promise<void> {
 	await ensureDb()
 		.update(table.itemMasterTable)
 		.set({ statusId: StatusEnum.DELETED })
-		.where(eq(table.itemMasterTable.id, input.id));
+		.where(
+			and(
+				hospitalItemScope(input.hospitalId),
+				eq(table.itemMasterTable.id, input.id)
+			)
+		);
 }

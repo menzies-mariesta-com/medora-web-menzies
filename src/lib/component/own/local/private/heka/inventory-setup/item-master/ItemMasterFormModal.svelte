@@ -7,6 +7,7 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
+	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -17,7 +18,11 @@
 		UnitListRow,
 		UnitTypeListRow
 	} from '$lib/model/type/heka/ui-rows.type';
-	import { StatusEnum, UnitTypeEnum } from '$lib/model/enum/db-link';
+	import {
+		CategoryEnum,
+		StatusEnum,
+		UnitTypeEnum
+	} from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -32,7 +37,12 @@
 	);
 	const itemMasterApi = $derived(
 		hospitalId
-			? `/api/heka/hospital/${hospitalId}/home/administration/item-master`
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master`
+			: ''
+	);
+	const pharmacyGenericApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pharmacy-generic`
 			: ''
 	);
 
@@ -52,6 +62,9 @@
 	let categories = $state<CategoryListRow[]>([]);
 	let unitTypes = $state<UnitTypeListRow[]>([]);
 	let units = $state<UnitListRow[]>([]);
+	let itemUnitMasters = $state<{ id: number; conversionDisplay: string }[]>(
+		[]
+	);
 
 	let itemName = $state('');
 	let categoryIdStr = $state('');
@@ -59,11 +72,32 @@
 	let barcode = $state('');
 	let unitTypeIdStr = $state('');
 	let unitIdStr = $state('');
+	let itemUnitMasterIdStrs = $state<string[]>([]);
 	let description = $state('');
 	let remark = $state('');
+	let pharmacyGenericIdStr = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
+
+	function toggleItemUnitMaster(id: number) {
+		const key = String(id);
+		if (itemUnitMasterIdStrs.includes(key)) {
+			itemUnitMasterIdStrs = itemUnitMasterIdStrs.filter((x) => x !== key);
+		} else {
+			itemUnitMasterIdStrs = [...itemUnitMasterIdStrs, key];
+		}
+	}
+
+	const isPharmacySupplyCategory = $derived(
+		Number(categoryIdStr) === CategoryEnum.PHARMACY_SUPPLY
+	);
+
+	$effect(() => {
+		if (Number(categoryIdStr) !== CategoryEnum.PHARMACY_SUPPLY) {
+			pharmacyGenericIdStr = '';
+		}
+	});
 
 	const modalState = $derived(ItemMasterModalState);
 	const isEdit = $derived(
@@ -97,17 +131,64 @@
 		await loadUnitsForSelectedType(false);
 	}
 
+	async function searchPharmacyGenerics(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
+		if (!pharmacyGenericApi) return [];
+		const q = new URLSearchParams({
+			mode: 'search',
+			q: query,
+			limit: '50'
+		});
+		const res = await fetch(`${pharmacyGenericApi}?${q.toString()}`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok) return [];
+		const rows = (await res.json()) as {
+			id: number;
+			name: string;
+			code: string | null;
+		}[];
+		return rows.map((r) => ({
+			value: String(r.id),
+			label: r.code ? `${r.name} (${r.code})` : r.name
+		}));
+	}
+
+	async function getPharmacyGenericLabelForValue(
+		value: string
+	): Promise<string> {
+		if (!value?.trim() || !pharmacyGenericApi) return '';
+		const res = await fetch(
+			`${pharmacyGenericApi}?id=${encodeURIComponent(value)}`,
+			{ credentials: 'include', cache: 'no-store' }
+		);
+		if (!res.ok) return '—';
+		const row = (await res.json()) as {
+			name?: string | null;
+			code?: string | null;
+		} | null;
+		if (!row) return '—';
+		const n = row.name ?? '—';
+		return row.code ? `${n} (${row.code})` : n;
+	}
+
 	lifeCycleUtil.onMount(async () => {
 		const editing =
 			ItemMasterModalState.mode === 'edit' &&
 			ItemMasterModalState.editItem != null;
 		try {
-			const [cats, types] = await Promise.all([
+			const [cats, types, iums] = await Promise.all([
 				apiGet<CategoryListRow[]>('?mode=categories'),
-				apiGet<UnitTypeListRow[]>('?mode=unitTypes')
+				apiGet<UnitTypeListRow[]>('?mode=unitTypes'),
+				apiGet<{ id: number; conversionDisplay: string }[]>(
+					'?mode=itemUnitMasters'
+				)
 			]);
 			categories = cats;
 			unitTypes = types;
+			itemUnitMasters = iums;
 
 			const defaultType =
 				types.find((t) => t.id === UnitTypeEnum.COUNT_PACK) ??
@@ -124,9 +205,17 @@
 					barcode = row.barcode ?? '';
 					description = row.description ?? '';
 					remark = row.remark ?? '';
+					itemUnitMasterIdStrs = (row.itemUnitMasterIds ?? []).map(
+						(id) => String(id)
+					);
 					formActive =
 						(row.statusId ?? StatusEnum.ACTIVE) ===
 						StatusEnum.ACTIVE;
+
+					pharmacyGenericIdStr =
+						row.pharmacyGenericId != null
+							? String(row.pharmacyGenericId)
+							: '';
 
 					if (row.unitId != null) {
 						unitIdStr = String(row.unitId);
@@ -177,6 +266,16 @@
 			);
 			return;
 		}
+		if (
+			catId === CategoryEnum.PHARMACY_SUPPLY &&
+			!pharmacyGenericIdStr.trim()
+		) {
+			toastService.addToast(
+				m.item_master_pharmacy_generic_required(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
@@ -188,12 +287,23 @@
 		isSubmitting = true;
 		try {
 			if (!itemMasterApi) throw new Error('Hospital context missing');
+			const pharmacyGenericId =
+				catId === CategoryEnum.PHARMACY_SUPPLY &&
+				pharmacyGenericIdStr.trim() !== '' &&
+				Number.isFinite(Number(pharmacyGenericIdStr))
+					? Number(pharmacyGenericIdStr)
+					: null;
+			const itemUnitMasterIds = itemUnitMasterIdStrs
+				.map((s) => Number(s))
+				.filter((n) => Number.isFinite(n) && n > 0);
 			const body = {
 				itemName: itemName.trim(),
 				categoryId: catId,
 				itemCode: itemCode.trim() || null,
 				barcode: barcode.trim() || null,
 				unitId: unitIdParsed,
+				pharmacyGenericId,
+				itemUnitMasterIds,
 				description: description.trim() || null,
 				remark: remark.trim() || null,
 				statusId
@@ -275,7 +385,7 @@
 						bind:value={categoryIdStr}
 						optionHeader=""
 					>
-						{#each categories as c}
+						{#each categories as c (c.id)}
 							<option value={String(c.id)}
 								>{c.categoryName ?? c.id}</option
 							>
@@ -283,6 +393,29 @@
 					</DaisyUiSelect>
 				</div>
 			</div>
+			{#if isPharmacySupplyCategory}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel
+						forText="im-pharm-gen"
+						className="shrink-0 sm:w-40"
+						>{m.item_master_pharmacy_generic()}
+						<span class="text-error">*</span></DaisyUiLabel
+					>
+					<div class="max-w-lg flex-1">
+						<DaisyUISearchSelect
+							inputId="im-pharm-gen"
+							bind:value={pharmacyGenericIdStr}
+							placeholder={m.item_master_pharmacy_generic_placeholder()}
+							searchFn={searchPharmacyGenerics}
+							getLabelForValue={getPharmacyGenericLabelForValue}
+							invalidateKey={`${hospitalId}-${categoryIdStr}`}
+							className="w-full"
+						/>
+					</div>
+				</div>
+			{/if}
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
@@ -329,7 +462,7 @@
 						optionHeader=""
 						onChange={onUnitTypeChange}
 					>
-						{#each unitTypes as ut}
+						{#each unitTypes as ut (ut.id)}
 							<option value={String(ut.id)}>{ut.name ?? ut.id}</option>
 						{/each}
 					</DaisyUiSelect>
@@ -347,7 +480,7 @@
 						bind:value={unitIdStr}
 						optionHeader={m.item_master_unit_none()}
 					>
-						{#each units as u}
+						{#each units as u (u.id)}
 							<option value={String(u.id)}>{u.name ?? u.id}</option>
 						{/each}
 					</DaisyUiSelect>
@@ -371,6 +504,28 @@
 				>
 				<div class="max-w-lg flex-1">
 					<DaisyUiTextarea bind:value={remark} />
+				</div>
+			</div>
+			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-3">
+				<DaisyUiLabel className="shrink-0 pt-1 sm:w-40"
+					>Unit conversions</DaisyUiLabel
+				>
+				<div class="max-w-lg flex-1">
+					{#if itemUnitMasters.length === 0}
+						<p class="text-sm opacity-70">—</p>
+					{:else}
+						<div class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2">
+							{#each itemUnitMasters as opt (opt.id)}
+								<label class="flex cursor-pointer items-center gap-2 py-1">
+									<DaisyUiCheckbox
+										checked={itemUnitMasterIdStrs.includes(String(opt.id))}
+										onCheckedChange={() => toggleItemUnitMaster(opt.id)}
+									/>
+									<span class="text-sm font-mono">{opt.conversionDisplay}</span>
+								</label>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 			<div
