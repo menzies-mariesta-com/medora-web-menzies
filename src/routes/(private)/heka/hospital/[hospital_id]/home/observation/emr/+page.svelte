@@ -320,12 +320,21 @@
 							visitId: String(visitId),
 							formCode: 'chief_complaint'
 						});
-						patientConditionEntries = await apiGet<
-							PatientFormEntryWithRelations[]
-						>('formEntry.list', {
-							visitId: String(visitId),
-							formCode: 'patient_condition'
-						});
+						if (v?.patientId) {
+							patientConditionEntries = await apiGet<
+								PatientFormEntryWithRelations[]
+							>('formEntry.patientList', {
+								patientId: String(v.patientId),
+								formCode: 'patient_condition'
+							});
+						} else {
+							patientConditionEntries = await apiGet<
+								PatientFormEntryWithRelations[]
+							>('formEntry.list', {
+								visitId: String(visitId),
+								formCode: 'patient_condition'
+							});
+						}
 					} catch {
 						chiefComplaintEntries = [];
 						patientConditionEntries = [];
@@ -419,12 +428,21 @@
 					visitId: String(visitId),
 					formCode: 'chief_complaint'
 				});
-				patientConditionEntries = await apiGet<
-					PatientFormEntryWithRelations[]
-				>('formEntry.list', {
-					visitId: String(visitId),
-					formCode: 'patient_condition'
-				});
+				if (visitRow?.patientId) {
+					patientConditionEntries = await apiGet<
+						PatientFormEntryWithRelations[]
+					>('formEntry.patientList', {
+						patientId: String(visitRow.patientId),
+						formCode: 'patient_condition'
+					});
+				} else {
+					patientConditionEntries = await apiGet<
+						PatientFormEntryWithRelations[]
+					>('formEntry.list', {
+						visitId: String(visitId),
+						formCode: 'patient_condition'
+					});
+				}
 			} catch {
 				chiefComplaintEntries = [];
 				patientConditionEntries = [];
@@ -882,6 +900,26 @@
 				filterable: false,
 				format: (_value, row) => formatDateTime(row.createdAt ?? null)
 			}
+		];
+
+	const patientConditionColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
+		[
+			{
+				id: 'visitNo',
+				header: 'Visit No',
+				widthClass: TableRowEnum.VISIT_NO_WIDTH,
+				filterable: false,
+				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
+			},
+			{
+				id: 'visitDate',
+				header: 'Visit date',
+				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+				filterable: false,
+				format: (_value, row) =>
+					formatDateTime(row.visit?.createdAt ?? null)
+			},
+			...formEntryColumns
 		];
 
 	async function openAllergyAdd() {
@@ -1475,7 +1513,7 @@
 			<ObservationCardTable
 				title={m.observation_emr_patient_condition()}
 				rows={patientConditionEntries}
-				columns={formEntryColumns}
+				columns={patientConditionColumns}
 				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
 				enableMoveAction={true}

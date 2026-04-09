@@ -114,16 +114,31 @@ export async function POST(event: RequestEvent) {
 
 	switch (mode) {
 		case 'serviceOrder.create': {
-			return json(await obs.createServiceOrder(event, body?.payload));
+			return json(
+				await obs.createServiceOrder(event, body?.payload, {
+					skipClinicalLock: true
+				})
+			);
 		}
 		case 'orderLine.create': {
-			return json(await obs.createServiceOrderDetail(body?.payload));
+			return json(
+				await obs.createServiceOrderDetail(body?.payload, {
+					skipClinicalLock: true
+				})
+			);
 		}
 		case 'orderLine.update': {
-			return json(await obs.updateServiceOrderDetail(body?.payload));
+			return json(
+				await obs.updateServiceOrderDetail(body?.payload, {
+					skipClinicalLock: true
+				})
+			);
 		}
 		case 'orderLine.delete': {
-			await obs.deleteServiceOrderDetail({ id: Number(body?.id ?? 0) });
+			await obs.deleteServiceOrderDetail({
+				id: Number(body?.id ?? 0),
+				skipClinicalLock: true
+			});
 			return json({ ok: true });
 		}
 		default:
