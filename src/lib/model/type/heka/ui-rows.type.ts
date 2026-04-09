@@ -111,16 +111,29 @@ export type PatientDiagnosisListRow = PatientRegMasterTimestamps & {
 
 export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	id: number;
+	hospitalId: string;
 	itemName: string;
 	categoryId: number;
 	itemCode: string | null;
 	barcode: string | null;
 	unitId: number | null;
+	pharmacyGenericId: number | null;
+	pharmacyGenericName: string | null;
 	description: string | null;
 	remark: string | null;
 	statusId: number;
+	/** Unit conversion ids tagged to this item (optional, only on detail fetch). */
+	itemUnitMasterIds?: number[];
 	category?: CategoryListRow | null;
 	unit?: UnitListRow | null;
+};
+
+export type PharmacyGenericListRow = PatientRegMasterTimestamps & {
+	id: number;
+	hospitalId: string;
+	name: string;
+	code: string | null;
+	statusId: number;
 };
 
 export type UnitTypeListRow = PatientRegMasterTimestamps & {
@@ -135,6 +148,25 @@ export type UnitListRow = PatientRegMasterTimestamps & {
 	unitTypeId: number | null;
 	statusId: number;
 	unitType?: UnitTypeListRow | null;
+};
+
+/** Unit master grid row (joined unit type name). */
+export type UnitMasterListRow = UnitListRow & {
+	unitTypeName: string | null;
+};
+
+/** Purchase/issue unit conversion definition (not tagged to item). */
+export type ItemUnitMasterListRow = PatientRegMasterTimestamps & {
+	id: number;
+	hospitalId: string;
+	purchaseUnitId: number;
+	purchaseUnitName: string | null;
+	purchaseConversionFactor: string;
+	issueUnitId: number;
+	issueUnitName: string | null;
+	issueConversionFactor: string;
+	conversionDisplay: string;
+	statusId: number;
 };
 
 export type StoreListRow = PatientRegMasterTimestamps & {

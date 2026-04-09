@@ -3,10 +3,10 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
-	import ItemMasterFormModal from '$lib/component/own/local/private/heka/administration/item-master/ItemMasterFormModal.svelte';
+	import ItemUnitMasterFormModal from '$lib/component/own/local/private/heka/inventory-setup/item-unit-master/ItemUnitMasterFormModal.svelte';
+	import { ItemUnitMasterModalState } from '$lib/state/item-unit-master-modal.state.svelte';
 	import type {
-		ItemMasterListRow,
+		ItemUnitMasterListRow,
 		StatusListRow
 	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -33,13 +33,13 @@
 			? page.params.hospital_id
 			: ''
 	);
-	const itemMasterApi = $derived(
+	const apiBase = $derived(
 		hospitalId
-			? `/api/heka/hospital/${hospitalId}/home/administration/item-master`
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/item-unit-master`
 			: ''
 	);
 
-	let rows = $state<ItemMasterListRow[]>([]);
+	let rows = $state<ItemUnitMasterListRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
@@ -50,152 +50,78 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	let categoryNameById = $state<Map<number, string>>(new Map());
-	let unitNameById = $state<Map<number, string>>(new Map());
-
-	async function loadLookups() {
-		if (!itemMasterApi) return;
-		const [catsRes, unitsRes] = await Promise.all([
-			fetch(`${itemMasterApi}?mode=categories`, {
-				credentials: 'include',
-				cache: 'no-store'
-			}),
-			fetch(`${itemMasterApi}?mode=units`, {
-				credentials: 'include',
-				cache: 'no-store'
-			})
-		]);
-		if (!catsRes.ok || !unitsRes.ok) return;
-		const cats = (await catsRes.json()) as {
-			id: number;
-			categoryName?: string | null;
-		}[];
-		const u = (await unitsRes.json()) as { id: number; name?: string | null }[];
-		categoryNameById = new Map(
-			cats.map((c) => [c.id, c.categoryName ?? String(c.id)])
-		);
-		unitNameById = new Map(
-			u.map((x) => [x.id, x.name ?? String(x.id)])
-		);
-	}
-
-	const columns: MariTableColumn<ItemMasterListRow>[] = [
+	const columns: MariTableColumn<ItemUnitMasterListRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
-			widthClass: 'w-16 min-w-[4rem]',
+			widthClass: 'w-14 min-w-[3.5rem]',
 			filterable: false
 		},
 		{
-			id: 'itemName',
-			header: m.item_master_item_name(),
-			widthClass: 'w-52 min-w-[12rem]',
-			filterable: true,
-			field: 'itemName'
+			id: 'conversionDisplay',
+			header: m.item_unit_master_preview(),
+			widthClass: 'min-w-[14rem]',
+			filterable: false,
+			format: (_v, row) => row.conversionDisplay
 		},
 		{
-			id: 'categoryId',
-			header: m.service_item_category_label(),
-			widthClass: 'w-48 min-w-[11rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{
-					label: 'General Supply',
-					value: '11'
-				},
-				{
-					label: 'Pharmacy Supply',
-					value: '12'
-				},
-				{
-					label: 'Medical Supply',
-					value: '13'
-				}
-			],
-			format: (_v, row) =>
-				categoryNameById.get(row.categoryId) ?? '—'
-		},
-		{
-			id: 'itemCode',
-			header: m.item_master_code(),
+			id: 'purchase',
+			header: m.item_unit_master_purchase_unit(),
 			widthClass: 'w-36 min-w-[8rem]',
-			filterable: true,
-			field: 'itemCode',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'barcode',
-			header: m.item_master_barcode(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: true,
-			field: 'barcode',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'unitId',
-			header: m.item_master_unit(),
-			widthClass: 'w-32 min-w-[8rem]',
 			filterable: false,
 			format: (_v, row) =>
-				row.unitId != null
-					? (unitNameById.get(row.unitId) ?? '—')
-					: '—'
+				`${row.purchaseUnitName ?? row.purchaseUnitId} (${Number.isFinite(Number(row.purchaseConversionFactor)) ? Number(row.purchaseConversionFactor).toFixed(2) : row.purchaseConversionFactor})`
+		},
+		{
+			id: 'issue',
+			header: m.item_unit_master_issue_unit(),
+			widthClass: 'w-36 min-w-[8rem]',
+			filterable: false,
+			format: (_v, row) =>
+				`${row.issueUnitName ?? row.issueUnitId} (${Number.isFinite(Number(row.issueConversionFactor)) ? Number(row.issueConversionFactor).toFixed(2) : row.issueConversionFactor})`
 		},
 		{
 			id: 'status',
 			header: m.status(),
-			widthClass: 'w-40 min-w-[10rem]',
+			widthClass: 'w-36 min-w-[9rem]',
 			filterable: true,
 			filterType: 'select',
 			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				{ label: m.active_label(), value: String(StatusEnum.ACTIVE) },
+				{ label: m.inactive_label(), value: String(StatusEnum.INACTIVE) }
 			],
 			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
 				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
+					? m.active_label()
 					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
+						? m.inactive_label()
 						: (statusOptions.find((s) => s.id === row.statusId)
 								?.name ?? String(row.statusId))
 		}
 	];
 
-	async function fetchRows(_forceRefresh = false) {
-		if (!itemMasterApi) return;
+	async function fetchRows() {
+		if (!apiBase) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
 		try {
 			const parsedStatusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const parsedCategoryId = tableFilters.categoryId
-				? Number(tableFilters.categoryId)
-				: undefined;
-			const qs = new URLSearchParams();
-			qs.set('page', String(currentPage));
-			qs.set('pageSize', String(pageSize));
-			const name = tableFilters.itemName?.trim();
-			const itemCode = tableFilters.itemCode?.trim();
-			const barcode = tableFilters.barcode?.trim();
-			if (name) qs.set('name', name);
-			if (itemCode) qs.set('itemCode', itemCode);
-			if (barcode) qs.set('barcode', barcode);
-			if (
-				parsedCategoryId != null &&
-				Number.isFinite(parsedCategoryId)
-			) {
-				qs.set('categoryId', String(parsedCategoryId));
-			}
+			const parts = [
+				`page=${encodeURIComponent(String(currentPage))}`,
+				`pageSize=${encodeURIComponent(String(pageSize))}`
+			];
+			const search = tableFilters.search?.trim();
+			if (search) parts.push(`search=${encodeURIComponent(search)}`);
 			if (
 				parsedStatusId != null &&
 				Number.isFinite(parsedStatusId)
 			) {
-				qs.set('statusId', String(parsedStatusId));
+				parts.push(`statusId=${encodeURIComponent(String(parsedStatusId))}`);
 			}
-			const res = await fetch(`${itemMasterApi}?${qs.toString()}`, {
+			const res = await fetch(`${apiBase}?${parts.join('&')}`, {
 				credentials: 'include',
 				cache: 'no-store'
 			});
@@ -204,7 +130,7 @@
 				throw new Error(t || `Load failed: ${res.status}`);
 			}
 			const result = (await res.json()) as {
-				data: ItemMasterListRow[];
+				data: ItemUnitMasterListRow[];
 				total: number;
 				totalPages: number;
 			};
@@ -232,47 +158,39 @@
 
 	lifeCycleUtil.onMount(async () => {
 		await loadStatusOptions();
-		await loadLookups();
 		fetchRows();
 	});
 
 	async function openCreate() {
-		ItemMasterModalState.mode = 'create';
-		ItemMasterModalState.editItem = null;
+		ItemUnitMasterModalState.mode = 'create';
+		ItemUnitMasterModalState.editRow = null;
 		const result = await dialogService.open({
-			title: m.new_item_master(),
-			component: ItemMasterFormModal
+			title: m.new_item_unit_master(),
+			component: ItemUnitMasterFormModal
 		});
-		if (result.confirmed) {
-			await loadLookups();
-			fetchRows();
-		}
+		if (result.confirmed) fetchRows();
 	}
 
-	async function openEdit(row: ItemMasterListRow) {
-		ItemMasterModalState.mode = 'edit';
-		ItemMasterModalState.editItem = row;
+	async function openEdit(row: ItemUnitMasterListRow) {
+		ItemUnitMasterModalState.mode = 'edit';
+		ItemUnitMasterModalState.editRow = row;
 		const result = await dialogService.open({
-			title: m.edit_item_master(),
-			component: ItemMasterFormModal
+			title: m.edit_item_unit_master(),
+			component: ItemUnitMasterFormModal
 		});
-		if (result.confirmed) {
-			await loadLookups();
-			fetchRows();
-		}
+		if (result.confirmed) fetchRows();
 	}
 
-	async function handleDelete(row: ItemMasterListRow) {
+	async function handleDelete(row: ItemUnitMasterListRow) {
 		const result = await dialogService.open({
-			title: m.delete_item_master(),
-			message: `Delete "${row.itemName ?? m.item_master()}"?`,
+			title: m.delete_item_unit_master(),
+			message: `Remove conversion "${row.conversionDisplay}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!result.confirmed) return;
-		if (!itemMasterApi) return;
+		if (!result.confirmed || !apiBase) return;
 		try {
 			const res = await fetch(
-				`${itemMasterApi}?id=${encodeURIComponent(String(row.id))}`,
+				`${apiBase}?id=${encodeURIComponent(String(row.id))}`,
 				{ method: 'DELETE', credentials: 'include' }
 			);
 			if (!res.ok) {
@@ -280,7 +198,7 @@
 				throw new Error(t || `Delete failed: ${res.status}`);
 			}
 			toastService.addToast(
-				m.item_master_deleted(),
+				m.item_unit_master_deleted(),
 				StatusColorEnum.SUCCESS
 			);
 			fetchRows();
@@ -294,10 +212,10 @@
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.item_master()}</h1>
+		<h1 class="text-2xl font-bold">{m.item_unit_master_title()}</h1>
 		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 			<LucidePlus />
-			{m.new_item_master()}
+			{m.new_item_unit_master()}
 		</DaisyUiButton>
 	</div>
 
@@ -306,14 +224,14 @@
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
 					rows={rows}
-					columns={columns}
+					{columns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}
 					bind:currentPage
 					totalRowCount={total}
 					showRefreshButton={true}
 					refreshTooltip={m.refresh_data()}
-					emptyMessage={m.no_items_master_create()}
+					emptyMessage={m.no_item_unit_profiles()}
 					showRowActions={true}
 					actionsHeader={m.actions()}
 					actionsVariant="none"
@@ -336,8 +254,8 @@
 						}, 350);
 					}}
 				>
-					{#snippet rowActions(row, _rowIndex)}
-						<td class="text-right">
+					{#snippet rowActions(row, index)}
+						<td class="text-right" data-row-index={index}>
 							<div class="flex justify-end gap-2">
 								<DaisyUiButton
 									className="d-btn-ghost d-btn-sm"
