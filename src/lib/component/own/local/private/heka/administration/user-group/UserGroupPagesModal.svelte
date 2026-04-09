@@ -4,16 +4,10 @@
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import { getModule } from '$lib/remote/table/information-table/module.remote';
-	import { getPage } from '$lib/remote/table/information-table/page.remote';
-	import {
-		getByUserGroupId,
-		setPagesForUserGroup
-	} from '$lib/remote/table/information-table/user-group-page.remote';
 	import type {
-		ModuleSchema,
-		PageSchema
-	} from '$lib/server/db/schema-type';
+		HekaPageModuleRow,
+		HekaPageRow
+	} from '$lib/model/type/heka/page.type';
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -22,14 +16,18 @@
 
 	const toastService = new ToastService();
 
-	let allPages = $state<PageSchema[]>([]);
-	let allModules = $state<ModuleSchema[]>([]);
+	let allPages = $state<HekaPageRow[]>([]);
+	let allModules = $state<HekaPageModuleRow[]>([]);
 	let pageSelected = $state<Record<number, boolean>>({});
 	let isSaving = $state(false);
 	let loaded = $state(false);
 	let searchText = $state('');
 
 	const group = $derived(UserGroupPagesModalState.group);
+
+	function apiUrl(hospitalId: string): string {
+		return `/api/heka/hospital/${hospitalId}/home/administration/user-group`;
+	}
 
 	/** Map module id -> display name for quick lookup. */
 	const moduleNameById = $derived.by(() => {
@@ -42,7 +40,7 @@
 
 	/** Flat list of pages, filtered by search term, preserving natural order. */
 	const pageById = $derived.by(() => {
-		const map = new Map<number, PageSchema>();
+		const map = new Map<number, HekaPageRow>();
 		for (const p of allPages) {
 			map.set(p.id, p);
 		}
@@ -50,7 +48,7 @@
 	});
 
 	const childrenByParentId = $derived.by(() => {
-		const map = new Map<number, PageSchema[]>();
+		const map = new Map<number, HekaPageRow[]>();
 		for (const p of allPages) {
 			if (p.parentId == null) continue;
 			if (!map.has(p.parentId)) map.set(p.parentId, []);
@@ -176,21 +174,42 @@
 		let cancelled = false;
 		loaded = false;
 		(async () => {
-			const [pages, modules] = await Promise.all([
-				getPage(),
-				getModule()
-			]);
+			const hospitalId = g.hospitalId;
+			if (!hospitalId) throw new Error('Hospital context is missing');
+
+			const url = new URL(apiUrl(hospitalId), window.location.origin);
+			url.searchParams.set('mode', 'pages');
+			url.searchParams.set('userGroupId', String(g.id));
+
+			const res = await fetch(url.toString(), {
+				method: 'GET',
+				headers: { accept: 'application/json' },
+				cache: 'no-store',
+				credentials: 'include'
+			});
+			const text = await res.text().catch(() => '');
+			if (!res.ok) {
+				throw new Error(
+					text || `Request failed: ${res.status} ${res.statusText}`
+				);
+			}
+			const parsed = text.trim()
+				? (JSON.parse(text) as {
+						pages: HekaPageRow[];
+						modules: HekaPageModuleRow[];
+						assignedPageIds: number[];
+					})
+				: { pages: [], modules: [], assignedPageIds: [] };
+
+			const pages = parsed.pages ?? [];
+			const modules = parsed.modules ?? [];
 			if (cancelled) return;
 			allPages = pages;
 			allModules = modules;
-			const assignments = await getByUserGroupId({
-				userGroupId: g.id
-			});
-			if (cancelled) return;
-			const assignedIds = new Set(
-				assignments
-					.map((a) => a.pageId)
-					.filter((id): id is number => id != null)
+			const assignedIds = new Set<number>(
+				(parsed.assignedPageIds ?? []).filter((n) =>
+					Number.isFinite(n)
+				)
 			);
 			pageSelected = Object.fromEntries(
 				pages.map((p) => [p.id, assignedIds.has(p.id)])
@@ -204,7 +223,7 @@
 
 	function setModuleSelection(
 		moduleId: number | null,
-		pages: PageSchema[],
+		pages: HekaPageRow[],
 		checked: boolean
 	) {
 		const next = { ...pageSelected };
@@ -242,10 +261,28 @@
 		if (!g) return;
 		isSaving = true;
 		try {
+			const hospitalId = g.hospitalId;
+			if (!hospitalId) throw new Error('Hospital context is missing');
+
 			const pageIds = allPages
 				.filter((p) => pageSelected[p.id])
 				.map((p) => p.id);
-			await setPagesForUserGroup({ userGroupId: g.id, pageIds });
+			const url = new URL(apiUrl(hospitalId), window.location.origin);
+			url.searchParams.set('mode', 'pages');
+
+			const res = await fetch(url.toString(), {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				cache: 'no-store',
+				credentials: 'include',
+				body: JSON.stringify({ userGroupId: g.id, pageIds })
+			});
+			const text = await res.text().catch(() => '');
+			if (!res.ok) {
+				throw new Error(
+					text || `Request failed: ${res.status} ${res.statusText}`
+				);
+			}
 			toastService.addToast(
 				'Page access updated.',
 				StatusColorEnum.SUCCESS

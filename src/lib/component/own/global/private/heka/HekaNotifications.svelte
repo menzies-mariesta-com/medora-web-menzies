@@ -16,14 +16,21 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 
-	import {
-		getNotificationUnreadCount,
-		getNotificationsPaginated,
-		markAllNotificationsRead,
-		markNotificationRead
-	} from '$lib/remote/table/notification/notification.remote';
-	import type { NotificationListItem } from '$lib/remote/table/notification/notification.remote';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+
+	type NotificationListItem = {
+		id: number;
+		eventType: string;
+		severity: string;
+		title: string | null;
+		message: string;
+		createdAt: string;
+		readAt: string | null;
+		hospitalId: string | null;
+		visitId: number | null;
+		referHistoryId: number | null;
+		link: string | null;
+	};
 
 	let {
 		hospitalId: hospitalIdProp = undefined,
@@ -52,7 +59,7 @@
 	let modalItems = $state<NotificationListItem[]>([]);
 	let prevHospitalId: string | null = $state(null);
 
-	/** Poll unread count so the badge updates without full page reload (remote queries are cached). */
+	/** Poll unread count so the badge updates without full page reload. */
 	const UNREAD_POLL_MS = 30_000;
 
 	const severityToBadgeClass: Record<string, string> = {
@@ -68,9 +75,10 @@
 
 	async function refreshUnreadCount() {
 		try {
-			// Invalidate cache then read (same pattern as paginated lists in this app).
-			await getNotificationUnreadCount(undefined).refresh();
-			unreadCount = await getNotificationUnreadCount(undefined);
+			const r = await fetch('/api/heka/notification?mode=unreadCount');
+			if (!r.ok) throw new Error('unread count failed');
+			const j = (await r.json()) as { count?: number };
+			unreadCount = j.count ?? 0;
 		} catch {
 			unreadCount = 0;
 		}
@@ -93,13 +101,18 @@
 	async function loadModalPage(pageNumber: number) {
 		modalLoading = true;
 		try {
-			const paginatedParams = {
-				page: pageNumber,
-				pageSize: modalPageSize,
-				read: 'all' as const
+			const qs = new URLSearchParams({
+				mode: 'list',
+				page: String(pageNumber),
+				pageSize: String(modalPageSize),
+				read: 'all'
+			});
+			const r = await fetch(`/api/heka/notification?${qs}`);
+			if (!r.ok) throw new Error('list failed');
+			const res = (await r.json()) as {
+				data: NotificationListItem[];
+				totalPages: number;
 			};
-			await getNotificationsPaginated(paginatedParams).refresh();
-			const res = await getNotificationsPaginated(paginatedParams);
 			modalItems = res.data;
 			modalTotalPages = res.totalPages;
 			modalPage = pageNumber;
@@ -118,7 +131,11 @@
 
 	async function handleNotificationClick(item: NotificationListItem) {
 		try {
-			await markNotificationRead({ id: item.id });
+			await fetch('/api/heka/notification', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ mode: 'markRead', id: item.id })
+			});
 		} catch {
 			// ignore; we still refresh best-effort
 		}
@@ -148,7 +165,11 @@
 
 	async function handleMarkAllRead() {
 		try {
-			await markAllNotificationsRead(undefined);
+			await fetch('/api/heka/notification', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ mode: 'markAllRead' })
+			});
 		} finally {
 			await refreshUnreadCount();
 			if (modalOpen) await loadModalPage(modalPage);

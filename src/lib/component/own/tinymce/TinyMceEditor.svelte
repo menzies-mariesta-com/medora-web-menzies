@@ -45,7 +45,6 @@
 	const defaultConf: TinyMceConf = {
 		height: 400,
 		min_height: 200,
-		menubar,
 		statusbar: true,
 		// Disable trial/promotion banners (Tiny Cloud: `onboarding`, OSS: `promotion`).
 		// Docs: https://www.tiny.cloud/docs/tinymce/latest/promotions/
@@ -82,6 +81,7 @@
 
 	const mergedConf = $derived({
 		...defaultConf,
+		menubar,
 		placeholder,
 		...confUser
 	});

@@ -12,29 +12,13 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import { getServiceOrder } from '$lib/tool/remote/table/information-table/service-order.http.tool.svelte';
-	import {
-		getNursingIncompleteLineCountForVisit,
-		getServiceOrderDetailPaginated,
-		markServiceOrderDetailNursingComplete,
-		markServiceOrderDetailNursingCompleteBatch
-	} from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import { getServiceItem } from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
-	import {
-		getPatientVisitById,
-		getPatientVisitByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
-	import { getDocumentByCode } from '$lib/tool/remote/table/information-table/document.http.tool.svelte';
-	import {
-		getDocumentSettingsWithRelations,
-		type DocumentSettingWithRelations
-	} from '$lib/tool/remote/table/information-table/document-setting.http.tool.svelte';
+	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type {
-		ServiceItemSchema,
-		ServiceOrderDetailSchema,
-		ServiceOrderSchema
-	} from '$lib/server/db/schema-type';
+		ServiceItemListRow,
+		ServiceOrderDetailListRow,
+		ServiceOrderListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -103,6 +87,7 @@
 	let nursingIncompleteCount = $state(0);
 	let isBatchCompleting = $state(false);
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
+	let serviceItems = $state<ServiceItemListRow[]>([]);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -177,12 +162,17 @@
 			return;
 		}
 		try {
-			nursingIncompleteCount =
-				await getNursingIncompleteLineCountForVisit({
-					visitId,
-					hospitalId,
-					statusId: statusFilterDetailStatusId()
-				});
+			const qs = new URLSearchParams({
+				mode: 'nursingIncomplete.count',
+				visitId: String(visitId)
+			});
+			const statusId = statusFilterDetailStatusId();
+			if (statusId != null) qs.set('statusId', String(statusId));
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?${qs.toString()}`
+			);
+			if (!res.ok) throw new Error(`Count failed (${res.status})`);
+			nursingIncompleteCount = await res.json();
 		} catch {
 			nursingIncompleteCount = 0;
 		}
@@ -212,7 +202,11 @@
 
 		isLoading = true;
 		try {
-			const currentVisit = await getPatientVisitById({ id: visitId });
+			const visitRes = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`
+			);
+			if (!visitRes.ok) throw new Error(`Visit load failed (${visitRes.status})`);
+			const currentVisit = await visitRes.json();
 			if (!currentVisit) {
 				visit = null;
 				rows = [];
@@ -228,7 +222,11 @@
 				visitNo: currentVisit.visitNo ?? null
 			};
 
-			const orders = await getServiceOrder({ visitId });
+			const ordersRes = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=serviceOrder.list&visitId=${visitId}`
+			);
+			if (!ordersRes.ok) throw new Error(`Orders load failed (${ordersRes.status})`);
+			const orders = await ordersRes.json();
 			if (orders.length === 0) {
 				rows = [];
 				totalRows = 0;
@@ -236,38 +234,46 @@
 				return;
 			}
 
-			const orderIds = orders.map((o) => o.id);
+			const orderIds = (orders as { id: number }[]).map((o) => o.id);
 			const pageSize = Number(pageSizeStr) || 10;
 			const statusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const detailsResult = await getServiceOrderDetailPaginated({
-				serviceOrderIds: orderIds,
-				statusId:
-					statusId != null && Number.isFinite(statusId)
-						? statusId
-						: undefined,
-				page: currentPage,
-				pageSize
+			const detailQs = new URLSearchParams({
+				mode: 'orderDetail.paginated',
+				page: String(currentPage),
+				pageSize: String(pageSize)
 			});
+			for (const id of orderIds) detailQs.append('serviceOrderIds', String(id));
+			if (statusId != null && Number.isFinite(statusId)) detailQs.set('statusId', String(statusId));
+			const detailsRes = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?${detailQs.toString()}`
+			);
+			if (!detailsRes.ok) throw new Error(`Details load failed (${detailsRes.status})`);
+			const detailsResult = await detailsRes.json();
 			const details = detailsResult.data;
 			totalRows = detailsResult.total;
-			const services = await getServiceItem({
-				hospitalId: currentVisit.hospitalId,
-				statusId: null
-			});
+			if (serviceItems.length === 0) {
+				const docsRes = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/order?mode=serviceItem.paginated&page=1&pageSize=1000`
+				);
+				if (docsRes.ok) {
+					const paged = await docsRes.json();
+					serviceItems = Array.isArray(paged?.data) ? paged.data : [];
+				}
+			}
 
-			const serviceById: Record<number, ServiceItemSchema> = {};
-			for (const service of services) {
+			const serviceById: Record<number, ServiceItemListRow> = {};
+			for (const service of serviceItems) {
 				serviceById[service.id] = service;
 			}
 
-			const orderById: Record<number, ServiceOrderSchema> = {};
+			const orderById: Record<number, ServiceOrderListRow> = {};
 			for (const order of orders) {
 				orderById[order.id] = order;
 			}
 
-			rows = details.map((detail: ServiceOrderDetailSchema) => {
+			rows = details.map((detail: ServiceOrderDetailListRow) => {
 				const service = serviceById[detail.serviceId];
 				const order = orderById[detail.serviceOrderId];
 				const amount = parseAmount(detail.serviceAmount);
@@ -309,9 +315,13 @@
 
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
-		getDocumentSettingsWithRelations()
+		if (!hospitalId) return;
+		fetch(
+			`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=documentSettings.list`
+		)
+			.then((r) => (r.ok ? r.json() : []))
 			.then((s) => {
-				documentSettings = s;
+				documentSettings = Array.isArray(s) ? s : [];
 			})
 			.catch(() => {
 				documentSettings = [];
@@ -449,9 +459,13 @@
 
 		isPrinting = true;
 		try {
-			const masterDoc = await getDocumentByCode({
-				code: EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
-			});
+			const docRes = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=documentMaster.byCode&code=${encodeURIComponent(
+					EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
+				)}`
+			);
+			if (!docRes.ok) throw new Error(`Template load failed (${docRes.status})`);
+			const masterDoc = await docRes.json();
 			if (!masterDoc) {
 				toastService.addToast(
 					'Print template not found. Run DB seed or create document code NURSING_COMPLETE_PRINT.',
@@ -460,9 +474,11 @@
 				return;
 			}
 
-			const visitFull = await getPatientVisitByIdWithRelations({
-				id: visitId
-			});
+			const visitFullRes = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`
+			);
+			if (!visitFullRes.ok) throw new Error(`Visit load failed (${visitFullRes.status})`);
+			const visitFull = await visitFullRes.json();
 			const patientId = visitFull?.patient?.id;
 			if (!visitFull || !patientId) {
 				toastService.addToast(
@@ -560,6 +576,7 @@
 					`${safeBase}.pdf`
 				);
 				await persistEmrPrintPdf({
+					hospitalId,
 					patientId,
 					visitId,
 					documentId: masterDoc.id,
@@ -590,7 +607,15 @@
 
 	async function handleComplete(row: NursingCompleteRow) {
 		try {
-			await markServiceOrderDetailNursingComplete({ id: row.id });
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete`,
+				{
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ mode: 'nursingComplete.mark', id: row.id })
+				}
+			);
+			if (!res.ok) throw new Error(`Mark failed (${res.status})`);
 			toastService.addToast(
 				'Nursing complete time marked',
 				StatusColorEnum.SUCCESS
@@ -610,13 +635,21 @@
 			return;
 		isBatchCompleting = true;
 		try {
-			const { markedCount, remainingIncompleteCount } =
-				await markServiceOrderDetailNursingCompleteBatch({
-					visitId,
-					hospitalId,
-					batchSize: pageSizeNumber,
-					statusId: statusFilterDetailStatusId()
-				});
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete`,
+				{
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						mode: 'nursingComplete.markBatch',
+						visitId,
+						batchSize: pageSizeNumber,
+						statusId: statusFilterDetailStatusId()
+					})
+				}
+			);
+			if (!res.ok) throw new Error(`Batch failed (${res.status})`);
+			const { markedCount, remainingIncompleteCount } = await res.json();
 			if (markedCount === 0) {
 				toastService.addToast(
 					'No lines could be marked complete.',

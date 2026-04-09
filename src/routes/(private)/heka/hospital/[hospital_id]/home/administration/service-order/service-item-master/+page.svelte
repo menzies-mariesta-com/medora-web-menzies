@@ -14,20 +14,12 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import {
-		getServiceItemPaginated,
-		createServiceItem,
-		updateServiceItem,
-		deleteServiceItem
-	} from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import { getCategory } from '$lib/tool/remote/table/information-table/category.http.tool.svelte';
-	import { getSubCategory } from '$lib/tool/remote/table/information-table/sub-category.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
-		CategorySchema,
-		SubCategorySchema,
-		ServiceItemSchema
-	} from '$lib/server/db/schema-type';
+		CategoryListRow,
+		ServiceItemListRow,
+		SubCategoryListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -58,10 +50,10 @@
 			: null
 	);
 
-	let categories = $state<CategorySchema[]>([]);
-	let subCategories = $state<SubCategorySchema[]>([]);
+	let categories = $state<CategoryListRow[]>([]);
+	let subCategories = $state<SubCategoryListRow[]>([]);
 	let serviceResult =
-		$state<PaginatedResult<ServiceItemSchema> | null>(null);
+		$state<PaginatedResult<ServiceItemListRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
@@ -95,7 +87,7 @@
 
 	let tableColumnFilters = $state<Record<string, string>>({});
 
-	const serviceItemColumns: MariTableColumn<ServiceItemSchema>[] = [
+	const serviceItemColumns: MariTableColumn<ServiceItemListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -160,8 +152,26 @@
 		}
 	];
 
+	async function fetchJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				'content-type': 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	async function fetchCategories() {
-		categories = await getCategory();
+		if (!hospitalId) return;
+		categories = await fetchJson<CategoryListRow[]>(
+			`/api/heka/hospital/${hospitalId}/home/administration/service-order/category-master?mode=all`
+		);
 	}
 
 	async function fetchSubCategories() {
@@ -172,11 +182,19 @@
 			return;
 		}
 
+		if (!hospitalId) return;
+
 		const lists = await Promise.all(
-			categories.map((cat) => getSubCategory({ categoryId: cat.id }))
+			categories.map((cat) =>
+				fetchJson<SubCategoryListRow[]>(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/sub-category-master?mode=all&categoryId=${encodeURIComponent(
+						String(cat.id)
+					)}`
+				)
+			)
 		);
 
-		const byId = new Map<number, SubCategorySchema>();
+		const byId = new Map<number, SubCategoryListRow>();
 		for (const list of lists) {
 			for (const sc of list) {
 				if (!byId.has(sc.id)) {
@@ -205,6 +223,7 @@
 		void forceRefresh;
 		isLoading = true;
 		try {
+			if (!hospitalId) return;
 			const filters = tableColumnFilters;
 
 			const params: {
@@ -317,7 +336,24 @@
 				pageSize
 			};
 
-			serviceResult = await getServiceItemPaginated(paginatedParams);
+			const qs = new URLSearchParams();
+			qs.set('page', String(paginatedParams.page));
+			qs.set('pageSize', String(paginatedParams.pageSize));
+			if (paginatedParams.id != null) qs.set('id', String(paginatedParams.id));
+			if (paginatedParams.subCategoryId != null)
+				qs.set('subCategoryId', String(paginatedParams.subCategoryId));
+			if (paginatedParams.subCategoryIds?.length)
+				qs.set('subCategoryIds', paginatedParams.subCategoryIds.join(','));
+			if (paginatedParams.serviceName)
+				qs.set('serviceName', paginatedParams.serviceName);
+			if (paginatedParams.serviceCode)
+				qs.set('serviceCode', paginatedParams.serviceCode);
+			if (paginatedParams.statusId != null)
+				qs.set('statusId', String(paginatedParams.statusId));
+
+			serviceResult = await fetchJson<PaginatedResult<ServiceItemListRow>>(
+				`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master?${qs.toString()}`
+			);
 		} finally {
 			isLoading = false;
 		}
@@ -361,7 +397,7 @@
 		resetForm();
 	}
 
-	function startEdit(row: ServiceItemSchema) {
+	function startEdit(row: ServiceItemListRow) {
 		mode = 'edit';
 		editingId = row.id;
 		selectedSubCategoryId =
@@ -453,26 +489,37 @@
 		isSaving = true;
 		try {
 			if (mode === 'create') {
-				await createServiceItem({
-					hospitalId,
-					subCategoryId,
-					serviceName: name,
-					serviceCode: code || null,
-					remark: formRemark.trim() || null,
-					statusId
-				});
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master`,
+					{
+						method: 'POST',
+						body: JSON.stringify({
+							subCategoryId,
+							serviceName: name,
+							serviceCode: code || null,
+							remark: formRemark.trim() || null,
+							statusId
+						})
+					}
+				);
 				toastService.addToast(
 					m.service_item_created_success(),
 					StatusColorEnum.SUCCESS
 				);
 			} else if (mode === 'edit' && editingId != null) {
-				await updateServiceItem({
-					id: editingId,
-					serviceName: name,
-					serviceCode: code || null,
-					remark: formRemark.trim() || null,
-					statusId
-				});
+				await fetchJson(
+					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master`,
+					{
+						method: 'PUT',
+						body: JSON.stringify({
+							id: editingId,
+							serviceName: name,
+							serviceCode: code || null,
+							remark: formRemark.trim() || null,
+							statusId
+						})
+					}
+				);
 				toastService.addToast(
 					m.service_item_updated_success(),
 					StatusColorEnum.SUCCESS
@@ -491,7 +538,7 @@
 		}
 	}
 
-	async function handleDelete(row: ServiceItemSchema) {
+	async function handleDelete(row: ServiceItemListRow) {
 		await deleteLock.run(async () => {
 			deletingId = row.id;
 			try {
@@ -504,7 +551,13 @@
 				});
 				if (!result.confirmed) return;
 				try {
-					await deleteServiceItem({ id: row.id });
+					await fetchJson(
+						`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master`,
+						{
+							method: 'DELETE',
+							body: JSON.stringify({ id: row.id })
+						}
+					);
 					toastService.addToast(
 						m.service_item_deleted_success(),
 						StatusColorEnum.SUCCESS
@@ -696,7 +749,7 @@
 					on:filtersChange={handleTableFiltersChange}
 				>
 					{#snippet rowActions(row, rowIndex)}
-						{@const serviceRow = row as ServiceItemSchema}
+						{@const serviceRow = row as ServiceItemListRow}
 						<div class="flex items-center gap-2">
 							<DaisyUiButton
 								className="d-btn-ghost d-btn-sm d-btn-accent"

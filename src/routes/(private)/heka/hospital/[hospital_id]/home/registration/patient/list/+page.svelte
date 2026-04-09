@@ -4,19 +4,14 @@
 	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
 	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import {
-		getPatientPaginated,
-		deletePatient,
-		getPatientByIdWithRelations,
-		type PatientWithRelations
-	} from '$lib/tool/remote/table/information-table/patient.http.tool.svelte';
+	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DeletePatientConfirmState } from '$lib/state/delete-patient-confirm.state.svelte';
 	import DeletePatientConfirmModal from '$lib/component/own/snippet/modal/DeletePatientConfirmModal.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -83,20 +78,32 @@
 		page.url.searchParams.get('selectFor') === 'emr'
 	);
 
+	function patientListApiBase(hospitalId: string) {
+		return `/api/heka/hospital/${encodeURIComponent(
+			hospitalId
+		)}/home/registration/patient/list`;
+	}
+
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
+		if (!hospitalId) return;
 		isLoading = true;
 		const pageSize = Number(filterPageSize) || 10;
 		try {
-			patientResult = await getPatientPaginated({
-				page: currentPage,
-				pageSize,
-				hospitalId: hospitalId ?? undefined,
-				patientCode: tableFilters.code?.trim() || undefined,
-				patientName: tableFilters.name?.trim() || undefined,
-				patientPhonePrimary:
-					tableFilters.phonePrimary?.trim() || undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			const sp = new URLSearchParams();
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			if (tableFilters.code?.trim())
+				sp.set('patientCode', tableFilters.code.trim());
+			if (tableFilters.name?.trim())
+				sp.set('patientName', tableFilters.name.trim());
+			if (tableFilters.phonePrimary?.trim())
+				sp.set('patientPhonePrimary', tableFilters.phonePrimary.trim());
+			if (opts?.bustCache) sp.set('_t', String(Date.now()));
+
+			const res = await fetch(`${patientListApiBase(hospitalId)}?${sp.toString()}`);
+			if (!res.ok)
+				throw new Error(`Failed to fetch patient list (${res.status})`);
+			patientResult = (await res.json()) as PaginatedResult<PatientWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -145,12 +152,17 @@
 	}
 
 	async function handleDelete(patientId: string) {
+		if (!hospitalId) return;
 		await deleteLock.run(async () => {
 			deletingId = patientId;
 			try {
-				const patient = await getPatientByIdWithRelations({
-					id: patientId
-				});
+				const res = await fetch(
+					`${patientListApiBase(hospitalId)}?id=${encodeURIComponent(patientId)}&_t=${Date.now()}`
+				);
+				if (!res.ok)
+					throw new Error(`Failed to load patient (${res.status})`);
+				const patient = (await res.json()) as PatientWithRelations | null;
+				if (!patient) throw new Error('Patient not found');
 				const patientEmail =
 					(patient as { user?: { email?: string } })?.user
 						?.email ?? '(no email)';
@@ -162,7 +174,13 @@
 					component: DeletePatientConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {
-					await deletePatient({ id: result.data });
+					const delRes = await fetch(patientListApiBase(hospitalId), {
+						method: 'DELETE',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ id: result.data })
+					});
+					if (!delRes.ok)
+						throw new Error(`Failed to delete patient (${delRes.status})`);
 					await fetchPatients();
 					toastService.addToast(
 						'Patient deleted.',

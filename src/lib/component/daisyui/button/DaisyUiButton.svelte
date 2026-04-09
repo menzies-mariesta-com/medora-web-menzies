@@ -10,6 +10,7 @@
 		loading = false,
 		loadingText = 'Loading…',
 		spinner = true,
+		title,
 		children
 	} = $props<{
 		className?: string;
@@ -19,6 +20,7 @@
 		loading?: boolean;
 		loadingText?: string;
 		spinner?: boolean;
+		title?: string;
 		children?: () => void;
 	}>();
 
@@ -48,6 +50,7 @@
 	onclick={onClick}
 	disabled={isDisabled}
 	aria-busy={loading}
+	title={title}
 >
 	{#if loading}
 		<span class="inline-flex items-center gap-2">

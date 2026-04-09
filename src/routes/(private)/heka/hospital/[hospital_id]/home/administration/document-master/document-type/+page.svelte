@@ -20,21 +20,23 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
-	import type { DocumentTypeSchema } from '$lib/server/db/schema-type';
-	import {
-		getDocumentTypesPaginated,
-		createDocumentType,
-		updateDocumentType,
-		deleteDocumentType
-	} from '$lib/tool/remote/table/information-table/document-type.http.tool.svelte';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
+	type DocumentTypeRow = {
+		id: number;
+		documentType: string | null;
+		statusId: number | null;
+		createdAt?: string | null;
+		updatedAt?: string | null;
+	};
+
 	let docTypeResult =
-		$state<PaginatedResult<DocumentTypeSchema> | null>(null);
+		$state<PaginatedResult<DocumentTypeRow> | null>(null);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -57,15 +59,21 @@
 			? Number(tableFilters.status)
 			: undefined;
 		try {
-			docTypeResult = await getDocumentTypesPaginated({
-				page: currentPage,
-				pageSize,
-				statusId:
-					parsedStatusId != null && Number.isFinite(parsedStatusId)
-						? parsedStatusId
-						: undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			const hospitalId = page.params.hospital_id;
+			const url = new URL(
+				`/api/heka/hospital/${hospitalId}/home/administration/document-master/document-type`,
+				window.location.origin
+			);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				url.searchParams.set('statusId', String(parsedStatusId));
+			}
+			if (opts?.bustCache) url.searchParams.set('_t', String(Date.now()));
+
+			const res = await fetch(url, { method: 'GET' });
+			if (!res.ok) throw new Error(await res.text());
+			docTypeResult = (await res.json()) as PaginatedResult<DocumentTypeRow>;
 		} finally {
 			isLoading = false;
 		}
@@ -81,7 +89,7 @@
 		nameInput = '';
 	}
 
-	function startEdit(item: DocumentTypeSchema) {
+	function startEdit(item: DocumentTypeRow) {
 		isEditing = true;
 		editingId = item.id;
 		nameInput = item.documentType ?? '';
@@ -101,19 +109,31 @@
 			return;
 		}
 		try {
+			const hospitalId = page.params.hospital_id;
+			const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/document-master/document-type`;
 			if (editingId) {
-				await updateDocumentType({
-					id: editingId,
-					documentType: nameInput.trim()
+				const res = await fetch(baseUrl, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						id: editingId,
+						documentType: nameInput.trim()
+					})
 				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'Document type updated',
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createDocumentType({
-					documentType: nameInput.trim()
+				const res = await fetch(baseUrl, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						documentType: nameInput.trim()
+					})
 				});
+				if (!res.ok) throw new Error(await res.text());
 				toastService.addToast(
 					'Document type created',
 					StatusColorEnum.SUCCESS
@@ -139,7 +159,16 @@
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (result.confirmed) {
-				await deleteDocumentType({ id });
+				const hospitalId = page.params.hospital_id;
+				const res = await fetch(
+					`/api/heka/hospital/${hospitalId}/home/administration/document-master/document-type`,
+					{
+						method: 'DELETE',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ id })
+					}
+				);
+				if (!res.ok) throw new Error(await res.text());
 				await fetchData({ bustCache: true });
 				toastService.addToast(
 					'Document type deleted',
@@ -155,17 +184,23 @@
 		}
 	}
 
-	function formatDateTime(value: string | null | undefined): string {
-		if (!value) return '—';
+	function formatDateTime(value: unknown): string {
+		if (value == null || value === '') return '—';
+		const s =
+			typeof value === 'string'
+				? value
+				: value instanceof Date
+					? value.toISOString()
+					: String(value);
 		try {
-			const d = new Date(value);
+			const d = new Date(s);
 			return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
 		} catch {
 			return '—';
 		}
 	}
 
-	const columns: MariTableColumn<DocumentTypeSchema>[] = [
+	const columns: MariTableColumn<DocumentTypeRow>[] = [
 		{
 			id: 'displayNo',
 			header: 'No',
@@ -208,14 +243,14 @@
 			header: 'Created At',
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value as any)
+			format: (value) => formatDateTime(value)
 		},
 		{
 			id: 'updatedAt',
 			header: 'Updated At',
 			widthClass: 'w-40 min-w-[10rem]',
 			filterable: false,
-			format: (value) => formatDateTime(value as any)
+			format: (value) => formatDateTime(value)
 		}
 	];
 </script>
@@ -306,7 +341,7 @@
 						}}
 					>
 						{#snippet rowActions(row, rowIndex)}
-							{@const typedRow = row as DocumentTypeSchema}
+							{@const typedRow = row as DocumentTypeRow}
 							<td class="w-24 shrink-0 text-right">
 								<div class="flex justify-end gap-1">
 									<DaisyUiTooltip

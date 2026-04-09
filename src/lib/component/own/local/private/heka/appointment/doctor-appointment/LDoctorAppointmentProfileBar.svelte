@@ -10,14 +10,14 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import {
-		type StaffWithRelations,
-		getDoctorStaffPaginated,
-		getStaffByIdWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type {
+		DoctorListStaffRow,
+		StaffWithRelations
+	} from '$lib/model/type/heka/staff.type';
 
 	let {
 		doctorList,
@@ -30,7 +30,7 @@
 		branchIdForSearch,
 		onDateChange
 	} = $props<{
-		doctorList: StaffWithRelations[];
+		doctorList: DoctorListStaffRow[];
 		selectedDoctorId?: string;
 		selectedBranchId?: string;
 		viewBy?: 'day' | 'week' | 'month';
@@ -46,25 +46,52 @@
 			page.params.hospital_id) ||
 			''
 	);
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/appointment/doctor-appointment`
+			: ''
+	);
+
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string | undefined>
+	): Promise<T> {
+		const sp = new URLSearchParams();
+		sp.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				if (v != null && v !== '') sp.set(k, v);
+			}
+		}
+		const res = await fetch(`${apiBase}?${sp.toString()}`, {
+			method: 'GET'
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	async function searchDoctors(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getDoctorStaffPaginated({
-			search: query.trim(),
-			hospitalId: hospitalId || undefined,
-			branchId: branchIdForSearch || undefined,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		return res.data.map((doctor) => ({
+		const res = await apiGet<PaginatedResult<StaffWithRelations>>(
+			'doctor.paginated',
+			{
+				search: query.trim() || undefined,
+				branchId: branchIdForSearch || undefined,
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		return (res.data ?? []).map((doctor) => ({
 			label: StringUtil.doctorOptionDisplayName(doctor),
 			value: String(doctor.id)
 		}));
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const doctor = await getStaffByIdWithRelations({ id });
+		const doctor = await apiGet<StaffWithRelations | null>('doctor.byId', {
+			id
+		});
 		if (!doctor) return '';
 		return StringUtil.doctorOptionDisplayName(doctor);
 	}

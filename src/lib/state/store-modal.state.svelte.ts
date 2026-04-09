@@ -1,9 +1,9 @@
-import type { StoreSchema } from '$lib/server/db/schema-type';
+import type { StoreListRow } from '$lib/model/type/heka/ui-rows.type';
 
 /** Set before opening Create/Edit store modal (hospital-scoped). */
 export const StoreModalState = $state<{
 	mode: 'create' | 'edit';
-	editStore: StoreSchema | null;
+	editStore: StoreListRow | null;
 	hospitalId: string;
 }>({
 	mode: 'create',

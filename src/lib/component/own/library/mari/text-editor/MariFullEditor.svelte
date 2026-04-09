@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DaisyUiTabsContent from '../../daisyui/tabs/content/DaisyUiTabsContent.svelte';
-	import DaisyUiTabs from '../../daisyui/tabs/DaisyUiTabs.svelte';
-	import DaisyUiTabsTab from '../../daisyui/tabs/tab/DaisyUiTabsTab.svelte';
+	import DaisyUiTabsContent from '$lib/component/daisyui/tabs/content/DaisyUiTabsContent.svelte';
+	import DaisyUiTabs from '$lib/component/daisyui/tabs/DaisyUiTabs.svelte';
+	import DaisyUiTabsTab from '$lib/component/daisyui/tabs/tab/DaisyUiTabsTab.svelte';
 	import MariHtmlTextEditor from './html-editor/MariHtmlEditor.svelte';
 	import MariMarkdownEditor from './markdown-editor/MariMarkdownEditor.svelte';
 	import MariRichTextEditor from './rich-editor/MariRichEditor.svelte';

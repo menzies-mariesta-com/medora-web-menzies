@@ -29,7 +29,7 @@
 	class="mb-2 flex items-center justify-between gap-4 rounded-box border-l-4 border-primary bg-base-200 p-4 shadow-sm {className}"
 >
 	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
-		<LVisitInfoDisplay {visitId} />
+		<LVisitInfoDisplay {visitId} {hospitalId} />
 	</div>
 	<div class="flex shrink-0 items-center gap-2">
 		{#if hasVisit}

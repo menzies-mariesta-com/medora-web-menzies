@@ -109,7 +109,9 @@ type NameParts = {
 	lastName?: string | null;
 };
 
-type VisitLike = {
+/** Visit (+ relations) shape for EMR document placeholders / print UI. */
+export type VisitLike = {
+	hospitalId?: string | null;
 	visitNo?: string | null;
 	createdAt?: string | null;
 	visitType?: { name?: string | null } | null;
@@ -123,6 +125,7 @@ type VisitLike = {
 	} | null;
 	patient?:
 		| (NameParts & {
+				id?: string | null;
 				code?: string | null;
 				dateOfBirth?: string | null;
 				gender?: { name?: string | null } | null;
@@ -275,7 +278,7 @@ export function buildDocumentPlaceholderContext(
 	const visitDateTime = `${visitDate} ${visitTime}`.trim();
 	const printBy = options?.printBy ?? '';
 
-	return {
+	const base = {
 		'{{patient.name}}': patientName,
 		'{{patient.code}}': patientCode,
 		'{{patient.dob}}': patientDob,

@@ -5,27 +5,11 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import { getServiceTagging } from '$lib/remote/table/information-table/service-tagging.remote';
-	import {
-		getServiceItemPaginated,
-		getServiceItem
-	} from '$lib/remote/table/information-table/service-item.remote';
-	import { getSubCategory } from '$lib/remote/table/information-table/sub-category.remote';
-	import {
-		createServiceOrder,
-		getServiceOrder
-	} from '$lib/remote/table/information-table/service-order.remote';
-	import {
-		createServiceOrderDetail,
-		updateServiceOrderDetail,
-		getServiceOrderDetailById
-	} from '$lib/remote/table/information-table/service-order-detail.remote';
-	import {
-		getDoctorStaffPaginated,
-		getStaffByIdWithRelations
-	} from '$lib/remote/table/information-table/staff.remote';
-	import type { ServiceItemSchema } from '$lib/server/db/schema-type';
-	import type { ServiceTaggingSchema } from '$lib/server/db/schema-type';
+	import type {
+		ServiceItemListRow,
+		ServiceTaggingListRow
+	} from '$lib/model/type/heka/ui-rows.type';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
@@ -45,8 +29,8 @@
 	const detailId = $derived(ObservationOrderLineDialogState.detailId);
 	const isEdit = $derived(detailId != null);
 
-	let branchTaggings = $state<ServiceTaggingSchema[]>([]);
-	let branchServices = $state<ServiceItemSchema[]>([]);
+	let branchTaggings = $state<ServiceTaggingListRow[]>([]);
+	let branchServices = $state<ServiceItemListRow[]>([]);
 	let serviceFilterSubCategoryIds = $state<{
 		radiology: Set<number>;
 		nursing: Set<number>;
@@ -70,6 +54,53 @@
 	let isSubmitting = $state(false);
 	let loadSeq = $state(0);
 
+	type ServiceOrderRow = { id: number; orderNo: string | null };
+
+	type ServiceOrderDetailRow = {
+		id: number;
+		serviceId: number | null;
+		advisingDoctorId: string | null;
+		serviceAmount: string | null;
+		serviceTaxAmount: string | null;
+		serviceUnit: number | null;
+		instruction: string | null;
+		isUrgent: boolean | null;
+	};
+
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const url = new URL(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			location.origin
+		);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: unknown) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode,
+					...(payload as Record<string, unknown>)
+				})
+			}
+		);
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
 	function todayDateString(): string {
 		const d = new Date();
 		const y = d.getFullYear();
@@ -86,16 +117,16 @@
 	}
 
 	function pickEffectiveTagging(
-		taggings: ServiceTaggingSchema[],
+		taggings: ServiceTaggingListRow[],
 		orderDate: string
-	): ServiceTaggingSchema | null {
+	): ServiceTaggingListRow | null {
 		const normalizedOrderDate =
 			toDateOnly(orderDate) ?? todayDateString();
 		const dated: Array<{
-			tagging: ServiceTaggingSchema;
+			tagging: ServiceTaggingListRow;
 			date: string;
 		}> = [];
-		const undated: ServiceTaggingSchema[] = [];
+		const undated: ServiceTaggingListRow[] = [];
 		for (const tagging of taggings) {
 			const validDate = toDateOnly(tagging.validDate);
 			if (!validDate) {
@@ -125,7 +156,7 @@
 	): Set<number> {
 		const taggingsByService = new Map<
 			number,
-			ServiceTaggingSchema[]
+			ServiceTaggingListRow[]
 		>();
 		for (const tagging of branchTaggings) {
 			if (tagging.serviceId == null) continue;
@@ -142,7 +173,7 @@
 		return effectiveIds;
 	}
 
-	function serviceMatchesFilter(service: ServiceItemSchema): boolean {
+	function serviceMatchesFilter(service: ServiceItemListRow): boolean {
 		const subCategoryId = service.subCategoryId;
 		if (subCategoryId == null) return false;
 		const ids = serviceFilterSubCategoryIds;
@@ -161,11 +192,15 @@
 		subCatPromise = (async () => {
 			const [radiologySubCategories, nursingSubCategories, labSub] =
 				await Promise.all([
-					getSubCategory({ categoryId: CategoryEnum.RADIOLOGY }),
-					getSubCategory({
-						categoryId: CategoryEnum.NURSING_PROCEDURE
+					apiGet<any[]>('subCategory.byCategory', {
+						categoryId: String(CategoryEnum.RADIOLOGY)
 					}),
-					getSubCategory({ categoryId: CategoryEnum.LABORATORY })
+					apiGet<any[]>('subCategory.byCategory', {
+						categoryId: String(CategoryEnum.NURSING_PROCEDURE)
+					}),
+					apiGet<any[]>('subCategory.byCategory', {
+						categoryId: String(CategoryEnum.LABORATORY)
+					})
 				]);
 			serviceFilterSubCategoryIds = {
 				radiology: new Set(radiologySubCategories.map((s) => s.id)),
@@ -178,10 +213,12 @@
 
 	async function loadBranchServices(hId: string, bId: string) {
 		await ensureServiceFilterSubCategoryIdsLoaded();
-		const [taggings, allServices] = await Promise.all([
-			getServiceTagging({ branchId: bId }),
-			getServiceItem({ hospitalId: hId, statusId: null })
-		]);
+		const taggings = await apiGet<ServiceTaggingListRow[]>(
+			'serviceTagging.list',
+			{
+				branchId: bId
+			}
+		);
 		branchTaggings = taggings;
 		const serviceIds = new Set(
 			taggings.map((t) => t.serviceId).filter((id) => id != null)
@@ -190,7 +227,9 @@
 			branchServices = [];
 			return;
 		}
-		branchServices = allServices.filter((s) => serviceIds.has(s.id));
+		// We intentionally avoid fetching the full service master list here.
+		// Labels are resolved lazily via `serviceItem.get` when needed.
+		branchServices = [];
 	}
 
 	function parseNumberOrNull(value: string): number | null {
@@ -218,10 +257,13 @@
 		const serviceId = parseNumberOrNull(detailServiceIdInput);
 		if (!serviceId) return;
 		try {
-			const taggings = await getServiceTagging({
-				branchId: bId,
-				serviceId
-			});
+			const taggings = await apiGet<ServiceTaggingListRow[]>(
+				'serviceTagging.list',
+				{
+					branchId: bId,
+					serviceId: String(serviceId)
+				}
+			);
 			const t = pickEffectiveTagging(taggings, orderDateInput);
 			if (!t) {
 				detailServiceAmountInput = '';
@@ -244,20 +286,24 @@
 	): Promise<{ label: string; value: string }[]> {
 		const hid = hospitalId;
 		if (!hid) return [];
-		const res = await getDoctorStaffPaginated({
-			search: query.trim(),
-			hospitalId: hid,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		return res.data.map((staff) => ({
+		const res = await apiGet<{ data: StaffWithRelations[] }>(
+			'doctor.search',
+			{
+				search: query.trim(),
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		return res.data.map((staff: StaffWithRelations) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
 			value: String(staff.id)
 		}));
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await getStaffByIdWithRelations({ id });
+		const staff = await apiGet<StaffWithRelations | null>('staff.get', {
+			id
+		});
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -272,13 +318,15 @@
 		const effectiveServiceIds = effectiveServiceIdsForOrderDate(
 			orderDateInput || todayDateString()
 		);
-		const res = await getServiceItemPaginated({
-			hospitalId: hid,
-			serviceName: query.trim(),
-			statusId: StatusEnum.ACTIVE,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
+		const res = await apiGet<{ data: ServiceItemListRow[] }>(
+			'serviceItem.list',
+			{
+				serviceName: query.trim(),
+				statusId: String(StatusEnum.ACTIVE),
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
 		return res.data
 			.filter(
 				(service) =>
@@ -301,12 +349,10 @@
 		if (cached) {
 			return StringUtil.serviceOptionDisplayName(cached);
 		}
-		const fetched = await getServiceItem({
-			id: serviceId,
-			hospitalId: hid,
-			statusId: null
-		});
-		const service = fetched[0];
+		const service = await apiGet<ServiceItemListRow | null>(
+			'serviceItem.get',
+			{ id: String(serviceId) }
+		);
 		if (!service) return '';
 		return StringUtil.serviceOptionDisplayName(service);
 	}
@@ -341,7 +387,10 @@
 		}
 		const seq = ++loadSeq;
 		(async () => {
-			const row = await getServiceOrderDetailById({ id: did });
+			const row = await apiGet<ServiceOrderDetailRow | null>(
+				'orderLine.get',
+				{ id: String(did) }
+			);
 			if (seq !== loadSeq || !row) return;
 			detailServiceIdInput = String(row.serviceId);
 			detailAdvisingDoctorIdInput = row.advisingDoctorId ?? '';
@@ -398,34 +447,38 @@
 		isSubmitting = true;
 		try {
 			if (isEdit && detailId != null) {
-				await updateServiceOrderDetail({
-					id: detailId,
-					serviceId,
-					advisingDoctorId,
-					serviceAmount,
-					serviceTaxAmount,
-					serviceUnit,
-					instruction,
-					isUrgent: detailIsUrgentInput
+				await apiPost('orderLine.updateDetail', {
+					payload: {
+						id: detailId,
+						serviceId,
+						advisingDoctorId,
+						serviceAmount,
+						serviceTaxAmount,
+						serviceUnit,
+						instruction,
+						isUrgent: detailIsUrgentInput
+					}
 				});
 			} else {
-				const existingOrders = await getServiceOrder({
-					visitId: vid
-				});
+				const existingOrders = await apiGet<ServiceOrderRow[]>(
+					'serviceOrder.list',
+					{ visitId: String(vid) }
+				);
 				let orderId: number;
 				if (existingOrders.length === 0) {
 					const dateStr = orderDateInput || todayDateString();
 					const timeStr = new Date().toTimeString().slice(0, 5);
-					const visitKey = String(vid);
-					const yearSuffix = dateStr.slice(2, 4);
-					const orderNo = `${yearSuffix}/${visitKey}/${String(1).padStart(3, '0')}`;
-					const created = await createServiceOrder({
-						branchId: bId,
-						visitId: vid,
-						orderDate: dateStr,
-						orderTime: timeStr,
-						orderNo
-					} as any);
+					const created = await apiPost<any>(
+						'orderLine.createOrder',
+						{
+							payload: {
+								branchId: bId,
+								visitId: vid,
+								orderDate: dateStr,
+								orderTime: timeStr
+							}
+						}
+					);
 					orderId = created.id;
 				} else {
 					const sorted = [...existingOrders].sort(
@@ -433,16 +486,18 @@
 					);
 					orderId = sorted[0]!.id;
 				}
-				await createServiceOrderDetail({
-					serviceOrderId: orderId,
-					serviceId,
-					advisingDoctorId,
-					serviceAmount,
-					serviceTaxAmount,
-					serviceUnit,
-					instruction,
-					isUrgent: detailIsUrgentInput
-				} as any);
+				await apiPost('orderLine.createDetail', {
+					payload: {
+						serviceOrderId: orderId,
+						serviceId,
+						advisingDoctorId,
+						serviceAmount,
+						serviceTaxAmount,
+						serviceUnit,
+						instruction,
+						isUrgent: detailIsUrgentInput
+					}
+				});
 			}
 			toastService.addToast(
 				m.observation_emr_saved(),

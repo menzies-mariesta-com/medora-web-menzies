@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import {
-		getDoctorStaffPaginated,
-		getStaffByIdWithRelations
-	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import { getBranchesByHospitalId } from '$lib/tool/remote/table/information-table/hospital-branch.http.tool.svelte';
-	import { createReferHistory } from '$lib/tool/remote/table/information-table/refer-history.http.tool.svelte';
-	import type { HospitalBranchSchema } from '$lib/server/db/schema-type';
+	import type { StaffRegHospitalBranchRow } from '$lib/model/type/heka/staff-reg-ui.type';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -21,6 +15,8 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 
 	const BRANCH_ALL = '__all__';
 
@@ -28,6 +24,11 @@
 	const visitId = $derived(VisitState.visitId);
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
+	const referDoctorApiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/cpoe/refer/doctor`
+			: ''
+	);
 
 	/** From hospital home layout (nav branch). */
 	const selectedBranchIdFromLayout = $derived(
@@ -47,7 +48,7 @@
 			: ''
 	);
 
-	let branches = $state<HospitalBranchSchema[]>([]);
+	let branches = $state<StaffRegHospitalBranchRow[]>([]);
 	/** Tracks destination branch so we clear doctor when branch changes */
 	let lastDestinationBranchId = $state('');
 	let toBranchId = $state('');
@@ -58,12 +59,20 @@
 	let isSubmitting = $state(false);
 	let branchDefaultApplied = $state(false);
 
+	async function fetchBranchesAll(hid: string) {
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) {
+			throw new Error(`Failed to load branches (${res.status})`);
+		}
+		return (await res.json()) as StaffRegHospitalBranchRow[];
+	}
+
 	lifeCycle.onMount(async () => {
 		if (hospitalId) {
-			const branchData = await getBranchesByHospitalId({
-				hospitalId
-			});
-			branches = branchData;
+			branches = await fetchBranchesAll(String(hospitalId));
 		}
 	});
 
@@ -94,14 +103,19 @@
 		query: string
 	): Promise<{ label: string; value: string }[]> {
 		if (!hospitalId || !toBranchId?.trim()) return [];
-		const res = await getDoctorStaffPaginated({
-			search: query.trim(),
-			hospitalId,
-			branchId: toBranchId.trim(),
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		return res.data.map((staff) => ({
+		const url = new URL(referDoctorApiBase, window.location.origin);
+		url.searchParams.set('mode', 'doctor.search');
+		url.searchParams.set('search', query.trim());
+		url.searchParams.set('branchId', toBranchId.trim());
+		url.searchParams.set('page', '1');
+		url.searchParams.set(
+			'pageSize',
+			String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+		);
+		const r = await fetch(url.toString(), { method: 'GET' });
+		if (!r.ok) throw new Error(`Failed to search doctors (${r.status})`);
+		const res = (await r.json()) as PaginatedResult<StaffWithRelations>;
+		return (res.data ?? []).map((staff) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
 			value: String(staff.id)
 		}));
@@ -110,7 +124,12 @@
 	async function getDestinationDoctorLabelForValue(
 		id: string
 	): Promise<string> {
-		const staff = await getStaffByIdWithRelations({ id });
+		const url = new URL(referDoctorApiBase, window.location.origin);
+		url.searchParams.set('mode', 'doctor.get');
+		url.searchParams.set('id', id);
+		const r = await fetch(url.toString(), { method: 'GET' });
+		if (!r.ok) throw new Error(`Failed to load doctor (${r.status})`);
+		const staff = (await r.json()) as StaffWithRelations | null;
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -162,15 +181,25 @@
 
 		isSubmitting = true;
 		try {
-			await createReferHistory({
-				visitId: parseInt(visitId, 10),
-				referAt: new Date().toISOString(),
-				toBranchId: toBranchId.trim(),
-				toReferDoctorId: toReferDoctorId.trim(),
-				subject: subject.trim(),
-				isUrgent: isUrgent ? YesNoEnum.YES : YesNoEnum.NO,
-				referRequestNote: referRequestNote.trim()
+			const r = await fetch(referDoctorApiBase, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'referHistory.create',
+					payload: {
+						visitId: parseInt(visitId, 10),
+						referAt: new Date().toISOString(),
+						toBranchId: toBranchId.trim(),
+						toReferDoctorId: toReferDoctorId.trim(),
+						subject: subject.trim(),
+						isUrgent: isUrgent ? YesNoEnum.YES : YesNoEnum.NO,
+						referRequestNote: referRequestNote.trim()
+					}
+				})
 			});
+			if (!r.ok) {
+				throw new Error(`Failed to create referral (${r.status})`);
+			}
 			toastService.addToast(
 				'Referral request created successfully.',
 				StatusColorEnum.SUCCESS

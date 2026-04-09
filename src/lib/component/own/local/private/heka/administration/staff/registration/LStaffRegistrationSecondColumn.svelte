@@ -5,11 +5,11 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import type {
-		BloodTypeSchema,
-		CountrySchema,
-		StaffEmploymentTypeSchema,
-		StaffTypeSchema
-	} from '$lib/server/db/schema-type';
+		PatientRegBloodTypeRow,
+		PatientRegCountryRow,
+		StaffRegStaffEmploymentTypeRow,
+		StaffRegStaffTypeRow
+	} from '$lib/model/type/heka/staff-reg-ui.type';
 
 	let {
 		countryData,
@@ -27,10 +27,10 @@
 		selectedDesignation = $bindable(),
 		selectedBloodTypeId = $bindable()
 	} = $props<{
-		countryData: CountrySchema[];
-		bloodTypeData: BloodTypeSchema[];
-		staffTypeData: StaffTypeSchema[];
-		staffEmploymentTypeData: StaffEmploymentTypeSchema[];
+		countryData: PatientRegCountryRow[];
+		bloodTypeData: PatientRegBloodTypeRow[];
+		staffTypeData: StaffRegStaffTypeRow[];
+		staffEmploymentTypeData: StaffRegStaffEmploymentTypeRow[];
 		selectedPhoneCountryId?: string;
 		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;
