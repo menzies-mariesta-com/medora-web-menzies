@@ -1,12 +1,9 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ObservationVisitTextDialogState } from '$lib/state/observation-visit-text-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		getPatientVisitById,
-		updatePatientVisit
-	} from '$lib/remote/table/information-table/patient-visit.remote';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
@@ -16,12 +13,57 @@
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
+	const hospitalId = $derived(page.params.hospital_id ?? '');
+
 	const visitId = $derived(ObservationVisitTextDialogState.visitId);
 	const field = $derived(ObservationVisitTextDialogState.field);
 
 	let text = $state('');
 	let isSubmitting = $state(false);
 	let loadSeq = $state(0);
+
+	type VisitRow = {
+		id: number;
+		chiefComplaint: string | null;
+		patientCondition: string | null;
+		diagnosisNotes: string | null;
+	};
+
+	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const url = new URL(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			location.origin
+		);
+		url.searchParams.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				url.searchParams.set(k, v);
+			}
+		}
+		const res = await fetch(url.toString());
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(mode: string, payload: unknown) {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		const res = await fetch(
+			`/api/heka/hospital/${hid}/home/observation/emr`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode,
+					...(payload as Record<string, unknown>)
+				})
+			}
+		);
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	const dialogTitle = $derived(
 		field === 'chiefComplaint'
@@ -39,7 +81,9 @@
 		if (vid == null || f == null) return;
 		const seq = ++loadSeq;
 		(async () => {
-			const v = await getPatientVisitById({ id: vid });
+			const v = await apiGet<VisitRow | null>('visit.get', {
+				visitId: String(vid)
+			});
 			if (seq !== loadSeq) return;
 			if (f === 'chiefComplaint') {
 				text = v?.chiefComplaint ?? '';
@@ -58,17 +102,17 @@
 			const trimmed = text.trim();
 			const empty = trimmed === '' ? null : trimmed;
 			if (field === 'chiefComplaint') {
-				await updatePatientVisit({
+				await apiPost('visit.updateText', {
 					id: visitId,
 					chiefComplaint: empty
 				});
 			} else if (field === 'patientCondition') {
-				await updatePatientVisit({
+				await apiPost('visit.updateText', {
 					id: visitId,
 					patientCondition: empty
 				});
 			} else {
-				await updatePatientVisit({
+				await apiPost('visit.updateText', {
 					id: visitId,
 					diagnosisNotes: empty
 				});

@@ -8,16 +8,21 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { getCategoryPaginated } from '$lib/tool/remote/table/information-table/category.http.tool.svelte';
-	import type { CategorySchema } from '$lib/server/db/schema-type';
-	import type { PaginatedResult } from '$lib/tool/remote/table/pagination-type';
+	import type { CategoryListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 
 	let { data } = $props();
 
 	/** Categories are global (master table); no hospital/branch filter. */
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: ''
+	);
 
-	let categoryResult = $state<PaginatedResult<CategorySchema> | null>(
+	let categoryResult = $state<PaginatedResult<CategoryListRow> | null>(
 		null
 	);
 	let currentPage = $state(1);
@@ -30,7 +35,22 @@
 	const categories = $derived(categoryResult?.data ?? []);
 	const total = $derived(categoryResult?.total ?? 0);
 
-	const categoryColumns: MariTableColumn<CategorySchema>[] = [
+	async function fetchJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.headers ?? {}),
+				'content-type': 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	const categoryColumns: MariTableColumn<CategoryListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -63,8 +83,10 @@
 	];
 
 	async function fetchCategories(forceRefresh = false) {
+		void forceRefresh;
 		isLoading = true;
 		try {
+			if (!hospitalId) return;
 			const pageSize = Number(pageSizeStr) || 10;
 			const parsedStatusId = tableFilters.status
 				? Number(tableFilters.status)
@@ -85,10 +107,18 @@
 						? parsedStatusId
 						: undefined
 			};
-			if (forceRefresh) {
-				await getCategoryPaginated(params).refresh();
-			}
-			categoryResult = await getCategoryPaginated(params);
+			const qs = new URLSearchParams();
+			qs.set('page', String(params.page));
+			qs.set('pageSize', String(params.pageSize));
+			if (params.id != null) qs.set('id', String(params.id));
+			if (params.categoryName)
+				qs.set('categoryName', params.categoryName);
+			if (params.statusId != null)
+				qs.set('statusId', String(params.statusId));
+
+			categoryResult = await fetchJson<PaginatedResult<CategoryListRow>>(
+				`/api/heka/hospital/${hospitalId}/home/administration/service-order/category-master?${qs.toString()}`
+			);
 		} finally {
 			isLoading = false;
 		}

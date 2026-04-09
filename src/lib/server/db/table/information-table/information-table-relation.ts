@@ -37,7 +37,10 @@ import {
 	supportTicketTable,
 	staffDetailTable,
 	subCategoryTable,
+	pharmacyGenericTable,
 	itemMasterTable,
+	itemMasterItemUnitMasterTable,
+	itemUnitMasterTable,
 	staffBranchTable,
 	staffHospitalTable,
 	staffTable,
@@ -125,7 +128,10 @@ export const hospitalTableRelations = relations(
 		serviceItems: many(serviceItemTable),
 		documentSettings: many(documentSettingTable),
 		supportTickets: many(supportTicketTable),
-		opBillings: many(opBillingTable)
+		opBillings: many(opBillingTable),
+		itemMasters: many(itemMasterTable),
+		pharmacyGenerics: many(pharmacyGenericTable),
+		itemUnitMasters: many(itemUnitMasterTable)
 	})
 );
 
@@ -959,9 +965,28 @@ export const subCategoryTableRelations = relations(
 	})
 );
 
+export const pharmacyGenericTableRelations = relations(
+	pharmacyGenericTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [pharmacyGenericTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [pharmacyGenericTable.statusId],
+			references: [statusTable.id]
+		}),
+		itemMasters: many(itemMasterTable)
+	})
+);
+
 export const itemMasterTableRelations = relations(
 	itemMasterTable,
-	({ one }) => ({
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [itemMasterTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
 		category: one(categoryTable, {
 			fields: [itemMasterTable.categoryId],
 			references: [categoryTable.id]
@@ -970,9 +995,56 @@ export const itemMasterTableRelations = relations(
 			fields: [itemMasterTable.unitId],
 			references: [unitTable.id]
 		}),
+		pharmacyGeneric: one(pharmacyGenericTable, {
+			fields: [itemMasterTable.pharmacyGenericId],
+			references: [pharmacyGenericTable.id]
+		}),
 		status: one(statusTable, {
 			fields: [itemMasterTable.statusId],
 			references: [statusTable.id]
+		}),
+		itemUnitMasterLinks: many(itemMasterItemUnitMasterTable)
+	})
+);
+
+export const itemUnitMasterTableRelations = relations(
+	itemUnitMasterTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [itemUnitMasterTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		purchaseUnit: one(unitTable, {
+			fields: [itemUnitMasterTable.purchaseUnitId],
+			references: [unitTable.id],
+			relationName: 'item_unit_master_purchase_unit'
+		}),
+		issueUnit: one(unitTable, {
+			fields: [itemUnitMasterTable.issueUnitId],
+			references: [unitTable.id],
+			relationName: 'item_unit_master_issue_unit'
+		}),
+		status: one(statusTable, {
+			fields: [itemUnitMasterTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
+
+export const itemMasterItemUnitMasterTableRelations = relations(
+	itemMasterItemUnitMasterTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [itemMasterItemUnitMasterTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		itemMaster: one(itemMasterTable, {
+			fields: [itemMasterItemUnitMasterTable.itemMasterId],
+			references: [itemMasterTable.id]
+		}),
+		itemUnitMaster: one(itemUnitMasterTable, {
+			fields: [itemMasterItemUnitMasterTable.itemUnitMasterId],
+			references: [itemUnitMasterTable.id]
 		})
 	})
 );

@@ -12,36 +12,20 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import { getPatientVisitById } from '$lib/tool/remote/table/information-table/patient-visit.http.tool.svelte';
 	import {
-		getServiceOrder,
-		createServiceOrder
-	} from '$lib/tool/remote/table/information-table/service-order.http.tool.svelte';
-	import {
-		getServiceOrderDetail,
-		createServiceOrderDetail,
-		updateServiceOrderDetail,
-		deleteServiceOrderDetail
-	} from '$lib/tool/remote/table/information-table/service-order-detail.http.tool.svelte';
-	import { getServiceTagging } from '$lib/tool/remote/table/information-table/service-tagging.http.tool.svelte';
-	import {
-		getServiceItem,
-		getServiceItemPaginated
-	} from '$lib/tool/remote/table/information-table/service-item.http.tool.svelte';
-	import { getSubCategory } from '$lib/tool/remote/table/information-table/sub-category.http.tool.svelte';
-	import {
-		getDoctorStaffPaginated,
-		getStaffByIdWithRelations,
-		getStaffByIdWithRelationsBatched
-	} from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
-	import { formatNumberDisplay } from '$lib/util/number-display.util';
+		formatNumberDisplay,
+		type NumberDisplayInput
+	} from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
-		ServiceOrderSchema,
-		ServiceOrderDetailSchema,
-		ServiceItemSchema,
-		ServiceTaggingSchema
-	} from '$lib/server/db/schema-type';
+		ServiceItemListRow,
+		ServiceOrderDetailListRow,
+		ServiceOrderListRow,
+		ServiceTaggingListRow,
+		SubCategoryListRow
+	} from '$lib/model/type/heka/ui-rows.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MariTable, {
 		type MariTableColumn
@@ -64,15 +48,52 @@
 			? page.params.hospital_id
 			: undefined
 	);
+	const cpoeOrderApiBase = $derived(
+		hospitalId ? `/api/heka/hospital/${hospitalId}/home/cpoe/order` : ''
+	);
 
-	let visit = $state<{
+	async function apiGet<T>(
+		mode: string,
+		params: Record<string, string | string[] | undefined>
+	): Promise<T> {
+		const url = new URL(cpoeOrderApiBase, window.location.origin);
+		url.searchParams.set('mode', mode);
+		for (const [k, v] of Object.entries(params)) {
+			if (v == null) continue;
+			if (Array.isArray(v)) {
+				for (const vv of v) url.searchParams.append(k, vv);
+			} else {
+				url.searchParams.set(k, v);
+			}
+		}
+		const r = await fetch(url.toString(), { method: 'GET' });
+		if (!r.ok) throw new Error(`Request failed (${r.status})`);
+		return (await r.json()) as T;
+	}
+
+	async function apiPost<T>(
+		mode: string,
+		body: Record<string, unknown>
+	): Promise<T> {
+		const r = await fetch(cpoeOrderApiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...body })
+		});
+		if (!r.ok) throw new Error(`Request failed (${r.status})`);
+		return (await r.json()) as T;
+	}
+
+	type CpoeOrderVisitPayload = {
 		patientId: string;
 		hospitalId: string;
 		branchId: string;
-		visitNo: string | null;
-	} | null>(null);
+		visitNo?: string | null;
+	};
 
-	let currentOrder = $state<ServiceOrderSchema | null>(null);
+	let visit = $state<CpoeOrderVisitPayload | null>(null);
+
+	let currentOrder = $state<ServiceOrderListRow | null>(null);
 	let orderDateInput = $state(todayDateString());
 	let orderTimeInput = $state(
 		new Date().toTimeString().slice(0, 5) // HH:MM
@@ -91,7 +112,7 @@
 		isUrgent: boolean;
 	};
 
-	type HistoryItem = ServiceOrderDetailSchema & {
+	type HistoryItem = ServiceOrderDetailListRow & {
 		orderNo: string | null;
 		advisingDoctorName: string | null;
 		serviceName: string;
@@ -99,8 +120,8 @@
 	};
 
 	let pendingItems = $state<PendingItem[]>([]);
-	let branchServices = $state<ServiceItemSchema[]>([]);
-	let branchTaggings = $state<ServiceTaggingSchema[]>([]);
+	let branchServices = $state<ServiceItemListRow[]>([]);
+	let branchTaggings = $state<ServiceTaggingListRow[]>([]);
 
 	let isLoadingVisit = $state(false);
 	let isLoadingHistory = $state(false);
@@ -161,7 +182,9 @@
 		isLoadingVisit = true;
 		try {
 			await ensureServiceFilterSubCategoryIdsLoaded();
-			const v = await getPatientVisitById({ id: visitId });
+			const v = await apiGet<CpoeOrderVisitPayload | null>('visit.get', {
+				visitId: String(visitId)
+			});
 			if (v) {
 				visit = {
 					patientId: v.patientId,
@@ -189,7 +212,7 @@
 			return;
 		}
 		serviceFilterSubCategoryPromise = (async () => {
-			const all = await getSubCategory({});
+			const all = await apiGet<SubCategoryListRow[]>('subCategory.list', {});
 			const map = new Map<number, number>();
 			for (const s of all) {
 				map.set(Number(s.id), Number(s.categoryId));
@@ -243,11 +266,18 @@
 	) {
 		try {
 			const [taggings, allServices] = await Promise.all([
-				getServiceTagging({ branchId: branchIdForVisit }),
-				getServiceItem({
-					hospitalId: hospitalIdForVisit,
-					statusId: null
-				})
+				apiGet<ServiceTaggingListRow[]>('serviceTagging.list', {
+					branchId: branchIdForVisit
+				}),
+				apiGet<PaginatedResult<ServiceItemListRow>>(
+					'serviceItem.paginated',
+					{
+						serviceName: undefined,
+						statusId: undefined,
+						page: '1',
+						pageSize: '500'
+					}
+				).then((r) => r.data ?? [])
 			]);
 			branchTaggings = taggings;
 			const serviceIds = new Set(
@@ -274,20 +304,24 @@
 	async function searchDoctors(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getDoctorStaffPaginated({
+		const res = await apiGet<PaginatedResult<StaffWithRelations>>(
+			'doctor.search',
+			{
 			search: query.trim(),
-			hospitalId,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		return res.data.map((staff) => ({
+			page: '1',
+			pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		return (res.data ?? []).map((staff) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
 			value: String(staff.id)
 		}));
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await getStaffByIdWithRelations({ id });
+		const staff = await apiGet<StaffWithRelations | null>('staff.get', {
+			id
+		});
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -299,14 +333,16 @@
 		const effectiveServiceIds = effectiveServiceIdsForOrderDate(
 			orderDateInput || todayDateString()
 		);
-		const res = await getServiceItemPaginated({
-			hospitalId,
-			serviceName: query.trim(),
-			statusId: StatusEnum.ACTIVE,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		return res.data
+		const paged = await apiGet<{ data: ServiceItemListRow[] }>(
+			'serviceItem.paginated',
+			{
+				serviceName: query.trim(),
+				statusId: String(StatusEnum.ACTIVE),
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		return (paged.data ?? [])
 			.filter(
 				(service) =>
 					effectiveServiceIds.has(service.id) &&
@@ -328,12 +364,10 @@
 		if (cachedService) {
 			return `${cachedService.serviceName ?? `Service ${cachedService.id}`}${cachedService.serviceCode ? ` - ${cachedService.serviceCode}` : ''}`;
 		}
-		const fetchedService = await getServiceItem({
-			id: serviceId,
-			hospitalId,
-			statusId: null
-		});
-		const service = fetchedService[0];
+		const service = await apiGet<ServiceItemListRow | null>(
+			'serviceItem.byId',
+			{ id: String(serviceId) }
+		);
 		if (!service) return '';
 		return `${service.serviceName ?? `Service ${service.id}`}${service.serviceCode ? ` - ${service.serviceCode}` : ''}`;
 	}
@@ -369,16 +403,16 @@
 	}
 
 	function pickEffectiveTagging(
-		taggings: ServiceTaggingSchema[],
+		taggings: ServiceTaggingListRow[],
 		orderDate: string
-	): ServiceTaggingSchema | null {
+	): ServiceTaggingListRow | null {
 		const normalizedOrderDate =
 			toDateOnly(orderDate) ?? todayDateString();
 		const dated: Array<{
-			tagging: ServiceTaggingSchema;
+			tagging: ServiceTaggingListRow;
 			date: string;
 		}> = [];
-		const undated: ServiceTaggingSchema[] = [];
+		const undated: ServiceTaggingListRow[] = [];
 
 		for (const tagging of taggings) {
 			const validDate = toDateOnly(tagging.validDate);
@@ -412,7 +446,7 @@
 	): Set<number> {
 		const taggingsByService = new Map<
 			number,
-			ServiceTaggingSchema[]
+			ServiceTaggingListRow[]
 		>();
 		for (const tagging of branchTaggings) {
 			if (tagging.serviceId == null) continue;
@@ -434,7 +468,7 @@
 	}
 
 	function serviceMatchesFilter(
-		service: ServiceItemSchema,
+		service: ServiceItemListRow,
 		filter: ServiceFilterType
 	): boolean {
 		if (filter === 'all') return true;
@@ -466,10 +500,13 @@
 		const serviceId = parseNumberOrNull(detailServiceIdInput);
 		if (!serviceId) return;
 		try {
-			const taggings = await getServiceTagging({
-				branchId: branchIdForVisit,
-				serviceId
-			});
+			const taggings = await apiGet<ServiceTaggingListRow[]>(
+				'serviceTagging.list',
+				{
+					branchId: branchIdForVisit,
+					serviceId: String(serviceId)
+				}
+			);
 			const t = pickEffectiveTagging(taggings, orderDateInput);
 			if (!t) {
 				detailServiceAmountInput = '';
@@ -649,7 +686,8 @@
 			header: 'Service Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
+			format: (value) =>
+				formatNumberDisplay(value as NumberDisplayInput)
 		},
 		{
 			id: 'serviceUnit',
@@ -663,7 +701,8 @@
 			header: 'Tax',
 			widthClass: 'w-24',
 			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
+			format: (value) =>
+				formatNumberDisplay(value as NumberDisplayInput)
 		},
 		{
 			id: 'isUrgent',
@@ -687,7 +726,8 @@
 			header: 'Amount',
 			widthClass: 'w-32',
 			filterable: false,
-			format: (value) => formatNumberDisplay(value as any)
+			format: (value) =>
+				formatNumberDisplay(value as NumberDisplayInput)
 		}
 	];
 
@@ -713,7 +753,7 @@
 			filterable: false,
 			format: (value) => (value ? String(value) : '–')
 		},
-		...(detailColumns as any[])
+		...(detailColumns as MariTableColumn<HistoryItem>[])
 	];
 
 	async function handleSaveOrder() {
@@ -745,37 +785,34 @@
 			orderTimeInput || new Date().toTimeString().slice(0, 5);
 
 		try {
-			// Generate next order number for this visit
-			const existingOrders = await getServiceOrder({ visitId });
-			const visitKey = visit.visitNo || String(visitId);
-			const yearSuffix = dateStr.slice(2, 4);
-			const seq = existingOrders.length + 1;
-			const orderNo = `${yearSuffix}/${visitKey}/${String(
-				seq
-			).padStart(3, '0')}`;
-
-			const created = await createServiceOrder({
-				branchId: visit.branchId,
-				visitId,
-				orderDate: dateStr,
-				orderTime: timeStr,
-				orderNo
-			} as any);
+			const created = await apiPost<ServiceOrderListRow>(
+				'serviceOrder.create',
+				{
+					payload: {
+						branchId: visit.branchId,
+						visitId,
+						orderDate: dateStr,
+						orderTime: timeStr
+					}
+				}
+			);
 
 			currentOrder = created;
 
 			await Promise.all(
 				pendingItems.map((item) =>
-					createServiceOrderDetail({
-						serviceOrderId: created.id,
-						serviceId: item.serviceId,
-						advisingDoctorId: item.advisingDoctorId,
-						serviceAmount: item.serviceAmount,
-						serviceTaxAmount: item.serviceTaxAmount,
-						serviceUnit: item.serviceUnit,
-						instruction: item.instruction,
-						isUrgent: item.isUrgent
-					} as any)
+					apiPost<ServiceOrderDetailListRow>('orderLine.create', {
+						payload: {
+							serviceOrderId: created.id,
+							serviceId: item.serviceId,
+							advisingDoctorId: item.advisingDoctorId,
+							serviceAmount: item.serviceAmount,
+							serviceTaxAmount: item.serviceTaxAmount,
+							serviceUnit: item.serviceUnit,
+							instruction: item.instruction,
+							isUrgent: item.isUrgent
+						}
+					})
 				)
 			);
 
@@ -798,7 +835,10 @@
 		isLoadingHistory = true;
 		showHistory = true;
 		try {
-			const orders = await getServiceOrder({ visitId });
+			const orders = await apiGet<ServiceOrderListRow[]>(
+				'serviceOrder.list',
+				{ visitId: String(visitId) }
+			);
 			if (orders.length === 0) {
 				historyItems = [];
 				return;
@@ -812,9 +852,10 @@
 				])
 			);
 
-			const details = await getServiceOrderDetail({
-				serviceOrderIds: orderIds
-			});
+			const details = await apiGet<ServiceOrderDetailListRow[]>(
+				'orderLine.list',
+				{ serviceOrderIds: orderIds.map(String) }
+			);
 
 			const doctorIdSet = new Set<string>();
 			for (const d of details) {
@@ -825,7 +866,7 @@
 
 			const doctorIdList = Array.from(doctorIdSet);
 			const resolvedStaff = await Promise.all(
-				doctorIdList.map((id) => getStaffByIdWithRelationsBatched(id))
+				doctorIdList.map((id) => apiGet<any | null>('staff.get', { id }))
 			);
 			const doctorNameMap = new Map<string, string>();
 			doctorIdList.forEach((id, i) => {
@@ -850,7 +891,7 @@
 				serviceNameMap.set(id, resolvedServices[i]);
 			});
 
-			const allSubCats = await getSubCategory({});
+			const allSubCats = await apiGet<any[]>('subCategory.list', {});
 			const subCatNameById = new Map(
 				allSubCats.map((s) => [
 					Number(s.id),
@@ -860,13 +901,14 @@
 
 			const resolvedServiceRows = await Promise.all(
 				serviceIdList.map((id) =>
-					getServiceItem({ id, hospitalId, statusId: null })
+					apiGet<ServiceItemListRow | null>('serviceItem.byId', {
+						id: String(id)
+					})
 				)
 			);
 			const serviceSubCategoryNameMap = new Map<number, string>();
 			serviceIdList.forEach((id, i) => {
-				const rows = resolvedServiceRows[i];
-				const svc = rows?.[0];
+				const svc = resolvedServiceRows[i];
 				if (!svc) {
 					serviceSubCategoryNameMap.set(id, '–');
 					return;
@@ -914,7 +956,7 @@
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteServiceOrderDetail({ id: row.id });
+			await apiPost<{ ok: true }>('orderLine.delete', { id: row.id });
 			// Refresh history list
 			await handleShowHistory();
 			toastService.addToast(

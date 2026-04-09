@@ -1,11 +1,11 @@
-import type { RequestHandler } from './$types';
-import { error, json } from '@sveltejs/kit';
-import { getServiceOrderDetailRowsForVisit } from '$lib/remote/table/information-table/service-order-detail.remote';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { getServiceOrderDetailRowsForVisit } from '$lib/server/heka/observation/observation-emr.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
+import { getNursingIncompleteLineCountForVisit } from '$lib/server/heka/emr/nursing-complete.server';
 
 type DiscountActionBody = {
 	action?: 'discount';
@@ -163,7 +163,8 @@ async function upsertOpBillingSnapshot(opts: {
 	};
 }
 
-export const GET: RequestHandler = async ({ url, params, locals }) => {
+export const GET: RequestHandler = async (event) => {
+	const { url, params, locals } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const hospitalId = params.hospital_id ?? '';
 	const visitIdParam = url.searchParams.get('visitId');
@@ -209,6 +210,11 @@ export const GET: RequestHandler = async ({ url, params, locals }) => {
 		nowIso
 	});
 
+	const nursingIncompleteCount = await getNursingIncompleteLineCountForVisit(event, {
+		hospitalId,
+		visitId
+	}).catch(() => 0);
+
 	const visit = visitRow
 		? {
 				id: visitRow.id,
@@ -230,13 +236,15 @@ export const GET: RequestHandler = async ({ url, params, locals }) => {
 		{
 			items: rows,
 			visit,
-			billing: snapshot.billingRow
+			billing: snapshot.billingRow,
+			nursingIncompleteCount
 		},
 		{ status: 200 }
 	);
 };
 
-export const POST: RequestHandler = async ({ request, locals, params }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request, locals, params, url } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const staffId = locals.staff?.id ?? null;
 	if (!staffId) throw error(403, 'Staff account required');
@@ -286,6 +294,17 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
 	});
 
 	if ((body as any)?.action === 'printed') {
+		const nursingIncompleteCount = await getNursingIncompleteLineCountForVisit(
+			event,
+			{ hospitalId, visitId }
+		);
+		if (Number(nursingIncompleteCount ?? 0) > 0) {
+			throw error(
+				403,
+				'Nursing complete is not finished; bill cannot be closed.'
+			);
+		}
+
 		await ensureDb()
 			.update(table.opBillingTable)
 			.set({
@@ -300,6 +319,17 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
 
 	if ((body as any)?.action !== 'discount') {
 		throw error(400, 'Unknown action');
+	}
+
+	const printedAtExisting = snapshot.billingRow?.printedAt;
+	if (
+		printedAtExisting != null &&
+		String(printedAtExisting).trim() !== ''
+	) {
+		throw error(
+			403,
+			'This bill was printed (closed); visit-level discount cannot be changed.'
+		);
 	}
 
 	const rawTypeId = Number((body as any)?.discountTypeId ?? BillingDiscountTypeEnum.NONE);

@@ -4,16 +4,12 @@
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import {
-		getPatientVisitPaginatedForEmr,
-		markPatientVisitSeenOnDoctorSelect,
-		type PatientVisitWithRelationsForEmr,
-		type VisitStatusCode
-	} from '$lib/remote/table/information-table/patient-visit.remote';
-	import { getVisitType } from '$lib/remote/table/information-table/visit-type.remote';
-	import { getActivePatientAllergiesPatientIdsByPatientIds } from '$lib/remote/table/information-table/patient-allergies.remote';
-	import { getAbnormalVitalVisitIdsByVisitIds } from '$lib/remote/table/information-table/patient-vital.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type {
+		PatientVisitForEmrList,
+		VisitStatusCode,
+		VisitTypeOption
+	} from '$lib/model/type/heka/emr/visit-list.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -36,14 +32,10 @@
 	);
 
 	let result =
-		$state<PaginatedResult<PatientVisitWithRelationsForEmr> | null>(
-			null
-		);
+		$state<PaginatedResult<PatientVisitForEmrList> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let visitTypeOptions = $state<
-		{ id: number; name: string | null }[]
-	>([]);
+	let visitTypeOptions = $state<VisitTypeOption[]>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
 	let isConfirming = $state(false);
@@ -53,6 +45,12 @@
 	const visits = $derived(result?.data ?? []);
 	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
+
+	const endpointBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/emr/visit-list`
+			: ''
+	);
 
 	const visitStatusOptions: {
 		value: VisitStatusCode;
@@ -99,8 +97,7 @@
 		return `${years}y`;
 	}
 
-	const visitColumns: MariTableColumn<PatientVisitWithRelationsForEmr>[] =
-		[
+	const visitColumns: MariTableColumn<PatientVisitForEmrList>[] = [
 			{
 				id: 'visitNo',
 				header: 'Visit No',
@@ -253,47 +250,46 @@
 		];
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
+		if (!endpointBase) return;
 		isLoading = true;
 		const pageSize = Number(pageSizeStr) || 10;
 		try {
-			result = await getPatientVisitPaginatedForEmr({
-				page: currentPage,
-				pageSize,
-				hospitalId: hospitalId ?? undefined,
-				visitNo: tableFilters.visitNo?.trim() || undefined,
-				patientName: tableFilters.patientName?.trim() || undefined,
-				patientCode: tableFilters.patientCode?.trim() || undefined,
-				hospitalName: tableFilters.hospitalName?.trim() || undefined,
-				branchName: tableFilters.branchName?.trim() || undefined,
-				doctorName: tableFilters.doctorName?.trim() || undefined,
-				visitTypeId: tableFilters.visitType
-					? Number(tableFilters.visitType)
-					: undefined,
-				visitStatus: (tableFilters.visitStatus?.trim() ||
-					undefined) as VisitStatusCode | undefined,
-				...(opts?.bustCache && { _t: Date.now() })
-			});
+			const params = new URLSearchParams();
+			params.set('mode', 'visit.list');
+			params.set('page', String(currentPage));
+			params.set('pageSize', String(pageSize));
 
-			const patientIds = result.data
-				.map((row) => row.patient?.id)
-				.map((id) => (id != null ? String(id) : ''))
-				.filter((id) => id.trim() !== '');
-			const visitIds = result.data.map((row) => row.id);
+			const visitNo = tableFilters.visitNo?.trim();
+			if (visitNo) params.set('visitNo', visitNo);
+			const patientName = tableFilters.patientName?.trim();
+			if (patientName) params.set('patientName', patientName);
+			const patientCode = tableFilters.patientCode?.trim();
+			if (patientCode) params.set('patientCode', patientCode);
+			const hospitalName = tableFilters.hospitalName?.trim();
+			if (hospitalName) params.set('hospitalName', hospitalName);
+			const branchName = tableFilters.branchName?.trim();
+			if (branchName) params.set('branchName', branchName);
+			const doctorName = tableFilters.doctorName?.trim();
+			if (doctorName) params.set('doctorName', doctorName);
+			const visitType = tableFilters.visitType?.trim();
+			if (visitType) params.set('visitType', visitType);
+			const visitStatus = tableFilters.visitStatus?.trim();
+			if (visitStatus) params.set('visitStatus', visitStatus);
+			if (opts?.bustCache) params.set('_t', String(Date.now()));
 
-			const [
-				activeAllergyPatientIdsFromApi,
-				abnormalVitalVisitIdsFromApi
-			] = await Promise.all([
-				getActivePatientAllergiesPatientIdsByPatientIds({
-					patientIds
-				}),
-				getAbnormalVitalVisitIdsByVisitIds({ visitIds })
-			]);
+			const res = await fetch(`${endpointBase}?${params.toString()}`);
+			if (!res.ok) throw new Error(`Failed to load visits (${res.status})`);
+			const data = (await res.json()) as {
+				result: PaginatedResult<PatientVisitForEmrList>;
+				activeAllergyPatientIds: string[];
+				abnormalVitalVisitIds: number[];
+			};
+			result = data.result;
 			activeAllergyPatientIds = new Set(
-				activeAllergyPatientIdsFromApi.map(String)
+				(data.activeAllergyPatientIds ?? []).map(String)
 			);
 			abnormalVitalVisitIds = new Set(
-				abnormalVitalVisitIdsFromApi.map(Number)
+				(data.abnormalVitalVisitIds ?? []).map(Number)
 			);
 		} finally {
 			isLoading = false;
@@ -301,7 +297,15 @@
 	}
 
 	async function loadVisitTypes() {
-		const all = await getVisitType();
+		if (!endpointBase) return;
+		const res = await fetch(
+			`${endpointBase}?${new URLSearchParams({
+				mode: 'visitType.list'
+			}).toString()}`
+		);
+		if (!res.ok)
+			throw new Error(`Failed to load visit types (${res.status})`);
+		const all = (await res.json()) as VisitTypeOption[];
 		visitTypeOptions = all
 			.map((v) => ({ id: v.id, name: v.name ?? null }))
 			.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
@@ -324,7 +328,7 @@
 		fetchPatients({ bustCache: true });
 	}
 
-	async function selectPatient(v: PatientVisitWithRelationsForEmr) {
+	async function selectPatient(v: PatientVisitForEmrList) {
 		if (isConfirming) return;
 		isConfirming = true;
 		const patient = v.patient;
@@ -333,9 +337,20 @@
 			: '';
 		try {
 			// Doctor explicitly selecting a visit should mark it as "Seen".
-			await markPatientVisitSeenOnDoctorSelect({
-				visitId: v.id
-			});
+			if (endpointBase) {
+				const res = await fetch(endpointBase, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						mode: 'visit.markSeen',
+						visitId: v.id
+					})
+				});
+				if (!res.ok)
+					throw new Error(
+						`Failed to mark visit as seen (${res.status})`
+					);
+			}
 			await confirm({
 				visitId: v.id,
 				patientName
@@ -396,7 +411,7 @@
 			}}
 			on:select={(event) =>
 				void selectPatient(
-					event.detail as PatientVisitWithRelationsForEmr
+					event.detail as PatientVisitForEmrList
 				)}
 		/>
 	</div>

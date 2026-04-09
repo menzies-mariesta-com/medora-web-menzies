@@ -4,19 +4,13 @@
 	import LDoctorAppointmentStatistics from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LDoctorAppointmentStatistics.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import LCancelAppointmentHistoryDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LCancelAppointmentHistoryDialogContent.svelte';
-	import type { AppointmentWithRelations } from '$lib/remote/table/information-table/appointment.remote';
-	import { refetchAppointmentWithRelations } from '$lib/tool/remote/table/information-table/appointment.http.tool.svelte';
-	import { getDoctorSchedule } from '$lib/tool/remote/table/information-table/doctor-schedule.http.tool.svelte';
-	import {
-		createAppointmentBlock,
-		deleteAppointmentBlock,
-		getAppointmentBlock,
-		updateAppointmentBlock
-	} from '$lib/tool/remote/table/information-table/appointment-block.http.tool.svelte';
-	import { getDoctorStaffList } from '$lib/tool/remote/table/information-table/staff.http.tool.svelte';
+	import type { AppointmentWithRelations } from '$lib/model/type/heka/appointment.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import type { AppointmentBlockSchema } from '$lib/server/db/schema-type';
-	import type { DoctorScheduleSchema } from '$lib/server/db/schema-type';
+	import type {
+		AppointmentBlockListRow,
+		DoctorScheduleListRow
+	} from '$lib/model/type/heka/ui-rows.type';
+	import type { DoctorListStaffRow } from '$lib/model/type/heka/staff.type';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -37,8 +31,8 @@
 		navbarSelectedBranchId === '__all__'
 	);
 
-	let doctorList = $state<any[]>([]);
-	let doctorSchedules = $state<DoctorScheduleSchema[]>([]);
+	let doctorList = $state<DoctorListStaffRow[]>([]);
+	let doctorSchedules = $state<DoctorScheduleListRow[]>([]);
 	let appointments = $state<AppointmentWithRelations[]>([]);
 	/** Invalidates stale list fetches so a slow $effect response cannot overwrite after create/edit refresh. */
 	let appointmentsFetchGen = 0;
@@ -51,9 +45,45 @@
 	let selectedDoctorId = $state('');
 	let selectedAppointmentBranchId = $state('');
 	/** Appointment blocks from DB for the selected doctor (and hospital). */
-	let appointmentBlocks = $state<AppointmentBlockSchema[]>([]);
+	let appointmentBlocks = $state<AppointmentBlockListRow[]>([]);
 
 	const dateTimeUtil = new DateTimeUtil();
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/appointment/doctor-appointment`
+			: ''
+	);
+
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string | undefined>
+	): Promise<T> {
+		const sp = new URLSearchParams();
+		sp.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				if (v != null && v !== '') sp.set(k, v);
+			}
+		}
+		const res = await fetch(`${apiBase}?${sp.toString()}`, {
+			method: 'GET'
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function apiPost<T>(
+		mode: string,
+		body?: Record<string, unknown>
+	): Promise<T> {
+		const res = await fetch(apiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...(body ?? {}) })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	/** Local YYYY-MM-DD so visible dates match calendar column dates. */
 	function toLocalDateString(d: Date): string {
@@ -80,9 +110,11 @@
 		);
 		if (!doctor) return [];
 		return (doctor.staffBranches ?? [])
-			.map((sb: any) => sb.branch)
-			.filter((b: any): b is NonNullable<typeof b> => b != null)
-			.map((b: any) => ({ id: b.id, name: b.name ?? null }));
+			.map((sb) => sb.branch)
+			.filter(
+				(b): b is { id: string; name: string | null } => b != null
+			)
+			.map((b) => ({ id: b.id, name: b.name ?? null }));
 	});
 	const effectiveBranchId = $derived.by(() => {
 		if (!isAllBranchMode) {
@@ -143,7 +175,7 @@
 				s.statusId !== StatusEnum.DELETED
 		);
 		const first = schedules[0] as
-			| (DoctorScheduleSchema & {
+			| (DoctorScheduleListRow & {
 					slotDurationMinutes?: number | null;
 			  })
 			| undefined;
@@ -217,8 +249,11 @@
 		}
 		const myGen = ++appointmentsFetchGen;
 		const listParams = listParamsForAppointments();
-		const all = (await refetchAppointmentWithRelations(
-			listParams
+		const all = (await apiGet<AppointmentWithRelations[]>(
+			'appointment.withRelations',
+			{
+				branchId: effectiveBranchId ?? undefined
+			}
 		)) as AppointmentWithRelations[];
 		if (myGen !== appointmentsFetchGen) return;
 		appointments = all as AppointmentWithRelations[];
@@ -231,11 +266,11 @@
 		isAppointmentToolbarRefreshing = true;
 		try {
 			await loadAppointmentsForCalendar();
-			const blocks = await getAppointmentBlock({
-				staffId: id,
-				hospitalId: hid ?? undefined
-			});
-			appointmentBlocks = blocks as AppointmentBlockSchema[];
+			const blocks = await apiGet<AppointmentBlockListRow[]>(
+				'appointmentBlock.list',
+				{ staffId: id }
+			);
+			appointmentBlocks = blocks as AppointmentBlockListRow[];
 		} finally {
 			isAppointmentToolbarRefreshing = false;
 		}
@@ -347,22 +382,16 @@
 
 	const lifeCycleutil = new LifeCycleUtil();
 	lifeCycleutil.onMount(async () => {
-		const hid = hospitalId ?? undefined;
-		doctorList = await getDoctorStaffList(
-			hid
-				? {
-						hospitalId: hid,
-						branchId: effectiveBranchId ?? undefined
-					}
-				: undefined
-		);
+		if (!hospitalId) return;
+		doctorList = await apiGet<DoctorListStaffRow[]>('doctor.list', {
+			branchId: effectiveBranchId ?? undefined
+		});
 	});
 
 	lifeCycleutil.onDestroy(() => {});
 
 	$effect(() => {
 		const id = selectedDoctorId.trim();
-		const hid = hospitalId ?? undefined;
 		const bid = effectiveBranchId ?? undefined;
 		if (!id) {
 			appointmentsFetchGen++;
@@ -371,22 +400,21 @@
 			appointmentBlocks = [];
 			return;
 		}
-		getDoctorSchedule(
-			hid ? { hospitalId: hid, branchId: bid } : undefined
-		).then((all: any[]) => {
+		apiGet<DoctorScheduleListRow[]>('doctorSchedule.list', {
+			branchId: bid ?? undefined
+		}).then((all) => {
 			doctorSchedules = all.filter(
-				(s: any) =>
+				(s) =>
 					String(s.staffId) === String(id) &&
 					s.statusId !== StatusEnum.INACTIVE &&
 					s.statusId !== StatusEnum.DELETED
 			);
 		});
 		void loadAppointmentsForCalendar();
-		getAppointmentBlock({
-			staffId: id,
-			hospitalId: hid ?? undefined
-		}).then((all: any[]) => {
-			appointmentBlocks = all as any;
+		apiGet<AppointmentBlockListRow[]>('appointmentBlock.list', {
+			staffId: id
+		}).then((all) => {
+			appointmentBlocks = all;
 		});
 	});
 </script>
@@ -418,6 +446,7 @@
 			</DaisyUiButton>
 		</div>
 		<LDoctorAppointmentCalendar
+			hospitalId={hospitalId ?? ''}
 			{selectDate}
 			{viewBy}
 			{timeFormat}
@@ -433,14 +462,18 @@
 			isRefreshAppointmentsLoading={isAppointmentToolbarRefreshing}
 			onBlockCreated={async (block) => {
 				try {
-					const created = await createAppointmentBlock({
-						staffId: selectedDoctorId,
-						hospitalId: hospitalId ?? undefined,
-						blockDate: block.date,
-						fromTime: block.startTime,
-						toTime: block.endTime,
-						remark: (block as any).remark ?? ''
-					});
+					const created = await apiPost<AppointmentBlockListRow>(
+						'appointmentBlock.create',
+						{
+							payload: {
+								staffId: selectedDoctorId,
+								blockDate: block.date,
+								fromTime: block.startTime,
+								toTime: block.endTime,
+								remark: (block as any).remark ?? ''
+							}
+						}
+					);
 					appointmentBlocks = [...appointmentBlocks, created];
 				} catch {
 					// Error already surfaced by calendar toast or could add toast here
@@ -448,13 +481,18 @@
 			}}
 			onBlockUpdated={async (payload) => {
 				try {
-					const updated = await updateAppointmentBlock({
-						id: payload.id,
-						blockDate: payload.date,
-						fromTime: payload.startTime,
-						toTime: payload.endTime,
-						remark: (payload as any).remark ?? ''
-					});
+					const updated = await apiPost<AppointmentBlockListRow>(
+						'appointmentBlock.update',
+						{
+							payload: {
+								id: payload.id,
+								blockDate: payload.date,
+								fromTime: payload.startTime,
+								toTime: payload.endTime,
+								remark: (payload as any).remark ?? ''
+							}
+						}
+					);
 					appointmentBlocks = appointmentBlocks.map((b) =>
 						b.id === payload.id ? updated : b
 					);
@@ -464,7 +502,7 @@
 			}}
 			onBlockDeleted={async (blockId) => {
 				try {
-					await deleteAppointmentBlock({ id: blockId });
+					await apiPost('appointmentBlock.delete', { id: blockId });
 					appointmentBlocks = appointmentBlocks.filter(
 						(b) => b.id !== blockId
 					);

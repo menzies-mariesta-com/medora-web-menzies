@@ -5,11 +5,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { UnitEnum } from '$lib/model/enum/db-link';
 	import { VitalEnum } from '$lib/model/enum/vital.enum';
-	import {
-		createPatientVital,
-		getPatientVitalById,
-		updatePatientVital
-	} from '$lib/remote/table/information-table/patient-vital.remote';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
@@ -93,10 +88,28 @@
 		}
 	}
 
+	function apiBase(): string {
+		return hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/vital`
+			: '';
+	}
+
+	async function apiGet<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
+
 	$effect(() => {
 		const vid = vitalId;
 		if (vid) {
-			getPatientVitalById({ id: vid }).then((v) => {
+			const base = apiBase();
+			if (!base) return;
+			apiGet<{ data: any | null }>(`${base}?action=byId&id=${vid}`).then((res) => {
+				const v = res.data;
 				if (v) {
 					height = asStr(v.height);
 					weight = asStr(v.weight);
@@ -227,19 +240,30 @@
 			vitalDateTime: parseVitalDateTime(vitalDateTime)
 		};
 		try {
+			const base = apiBase();
+			if (!base) throw new Error('Missing hospital context');
 			if (isEditMode && vitalId) {
-				await updatePatientVital({ id: vitalId, ...vitalPayload });
+				const res = await fetch(base, {
+					method: 'PATCH',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ id: vitalId, ...vitalPayload })
+				});
+				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
 				toastService.addToast(
 					'Vitals updated.',
 					StatusColorEnum.SUCCESS
 				);
 			} else {
-				await createPatientVital({
-					patientId: patientId!,
-					hospitalId: hospitalId!,
-					visitId: visitId!,
-					...vitalPayload
+				const res = await fetch(base, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						patientId: patientId!,
+						visitId: visitId!,
+						...vitalPayload
+					})
 				});
+				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
 				toastService.addToast(
 					'Vitals saved.',
 					StatusColorEnum.SUCCESS

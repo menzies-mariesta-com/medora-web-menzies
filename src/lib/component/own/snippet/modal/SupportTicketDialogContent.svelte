@@ -16,22 +16,17 @@
 	import { SupportTicketStatusEnum } from '$lib/model/enum/support-ticket-status.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import type { SupportTicketSchema } from '$lib/server/db/schema-type';
-	import {
-		createSupportTicket,
-		getAllSupportTicketsPaginated,
-		getMySupportTicketsPaginated,
-		getSupportTicketById,
-		getSupportTicketSession,
-		updateSupportTicket,
-		type SupportTicketSessionResult
-	} from '$lib/remote/table/information-table/support-ticket.remote';
-	import type { PaginatedResult } from '$lib/remote/table/pagination-type';
+	import type { SupportTicketListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	type SupportTicketDetail = SupportTicketSchema & {
+	type SupportTicketSessionResult =
+		| { authenticated: true; userId: string; userRoleId: number | null }
+		| { authenticated: false; userId: null; userRoleId: null };
+
+	type SupportTicketDetail = SupportTicketListRow & {
 		requester?: { id: string; name: string; email: string } | null;
 		hospital?: { id: string; name: string | null } | null;
 		assignedTo?: { id: string; name: string; email: string } | null;
@@ -52,7 +47,7 @@
 	let session = $state<SupportTicketSessionResult | null>(null);
 	let activeTab = $state<'new' | 'my' | 'all'>('new');
 	let listResult =
-		$state<PaginatedResult<SupportTicketSchema> | null>(null);
+		$state<PaginatedResult<SupportTicketListRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoadingList = $state(false);
@@ -78,6 +73,34 @@
 
 	const rows = $derived(listResult?.data ?? []);
 	const totalRows = $derived(listResult?.total ?? 0);
+
+	async function apiJson<T>(
+		input: string,
+		init?: RequestInit
+	): Promise<T> {
+		const res = await fetch(input, {
+			...init,
+			headers: {
+				...(init?.body ? { 'content-type': 'application/json' } : {}),
+				...(init?.headers ?? {})
+			}
+		});
+
+		if (!res.ok) {
+			let message = res.statusText || 'Request failed';
+			try {
+				const body = (await res.json()) as
+					| { message?: string; error?: string }
+					| undefined;
+				message = body?.message || body?.error || message;
+			} catch {
+				// ignore non-json
+			}
+			throw new Error(message);
+		}
+
+		return (await res.json()) as T;
+	}
 
 	function formatDt(value: string | null | undefined): string {
 		if (!value) return '—';
@@ -121,7 +144,7 @@
 		}
 	}
 
-	const ticketColumns: MariTableColumn<SupportTicketSchema>[] = [
+	const ticketColumns: MariTableColumn<SupportTicketListRow>[] = [
 		{
 			id: 'id',
 			header: 'ID',
@@ -161,7 +184,9 @@
 
 	async function loadSession() {
 		try {
-			session = await getSupportTicketSession();
+			session = await apiJson<SupportTicketSessionResult>(
+				'/api/support-ticket?op=session'
+			);
 			if (!session?.authenticated) {
 				toastService.addToast(
 					m.support_unauthorized(),
@@ -194,21 +219,17 @@
 				? statusFilter.trim()
 				: undefined;
 		try {
-			if (activeTab === 'my') {
-				listResult = await getMySupportTicketsPaginated({
-					page: currentPage,
-					pageSize,
-					status,
-					...(opts?.bustCache && { _t: Date.now() })
-				});
-			} else {
-				listResult = await getAllSupportTicketsPaginated({
-					page: currentPage,
-					pageSize,
-					status,
-					...(opts?.bustCache && { _t: Date.now() })
-				});
-			}
+			const sp = new URLSearchParams();
+			sp.set('op', 'list');
+			sp.set('scope', activeTab);
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			if (status) sp.set('status', status);
+			if (opts?.bustCache) sp.set('_t', String(Date.now()));
+
+			listResult = await apiJson<PaginatedResult<SupportTicketListRow>>(
+				`/api/support-ticket?${sp.toString()}`
+			);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			toastService.addToast(msg, StatusColorEnum.ERROR);
@@ -222,7 +243,13 @@
 		isLoadingDetail = true;
 		selectedId = id;
 		try {
-			const row = await getSupportTicketById({ id });
+			const sp = new URLSearchParams();
+			sp.set('op', 'byId');
+			sp.set('id', String(id));
+
+			const row = await apiJson<SupportTicketDetail | null>(
+				`/api/support-ticket?${sp.toString()}`
+			);
 			detail = row as SupportTicketDetail | null;
 			if (detail && isAdmin) {
 				adminStatus = detail.status;
@@ -278,12 +305,15 @@
 					? page.url.pathname
 					: '') +
 				(typeof page.url?.search === 'string' ? page.url.search : '');
-			await createSupportTicket({
-				subject,
-				description,
-				priority,
-				hospitalId: hospitalId ?? null,
-				contextUrl: ctx || null
+			await apiJson('/api/support-ticket', {
+				method: 'POST',
+				body: JSON.stringify({
+					subject,
+					description,
+					priority,
+					hospitalId: hospitalId ?? null,
+					contextUrl: ctx || null
+				})
 			});
 			toastService.addToast(
 				m.support_ticket_created(),
@@ -308,11 +338,14 @@
 		if (!detail) return;
 		isSavingAdmin = true;
 		try {
-			await updateSupportTicket({
-				id: detail.id,
-				status: adminStatus as SupportTicketStatusEnum,
-				assignedToUserId: adminAssigneeId.trim() || null,
-				resolution: adminResolution.trim() || null
+			await apiJson('/api/support-ticket', {
+				method: 'PUT',
+				body: JSON.stringify({
+					id: detail.id,
+					status: adminStatus as SupportTicketStatusEnum,
+					assignedToUserId: adminAssigneeId.trim() || null,
+					resolution: adminResolution.trim() || null
+				})
 			});
 			toastService.addToast(
 				m.support_ticket_updated(),
@@ -331,7 +364,7 @@
 		}
 	}
 
-	function onRowClick(e: CustomEvent<SupportTicketSchema>) {
+	function onRowClick(e: CustomEvent<SupportTicketListRow>) {
 		const row = e.detail;
 		if (row?.id != null) void loadDetail(row.id);
 	}

@@ -230,6 +230,10 @@ export const prefixFormatTable = pgTable(
 		counterIncludeVisitType: integer('counter_include_visit_type')
 			.notNull()
 			.default(YesNoEnum.NO),
+		/** When YES, append context visit id to {@link prefixCounterTable.scopeKey} when provided (e.g. ORDER_NO). */
+		counterIncludeVisit: integer('counter_include_visit')
+			.notNull()
+			.default(YesNoEnum.NO),
 		...timestamps
 	},
 	(table) => [
@@ -238,7 +242,7 @@ export const prefixFormatTable = pgTable(
 );
 
 /**
- * Running number per scope (hospital / branch / financial year / visit type × purpose).
+ * Running number per scope (hospital / branch / financial year / visit type / visit × purpose).
  * `scopeKey` is unique; use {@link buildPrefixCounterScopeKey} from `$lib/tool/prefix/prefix-counter-scope.util`.
  */
 export const prefixCounterTable = pgTable('prefix_counter', {
@@ -1072,24 +1076,54 @@ export const subCategoryTable = pgTable('sub_category', {
 	...timestamps
 });
 
+/** Per-hospital pharmacy generic names (for Item Master Pharmacy Supply). */
+export const pharmacyGenericTable = pgTable(
+	'pharmacy_generic',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 128 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('pharmacy_generic_hospital_id_idx').on(t.hospitalId),
+		index('pharmacy_generic_name_idx').on(t.name),
+		index('pharmacy_generic_status_id_idx').on(t.statusId)
+	]
+);
+
 /**
- * Inventory / supply item catalog. Category must be one of the Item Master rows in
+ * Inventory / supply item catalog per hospital. Category must be one of the Item Master rows in
  * `category` (ids 11–13: General, Pharmacy, Medical Supply — see seed / migration).
  */
 export const itemMasterTable = pgTable(
 	'item_master',
 	{
 		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		itemName: varchar('item_name', { length: 512 }).notNull(),
 		categoryId: integer('category_id')
 			.notNull()
 			.references(() => categoryTable.id, { onDelete: 'restrict' }),
 		itemCode: varchar('item_code', { length: 128 }),
-		/** EAN/UPC/Code128 or internal barcode; unique when not null. */
+		/** EAN/UPC/Code128 or internal barcode; unique per hospital when not null. */
 		barcode: varchar('barcode', { length: 128 }),
 		unitId: integer('unit_id').references(() => unitTable.id, {
 			onDelete: 'set null'
 		}),
+		pharmacyGenericId: integer('pharmacy_generic_id').references(
+			() => pharmacyGenericTable.id,
+			{ onDelete: 'restrict' }
+		),
 		description: text('description'),
 		remark: text('remark'),
 		statusId: integer('status_id')
@@ -1099,17 +1133,89 @@ export const itemMasterTable = pgTable(
 		...timestamps
 	},
 	(t) => [
+		index('item_master_hospital_id_idx').on(t.hospitalId),
 		index('item_master_category_id_idx').on(t.categoryId),
 		index('item_master_item_name_idx').on(t.itemName),
 		index('item_master_status_id_idx').on(t.statusId),
 		index('item_master_barcode_idx').on(t.barcode),
-		uniqueIndex('item_master_barcode_unique')
-			.on(t.barcode)
+		uniqueIndex('item_master_hospital_barcode_unique')
+			.on(t.hospitalId, t.barcode)
 			.where(sql`${t.barcode} IS NOT NULL`),
 		check(
 			'item_master_category_supply_chk',
 			sql`(${t.categoryId}) IN (11, 12, 13)`
+		),
+		check(
+			'item_master_pharmacy_supply_generic_chk',
+			sql`(${t.categoryId}) <> 12 OR ${t.pharmacyGenericId} IS NOT NULL`
 		)
+	]
+);
+
+/** Purchase vs issue unit conversion per hospital item (one active row per item). */
+export const itemUnitMasterTable = pgTable(
+	'item_unit_master',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		purchaseUnitId: integer('purchase_unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		purchaseConversionFactor: decimal('purchase_conversion_factor', {
+			precision: 18,
+			scale: 6
+		}).notNull(),
+		issueUnitId: integer('issue_unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		issueConversionFactor: decimal('issue_conversion_factor', {
+			precision: 18,
+			scale: 6
+		}).notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('item_unit_master_hospital_id_idx').on(t.hospitalId),
+		index('item_unit_master_status_id_idx').on(t.statusId),
+		uniqueIndex('item_unit_master_hospital_units_unique')
+			.on(t.hospitalId, t.purchaseUnitId, t.issueUnitId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		check(
+			'item_unit_master_factors_positive_chk',
+			sql`${t.purchaseConversionFactor}::numeric > 0 AND ${t.issueConversionFactor}::numeric > 0`
+		)
+	]
+);
+
+/** Item Master ↔ Item Unit Master (unit conversion tagging; multiple conversions per item). */
+export const itemMasterItemUnitMasterTable = pgTable(
+	'item_master_item_unit_master',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemMasterId: integer('item_master_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		itemUnitMasterId: integer('item_unit_master_id')
+			.notNull()
+			.references(() => itemUnitMasterTable.id, { onDelete: 'restrict' }),
+		...timestamps
+	},
+	(t) => [
+		index('im_ium_hospital_id_idx').on(t.hospitalId),
+		index('im_ium_item_master_id_idx').on(t.itemMasterId),
+		index('im_ium_item_unit_master_id_idx').on(t.itemUnitMasterId),
+		uniqueIndex('im_ium_hospital_item_unit_unique')
+			.on(t.hospitalId, t.itemMasterId, t.itemUnitMasterId)
+			.where(sql`${t.deletedAt} IS NULL`)
 	]
 );
 

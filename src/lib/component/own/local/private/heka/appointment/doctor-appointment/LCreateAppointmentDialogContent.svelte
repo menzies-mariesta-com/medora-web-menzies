@@ -4,30 +4,20 @@
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
-	import {
-		createAppointment,
-		getAppointment
-	} from '$lib/remote/table/information-table/appointment.remote';
-	import { createPatientVisit } from '$lib/remote/table/information-table/patient-visit.remote';
-	import {
-		getPatientPaginated,
-		getPatientByIdWithRelations
-	} from '$lib/remote/table/information-table/patient.remote';
-	import { getTitle } from '$lib/remote/table/master-table/title.remote';
-	import { getReferType } from '$lib/remote/table/master-table/refer-type.remote';
-	import { getExternalRefer } from '$lib/remote/table/information-table/external-refer.remote';
-	import { getStatusTagging } from '$lib/remote/table/information-table/status-tagging.remote';
 	import { CreateAppointmentDialogState } from '$lib/state/create-appointment-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import type { AppointmentSchemaInsert } from '$lib/server/db/schema-type';
-	import type { TitleSchema } from '$lib/server/db/schema-type';
+	import type { AppointmentCreatePayload } from '$lib/model/type/heka/appointment.type';
+	import type { PatientRegTitleRow } from '$lib/model/type/heka/patient-reg-master.type';
 	import type {
-		ExternalReferSchema,
-		ReferTypeSchema,
-		StatusTaggingSchema
-	} from '$lib/server/db/schema-type';
+		ExternalReferListRow,
+		ReferTypeListRow,
+		StatusTaggingListRow
+	} from '$lib/model/type/heka/ui-rows.type';
+	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
+	import type { AppointmentWithRelations } from '$lib/model/type/heka/appointment.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -40,6 +30,40 @@
 			page.params.hospital_id) ||
 			''
 	);
+	const apiBase = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/appointment/doctor-appointment`
+			: ''
+	);
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string | undefined>
+	): Promise<T> {
+		const sp = new URLSearchParams();
+		sp.set('mode', mode);
+		if (params) {
+			for (const [k, v] of Object.entries(params)) {
+				if (v != null && v !== '') sp.set(k, v);
+			}
+		}
+		const res = await fetch(`${apiBase}?${sp.toString()}`, {
+			method: 'GET'
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+	async function apiPost<T>(
+		mode: string,
+		body?: Record<string, unknown>
+	): Promise<T> {
+		const res = await fetch(apiBase, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...(body ?? {}) })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
 
 	const toastService = new ToastService();
 	const lifeCycle = new LifeCycleUtil();
@@ -104,10 +128,10 @@
 	const isNoSlotMode = $derived(slot == null);
 
 	// Lookup data
-	let titleData = $state<TitleSchema[]>([]);
-	let referTypeData = $state<ReferTypeSchema[]>([]);
-	let externalReferData = $state<ExternalReferSchema[]>([]);
-	let statusTaggingData = $state<StatusTaggingSchema[]>([]);
+	let titleData = $state<PatientRegTitleRow[]>([]);
+	let referTypeData = $state<ReferTypeListRow[]>([]);
+	let externalReferData = $state<ExternalReferListRow[]>([]);
+	let statusTaggingData = $state<StatusTaggingListRow[]>([]);
 	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID = StatusTaggingTypeEnum.DOCTOR_APPOINTMENT;
 
 	// Form state
@@ -132,14 +156,15 @@
 	async function searchPatients(
 		query: string
 	): Promise<{ label: string; value: string }[]> {
-		const res = await getPatientPaginated({
-			search: query.trim(),
-			hospitalId: hospitalId || undefined,
-			branchId: selectedBranchId || undefined,
-			page: 1,
-			pageSize: AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
-		});
-		const list = res.data.map((p) => {
+		const res = await apiGet<PaginatedResult<PatientWithRelations>>(
+			'patient.paginated',
+			{
+				search: query.trim() || undefined,
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+			}
+		);
+		const list = (res.data ?? []).map((p) => {
 			return {
 				label: StringUtil.patientOptionDisplayName(p),
 				value: String(p.id)
@@ -152,7 +177,9 @@
 	async function getPatientLabelForValue(
 		id: string
 	): Promise<string> {
-		const p = await getPatientByIdWithRelations({ id });
+		const p = await apiGet<PatientWithRelations | null>('patient.byId', {
+			id
+		});
 		if (!p) return '';
 		return StringUtil.patientOptionDisplayName(p);
 	}
@@ -370,10 +397,10 @@
 	lifeCycle.onMount(async () => {
 		const [titles, referTypes, externalRefers, statusTaggings] =
 			await Promise.all([
-				getTitle(),
-				getReferType(),
-				getExternalRefer(),
-				getStatusTagging()
+				apiGet<PatientRegTitleRow[]>('title.list'),
+				apiGet<ReferTypeListRow[]>('referType.list'),
+				apiGet<ExternalReferListRow[]>('externalRefer.list'),
+				apiGet<StatusTaggingListRow[]>('statusTagging.list')
 			]);
 		titleData = titles;
 		referTypeData = referTypes;
@@ -384,21 +411,22 @@
 	$effect(() => {
 		const id = selectedPatientId?.trim();
 		if (!id) return;
-		getPatientByIdWithRelations({ id }).then((p) => {
-			if (!p) return;
-			const titleName = (p as { title?: { name?: string } }).title
-				?.name;
-			patientName = StringUtil.fullNameWithTitle(
-				titleName ?? undefined,
-				p.firstName ?? '',
-				p.middleName ?? '',
-				p.lastName ?? ''
-			);
-			if (p.titleId != null)
-				selectedPatientTitleId = String(p.titleId);
-			if (p.dateOfBirth != null)
-				patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
-		});
+		apiGet<PatientWithRelations | null>('patient.byId', { id }).then(
+			(p) => {
+				if (!p) return;
+				const titleName = p.title?.name;
+				patientName = StringUtil.fullNameWithTitle(
+					titleName ?? undefined,
+					p.firstName ?? '',
+					p.middleName ?? '',
+					p.lastName ?? ''
+				);
+				if (p.titleId != null)
+					selectedPatientTitleId = String(p.titleId);
+				if (p.dateOfBirth != null)
+					patientDateOfBirth = String(p.dateOfBirth).slice(0, 10);
+			}
+		);
 	});
 
 	/** Check if [from, to) overlaps any existing appointment for same staff/date (exclude optional id for edit). */
@@ -409,7 +437,12 @@
 		to: string,
 		excludeId?: number
 	): Promise<boolean> {
-		const all = await getAppointment();
+		const all = await apiGet<AppointmentWithRelations[]>(
+			'appointment.list',
+			{
+				branchId: selectedBranchId || undefined
+			}
+		);
 		const [fromH, fromM] = (from || '00:00').split(':').map(Number);
 		const [toH, toM] = (to || '00:00').split(':').map(Number);
 		const startMin = fromH * 60 + (fromM || 0);
@@ -471,7 +504,7 @@
 		}
 		isSubmitting = true;
 		try {
-			const payload: AppointmentSchemaInsert = {
+			const payload: AppointmentCreatePayload = {
 				hospitalId: hospitalId || '',
 				branchId: selectedBranchId,
 				appointmentDate: effectiveDate,
@@ -506,7 +539,9 @@
 					: null,
 				remark: appointmentRemark.trim() || null
 			};
-			const created = await createAppointment(payload);
+			const created = await apiPost<any>('appointment.create', {
+				payload
+			});
 
 			// If this appointment is immediately in "Check In" for an existing patient,
 			// create a patient visit record.
@@ -518,18 +553,17 @@
 				staffId?.trim()
 			) {
 				try {
-					await createPatientVisit({
-						patientId: patientIdVal,
-						hospitalId,
-						branchId: selectedBranchId,
-						appointmentId: created.id,
-						// Check-in creates the visit and assigns the appointment doctor.
-						// "Seen" is updated only when the doctor selects the visit in the list dialog.
-						doctorId: staffId.trim() || null,
-						statusTaggingId: null,
-						// Default to OPD visit type (see master-table seed: id=1, code 'O').
-						visitTypeId: 1,
-						statusId: undefined
+					await apiPost('patientVisit.create', {
+						payload: {
+							patientId: patientIdVal,
+							hospitalId,
+							branchId: selectedBranchId,
+							appointmentId: created.id,
+							doctorId: staffId.trim() || null,
+							statusTaggingId: null,
+							visitTypeId: 1,
+							statusId: undefined
+						}
 					});
 				} catch (e) {
 					// Do not block appointment creation if visit creation fails.

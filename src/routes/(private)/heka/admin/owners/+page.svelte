@@ -2,10 +2,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import {
-		deleteUser,
-		getUsersByRolePaginated
-	} from '$lib/tool/remote/table/auth-table/user.http.tool.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -13,7 +9,7 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { UserSchema } from '$lib/server/db/schema-type';
+	import type { UserListRow } from '$lib/model/type/heka/ui-rows.type';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
@@ -30,6 +26,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
+	type OwnerUserRow = UserListRow & { statusId?: number | null };
+
 	const createLock = createActionLock();
 	const editLock = createActionLock();
 	const deleteLock = createActionLock();
@@ -37,7 +35,7 @@
 	let editingOwnerId = $state<string | null>(null);
 	let deletingOwnerId = $state<string | null>(null);
 
-	let owners = $state<UserSchema[]>([]);
+	let owners = $state<OwnerUserRow[]>([]);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(true);
@@ -46,7 +44,7 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const ownerColumns: MariTableColumn<UserSchema>[] = [
+	const ownerColumns: MariTableColumn<OwnerUserRow>[] = [
 		{
 			id: 'name',
 			header: m.name(),
@@ -92,27 +90,36 @@
 		}
 	];
 
-	async function loadOwners(forceRefresh = false) {
-		// HTTP wrapper uses `cache: no-store`, so `forceRefresh` is implicit.
-		void forceRefresh;
+	async function loadOwners(_forceRefresh = false) {
 		isLoading = true;
 		try {
 			const pageSize = Number(pageSizeStr) || 10;
 			const statusId = tableFilters.status
 				? Number(tableFilters.status)
 				: undefined;
-			const params = {
-				roleId: RoleEnum.OWNER,
-				page: currentPage,
-				pageSize,
-				name: tableFilters.name?.trim() || undefined,
-				email: tableFilters.email?.trim() || undefined,
-				statusId:
-					statusId != null && Number.isFinite(statusId)
-						? statusId
-						: undefined
+			const qs = new URLSearchParams();
+			qs.set('roleId', String(RoleEnum.OWNER));
+			qs.set('page', String(currentPage));
+			qs.set('pageSize', String(pageSize));
+			const name = tableFilters.name?.trim();
+			const email = tableFilters.email?.trim();
+			if (name) qs.set('name', name);
+			if (email) qs.set('email', email);
+			if (statusId != null && Number.isFinite(statusId)) {
+				qs.set('statusId', String(statusId));
+			}
+			const res = await fetch(`/api/heka/auth/user?${qs.toString()}`, {
+				credentials: 'include',
+				cache: 'no-store'
+			});
+			if (!res.ok) {
+				const t = await res.text().catch(() => '');
+				throw new Error(t || `Load failed: ${res.status}`);
+			}
+			const result = (await res.json()) as {
+				data: OwnerUserRow[];
+				total: number;
 			};
-			const result = await getUsersByRolePaginated(params);
 			owners = result.data;
 			totalOwners = result.total;
 		} finally {
@@ -130,7 +137,7 @@
 		});
 	}
 
-	async function openEditOwnerModal(owner: UserSchema) {
+	async function openEditOwnerModal(owner: OwnerUserRow) {
 		await editLock.run(async () => {
 			editingOwnerId = owner.id;
 			try {
@@ -146,7 +153,7 @@
 		});
 	}
 
-	async function handleDelete(owner: UserSchema) {
+	async function handleDelete(owner: OwnerUserRow) {
 		await deleteLock.run(async () => {
 			deletingOwnerId = owner.id;
 			try {
@@ -159,7 +166,14 @@
 				});
 				if (!result.confirmed) return;
 				try {
-					await deleteUser({ id: owner.id });
+					const res = await fetch(
+						`/api/heka/auth/user?id=${encodeURIComponent(owner.id)}`,
+						{ method: 'DELETE', credentials: 'include' }
+					);
+					if (!res.ok) {
+						const t = await res.text().catch(() => '');
+						throw new Error(t || `Delete failed: ${res.status}`);
+					}
 					toastService.addToast(
 						m.owner_deleted(),
 						StatusColorEnum.SUCCESS
@@ -245,7 +259,7 @@
 						}}
 					>
 						{#snippet rowActions(row, rowIndex)}
-							{@const ownerRow = row as UserSchema}
+							{@const ownerRow = row as UserListRow}
 							<td class="text-right">
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton
