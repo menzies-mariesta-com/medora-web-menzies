@@ -2,6 +2,7 @@ import { YesNoEnum } from '$lib/model/enum/db-link';
 import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 import { DateTimeUtil } from './date-time.util.svelte';
+import { formatItemUnitConversionDisplay } from './item-unit-conversion.util.svelte';
 
 type PhoneCountryInput =
 	| {
@@ -217,6 +218,15 @@ export class StringUtil {
 	): string {
 		if (!doctor) return 'Unknown Doctor';
 		return `${this.fullNameWithTitle(doctor.title?.name, doctor.firstName, doctor.middleName, doctor.lastName, 'Doctor')} (${doctor.specialization?.name ?? '-'})`;
+	}
+
+	static itemUnitConversionDisplay(input: {
+		purchaseUnitName: string;
+		issueUnitName: string;
+		purchaseFactor: number;
+		issueFactor: number;
+	}): string {
+		return formatItemUnitConversionDisplay(input);
 	}
 
 	static serviceOptionDisplayName(service: ServiceItemDisplay): string {
