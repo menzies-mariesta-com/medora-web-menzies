@@ -1099,6 +1099,78 @@ export const pharmacyGenericTable = pgTable(
 	]
 );
 
+/** Per-hospital manufacturer (Item Master link; address pattern matches hospital_branch). */
+export const manufacturerTable = pgTable(
+	'manufacturer',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 128 }),
+		address: text('address'),
+		phone: varchar('phone', { length: 64 }),
+		phoneCountryId: integer('phone_country_id').references(
+			() => countryTable.id
+		),
+		email: varchar('email', { length: 256 }),
+		postalCodeId: integer('postal_code_id').references(
+			() => postalCodeTable.id
+		),
+		cityId: integer('city_id').references(() => cityTable.id),
+		stateId: integer('state_id').references(() => stateTable.id),
+		countryId: integer('country_id').references(() => countryTable.id),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('manufacturer_hospital_id_idx').on(t.hospitalId),
+		index('manufacturer_name_idx').on(t.name),
+		index('manufacturer_status_id_idx').on(t.statusId)
+	]
+);
+
+/** Per-hospital supplier master (inventory / purchasing). */
+export const supplierTable = pgTable(
+	'supplier',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 128 }),
+		address: text('address'),
+		phone: varchar('phone', { length: 64 }),
+		phoneCountryId: integer('phone_country_id').references(
+			() => countryTable.id
+		),
+		email: varchar('email', { length: 256 }),
+		postalCodeId: integer('postal_code_id').references(
+			() => postalCodeTable.id
+		),
+		cityId: integer('city_id').references(() => cityTable.id),
+		stateId: integer('state_id').references(() => stateTable.id),
+		countryId: integer('country_id').references(() => countryTable.id),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('supplier_hospital_id_idx').on(t.hospitalId),
+		index('supplier_name_idx').on(t.name),
+		index('supplier_status_id_idx').on(t.statusId)
+	]
+);
+
 /**
  * Inventory / supply item catalog per hospital. Category must be one of the Item Master rows in
  * `category` (ids 11–13: General, Pharmacy, Medical Supply — see seed / migration).
@@ -1117,9 +1189,10 @@ export const itemMasterTable = pgTable(
 		itemCode: varchar('item_code', { length: 128 }),
 		/** EAN/UPC/Code128 or internal barcode; unique per hospital when not null. */
 		barcode: varchar('barcode', { length: 128 }),
-		unitId: integer('unit_id').references(() => unitTable.id, {
-			onDelete: 'set null'
-		}),
+		manufacturerId: integer('manufacturer_id').references(
+			() => manufacturerTable.id,
+			{ onDelete: 'restrict' }
+		),
 		pharmacyGenericId: integer('pharmacy_generic_id').references(
 			() => pharmacyGenericTable.id,
 			{ onDelete: 'restrict' }
@@ -1138,6 +1211,7 @@ export const itemMasterTable = pgTable(
 		index('item_master_item_name_idx').on(t.itemName),
 		index('item_master_status_id_idx').on(t.statusId),
 		index('item_master_barcode_idx').on(t.barcode),
+		index('item_master_manufacturer_id_idx').on(t.manufacturerId),
 		uniqueIndex('item_master_hospital_barcode_unique')
 			.on(t.hospitalId, t.barcode)
 			.where(sql`${t.barcode} IS NOT NULL`),
@@ -1207,6 +1281,10 @@ export const itemMasterItemUnitMasterTable = pgTable(
 		itemUnitMasterId: integer('item_unit_master_id')
 			.notNull()
 			.references(() => itemUnitMasterTable.id, { onDelete: 'restrict' }),
+		/** {@link YesNoEnum}: exactly one YES per item among active links. */
+		isDefaultYesNo: integer('is_default_yes_no')
+			.notNull()
+			.default(YesNoEnum.NO),
 		...timestamps
 	},
 	(t) => [
@@ -1215,7 +1293,16 @@ export const itemMasterItemUnitMasterTable = pgTable(
 		index('im_ium_item_unit_master_id_idx').on(t.itemUnitMasterId),
 		uniqueIndex('im_ium_hospital_item_unit_unique')
 			.on(t.hospitalId, t.itemMasterId, t.itemUnitMasterId)
-			.where(sql`${t.deletedAt} IS NULL`)
+			.where(sql`${t.deletedAt} IS NULL`),
+		check(
+			'im_ium_is_default_yes_no_chk',
+			sql`${t.isDefaultYesNo} IN (0, 1)`
+		),
+		uniqueIndex('im_ium_one_default_per_item_unique')
+			.on(t.hospitalId, t.itemMasterId)
+			.where(
+				sql`${t.deletedAt} IS NULL AND ${t.isDefaultYesNo} = 1`
+			)
 	]
 );
 
