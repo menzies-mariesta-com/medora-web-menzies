@@ -145,7 +145,9 @@ export async function seedInformationTables() {
 			(20, 'Item Master', 9, 1, 22, '/heka/home/inventory-setup/item-master', 2),
 			(21, 'Pharmacy Generic', 9, 1, 22, '/heka/home/inventory-setup/pharmacy-generic', 3),
 			(23, 'Unit Master', 9, 1, 22, '/heka/home/inventory-setup/unit-master', 4),
-			(24, 'Item Unit Master', 9, 1, 22, '/heka/home/inventory-setup/item-unit-master', 5)
+			(24, 'Item Unit Master', 9, 1, 22, '/heka/home/inventory-setup/item-unit-master', 5),
+			(25, 'Manufacture Setup', 9, 1, 22, '/heka/home/inventory-setup/manufacture-setup', 6),
+			(26, 'Supplier Setup', 9, 1, 22, '/heka/home/inventory-setup/supplier-setup', 7)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

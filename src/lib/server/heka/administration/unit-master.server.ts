@@ -199,22 +199,6 @@ export async function deleteUnit(input: { id: number }): Promise<void> {
 		.limit(1);
 	if (!existing[0]) throw new Error('Unit not found.');
 
-	const [refItem] = await ensureDb()
-		.select({ id: table.itemMasterTable.id })
-		.from(table.itemMasterTable)
-		.where(
-			and(
-				eq(table.itemMasterTable.unitId, input.id),
-				ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
-			)
-		)
-		.limit(1);
-	if (refItem) {
-		throw new Error(
-			'This unit is assigned to one or more items. Change those items first.'
-		);
-	}
-
 	const [refPurchase] = await ensureDb()
 		.select({ id: table.itemUnitMasterTable.id })
 		.from(table.itemUnitMasterTable)

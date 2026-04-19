@@ -8,6 +8,17 @@ function hospitalIdFrom(event: RequestEvent): string {
 	return typeof hid === 'string' && hid ? hid : '';
 }
 
+/** `undefined` = omit (server picks first among links); `null` / invalid = treat as unset → first link. */
+function readDefaultItemUnitMasterId(
+	body: Record<string, unknown>
+): number | null | undefined {
+	if (!('defaultItemUnitMasterId' in body)) return undefined;
+	const v = body.defaultItemUnitMasterId;
+	if (v === null || v === '') return null;
+	const n = Number(v);
+	return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
@@ -98,14 +109,16 @@ export async function POST(event: RequestEvent) {
 	const body = (await event.request.json()) as Record<string, unknown>;
 	const categoryId = Number(body.categoryId);
 	const statusId = Number(body.statusId ?? StatusEnum.ACTIVE);
-	const unitIdRaw = body.unitId;
-	const unitId =
-		unitIdRaw != null && unitIdRaw !== ''
-			? Number(unitIdRaw)
-			: null;
 	const pgRaw = body.pharmacyGenericId;
 	const pharmacyGenericId =
 		pgRaw != null && pgRaw !== '' ? Number(pgRaw) : null;
+	const mfrRaw = body.manufacturerId;
+	const manufacturerId =
+		mfrRaw != null && mfrRaw !== ''
+			? Number(mfrRaw)
+			: mfrRaw === null
+				? null
+				: undefined;
 	const created = await im.createItemMaster(hospitalId, {
 			itemName: String(body.itemName ?? ''),
 			categoryId: Number.isFinite(categoryId) ? categoryId : 0,
@@ -117,10 +130,15 @@ export async function POST(event: RequestEvent) {
 				body.barcode != null && String(body.barcode).trim() !== ''
 					? String(body.barcode).trim()
 					: null,
-			unitId: Number.isFinite(unitId as number) ? unitId : null,
 			pharmacyGenericId: Number.isFinite(pharmacyGenericId as number)
 				? pharmacyGenericId
 				: null,
+			manufacturerId:
+				manufacturerId === undefined
+					? undefined
+					: Number.isFinite(manufacturerId as number)
+						? (manufacturerId as number)
+						: null,
 			description:
 				body.description != null && String(body.description).trim() !== ''
 					? String(body.description).trim()
@@ -136,7 +154,8 @@ export async function POST(event: RequestEvent) {
 	if (Array.isArray(iumIdsRaw)) {
 		await im.setItemUnitMastersForItem(hospitalId, {
 			itemMasterId: created.id,
-			itemUnitMasterIds: iumIdsRaw.map((x) => Number(x))
+			itemUnitMasterIds: iumIdsRaw.map((x) => Number(x)),
+			defaultItemUnitMasterId: readDefaultItemUnitMasterId(body)
 		});
 	}
 
@@ -149,19 +168,19 @@ export async function PUT(event: RequestEvent) {
 	const body = (await event.request.json()) as Record<string, unknown>;
 	const id = Number(body.id);
 	if (!Number.isFinite(id)) throw error(400, 'id is required');
-	const unitIdRaw = body.unitId;
-	const unitId =
-		unitIdRaw === undefined
-			? undefined
-			: unitIdRaw != null && unitIdRaw !== ''
-				? Number(unitIdRaw)
-				: null;
 	const pgRaw = body.pharmacyGenericId;
 	const pharmacyGenericId =
 		body.pharmacyGenericId === undefined
 			? undefined
 			: pgRaw != null && pgRaw !== ''
 				? Number(pgRaw)
+				: null;
+	const mfrRaw = body.manufacturerId;
+	const manufacturerId =
+		body.manufacturerId === undefined
+			? undefined
+			: mfrRaw != null && mfrRaw !== ''
+				? Number(mfrRaw)
 				: null;
 	return json(
 		await im.updateItemMaster(hospitalId, {
@@ -184,8 +203,13 @@ export async function PUT(event: RequestEvent) {
 					: body.barcode != null && String(body.barcode).trim() !== ''
 						? String(body.barcode).trim()
 						: null,
-			unitId,
 			pharmacyGenericId,
+			manufacturerId:
+				manufacturerId === undefined
+					? undefined
+					: Number.isFinite(manufacturerId as number)
+						? (manufacturerId as number)
+						: null,
 			description:
 				body.description === undefined
 					? undefined
@@ -206,7 +230,8 @@ export async function PUT(event: RequestEvent) {
 			if (Array.isArray(iumIdsRaw)) {
 				await im.setItemUnitMastersForItem(hospitalId, {
 					itemMasterId: id,
-					itemUnitMasterIds: iumIdsRaw.map((x) => Number(x))
+					itemUnitMasterIds: iumIdsRaw.map((x) => Number(x)),
+					defaultItemUnitMasterId: readDefaultItemUnitMasterId(body)
 				});
 			}
 			return updated;
