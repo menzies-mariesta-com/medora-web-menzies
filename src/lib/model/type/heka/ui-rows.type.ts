@@ -116,7 +116,8 @@ export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	categoryId: number;
 	itemCode: string | null;
 	barcode: string | null;
-	unitId: number | null;
+	manufacturerId: number | null;
+	manufacturerName: string | null;
 	pharmacyGenericId: number | null;
 	pharmacyGenericName: string | null;
 	description: string | null;
@@ -124,8 +125,9 @@ export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	statusId: number;
 	/** Unit conversion ids tagged to this item (optional, only on detail fetch). */
 	itemUnitMasterIds?: number[];
+	/** Which linked conversion is default (detail fetch); null if none. */
+	defaultItemUnitMasterId?: number | null;
 	category?: CategoryListRow | null;
-	unit?: UnitListRow | null;
 };
 
 export type PharmacyGenericListRow = PatientRegMasterTimestamps & {
@@ -135,6 +137,29 @@ export type PharmacyGenericListRow = PatientRegMasterTimestamps & {
 	code: string | null;
 	statusId: number;
 };
+
+/** Manufacturer / supplier grid + detail (mirrors API JSON; geography is FK ids + joined labels). */
+export type ManufacturerListRow = PatientRegMasterTimestamps & {
+	id: number;
+	hospitalId: string;
+	name: string;
+	code: string | null;
+	address: string | null;
+	countryId: number | null;
+	stateId: number | null;
+	cityId: number | null;
+	postalCodeId: number | null;
+	phone: string | null;
+	phoneCountryId: number | null;
+	email: string | null;
+	remark: string | null;
+	statusId: number;
+	cityName?: string | null;
+	countryName?: string | null;
+	postalCodeLabel?: string | null;
+};
+
+export type SupplierListRow = ManufacturerListRow;
 
 export type UnitTypeListRow = PatientRegMasterTimestamps & {
 	id: number;

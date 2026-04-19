@@ -37,6 +37,8 @@ import type {
 	appointmentBlockTable,
 	subCategoryTable,
 	pharmacyGenericTable,
+	manufacturerTable,
+	supplierTable,
 	itemMasterTable,
 	itemUnitMasterTable,
 	serviceItemTable,
@@ -330,6 +332,19 @@ export type PharmacyGenericSchemaInsert = InferInsertModel<
 >;
 export type PharmacyGenericSchemaUpdate =
 	Partial<PharmacyGenericSchemaInsert>;
+
+export type ManufacturerSchema = InferSelectModel<
+	typeof manufacturerTable
+>;
+export type ManufacturerSchemaInsert = InferInsertModel<
+	typeof manufacturerTable
+>;
+export type ManufacturerSchemaUpdate =
+	Partial<ManufacturerSchemaInsert>;
+
+export type SupplierSchema = InferSelectModel<typeof supplierTable>;
+export type SupplierSchemaInsert = InferInsertModel<typeof supplierTable>;
+export type SupplierSchemaUpdate = Partial<SupplierSchemaInsert>;
 
 export type ItemMasterSchema = InferSelectModel<typeof itemMasterTable>;
 export type ItemMasterSchemaInsert = InferInsertModel<
