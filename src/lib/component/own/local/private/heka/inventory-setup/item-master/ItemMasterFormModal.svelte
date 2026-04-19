@@ -14,15 +14,9 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import type {
 		CategoryListRow,
-		ItemMasterListRow,
-		UnitListRow,
-		UnitTypeListRow
+		ItemMasterListRow
 	} from '$lib/model/type/heka/ui-rows.type';
-	import {
-		CategoryEnum,
-		StatusEnum,
-		UnitTypeEnum
-	} from '$lib/model/enum/db-link';
+	import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -45,6 +39,11 @@
 			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pharmacy-generic`
 			: ''
 	);
+	const manufacturerApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/manufacture-setup`
+			: ''
+	);
 
 	async function apiGet<T>(path: string): Promise<T> {
 		if (!itemMasterApi) throw new Error('Hospital context missing');
@@ -60,34 +59,85 @@
 	}
 
 	let categories = $state<CategoryListRow[]>([]);
-	let unitTypes = $state<UnitTypeListRow[]>([]);
-	let units = $state<UnitListRow[]>([]);
-	let itemUnitMasters = $state<{ id: number; conversionDisplay: string }[]>(
-		[]
-	);
+	let itemUnitMasters = $state<
+		{
+			id: number;
+			conversionDisplay: string;
+			purchaseUnitId: number;
+			issueUnitId: number;
+		}[]
+	>([]);
 
 	let itemName = $state('');
 	let categoryIdStr = $state('');
 	let itemCode = $state('');
 	let barcode = $state('');
-	let unitTypeIdStr = $state('');
-	let unitIdStr = $state('');
 	let itemUnitMasterIdStrs = $state<string[]>([]);
+	/** Radio `bind:group` for default conversion among included rows. */
+	let defaultItemUnitMasterIdStr = $state('');
+	let unitConversionFilter = $state('');
 	let description = $state('');
 	let remark = $state('');
 	let pharmacyGenericIdStr = $state('');
+	let manufacturerIdStr = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
+
+	const unitDefaultRadioName = $derived(
+		hospitalId ? `im-iu-def-${hospitalId}` : 'im-iu-def'
+	);
+
+	const filteredItemUnitMasters = $derived.by(() => {
+		const q = unitConversionFilter.trim().toLowerCase();
+		if (!q) return itemUnitMasters;
+		return itemUnitMasters.filter(
+			(o) =>
+				o.conversionDisplay.toLowerCase().includes(q) ||
+				String(o.id).includes(q)
+		);
+	});
+
+	function firstIncludedIdByListOrder(): string {
+		for (const opt of itemUnitMasters) {
+			const k = String(opt.id);
+			if (itemUnitMasterIdStrs.includes(k)) return k;
+		}
+		return itemUnitMasterIdStrs[0] ?? '';
+	}
 
 	function toggleItemUnitMaster(id: number) {
 		const key = String(id);
 		if (itemUnitMasterIdStrs.includes(key)) {
 			itemUnitMasterIdStrs = itemUnitMasterIdStrs.filter((x) => x !== key);
+			if (defaultItemUnitMasterIdStr === key) {
+				defaultItemUnitMasterIdStr = firstIncludedIdByListOrder();
+			}
 		} else {
-			itemUnitMasterIdStrs = [...itemUnitMasterIdStrs, key];
+			const prevDefault = defaultItemUnitMasterIdStr;
+			const nextIds = [...itemUnitMasterIdStrs, key];
+			itemUnitMasterIdStrs = nextIds;
+			if (!prevDefault || !nextIds.includes(prevDefault)) {
+				defaultItemUnitMasterIdStr = key;
+			}
 		}
 	}
+
+	$effect(() => {
+		const ids = itemUnitMasterIdStrs;
+		const d = defaultItemUnitMasterIdStr;
+		if (ids.length === 0) {
+			if (d) defaultItemUnitMasterIdStr = '';
+			return;
+		}
+		if (d && !ids.includes(d)) {
+			defaultItemUnitMasterIdStr = firstIncludedIdByListOrder();
+			return;
+		}
+		if (ids.length === 1 && !d) {
+			defaultItemUnitMasterIdStr = ids[0] ?? '';
+		}
+	});
 
 	const isPharmacySupplyCategory = $derived(
 		Number(categoryIdStr) === CategoryEnum.PHARMACY_SUPPLY
@@ -103,33 +153,6 @@
 	const isEdit = $derived(
 		modalState.mode === 'edit' && modalState.editItem != null
 	);
-
-	async function loadUnitsForSelectedType(preserveUnitId: boolean) {
-		const tid =
-			unitTypeIdStr === '' ? NaN : Number(unitTypeIdStr);
-		if (!Number.isFinite(tid)) {
-			units = [];
-			if (!preserveUnitId) unitIdStr = '';
-			return;
-		}
-		const prevUnit = preserveUnitId ? unitIdStr : '';
-		units = await apiGet<UnitListRow[]>(
-			`?mode=units&unitTypeId=${encodeURIComponent(String(tid))}`
-		);
-		if (
-			preserveUnitId &&
-			prevUnit !== '' &&
-			units.some((u: UnitListRow) => String(u.id) === prevUnit)
-		) {
-			unitIdStr = prevUnit;
-		} else if (!preserveUnitId) {
-			unitIdStr = '';
-		}
-	}
-
-	async function onUnitTypeChange() {
-		await loadUnitsForSelectedType(false);
-	}
 
 	async function searchPharmacyGenerics(
 		query: string
@@ -156,6 +179,49 @@
 		}));
 	}
 
+	async function searchManufacturers(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
+		if (!manufacturerApi) return [];
+		const q = new URLSearchParams({
+			mode: 'search',
+			q: query,
+			limit: '50'
+		});
+		const res = await fetch(`${manufacturerApi}?${q.toString()}`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok) return [];
+		const rows = (await res.json()) as {
+			id: number;
+			name: string;
+			code: string | null;
+		}[];
+		return rows.map((r) => ({
+			value: String(r.id),
+			label: r.code ? `${r.name} (${r.code})` : r.name
+		}));
+	}
+
+	async function getManufacturerLabelForValue(
+		value: string
+	): Promise<string> {
+		if (!value?.trim() || !manufacturerApi) return '';
+		const res = await fetch(
+			`${manufacturerApi}?id=${encodeURIComponent(value)}`,
+			{ credentials: 'include', cache: 'no-store' }
+		);
+		if (!res.ok) return '—';
+		const row = (await res.json()) as {
+			name?: string | null;
+			code?: string | null;
+		} | null;
+		if (!row) return '—';
+		const n = row.name ?? '—';
+		return row.code ? `${n} (${row.code})` : n;
+	}
+
 	async function getPharmacyGenericLabelForValue(
 		value: string
 	): Promise<string> {
@@ -179,20 +245,19 @@
 			ItemMasterModalState.mode === 'edit' &&
 			ItemMasterModalState.editItem != null;
 		try {
-			const [cats, types, iums] = await Promise.all([
+			const [cats, iums] = await Promise.all([
 				apiGet<CategoryListRow[]>('?mode=categories'),
-				apiGet<UnitTypeListRow[]>('?mode=unitTypes'),
-				apiGet<{ id: number; conversionDisplay: string }[]>(
-					'?mode=itemUnitMasters'
-				)
+				apiGet<
+					{
+						id: number;
+						conversionDisplay: string;
+						purchaseUnitId: number;
+						issueUnitId: number;
+					}[]
+				>('?mode=itemUnitMasters')
 			]);
 			categories = cats;
-			unitTypes = types;
 			itemUnitMasters = iums;
-
-			const defaultType =
-				types.find((t) => t.id === UnitTypeEnum.COUNT_PACK) ??
-				types[0];
 
 			if (editing && ItemMasterModalState.editItem) {
 				const row = await apiGet<ItemMasterListRow | null>(
@@ -205,9 +270,26 @@
 					barcode = row.barcode ?? '';
 					description = row.description ?? '';
 					remark = row.remark ?? '';
-					itemUnitMasterIdStrs = (row.itemUnitMasterIds ?? []).map(
-						(id) => String(id)
+					const idStrs = (row.itemUnitMasterIds ?? []).map((id) =>
+						String(id)
 					);
+					itemUnitMasterIdStrs = idStrs;
+					const defId = row.defaultItemUnitMasterId;
+					if (defId != null && idStrs.includes(String(defId))) {
+						defaultItemUnitMasterIdStr = String(defId);
+					} else if (idStrs.length > 0) {
+						let firstByList = '';
+						for (const opt of iums) {
+							if (idStrs.includes(String(opt.id))) {
+								firstByList = String(opt.id);
+								break;
+							}
+						}
+						defaultItemUnitMasterIdStr =
+							firstByList || (idStrs[0] ?? '');
+					} else {
+						defaultItemUnitMasterIdStr = '';
+					}
 					formActive =
 						(row.statusId ?? StatusEnum.ACTIVE) ===
 						StatusEnum.ACTIVE;
@@ -216,35 +298,13 @@
 						row.pharmacyGenericId != null
 							? String(row.pharmacyGenericId)
 							: '';
-
-					if (row.unitId != null) {
-						unitIdStr = String(row.unitId);
-						const unit = await apiGet<UnitListRow | null>(
-							`?mode=unitById&id=${encodeURIComponent(String(row.unitId))}`
-						);
-						if (unit?.unitTypeId != null) {
-							unitTypeIdStr = String(unit.unitTypeId);
-							await loadUnitsForSelectedType(true);
-						} else if (defaultType) {
-							unitTypeIdStr = String(defaultType.id);
-							await loadUnitsForSelectedType(false);
-						}
-					} else {
-						unitIdStr = '';
-						if (defaultType) {
-							unitTypeIdStr = String(defaultType.id);
-							await loadUnitsForSelectedType(false);
-						}
-					}
+					manufacturerIdStr =
+						row.manufacturerId != null
+							? String(row.manufacturerId)
+							: '';
 				}
-			} else {
-				if (cats.length > 0) {
-					categoryIdStr = String(cats[0].id);
-				}
-				if (defaultType) {
-					unitTypeIdStr = String(defaultType.id);
-					await loadUnitsForSelectedType(false);
-				}
+			} else if (cats.length > 0) {
+				categoryIdStr = String(cats[0].id);
 			}
 		} finally {
 			isLoading = false;
@@ -279,10 +339,6 @@
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
-		const unitIdParsed =
-			unitIdStr !== '' && Number.isFinite(Number(unitIdStr))
-				? Number(unitIdStr)
-				: null;
 
 		isSubmitting = true;
 		try {
@@ -293,21 +349,45 @@
 				Number.isFinite(Number(pharmacyGenericIdStr))
 					? Number(pharmacyGenericIdStr)
 					: null;
+			const manufacturerId =
+				manufacturerIdStr.trim() !== '' &&
+				Number.isFinite(Number(manufacturerIdStr))
+					? Number(manufacturerIdStr)
+					: null;
 			const itemUnitMasterIds = itemUnitMasterIdStrs
 				.map((s) => Number(s))
 				.filter((n) => Number.isFinite(n) && n > 0);
-			const body = {
+			if (itemUnitMasterIds.length >= 1) {
+				const defN = Number(defaultItemUnitMasterIdStr);
+				if (
+					!defaultItemUnitMasterIdStr ||
+					!Number.isFinite(defN) ||
+					!itemUnitMasterIds.includes(defN)
+				) {
+					toastService.addToast(
+						m.item_master_unit_conversions_default_required(),
+						StatusColorEnum.ERROR
+					);
+					return;
+				}
+			}
+			const body: Record<string, unknown> = {
 				itemName: itemName.trim(),
 				categoryId: catId,
 				itemCode: itemCode.trim() || null,
 				barcode: barcode.trim() || null,
-				unitId: unitIdParsed,
 				pharmacyGenericId,
+				manufacturerId,
 				itemUnitMasterIds,
 				description: description.trim() || null,
 				remark: remark.trim() || null,
 				statusId
 			};
+			if (itemUnitMasterIds.length > 0) {
+				body.defaultItemUnitMasterId = Number(
+					defaultItemUnitMasterIdStr
+				);
+			}
 			if (modalState.mode === 'create') {
 				const res = await fetch(itemMasterApi, {
 					method: 'POST',
@@ -419,6 +499,26 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
+				<DaisyUiLabel
+					forText="im-mfr"
+					className="shrink-0 sm:w-40"
+					>{m.item_master_manufacturer()}</DaisyUiLabel
+				>
+				<div class="max-w-lg flex-1">
+					<DaisyUISearchSelect
+						inputId="im-mfr"
+						bind:value={manufacturerIdStr}
+						placeholder={m.item_master_manufacturer_placeholder()}
+						searchFn={searchManufacturers}
+						getLabelForValue={getManufacturerLabelForValue}
+						invalidateKey={`${hospitalId}-mfr`}
+						className="w-full"
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
 				<DaisyUiLabel forText="im-code" className="shrink-0 sm:w-40"
 					>{m.item_master_code()}</DaisyUiLabel
 				>
@@ -450,43 +550,6 @@
 				</div>
 			</div>
 			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<DaisyUiLabel forText="im-unit-type" className="shrink-0 sm:w-40"
-					>{m.item_master_unit_type()}</DaisyUiLabel
-				>
-				<div class="max-w-lg flex-1">
-					<DaisyUiSelect
-						id="im-unit-type"
-						bind:value={unitTypeIdStr}
-						optionHeader=""
-						onChange={onUnitTypeChange}
-					>
-						{#each unitTypes as ut (ut.id)}
-							<option value={String(ut.id)}>{ut.name ?? ut.id}</option>
-						{/each}
-					</DaisyUiSelect>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<DaisyUiLabel forText="im-unit" className="shrink-0 sm:w-40"
-					>{m.item_master_unit()}</DaisyUiLabel
-				>
-				<div class="max-w-lg flex-1">
-					<DaisyUiSelect
-						id="im-unit"
-						bind:value={unitIdStr}
-						optionHeader={m.item_master_unit_none()}
-					>
-						{#each units as u (u.id)}
-							<option value={String(u.id)}>{u.name ?? u.id}</option>
-						{/each}
-					</DaisyUiSelect>
-				</div>
-			</div>
-			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 			>
 				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
@@ -506,23 +569,75 @@
 					<DaisyUiTextarea bind:value={remark} />
 				</div>
 			</div>
-			<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-3">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
 				<DaisyUiLabel className="shrink-0 pt-1 sm:w-40"
-					>Unit conversions</DaisyUiLabel
+					>{m.item_master_unit_conversions()}</DaisyUiLabel
 				>
-				<div class="max-w-lg flex-1">
+				<div class="max-w-lg min-w-0 flex-1">
 					{#if itemUnitMasters.length === 0}
 						<p class="text-sm opacity-70">—</p>
 					{:else}
-						<div class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2">
-							{#each itemUnitMasters as opt (opt.id)}
-								<label class="flex cursor-pointer items-center gap-2 py-1">
-									<DaisyUiCheckbox
-										checked={itemUnitMasterIdStrs.includes(String(opt.id))}
-										onCheckedChange={() => toggleItemUnitMaster(opt.id)}
-									/>
-									<span class="text-sm font-mono">{opt.conversionDisplay}</span>
-								</label>
+						<DaisyUiInputField
+							id="im-unit-filter"
+							bind:value={unitConversionFilter}
+							inputType="text"
+							inputPlaceholderText={m.item_master_unit_conversions_search_placeholder()}
+							className="mb-2"
+						/>
+						<div
+							class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2"
+						>
+							<div
+								class="border-base-300/80 text-base-content/70 grid grid-cols-[2.5rem_2.5rem_1fr] gap-x-2 border-b pb-1 text-xs font-medium"
+							>
+								<span class="text-center"
+									>{m.item_master_unit_conversions_include()}</span
+								>
+								<span class="text-center"
+									>{m.item_master_unit_conversions_default()}</span
+								>
+								<span class="sr-only">Conversion</span>
+							</div>
+							{#if filteredItemUnitMasters.length === 0}
+								<p class="text-sm opacity-70">
+									{m.item_master_unit_conversions_no_filter_match()}
+								</p>
+							{/if}
+							{#each filteredItemUnitMasters as opt (opt.id)}
+								<div
+									class="border-base-300/50 grid grid-cols-[2.5rem_2.5rem_1fr] items-center gap-x-2 border-b border-dotted py-1.5 last:border-0"
+								>
+									<label
+										class="flex cursor-pointer justify-center"
+									>
+										<DaisyUiCheckbox
+											checked={itemUnitMasterIdStrs.includes(
+												String(opt.id)
+											)}
+											onCheckedChange={() =>
+												toggleItemUnitMaster(opt.id)}
+										/>
+									</label>
+									<div class="flex justify-center">
+										<input
+											type="radio"
+											name={unitDefaultRadioName}
+											class="d-radio d-radio-sm"
+											value={String(opt.id)}
+											disabled={!itemUnitMasterIdStrs.includes(
+												String(opt.id)
+											)}
+											bind:group={defaultItemUnitMasterIdStr}
+										/>
+									</div>
+									<span
+										class="text-sm font-mono break-all"
+										title={opt.conversionDisplay}
+										>{opt.conversionDisplay}</span
+									>
+								</div>
 							{/each}
 						</div>
 					{/if}

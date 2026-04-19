@@ -38,6 +38,8 @@ import {
 	staffDetailTable,
 	subCategoryTable,
 	pharmacyGenericTable,
+	manufacturerTable,
+	supplierTable,
 	itemMasterTable,
 	itemMasterItemUnitMasterTable,
 	itemUnitMasterTable,
@@ -131,6 +133,8 @@ export const hospitalTableRelations = relations(
 		opBillings: many(opBillingTable),
 		itemMasters: many(itemMasterTable),
 		pharmacyGenerics: many(pharmacyGenericTable),
+		manufacturers: many(manufacturerTable),
+		suppliers: many(supplierTable),
 		itemUnitMasters: many(itemUnitMasterTable)
 	})
 );
@@ -980,6 +984,75 @@ export const pharmacyGenericTableRelations = relations(
 	})
 );
 
+export const manufacturerTableRelations = relations(
+	manufacturerTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [manufacturerTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [manufacturerTable.statusId],
+			references: [statusTable.id]
+		}),
+		city: one(cityTable, {
+			fields: [manufacturerTable.cityId],
+			references: [cityTable.id]
+		}),
+		state: one(stateTable, {
+			fields: [manufacturerTable.stateId],
+			references: [stateTable.id]
+		}),
+		country: one(countryTable, {
+			fields: [manufacturerTable.countryId],
+			references: [countryTable.id]
+		}),
+		phoneCountry: one(countryTable, {
+			fields: [manufacturerTable.phoneCountryId],
+			references: [countryTable.id]
+		}),
+		postalCode: one(postalCodeTable, {
+			fields: [manufacturerTable.postalCodeId],
+			references: [postalCodeTable.id]
+		}),
+		itemMasters: many(itemMasterTable)
+	})
+);
+
+export const supplierTableRelations = relations(
+	supplierTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [supplierTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [supplierTable.statusId],
+			references: [statusTable.id]
+		}),
+		city: one(cityTable, {
+			fields: [supplierTable.cityId],
+			references: [cityTable.id]
+		}),
+		state: one(stateTable, {
+			fields: [supplierTable.stateId],
+			references: [stateTable.id]
+		}),
+		country: one(countryTable, {
+			fields: [supplierTable.countryId],
+			references: [countryTable.id]
+		}),
+		phoneCountry: one(countryTable, {
+			fields: [supplierTable.phoneCountryId],
+			references: [countryTable.id]
+		}),
+		postalCode: one(postalCodeTable, {
+			fields: [supplierTable.postalCodeId],
+			references: [postalCodeTable.id]
+		})
+	})
+);
+
 export const itemMasterTableRelations = relations(
 	itemMasterTable,
 	({ one, many }) => ({
@@ -991,9 +1064,9 @@ export const itemMasterTableRelations = relations(
 			fields: [itemMasterTable.categoryId],
 			references: [categoryTable.id]
 		}),
-		unit: one(unitTable, {
-			fields: [itemMasterTable.unitId],
-			references: [unitTable.id]
+		manufacturer: one(manufacturerTable, {
+			fields: [itemMasterTable.manufacturerId],
+			references: [manufacturerTable.id]
 		}),
 		pharmacyGeneric: one(pharmacyGenericTable, {
 			fields: [itemMasterTable.pharmacyGenericId],

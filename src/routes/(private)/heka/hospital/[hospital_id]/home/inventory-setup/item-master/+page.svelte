@@ -51,31 +51,20 @@
 		null;
 
 	let categoryNameById = $state<Map<number, string>>(new Map());
-	let unitNameById = $state<Map<number, string>>(new Map());
 
 	async function loadLookups() {
 		if (!itemMasterApi) return;
-		const [catsRes, unitsRes] = await Promise.all([
-			fetch(`${itemMasterApi}?mode=categories`, {
-				credentials: 'include',
-				cache: 'no-store'
-			}),
-			fetch(`${itemMasterApi}?mode=units`, {
-				credentials: 'include',
-				cache: 'no-store'
-			})
-		]);
-		if (!catsRes.ok || !unitsRes.ok) return;
+		const catsRes = await fetch(`${itemMasterApi}?mode=categories`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!catsRes.ok) return;
 		const cats = (await catsRes.json()) as {
 			id: number;
 			categoryName?: string | null;
 		}[];
-		const u = (await unitsRes.json()) as { id: number; name?: string | null }[];
 		categoryNameById = new Map(
 			cats.map((c) => [c.id, c.categoryName ?? String(c.id)])
-		);
-		unitNameById = new Map(
-			u.map((x) => [x.id, x.name ?? String(x.id)])
 		);
 	}
 
@@ -127,6 +116,13 @@
 					: '—'
 		},
 		{
+			id: 'manufacturer',
+			header: m.item_master_manufacturer(),
+			widthClass: 'w-44 min-w-[10rem]',
+			filterable: false,
+			format: (_v, row) => row.manufacturerName ?? '—'
+		},
+		{
 			id: 'itemCode',
 			header: m.item_master_code(),
 			widthClass: 'w-36 min-w-[8rem]',
@@ -141,16 +137,6 @@
 			filterable: true,
 			field: 'barcode',
 			format: (v) => v ?? '—'
-		},
-		{
-			id: 'unitId',
-			header: m.item_master_unit(),
-			widthClass: 'w-32 min-w-[8rem]',
-			filterable: false,
-			format: (_v, row) =>
-				row.unitId != null
-					? (unitNameById.get(row.unitId) ?? '—')
-					: '—'
 		},
 		{
 			id: 'status',
