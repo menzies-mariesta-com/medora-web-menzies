@@ -31,20 +31,31 @@ export async function GET(event: RequestEvent) {
 			return json(await obs.getServiceOrder({ visitId }));
 		}
 		case 'orderLine.list': {
+			const visitIdForLock = Number(event.url.searchParams.get('visitId') ?? '0');
 			const serviceOrderIdsRaw = event.url.searchParams.getAll('serviceOrderIds');
 			const serviceOrderIds = serviceOrderIdsRaw.map((v) => Number(v)).filter((n) => Number.isFinite(n));
 			if (!serviceOrderIds.length) throw error(400, 'serviceOrderIds is required');
-			return json(
-				await ensureDb()
-					.select()
-					.from(table.serviceOrderDetailTable)
-					.where(
-						and(
-							inArray(table.serviceOrderDetailTable.serviceOrderId, serviceOrderIds),
-							ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
-						)
+			const rows = await ensureDb()
+				.select()
+				.from(table.serviceOrderDetailTable)
+				.where(
+					and(
+						inArray(table.serviceOrderDetailTable.serviceOrderId, serviceOrderIds),
+						ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
 					)
-					.orderBy(table.serviceOrderDetailTable.id)
+				)
+				.orderBy(table.serviceOrderDetailTable.id);
+			const lockedIds =
+				Number.isFinite(visitIdForLock) && visitIdForLock > 0
+					? await obs.getServiceOrderDetailIdsOnClosedOpBillsForVisit({
+							visitId: visitIdForLock
+						})
+					: null;
+			return json(
+				rows.map((r) => ({
+					...r,
+					lockedByClosedOpBill: lockedIds ? lockedIds.has(r.id) : false
+				}))
 			);
 		}
 		case 'serviceTagging.list': {

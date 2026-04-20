@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -17,7 +18,7 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 
-	type Row = any;
+	type Row = unknown;
 
 	const dispatch = createEventDispatcher<{
 		add: void;
@@ -63,7 +64,9 @@
 		enableMoveAction = false,
 		moveToLabel = '',
 		moveToFormCode = '',
-		moveDirection = 'down'
+		moveDirection = 'down',
+		crudEditDisabled,
+		crudDeleteDisabled
 	} = $props<{
 		title: string;
 		rows?: Row[];
@@ -106,6 +109,8 @@
 		/** Classes on the table wrapper (e.g. max-height + overflow). */
 		tableWrapClassName?: string;
 		columnFilters?: Record<string, string>;
+		crudEditDisabled?: (row: Row) => boolean;
+		crudDeleteDisabled?: (row: Row) => boolean;
 	}>();
 
 	function handleAdd() {
@@ -114,7 +119,7 @@
 
 	function handleRedirect() {
 		if (!redirectHref) return;
-		void goto(redirectHref);
+		void goto(resolve(redirectHref));
 	}
 </script>
 
@@ -166,6 +171,8 @@
 				{emptyMessage}
 				{showRefreshButton}
 				bind:columnFilters
+				{crudEditDisabled}
+				{crudDeleteDisabled}
 				showRowActions={showRowActions}
 				actionsVariant={
 					enableMoveAction
@@ -194,7 +201,7 @@
 					dispatch('filtersChange', event.detail)}
 				on:refresh={() => dispatch('refresh')}
 			>
-				{#snippet rowActions(row, rowIndex)}
+				{#snippet rowActions(row)}
 					{#if enableMoveAction}
 						<div class="flex items-center gap-2">
 							{#if crudShowView}

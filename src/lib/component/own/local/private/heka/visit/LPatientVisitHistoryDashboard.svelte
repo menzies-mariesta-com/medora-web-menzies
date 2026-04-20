@@ -51,10 +51,6 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 		date: string;
 	};
 
-	let { moduleKey = 'nursing' } = $props<{
-		moduleKey?: 'nursing' | 'observation' | string;
-	}>();
-
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 	let mounted = $state(false);
@@ -71,10 +67,6 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 	let isLoading = $state(false);
 	let loadError = $state('');
 	let lastLoadedVisitId = $state<number | null>(null);
-
-	const moduleLabel = $derived(
-		moduleKey === 'observation' ? 'Observation' : 'Nursing Workbench'
-	);
 
 	const totalVisits = $derived(tableRows.length);
 
@@ -200,11 +192,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 	}
 
 	function dashboardApiUrl(visitIdValue: number): string {
-		const suffix =
-			moduleKey === 'observation'
-				? 'observation/emr/patient-visit-history-dashboard'
-				: 'nursing-workbench/emr/patient-visit-history-dashboard';
-		return `/api/heka/hospital/${hospitalId}/home/${suffix}?visitId=${visitIdValue}`;
+		return `/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/patient-visit-history-dashboard?visitId=${visitIdValue}`;
 	}
 
 	async function loadDashboard(visitIdValue: number) {
@@ -313,10 +301,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 		}
 
 		const query = `?visitId=${vid}`;
-		const path =
-			moduleKey === 'observation'
-				? `/heka/hospital/${hospitalId}/home/observation/emr${query}`
-				: `/heka/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet${query}`;
+		const path = `/heka/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet${query}`;
 
 		VisitState.visitId = String(vid);
 		routerUtil.goToRoute(path);
