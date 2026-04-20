@@ -16,7 +16,7 @@
 			routerUtil.replaceRoute(
 				hekaHospitalPageUrl(
 					hospitalId,
-					WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR_PATIENT_VISIT_HISTORY_DASHBOARD
+					WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
 				)
 			);
 		}

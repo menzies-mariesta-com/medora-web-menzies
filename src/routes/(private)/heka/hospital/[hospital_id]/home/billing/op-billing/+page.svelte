@@ -16,7 +16,7 @@
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 
-	const msg = m as any;
+	const msg = m;
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
@@ -81,17 +81,48 @@
 		printedAt?: string | null;
 	};
 
+	type OpBillingHistory = {
+		id: number;
+		billNo: string | null;
+		createdAt: string;
+		printedAt: string | null;
+		linesSubtotal: string | number | null;
+		discountAmount: string | number | null;
+		totalAmount: string | number | null;
+		discountedByStaff?: StaffSummary | null;
+		printedByStaff?: StaffSummary | null;
+	};
+
+	type OpBillingDetailLine = {
+		id: number;
+		serviceId: number;
+		serviceName: string | null;
+		orderNo: string | null;
+		subCategoryId: number | null;
+		subCategoryName: string | null;
+		serviceAmount: string | number | null;
+		serviceTaxAmount: string | number | null;
+		discount: string | number | null;
+		serviceUnit: number | null;
+		lineTotal: string | number | null;
+	};
+
 	let isLoading = $state(false);
 	let loadError = $state('');
 	let groups = $state<BillingGroup[]>([]);
 	let grandTotal = $state(0);
 	let visitSummary = $state<VisitSummary | null>(null);
 	let billingMeta = $state<BillingMeta | null>(null);
-	let nursingIncompleteCount = $state(0);
 
 	let isDiscountModalOpen = $state(false);
 	let discountType = $state<BillingDiscountTypeEnum>(BillingDiscountTypeEnum.NONE);
 	let discountInput = $state('');
+
+	let isHistoryModalOpen = $state(false);
+	let historyLoading = $state(false);
+	let historyError = $state('');
+	let historyBills = $state<OpBillingHistory[]>([]);
+	let historyPrintLoadingId = $state<number | null>(null);
 
 	const discountInputNumber = $derived.by(() => {
 		const raw = Number(discountInput);
@@ -122,15 +153,11 @@
 
 	const hasDiscount = $derived(discountValue > 0);
 
-	/** Bill was printed (closed); visit-level discount is frozen. */
+	/** Bill was closed; discount is frozen for that bill. */
 	const visitLevelDiscountLocked = $derived.by(() => {
 		const p = billingMeta?.printedAt;
 		return p != null && String(p).trim() !== '';
 	});
-
-	const billCloseBlockedByNursing = $derived.by(
-		() => Number(nursingIncompleteCount ?? 0) > 0
-	);
 
 	function lineTotal(line: BillingLine): number {
 		const amount = Number(line.serviceAmount ?? 0) || 0;
@@ -218,7 +245,6 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
-			nursingIncompleteCount = 0;
 			loadError = '';
 			return;
 		}
@@ -229,7 +255,6 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
-			nursingIncompleteCount = 0;
 			loadError = '';
 			return;
 		}
@@ -252,14 +277,12 @@
 				items?: BillingLine[];
 				visit?: VisitSummary | null;
 				billing?: BillingMeta | null;
-				nursingIncompleteCount?: number | null;
 			};
 			const lines = (data.items ?? []).map((row) => ({
 				...row
 			}));
 			visitSummary = data.visit ?? null;
 			billingMeta = data.billing ?? null;
-			nursingIncompleteCount = Number(data.nursingIncompleteCount ?? 0) || 0;
 			const grouped = groupLines(lines);
 			groups = grouped;
 			grandTotal = grouped.reduce((sum, g) => sum + g.subtotal, 0);
@@ -283,7 +306,6 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
-			nursingIncompleteCount = 0;
 			loadError = tr(msg.op_billing_load_failed, 'Failed to load billing lines.');
 		} finally {
 			isLoading = false;
@@ -292,6 +314,7 @@
 
 	async function applyDiscount() {
 		if (!visitId) return;
+		if (!billingMeta) return;
 		if (visitLevelDiscountLocked) return;
 		const visitNumeric = Number(visitId);
 		if (!visitNumeric || !Number.isFinite(visitNumeric) || visitNumeric <= 0) return;
@@ -357,67 +380,68 @@
 
 	async function closeOpBill() {
 		if (!visitId) return;
-		if (visitLevelDiscountLocked) return;
-		if (billCloseBlockedByNursing) return;
 		const visitNumeric = Number(visitId);
 		if (!visitNumeric || !Number.isFinite(visitNumeric) || visitNumeric <= 0)
 			return;
 		try {
 			const res = await postOpBillingUpdate({
-				action: 'printed',
+				action: 'close',
 				visitId: visitNumeric
 			});
 			if (!res.ok) {
-				if (res.status === 403) {
-					try {
-						const j = (await res.json()) as { message?: string };
-						loadError =
-							(typeof j?.message === 'string' && j.message.trim()) ||
-							tr(
-								msg.op_billing_bill_close_blocked_nursing,
-								'Nursing complete is not finished; bill cannot be closed.'
-							);
-					} catch {
-						loadError = tr(
-							msg.op_billing_bill_close_blocked_nursing,
-							'Nursing complete is not finished; bill cannot be closed.'
-						);
-					}
+				try {
+					const j = (await res.json()) as { message?: string };
+					const serverMsg =
+						typeof j?.message === 'string' ? j.message.trim() : '';
+					loadError =
+						serverMsg ||
+						(res.status === 400
+							? tr(
+									msg.op_billing_nothing_to_close,
+									'There are no completed services pending billing.'
+								)
+							: tr(msg.op_billing_load_failed, 'Request failed.'));
+				} catch {
+					loadError =
+						res.status === 400
+							? tr(
+									msg.op_billing_nothing_to_close,
+									'There are no completed services pending billing.'
+								)
+							: tr(msg.op_billing_load_failed, 'Request failed.');
 				}
 				return;
 			}
+			loadError = '';
 			await loadBillingLines(String(visitNumeric));
 		} catch {
 			// silent
 		}
 	}
 
-	function printOpBill() {
-		if (!groups.length || !visitId) return;
-		if (billCloseBlockedByNursing) return;
+	function printBill(opts: {
+		groups: BillingGroup[];
+		visitSummary: VisitSummary;
+		grandTotal: number;
+		discountValue: number;
+		netTotal: number;
+		hasDiscount: boolean;
+	}): void {
+		if (!opts.groups.length) return;
 
-		const visitNumeric = Number(visitId);
-		if (visitNumeric && Number.isFinite(visitNumeric) && visitNumeric > 0) {
-			void postOpBillingUpdate({ action: 'printed', visitId: visitNumeric })
-				.then(() => loadBillingLines(String(visitNumeric)))
-				.catch(() => {
-					// silent
-				});
-		}
-
-		const v = visitSummary;
+		const v = opts.visitSummary;
 		const hospitalName =
 			v?.hospitalName?.trim() || tr(msg.op_billing_title, 'OP Billing');
 		const patient = v?.patientName?.trim() || '—';
 		const code = v?.patientCode?.trim() || '—';
-		const visitNo = v?.visitNo ?? String(visitId);
+		const visitNo = v?.visitNo ?? '—';
 		const visitWhen = formatPrintDate(v?.visitDateIso);
 		const doctor = v?.doctorName?.trim() || '—';
 		const branch = v?.branchName?.trim() || '—';
 
 		const printedAt = `${tr(msg.op_billing_print_generated, 'Printed')}: ${new Date().toLocaleString()}`;
 
-		const rowsHtml = groups
+		const rowsHtml = opts.groups
 			.map((g) => {
 				const lineRows = g.lines
 					.map(
@@ -458,16 +482,16 @@
 		const totalLabel = escapeHtml(tr(msg.op_billing_print_grand_total, 'Grand total'));
 		const discountLabel = escapeHtml(tr(msg.op_billing_print_discount, 'Discount'));
 		const netLabel = escapeHtml(tr(msg.op_billing_print_net_total, 'Net total'));
-		const effectiveGrandTotal = hasDiscount ? netTotal : grandTotal;
-		const grandBlockHtml = hasDiscount
+		const effectiveGrandTotal = opts.hasDiscount ? opts.netTotal : opts.grandTotal;
+		const grandBlockHtml = opts.hasDiscount
 			? `<div class="grand grand--stack">
         <div class="grand-row">
           <span>${totalLabel}</span>
-          <span class="grand-amt grand-amt--strike">${formatMoneyAmount(grandTotal)}</span>
+          <span class="grand-amt grand-amt--strike">${formatMoneyAmount(opts.grandTotal)}</span>
         </div>
         <div class="grand-row">
           <span>${discountLabel}</span>
-          <span class="grand-disc">-${formatMoneyAmount(discountValue)}</span>
+          <span class="grand-disc">-${formatMoneyAmount(opts.discountValue)}</span>
         </div>
         <div class="grand-row grand-row--net">
           <span>${netLabel}</span>
@@ -705,41 +729,187 @@
 		}, 200);
 	}
 
+	function printOpBill() {
+		if (!visitId) return;
+		if (!groups.length) return;
+		if (!visitSummary) return;
+
+		printBill({
+			groups,
+			visitSummary,
+			grandTotal,
+			discountValue,
+			netTotal,
+			hasDiscount
+		});
+	}
+
+	async function loadHistoryBills(currentVisitId: string | null): Promise<void> {
+		if (!currentVisitId) {
+			historyBills = [];
+			historyError = '';
+			return;
+		}
+
+		const visitNumeric = Number(currentVisitId);
+		if (!visitNumeric || !Number.isFinite(visitNumeric) || visitNumeric <= 0) {
+			historyBills = [];
+			historyError = '';
+			return;
+		}
+
+		historyLoading = true;
+		historyError = '';
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/billing/op-billing/bills?visitId=${visitNumeric}`
+			);
+			if (!res.ok) {
+				historyBills = [];
+				historyError = tr(undefined, 'Failed to load bill history.');
+				return;
+			}
+			const data = (await res.json()) as { items?: OpBillingHistory[] };
+			historyBills = Array.isArray(data.items) ? data.items : [];
+		} catch (err) {
+			console.error(err);
+			historyBills = [];
+			historyError = tr(undefined, 'Failed to load bill history.');
+		} finally {
+			historyLoading = false;
+		}
+	}
+
+	async function printHistoryBill(billingId: number): Promise<void> {
+		if (!browser) return;
+		if (!billingId || !Number.isFinite(billingId) || billingId <= 0) return;
+
+		historyPrintLoadingId = billingId;
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/billing/op-billing/bills`,
+				{
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ billingId })
+				}
+			);
+			if (!res.ok) {
+				historyError = tr(undefined, 'Failed to load bill details for printing.');
+				return;
+			}
+			const data = (await res.json()) as {
+				bill?: {
+					id: number;
+					billNo: string | null;
+					linesSubtotal: string | number | null;
+					discountAmount: string | number | null;
+					totalAmount: string | number | null;
+					createdAt?: string | null;
+					printedAt?: string | null;
+					visit?: { id: number; visitNo: string | null; createdAt?: string | null } | null;
+					hospital?: { name: string | null } | null;
+					branch?: { name: string | null } | null;
+				} | null;
+				lines?: OpBillingDetailLine[];
+			};
+
+			const bill = data.bill ?? null;
+			if (!bill) {
+				historyError = tr(undefined, 'Failed to load bill details for printing.');
+				return;
+			}
+
+			const detailLines = Array.isArray(data.lines) ? data.lines : [];
+			const printLines: BillingLine[] = detailLines.map((l) => ({
+				id: l.id,
+				serviceId: l.serviceId,
+				serviceName: l.serviceName,
+				orderNo: l.orderNo,
+				subCategoryId: l.subCategoryId,
+				subCategoryName: l.subCategoryName,
+				serviceAmount: l.serviceAmount,
+				serviceTaxAmount: l.serviceTaxAmount,
+				discount: l.discount,
+				serviceUnit: l.serviceUnit
+			}));
+			const printGroups = groupLines(printLines);
+			const linesSubtotal = printGroups.reduce((sum, g) => sum + g.subtotal, 0);
+			const discountAmt = Number(bill.discountAmount ?? 0) || 0;
+			const net = Math.max(0, linesSubtotal - Math.min(linesSubtotal, Math.max(0, discountAmt)));
+			const hasDisc = discountAmt > 0;
+
+			const v: VisitSummary = {
+				id: bill.visit?.id ?? (Number(visitId ?? 0) || 0),
+				visitNo:
+					bill.visit?.visitNo?.trim() ||
+					(bill.visit?.id ? String(bill.visit.id) : String(bill.id)),
+				hospitalName: bill.hospital?.name?.trim() || null,
+				branchName: bill.branch?.name?.trim() || null,
+				patientName: visitSummary?.patientName ?? null,
+				patientCode: visitSummary?.patientCode ?? null,
+				visitDateIso: bill.visit?.createdAt ?? visitSummary?.visitDateIso ?? null,
+				doctorName: visitSummary?.doctorName ?? null
+			};
+
+			historyError = '';
+			printBill({
+				groups: printGroups,
+				visitSummary: v,
+				grandTotal: linesSubtotal,
+				discountValue: Math.min(linesSubtotal, Math.max(0, discountAmt)),
+				netTotal: net,
+				hasDiscount: hasDisc
+			});
+		} catch (err) {
+			console.error(err);
+			historyError = tr(undefined, 'Failed to load bill details for printing.');
+		} finally {
+			historyPrintLoadingId = null;
+		}
+	}
+
 	$effect(() => {
 		if (!browser) return;
 		void loadBillingLines(visitId);
 	});
 
 	$effect(() => {
-		if (visitLevelDiscountLocked && isDiscountModalOpen) {
+		if (!billingMeta && isDiscountModalOpen) {
 			isDiscountModalOpen = false;
 		}
 	});
 </script>
 
+{#if visitId}
+	<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
+		<DaisyUiTooltip tooltipText={tr(undefined, 'History')} className="d-tooltip-left">
+			<DaisyUiButton
+				className="d-btn-outline d-btn-sm"
+				onClick={() => {
+					isHistoryModalOpen = true;
+					void loadHistoryBills(visitId);
+				}}
+			>
+				{tr(undefined, 'History')}
+			</DaisyUiButton>
+		</DaisyUiTooltip>
+	</div>
+{/if}
+
 <DaisyUiCard>
 	<DaisyUiCardBody className="gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<DaisyUiCardBodyTitle>{msg.op_billing_title()}</DaisyUiCardBodyTitle>
-			{#if visitId && groups.length > 0 && !isLoading && !loadError}
+			{#if visitId}
 				<div class="flex flex-wrap items-center gap-2">
 					<DaisyUiTooltip
-						tooltipText={visitLevelDiscountLocked
-							? tr(
-									msg.op_billing_bill_already_closed_tooltip,
-									'Bill is already closed.'
-								)
-							: billCloseBlockedByNursing
-								? tr(
-										msg.op_billing_bill_close_blocked_nursing,
-										'Nursing complete is not finished; bill cannot be closed.'
-									)
-								: tr(msg.op_billing_bill_close, 'Bill close')}
+						tooltipText={tr(msg.op_billing_bill_close, 'Bill close')}
 						className="d-tooltip-left"
 					>
 						<DaisyUiButton
 							className="d-btn-outline d-btn-sm"
-							disabled={visitLevelDiscountLocked || billCloseBlockedByNursing}
+							disabled={isLoading || !!loadError || groups.length === 0 || !billingMeta}
 							onClick={() => void closeOpBill()}
 						>
 							{tr(msg.op_billing_bill_close, 'Bill close')}
@@ -747,17 +917,12 @@
 					</DaisyUiTooltip>
 
 					<DaisyUiTooltip
-						tooltipText={billCloseBlockedByNursing
-							? tr(
-									msg.op_billing_bill_close_blocked_nursing,
-									'Nursing complete is not finished; bill cannot be closed.'
-								)
-							: msg.op_billing_print_bill()}
+						tooltipText={msg.op_billing_print_bill()}
 						className="d-tooltip-left"
 					>
 						<DaisyUiButton
 							className="d-btn-outline d-btn-sm gap-2"
-							disabled={billCloseBlockedByNursing}
+							disabled={isLoading || !!loadError || groups.length === 0}
 							onClick={() => printOpBill()}
 						>
 							<LucidePrinter className="size-4" />
@@ -806,19 +971,14 @@
 							</div>
 
 							<DaisyUiTooltip
-								tooltipText={visitLevelDiscountLocked
-									? tr(
-											msg.op_billing_discount_locked_tooltip,
-											'Discount is locked after the bill is printed.'
-										)
-									: tr(msg.op_billing_discount_open, 'Discount')}
+								tooltipText={tr(msg.op_billing_discount_open, 'Discount')}
 								className="d-tooltip-left"
 							>
 								<DaisyUiButton
 									className="d-btn-primary d-btn-sm d-btn-circle"
-									disabled={visitLevelDiscountLocked}
+									disabled={!billingMeta}
 									onClick={() => {
-										if (!visitLevelDiscountLocked) isDiscountModalOpen = true;
+										if (billingMeta) isDiscountModalOpen = true;
 									}}
 								>
 									<LucideStrikeThrough className="size-4" />
@@ -989,6 +1149,126 @@
 					onClick={() => void applyDiscount()}
 				>
 					{tr(msg.op_billing_discount_apply, 'Apply')}
+				</DaisyUiButton>
+			</div>
+		</DaisyUiModalBox>
+	</DaisyUiModal>
+{/if}
+
+{#if isHistoryModalOpen}
+	<DaisyUiModal
+		groupName="op-billing-history-modal"
+		open={true}
+		onClose={() => (isHistoryModalOpen = false)}
+	>
+		<DaisyUiModalBox
+			className="max-w-5xl"
+			onClose={() => (isHistoryModalOpen = false)}
+		>
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h2 class="text-lg font-semibold">
+						{tr(undefined, 'Bill history')}
+					</h2>
+					<p class="mt-1 text-sm text-base-content/60">
+						{tr(undefined, 'Print any previous OP bill for this visit.')}
+					</p>
+				</div>
+				<DaisyUiButton
+					className="d-btn-outline d-btn-sm mr-6"
+					disabled={historyLoading}
+					onClick={() => void loadHistoryBills(visitId)}
+				>
+					{tr(undefined, 'Refresh')}
+				</DaisyUiButton>
+			</div>
+
+			{#if historyError}
+				<p class="mt-3 text-sm text-error">{historyError}</p>
+			{/if}
+
+			<div class="mt-4 overflow-x-auto">
+				<table class="d-table d-table-zebra w-full text-sm">
+					<thead>
+						<tr>
+							<th>{tr(undefined, 'Bill')}</th>
+							<th>{tr(undefined, 'Created')}</th>
+							<th>{tr(undefined, 'Printed')}</th>
+							<th class="text-right">{tr(undefined, 'Subtotal')}</th>
+							<th class="text-right">{tr(undefined, 'Discount')}</th>
+							<th class="text-right">{tr(undefined, 'Total')}</th>
+							<th>{tr(undefined, 'Status')}</th>
+							<th class="text-right">{tr(undefined, 'Actions')}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#if historyLoading}
+							<tr>
+								<td colspan="8" class="py-6 text-center text-base-content/60">
+									{tr(undefined, 'Loading history…')}
+								</td>
+							</tr>
+						{:else if historyBills.length === 0}
+							<tr>
+								<td colspan="8" class="py-6 text-center text-base-content/60">
+									{tr(undefined, 'No bills found for this visit.')}
+								</td>
+							</tr>
+						{:else}
+							{#each historyBills as b (b.id)}
+								<tr>
+									<td class="whitespace-nowrap font-medium">
+										{b.billNo?.trim() || `#${b.id}`}
+									</td>
+									<td class="whitespace-nowrap">
+										{formatPrintDate(b.createdAt)}
+									</td>
+									<td class="whitespace-nowrap">
+										{formatPrintDate(b.printedAt)}
+									</td>
+									<td class="whitespace-nowrap text-right font-mono tabular-nums">
+										{formatMoneyAmount(Number(b.linesSubtotal ?? 0) || 0)}
+									</td>
+									<td class="whitespace-nowrap text-right font-mono tabular-nums">
+										{formatMoneyAmount(Number(b.discountAmount ?? 0) || 0)}
+									</td>
+									<td class="whitespace-nowrap text-right font-mono tabular-nums">
+										{formatMoneyAmount(Number(b.totalAmount ?? 0) || 0)}
+									</td>
+									<td class="whitespace-nowrap">
+										{#if b.printedAt}
+											<span class="d-badge d-badge-neutral">
+												{tr(undefined, 'Closed')}
+											</span>
+										{:else}
+											<span class="d-badge d-badge-primary">
+												{tr(undefined, 'Open')}
+											</span>
+										{/if}
+									</td>
+									<td class="whitespace-nowrap text-right">
+										<DaisyUiButton
+											className="d-btn-outline d-btn-sm gap-2"
+											disabled={historyPrintLoadingId === b.id}
+											onClick={() => void printHistoryBill(b.id)}
+										>
+											<LucidePrinter className="size-4" />
+											{tr(undefined, 'Print')}
+										</DaisyUiButton>
+									</td>
+								</tr>
+							{/each}
+						{/if}
+					</tbody>
+				</table>
+			</div>
+
+			<div class="d-modal-action">
+				<DaisyUiButton
+					className="d-btn-primary"
+					onClick={() => (isHistoryModalOpen = false)}
+				>
+					{tr(undefined, 'Close')}
 				</DaisyUiButton>
 			</div>
 		</DaisyUiModalBox>

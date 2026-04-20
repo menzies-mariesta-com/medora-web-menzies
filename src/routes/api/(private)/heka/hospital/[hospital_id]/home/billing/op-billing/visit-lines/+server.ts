@@ -1,11 +1,23 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { getServiceOrderDetailRowsForVisit } from '$lib/server/heka/observation/observation-emr.server';
+import {
+	getPendingOpBillingServiceDetailRowsForVisit
+} from '$lib/server/heka/observation/observation-emr.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
-import { getNursingIncompleteLineCountForVisit } from '$lib/server/heka/emr/nursing-complete.server';
+import { StatusEnum } from '$lib/model/enum/db-link';
+import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
+
+type PendingDetailRow = Awaited<
+	ReturnType<typeof getPendingOpBillingServiceDetailRowsForVisit>
+>[number];
+
+type OpBillingWithAuditStaff = OpBillingSchema & {
+	discountedByStaff?: unknown;
+	printedByStaff?: unknown;
+};
 
 type DiscountActionBody = {
 	action?: 'discount';
@@ -15,12 +27,7 @@ type DiscountActionBody = {
 	discountAmount?: number | null;
 };
 
-type PrintedActionBody = {
-	action?: 'printed';
-	visitId?: number;
-};
-
-function computeLineTotal(row: any): number {
+function computeLineTotal(row: PendingDetailRow): number {
 	const amount = Number(row?.serviceAmount ?? 0) || 0;
 	const tax = Number(row?.serviceTaxAmount ?? 0) || 0;
 	const discount = Number(row?.discount ?? 0) || 0;
@@ -35,61 +42,155 @@ function clamp(n: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-async function upsertOpBillingSnapshot(opts: {
+function visitIdFromJsonBody(body: unknown): number {
+	if (typeof body !== 'object' || body === null) return 0;
+	const v = (body as { visitId?: unknown }).visitId;
+	const n = Number(v ?? 0);
+	return n;
+}
+
+function postActionFromBody(body: unknown): unknown {
+	if (typeof body !== 'object' || body === null) return undefined;
+	return (body as { action?: unknown }).action;
+}
+
+async function listOpenOpBillings(opts: {
+	visitId: number;
+	hospitalId: string;
+}): Promise<OpBillingSchema[]> {
+	return ensureDb().query.opBillingTable.findMany({
+		where: and(
+			eq(table.opBillingTable.visitId, opts.visitId),
+			eq(table.opBillingTable.hospitalId, opts.hospitalId),
+			isNull(table.opBillingTable.printedAt),
+			ne(table.opBillingTable.statusId, StatusEnum.DELETED)
+		),
+		orderBy: [asc(table.opBillingTable.id)]
+	});
+}
+
+async function softDeleteOpBillingHeader(opts: {
+	billingId: number;
+	userId: string;
+	nowIso: string;
+}): Promise<void> {
+	await ensureDb()
+		.delete(table.opBillingLineTable)
+		.where(eq(table.opBillingLineTable.opBillingId, opts.billingId));
+	await ensureDb()
+		.update(table.opBillingTable)
+		.set({
+			statusId: StatusEnum.DELETED,
+			deletedAt: opts.nowIso,
+			deletedBy: opts.userId,
+			updatedAt: opts.nowIso,
+			updatedBy: opts.userId
+		})
+		.where(eq(table.opBillingTable.id, opts.billingId));
+}
+
+/** At most one open bill per visit; older stray drafts are removed. */
+async function consolidateOpenOpBillings(opts: {
+	visitId: number;
+	hospitalId: string;
+	userId: string;
+	nowIso: string;
+}): Promise<OpBillingSchema | null> {
+	const open = await listOpenOpBillings(opts);
+	if (open.length === 0) return null;
+	if (open.length === 1) return open[0]!;
+
+	const keep = open[open.length - 1]!;
+	for (const b of open.slice(0, -1)) {
+		await softDeleteOpBillingHeader({
+			billingId: b.id,
+			userId: opts.userId,
+			nowIso: opts.nowIso
+		});
+	}
+	return keep;
+}
+
+/**
+ * Syncs the single open OP bill for the visit to nursing-complete lines that are
+ * not yet on any closed bill. When nothing is pending, the open draft is removed.
+ */
+async function syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
 	visitId: number;
 	branchId: string;
 	userId: string;
 	staffId: string | null;
-	rows: any[];
 	nowIso: string;
 }): Promise<{
-	billingId: number;
-	billingRow: any;
+	billingId: number | null;
+	billingRow: OpBillingWithAuditStaff | null;
 	linesSubtotal: number;
 	discountAmount: number;
 	totalAmount: number;
+	pendingRows: PendingDetailRow[];
 }> {
 	const db = ensureDb();
-	const linesSubtotal = opts.rows.reduce(
-		(sum: number, r: any) => sum + computeLineTotal(r),
+	const pendingRows = await getPendingOpBillingServiceDetailRowsForVisit({
+		visitId: opts.visitId
+	});
+
+	let openBill = await consolidateOpenOpBillings({
+		visitId: opts.visitId,
+		hospitalId: opts.hospitalId,
+		userId: opts.userId,
+		nowIso: opts.nowIso
+	});
+
+	if (pendingRows.length === 0) {
+		if (openBill) {
+			await softDeleteOpBillingHeader({
+				billingId: openBill.id,
+				userId: opts.userId,
+				nowIso: opts.nowIso
+			});
+		}
+		return {
+			billingId: null,
+			billingRow: null,
+			linesSubtotal: 0,
+			discountAmount: 0,
+			totalAmount: 0,
+			pendingRows: []
+		};
+	}
+
+	if (!openBill) {
+		const [inserted] = await db
+			.insert(table.opBillingTable)
+			.values({
+				visitId: opts.visitId,
+				hospitalId: opts.hospitalId,
+				branchId: opts.branchId,
+				linesSubtotal: '0',
+				discountTypeId: BillingDiscountTypeEnum.NONE,
+				discountAmount: '0',
+				totalAmount: '0',
+				createdAt: opts.nowIso,
+				updatedAt: opts.nowIso,
+				createdBy: opts.userId,
+				updatedBy: opts.userId
+			})
+			.returning();
+		openBill = inserted!;
+	}
+
+	const billingId = openBill.id;
+	const linesSubtotal = pendingRows.reduce(
+		(sum: number, r: PendingDetailRow) => sum + computeLineTotal(r),
 		0
 	);
 
-	const existing = await db.query.opBillingTable.findFirst({
-		where: and(
-			eq(table.opBillingTable.visitId, opts.visitId),
-			eq(table.opBillingTable.hospitalId, opts.hospitalId)
-		)
-	});
-
-	const billingId = existing?.id
-		? existing.id
-		: (
-				await db
-					.insert(table.opBillingTable)
-					.values({
-						visitId: opts.visitId,
-						hospitalId: opts.hospitalId,
-						branchId: opts.branchId,
-						linesSubtotal: linesSubtotal.toFixed(2),
-						discountTypeId: BillingDiscountTypeEnum.NONE,
-						discountAmount: '0',
-						totalAmount: linesSubtotal.toFixed(2),
-						createdAt: opts.nowIso,
-						updatedAt: opts.nowIso,
-						createdBy: opts.userId,
-						updatedBy: opts.userId
-					})
-					.returning({ id: table.opBillingTable.id })
-			)[0]!.id;
-
-	// Keep any existing discount settings; recompute payable based on current subtotal.
 	const discountTypeId =
-		(existing?.discountTypeId as number | null | undefined) ??
+		(openBill.discountTypeId as number | null | undefined) ??
 		BillingDiscountTypeEnum.NONE;
-	const discountPercent = Number(existing?.discountPercent ?? 0) || 0;
-	const discountAmountExisting = Number(existing?.discountAmount ?? 0) || 0;
+	const discountPercent = Number(openBill.discountPercent ?? 0) || 0;
+	const discountAmountExisting = Number(openBill.discountAmount ?? 0) || 0;
 
 	let discountAmount = 0;
 	if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
@@ -104,35 +205,31 @@ async function upsertOpBillingSnapshot(opts: {
 
 	const totalAmount = Math.max(0, linesSubtotal - discountAmount);
 
-	// Neon HTTP driver does not support transactions; perform operations sequentially.
-	// Hard-replace snapshot lines to reflect what is included right now.
 	await db
 		.delete(table.opBillingLineTable)
 		.where(eq(table.opBillingLineTable.opBillingId, billingId));
 
-	if (opts.rows.length > 0) {
-		await db.insert(table.opBillingLineTable).values(
-			opts.rows.map((r: any, idx: number) => ({
-				opBillingId: billingId,
-				lineIndex: idx + 1,
-				serviceOrderDetailId: r.id ?? null,
-				serviceId: r.serviceId,
-				serviceNameSnapshot: r.serviceName ?? null,
-				subCategoryId: r.subCategoryId ?? null,
-				subCategoryNameSnapshot: r.subCategoryName ?? null,
-				orderNoSnapshot: r.orderNo ?? null,
-				discount: r.discount ?? null,
-				serviceAmount: r.serviceAmount ?? null,
-				serviceTaxAmount: r.serviceTaxAmount ?? null,
-				serviceUnit: r.serviceUnit ?? null,
-				lineTotal: computeLineTotal(r).toFixed(2),
-				createdAt: opts.nowIso,
-				updatedAt: opts.nowIso,
-				createdBy: opts.userId,
-				updatedBy: opts.userId
-			}))
-		);
-	}
+	await db.insert(table.opBillingLineTable).values(
+		pendingRows.map((r: PendingDetailRow, idx: number) => ({
+			opBillingId: billingId,
+			lineIndex: idx + 1,
+			serviceOrderDetailId: r.id ?? null,
+			serviceId: r.serviceId,
+			serviceNameSnapshot: r.serviceName ?? null,
+			subCategoryId: r.subCategoryId ?? null,
+			subCategoryNameSnapshot: r.subCategoryName ?? null,
+			orderNoSnapshot: r.orderNo ?? null,
+			discount: r.discount ?? null,
+			serviceAmount: r.serviceAmount ?? null,
+			serviceTaxAmount: r.serviceTaxAmount ?? null,
+			serviceUnit: r.serviceUnit ?? null,
+			lineTotal: computeLineTotal(r).toFixed(2),
+			createdAt: opts.nowIso,
+			updatedAt: opts.nowIso,
+			createdBy: opts.userId,
+			updatedBy: opts.userId
+		}))
+	);
 
 	await db
 		.update(table.opBillingTable)
@@ -146,20 +243,21 @@ async function upsertOpBillingSnapshot(opts: {
 		})
 		.where(eq(table.opBillingTable.id, billingId));
 
-	const billingRow = await db.query.opBillingTable.findFirst({
+	const billingRow = (await db.query.opBillingTable.findFirst({
 		where: eq(table.opBillingTable.id, billingId),
 		with: {
 			discountedByStaff: { with: { title: true } },
 			printedByStaff: { with: { title: true } }
 		}
-	});
+	})) as OpBillingWithAuditStaff | null;
 
 	return {
 		billingId,
 		billingRow,
 		linesSubtotal,
 		discountAmount,
-		totalAmount
+		totalAmount,
+		pendingRows
 	};
 }
 
@@ -172,89 +270,87 @@ export const GET: RequestHandler = async (event) => {
 
 	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
 		return json(
-			{ error: 'Invalid visitId', items: [], visit: null },
+			{ error: 'Invalid visitId', items: [], visit: null, billing: null },
 			{ status: 400 }
 		);
 	}
 
-	const [rows, visitRow] = await Promise.all([
-		getServiceOrderDetailRowsForVisit({ visitId }),
-		ensureDb().query.patientVisitTable.findFirst({
-			where: (t, { eq }) => eq(t.id, visitId),
-			with: {
-				patient: { with: { title: true, gender: true } },
-				hospital: true,
-				branch: true,
-				doctor: {
-					with: {
-						title: true,
-						specialization: true,
-						staffDetail: true
-					}
+	const visitRow = await ensureDb().query.patientVisitTable.findFirst({
+		where: (t, { eq }) => eq(t.id, visitId),
+		with: {
+			patient: { with: { title: true, gender: true } },
+			hospital: true,
+			branch: true,
+			doctor: {
+				with: {
+					title: true,
+					specialization: true,
+					staffDetail: true
 				}
 			}
-		})
-	]);
+		}
+	});
 	if (!visitRow) {
-		return json({ error: 'Visit not found', items: [], visit: null }, { status: 404 });
+		return json({ error: 'Visit not found', items: [], visit: null, billing: null }, { status: 404 });
+	}
+	if (String(visitRow.hospitalId ?? '') !== hospitalId) {
+		return json({ error: 'Visit mismatch', items: [], visit: null, billing: null }, { status: 400 });
 	}
 
 	const nowIso = new Date().toISOString();
-	const snapshot = await upsertOpBillingSnapshot({
+	const sync = await syncOpenOpBillingForVisit({
 		hospitalId,
 		visitId,
 		branchId: visitRow.branchId!,
 		userId: locals.user.id,
 		staffId: locals.staff?.id ?? null,
-		rows,
 		nowIso
 	});
 
-	const nursingIncompleteCount = await getNursingIncompleteLineCountForVisit(event, {
-		hospitalId,
-		visitId
-	}).catch(() => 0);
-
-	const visit = visitRow
-		? {
-				id: visitRow.id,
-				visitNo: visitRow.visitNo?.trim() || String(visitRow.id),
-				hospitalName: visitRow.hospital?.name?.trim() || null,
-				branchName: visitRow.branch?.name?.trim() || null,
-				patientName: visitRow.patient
-					? StringUtil.patientDisplayName(visitRow.patient as any)
-					: null,
-				patientCode: visitRow.patient?.code?.trim() || null,
-				visitDateIso: visitRow.createdAt ?? null,
-				doctorName: visitRow.doctor
-					? StringUtil.doctorOptionDisplayName(visitRow.doctor as any)
-					: null
-			}
-		: null;
+	const visit = {
+		id: visitRow.id,
+		visitNo: visitRow.visitNo?.trim() || String(visitRow.id),
+		hospitalName: visitRow.hospital?.name?.trim() || null,
+		branchName: visitRow.branch?.name?.trim() || null,
+		patientName: visitRow.patient
+			? // Drizzle `with` shape is wider than StringUtil’s param type
+				StringUtil.patientDisplayName(
+					visitRow.patient as Parameters<
+						typeof StringUtil.patientDisplayName
+					>[0]
+				)
+			: null,
+		patientCode: visitRow.patient?.code?.trim() || null,
+		visitDateIso: visitRow.createdAt ?? null,
+		doctorName: visitRow.doctor
+			? StringUtil.doctorOptionDisplayName(
+					visitRow.doctor as Parameters<
+						typeof StringUtil.doctorOptionDisplayName
+					>[0]
+				)
+			: null
+	};
 
 	return json(
 		{
-			items: rows,
+			items: sync.pendingRows,
 			visit,
-			billing: snapshot.billingRow,
-			nursingIncompleteCount
+			billing: sync.billingRow
 		},
 		{ status: 200 }
 	);
 };
 
 export const POST: RequestHandler = async (event) => {
-	const { request, locals, params, url } = event;
+	const { request, locals, params } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const staffId = locals.staff?.id ?? null;
 	if (!staffId) throw error(403, 'Staff account required');
 
 	const hospitalId = params.hospital_id ?? '';
-	const body = (await request.json().catch(() => ({}))) as
-		| DiscountActionBody
-		| PrintedActionBody;
+	const body: unknown = await request.json().catch(() => ({}));
 
-	const visitId = Number((body as any)?.visitId ?? 0);
+	const visitId = visitIdFromJsonBody(body);
 	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
 		throw error(400, 'Invalid visitId');
 	}
@@ -281,28 +377,24 @@ export const POST: RequestHandler = async (event) => {
 
 	const nowIso = new Date().toISOString();
 
-	// Ensure we have a billing header row + snapshot lines for this visit.
-	const rowsForSnapshot = await getServiceOrderDetailRowsForVisit({ visitId });
-	const snapshot = await upsertOpBillingSnapshot({
-		hospitalId,
-		visitId,
-		branchId: visitRow.branchId!,
-		userId: locals.user.id,
-		staffId,
-		rows: rowsForSnapshot,
-		nowIso
-	});
+	const action = postActionFromBody(body);
+	const isClose = action === 'printed' || action === 'close';
 
-	if ((body as any)?.action === 'printed') {
-		const nursingIncompleteCount = await getNursingIncompleteLineCountForVisit(
-			event,
-			{ hospitalId, visitId }
-		);
-		if (Number(nursingIncompleteCount ?? 0) > 0) {
-			throw error(
-				403,
-				'Nursing complete is not finished; bill cannot be closed.'
-			);
+	if (isClose) {
+		const sync = await syncOpenOpBillingForVisit({
+			hospitalId,
+			visitId,
+			branchId: visitRow.branchId!,
+			userId: locals.user.id,
+			staffId,
+			nowIso
+		});
+		if (
+			!sync.billingId ||
+			!sync.billingRow ||
+			sync.pendingRows.length === 0
+		) {
+			throw error(400, 'There are no completed services pending billing for this visit.');
 		}
 
 		await ensureDb()
@@ -313,43 +405,53 @@ export const POST: RequestHandler = async (event) => {
 				updatedAt: nowIso,
 				updatedBy: locals.user.id
 			})
-			.where(eq(table.opBillingTable.id, snapshot.billingId));
+			.where(eq(table.opBillingTable.id, sync.billingId));
 		return json({ ok: true });
 	}
 
-	if ((body as any)?.action !== 'discount') {
+	if (action !== 'discount') {
 		throw error(400, 'Unknown action');
 	}
 
-	const printedAtExisting = snapshot.billingRow?.printedAt;
-	if (
-		printedAtExisting != null &&
-		String(printedAtExisting).trim() !== ''
-	) {
+	const sync = await syncOpenOpBillingForVisit({
+		hospitalId,
+		visitId,
+		branchId: visitRow.branchId!,
+		userId: locals.user.id,
+		staffId,
+		nowIso
+	});
+
+	if (!sync.billingId || !sync.billingRow) {
 		throw error(
-			403,
-			'This bill was printed (closed); visit-level discount cannot be changed.'
+			400,
+			'No open OP bill; there are no completed services pending billing.'
 		);
 	}
 
-	const rawTypeId = Number((body as any)?.discountTypeId ?? BillingDiscountTypeEnum.NONE);
+	const discountBody =
+		typeof body === 'object' && body !== null
+			? (body as DiscountActionBody)
+			: {};
+	const rawTypeId = Number(
+		discountBody.discountTypeId ?? BillingDiscountTypeEnum.NONE
+	);
 	const discountTypeId = (Object.values(BillingDiscountTypeEnum) as unknown[]).includes(
 		rawTypeId
 	)
 		? (rawTypeId as BillingDiscountTypeEnum)
 		: BillingDiscountTypeEnum.NONE;
 
-	// Recompute totals from snapshot subtotal (same basis as UI).
-	const subtotal = snapshot.linesSubtotal;
+	const subtotal = sync.linesSubtotal;
 
 	let discountPercent: number | null = null;
 	let discountAmount: number = 0;
 	if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
-		const pctRaw = Number((body as any)?.discountPercent ?? 0) || 0;
+		const pctRaw = Number(discountBody.discountPercent ?? 0) || 0;
 		discountPercent = clamp(pctRaw, 0, 100);
 		discountAmount = Math.min(subtotal, (subtotal * discountPercent) / 100);
 	} else if (discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT) {
-		const amtRaw = Number((body as any)?.discountAmount ?? 0) || 0;
+		const amtRaw = Number(discountBody.discountAmount ?? 0) || 0;
 		discountAmount = Math.min(subtotal, Math.max(0, amtRaw));
 	} else {
 		discountPercent = null;
@@ -372,8 +474,7 @@ export const POST: RequestHandler = async (event) => {
 			updatedAt: nowIso,
 			updatedBy: locals.user.id
 		})
-		.where(eq(table.opBillingTable.id, snapshot.billingId));
+		.where(eq(table.opBillingTable.id, sync.billingId));
 
 	return json({ ok: true });
 };
-

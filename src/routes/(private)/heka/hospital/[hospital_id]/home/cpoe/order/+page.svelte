@@ -854,7 +854,10 @@
 
 			const details = await apiGet<ServiceOrderDetailListRow[]>(
 				'orderLine.list',
-				{ serviceOrderIds: orderIds.map(String) }
+				{
+					visitId: String(visitId),
+					serviceOrderIds: orderIds.map(String)
+				}
 			);
 
 			const doctorIdSet = new Set<string>();
@@ -948,6 +951,13 @@
 	}
 
 	async function handleDeleteHistoryItem(row: HistoryItem) {
+		if (row.lockedByClosedOpBill) {
+			toastService.addToast(
+				'This line is on a closed OP bill and cannot be deleted.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		const result = await dialogService.open({
 			title: 'Delete order item',
 			message:
