@@ -3,6 +3,12 @@ import type { RequestHandler } from './$types';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/heka/observation/observation-emr.server';
 
+function requireSessionStaffId(event: { locals: { staff?: { id?: string } | null } }): string {
+	const staffId = event.locals.staff?.id;
+	if (!staffId) throw error(401, 'Unauthorized');
+	return String(staffId);
+}
+
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	await ensureCanAccessHospital(event, hospitalId);
@@ -65,6 +71,28 @@ export const GET: RequestHandler = async (event) => {
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
 			return json(await obs.getDiagnosisById({ id }));
 		}
+		case 'planOfCare.list': {
+			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
+			return json(
+				await obs.getPlanOfCareRowsByVisitId({ visitId, hospitalId })
+			);
+		}
+		case 'planOfCare.get': {
+			const id = Number(event.url.searchParams.get('id') ?? '0');
+			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			return json(await obs.getPlanOfCareById({ id, hospitalId }));
+		}
+		case 'progressNote.list': {
+			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
+			return json(
+				await obs.getProgressNoteRowsByVisitId({ visitId, hospitalId })
+			);
+		}
+		case 'progressNote.get': {
+			const id = Number(event.url.searchParams.get('id') ?? '0');
+			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			return json(await obs.getProgressNoteById({ id, hospitalId }));
+		}
 		case 'formEntry.list': {
 			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
 			const formCode = event.url.searchParams.get('formCode') ?? '';
@@ -102,7 +130,16 @@ export const GET: RequestHandler = async (event) => {
 		}
 		case 'orderLine.list': {
 			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
-			return json(await obs.getServiceOrderDetailRowsForVisit({ visitId }));
+			const rows = await obs.getServiceOrderDetailRowsForVisit({ visitId });
+			const locked = await obs.getServiceOrderDetailIdsOnClosedOpBillsForVisit({
+				visitId
+			});
+			return json(
+				rows.map((r) => ({
+					...r,
+					lockedByClosedOpBill: locked.has(r.id)
+				}))
+			);
 		}
 		case 'orderLine.get': {
 			const id = Number(event.url.searchParams.get('id') ?? '0');
@@ -188,8 +225,11 @@ export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const body = (await event.request.json().catch(() => null)) as any;
-	const mode = String(body?.mode ?? '');
+	const body: unknown = await event.request.json().catch(() => null);
+	const mode =
+		typeof body === 'object' && body !== null
+			? String((body as { mode?: unknown }).mode ?? '')
+			: '';
 	if (!mode) throw error(400, 'mode is required');
 
 	switch (mode) {
@@ -218,6 +258,90 @@ export const POST: RequestHandler = async (event) => {
 		}
 		case 'diagnosis.delete': {
 			await obs.deleteDiagnosis({ id: Number(body?.id ?? 0) });
+			return json({ ok: true });
+		}
+		case 'planOfCare.create': {
+			const visitIdCreate = Number(body?.visitId ?? 0);
+			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
+				throw error(400, 'visitId is required');
+			}
+			const doctorStaffId = requireSessionStaffId(event);
+			return json(
+				await obs.createPlanOfCare(hospitalId, {
+					visitId: visitIdCreate,
+					note: String(body?.note ?? ''),
+					doctorId: doctorStaffId,
+					statusId:
+						body?.statusId != null && body?.statusId !== ''
+							? Number(body.statusId)
+							: undefined
+				})
+			);
+		}
+		case 'planOfCare.update': {
+			const p = body?.payload ?? body;
+			const id = Number(p?.id ?? 0);
+			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			const doctorStaffId = requireSessionStaffId(event);
+			return json(
+				await obs.updatePlanOfCare(hospitalId, {
+					id,
+					note: p?.note,
+					doctorId: doctorStaffId,
+					statusId:
+						p?.statusId != null && p?.statusId !== ''
+							? Number(p.statusId)
+							: undefined
+				})
+			);
+		}
+		case 'planOfCare.delete': {
+			await obs.deletePlanOfCare({
+				id: Number(body?.id ?? 0),
+				hospitalId,
+				deleteRemark: body?.deleteRemark ?? null
+			});
+			return json({ ok: true });
+		}
+		case 'progressNote.create': {
+			const visitIdCreate = Number(body?.visitId ?? 0);
+			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
+				throw error(400, 'visitId is required');
+			}
+			return json(
+				await obs.createProgressNote(hospitalId, {
+					visitId: visitIdCreate,
+					note: String(body?.note ?? ''),
+					doctorId: body?.doctorId ?? null,
+					statusId:
+						body?.statusId != null && body?.statusId !== ''
+							? Number(body.statusId)
+							: undefined
+				})
+			);
+		}
+		case 'progressNote.update': {
+			const p = body?.payload ?? body;
+			const id = Number(p?.id ?? 0);
+			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			return json(
+				await obs.updateProgressNote(hospitalId, {
+					id,
+					note: p?.note,
+					doctorId: p?.doctorId,
+					statusId:
+						p?.statusId != null && p?.statusId !== ''
+							? Number(p.statusId)
+							: undefined
+				})
+			);
+		}
+		case 'progressNote.delete': {
+			await obs.deleteProgressNote({
+				id: Number(body?.id ?? 0),
+				hospitalId,
+				deleteRemark: body?.deleteRemark ?? null
+			});
 			return json({ ok: true });
 		}
 		case 'allergy.delete': {

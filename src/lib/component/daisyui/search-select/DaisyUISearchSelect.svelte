@@ -20,7 +20,9 @@
 		debounceMs = 300,
 		minSearchLength = 0,
 		/** When this value changes (e.g. a parent filter), the async option list is cleared so the next search uses fresh results. */
-		invalidateKey
+		invalidateKey,
+		/** Open the suggestion list above the input (e.g. near bottom of a modal). */
+		placement = 'down'
 	} = $props<{
 		options?: Option[];
 		placeholder?: string;
@@ -34,6 +36,7 @@
 		debounceMs?: number;
 		minSearchLength?: number;
 		invalidateKey?: unknown;
+		placement?: 'down' | 'up';
 	}>();
 
 	let search = $state('');
@@ -178,7 +181,10 @@
 	{#if open}
 		<ul
 			id={listboxId}
-			class="d-menu absolute z-50 mt-1 flex max-h-60 w-full flex-col overflow-y-auto overflow-x-hidden rounded-box border bg-base-100 shadow-lg"
+			class="d-menu absolute z-50 left-0 right-0 flex max-h-60 w-full flex-col overflow-y-auto overflow-x-hidden rounded-box border bg-base-100 shadow-lg {placement ===
+			'up'
+				? 'bottom-full mb-1'
+				: 'top-full mt-1'}"
 			role="listbox"
 		>
 			{#if isLoading}
