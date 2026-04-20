@@ -18,7 +18,7 @@ import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte'
 import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 
-	export type MariTableColumn<T = any> = {
+	export type MariTableColumn<T = unknown> = {
 		/**
 		 * Unique id for the column, also used as fallback key for value lookup.
 		 */
@@ -50,7 +50,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 			| ((
 					row: T,
 					rowIndex: number
-				) => { component: any; props?: Record<string, any> } | null)
+				) => { component: unknown; props?: Record<string, unknown> } | null)
 			| undefined;
 		/**
 		 * Whether this column should show a filter control when column filters are enabled.
@@ -80,7 +80,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		/**
 		 * Optional formatter for the cell value.
 		 */
-		format?: (value: any, row: T, rowIndex: number) => any;
+		format?: (value: unknown, row: T, rowIndex: number) => unknown;
 	};
 
 	export type MariTableLegendItem = {
@@ -91,7 +91,8 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
-	type RowEventDetail = any;
+	type RowEventDetail = unknown;
+	type RowLike = Record<string, unknown>;
 
 	const dispatch = createEventDispatcher<{
 		refresh: void;
@@ -136,9 +137,11 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
 		 */
 		fillParent = false,
-		rowActions
+		rowActions,
+		crudEditDisabled,
+		crudDeleteDisabled
 	} = $props<{
-		rows: any[];
+		rows: unknown[];
 		columns: MariTableColumn[];
 		pageSizeOptions?: number[];
 		pageSize?: string;
@@ -160,15 +163,18 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		/** Optional legend items shown above the table. */
 		legendItems?: MariTableLegendItem[];
 		/** Optional row class generator. Useful for status color mapping with legend. */
-		rowClassGetter?: (row: any, rowIndex: number) => string;
+		rowClassGetter?: (row: unknown, rowIndex: number) => string;
 		/**
 		 * Optional function to provide a tooltip for each row.
 		 * Return a string to show as the native browser tooltip on row hover.
 		 */
-		rowTooltipGetter?: (row: any, rowIndex: number) => string;
+		rowTooltipGetter?: (row: unknown, rowIndex: number) => string;
 		fillParent?: boolean;
 		/** Custom actions cell when `actionsVariant` is `none` but the actions column is shown. */
-		rowActions?: Snippet<[any, number]>;
+		rowActions?: Snippet<[unknown, number]>;
+		/** When true, the row’s edit control is disabled (e.g. OP billing lock). */
+		crudEditDisabled?: (row: unknown) => boolean;
+		crudDeleteDisabled?: (row: unknown) => boolean;
 	}>();
 
 	const rootClass = $derived(
@@ -233,7 +239,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 	const filteredRows = $derived(
 		useRemoteFilters
 			? rows
-			: rows.filter((row: any, index: number) => {
+			: rows.filter((row, index: number) => {
 					for (const column of columns) {
 						const rawFilter = columnFilters[column.id];
 						const filter = rawFilter
@@ -241,7 +247,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 							: '';
 						if (!filter) continue;
 
-						const cell = getCellValue(row, column, index);
+						const cell = getCellValue(row as RowLike, column, index);
 						const valueStr =
 							cell == null ? '' : String(cell).toLowerCase();
 
@@ -257,6 +263,16 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 					return true;
 				})
 	);
+
+	function valueAtPath(row: RowLike, path: string): unknown {
+		const parts = path.split('.');
+		let cur: unknown = row;
+		for (const part of parts) {
+			if (typeof cur !== 'object' || cur === null) return undefined;
+			cur = (cur as Record<string, unknown>)[part];
+		}
+		return cur;
+	}
 
 	const total = $derived(
 		useRemoteFilters && totalRowCount != null
@@ -284,23 +300,17 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 	);
 
 	function getCellValue(
-		row: any,
+		row: RowLike,
 		column: MariTableColumn,
 		index: number
 	) {
 		if (column.format) {
-			const raw = column.field
-				? column.field
-						.split('.')
-						.reduce((acc: any, part) => acc?.[part], row)
-				: (row as any)[column.id];
+			const raw = column.field ? valueAtPath(row, column.field) : row[column.id];
 			return column.format(raw, row, index);
 		}
 
 		const path = column.field ?? column.id;
-		const value = path
-			.split('.')
-			.reduce((acc: any, part) => acc?.[part], row);
+		const value = valueAtPath(row, path);
 		return value ?? '—';
 	}
 
@@ -319,7 +329,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		dispatch('refresh');
 	}
 
-	function handleRowClick(row: any) {
+	function handleRowClick(row: unknown) {
 		dispatch('rowClick', row);
 	}
 
@@ -528,7 +538,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 												handleFilterInputEvent(column.id, event)}
 										>
 											<option value="">All</option>
-											{#each selectOptions as opt}
+											{#each selectOptions as opt (opt.value)}
 												<option value={opt.value}>
 													{opt.label}
 												</option>
@@ -585,6 +595,8 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}
+											{@const editLocked = crudEditDisabled?.(row) ?? false}
+											{@const deleteLocked = crudDeleteDisabled?.(row) ?? false}
 											<div class="flex items-center gap-2">
 												{#if crudShowView}
 													<DaisyUiTooltip
@@ -605,6 +617,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 												>
 													<DaisyUiButton
 														className="d-btn-ghost d-btn-sm d-btn-square d-btn-success"
+														disabled={editLocked}
 														onClick={() => dispatch('edit', row)}
 													>
 														<LucidePencil className="size-4" />
@@ -616,6 +629,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 												>
 													<DaisyUiButton
 														className="d-btn-ghost d-btn-error d-btn-sm d-btn-square"
+														disabled={deleteLocked}
 														onClick={() => dispatch('delete', row)}
 													>
 														<LucideTrash2 className="size-4" />

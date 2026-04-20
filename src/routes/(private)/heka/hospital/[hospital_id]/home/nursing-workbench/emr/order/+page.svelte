@@ -95,8 +95,17 @@
 	const createServiceOrder = (payload: any) =>
 		apiPost<any>({ mode: 'serviceOrder.create', payload });
 
-	const getServiceOrderDetail = ({ serviceOrderIds }: { serviceOrderIds: number[] }) => {
-		const qs = new URLSearchParams({ mode: 'orderLine.list' });
+	const getServiceOrderDetail = ({
+		visitId: vid,
+		serviceOrderIds
+	}: {
+		visitId: number;
+		serviceOrderIds: number[];
+	}) => {
+		const qs = new URLSearchParams({
+			mode: 'orderLine.list',
+			visitId: String(vid)
+		});
 		for (const id of serviceOrderIds) qs.append('serviceOrderIds', String(id));
 		return fetch(`${baseApi}?${qs.toString()}`).then(async (r) => {
 			if (!r.ok) throw new Error(await readFailedResponseMessage(r));
@@ -884,6 +893,7 @@
 			);
 
 			const details = await getServiceOrderDetail({
+				visitId,
 				serviceOrderIds: orderIds
 			});
 
@@ -975,6 +985,13 @@
 	}
 
 	async function handleDeleteHistoryItem(row: HistoryItem) {
+		if (row.lockedByClosedOpBill) {
+			toastService.addToast(
+				'This line is on a closed OP bill and cannot be deleted.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		const result = await dialogService.open({
 			title: 'Delete order item',
 			message:

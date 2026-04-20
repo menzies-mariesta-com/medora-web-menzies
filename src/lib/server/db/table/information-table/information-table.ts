@@ -1063,6 +1063,70 @@ export const patientFormEntryTable = pgTable(
 	]
 );
 
+/** Visit plan-of-care entries (multiple per visit; Observation EMR). */
+export const planOfCareTable = pgTable(
+	'plan_of_care',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		note: text('note').notNull().default(''),
+		deleteRemark: text('delete_remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		doctorId: uuid('doctor_id').references(() => staffTable.id),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		...timestamps
+	},
+	(table) => [
+		index('plan_of_care_visit_id_idx').on(table.visitId),
+		index('plan_of_care_patient_id_idx').on(table.patientId),
+		index('plan_of_care_branch_id_idx').on(table.branchId),
+		index('plan_of_care_status_id_idx').on(table.statusId)
+	]
+);
+
+/** Visit progress notes (multiple per visit; Observation EMR). */
+export const progressNoteTable = pgTable(
+	'progress_note',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		note: text('note').notNull().default(''),
+		deleteRemark: text('delete_remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		doctorId: uuid('doctor_id').references(() => staffTable.id),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		...timestamps
+	},
+	(table) => [
+		index('progress_note_visit_id_idx').on(table.visitId),
+		index('progress_note_patient_id_idx').on(table.patientId),
+		index('progress_note_branch_id_idx').on(table.branchId),
+		index('progress_note_status_id_idx').on(table.statusId)
+	]
+);
+
 export const subCategoryTable = pgTable('sub_category', {
 	id: serial('id').primaryKey(),
 	categoryId: integer('category_id')
@@ -1418,8 +1482,9 @@ export const serviceOrderDetailTable = pgTable(
 );
 
 /**
- * OP billing header for a visit: persisted totals and visit-level discount.
- * Lines are stored in `op_billing_line` (snapshot of services billed).
+ * OP billing header for a visit. Multiple rows per visit are allowed: each
+ * closed bill (`printed_at` set) freezes its lines; a new open draft appears
+ * when there are nursing-complete lines not yet on any closed bill.
  */
 export const opBillingTable = pgTable(
 	'op_billing',
