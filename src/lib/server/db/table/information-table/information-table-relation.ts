@@ -3,6 +3,8 @@ import {
 	appointmentTable,
 	diagnosisTable,
 	patientFormEntryTable,
+	planOfCareTable,
+	progressNoteTable,
 	documentTable,
 	documentTypeTable,
 	documentSettingTable,
@@ -467,7 +469,9 @@ export const patientVisitTableRelations = relations(
 		opBillings: many(opBillingTable),
 		referHistories: many(referHistoryTable),
 		classificationDiagnoses: many(diagnosisTable),
-		formEntries: many(patientFormEntryTable)
+		formEntries: many(patientFormEntryTable),
+		planOfCareEntries: many(planOfCareTable),
+		progressNoteEntries: many(progressNoteTable)
 	})
 );
 
@@ -572,6 +576,58 @@ export const patientFormEntryTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [patientFormEntryTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
+
+export const planOfCareTableRelations = relations(
+	planOfCareTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [planOfCareTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [planOfCareTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [planOfCareTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		doctor: one(staffTable, {
+			fields: [planOfCareTable.doctorId],
+			references: [staffTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [planOfCareTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
+
+export const progressNoteTableRelations = relations(
+	progressNoteTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [progressNoteTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [progressNoteTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [progressNoteTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		doctor: one(staffTable, {
+			fields: [progressNoteTable.doctorId],
+			references: [staffTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [progressNoteTable.statusId],
 			references: [statusTable.id]
 		})
 	})
