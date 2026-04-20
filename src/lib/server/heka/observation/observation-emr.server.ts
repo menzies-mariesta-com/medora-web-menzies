@@ -1,5 +1,18 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNotNull,
+	max,
+	ne,
+	or,
+	sql
+} from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { normalizePagination, type PaginationParams } from '$lib/model/type/pagination.type';
 import { ensureDb } from '$lib/server/db';
@@ -22,6 +35,10 @@ import type {
 	PatientDiagnosisSchema,
 	PatientFormEntrySchema,
 	PatientFormEntrySchemaUpdate,
+	PlanOfCareSchema,
+	PlanOfCareSchemaUpdate,
+	ProgressNoteSchema,
+	ProgressNoteSchemaUpdate,
 	PatientVisitSchemaUpdate,
 	PatientVisitSchema,
 	ServiceItemSchema,
@@ -120,6 +137,274 @@ export async function deleteDiagnosis(input: { id: number }): Promise<void> {
 		.update(table.diagnosisTable)
 		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.diagnosisTable.id, input.id));
+}
+
+export async function getPlanOfCareRowsByVisitId(input: {
+	visitId: number;
+	hospitalId: string;
+}) {
+	const visit = await getPatientVisitById({
+		id: input.visitId,
+		hospitalId: input.hospitalId
+	});
+	if (!visit) return [];
+	return ensureDb().query.planOfCareTable.findMany({
+		where: (t, { and, eq, ne }) =>
+			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+		with: {
+			doctor: { with: { staffDetail: true, title: true } }
+		},
+		orderBy: (t, { asc, desc }) => [asc(t.sequenceNo), desc(t.createdAt)]
+	});
+}
+
+export type PlanOfCareRowWithDoctor = Awaited<
+	ReturnType<typeof getPlanOfCareRowsByVisitId>
+>[number];
+
+export async function getPlanOfCareById(input: {
+	id: number;
+	hospitalId: string;
+}): Promise<PlanOfCareRowWithDoctor | null> {
+	const row = await ensureDb().query.planOfCareTable.findFirst({
+		where: (t, { and, eq, ne }) =>
+			and(eq(t.id, input.id), ne(t.statusId, StatusEnum.DELETED)),
+		with: {
+			visit: true,
+			doctor: { with: { staffDetail: true, title: true } }
+		}
+	});
+	if (!row?.visit || row.visit.hospitalId !== input.hospitalId) return null;
+	return row as PlanOfCareRowWithDoctor;
+}
+
+export async function createPlanOfCare(
+	hospitalId: string,
+	payload: {
+		visitId: number;
+		note: string;
+		doctorId?: string | null;
+		statusId?: number;
+	}
+): Promise<PlanOfCareSchema> {
+	const visit = await getPatientVisitById({
+		id: payload.visitId,
+		hospitalId
+	});
+	if (!visit) throw new Error('Visit not found');
+	await assertVisitNotClinicallySigned(payload.visitId);
+	const [agg] = await ensureDb()
+		.select({ mx: max(table.planOfCareTable.sequenceNo) })
+		.from(table.planOfCareTable)
+		.where(eq(table.planOfCareTable.visitId, payload.visitId));
+	const nextSeq = Number(agg?.mx ?? 0) + 1;
+	const note = (payload.note ?? '').trim();
+	const [row] = await ensureDb()
+		.insert(table.planOfCareTable)
+		.values({
+			branchId: visit.branchId,
+			patientId: visit.patientId,
+			visitId: payload.visitId,
+			note,
+			doctorId:
+				payload.doctorId != null && String(payload.doctorId).trim() !== ''
+					? String(payload.doctorId).trim()
+					: null,
+			statusId: payload.statusId ?? StatusEnum.ACTIVE,
+			sequenceNo: nextSeq
+		})
+		.returning();
+	if (!row) throw new Error('Insert failed');
+	return row;
+}
+
+export async function updatePlanOfCare(
+	hospitalId: string,
+	payload: {
+		id: number;
+		note?: string;
+		doctorId?: string | null;
+		statusId?: number;
+	}
+): Promise<PlanOfCareSchema> {
+	const { id, note, doctorId, statusId } = payload;
+	const existing = await getPlanOfCareById({ id, hospitalId });
+	if (!existing) throw new Error('Plan of care not found');
+	await assertVisitNotClinicallySigned(existing.visitId);
+	const patch: PlanOfCareSchemaUpdate = {};
+	if (note !== undefined) patch.note = String(note).trim();
+	if (doctorId !== undefined) {
+		patch.doctorId =
+			doctorId != null && String(doctorId).trim() !== ''
+				? String(doctorId).trim()
+				: null;
+	}
+	if (statusId !== undefined) patch.statusId = statusId;
+	const [row] = await ensureDb()
+		.update(table.planOfCareTable)
+		.set(patch)
+		.where(eq(table.planOfCareTable.id, id))
+		.returning();
+	if (!row) throw new Error('Update failed');
+	return row;
+}
+
+export async function deletePlanOfCare(input: {
+	id: number;
+	hospitalId: string;
+	deleteRemark?: string | null;
+}): Promise<void> {
+	const existing = await getPlanOfCareById({
+		id: input.id,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) throw new Error('Plan of care not found');
+	await assertVisitNotClinicallySigned(existing.visitId);
+	const remark =
+		input.deleteRemark != null && String(input.deleteRemark).trim() !== ''
+			? String(input.deleteRemark).trim()
+			: null;
+	await ensureDb()
+		.update(table.planOfCareTable)
+		.set({
+			statusId: StatusEnum.INACTIVE,
+			deleteRemark: remark
+		})
+		.where(eq(table.planOfCareTable.id, input.id));
+}
+
+export async function getProgressNoteRowsByVisitId(input: {
+	visitId: number;
+	hospitalId: string;
+}) {
+	const visit = await getPatientVisitById({
+		id: input.visitId,
+		hospitalId: input.hospitalId
+	});
+	if (!visit) return [];
+	return ensureDb().query.progressNoteTable.findMany({
+		where: (t, { and, eq, ne }) =>
+			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+		with: {
+			doctor: { with: { staffDetail: true, title: true } }
+		},
+		orderBy: (t, { asc, desc }) => [asc(t.sequenceNo), desc(t.createdAt)]
+	});
+}
+
+export type ProgressNoteRowWithDoctor = Awaited<
+	ReturnType<typeof getProgressNoteRowsByVisitId>
+>[number];
+
+export async function getProgressNoteById(input: {
+	id: number;
+	hospitalId: string;
+}): Promise<ProgressNoteRowWithDoctor | null> {
+	const row = await ensureDb().query.progressNoteTable.findFirst({
+		where: (t, { and, eq, ne }) =>
+			and(eq(t.id, input.id), ne(t.statusId, StatusEnum.DELETED)),
+		with: {
+			visit: true,
+			doctor: { with: { staffDetail: true, title: true } }
+		}
+	});
+	if (!row?.visit || row.visit.hospitalId !== input.hospitalId) return null;
+	return row as ProgressNoteRowWithDoctor;
+}
+
+export async function createProgressNote(
+	hospitalId: string,
+	payload: {
+		visitId: number;
+		note: string;
+		doctorId?: string | null;
+		statusId?: number;
+	}
+): Promise<ProgressNoteSchema> {
+	const visit = await getPatientVisitById({
+		id: payload.visitId,
+		hospitalId
+	});
+	if (!visit) throw new Error('Visit not found');
+	await assertVisitNotClinicallySigned(payload.visitId);
+	const [agg] = await ensureDb()
+		.select({ mx: max(table.progressNoteTable.sequenceNo) })
+		.from(table.progressNoteTable)
+		.where(eq(table.progressNoteTable.visitId, payload.visitId));
+	const nextSeq = Number(agg?.mx ?? 0) + 1;
+	const note = (payload.note ?? '').trim();
+	const [row] = await ensureDb()
+		.insert(table.progressNoteTable)
+		.values({
+			branchId: visit.branchId,
+			patientId: visit.patientId,
+			visitId: payload.visitId,
+			note,
+			doctorId:
+				payload.doctorId != null && String(payload.doctorId).trim() !== ''
+					? String(payload.doctorId).trim()
+					: null,
+			statusId: payload.statusId ?? StatusEnum.ACTIVE,
+			sequenceNo: nextSeq
+		})
+		.returning();
+	if (!row) throw new Error('Insert failed');
+	return row;
+}
+
+export async function updateProgressNote(
+	hospitalId: string,
+	payload: {
+		id: number;
+		note?: string;
+		doctorId?: string | null;
+		statusId?: number;
+	}
+): Promise<ProgressNoteSchema> {
+	const { id, note, doctorId, statusId } = payload;
+	const existing = await getProgressNoteById({ id, hospitalId });
+	if (!existing) throw new Error('Progress note not found');
+	await assertVisitNotClinicallySigned(existing.visitId);
+	const patch: ProgressNoteSchemaUpdate = {};
+	if (note !== undefined) patch.note = String(note).trim();
+	if (doctorId !== undefined) {
+		patch.doctorId =
+			doctorId != null && String(doctorId).trim() !== ''
+				? String(doctorId).trim()
+				: null;
+	}
+	if (statusId !== undefined) patch.statusId = statusId;
+	const [row] = await ensureDb()
+		.update(table.progressNoteTable)
+		.set(patch)
+		.where(eq(table.progressNoteTable.id, id))
+		.returning();
+	if (!row) throw new Error('Update failed');
+	return row;
+}
+
+export async function deleteProgressNote(input: {
+	id: number;
+	hospitalId: string;
+	deleteRemark?: string | null;
+}): Promise<void> {
+	const existing = await getProgressNoteById({
+		id: input.id,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) throw new Error('Progress note not found');
+	await assertVisitNotClinicallySigned(existing.visitId);
+	const remark =
+		input.deleteRemark != null && String(input.deleteRemark).trim() !== ''
+			? String(input.deleteRemark).trim()
+			: null;
+	await ensureDb()
+		.update(table.progressNoteTable)
+		.set({
+			statusId: StatusEnum.INACTIVE,
+			deleteRemark: remark
+		})
+		.where(eq(table.progressNoteTable.id, input.id));
 }
 
 function prettifyFormCode(code: string): string {
@@ -828,6 +1113,83 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 	return out;
 }
 
+/** Service order detail IDs already captured on a closed (`printed_at`) OP bill for this visit. */
+export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
+	visitId: number;
+}): Promise<Set<number>> {
+	const rows = await ensureDb()
+		.select({ detailId: table.opBillingLineTable.serviceOrderDetailId })
+		.from(table.opBillingLineTable)
+		.innerJoin(
+			table.opBillingTable,
+			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+		)
+		.where(
+			and(
+				eq(table.opBillingTable.visitId, input.visitId),
+				isNotNull(table.opBillingTable.printedAt),
+				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
+				isNotNull(table.opBillingLineTable.serviceOrderDetailId)
+			)
+		);
+
+	const set = new Set<number>();
+	for (const r of rows) {
+		const id = r.detailId;
+		if (id != null) set.add(id);
+	}
+	return set;
+}
+
+function isNursingCompleteTimeSet(nursingCompleteTime: string | null): boolean {
+	return (
+		nursingCompleteTime != null && String(nursingCompleteTime).trim() !== ''
+	);
+}
+
+/**
+ * Nursing-complete lines for the visit that are not yet on any closed OP bill.
+ * These are the lines eligible for the current (open) OP billing snapshot.
+ */
+export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
+	visitId: number;
+}): Promise<
+	Awaited<ReturnType<typeof getServiceOrderDetailRowsForVisit>>
+> {
+	const all = await getServiceOrderDetailRowsForVisit(input);
+	const onClosed = await getServiceOrderDetailIdsOnClosedOpBillsForVisit(input);
+	return all.filter(
+		(r) => isNursingCompleteTimeSet(r.nursingCompleteTime) && !onClosed.has(r.id)
+	);
+}
+
+export async function assertServiceOrderDetailNotLockedByClosedOpBill(
+	detailId: number
+): Promise<void> {
+	const [hit] = await ensureDb()
+		.select({ id: table.opBillingLineTable.id })
+		.from(table.opBillingLineTable)
+		.innerJoin(
+			table.opBillingTable,
+			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+		)
+		.where(
+			and(
+				eq(table.opBillingLineTable.serviceOrderDetailId, detailId),
+				isNotNull(table.opBillingTable.printedAt),
+				ne(table.opBillingTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+
+	if (hit) {
+		throw error(
+			403,
+			'This service line is on a closed OP bill and cannot be changed or removed.'
+		);
+	}
+}
+
 export async function getServiceOrderDetailById(input: {
 	id: number;
 }): Promise<ServiceOrderDetailSchema | null> {
@@ -875,6 +1237,7 @@ export async function updateServiceOrderDetail(
 			existingDetail.serviceOrderId
 		);
 	}
+	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
 	const [row] = await ensureDb()
 		.update(table.serviceOrderDetailTable)
 		.set(rest)
@@ -896,6 +1259,7 @@ export async function deleteServiceOrderDetail(
 	if (existing && !skipClinicalLock) {
 		await assertVisitNotClinicallySignedByServiceOrderId(existing.serviceOrderId);
 	}
+	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
 	await ensureDb()
 		.update(table.serviceOrderDetailTable)
 		.set({ statusId: StatusEnum.DELETED })
