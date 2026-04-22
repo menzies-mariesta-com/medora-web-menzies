@@ -14,6 +14,17 @@ export type PrefixCounterScopeFlags = {
 export function defaultCounterScopeForPrefixKey(
 	prefixKey: string
 ): PrefixCounterScopeFlags {
+	if (
+		prefixKey === 'PURCHASE_REQUISITION_NO' ||
+		prefixKey === 'PURCHASE_ORDER_NO'
+	) {
+		return {
+			includeBranch: true,
+			includeFinancialYear: true,
+			includeVisitType: false,
+			includeVisit: false
+		};
+	}
 	if (prefixKey === 'VISIT_NO') {
 		return {
 			includeBranch: true,
@@ -40,7 +51,12 @@ export function defaultCounterScopeForPrefixKey(
 }
 
 export function defaultCounterScopeForStorageKey(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO'
+	storageKey:
+		| 'PATIENT_CODE'
+		| 'VISIT_NO'
+		| 'ORDER_NO'
+		| 'PURCHASE_REQUISITION_NO'
+		| 'PURCHASE_ORDER_NO'
 ): PrefixCounterScopeFlags {
 	return defaultCounterScopeForPrefixKey(storageKey);
 }

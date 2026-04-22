@@ -5,13 +5,15 @@
 export const PREFIX_PURPOSE_STORAGE = {
 	PATIENT_CODE: 'PATIENT_CODE',
 	VISIT_NO: 'VISIT_NO',
-	ORDER_NO: 'ORDER_NO'
+	ORDER_NO: 'ORDER_NO',
+	PURCHASE_REQUISITION_NO: 'PURCHASE_REQUISITION_NO',
+	PURCHASE_ORDER_NO: 'PURCHASE_ORDER_NO'
 } as const;
 
 export type PrefixPurposeStorageKey =
 	(typeof PREFIX_PURPOSE_STORAGE)[keyof typeof PREFIX_PURPOSE_STORAGE];
 
-export type PrefixPurposeId = 'patient' | 'visit' | 'order';
+export type PrefixPurposeId = 'patient' | 'visit' | 'order' | 'pr' | 'po';
 
 export interface PrefixPurposeDefinition {
 	readonly id: PrefixPurposeId;
@@ -21,7 +23,9 @@ export interface PrefixPurposeDefinition {
 export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 	{ id: 'patient', storageKey: PREFIX_PURPOSE_STORAGE.PATIENT_CODE },
 	{ id: 'visit', storageKey: PREFIX_PURPOSE_STORAGE.VISIT_NO },
-	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO }
+	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO },
+	{ id: 'pr', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO },
+	{ id: 'po', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO }
 ] as const;
 
 export function findPurposeByStorageKey(

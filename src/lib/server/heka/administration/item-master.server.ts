@@ -357,6 +357,139 @@ export async function listItemUnitMastersForItemMaster(hospitalId: string): Prom
 	}));
 }
 
+/**
+ * For inventory lines that store `unitId` = purchase UOM, resolve the Item Unit Master
+ * (item ↔ IUM link + IUM row with matching `purchaseUnitId`). If multiple IUMs share the
+ * same purchase unit, prefers the item link with {@link YesNoEnum#YES} default, then
+ * lowest IUM id.
+ */
+export async function resolveItemUnitMastersByItemAndPurchaseUnit(
+	hospitalId: string,
+	pairs: { itemId: number; purchaseUnitId: number }[]
+): Promise<Map<string, { id: number; conversionDisplay: string }>> {
+	const out = new Map<string, { id: number; conversionDisplay: string }>();
+	if (pairs.length === 0) return out;
+	const keySet = new Set(
+		pairs.map((p) => `${p.itemId}:${p.purchaseUnitId}`)
+	);
+	const itemIds = [
+		...new Set(
+			pairs
+				.map((p) => p.itemId)
+				.filter((n) => Number.isFinite(n) && n > 0)
+		)
+	];
+	const purIds = [
+		...new Set(
+			pairs
+				.map((p) => p.purchaseUnitId)
+				.filter((n) => Number.isFinite(n) && n > 0)
+		)
+	];
+	if (itemIds.length === 0 || purIds.length === 0) return out;
+
+	const rows = await ensureDb()
+		.select({
+			itemMasterId: table.itemMasterItemUnitMasterTable.itemMasterId,
+			purchaseUnitId: table.itemUnitMasterTable.purchaseUnitId,
+			iumId: table.itemUnitMasterTable.id,
+			isDefault: table.itemMasterItemUnitMasterTable.isDefaultYesNo,
+			purchaseFactor: table.itemUnitMasterTable.purchaseConversionFactor,
+			issueFactor: table.itemUnitMasterTable.issueConversionFactor,
+			purchaseUnitName: purchaseUnitAlias.name,
+			issueUnitName: issueUnitAlias.name
+		})
+		.from(table.itemMasterItemUnitMasterTable)
+		.innerJoin(
+			table.itemUnitMasterTable,
+			and(
+				eq(
+					table.itemUnitMasterTable.id,
+					table.itemMasterItemUnitMasterTable.itemUnitMasterId
+				),
+				eq(table.itemUnitMasterTable.hospitalId, hospitalId),
+				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.leftJoin(
+			purchaseUnitAlias,
+			and(
+				eq(
+					table.itemUnitMasterTable.purchaseUnitId,
+					purchaseUnitAlias.id
+				),
+				ne(purchaseUnitAlias.statusId, StatusEnum.DELETED)
+			)
+		)
+		.leftJoin(
+			issueUnitAlias,
+			and(
+				eq(
+					table.itemUnitMasterTable.issueUnitId,
+					issueUnitAlias.id
+				),
+				ne(issueUnitAlias.statusId, StatusEnum.DELETED)
+			)
+		)
+		.where(
+			and(
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					hospitalId
+				),
+				isNull(
+					table.itemMasterItemUnitMasterTable.deletedAt
+				),
+				inArray(
+					table.itemMasterItemUnitMasterTable.itemMasterId,
+					itemIds
+				),
+				inArray(
+					table.itemUnitMasterTable.purchaseUnitId,
+					purIds
+				)
+			)
+		);
+
+	const byKey = new Map<
+		string,
+		{ id: number; conversionDisplay: string; isDefault: number; sortId: number }[]
+	>();
+	for (const r of rows) {
+		const k = `${r.itemMasterId}:${r.purchaseUnitId}`;
+		if (!keySet.has(k)) continue;
+		const conversionDisplay = StringUtil.itemUnitConversionDisplay({
+			purchaseUnitName: r.purchaseUnitName ?? '',
+			issueUnitName: r.issueUnitName ?? '',
+			purchaseFactor: Number(r.purchaseFactor),
+			issueFactor: Number(r.issueFactor)
+		});
+		const rec = {
+			id: r.iumId,
+			conversionDisplay,
+			isDefault: r.isDefault,
+			sortId: r.iumId
+		};
+		const arr = byKey.get(k) ?? [];
+		arr.push(rec);
+		byKey.set(k, arr);
+	}
+	for (const [k, arr] of byKey) {
+		arr.sort(
+			(a, b) => b.isDefault - a.isDefault || a.sortId - b.sortId
+		);
+		const best = arr[0];
+		if (best) {
+			out.set(k, {
+				id: best.id,
+				conversionDisplay: best.conversionDisplay
+			});
+		}
+	}
+
+	return out;
+}
+
 export async function setItemUnitMastersForItem(
 	hospitalId: string,
 	input: {
