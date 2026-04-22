@@ -1199,6 +1199,8 @@ export const itemMasterTable = pgTable(
 		),
 		description: text('description'),
 		remark: text('remark'),
+		/** Pharmacy / regulated items: GRN must capture batch, expiry, and purchase price. */
+		isBatchRequired: boolean('is_batch_required').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1571,6 +1573,8 @@ export const storeTable = pgTable(
 		),
 		storeName: varchar('store_name', { length: 512 }),
 		remark: text('remark'),
+		/** At most one central store per branch (partial unique index). GRN receipts target this store. */
+		isCentralStore: boolean('is_central_store').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1581,7 +1585,10 @@ export const storeTable = pgTable(
 		check(
 			'store_user_group_xor_department_chk',
 			sql`(((${t.userGroupId} IS NOT NULL)::int) + ((${t.departmentId} IS NOT NULL)::int)) = 1`
-		)
+		),
+		uniqueIndex('store_branch_central_unique')
+			.on(t.branchId)
+			.where(sql`${t.isCentralStore} = true`)
 	]
 );
 

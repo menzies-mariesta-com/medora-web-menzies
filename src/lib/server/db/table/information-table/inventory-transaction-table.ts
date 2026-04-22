@@ -1,0 +1,580 @@
+import { sql } from 'drizzle-orm';
+import {
+	type AnyPgColumn,
+	boolean,
+	check,
+	date,
+	decimal,
+	integer,
+	jsonb,
+	pgTable,
+	serial,
+	text,
+	timestamp,
+	uuid,
+	uniqueIndex,
+	index,
+	varchar
+} from 'drizzle-orm/pg-core';
+import { uuidv7 } from 'uuidv7';
+import { userTable } from '../auth-table/auth-table';
+import { unitTable } from '../master-table/master-table';
+import {
+	hospitalTable,
+	itemMasterTable,
+	manufacturerTable,
+	staffTable,
+	statusTaggingTable,
+	storeTable,
+	supplierTable
+} from './information-table';
+
+const invTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`),
+	deletedAt: timestamp('deleted_at', {
+		withTimezone: true,
+		mode: 'string'
+	}),
+	createdBy: text('created_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	),
+	updatedBy: text('updated_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	),
+	deletedBy: text('deleted_by').references(
+		(): AnyPgColumn => userTable.id,
+		{ onDelete: 'set null', onUpdate: 'cascade' }
+	)
+} as const;
+
+const invJunctionTimestamps = {
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+		mode: 'string'
+	})
+		.notNull()
+		.defaultNow()
+		.$onUpdate(() => sql`now()`)
+} as const;
+
+/** Per-store PR/PO approval levels (many staff per level via inv_approval_assignee). */
+export const invApprovalLevelTable = pgTable(
+	'inv_approval_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		/** `PR` | `PO` */
+		module: varchar('module', { length: 8 }).notNull(),
+		level: integer('level').notNull(),
+		isRequired: boolean('is_required').notNull().default(true),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_approval_level_store_module_level_uidx').on(
+			t.hospitalId,
+			t.storeId,
+			t.module,
+			t.level
+		),
+		index('inv_approval_level_hospital_store_idx').on(t.hospitalId, t.storeId),
+		check('inv_approval_level_module_chk', sql`${t.module} IN ('PR', 'PO')`),
+		check('inv_approval_level_level_positive_chk', sql`${t.level} >= 1`)
+	]
+);
+
+export const invApprovalAssigneeTable = pgTable(
+	'inv_approval_assignee',
+	{
+		id: serial('id').primaryKey(),
+		levelId: integer('level_id')
+			.notNull()
+			.references(() => invApprovalLevelTable.id, { onDelete: 'cascade' }),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		...invJunctionTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_approval_assignee_level_staff_uidx').on(
+			t.levelId,
+			t.staffId
+		)
+	]
+);
+
+/** Audit trail for PR/PO approvals. */
+export const invApprovalLogTable = pgTable(
+	'inv_approval_log',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		documentId: uuid('document_id').notNull(),
+		module: varchar('module', { length: 8 }).notNull(),
+		level: integer('level').notNull(),
+		/** {@link InvApprovalActionEnum} */
+		action: integer('action').notNull(),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		lineAdjustments: jsonb('line_adjustments'),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_approval_log_document_idx').on(t.documentId),
+		check('inv_approval_log_module_chk', sql`${t.module} IN ('PR', 'PO')`)
+	]
+);
+
+export const purchaseRequisitionTable = pgTable(
+	'purchase_requisition',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidv7()),
+		prNo: varchar('pr_no', { length: 128 }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+		currentLevel: integer('current_level').notNull().default(1),
+		remarks: text('remarks'),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('purchase_requisition_hospital_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		)
+	]
+);
+
+export const purchaseRequisitionLineTable = pgTable(
+	'purchase_requisition_line',
+	{
+		id: serial('id').primaryKey(),
+		prId: uuid('pr_id')
+			.notNull()
+			.references(() => purchaseRequisitionTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		/** Remaining qty allocatable to POs (starts equal to quantity). */
+		qtyRemaining: decimal('qty_remaining', { precision: 18, scale: 6 })
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [index('purchase_requisition_line_pr_id_idx').on(t.prId)]
+);
+
+export const purchaseOrderTable = pgTable(
+	'purchase_order',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidv7()),
+		poNo: varchar('po_no', { length: 128 }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Null for manual PO (no PR). */
+		prId: uuid('pr_id').references(
+			() => purchaseRequisitionTable.id,
+			{ onDelete: 'restrict' }
+		),
+		/** PR store for PR-backed PO; chosen store for manual PO. Drives PO approval + GRN central store. */
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		supplierId: integer('supplier_id')
+			.notNull()
+			.references(() => supplierTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+		currentLevel: integer('current_level').notNull().default(1),
+		totalAmount: decimal('total_amount', { precision: 14, scale: 2 })
+			.notNull()
+			.default('0'),
+		sentToSupplierAt: timestamp('sent_to_supplier_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		...invTimestamps
+	},
+	(t) => [
+		index('purchase_order_hospital_pr_idx').on(t.hospitalId, t.prId),
+		index('purchase_order_hospital_store_idx').on(t.hospitalId, t.storeId)
+	]
+);
+
+export const purchaseOrderLineTable = pgTable(
+	'purchase_order_line',
+	{
+		id: serial('id').primaryKey(),
+		poId: uuid('po_id')
+			.notNull()
+			.references(() => purchaseOrderTable.id, { onDelete: 'cascade' }),
+		prLineId: integer('pr_line_id').references(
+			() => purchaseRequisitionLineTable.id,
+			{ onDelete: 'set null' }
+		),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		unitPrice: decimal('unit_price', { precision: 14, scale: 4 }).notNull(),
+		lineTotal: decimal('line_total', { precision: 14, scale: 2 }).notNull(),
+		manufacturerId: integer('manufacturer_id').references(
+			() => manufacturerTable.id,
+			{ onDelete: 'set null' }
+		),
+		qtyReceivedCumulative: decimal('qty_received_cumulative', {
+			precision: 18,
+			scale: 6
+		})
+			.notNull()
+			.default('0'),
+		...invTimestamps
+	},
+	(t) => [index('purchase_order_line_po_id_idx').on(t.poId)]
+);
+
+/**
+ * Normalized batch master (identity includes supplier, manufacturer, unit purchase price).
+ * Unique index `item_batch_identity_uidx` (NULLS NOT DISTINCT) is created in SQL migration.
+ */
+export const itemBatchTable = pgTable(
+	'item_batch',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		batchNo: varchar('batch_no', { length: 128 }).notNull(),
+		expiryDate: date('expiry_date'),
+		manufacturerId: integer('manufacturer_id').references(
+			() => manufacturerTable.id,
+			{ onDelete: 'set null' }
+		),
+		supplierId: integer('supplier_id').references(() => supplierTable.id, {
+			onDelete: 'set null'
+		}),
+		purchasePrice: decimal('purchase_price', { precision: 14, scale: 4 })
+			.notNull()
+			.default('0'),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('item_batch_hospital_item_idx').on(t.hospitalId, t.itemId),
+		index('item_batch_expiry_idx').on(t.expiryDate)
+	]
+);
+
+/** Per-store quantity by batch (`item_batch`). */
+export const invStockTable = pgTable(
+	'inv_stock',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		...invTimestamps
+	},
+	(t) => [
+		index('inv_stock_store_item_idx').on(t.storeId, t.itemId),
+		index('inv_stock_batch_idx').on(t.batchId)
+	]
+);
+
+export const goodsReceiptNoteTable = pgTable(
+	'goods_receipt_note',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidv7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Null when direct GRN (no PO). */
+		poId: uuid('po_id').references(() => purchaseOrderTable.id, {
+			onDelete: 'restrict'
+		}),
+		/** Set when `poId` is null; otherwise may mirror PO supplier. */
+		supplierId: integer('supplier_id').references(() => supplierTable.id, {
+			onDelete: 'restrict'
+		}),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		receivedBy: text('received_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		receivedDate: date('received_date').notNull(),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		index('goods_receipt_note_po_id_idx').on(t.poId),
+		check(
+			'goods_receipt_note_po_or_supplier_chk',
+			sql`${t.poId} is not null or ${t.supplierId} is not null`
+		)
+	]
+);
+
+export const goodsReceiptLineTable = pgTable(
+	'goods_receipt_line',
+	{
+		id: serial('id').primaryKey(),
+		grnId: uuid('grn_id')
+			.notNull()
+			.references(() => goodsReceiptNoteTable.id, { onDelete: 'cascade' }),
+		/** Null for direct GRN line (no PO line). */
+		poLineId: integer('po_line_id').references(
+			() => purchaseOrderLineTable.id,
+			{ onDelete: 'restrict' }
+		),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		receivedQty: decimal('received_qty', { precision: 18, scale: 6 }).notNull(),
+		batchNo: varchar('batch_no', { length: 128 }),
+		expiryDate: date('expiry_date'),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id').references(() => itemBatchTable.id, {
+			onDelete: 'set null'
+		}),
+		purchasePrice: decimal('purchase_price', { precision: 14, scale: 4 }),
+		...invTimestamps
+	},
+	(t) => [index('goods_receipt_line_grn_id_idx').on(t.grnId)]
+);
+
+export const invStoreTransferTable = pgTable(
+	'inv_store_transfer',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidv7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		fromStoreId: integer('from_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		toStoreId: integer('to_store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		approvedBy: text('approved_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		postedAt: timestamp('posted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remark: text('remark'),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [
+		check(
+			'inv_store_transfer_stores_distinct_chk',
+			sql`${t.fromStoreId} <> ${t.toStoreId}`
+		)
+	]
+);
+
+export const invStoreTransferLineTable = pgTable(
+	'inv_store_transfer_line',
+	{
+		id: serial('id').primaryKey(),
+		transferId: uuid('transfer_id')
+			.notNull()
+			.references(() => invStoreTransferTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		...invTimestamps
+	},
+	(t) => [index('inv_store_transfer_line_transfer_id_idx').on(t.transferId)]
+);
+
+export const invStockIssueTable = pgTable(
+	'inv_stock_issue',
+	{
+		id: uuid('id')
+			.primaryKey()
+			.$defaultFn(() => uuidv7()),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'restrict' }),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+		issuedTo: text('issued_to'),
+		reason: text('reason'),
+		postedAt: timestamp('posted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		requestedBy: text('requested_by')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'restrict' }),
+		cancelledBy: text('cancelled_by').references(() => userTable.id, {
+			onDelete: 'set null'
+		}),
+		cancelledAt: timestamp('cancelled_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		cancelReason: text('cancel_reason'),
+		...invTimestamps
+	},
+	(t) => [index('inv_stock_issue_store_idx').on(t.storeId)]
+);
+
+export const invStockIssueLineTable = pgTable(
+	'inv_stock_issue_line',
+	{
+		id: serial('id').primaryKey(),
+		issueId: uuid('issue_id')
+			.notNull()
+			.references(() => invStockIssueTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
+		qty: decimal('qty', { precision: 18, scale: 6 }).notNull(),
+		unitId: integer('unit_id')
+			.notNull()
+			.references(() => unitTable.id, { onDelete: 'restrict' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		...invTimestamps
+	},
+	(t) => [index('inv_stock_issue_line_issue_id_idx').on(t.issueId)]
+);
