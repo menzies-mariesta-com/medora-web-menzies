@@ -51,6 +51,8 @@ export const POST: RequestHandler = async (event) => {
 	const data = await createStore(event, {
 		hospitalId,
 		branchId: String(body.branchId ?? ''),
+		isCentralStore:
+			body.isCentralStore === true || body.isCentralStore === 'true',
 		storeName: body.storeName != null ? String(body.storeName) : null,
 		remark: body.remark != null ? String(body.remark) : null,
 		userGroupId:
@@ -78,6 +80,10 @@ export const PUT: RequestHandler = async (event) => {
 		hospitalId,
 		id: Number(body.id ?? 0),
 		branchId: body.branchId != null ? String(body.branchId) : undefined,
+		isCentralStore:
+			body.isCentralStore === undefined
+				? undefined
+				: body.isCentralStore === true || body.isCentralStore === 'true',
 		storeName: body.storeName != null ? String(body.storeName) : undefined,
 		remark: body.remark != null ? String(body.remark) : undefined,
 		userGroupId:

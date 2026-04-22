@@ -6,5 +6,7 @@ export * from './table/information-table/information-table';
 export * from './table/marketplace-table/marketplace-table';
 export * from './table/notification-table/notification-table';
 export * from './table/information-table/information-table-relation';
+export * from './table/information-table/inventory-transaction-table';
+export * from './table/information-table/inventory-transaction-relation';
 export * from './table/master-table/master-table-relation';
 export * from './table/marketplace-table/marketplace-table-relation';

@@ -25,6 +25,24 @@ export type {
 
 /** Used when no `prefix_format` row exists yet (in-memory default only). */
 function defaultFormatSpecForKey(prefixKey: string): PrefixFormatSpec {
+	if (
+		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO ||
+		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO
+	) {
+		return {
+			parts: [
+				{ type: 'field', path: 'financial_year.code' },
+				{ type: 'field', path: 'hospital.code' },
+				{ type: 'field', path: 'branch.code' },
+				{
+					type: 'sequence',
+					source: 'prefix_counter.last_no',
+					op: 'inc',
+					padStart: 6
+				}
+			]
+		};
+	}
 	if (prefixKey === PREFIX_PURPOSE_STORAGE.VISIT_NO) {
 		return {
 			parts: [

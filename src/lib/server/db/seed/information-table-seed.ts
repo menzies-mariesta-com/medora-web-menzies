@@ -35,7 +35,8 @@ export async function seedInformationTables() {
 			(6, 'CPOE', 6, 1, '/heka/home/cpoe', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(7, 'Observation', 7, 1, '/heka/home/observation', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(8, 'Billing', 8, 1, '/heka/home/billing', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-text"><path d="M4 2h16v20l-4-2-4 2-4-2-4 2z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>'),
-			(9, 'Inventory Setup', 9, 1, '/heka/home/inventory-setup', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>')
+			(9, 'Inventory Setup', 9, 1, '/heka/home/inventory-setup', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
+			(10, 'Inventory', 10, 1, '/heka/home/inventory', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>')
 
 		ON CONFLICT (id) DO NOTHING;
 	`);
@@ -139,15 +140,23 @@ export async function seedInformationTables() {
 			-- master department catalog; store per branch linked to user group XOR department
 			(18, 'Departments', 1, 1, null, '/heka/home/administration/departments', 10),
 
-			-- Inventory Setup (parent); children: stores, item master, pharmacy generic, unit master, item unit master
-			(22, 'Inventory Setup', 9, 1, null, '/heka/home/inventory-setup', 1),
-			(19, 'Stores', 9, 1, 22, '/heka/home/inventory-setup/stores', 1),
-			(20, 'Item Master', 9, 1, 22, '/heka/home/inventory-setup/item-master', 2),
-			(21, 'Pharmacy Generic', 9, 1, 22, '/heka/home/inventory-setup/pharmacy-generic', 3),
-			(23, 'Unit Master', 9, 1, 22, '/heka/home/inventory-setup/unit-master', 4),
-			(24, 'Item Unit Master', 9, 1, 22, '/heka/home/inventory-setup/item-unit-master', 5),
-			(25, 'Manufacture Setup', 9, 1, 22, '/heka/home/inventory-setup/manufacture-setup', 6),
-			(26, 'Supplier Setup', 9, 1, 22, '/heka/home/inventory-setup/supplier-setup', 7)
+			-- Inventory Setup Module (main pages; no parent Inventory Setup page)
+			(19, 'Stores', 9, 1, null, '/heka/home/inventory-setup/stores', 1),
+			(20, 'Item Master', 9, 1, null, '/heka/home/inventory-setup/item-master', 2),
+			(21, 'Pharmacy Generic', 9, 1, null, '/heka/home/inventory-setup/pharmacy-generic', 3),
+			(22, 'Unit Master', 9, 1, null, '/heka/home/inventory-setup/unit-master', 4),
+			(23, 'Item Unit Master', 9, 1, null, '/heka/home/inventory-setup/item-unit-master', 5),
+			(24, 'Manufacture Setup', 9, 1, null, '/heka/home/inventory-setup/manufacture-setup', 6),
+			(25, 'Supplier Setup', 9, 1, null, '/heka/home/inventory-setup/supplier-setup', 7),
+			(26, 'Approval Config', 9, 1, null, '/heka/home/inventory-setup/approval-config', 8),
+
+			-- Inventory Module (main pages; no parent Inventory page)
+			(27, 'Purchase Requisition', 10, 1, null, '/heka/home/inventory/purchase-requisition', 1),
+			(28, 'Purchase Order', 10, 1, null, '/heka/home/inventory/purchase-order', 2),
+			(29, 'Goods Receipt', 10, 1, null, '/heka/home/inventory/grn', 3),
+			(30, 'Stock', 10, 1, null, '/heka/home/inventory/stock', 4),
+			(31, 'Store Transfer', 10, 1, null, '/heka/home/inventory/store-transfer', 5),
+			(32, 'Stock Issue', 10, 1, null, '/heka/home/inventory/stock-issue', 6)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -170,7 +179,12 @@ export async function seedInformationTables() {
 		INSERT INTO status_tagging_type (id, name)
 		VALUES
 			(1, 'Doctor Appointment'),
-			(2, 'Visit')
+			(2, 'Visit'),
+			(3, 'Purchase Requisition'),
+			(4, 'Purchase Order'),
+			(5, 'Goods Receipt'),
+			(6, 'Store Transfer'),
+			(7, 'Stock Issue')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	seedLogger.info('Seeded: status tagging type');
@@ -190,7 +204,40 @@ export async function seedInformationTables() {
 			(5, 'Open', 'open', 1, 2),
 			(6, 'Vital', 'vital', 2, 2),
 			(7, 'Seen', 'seen', 3, 2),
-			(8, 'Closed', 'closed', 4, 2)
+			(8, 'Closed', 'closed', 4, 2),
+
+			-- Purchase Requisition (ids 9–13; StatusTaggingTypeEnum.INV_PURCHASE_REQUISITION)
+			(9, 'Draft', 'draft', 1, 3),
+			(10, 'Pending', 'pending', 2, 3),
+			(11, 'Approved', 'approved', 3, 3),
+			(12, 'Rejected', 'rejected', 4, 3),
+			(13, 'Sent Back', 'sent_back', 5, 3),
+			(31, 'Cancelled', 'cancelled', 6, 3),
+
+			-- Purchase Order (14–21)
+			(14, 'Draft', 'draft', 1, 4),
+			(15, 'Pending', 'pending', 2, 4),
+			(16, 'Approved', 'approved', 3, 4),
+			(17, 'Rejected', 'rejected', 4, 4),
+			(18, 'Sent Back', 'sent_back', 5, 4),
+			(19, 'Sent To Supplier', 'sent_to_supplier', 6, 4),
+			(20, 'Partially Received', 'partially_received', 7, 4),
+			(21, 'Closed', 'closed', 8, 4),
+
+			-- Goods Receipt (22–24)
+			(22, 'Draft', 'draft', 1, 5),
+			(23, 'Posted', 'posted', 2, 5),
+			(24, 'Cancelled', 'cancelled', 3, 5),
+
+			-- Store Transfer (25–27)
+			(25, 'Draft', 'draft', 1, 6),
+			(26, 'Posted', 'posted', 2, 6),
+			(27, 'Cancelled', 'cancelled', 3, 6),
+
+			-- Stock Issue (28–30)
+			(28, 'Draft', 'draft', 1, 7),
+			(29, 'Posted', 'posted', 2, 7),
+			(30, 'Cancelled', 'cancelled', 3, 7)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);

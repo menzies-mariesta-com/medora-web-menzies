@@ -123,6 +123,8 @@ export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	description: string | null;
 	remark: string | null;
 	statusId: number;
+	/** When true, GRN must send batch_no, expiry_date, purchase_price for this item. */
+	isBatchRequired?: boolean;
 	/** Unit conversion ids tagged to this item (optional, only on detail fetch). */
 	itemUnitMasterIds?: number[];
 	/** Which linked conversion is default (detail fetch); null if none. */
