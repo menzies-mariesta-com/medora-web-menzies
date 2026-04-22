@@ -35,8 +35,24 @@ export function defaultFormatParts(): UiFormatPart[] {
 
 /** Default template when saving a purpose for the first time. */
 export function defaultFormatPartsForStorageKey(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO'
+	storageKey:
+		| 'PATIENT_CODE'
+		| 'VISIT_NO'
+		| 'ORDER_NO'
+		| 'PURCHASE_REQUISITION_NO'
+		| 'PURCHASE_ORDER_NO'
 ): UiFormatPart[] {
+	if (
+		storageKey === 'PURCHASE_REQUISITION_NO' ||
+		storageKey === 'PURCHASE_ORDER_NO'
+	) {
+		return [
+			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
+			{ id: newPartId(), kind: 'field', path: 'hospital.code' },
+			{ id: newPartId(), kind: 'field', path: 'branch.code' },
+			{ id: newPartId(), kind: 'sequence', padStart: 6 }
+		];
+	}
 	if (storageKey === 'VISIT_NO') {
 		return [
 			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
@@ -70,7 +86,12 @@ const FIELD_PATHS_PATIENT: readonly PrefixFieldPath[] = [
 
 /** Field dropdown options; patient omits visit type by default (optional via format). */
 export function fieldPathsForEdit(
-	storageKey: 'PATIENT_CODE' | 'VISIT_NO' | 'ORDER_NO',
+	storageKey:
+		| 'PATIENT_CODE'
+		| 'VISIT_NO'
+		| 'ORDER_NO'
+		| 'PURCHASE_REQUISITION_NO'
+		| 'PURCHASE_ORDER_NO',
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
 	const base =

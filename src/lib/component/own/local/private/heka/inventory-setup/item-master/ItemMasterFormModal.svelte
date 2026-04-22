@@ -80,6 +80,7 @@
 	let remark = $state('');
 	let pharmacyGenericIdStr = $state('');
 	let manufacturerIdStr = $state('');
+	let isBatchRequired = $state(false);
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
@@ -302,9 +303,11 @@
 						row.manufacturerId != null
 							? String(row.manufacturerId)
 							: '';
+					isBatchRequired = row.isBatchRequired === true;
 				}
 			} else if (cats.length > 0) {
 				categoryIdStr = String(cats[0].id);
+				isBatchRequired = false;
 			}
 		} finally {
 			isLoading = false;
@@ -381,7 +384,8 @@
 				itemUnitMasterIds,
 				description: description.trim() || null,
 				remark: remark.trim() || null,
-				statusId
+				statusId,
+				isBatchRequired
 			};
 			if (itemUnitMasterIds.length > 0) {
 				body.defaultItemUnitMasterId = Number(
@@ -547,6 +551,19 @@
 					<p class="mt-1 text-xs opacity-70">
 						{m.item_master_barcode_scan_hint()}
 					</p>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
+					>{m.item_master_batch_required()}</DaisyUiLabel
+				>
+				<div class="max-w-lg flex-1">
+					<label class="flex cursor-pointer items-start gap-2">
+						<DaisyUiCheckbox bind:checked={isBatchRequired} />
+						<span class="text-sm">{m.item_master_batch_required_help()}</span>
+					</label>
 				</div>
 			</div>
 			<div

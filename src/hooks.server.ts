@@ -36,7 +36,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
-		let staff: Awaited<ReturnType<typeof getStaffByUserIdWithRelations>> = null;
+		let staff: Awaited<ReturnType<typeof getStaffByUserIdWithRelations>> | null =
+			null;
 		try {
 			staff = await getStaffByUserIdWithRelations(session.user.id);
 		} catch (err) {

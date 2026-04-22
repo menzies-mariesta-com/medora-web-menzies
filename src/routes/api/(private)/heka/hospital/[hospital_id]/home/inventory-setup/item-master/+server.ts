@@ -119,6 +119,7 @@ export async function POST(event: RequestEvent) {
 			: mfrRaw === null
 				? null
 				: undefined;
+	const isBatchRequired = Boolean(body.isBatchRequired);
 	const created = await im.createItemMaster(hospitalId, {
 			itemName: String(body.itemName ?? ''),
 			categoryId: Number.isFinite(categoryId) ? categoryId : 0,
@@ -147,7 +148,8 @@ export async function POST(event: RequestEvent) {
 				body.remark != null && String(body.remark).trim() !== ''
 					? String(body.remark).trim()
 					: null,
-			statusId: Number.isFinite(statusId) ? statusId : undefined
+			statusId: Number.isFinite(statusId) ? statusId : undefined,
+			isBatchRequired
 	});
 
 	const iumIdsRaw = body.itemUnitMasterIds;
@@ -224,7 +226,11 @@ export async function PUT(event: RequestEvent) {
 						? String(body.remark).trim()
 						: null,
 			statusId:
-				body.statusId === undefined ? undefined : Number(body.statusId)
+				body.statusId === undefined ? undefined : Number(body.statusId),
+			isBatchRequired:
+				body.isBatchRequired === undefined
+					? undefined
+					: Boolean(body.isBatchRequired)
 		}).then(async (updated) => {
 			const iumIdsRaw = body.itemUnitMasterIds;
 			if (Array.isArray(iumIdsRaw)) {
