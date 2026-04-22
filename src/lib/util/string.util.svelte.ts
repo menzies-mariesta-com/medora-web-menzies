@@ -61,6 +61,35 @@ export class StringUtil {
 	}
 
 	/**
+	 * Row hover text for inventory list rows (flat *ByName + timestamps).
+	 * Same layout as {@link tableToolTip} but no Approved lines—those stay in table columns only.
+	 */
+	static inventoryAuditRowTooltip(row: {
+		createdAt?: string | null;
+		updatedAt?: string | null;
+		createdByName?: string | null;
+		updatedByName?: string | null;
+		cancelledAt?: string | null;
+		cancelledByName?: string | null;
+	}): string {
+		const dateTimeUtil = new DateTimeUtil();
+		const createdAt = dateTimeUtil.formatDateTime(row.createdAt);
+		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
+		const createdBy = row.createdByName ?? '—';
+		const updatedBy = row.updatedByName ?? '—';
+		const canceledBy = row.cancelledByName ?? '—';
+		const canceledAt = dateTimeUtil.formatDateTime(row.cancelledAt);
+		const hasCancelInfo =
+			canceledBy !== '—' || (canceledAt ?? '') !== '—';
+
+		if (hasCancelInfo) {
+			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
+		}
+
+		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
+	}
+
+	/**
 	 * snake_case / kebab-case → spaces
 	 * ex: trinidad_and_tobago → trinidad and tobago
 	 */

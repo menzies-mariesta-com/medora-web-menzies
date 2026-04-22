@@ -34,6 +34,8 @@
 	let userGroupIdStr = $state('');
 	let departmentIdStr = $state('');
 	let formActive = $state(true);
+	/** One per branch; GRN receives into this store. */
+	let isCentralStore = $state(false);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 
@@ -107,6 +109,7 @@
 					branchId = s.branchId;
 					storeName = s.storeName ?? '';
 					remark = s.remark ?? '';
+					isCentralStore = Boolean(s.isCentralStore);
 					formActive =
 						(s.statusId ?? StatusEnum.ACTIVE) ===
 						StatusEnum.ACTIVE;
@@ -120,8 +123,11 @@
 						userGroupIdStr = '';
 					}
 				}
-			} else if (branches.length > 0) {
-				branchId = branches[0].id;
+			} else {
+				isCentralStore = false;
+				if (branches.length > 0) {
+					branchId = branches[0].id;
+				}
 			}
 		} finally {
 			isLoading = false;
@@ -185,6 +191,7 @@
 						headers: { 'content-type': 'application/json' },
 						body: JSON.stringify({
 							branchId,
+							isCentralStore,
 							storeName: storeName.trim(),
 							remark: remark.trim() || null,
 							userGroupId:
@@ -211,6 +218,7 @@
 						body: JSON.stringify({
 							id: modalState.editStore.id,
 							branchId,
+							isCentralStore,
 							storeName: storeName.trim(),
 							remark: remark.trim() || null,
 							userGroupId:
@@ -293,6 +301,19 @@
 				>
 				<div class="max-w-md flex-1">
 					<DaisyUiTextarea bind:value={remark} />
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
+					>{m.store_central_checkbox()}</DaisyUiLabel
+				>
+				<div class="flex max-w-md flex-1 flex-col gap-1">
+					<label class="flex cursor-pointer items-center gap-2">
+						<DaisyUiCheckbox bind:checked={isCentralStore} />
+					</label>
+					<p class="text-xs opacity-70">{m.store_central_help()}</p>
 				</div>
 			</div>
 			<div
