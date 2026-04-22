@@ -100,5 +100,76 @@ export enum CategoryEnum {
 
 export enum StatusTaggingTypeEnum {
 	DOCTOR_APPOINTMENT = 1,
-	VISIT = 2
+	VISIT = 2,
+	/** @see information-table-seed: status_tagging_type */
+	INV_PURCHASE_REQUISITION = 3,
+	INV_PURCHASE_ORDER = 4,
+	INV_GOODS_RECEIPT = 5,
+	INV_STORE_TRANSFER = 6,
+	INV_STOCK_ISSUE = 7
+}
+
+/**
+ * `status_tagging.id` for Purchase Requisition workflow.
+ * @see information-table-seed.ts
+ */
+export enum InvPrStatusTaggingEnum {
+	DRAFT = 9,
+	PENDING = 10,
+	APPROVED = 11,
+	REJECTED = 12,
+	SENT_BACK = 13,
+	CANCELLED = 31
+}
+
+/**
+ * `status_tagging.id` for Purchase Order workflow.
+ * @see information-table-seed.ts
+ */
+export enum InvPoStatusTaggingEnum {
+	DRAFT = 14,
+	PENDING = 15,
+	APPROVED = 16,
+	REJECTED = 17,
+	SENT_BACK = 18,
+	SENT_TO_SUPPLIER = 19,
+	PARTIALLY_RECEIVED = 20,
+	CLOSED = 21
+}
+
+/**
+ * `status_tagging.id` for GRN header.
+ * @see information-table-seed.ts
+ */
+export enum InvGrnStatusTaggingEnum {
+	DRAFT = 22,
+	POSTED = 23,
+	CANCELLED = 24
+}
+
+/**
+ * `status_tagging.id` for store transfer.
+ * @see information-table-seed.ts
+ */
+export enum InvStoreTransferStatusTaggingEnum {
+	DRAFT = 25,
+	POSTED = 26,
+	CANCELLED = 27
+}
+
+/**
+ * `status_tagging.id` for stock issue.
+ * @see information-table-seed.ts
+ */
+export enum InvStockIssueStatusTaggingEnum {
+	DRAFT = 28,
+	POSTED = 29,
+	CANCELLED = 30
+}
+
+/** Values persisted on `inv_approval_log.action`. */
+export enum InvApprovalActionEnum {
+	APPROVED = 1,
+	REJECTED = 2,
+	SENT_BACK = 3
 }

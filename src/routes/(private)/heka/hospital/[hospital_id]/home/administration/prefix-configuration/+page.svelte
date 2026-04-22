@@ -119,6 +119,8 @@
 	function purposeLabel(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') return m.prefix_configuration_purpose_patient();
 		if (p.id === 'visit') return m.prefix_configuration_purpose_visit();
+		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
+		if (p.id === 'po') return m.prefix_configuration_purpose_po();
 		return m.prefix_configuration_purpose_order();
 	}
 
@@ -129,12 +131,20 @@
 		if (p.id === 'visit') {
 			return m.prefix_configuration_purpose_visit_help();
 		}
+		if (p.id === 'pr') {
+			return m.prefix_configuration_purpose_pr_help();
+		}
+		if (p.id === 'po') {
+			return m.prefix_configuration_purpose_po_help();
+		}
 		return m.prefix_configuration_purpose_order_help();
 	}
 
 	function editTitle(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') return m.prefix_configuration_edit_patient_title();
 		if (p.id === 'visit') return m.prefix_configuration_edit_visit_title();
+		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();
+		if (p.id === 'po') return m.prefix_configuration_edit_po_title();
 		return m.prefix_configuration_edit_order_title();
 	}
 
