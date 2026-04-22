@@ -76,6 +76,8 @@ export type ServiceOrderDetailListRow = PatientRegMasterTimestamps & {
 	service?: ServiceItemListRow | null;
 	advisingDoctor?: StaffWithRelations | null;
 	cancelByUser?: { id?: string; name?: string | null } | null;
+	/** True when this line is on a closed OP bill (not editable/removable). */
+	lockedByClosedOpBill?: boolean;
 };
 
 export type PatientDiagnosisListRow = PatientRegMasterTimestamps & {

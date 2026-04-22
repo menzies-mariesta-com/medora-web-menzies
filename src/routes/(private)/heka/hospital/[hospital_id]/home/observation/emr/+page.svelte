@@ -2,12 +2,15 @@
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import ObservationCardTable from '$lib/component/own/global/private/heka/observation/ObservationCardTable.svelte';
-	import ObservationStubCard from '$lib/component/own/global/private/heka/observation/ObservationStubCard.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDialogContent.svelte';
 	import LObservationDiagnosisDialogContent from '$lib/component/own/local/private/heka/observation/LObservationDiagnosisDialogContent.svelte';
 	import LObservationFormEntryDialogContent from '$lib/component/own/local/private/heka/observation/LObservationFormEntryDialogContent.svelte';
 	import LObservationDiagnosisDeleteConfirmDialogContent from '$lib/component/own/local/private/heka/observation/LObservationDiagnosisDeleteConfirmDialogContent.svelte';
 	import LObservationFormEntryDeleteConfirmDialogContent from '$lib/component/own/local/private/heka/observation/LObservationFormEntryDeleteConfirmDialogContent.svelte';
+	import LObservationPlanOfCareDialogContent from '$lib/component/own/local/private/heka/observation/LObservationPlanOfCareDialogContent.svelte';
+	import LObservationPlanOfCareDeleteDialogContent from '$lib/component/own/local/private/heka/observation/LObservationPlanOfCareDeleteDialogContent.svelte';
+	import LObservationProgressNoteDialogContent from '$lib/component/own/local/private/heka/observation/LObservationProgressNoteDialogContent.svelte';
+	import LObservationProgressNoteDeleteDialogContent from '$lib/component/own/local/private/heka/observation/LObservationProgressNoteDeleteDialogContent.svelte';
 	import LVitalRecordDialogContent from '$lib/component/own/local/private/heka/emr/LVitalRecordDialogContent.svelte';
 	import LPatientAllergyDialogContent from '$lib/component/own/local/private/heka/emr/LPatientAllergyDialogContent.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -20,6 +23,8 @@
 	import { ObservationDiagnosisDeleteConfirmDialogState } from '$lib/state/observation-diagnosis-delete-confirm-dialog.state.svelte';
 	import { ObservationFormEntryDialogState } from '$lib/state/observation-form-entry-dialog.state.svelte';
 	import { ObservationFormEntryDeleteConfirmDialogState } from '$lib/state/observation-form-entry-delete-confirm-dialog.state.svelte';
+	import { ObservationPlanOfCareDialogState } from '$lib/state/observation-plan-of-care-dialog.state.svelte';
+	import { ObservationProgressNoteDialogState } from '$lib/state/observation-progress-note-dialog.state.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -28,14 +33,15 @@
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
 	} from '$lib/model/type/heka/ui-rows.type';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import type { PlanOfCareListRow } from '$lib/model/type/heka/plan-of-care.type';
+	import type { ProgressNoteListRow } from '$lib/model/type/heka/progress-note.type';
+	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
 	} from '$lib/config/vital.config';
 	import { m } from '$lib/paraglide/messages';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -71,7 +77,6 @@
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
 	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
-	let documents = $state<PatientDocumentWithRelations[]>([]);
 	let visitDiagnoses = $state<DiagnosisWithType[]>([]);
 	let chiefComplaintEntries = $state<PatientFormEntryWithRelations[]>(
 		[]
@@ -79,6 +84,8 @@
 	let patientConditionEntries = $state<
 		PatientFormEntryWithRelations[]
 	>([]);
+	let planOfCareRows = $state<PlanOfCareListRow[]>([]);
+	let progressNoteRows = $state<ProgressNoteListRow[]>([]);
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
@@ -97,6 +104,12 @@
 	let diagnosisColumnFilters = $state<Record<string, string>>({
 		status: 'active'
 	});
+	let planOfCareColumnFilters = $state<Record<string, string>>({
+		status: 'active'
+	});
+	let progressNoteColumnFilters = $state<Record<string, string>>({
+		status: 'active'
+	});
 	let allergyPageSizeStr = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
 	);
@@ -113,11 +126,10 @@
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	type PatientAllergyWithRelations = any;
-	type PatientDocumentWithRelations = any;
-	type DiagnosisWithType = any;
-	type PatientFormEntryWithRelations = any;
-	type PatientVisitRow = any;
+	type PatientAllergyWithRelations = unknown;
+	type DiagnosisWithType = unknown;
+	type PatientFormEntryWithRelations = unknown;
+	type PatientVisitRow = unknown;
 
 	function getApiBase(): string {
 		const hid = hospitalId;
@@ -271,10 +283,11 @@
 				allergyTotal = 0;
 				vitals = [];
 				orderLines = [];
-				documents = [];
 				visitDiagnoses = [];
 				chiefComplaintEntries = [];
 				patientConditionEntries = [];
+				planOfCareRows = [];
+				progressNoteRows = [];
 				return;
 			}
 			visitRow = v;
@@ -283,7 +296,11 @@
 				allergyTotal = 0;
 				vitals = [];
 				orderLines = [];
-				documents = [];
+				visitDiagnoses = [];
+				chiefComplaintEntries = [];
+				patientConditionEntries = [];
+				planOfCareRows = [];
+				progressNoteRows = [];
 				return;
 			}
 			await Promise.all([
@@ -301,14 +318,20 @@
 					)) as OrderDetailVisitRow[];
 				})(),
 				(async () => {
-					documents = await apiGet<PatientDocumentWithRelations[]>(
-						'patientDocument.visitList',
+					visitDiagnoses = await apiGet<DiagnosisWithType[]>(
+						'diagnosis.list',
 						{ visitId: String(visitId) }
 					);
 				})(),
 				(async () => {
-					visitDiagnoses = await apiGet<DiagnosisWithType[]>(
-						'diagnosis.list',
+					planOfCareRows = await apiGet<PlanOfCareListRow[]>(
+						'planOfCare.list',
+						{ visitId: String(visitId) }
+					);
+				})(),
+				(async () => {
+					progressNoteRows = await apiGet<ProgressNoteListRow[]>(
+						'progressNote.list',
 						{ visitId: String(visitId) }
 					);
 				})(),
@@ -391,12 +414,12 @@
 		}
 	}
 
-	async function reloadDocumentsForVisit() {
+	async function reloadDiagnosesForVisit() {
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			documents = await apiGet<PatientDocumentWithRelations[]>(
-				'patientDocument.visitList',
+			visitDiagnoses = await apiGet<DiagnosisWithType[]>(
+				'diagnosis.list',
 				{ visitId: String(visitId) }
 			);
 		} finally {
@@ -404,12 +427,25 @@
 		}
 	}
 
-	async function reloadDiagnosesForVisit() {
+	async function reloadPlanOfCareForVisit() {
 		if (!visitId) return;
 		isLoadingGrid = true;
 		try {
-			visitDiagnoses = await apiGet<DiagnosisWithType[]>(
-				'diagnosis.list',
+			planOfCareRows = await apiGet<PlanOfCareListRow[]>(
+				'planOfCare.list',
+				{ visitId: String(visitId) }
+			);
+		} finally {
+			isLoadingGrid = false;
+		}
+	}
+
+	async function reloadProgressNoteForVisit() {
+		if (!visitId) return;
+		isLoadingGrid = true;
+		try {
+			progressNoteRows = await apiGet<ProgressNoteListRow[]>(
+				'progressNote.list',
 				{ visitId: String(visitId) }
 			);
 		} finally {
@@ -462,10 +498,11 @@
 			lastAllergiesFetchKey = '';
 			vitals = [];
 			orderLines = [];
-			documents = [];
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
+			planOfCareRows = [];
+			progressNoteRows = [];
 			return;
 		}
 		isLoadingVisit = true;
@@ -488,7 +525,10 @@
 		if (!result.confirmed) return;
 		isSigningClinical = true;
 		try {
-			const row = await apiPost<any>('visit.sign', { visitId });
+			const row = await apiPost<{ clinicalSignedAt?: string | null }>(
+				'visit.sign',
+				{ visitId }
+			);
 			VisitState.setClinicalSignedAtFromVisit(
 				row.clinicalSignedAt ?? new Date().toISOString()
 			);
@@ -505,14 +545,6 @@
 		} finally {
 			isSigningClinical = false;
 		}
-	}
-
-	async function openCaseSheetInfo() {
-		await dialogService.open({
-			title: m.observation_emr_casesheet_stub_title(),
-			message: `${m.observation_emr_casesheet_coming()}\n\n${m.observation_emr_casesheet_stub()}`,
-			variant: DialogVariantEnum.ALERT
-		});
 	}
 
 	/** Client-side vitals status filter: values match formatted cell (lowercased). */
@@ -775,51 +807,6 @@
 		}
 	];
 
-	const documentColumns: MariTableColumn<PatientDocumentWithRelations>[] =
-		[
-			{
-				id: 'docLabel',
-				header: 'Document',
-				widthClass: 'min-w-[10rem]',
-				filterable: false,
-				format: (_value, row) => {
-					const d = row.document;
-					return formatText(
-						[d?.code, d?.documentNumber]
-							.filter(Boolean)
-							.join(' · ') || (d?.id != null ? `ID ${d.id}` : null)
-					);
-				}
-			},
-			{
-				id: 'docType',
-				header: 'Type',
-				widthClass: 'w-32',
-				filterable: false,
-				format: (_value, row) =>
-					formatText(row.document?.documentType?.documentType ?? null)
-			},
-			{
-				id: 'status',
-				header: 'Status',
-				widthClass: 'w-24',
-				filterable: false,
-				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE
-						? 'Active'
-						: row.statusId === StatusEnum.INACTIVE
-							? 'Inactive'
-							: '–'
-			},
-			{
-				id: 'createdAt',
-				header: 'Linked',
-				widthClass: 'w-36',
-				filterable: false,
-				format: (_value, row) => formatDateTime(row.createdAt ?? null)
-			}
-		];
-
 	const diagnosisColumns: MariTableColumn<DiagnosisWithType>[] = [
 		{
 			id: 'status',
@@ -865,6 +852,101 @@
 			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
 			filterable: false,
 			format: (_value, row) => formatDateTime(row.updatedAt ?? null)
+		}
+	];
+
+	function planOfCareNotePreview(
+		note: string | null | undefined
+	): string {
+		const t = (note ?? '').trim();
+		if (!t) return '–';
+		const max = 120;
+		return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+	}
+
+	const planOfCareColumns: MariTableColumn<PlanOfCareListRow>[] = [
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
+			defaultFilterValue: 'active',
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
+		},
+		{
+			id: 'note',
+			header: m.observation_emr_plan_of_care_column_note(),
+			widthClass: 'min-w-[12rem]',
+			filterable: false,
+			format: (_value, row) => planOfCareNotePreview(row.note),
+			cellClass: 'max-w-80 whitespace-normal'
+		},
+		{
+			id: 'doctor',
+			header: m.observation_emr_advising_doctor(),
+			widthClass: 'min-w-[10rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.doctor
+					? StringUtil.doctorOptionDisplayName(row.doctor)
+					: '–'
+		},
+		{
+			id: 'createdAt',
+			header: 'Created',
+			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+			filterable: false,
+			format: (_value, row) => formatDateTime(row.createdAt ?? null)
+		}
+	];
+
+	const progressNoteColumns: MariTableColumn<ProgressNoteListRow>[] = [
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
+			defaultFilterValue: 'active',
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
+		},
+		{
+			id: 'note',
+			header: m.observation_emr_progress_note_column_note(),
+			widthClass: 'min-w-[12rem]',
+			filterable: false,
+			format: (_value, row) => planOfCareNotePreview(row.note),
+			cellClass: 'max-w-80 whitespace-normal'
+		},
+		{
+			id: 'doctor',
+			header: m.observation_emr_advising_doctor(),
+			widthClass: 'min-w-[10rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.doctor
+					? StringUtil.doctorOptionDisplayName(row.doctor)
+					: '–'
+		},
+		{
+			id: 'createdAt',
+			header: 'Created',
+			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+			filterable: false,
+			format: (_value, row) => formatDateTime(row.createdAt ?? null)
 		}
 	];
 
@@ -1209,6 +1291,204 @@
 		}
 	}
 
+	async function openPlanOfCareAdd() {
+		if (!visitRow?.patientId || !visitId || !hospitalId) return;
+		ObservationPlanOfCareDialogState.hospitalId = hospitalId;
+		ObservationPlanOfCareDialogState.patientId = visitRow.patientId;
+		ObservationPlanOfCareDialogState.visitId = visitId;
+		ObservationPlanOfCareDialogState.planOfCareId = null;
+		ObservationPlanOfCareDialogState.onSaved = () =>
+			reloadPlanOfCareForVisit();
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: m.observation_emr_plan_of_care_add(),
+				component: LObservationPlanOfCareDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationPlanOfCareDialogState.planOfCareId = null;
+					ObservationPlanOfCareDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadPlanOfCareForVisit();
+				}
+			});
+			if (result?.confirmed && result.data?.saved) {
+				await reloadPlanOfCareForVisit();
+			}
+		} finally {
+			ObservationPlanOfCareDialogState.hospitalId = null;
+			ObservationPlanOfCareDialogState.patientId = null;
+			ObservationPlanOfCareDialogState.visitId = null;
+			ObservationPlanOfCareDialogState.planOfCareId = null;
+			ObservationPlanOfCareDialogState.onSaved = null;
+		}
+	}
+
+	async function openPlanOfCareEdit(row: PlanOfCareListRow) {
+		if (!visitRow?.patientId || !visitId || !hospitalId) return;
+		ObservationPlanOfCareDialogState.hospitalId = hospitalId;
+		ObservationPlanOfCareDialogState.patientId = visitRow.patientId;
+		ObservationPlanOfCareDialogState.visitId = visitId;
+		ObservationPlanOfCareDialogState.planOfCareId = row.id;
+		ObservationPlanOfCareDialogState.onSaved = () =>
+			reloadPlanOfCareForVisit();
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: m.observation_emr_plan_of_care_edit(),
+				component: LObservationPlanOfCareDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationPlanOfCareDialogState.planOfCareId = null;
+					ObservationPlanOfCareDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadPlanOfCareForVisit();
+				}
+			});
+			if (result?.confirmed && result.data?.saved) {
+				await reloadPlanOfCareForVisit();
+			}
+		} finally {
+			ObservationPlanOfCareDialogState.hospitalId = null;
+			ObservationPlanOfCareDialogState.patientId = null;
+			ObservationPlanOfCareDialogState.visitId = null;
+			ObservationPlanOfCareDialogState.planOfCareId = null;
+			ObservationPlanOfCareDialogState.onSaved = null;
+		}
+	}
+
+	async function handlePlanOfCareDelete(row: PlanOfCareListRow) {
+		const result = await dialogService.open<{ deleteRemark?: string }>({
+			title: m.observation_emr_plan_of_care_delete_title(),
+			component: LObservationPlanOfCareDeleteDialogContent,
+			fullScreen: false,
+			modalClassName:
+				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+		});
+		if (!result.confirmed) return;
+		try {
+			await apiPost('planOfCare.delete', {
+				id: row.id,
+				deleteRemark: result.data?.deleteRemark ?? ''
+			});
+			toastService.addToast(
+				m.observation_emr_plan_of_care_deleted(),
+				StatusColorEnum.SUCCESS
+			);
+			await reloadPlanOfCareForVisit();
+		} catch (err) {
+			toastService.addToast(
+				(err instanceof Error
+					? err.message
+					: m.observation_emr_delete_failed()) as string,
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
+	async function openProgressNoteAdd() {
+		if (!visitRow?.patientId || !visitId || !hospitalId) return;
+		ObservationProgressNoteDialogState.hospitalId = hospitalId;
+		ObservationProgressNoteDialogState.patientId = visitRow.patientId;
+		ObservationProgressNoteDialogState.visitId = visitId;
+		ObservationProgressNoteDialogState.progressNoteId = null;
+		ObservationProgressNoteDialogState.onSaved = () =>
+			reloadProgressNoteForVisit();
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: m.observation_emr_progress_note_add(),
+				component: LObservationProgressNoteDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationProgressNoteDialogState.progressNoteId = null;
+					ObservationProgressNoteDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadProgressNoteForVisit();
+				}
+			});
+			if (result?.confirmed && result.data?.saved) {
+				await reloadProgressNoteForVisit();
+			}
+		} finally {
+			ObservationProgressNoteDialogState.hospitalId = null;
+			ObservationProgressNoteDialogState.patientId = null;
+			ObservationProgressNoteDialogState.visitId = null;
+			ObservationProgressNoteDialogState.progressNoteId = null;
+			ObservationProgressNoteDialogState.onSaved = null;
+		}
+	}
+
+	async function openProgressNoteEdit(row: ProgressNoteListRow) {
+		if (!visitRow?.patientId || !visitId || !hospitalId) return;
+		ObservationProgressNoteDialogState.hospitalId = hospitalId;
+		ObservationProgressNoteDialogState.patientId = visitRow.patientId;
+		ObservationProgressNoteDialogState.visitId = visitId;
+		ObservationProgressNoteDialogState.progressNoteId = row.id;
+		ObservationProgressNoteDialogState.onSaved = () =>
+			reloadProgressNoteForVisit();
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: m.observation_emr_progress_note_edit(),
+				component: LObservationProgressNoteDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					ObservationProgressNoteDialogState.progressNoteId = null;
+					ObservationProgressNoteDialogState.onSaved = null;
+				},
+				onConfirm: (data) => {
+					if (data?.saved) void reloadProgressNoteForVisit();
+				}
+			});
+			if (result?.confirmed && result.data?.saved) {
+				await reloadProgressNoteForVisit();
+			}
+		} finally {
+			ObservationProgressNoteDialogState.hospitalId = null;
+			ObservationProgressNoteDialogState.patientId = null;
+			ObservationProgressNoteDialogState.visitId = null;
+			ObservationProgressNoteDialogState.progressNoteId = null;
+			ObservationProgressNoteDialogState.onSaved = null;
+		}
+	}
+
+	async function handleProgressNoteDelete(row: ProgressNoteListRow) {
+		const result = await dialogService.open<{ deleteRemark?: string }>({
+			title: m.observation_emr_progress_note_delete_title(),
+			component: LObservationProgressNoteDeleteDialogContent,
+			fullScreen: false,
+			modalClassName:
+				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+		});
+		if (!result.confirmed) return;
+		try {
+			await apiPost('progressNote.delete', {
+				id: row.id,
+				deleteRemark: result.data?.deleteRemark ?? ''
+			});
+			toastService.addToast(
+				m.observation_emr_progress_note_deleted(),
+				StatusColorEnum.SUCCESS
+			);
+			await reloadProgressNoteForVisit();
+		} catch (err) {
+			toastService.addToast(
+				(err instanceof Error
+					? err.message
+					: m.observation_emr_delete_failed()) as string,
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
 	async function openFormEntryAdd(
 		formCode: 'chief_complaint' | 'patient_condition'
 	) {
@@ -1371,39 +1651,14 @@
 		}
 	}
 
-	function openOrderLineAdd() {
-		if (!visitRow?.branchId || !hospitalId || !visitId) return;
-		ObservationOrderLineDialogState.visitId = visitId;
-		ObservationOrderLineDialogState.hospitalId = hospitalId;
-		ObservationOrderLineDialogState.branchId = visitRow.branchId;
-		ObservationOrderLineDialogState.detailId = null;
-		ObservationOrderLineDialogState.onSaved = () =>
-			reloadOrdersForVisit();
-		void dialogService
-			.open<{ saved?: boolean }>({
-				title: m.observation_emr_add_order_line(),
-				component: LObservationOrderLineDialogContent,
-				fullScreen: false,
-				modalClassName:
-					'max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto',
-				onClose: () => {
-					ObservationOrderLineDialogState.detailId = null;
-					ObservationOrderLineDialogState.onSaved = null;
-				},
-				onConfirm: (data) => {
-					if (data?.saved) void reloadOrdersForVisit();
-				}
-			})
-			.finally(() => {
-				ObservationOrderLineDialogState.visitId = null;
-				ObservationOrderLineDialogState.hospitalId = null;
-				ObservationOrderLineDialogState.branchId = null;
-				ObservationOrderLineDialogState.detailId = null;
-				ObservationOrderLineDialogState.onSaved = null;
-			});
-	}
-
 	function openOrderLineEdit(row: OrderDetailVisitRow) {
+		if (row.lockedByClosedOpBill) {
+			toastService.addToast(
+				m.observation_emr_order_line_locked_op_bill(),
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		if (!visitRow?.branchId || !hospitalId || !visitId) return;
 		ObservationOrderLineDialogState.visitId = visitId;
 		ObservationOrderLineDialogState.hospitalId = hospitalId;
@@ -1436,6 +1691,13 @@
 	}
 
 	async function handleOrderLineDelete(row: OrderDetailVisitRow) {
+		if (row.lockedByClosedOpBill) {
+			toastService.addToast(
+				m.observation_emr_order_line_locked_op_bill(),
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		const result = await dialogService.open({
 			title: 'Delete order line',
 			message: m.observation_emr_delete_order_line(),
@@ -1479,17 +1741,17 @@
 			className="z-0"
 		/>
 	{:else}
-		<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
-			{#if !clinicalVisitReadOnly}
+		{#if !clinicalVisitReadOnly}
+			<div class="sticky top-0 z-10 -mx-2 flex justify-end bg-base-100/90 px-2 py-2 backdrop-blur">
 				<DaisyUiButton
-					className="d-btn-warning d-btn-sm"
+					className="d-btn-primary d-btn-sm"
 					disabled={isSigningClinical || isLoadingVisit}
 					onClick={handleSaveAsSigned}
 				>
 					{isSigningClinical ? '…' : m.observation_save_as_signed()}
 				</DaisyUiButton>
-			{/if}
-		</div>
+			</div>
+		{/if}
 		<div class="observation-emr-grid">
 			<ObservationCardTable
 				title={m.observation_emr_chief_complaint()}
@@ -1614,7 +1876,11 @@
 				columns={orderColumns}
 				isLoading={isLoadingGrid || isLoadingVisit}
 				crudShowView={false}
-				showRowActions={false}
+				showRowActions={true}
+				crudEditDisabled={(row) =>
+					Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
+				crudDeleteDisabled={(row) =>
+					Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
 				addButtonVariant="redirect"
 				redirectHref={cpoeOrderRedirectHref}
 				redirectButtonText={m.observation_emr_order_history()}
@@ -1624,21 +1890,35 @@
 				on:edit={(e) => openOrderLineEdit(e.detail)}
 				on:delete={(e) => handleOrderLineDelete(e.detail)}
 			/>
-			<ObservationStubCard
+			<ObservationCardTable
 				title={m.observation_emr_casesheet()}
-				message={m.observation_emr_casesheet_stub()}
-				onAdd={openCaseSheetInfo}
+				rows={planOfCareRows}
+				columns={planOfCareColumns}
+				isLoading={isLoadingGrid || isLoadingVisit}
+				crudShowView={false}
+				showRefreshButton={true}
+				emptyMessage={m.observation_emr_plan_of_care_empty()}
+				enableColumnFilters={true}
+				bind:columnFilters={planOfCareColumnFilters}
+				on:add={openPlanOfCareAdd}
+				on:refresh={reloadPlanOfCareForVisit}
+				on:edit={(e) => openPlanOfCareEdit(e.detail)}
+				on:delete={(e) => handlePlanOfCareDelete(e.detail)}
 			/>
 			<ObservationCardTable
-				title={m.observation_emr_document_history()}
-				rows={documents}
-				columns={documentColumns}
+				title={m.observation_emr_progress_note()}
+				rows={progressNoteRows}
+				columns={progressNoteColumns}
 				isLoading={isLoadingGrid || isLoadingVisit}
-				showRowActions={false}
-				addButtonVariant="none"
+				crudShowView={false}
 				showRefreshButton={true}
-				emptyMessage="No documents linked to this visit."
-				on:refresh={reloadDocumentsForVisit}
+				emptyMessage={m.observation_emr_progress_note_empty()}
+				enableColumnFilters={true}
+				bind:columnFilters={progressNoteColumnFilters}
+				on:add={openProgressNoteAdd}
+				on:refresh={reloadProgressNoteForVisit}
+				on:edit={(e) => openProgressNoteEdit(e.detail)}
+				on:delete={(e) => handleProgressNoteDelete(e.detail)}
 			/>
 		</div>
 	{/if}

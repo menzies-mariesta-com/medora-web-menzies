@@ -123,7 +123,6 @@ export async function seedInformationTables() {
 
 			-- Observation Module
 			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1),
-			(1300001, 'Patient Visit History Dashboard', 7, 1, 13, '/heka/home/observation/emr/patient-visit-history-dashboard', 1),
 
 			-- Billing Module
 			(15, 'OP Billing', 8, 1, null, '/heka/home/billing/op-billing', 1),

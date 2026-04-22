@@ -155,6 +155,7 @@
 								<div class="flex justify-end gap-1">
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-error d-btn-sm"
+										disabled={Boolean(row.lockedByClosedOpBill)}
 										onClick={() => onDelete(row)}
 									>
 										<LucideTrash2 className="size-4" />
