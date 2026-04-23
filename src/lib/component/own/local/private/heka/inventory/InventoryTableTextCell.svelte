@@ -3,7 +3,7 @@
 		value,
 		onValueChange,
 		disabled = false,
-		className = 'd-input d-input-bordered d-input-sm w-full',
+		className = 'd-input d-input-bordered w-full',
 		inputType = 'text'
 	} = $props<{
 		value: string;

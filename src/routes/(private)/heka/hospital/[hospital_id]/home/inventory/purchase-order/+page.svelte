@@ -14,7 +14,9 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
+	import PoManualLineModal from '$lib/component/own/local/private/heka/inventory/purchase-order/PoManualLineModal.svelte';
+	import PoManualLinesCard from '$lib/component/own/local/private/heka/inventory/purchase-order/PoManualLinesCard.svelte';
+	import PoPrLineEditModal from '$lib/component/own/local/private/heka/inventory/purchase-order/PoPrLineEditModal.svelte';
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import InventoryTableTextCell from '$lib/component/own/local/private/heka/inventory/InventoryTableTextCell.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -438,10 +440,13 @@
 	async function searchItemsForManual(
 		q: string
 	): Promise<{ label: string; value: string }[]> {
-		if (!hospitalId || !q.trim()) return [];
-		const qEnc = encodeURIComponent(q.trim());
+		if (!hospitalId) return [];
+		const sp = new URLSearchParams();
+		sp.set('pageSize', String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT));
+		const name = q.trim();
+		if (name) sp.set('name', name);
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?${sp.toString()}`
 		);
 		if (!res.ok) return [];
 		const j = (await res.json()) as { data: { id: number; itemName?: string | null }[] };
@@ -1308,12 +1313,12 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-lg font-semibold">{m.inv_page_po_title()}</h1>
 		<div class="flex flex-wrap gap-2">
-			<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
+			<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 				<LucidePlus className="size-4" />
 				{m.inv_po_new_title()}
 			</DaisyUiButton>
 			<DaisyUiButton
-				className="d-btn-outline d-btn-sm"
+				className="d-btn-outline"
 				onClick={openCreateManual}
 			>
 				<LucidePlus className="size-4" />
@@ -1381,115 +1386,113 @@
 				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
 					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
 						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_select_pr()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUISearchSelect
-											value={selectedPrId ?? ''}
-											options={approvedPrList.map((pr) => ({
-												label: `${pr.prNo ?? '—'} · ${pr.storeName ?? '—'}`,
-												value: pr.id
-											}))}
-											onChange={(v: string) => onSelectPr(v || null)}
-											placeholder="Select a PR..."
-											className="w-full text-base-content"
-										/>
-									</div>
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_select_pr()}</DaisyUiLabel>
+								<div class="min-w-0 max-w-80 flex-1">
+									<DaisyUISearchSelect
+										value={selectedPrId ?? ''}
+										options={approvedPrList.map((pr) => ({
+											label: `${pr.prNo ?? '—'} · ${pr.storeName ?? '—'}`,
+											value: pr.id
+										}))}
+										onChange={(v: string) => onSelectPr(v || null)}
+										placeholder="Select a PR..."
+										className="w-full text-base-content"
+									/>
+								</div>
+							</div>
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
+								<div class="min-w-0 max-w-80 flex-1">
+									<DaisyUISearchSelect
+										value={supplierId != null ? String(supplierId) : ''}
+										searchFn={async (q: string) => {
+											const qEnc = encodeURIComponent(q.trim());
+											const res = await fetch(
+												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+											);
+											const j = await res.json();
+											return (j ?? []).map((s: any) => ({
+												label: s.name ?? '—',
+												value: String(s.id)
+											}));
+										}}
+										onChange={(v: string) => {
+											if (v) {
+												supplierId = Number(v);
+											} else {
+												supplierId = null;
+											}
+										}}
+										placeholder="Search supplier..."
+										className="d-input w-full"
+									/>
 								</div>
 							</div>
 						</div>
 					</fieldset>
 				</div>
 				{:else}
-					<div class="mb-6 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-						<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_store()}</DaisyUiLabel>
-						<div class="max-w-sm flex-1">
-							<DaisyUISearchSelect
-								value={manualStoreId != null ? String(manualStoreId) : ''}
-								options={storeOptions.map((s) => ({
-									label: s.name ?? `Store #${s.id}`,
-									value: String(s.id)
-								}))}
-								onChange={(v: string) => {
-									manualStoreId = v ? Number(v) : null;
-								}}
-								placeholder="Select store (approval context)…"
-								className="w-full"
-							/>
-						</div>
+					<div class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+						<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
+							<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_store()}</DaisyUiLabel>
+									<div class="min-w-0 max-w-80 flex-1">
+										<DaisyUISearchSelect
+											value={manualStoreId != null ? String(manualStoreId) : ''}
+											options={storeOptions.map((s) => ({
+												label: s.name ?? `Store #${s.id}`,
+												value: String(s.id)
+											}))}
+											onChange={(v: string) => {
+												manualStoreId = v ? Number(v) : null;
+											}}
+											placeholder="Select store (approval context)…"
+											className="w-full"
+										/>
+									</div>
+								</div>
+								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
+									<div class="min-w-0 max-w-80 flex-1">
+										<DaisyUISearchSelect
+											value={supplierId != null ? String(supplierId) : ''}
+											searchFn={async (q: string) => {
+												const qEnc = encodeURIComponent(q.trim());
+												const res = await fetch(
+													`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+												);
+												const j = await res.json();
+												return (j ?? []).map((s: any) => ({
+													label: s.name ?? '—',
+													value: String(s.id)
+												}));
+											}}
+											onChange={(v: string) => {
+												if (v) {
+													supplierId = Number(v);
+												} else {
+													supplierId = null;
+												}
+											}}
+											placeholder="Search supplier..."
+											className="d-input w-full"
+										/>
+									</div>
+								</div>
+							</div>
+						</fieldset>
 					</div>
-					<DaisyUiCard>
-						<DaisyUiCardBody className="gap-4">
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<DaisyUiCardBodyTitle className="text-base">{m.inv_po_lines()}</DaisyUiCardBodyTitle>
-								<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-									<input
-										type="text"
-										class="d-input d-input-bordered d-input-sm w-full sm:w-56"
-										placeholder="Filter line items…"
-										bind:value={manualLineItemFilter}
-										aria-label="Filter line items"
-									/>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-sm d-btn-primary"
-										onClick={() => openManualLineDialogForCreate()}
-									>
-										<LucidePlus className="size-4" />
-										+ Add Item
-									</DaisyUiButton>
-								</div>
-							</div>
-							<div class="h-[420px] min-h-0">
-								<MariTable
-									columns={manualLineTableColumns}
-									rows={filteredManualLines}
-									isLoading={false}
-									showRowActions={true}
-									actionsVariant="none"
-									showRefreshButton={false}
-									enableColumnFilters={false}
-								>
-									{#snippet rowActions(row)}
-										<div class="flex flex-col items-center gap-1">
-											<DaisyUiTooltip
-												tooltipText="Edit"
-												className="d-tooltip-accent d-tooltip-right"
-											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-sm d-btn-ghost d-btn-accent"
-													onClick={() => openManualLineDialogForEdit(row)}
-												>
-													<LucidePencil className="size-5" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-											<DaisyUiTooltip
-												tooltipText="Delete"
-												className="d-tooltip-error d-tooltip-right"
-											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-ghost d-btn-sm d-btn-error"
-													onClick={() => deleteManualLine(row.key)}
-												>
-													<LucideTrash2 className="size-5" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-										</div>
-									{/snippet}
-								</MariTable>
-							</div>
-							<div
-								class="flex flex-wrap items-center justify-between gap-3 border-t border-base-200 pt-4"
-							>
-								<div class="text-sm opacity-80">
-									Total items: <span class="font-semibold">{manualLines.length}</span>
-								</div>
-							</div>
-						</DaisyUiCardBody>
-					</DaisyUiCard>
+					<PoManualLinesCard
+						bind:manualLineItemFilter
+						totalCount={manualLines.length}
+						columns={manualLineTableColumns}
+						rows={filteredManualLines}
+						onAddItem={openManualLineDialogForCreate}
+						onEditLine={openManualLineDialogForEdit}
+						onDeleteLine={deleteManualLine}
+					/>
 				{/if}
 
 				{#if poCreateMode === 'pr'}
@@ -1550,221 +1553,29 @@
 						</div>
 					{/if}
 				{/if}
-				
-				<div class="flex flex-wrap items-end gap-3 mt-6 mb-4 p-4 border border-base-200 rounded-lg bg-base-100/50">
-					<div class="flex-1 min-w-[200px]">
-						<DaisyUiLabel className="mb-1 text-xs">{m.inv_po_supplier_search()}</DaisyUiLabel>
-						<DaisyUISearchSelect
-							value={supplierId != null ? String(supplierId) : ''}
-							searchFn={async (q: string) => {
-								const qEnc = encodeURIComponent(q.trim());
-								const res = await fetch(
-									`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-								);
-								const j = await res.json();
-								return (j ?? []).map((s: any) => ({
-									label: s.name ?? '—',
-									value: String(s.id)
-								}));
-							}}
-							onChange={(v: string) => {
-								if (v) {
-									supplierId = Number(v);
-									// NOTE: DaisyUISearchSelect automatically manages the displayLabel
-								} else {
-									supplierId = null;
-								}
-							}}
-							placeholder="Search supplier..."
-							className="d-input d-input-sm w-full"
-						/>
-					</div>
-				</div>
 
-				<DaisyUiModal
-					groupName="po-manual-line-dialog"
+				<PoManualLineModal
 					open={manualLineDialogOpen}
-					onClose={() => closeManualLineDialog()}
-					className="d-modal-middle"
-				>
-					<div class="d-modal-box max-w-2xl" role="document">
-						<h3 class="text-lg font-bold">
-							{editingManualKey ? 'Edit line item' : 'Add line item'}
-						</h3>
+					editing={Boolean(editingManualKey)}
+					submitting={manualLineDialogSubmitting}
+					bind:draftManualLine
+					searchItemsFn={searchItemsForManual}
+					searchManufacturersFn={searchManufacturers}
+					getManufacturerLabelForValue={getManufacturerLabelForValue}
+					onPickItem={pickDraftManualItem}
+					onClose={closeManualLineDialog}
+					onSave={saveManualDraftLine}
+				/>
 
-						<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div class="sm:col-span-2">
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
-								<DaisyUISearchSelect
-									value={draftManualLine.itemId ? String(draftManualLine.itemId) : ''}
-									searchFn={searchItemsForManual}
-									onChange={(v: string) => {
-										if (v) void pickDraftManualItem(Number(v));
-									}}
-									placeholder="Search item…"
-									className="input-sm w-full"
-								/>
-								<div class="mt-1 truncate text-sm font-medium">
-									{draftManualLine.itemId != null ? draftManualLine.itemLabel : '—'}
-								</div>
-							</div>
-
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
-								<DaisyUISearchSelect
-									value={draftManualLine.itemUnitMasterId != null
-										? String(draftManualLine.itemUnitMasterId)
-										: ''}
-									options={draftManualLine.iumList.map((u) => ({
-										label: u.conversionDisplay,
-										value: String(u.id)
-									}))}
-									onChange={(v: string) => {
-										draftManualLine.itemUnitMasterId = v ? Number(v) : null;
-										draftManualLine = { ...draftManualLine };
-									}}
-									placeholder="Select unit…"
-									className="w-full"
-									disabled={draftManualLine.itemId == null}
-								/>
-								{#if draftManualLine.itemId == null}
-									<p class="text-xs text-base-content/60 mt-1">{m.inv_po_manual_unit_prereq()}</p>
-								{:else if draftManualLine.iumList.length === 0}
-									<p class="text-xs text-warning mt-1">{m.inv_po_manual_unit_none_configured()}</p>
-								{/if}
-							</div>
-
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_quantity()}</DaisyUiLabel>
-								<input
-									type="text"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftManualLine.quantity}
-									disabled={draftManualLine.itemId == null}
-									aria-label={m.inv_common_quantity()}
-								/>
-							</div>
-
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_po_line_unit_price()}</DaisyUiLabel>
-								<input
-									type="text"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftManualLine.unitPrice}
-									disabled={draftManualLine.itemId == null}
-									aria-label={m.inv_po_line_unit_price()}
-								/>
-							</div>
-
-							<div class="sm:col-span-2">
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_manufacturer()}</DaisyUiLabel>
-								<DaisyUISearchSelect
-									value={draftManualLine.manufacturerId}
-									placeholder={m.inv_common_manufacturer()}
-									className="d-input d-input-sm w-full"
-									searchFn={searchManufacturers}
-									getLabelForValue={getManufacturerLabelForValue}
-									minSearchLength={0}
-									onChange={(v: string) => {
-										draftManualLine.manufacturerId = v;
-										draftManualLine = { ...draftManualLine };
-									}}
-								/>
-							</div>
-						</div>
-
-						<div class="d-modal-action mt-6">
-							<DaisyUiButton
-								type="button"
-								className="d-btn"
-								disabled={manualLineDialogSubmitting}
-								onClick={() => closeManualLineDialog()}
-							>
-								{m.cancel()}
-							</DaisyUiButton>
-							<DaisyUiButton
-								type="button"
-								className="d-btn d-btn-primary"
-								disabled={manualLineDialogSubmitting}
-								onClick={() => saveManualDraftLine()}
-							>
-								{m.save()}
-							</DaisyUiButton>
-						</div>
-					</div>
-				</DaisyUiModal>
-
-				<DaisyUiModal
-					groupName="po-pr-line-dialog"
+				<PoPrLineEditModal
 					open={poPrLineDialogOpen}
-					onClose={() => closePoPrLineDialog()}
-					className="d-modal-middle"
-				>
-					<div class="d-modal-box max-w-lg" role="document">
-						<h3 class="text-lg font-bold">Edit line</h3>
-						{#if draftPoPrLine}
-							<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80"
-										>{m.inv_common_quantity()}</DaisyUiLabel
-									>
-									<input
-										type="text"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftPoPrLine.quantity}
-										aria-label={m.inv_common_quantity()}
-									/>
-								</div>
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80"
-										>{m.inv_po_line_unit_price()}</DaisyUiLabel
-									>
-									<input
-										type="text"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftPoPrLine.unitPrice}
-										aria-label={m.inv_po_line_unit_price()}
-									/>
-								</div>
-								<div class="sm:col-span-2">
-									<DaisyUiLabel className="text-xs opacity-80"
-										>{m.inv_common_manufacturer()}</DaisyUiLabel
-									>
-									<DaisyUISearchSelect
-										value={draftPoPrLine.manufacturerId}
-										placeholder={m.inv_common_manufacturer()}
-										className="d-input d-input-sm w-full"
-										searchFn={searchManufacturers}
-										getLabelForValue={getManufacturerLabelForValue}
-										minSearchLength={0}
-										onChange={(v: string) => {
-											if (!draftPoPrLine) return;
-											draftPoPrLine = { ...draftPoPrLine, manufacturerId: v };
-										}}
-									/>
-								</div>
-							</div>
-						{/if}
-						<div class="d-modal-action mt-6">
-							<DaisyUiButton
-								type="button"
-								className="d-btn"
-								disabled={poPrLineDialogSubmitting}
-								onClick={() => closePoPrLineDialog()}
-							>
-								{m.cancel()}
-							</DaisyUiButton>
-							<DaisyUiButton
-								type="button"
-								className="d-btn d-btn-primary"
-								disabled={poPrLineDialogSubmitting}
-								onClick={() => savePoPrLineDraft()}
-							>
-								{m.save()}
-							</DaisyUiButton>
-						</div>
-					</div>
-				</DaisyUiModal>
+					submitting={poPrLineDialogSubmitting}
+					bind:draftPoPrLine
+					searchManufacturersFn={searchManufacturers}
+					getManufacturerLabelForValue={getManufacturerLabelForValue}
+					onClose={closePoPrLineDialog}
+					onSave={savePoPrLineDraft}
+				/>
 
 				<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
 					<DaisyUiButton
