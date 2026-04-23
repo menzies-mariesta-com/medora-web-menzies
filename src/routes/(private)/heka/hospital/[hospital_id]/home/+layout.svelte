@@ -37,6 +37,9 @@
 				WebRoutesEnum.HEKA_HOME_CPOE
 			) ||
 			pathnameForPageMatch().startsWith(
+				WebRoutesEnum.HEKA_HOME_MEDICATION_ORDER
+			) ||
+			pathnameForPageMatch().startsWith(
 				WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
 			) ||
 			pathnameForPageMatch().startsWith(
