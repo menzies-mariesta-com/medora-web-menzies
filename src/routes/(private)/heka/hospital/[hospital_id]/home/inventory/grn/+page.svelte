@@ -7,7 +7,9 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
-	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
+	import GrnFromPoLineEditModal from '$lib/component/own/local/private/heka/inventory/grn/GrnFromPoLineEditModal.svelte';
+	import GrnDirectLineModal from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLineModal.svelte';
+	import GrnDirectLinesCard from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLinesCard.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
@@ -890,12 +892,12 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>
 		<div class="flex flex-wrap gap-2">
-			<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
+			<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 				<LucidePlus className="size-4" />
 				{m.inv_grn_new_title()}
 			</DaisyUiButton>
 			<DaisyUiButton
-				className="d-btn-outline d-btn-sm"
+				className="d-btn-outline"
 				onClick={openCreateDirect}
 			>
 				<LucidePlus className="size-4" />
@@ -1004,122 +1006,68 @@
 					</fieldset>
 				</div>
 				{:else}
-					<div class="mb-6 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-						<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_store()}</DaisyUiLabel>
-						<div class="max-w-sm flex-1">
-							<DaisyUISearchSelect
-								value={directStoreId != null ? String(directStoreId) : ''}
-								options={storeOptions.map((s) => ({
-									label: s.name ?? `Store #${s.id}`,
-									value: String(s.id)
-								}))}
-								onChange={(v: string) => {
-									directStoreId = v ? Number(v) : null;
-								}}
-								placeholder="Receiving store (central)…"
-								className="w-full"
-							/>
-						</div>
-					</div>
-					<div class="mb-6 max-w-md">
-						<DaisyUiLabel className="mb-1 text-xs">{m.inv_po_supplier_search()}</DaisyUiLabel>
-						<DaisyUISearchSelect
-							value={directSupplierId != null ? String(directSupplierId) : ''}
-							searchFn={async (q: string) => {
-								const qEnc = encodeURIComponent(q.trim());
-								const res = await fetch(
-									`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-								);
-								const j = await res.json();
-								return (j ?? []).map((s: { id: number; name: string | null }) => ({
-									label: s.name ?? '—',
-									value: String(s.id)
-								}));
-							}}
-							onChange={(v: string) => {
-								directSupplierId = v ? Number(v) : null;
-							}}
-							placeholder="Search supplier…"
-							className="d-input d-input-sm w-full"
-						/>
-					</div>
-					<div class="mb-4">
-						<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-						<div class="max-w-xs mt-1">
-							<DaisyUiInputField inputType="date" bind:value={receivedDate} />
-						</div>
-					</div>
-					<DaisyUiCard>
-						<DaisyUiCardBody className="gap-4">
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<DaisyUiCardBodyTitle className="text-base">{m.inv_po_lines()}</DaisyUiCardBodyTitle>
-								<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-									<input
-										type="text"
-										class="d-input d-input-bordered d-input-sm w-full sm:w-56"
-										placeholder="Filter line items…"
-										bind:value={directLineItemFilter}
-										aria-label="Filter line items"
+					<fieldset class="m-0 min-w-0 border-0 p-0 mb-6">
+						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_store()}</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
+									<DaisyUISearchSelect
+										value={directStoreId != null ? String(directStoreId) : ''}
+										options={storeOptions.map((s) => ({
+											label: s.name ?? `Store #${s.id}`,
+											value: String(s.id)
+										}))}
+										onChange={(v: string) => {
+											directStoreId = v ? Number(v) : null;
+										}}
+										placeholder="Receiving store (central)…"
+										className="w-full"
 									/>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-sm d-btn-primary"
-										onClick={() => openDirectLineDialogForCreate()}
-									>
-										<LucidePlus className="size-4" />
-										+ Add Item
-									</DaisyUiButton>
 								</div>
 							</div>
-							<div class="h-[420px] min-h-0">
-								<MariTable
-									columns={directLineTableColumns}
-									rows={filteredDirectLines}
-									isLoading={false}
-									showRowActions={true}
-									actionsVariant="none"
-									showRefreshButton={false}
-									enableColumnFilters={false}
-								>
-									{#snippet rowActions(row)}
-										<div class="flex flex-col items-center gap-1">
-											<DaisyUiTooltip
-												tooltipText="Edit"
-												className="d-tooltip-accent d-tooltip-right"
-											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-sm d-btn-ghost d-btn-accent"
-													onClick={() => openDirectLineDialogForEdit(row)}
-												>
-													<LucidePencil className="size-5" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-											<DaisyUiTooltip
-												tooltipText="Delete"
-												className="d-tooltip-error d-tooltip-right"
-											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-ghost d-btn-sm d-btn-error"
-													onClick={() => deleteDirectLine(row.key)}
-												>
-													<LucideTrash2 className="size-5" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-										</div>
-									{/snippet}
-								</MariTable>
-							</div>
-							<div
-								class="flex flex-wrap items-center justify-between gap-3 border-t border-base-200 pt-4"
-							>
-								<div class="text-sm opacity-80">
-									Total items: <span class="font-semibold">{directLines.length}</span>
+
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
+									<DaisyUISearchSelect
+										value={directSupplierId != null ? String(directSupplierId) : ''}
+										searchFn={async (q: string) => {
+											const qEnc = encodeURIComponent(q.trim());
+											const res = await fetch(
+												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+											);
+											const j = await res.json();
+											return (j ?? []).map((s: { id: number; name: string | null }) => ({
+												label: s.name ?? '—',
+												value: String(s.id)
+											}));
+										}}
+										onChange={(v: string) => {
+											directSupplierId = v ? Number(v) : null;
+										}}
+										placeholder="Search supplier…"
+										className="w-full"
+									/>
 								</div>
 							</div>
-						</DaisyUiCardBody>
-					</DaisyUiCard>
+
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
+									<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+								</div>
+							</div>
+						</div>
+					</fieldset>
+					<GrnDirectLinesCard
+						bind:directLineItemFilter
+						totalCount={directLines.length}
+						columns={directLineTableColumns}
+						rows={filteredDirectLines}
+						onAddItem={openDirectLineDialogForCreate}
+						onEditLine={openDirectLineDialogForEdit}
+						onDeleteLine={deleteDirectLine}
+					/>
 				{/if}
 
 				{#if grnFormMode === 'fromPo' && lineForms.length > 0}
@@ -1128,7 +1076,7 @@
 							<h3 class="font-medium text-lg text-base-content/90">Items Received</h3>
 							<input
 								type="text"
-								class="d-input d-input-bordered d-input-sm w-full sm:max-w-xs"
+								class="d-input d-input-bordered w-full sm:max-w-xs"
 								placeholder="Filter line items…"
 								bind:value={grnLineItemFilter}
 								aria-label="Filter line items"
@@ -1233,185 +1181,24 @@
 					</DaisyUiCardBodyAction>
 				{/if}
 
-				<DaisyUiModal
-					groupName="grn-po-line-dialog"
+				<GrnFromPoLineEditModal
 					open={grnFromPoLineDialogOpen}
-					onClose={() => closeGrnFromPoLineDialog()}
-					className="d-modal-middle"
-				>
-					<div class="d-modal-box max-w-lg" role="document">
-						<h3 class="text-lg font-bold">Edit line</h3>
-						{#if draftGrnFromPoLine}
-							<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80"
-										>{m.inv_grn_line_received_qty()}</DaisyUiLabel
-									>
-									<input
-										type="text"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftGrnFromPoLine.receivedQty}
-										aria-label={m.inv_grn_line_received_qty()}
-									/>
-								</div>
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_batch()}</DaisyUiLabel>
-									<input
-										type="text"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftGrnFromPoLine.batchNo}
-										aria-label={m.inv_stock_col_batch()}
-									/>
-								</div>
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_expiry()}</DaisyUiLabel>
-									<input
-										type="date"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftGrnFromPoLine.expiryDate}
-										aria-label={m.inv_stock_col_expiry()}
-									/>
-								</div>
-								<div>
-									<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_price()}</DaisyUiLabel>
-									<input
-										type="text"
-										class="d-input d-input-bordered w-full"
-										bind:value={draftGrnFromPoLine.purchasePrice}
-										aria-label={m.inv_stock_col_price()}
-									/>
-								</div>
-							</div>
-						{/if}
-						<div class="d-modal-action mt-6">
-							<DaisyUiButton
-								type="button"
-								className="d-btn"
-								disabled={grnFromPoLineDialogSubmitting}
-								onClick={() => closeGrnFromPoLineDialog()}
-							>
-								{m.cancel()}
-							</DaisyUiButton>
-							<DaisyUiButton
-								type="button"
-								className="d-btn d-btn-primary"
-								disabled={grnFromPoLineDialogSubmitting}
-								onClick={() => saveGrnFromPoLineDraft()}
-							>
-								{m.save()}
-							</DaisyUiButton>
-						</div>
-					</div>
-				</DaisyUiModal>
+					submitting={grnFromPoLineDialogSubmitting}
+					bind:draftGrnFromPoLine
+					onClose={closeGrnFromPoLineDialog}
+					onSave={saveGrnFromPoLineDraft}
+				/>
 
-				<DaisyUiModal
-					groupName="grn-direct-line-dialog"
+				<GrnDirectLineModal
 					open={directLineDialogOpen}
-					onClose={() => closeDirectLineDialog()}
-					className="d-modal-middle"
-				>
-					<div class="d-modal-box max-w-2xl" role="document">
-						<h3 class="text-lg font-bold">
-							{editingDirectKey ? 'Edit line item' : 'Add line item'}
-						</h3>
-						<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div class="sm:col-span-2">
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
-								<DaisyUISearchSelect
-									value={draftDirectLine.itemId != null ? String(draftDirectLine.itemId) : ''}
-									searchFn={searchGrnItems}
-									onChange={(v: string) => {
-										if (v) void pickDraftDirectItem(Number(v));
-									}}
-									placeholder="Search item…"
-									className="input-sm w-full"
-								/>
-								<div class="mt-1 truncate text-sm font-medium">
-									{draftDirectLine.itemId != null ? draftDirectLine.itemLabel : '—'}
-								</div>
-							</div>
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
-								<DaisyUISearchSelect
-									value={draftDirectLine.itemUnitMasterId != null
-										? String(draftDirectLine.itemUnitMasterId)
-										: ''}
-									options={draftDirectLine.iumList.map((u) => ({
-										label: u.conversionDisplay,
-										value: String(u.id)
-									}))}
-									onChange={(v: string) => {
-										draftDirectLine.itemUnitMasterId = v ? Number(v) : null;
-										draftDirectLine = { ...draftDirectLine };
-									}}
-									placeholder="Select unit…"
-									className="w-full"
-									disabled={draftDirectLine.itemId == null}
-								/>
-							</div>
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80"
-									>{m.inv_grn_line_received_qty()}</DaisyUiLabel
-								>
-								<input
-									type="text"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftDirectLine.receivedQty}
-									disabled={draftDirectLine.itemId == null}
-									aria-label={m.inv_grn_line_received_qty()}
-								/>
-							</div>
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_batch()}</DaisyUiLabel>
-								<input
-									type="text"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftDirectLine.batchNo}
-									disabled={draftDirectLine.itemId == null}
-									aria-label={m.inv_stock_col_batch()}
-								/>
-							</div>
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_expiry()}</DaisyUiLabel>
-								<input
-									type="date"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftDirectLine.expiryDate}
-									disabled={draftDirectLine.itemId == null}
-									aria-label={m.inv_stock_col_expiry()}
-								/>
-							</div>
-							<div>
-								<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_price()}</DaisyUiLabel>
-								<input
-									type="text"
-									class="d-input d-input-bordered w-full"
-									bind:value={draftDirectLine.purchasePrice}
-									disabled={draftDirectLine.itemId == null}
-									aria-label={m.inv_stock_col_price()}
-								/>
-							</div>
-						</div>
-						<div class="d-modal-action mt-6">
-							<DaisyUiButton
-								type="button"
-								className="d-btn"
-								disabled={directLineDialogSubmitting}
-								onClick={() => closeDirectLineDialog()}
-							>
-								{m.cancel()}
-							</DaisyUiButton>
-							<DaisyUiButton
-								type="button"
-								className="d-btn d-btn-primary"
-								disabled={directLineDialogSubmitting}
-								onClick={() => saveDirectDraftLine()}
-							>
-								{m.save()}
-							</DaisyUiButton>
-						</div>
-					</div>
-				</DaisyUiModal>
+					editing={Boolean(editingDirectKey)}
+					submitting={directLineDialogSubmitting}
+					bind:draftDirectLine
+					searchItemsFn={searchGrnItems}
+					onPickItem={pickDraftDirectItem}
+					onClose={closeDirectLineDialog}
+					onSave={saveDirectDraftLine}
+				/>
 			</form>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
