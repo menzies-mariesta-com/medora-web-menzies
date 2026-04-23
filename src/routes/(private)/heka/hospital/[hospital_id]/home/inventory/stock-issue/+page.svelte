@@ -383,7 +383,7 @@
 					<div class="flex flex-wrap gap-2">
 						<DaisyUiButton
 							type="button"
-							className="d-btn-sm d-btn-outline d-btn-primary"
+							className="d-btn-outline d-btn-primary"
 							disabled={lots.length === 0}
 							onClick={() => addBatchLine()}
 						>
@@ -392,7 +392,7 @@
 						</DaisyUiButton>
 						<DaisyUiButton 
 							type="button"
-							className="d-btn-sm d-btn-outline d-btn-secondary" 
+							className="d-btn-outline d-btn-secondary" 
 							onClick={() => addFefoLine()}
 						>
 							<LucidePlus className="size-4 mr-1" />
@@ -434,7 +434,7 @@
 											<DaisyUiLabel className="text-xs mb-1 block">{m.inv_issue_line_qty()}</DaisyUiLabel>
 											<DaisyUiInputField
 												inputType="text"
-												className="input-sm w-full"
+												className="w-full"
 												bind:value={line.qty}
 											/>
 										</div>
@@ -496,7 +496,7 @@
 													}
 												}}
 												placeholder="Search item..."
-												className="input-sm w-full"
+												className="w-full"
 											/>
 										</div>
 
@@ -520,7 +520,7 @@
 												<DaisyUiLabel className="text-xs mb-1 block">{m.inv_issue_line_qty()}</DaisyUiLabel>
 												<DaisyUiInputField
 													inputType="text"
-													className="input-sm w-full"
+													className="w-full"
 													bind:value={line.qty}
 												/>
 											</div>

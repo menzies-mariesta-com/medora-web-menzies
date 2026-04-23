@@ -15,7 +15,9 @@
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
+	import PrCancelModal from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrCancelModal.svelte';
+	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
+	import PrLineItemModal from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemModal.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -181,6 +183,18 @@
 		} finally {
 			cancelSubmitting = false;
 		}
+	}
+
+	async function searchItemsForPrLine(q: string) {
+		const qEnc = encodeURIComponent(q.trim());
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
+		);
+		const j = await res.json();
+		return (j.data ?? []).map((x: any) => ({
+			label: x.itemName ?? '—',
+			value: String(x.id)
+		}));
 	}
 
 	function newLine(): PrLineForm {
@@ -675,7 +689,7 @@
 {#if viewMode === 'list'}
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-lg font-semibold">{m.inv_page_pr_title()}</h1>
-		<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={openCreate}>
+		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
 			<LucidePlus className="size-4" />
 			{m.inv_pr_new_title()}
 		</DaisyUiButton>
@@ -785,39 +799,13 @@
 		{/key}
 	</div>
 
-	<DaisyUiModal
-		groupName="cancel-pr-dialog"
+	<PrCancelModal
 		open={cancelDialogOpen}
-		onClose={() => closeCancelDialog()}
-		className="d-modal-middle"
-	>
-		<div class="d-modal-box max-w-md" role="document">
-			<h3 class="text-lg font-bold">{m.inv_pr_cancel()}</h3>
-			<p class="text-sm py-2 opacity-80">{m.inv_pr_cancel_reason_prompt()}</p>
-			<textarea
-				class="d-textarea-bordered d-textarea w-full"
-				rows="3"
-				bind:value={cancelReasonDraft}
-				aria-label={m.inv_pr_cancel_reason_prompt()}
-			></textarea>
-			<div class="d-modal-action mt-4">
-				<DaisyUiButton
-					className="d-btn"
-					disabled={cancelSubmitting}
-					onClick={() => closeCancelDialog()}
-				>
-					{m.cancel()}
-				</DaisyUiButton>
-				<DaisyUiButton
-					className="d-btn d-btn-error"
-					disabled={cancelSubmitting}
-					onClick={() => void submitCancelPr()}
-				>
-					{m.inv_pr_cancel_confirm()}
-				</DaisyUiButton>
-			</div>
-		</div>
-	</DaisyUiModal>
+		bind:cancelReason={cancelReasonDraft}
+		submitting={cancelSubmitting}
+		onClose={closeCancelDialog}
+		onConfirm={() => void submitCancelPr()}
+	/>
 {:else}
 	<form
 		onsubmit={(e) => {
@@ -853,6 +841,16 @@
 				{:else}
 					<span class="d-badge d-badge-ghost" aria-label="PR No: pending">PR No: —</span>
 				{/if}
+				<DaisyUiButton
+					type="button"
+					className="d-btn-sm d-btn-ghost d-btn-outline"
+					onClick={() => {
+						editPrId = null;
+						viewMode = 'list';
+					}}
+				>
+					{m.inv_common_back_to_list()}
+				</DaisyUiButton>
 			</div>
 		</div>
 
@@ -896,95 +894,18 @@
 			</DaisyUiCard>
 		</div>
 
-		<DaisyUiCard>
-			<DaisyUiCardBody className="gap-4">
-				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<DaisyUiCardBodyTitle className="text-base">Line Items</DaisyUiCardBodyTitle>
-					<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-						<input
-							type="text"
-							class="d-input d-input-bordered d-input-sm w-full sm:w-56"
-							placeholder="Filter line items..."
-							bind:value={lineItemFilter}
-							aria-label="Filter line items"
-						/>
-						{#if viewMode !== 'view'}
-							<DaisyUiButton
-								className="d-btn-sm d-btn-primary"
-								type="button"
-								onClick={() => openLineDialogForCreate()}
-							>
-								<LucidePlus className="size-4" />
-								+ Add Item
-							</DaisyUiButton>
-						{/if}
-					</div>
-				</div>
+		<PrLineItemsCard
+			viewOnly={viewMode === 'view'}
+			bind:lineItemFilter
+			createLinesCount={createLines.length}
+			columns={lineColumns}
+			rows={filteredLines}
+			onAddItem={openLineDialogForCreate}
+			onEditLine={openLineDialogForEdit}
+			onDeleteLine={deleteLine}
+		/>
 
-				<div class="h-[420px]">
-					<MariTable
-						columns={lineColumns}
-						rows={filteredLines}
-						isLoading={false}
-						showRowActions={true}
-						actionsVariant="none"
-						showRefreshButton={false}
-						enableColumnFilters={false}
-					>
-						{#snippet rowActions(row)}
-							<div class="flex flex-col items-center gap-1">
-								<DaisyUiTooltip
-									tooltipText="Edit"
-									className="d-tooltip-accent d-tooltip-right"
-								>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-sm d-btn-ghost d-btn-accent"
-										disabled={viewMode === 'view'}
-										onClick={() => openLineDialogForEdit(row)}
-									>
-										<LucidePencil className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-								<DaisyUiTooltip
-									tooltipText="Delete"
-									className="d-tooltip-error d-tooltip-right"
-								>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-ghost d-btn-sm d-btn-error"
-										disabled={viewMode === 'view'}
-										onClick={() => deleteLine(row.key)}
-									>
-										<LucideTrash2 className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-							</div>
-						{/snippet}
-					</MariTable>
-				</div>
-
-				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-200 pt-4">
-					<div class="text-sm opacity-80">
-						Total items: <span class="font-semibold">{createLines.length}</span>
-					</div>
-					<div class="text-sm opacity-60">Volume: —</div>
-				</div>
-			</DaisyUiCardBody>
-		</DaisyUiCard>
-
-		<div class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-			<DaisyUiButton
-				type="button"
-				className="d-btn-outline"
-				onClick={() => {
-					editPrId = null;
-					viewMode = 'list';
-				}}
-			>
-				{m.inv_common_back_to_list()}
-			</DaisyUiButton>
-
+		<div class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
 			{#if viewMode !== 'view'}
 				<DaisyUiButton
 					type="submit"
@@ -997,91 +918,15 @@
 		</div>
 	</form>
 
-	<DaisyUiModal
-		groupName="pr-line-dialog"
+	<PrLineItemModal
 		open={lineDialogOpen}
-		onClose={() => closeLineDialog()}
-		className="d-modal-middle"
-	>
-		<div class="d-modal-box max-w-2xl" role="document">
-			<h3 class="text-lg font-bold">{editingLineKey ? 'Edit line item' : 'Add line item'}</h3>
-
-			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-				<div class="sm:col-span-2">
-					<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
-					<DaisyUISearchSelect
-						value={draftLine.itemId ? String(draftLine.itemId) : ''}
-						searchFn={async (q: string) => {
-							const qEnc = encodeURIComponent(q.trim());
-							const res = await fetch(
-								`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-							);
-							const j = await res.json();
-							return (j.data ?? []).map((x: any) => ({
-								label: x.itemName ?? '—',
-								value: String(x.id)
-							}));
-						}}
-						onChange={(v: string) => {
-							if (v) void pickDraftItem(Number(v));
-						}}
-						placeholder="Search item..."
-						className="input-sm w-full"
-					/>
-					<div class="mt-1 truncate text-sm font-medium">
-						{draftLine.itemId != null ? draftLine.itemLabel : '—'}
-					</div>
-				</div>
-
-				<div>
-					<DaisyUiLabel className="text-xs opacity-80">Conversion</DaisyUiLabel>
-					<DaisyUISearchSelect
-						value={draftLine.itemUnitMasterId != null ? String(draftLine.itemUnitMasterId) : ''}
-						options={draftLine.iumList.map((u) => ({
-							label: u.conversionDisplay,
-							value: String(u.id)
-						}))}
-						onChange={(v: string) => {
-							draftLine.itemUnitMasterId = v ? Number(v) : null;
-							draftLine = { ...draftLine };
-						}}
-						placeholder="Select Unit..."
-						className="w-full"
-						disabled={draftLine.itemId == null}
-					/>
-				</div>
-
-				<div>
-					<DaisyUiLabel className="text-xs opacity-80">Quantity</DaisyUiLabel>
-					<input
-						type="text"
-						class="d-input d-input-bordered w-full"
-						bind:value={draftLine.quantity}
-						disabled={draftLine.itemId == null}
-						aria-label="Quantity"
-					/>
-				</div>
-			</div>
-
-			<div class="d-modal-action mt-6">
-				<DaisyUiButton
-					type="button"
-					className="d-btn"
-					disabled={lineDialogSubmitting}
-					onClick={() => closeLineDialog()}
-				>
-					{m.cancel()}
-				</DaisyUiButton>
-				<DaisyUiButton
-					type="button"
-					className="d-btn d-btn-primary"
-					disabled={lineDialogSubmitting}
-					onClick={() => saveDraftLine()}
-				>
-					Save
-				</DaisyUiButton>
-			</div>
-		</div>
-	</DaisyUiModal>
+		title={editingLineKey ? 'Edit line item' : 'Add line item'}
+		submitting={lineDialogSubmitting}
+		bind:draftLine
+		searchItemsFn={searchItemsForPrLine}
+		onPickItem={pickDraftItem}
+		onClose={closeLineDialog}
+		onSave={saveDraftLine}
+	/>
 {/if}
 

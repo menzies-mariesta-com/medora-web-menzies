@@ -324,7 +324,7 @@
 						<h3 class="font-medium text-lg">Transfer Lines</h3>
 						<DaisyUiButton 
 							type="button"
-							className="d-btn-sm d-btn-outline d-btn-primary" 
+							className="d-btn-outline d-btn-primary" 
 							onClick={() => addLine()}
 						>
 							<LucidePlus className="size-4 mr-1" />
@@ -355,7 +355,7 @@
 										<DaisyUiLabel className="text-xs mb-1 block">{m.inv_common_quantity()}</DaisyUiLabel>
 										<DaisyUiInputField
 											inputType="text"
-											className="input-sm w-full"
+											className="w-full"
 											bind:value={line.quantity}
 										/>
 									</div>
