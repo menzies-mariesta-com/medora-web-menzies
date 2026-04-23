@@ -76,6 +76,21 @@ function defaultFormatSpecForKey(prefixKey: string): PrefixFormatSpec {
 			]
 		};
 	}
+	if (prefixKey === PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO) {
+		return {
+			parts: [
+				{ type: 'field', path: 'financial_year.code' },
+				{ type: 'field', path: 'hospital.code' },
+				{ type: 'literal', value: '/MO/' },
+				{
+					type: 'sequence',
+					source: 'prefix_counter.last_no',
+					op: 'inc',
+					padStart: 5
+				}
+			]
+		};
+	}
 	return {
 		parts: [
 			{ type: 'field', path: 'financial_year.code' },

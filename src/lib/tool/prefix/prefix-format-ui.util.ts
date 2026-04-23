@@ -41,6 +41,7 @@ export function defaultFormatPartsForStorageKey(
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
 		| 'PURCHASE_ORDER_NO'
+		| 'MEDICATION_ORDER_BATCH_NO'
 ): UiFormatPart[] {
 	if (
 		storageKey === 'PURCHASE_REQUISITION_NO' ||
@@ -71,6 +72,14 @@ export function defaultFormatPartsForStorageKey(
 			{ id: newPartId(), kind: 'sequence', padStart: 3 }
 		];
 	}
+	if (storageKey === 'MEDICATION_ORDER_BATCH_NO') {
+		return [
+			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
+			{ id: newPartId(), kind: 'field', path: 'hospital.code' },
+			{ id: newPartId(), kind: 'literal', value: '/MO/' },
+			{ id: newPartId(), kind: 'sequence', padStart: 5 }
+		];
+	}
 	return [
 		{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
 		{ id: newPartId(), kind: 'field', path: 'hospital.code' },
@@ -91,7 +100,8 @@ export function fieldPathsForEdit(
 		| 'VISIT_NO'
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
-		| 'PURCHASE_ORDER_NO',
+		| 'PURCHASE_ORDER_NO'
+		| 'MEDICATION_ORDER_BATCH_NO',
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
 	const base =

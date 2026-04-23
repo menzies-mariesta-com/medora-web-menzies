@@ -39,6 +39,8 @@
     { "idx": 33, "version": "7", "when": 1777000000000, "tag": "0035_inventory_document_audit", "breakpoints": true },
     { "idx": 34, "version": "7", "when": 1777100000000, "tag": "0036_purchase_order_po_no", "breakpoints": true },
     { "idx": 35, "version": "7", "when": 1777200000000, "tag": "0037_inventory_po_grn_destock_units", "breakpoints": true },
+    { "idx": 39, "version": "7", "when": 1777300000000, "tag": "0038_medication_order", "breakpoints": true },
+    { "idx": 40, "version": "7", "when": 1777400000000, "tag": "0039_medication_order_batch_external", "breakpoints": true },
 
     { "idx": 36, "version": "7", "when": 1776700000000, "tag": "0032_remove_observation_patient_visit_history_page", "breakpoints": true },
     { "idx": 37, "version": "7", "when": 1776800000000, "tag": "0033_plan_of_care_table", "breakpoints": true },

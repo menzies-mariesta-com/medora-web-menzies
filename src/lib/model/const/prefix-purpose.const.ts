@@ -7,13 +7,21 @@ export const PREFIX_PURPOSE_STORAGE = {
 	VISIT_NO: 'VISIT_NO',
 	ORDER_NO: 'ORDER_NO',
 	PURCHASE_REQUISITION_NO: 'PURCHASE_REQUISITION_NO',
-	PURCHASE_ORDER_NO: 'PURCHASE_ORDER_NO'
+	PURCHASE_ORDER_NO: 'PURCHASE_ORDER_NO',
+	/** Internal medication order batch number (all lines in one save share it). */
+	MEDICATION_ORDER_BATCH_NO: 'MEDICATION_ORDER_BATCH_NO'
 } as const;
 
 export type PrefixPurposeStorageKey =
 	(typeof PREFIX_PURPOSE_STORAGE)[keyof typeof PREFIX_PURPOSE_STORAGE];
 
-export type PrefixPurposeId = 'patient' | 'visit' | 'order' | 'pr' | 'po';
+export type PrefixPurposeId =
+	| 'patient'
+	| 'visit'
+	| 'order'
+	| 'pr'
+	| 'po'
+	| 'med_order_batch';
 
 export interface PrefixPurposeDefinition {
 	readonly id: PrefixPurposeId;
@@ -25,7 +33,8 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 	{ id: 'visit', storageKey: PREFIX_PURPOSE_STORAGE.VISIT_NO },
 	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO },
 	{ id: 'pr', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO },
-	{ id: 'po', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO }
+	{ id: 'po', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO },
+	{ id: 'med_order_batch', storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO }
 ] as const;
 
 export function findPurposeByStorageKey(
