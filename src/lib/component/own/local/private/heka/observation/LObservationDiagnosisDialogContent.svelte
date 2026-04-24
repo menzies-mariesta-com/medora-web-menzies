@@ -11,6 +11,7 @@
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -204,9 +205,10 @@
 					});
 				}
 			}
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_diagnosis(),
+				isEdit ? m.toast_action_updated() : m.toast_action_created()
 			);
 			ObservationDiagnosisDialogState.onSaved?.();
 			await confirm({ saved: true });

@@ -89,7 +89,7 @@
 	});
 </script>
 
-<div class="my-app">
+<div class="my-app bg-base-100">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
 		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}`}
@@ -123,7 +123,7 @@
 			/>
 		{/key}
 	{/if}
-	<div class="my-main p-3" class:my-main-embed={isEmbed}>
+	<div class="my-main p-3 bg-base-100" class:my-main-embed={isEmbed}>
 		{#key page.url.pathname}
 			<AnimatedPageContent>
 				{@render children?.()}

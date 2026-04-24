@@ -5,7 +5,6 @@
 
 	let {
 		kind = $bindable('prn'),
-		config = $bindable<Record<string, unknown>>({}),
 		summaryText = $bindable('')
 	} = $props();
 
@@ -43,67 +42,46 @@
 	});
 
 	$effect(() => {
-		/** Hydrate local fields from `config` / `kind` (e.g. admin edit) */
+		/** Hydrate local fields from `kind` (e.g. admin edit) */
 		if (kind === 'fixed_times') {
-			if (Array.isArray(config?.times) && (config!.times as unknown[]).length) {
-				timesText = (config!.times as string[]).join(', ');
-			} else if (!timesText) {
+			if (!timesText) {
 				timesText = '08:00, 20:00';
 			}
 		} else if (kind === 'interval') {
-			intervalHours = String(
-				(config as { everyHours?: number }).everyHours ?? 6
-			);
+			if (!intervalHours) intervalHours = '6';
 		} else if (kind === 'custom') {
-			customNote = String((config as { note?: string }).note ?? '');
+			// keep local input
 		}
 	});
 
 	function applyKind(next: string) {
 		kind = next;
-		if (next === 'prn') {
-			config = {};
-		} else if (next === 'fixed_times') {
-			const parts = parseTimesString(timesText);
-			config = {
-				times: parts.length ? parts : ['08:00', '20:00']
-			};
-			timesText = (config.times as string[]).join(', ');
-		} else if (next === 'interval') {
-			const n = Number(intervalHours) || 6;
-			intervalHours = String(n);
-			config = { everyHours: n };
-		} else {
-			config = { note: customNote };
-		}
+		if (next === 'fixed_times' && !timesText) timesText = '08:00, 20:00';
+		if (next === 'interval' && !intervalHours) intervalHours = '6';
 	}
 
 	function applyTemplateBd() {
 		kind = 'fixed_times';
 		timesText = '08:00, 20:00';
-		config = { times: ['08:00', '20:00'] };
 	}
 
 	function applyTemplateQ6h() {
 		kind = 'interval';
 		intervalHours = '6';
-		config = { everyHours: 6 };
 	}
 
 	function onTimesInput() {
-		const parts = parseTimesString(timesText);
-		config = { times: parts.length ? parts : ['08:00', '20:00'] };
+		// summaryText is derived; no persisted config
 	}
 
 	function onIntervalInput() {
 		const n = Number(intervalHours);
 		const v = Number.isFinite(n) && n > 0 ? n : 6;
 		intervalHours = String(v);
-		config = { everyHours: v };
 	}
 
 	function onCustomInput() {
-		config = { note: customNote };
+		// summaryText is derived; no persisted config
 	}
 </script>
 

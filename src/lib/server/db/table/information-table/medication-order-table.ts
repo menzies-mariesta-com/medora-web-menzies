@@ -56,14 +56,12 @@ const medOrderTimestamps = {
 	})
 } as const;
 
-/** Medication order: dosage form (tablet, capsule, …). */
+/** Medication order: dosage form (tablet, capsule, …). Global; hospital opt-out via `med_order_form_inactive`. */
 export const medOrderFormTable = pgTable(
 	'med_order_form',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		isPreset: boolean('is_preset').notNull().default(false),
 		name: varchar('name', { length: 512 }).notNull(),
 		description: text('description'),
 		statusId: integer('status_id')
@@ -73,8 +71,40 @@ export const medOrderFormTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_form_hospital_id_idx').on(t.hospitalId),
-		index('med_order_form_name_idx').on(t.name)
+		index('med_order_form_name_idx').on(t.name),
+		index('med_order_form_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderFormInactiveTable = pgTable(
+	'med_order_form_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		formId: integer('form_id')
+			.notNull()
+			.references(() => medOrderFormTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_form_inactive_hospital_form_uidx').on(
+			t.hospitalId,
+			t.formId
+		),
+		index('med_order_form_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_form_inactive_form_id_idx').on(t.formId)
 	]
 );
 
@@ -82,9 +112,8 @@ export const medOrderRouteTable = pgTable(
 	'med_order_route',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Seeded or user-created global rows. Hospital enable/disable is via `med_order_route_inactive`. */
+		isPreset: boolean('is_preset').notNull().default(false),
 		name: varchar('name', { length: 512 }).notNull(),
 		description: text('description'),
 		statusId: integer('status_id')
@@ -94,8 +123,43 @@ export const medOrderRouteTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_route_hospital_id_idx').on(t.hospitalId),
-		index('med_order_route_name_idx').on(t.name)
+		index('med_order_route_name_idx').on(t.name),
+		index('med_order_route_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital-scoped inactive list: master route rows are global; hospitals only store disabled rows here.
+ */
+export const medOrderRouteInactiveTable = pgTable(
+	'med_order_route_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		routeId: integer('route_id')
+			.notNull()
+			.references(() => medOrderRouteTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_route_inactive_hospital_route_uidx').on(
+			t.hospitalId,
+			t.routeId
+		),
+		index('med_order_route_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_route_inactive_route_id_idx').on(t.routeId)
 	]
 );
 
@@ -103,9 +167,7 @@ export const medOrderOrderTypeTable = pgTable(
 	'med_order_order_type',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		isPreset: boolean('is_preset').notNull().default(false),
 		name: varchar('name', { length: 512 }).notNull(),
 		description: text('description'),
 		statusId: integer('status_id')
@@ -115,8 +177,42 @@ export const medOrderOrderTypeTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_order_type_hospital_id_idx').on(t.hospitalId),
-		index('med_order_order_type_name_idx').on(t.name)
+		index('med_order_order_type_name_idx').on(t.name),
+		index('med_order_order_type_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderOrderTypeInactiveTable = pgTable(
+	'med_order_order_type_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		orderTypeId: integer('order_type_id')
+			.notNull()
+			.references(() => medOrderOrderTypeTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_order_type_inactive_hospital_type_uidx').on(
+			t.hospitalId,
+			t.orderTypeId
+		),
+		index('med_order_order_type_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_order_type_inactive_order_type_id_idx').on(
+			t.orderTypeId
+		)
 	]
 );
 
@@ -124,9 +220,7 @@ export const medOrderDoseUnitTable = pgTable(
 	'med_order_dose_unit',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		isPreset: boolean('is_preset').notNull().default(false),
 		name: varchar('name', { length: 512 }).notNull(),
 		description: text('description'),
 		statusId: integer('status_id')
@@ -136,8 +230,40 @@ export const medOrderDoseUnitTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_dose_unit_hospital_id_idx').on(t.hospitalId),
-		index('med_order_dose_unit_name_idx').on(t.name)
+		index('med_order_dose_unit_name_idx').on(t.name),
+		index('med_order_dose_unit_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderDoseUnitInactiveTable = pgTable(
+	'med_order_dose_unit_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		doseUnitId: integer('dose_unit_id')
+			.notNull()
+			.references(() => medOrderDoseUnitTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_dose_unit_inactive_hospital_dose_unit_uidx').on(
+			t.hospitalId,
+			t.doseUnitId
+		),
+		index('med_order_dose_unit_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_dose_unit_inactive_dose_unit_id_idx').on(t.doseUnitId)
 	]
 );
 
@@ -145,9 +271,7 @@ export const medOrderFoodRelationTable = pgTable(
 	'med_order_food_relation',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		isPreset: boolean('is_preset').notNull().default(false),
 		name: varchar('name', { length: 512 }).notNull(),
 		description: text('description'),
 		statusId: integer('status_id')
@@ -157,8 +281,44 @@ export const medOrderFoodRelationTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_food_relation_hospital_id_idx').on(t.hospitalId),
-		index('med_order_food_relation_name_idx').on(t.name)
+		index('med_order_food_relation_name_idx').on(t.name),
+		index('med_order_food_relation_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const medOrderFoodRelationInactiveTable = pgTable(
+	'med_order_food_relation_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		foodRelationId: integer('food_relation_id')
+			.notNull()
+			.references(() => medOrderFoodRelationTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_food_relation_inactive_hospital_food_uidx').on(
+			t.hospitalId,
+			t.foodRelationId
+		),
+		index('med_order_food_relation_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_food_relation_inactive_food_relation_id_idx').on(
+			t.foodRelationId
+		)
 	]
 );
 
@@ -166,9 +326,7 @@ export const medOrderDurationUnitTable = pgTable(
 	'med_order_duration_unit',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		isPreset: boolean('is_preset').notNull().default(false),
 		/** Short code: minute, hour, day, week, month */
 		code: varchar('code', { length: 64 }).notNull(),
 		name: varchar('name', { length: 512 }).notNull(),
@@ -180,30 +338,77 @@ export const medOrderDurationUnitTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_duration_unit_hospital_id_idx').on(t.hospitalId),
-		uniqueIndex('med_order_duration_unit_hospital_code_uidx')
-			.on(t.hospitalId, t.code)
+		uniqueIndex('med_order_duration_unit_global_code_uidx').on(t.code).where(
+			sql`${t.deletedAt} IS NULL`
+		),
+		index('med_order_duration_unit_preset_idx')
+			.on(t.isPreset)
 			.where(sql`${t.deletedAt} IS NULL`)
 	]
 );
 
+export const medOrderDurationUnitInactiveTable = pgTable(
+	'med_order_duration_unit_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		durationUnitId: integer('duration_unit_id')
+			.notNull()
+			.references(() => medOrderDurationUnitTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_duration_unit_inactive_hospital_unit_uidx').on(
+			t.hospitalId,
+			t.durationUnitId
+		),
+		index('med_order_duration_unit_inactive_hospital_id_idx').on(
+			t.hospitalId
+		),
+		index('med_order_duration_unit_inactive_duration_unit_id_idx').on(
+			t.durationUnitId
+		)
+	]
+);
+
 /**
- * Dosing frequency master; `config` holds structured UI state (JSON).
+ * Dosing frequency master.
  * `kind`: fixed_times | interval | prn | custom (extensible).
  */
 export const medOrderFrequencyTable = pgTable(
 	'med_order_frequency',
 	{
 		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		label: varchar('label', { length: 512 }).notNull(),
+		/** Protected built-in rows; cannot be deleted and only allow active/inactive toggle. */
+		isPreset: boolean('is_preset').notNull().default(false),
+		description: text('description'),
+		abbreviation: varchar('abbreviation', { length: 64 }),
+		/** Occurrences per day (legacy-like). */
+		frequencyPerDay: decimal('frequency_per_day', { precision: 18, scale: 6 }),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		isCommonFrequency: boolean('is_common_frequency').notNull().default(false),
+		isTimingRequired: boolean('is_timing_required').notNull().default(false),
+		diffPlotOneHourlyValue: integer('diff_plot_one_hourly_value'),
+		diffPlotTwoHourlyValue: integer('diff_plot_two_hourly_value'),
+		diffPlotHalfHourlyValue: integer('diff_plot_half_hourly_value'),
+		diffPlotFourHourlyValue: integer('diff_plot_four_hourly_value'),
+		diffPlotSixHourlyValue: integer('diff_plot_six_hourly_value'),
+		variableDose: boolean('variable_dose').notNull().default(false),
+		pictorialDefinition: text('pictorial_definition'),
+		isFrequencyInfusion: boolean('is_frequency_infusion').notNull().default(false),
+		localLanguage: text('local_language'),
 		kind: varchar('kind', { length: 64 }).notNull().default('custom'),
-		config: jsonb('config')
-			.$type<Record<string, unknown>>()
-			.notNull()
-			.default(sql`'{}'::jsonb`),
 		summaryText: text('summary_text'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
@@ -212,8 +417,44 @@ export const medOrderFrequencyTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('med_order_frequency_hospital_id_idx').on(t.hospitalId),
-		index('med_order_frequency_label_idx').on(t.label)
+		index('med_order_frequency_label_idx').on(t.label),
+		index('med_order_frequency_preset_idx')
+			.on(t.isPreset)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital-scoped inactive list for frequencies.
+ * Master frequency rows stay global; hospitals only store disabled rows here.
+ */
+export const medOrderFrequencyInactiveTable = pgTable(
+	'med_order_frequency_inactive',
+	{
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		frequencyId: integer('frequency_id')
+			.notNull()
+			.references(() => medOrderFrequencyTable.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		createdBy: text('created_by').references((): AnyPgColumn => userTable.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade'
+		})
+	},
+	(t) => [
+		uniqueIndex('med_order_frequency_inactive_hospital_frequency_uidx').on(
+			t.hospitalId,
+			t.frequencyId
+		),
+		index('med_order_frequency_inactive_hospital_id_idx').on(t.hospitalId),
+		index('med_order_frequency_inactive_frequency_id_idx').on(t.frequencyId)
 	]
 );
 

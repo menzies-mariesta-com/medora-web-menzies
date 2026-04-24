@@ -14,6 +14,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
@@ -81,7 +82,12 @@
 			stores = (await res.json()) as StoreOpt[];
 			if (stores.length && storeId == null) storeId = stores[0].id;
 		} catch (e) {
-			toastService.addErrorToast('Could not load stores', e);
+			toastError(
+				toastService,
+				m.entity_store(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		}
 	}
 
@@ -130,7 +136,12 @@
 				quantity: String(r.quantity ?? '0')
 			}));
 		} catch (e) {
-			toastService.addErrorToast('Could not load lots', e);
+			toastError(
+				toastService,
+				m.entity_inventory(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			loadingLots = false;
 		}
@@ -146,7 +157,10 @@
 		const uid = await getIssueUnitIdFromIum(first.itemId);
 		if (uid == null) {
 			toastService.addToast(
-				'Cannot post issue',
+				toastLine(
+					m.entity_stock_issue(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Could not resolve issue unit.'
 			);
@@ -190,7 +204,10 @@
 		const uid = await getIssueUnitIdFromIum(l.itemId);
 		if (uid == null) {
 			toastService.addToast(
-				'Cannot post issue',
+				toastLine(
+					m.entity_stock_issue(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Could not resolve issue unit.'
 			);
@@ -237,7 +254,12 @@
 					: (line.iumList[0]?.id ?? null);
 			lines = [...lines];
 		} catch (e) {
-			toastService.addErrorToast('Could not load item details', e);
+			toastError(
+				toastService,
+				m.entity_service_item(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		}
 	}
 
@@ -274,7 +296,10 @@
 		}
 		if (bodyLines.length === 0) {
 			toastService.addToast(
-				'Cannot post issue',
+				toastLine(
+					m.entity_stock_issue(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Add at least one valid line.'
 			);
@@ -297,7 +322,14 @@
 			);
 			if (!res.ok) {
 				const detail = await res.text();
-				toastService.addToast('Cannot post issue', StatusColorEnum.ERROR, detail);
+				toastService.addToast(
+					toastLine(
+						m.entity_stock_issue(),
+						m.toast_action_submitted_failed()
+					),
+					StatusColorEnum.ERROR,
+					detail
+				);
 				return;
 			}
 			lines = [];
@@ -486,7 +518,12 @@
 															value: String(x.id)
 														}));
 													} catch (e) {
-														toastService.addErrorToast('Could not search items', e);
+														toastError(
+															toastService,
+															m.entity_service_item(),
+															m.toast_action_loaded_failed(),
+															e
+														);
 														return [];
 													}
 												}}

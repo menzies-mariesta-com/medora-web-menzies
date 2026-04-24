@@ -18,6 +18,7 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -187,9 +188,10 @@
 					body: JSON.stringify({ id: row.id })
 				}
 			);
-			toastService.addToast(
-				'Sub-category deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_sub_category(),
+				m.toast_action_deleted()
 			);
 			fetchSubCategories(true);
 		} catch (err) {

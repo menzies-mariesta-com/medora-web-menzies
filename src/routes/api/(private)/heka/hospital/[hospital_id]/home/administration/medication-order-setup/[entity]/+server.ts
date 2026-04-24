@@ -18,6 +18,7 @@ export async function GET(event: RequestEvent) {
 	const search = event.url.searchParams.get('search') ?? undefined;
 	const columnFilterKeys = new Set([
 		'id',
+		'statusId',
 		'name',
 		'description',
 		'code',
@@ -46,15 +47,10 @@ export async function GET(event: RequestEvent) {
 }
 
 export async function POST(event: RequestEvent) {
-	const hospitalId = hospitalIdFrom(event);
-	await ensureCanAccessHospital(event, hospitalId);
-	const entity = setup.parseEntity(event.params.entity);
-	if (!entity) throw error(400, 'Invalid entity');
-	const payload = (await event.request.json().catch(() => ({}))) as Record<
-		string,
-		unknown
-	>;
-	return json(await setup.createMaster(event, { hospitalId, entity, payload }));
+	throw error(
+		405,
+		'Medication order setup masters are seed-only. Creation is disabled.'
+	);
 }
 
 export async function PUT(event: RequestEvent) {
@@ -64,22 +60,21 @@ export async function PUT(event: RequestEvent) {
 	if (!entity) throw error(400, 'Invalid entity');
 	const body = (await event.request.json().catch(() => ({}))) as {
 		id?: unknown;
+		statusId?: unknown;
 		[key: string]: unknown;
 	};
 	const id = Number(body.id ?? 0);
 	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
-	const { id: _i, ...payload } = body;
+	// Only allow active/inactive toggle. All other edits are disabled.
+	const payload = { statusId: body.statusId };
 	return json(
 		await setup.updateMaster(event, { hospitalId, entity, id, payload })
 	);
 }
 
 export async function DELETE(event: RequestEvent) {
-	const hospitalId = hospitalIdFrom(event);
-	await ensureCanAccessHospital(event, hospitalId);
-	const entity = setup.parseEntity(event.params.entity);
-	if (!entity) throw error(400, 'Invalid entity');
-	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
-	return json(await setup.deleteMaster(event, { hospitalId, entity, id }));
+	throw error(
+		405,
+		'Medication order setup masters are seed-only. Deletion is disabled.'
+	);
 }

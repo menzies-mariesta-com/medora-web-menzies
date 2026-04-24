@@ -4,7 +4,8 @@
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -54,16 +55,19 @@
 
 	let masters = $state<MedicationOrderMastersResponse | null>(null);
 
-	let storeSearch = $state('');
-	let storeOptions = $state<{ id: number; storeName: string | null }[]>([]);
-	let storeId = $state(0);
+	let storeIdStr = $state('');
+	const storeId = $derived(
+		Number.isFinite(Number(storeIdStr)) && Number(storeIdStr) > 0
+			? Number(storeIdStr)
+			: 0
+	);
 	let storeLabel = $state('');
 
 	let pharmacyGenerics = $state<{ id: number; name: string; code: string | null }[]>([]);
 	let pharmacyGenericId = $state('');
 
-	let itemQuery = $state('');
-	let itemOptions = $state<
+	let itemValueStr = $state('');
+	let lastItemSearchRows = $state<
 		{ id: number; itemName: string | null; displayPrice: string | null }[]
 	>([]);
 	let selectedItem = $state<{
@@ -72,10 +76,11 @@
 		displayPrice: string | null;
 	} | null>(null);
 
+	const itemFilterKey = $derived(`${storeIdStr}|${pharmacyGenericId}`);
+
 	let dose = $state('1');
 	let doseUnitIdStr = $state('');
 	let frequencyIdStr = $state('');
-	let freqFilter = $state('');
 
 	let durationValue = $state('1');
 	let durationUnitIdStr = $state('');
@@ -108,15 +113,15 @@
 	>([]);
 	let storeNameById = $state<Record<number, string>>({});
 
-	const filteredFreqs = $derived.by(() => {
-		const f = freqFilter.trim().toLowerCase();
-		const list = masters?.freqs ?? [];
-		if (!f) return list;
-		return list.filter(
-			(x) =>
-				(x.label ?? '').toLowerCase().includes(f) ||
-				(x.summaryText ?? '').toLowerCase().includes(f)
-		);
+	const genericOptions = $derived.by(() => {
+		const opts: { value: string; label: string }[] = [
+			{ value: '', label: m.med_order_int_all_generics() }
+		];
+		for (const g of pharmacyGenerics) {
+			const label = g.code?.trim() ? `${g.name} (${g.code})` : g.name;
+			opts.push({ value: String(g.id), label });
+		}
+		return opts;
 	});
 
 	async function loadMasters() {
@@ -153,52 +158,126 @@
 		pharmacyGenerics = pack.data ?? [];
 	}
 
-	let storeSearchT: ReturnType<typeof setTimeout> | null = null;
-	$effect(() => {
-		if (!hospitalId) return;
-		const q = storeSearch;
-		if (storeSearchT) clearTimeout(storeSearchT);
-		storeSearchT = setTimeout(() => {
-			untrack(async () => {
-				const u = new URL(apiRoot(), window.location.origin);
-				u.searchParams.set('mode', 'stores.search');
-				if (q.trim()) u.searchParams.set('name', q.trim());
-				const res = await fetch(u, { credentials: 'include' });
-				if (!res.ok) return;
-				storeOptions = (await res.json()) as typeof storeOptions;
-			});
-		}, 300);
-		return () => {
-			if (storeSearchT) clearTimeout(storeSearchT);
-		};
-	});
+	async function resolveStoreLabelForId(idStr: string): Promise<string> {
+		if (!idStr || !hospitalId) return '';
+		const u = new URL(apiRoot(), window.location.origin);
+		u.searchParams.set('mode', 'stores.search');
+		const res = await fetch(u, { credentials: 'include' });
+		if (!res.ok) return `Store #${idStr}`;
+		const rows = (await res.json()) as { id: number; storeName: string | null }[];
+		const hit = rows.find((r) => String(r.id) === idStr);
+		return hit ? (hit.storeName?.trim() || `#${hit.id}`) : `Store #${idStr}`;
+	}
 
-	let itemSearchT: ReturnType<typeof setTimeout> | null = null;
-	$effect(() => {
+	async function searchStoresForSelect(query: string) {
+		if (!hospitalId) return [];
+		const u = new URL(apiRoot(), window.location.origin);
+		u.searchParams.set('mode', 'stores.search');
+		if (query.trim()) u.searchParams.set('name', query.trim());
+		const res = await fetch(u, { credentials: 'include' });
+		if (!res.ok) return [];
+		const rows = (await res.json()) as { id: number; storeName: string | null }[];
+		return rows.map((s) => ({
+			value: String(s.id),
+			label: s.storeName?.trim() || `Store #${s.id}`
+		}));
+	}
+
+	async function searchItemsFromMaster(query: string) {
 		if (!hospitalId || !storeId) {
-			itemOptions = [];
-			return;
+			lastItemSearchRows = [];
+			return [];
 		}
-		const q = itemQuery;
-		const gen = pharmacyGenericId;
-		if (itemSearchT) clearTimeout(itemSearchT);
-		itemSearchT = setTimeout(() => {
-			untrack(async () => {
-				const u = new URL(apiRoot(), window.location.origin);
-				u.searchParams.set('mode', 'items.search');
-				u.searchParams.set('storeId', String(storeId));
-				if (q.trim()) u.searchParams.set('search', q.trim());
-				if (gen) {
-					u.searchParams.set('pharmacyGenericId', gen);
-				}
-				const res = await fetch(u, { credentials: 'include' });
-				if (!res.ok) return;
-				itemOptions = (await res.json()) as typeof itemOptions;
-			});
-		}, 300);
-		return () => {
-			if (itemSearchT) clearTimeout(itemSearchT);
-		};
+		const u = new URL(apiRoot(), window.location.origin);
+		u.searchParams.set('mode', 'items.search');
+		u.searchParams.set('storeId', String(storeId));
+		if (query.trim()) u.searchParams.set('search', query.trim());
+		if (pharmacyGenericId) {
+			u.searchParams.set('pharmacyGenericId', pharmacyGenericId);
+		}
+		const res = await fetch(u, { credentials: 'include' });
+		if (!res.ok) {
+			lastItemSearchRows = [];
+			return [];
+		}
+		const rows = (await res.json()) as typeof lastItemSearchRows;
+		lastItemSearchRows = rows;
+		return rows.map((it) => ({
+			value: String(it.id),
+			label: `${it.itemName?.trim() || '—'}${it.displayPrice != null ? ` · ${it.displayPrice}` : ''}`
+		}));
+	}
+
+	async function getItemLabelForValue(idStr: string): Promise<string> {
+		if (!idStr) return '';
+		if (selectedItem && String(selectedItem.id) === idStr) {
+			return `${selectedItem.itemName?.trim() || '—'}${selectedItem.displayPrice != null ? ` · ${selectedItem.displayPrice}` : ''}`;
+		}
+		if (!hospitalId) return `Item #${idStr}`;
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${encodeURIComponent(idStr)}`,
+			{ credentials: 'include' }
+		);
+		if (!res.ok) return `Item #${idStr}`;
+		const d = (await res.json()) as { itemName?: string | null };
+		return d.itemName?.trim() || `Item #${idStr}`;
+	}
+
+	const doseUnitOptions = $derived.by(() =>
+		(masters?.doseUnits ?? []).map((u) => ({
+			value: String(u.id),
+			label: u.name?.trim() || '—'
+		}))
+	);
+	const durationUnitOptions = $derived.by(() =>
+		(masters?.durUnits ?? []).map((u) => ({
+			value: String(u.id),
+			label: `${u.name?.trim() || '—'} (${u.code})`
+		}))
+	);
+	const formOptions = $derived.by(() => [
+		{ value: '', label: m.med_order_int_not_applicable() },
+		...(masters?.forms ?? []).map((u) => ({
+			value: String(u.id),
+			label: u.name?.trim() || '—'
+		}))
+	]);
+	const routeOptions = $derived.by(() => [
+		{ value: '', label: m.med_order_int_not_applicable() },
+		...(masters?.routes ?? []).map((u) => ({
+			value: String(u.id),
+			label: u.name?.trim() || '—'
+		}))
+	]);
+	const orderTypeOptions = $derived.by(() => [
+		{ value: '', label: m.med_order_int_not_applicable() },
+		...(masters?.orderTypes ?? []).map((u) => ({
+			value: String(u.id),
+			label: u.name?.trim() || '—'
+		}))
+	]);
+	const foodRelOptions = $derived.by(() => [
+		{ value: '', label: m.med_order_int_not_applicable() },
+		...(masters?.foodRels ?? []).map((u) => ({
+			value: String(u.id),
+			label: u.name?.trim() || '—'
+		}))
+	]);
+	const frequencyOptions = $derived.by(() =>
+		(masters?.freqs ?? []).map((f) => ({
+			value: String(f.id),
+			label: f.summaryText?.trim()
+				? `${f.label?.trim() || '—'} · ${f.summaryText.trim()}`
+				: f.label?.trim() || '—'
+		}))
+	);
+
+	$effect(() => {
+		void itemFilterKey;
+		untrack(() => {
+			itemValueStr = '';
+			selectedItem = null;
+		});
 	});
 
 	$effect(() => {
@@ -213,22 +292,29 @@
 
 	lifeCycleUtil.onMount(() => {
 		if (hospitalId) {
-			loadMasters();
-			loadPharmacyGenerics();
-			fetch(`${apiRoot()}?mode=stores.search`, { credentials: 'include' })
-				.then((r) => (r.ok ? r.json() : null))
-				.then((d) => {
-					if (d) storeOptions = d as typeof storeOptions;
-				})
-				.catch(() => {});
+			void loadMasters();
+			void loadPharmacyGenerics();
 		}
 	});
 
-	function selectStore(s: { id: number; storeName: string | null }) {
-		storeId = s.id;
-		storeLabel = s.storeName ?? `#${s.id}`;
-		selectedItem = null;
-		itemQuery = '';
+	async function onStoreSearchChange(v: string) {
+		storeLabel = v ? await resolveStoreLabelForId(v) : '';
+	}
+
+	async function getStoreLabelForValue(v: string): Promise<string> {
+		if (!v) return '';
+		if (v === storeIdStr && storeLabel) return storeLabel;
+		return resolveStoreLabelForId(v);
+	}
+
+	function onItemSearchChange(v: string) {
+		itemValueStr = v;
+		if (!v) {
+			selectedItem = null;
+			return;
+		}
+		const row = lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
+		selectedItem = row;
 	}
 
 	function resetEditing() {
@@ -244,7 +330,7 @@
 			);
 			return;
 		}
-		if (!storeId) {
+		if (storeId <= 0) {
 			toastService.addToast(
 				m.med_order_int_no_store(),
 				StatusColorEnum.ERROR
@@ -329,7 +415,7 @@
 			);
 			return;
 		}
-		if (!storeId) {
+		if (storeId <= 0) {
 			toastService.addToast(
 				m.med_order_int_no_store(),
 				StatusColorEnum.ERROR
@@ -451,6 +537,17 @@
 		};
 	}
 
+	async function fetchItemDisplayName(itemMasterId: number): Promise<string> {
+		if (!hospitalId) return `Item #${itemMasterId}`;
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemMasterId}`,
+			{ credentials: 'include' }
+		);
+		if (!res.ok) return `Item #${itemMasterId}`;
+		const d = (await res.json()) as { itemName?: string | null };
+		return d.itemName?.trim() || `Item #${itemMasterId}`;
+	}
+
 	async function loadBatchForEdit(id: number) {
 		const u = new URL(apiRoot(), window.location.origin);
 		u.searchParams.set('mode', 'batch.get');
@@ -467,13 +564,12 @@
 		if (!masters) await loadMasters();
 		historyOpen = false;
 		editingBatchId = id;
-		storeId = pack.batch.storeId;
+		storeIdStr = String(pack.batch.storeId);
 		storeLabel =
 			storeNameById[pack.batch.storeId] ?? `#${pack.batch.storeId}`;
-		draftLines = pack.lines.map((ln) =>
-			lineToDraft(
-				ln,
-				`${m.med_order_int_item()} #${String(ln.itemMasterId)}`
+		draftLines = await Promise.all(
+			pack.lines.map(async (ln) =>
+				lineToDraft(ln, await fetchItemDisplayName(Number(ln.itemMasterId)))
 			)
 		);
 	}
@@ -558,234 +654,225 @@
 			<div
 				class="mx-auto flex w-full max-w-5xl flex-col gap-5 sm:gap-6"
 			>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium">{m.med_order_int_store()}</span>
-						<div class="flex min-w-0 flex-col gap-1">
-							<DaisyUiInputField
-								nameText="med-store-s"
-								bind:value={storeSearch}
-								inputPlaceholderText={m.med_order_int_store_search()}
-								minLength={0}
+				<div
+					class="grid grid-cols-1 gap-4 border-b border-base-200 pb-5 sm:grid-cols-2"
+				>
+					<div
+						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel className="shrink-0 sm:w-40"
+							>{m.med_order_int_store()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1 max-w-md">
+							<DaisyUISearchSelect
+								bind:value={storeIdStr}
+								searchFn={searchStoresForSelect}
+								getLabelForValue={getStoreLabelForValue}
+								placeholder={m.med_order_int_store_search()}
+								minSearchLength={0}
+								debounceMs={300}
+								onChange={onStoreSearchChange}
+								inputId="int-sales-store"
+								className="w-full"
 							/>
-							{#if storeOptions.length}
-								<div
-									class="max-h-40 overflow-y-auto rounded border border-base-300"
-								>
-									{#each storeOptions as s (s.id)}
-										<button
-											type="button"
-											class="d-btn d-btn-ghost w-full justify-start d-btn-sm rounded-none"
-											onclick={() => selectStore(s)}
-										>
-											{s.storeName ?? `#${s.id}`}
-										</button>
-									{/each}
-								</div>
-							{/if}
-							{#if storeId}
-								<p class="text-xs opacity-80">
-									{m.med_order_int_store_selected()}: {storeLabel}
-								</p>
-							{/if}
 						</div>
 					</div>
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_pharmacy_generic()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel className="shrink-0 sm:w-40"
+							>{m.med_order_int_pharmacy_generic()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full"
-							bind:value={pharmacyGenericId}
-						>
-							<option value="">{m.med_order_int_all_generics()}</option>
-							{#each pharmacyGenerics as g (g.id)}
-								<option value={String(g.id)}>{g.name}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-
-				<div class="flex min-w-0 flex-col gap-1.5">
-					<span class="text-sm font-medium">{m.med_order_int_item()}</span>
-					<DaisyUiInputField
-						nameText="med-item-s"
-						bind:value={itemQuery}
-						inputPlaceholderText={m.med_order_int_item_search()}
-						minLength={0}
-						disabled={!storeId}
-					/>
-					{#if itemOptions.length}
-						<div
-							class="max-h-40 overflow-y-auto rounded border border-base-300"
-						>
-							{#each itemOptions as it (it.id)}
-								<button
-									type="button"
-									class="d-btn d-btn-ghost w-full justify-start d-btn-sm rounded-none"
-									onclick={() => (selectedItem = it)}
-								>
-									{it.itemName}
-									{#if it.displayPrice != null}
-										— {it.displayPrice}
-									{/if}
-								</button>
-							{/each}
+						<div class="min-w-0 flex-1 max-w-md">
+							<DaisyUISearchSelect
+								bind:value={pharmacyGenericId}
+								options={genericOptions}
+								placeholder={m.med_order_int_all_generics()}
+								className="w-full"
+							/>
 						</div>
-					{/if}
-					{#if selectedItem}
-						<p class="text-xs opacity-80">
-							{selectedItem.itemName}
-							{#if selectedItem.displayPrice != null}
-								· {m.med_order_int_price()}: {selectedItem.displayPrice}
-							{/if}
-						</p>
-					{/if}
+					</div>
 				</div>
 
 				<div
-					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-start"
+					class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-1">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_dose()}</span
-						>
-						<DaisyUiInputField
-							nameText="dose"
-							bind:value={dose}
-							inputType="text"
-							className="w-full max-w-full"
-							minLength={0}
+					<DaisyUiLabel className="shrink-0 sm:w-40 pt-2"
+						>{m.med_order_int_item()}</DaisyUiLabel
+					>
+					<div class="min-w-0 flex-1 max-w-2xl">
+						<DaisyUISearchSelect
+							bind:value={itemValueStr}
+							searchFn={searchItemsFromMaster}
+							getLabelForValue={getItemLabelForValue}
+							placeholder={m.med_order_int_item_search()}
+							minSearchLength={0}
+							debounceMs={300}
+							invalidateKey={itemFilterKey}
+							disabled={storeId <= 0}
+							onChange={onItemSearchChange}
+							inputId="int-sales-item"
+							className="w-full"
 						/>
+						{#if selectedItem?.displayPrice != null}
+							<p class="mt-1.5 text-xs text-base-content/70">
+								{m.med_order_int_price()}: {selectedItem.displayPrice}
+							</p>
+						{/if}
 					</div>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-2">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_dose_unit()}</span
+				</div>
+
+				<div
+					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-end"
+				>
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-1 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 w-full sm:max-w-[4.5rem]"
+							>{m.med_order_int_dose()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full min-w-0"
-							bind:value={doseUnitIdStr}
-						>
-							{#each masters?.doseUnits ?? [] as u (u.id)}
-								<option value={String(u.id)}>{u.name}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-3">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_frequency()}</span
-						>
-						<div class="flex min-w-0 flex-col gap-1.5">
+						<div class="min-w-0 flex-1">
 							<DaisyUiInputField
-								nameText="freq-filter"
-								bind:value={freqFilter}
-								inputPlaceholderText={m.med_order_int_frequency_filter()}
+								nameText="dose"
+								bind:value={dose}
+								inputType="text"
+								className="w-full"
 								minLength={0}
 							/>
-							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm w-full min-w-0"
+						</div>
+					</div>
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
+							>{m.med_order_int_dose_unit()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
+								bind:value={doseUnitIdStr}
+								options={doseUnitOptions}
+								placeholder="—"
+								disabled={!masters}
+								className="w-full"
+							/>
+						</div>
+					</div>
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-3 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
+							>{m.med_order_int_frequency()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
 								bind:value={frequencyIdStr}
-							>
-								{#each filteredFreqs as f (f.id)}
-									<option value={String(f.id)}>
-										{f.label}
-										{#if f.summaryText}
-											· {f.summaryText}
-										{/if}
-									</option>
-								{/each}
-							</DaisyUiSelect>
+								options={frequencyOptions}
+								placeholder={m.med_order_int_frequency_filter()}
+								disabled={!masters}
+								className="w-full"
+							/>
 						</div>
 					</div>
 				</div>
 
 				<div
-					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-start"
+					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-end"
 				>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-2">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_duration()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
+							>{m.med_order_int_duration()}</DaisyUiLabel
 						>
-						<div class="flex min-w-0 items-center gap-2">
+						<div
+							class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end"
+						>
 							<DaisyUiInputField
 								nameText="dv"
 								bind:value={durationValue}
 								inputType="text"
-								className="w-20 shrink-0"
+								className="w-full max-w-24 shrink-0"
 								minLength={0}
 							/>
-							<DaisyUiSelect
-								className="d-select d-select-bordered d-select-sm min-w-0 flex-1"
-								bind:value={durationUnitIdStr}
-							>
-								{#each masters?.durUnits ?? [] as u (u.id)}
-									<option value={String(u.id)}>
-										{u.name} ({u.code})
-									</option>
-								{/each}
-							</DaisyUiSelect>
+							<div class="min-w-0 flex-1">
+								<DaisyUISearchSelect
+									bind:value={durationUnitIdStr}
+									options={durationUnitOptions}
+									placeholder="—"
+									disabled={!masters}
+									className="w-full"
+								/>
+							</div>
 						</div>
 					</div>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-2">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_form()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-24"
+							>{m.med_order_int_form()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full min-w-0"
-							bind:value={formId}
-						>
-							<option value="">{m.med_order_int_not_applicable()}</option>
-							{#each masters?.forms ?? [] as u (u.id)}
-								<option value={String(u.id)}>{u.name}</option>
-							{/each}
-						</DaisyUiSelect>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
+								bind:value={formId}
+								options={formOptions}
+								placeholder={m.med_order_int_not_applicable()}
+								disabled={!masters}
+								className="w-full"
+							/>
+						</div>
 					</div>
-					<div class="flex min-w-0 flex-col gap-1.5 md:col-span-2">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_route()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-24"
+							>{m.med_order_int_route()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full min-w-0"
-							bind:value={routeId}
-						>
-							<option value="">{m.med_order_int_not_applicable()}</option>
-							{#each masters?.routes ?? [] as u (u.id)}
-								<option value={String(u.id)}>{u.name}</option>
-							{/each}
-						</DaisyUiSelect>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
+								bind:value={routeId}
+								options={routeOptions}
+								placeholder={m.med_order_int_not_applicable()}
+								disabled={!masters}
+								className="w-full"
+							/>
+						</div>
 					</div>
 				</div>
 
 				<div
-					class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start"
+					class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end"
 				>
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_order_type()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-32"
+							>{m.med_order_int_order_type()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full min-w-0"
-							bind:value={orderTypeId}
-						>
-							<option value="">{m.med_order_int_not_applicable()}</option>
-							{#each masters?.orderTypes ?? [] as u (u.id)}
-								<option value={String(u.id)}>{u.name}</option>
-							{/each}
-						</DaisyUiSelect>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
+								bind:value={orderTypeId}
+								options={orderTypeOptions}
+								placeholder={m.med_order_int_not_applicable()}
+								disabled={!masters}
+								className="w-full"
+							/>
+						</div>
 					</div>
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_food_relation()}</span
+					<div
+						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2"
+					>
+						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-32"
+							>{m.med_order_int_food_relation()}</DaisyUiLabel
 						>
-						<DaisyUiSelect
-							className="d-select d-select-bordered d-select-sm w-full min-w-0"
-							bind:value={foodRelationId}
-						>
-							<option value="">{m.med_order_int_not_applicable()}</option>
-							{#each masters?.foodRels ?? [] as u (u.id)}
-								<option value={String(u.id)}>{u.name}</option>
-							{/each}
-						</DaisyUiSelect>
+						<div class="min-w-0 flex-1">
+							<DaisyUISearchSelect
+								bind:value={foodRelationId}
+								options={foodRelOptions}
+								placeholder={m.med_order_int_not_applicable()}
+								disabled={!masters}
+								className="w-full"
+							/>
+						</div>
 					</div>
 				</div>
 

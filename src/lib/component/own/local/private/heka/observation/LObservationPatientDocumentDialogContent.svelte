@@ -10,6 +10,7 @@
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -195,9 +196,15 @@
 					payload: { visitId, patientId, documentId: docId, statusId }
 				});
 			}
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			const title = isEdit
+				? m.observation_emr_edit_document_link()
+				: m.observation_emr_add_document_link();
+			toastSuccess(
+				toastService,
+				title,
+				isEdit
+					? m.toast_action_updated()
+					: m.toast_action_created()
 			);
 			ObservationPatientDocumentDialogState.onSaved?.();
 			await confirm({ saved: true });

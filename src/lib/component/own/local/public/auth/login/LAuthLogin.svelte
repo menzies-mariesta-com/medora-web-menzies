@@ -16,6 +16,7 @@
 	import DaisyUiFieldsetLegend from '$lib/component/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastError } from '$lib/util/toast-copy.util';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ResetPasswordModal from '$lib/component/own/snippet/modal/ResetPasswordModal.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -75,7 +76,12 @@
 		isLoading = false;
 
 		if (error) {
-			toastService.addErrorToast('Sign-in failed', error);
+			toastError(
+				toastService,
+				m.login(),
+				m.toast_action_failed(),
+				error
+			);
 			return;
 		}
 		if (data) {
