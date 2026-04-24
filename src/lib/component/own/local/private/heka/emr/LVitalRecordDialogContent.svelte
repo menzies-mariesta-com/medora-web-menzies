@@ -11,6 +11,7 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import {
 		computeBmiFromCmKg,
 		getVitalPlaceholder,
@@ -249,9 +250,10 @@
 					body: JSON.stringify({ id: vitalId, ...vitalPayload })
 				});
 				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-				toastService.addToast(
-					'Vitals updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_patient_vital(),
+					m.toast_action_updated()
 				);
 			} else {
 				const res = await fetch(base, {
@@ -264,9 +266,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-				toastService.addToast(
-					'Vitals saved.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_patient_vital(),
+					m.toast_action_saved()
 				);
 			}
 			await confirm({ saved: true });

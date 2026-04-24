@@ -15,6 +15,7 @@
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { toastError } from '$lib/util/toast-copy.util';
 	import { untrack } from 'svelte';
 
 	let { children } = $props();
@@ -108,7 +109,12 @@
 				StatusColorEnum.SUCCESS
 			);
 		} catch (err) {
-			toastService.addErrorToast('Could not undo signed visit', err);
+			toastError(
+				toastService,
+				m.entity_visit(),
+				m.toast_action_updated_failed(),
+				err
+			);
 		}
 	}
 

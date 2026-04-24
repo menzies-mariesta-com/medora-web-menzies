@@ -14,6 +14,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { open, onClose, staffId, registrationEditUrl } = $props<{
 		open: boolean;
@@ -84,9 +86,10 @@
 					const t = await res.text().catch(() => '');
 					throw new Error(t || `Update failed: ${res.status}`);
 				}
-				toastService.addToast(
-					'Account deactivated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_account(),
+					m.toast_action_inactivated()
 				);
 				onClose();
 				await authClient.signOut();

@@ -69,6 +69,266 @@ export async function seedMasterTables() {
 	`);
 	seedLogger.info('Seeded: category');
 
+	// 2b. Medication Order Setup master: dosing frequencies (global master)
+	// Keep this list small and common; hospitals can disable rows via `med_order_frequency_inactive`.
+	const presetFreqsRaw: Array<[number, string, string | null, string]> = [
+		[1, 'Once a Day (OD)', 'OD', '1'],
+		[2, '2 times a Day (BD)', 'BD', '2'],
+		[3, '3 times a day (TDS)', 'TDS', '3'],
+		[4, '4 times a day (QDS)', 'QDS', '4'],
+		[5, '4 hourly', 'Q4H', '6'],
+		[6, '6 hourly', 'Q6H', '4'],
+		[7, '8 hourly', 'Q8H', '3'],
+		[8, '12 hourly', 'Q12H', '2'],
+		[9, 'every 24 hours', 'Q24H', '1'],
+		[10, 'as needed', 'PRN', '1']
+	];
+
+	function normalizePerDay(raw: string): string {
+		return raw.replaceAll(',', '').trim();
+	}
+
+	// De-duplicate the seed list to avoid accidental duplicates (e.g. PRN-like abbreviations).
+	const seenFreqKey = new Set<string>();
+	const presetFreqs = presetFreqsRaw
+		.filter(([_seq, description, abbreviation]) => {
+			const key = (abbreviation?.trim() || description.trim()).toLowerCase();
+			if (seenFreqKey.has(key)) return false;
+			seenFreqKey.add(key);
+			return true;
+		})
+		.map(
+		([sequenceNo, description, abbreviation, freqPerDay]) => ({
+			label: description,
+			description,
+			abbreviation,
+			frequencyPerDay: normalizePerDay(freqPerDay),
+			sequenceNo
+		})
+	);
+
+	// Global seed (shared across all hospitals/branches).
+	for (const p of presetFreqs) {
+		await db.execute(sql`
+			INSERT INTO med_order_frequency (
+					label,
+					is_preset,
+					description,
+					abbreviation,
+					frequency_per_day,
+					sequence_no,
+					is_common_frequency,
+					is_timing_required,
+					local_language,
+					kind,
+					status_id
+				)
+				SELECT
+					${p.label},
+					true,
+					${p.description},
+					${p.abbreviation},
+					${p.frequencyPerDay}::numeric,
+					${p.sequenceNo},
+					false,
+					false,
+					NULL,
+					'custom',
+					1
+				WHERE NOT EXISTS (
+					SELECT 1
+					FROM med_order_frequency x
+					WHERE x.is_preset = true
+						AND x.deleted_at IS NULL
+						AND (
+							(x.abbreviation IS NOT NULL AND x.abbreviation = ${p.abbreviation})
+							OR (x.abbreviation IS NULL AND x.label = ${p.label})
+						)
+				);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_frequency presets');
+
+	// 2c. Medication order setup: route of administration (global presets; hospitals opt out via `med_order_route_inactive`)
+	const presetMedRoutes: Array<{ name: string; description: string | null }> = [
+		{ name: 'Oral', description: 'By mouth (PO)' },
+		{ name: 'Sublingual', description: 'Under the tongue' },
+		{ name: 'Buccal', description: 'Between gum and cheek' },
+		{ name: 'Rectal', description: 'Per rectum' },
+		{ name: 'Vaginal', description: 'Intravaginal' },
+		{ name: 'Topical', description: 'Applied to the skin' },
+		{ name: 'Transdermal', description: 'Patch' },
+		{ name: 'Inhalation', description: 'Inhaled (e.g. MDI, DPI)' },
+		{ name: 'Intranasal', description: 'Into the nose' },
+		{ name: 'Subcutaneous', description: 'Subcut (SC) injection' }
+	];
+	for (const p of presetMedRoutes) {
+		await db.execute(sql`
+			INSERT INTO med_order_route (
+					name,
+					is_preset,
+					description,
+					status_id
+				)
+				SELECT
+					${p.name},
+					true,
+					${p.description},
+					1
+				WHERE NOT EXISTS (
+					SELECT 1
+					FROM med_order_route x
+					WHERE x.is_preset = true
+						AND x.deleted_at IS NULL
+						AND x.name = ${p.name}
+				);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_route presets');
+
+	// 2d–2h. Medication order: form, order type, dose unit, food relation, duration unit (global presets)
+	const presetForms = [
+		'Tablet',
+		'Capsule',
+		'Syrup',
+		'Suspension',
+		'Injection',
+		'Cream',
+		'Ointment',
+		'Drop',
+		'Lozenge',
+		'Inhaler'
+	];
+	for (const name of presetForms) {
+		await db.execute(sql`
+			INSERT INTO med_order_form (name, is_preset, status_id)
+			SELECT ${name}, true, 1
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM med_order_form x
+				WHERE x.is_preset = true
+					AND x.deleted_at IS NULL
+					AND x.name = ${name}
+			);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_form presets');
+
+	const presetOrderTypes = [
+		'Routine',
+		'Urgent',
+		'STAT',
+		'PRN',
+		'Pre-op',
+		'Post-op',
+		'Taper',
+		'As directed',
+		'Standing',
+		'One-time'
+	];
+	for (const name of presetOrderTypes) {
+		await db.execute(sql`
+			INSERT INTO med_order_order_type (name, is_preset, status_id)
+			SELECT ${name}, true, 1
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM med_order_order_type x
+				WHERE x.is_preset = true
+					AND x.deleted_at IS NULL
+					AND x.name = ${name}
+			);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_order_type presets');
+
+	const presetDoseUnits = [
+		'Tablet',
+		'Capsule',
+		'mL',
+		'mg',
+		'mcg',
+		'IU',
+		'g',
+		'unit',
+		'puff',
+		'drop'
+	];
+	for (const name of presetDoseUnits) {
+		await db.execute(sql`
+			INSERT INTO med_order_dose_unit (name, is_preset, status_id)
+			SELECT ${name}, true, 1
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM med_order_dose_unit x
+				WHERE x.is_preset = true
+					AND x.deleted_at IS NULL
+					AND x.name = ${name}
+			);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_dose_unit presets');
+
+	const presetFoodRels = [
+		'Before meals',
+		'After meals',
+		'With food',
+		'On empty stomach',
+		'With plenty of water',
+		'At bedtime',
+		'Mid-morning',
+		'Mid-afternoon'
+	];
+	for (const name of presetFoodRels) {
+		await db.execute(sql`
+			INSERT INTO med_order_food_relation (name, is_preset, status_id)
+			SELECT ${name}, true, 1
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM med_order_food_relation x
+				WHERE x.is_preset = true
+					AND x.deleted_at IS NULL
+					AND x.name = ${name}
+			);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_food_relation presets');
+
+	const presetDurUnits: Array<{
+		code: string;
+		name: string;
+		sequenceNo: number;
+	}> = [
+		{ code: 'minute', name: 'Minute', sequenceNo: 1 },
+		{ code: 'hour', name: 'Hour', sequenceNo: 2 },
+		{ code: 'day', name: 'Day', sequenceNo: 3 },
+		{ code: 'week', name: 'Week', sequenceNo: 4 },
+		{ code: 'month', name: 'Month', sequenceNo: 5 }
+	];
+	for (const d of presetDurUnits) {
+		await db.execute(sql`
+			INSERT INTO med_order_duration_unit (
+					is_preset,
+					code,
+					name,
+					sequence_no,
+					status_id
+				)
+				SELECT
+					true,
+					${d.code},
+					${d.name},
+					${d.sequenceNo},
+					1
+				WHERE NOT EXISTS (
+					SELECT 1
+					FROM med_order_duration_unit x
+					WHERE x.deleted_at IS NULL
+						AND x.code = ${d.code}
+				);
+		`);
+	}
+	seedLogger.info('Seeded: med_order_duration_unit presets');
+
 	// 3. Countries
 	await db.execute(sql`
 		INSERT INTO country (id, name, code, image_url, country_calling_code, language, status_id)

@@ -25,6 +25,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import { toastError } from '$lib/util/toast-copy.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
@@ -320,7 +321,12 @@
 		} catch (e) {
 			// Aborts are expected when paging/filtering quickly or on reactive re-runs.
 			if (e instanceof DOMException && e.name === 'AbortError') return;
-			toastService.addErrorToast('Could not load purchase requisitions', e);
+			toastError(
+				toastService,
+				m.entity_purchase_requisition(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			loading = false;
 		}
