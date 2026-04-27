@@ -716,7 +716,7 @@
 					>
 						{mode === 'create'
 							? m.service_item_create_button()
-							: m.service_item_save_button()}
+							: m.update()}
 					</DaisyUiButton>
 				</div>
 			</form>

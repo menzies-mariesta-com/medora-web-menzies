@@ -10,7 +10,7 @@
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
-	import * as m from '$lib/paraglide/messages';
+	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import {
 		computeBmiFromCmKg,
@@ -571,7 +571,7 @@
 			className="d-btn-primary d-btn-wide"
 			loading={isSubmitting}
 		>
-			{isEditMode ? 'Update vitals' : 'Save vitals'}
+			{isEditMode ? m.emr_vitals_submit_update() : m.emr_vitals_submit_save()}
 		</DaisyUiButton>
 		<DaisyUiButton
 			type="button"

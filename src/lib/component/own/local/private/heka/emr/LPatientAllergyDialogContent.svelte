@@ -655,7 +655,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			{isEditMode ? 'Update' : 'Add allergy'}
+			{isEditMode ? m.update() : m.emr_allergy_submit_add()}
 		</DaisyUiButton>
 	</div>
 </form>

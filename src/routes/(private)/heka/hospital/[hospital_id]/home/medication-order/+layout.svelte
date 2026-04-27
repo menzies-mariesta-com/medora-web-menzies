@@ -20,6 +20,10 @@
 			.replace(/\/+$/, '')
 			.replace(/\/+/g, '/') || '/'
 	);
+	/** Walk-in external sales does not use visit context; hide selector and skip visit↔URL sync. */
+	const isExternalMedOrderPage = $derived(
+		currentPath.includes('medication-order/external-sales')
+	);
 	const hospitalId = $derived(page.params.hospital_id);
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
@@ -38,11 +42,15 @@
 	function navUrl(pageUrl: string | null | undefined): string | null {
 		if (!pageUrl || !hospitalId) return pageUrl ?? null;
 		const base = hekaHospitalPageUrl(hospitalId, pageUrl);
+		if (String(pageUrl).includes('external-sales')) {
+			return base;
+		}
 		const vid = VisitState.visitId;
 		return vid ? `${base}?visitId=${vid}` : base;
 	}
 
 	$effect(() => {
+		if (isExternalMedOrderPage) return;
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
 		if (
 			urlVisitId &&
@@ -95,12 +103,14 @@
 	{@render children()}
 {:else}
 	<div class="staff-subnav-wrapper">
-		<LVisitInfoBar
-			visitId={selectedVisitId}
-			{hospitalId}
-			onVisitSelected={handleVisitSelected}
-			onVisitReset={handleVisitReset}
-		/>
+		{#if !isExternalMedOrderPage}
+			<LVisitInfoBar
+				visitId={selectedVisitId}
+				{hospitalId}
+				onVisitSelected={handleVisitSelected}
+				onVisitReset={handleVisitReset}
+			/>
+		{/if}
 
 		{#if subPages.length > 0}
 			<div role="tablist" class="staff-subnav-tabs">

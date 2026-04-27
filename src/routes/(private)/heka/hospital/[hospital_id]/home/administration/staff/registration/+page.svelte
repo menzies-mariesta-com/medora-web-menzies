@@ -1287,7 +1287,7 @@
 				/>
 			</fieldset>
 
-			<!-- Action Buttons: hidden in view mode; Edit (accent) in edit mode; Save (primary) in create mode -->
+			<!-- Submit: update when saving edits to an existing staff record; create when registering new -->
 			{#if !isViewMode}
 				<DaisyUiCardBodyAction className="mt-6 flex flex-wrap gap-3">
 					<DaisyUiButton
@@ -1298,7 +1298,7 @@
 						loading={isLoading}
 						disabled={!isEditMode && disableCreateSave}
 					>
-						{isEditMode ? 'Edit' : 'Save'}
+						{isEditMode ? m.update() : m.create()}
 					</DaisyUiButton>
 					{#if !isEditMode && disableCreateSave}
 						<DaisyUiButton

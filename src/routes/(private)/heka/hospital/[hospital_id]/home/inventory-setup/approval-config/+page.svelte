@@ -412,10 +412,10 @@
 						type="submit"
 						className="d-btn-wide {editingId != null ? 'd-btn-accent' : 'd-btn-primary'}"
 					>
-						{editingId != null ? 'Edit' : 'Save'}
+						{editingId != null ? m.update() : m.create()}
 					</DaisyUiButton>
 					<DaisyUiButton type="button" className="d-btn-outline d-btn-wide" onClick={resetForm}>
-						Cancel
+						{m.cancel()}
 					</DaisyUiButton>
 				</DaisyUiCardBodyAction>
 			</form>

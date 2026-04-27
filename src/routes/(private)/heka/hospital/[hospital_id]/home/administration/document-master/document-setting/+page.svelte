@@ -827,7 +827,7 @@
 							loading={saveLock.pending}
 							disabled={isLoading}
 						>
-							{editingId ? 'Update' : 'Create'}
+							{editingId ? m.update() : m.create()}
 						</DaisyUiButton>
 					</div>
 				{/if}

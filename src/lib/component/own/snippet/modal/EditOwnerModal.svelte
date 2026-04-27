@@ -142,7 +142,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			Update
+			{m.update()}
 		</DaisyUiButton>
 	</div>
 </form>

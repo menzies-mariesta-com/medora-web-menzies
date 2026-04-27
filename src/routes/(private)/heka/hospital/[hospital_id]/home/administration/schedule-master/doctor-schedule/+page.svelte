@@ -890,11 +890,11 @@
 			>
 				{isSaving
 					? editingGroupKey
-						? 'Updating…'
-						: 'Saving…'
+						? m.common_updating()
+						: m.common_saving()
 					: editingGroupKey
-						? 'Update'
-						: 'Save'}
+						? m.update()
+						: m.save()}
 			</DaisyUiButton>
 		</DaisyUiCardBodyAction>
 	</DaisyUiCardBody>
