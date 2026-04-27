@@ -118,5 +118,18 @@ export async function POST(event: RequestEvent) {
 			await ex.deleteMedicationOrderBatchExternal(event, hospitalId, batchId)
 		);
 	}
+	if (mode === 'batch.reorder') {
+		const b = body as { sourceBatchId?: unknown };
+		const sourceBatchId = Number(b.sourceBatchId ?? 0);
+		if (!Number.isFinite(sourceBatchId) || sourceBatchId <= 0) {
+			throw error(400, 'sourceBatchId is required');
+		}
+		return json(
+			await ex.reorderFromHistoryBatchExternal(event, {
+				hospitalId,
+				sourceBatchId
+			})
+		);
+	}
 	throw error(400, 'mode is required');
 }

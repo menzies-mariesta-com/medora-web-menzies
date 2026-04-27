@@ -1,11 +1,13 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import {
 	getFinancialYearIdToday,
 	updateMedicationOrderBatch,
@@ -22,18 +24,192 @@ export { getBatchWithLines } from './medication-order-internal.server';
 
 export async function listExternalBatches(event: RequestEvent, hospitalId: string) {
 	await ensureCanAccessHospital(event, hospitalId);
-	return await ensureDb()
-		.select()
-		.from(table.medicationOrderBatchTable)
+	const db = ensureDb();
+	const b = table.medicationOrderBatchTable;
+	const uCreat = alias(table.userTable, 'mob_ext_created_by');
+	const uUpd = alias(table.userTable, 'mob_ext_updated_by');
+	const lineCounts = db
+		.select({
+			batchId: table.medicationOrderLineTable.batchId,
+			lineCount: count().as('lineCount')
+		})
+		.from(table.medicationOrderLineTable)
+		.where(isNull(table.medicationOrderLineTable.deletedAt))
+		.groupBy(table.medicationOrderLineTable.batchId)
+		.as('mob_ext_line_counts');
+
+	return await db
+		.select({
+			id: b.id,
+			hospitalId: b.hospitalId,
+			visitId: b.visitId,
+			storeId: b.storeId,
+			extCustomerName: b.extCustomerName,
+			advisingDoctor: b.advisingDoctor,
+			batchNo: b.batchNo,
+			createdAt: b.createdAt,
+			updatedAt: b.updatedAt,
+			createdBy: b.createdBy,
+			updatedBy: b.updatedBy,
+			createdByName: sql<string | null>`coalesce(${uCreat.name}, ${uCreat.email})`,
+			updatedByName: sql<string | null>`coalesce(${uUpd.name}, ${uUpd.email})`,
+			lineCount: sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(Number)
+		})
+		.from(b)
+		.leftJoin(uCreat, eq(b.createdBy, uCreat.id))
+		.leftJoin(uUpd, eq(b.updatedBy, uUpd.id))
+		.leftJoin(lineCounts, eq(b.id, lineCounts.batchId))
 		.where(
 			and(
-				eq(table.medicationOrderBatchTable.hospitalId, hospitalId),
-				isNull(table.medicationOrderBatchTable.visitId),
-				isNull(table.medicationOrderBatchTable.deletedAt)
+				eq(b.hospitalId, hospitalId),
+				isNull(b.visitId),
+				isNull(b.deletedAt)
 			)
 		)
-		.orderBy(desc(table.medicationOrderBatchTable.id))
+		.orderBy(desc(b.id))
 		.limit(200);
+}
+
+/**
+ * Same idea as `reorderFromHistoryBatch` in internal, but for walk-in (visitId null) batches:
+ * new batch uses first line of the source; start time is after the latest end among all
+ * external (non-visit) lines for the hospital. Customer / doctor are copied from the source batch.
+ */
+export async function reorderFromHistoryBatchExternal(
+	event: RequestEvent,
+	input: { hospitalId: string; sourceBatchId: number }
+) {
+	const { hospitalId, sourceBatchId } = input;
+	await ensureCanAccessHospital(event, hospitalId);
+	if (!Number.isFinite(sourceBatchId) || sourceBatchId <= 0) {
+		throw error(400, 'sourceBatchId is required');
+	}
+
+	const db = ensureDb();
+	const mob = table.medicationOrderBatchTable;
+	const mol = table.medicationOrderLineTable;
+
+	const [srcBatch] = await db
+		.select()
+		.from(mob)
+		.where(
+			and(
+				eq(mob.id, sourceBatchId),
+				eq(mob.hospitalId, hospitalId),
+				isNull(mob.visitId),
+				isNull(mob.deletedAt)
+			)
+		)
+		.limit(1);
+	if (!srcBatch) throw error(404, 'Batch not found');
+	const extCustomerName = (srcBatch.extCustomerName ?? '').trim();
+	const advisingDoctor = (srcBatch.advisingDoctor ?? '').trim();
+	if (!extCustomerName || !advisingDoctor) {
+		throw error(400, 'Source batch is missing customer or doctor');
+	}
+
+	const [firstLine] = await db
+		.select()
+		.from(mol)
+		.where(
+			and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt))
+		)
+		.orderBy(mol.lineNo)
+		.limit(1);
+	if (!firstLine) throw error(400, 'Batch has no lines');
+
+	const durUnits = await db
+		.select({
+			id: table.medOrderDurationUnitTable.id,
+			code: table.medOrderDurationUnitTable.code
+		})
+		.from(table.medOrderDurationUnitTable)
+		.leftJoin(
+			table.medOrderDurationUnitInactiveTable,
+			and(
+				eq(
+					table.medOrderDurationUnitInactiveTable.durationUnitId,
+					table.medOrderDurationUnitTable.id
+				),
+				eq(
+					table.medOrderDurationUnitInactiveTable.hospitalId,
+					hospitalId
+				)
+			) as any
+		)
+		.where(
+			and(
+				isNull(table.medOrderDurationUnitTable.deletedAt),
+				isNull(
+					table.medOrderDurationUnitInactiveTable.durationUnitId
+				)
+			) as any
+		)
+		.orderBy(
+			table.medOrderDurationUnitTable.sequenceNo,
+			table.medOrderDurationUnitTable.id
+		);
+	if (durUnits.length === 0) {
+		throw error(400, 'Duration units are not configured for this hospital');
+	}
+
+	const externalLines = await db
+		.select({
+			startAt: mol.startAt,
+			durationValue: mol.durationValue,
+			durationUnitId: mol.durationUnitId
+		})
+		.from(mol)
+		.innerJoin(mob, eq(mol.batchId, mob.id))
+		.where(
+			and(
+				eq(mob.hospitalId, hospitalId),
+				isNull(mob.visitId),
+				isNull(mob.deletedAt),
+				isNull(mol.deletedAt)
+			)
+		);
+
+	if (externalLines.length === 0) {
+		throw error(500, 'No medication order lines found for external sales');
+	}
+
+	let maxEndMs = 0;
+	for (const row of externalLines) {
+		const end = addDurationToStart(
+			new Date(row.startAt),
+			String(row.durationValue),
+			row.durationUnitId,
+			durUnits
+		);
+		if (end.getTime() > maxEndMs) maxEndMs = end.getTime();
+	}
+	const now = new Date();
+	const minValidStartMs = now.getTime() - 25_000;
+	const startMs = Math.max(maxEndMs, minValidStartMs);
+	const newLine = {
+		itemMasterId: firstLine.itemMasterId,
+		dose: String(firstLine.dose),
+		doseUnitId: firstLine.doseUnitId,
+		frequencyId: firstLine.frequencyId,
+		durationValue: String(firstLine.durationValue),
+		durationUnitId: firstLine.durationUnitId,
+		formId: firstLine.formId,
+		routeId: firstLine.routeId,
+		orderTypeId: firstLine.orderTypeId,
+		foodRelationId: firstLine.foodRelationId,
+		startAt: new Date(startMs).toISOString(),
+		testDose: firstLine.testDose,
+		substituteNotAllowed: firstLine.substituteNotAllowed
+	};
+
+	return await saveMedicationOrderBatchExternal(event, {
+		hospitalId,
+		storeId: srcBatch.storeId,
+		extCustomerName,
+		advisingDoctor,
+		lines: [newLine]
+	});
 }
 
 export async function saveMedicationOrderBatchExternal(

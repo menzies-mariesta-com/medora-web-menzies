@@ -743,7 +743,7 @@
 							className="d-btn-primary d-btn-sm"
 							onClick={handleSave}
 						>
-							{editingId ? 'Update' : 'Create'}
+							{editingId ? m.update() : m.create()}
 						</DaisyUiButton>
 					</div>
 				{/if}

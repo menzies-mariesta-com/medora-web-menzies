@@ -33,6 +33,24 @@ export type MedicationOrderMastersResponse = {
 
 export type StoreSearchRow = { id: number; storeName: string | null };
 
+/** `batch.list` by visit: batch row + joined user display names and line count. */
+export type MedicationOrderBatchHistoryRow = {
+	id: number;
+	hospitalId: string;
+	visitId: number | null;
+	storeId: number;
+	extCustomerName: string | null;
+	advisingDoctor: string | null;
+	batchNo: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: string | null;
+	updatedBy: string | null;
+	createdByName: string | null;
+	updatedByName: string | null;
+	lineCount: number;
+};
+
 export type ItemNamePriceRow = {
 	id: number;
 	itemName: string | null;

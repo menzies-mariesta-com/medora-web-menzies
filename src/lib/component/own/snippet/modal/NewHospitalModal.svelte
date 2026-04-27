@@ -622,14 +622,14 @@
 				className="d-btn-ghost"
 				onClick={handleCancel}
 			>
-				Cancel
+				{m.cancel()}
 			</DaisyUiButton>
 			<DaisyUiButton
 				type="submit"
 				className="d-btn-primary"
 				loading={isSubmitting}
 			>
-				{editId != null ? 'Update' : 'Create'}
+				{editId != null ? m.update() : m.create()}
 			</DaisyUiButton>
 		</div>
 	</form>

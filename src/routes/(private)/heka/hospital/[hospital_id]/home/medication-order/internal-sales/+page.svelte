@@ -7,9 +7,14 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
+	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -17,9 +22,13 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { MedicationOrderMastersResponse } from '$lib/model/type/heka/medication-order.type';
-	import type { MedicationOrderLineInput } from '$lib/model/type/heka/medication-order.type';
-	import { untrack } from 'svelte';
+	import type {
+		MedicationOrderBatchHistoryRow,
+		MedicationOrderMastersResponse,
+		MedicationOrderLineInput
+	} from '$lib/model/type/heka/medication-order.type';
+	import { untrack, tick } from 'svelte';
+	import { applyStaggeredStartDates } from '$lib/util/med-order-stagger.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -108,10 +117,17 @@
 
 	/** — History */
 	let historyOpen = $state(false);
-	let historyRows = $state<
-		{ id: number; batchNo: string; storeId: number; createdAt?: string | null }[]
-	>([]);
+	let historyRows = $state<MedicationOrderBatchHistoryRow[]>([]);
 	let storeNameById = $state<Record<number, string>>({});
+
+	let historyCurrentPage = $state(1);
+	let historyPageSizeStr = $state('10');
+	let draftCurrentPage = $state(1);
+	let draftPageSizeStr = $state('25');
+	let draftColumnFilters = $state<Record<string, string>>({});
+	let historyColumnFilters = $state<Record<string, string>>({});
+
+	let prevItemFilterKey = $state<string | null>(null);
 
 	const genericOptions = $derived.by(() => {
 		const opts: { value: string; label: string }[] = [
@@ -272,12 +288,174 @@
 		}))
 	);
 
+	const dash = () => m.med_order_int_not_applicable();
+
+	const historyColumns = $derived.by((): MariTableColumn<MedicationOrderBatchHistoryRow>[] => [
+		{
+			id: 'id',
+			header: m.med_order_int_hist_id(),
+			widthClass: 'min-w-[4rem]',
+			filterable: true,
+			field: 'id',
+			format: (v) => String(v ?? dash())
+		},
+		{
+			id: 'hospitalId',
+			header: m.med_order_int_hist_hospital_id(),
+			widthClass: 'min-w-[12rem] max-w-[14rem] font-mono text-xs',
+			filterable: true,
+			field: 'hospitalId',
+			format: (v) => (typeof v === 'string' && v ? v : dash())
+		},
+		{
+			id: 'visitId',
+			header: m.med_order_int_hist_visit_id(),
+			widthClass: 'min-w-[5rem]',
+			filterable: true,
+			field: 'visitId',
+			format: (v) =>
+				v != null && v !== '' ? String(v) : dash()
+		},
+		{
+			id: 'batchNo',
+			header: m.med_order_int_batch(),
+			widthClass: 'min-w-[8rem]',
+			filterable: true,
+			field: 'batchNo'
+		},
+		{
+			id: 'store',
+			header: m.med_order_int_store(),
+			widthClass: 'min-w-[10rem]',
+			filterable: true,
+			format: (_v, row) =>
+				storeNameById[row.storeId] ?? String(row.storeId)
+		},
+		{
+			id: 'extCustomerName',
+			header: m.med_order_int_hist_ext_customer(),
+			widthClass: 'min-w-[8rem]',
+			filterable: true,
+			field: 'extCustomerName',
+			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
+		},
+		{
+			id: 'advisingDoctor',
+			header: m.med_order_int_hist_advising_doctor(),
+			widthClass: 'min-w-[8rem]',
+			filterable: true,
+			field: 'advisingDoctor',
+			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
+		},
+		{
+			id: 'lineCount',
+			header: m.med_order_int_hist_lines(),
+			widthClass: 'min-w-[4rem]',
+			filterable: true,
+			field: 'lineCount',
+			format: (v) => String(v ?? dash())
+		},
+		{
+			id: 'createdAt',
+			header: m.created_at(),
+			widthClass: 'min-w-[11rem]',
+			filterable: false,
+			format: (_v, row) => toDateTimeLocalValue(new Date(row.createdAt))
+		},
+		{
+			id: 'updatedAt',
+			header: m.updated_at(),
+			widthClass: 'min-w-[11rem]',
+			filterable: false,
+			format: (_v, row) => toDateTimeLocalValue(new Date(row.updatedAt))
+		},
+		{
+			id: 'createdByName',
+			header: m.med_order_int_hist_created_by(),
+			widthClass: 'min-w-[9rem]',
+			filterable: true,
+			field: 'createdByName',
+			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
+		},
+		{
+			id: 'createdBy',
+			header: m.med_order_int_hist_created_by_id(),
+			widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
+			filterable: true,
+			field: 'createdBy',
+			format: (v) => (v != null && String(v) ? String(v) : dash())
+		},
+		{
+			id: 'updatedByName',
+			header: m.med_order_int_hist_updated_by(),
+			widthClass: 'min-w-[9rem]',
+			filterable: true,
+			field: 'updatedByName',
+			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
+		},
+		{
+			id: 'updatedBy',
+			header: m.med_order_int_hist_updated_by_id(),
+			widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
+			filterable: true,
+			field: 'updatedBy',
+			format: (v) => (v != null && String(v) ? String(v) : dash())
+		}
+	]);
+
+	const draftColumns = $derived.by((): MariTableColumn<DraftLine>[] => {
+		const ps = Number(draftPageSizeStr) || 25;
+		return [
+			{
+				id: 'idx',
+				header: m.med_order_int_draft_index(),
+				widthClass: 'w-12',
+				filterable: false,
+				format: (_v, _row, rowIndex) =>
+					String((draftCurrentPage - 1) * ps + rowIndex + 1)
+			},
+			{
+				id: 'item',
+				header: m.med_order_int_item(),
+				widthClass: 'min-w-[10rem]',
+				filterable: true,
+				format: (_v, row) => row._itemName
+			},
+			{
+				id: 'dose',
+				header: m.med_order_int_dose(),
+				widthClass: 'w-24',
+				filterable: true,
+				format: (_v, row) => row.dose
+			},
+			{
+				id: 'freq',
+				header: m.med_order_int_frequency(),
+				widthClass: 'min-w-[8rem]',
+				filterable: true,
+				format: (_v, row) => row._freqLabel
+			},
+			{
+				id: 'start',
+				header: m.med_order_int_start(),
+				widthClass: 'min-w-[10rem]',
+				filterable: false,
+				format: (_v, row) =>
+					toDateTimeLocalValue(new Date(row.startAt))
+			}
+		];
+	});
+
+	/** Clear stale item when store or generic filter changes (not on first run). */
 	$effect(() => {
-		void itemFilterKey;
-		untrack(() => {
-			itemValueStr = '';
-			selectedItem = null;
-		});
+		const k = itemFilterKey;
+		if (prevItemFilterKey != null && k !== prevItemFilterKey) {
+			untrack(() => {
+				itemValueStr = '';
+				selectedItem = null;
+			});
+		}
+		prevItemFilterKey = k;
 	});
 
 	$effect(() => {
@@ -403,8 +581,70 @@
 		];
 	}
 
+	function staggerDraftLinesFromOrder(): void {
+		const du = masters?.durUnits ?? [];
+		if (du.length === 0 || draftLines.length <= 1) return;
+		draftLines = applyStaggeredStartDates(draftLines, du) as DraftLine[];
+		if (draftLines[0]) {
+			hydrateFormFromLine(draftLines[0]);
+		}
+	}
+
 	function removeDraft(k: string) {
-		draftLines = draftLines.filter((d) => d._key !== k);
+		const next = draftLines.filter((d) => d._key !== k);
+		draftLines = next;
+		if (next.length >= 2) {
+			staggerDraftLinesFromOrder();
+		} else if (next[0]) {
+			hydrateFormFromLine(next[0]);
+		}
+	}
+
+	function globalDraftIndex(localRowIndex: number): number {
+		const ps = Number(draftPageSizeStr) || 25;
+		return (draftCurrentPage - 1) * ps + localRowIndex;
+	}
+
+	function moveDraftLine(globalIndex: number, delta: -1 | 1) {
+		const next = globalIndex + delta;
+		if (next < 0 || next >= draftLines.length) return;
+		const copy = [...draftLines];
+		const t = copy[globalIndex]!;
+		copy[globalIndex] = copy[next]!;
+		copy[next] = t;
+		draftLines = copy;
+		staggerDraftLinesFromOrder();
+	}
+
+	function hydrateFormFromLine(line: DraftLine) {
+		itemValueStr = String(line.itemMasterId);
+		selectedItem = {
+			id: line.itemMasterId,
+			itemName: line._itemName,
+			displayPrice: null
+		};
+		const row = {
+			id: line.itemMasterId,
+			itemName: line._itemName,
+			displayPrice: null as string | null
+		};
+		lastItemSearchRows = [
+			row,
+			...lastItemSearchRows.filter((r) => r.id !== line.itemMasterId)
+		];
+		dose = line.dose;
+		doseUnitIdStr = String(line.doseUnitId);
+		frequencyIdStr = String(line.frequencyId);
+		durationValue = String(line.durationValue);
+		durationUnitIdStr = String(line.durationUnitId);
+		formId = line.formId != null ? String(line.formId) : '';
+		routeId = line.routeId != null ? String(line.routeId) : '';
+		orderTypeId = line.orderTypeId != null ? String(line.orderTypeId) : '';
+		foodRelationId =
+			line.foodRelationId != null ? String(line.foodRelationId) : '';
+		startAtLocal = toDateTimeLocalValue(new Date(line.startAt));
+		testDose = line.testDose ?? '';
+		substituteNotAllowed = line.substituteNotAllowed;
 	}
 
 	async function persistBatch() {
@@ -485,6 +725,7 @@
 			return;
 		}
 		historyOpen = true;
+		historyCurrentPage = 1;
 		const u = new URL(apiRoot(), window.location.origin);
 		u.searchParams.set('mode', 'batch.list');
 		u.searchParams.set('visitId', String(visitIdNum));
@@ -493,7 +734,7 @@
 			historyRows = [];
 			return;
 		}
-		historyRows = (await res.json()) as typeof historyRows;
+		historyRows = (await res.json()) as MedicationOrderBatchHistoryRow[];
 		const r = await fetch(
 			`${apiRoot()}?mode=stores.search`,
 			{ credentials: 'include' }
@@ -572,6 +813,83 @@
 				lineToDraft(ln, await fetchItemDisplayName(Number(ln.itemMasterId)))
 			)
 		);
+		await tick();
+		if (draftLines[0]) {
+			hydrateFormFromLine(draftLines[0]);
+		}
+	}
+
+	/** New batch + new batch number: copy this batch’s first line; start is after the latest line end for the visit. */
+	async function reorderAsNewBatch(sourceBatchId: number) {
+		if (!visitIdNum) {
+			toastService.addToast(
+				m.med_order_int_no_visit(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		const c = await dialogService.open({
+			title: m.med_order_int_reorder_append_title(),
+			message: m.med_order_int_reorder_append_confirm(),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!c.confirmed) return;
+		isBusy = true;
+		try {
+			const res = await fetch(apiRoot(), {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'batch.reorder',
+					visitId: visitIdNum,
+					sourceBatchId
+				})
+			});
+			if (!res.ok) throw new Error(await res.text());
+			void (await res.json());
+			toastService.addToast(
+				m.med_order_int_reorder_line_appended(),
+				StatusColorEnum.SUCCESS
+			);
+			await openHistory();
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_int_save_failed(), e);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	async function deleteHistoryBatch(id: number) {
+		const c = await dialogService.open({
+			title: m.med_order_int_delete_title(),
+			message: m.med_order_int_delete_confirm(),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!c.confirmed) return;
+		isBusy = true;
+		try {
+			const res = await fetch(apiRoot(), {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'batch.delete',
+					batchId: id
+				})
+			});
+			if (!res.ok) throw new Error(await res.text());
+			toastService.addToast(m.med_order_int_deleted(), StatusColorEnum.SUCCESS);
+			historyRows = historyRows.filter((b) => b.id !== id);
+			if (editingBatchId === id) {
+				historyOpen = false;
+				resetEditing();
+			}
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_int_delete_failed(), e);
+		} finally {
+			isBusy = false;
+		}
 	}
 
 	async function deleteCurrentBatch() {
@@ -652,18 +970,16 @@
 	<DaisyUiCard>
 		<DaisyUiCardBody className="p-4 sm:p-6">
 			<div
-				class="mx-auto flex w-full max-w-5xl flex-col gap-5 sm:gap-6"
+				class="mx-auto flex w-full max-w-7xl flex-col gap-5 sm:gap-6"
 			>
 				<div
-					class="grid grid-cols-1 gap-4 border-b border-base-200 pb-5 sm:grid-cols-2"
+					class="grid grid-cols-1 gap-6 border-b border-base-200 pb-5 lg:grid-cols-3 lg:items-start"
 				>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel className="shrink-0 sm:w-40"
-							>{m.med_order_int_store()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1 max-w-md">
+					<div class="flex min-w-0 flex-col items-stretch gap-4">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_store()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={storeIdStr}
 								searchFn={searchStoresForSelect}
@@ -676,14 +992,10 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel className="shrink-0 sm:w-40"
-							>{m.med_order_int_pharmacy_generic()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1 max-w-md">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_pharmacy_generic()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={pharmacyGenericId}
 								options={genericOptions}
@@ -691,47 +1003,36 @@
 								className="w-full"
 							/>
 						</div>
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_item()}</DaisyUiLabel
+							>
+							<DaisyUISearchSelect
+								bind:value={itemValueStr}
+								searchFn={searchItemsFromMaster}
+								getLabelForValue={getItemLabelForValue}
+								placeholder={m.med_order_int_item_search()}
+								minSearchLength={0}
+								debounceMs={300}
+								invalidateKey={itemFilterKey}
+								disabled={storeId <= 0}
+								onChange={onItemSearchChange}
+								inputId="int-sales-item"
+								className="w-full"
+							/>
+							{#if selectedItem?.displayPrice != null}
+								<p class="text-xs text-base-content/70">
+									{m.med_order_int_price()}: {selectedItem.displayPrice}
+								</p>
+							{/if}
+						</div>
 					</div>
-				</div>
 
-				<div
-					class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3"
-				>
-					<DaisyUiLabel className="shrink-0 sm:w-40 pt-2"
-						>{m.med_order_int_item()}</DaisyUiLabel
-					>
-					<div class="min-w-0 flex-1 max-w-2xl">
-						<DaisyUISearchSelect
-							bind:value={itemValueStr}
-							searchFn={searchItemsFromMaster}
-							getLabelForValue={getItemLabelForValue}
-							placeholder={m.med_order_int_item_search()}
-							minSearchLength={0}
-							debounceMs={300}
-							invalidateKey={itemFilterKey}
-							disabled={storeId <= 0}
-							onChange={onItemSearchChange}
-							inputId="int-sales-item"
-							className="w-full"
-						/>
-						{#if selectedItem?.displayPrice != null}
-							<p class="mt-1.5 text-xs text-base-content/70">
-								{m.med_order_int_price()}: {selectedItem.displayPrice}
-							</p>
-						{/if}
-					</div>
-				</div>
-
-				<div
-					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-end"
-				>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-1 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 w-full sm:max-w-[4.5rem]"
-							>{m.med_order_int_dose()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+					<div class="flex min-w-0 flex-col items-stretch gap-4">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_dose()}</DaisyUiLabel
+							>
 							<DaisyUiInputField
 								nameText="dose"
 								bind:value={dose}
@@ -740,14 +1041,10 @@
 								minLength={0}
 							/>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
-							>{m.med_order_int_dose_unit()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_dose_unit()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={doseUnitIdStr}
 								options={doseUnitOptions}
@@ -756,14 +1053,10 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-3 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
-							>{m.med_order_int_frequency()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_frequency()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={frequencyIdStr}
 								options={frequencyOptions}
@@ -772,46 +1065,35 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-				</div>
-
-				<div
-					class="grid grid-cols-1 gap-4 md:grid-cols-6 md:items-end"
-				>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-28"
-							>{m.med_order_int_duration()}</DaisyUiLabel
-						>
-						<div
-							class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end"
-						>
-							<DaisyUiInputField
-								nameText="dv"
-								bind:value={durationValue}
-								inputType="text"
-								className="w-full max-w-24 shrink-0"
-								minLength={0}
-							/>
-							<div class="min-w-0 flex-1">
-								<DaisyUISearchSelect
-									bind:value={durationUnitIdStr}
-									options={durationUnitOptions}
-									placeholder="—"
-									disabled={!masters}
-									className="w-full"
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_duration()}</DaisyUiLabel
+							>
+							<div
+								class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start"
+							>
+								<DaisyUiInputField
+									nameText="dv"
+									bind:value={durationValue}
+									inputType="text"
+									className="w-full max-w-24 shrink-0"
+									minLength={0}
 								/>
+								<div class="min-w-0 flex-1">
+									<DaisyUISearchSelect
+										bind:value={durationUnitIdStr}
+										options={durationUnitOptions}
+										placeholder="—"
+										disabled={!masters}
+										className="w-full"
+									/>
+								</div>
 							</div>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-24"
-							>{m.med_order_int_form()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_form()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={formId}
 								options={formOptions}
@@ -820,14 +1102,10 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 md:col-span-2 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-24"
-							>{m.med_order_int_route()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_route()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={routeId}
 								options={routeOptions}
@@ -837,18 +1115,12 @@
 							/>
 						</div>
 					</div>
-				</div>
 
-				<div
-					class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end"
-				>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-32"
-							>{m.med_order_int_order_type()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+					<div class="flex min-w-0 flex-col items-stretch gap-4">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_order_type()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={orderTypeId}
 								options={orderTypeOptions}
@@ -857,14 +1129,10 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-					<div
-						class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2"
-					>
-						<DaisyUiLabel className="shrink-0 sm:mb-1.5 sm:w-32"
-							>{m.med_order_int_food_relation()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_int_food_relation()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								bind:value={foodRelationId}
 								options={foodRelOptions}
@@ -873,58 +1141,55 @@
 								className="w-full"
 							/>
 						</div>
-					</div>
-				</div>
-
-				<div
-					class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start"
-				>
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_start()}</span
-						>
-						<input
-							type="datetime-local"
-							class="d-input d-input-bordered w-full min-w-0"
-							bind:value={startAtLocal}
-							min={minStart}
-						/>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_test_dose()}</span
-						>
-						<DaisyUiInputField
-							nameText="td"
-							bind:value={testDose}
-							minLength={0}
-						/>
-					</div>
-				</div>
-
-				<div class="flex min-w-0 flex-col gap-2">
-					<span class="text-sm font-medium"
-						>{m.med_order_int_substitue()}</span
-					>
-					<div class="flex flex-wrap gap-4 sm:gap-6">
-						<label class="flex cursor-pointer items-center gap-2 text-sm">
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<span class="text-sm font-medium"
+								>{m.med_order_int_start()}</span
+							>
 							<input
-								type="radio"
-								checked={!substituteNotAllowed}
-								class="d-radio d-radio-sm"
-								onchange={() => (substituteNotAllowed = false)}
+								type="datetime-local"
+								class="d-input d-input-bordered w-full min-w-0"
+								bind:value={startAtLocal}
+								min={minStart}
 							/>
-							{m.med_order_int_substitue_no()}
-						</label>
-						<label class="flex cursor-pointer items-center gap-2 text-sm">
-							<input
-								type="radio"
-								checked={substituteNotAllowed}
-								class="d-radio d-radio-sm"
-								onchange={() => (substituteNotAllowed = true)}
+						</div>
+						<div class="flex w-full min-w-0 flex-col gap-1.5">
+							<span class="text-sm font-medium"
+								>{m.med_order_int_test_dose()}</span
+							>
+							<DaisyUiInputField
+								nameText="td"
+								bind:value={testDose}
+								className="w-full"
+								minLength={0}
 							/>
-							{m.med_order_int_substitue_yes()}
-						</label>
+						</div>
+						<div class="flex w-full min-w-0 flex-col items-start gap-2">
+							<span class="text-sm font-medium"
+								>{m.med_order_int_substitue()}</span
+							>
+							<div
+								class="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap"
+							>
+								<label class="flex cursor-pointer items-center gap-2 text-sm">
+									<input
+										type="radio"
+										checked={!substituteNotAllowed}
+										class="d-radio d-radio-sm"
+										onchange={() => (substituteNotAllowed = false)}
+									/>
+									{m.med_order_int_substitue_no()}
+								</label>
+								<label class="flex cursor-pointer items-center gap-2 text-sm">
+									<input
+										type="radio"
+										checked={substituteNotAllowed}
+										class="d-radio d-radio-sm"
+										onchange={() => (substituteNotAllowed = true)}
+									/>
+									{m.med_order_int_substitue_yes()}
+								</label>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -955,103 +1220,139 @@
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 
-	<DaisyUiCard>
+	<DaisyUiCard className="mt-5">
 		<DaisyUiCardBody className="gap-2">
 			<h2 class="text-base font-semibold">{m.med_order_int_draft_title()}</h2>
-			{#if draftLines.length === 0}
-				<p class="text-sm text-base-content/60">
-					{m.medication_order_internal_sales_empty()}
-				</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="table-zebra table w-full text-sm">
-						<thead>
-							<tr>
-								<th>{m.med_order_int_item()}</th>
-								<th>{m.med_order_int_dose()}</th>
-								<th>{m.med_order_int_frequency()}</th>
-								<th>{m.med_order_int_start()}</th>
-								<th class="w-20">{m.actions()}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each draftLines as ln (ln._key)}
-								<tr>
-									<td>{ln._itemName}</td>
-									<td>{ln.dose}</td>
-									<td>{ln._freqLabel}</td>
-									<td
-										>{toDateTimeLocalValue(
-											new Date(ln.startAt)
-										)}</td
-									>
-									<td>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-xs"
-											onClick={() => removeDraft(ln._key)}
-										>
-											<LucideTrash2
-												className="text-error size-4"
-											/>
-										</DaisyUiButton>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
+			<div class="min-h-[14rem] min-w-0 {TableEnum.HEIGHT_SMALL}">
+				<MariTable
+					rows={draftLines}
+					columns={draftColumns}
+					bind:currentPage={draftCurrentPage}
+					bind:pageSize={draftPageSizeStr}
+					showRefreshButton={false}
+					emptyMessage={m.medication_order_internal_sales_empty()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					totalRowCount={draftLines.length}
+					fillParent={true}
+					bind:columnFilters={draftColumnFilters}
+				>
+					{#snippet rowActions(row, localIdx)}
+						<td class="w-0 whitespace-nowrap text-right">
+							<div
+								class="inline-flex max-w-full flex-nowrap items-center justify-end gap-0.5"
+							>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-xs d-btn-square"
+									title={m.med_order_int_move_up_aria()}
+									disabled={globalDraftIndex(localIdx) <= 0}
+									onClick={() =>
+										moveDraftLine(globalDraftIndex(localIdx), -1)}
+								>
+									<LucideChevronRight
+										className="size-4 -rotate-90"
+									/>
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-xs d-btn-square"
+									title={m.med_order_int_move_down_aria()}
+									disabled={globalDraftIndex(localIdx) >=
+										draftLines.length - 1}
+									onClick={() =>
+										moveDraftLine(globalDraftIndex(localIdx), 1)}
+								>
+									<LucideChevronRight
+										className="size-4 rotate-90"
+									/>
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-xs d-btn-square"
+									title={m.delete_data()}
+									onClick={() =>
+										removeDraft((row as DraftLine)._key)}
+								>
+									<LucideTrash2 className="size-4" />
+								</DaisyUiButton>
+							</div>
+						</td>
+					{/snippet}
+				</MariTable>
+			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 {/if}
 
 {#if historyOpen}
 	<dialog class="d-modal d-modal-open" open>
-		<div class="d-modal-box max-w-3xl max-h-[90vh] overflow-y-auto">
+		<div
+			class="d-modal-box flex max-h-[90vh] max-w-[min(96rem,98vw)] min-h-0 flex-col overflow-y-auto"
+		>
 			<h3 class="d-modal-title text-lg font-semibold">
 				{m.med_order_int_history()}
 			</h3>
-			<div class="py-2">
-				<div class="overflow-x-auto">
-					<table class="table-zebra table w-full text-sm">
-						<thead>
-							<tr>
-								<th>{m.med_order_int_batch()}</th>
-								<th>{m.med_order_int_store()}</th>
-								<th>{m.created_at()}</th>
-								<th>{m.actions()}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each historyRows as b (b.id)}
-								<tr>
-									<td>{b.batchNo}</td>
-									<td>{storeNameById[b.storeId] ?? String(b.storeId)}</td>
-									<td
-										>{b.createdAt
-											? toDateTimeLocalValue(
-													new Date(b.createdAt)
-												)
-											: '—'}</td
-									>
-									<td>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-xs"
-											onClick={() => loadBatchForEdit(b.id)}
-										>
-											{m.edit_data()}
-										</DaisyUiButton>
-									</td>
-								</tr>
-							{:else}
-								<tr
-									><td colspan="4" class="text-center"
-										>{m.med_order_int_no_batches()}</td
-									></tr
+			<div class="flex min-h-0 min-w-0 flex-1 flex-col py-2">
+				<div class="min-h-[12rem] w-full min-w-0 {TableEnum.HEIGHT_SMALL}">
+					<MariTable
+						rows={historyRows}
+						columns={historyColumns}
+						bind:currentPage={historyCurrentPage}
+						bind:pageSize={historyPageSizeStr}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage={m.med_order_int_no_batches()}
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={true}
+						totalRowCount={historyRows.length}
+						fillParent={true}
+						bind:columnFilters={historyColumnFilters}
+						on:refresh={openHistory}
+					>
+						{#snippet rowActions(row, _localIdx)}
+							<td class="text-right">
+								<div
+									class="inline-flex max-w-full flex-nowrap items-center justify-end gap-1"
 								>
-							{/each}
-						</tbody>
-					</table>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										title={m.edit_data()}
+										disabled={isBusy}
+										onClick={() =>
+											loadBatchForEdit(
+												(row as MedicationOrderBatchHistoryRow).id
+											)}
+									>
+										<LucidePencil className="size-4" />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-sm"
+										title={m.med_order_int_reorder_stagger_aria()}
+										disabled={isBusy}
+										onClick={() =>
+											void reorderAsNewBatch(
+												(row as MedicationOrderBatchHistoryRow).id
+											)}
+									>
+										<LucideShoppingBasket className="size-4" />
+									</DaisyUiButton>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-error d-btn-sm"
+										title={m.delete_data()}
+										disabled={isBusy}
+										onClick={() =>
+											deleteHistoryBatch(
+												(row as MedicationOrderBatchHistoryRow).id
+											)}
+									>
+										<LucideTrash2 className="size-4" />
+									</DaisyUiButton>
+								</div>
+							</td>
+						{/snippet}
+					</MariTable>
 				</div>
 			</div>
 			<div class="d-modal-action">

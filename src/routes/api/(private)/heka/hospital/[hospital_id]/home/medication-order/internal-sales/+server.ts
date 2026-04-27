@@ -88,6 +88,24 @@ export async function POST(event: RequestEvent) {
 			})
 		);
 	}
+	if (mode === 'batch.reorder') {
+		const b = body as { visitId?: unknown; sourceBatchId?: unknown };
+		const visitId = Number(b.visitId ?? 0);
+		const sourceBatchId = Number(b.sourceBatchId ?? 0);
+		if (!Number.isFinite(visitId) || visitId <= 0) {
+			throw error(400, 'visitId is required');
+		}
+		if (!Number.isFinite(sourceBatchId) || sourceBatchId <= 0) {
+			throw error(400, 'sourceBatchId is required');
+		}
+		return json(
+			await mo.reorderFromHistoryBatch(event, {
+				hospitalId,
+				visitId,
+				sourceBatchId
+			})
+		);
+	}
 	if (mode === 'batch.update') {
 		const b = body as { batchId?: unknown; lines?: unknown };
 		const batchId = Number(b.batchId ?? 0);
