@@ -25,6 +25,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
@@ -277,7 +278,11 @@
 		}
 		const rq = draftDirectLine.receivedQty.trim();
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast('Could not save line', StatusColorEnum.ERROR, 'Invalid received quantity.');
+			toastService.addToast(
+				toastLine(m.entity_grn(), m.toast_action_saved_failed()),
+				StatusColorEnum.ERROR,
+				'Invalid received quantity.'
+			);
 			return;
 		}
 		if (draftDirectLine.isBatchRequired) {
@@ -336,7 +341,11 @@
 		const meta = poLines.find((l) => l.id === draftGrnFromPoLine!.poLineId);
 		const rq = draftGrnFromPoLine.receivedQty.trim();
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast('Could not save line', StatusColorEnum.ERROR, 'Invalid received quantity.');
+			toastService.addToast(
+				toastLine(m.entity_grn(), m.toast_action_saved_failed()),
+				StatusColorEnum.ERROR,
+				'Invalid received quantity.'
+			);
 			return;
 		}
 		if (meta?.isBatchRequired) {
@@ -452,7 +461,7 @@
 				const j = (await res.json()) as { data: GrnRow[] };
 				list = j.data ?? [];
 			} catch (e) {
-				toastService.addErrorToast('Could not load GRN data', e);
+				toastError(toastService, m.entity_grn(), m.toast_action_loaded_failed(), e);
 			}
 		} finally {
 			listLoading = false;
@@ -483,7 +492,12 @@
 					p.statusTaggingId === InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
 			);
 		} catch (e) {
-			toastService.addErrorToast('Could not load eligible POs', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		}
 	}
 
@@ -510,7 +524,7 @@
 			try {
 				storeBody = await storeRes.json();
 			} catch (e) {
-				toastService.addErrorToast('Could not load receiving store', e);
+				toastError(toastService, m.entity_store(), m.toast_action_loaded_failed(), e);
 			}
 
 			if (!storeRes.ok) {
@@ -526,7 +540,11 @@
 							? String((storeBody as { error: unknown }).error)
 							: `HTTP ${storeRes.status}`;
 				receivingStoreHint = msg;
-				toastService.addToast('Could not load receiving store', StatusColorEnum.ERROR, msg);
+				toastService.addToast(
+					toastLine(m.entity_store(), m.toast_action_loaded_failed()),
+					StatusColorEnum.ERROR,
+					msg
+				);
 			} else if (
 				storeBody != null &&
 				typeof storeBody === 'object' &&
@@ -569,7 +587,7 @@
 				};
 			});
 		} catch (e) {
-			toastService.addErrorToast('Could not load GRN data', e);
+			toastError(toastService, m.entity_grn(), m.toast_action_loaded_failed(), e);
 		}
 	}
 
@@ -637,7 +655,11 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, await res.text());
+				toastService.addToast(
+					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			viewMode = 'list';
@@ -649,7 +671,7 @@
 			await loadList();
 			await loadEligiblePos();
 		} catch (e) {
-			toastService.addErrorToast('Could not post GRN', e);
+			toastError(toastService, m.entity_grn(), m.toast_action_submitted_failed(), e);
 		} finally {
 			submitting = false;
 		}
@@ -701,7 +723,11 @@
 			}
 			const rq = ln.receivedQty.trim();
 			if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, 'Invalid quantity.');
+				toastService.addToast(
+					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
+					StatusColorEnum.ERROR,
+					'Invalid quantity.'
+				);
 				return;
 			}
 			if (ln.isBatchRequired) {
@@ -728,7 +754,11 @@
 			});
 		}
 		if (lines.length === 0) {
-			toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, 'Add at least one line.');
+			toastService.addToast(
+				toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
+				StatusColorEnum.ERROR,
+				'Add at least one line.'
+			);
 			return;
 		}
 		submitting = true;
@@ -745,7 +775,11 @@
 				})
 			});
 			if (!res.ok) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, await res.text());
+				toastService.addToast(
+					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			viewMode = 'list';
@@ -756,7 +790,7 @@
 			await loadList();
 			await loadEligiblePos();
 		} catch (e) {
-			toastService.addErrorToast('Could not post GRN', e);
+			toastError(toastService, m.entity_grn(), m.toast_action_submitted_failed(), e);
 		} finally {
 			submitting = false;
 		}

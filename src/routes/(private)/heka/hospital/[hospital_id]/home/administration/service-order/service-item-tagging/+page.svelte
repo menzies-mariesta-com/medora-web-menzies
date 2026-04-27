@@ -25,6 +25,7 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
@@ -574,9 +575,10 @@
 						)
 					)
 				);
-				toastService.addToast(
-					'Service tagging created.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_service_item_tagging(),
+					m.toast_action_created()
 				);
 			} else if (mode === 'edit' && editingId != null) {
 				await fetchJson(
@@ -595,9 +597,10 @@
 						})
 					}
 				);
-				toastService.addToast(
-					'Service tagging updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_service_item_tagging(),
+					m.toast_action_updated()
 				);
 			}
 			await fetchTaggings(true);
@@ -631,9 +634,10 @@
 						body: JSON.stringify({ id: row.id })
 					}
 				);
-				toastService.addToast(
-					'Service tagging deleted.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_service_item_tagging(),
+					m.toast_action_deleted()
 				);
 				await fetchTaggings(true);
 			} catch (err) {

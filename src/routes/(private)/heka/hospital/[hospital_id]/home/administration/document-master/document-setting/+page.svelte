@@ -33,6 +33,7 @@
 	} from '$lib/model/type/document-setting.type';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -259,18 +260,20 @@
 						method: 'PUT',
 						body: JSON.stringify({ id: editingId, ...payload })
 					});
-					toastService.addToast(
-						'Document setting updated',
-						StatusColorEnum.SUCCESS
+					toastSuccess(
+						toastService,
+						m.entity_document_setting(),
+						m.toast_action_updated()
 					);
 				} else {
 					await apiFetch(documentSettingApiUrl(), {
 						method: 'POST',
 						body: JSON.stringify(payload)
 					});
-					toastService.addToast(
-						'Document setting created',
-						StatusColorEnum.SUCCESS
+					toastSuccess(
+						toastService,
+						m.entity_document_setting(),
+						m.toast_action_created()
 					);
 				}
 				resetForm();
@@ -300,9 +303,10 @@
 					method: 'DELETE',
 					body: JSON.stringify({ id: item.id })
 				});
-				toastService.addToast(
-					'Document setting deleted',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document_setting(),
+					m.toast_action_deleted()
 				);
 				fetchData({ bustCache: true });
 			} catch (err) {
@@ -823,7 +827,7 @@
 							loading={saveLock.pending}
 							disabled={isLoading}
 						>
-							{editingId ? 'Update' : 'Create'}
+							{editingId ? m.update() : m.create()}
 						</DaisyUiButton>
 					</div>
 				{/if}

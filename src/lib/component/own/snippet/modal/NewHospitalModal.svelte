@@ -18,6 +18,8 @@
 	} from '$lib/model/type/heka/patient-reg-master.type';
 	import type { UserListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -265,9 +267,10 @@
 					const t = await res.text();
 					throw new Error(t || 'Update failed');
 				}
-				toastService.addToast(
-					'Hospital updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_hospital(),
+					m.toast_action_updated()
 				);
 			} else {
 				const res = await fetch('/api/heka/hospital', {
@@ -279,9 +282,10 @@
 					const t = await res.text();
 					throw new Error(t || 'Create failed');
 				}
-				toastService.addToast(
-					'Hospital created.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_hospital(),
+					m.toast_action_created()
 				);
 			}
 			HospitalModalState.hospitalId = null;
@@ -618,14 +622,14 @@
 				className="d-btn-ghost"
 				onClick={handleCancel}
 			>
-				Cancel
+				{m.cancel()}
 			</DaisyUiButton>
 			<DaisyUiButton
 				type="submit"
 				className="d-btn-primary"
 				loading={isSubmitting}
 			>
-				{editId != null ? 'Update' : 'Create'}
+				{editId != null ? m.update() : m.create()}
 			</DaisyUiButton>
 		</div>
 	</form>
