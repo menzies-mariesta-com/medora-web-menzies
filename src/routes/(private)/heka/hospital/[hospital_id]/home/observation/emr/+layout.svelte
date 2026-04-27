@@ -10,12 +10,21 @@
 	import LVisitInfoBar from '$lib/component/own/local/private/heka/visit/LVisitInfoBar.svelte';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
+	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { toastError } from '$lib/util/toast-copy.util';
 	import { untrack } from 'svelte';
 
 	let { children } = $props();
 
+	/** Paraglide `m` typings can lag behind `messages/*.json`; messages exist at runtime. */
+	const msg = m as Record<string, (inputs?: object) => string>;
+
 	const routerUtil = new RouterUtil();
+	const toastService = new ToastService();
 	const subPages = $derived(getSubPages());
 	const currentPath = $derived(
 		(pathnameForPageMatch() ?? '')
@@ -65,6 +74,50 @@
 		VisitState.isClinicalVisitReadOnly
 	);
 
+	function getApiBase(): string {
+		const hid = hospitalId;
+		if (!hid) throw new Error('Hospital is required');
+		return `/api/heka/hospital/${hid}/home/observation/emr`;
+	}
+
+	async function apiPost<T>(mode: string, payload: Record<string, unknown>) {
+		const res = await fetch(getApiBase(), {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ mode, ...payload })
+		});
+		if (!res.ok) throw new Error(await res.text());
+		return (await res.json()) as T;
+	}
+
+	async function handleUnsignVisit() {
+		const visitId = Number(VisitState.visitId ?? 0);
+		if (!Number.isFinite(visitId) || visitId <= 0) return;
+
+		const result = await dialogService.open({
+			title: msg.clinical_visit_unsign_title(),
+			message: msg.clinical_visit_unsign_confirm(),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!result.confirmed) return;
+
+		try {
+			await apiPost('visit.unsign', { visitId });
+			VisitState.setClinicalSignedAtFromVisit(null);
+			toastService.addToast(
+				msg.clinical_visit_unsign_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (err) {
+			toastError(
+				toastService,
+				m.entity_visit(),
+				m.toast_action_updated_failed(),
+				err
+			);
+		}
+	}
+
 	function handleVisitSelected(data: {
 		visitId: number;
 		patientName: string;
@@ -92,6 +145,17 @@
 		routerUtil.replaceRoute(url);
 	}
 </script>
+
+{#snippet signedBannerTrailing()}
+	<button
+		type="button"
+		class="d-btn d-btn-ghost d-btn-sm d-btn-square min-h-8 min-w-8 border-0 text-current hover:bg-current/10"
+		aria-label={msg.clinical_visit_unsign_x_aria()}
+		onclick={handleUnsignVisit}
+	>
+		<LucideX className="size-4" />
+	</button>
+{/snippet}
 
 {#if subPages.length > 0}
 	<div class="emr-subnav-wrapper">
@@ -121,6 +185,7 @@
 			<DaisyUiAlert
 				type={StatusColorEnum.WARNING}
 				message={m.clinical_visit_signed_banner()}
+				trailing={signedBannerTrailing}
 				className="mb-2"
 			/>
 		{/if}
@@ -143,6 +208,7 @@
 			<DaisyUiAlert
 				type={StatusColorEnum.WARNING}
 				message={m.clinical_visit_signed_banner()}
+				trailing={signedBannerTrailing}
 				className="mb-2"
 			/>
 		{/if}

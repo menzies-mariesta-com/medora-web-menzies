@@ -7,6 +7,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 	const toastService = new ToastService();
@@ -64,9 +66,10 @@
 				const t = await res.text().catch(() => '');
 				throw new Error(t || `Update failed: ${res.status}`);
 			}
-			toastService.addToast(
-				'Owner updated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_owner(),
+				m.toast_action_updated()
 			);
 			EditOwnerModalState.owner = null;
 			confirm();
@@ -139,7 +142,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			Update
+			{m.update()}
 		</DaisyUiButton>
 	</div>
 </form>

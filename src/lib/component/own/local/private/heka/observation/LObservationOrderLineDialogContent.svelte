@@ -16,6 +16,7 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -499,9 +500,15 @@
 					}
 				});
 			}
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			const title = isEdit
+				? m.observation_emr_edit_order_line()
+				: m.observation_emr_add_order_line();
+			toastSuccess(
+				toastService,
+				title,
+				isEdit
+					? m.toast_action_updated()
+					: m.toast_action_created()
 			);
 			ObservationOrderLineDialogState.onSaved?.();
 			await confirm({ saved: true });

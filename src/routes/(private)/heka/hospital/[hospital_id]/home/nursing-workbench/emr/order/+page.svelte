@@ -32,6 +32,8 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { uiLogger } from '$lib/logger';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -667,9 +669,11 @@
 			}
 
 			resetDetailForm();
-			toastService.addToast(
-				'Item added to list (not yet saved).',
-				StatusColorEnum.SUCCESS
+			toastInfo(
+				toastService,
+				m.entity_order_draft_line(),
+				m.toast_action_created(),
+				'Not saved yet.'
 			);
 		} catch (err) {
 			toastService.addErrorToast(
@@ -704,9 +708,10 @@
 		});
 		if (!result.confirmed) return;
 		pendingItems = pendingItems.filter((item) => item.id !== row.id);
-		toastService.addToast(
-			'Item removed from list.',
-			StatusColorEnum.SUCCESS
+		toastSuccess(
+			toastService,
+			m.entity_order_draft_line(),
+			m.toast_action_removed()
 		);
 	}
 
@@ -833,6 +838,7 @@
 		}
 		const timeStr =
 			orderTimeInput || new Date().toTimeString().slice(0, 5);
+		const lineCount = pendingItems.length;
 
 		try {
 			const created = await createServiceOrder({
@@ -861,9 +867,11 @@
 
 			pendingItems = [];
 			resetDetailForm();
-			toastService.addToast(
-				'Order and items saved.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_medication_order(),
+				m.toast_action_saved(),
+				String(lineCount)
 			);
 		} catch (err) {
 			toastService.addErrorToast(
@@ -1003,9 +1011,10 @@
 			await deleteServiceOrderDetail({ id: row.id });
 			// Refresh history list
 			await handleShowHistory();
-			toastService.addToast(
-				'Order item deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_order_item(),
+				m.toast_action_deleted()
 			);
 		} catch (err) {
 			toastService.addToast(

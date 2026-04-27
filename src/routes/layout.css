@@ -2,32 +2,56 @@
 
 /* GSAP modal animation wrapper */
 .d-modal {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/* Ensure "manual" modals that don't use our inner wrapper
-	   are still centered within the viewport. */
-	min-height: 100dvh;
-	/* Use d-viewport units so centering isn't affected by scrollbar width. */
-	width: 100dvw;
-	height: 100dvh;
+	/* Use grid centering to avoid flex + viewport rounding offsets. */
+	display: grid;
+	place-items: center;
+
+	position: fixed;
+	inset: 0;
+
+	/* Prefer stable viewport units when available. */
+	width: 100svw;
+	height: 100svh;
+	min-width: 100vw;
+	min-height: 100vh;
+
+	margin: 0;
+	padding: 0;
+	border: 0;
+	box-sizing: border-box;
+	overflow: hidden;
+	background: transparent;
+}
+
+/* Normalize native <dialog> defaults (can introduce offset via UA styles). */
+dialog.d-modal {
+	max-width: none;
+	max-height: none;
+	/* Keep the dialog itself as a full-viewport overlay (backdrop must cover screen). */
 	position: fixed;
 	inset: 0;
 	margin: 0;
-	overflow-x: hidden;
-	padding: 0;
-	box-sizing: border-box;
-	border: 0;
-	background: transparent;
 }
+
+/* Keep the page theme background visible when a modal is open. */
+dialog.d-modal::backdrop {
+	background: transparent !important;
+}
+.d-modal-backdrop {
+	background: transparent !important;
+	/* DaisyUI/backdrop element must not paint or affect theme colors. */
+	box-shadow: none !important;
+	opacity: 1 !important;
+}
+
 .d-modal-content-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100dvw;
-	/* Ensure vertical centering is based on viewport height */
-	min-height: 100dvh;
-	height: 100dvh;
+	display: grid;
+	place-items: center;
+
+	width: 100%;
+	height: 100%;
+
+	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
 }
@@ -48,6 +72,35 @@
 @import '../lib/asset/style/font.style.css';
 @import '../lib/asset/style/app-layout.style.css';
 @import '../lib/asset/style/daisyui.style.css';
+
+/* Keep the page theme background visible when a modal is open (ensure override wins). */
+dialog.d-modal::backdrop {
+	background: transparent !important;
+}
+.d-modal-backdrop {
+	background: transparent !important;
+	box-shadow: none !important;
+	opacity: 1 !important;
+}
+
+/* Primary ring for all dialogs */
+:root {
+	--dialog-primary-ring: color-mix(in oklch, var(--color-primary) 55%, transparent);
+}
+
+/* Content box: visible primary ring */
+.d-modal-box {
+	box-shadow:
+		0 0 0 2px var(--dialog-primary-ring),
+		var(--tw-shadow, 0 0 #0000) !important;
+}
+
+/* Overlay: subtle primary ring at viewport edge */
+dialog.d-modal,
+.d-modal {
+	outline: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+	outline-offset: -1px;
+}
 
 /*
  * Clinically signed visit: block edits on controls; show “disabled” cursor over the area.

@@ -17,6 +17,8 @@
 	import { YesNoEnum } from '$lib/model/enum/db-link';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const BRANCH_ALL = '__all__';
 
@@ -200,9 +202,10 @@
 			if (!r.ok) {
 				throw new Error(`Failed to create referral (${r.status})`);
 			}
-			toastService.addToast(
-				'Referral request created successfully.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_referral(),
+				m.toast_action_created()
 			);
 			// Reset form (re-apply default branch when not "All Branches")
 			toBranchId = defaultDestinationBranchId || '';

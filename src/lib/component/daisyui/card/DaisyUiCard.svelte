@@ -14,7 +14,7 @@
 </script>
 
 <div
-	class="d-card bg-base-100 shadow-md {className}"
+	class="d-card bg-base-200 shadow-md {className}"
 	use:gsapAnimate={animate
 		? { type: 'fadeUp', duration: 0.3, enabled: true }
 		: false}

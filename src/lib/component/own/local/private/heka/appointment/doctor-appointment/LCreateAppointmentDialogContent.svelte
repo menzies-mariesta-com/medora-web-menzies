@@ -22,6 +22,8 @@
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusTaggingTypeEnum } from '$lib/model/enum/db-link';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel } = $props();
 
@@ -574,9 +576,10 @@
 				}
 			}
 
-			toastService.addToast(
-				'Appointment created.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_appointment(),
+				m.toast_action_created()
 			);
 			confirm(created);
 		} catch (e) {

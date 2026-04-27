@@ -13,6 +13,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ReferTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	type DialogMode = 'create' | 'view' | 'edit';
 
@@ -252,9 +254,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'External refer created.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_external_referral(),
+					m.toast_action_created()
 				);
 			} else if (isEdit && modalState.id != null) {
 				const res = await fetch(baseUrl, {
@@ -277,9 +280,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'External refer updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_external_referral(),
+					m.toast_action_updated()
 				);
 			}
 			onClose();

@@ -42,6 +42,14 @@ export function defaultCounterScopeForPrefixKey(
 			includeVisit: true
 		};
 	}
+	if (prefixKey === 'MEDICATION_ORDER_BATCH_NO') {
+		return {
+			includeBranch: false,
+			includeFinancialYear: true,
+			includeVisitType: false,
+			includeVisit: false
+		};
+	}
 	return {
 		includeBranch: false,
 		includeFinancialYear: true,
@@ -57,6 +65,7 @@ export function defaultCounterScopeForStorageKey(
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
 		| 'PURCHASE_ORDER_NO'
+		| 'MEDICATION_ORDER_BATCH_NO'
 ): PrefixCounterScopeFlags {
 	return defaultCounterScopeForPrefixKey(storageKey);
 }

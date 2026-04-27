@@ -9,6 +9,7 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -103,9 +104,10 @@
 						})
 					}
 				);
-				toastService.addToast(
-					'Sub-category created.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_sub_category(),
+					m.toast_action_created()
 				);
 			} else if (modalState.editRow) {
 				await fetchJson(
@@ -119,9 +121,10 @@
 						})
 					}
 				);
-				toastService.addToast(
-					'Sub-category updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_sub_category(),
+					m.toast_action_updated()
 				);
 			}
 			confirm();
@@ -212,7 +215,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			{isEdit ? 'Save' : 'Create'}
+			{isEdit ? m.update() : m.create()}
 		</DaisyUiButton>
 	</div>
 </form>

@@ -13,6 +13,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
@@ -63,7 +64,7 @@
 				toStoreId = stores[1].id;
 			}
 		} catch (e) {
-			toastService.addErrorToast('Could not load stores', e);
+			toastError(toastService, m.entity_store(), m.toast_action_loaded_failed(), e);
 		}
 	}
 
@@ -117,7 +118,12 @@
 				quantity: String(r.quantity ?? '0')
 			}));
 		} catch (e) {
-			toastService.addErrorToast('Could not load lots', e);
+			toastError(
+				toastService,
+				m.entity_inventory(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			loadingLots = false;
 		}
@@ -137,7 +143,10 @@
 		const uid = await getIssueUnitId(l.itemId);
 		if (uid == null) {
 			toastService.addToast(
-				'Cannot submit transfer',
+				toastLine(
+					m.entity_store_transfer(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Could not resolve issue unit for item.'
 			);
@@ -163,7 +172,10 @@
 		const uid = await getIssueUnitId(l.itemId);
 		if (uid == null) {
 			toastService.addToast(
-				'Cannot submit transfer',
+				toastLine(
+					m.entity_store_transfer(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Could not resolve issue unit for item.'
 			);
@@ -180,7 +192,10 @@
 		if (!hospitalId || fromStoreId == null || toStoreId == null) return;
 		if (fromStoreId === toStoreId) {
 			toastService.addToast(
-				'Cannot submit transfer',
+				toastLine(
+					m.entity_store_transfer(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'From and to store must differ.'
 			);
@@ -196,7 +211,10 @@
 			.filter((l) => Number(l.quantity) > 0);
 		if (payload.length === 0) {
 			toastService.addToast(
-				'Cannot submit transfer',
+				toastLine(
+					m.entity_store_transfer(),
+					m.toast_action_submitted_failed()
+				),
 				StatusColorEnum.ERROR,
 				'Add at least one line.'
 			);
@@ -219,7 +237,14 @@
 			);
 			if (!res.ok) {
 				const detail = await res.text();
-				toastService.addToast('Cannot submit transfer', StatusColorEnum.ERROR, detail);
+				toastService.addToast(
+					toastLine(
+						m.entity_store_transfer(),
+						m.toast_action_submitted_failed()
+					),
+					StatusColorEnum.ERROR,
+					detail
+				);
 				return;
 			}
 			lines = [];

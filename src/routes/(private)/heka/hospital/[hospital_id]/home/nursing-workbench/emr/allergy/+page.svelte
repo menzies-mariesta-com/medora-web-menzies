@@ -23,6 +23,8 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -167,9 +169,10 @@
 				{ method: 'DELETE' }
 			);
 			if (!res.ok) throw new Error(`Delete failed (${res.status})`);
-			toastService.addToast(
-				'Allergy removed.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_allergy(),
+				m.toast_action_removed()
 			);
 			if (visit?.patientId && visit?.hospitalId) {
 				await fetchAllergies(visit.patientId, visit.hospitalId, {
