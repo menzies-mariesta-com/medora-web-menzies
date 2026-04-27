@@ -175,7 +175,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			{isEdit ? m.save() : m.create()}
+			{isEdit ? m.update() : m.create()}
 		</DaisyUiButton>
 	</div>
 </form>

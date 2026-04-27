@@ -23,6 +23,14 @@ export enum WebRoutesEnum {
 	HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION = '/heka/home/administration/staff/registration',
 	HEKA_HOME_ADMINISTRATION_STAFF_LIST = '/heka/home/administration/staff/list',
 	HEKA_HOME_ADMINISTRATION_BRANCHES = '/heka/home/administration/branches',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP = '/heka/home/administration/medication-order-setup',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_FREQUENCY = '/heka/home/administration/medication-order-setup/frequency',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_FORM = '/heka/home/administration/medication-order-setup/form',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_ROUTE = '/heka/home/administration/medication-order-setup/route',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_DURATION = '/heka/home/administration/medication-order-setup/duration',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_ORDER_TYPE = '/heka/home/administration/medication-order-setup/order-type',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_DOSE_UNIT = '/heka/home/administration/medication-order-setup/dose-unit',
+	HEKA_HOME_ADMINISTRATION_MEDICATION_ORDER_SETUP_FOOD_RELATION = '/heka/home/administration/medication-order-setup/food-relation',
 	HEKA_HOME_REGISTRATION = '/heka/home/registration',
 	HEKA_HOME_REGISTRATION_PATIENT = '/heka/home/registration/patient',
 	HEKA_HOME_REGISTRATION_PATIENT_REGISTRATION = '/heka/home/registration/patient/registration',
@@ -48,6 +56,11 @@ export enum WebRoutesEnum {
 	// Billing module (navbar auto-hides like nursing EMR)
 	HEKA_HOME_BILLING = '/heka/home/billing',
 	HEKA_HOME_BILLING_OP_BILLING = '/heka/home/billing/op-billing',
+
+	// Medication Order module (navbar auto-hides like nursing EMR)
+	HEKA_HOME_MEDICATION_ORDER = '/heka/home/medication-order',
+	HEKA_HOME_MEDICATION_ORDER_INTERNAL_SALES = '/heka/home/medication-order/internal-sales',
+	HEKA_HOME_MEDICATION_ORDER_EXTERNAL_SALES = '/heka/home/medication-order/external-sales',
 
 	// Serice Item
 	HEKA_HOME_SERVICE_ITEM = '/heka/home/service-item',
