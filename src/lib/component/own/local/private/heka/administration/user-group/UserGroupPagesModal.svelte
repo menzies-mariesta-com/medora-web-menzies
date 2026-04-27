@@ -11,6 +11,8 @@
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -283,9 +285,10 @@
 					text || `Request failed: ${res.status} ${res.statusText}`
 				);
 			}
-			toastService.addToast(
-				'Page access updated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_user_group_page_access(),
+				m.toast_action_updated()
 			);
 			confirm();
 		} catch (err) {

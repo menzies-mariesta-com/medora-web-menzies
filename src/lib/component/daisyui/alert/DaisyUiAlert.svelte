@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideInfo from '$lib/component/own/library/lucide/LucideInfo.svelte';
@@ -17,6 +18,7 @@
 		className = '',
 		message = '',
 		detail = '',
+		trailing = undefined,
 		/** When true, show copy + dismiss controls (stack toasts in root layout). */
 		showToastActions = false,
 		onDismissToast = undefined
@@ -25,6 +27,7 @@
 		className?: string;
 		message: string;
 		detail?: string;
+		trailing?: Snippet;
 		showToastActions?: boolean;
 		onDismissToast?: () => void;
 	} = $props();
@@ -55,6 +58,7 @@
 	);
 	const IconComponent = $derived(iconMap[type]);
 	const hasDetail = $derived(Boolean(detail?.trim()));
+	const hasTrailing = $derived(Boolean(trailing));
 
 	const copyText = $derived(
 		hasDetail && detail?.trim()
@@ -86,6 +90,9 @@
 			<p>{message}</p>
 		{/if}
 	</div>
+	{#if hasTrailing}
+		<div class="flex shrink-0 items-center">{@render trailing?.()}</div>
+	{/if}
 	{#if showToastActions}
 		<div class="flex shrink-0 items-center gap-0.5">
 			<button

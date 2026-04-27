@@ -31,6 +31,7 @@
 	} from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
@@ -312,7 +313,7 @@
 		const unitId = purchaseUnitForManual(draftManualLine);
 		if (draftManualLine.itemId == null || unitId == null) {
 			toastService.addErrorToast(
-				'Could not save line',
+				toastLine(m.entity_purchase_order(), m.toast_action_saved_failed()),
 				'Select an item and a purchase unit conversion.'
 			);
 			return;
@@ -320,11 +321,17 @@
 		const q = draftManualLine.quantity.trim();
 		const p = draftManualLine.unitPrice.trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid quantity greater than 0.');
+			toastService.addErrorToast(
+				toastLine(m.entity_purchase_order(), m.toast_action_saved_failed()),
+				'Enter a valid quantity greater than 0.'
+			);
 			return;
 		}
 		if (!Number.isFinite(Number(p)) || Number(p) < 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid unit price.');
+			toastService.addErrorToast(
+				toastLine(m.entity_purchase_order(), m.toast_action_saved_failed()),
+				'Enter a valid unit price.'
+			);
 			return;
 		}
 		manualLineDialogSubmitting = true;
@@ -368,11 +375,17 @@
 		const q = draftPoPrLine.quantity.trim();
 		const p = draftPoPrLine.unitPrice.trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid quantity greater than 0.');
+			toastService.addErrorToast(
+				toastLine(m.entity_purchase_order(), m.toast_action_saved_failed()),
+				'Enter a valid quantity greater than 0.'
+			);
 			return;
 		}
 		if (!Number.isFinite(Number(p)) || Number(p) < 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid unit price.');
+			toastService.addErrorToast(
+				toastLine(m.entity_purchase_order(), m.toast_action_saved_failed()),
+				'Enter a valid unit price.'
+			);
 			return;
 		}
 		poPrLineDialogSubmitting = true;
@@ -560,7 +573,12 @@
 			const j = (await res.json()) as { data: PoRow[] };
 			list = j.data ?? [];
 		} catch (e) {
-			toastService.addErrorToast('Could not load purchase orders', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			loading = false;
 		}
@@ -582,7 +600,12 @@
 			detail = j;
 			if (j) syncPoLineDrafts(j);
 		} catch (e) {
-			toastService.addErrorToast('Could not load purchase order detail', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			detailLoading = false;
 		}
@@ -633,7 +656,12 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addErrorToast('Could not update purchase order', t || String(res.status));
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_updated_failed(),
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PoDetail;
@@ -641,7 +669,12 @@
 			syncPoLineDrafts(j);
 			remarks = '';
 		} catch (e) {
-			toastService.addErrorToast('Could not update purchase order', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_updated_failed(),
+				e
+			);
 		} finally {
 			detailLoading = false;
 		}
@@ -661,14 +694,24 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addErrorToast('Could not resubmit purchase order', t || String(res.status));
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_submitted_failed(),
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PoDetail;
 			detail = j;
 			syncPoLineDrafts(j);
 		} catch (e) {
-			toastService.addErrorToast('Could not resubmit purchase order', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_submitted_failed(),
+				e
+			);
 		} finally {
 			detailLoading = false;
 		}
@@ -688,14 +731,24 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addErrorToast('Could not send purchase order to supplier', t || String(res.status));
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_submitted_failed(),
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PoDetail;
 			detail = j;
 			syncPoLineDrafts(j);
 		} catch (e) {
-			toastService.addErrorToast('Could not send purchase order to supplier', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_submitted_failed(),
+				e
+			);
 		} finally {
 			detailLoading = false;
 		}
@@ -775,11 +828,21 @@
 			const p = ln.unitPrice.trim();
 			const m = ln.manufacturerId.trim();
 			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid quantity.');
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					'Invalid quantity.'
+				);
 				return;
 			}
 			if (!p || !Number.isFinite(Number(p)) || Number(p) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid unit price.');
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					'Invalid unit price.'
+				);
 				return;
 			}
 			lines.push({
@@ -791,7 +854,12 @@
 			});
 		}
 		if (lines.length === 0) {
-			toastService.addErrorToast('Could not create purchase order', 'Add at least one line.');
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_created_failed(),
+				'Add at least one line.'
+			);
 			return;
 		}
 		createSubmitting = true;
@@ -810,7 +878,12 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addErrorToast('Could not create purchase order', await res.text());
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					await res.text()
+				);
 				return;
 			}
 			const created = (await res.json()) as PoDetail;
@@ -825,7 +898,12 @@
 				await goto(resolve(`${poListPath}`) + `?id=${encodeURIComponent(created.id)}`);
 			}
 		} catch (e) {
-			toastService.addErrorToast('Could not create purchase order', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_created_failed(),
+				e
+			);
 		} finally {
 			createSubmitting = false;
 		}
@@ -833,7 +911,12 @@
 
 	async function submitCreatePo() {
 		if (!hospitalId || !selectedPrId || supplierId == null) {
-			toastService.addErrorToast('Could not create purchase order', 'PR and supplier are required.');
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_created_failed(),
+				'PR and supplier are required.'
+			);
 			return;
 		}
 		if (poLineDraft.length === 0) {
@@ -859,19 +942,34 @@
 			})
 			.filter((l) => Number(l.quantity) > 0);
 		if (lines.length === 0) {
-			toastService.addErrorToast('Could not create purchase order', 'At least one line with quantity.');
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_created_failed(),
+				'At least one line with quantity.'
+			);
 			return;
 		}
 		for (const l of lines) {
 			if (!l.unitPrice || !Number.isFinite(Number(l.unitPrice)) || Number(l.unitPrice) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid unit price.');
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					'Invalid unit price.'
+				);
 				return;
 			}
 			if (
 				l.manufacturerId != null &&
 				(!Number.isFinite(l.manufacturerId) || l.manufacturerId <= 0)
 			) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid manufacturer id.');
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					'Invalid manufacturer id.'
+				);
 				return;
 			}
 		}
@@ -890,7 +988,12 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addErrorToast('Could not create purchase order', await res.text());
+				toastError(
+					toastService,
+					m.entity_purchase_order(),
+					m.toast_action_created_failed(),
+					await res.text()
+				);
 				return;
 			}
 			const created = (await res.json()) as PoDetail;
@@ -906,7 +1009,12 @@
 				await goto(resolve(`${poListPath}`) + `?id=${encodeURIComponent(created.id)}`);
 			}
 		} catch (e) {
-			toastService.addErrorToast('Could not create purchase order', e);
+			toastError(
+				toastService,
+				m.entity_purchase_order(),
+				m.toast_action_created_failed(),
+				e
+			);
 		} finally {
 			createSubmitting = false;
 		}

@@ -711,6 +711,40 @@ export async function signPatientVisitClinical(input: {
 	return row;
 }
 
+export async function unsignPatientVisitClinical(input: {
+	visitId: number;
+}): Promise<PatientVisitSchema> {
+	const [cur] = await ensureDb()
+		.select({
+			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt
+		})
+		.from(table.patientVisitTable)
+		.where(eq(table.patientVisitTable.id, input.visitId))
+		.limit(1);
+	if (!cur) throw new Error('Visit not found');
+
+	// Only allow "unsign" if it was previously signed; otherwise return the row as-is.
+	const isSigned =
+		cur.clinicalSignedAt != null && String(cur.clinicalSignedAt).trim() !== '';
+	if (!isSigned) {
+		const [row] = await ensureDb()
+			.select()
+			.from(table.patientVisitTable)
+			.where(eq(table.patientVisitTable.id, input.visitId))
+			.limit(1);
+		if (!row) throw new Error('Visit not found');
+		return row;
+	}
+
+	const [row] = await ensureDb()
+		.update(table.patientVisitTable)
+		.set({ clinicalSignedAt: null })
+		.where(eq(table.patientVisitTable.id, input.visitId))
+		.returning();
+	if (!row) throw new Error('Update failed');
+	return row;
+}
+
 export async function getPatientAllergiesByPatientIdWithRelations(input: {
 	patientId: string;
 }) {

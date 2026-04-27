@@ -14,6 +14,8 @@
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiSearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LDeactivationRemarkDialogContent from './LDeactivationRemarkDialogContent.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -352,9 +354,10 @@
 						? deactivationRemark.trim() || null
 						: null
 			});
-			toastService.addToast(
-				'Allergy record updated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_allergy(),
+				m.toast_action_updated()
 			);
 			PatientAllergyDialogState.onSaved?.();
 			await confirm({ saved: true });
@@ -383,9 +386,11 @@
 				selectedAllergyId = String(created.id);
 				newAllergyName = '';
 				allergyMode = 'existing';
-				toastService.addToast(
-					'Added to allergy master. Now select it and click Save to add to patient.',
-					StatusColorEnum.SUCCESS
+				toastInfo(
+					toastService,
+					m.entity_allergy_master(),
+					m.toast_action_created(),
+					'Select it in the list and click Save to add it to the patient.'
 				);
 				return;
 			} catch (error: unknown) {
@@ -462,9 +467,10 @@
 				reaction: reaction.trim() || null,
 				remark: remark.trim() || null
 			});
-			toastService.addToast(
-				'Allergy added to patient.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_allergy(),
+				m.toast_action_created()
 			);
 			PatientAllergyDialogState.onSaved?.();
 			await confirm({ saved: true });
@@ -649,7 +655,7 @@
 			className="d-btn-primary"
 			loading={isSubmitting}
 		>
-			{isEditMode ? 'Update' : 'Add allergy'}
+			{isEditMode ? m.update() : m.emr_allergy_submit_add()}
 		</DaisyUiButton>
 	</div>
 </form>

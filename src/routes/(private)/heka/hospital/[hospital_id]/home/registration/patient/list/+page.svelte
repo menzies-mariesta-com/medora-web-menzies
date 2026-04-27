@@ -38,6 +38,8 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const stringUtil = new StringUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -182,9 +184,10 @@
 					if (!delRes.ok)
 						throw new Error(`Failed to delete patient (${delRes.status})`);
 					await fetchPatients();
-					toastService.addToast(
-						'Patient deleted.',
-						StatusColorEnum.SUCCESS
+					toastSuccess(
+						toastService,
+						m.entity_patient(),
+						m.toast_action_deleted()
 					);
 				}
 			} catch (err) {

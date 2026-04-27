@@ -11,6 +11,7 @@
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 	import {
 		InvApprovalActionEnum,
 		InvPrStatusTaggingEnum
@@ -92,7 +93,12 @@
 			detail = j;
 			if (j) syncLineDrafts(j);
 		} catch (e) {
-			toastService.addErrorToast('Could not load purchase requisition', e);
+		toastError(
+			toastService,
+			m.entity_purchase_requisition(),
+			m.toast_action_loaded_failed(),
+			e
+		);
 		} finally {
 			loading = false;
 		}
@@ -132,7 +138,14 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addToast('Action failed', StatusColorEnum.ERROR, t || String(res.status));
+				toastService.addToast(
+					toastLine(
+						m.entity_purchase_requisition(),
+						m.toast_action_failed()
+					),
+					StatusColorEnum.ERROR,
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PrDetail;
@@ -140,7 +153,12 @@
 			syncLineDrafts(j);
 			remarks = '';
 		} catch (e) {
-			toastService.addErrorToast('Action failed', e);
+			toastError(
+				toastService,
+				m.entity_purchase_requisition(),
+				m.toast_action_failed(),
+				e
+			);
 		} finally {
 			loading = false;
 		}
@@ -160,14 +178,26 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addToast('Action failed', StatusColorEnum.ERROR, t || String(res.status));
+				toastService.addToast(
+					toastLine(
+						m.entity_purchase_requisition(),
+						m.toast_action_failed()
+					),
+					StatusColorEnum.ERROR,
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PrDetail;
 			detail = j;
 			syncLineDrafts(j);
 		} catch (e) {
-			toastService.addErrorToast('Action failed', e);
+			toastError(
+				toastService,
+				m.entity_purchase_requisition(),
+				m.toast_action_failed(),
+				e
+			);
 		} finally {
 			loading = false;
 		}

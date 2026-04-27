@@ -25,6 +25,7 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -220,9 +221,10 @@
 					body: JSON.stringify({ id: editingId, ...payload })
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'Document updated',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document(),
+					m.toast_action_updated()
 				);
 			} else {
 				const res = await fetch(baseUrl, {
@@ -231,9 +233,10 @@
 					body: JSON.stringify(payload)
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'Document created',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document(),
+					m.toast_action_created()
 				);
 			}
 			resetForm();
@@ -266,9 +269,10 @@
 				);
 				if (!res.ok) throw new Error(await res.text());
 				await fetchData({ bustCache: true });
-				toastService.addToast(
-					'Document deleted',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document(),
+					m.toast_action_deleted()
 				);
 			}
 		} catch (err) {
@@ -344,9 +348,10 @@
 
 	function handleFormatHtmlClick() {
 		documentTextInput = formatHtmlForEditor(documentTextInput);
-		toastService.addToast(
-			'Document HTML formatted',
-			StatusColorEnum.SUCCESS,
+		toastSuccess(
+			toastService,
+			m.entity_document(),
+			m.toast_action_formatted(),
 			'Indentation and line breaks were normalized so the editor is easier to read.'
 		);
 	}
@@ -738,7 +743,7 @@
 							className="d-btn-primary d-btn-sm"
 							onClick={handleSave}
 						>
-							{editingId ? 'Update' : 'Create'}
+							{editingId ? m.update() : m.create()}
 						</DaisyUiButton>
 					</div>
 				{/if}

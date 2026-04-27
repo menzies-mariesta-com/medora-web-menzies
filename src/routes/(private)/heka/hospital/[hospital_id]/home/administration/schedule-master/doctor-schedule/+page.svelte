@@ -26,6 +26,8 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 	import type { StaffRegHospitalBranchRow } from '$lib/model/type/heka/staff-reg-ui.type';
+	import { m } from '$lib/paraglide/messages';
+	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
 
 	// Use string values so select bind:value matches parsed times (e.g. "9", "6")
 	const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
@@ -400,9 +402,10 @@
 				});
 			}
 			await loadDoctorSchedules();
-			toastService.addToast(
-				'Schedule inactivated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_doctor_schedule(),
+				m.toast_action_inactivated()
 			);
 		} catch (e) {
 			toastService.addToast(
@@ -533,12 +536,27 @@
 				});
 			}
 			editingGroupKey = null;
-			toastService.addToast(
-				wasEditing
-					? 'Schedule updated.'
-					: `Saved ${checkedIndices.length} schedule row(s).`,
-				StatusColorEnum.SUCCESS
-			);
+			const rowCount = checkedIndices.length;
+			if (wasEditing) {
+				toastSuccess(
+					toastService,
+					m.entity_doctor_schedule(),
+					m.toast_action_updated()
+				);
+			} else if (rowCount > 1) {
+				toastInfo(
+					toastService,
+					m.entity_doctor_schedule(),
+					m.toast_action_saved(),
+					String(rowCount)
+				);
+			} else {
+				toastSuccess(
+					toastService,
+					m.entity_doctor_schedule(),
+					m.toast_action_saved()
+				);
+			}
 		} catch (e) {
 			toastService.addToast(
 				e instanceof Error
@@ -872,11 +890,11 @@
 			>
 				{isSaving
 					? editingGroupKey
-						? 'Updating…'
-						: 'Saving…'
+						? m.common_updating()
+						: m.common_saving()
 					: editingGroupKey
-						? 'Update'
-						: 'Save'}
+						? m.update()
+						: m.save()}
 			</DaisyUiButton>
 		</DaisyUiCardBodyAction>
 	</DaisyUiCardBody>

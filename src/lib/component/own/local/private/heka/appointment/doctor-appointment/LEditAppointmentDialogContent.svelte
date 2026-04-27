@@ -25,6 +25,8 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { page } from '$app/state';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	import LCancelAppointmentRemarkDialogContent from '$lib/component/own/local/private/heka/appointment/doctor-appointment/LCancelAppointmentRemarkDialogContent.svelte';
 
@@ -716,9 +718,10 @@
 				}
 			}
 
-			toastService.addToast(
-				'Appointment updated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_appointment(),
+				m.toast_action_updated()
 			);
 			await confirm({ updated: true });
 		} catch (e) {
@@ -748,9 +751,10 @@
 		isDeleting = true;
 		try {
 			await apiPost('appointment.delete', { id: appointmentId });
-			toastService.addToast(
-				'Appointment deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_appointment(),
+				m.toast_action_deleted()
 			);
 			await confirm({ deleted: true });
 		} catch (e) {

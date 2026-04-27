@@ -8,6 +8,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -135,9 +137,10 @@
 					phone: phone.trim() || undefined,
 					email: email.trim() || undefined
 				});
-				toastService.addToast(
-					'Branch updated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_branch(),
+					m.toast_action_updated()
 				);
 			} else {
 				await createBranchViaApi({
@@ -148,9 +151,10 @@
 					phone: phone.trim() || undefined,
 					email: email.trim() || undefined
 				});
-				toastService.addToast(
-					'Branch created.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_branch(),
+					m.toast_action_created()
 				);
 			}
 			confirm();
@@ -273,7 +277,7 @@
 				className="d-btn-primary"
 				loading={isSubmitting}
 			>
-				{isEdit ? 'Update' : 'Create'}
+				{isEdit ? m.update() : m.create()}
 			</DaisyUiButton>
 		</div>
 	</form>
