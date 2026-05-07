@@ -6,10 +6,22 @@
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
+	import {
+		trimInventoryNumericDisplay,
+		trimMetricQtyDisplay
+	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
 	);
+
+	let { data } = $props();
+	const selectedInventoryFromStoreId = $derived(
+		(data as { selectedInventoryFromStoreId?: number | null })
+			.selectedInventoryFromStoreId ?? null
+	);
+	/** When false, the API uses the store from the top bar. When true, all stores. */
+	let stockListAllStores = $state(false);
 
 	type AggRow = {
 		storeId: number;
@@ -44,8 +56,16 @@
 		loading = true;
 		try {
 			const mode = view === 'lots' ? 'lots' : 'aggregated';
+			const sp = new URLSearchParams();
+			sp.set('mode', mode);
+			if (
+				!stockListAllStores &&
+				selectedInventoryFromStoreId != null
+			) {
+				sp.set('storeId', String(selectedInventoryFromStoreId));
+			}
 			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory/stock?mode=${mode}`,
+				`/api/heka/hospital/${hospitalId}/home/inventory/stock?${sp.toString()}`,
 				{ method: 'GET' }
 			);
 			if (view === 'lots') {
@@ -74,6 +94,8 @@
 	$effect(() => {
 		void hospitalId;
 		void view;
+		void selectedInventoryFromStoreId;
+		void stockListAllStores;
 		void load();
 	});
 
@@ -94,10 +116,13 @@
 			id: 'totalQty',
 			header: 'Qty (stock unit)',
 			field: 'totalQty',
-			format: (_v, row) =>
-				row.issueUnitName
-					? `${row.totalQty} ${row.issueUnitName}`
-					: String(row.totalQty ?? '')
+			format: (_v, row) => {
+				const q = row.totalQty != null ? String(row.totalQty).trim() : '';
+				const qtyDisp = q ? trimMetricQtyDisplay(q) : '';
+				const iu = (row.issueUnitName ?? '').trim();
+				if (!qtyDisp) return '—';
+				return iu ? `${qtyDisp} ${iu}` : qtyDisp;
+			}
 		}
 	];
 
@@ -128,21 +153,29 @@
 		{
 			id: 'purchasePrice',
 			header: m.inv_stock_col_price(),
-			field: 'purchasePrice'
+			field: 'purchasePrice',
+			format: (_v, row) => {
+				const t =
+					row.purchasePrice != null ? String(row.purchasePrice).trim() : '';
+				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+			}
 		},
 		{
 			id: 'quantity',
 			header: 'Qty (stock unit)',
 			field: 'quantity',
-			format: (_v, row) =>
-				row.issueUnitName
-					? `${row.quantity} ${row.issueUnitName}`
-					: String(row.quantity ?? '')
+			format: (_v, row) => {
+				const q = row.quantity != null ? String(row.quantity).trim() : '';
+				const qtyDisp = q ? trimMetricQtyDisplay(q) : '';
+				const iu = (row.issueUnitName ?? '').trim();
+				if (!qtyDisp) return '—';
+				return iu ? `${qtyDisp} ${iu}` : qtyDisp;
+			}
 		}
 	];
 </script>
 
-<div class="mb-4 flex flex-wrap items-center gap-2">
+<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
 	<h1 class="text-lg font-semibold w-full sm:w-auto sm:mr-4">{m.inv_page_stock_title()}</h1>
 	<div class="join">
 		<DaisyUiButton
@@ -166,6 +199,32 @@
 			{m.inv_stock_view_by_lot()}
 		</DaisyUiButton>
 	</div>
+	<div class="join w-full sm:w-auto">
+		<DaisyUiButton
+			type="button"
+			className="join-item d-btn-sm {!stockListAllStores
+				? 'd-btn-primary'
+				: 'd-btn-outline'}"
+			disabled={loading}
+			onClick={() => {
+				stockListAllStores = false;
+			}}
+		>
+			{m.inv_list_scope_selected_store()}
+		</DaisyUiButton>
+		<DaisyUiButton
+			type="button"
+			className="join-item d-btn-sm {stockListAllStores
+				? 'd-btn-primary'
+				: 'd-btn-outline'}"
+			disabled={loading}
+			onClick={() => {
+				stockListAllStores = true;
+			}}
+		>
+			{m.inv_list_scope_all_stores()}
+		</DaisyUiButton>
+	</div>
 </div>
 
 <DaisyUiCard>
@@ -176,9 +235,7 @@
 					columns={aggColumns}
 					rows={rowsAgg}
 					isLoading={loading}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					on:refresh={() => load()}
+					showRefreshButton={false}
 				/>
 			</div>
 		{:else}
@@ -187,9 +244,7 @@
 					columns={lotColumns}
 					rows={rowsLots}
 					isLoading={loading}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					on:refresh={() => load()}
+					showRefreshButton={false}
 				/>
 			</div>
 		{/if}

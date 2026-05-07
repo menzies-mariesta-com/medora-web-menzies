@@ -121,6 +121,9 @@
 		if (p.id === 'visit') return m.prefix_configuration_purpose_visit();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
 		if (p.id === 'po') return m.prefix_configuration_purpose_po();
+		if (p.id === 'di') return m.prefix_configuration_purpose_di();
+		if (p.id === 'di_issue') return m.prefix_configuration_purpose_di_issue();
+		if (p.id === 'dc') return m.prefix_configuration_purpose_dc();
 		return m.prefix_configuration_purpose_order();
 	}
 
@@ -137,6 +140,15 @@
 		if (p.id === 'po') {
 			return m.prefix_configuration_purpose_po_help();
 		}
+		if (p.id === 'di') {
+			return m.prefix_configuration_purpose_di_help();
+		}
+		if (p.id === 'di_issue') {
+			return m.prefix_configuration_purpose_di_issue_help();
+		}
+		if (p.id === 'dc') {
+			return m.prefix_configuration_purpose_dc_help();
+		}
 		return m.prefix_configuration_purpose_order_help();
 	}
 
@@ -145,6 +157,9 @@
 		if (p.id === 'visit') return m.prefix_configuration_edit_visit_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();
 		if (p.id === 'po') return m.prefix_configuration_edit_po_title();
+		if (p.id === 'di') return m.prefix_configuration_edit_di_title();
+		if (p.id === 'di_issue') return m.prefix_configuration_edit_di_issue_title();
+		if (p.id === 'dc') return m.prefix_configuration_edit_dc_title();
 		return m.prefix_configuration_edit_order_title();
 	}
 

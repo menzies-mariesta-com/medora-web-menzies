@@ -49,6 +49,7 @@ import {
 	staffHospitalTable,
 	staffTable,
 	staffUserGroupTable,
+	storeUserGroupTable,
 	statusTaggingTable,
 	statusTaggingTypeTable,
 	userGroupPageTable,
@@ -1219,19 +1220,12 @@ export const serviceTaggingTableRelations = relations(
 
 export const storeTableRelations = relations(
 	storeTable,
-	({ one }) => ({
+	({ one, many }) => ({
 		branch: one(hospitalBranchTable, {
 			fields: [storeTable.branchId],
 			references: [hospitalBranchTable.id]
 		}),
-		userGroup: one(userGroupTable, {
-			fields: [storeTable.userGroupId],
-			references: [userGroupTable.id]
-		}),
-		department: one(departmentTable, {
-			fields: [storeTable.departmentId],
-			references: [departmentTable.id]
-		}),
+		userGroups: many(storeUserGroupTable),
 		status: one(statusTable, {
 			fields: [storeTable.statusId],
 			references: [statusTable.id]
@@ -1239,6 +1233,20 @@ export const storeTableRelations = relations(
 		updatedBy: one(userTable, {
 			fields: [storeTable.updatedBy],
 			references: [userTable.id]
+		})
+	})
+);
+
+export const storeUserGroupTableRelations = relations(
+	storeUserGroupTable,
+	({ one }) => ({
+		store: one(storeTable, {
+			fields: [storeUserGroupTable.storeId],
+			references: [storeTable.id]
+		}),
+		userGroup: one(userGroupTable, {
+			fields: [storeUserGroupTable.userGroupId],
+			references: [userGroupTable.id]
 		})
 	})
 );

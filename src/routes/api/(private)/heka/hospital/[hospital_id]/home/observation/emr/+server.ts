@@ -9,6 +9,13 @@ function requireSessionStaffId(event: { locals: { staff?: { id?: string } | null
 	return String(staffId);
 }
 
+/** JSON body values are `unknown` until parsed; use at API boundary. */
+function optStrOrNull(v: unknown): string | null | undefined {
+	if (v === undefined) return undefined;
+	if (v === null) return null;
+	return String(v);
+}
+
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	await ensureCanAccessHospital(event, hospitalId);
@@ -225,43 +232,47 @@ export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const body: unknown = await event.request.json().catch(() => null);
-	const mode =
-		typeof body === 'object' && body !== null
-			? String((body as { mode?: unknown }).mode ?? '')
-			: '';
+	const raw = await event.request.json().catch(() => null);
+	if (typeof raw !== 'object' || raw === null) {
+		throw error(400, 'body is required');
+	}
+	const body = raw as Record<string, unknown>;
+	const mode = String(body['mode'] ?? '');
 	if (!mode) throw error(400, 'mode is required');
 
 	switch (mode) {
 		case 'visit.sign': {
-			const visitId = Number(body?.visitId ?? 0);
+			const visitId = Number(body['visitId'] ?? 0);
 			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
 			return json(await obs.signPatientVisitClinical({ visitId }));
 		}
 		case 'visit.updateText': {
-			const id = Number(body?.id ?? 0);
+			const id = Number(body['id'] ?? 0);
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
 			return json(
 				await obs.updatePatientVisit({
 					id,
-					chiefComplaint: body?.chiefComplaint ?? undefined,
-					patientCondition: body?.patientCondition ?? undefined,
-					diagnosisNotes: body?.diagnosisNotes ?? undefined
+					chiefComplaint: optStrOrNull(body['chiefComplaint']),
+					patientCondition: optStrOrNull(body['patientCondition']),
+					diagnosisNotes: optStrOrNull(body['diagnosisNotes'])
 				})
 			);
 		}
 		case 'diagnosis.create': {
-			return json(await obs.createDiagnosis(body?.payload));
+			return json(
+				// payload validated by service layer
+				await obs.createDiagnosis(body['payload'] as never)
+			);
 		}
 		case 'diagnosis.update': {
-			return json(await obs.updateDiagnosis(body?.payload));
+			return json(await obs.updateDiagnosis(body['payload'] as never));
 		}
 		case 'diagnosis.delete': {
-			await obs.deleteDiagnosis({ id: Number(body?.id ?? 0) });
+			await obs.deleteDiagnosis({ id: Number(body['id'] ?? 0) });
 			return json({ ok: true });
 		}
 		case 'planOfCare.create': {
-			const visitIdCreate = Number(body?.visitId ?? 0);
+			const visitIdCreate = Number(body['visitId'] ?? 0);
 			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
 				throw error(400, 'visitId is required');
 			}
@@ -269,128 +280,128 @@ export const POST: RequestHandler = async (event) => {
 			return json(
 				await obs.createPlanOfCare(hospitalId, {
 					visitId: visitIdCreate,
-					note: String(body?.note ?? ''),
+					note: String(body['note'] ?? ''),
 					doctorId: doctorStaffId,
 					statusId:
-						body?.statusId != null && body?.statusId !== ''
-							? Number(body.statusId)
+						body['statusId'] != null && body['statusId'] !== ''
+							? Number(body['statusId'])
 							: undefined
 				})
 			);
 		}
 		case 'planOfCare.update': {
-			const p = body?.payload ?? body;
-			const id = Number(p?.id ?? 0);
+			const p = (body['payload'] ?? body) as Record<string, unknown>;
+			const id = Number(p['id'] ?? 0);
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
 			const doctorStaffId = requireSessionStaffId(event);
 			return json(
 				await obs.updatePlanOfCare(hospitalId, {
 					id,
-					note: p?.note,
+					note: p['note'] as string | undefined,
 					doctorId: doctorStaffId,
 					statusId:
-						p?.statusId != null && p?.statusId !== ''
-							? Number(p.statusId)
+						p['statusId'] != null && p['statusId'] !== ''
+							? Number(p['statusId'])
 							: undefined
 				})
 			);
 		}
 		case 'planOfCare.delete': {
 			await obs.deletePlanOfCare({
-				id: Number(body?.id ?? 0),
+				id: Number(body['id'] ?? 0),
 				hospitalId,
-				deleteRemark: body?.deleteRemark ?? null
+				deleteRemark: optStrOrNull(body['deleteRemark']) ?? null
 			});
 			return json({ ok: true });
 		}
 		case 'progressNote.create': {
-			const visitIdCreate = Number(body?.visitId ?? 0);
+			const visitIdCreate = Number(body['visitId'] ?? 0);
 			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
 				throw error(400, 'visitId is required');
 			}
 			return json(
 				await obs.createProgressNote(hospitalId, {
 					visitId: visitIdCreate,
-					note: String(body?.note ?? ''),
-					doctorId: body?.doctorId ?? null,
+					note: String(body['note'] ?? ''),
+					doctorId: (body['doctorId'] as string | null) ?? null,
 					statusId:
-						body?.statusId != null && body?.statusId !== ''
-							? Number(body.statusId)
+						body['statusId'] != null && body['statusId'] !== ''
+							? Number(body['statusId'])
 							: undefined
 				})
 			);
 		}
 		case 'progressNote.update': {
-			const p = body?.payload ?? body;
-			const id = Number(p?.id ?? 0);
+			const p = (body['payload'] ?? body) as Record<string, unknown>;
+			const id = Number(p['id'] ?? 0);
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
 			return json(
 				await obs.updateProgressNote(hospitalId, {
 					id,
-					note: p?.note,
-					doctorId: p?.doctorId,
+					note: p['note'] as string | undefined,
+					doctorId: p['doctorId'] as string | null | undefined,
 					statusId:
-						p?.statusId != null && p?.statusId !== ''
-							? Number(p.statusId)
+						p['statusId'] != null && p['statusId'] !== ''
+							? Number(p['statusId'])
 							: undefined
 				})
 			);
 		}
 		case 'progressNote.delete': {
 			await obs.deleteProgressNote({
-				id: Number(body?.id ?? 0),
+				id: Number(body['id'] ?? 0),
 				hospitalId,
-				deleteRemark: body?.deleteRemark ?? null
+				deleteRemark: optStrOrNull(body['deleteRemark']) ?? null
 			});
 			return json({ ok: true });
 		}
 		case 'allergy.delete': {
-			await obs.deletePatientAllergies({ id: Number(body?.id ?? 0) });
+			await obs.deletePatientAllergies({ id: Number(body['id'] ?? 0) });
 			return json({ ok: true });
 		}
 		case 'vital.delete': {
-			await obs.deletePatientVital({ id: Number(body?.id ?? 0) });
+			await obs.deletePatientVital({ id: Number(body['id'] ?? 0) });
 			return json({ ok: true });
 		}
 		case 'formEntry.create': {
-			return json(await obs.createPatientFormEntry(body?.payload));
+			return json(await obs.createPatientFormEntry(body['payload'] as never));
 		}
 		case 'formEntry.update': {
-			return json(await obs.updatePatientFormEntry(body?.payload));
+			return json(await obs.updatePatientFormEntry(body['payload'] as never));
 		}
 		case 'formEntry.delete': {
-			await obs.deletePatientFormEntry({ id: Number(body?.id ?? 0) });
+			await obs.deletePatientFormEntry({ id: Number(body['id'] ?? 0) });
 			return json({ ok: true });
 		}
 		case 'patientDocument.create': {
-			return json(await obs.createPatientDocument(body?.payload));
+			return json(await obs.createPatientDocument(body['payload'] as never));
 		}
 		case 'patientDocument.update': {
-			return json(await obs.updatePatientDocument(body?.payload));
+			return json(await obs.updatePatientDocument(body['payload'] as never));
 		}
 		case 'orderLine.createDetail': {
-			return json(await obs.createServiceOrderDetail(body?.payload));
+			return json(await obs.createServiceOrderDetail(body['payload'] as never));
 		}
 		case 'orderLine.updateDetail': {
-			return json(await obs.updateServiceOrderDetail(body?.payload));
+			return json(await obs.updateServiceOrderDetail(body['payload'] as never));
 		}
 		case 'orderLine.deleteDetail': {
-			await obs.deleteServiceOrderDetail({ id: Number(body?.id ?? 0) });
+			await obs.deleteServiceOrderDetail({ id: Number(body['id'] ?? 0) });
 			return json({ ok: true });
 		}
 		case 'orderLine.createOrder': {
-			return json(await obs.createServiceOrder(event, body?.payload));
+			return json(await obs.createServiceOrder(event, body['payload'] as never));
 		}
 		case 'allergyMaster.create': {
-			const name = String(body?.name ?? '').trim();
+			const name = String(body['name'] ?? '').trim();
 			if (!name) throw error(400, 'name is required');
 			return json(await obs.createAllergyMaster({ name }));
 		}
 		case 'patientAllergy.create': {
-			const visitId = Number(body?.visitId);
-			const patientId = String(body?.patientId ?? '').trim();
-			const allergyId = Number(body?.allergyId);
-			const severityId = Number(body?.severityId);
+			const visitId = Number(body['visitId']);
+			const patientId = String(body['patientId'] ?? '').trim();
+			const allergyId = Number(body['allergyId']);
+			const severityId = Number(body['severityId']);
 			if (!Number.isFinite(visitId) || visitId <= 0) {
 				throw error(400, 'visitId is required');
 			}
@@ -408,20 +419,20 @@ export const POST: RequestHandler = async (event) => {
 					allergyId,
 					severityId,
 					reaction:
-						body?.reaction != null && String(body.reaction).trim() !== ''
-							? String(body.reaction).trim()
+						body['reaction'] != null && String(body['reaction']).trim() !== ''
+							? String(body['reaction']).trim()
 							: null,
 					remark:
-						body?.remark != null && String(body.remark).trim() !== ''
-							? String(body.remark).trim()
+						body['remark'] != null && String(body['remark']).trim() !== ''
+							? String(body['remark']).trim()
 							: null
 				})
 			);
 		}
 		case 'patientAllergy.update': {
-			const id = Number(body?.id);
-			const severityId = Number(body?.severityId);
-			const statusId = Number(body?.statusId);
+			const id = Number(body['id']);
+			const severityId = Number(body['severityId']);
+			const statusId = Number(body['statusId']);
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
 			if (!Number.isFinite(severityId) || severityId <= 0) {
 				throw error(400, 'severityId is required');
@@ -435,33 +446,33 @@ export const POST: RequestHandler = async (event) => {
 					severityId,
 					statusId,
 					reaction:
-						body?.reaction != null && String(body.reaction).trim() !== ''
-							? String(body.reaction).trim()
+						body['reaction'] != null && String(body['reaction']).trim() !== ''
+							? String(body['reaction']).trim()
 							: null,
 					remark:
-						body?.remark != null && String(body.remark).trim() !== ''
-							? String(body.remark).trim()
+						body['remark'] != null && String(body['remark']).trim() !== ''
+							? String(body['remark']).trim()
 							: null,
 					deactivationRemark:
-						body?.deactivationRemark != null &&
-						String(body.deactivationRemark).trim() !== ''
-							? String(body.deactivationRemark).trim()
+						body['deactivationRemark'] != null &&
+						String(body['deactivationRemark']).trim() !== ''
+							? String(body['deactivationRemark']).trim()
 							: null
 				})
 			);
 		}
 		case 'patientAllergy.inactivateAll': {
-			const patientId = String(body?.patientId ?? '').trim();
+			const patientId = String(body['patientId'] ?? '').trim();
 			if (!patientId) throw error(400, 'patientId is required');
 			await obs.inactivateAllPatientAllergiesForPatient({
 				patientId,
-				deactivationRemark: String(body?.deactivationRemark ?? '')
+				deactivationRemark: String(body['deactivationRemark'] ?? '')
 			});
 			return json({ ok: true });
 		}
 		case 'patientAllergy.inactivateOthers': {
-			const patientId = String(body?.patientId ?? '').trim();
-			const excludeId = Number(body?.excludeId);
+			const patientId = String(body['patientId'] ?? '').trim();
+			const excludeId = Number(body['excludeId']);
 			if (!patientId) throw error(400, 'patientId is required');
 			if (!Number.isFinite(excludeId) || excludeId <= 0) {
 				throw error(400, 'excludeId is required');
@@ -469,13 +480,13 @@ export const POST: RequestHandler = async (event) => {
 			await obs.inactivateOtherPatientAllergiesForPatient({
 				patientId,
 				excludeId,
-				deactivationRemark: String(body?.deactivationRemark ?? '')
+				deactivationRemark: String(body['deactivationRemark'] ?? '')
 			});
 			return json({ ok: true });
 		}
 		case 'patientAllergy.inactivateByAllergyId': {
-			const patientId = String(body?.patientId ?? '').trim();
-			const allergyId = Number(body?.allergyId);
+			const patientId = String(body['patientId'] ?? '').trim();
+			const allergyId = Number(body['allergyId']);
 			if (!patientId) throw error(400, 'patientId is required');
 			if (!Number.isFinite(allergyId) || allergyId <= 0) {
 				throw error(400, 'allergyId is required');
@@ -483,7 +494,7 @@ export const POST: RequestHandler = async (event) => {
 			await obs.inactivatePatientAllergiesByAllergyIdForPatient({
 				patientId,
 				allergyId,
-				deactivationRemark: String(body?.deactivationRemark ?? '')
+				deactivationRemark: String(body['deactivationRemark'] ?? '')
 			});
 			return json({ ok: true });
 		}

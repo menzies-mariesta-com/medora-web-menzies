@@ -138,14 +138,11 @@
 	"store_deleted": "စတိုး ဖျက်ပြီးပါပြီ။",
 	"no_stores_create": "စတိုး မရှိပါ။ အထက်တွင် ဖန်တီးပါ။",
 	"store_name": "စတိုး အမည်",
-	"link_type": "ချိတ်ဆက်မှု အမျိုးအစား",
-	"linked_user_group": "အသုံးပြုသူ အုပ်စု",
-	"linked_department": "ဌာန",
 	"remark": "မှတ်ချက်",
 	"select_branch": "ဌာနခွဲ ရွေးချယ်ပါ",
 	"select_user_group": "အသုံးပြုသူ အုပ်စု ရွေးချယ်ပါ",
-	"select_department": "ဌာန ရွေးချယ်ပါ",
-	"store_owner_xor_hint": "အသုံးပြုသူ အုပ်စု သို့မဟုတ် ဌာန တစ်ခုသာ ရွေးပါ (နှစ်ခုလုံး မဟုတ်ပါ)။",
+	"no_user_groups": "ဤဆေးရုံအတွက် အသုံးပြုသူ အုပ်စု မရှိပါ။",
+	"user_groups_optional_hint": "အသုံးပြုသူ အုပ်စု တစ်ခု သို့မဟုတ် ပိုမိုရွေးချယ်ပါ (ရွေးချယ်ခွင့်)။",
 	"item_master": "ပစ္စည်း မူလွှာ",
 	"new_item_master": "ပစ္စည်း အသစ်",
 	"edit_item_master": "ပစ္စည်း ပြင်ဆင်ရန်",
@@ -531,5 +528,7 @@
 	"prefix_configuration_counter_scope_branch": "Separate sequence per branch",
 	"prefix_configuration_counter_scope_financial_year": "Separate sequence per financial year",
 	"prefix_configuration_counter_scope_visit_type": "Separate sequence per visit type",
-	"prefix_configuration_counter_scope_visit": "Separate sequence per visit"
+	"prefix_configuration_counter_scope_visit": "Separate sequence per visit",
+	"inv_user_groups_search_placeholder": "အမည် သို့မဟုတ် id ဖြင့် အသုံးပြုသူအုပ်စုများကို စစ်ထုတ်ပါ…",
+	"inv_user_groups_no_filter_match": "ဤစစ်ထုတ်မှုနှင့် ကိုက်ညီသော အသုံးပြုသူအုပ်စု မရှိပါ။"
 }

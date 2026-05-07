@@ -1,11 +1,12 @@
 # Inventory transactions — manual test cases
 
-This document supports QA and regression for hospital-scoped inventory: **PR → store-based approval → PO → approval → GRN → batch-level stock (`item_batch` + `inv_stock`) → transfer / issue**.
+This document supports QA and regression for hospital-scoped inventory: **PR → store-based approval → PO → approval → GRN → batch-level stock (`item_batch` + `inv_stock`) → transfer / issue**, plus **department consumption (`DC`)**.
 
 **Prerequisites**
 
 - Run migrations `drizzle/0032_inventory_transactions.sql` and **`drizzle/0033_item_batch_normalized_stock.sql`** (PostgreSQL **15+** required for `item_batch` unique index `NULLS NOT DISTINCT`).
-- Apply seeds so `status_tagging_type` **3–7** and `status_tagging` **9–30** exist; verify they match `src/lib/model/enum/db-link.ts` (`Inv*StatusTaggingEnum`, `StatusTaggingTypeEnum`).
+- For **department indents**, **`inv_approval_level.module = DI`**, **`DC`** (department consumption), **`GRN`** on approvals, and **`SI` / `SR`**: apply **`0039`**+ through **`0050`** as applicable, or ensure **`pnpm db:seed:information`** has run (seed **7b** aligns `inv_approval_level` / `inv_approval_log` module `CHECK` and the partial unique index; see [`.cursor/skills/inventory-transactions-and-batch-flow/SKILL.md`](../.cursor/skills/inventory-transactions-and-batch-flow/SKILL.md)).
+- Apply seeds so `status_tagging_type` **3–10** and `status_tagging` **9–30**, **40–45** (department indent), **46–49** (department issue), and **50–53** (department consumption) exist where needed; verify they match `src/lib/model/enum/db-link.ts` (`Inv*StatusTaggingEnum`, `StatusTaggingTypeEnum`, `InvDepartmentIndentStatusTaggingEnum`, `InvDepartmentConsumptionStatusTaggingEnum`).
 - At least one **branch**, **store** (mark one store **central** per branch via Inventory Setup → Stores), **item_master** (optional **`is_batch_required`** for pharmacy-style GRN validation), **unit**, **supplier**, **manufacturer** (optional on PO lines / batch identity), and **staff** linked to the acting **user**.
 - Module **10 (Inventory)** and child pages seeded; assign **user_group** / page permissions so test users can open the new routes.
 
@@ -19,8 +20,8 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |
-| AC-1 | Create levels and assignees | `GET`/`POST` approval-config API: `inventory-setup/approval-config` — add level 1 and 2 for store A, module `PR`, assign different staff to each level. Repeat for module `PO`. | Rows in `inv_approval_level` / `inv_approval_assignee`; list API returns grouped levels with staff. |
-| AC-2 | Duplicate level same store+module | Attempt second row with same `(hospital, store, module, level)`. | Rejected (unique constraint or server validation). |
+| AC-1 | Create levels and assignees | `GET`/`POST` approval-config API: `inventory-setup/approval-config` — add level 1 and 2 for store A, module `PR`, assign different staff to each level. Repeat for module `PO`. Optionally configure **`DI`**, **`DC`**, **`GRN`**, **`SI`**, **`SR`** the same way (codes: [`inv-approval.type.ts`](../src/lib/model/type/heka/inv-approval.type.ts)). | Rows in `inv_approval_level` / `inv_approval_assignee`; list API returns grouped levels with staff. |
+| AC-2 | Duplicate level same store+module | Attempt second **active** row with same `(hospital, store, module, level)` (or recreate after **delete** should succeed if only one row is active — partial unique on `deleted_at IS NULL`). | Rejected for duplicate **active** level; or revive path after delete per server behavior. |
 | AC-3 | Cross-hospital isolation | User with access only to hospital H1 calls API with H2 `hospital_id`. | 403 / not found per `ensureCanAccessHospital` pattern. |
 | AC-4 | No config | Submit PR for store with **no** approval levels for `PR`. | Appropriate error when workflow needs max level > 0 (or document behavior if zero levels allowed). |
 
@@ -81,17 +82,29 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 ---
 
-## 5. Store transfer and stock issue
+## 5. Store transfer and stock issue (server/internal)
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- |
-| TR-1 | Batch-wise transfer | `POST` `inventory/transfer` with lines `{ itemId, batchId, quantity, unitId }` (batch must exist in hospital and match item). | `inv_stock` decreased at source and increased at destination for same `batch_id`. |
+| TR-1 | Batch-wise transfer | Post a flow that triggers store transfer (e.g. GRN auto transfer if applicable). | `inv_stock` decreased at source and increased at destination for same `batch_id`. |
 | TR-2 | Insufficient stock | Transfer qty > `inv_stock.quantity` for that store+batch. | Rejected. |
-| IS-1 | FEFO issue | `POST` `inventory/issue` with lines `{ itemId, qty, unitId }` (omit `batchId`). | Consumes from earliest `item_batch.expiry` first; multiple `inv_stock_issue_line` rows if spanning batches. |
-| IS-1b | Explicit batch | Same with `batchId` set. | Deducts only that batch; one issue line. |
+| IS-1 | FEFO issue | Post a flow that issues stock (when applicable in your deployment). | Consumes from earliest `item_batch.expiry` first; multiple `inv_stock_issue_line` rows if spanning batches. |
+| IS-1b | Explicit batch | Issue a single specified batch. | Deducts only that batch; one issue line. |
 | IS-2 | Insufficient stock | Issue qty > available. | Rejected. |
 | SC-1 | Hospital / store scope | Use `store_id` from another hospital or wrong branch. | Rejected via scope checks. |
 | SC-2 | Batch traceability | `inv_store_transfer_line.batch_id` / `inv_stock_issue_line.batch_id` reference `item_batch`. | Traceable to GRN-derived batch. |
+
+---
+
+## 5b. Department consumption (DC)
+
+Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for type **10** / ids **50–53**). API: `inventory/department-consumption` (+ approve/cancel as exposed).
+
+| ID | Case | Steps | Expected |
+| --- | --- | --- | --- |
+| DC-1 | UI — store locked on **New** | Open **`…/inventory/department-consumption/new`**. Set **From store** in the top bar to store A; refresh if needed. | **From store** on the form shows store A’s name **readonly** (no dropdown). |
+| DC-2 | UI — no navbar store | Clear **From store** (or never select one); open **New**. | Hint explains changing **From store** in the top bar; **Submit** disabled until a store is selected. |
+| DC-3 | Submit for approval | With navbar store set, add lines and **Submit for approval** on **New**. | Record created **pending approval** with **`consumption_no`**; **Approve** / **Reject** are separate (approvers only when pending). |
 
 ---
 
@@ -100,7 +113,7 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 | ID | Case | Expected |
 | --- | --- | --- |
 | R-1 | FKs to masters | PR/PO/GRN lines reference valid `item_master`, `unit`, `supplier`, `manufacturer`, `store`; `inv_stock.batch_id` → `item_batch`. |
-| R-2 | Workflow tagging type | Status transitions only use `status_tagging` rows whose `status_tagging_type_id` matches PR (3), PO (4), GRN (5), transfer (6), issue (7). |
+| R-2 | Workflow tagging type | Status transitions only use `status_tagging` rows whose `status_tagging_type_id` matches PR (3), PO (4), GRN (5), transfer (6), issue (7), department indent (8), department issue (9), department consumption (10). |
 | R-3 | Soft delete | Deleted PR/PO not listed; approval config respects `deleted_at` where applicable; `inv_stock` uses partial unique on `(store_id, batch_id)` for active rows. |
 | R-4 | Store central uniqueness | Only one `is_central_store = true` per `branch_id` (partial unique index). |
 
@@ -110,7 +123,7 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 | ID | Case | Expected |
 | --- | --- | --- |
-| NAV-1 | Module visibility | Users with Inventory module see subnav: PR, PO, GRN, Stock, Transfer, Issue. |
+| NAV-1 | Module visibility | Users with Inventory module see subnav: PR, PO, GRN, Stock, Department indent, Department issue, Receipt from store, Department consumption. |
 | NAV-2 | Paraglide | New UI strings resolve from `messages/en.json` (no hard-coded user-visible English in new components). |
 
 ---
@@ -118,3 +131,4 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 ## Document history
 
 - Initial version aligned with implementation under `src/lib/server/heka/inventory/` and routes `home/inventory/**`, `home/inventory-setup/approval-config`.
+- **2026-05-04**: Section **5b** (department consumption UI/API smoke cases); prerequisites / AC-1 / R-2 aligned with migration **`0050`** and `InvDepartmentConsumptionStatusTaggingEnum`.

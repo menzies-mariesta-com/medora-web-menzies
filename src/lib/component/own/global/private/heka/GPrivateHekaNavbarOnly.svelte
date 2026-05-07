@@ -10,15 +10,18 @@
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
-	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import HekaNotifications from './HekaNotifications.svelte';
 
 	let {
 		title = 'Hospitals',
+		hospitalId = null,
+		userEmail = null,
 		staffId = null,
 		staffPhotoUrl = null
 	}: {
 		title?: string;
+		hospitalId?: string | null;
+		userEmail?: string | null;
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
 	} = $props();
@@ -27,8 +30,6 @@
 		getStaffPhotoDisplayUrl(staffPhotoUrl)
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
-	const registrationEditUrl =
-		WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION;
 
 	let accountModalOpen = $state(false);
 
@@ -81,6 +82,7 @@
 <AccountModal
 	open={accountModalOpen}
 	onClose={closeAccountModal}
+	{hospitalId}
+	{userEmail}
 	{staffId}
-	{registrationEditUrl}
 />

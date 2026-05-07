@@ -35,6 +35,12 @@
 	} from '$lib/model/type/heka/ui-rows.type';
 	import type { PlanOfCareListRow } from '$lib/model/type/heka/plan-of-care.type';
 	import type { ProgressNoteListRow } from '$lib/model/type/heka/progress-note.type';
+	import type {
+		ObservationEmrDiagnosisRow,
+		ObservationEmrFormEntryRow,
+		ObservationEmrPatientAllergyRow,
+		ObservationEmrPatientVisitRow
+	} from '$lib/model/type/heka/observation-emr.type';
 	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import {
 		vitalTextClass,
@@ -126,10 +132,10 @@
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	type PatientAllergyWithRelations = unknown;
-	type DiagnosisWithType = unknown;
-	type PatientFormEntryWithRelations = unknown;
-	type PatientVisitRow = unknown;
+	type PatientAllergyWithRelations = ObservationEmrPatientAllergyRow;
+	type DiagnosisWithType = ObservationEmrDiagnosisRow;
+	type PatientFormEntryWithRelations = ObservationEmrFormEntryRow;
+	type PatientVisitRow = ObservationEmrPatientVisitRow;
 
 	function getApiBase(): string {
 		const hid = hospitalId;
@@ -1768,8 +1774,8 @@
 				emptyMessage="No chief complaint entries."
 				on:add={() => openFormEntryAdd('chief_complaint')}
 				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) => openFormEntryEdit(e.detail)}
-				on:delete={(e) => handleFormEntryDelete(e.detail)}
+				on:edit={(e) => openFormEntryEdit(e.detail as PatientFormEntryWithRelations)}
+				on:delete={(e) => handleFormEntryDelete(e.detail as PatientFormEntryWithRelations)}
 				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
@@ -1787,8 +1793,8 @@
 				emptyMessage="No patient condition entries."
 				on:add={() => openFormEntryAdd('patient_condition')}
 				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) => openFormEntryEdit(e.detail)}
-				on:delete={(e) => handleFormEntryDelete(e.detail)}
+				on:edit={(e) => openFormEntryEdit(e.detail as PatientFormEntryWithRelations)}
+				on:delete={(e) => handleFormEntryDelete(e.detail as PatientFormEntryWithRelations)}
 				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
@@ -1803,8 +1809,8 @@
 				bind:columnFilters={diagnosisColumnFilters}
 				on:add={openDiagnosisAdd}
 				on:refresh={reloadDiagnosesForVisit}
-				on:edit={(e) => openDiagnosisEdit(e.detail)}
-				on:delete={(e) => handleDiagnosisDelete(e.detail)}
+				on:edit={(e) => openDiagnosisEdit(e.detail as DiagnosisWithType)}
+				on:delete={(e) => handleDiagnosisDelete(e.detail as DiagnosisWithType)}
 			/>
 
 			<ObservationCardTable
@@ -1848,8 +1854,8 @@
 						void fetchAllergies({ force: true });
 					}, 350);
 				}}
-				on:edit={(e) => openAllergyEdit(e.detail)}
-				on:delete={(e) => handleAllergyDelete(e.detail)}
+				on:edit={(e) => openAllergyEdit(e.detail as PatientAllergyWithRelations)}
+				on:delete={(e) => handleAllergyDelete(e.detail as PatientAllergyWithRelations)}
 			/>
 
 			<ObservationCardTable
@@ -1866,8 +1872,8 @@
 				bind:columnFilters={vitalColumnFilters}
 				on:add={openVitalAdd}
 				on:refresh={reloadVitalsForVisit}
-				on:edit={(e) => openVitalEdit(e.detail)}
-				on:delete={(e) => handleVitalDelete(e.detail)}
+				on:edit={(e) => openVitalEdit(e.detail as PatientDiagnosisListRow)}
+				on:delete={(e) => handleVitalDelete(e.detail as PatientDiagnosisListRow)}
 			/>
 
 			<ObservationCardTable
@@ -1887,8 +1893,8 @@
 				showRefreshButton={true}
 				emptyMessage="No order lines for this visit."
 				on:refresh={reloadOrdersForVisit}
-				on:edit={(e) => openOrderLineEdit(e.detail)}
-				on:delete={(e) => handleOrderLineDelete(e.detail)}
+				on:edit={(e) => openOrderLineEdit(e.detail as OrderDetailVisitRow)}
+				on:delete={(e) => handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_casesheet()}
@@ -1902,8 +1908,8 @@
 				bind:columnFilters={planOfCareColumnFilters}
 				on:add={openPlanOfCareAdd}
 				on:refresh={reloadPlanOfCareForVisit}
-				on:edit={(e) => openPlanOfCareEdit(e.detail)}
-				on:delete={(e) => handlePlanOfCareDelete(e.detail)}
+				on:edit={(e) => openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
+				on:delete={(e) => handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_progress_note()}
@@ -1917,8 +1923,8 @@
 				bind:columnFilters={progressNoteColumnFilters}
 				on:add={openProgressNoteAdd}
 				on:refresh={reloadProgressNoteForVisit}
-				on:edit={(e) => openProgressNoteEdit(e.detail)}
-				on:delete={(e) => handleProgressNoteDelete(e.detail)}
+				on:edit={(e) => openProgressNoteEdit(e.detail as ProgressNoteListRow)}
+				on:delete={(e) => handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
 			/>
 		</div>
 	{/if}

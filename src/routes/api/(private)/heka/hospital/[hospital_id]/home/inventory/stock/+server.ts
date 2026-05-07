@@ -10,6 +10,7 @@ export const GET: RequestHandler = async (event) => {
 	const mode = event.url.searchParams.get('mode') ?? 'aggregated';
 	const storeIdStr = event.url.searchParams.get('storeId');
 	const itemIdStr = event.url.searchParams.get('itemId');
+	const itemIdsStr = event.url.searchParams.get('itemIds');
 	const storeId =
 		storeIdStr != null && storeIdStr !== ''
 			? Number(storeIdStr)
@@ -17,6 +18,13 @@ export const GET: RequestHandler = async (event) => {
 	const itemId =
 		itemIdStr != null && itemIdStr !== ''
 			? Number(itemIdStr)
+			: undefined;
+	const itemIds =
+		itemIdsStr != null && itemIdsStr.trim() !== ''
+			? itemIdsStr
+					.split(',')
+					.map((s) => Number(s.trim()))
+					.filter((n) => Number.isFinite(n) && n > 0)
 			: undefined;
 	if (mode === 'lots') {
 		const rows = await listStockLots(event, {
@@ -41,7 +49,8 @@ export const GET: RequestHandler = async (event) => {
 	const data = await listStockAggregated(event, {
 		hospitalId,
 		storeId,
-		itemId
+		itemId: itemIds != null && itemIds.length > 0 ? undefined : itemId,
+		itemIds: itemIds != null && itemIds.length > 0 ? itemIds : undefined
 	});
 	return json(data);
 };
