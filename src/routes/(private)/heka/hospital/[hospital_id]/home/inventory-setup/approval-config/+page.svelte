@@ -26,6 +26,7 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import type { InvApprovalModule } from '$lib/model/type/heka/inv-approval.type';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -47,7 +48,7 @@
 	type LevelRow = {
 		id: number;
 		storeId: number;
-		module: 'PR' | 'PO';
+		module: InvApprovalModule;
 		level: number;
 		isRequired: boolean;
 		assignees: AssigneeRow[];
@@ -55,7 +56,30 @@
 
 	let stores = $state<{ id: number; storeName: string | null }[]>([]);
 	let storeId = $state<number | null>(null);
-	let module = $state<'PR' | 'PO'>('PR');
+	let module = $state<InvApprovalModule>('PR');
+
+	function invApprovalModuleLabel(mod: InvApprovalModule): string {
+		switch (mod) {
+			case 'PR':
+				return m.inv_approval_config_module_pr();
+			case 'PO':
+				return m.inv_approval_config_module_po();
+			case 'DI':
+				return m.inv_approval_config_module_di();
+			case 'DISS':
+				return m.inv_approval_config_module_diss();
+			case 'RFS':
+				return m.inv_approval_config_module_rfs();
+			case 'GRN':
+				return m.inv_approval_config_module_grn();
+			case 'DC':
+				return m.inv_approval_config_module_dc();
+			default: {
+				const _n: never = mod;
+				return _n;
+			}
+		}
+	}
 
 	let items = $state<LevelRow[]>([]);
 	let isLoading = $state(false);
@@ -169,8 +193,14 @@
 				}
 			);
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toastService.addToast(body.error || 'Failed to save', StatusColorEnum.ERROR);
+				const body = (await res.json().catch(() => ({}))) as {
+					message?: string;
+					error?: string;
+				};
+				toastService.addToast(
+					body.message || body.error || 'Failed to save',
+					StatusColorEnum.ERROR
+				);
 				return;
 			}
 			toastService.addToast(
@@ -238,7 +268,10 @@
 		<div>
 			<h1 class="text-lg font-semibold">{m.inv_page_approval_config_title()}</h1>
 			<p class="text-sm text-base-content/70">
-				Configure approval levels and assignees for {module}.
+				{m.inv_approval_config_intro()}
+			</p>
+			<p class="text-sm font-medium text-base-content/80 mt-1">
+				{invApprovalModuleLabel(module)}
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
@@ -250,11 +283,16 @@
 					{/each}
 				</DaisyUiSelect>
 			</label>
-			<label class="form-control w-full max-w-xs">
-				<div class="label"><span class="label-text">Module</span></div>
+			<label class="form-control w-full min-w-48 max-w-sm">
+				<div class="label"><span class="label-text">{m.inv_approval_config_module_label()}</span></div>
 				<DaisyUiSelect className="select-sm" bind:value={module}>
-					<option value="PR">PR</option>
-					<option value="PO">PO</option>
+					<option value="PR">{m.inv_approval_config_module_pr()}</option>
+					<option value="PO">{m.inv_approval_config_module_po()}</option>
+					<option value="DI">{m.inv_approval_config_module_di()}</option>
+					<option value="DISS">{m.inv_approval_config_module_diss()}</option>
+					<option value="RFS">{m.inv_approval_config_module_rfs()}</option>
+					<option value="GRN">{m.inv_approval_config_module_grn()}</option>
+					<option value="DC">{m.inv_approval_config_module_dc()}</option>
 				</DaisyUiSelect>
 			</label>
 			<div class="flex items-end mt-7">

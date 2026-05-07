@@ -27,7 +27,10 @@ export type {
 function defaultFormatSpecForKey(prefixKey: string): PrefixFormatSpec {
 	if (
 		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO ||
-		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO
+		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO ||
+		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_INDENT_NO ||
+		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_ISSUE_NO ||
+		prefixKey === PREFIX_PURPOSE_STORAGE.DEPARTMENT_CONSUMPTION_NO
 	) {
 		return {
 			parts: [

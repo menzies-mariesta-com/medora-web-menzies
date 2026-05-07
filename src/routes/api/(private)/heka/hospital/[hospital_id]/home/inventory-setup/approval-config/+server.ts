@@ -4,9 +4,12 @@ import {
 	deleteApprovalLevel,
 	listApprovalLevelsForStore,
 	listStoresForApprovalConfig,
-	upsertApprovalLevel,
-	type InvApprovalModule
+	upsertApprovalLevel
 } from '$lib/server/heka/inventory/approval-config.server';
+import {
+	isInvApprovalModule,
+	type InvApprovalModule
+} from '$lib/model/type/heka/inv-approval.type';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
@@ -16,7 +19,16 @@ export const GET: RequestHandler = async (event) => {
 		return json(data);
 	}
 	const storeIdStr = event.url.searchParams.get('storeId');
-	const module = event.url.searchParams.get('module') as InvApprovalModule | null;
+	const moduleParam = event.url.searchParams.get('module');
+	const module: InvApprovalModule | undefined =
+		moduleParam == null || moduleParam === ''
+			? undefined
+			: isInvApprovalModule(moduleParam)
+				? moduleParam
+				: undefined;
+	if (moduleParam != null && moduleParam !== '' && module === undefined) {
+		return json({ error: 'Invalid module' }, { status: 400 });
+	}
 	if (!storeIdStr) {
 		return json({ error: 'storeId required' }, { status: 400 });
 	}
@@ -24,7 +36,7 @@ export const GET: RequestHandler = async (event) => {
 	const data = await listApprovalLevelsForStore(event, {
 		hospitalId,
 		storeId,
-		module: module ?? undefined
+		module
 	});
 	return json(data);
 };
@@ -33,20 +45,24 @@ export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	const body = (await event.request.json()) as Record<string, unknown>;
 	const storeId = Number(body.storeId ?? 0);
-	const module = String(body.module ?? '') as InvApprovalModule;
+	const moduleRaw = String(body.module ?? '');
+	if (!isInvApprovalModule(moduleRaw)) {
+		return json({ error: 'Invalid module' }, { status: 400 });
+	}
+	const module = moduleRaw;
 	const level = Number(body.level ?? 0);
 	const id = body.id != null ? Number(body.id) : undefined;
 	const assigneeStaffIds = Array.isArray(body.assigneeStaffIds)
 		? (body.assigneeStaffIds as unknown[]).map((x) => String(x))
 		: [];
-	if (module !== 'PR' && module !== 'PO') {
-		return json({ error: 'Invalid module' }, { status: 400 });
-	}
+	const isRequired =
+		typeof body.isRequired === 'boolean' ? body.isRequired : true;
 	const result = await upsertApprovalLevel(event, {
 		hospitalId,
 		storeId,
 		module,
 		level,
+		isRequired,
 		id: Number.isFinite(id) ? id : undefined,
 		assigneeStaffIds
 	});

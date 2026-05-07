@@ -18,6 +18,10 @@ const db = drizzle(client);
  *
  * Run after master-table-seed. Inserts in FK-safe order.
  *
+ * Also applies inventory approval DDL (module CHECK + active unique on
+ * `inv_approval_level`) so environments that use `pnpm db:seed` without a full
+ * `db:migrate` run still match drizzle 0039–0041 for approval config.
+ *
  * npx tsx src/lib/server/db/seed/information-table-seed.ts
  */
 export async function seedInformationTables() {
@@ -154,8 +158,10 @@ export async function seedInformationTables() {
 			(28, 'Purchase Order', 10, 1, null, '/heka/home/inventory/purchase-order', 2),
 			(29, 'Goods Receipt', 10, 1, null, '/heka/home/inventory/grn', 3),
 			(30, 'Stock', 10, 1, null, '/heka/home/inventory/stock', 4),
-			(31, 'Store Transfer', 10, 1, null, '/heka/home/inventory/store-transfer', 5),
-			(32, 'Stock Issue', 10, 1, null, '/heka/home/inventory/stock-issue', 6)
+			(33, 'Department indent', 10, 1, null, '/heka/home/inventory/department-indent', 5),
+			(34, 'Department issue', 10, 1, null, '/heka/home/inventory/department-issue', 6),
+			(35, 'Receipt from store', 10, 1, null, '/heka/home/inventory/receipt-from-store', 7),
+			(36, 'Department consumption', 10, 1, null, '/heka/home/inventory/department-consumption', 8)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -183,7 +189,10 @@ export async function seedInformationTables() {
 			(4, 'Purchase Order'),
 			(5, 'Goods Receipt'),
 			(6, 'Store Transfer'),
-			(7, 'Stock Issue')
+			(7, 'Stock Issue'),
+			(8, 'Department indent'),
+			(9, 'Department issue'),
+			(10, 'Department consumption')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	seedLogger.info('Seeded: status tagging type');
@@ -236,11 +245,58 @@ export async function seedInformationTables() {
 			-- Stock Issue (28–30)
 			(28, 'Draft', 'draft', 1, 7),
 			(29, 'Posted', 'posted', 2, 7),
-			(30, 'Cancelled', 'cancelled', 3, 7)
+			(30, 'Cancelled', 'cancelled', 3, 7),
+
+			-- Department indent (40–45; type 8 — mirrors drizzle/0039_*_dept_indent.sql; InvDepartmentIndentStatusTaggingEnum)
+			(40, 'Draft', 'draft', 1, 8),
+			(41, 'Pending', 'pending', 2, 8),
+			(42, 'Pending central', 'pending_central', 3, 8),
+			(43, 'Issued', 'issued', 4, 8),
+			(44, 'Received', 'received', 5, 8),
+			(45, 'Cancelled', 'cancelled', 6, 8),
+
+			-- Department issue (46–49; type 9 — drizzle/0048_department_issue_tables_and_status.sql; InvDepartmentIssueStatusTaggingEnum)
+			(46, 'Pending', 'pending', 1, 9),
+			(47, 'Issued', 'issued', 2, 9),
+			(48, 'Received', 'received', 3, 9),
+			(49, 'Cancelled', 'cancelled', 4, 9),
+
+			-- Department consumption (50–53; type 10 — drizzle/0050_inv_department_consumption.sql)
+			(50, 'Draft', 'draft', 1, 10),
+			(51, 'Pending', 'pending', 2, 10),
+			(52, 'Posted', 'posted', 3, 10),
+			(53, 'Cancelled', 'cancelled', 4, 10)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	seedLogger.info('Seeded: status tagging');
+
+	// 7b. `inv_approval_level` / `inv_approval_log`: module CHECK + partial unique index
+	// (mirrors `drizzle/manual_inv_approval_module_check.sql` and 0041; no-op on already-migrated DBs)
+		await db.execute(
+			sql`ALTER TABLE "inv_approval_level" DROP CONSTRAINT IF EXISTS "inv_approval_level_module_chk"`
+		);
+		await db.execute(sql`
+		ALTER TABLE "inv_approval_level" ADD CONSTRAINT "inv_approval_level_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
+		`);
+		await db.execute(
+			sql`ALTER TABLE "inv_approval_log" DROP CONSTRAINT IF EXISTS "inv_approval_log_module_chk"`
+		);
+		await db.execute(sql`
+		ALTER TABLE "inv_approval_log" ADD CONSTRAINT "inv_approval_log_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
+		`);
+	await db.execute(
+		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_uidx"`
+	);
+	await db.execute(
+		sql`DROP INDEX IF EXISTS "inv_approval_level_store_module_level_active_uidx"`
+	);
+	await db.execute(sql`
+		CREATE UNIQUE INDEX "inv_approval_level_store_module_level_active_uidx"
+		ON "inv_approval_level" ("hospital_id", "store_id", "module", "level")
+		WHERE "deleted_at" IS NULL
+	`);
+	seedLogger.info('Seeded: inv_approval_level schema (module CHECK + active unique index)');
 
 	// 8. Document types (consent, form, instruction, certificate, help)
 	// Note: column is 'name' in old schema, 'document_type' in new schema after migration

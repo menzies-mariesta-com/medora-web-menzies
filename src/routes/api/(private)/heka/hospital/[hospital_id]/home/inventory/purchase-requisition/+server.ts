@@ -14,12 +14,18 @@ export const GET: RequestHandler = async (event) => {
 		const row = await getPurchaseRequisitionById(event, { hospitalId, id });
 		return json(row);
 	}
+	const mode = event.url.searchParams.get('mode');
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
 	const storeIdStr = event.url.searchParams.get('storeId');
 	const storeId =
 		storeIdStr != null && storeIdStr !== ''
 			? Number(storeIdStr)
+			: undefined;
+	const toStoreIdStr = event.url.searchParams.get('toStoreId');
+	const toStoreId =
+		toStoreIdStr != null && toStoreIdStr !== ''
+			? Number(toStoreIdStr)
 			: undefined;
 	const statusIdStr = event.url.searchParams.get('statusTaggingId');
 	const statusTaggingId =
@@ -34,10 +40,12 @@ export const GET: RequestHandler = async (event) => {
 		page,
 		pageSize,
 		storeId,
+		toStoreId: Number.isFinite(toStoreId as number) ? toStoreId : undefined,
 		statusTaggingId: Number.isFinite(statusTaggingId as number)
 			? statusTaggingId
 			: undefined,
-		prNo
+		prNo,
+		onlyWithRemainingQty: mode === 'poEligible'
 	});
 	return json(data);
 };
@@ -48,7 +56,8 @@ export const POST: RequestHandler = async (event) => {
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 	const data = await createPurchaseRequisition(event, {
 		hospitalId,
-		storeId: Number(body.storeId ?? 0),
+		fromStoreId: Number(body.fromStoreId ?? 0),
+		toStoreId: Number(body.toStoreId ?? 0),
 		remarks: body.remarks != null ? String(body.remarks) : null,
 		lines: lines.map((l) => ({
 			itemId: Number(l.itemId ?? 0),
@@ -66,6 +75,12 @@ export const PUT: RequestHandler = async (event) => {
 	const data = await updatePurchaseRequisition(event, {
 		hospitalId,
 		id: String(body.id ?? ''),
+		fromStoreId:
+			body.fromStoreId !== undefined
+				? Number(body.fromStoreId)
+				: undefined,
+		toStoreId:
+			body.toStoreId !== undefined ? Number(body.toStoreId) : undefined,
 		remarks:
 			body.remarks !== undefined
 				? body.remarks == null
