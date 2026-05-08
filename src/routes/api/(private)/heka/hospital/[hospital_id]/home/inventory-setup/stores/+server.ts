@@ -9,6 +9,18 @@ import {
 	updateStore
 } from '$lib/server/heka/administration/store.server';
 
+function parseUserGroupIds(raw: unknown): number[] | undefined {
+	if (raw === undefined) return undefined;
+	if (raw === null) return [];
+	if (!Array.isArray(raw)) return [];
+	const out: number[] = [];
+	for (const v of raw) {
+		const n = Number(v);
+		if (Number.isFinite(n) && n > 0) out.push(n);
+	}
+	return out;
+}
+
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	const mode = event.url.searchParams.get('mode') ?? 'paginated';
@@ -51,18 +63,12 @@ export const POST: RequestHandler = async (event) => {
 	const data = await createStore(event, {
 		hospitalId,
 		branchId: String(body.branchId ?? ''),
-		isCentralStore:
-			body.isCentralStore === true || body.isCentralStore === 'true',
 		storeName: body.storeName != null ? String(body.storeName) : null,
 		remark: body.remark != null ? String(body.remark) : null,
-		userGroupId:
-			body.userGroupId != null && body.userGroupId !== ''
-				? Number(body.userGroupId)
-				: null,
-		departmentId:
-			body.departmentId != null && body.departmentId !== ''
-				? Number(body.departmentId)
-				: null,
+		isPurchaseRequisitable:
+			body.isPurchaseRequisitable === true ||
+			body.isPurchaseRequisitable === 'true',
+		userGroupIds: parseUserGroupIds(body.userGroupIds) ?? [],
 		statusId:
 			body.statusId != null && body.statusId !== ''
 				? Number(body.statusId)
@@ -80,24 +86,14 @@ export const PUT: RequestHandler = async (event) => {
 		hospitalId,
 		id: Number(body.id ?? 0),
 		branchId: body.branchId != null ? String(body.branchId) : undefined,
-		isCentralStore:
-			body.isCentralStore === undefined
-				? undefined
-				: body.isCentralStore === true || body.isCentralStore === 'true',
 		storeName: body.storeName != null ? String(body.storeName) : undefined,
 		remark: body.remark != null ? String(body.remark) : undefined,
-		userGroupId:
-			body.userGroupId !== undefined
-				? body.userGroupId == null || body.userGroupId === ''
-					? null
-					: Number(body.userGroupId)
-				: undefined,
-		departmentId:
-			body.departmentId !== undefined
-				? body.departmentId == null || body.departmentId === ''
-					? null
-					: Number(body.departmentId)
-				: undefined,
+		isPurchaseRequisitable:
+			body.isPurchaseRequisitable === undefined
+				? undefined
+				: body.isPurchaseRequisitable === true ||
+					body.isPurchaseRequisitable === 'true',
+		userGroupIds: parseUserGroupIds(body.userGroupIds),
 		statusId:
 			body.statusId !== undefined
 				? body.statusId == null || body.statusId === ''
@@ -115,4 +111,3 @@ export const DELETE: RequestHandler = async (event) => {
 	await deleteStore(event, { hospitalId, id: Number(body.id ?? 0) });
 	return json({ ok: true });
 };
-

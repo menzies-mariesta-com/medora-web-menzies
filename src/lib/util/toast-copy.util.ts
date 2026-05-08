@@ -1,4 +1,4 @@
-import type { ToastService } from '$lib/service/toast.service.svelte.ts';
+import type { ToastService } from '$lib/service/toast.service.svelte';
 
 /**
  * Toast copy helpers.

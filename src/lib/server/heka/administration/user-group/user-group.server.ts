@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, ilike, ne } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -44,7 +44,7 @@ export async function getUserGroupsPaginated(
 			.select()
 			.from(table.userGroupTable)
 			.where(whereExpr)
-			.orderBy(table.userGroupTable.name)
+			.orderBy(desc(table.userGroupTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

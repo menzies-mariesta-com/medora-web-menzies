@@ -68,6 +68,10 @@
 		(data?.staff as { photoUrl?: string | null } | null)?.photoUrl ??
 			null
 	);
+	const userEmail = $derived(
+		((data as { user?: { email?: string | null } | null })?.user?.email ??
+			null) as string | null
+	);
 
 	/** Display name in module bar: `user.name` (auth `user` table) first, then staff legal name, then email. */
 	const staffDisplayName = $derived.by(() => {
@@ -92,9 +96,10 @@
 <div class="my-app bg-base-100">
 	{#if !isEmbed}
 		<GPrivateHekaNavbar />
-		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}`}
+		{#key `${hospitalId}-${((data as any)?.staffUserGroupsForNav ?? []).map((g: { id: number }) => g.id).join(',')}-${((data as any)?.staffBranchesForNav ?? []).map((b: { id: string }) => b.id).join(',')}-${(data as any)?.selectedInventoryFromStoreId ?? ''}-${(data as any)?.inventoryFromStoresForNav?.length ?? 0}`}
 			<GPrivateHekaModuleBar
 				{hospitalId}
+				{userEmail}
 				hospitalName={data?.currentHospitalName ?? null}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
@@ -106,6 +111,8 @@
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}
 				staffBranchesForNav={(data as any)?.staffBranchesForNav ?? []}
 				selectedBranchId={data?.selectedBranchId ?? null}
+				inventoryFromStoresForNav={(data as any)?.inventoryFromStoresForNav ?? []}
+				selectedInventoryFromStoreId={(data as any)?.selectedInventoryFromStoreId ?? null}
 				navbarVisible={
 					isInAppointmentModule
 						? appointmentNavbarOpen

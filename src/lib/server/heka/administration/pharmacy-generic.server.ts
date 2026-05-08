@@ -11,7 +11,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, eq, ilike, ne, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
 
 function hospitalScope(hospitalId: string) {
 	return eq(table.pharmacyGenericTable.hospitalId, hospitalId);
@@ -44,7 +44,7 @@ export async function getPharmacyGenericPaginated(
 			.select()
 			.from(table.pharmacyGenericTable)
 			.where(whereClause)
-			.orderBy(asc(table.pharmacyGenericTable.name))
+			.orderBy(desc(table.pharmacyGenericTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

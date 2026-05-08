@@ -17,11 +17,33 @@ export const GET: RequestHandler = async (event) => {
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
 	const prId = event.url.searchParams.get('prId') ?? undefined;
+	const storeIdRaw = event.url.searchParams.get('storeId');
+	const storeIdNum =
+		storeIdRaw != null && storeIdRaw !== ''
+			? Number(storeIdRaw)
+			: NaN;
+	const storeId =
+		Number.isFinite(storeIdNum) && storeIdNum > 0
+			? storeIdNum
+			: undefined;
+	const statusIdStr = event.url.searchParams.get('statusTaggingId');
+	const statusTaggingId =
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: undefined;
+	const poNoRaw = event.url.searchParams.get('poNo');
+	const poNo =
+		poNoRaw != null && poNoRaw !== '' ? poNoRaw : undefined;
 	const data = await listPurchaseOrders(event, {
 		hospitalId,
 		page,
 		pageSize,
-		prId
+		prId,
+		...(storeId != null ? { storeId } : {}),
+		statusTaggingId: Number.isFinite(statusTaggingId as number)
+			? statusTaggingId
+			: undefined,
+		poNo
 	});
 	return json(data);
 };
@@ -50,6 +72,7 @@ export const POST: RequestHandler = async (event) => {
 	}
 	const data = await createPurchaseOrder(event, {
 		hospitalId,
+		storeId: Number(body.storeId ?? 0),
 		prId: String(body.prId ?? ''),
 		supplierId: Number(body.supplierId ?? 0),
 		lines: lines.map((l) => ({

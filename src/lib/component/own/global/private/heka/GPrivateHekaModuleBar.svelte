@@ -38,10 +38,12 @@
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
+	type InventoryFromStoreForNav = { id: number; storeName: string | null };
 
 	let {
 		hospitalId = null,
 		hospitalName = null,
+		userEmail = null,
 		moduleList,
 		pageList,
 		staffId = null,
@@ -53,12 +55,15 @@
 		selectedUserGroupId = null,
 		staffBranchesForNav = [],
 		selectedBranchId = null,
+		inventoryFromStoresForNav = [],
+		selectedInventoryFromStoreId = null,
 		/** When set (e.g. in Nursing Workbench), navbar visibility is controlled by parent; otherwise internal state. */
 		navbarVisible = undefined,
 		onToggleNavbar = undefined
 	}: {
 		hospitalId?: string | null;
 		hospitalName?: string | null;
+		userEmail?: string | null;
 		moduleList: HekaPageModuleRow[];
 		pageList: HekaPageRow[];
 		staffId?: string | null;
@@ -69,6 +74,8 @@
 		selectedUserGroupId?: number | null;
 		staffBranchesForNav?: StaffBranchForNav[];
 		selectedBranchId?: string | null;
+		inventoryFromStoresForNav?: InventoryFromStoreForNav[];
+		selectedInventoryFromStoreId?: number | null;
 		navbarVisible?: boolean;
 		onToggleNavbar?: () => void;
 	} = $props();
@@ -89,15 +96,6 @@
 		getStaffPhotoDisplayUrl(staffPhotoUrl)
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
-
-	const registrationEditUrl = $derived(
-		hospitalId
-			? hekaHospitalPageUrl(
-					hospitalId,
-					WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION
-				)
-			: WebRoutesEnum.HEKA_HOME_ADMINISTRATION_STAFF_REGISTRATION
-	);
 
 	let accountModalOpen = $state(false);
 
@@ -212,12 +210,37 @@
 		return activeDbPageUrl.startsWith(base);
 	}
 
+	function isIdLikeSegment(segment: string): boolean {
+		// UUID v4/v7 (case-insensitive).
+		const uuidV4 =
+			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+		const uuidV7 =
+			/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+		if (uuidV4.test(segment) || uuidV7.test(segment)) return true;
+
+		// Purely numeric IDs.
+		if (/^\d+$/.test(segment)) return true;
+
+		// Opaque IDs (common in generated identifiers): long, URL-safe-ish, and contains digits.
+		// Keeps meaningful long slugs like "department-consumption" (no digits).
+		if (
+			segment.length >= 16 &&
+			/^[A-Za-z0-9_-]+$/.test(segment) &&
+			/\d/.test(segment) &&
+			!/^[A-Za-z]+$/.test(segment)
+		) {
+			return true;
+		}
+
+		return false;
+	}
+
 	let pageLocator = $derived.by(() => {
-		const segments = StringUtil.parseUrlSegments(
-			page.url.pathname
-		).slice(-2);
+		const segments = StringUtil.parseUrlSegments(page.url.pathname);
 		const pageTitle = segments
 			.filter((segment) => !(hospitalId && segment === hospitalId))
+			.filter((segment) => !isIdLikeSegment(segment))
+			.slice(-2)
 			.map((segment) => StringUtil.segmentToLabel(segment))
 			.join(' / ');
 
@@ -244,10 +267,11 @@
 	}
 
 	// User group select: only for STAFF with multiple user groups (after logged in)
+	const staffUserGroupCount = $derived(staffUserGroupsForNav?.length ?? 0);
 	const showUserGroupSelect = $derived(
-		userRoleId === RoleEnum.STAFF &&
-			(staffUserGroupsForNav?.length ?? 0) > 1
+		userRoleId === RoleEnum.STAFF && staffUserGroupCount >= 1
 	);
+	const userGroupSelectDisabled = $derived(staffUserGroupCount <= 1);
 	const setSelectedUserGroupUrl = $derived(
 		hospitalId
 			? `/heka/hospital/${hospitalId}/home/set-selected-user-group`
@@ -256,18 +280,48 @@
 	const selectedUserGroupIdStr = $derived(
 		selectedUserGroupId != null ? String(selectedUserGroupId) : ''
 	);
+	const staffBranchCount = $derived(staffBranchesForNav?.length ?? 0);
 	const showBranchSelect = $derived(
-		userRoleId === RoleEnum.STAFF &&
-			(staffBranchesForNav?.length ?? 0) > 1
+		userRoleId === RoleEnum.STAFF && staffBranchCount >= 1
 	);
+	const branchSelectDisabled = $derived(staffBranchCount <= 1);
 	const setSelectedBranchUrl = $derived(
 		hospitalId
 			? `/heka/hospital/${hospitalId}/home/set-selected-branch`
 			: ''
 	);
 	const selectedBranchIdStr = $derived(selectedBranchId ?? '');
+	const isInventoryOpsPathname = $derived.by(() => {
+		const hid = hospitalId ?? '';
+		if (!hid) return false;
+		const p = page.url.pathname;
+		const base = `/heka/hospital/${hid}/home/inventory`;
+		if (p === base) return true;
+		if (!p.startsWith(`${base}/`)) return false;
+		return !p.includes('inventory-setup');
+	});
+	const inventoryFromStoreCount = $derived(
+		inventoryFromStoresForNav?.length ?? 0
+	);
+	const showInventoryFromStoreSelect = $derived(
+		isInventoryOpsPathname && inventoryFromStoreCount >= 1
+	);
+	const inventoryFromStoreSelectDisabled = $derived(
+		inventoryFromStoreCount <= 1
+	);
+	const setSelectedInventoryFromStoreUrl = $derived(
+		hospitalId
+			? `/heka/hospital/${hospitalId}/home/set-selected-inventory-from-store`
+			: ''
+	);
+	const selectedInventoryFromStoreIdStr = $derived(
+		selectedInventoryFromStoreId != null
+			? String(selectedInventoryFromStoreId)
+			: ''
+	);
 	let userGroupForm: HTMLFormElement | undefined = $state();
 	let branchForm: HTMLFormElement | undefined = $state();
+	let inventoryFromStoreForm: HTMLFormElement | undefined = $state();
 
 	/** Same outline on every interactive control in the top and module bars. */
 	const navBarControlBorder =
@@ -298,6 +352,7 @@
 				>
 					<DaisyUiSelect
 						value={selectedBranchIdStr}
+						disabled={branchSelectDisabled}
 						className="d-select min-w-36 {navBarControlBorder}"
 						name="branchId"
 						onChange={() => branchForm?.requestSubmit()}
@@ -318,12 +373,34 @@
 				>
 					<DaisyUiSelect
 						value={selectedUserGroupIdStr}
+						disabled={userGroupSelectDisabled}
 						className="d-select min-w-36 {navBarControlBorder}"
 						name="userGroupId"
 						onChange={() => userGroupForm?.requestSubmit()}
 					>
 						{#each staffUserGroupsForNav as ug, i (`ug-${ug.id}-${i}`)}
 							<option value={String(ug.id)}>{ug.name ?? ''}</option>
+						{/each}
+					</DaisyUiSelect>
+				</form>
+			{/if}
+			{#if showInventoryFromStoreSelect && setSelectedInventoryFromStoreUrl}
+				<form
+					bind:this={inventoryFromStoreForm}
+					class="form-control"
+					action={setSelectedInventoryFromStoreUrl}
+					method="post"
+					role="presentation"
+				>
+					<DaisyUiSelect
+						value={selectedInventoryFromStoreIdStr}
+						disabled={inventoryFromStoreSelectDisabled}
+						className="d-select min-w-40 max-w-[14rem] {navBarControlBorder}"
+						name="storeId"
+						onChange={() => inventoryFromStoreForm?.requestSubmit()}
+					>
+						{#each inventoryFromStoresForNav as s, i (`ifs-${s.id}-${i}`)}
+							<option value={String(s.id)}>{s.storeName?.trim() ? s.storeName : `Store #${s.id}`}</option>
 						{/each}
 					</DaisyUiSelect>
 				</form>
@@ -384,8 +461,9 @@
 <AccountModal
 	open={accountModalOpen}
 	onClose={closeAccountModal}
+	{hospitalId}
+	{userEmail}
 	{staffId}
-	{registrationEditUrl}
 />
 
 <!-- navbar end -->

@@ -31,6 +31,8 @@
 
 	type BillingLine = {
 		id: number;
+		/** Distinguishes OP billing source rows; avoids duplicate keys with service order detail id. */
+		lineSource?: 'service_order_detail' | 'medication_order_line';
 		serviceId: number;
 		serviceName: string | null;
 		orderNo: string | null;
@@ -158,6 +160,13 @@
 		const p = billingMeta?.printedAt;
 		return p != null && String(p).trim() !== '';
 	});
+
+	function opBillingLineRowKey(line: BillingLine): string {
+		if (line.lineSource === 'medication_order_line' || line.lineSource === 'service_order_detail') {
+			return `${line.lineSource}-${line.id}`;
+		}
+		return `row-${line.id}`;
+	}
 
 	function lineTotal(line: BillingLine): number {
 		const amount = Number(line.serviceAmount ?? 0) || 0;
@@ -1014,7 +1023,7 @@
 								</div>
 								<div class="d-collapse-content">
 									<ul class="space-y-1 text-sm">
-										{#each group.lines as line (line.id)}
+										{#each group.lines as line (opBillingLineRowKey(line))}
 											<li class="flex items-center justify-between gap-3 rounded-box bg-base-200/40 px-3 py-1.5">
 												<div class="min-w-0">
 													<p class="truncate font-medium">

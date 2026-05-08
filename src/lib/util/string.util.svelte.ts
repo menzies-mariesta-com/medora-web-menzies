@@ -62,13 +62,14 @@ export class StringUtil {
 
 	/**
 	 * Row hover text for inventory list rows (flat *ByName + timestamps).
-	 * Same layout as {@link tableToolTip} but no Approved lines—those stay in table columns only.
 	 */
 	static inventoryAuditRowTooltip(row: {
 		createdAt?: string | null;
 		updatedAt?: string | null;
 		createdByName?: string | null;
 		updatedByName?: string | null;
+		approvedAt?: string | null;
+		approvedByName?: string | null;
 		cancelledAt?: string | null;
 		cancelledByName?: string | null;
 	}): string {
@@ -77,16 +78,20 @@ export class StringUtil {
 		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
 		const createdBy = row.createdByName ?? '—';
 		const updatedBy = row.updatedByName ?? '—';
+		const approvedBy = row.approvedByName ?? '—';
+		const approvedAt = dateTimeUtil.formatDateTime(row.approvedAt);
 		const canceledBy = row.cancelledByName ?? '—';
 		const canceledAt = dateTimeUtil.formatDateTime(row.cancelledAt);
+		const hasApprovalInfo =
+			approvedBy !== '—' || (approvedAt ?? '') !== '—';
 		const hasCancelInfo =
 			canceledBy !== '—' || (canceledAt ?? '') !== '—';
 
 		if (hasCancelInfo) {
-			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
+			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}${hasApprovalInfo ? `\nApproved by: ${approvedBy}\nAt: ${approvedAt}` : ''}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
 		}
 
-		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
+		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}${hasApprovalInfo ? `\nApproved by: ${approvedBy}\nAt: ${approvedAt}` : ''}`;
 	}
 
 	/**

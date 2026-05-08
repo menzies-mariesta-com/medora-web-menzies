@@ -44,7 +44,7 @@
 </script>
 
 <button
-	class="d-btn {className}"
+	class="d-btn disabled:opacity-40 disabled:cursor-not-allowed {className}"
 	bind:this={btnEl}
 	type={resolvedType}
 	onclick={onClick}

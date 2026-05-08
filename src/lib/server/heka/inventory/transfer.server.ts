@@ -16,6 +16,8 @@ export async function postStoreTransfer(
 		fromStoreId: number;
 		toStoreId: number;
 		remark: string | null;
+		/** When set, links this move to a posted GRN (e.g. to requesting store). */
+		sourceGrnId?: string | null;
 		lines: {
 			itemId: number;
 			batchId: number;
@@ -46,6 +48,7 @@ export async function postStoreTransfer(
 				requestedBy: userId,
 				postedAt: sql`now()`,
 				remark: input.remark,
+				sourceGrnId: input.sourceGrnId ?? null,
 				createdBy: userId,
 				updatedBy: userId
 			})

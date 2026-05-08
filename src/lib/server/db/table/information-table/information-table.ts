@@ -8,6 +8,7 @@ import {
 	foreignKey,
 	integer,
 	pgTable,
+	primaryKey,
 	serial,
 	text,
 	timestamp,
@@ -1578,6 +1579,8 @@ export const opBillingLineTable = pgTable(
 			() => serviceOrderDetailTable.id,
 			{ onDelete: 'set null' }
 		),
+		/** Set when the bill line is sourced from a saved medication (internal) order line. */
+		medicationOrderLineId: integer('medication_order_line_id'),
 		serviceId: integer('service_id')
 			.notNull()
 			.references(() => serviceItemTable.id, { onDelete: 'restrict' }),
@@ -1614,46 +1617,50 @@ export const opBillingLineTable = pgTable(
 		index('op_billing_line_service_id_idx').on(table.serviceId),
 		index(
 			'op_billing_line_service_order_detail_id_idx'
-		).on(table.serviceOrderDetailId)
+		).on(table.serviceOrderDetailId),
+		index('op_billing_line_medication_order_line_id_idx').on(
+			table.medicationOrderLineId
+		)
 	]
 );
 
-export const storeTable = pgTable(
-	'store',
+export const storeTable = pgTable('store', {
+	id: serial('id').primaryKey(),
+	branchId: uuid('branch_id')
+		.notNull()
+		.references(() => hospitalBranchTable.id, {
+			onDelete: 'cascade'
+		}),
+	/** When true, store may create purchase requisitions. */
+	isPurchaseRequisitable: boolean('is_purchase_requisitable')
+		.notNull()
+		.default(false),
+	storeName: varchar('store_name', { length: 512 }),
+	remark: text('remark'),
+	statusId: integer('status_id')
+		.references(() => statusTable.id)
+		.notNull()
+		.default(StatusEnum.ACTIVE),
+	...timestamps
+});
+
+/** Many-to-many: a store can be linked to zero or more user groups. */
+export const storeUserGroupTable = pgTable(
+	'store_user_group',
 	{
-		id: serial('id').primaryKey(),
-		branchId: uuid('branch_id')
+		storeId: integer('store_id')
 			.notNull()
-			.references(() => hospitalBranchTable.id, {
-				onDelete: 'cascade'
-			}),
-		/** Exactly one of `userGroupId` or `departmentId` must be set (DB CHECK). */
-		userGroupId: integer('user_group_id').references(
-			() => userGroupTable.id,
-			{ onDelete: 'restrict' }
-		),
-		departmentId: integer('department_id').references(
-			() => departmentTable.id,
-			{ onDelete: 'restrict' }
-		),
-		storeName: varchar('store_name', { length: 512 }),
-		remark: text('remark'),
-		/** At most one central store per branch (partial unique index). GRN receipts target this store. */
-		isCentralStore: boolean('is_central_store').notNull().default(false),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		userGroupId: integer('user_group_id')
 			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
+			.references(() => userGroupTable.id, { onDelete: 'restrict' }),
+		...junctionTimestamps
 	},
 	(t) => [
-		check(
-			'store_user_group_xor_department_chk',
-			sql`(((${t.userGroupId} IS NOT NULL)::int) + ((${t.departmentId} IS NOT NULL)::int)) = 1`
-		),
-		uniqueIndex('store_branch_central_unique')
-			.on(t.branchId)
-			.where(sql`${t.isCentralStore} = true`)
+		primaryKey({
+			name: 'store_user_group_pk',
+			columns: [t.storeId, t.userGroupId]
+		})
 	]
 );
 

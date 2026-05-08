@@ -1,10 +1,12 @@
 # lib > server > db
 
-> Created: June 21, 2025 | Updated: June 21, 2025
+> Created: June 21, 2025 | Updated: April 26, 2026
 
-## Notes
+## Seeds (`src/lib/server/db/seed/`)
 
-1. Put all
+Run order (see root `package.json`): **`db:seed:master`** → **`db:seed:auth`** → **`db:seed:information`** → **`db:seed:marketplace`**, or **`pnpm db:seed`** for all.
+
+- **`information-table-seed.ts`**: modules, pages, **`status_tagging_type` / `status_tagging`** (inventory document statuses, including **Department indent** type **8**, ids **40–45**), and **section 7b** — idempotent DDL on **`inv_approval_level`** / **`inv_approval_log`**: module **`CHECK`** (`PR`,`PO`,`DI`,`SI`,`SR`) and **partial unique** index on active rows. Use this when you rely on **`pnpm db:seed`** without a full **`pnpm db:migrate`** so approval config matches migrations **0039–0041** (inventory tables such as `inv_approval_level` must already exist).
 
 ## Connection pooling (performance)
 

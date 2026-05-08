@@ -1,34 +1,34 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
-	import GrnFromPoLineEditModal from '$lib/component/own/local/private/heka/inventory/grn/GrnFromPoLineEditModal.svelte';
-	import GrnDirectLineModal from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLineModal.svelte';
-	import GrnDirectLinesCard from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLinesCard.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { toastError, toastLine } from '$lib/util/toast-copy.util';
+	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { InvGrnStatusTaggingEnum } from '$lib/model/enum/db-link';
+
+	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+	);
+
+	let { data } = $props();
+	const selectedInventoryFromStoreId = $derived(
+		(data as { selectedInventoryFromStoreId?: number | null })
+			.selectedInventoryFromStoreId ?? null
 	);
 
 	const toastService = new ToastService();
@@ -36,1204 +36,369 @@
 	type GrnRow = {
 		id: string;
 		poId: string | null;
+		poNo?: string | null;
+		poPrId?: string | null;
+		grnTransferDone?: boolean;
 		storeId: number;
 		storeName?: string | null;
 		supplierName?: string | null;
 		receivedDate: string;
 		statusTaggingId: number;
 		statusName?: string | null;
+		invoiceNo?: string | null;
+		invoiceDate?: string | null;
+		invoiceAmount?: string | null;
+		invoicePhotoUrl?: string | null;
 		createdAt?: string | null;
 		updatedAt?: string | null;
 		receivedByName?: string | null;
 		cancelledAt?: string | null;
 	};
 
-	type GrnLineTableRow = {
-		id: number;
-		poLineId: number;
-		receivedQty: string;
-		batchNo: string;
-		expiryDate: string;
-		purchasePrice: string;
-		itemName: string | null;
-		isBatchRequired: boolean;
-		itemUnitMasterId: number | null;
-		itemUnitMasterConversion: string | null;
-	};
-
-	type PoLine = {
-		id: number;
-		itemId: number;
-		quantity: string;
-		unitId: number;
-		unitPrice: string;
-		qtyReceivedCumulative: string;
-		itemName?: string | null;
-		isBatchRequired?: boolean;
-		itemUnitMasterId?: number | null;
-		itemUnitMasterConversion?: string | null;
-	};
-
-	type ReceivingStore = { storeId: number; storeName: string | null } | null;
-
-	type PoRowLite = {
-		id: string;
-		poNo?: string | null;
-		statusTaggingId: number;
-		statusName: string | null;
-		supplierName?: string | null;
-	};
-
-	let viewMode = $state<'list' | 'create'>('list');
-	let grnFormMode = $state<'fromPo' | 'direct'>('fromPo');
-
 	let list = $state<GrnRow[]>([]);
 	let listLoading = $state(false);
+	let total = $state(0);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let tableFilters = $state<Record<string, string>>({});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let lastInitHospitalId = $state<string | null>(null);
+	let listAbort: AbortController | null = null;
+	let transferSubmittingId = $state<string | null>(null);
+	let canPost = $state(false);
+	let canPostLoading = $state(false);
 
-	let poList = $state<PoRowLite[]>([]);
-	let selectedPoId = $state<string | null>(null);
-	let receivingStore = $state<ReceivingStore>(null);
-	/** Set when PO is selected but API returns null or error (e.g. no central store). */
-	let receivingStoreHint = $state<string | null>(null);
-	let receivedDate = $state(new Date().toISOString().slice(0, 10));
-	let poLines = $state<PoLine[]>([]);
-	let lineForms = $state<
-		{
-			poLineId: number;
-			receivedQty: string;
-			batchNo: string;
-			expiryDate: string;
-			purchasePrice: string;
-		}[]
-	>([]);
+	const GRN_STATUS_FILTER_OPTIONS = $derived([
+		{ label: m.inv_grn_filter_status_draft(), value: String(InvGrnStatusTaggingEnum.DRAFT) },
+		{ label: m.inv_grn_filter_status_posted(), value: String(InvGrnStatusTaggingEnum.POSTED) },
+		{ label: m.inv_grn_filter_status_cancelled(), value: String(InvGrnStatusTaggingEnum.CANCELLED) }
+	]);
 
-	let submitting = $state(false);
+	const grnNewPath = $derived(
+		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/grn/new' as any)
+	);
 
-	type IumOpt = {
-		id: number;
-		purchaseUnitId: number;
-		issueUnitId: number;
-		conversionDisplay: string;
-		purchaseUnitName: string;
-		issueUnitName: string;
-	};
-
-	type GrnDirectLine = {
-		key: string;
-		itemSearch: string;
-		hits: { id: number; name: string | null }[];
-		itemId: number | null;
-		itemLabel: string;
-		receivedQty: string;
-		batchNo: string;
-		expiryDate: string;
-		purchasePrice: string;
-		iumList: IumOpt[];
-		itemUnitMasterId: number | null;
-		isBatchRequired?: boolean;
-	};
-
-	let storeOptions = $state<{ id: number; name: string | null }[]>([]);
-	let directStoreId = $state<number | null>(null);
-	let directSupplierId = $state<number | null>(null);
-	let directLines = $state<GrnDirectLine[]>([]);
-
-	let directLineItemFilter = $state('');
-	let directLineDialogOpen = $state(false);
-	let editingDirectKey = $state<string | null>(null);
-	let draftDirectLine = $state<GrnDirectLine>(newDirectLine());
-	let directLineDialogSubmitting = $state(false);
-
-	let grnLineItemFilter = $state('');
-	let grnFromPoLineDialogOpen = $state(false);
-	let grnFromPoLineDialogSubmitting = $state(false);
-	let draftGrnFromPoLine = $state<{
-		poLineId: number;
-		receivedQty: string;
-		batchNo: string;
-		expiryDate: string;
-		purchasePrice: string;
-	} | null>(null);
-
-	function newDirectLine(): GrnDirectLine {
-		return {
-			key: crypto.randomUUID(),
-			itemSearch: '',
-			hits: [],
-			itemId: null,
-			itemLabel: '',
-			receivedQty: '1',
-			batchNo: '',
-			expiryDate: '',
-			purchasePrice: '0',
-			iumList: [],
-			itemUnitMasterId: null
-		};
-	}
-
-	function purchaseUnitForDirectLine(line: GrnDirectLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
-		return ium?.purchaseUnitId ?? null;
-	}
-
-	function conversionLabelDirect(line: GrnDirectLine): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
-		return ium?.conversionDisplay ?? '—';
-	}
-
-	const filteredDirectLines = $derived.by(() => {
-		const q = directLineItemFilter.trim().toLowerCase();
-		if (!q) return directLines;
-		return directLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelDirect(l).toLowerCase();
-			const r = (l.receivedQty ?? '').toLowerCase();
-			const b = (l.batchNo ?? '').toLowerCase();
-			const p = (l.purchasePrice ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || r.includes(q) || b.includes(q) || p.includes(q);
-		});
-	});
-
-	const directLineTableColumns: MariTableColumn<GrnDirectLine>[] = [
-		{
-			id: 'item',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: false,
-			format: (_v, row) => `${row.itemLabel || '—'}${row.isBatchRequired ? ' · batch' : ''}`
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: false,
-			format: (_v, row) => conversionLabelDirect(row)
-		},
-		{
-			id: 'receivedQty',
-			header: m.inv_grn_line_received_qty(),
-			field: 'receivedQty',
-			filterable: false,
-			format: (_v, row) => row.receivedQty?.trim() || '—'
-		},
-		{
-			id: 'batchNo',
-			header: m.inv_stock_col_batch(),
-			field: 'batchNo',
-			filterable: false,
-			format: (_v, row) => row.batchNo?.trim() || '—'
-		},
-		{
-			id: 'expiryDate',
-			header: m.inv_stock_col_expiry(),
-			field: 'expiryDate',
-			filterable: false,
-			format: (_v, row) => row.expiryDate?.trim() || '—'
-		},
-		{
-			id: 'purchasePrice',
-			header: m.inv_stock_col_price(),
-			field: 'purchasePrice',
-			filterable: false,
-			format: (_v, row) => row.purchasePrice?.trim() || '—'
-		}
-	];
-
-	function openDirectLineDialogForCreate() {
-		editingDirectKey = null;
-		draftDirectLine = newDirectLine();
-		directLineDialogOpen = true;
-	}
-
-	function openDirectLineDialogForEdit(line: GrnDirectLine) {
-		editingDirectKey = line.key;
-		draftDirectLine = {
-			...line,
-			hits: [...line.hits],
-			iumList: [...line.iumList]
-		};
-		directLineDialogOpen = true;
-	}
-
-	function closeDirectLineDialog() {
-		directLineDialogOpen = false;
-		editingDirectKey = null;
-		directLineDialogSubmitting = false;
-	}
-
-	async function pickDraftDirectItem(itemId: number) {
-		await hydrateGrnDirectLineItem(draftDirectLine, itemId);
-		draftDirectLine = { ...draftDirectLine };
-	}
-
-	function saveDirectDraftLine() {
-		const unitId = purchaseUnitForDirectLine(draftDirectLine);
-		if (draftDirectLine.itemId == null || unitId == null) {
-			toastService.addToast(
-				'Could not save line',
-				StatusColorEnum.ERROR,
-				'Select an item and a purchase unit conversion.'
-			);
-			return;
-		}
-		const rq = draftDirectLine.receivedQty.trim();
-		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast(
-				toastLine(m.entity_grn(), m.toast_action_saved_failed()),
-				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
-			);
-			return;
-		}
-		if (draftDirectLine.isBatchRequired) {
-			if (
-				!draftDirectLine.batchNo.trim() ||
-				!draftDirectLine.expiryDate.trim() ||
-				!draftDirectLine.purchasePrice.trim()
-			) {
-				toastService.addToast(
-					'Could not save line',
-					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
-				);
-				return;
-			}
-		}
-		directLineDialogSubmitting = true;
-		try {
-			const saved = { ...draftDirectLine, receivedQty: rq };
-			if (editingDirectKey) {
-				directLines = directLines.map((l) => (l.key === editingDirectKey ? saved : l));
-			} else {
-				directLines = [...directLines, saved];
-			}
-			closeDirectLineDialog();
-		} finally {
-			directLineDialogSubmitting = false;
-		}
-	}
-
-	function deleteDirectLine(key: string) {
-		directLines = directLines.filter((l) => l.key !== key);
-	}
-
-	function openGrnFromPoLineDialog(poLineId: number) {
-		const row = lineForms.find((f) => f.poLineId === poLineId);
-		if (!row) return;
-		draftGrnFromPoLine = {
-			poLineId: row.poLineId,
-			receivedQty: row.receivedQty,
-			batchNo: row.batchNo,
-			expiryDate: row.expiryDate,
-			purchasePrice: row.purchasePrice
-		};
-		grnFromPoLineDialogOpen = true;
-	}
-
-	function closeGrnFromPoLineDialog() {
-		grnFromPoLineDialogOpen = false;
-		draftGrnFromPoLine = null;
-		grnFromPoLineDialogSubmitting = false;
-	}
-
-	function saveGrnFromPoLineDraft() {
-		if (!draftGrnFromPoLine) return;
-		const meta = poLines.find((l) => l.id === draftGrnFromPoLine!.poLineId);
-		const rq = draftGrnFromPoLine.receivedQty.trim();
-		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast(
-				toastLine(m.entity_grn(), m.toast_action_saved_failed()),
-				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
-			);
-			return;
-		}
-		if (meta?.isBatchRequired) {
-			if (
-				!draftGrnFromPoLine.batchNo.trim() ||
-				!draftGrnFromPoLine.expiryDate.trim() ||
-				!draftGrnFromPoLine.purchasePrice.trim()
-			) {
-				toastService.addToast(
-					'Could not save line',
-					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
-				);
-				return;
-			}
-		}
-		grnFromPoLineDialogSubmitting = true;
-		try {
-			patchLineForm(draftGrnFromPoLine.poLineId, {
-				receivedQty: rq,
-				batchNo: draftGrnFromPoLine.batchNo,
-				expiryDate: draftGrnFromPoLine.expiryDate,
-				purchasePrice: draftGrnFromPoLine.purchasePrice
-			});
-			closeGrnFromPoLineDialog();
-		} finally {
-			grnFromPoLineDialogSubmitting = false;
-		}
-	}
-
-	function removeGrnFromPoLine(poLineId: number) {
-		lineForms = lineForms.filter((f) => f.poLineId !== poLineId);
-	}
-
-	async function loadStoreOptions() {
-		if (!hospitalId) return;
-		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?pageSize=500`,
-			{ method: 'GET' }
+	function canTransferGrnToRequestingStore(row: GrnRow): boolean {
+		return (
+			row.poId != null &&
+			row.poId !== '' &&
+			row.poPrId != null &&
+			row.poPrId !== '' &&
+			row.grnTransferDone !== true &&
+			selectedInventoryFromStoreId != null &&
+			row.storeId === selectedInventoryFromStoreId
 		);
-		if (!res.ok) return;
-		const j = (await res.json()) as { data: { id: number; storeName: string | null }[] };
-		storeOptions = (j.data ?? []).map((r) => ({
-			id: r.id,
-			name: r.storeName
-		}));
-	}
-
-	async function hydrateGrnDirectLineItem(line: GrnDirectLine, itemId: number) {
-		if (!hospitalId) return;
-		line.itemId = itemId;
-		const [detailRes, iumRes] = await Promise.all([
-			fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
-				{ method: 'GET' }
-			),
-			fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-				{ method: 'GET' }
-			)
-		]);
-		const detail = (await detailRes.json()) as {
-			itemName?: string | null;
-			itemUnitMasterIds?: number[];
-			defaultItemUnitMasterId?: number | null;
-			isBatchRequired?: boolean;
-		};
-		const itemLabel = detail.itemName ?? '—';
-		line.itemLabel = itemLabel;
-		line.itemSearch = itemLabel;
-		const allIum = (await iumRes.json()) as IumOpt[];
-		const allowed = new Set(detail.itemUnitMasterIds ?? []);
-		line.iumList = allIum.filter((u) => allowed.has(u.id));
-		const def = detail.defaultItemUnitMasterId;
-		line.itemUnitMasterId =
-			def != null && line.iumList.some((u) => u.id === def)
-				? def
-				: (line.iumList[0]?.id ?? null);
-		line.isBatchRequired = detail.isBatchRequired ?? false;
-	}
-
-	async function searchGrnItems(q: string) {
-		if (!hospitalId || !q.trim()) return [];
-		const qEnc = encodeURIComponent(q.trim());
-		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
-		);
-		if (!res.ok) return [];
-		const j = (await res.json()) as { data: { id: number; itemName?: string | null }[] };
-		return (j.data ?? []).map((r) => ({
-			label: r.itemName ?? '—',
-			value: String(r.id)
-		}));
 	}
 
 	async function loadList() {
 		if (!hospitalId) return;
 		listLoading = true;
+		listAbort?.abort();
+		listAbort = new AbortController();
 		try {
-			try {
-				const res = await fetch(
-					`/api/heka/hospital/${hospitalId}/home/inventory/grn?pageSize=${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`,
-					{ method: 'GET' }
-				);
-				if (!res.ok) {
-					toastService.addToast(
-						'Could not load GRN data',
-						StatusColorEnum.ERROR,
-						`HTTP ${res.status}`
-					);
-					return;
-				}
-				const j = (await res.json()) as { data: GrnRow[] };
-				list = j.data ?? [];
-			} catch (e) {
-				toastError(toastService, m.entity_grn(), m.toast_action_loaded_failed(), e);
+			const pageSize = Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE;
+			const sp = new URLSearchParams();
+			sp.set('page', String(currentPage));
+			sp.set('pageSize', String(pageSize));
+			if (selectedInventoryFromStoreId != null) {
+				sp.set('storeId', String(selectedInventoryFromStoreId));
 			}
+			const poNo = tableFilters.poNo?.trim();
+			if (poNo) sp.set('poNo', poNo);
+			const invoiceNo = tableFilters.invoiceNo?.trim();
+			if (invoiceNo) sp.set('invoiceNo', invoiceNo);
+			const statusId = tableFilters.statusTaggingId?.trim();
+			if (statusId) sp.set('statusTaggingId', statusId);
+
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory/grn?${sp.toString()}`,
+				{ method: 'GET', signal: listAbort.signal }
+			);
+			if (!res.ok) {
+				toastService.addToast(
+					m.inv_page_grn_title(),
+					StatusColorEnum.ERROR,
+					`HTTP ${res.status}`
+				);
+				return;
+			}
+			const j = (await res.json()) as { data: GrnRow[]; total?: number };
+			list = j.data ?? [];
+			total = j.total ?? 0;
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			toastService.addErrorToast(m.inv_page_grn_title(), e);
 		} finally {
 			listLoading = false;
 		}
 	}
 
-	async function loadEligiblePos() {
+	$effect(() => {
+		const h = hospitalId;
+		if (!h) {
+			list = [];
+			total = 0;
+			return;
+		}
+		if (lastInitHospitalId === h) return;
+		lastInitHospitalId = h;
+		currentPage = 1;
+		tableFilters = {};
+	});
+
+	$effect(() => {
 		if (!hospitalId) return;
-		try {
-			const poRes = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory/purchase-order?pageSize=${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`,
-				{ method: 'GET' }
-			);
-			if (!poRes.ok) {
-				toastService.addToast(
-					'Could not load eligible POs',
-					StatusColorEnum.ERROR,
-					`HTTP ${poRes.status}`
-				);
-				return;
-			}
-			const j = (await poRes.json()) as { data: PoRowLite[] };
-			/** GRN allowed: approved, sent, partially received — filter client-side by status id if needed */
-			poList = (j.data ?? []).filter(
-				(p) =>
-					p.statusTaggingId === InvPoStatusTaggingEnum.APPROVED ||
-					p.statusTaggingId === InvPoStatusTaggingEnum.SENT_TO_SUPPLIER ||
-					p.statusTaggingId === InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
-			);
-		} catch (e) {
-			toastError(
-				toastService,
-				m.entity_purchase_order(),
-				m.toast_action_loaded_failed(),
-				e
-			);
+		void selectedInventoryFromStoreId;
+		currentPage = 1;
+		void loadList();
+	});
+
+	$effect(() => {
+		const hid = hospitalId;
+		const sid = selectedInventoryFromStoreId;
+		if (!hid || sid == null) {
+			canPost = false;
+			return;
 		}
-	}
-
-	async function onPickPo(poId: string | null) {
-		selectedPoId = poId;
-		receivingStore = null;
-		receivingStoreHint = null;
-		poLines = [];
-		lineForms = [];
-		if (!hospitalId || !poId) return;
-		try {
-			const [storeRes, poRes] = await Promise.all([
-				fetch(
-					`/api/heka/hospital/${hospitalId}/home/inventory/grn?mode=receivingStoreForPo&poId=${encodeURIComponent(poId)}`,
-					{ method: 'GET' }
-				),
-				fetch(
-					`/api/heka/hospital/${hospitalId}/home/inventory/purchase-order?id=${encodeURIComponent(poId)}`,
-					{ method: 'GET' }
-				)
-			]);
-
-			let storeBody: unknown = null;
-			try {
-				storeBody = await storeRes.json();
-			} catch (e) {
-				toastError(toastService, m.entity_store(), m.toast_action_loaded_failed(), e);
-			}
-
-			if (!storeRes.ok) {
-				const msg =
-					storeBody &&
-					typeof storeBody === 'object' &&
-					'message' in storeBody &&
-					typeof (storeBody as { message: unknown }).message === 'string'
-						? (storeBody as { message: string }).message
-						: typeof storeBody === 'object' &&
-								storeBody &&
-								'error' in storeBody
-							? String((storeBody as { error: unknown }).error)
-							: `HTTP ${storeRes.status}`;
-				receivingStoreHint = msg;
-				toastService.addToast(
-					toastLine(m.entity_store(), m.toast_action_loaded_failed()),
-					StatusColorEnum.ERROR,
-					msg
-				);
-			} else if (
-				storeBody != null &&
-				typeof storeBody === 'object' &&
-				'storeId' in storeBody &&
-				typeof (storeBody as { storeId: unknown }).storeId === 'number'
-			) {
-				receivingStore = storeBody as {
-					storeId: number;
-					storeName: string | null;
-				};
-			} else {
-				receivingStoreHint = m.inv_grn_receiving_store_none_central();
-				toastService.addToast(
-					'Could not load receiving store',
-					StatusColorEnum.ERROR,
-					receivingStoreHint
-				);
-			}
-
-			if (!poRes.ok) {
-				toastService.addToast(
-					'Could not load PO lines',
-					StatusColorEnum.ERROR,
-					`HTTP ${poRes.status}`
-				);
-				return;
-			}
-			const po = (await poRes.json()) as { lines: PoLine[] } | null;
-			poLines = po?.lines ?? [];
-			lineForms = poLines.map((ln) => {
-				const ordered = Number(ln.quantity);
-				const got = Number(ln.qtyReceivedCumulative);
-				const rem = Math.max(0, ordered - got);
-				return {
-					poLineId: ln.id,
-					receivedQty: rem > 0 ? String(rem) : '0',
-					batchNo: '',
-					expiryDate: '',
-					purchasePrice: ln.unitPrice ?? ''
-				};
+		canPostLoading = true;
+		fetch(
+			`/api/heka/hospital/${hid}/home/inventory/grn?mode=canPost&storeId=${encodeURIComponent(String(sid))}`,
+			{ method: 'GET' }
+		)
+			.then((r) => (r.ok ? r.json() : null))
+			.then((j: any) => {
+				canPost = Boolean(j?.canPost);
+			})
+			.catch(() => {
+				canPost = false;
+			})
+			.finally(() => {
+				canPostLoading = false;
 			});
-		} catch (e) {
-			toastError(toastService, m.entity_grn(), m.toast_action_loaded_failed(), e);
-		}
-	}
+	});
 
-	async function submitGrn() {
-		if (!hospitalId || !selectedPoId || !receivingStore) {
-			toastService.addToast(
-				'Could not post GRN',
-				StatusColorEnum.ERROR,
-				'Select a PO with a valid receiving store.'
-			);
-			return;
-		}
-		if (lineForms.length === 0) {
-			toastService.addToast(
-				'Could not post GRN',
-				StatusColorEnum.ERROR,
-				'At least one line is required. Reselect the PO to restore lines.'
-			);
-			return;
-		}
-		const lines = lineForms
-			.map((f) => ({
-				poLineId: f.poLineId,
-				receivedQty: f.receivedQty.trim(),
-				batchNo: f.batchNo.trim() || null,
-				expiryDate: f.expiryDate.trim() || null,
-				purchasePrice: f.purchasePrice.trim() || null
-			}))
-			.filter((l) => Number(l.receivedQty) > 0);
-		if (lines.length === 0) {
-			toastService.addToast(
-				'Could not post GRN',
-				StatusColorEnum.ERROR,
-				'Enter received quantity on at least one line.'
-			);
-			return;
-		}
-		const lnById = new Map(poLines.map((l) => [l.id, l]));
-		for (const l of lines) {
-			const meta = lnById.get(l.poLineId);
-			if (meta?.isBatchRequired) {
-				if (!l.batchNo || !l.expiryDate || !l.purchasePrice) {
-					toastService.addToast(
-						'Could not post GRN',
-						StatusColorEnum.ERROR,
-						'Batch number, expiry, and purchase price are required for batch-tracked items.'
-					);
-					return;
-				}
-			}
-		}
-		submitting = true;
+	async function transferToRequestingStore(row: GrnRow) {
+		if (!hospitalId || !row.poId) return;
+		transferSubmittingId = row.id;
 		try {
 			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory/grn`,
+				`/api/heka/hospital/${hospitalId}/home/inventory/grn/transfer-to-requesting-store`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						poId: selectedPoId,
-						storeId: receivingStore.storeId,
-						receivedDate,
-						lines
-					})
+					body: JSON.stringify({ grnId: row.id })
 				}
 			);
 			if (!res.ok) {
+				const t = await res.text();
 				toastService.addToast(
-					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
+					m.inv_grn_transfer_to_requesting(),
 					StatusColorEnum.ERROR,
-					await res.text()
+					t || String(res.status)
 				);
 				return;
 			}
-			viewMode = 'list';
-			selectedPoId = null;
-			receivingStore = null;
-			receivingStoreHint = null;
-			poLines = [];
-			lineForms = [];
+			toastService.addToast(m.inv_common_success(), StatusColorEnum.SUCCESS);
 			await loadList();
-			await loadEligiblePos();
 		} catch (e) {
-			toastError(toastService, m.entity_grn(), m.toast_action_submitted_failed(), e);
+			toastService.addErrorToast('Transfer', e);
 		} finally {
-			submitting = false;
+			transferSubmittingId = null;
 		}
 	}
 
-	function openCreate() {
-		grnFormMode = 'fromPo';
-		viewMode = 'create';
-		void loadEligiblePos();
+	function grnDetailUrl(grnId: string) {
+		return `/heka/hospital/${hospitalId}/home/inventory/grn/${encodeURIComponent(grnId)}`;
 	}
 
-	function openCreateDirect() {
-		grnFormMode = 'direct';
-		viewMode = 'create';
-		directStoreId = null;
-		directSupplierId = null;
-		directLines = [];
-		directLineItemFilter = '';
-		receivedDate = new Date().toISOString().slice(0, 10);
-		void loadStoreOptions();
-	}
-
-	async function submitGrnDirect() {
-		if (!hospitalId || directStoreId == null || directSupplierId == null) {
-			toastService.addToast(
-				'Could not post GRN',
-				StatusColorEnum.ERROR,
-				'Store and supplier are required.'
-			);
-			return;
-		}
-		const lines: {
-			itemId: number;
-			unitId: number;
-			receivedQty: string;
-			batchNo: string | null;
-			expiryDate: string | null;
-			purchasePrice: string | null;
-		}[] = [];
-		for (const ln of directLines) {
-			const unitId = purchaseUnitForDirectLine(ln);
-			if (ln.itemId == null || unitId == null) {
-				toastService.addToast(
-					'Could not post GRN',
-					StatusColorEnum.ERROR,
-					'Each line needs an item and purchase unit (conversion).'
-				);
-				return;
-			}
-			const rq = ln.receivedQty.trim();
-			if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-				toastService.addToast(
-					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
-					StatusColorEnum.ERROR,
-					'Invalid quantity.'
-				);
-				return;
-			}
-			if (ln.isBatchRequired) {
-				if (
-					!ln.batchNo.trim() ||
-					!ln.expiryDate.trim() ||
-					!ln.purchasePrice.trim()
-				) {
-					toastService.addToast(
-						'Could not post GRN',
-						StatusColorEnum.ERROR,
-						'Batch number, expiry, and purchase price are required for batch-tracked items.'
-					);
-					return;
-				}
-			}
-			lines.push({
-				itemId: ln.itemId,
-				unitId,
-				receivedQty: rq,
-				batchNo: ln.batchNo.trim() || null,
-				expiryDate: ln.expiryDate.trim() || null,
-				purchasePrice: ln.purchasePrice.trim() || null
-			});
-		}
-		if (lines.length === 0) {
-			toastService.addToast(
-				toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
-				StatusColorEnum.ERROR,
-				'Add at least one line.'
-			);
-			return;
-		}
-		submitting = true;
-		try {
-			const res = await fetch(`/api/heka/hospital/${hospitalId}/home/inventory/grn`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					mode: 'direct',
-					storeId: directStoreId,
-					supplierId: directSupplierId,
-					receivedDate,
-					lines
-				})
-			});
-			if (!res.ok) {
-				toastService.addToast(
-					toastLine(m.entity_grn(), m.toast_action_submitted_failed()),
-					StatusColorEnum.ERROR,
-					await res.text()
-				);
-				return;
-			}
-			viewMode = 'list';
-			directLines = [];
-			directStoreId = null;
-			directSupplierId = null;
-			grnFormMode = 'fromPo';
-			await loadList();
-			await loadEligiblePos();
-		} catch (e) {
-			toastError(toastService, m.entity_grn(), m.toast_action_submitted_failed(), e);
-		} finally {
-			submitting = false;
-		}
-	}
-
-	$effect(() => {
-		void hospitalId;
-		void loadList();
-		void loadEligiblePos();
-	});
-
-	function patchLineForm(
-		poLineId: number,
-		patch: Partial<(typeof lineForms)[number]>
-	) {
-		lineForms = lineForms.map((r) =>
-			r.poLineId === poLineId ? { ...r, ...patch } : r
-		);
-	}
-
-	const grnLineTableRows = $derived<GrnLineTableRow[]>(
-		lineForms.map((f) => {
-			const meta = poLines.find((l) => l.id === f.poLineId);
-			return {
-				id: f.poLineId,
-				poLineId: f.poLineId,
-				receivedQty: f.receivedQty,
-				batchNo: f.batchNo,
-				expiryDate: f.expiryDate,
-				purchasePrice: f.purchasePrice,
-				itemName: meta?.itemName ?? null,
-				isBatchRequired: meta?.isBatchRequired ?? false,
-				itemUnitMasterId:
-					typeof meta?.itemUnitMasterId === 'number' ? meta.itemUnitMasterId : null,
-				itemUnitMasterConversion: meta?.itemUnitMasterConversion?.trim()
-					? meta.itemUnitMasterConversion
-					: null
-			};
-		})
-	);
-
-	const filteredGrnLineTableRows = $derived.by((): GrnLineTableRow[] => {
-		const q = grnLineItemFilter.trim().toLowerCase();
-		const base = grnLineTableRows;
-		if (!q) return base;
-		return base.filter((row) => {
-			const item = (row.itemName ?? '').toLowerCase();
-			const conv = (row.itemUnitMasterConversion ?? '').toLowerCase();
-			const r = (row.receivedQty ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || r.includes(q);
-		});
-	});
-
-	const grnLineColumns = $derived.by((): MariTableColumn<GrnLineTableRow>[] => [
-		{
-			id: 'item',
-			header: m.inv_common_item(),
-			field: 'itemName',
-			format: (_v, row) =>
-				`${row.itemName ?? '—'}${row.isBatchRequired ? ' · batch' : ''}`
-		},
-		{
-			id: 'itemUnitMasterConversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterConversion',
-			widthClass: 'min-w-[12rem] max-w-md',
-			headerClass: 'min-w-[12rem] max-w-md',
-			cellClass: 'whitespace-normal align-top text-sm',
-			filterable: false,
-			format: (_v, row) => row.itemUnitMasterConversion ?? '—'
-		},
-		{
-			id: 'receivedQty',
-			header: m.inv_grn_line_received_qty(),
-			field: 'receivedQty',
-			format: (_v, row) => row.receivedQty?.trim() || '—'
-		},
-		{
-			id: 'batchNo',
-			header: m.inv_stock_col_batch(),
-			field: 'batchNo',
-			format: (_v, row) => row.batchNo?.trim() || '—'
-		},
-		{
-			id: 'expiryDate',
-			header: m.inv_stock_col_expiry(),
-			field: 'expiryDate',
-			format: (_v, row) => row.expiryDate?.trim() || '—'
-		},
-		{
-			id: 'purchasePrice',
-			header: m.inv_stock_col_price(),
-			field: 'purchasePrice',
-			format: (_v, row) => row.purchasePrice?.trim() || '—'
-		}
-	]);
-
-	const columns: MariTableColumn<GrnRow>[] = [
+	const columns: MariTableColumn<GrnRow>[] = $derived([
 		{
 			id: 'storeName',
 			header: m.inv_grn_col_store(),
 			field: 'storeName',
-			format: (v, row) => row.storeName ?? '—'
+			filterable: false,
+			format: (_v, row) => row.storeName ?? '—'
+		},
+		{
+			id: 'poNo',
+			header: m.inv_grn_col_po(),
+			field: 'poNo',
+			filterable: true,
+			format: (_v, row) =>
+				row.poId
+					? row.poNo?.trim()
+						? row.poNo
+						: m.inv_grn_select_po()
+					: '—',
+		},
+		{
+			id: 'retransfer',
+			header: m.inv_grn_col_retransfer(),
+			field: 'grnTransferDone',
+			filterable: false,
+			format: (_v, row) => {
+				if (!row.poId) return '—';
+				if (row.poPrId == null || row.poPrId === '')
+					return m.inv_grn_retransfer_no_pr();
+				if (row.grnTransferDone) return m.inv_grn_transfer_status_done();
+				return m.inv_grn_transfer_status_pending();
+			}
 		},
 		{
 			id: 'supplierName',
 			header: m.inv_po_select_supplier(),
 			field: 'supplierName',
-			format: (v, row) => row.supplierName ?? '—'
+			filterable: false,
+			format: (_v, row) => row.supplierName ?? '—'
+		},
+		{
+			id: 'invoiceNo',
+			header: m.inv_grn_invoice_no(),
+			field: 'invoiceNo',
+			filterable: true,
+			format: (_v, row) => row.invoiceNo?.trim() || '—'
+		},
+		{
+			id: 'invoiceDate',
+			header: m.inv_grn_invoice_date(),
+			field: 'invoiceDate',
+			filterable: false,
+			format: (_v, row) => dt.formatDate(row.invoiceDate)
+		},
+		{
+			id: 'invoiceAmount',
+			header: m.inv_grn_invoice_amount(),
+			field: 'invoiceAmount',
+			filterable: false,
+			format: (_v, row) => {
+				const raw = row.invoiceAmount?.trim();
+				if (!raw) return '—';
+				const n = Number(raw);
+				if (!Number.isFinite(n)) return raw;
+				return new Intl.NumberFormat(undefined, {
+					minimumFractionDigits: 0,
+					maximumFractionDigits: 4
+				}).format(n);
+			}
 		},
 		{
 			id: 'receivedDate',
 			header: m.inv_grn_received_date(),
-			field: 'receivedDate'
+			field: 'receivedDate',
+			filterable: false,
+			format: (_v, row) => dt.formatDate(row.receivedDate)
 		},
 		{
-			id: 'statusName',
+			id: 'statusTaggingId',
 			header: m.status(),
-			field: 'statusName',
-			format: (v, row) => row.statusName ?? '—'
+			field: 'statusTaggingId',
+			filterType: 'select',
+			filterOptions: GRN_STATUS_FILTER_OPTIONS,
+			format: (_v, row) => row.statusName ?? '—'
 		},
 		{
 			id: 'receivedByName',
 			header: m.inv_common_received_by(),
 			field: 'receivedByName',
 			widthClass: TableRowEnum.FULL_NAME_COLUMN_WIDTH,
-			format: (v, row) => row.receivedByName ?? '—'
+			filterable: false,
+			format: (_v, row) => row.receivedByName ?? '—'
 		}
-	];
+	]);
 </script>
 
-{#if viewMode === 'list'}
-	<div class="mb-4 flex items-center justify-between">
-		<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>
-		<div class="flex flex-wrap gap-2">
-			<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
-				<LucidePlus className="size-4" />
-				{m.inv_grn_new_title()}
-			</DaisyUiButton>
-			<DaisyUiButton
-				className="d-btn-outline"
-				onClick={openCreateDirect}
-			>
-				<LucidePlus className="size-4" />
-				<span>Direct (no PO)</span>
-			</DaisyUiButton>
-		</div>
+<div class="mb-4 flex items-center justify-between">
+	<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>
+	<div class="flex flex-wrap gap-2">
+		<DaisyUiButton
+			className="d-btn-primary"
+			disabled={selectedInventoryFromStoreId == null || !canPost || canPostLoading}
+			onClick={() => void goto(resolve(grnNewPath as any))}
+		>
+			<LucidePlus className="size-4" />
+			{m.inv_grn_new_title()}
+		</DaisyUiButton>
+		<DaisyUiButton
+			className="d-btn-outline"
+			disabled={selectedInventoryFromStoreId == null || !canPost || canPostLoading}
+			onClick={() =>
+				void goto(resolve(grnNewPath as any) + '?mode=direct')}
+		>
+			<LucidePlus className="size-4" />
+			<span>Direct (no PO)</span>
+		</DaisyUiButton>
 	</div>
+</div>
 
-	<div class={TableEnum.HEIGHT}>
+<div class={TableEnum.HEIGHT}>
+	{#key hospitalId}
 		<MariTable
-			{columns}
+			columns={columns as MariTableColumn[]}
 			rows={list}
 			isLoading={listLoading}
-			showRefreshButton={true}
-			refreshTooltip={m.refresh_data()}
-			rowTooltipGetter={(row) => StringUtil.inventoryAuditRowTooltip(row)}
-			on:refresh={() => loadList()}
-		/>
-	</div>
-{:else}
-	<DaisyUiCard>
-		<DaisyUiCardBody>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					if (grnFormMode === 'direct') {
-						void submitGrnDirect();
-					} else {
-						void submitGrn();
+			bind:currentPage
+			bind:pageSize={pageSizeStr}
+			totalRowCount={total}
+			showRowActions={true}
+			actionsVariant="none"
+			showRefreshButton={false}
+			enableColumnFilters={true}
+			useRemoteFilters={true}
+			on:pageChange={() => loadList()}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				loadList();
+			}}
+			on:filtersChange={(event) => {
+				if (filterDebounceTimeout) {
+					clearTimeout(filterDebounceTimeout);
+				}
+				tableFilters = event.detail.filters;
+				currentPage = 1;
+				filterDebounceTimeout = setTimeout(() => {
+					void loadList();
+				}, 350);
+			}}
+			rowTooltipGetter={(row) =>
+				StringUtil.inventoryAuditRowTooltip(
+					row as {
+						createdAt?: string | null;
+						updatedAt?: string | null;
+						createdByName?: string | null;
+						updatedByName?: string | null;
+						cancelledAt?: string | null;
+						cancelledByName?: string | null;
 					}
-				}}
-			>
-				<fieldset class="m-0 min-w-0 border-0 p-0">
-					<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-						<DaisyUiCardBodyTitle className="mb-0">
-							{grnFormMode === 'direct'
-								? 'New goods receipt (direct)'
-								: m.inv_grn_new_title()}
-						</DaisyUiCardBodyTitle>
+				)}
+		>
+			{#snippet rowActions(row, _i)}
+				{@const r = row as GrnRow}
+				<div class="flex flex-col items-center gap-1">
+					<DaisyUiTooltip tooltipText={m.inv_common_view()} className="d-tooltip-ghost d-tooltip-right">
 						<DaisyUiButton
-							type="button"
-							className="d-btn-sm d-btn-ghost d-btn-outline"
-							onClick={() => {
-								viewMode = 'list';
-							}}
+							className="d-btn-sm d-btn-ghost d-btn-square"
+							onClick={() => void goto(resolve(grnDetailUrl(r.id) as any))}
 						>
-							<LucideArrowLeft className="size-4" />
-							{m.inv_common_back_to_list()}
+							<LucideEye className="size-5" />
 						</DaisyUiButton>
-					</div>
-				</fieldset>
-
-				{#if grnFormMode === 'fromPo'}
-				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
-					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_select_po()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUISearchSelect
-											value={selectedPoId ?? ''}
-											options={poList.map((p) => ({
-												label: `${p.poNo ?? '—'} · ${p.supplierName ?? p.statusName ?? '—'}`,
-												value: p.id
-											}))}
-											onChange={(v: string) => onPickPo(v || null)}
-											placeholder="Select a PO..."
-											className="w-full"
-										/>
-									</div>
-								</div>
-
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUiInputField inputType="date" bind:value={receivedDate} />
-									</div>
-								</div>
-							</div>
-							
-							<div class="flex flex-col gap-4">
-								<div class="p-4 bg-base-200 rounded-lg">
-									{#if receivingStore}
-										<p class="text-sm">
-											<span class="opacity-70 inline-block mb-1">{m.inv_grn_receiving_store()}:</span><br/>
-											<strong class="text-lg">
-												{receivingStore.storeName ?? '—'}
-											</strong>
-										</p>
-									{:else if selectedPoId}
-										<p class="text-sm text-warning font-medium">
-											{m.inv_grn_receiving_store()}: —
-										</p>
-										{#if receivingStoreHint}
-											<p class="text-xs text-base-content/80 mt-2 leading-relaxed">
-												{receivingStoreHint}
-											</p>
-										{/if}
-									{:else}
-										<p class="text-sm opacity-50 text-center py-2">—</p>
-									{/if}
-								</div>
-							</div>
-						</div>
-					</fieldset>
-				</div>
-				{:else}
-					<fieldset class="m-0 min-w-0 border-0 p-0 mb-6">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_store()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUISearchSelect
-										value={directStoreId != null ? String(directStoreId) : ''}
-										options={storeOptions.map((s) => ({
-											label: s.name ?? `Store #${s.id}`,
-											value: String(s.id)
-										}))}
-										onChange={(v: string) => {
-											directStoreId = v ? Number(v) : null;
-										}}
-										placeholder="Receiving store (central)…"
-										className="w-full"
-									/>
-								</div>
-							</div>
-
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUISearchSelect
-										value={directSupplierId != null ? String(directSupplierId) : ''}
-										searchFn={async (q: string) => {
-											const qEnc = encodeURIComponent(q.trim());
-											const res = await fetch(
-												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-											);
-											const j = await res.json();
-											return (j ?? []).map((s: { id: number; name: string | null }) => ({
-												label: s.name ?? '—',
-												value: String(s.id)
-											}));
-										}}
-										onChange={(v: string) => {
-											directSupplierId = v ? Number(v) : null;
-										}}
-										placeholder="Search supplier…"
-										className="w-full"
-									/>
-								</div>
-							</div>
-
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUiInputField inputType="date" bind:value={receivedDate} />
-								</div>
-							</div>
-						</div>
-					</fieldset>
-					<GrnDirectLinesCard
-						bind:directLineItemFilter
-						totalCount={directLines.length}
-						columns={directLineTableColumns}
-						rows={filteredDirectLines}
-						onAddItem={openDirectLineDialogForCreate}
-						onEditLine={openDirectLineDialogForEdit}
-						onDeleteLine={deleteDirectLine}
-					/>
-				{/if}
-
-				{#if grnFormMode === 'fromPo' && lineForms.length > 0}
-					<div class="mt-8">
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-							<h3 class="font-medium text-lg text-base-content/90">Items Received</h3>
-							<input
-								type="text"
-								class="d-input d-input-bordered w-full sm:max-w-xs"
-								placeholder="Filter line items…"
-								bind:value={grnLineItemFilter}
-								aria-label="Filter line items"
-							/>
-						</div>
-						<div class="h-[420px] min-h-0 w-full">
-							<MariTable
-								columns={grnLineColumns}
-								rows={filteredGrnLineTableRows}
-								isLoading={false}
-								showRowActions={true}
-								actionsVariant="none"
-								showRefreshButton={false}
-								enableColumnFilters={false}
+					</DaisyUiTooltip>
+					{#if canTransferGrnToRequestingStore(r)}
+						<DaisyUiTooltip
+							tooltipText={m.inv_grn_transfer_to_requesting()}
+							className="d-tooltip-primary d-tooltip-right"
+						>
+							<DaisyUiButton
+								className="d-btn-sm d-btn-ghost d-btn-square text-primary"
+								loading={transferSubmittingId === r.id}
+								disabled={transferSubmittingId != null || !canPost || canPostLoading}
+								onClick={() => void transferToRequestingStore(r)}
 							>
-								{#snippet rowActions(row)}
-									<div class="flex flex-col items-center gap-1">
-										<DaisyUiTooltip
-											tooltipText="Edit"
-											className="d-tooltip-accent d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-accent"
-												onClick={() => openGrnFromPoLineDialog(row.poLineId)}
-											>
-												<LucidePencil className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-										<DaisyUiTooltip
-											tooltipText="Remove"
-											className="d-tooltip-error d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-ghost d-btn-sm d-btn-error"
-												onClick={() => removeGrnFromPoLine(row.poLineId)}
-											>
-												<LucideTrash2 className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-									</div>
-								{/snippet}
-							</MariTable>
-						</div>
-					</div>
-
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide d-btn-primary"
-							disabled={submitting}
-						>
-							{m.inv_grn_submit()}
-						</DaisyUiButton>
-						<DaisyUiButton
-							type="button"
-							className="d-btn-outline d-btn-wide"
-							onClick={() => {
-								viewMode = 'list';
-							}}
-						>
-							{m.inv_common_back_to_list()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{:else if grnFormMode === 'fromPo' && selectedPoId && lineForms.length === 0 && poLines.length > 0}
-					<div
-						class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80 mt-8"
-					>
-						All lines were removed. Reselect the purchase order to restore lines, or pick a
-						different PO.
-					</div>
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="button"
-							className="d-btn-outline d-btn-wide"
-							onClick={() => {
-								viewMode = 'list';
-							}}
-						>
-							{m.inv_common_back_to_list()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{:else if grnFormMode === 'direct' && directLines.length > 0}
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide d-btn-primary"
-							disabled={submitting}
-						>
-							{m.inv_grn_submit()}
-						</DaisyUiButton>
-						<DaisyUiButton
-							type="button"
-							className="d-btn-outline d-btn-wide"
-							onClick={() => {
-								viewMode = 'list';
-							}}
-						>
-							{m.inv_common_back_to_list()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{/if}
-
-				<GrnFromPoLineEditModal
-					open={grnFromPoLineDialogOpen}
-					submitting={grnFromPoLineDialogSubmitting}
-					bind:draftGrnFromPoLine
-					onClose={closeGrnFromPoLineDialog}
-					onSave={saveGrnFromPoLineDraft}
-				/>
-
-				<GrnDirectLineModal
-					open={directLineDialogOpen}
-					editing={Boolean(editingDirectKey)}
-					submitting={directLineDialogSubmitting}
-					bind:draftDirectLine
-					searchItemsFn={searchGrnItems}
-					onPickItem={pickDraftDirectItem}
-					onClose={closeDirectLineDialog}
-					onSave={saveDirectDraftLine}
-				/>
-			</form>
-		</DaisyUiCardBody>
-	</DaisyUiCard>
-{/if}
+								<LucideChevronRight className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+					{/if}
+				</div>
+			{/snippet}
+		</MariTable>
+	{/key}
+</div>

@@ -36,23 +36,6 @@ export async function assertStoreInHospital(
 	return row;
 }
 
-export async function getCentralStoreForBranch(
-	branchId: string
-): Promise<typeof table.storeTable.$inferSelect | null> {
-	const [row] = await ensureDb()
-		.select()
-		.from(table.storeTable)
-		.where(
-			and(
-				eq(table.storeTable.branchId, branchId),
-				eq(table.storeTable.isCentralStore, true),
-				sql`${table.storeTable.statusId} <> ${StatusEnum.DELETED}`
-			)
-		)
-		.limit(1);
-	return row ?? null;
-}
-
 export async function getStaffIdForUser(
 	userId: string
 ): Promise<string | null> {

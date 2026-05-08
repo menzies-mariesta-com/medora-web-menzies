@@ -5,6 +5,36 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { InvApprovalModule } from './approval-config.server';
 
+/**
+ * Permission-style check: staff must be assigned to ANY level for the store+module.
+ * Used for GRN posting/transfer where we don't run a multi-level workflow.
+ */
+export async function assertStaffAssignedForModule(
+	hospitalId: string,
+	storeId: number,
+	module: InvApprovalModule,
+	staffId: string
+): Promise<void> {
+	const [asg] = await ensureDb()
+		.select({ id: table.invApprovalAssigneeTable.id })
+		.from(table.invApprovalAssigneeTable)
+		.innerJoin(
+			table.invApprovalLevelTable,
+			eq(table.invApprovalAssigneeTable.levelId, table.invApprovalLevelTable.id)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.storeId, storeId),
+				eq(table.invApprovalLevelTable.module, module),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		)
+		.limit(1);
+	if (!asg) throw error(403, 'You are not assigned for this action');
+}
+
 export async function getMaxApprovalLevel(
 	hospitalId: string,
 	storeId: number,
@@ -89,6 +119,142 @@ export async function listPrApproverStoreLevelsForStaff(
 			and(
 				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
 				eq(table.invApprovalLevelTable.module, 'PR'),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+}
+
+/** Store + approval level pairs where this staff is a PO assignee (for list UI). */
+export async function listPoApproverStoreLevelsForStaff(
+	hospitalId: string,
+	staffId: string
+): Promise<{ storeId: number; level: number }[]> {
+	return ensureDb()
+		.select({
+			storeId: table.invApprovalLevelTable.storeId,
+			level: table.invApprovalLevelTable.level
+		})
+		.from(table.invApprovalLevelTable)
+		.innerJoin(
+			table.invApprovalAssigneeTable,
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.module, 'PO'),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+}
+
+/** Store + level pairs for department-indent approvers (from-store, module DI). */
+export async function listDiApproverStoreLevelsForStaff(
+	hospitalId: string,
+	staffId: string
+): Promise<{ storeId: number; level: number }[]> {
+	return ensureDb()
+		.select({
+			storeId: table.invApprovalLevelTable.storeId,
+			level: table.invApprovalLevelTable.level
+		})
+		.from(table.invApprovalLevelTable)
+		.innerJoin(
+			table.invApprovalAssigneeTable,
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.module, 'DI'),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+}
+
+/** Store + level pairs for department-issue approvers (issuing store, module DISS). */
+export async function listDissApproverStoreLevelsForStaff(
+	hospitalId: string,
+	staffId: string
+): Promise<{ storeId: number; level: number }[]> {
+	return ensureDb()
+		.select({
+			storeId: table.invApprovalLevelTable.storeId,
+			level: table.invApprovalLevelTable.level
+		})
+		.from(table.invApprovalLevelTable)
+		.innerJoin(
+			table.invApprovalAssigneeTable,
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.module, 'DISS'),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+}
+
+/** Store ids where staff is assigned for module (any level). */
+export async function listAssignedStoreIdsForStaff(
+	hospitalId: string,
+	module: InvApprovalModule,
+	staffId: string
+): Promise<number[]> {
+	const rows = await ensureDb()
+		.select({ storeId: table.invApprovalLevelTable.storeId })
+		.from(table.invApprovalAssigneeTable)
+		.innerJoin(
+			table.invApprovalLevelTable,
+			eq(table.invApprovalAssigneeTable.levelId, table.invApprovalLevelTable.id)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.module, module),
+				eq(table.invApprovalAssigneeTable.staffId, staffId),
+				isNull(table.invApprovalLevelTable.deletedAt)
+			)
+		);
+	return Array.from(new Set(rows.map((r) => r.storeId)));
+}
+
+/** Store + level pairs for department consumption approvers (consuming store, module DC). */
+export async function listDcApproverStoreLevelsForStaff(
+	hospitalId: string,
+	staffId: string
+): Promise<{ storeId: number; level: number }[]> {
+	return ensureDb()
+		.select({
+			storeId: table.invApprovalLevelTable.storeId,
+			level: table.invApprovalLevelTable.level
+		})
+		.from(table.invApprovalLevelTable)
+		.innerJoin(
+			table.invApprovalAssigneeTable,
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
+		)
+		.where(
+			and(
+				eq(table.invApprovalLevelTable.hospitalId, hospitalId),
+				eq(table.invApprovalLevelTable.module, 'DC'),
 				eq(table.invApprovalAssigneeTable.staffId, staffId),
 				isNull(table.invApprovalLevelTable.deletedAt)
 			)
