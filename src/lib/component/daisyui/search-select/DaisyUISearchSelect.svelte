@@ -4,6 +4,8 @@
 		value: string;
 	}
 
+	import { AppEnum } from '$lib/model/enum/app.enum';
+
 	let {
 		options = [],
 		placeholder = 'Search...',
@@ -86,7 +88,10 @@
 			debounceTimer = setTimeout(async () => {
 				isLoading = true;
 				try {
-					optionsFromServer = await searchFn(search);
+					optionsFromServer = (await searchFn(search)).slice(
+						0,
+						AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
+					);
 				} finally {
 					isLoading = false;
 				}
@@ -101,7 +106,7 @@
 		if (isAsync && searchFn && search.length >= minSearchLength) {
 			isLoading = true;
 			searchFn(search).then((r: Option[]) => {
-				optionsFromServer = r;
+				optionsFromServer = r.slice(0, AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT);
 				isLoading = false;
 			});
 		} else if (isAsync && search.length < minSearchLength) {

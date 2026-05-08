@@ -17,6 +17,7 @@ import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	export type MariTableColumn<T = unknown> = {
 		/**
@@ -124,7 +125,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		rows,
 		columns,
 		pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
-		pageSize = $bindable('10'),
+		pageSize = $bindable(String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)),
 		currentPage = $bindable(1),
 		totalRowCount,
 		isLoading = false,

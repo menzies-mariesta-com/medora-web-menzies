@@ -136,6 +136,8 @@
 			expiryDate: string;
 			purchasePrice: string;
 			freeQty: string;
+			freeUnitId: number | string | null;
+			freeUnitIumId: number | null;
 			discountAmount: string;
 			discountPercent: string;
 			taxAmount: string;
@@ -165,6 +167,8 @@
 		expiryDate: string;
 		purchasePrice: string;
 		freeQty: string;
+		freeUnitId: number | string | null;
+		freeUnitIumId: number | null;
 		discountAmount: string;
 		discountPercent: string;
 		taxAmount: string;
@@ -252,11 +256,23 @@
 		expiryDate: string;
 		purchasePrice: string;
 		freeQty: string;
+		freeUnitId: number | string | null;
+		freeUnitIumId: number | null;
 		discountAmount: string;
 		discountPercent: string;
 		taxAmount: string;
 		taxPercent: string;
+		iumList: IumOpt[];
 	} | null>(null);
+
+	function allowedFreeUnitIdsFromIums(list: IumOpt[]): Set<string> {
+		const allowed = new Set<string>();
+		for (const ium of list ?? []) {
+			if (typeof ium?.purchaseUnitId === 'number') allowed.add(String(ium.purchaseUnitId));
+			if (typeof ium?.issueUnitId === 'number') allowed.add(String(ium.issueUnitId));
+		}
+		return allowed;
+	}
 
 	function newDirectLine(): GrnDirectLine {
 		return {
@@ -270,6 +286,8 @@
 			expiryDate: '',
 			purchasePrice: '0',
 			freeQty: '0',
+			freeUnitId: null,
+			freeUnitIumId: null,
 			discountAmount: '0',
 			discountPercent: '0',
 			taxAmount: '0',
@@ -282,6 +300,21 @@
 	function purchaseUnitForDirectLine(line: GrnDirectLine): number | null {
 		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
 		return ium?.purchaseUnitId ?? null;
+	}
+
+	function ensureDirectFreeUnit(line: GrnDirectLine) {
+		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId) ?? null;
+		const purchaseUnitId = ium?.purchaseUnitId ?? null;
+		const allowedIumIds = new Set((line.iumList ?? []).map((u) => String(u.id)));
+		const currentIum = line.freeUnitIumId != null ? String(line.freeUnitIumId) : '';
+		if (!currentIum || !allowedIumIds.has(currentIum)) {
+			line.freeUnitIumId = ium?.id ?? null;
+		}
+		const chosen =
+			line.freeUnitIumId != null
+				? line.iumList.find((u) => u.id === line.freeUnitIumId) ?? null
+				: null;
+		line.freeUnitId = chosen?.purchaseUnitId ?? purchaseUnitId;
 	}
 
 	function conversionLabelDirect(line: GrnDirectLine): string {
@@ -328,7 +361,7 @@
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
 			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
+				const t = String(row.purchasePrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		}
@@ -363,6 +396,8 @@
 			hits: [...line.hits],
 			iumList: [...line.iumList]
 		};
+		ensureDirectFreeUnit(draftDirectLine);
+		draftDirectLine = { ...draftDirectLine };
 		directLineDialogActive = true;
 		try {
 			await dialogService.open({
@@ -384,7 +419,7 @@
 
 	async function pickDraftDirectItem(itemId: number) {
 		await hydrateGrnDirectLineItem(draftDirectLine, itemId);
-		draftDirectLine = { ...draftDirectLine };
+		// Keep the same `draftDirectLine` object reference while the dialog is open.
 	}
 
 	function saveDirectDraftLine(): boolean {
@@ -397,21 +432,22 @@
 			);
 			return false;
 		}
+		ensureDirectFreeUnit(draftDirectLine);
 		const rq = trimField(draftDirectLine.receivedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 			toastService.addToast('Could not save line', StatusColorEnum.ERROR, 'Invalid received quantity.');
 			return false;
 		}
 		if (draftDirectLine.isBatchRequired) {
-			if (
-				!trimField(draftDirectLine.batchNo) ||
-				!trimField(draftDirectLine.expiryDate) ||
-				!trimField(draftDirectLine.purchasePrice)
-			) {
+			const missing: string[] = [];
+			if (!trimField(draftDirectLine.batchNo)) missing.push('batch number');
+			if (!trimField(draftDirectLine.expiryDate)) missing.push('expiry');
+			if (!trimField(draftDirectLine.purchasePrice)) missing.push('purchase price');
+			if (missing.length > 0) {
 				toastService.addToast(
 					'Could not save line',
 					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
+					`Missing: ${missing.join(', ')}.`
 				);
 				return false;
 			}
@@ -439,11 +475,51 @@
 			expiryDate: row.expiryDate,
 			purchasePrice: row.purchasePrice,
 			freeQty: row.freeQty,
+			freeUnitId: row.freeUnitId,
+			freeUnitIumId: row.freeUnitIumId ?? null,
 			discountAmount: row.discountAmount,
 			discountPercent: row.discountPercent,
 			taxAmount: row.taxAmount,
-			taxPercent: row.taxPercent
+			taxPercent: row.taxPercent,
+			iumList: []
 		};
+
+		// Provide iumList (allowed conversions) for unit picking in dialog
+		try {
+			const meta = poLines.find((l) => l.id === poLineId);
+			if (meta?.itemId && hospitalId) {
+				const [detailRes, iumRes] = await Promise.all([
+					fetch(
+						`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${meta.itemId}`,
+						{ method: 'GET' }
+					),
+					fetch(
+						`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
+						{ method: 'GET' }
+					)
+				]);
+				if (detailRes.ok && iumRes.ok && draftGrnFromPoLine) {
+					const detail = (await detailRes.json()) as {
+						itemUnitMasterIds?: number[];
+						defaultItemUnitMasterId?: number | null;
+					};
+					const allIum = (await iumRes.json()) as IumOpt[];
+					const allowed = new Set(detail.itemUnitMasterIds ?? []);
+					const allowedIum = allIum.filter((u) => allowed.has(u.id));
+					const preferred = meta.itemUnitMasterId ?? detail.defaultItemUnitMasterId ?? null;
+					const chosen =
+						preferred != null && allowedIum.some((u) => u.id === preferred)
+							? allowedIum.find((u) => u.id === preferred) ?? null
+							: (allowedIum[0] ?? null);
+					draftGrnFromPoLine.iumList = allowedIum;
+					draftGrnFromPoLine.freeUnitId = chosen?.purchaseUnitId ?? meta.unitId ?? null;
+					draftGrnFromPoLine.freeUnitIumId = chosen?.id ?? null;
+					draftGrnFromPoLine = { ...draftGrnFromPoLine };
+				}
+			}
+		} catch {
+			// ignore; dialog can still open with disabled selector
+		}
 		grnFromPoLineDialogActive = true;
 		try {
 			await dialogService.open({
@@ -470,15 +546,15 @@
 			return false;
 		}
 		if (meta?.isBatchRequired) {
-			if (
-				!trimField(draftGrnFromPoLine.batchNo) ||
-				!trimField(draftGrnFromPoLine.expiryDate) ||
-				!trimField(draftGrnFromPoLine.purchasePrice)
-			) {
+			const missing: string[] = [];
+			if (!trimField(draftGrnFromPoLine.batchNo)) missing.push('batch number');
+			if (!trimField(draftGrnFromPoLine.expiryDate)) missing.push('expiry');
+			if (!trimField(draftGrnFromPoLine.purchasePrice)) missing.push('purchase price');
+			if (missing.length > 0) {
 				toastService.addToast(
 					'Could not save line',
 					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
+					`Missing: ${missing.join(', ')}.`
 				);
 				return false;
 			}
@@ -489,6 +565,7 @@
 			expiryDate: draftGrnFromPoLine.expiryDate,
 			purchasePrice: draftGrnFromPoLine.purchasePrice,
 			freeQty: draftGrnFromPoLine.freeQty,
+			freeUnitId: draftGrnFromPoLine.freeUnitId,
 			discountAmount: draftGrnFromPoLine.discountAmount,
 			discountPercent: draftGrnFromPoLine.discountPercent,
 			taxAmount: draftGrnFromPoLine.taxAmount,
@@ -532,6 +609,7 @@
 				? def
 				: (line.iumList[0]?.id ?? null);
 		line.isBatchRequired = detail.isBatchRequired ?? false;
+		ensureDirectFreeUnit(line);
 	}
 
 	async function searchGrnItems(q: string) {
@@ -753,6 +831,8 @@
 					expiryDate: '',
 					purchasePrice: ln.unitPrice ?? '',
 					freeQty: '0',
+					freeUnitId: ln.unitId,
+					freeUnitIumId: ln.itemUnitMasterId ?? null,
 					discountAmount: '0',
 					discountPercent: '0',
 					taxAmount: '0',
@@ -789,6 +869,7 @@
 				expiryDate: trimField(f.expiryDate) || null,
 				purchasePrice: trimField(f.purchasePrice) || null,
 				freeQty: trimField(f.freeQty) || null,
+				freeUnitId: f.freeUnitId ?? null,
 				discountAmount: trimField(f.discountAmount) || null,
 				discountPercent: trimField(f.discountPercent) || null,
 				taxAmount: trimField(f.taxAmount) || null,
@@ -811,7 +892,7 @@
 					toastService.addToast(
 						'Could not post GRN',
 						StatusColorEnum.ERROR,
-						'Batch number, expiry, and purchase price are required for batch-tracked items.'
+						`Batch fields missing for: ${meta.itemName ?? `PO line ${l.poLineId}`}.`
 					);
 					return;
 				}
@@ -877,6 +958,7 @@
 			expiryDate: string | null;
 			purchasePrice: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | string | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -919,6 +1001,7 @@
 				expiryDate: trimField(ln.expiryDate) || null,
 				purchasePrice: trimField(ln.purchasePrice) || null,
 				freeQty: trimField(ln.freeQty) || null,
+				freeUnitId: ln.freeUnitId ?? null,
 				discountAmount: trimField(ln.discountAmount) || null,
 				discountPercent: trimField(ln.discountPercent) || null,
 				taxAmount: trimField(ln.taxAmount) || null,
@@ -1072,7 +1155,7 @@
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
 			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
+				const t = String(row.purchasePrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		}

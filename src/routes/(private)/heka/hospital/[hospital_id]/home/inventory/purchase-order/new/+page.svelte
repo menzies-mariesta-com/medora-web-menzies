@@ -238,7 +238,7 @@
 			field: 'unitPrice',
 			filterable: true,
 			format: (_v, row) => {
-				const t = row.unitPrice?.trim();
+				const t = String(row.unitPrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},
@@ -307,6 +307,7 @@
 
 	async function pickDraftManualItem(itemId: number) {
 		await hydrateManualLineItem(draftManualLine, itemId);
+		// Keep the same `draftManualLine` object reference while the dialog is open.
 	}
 
 	function saveManualDraftLine(): boolean {
@@ -1033,7 +1034,7 @@
 			header: m.inv_po_line_unit_price(),
 			field: 'unitPrice',
 			format: (_v, row) => {
-				const t = row.unitPrice?.trim();
+				const t = String(row.unitPrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},

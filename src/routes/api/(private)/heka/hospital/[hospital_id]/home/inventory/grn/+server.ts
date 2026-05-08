@@ -139,6 +139,10 @@ export const POST: RequestHandler = async (event) => {
 				purchasePrice:
 					l.purchasePrice != null ? String(l.purchasePrice) : null,
 				freeQty: l.freeQty != null ? String(l.freeQty) : null,
+				freeUnitId:
+					l.freeUnitId != null && String(l.freeUnitId).trim() !== ''
+						? Number(l.freeUnitId)
+						: null,
 				discountAmount:
 					l.discountAmount != null ? String(l.discountAmount) : null,
 				discountPercent:
@@ -167,6 +171,10 @@ export const POST: RequestHandler = async (event) => {
 			purchasePrice:
 				l.purchasePrice != null ? String(l.purchasePrice) : null,
 			freeQty: l.freeQty != null ? String(l.freeQty) : null,
+			freeUnitId:
+				l.freeUnitId != null && String(l.freeUnitId).trim() !== ''
+					? Number(l.freeUnitId)
+					: null,
 			discountAmount:
 				l.discountAmount != null ? String(l.discountAmount) : null,
 			discountPercent:

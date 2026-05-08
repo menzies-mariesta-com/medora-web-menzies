@@ -238,7 +238,7 @@ export const purchaseRequisitionLineTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
@@ -246,7 +246,7 @@ export const purchaseRequisitionLineTable = pgTable(
 		/** Remaining qty allocatable to POs (starts equal to quantity). */
 		qtyRemaining: decimal('qty_remaining', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		})
 			.notNull()
 			.default('0'),
@@ -326,14 +326,14 @@ export const purchaseOrderLineTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
 		unitPrice: decimal('unit_price', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		}).notNull(),
 		lineTotal: decimal('line_total', {
 			precision: 14,
@@ -345,7 +345,7 @@ export const purchaseOrderLineTable = pgTable(
 		),
 		qtyReceivedCumulative: decimal('qty_received_cumulative', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		})
 			.notNull()
 			.default('0'),
@@ -382,16 +382,16 @@ export const itemBatchTable = pgTable(
 		),
 		purchasePrice: decimal('purchase_price', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		})
 			.notNull()
 			.default('0'),
 		/** Per issue unit; includes tax; excludes free qty + discount. */
-		salePrice: decimal('sale_price', { precision: 14, scale: 4 }),
+		salePrice: decimal('sale_price', { precision: 14, scale: 2 }),
 		/** Per issue unit; all-in (tax + discount + free benefits). */
 		empSalePrice: decimal('emp_sale_price', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		}),
 		createdAt: timestamp('created_at', {
 			withTimezone: true,
@@ -425,7 +425,7 @@ export const invStockTable = pgTable(
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		...invTimestamps
 	},
@@ -466,7 +466,7 @@ export const goodsReceiptNoteTable = pgTable(
 		invoiceDate: date('invoice_date'),
 		invoiceAmount: decimal('invoice_amount', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		}),
 		invoicePhotoUrl: text('invoice_photo_url'),
 		receivedBy: text('received_by')
@@ -516,7 +516,7 @@ export const goodsReceiptLineTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		receivedQty: decimal('received_qty', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		batchNo: varchar('batch_no', { length: 128 }),
 		expiryDate: date('expiry_date'),
@@ -528,33 +528,37 @@ export const goodsReceiptLineTable = pgTable(
 		}),
 		purchasePrice: decimal('purchase_price', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		}),
-		freeQty: decimal('free_qty', { precision: 18, scale: 6 })
+		freeQty: decimal('free_qty', { precision: 18, scale: 0 })
 			.notNull()
 			.default('0'),
+		/** Unit for `freeQty` (can differ from ordered/received unit). */
+		freeUnitId: integer('free_unit_id').references(() => unitTable.id, {
+			onDelete: 'restrict'
+		}),
 		discountAmount: decimal('discount_amount', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		})
 			.notNull()
 			.default('0'),
 		discountPercent: decimal('discount_percent', {
 			precision: 8,
-			scale: 4
+			scale: 2
 		})
 			.notNull()
 			.default('0'),
-		taxAmount: decimal('tax_amount', { precision: 14, scale: 4 })
+		taxAmount: decimal('tax_amount', { precision: 14, scale: 2 })
 			.notNull()
 			.default('0'),
-		taxPercent: decimal('tax_percent', { precision: 8, scale: 4 })
+		taxPercent: decimal('tax_percent', { precision: 8, scale: 2 })
 			.notNull()
 			.default('0'),
-		salePrice: decimal('sale_price', { precision: 14, scale: 4 }),
+		salePrice: decimal('sale_price', { precision: 14, scale: 2 }),
 		empSalePrice: decimal('emp_sale_price', {
 			precision: 14,
-			scale: 4
+			scale: 2
 		}),
 		...invTimestamps
 	},
@@ -629,7 +633,7 @@ export const invStoreTransferLineTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
@@ -695,7 +699,7 @@ export const invStockIssueLineTable = pgTable(
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		qty: decimal('qty', { precision: 18, scale: 6 }).notNull(),
+		qty: decimal('qty', { precision: 18, scale: 0 }).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
@@ -796,12 +800,12 @@ export const invDepartmentIndentLineTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
-		qtyIssued: decimal('qty_issued', { precision: 18, scale: 6 })
+		qtyIssued: decimal('qty_issued', { precision: 18, scale: 0 })
 			.notNull()
 			.default('0'),
 		batchId: integer('batch_id').references(() => itemBatchTable.id, {
@@ -828,7 +832,7 @@ export const invDepartmentIndentLineAllocTable = pgTable(
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
 			precision: 18,
-			scale: 6
+			scale: 0
 		}).notNull(),
 		createdAt: timestamp('created_at', {
 			withTimezone: true,
@@ -915,11 +919,11 @@ export const invDepartmentIssueLineTable = pgTable(
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
-		qtyIssued: decimal('qty_issued', { precision: 18, scale: 6 })
+		qtyIssued: decimal('qty_issued', { precision: 18, scale: 0 })
 			.notNull()
 			.default('0'),
 		...invTimestamps
@@ -939,7 +943,7 @@ export const invDepartmentIssueLineAllocTable = pgTable(
 		batchId: integer('batch_id')
 			.notNull()
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.notNull()
 			.defaultNow()
@@ -1007,7 +1011,7 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 6 }).notNull(),
+		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
