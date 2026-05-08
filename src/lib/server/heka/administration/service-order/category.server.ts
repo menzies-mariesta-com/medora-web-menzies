@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, ilike, ne } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -67,7 +67,7 @@ export async function getCategoriesPaginated(
 			.select()
 			.from(table.categoryTable)
 			.where(whereExpr)
-			.orderBy(table.categoryTable.categoryName)
+			.orderBy(desc(table.categoryTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

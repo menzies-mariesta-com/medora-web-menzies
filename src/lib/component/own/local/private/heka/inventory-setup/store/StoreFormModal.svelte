@@ -1,18 +1,17 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
+	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import type {
-		StaffRegDepartmentRow,
 		StaffRegHospitalBranchRow,
 		StaffRegUserGroupRow
 	} from '$lib/model/type/heka/staff-reg-ui.type';
@@ -25,19 +24,28 @@
 
 	let branchRows = $state<StaffRegHospitalBranchRow[]>([]);
 	let userGroups = $state<StaffRegUserGroupRow[]>([]);
-	let departments = $state<StaffRegDepartmentRow[]>([]);
 
 	let branchId = $state('');
 	let storeName = $state('');
 	let remark = $state('');
-	let linkKindStr = $state('user_group');
-	let userGroupIdStr = $state('');
-	let departmentIdStr = $state('');
+	let selectedUserGroupIds = $state<number[]>([]);
+	let userGroupFilter = $state('');
 	let formActive = $state(true);
-	/** One per branch; GRN receives into this store. */
-	let isCentralStore = $state(false);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
+	let isPurchaseRequisitable = $state(false);
+
+	const normalizedUserGroupFilter = $derived(userGroupFilter.trim().toLowerCase());
+	const filteredUserGroups = $derived(
+		normalizedUserGroupFilter
+			? userGroups.filter((g) =>
+					(g.name ?? String(g.id))
+						.trim()
+						.toLowerCase()
+						.includes(normalizedUserGroupFilter)
+				)
+			: userGroups
+	);
 
 	const modalState = $derived(StoreModalState);
 	const hospitalId = $derived(modalState.hospitalId ?? '');
@@ -47,8 +55,17 @@
 
 	type StoreLookups = {
 		userGroups: StaffRegUserGroupRow[];
-		departments: StaffRegDepartmentRow[];
 		statuses: unknown[];
+	};
+
+	type StoreDetail = {
+		id: number;
+		branchId: string;
+		storeName: string | null;
+		remark: string | null;
+		statusId: number;
+		isPurchaseRequisitable?: boolean;
+		userGroups?: { id: number; name: string | null }[];
 	};
 
 	async function fetchBranchesAll(hid: string) {
@@ -73,7 +90,10 @@
 		return (await res.json()) as StoreLookups;
 	}
 
-	async function fetchStoreById(hid: string, id: number) {
+	async function fetchStoreById(
+		hid: string,
+		id: number
+	): Promise<StoreDetail | null> {
 		const res = await fetch(
 			`/api/heka/hospital/${hid}/home/inventory-setup/stores?id=${encodeURIComponent(String(id))}`,
 			{ method: 'GET' }
@@ -81,7 +101,16 @@
 		if (!res.ok) {
 			throw new Error(`Failed to load store (${res.status})`);
 		}
-		return (await res.json()) as any;
+		return (await res.json()) as StoreDetail | null;
+	}
+
+	function toggleUserGroup(id: number) {
+		const idx = selectedUserGroupIds.indexOf(id);
+		if (idx === -1) {
+			selectedUserGroupIds = [...selectedUserGroupIds, id];
+		} else {
+			selectedUserGroupIds = selectedUserGroupIds.filter((v) => v !== id);
+		}
 	}
 
 	lifeCycleUtil.onMount(async () => {
@@ -98,7 +127,6 @@
 			]);
 			branchRows = branches;
 			userGroups = lookups.userGroups ?? [];
-			departments = lookups.departments ?? [];
 
 			if (editing && StoreModalState.editStore) {
 				const s = await fetchStoreById(
@@ -109,22 +137,13 @@
 					branchId = s.branchId;
 					storeName = s.storeName ?? '';
 					remark = s.remark ?? '';
-					isCentralStore = Boolean(s.isCentralStore);
+					isPurchaseRequisitable = s.isPurchaseRequisitable === true;
 					formActive =
-						(s.statusId ?? StatusEnum.ACTIVE) ===
-						StatusEnum.ACTIVE;
-					if (s.userGroupId != null) {
-						linkKindStr = 'user_group';
-						userGroupIdStr = String(s.userGroupId);
-						departmentIdStr = '';
-					} else if (s.departmentId != null) {
-						linkKindStr = 'department';
-						departmentIdStr = String(s.departmentId);
-						userGroupIdStr = '';
-					}
+						(s.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
+					selectedUserGroupIds = (s.userGroups ?? []).map((g) => g.id);
 				}
 			} else {
-				isCentralStore = false;
+				isPurchaseRequisitable = false;
 				if (branches.length > 0) {
 					branchId = branches[0].id;
 				}
@@ -142,64 +161,29 @@
 			return;
 		}
 		if (!branchId) {
-			toastService.addToast(
-				m.select_branch(),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		const ugId =
-			linkKindStr === 'user_group' && userGroupIdStr !== ''
-				? Number(userGroupIdStr)
-				: null;
-		const depId =
-			linkKindStr === 'department' && departmentIdStr !== ''
-				? Number(departmentIdStr)
-				: null;
-		if (
-			linkKindStr === 'user_group' &&
-			(ugId == null || !Number.isFinite(ugId))
-		) {
-			toastService.addToast(
-				m.select_user_group(),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		if (
-			linkKindStr === 'department' &&
-			(depId == null || !Number.isFinite(depId))
-		) {
-			toastService.addToast(
-				m.select_department(),
-				StatusColorEnum.ERROR
-			);
+			toastService.addToast(m.select_branch(), StatusColorEnum.ERROR);
 			return;
 		}
 
-		const statusId = formActive
-			? StatusEnum.ACTIVE
-			: StatusEnum.INACTIVE;
+		const statusId = formActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
 
 		isSubmitting = true;
 		try {
+			const payload = {
+				branchId,
+				storeName: storeName.trim(),
+				remark: remark.trim() || null,
+				isPurchaseRequisitable,
+				userGroupIds: selectedUserGroupIds,
+				statusId
+			};
 			if (modalState.mode === 'create') {
 				const res = await fetch(
 					`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores`,
 					{
 						method: 'POST',
 						headers: { 'content-type': 'application/json' },
-						body: JSON.stringify({
-							branchId,
-							isCentralStore,
-							storeName: storeName.trim(),
-							remark: remark.trim() || null,
-							userGroupId:
-								linkKindStr === 'user_group' ? ugId : null,
-							departmentId:
-								linkKindStr === 'department' ? depId : null,
-							statusId
-						})
+						body: JSON.stringify(payload)
 					}
 				);
 				if (!res.ok) {
@@ -217,15 +201,7 @@
 						headers: { 'content-type': 'application/json' },
 						body: JSON.stringify({
 							id: modalState.editStore.id,
-							branchId,
-							isCentralStore,
-							storeName: storeName.trim(),
-							remark: remark.trim() || null,
-							userGroupId:
-								linkKindStr === 'user_group' ? ugId : null,
-							departmentId:
-								linkKindStr === 'department' ? depId : null,
-							statusId
+							...payload
 						})
 					}
 				);
@@ -304,80 +280,69 @@
 				</div>
 			</div>
 			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
-					>{m.store_central_checkbox()}</DaisyUiLabel
-				>
-				<div class="flex max-w-md flex-1 flex-col gap-1">
-					<label class="flex cursor-pointer items-center gap-2">
-						<DaisyUiCheckbox bind:checked={isCentralStore} />
-					</label>
-					<p class="text-xs opacity-70">{m.store_central_help()}</p>
-				</div>
-			</div>
-			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
 				<DaisyUiLabel className="shrink-0 sm:w-40"
-					>{m.link_type()}</DaisyUiLabel
+					>{m.inv_store_purchase_requisitable()}</DaisyUiLabel
 				>
-				<div class="flex max-w-md flex-1 flex-col gap-2">
-					<DaisyUiSelect
-						bind:value={linkKindStr}
-						id="store-link-kind"
-					>
-						<option value="user_group">{m.linked_user_group()}</option>
-						<option value="department">{m.linked_department()}</option>
-					</DaisyUiSelect>
-					<p class="text-xs opacity-70">{m.store_owner_xor_hint()}</p>
+				<div class="max-w-md flex-1">
+					<label class="flex cursor-pointer items-center gap-2">
+						<input
+							type="checkbox"
+							class="d-checkbox d-checkbox-sm"
+							bind:checked={isPurchaseRequisitable}
+						/>
+						<span class="text-sm opacity-80">{m.active_label()}</span>
+					</label>
 				</div>
 			</div>
-			{#if linkKindStr === 'user_group'}
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
+					>{m.user_groups()}</DaisyUiLabel
 				>
-					<DaisyUiLabel
-						forText="store-ug"
-						className="shrink-0 sm:w-40"
-						>{m.select_user_group()}
-						<span class="text-error">*</span></DaisyUiLabel
-					>
-					<div class="max-w-md flex-1">
-						<DaisyUiSelect
-							id="store-ug"
-							bind:value={userGroupIdStr}
-							optionHeader=""
+				<div class="flex max-w-md flex-1 flex-col gap-2">
+					{#if userGroups.length === 0}
+						<p class="text-xs opacity-70">{m.no_user_groups()}</p>
+					{:else}
+						<DaisyUiInputField
+							id="store-user-group-filter"
+							bind:value={userGroupFilter}
+							inputType="text"
+							inputPlaceholderText={m.inv_user_groups_search_placeholder()}
+							className="mb-2"
+						/>
+						<div
+							class="max-h-48 overflow-y-auto rounded-md border border-base-300 p-2"
 						>
-							{#each userGroups as g (g.id)}
-								<option value={String(g.id)}>{g.name ?? g.id}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
+							{#if filteredUserGroups.length === 0}
+								<p class="px-1 py-1 text-xs opacity-70">
+									{m.inv_user_groups_no_filter_match()}
+								</p>
+							{:else}
+								<ul class="flex flex-col gap-1">
+									{#each filteredUserGroups as g (g.id)}
+										{@const checked = selectedUserGroupIds.includes(g.id)}
+										<li>
+											<label
+												class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-base-200"
+											>
+												<DaisyUiCheckbox
+													{checked}
+													onCheckedChange={() => toggleUserGroup(g.id)}
+												/>
+												<span class="text-sm">{g.name ?? `#${g.id}`}</span>
+											</label>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</div>
+					{/if}
+					<p class="text-xs opacity-70">{m.user_groups_optional_hint()}</p>
 				</div>
-			{:else}
-				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-				>
-					<DaisyUiLabel
-						forText="store-dept"
-						className="shrink-0 sm:w-40"
-						>{m.select_department()}
-						<span class="text-error">*</span></DaisyUiLabel
-					>
-					<div class="max-w-md flex-1">
-						<DaisyUiSelect
-							id="store-dept"
-							bind:value={departmentIdStr}
-							optionHeader=""
-						>
-							{#each departments as d (d.id)}
-								<option value={String(d.id)}>{d.name ?? d.code ?? d.id}</option>
-							{/each}
-						</DaisyUiSelect>
-					</div>
-				</div>
-			{/if}
+			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>

@@ -51,12 +51,16 @@ async function defaultIssueUnitNameByItemIds(
 	return map;
 }
 
+const MAX_ITEM_IDS_AGG = 150;
+
 export async function listStockAggregated(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
 		storeId?: number;
 		itemId?: number;
+		/** When set (non-empty), restricts to these item master ids (batch-friendly for line editors). */
+		itemIds?: number[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
@@ -72,7 +76,16 @@ export async function listStockAggregated(
 		await assertStoreInHospital(input.hospitalId, input.storeId);
 		cond = and(cond, eq(table.invStockTable.storeId, input.storeId))!;
 	}
-	if (typeof input.itemId === 'number') {
+	const itemIdsUnique = [
+		...new Set(
+			(input.itemIds ?? []).filter(
+				(n) => typeof n === 'number' && Number.isFinite(n) && n > 0
+			)
+		)
+	].slice(0, MAX_ITEM_IDS_AGG);
+	if (itemIdsUnique.length > 0) {
+		cond = and(cond, inArray(table.invStockTable.itemId, itemIdsUnique))!;
+	} else if (typeof input.itemId === 'number') {
 		cond = and(cond, eq(table.invStockTable.itemId, input.itemId))!;
 	}
 

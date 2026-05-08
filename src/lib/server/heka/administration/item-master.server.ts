@@ -313,6 +313,11 @@ export async function listItemUnitMastersForItemMaster(hospitalId: string): Prom
 		conversionDisplay: string;
 		purchaseUnitId: number;
 		issueUnitId: number;
+		/** Purchase unit label for line UIs (e.g. metric tiles). */
+		purchaseUnitName: string;
+		issueUnitName: string;
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
 	}[]
 > {
 	const rows = await ensureDb()
@@ -353,7 +358,11 @@ export async function listItemUnitMastersForItemMaster(hospitalId: string): Prom
 			issueUnitName: r.issueUnitName ?? '',
 			purchaseFactor: Number(r.purchaseFactor),
 			issueFactor: Number(r.issueFactor)
-		})
+		}),
+		purchaseUnitName: r.purchaseUnitName ?? '',
+		issueUnitName: r.issueUnitName ?? '',
+		purchaseConversionFactor: String(r.purchaseFactor),
+		issueConversionFactor: String(r.issueFactor)
 	}));
 }
 
@@ -366,8 +375,28 @@ export async function listItemUnitMastersForItemMaster(hospitalId: string): Prom
 export async function resolveItemUnitMastersByItemAndPurchaseUnit(
 	hospitalId: string,
 	pairs: { itemId: number; purchaseUnitId: number }[]
-): Promise<Map<string, { id: number; conversionDisplay: string }>> {
-	const out = new Map<string, { id: number; conversionDisplay: string }>();
+): Promise<
+	Map<
+		string,
+		{
+			id: number;
+			conversionDisplay: string;
+			purchaseConversionFactor: string;
+			issueConversionFactor: string;
+			issueUnitName: string;
+		}
+	>
+> {
+	const out = new Map<
+		string,
+		{
+			id: number;
+			conversionDisplay: string;
+			purchaseConversionFactor: string;
+			issueConversionFactor: string;
+			issueUnitName: string;
+		}
+	>();
 	if (pairs.length === 0) return out;
 	const keySet = new Set(
 		pairs.map((p) => `${p.itemId}:${p.purchaseUnitId}`)
@@ -453,7 +482,15 @@ export async function resolveItemUnitMastersByItemAndPurchaseUnit(
 
 	const byKey = new Map<
 		string,
-		{ id: number; conversionDisplay: string; isDefault: number; sortId: number }[]
+		{
+			id: number;
+			conversionDisplay: string;
+			isDefault: number;
+			sortId: number;
+			purchaseConversionFactor: string;
+			issueConversionFactor: string;
+			issueUnitName: string;
+		}[]
 	>();
 	for (const r of rows) {
 		const k = `${r.itemMasterId}:${r.purchaseUnitId}`;
@@ -468,7 +505,10 @@ export async function resolveItemUnitMastersByItemAndPurchaseUnit(
 			id: r.iumId,
 			conversionDisplay,
 			isDefault: r.isDefault,
-			sortId: r.iumId
+			sortId: r.iumId,
+			purchaseConversionFactor: String(r.purchaseFactor),
+			issueConversionFactor: String(r.issueFactor),
+			issueUnitName: r.issueUnitName ?? ''
 		};
 		const arr = byKey.get(k) ?? [];
 		arr.push(rec);
@@ -482,7 +522,10 @@ export async function resolveItemUnitMastersByItemAndPurchaseUnit(
 		if (best) {
 			out.set(k, {
 				id: best.id,
-				conversionDisplay: best.conversionDisplay
+				conversionDisplay: best.conversionDisplay,
+				purchaseConversionFactor: best.purchaseConversionFactor,
+				issueConversionFactor: best.issueConversionFactor,
+				issueUnitName: best.issueUnitName
 			});
 		}
 	}

@@ -16,7 +16,10 @@ export function defaultCounterScopeForPrefixKey(
 ): PrefixCounterScopeFlags {
 	if (
 		prefixKey === 'PURCHASE_REQUISITION_NO' ||
-		prefixKey === 'PURCHASE_ORDER_NO'
+		prefixKey === 'PURCHASE_ORDER_NO' ||
+		prefixKey === 'DEPARTMENT_INDENT_NO' ||
+		prefixKey === 'DEPARTMENT_ISSUE_NO' ||
+		prefixKey === 'DEPARTMENT_CONSUMPTION_NO'
 	) {
 		return {
 			includeBranch: true,
@@ -65,6 +68,9 @@ export function defaultCounterScopeForStorageKey(
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
 		| 'PURCHASE_ORDER_NO'
+		| 'DEPARTMENT_INDENT_NO'
+		| 'DEPARTMENT_ISSUE_NO'
+		| 'DEPARTMENT_CONSUMPTION_NO'
 		| 'MEDICATION_ORDER_BATCH_NO'
 ): PrefixCounterScopeFlags {
 	return defaultCounterScopeForPrefixKey(storageKey);

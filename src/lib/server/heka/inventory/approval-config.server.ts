@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -8,8 +8,25 @@ import {
 	branchIdsForHospital,
 	ensureHospitalInventoryAccess
 } from './inventory-scope.server';
+import type { InvApprovalModule } from '$lib/model/type/heka/inv-approval.type';
 
-export type InvApprovalModule = 'PR' | 'PO';
+export type { InvApprovalModule } from '$lib/model/type/heka/inv-approval.type';
+
+function pgErrorCode(e: unknown): string | undefined {
+	let current: unknown = e;
+	for (let i = 0; i < 5; i++) {
+		if (current && typeof current === 'object' && 'code' in current) {
+			const c = (current as { code?: string }).code;
+			if (c) return c;
+		}
+		if (current && typeof current === 'object' && 'cause' in current) {
+			current = (current as { cause: unknown }).cause;
+			continue;
+		}
+		break;
+	}
+	return undefined;
+}
 
 export async function listApprovalLevelsForStore(
 	event: RequestEvent,
@@ -95,7 +112,8 @@ export async function upsertApprovalLevel(
 	const userId = event.locals.user?.id ?? null;
 	if (!userId) throw error(401, 'Unauthorized');
 
-	await ensureDb().transaction(async (tx) => {
+	try {
+		await ensureDb().transaction(async (tx) => {
 		let levelId = input.id;
 		if (levelId) {
 			const [existing] = await tx
@@ -126,20 +144,69 @@ export async function upsertApprovalLevel(
 					eq(table.invApprovalAssigneeTable.levelId, levelId)
 				);
 		} else {
-			const [created] = await tx
-				.insert(table.invApprovalLevelTable)
-				.values({
-					hospitalId: input.hospitalId,
-					storeId: input.storeId,
-					module: input.module,
-					level: input.level,
-					isRequired: input.isRequired ?? true,
-					createdBy: userId,
-					updatedBy: userId
-				})
-				.returning({ id: table.invApprovalLevelTable.id });
-			if (!created) throw error(500, 'Failed to create level');
-			levelId = created.id;
+			/** Re-use a soft-deleted row (full unique on old DBs still blocks a second insert). */
+			const [tomb] = await tx
+				.select()
+				.from(table.invApprovalLevelTable)
+				.where(
+					and(
+						eq(
+							table.invApprovalLevelTable.hospitalId,
+							input.hospitalId
+						),
+						eq(table.invApprovalLevelTable.storeId, input.storeId),
+						eq(
+							table.invApprovalLevelTable.module,
+							input.module
+						),
+						eq(
+							table.invApprovalLevelTable.level,
+							input.level
+						),
+						isNotNull(table.invApprovalLevelTable.deletedAt)
+					)
+				)
+				.limit(1);
+			if (tomb) {
+				await tx
+					.update(table.invApprovalLevelTable)
+					.set({
+						deletedAt: null,
+						deletedBy: null,
+						isRequired: input.isRequired ?? true,
+						updatedBy: userId
+					})
+					.where(
+						eq(
+							table.invApprovalLevelTable.id,
+							tomb.id
+						)
+					);
+				await tx
+					.delete(table.invApprovalAssigneeTable)
+					.where(
+						eq(
+							table.invApprovalAssigneeTable.levelId,
+							tomb.id
+						)
+					);
+				levelId = tomb.id;
+			} else {
+				const [created] = await tx
+					.insert(table.invApprovalLevelTable)
+					.values({
+						hospitalId: input.hospitalId,
+						storeId: input.storeId,
+						module: input.module,
+						level: input.level,
+						isRequired: input.isRequired ?? true,
+						createdBy: userId,
+						updatedBy: userId
+					})
+					.returning({ id: table.invApprovalLevelTable.id });
+				if (!created) throw error(500, 'Failed to create level');
+				levelId = created.id;
+			}
 		}
 
 		if (input.assigneeStaffIds.length > 0) {
@@ -150,7 +217,27 @@ export async function upsertApprovalLevel(
 				}))
 			);
 		}
-	});
+		});
+	} catch (e) {
+		const code = pgErrorCode(e);
+		if (code === '23514') {
+			console.error(
+				'[inv_approval_level] Check violation: update DB module check (e.g. run drizzle/manual_inv_approval_module_check.sql or migrations 0039+0040).',
+				e
+			);
+			throw error(
+				400,
+				'This approval type cannot be saved until the database is updated. Please contact an administrator.'
+			);
+		}
+		if (code === '23505') {
+			throw error(
+				409,
+				'This approval level number already exists for the store and module. Choose another level or remove the existing row.'
+			);
+		}
+		throw e;
+	}
 
 	return { ok: true };
 }
@@ -190,11 +277,46 @@ export async function deleteApprovalLevel(
 
 export async function listStoresForApprovalConfig(
 	event: RequestEvent,
-	hospitalId: string
+	hospitalId: string,
+	opts?: { userGroupId?: number | null }
 ) {
 	await ensureHospitalInventoryAccess(event, hospitalId);
 	const ids = await branchIdsForHospital(hospitalId);
 	if (ids.length === 0) return [];
+
+	const userGroupId =
+		opts?.userGroupId != null && Number.isInteger(opts.userGroupId)
+			? opts.userGroupId
+			: null;
+
+	if (userGroupId != null) {
+		// Inventory ops store list is limited by selected user group.
+		const storeIds = await ensureDb()
+			.selectDistinct({ id: table.storeUserGroupTable.storeId })
+			.from(table.storeUserGroupTable)
+			.innerJoin(
+				table.storeTable,
+				eq(table.storeTable.id, table.storeUserGroupTable.storeId)
+			)
+			.where(
+				and(
+					inArray(table.storeTable.branchId, ids),
+					sql`${table.storeTable.statusId} <> ${StatusEnum.DELETED}`,
+					eq(table.storeUserGroupTable.userGroupId, userGroupId)
+				)
+			)
+			.orderBy(table.storeUserGroupTable.storeId);
+
+		const uniqueStoreIds = storeIds.map((r) => r.id);
+		if (uniqueStoreIds.length === 0) return [];
+
+		return ensureDb()
+			.select()
+			.from(table.storeTable)
+			.where(inArray(table.storeTable.id, uniqueStoreIds))
+			.orderBy(table.storeTable.storeName);
+	}
+
 	return ensureDb()
 		.select()
 		.from(table.storeTable)
