@@ -3,7 +3,6 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -15,6 +14,7 @@
 	import DaisyUiCheckbox from '$lib/component/daisyui/checkbox/DaisyUiCheckbox.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiBadge from '$lib/component/daisyui/badge/DaisyUiBadge.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -50,7 +50,6 @@
 		id: number;
 		storeId: number;
 		module: InvApprovalModule;
-		level: number;
 		isRequired: boolean;
 		assignees: AssigneeRow[];
 	};
@@ -87,7 +86,6 @@
 	let viewMode = $state<'list' | 'create' | 'edit'>('list');
 	let editingId = $state<number | null>(null);
 
-	let levelInput = $state('');
 	let isRequiredInput = $state(true);
 
 	// Staff assignees state for creation/edit
@@ -134,7 +132,6 @@
 	function resetForm() {
 		viewMode = 'list';
 		editingId = null;
-		levelInput = '';
 		isRequiredInput = true;
 		assigneeStaffs = [];
 	}
@@ -147,7 +144,6 @@
 	function startEdit(item: LevelRow) {
 		viewMode = 'edit';
 		editingId = item.id;
-		levelInput = String(item.level);
 		isRequiredInput = item.isRequired;
 		assigneeStaffs = item.assignees.map((a) => ({
 			id: a.staffId,
@@ -166,15 +162,6 @@
 	}
 
 	async function handleSave() {
-		const parsedLevel = parseInt(levelInput, 10);
-		if (!levelInput || isNaN(parsedLevel) || parsedLevel < 1) {
-			toastService.addToast(
-				m.toast_field_required(),
-				StatusColorEnum.WARNING,
-				m.inv_common_level()
-			);
-			return;
-		}
 		if (storeId == null) {
 			toastService.addToast(
 				m.toast_field_required(),
@@ -188,7 +175,6 @@
 			const payload = {
 				storeId,
 				module,
-				level: parsedLevel,
 				isRequired: isRequiredInput,
 				id: editingId != null ? editingId : undefined,
 				assigneeStaffIds: assigneeStaffs.map((s) => s.id)
@@ -218,7 +204,7 @@
 			}
 			toastService.addToast(
 				toastLine(
-					m.entity_approval_config_level(),
+					m.inv_page_approval_config_title(),
 					editingId != null
 						? m.toast_action_updated()
 						: m.toast_action_created()
@@ -233,8 +219,8 @@
 	async function handleDelete(item: LevelRow) {
 		await deleteLock.run(async () => {
 			const result = await dialogService.open({
-				title: 'Delete Approval Level',
-				message: `Are you sure you want to delete level ${item.level}?`,
+				title: 'Delete Approval config',
+				message: 'Are you sure you want to delete this approval config?',
 				variant: DialogVariantEnum.CONFIRM
 			});
 			if (!result.confirmed) return;
@@ -249,7 +235,7 @@
 			if (!res.ok) {
 				toastService.addToast(
 					toastLine(
-						m.entity_approval_config_level(),
+						m.inv_page_approval_config_title(),
 						m.toast_action_deleted_failed()
 					),
 					StatusColorEnum.ERROR
@@ -258,7 +244,7 @@
 			}
 			toastService.addToast(
 				toastLine(
-					m.entity_approval_config_level(),
+					m.inv_page_approval_config_title(),
 					m.toast_action_deleted()
 				),
 				StatusColorEnum.SUCCESS
@@ -268,12 +254,6 @@
 	}
 
 	const columns: MariTableColumn<LevelRow>[] = [
-		{
-			id: 'level',
-			header: m.inv_common_level(),
-			field: 'level',
-			format: (v, row) => String(row.level)
-		},
 		{
 			id: 'isRequired',
 			header: 'Is Required',
@@ -326,7 +306,11 @@
 				</DaisyUiSelect>
 			</label>
 			<div class="flex items-end mt-7">
-				<DaisyUiButton className="d-btn-primary d-btn-sm" onClick={startCreate}>
+				<DaisyUiButton
+					className="d-btn-primary d-btn-sm"
+					disabled={items.length > 0}
+					onClick={startCreate}
+				>
 					<LucidePlus className="size-4" />
 					Create
 				</DaisyUiButton>
@@ -337,16 +321,25 @@
 	<div class={TableEnum.HEIGHT}>
 		<MariTable {columns} rows={items} {isLoading} showRowActions={true} actionsVariant="none">
 			{#snippet rowActions(row, rowIndex)}
-				<div class="flex items-center gap-2">
-					<DaisyUiButton className="d-btn-ghost d-btn-sm" onClick={() => startEdit(row)}>
-						<LucidePencil className="size-4" />
-					</DaisyUiButton>
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm d-btn-error"
-						onClick={() => handleDelete(row)}
-					>
-						<LucideTrash2 className="size-4" />
-					</DaisyUiButton>
+				<div class="flex flex-col items-center gap-1" data-row-index={rowIndex}>
+					<DaisyUiTooltip tooltipText={m.inv_line_items_tooltip_edit()} className="d-tooltip-accent d-tooltip-right">
+						<DaisyUiButton
+							type="button"
+							className="d-btn-sm d-btn-ghost d-btn-accent"
+							onClick={() => startEdit(row)}
+						>
+							<LucidePencil className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip tooltipText={m.inv_line_items_tooltip_delete()} className="d-tooltip-error d-tooltip-right">
+						<DaisyUiButton
+							type="button"
+							className="d-btn-ghost d-btn-sm d-btn-error"
+							onClick={() => handleDelete(row)}
+						>
+							<LucideTrash2 className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
 				</div>
 			{/snippet}
 		</MariTable>
@@ -362,23 +355,13 @@
 			>
 				<fieldset class="m-0 min-w-0 border-0 p-0">
 					<DaisyUiCardBodyTitle className="mb-5">
-						{editingId != null ? 'Edit Approval Level' : 'Create Approval Level'}
+						{editingId != null ? 'Edit Approval config' : 'Create Approval config'}
 					</DaisyUiCardBodyTitle>
 				</fieldset>
 				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
 					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
 						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
 							<div class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_common_level()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUiInputField
-											bind:value={levelInput}
-											inputType="number"
-											inputPlaceholderText="e.g. 1"
-										/>
-									</div>
-								</div>
 								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 									<DaisyUiLabel className="shrink-0 sm:w-36">Is Required</DaisyUiLabel>
 									<div class="max-w-80 flex-1 flex items-center">

@@ -88,9 +88,11 @@
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_quantity()}</DaisyUiLabel>
 		<input
-			type="text"
+			type="number"
 			class="d-input d-input-bordered w-full"
 			bind:value={draftManualLine.quantity}
+			step="1"
+			min="0"
 			disabled={draftManualLine?.itemId == null}
 			aria-label={m.inv_common_quantity()}
 		/>
@@ -99,9 +101,11 @@
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_po_line_unit_price()}</DaisyUiLabel>
 		<input
-			type="text"
+			type="number"
 			class="d-input d-input-bordered w-full"
 			bind:value={draftManualLine.unitPrice}
+			step="0.01"
+			min="0"
 			disabled={draftManualLine?.itemId == null}
 			aria-label={m.inv_po_line_unit_price()}
 		/>

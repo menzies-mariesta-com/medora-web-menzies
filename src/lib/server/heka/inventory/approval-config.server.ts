@@ -38,6 +38,8 @@ export async function listApprovalLevelsForStore(
 	const conds = [
 		eq(table.invApprovalLevelTable.hospitalId, input.hospitalId),
 		eq(table.invApprovalLevelTable.storeId, input.storeId),
+		// Approval config is single-level for now: always level 1.
+		eq(table.invApprovalLevelTable.level, 1),
 		isNull(table.invApprovalLevelTable.deletedAt)
 	];
 	if (input.module) {
@@ -98,7 +100,6 @@ export async function upsertApprovalLevel(
 		hospitalId: string;
 		storeId: number;
 		module: InvApprovalModule;
-		level: number;
 		isRequired?: boolean;
 		id?: number;
 		assigneeStaffIds: string[];
@@ -106,8 +107,6 @@ export async function upsertApprovalLevel(
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	await assertStoreInHospital(input.hospitalId, input.storeId);
-
-	if (input.level < 1) throw error(400, 'Invalid level');
 
 	const userId = event.locals.user?.id ?? null;
 	if (!userId) throw error(401, 'Unauthorized');
@@ -126,6 +125,7 @@ export async function upsertApprovalLevel(
 							table.invApprovalLevelTable.hospitalId,
 							input.hospitalId
 						),
+						eq(table.invApprovalLevelTable.level, 1),
 						isNull(table.invApprovalLevelTable.deletedAt)
 					)
 				)
@@ -159,10 +159,7 @@ export async function upsertApprovalLevel(
 							table.invApprovalLevelTable.module,
 							input.module
 						),
-						eq(
-							table.invApprovalLevelTable.level,
-							input.level
-						),
+						eq(table.invApprovalLevelTable.level, 1),
 						isNotNull(table.invApprovalLevelTable.deletedAt)
 					)
 				)
@@ -198,7 +195,7 @@ export async function upsertApprovalLevel(
 						hospitalId: input.hospitalId,
 						storeId: input.storeId,
 						module: input.module,
-						level: input.level,
+						level: 1,
 						isRequired: input.isRequired ?? true,
 						createdBy: userId,
 						updatedBy: userId
@@ -233,7 +230,7 @@ export async function upsertApprovalLevel(
 		if (code === '23505') {
 			throw error(
 				409,
-				'This approval level number already exists for the store and module. Choose another level or remove the existing row.'
+				'This approval config already exists for the store and module.'
 			);
 		}
 		throw e;

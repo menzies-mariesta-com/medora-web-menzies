@@ -8,6 +8,7 @@ import {
 	ensureHospitalInventoryAccess
 } from './inventory-scope.server';
 import { addDeltaToInvStock } from './item-batch.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 
 export async function postStoreTransfer(
 	event: RequestEvent,
@@ -56,10 +57,7 @@ export async function postStoreTransfer(
 		if (!xfer) throw error(500, 'Transfer insert failed');
 
 		for (const line of input.lines) {
-			const qty = Number(line.quantity);
-			if (!Number.isFinite(qty) || qty <= 0) {
-				throw error(400, 'Invalid quantity');
-			}
+			const qty = parsePositiveIntQty(line.quantity, 'quantity');
 
 			const [batch] = await tx
 				.select()
@@ -94,7 +92,7 @@ export async function postStoreTransfer(
 				itemId: line.itemId,
 				storeId: input.fromStoreId,
 				batchId: line.batchId,
-				delta: (-qty).toFixed(6),
+				delta: String(-qty),
 				userId
 			});
 
@@ -103,7 +101,7 @@ export async function postStoreTransfer(
 				itemId: line.itemId,
 				storeId: input.toStoreId,
 				batchId: line.batchId,
-				delta: qty.toFixed(6),
+				delta: String(qty),
 				userId
 			});
 

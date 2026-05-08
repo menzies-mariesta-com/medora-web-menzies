@@ -1,0 +1,25 @@
+---
+description: Inventory batch selection UX rule
+alwaysApply: true
+---
+
+# Inventory — batch selection UX (stock issue)
+
+When building UIs that **issue/deduct stock** and require the user to choose a batch:
+
+- **Do not** use a batch `SearchSelect` / dropdown for `batchId`.
+- **Do** show the store’s stock lots as a **table** (one row per batch/expiry) after the user picks an item.
+- **Table columns (recommended)**:
+  - Batch no (primary)
+  - Expiry
+  - Stock (issue/stock unit)
+  - Sale price (optional)
+  - Qty to use (purchase unit input)
+- **Data source**: `GET /api/heka/hospital/{hospitalId}/home/inventory/stock?mode=lots&storeId=&itemId=`
+- **Validation**: user input is in **purchase unit**; validate against stock (issue unit) by converting purchase→issue using a **client-safe** helper (no `$lib/server/**` imports in `.svelte`).
+
+Reusable building blocks in this repo:
+
+- `src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte`
+- `src/lib/tool/inventory/purchase-issue-qty-convert.util.ts`
+

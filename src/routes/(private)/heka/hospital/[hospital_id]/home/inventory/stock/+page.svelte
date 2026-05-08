@@ -42,6 +42,8 @@
 		batchNo: string;
 		expiryDate: string | null;
 		purchasePrice: string;
+		salePrice: string;
+		empSalePrice: string;
 		quantity: string;
 		issueUnitName?: string | null;
 	};
@@ -80,6 +82,8 @@
 					batchNo: String(r.batchNo ?? ''),
 					expiryDate: (r.expiryDate as string) ?? null,
 					purchasePrice: String(r.purchasePrice ?? ''),
+					salePrice: String(r.salePrice ?? ''),
+					empSalePrice: String(r.empSalePrice ?? ''),
 					quantity: String(r.quantity ?? '0'),
 					issueUnitName: (r.issueUnitName as string) ?? null
 				}));
@@ -157,6 +161,25 @@
 			format: (_v, row) => {
 				const t =
 					row.purchasePrice != null ? String(row.purchasePrice).trim() : '';
+				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+			}
+		},
+		{
+			id: 'salePrice',
+			header: m.inv_stock_col_sale_price(),
+			field: 'salePrice',
+			format: (_v, row) => {
+				const t = row.salePrice != null ? String(row.salePrice).trim() : '';
+				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+			}
+		},
+		{
+			id: 'empSalePrice',
+			header: m.inv_stock_col_emp_sale_price(),
+			field: 'empSalePrice',
+			format: (_v, row) => {
+				const t =
+					row.empSalePrice != null ? String(row.empSalePrice).trim() : '';
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},
