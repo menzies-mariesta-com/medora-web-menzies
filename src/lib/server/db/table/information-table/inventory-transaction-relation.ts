@@ -6,11 +6,14 @@ import {
 	storeTable,
 	supplierTable
 } from './information-table';
+import { unitTable } from '../master-table/master-table';
 import {
 	goodsReceiptLineTable,
 	goodsReceiptNoteTable,
 	invApprovalAssigneeTable,
 	invApprovalLevelTable,
+	invDepartmentConsumptionLineTable,
+	invDepartmentConsumptionTable,
 	invStockIssueLineTable,
 	invStockIssueTable,
 	invStockTable,
@@ -59,8 +62,12 @@ export const purchaseRequisitionTableRelations = relations(
 			fields: [purchaseRequisitionTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
-		store: one(storeTable, {
-			fields: [purchaseRequisitionTable.storeId],
+		fromStore: one(storeTable, {
+			fields: [purchaseRequisitionTable.fromStoreId],
+			references: [storeTable.id]
+		}),
+		toStore: one(storeTable, {
+			fields: [purchaseRequisitionTable.toStoreId],
 			references: [storeTable.id]
 		}),
 		lines: many(purchaseRequisitionLineTable),
@@ -215,6 +222,43 @@ export const invStockIssueLineTableRelations = relations(
 		}),
 		batch: one(itemBatchTable, {
 			fields: [invStockIssueLineTable.batchId],
+			references: [itemBatchTable.id]
+		})
+	})
+);
+
+export const invDepartmentConsumptionTableRelations = relations(
+	invDepartmentConsumptionTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invDepartmentConsumptionTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		store: one(storeTable, {
+			fields: [invDepartmentConsumptionTable.storeId],
+			references: [storeTable.id]
+		}),
+		lines: many(invDepartmentConsumptionLineTable)
+	})
+);
+
+export const invDepartmentConsumptionLineTableRelations = relations(
+	invDepartmentConsumptionLineTable,
+	({ one }) => ({
+		consumption: one(invDepartmentConsumptionTable, {
+			fields: [invDepartmentConsumptionLineTable.consumptionId],
+			references: [invDepartmentConsumptionTable.id]
+		}),
+		item: one(itemMasterTable, {
+			fields: [invDepartmentConsumptionLineTable.itemId],
+			references: [itemMasterTable.id]
+		}),
+		unit: one(unitTable, {
+			fields: [invDepartmentConsumptionLineTable.unitId],
+			references: [unitTable.id]
+		}),
+		batch: one(itemBatchTable, {
+			fields: [invDepartmentConsumptionLineTable.batchId],
 			references: [itemBatchTable.id]
 		})
 	})

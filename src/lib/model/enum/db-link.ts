@@ -106,7 +106,13 @@ export enum StatusTaggingTypeEnum {
 	INV_PURCHASE_ORDER = 4,
 	INV_GOODS_RECEIPT = 5,
 	INV_STORE_TRANSFER = 6,
-	INV_STOCK_ISSUE = 7
+	INV_STOCK_ISSUE = 7,
+	/** @see information-table-seed: status_tagging_type (migration 0039) */
+	INV_DEPARTMENT_INDENT = 8,
+	/** @see drizzle/0048_department_issue_tables_and_status.sql */
+	INV_DEPARTMENT_ISSUE = 9,
+	/** @see drizzle/0050_inv_department_consumption.sql */
+	INV_DEPARTMENT_CONSUMPTION = 10
 }
 
 /**
@@ -165,6 +171,41 @@ export enum InvStockIssueStatusTaggingEnum {
 	DRAFT = 28,
 	POSTED = 29,
 	CANCELLED = 30
+}
+
+/**
+ * `status_tagging.id` for department indent (store → central).
+ * @see information-table / migration 0039
+ */
+export enum InvDepartmentIndentStatusTaggingEnum {
+	DRAFT = 40,
+	PENDING = 41,
+	PENDING_CENTRAL = 42,
+	ISSUED = 43,
+	RECEIVED = 44,
+	CANCELLED = 45
+}
+
+/**
+ * `status_tagging.id` for department issue (central → requesting store).
+ * @see drizzle/0048_department_issue_tables_and_status.sql
+ */
+export enum InvDepartmentIssueStatusTaggingEnum {
+	PENDING = 46,
+	ISSUED = 47,
+	RECEIVED = 48,
+	CANCELLED = 49
+}
+
+/**
+ * `status_tagging.id` for department consumption (module DC).
+ * @see drizzle/0050_inv_department_consumption.sql
+ */
+export enum InvDepartmentConsumptionStatusTaggingEnum {
+	DRAFT = 50,
+	PENDING = 51,
+	POSTED = 52,
+	CANCELLED = 53
 }
 
 /** Values persisted on `inv_approval_log.action`. */

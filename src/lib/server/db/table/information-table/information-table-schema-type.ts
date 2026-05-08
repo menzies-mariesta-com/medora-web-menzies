@@ -46,6 +46,7 @@ import type {
 	serviceItemTable,
 	serviceTaggingTable,
 	storeTable,
+	storeUserGroupTable,
 	supportTicketTable,
 	allergyTable,
 	documentTypeTable,
@@ -396,6 +397,15 @@ export type ServiceTaggingSchemaUpdate =
 export type StoreSchema = InferSelectModel<typeof storeTable>;
 export type StoreSchemaInsert = InferInsertModel<typeof storeTable>;
 export type StoreSchemaUpdate = Partial<StoreSchemaInsert>;
+
+export type StoreUserGroupSchema = InferSelectModel<
+	typeof storeUserGroupTable
+>;
+export type StoreUserGroupSchemaInsert = InferInsertModel<
+	typeof storeUserGroupTable
+>;
+export type StoreUserGroupSchemaUpdate =
+	Partial<StoreUserGroupSchemaInsert>;
 
 export type SupportTicketSchema = InferSelectModel<
 	typeof supportTicketTable

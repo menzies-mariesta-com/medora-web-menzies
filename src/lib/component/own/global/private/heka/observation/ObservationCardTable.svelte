@@ -14,11 +14,10 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, { type MariTableColumnsInput } from '$lib/component/own/library/mari/table/MariTable.svelte';
 
-	type Row = unknown;
+	/** Event payloads; matches MariTable’s untyped row wire-up. */
+	type Row = any;
 
 	const dispatch = createEventDispatcher<{
 		add: void;
@@ -69,8 +68,8 @@
 		crudDeleteDisabled
 	} = $props<{
 		title: string;
-		rows?: Row[];
-		columns?: MariTableColumn<Row>[];
+		rows?: unknown[];
+		columns?: MariTableColumnsInput;
 		emptyMessage?: string;
 		isLoading?: boolean;
 		showRefreshButton?: boolean;

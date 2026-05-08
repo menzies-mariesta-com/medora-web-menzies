@@ -1,13 +1,12 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import type { StoreListRow, StatusListRow } from '$lib/model/type/heka/ui-rows.type';
-	import type {
-		StaffRegDepartmentRow,
-		StaffRegUserGroupRow
-	} from '$lib/model/type/heka/staff-reg-ui.type';
+	import type { StaffRegUserGroupRow } from '$lib/model/type/heka/staff-reg-ui.type';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import StoreFormModal from '$lib/component/own/local/private/heka/inventory-setup/store/StoreFormModal.svelte';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -48,12 +47,9 @@
 		null;
 
 	let branchNameById = $state<Map<string, string>>(new Map());
-	let userGroupNameById = $state<Map<number, string>>(new Map());
-	let departmentNameById = $state<Map<number, string>>(new Map());
 
 	type StoreLookups = {
 		userGroups: StaffRegUserGroupRow[];
-		departments: StaffRegDepartmentRow[];
 		statuses: StatusListRow[];
 	};
 
@@ -88,15 +84,6 @@
 		branchNameById = new Map(
 			branches.map((b) => [b.id, b.name ?? b.code ?? b.id])
 		);
-		userGroupNameById = new Map(
-			lookups.userGroups.map((g) => [g.id, g.name ?? String(g.id)])
-		);
-		departmentNameById = new Map(
-			lookups.departments.map((d) => [
-				d.id,
-				d.name ?? d.code ?? String(d.id)
-			])
-		);
 		statusOptions = lookups.statuses;
 	}
 
@@ -123,32 +110,22 @@
 				branchNameById.get(row.branchId) ?? '—'
 		},
 		{
-			id: 'linkType',
-			header: m.link_type(),
-			widthClass: 'w-36 min-w-[8rem]',
+			id: 'requisitable',
+			header: m.inv_store_purchase_requisitable(),
+			widthClass: 'w-24',
 			filterable: false,
-			format: (_v, row) =>
-				row.userGroupId != null
-					? m.linked_user_group()
-					: m.linked_department()
+			format: (_v, row) => (row.isPurchaseRequisitable ? 'Yes' : '—')
 		},
 		{
-			id: 'linked',
-			header: m.name(),
-			widthClass: 'w-48 min-w-[12rem]',
+			id: 'userGroups',
+			header: m.user_groups(),
+			widthClass: 'w-64 min-w-[14rem]',
 			filterable: false,
 			format: (_v, row) => {
-				if (row.userGroupId != null) {
-					return (
-						userGroupNameById.get(row.userGroupId) ?? '—'
-					);
-				}
-				if (row.departmentId != null) {
-					return (
-						departmentNameById.get(row.departmentId) ?? '—'
-					);
-				}
-				return '—';
+				const names = (row.userGroups ?? [])
+					.map((g) => g.name ?? `#${g.id}`)
+					.filter((n) => n.length > 0);
+				return names.length > 0 ? names.join(', ') : '—';
 			}
 		},
 		{
@@ -289,10 +266,12 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="text-2xl font-bold">{m.stores()}</h1>
-		<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
-			<LucidePlus />
-			{m.new_store()}
-		</DaisyUiButton>
+		<div class="flex flex-wrap items-center gap-2">
+			<DaisyUiButton className="d-btn-primary" onClick={openCreate}>
+				<LucidePlus />
+				{m.new_store()}
+			</DaisyUiButton>
+		</div>
 	</div>
 
 	<DaisyUiCard>
