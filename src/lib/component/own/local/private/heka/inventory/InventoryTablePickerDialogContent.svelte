@@ -6,6 +6,7 @@
 		type MariTableColumnsInput
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -15,7 +16,7 @@
 		isLoading = false,
 		columns,
 		rows,
-		pageSize = '150'
+		pageSize = String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 	} = $props<
 		DialogSlotProps & {
 			title: string;

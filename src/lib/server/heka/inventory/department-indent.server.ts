@@ -25,6 +25,7 @@ import {
 } from './inventory-scope.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 
 async function checkUserCanCancelDepartmentIndent(
@@ -884,10 +885,7 @@ export async function postDepartmentIndentIssue(
 				purchaseUnitId: line.unitId,
 				purchaseQtyStr: String(line.quantity)
 			});
-			let remaining = Number(needIssue);
-			if (!Number.isFinite(remaining) || remaining <= 0) {
-				throw error(400, 'Invalid line quantity');
-			}
+			let remaining = parsePositiveIntQty(needIssue, 'quantity');
 
 			const rows = await tx
 				.select({
@@ -922,7 +920,7 @@ export async function postDepartmentIndentIssue(
 					itemId: line.itemId,
 					storeId: centralStoreId,
 					batchId: row.stock.batchId,
-					delta: (-take).toFixed(6),
+					delta: String(-take),
 					userId
 				});
 				await tx
@@ -930,12 +928,12 @@ export async function postDepartmentIndentIssue(
 					.values({
 						lineId: line.id,
 						batchId: row.stock.batchId,
-						quantity: take.toFixed(6)
+						quantity: String(take)
 					});
 				remaining -= take;
 			}
 
-			if (remaining > 1e-6) {
+			if (remaining > 0) {
 				throw error(400, 'Insufficient stock at fulfilling store');
 			}
 

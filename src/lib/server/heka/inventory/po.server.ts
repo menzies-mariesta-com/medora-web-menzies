@@ -503,9 +503,15 @@ export async function createPurchaseOrder(
 				)
 				.limit(1);
 			if (!pln) throw error(500, 'PR line missing');
-			const newRem = (
-				Number(pln.qtyRemaining) - Number(l.quantity)
-			).toFixed(6);
+			const orderedQty = Number(l.quantity);
+			if (!Number.isInteger(orderedQty) || orderedQty <= 0) {
+				throw error(400, 'Quantity must be an integer');
+			}
+			const prevRem = Number(pln.qtyRemaining);
+			if (!Number.isInteger(prevRem)) {
+				throw error(400, 'PR remaining quantity must be an integer');
+			}
+			const newRem = String(prevRem - orderedQty);
 			await tx
 				.update(table.purchaseRequisitionLineTable)
 				.set({
@@ -964,7 +970,10 @@ export async function closePurchaseOrderLineRemaining(
 		}
 		if (received >= ordered) return; // already fully received (or closed previously)
 
-		const newQty = received.toFixed(6);
+		if (!Number.isInteger(received)) {
+			throw error(400, 'Received quantity must be an integer');
+		}
+		const newQty = String(received);
 		const unitPrice = Number(ln.unitPrice);
 		if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
 			throw error(400, 'Invalid unit price');
@@ -983,7 +992,10 @@ export async function closePurchaseOrderLineRemaining(
 		// If this PO came from a PR line, releasing the unreceived remainder should
 		// restore PR `qty_remaining` so it can be ordered again.
 		if (ln.prLineId != null) {
-			const diff = (ordered - received).toFixed(6);
+			if (!Number.isInteger(ordered)) {
+				throw error(400, 'Ordered quantity must be an integer');
+			}
+			const diff = String(ordered - received);
 			await tx
 				.update(table.purchaseRequisitionLineTable)
 				.set({
