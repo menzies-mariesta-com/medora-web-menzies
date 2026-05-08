@@ -11,6 +11,8 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LReferFeedbackDialogContent from '$lib/component/own/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	type ReferHistoryWithRelations = {
 		id: number;
@@ -290,9 +292,10 @@
 				})
 			});
 			if (!r.ok) throw new Error(`Cancel failed (${r.status})`);
-			toastService.addToast(
-				'Referral cancelled.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_referral(),
+				m.toast_action_cancelled()
 			);
 			await loadData({ force: true });
 		} catch (err) {
@@ -338,9 +341,10 @@
 				})
 			});
 			if (!r.ok) throw new Error(`Reject failed (${r.status})`);
-			toastService.addToast(
-				'Referral rejected.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_referral(),
+				m.toast_action_rejected()
 			);
 			await loadData({ force: true });
 		} catch (err) {
@@ -386,9 +390,10 @@
 				})
 			});
 			if (!r.ok) throw new Error(`Accept failed (${r.status})`);
-			toastService.addToast(
-				'Referral accepted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_referral(),
+				m.toast_action_accepted()
 			);
 			await loadData({ force: true });
 		} catch (err) {

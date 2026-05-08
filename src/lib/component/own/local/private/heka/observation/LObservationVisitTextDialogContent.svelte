@@ -8,6 +8,7 @@
 	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -117,9 +118,10 @@
 					diagnosisNotes: empty
 				});
 			}
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				dialogTitle,
+				m.toast_action_updated()
 			);
 			ObservationVisitTextDialogState.onSaved?.();
 			await confirm({ saved: true });

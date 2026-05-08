@@ -23,6 +23,7 @@
 		type VitalKey
 	} from '$lib/config/vital.config';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -177,9 +178,10 @@
 			if (!base) throw new Error('Missing hospital context');
 			const res = await fetch(`${base}?id=${v.id}`, { method: 'DELETE' });
 			if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-			toastService.addToast(
-				'Vital deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_vital(),
+				m.toast_action_deleted()
 			);
 			if (visit?.patientId && visit?.hospitalId) {
 				await fetchVitals(visit.patientId, visit.hospitalId, {

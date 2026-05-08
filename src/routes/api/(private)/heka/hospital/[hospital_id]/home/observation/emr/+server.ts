@@ -246,6 +246,11 @@ export const POST: RequestHandler = async (event) => {
 			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
 			return json(await obs.signPatientVisitClinical({ visitId }));
 		}
+		case 'visit.unsign': {
+			const visitId = Number(body?.visitId ?? 0);
+			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
+			return json(await obs.unsignPatientVisitClinical({ visitId }));
+		}
 		case 'visit.updateText': {
 			const id = Number(body['id'] ?? 0);
 			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
