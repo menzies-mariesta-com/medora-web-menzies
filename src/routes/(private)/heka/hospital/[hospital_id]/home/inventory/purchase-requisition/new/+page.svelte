@@ -10,6 +10,7 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -69,8 +70,6 @@
 	let headerPrNo = $state<string | null>(null);
 	let headerStatusLabel = $state<string>('Draft');
 	let headerStatusCode = $state<string | null>(null);
-
-	let lineItemFilter = $state('');
 
 	let lineItemDialogActive = $state(false);
 	let editingLineKey = $state<string | null>(null);
@@ -466,35 +465,24 @@
 			id: 'itemLabel',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => row.itemLabel || '—'
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => conversionLabelForLine(row)
 		},
 		{
 			id: 'quantity',
 			header: m.inv_common_quantity(),
 			field: 'quantity',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
 		}
 	]);
-
-	const filteredLines = $derived.by(() => {
-		const q = lineItemFilter.trim().toLowerCase();
-		if (!q) return createLines;
-		return createLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelForLine(l).toLowerCase();
-			const qty = (l.quantity ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || qty.includes(q);
-		});
-	});
 </script>
 
 <form
@@ -599,20 +587,34 @@
 
 	<PrLineItemsCard
 		viewOnly={false}
-		bind:lineItemFilter
 		createLinesCount={createLines.length}
 		columns={lineColumns}
-		rows={filteredLines}
+		rows={createLines}
+		useColumnFilters={true}
+		hideQuickFilter={true}
+		hideAddButton={true}
+		toolbarRight={lineItemsToolbarRight}
 		onAddItem={() => void openLineDialogForCreate()}
 		onEditLine={(line) => void openLineDialogForEdit(line)}
 		onDeleteLine={deleteLine}
 	/>
+</form>
 
-	<div
-		class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-end"
-	>
+{#snippet lineItemsToolbarRight()}
+	<div class="flex items-center gap-2">
+		<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+			<DaisyUiButton
+				type="button"
+				className="d-btn-primary d-btn-square d-btn-outline"
+				disabled={createSubmitting}
+				aria-label={m.inv_line_items_add()}
+				onClick={() => void openLineDialogForCreate()}
+			>
+				<LucidePlus className="size-4" />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
 		<DaisyUiButton type="submit" className="d-btn-primary" disabled={createSubmitting}>
 			{m.inv_pr_create_submit()}
 		</DaisyUiButton>
 	</div>
-</form>
+{/snippet}

@@ -1,25 +1,45 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- forwards to shared card with page-typed rows */
 	import InventoryLineItemsCard from '../InventoryLineItemsCard.svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	export let manualLineItemFilter = '';
-	export let totalCount = 0;
-	export let columns: unknown[] = [];
-	export let rows: unknown[] = [];
+	type Props = {
+		totalCount?: number;
+		columns?: unknown[];
+		rows?: unknown[];
+		useColumnFilters?: boolean;
+		/** Parent renders add line button elsewhere */
+		hideAddButton?: boolean;
+		/** No DaisyUiCard wrapper — table only */
+		noCard?: boolean;
+		onAddItem: () => void;
+		onEditLine: (row: any) => void;
+		onDeleteLine: (key: string) => void;
+	};
 
-	export let onAddItem: () => void;
-	export let onEditLine: (row: any) => void;
-	export let onDeleteLine: (key: string) => void;
+	let {
+		totalCount = 0,
+		columns = [],
+		rows = [],
+		useColumnFilters = false,
+		hideAddButton = false,
+		noCard = false,
+		onAddItem,
+		onEditLine,
+		onDeleteLine
+	} = $props<Props>();
 </script>
 
 <InventoryLineItemsCard
 	title={m.inv_po_lines()}
-	bind:lineItemFilter={manualLineItemFilter}
+	hideTitle={true}
+	addButtonIconOnly={true}
+	{hideAddButton}
+	{noCard}
 	{totalCount}
 	{columns}
 	{rows}
 	viewOnly={false}
+	{useColumnFilters}
 	{onAddItem}
 	{onEditLine}
 	{onDeleteLine}
