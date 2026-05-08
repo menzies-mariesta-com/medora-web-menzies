@@ -12,7 +12,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, eq, ilike, ne, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
 import { assertInventoryPartyGeo } from '$lib/server/heka/administration/inventory-party-geo.server';
 
 function hospitalScope(hospitalId: string) {
@@ -77,7 +77,7 @@ export async function getManufacturerPaginated(
 				eq(table.manufacturerTable.postalCodeId, table.postalCodeTable.id)
 			)
 			.where(whereClause)
-			.orderBy(asc(table.manufacturerTable.name))
+			.orderBy(desc(table.manufacturerTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

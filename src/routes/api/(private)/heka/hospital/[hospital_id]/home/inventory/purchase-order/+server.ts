@@ -31,9 +31,20 @@ export const GET: RequestHandler = async (event) => {
 		statusIdStr != null && statusIdStr !== ''
 			? Number(statusIdStr)
 			: undefined;
+	const supplierIdStr = event.url.searchParams.get('supplierId');
+	const supplierIdNum =
+		supplierIdStr != null && supplierIdStr !== '' ? Number(supplierIdStr) : NaN;
+	const supplierId =
+		Number.isFinite(supplierIdNum) && supplierIdNum > 0 ? supplierIdNum : undefined;
 	const poNoRaw = event.url.searchParams.get('poNo');
 	const poNo =
 		poNoRaw != null && poNoRaw !== '' ? poNoRaw : undefined;
+	const totalAmountRaw = event.url.searchParams.get('totalAmount');
+	const totalAmount =
+		totalAmountRaw != null && totalAmountRaw !== '' ? totalAmountRaw : undefined;
+	const itemRaw = event.url.searchParams.get('item');
+	const item =
+		itemRaw != null && itemRaw !== '' ? itemRaw : undefined;
 	const data = await listPurchaseOrders(event, {
 		hospitalId,
 		page,
@@ -43,7 +54,10 @@ export const GET: RequestHandler = async (event) => {
 		statusTaggingId: Number.isFinite(statusTaggingId as number)
 			? statusTaggingId
 			: undefined,
-		poNo
+		poNo,
+		supplierId,
+		totalAmount,
+		item
 	});
 	return json(data);
 };

@@ -1,6 +1,7 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
-	getPendingOpBillingServiceDetailRowsForVisit
+	getPendingOpBillingServiceDetailRowsForVisit,
+	type OpBillingPendingLineRow
 } from '$lib/server/heka/observation/observation-emr.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
@@ -10,9 +11,7 @@ import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.e
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
 
-type PendingDetailRow = Awaited<
-	ReturnType<typeof getPendingOpBillingServiceDetailRowsForVisit>
->[number];
+type PendingDetailRow = OpBillingPendingLineRow;
 
 type OpBillingWithAuditStaff = OpBillingSchema & {
 	discountedByStaff?: unknown;
@@ -132,7 +131,9 @@ async function syncOpenOpBillingForVisit(opts: {
 }> {
 	const db = ensureDb();
 	const pendingRows = await getPendingOpBillingServiceDetailRowsForVisit({
-		visitId: opts.visitId
+		visitId: opts.visitId,
+		hospitalId: opts.hospitalId,
+		branchId: opts.branchId
 	});
 
 	let openBill = await consolidateOpenOpBillings({
@@ -210,25 +211,32 @@ async function syncOpenOpBillingForVisit(opts: {
 		.where(eq(table.opBillingLineTable.opBillingId, billingId));
 
 	await db.insert(table.opBillingLineTable).values(
-		pendingRows.map((r: PendingDetailRow, idx: number) => ({
-			opBillingId: billingId,
-			lineIndex: idx + 1,
-			serviceOrderDetailId: r.id ?? null,
-			serviceId: r.serviceId,
-			serviceNameSnapshot: r.serviceName ?? null,
-			subCategoryId: r.subCategoryId ?? null,
-			subCategoryNameSnapshot: r.subCategoryName ?? null,
-			orderNoSnapshot: r.orderNo ?? null,
-			discount: r.discount ?? null,
-			serviceAmount: r.serviceAmount ?? null,
-			serviceTaxAmount: r.serviceTaxAmount ?? null,
-			serviceUnit: r.serviceUnit ?? null,
-			lineTotal: computeLineTotal(r).toFixed(2),
-			createdAt: opts.nowIso,
-			updatedAt: opts.nowIso,
-			createdBy: opts.userId,
-			updatedBy: opts.userId
-		}))
+		pendingRows.map((r: PendingDetailRow, idx: number) => {
+			const serviceOrderDetailId =
+				r.lineSource === 'service_order_detail' ? r.id : null;
+			const medicationOrderLineId =
+				r.lineSource === 'medication_order_line' ? r.medicationOrderLineId : null;
+			return {
+				opBillingId: billingId,
+				lineIndex: idx + 1,
+				serviceOrderDetailId,
+				medicationOrderLineId,
+				serviceId: r.serviceId,
+				serviceNameSnapshot: r.serviceName ?? null,
+				subCategoryId: r.subCategoryId ?? null,
+				subCategoryNameSnapshot: r.subCategoryName ?? null,
+				orderNoSnapshot: r.orderNo ?? null,
+				discount: r.discount ?? null,
+				serviceAmount: r.serviceAmount ?? null,
+				serviceTaxAmount: r.serviceTaxAmount ?? null,
+				serviceUnit: r.serviceUnit ?? null,
+				lineTotal: computeLineTotal(r).toFixed(2),
+				createdAt: opts.nowIso,
+				updatedAt: opts.nowIso,
+				createdBy: opts.userId,
+				updatedBy: opts.userId
+			};
+		})
 	);
 
 	await db

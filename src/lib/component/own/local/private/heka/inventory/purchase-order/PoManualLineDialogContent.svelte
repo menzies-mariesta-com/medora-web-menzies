@@ -20,7 +20,8 @@
 		getManufacturerLabelForValue,
 		onPickItem,
 		onSaveAttempt,
-		lineItemMetricTiles = null
+		lineItemMetricTiles = null,
+		getLineItemMetricTiles
 	}: DialogSlotProps & {
 		draftManualLine: any;
 		searchItemsFn: (q: string) => Promise<SearchOpt[]>;
@@ -29,7 +30,14 @@
 		onPickItem: (itemId: number) => void | Promise<void>;
 		onSaveAttempt: () => boolean;
 		lineItemMetricTiles?: LineItemMetricTile[] | null;
+		/** Prefer over `lineItemMetricTiles` when dialog props are snapshotted (global modal). */
+		getLineItemMetricTiles?: () => LineItemMetricTile[] | null;
 	} = $props();
+
+	/** Global dialog spreads props once; a getter reads live parent state for metric tiles. */
+	const resolvedMetricTiles = $derived.by(() =>
+		getLineItemMetricTiles != null ? getLineItemMetricTiles() : lineItemMetricTiles
+	);
 
 	let trimmedOnce = false;
 	$effect(() => {
@@ -42,6 +50,7 @@
 	});
 
 	let saving = $state(false);
+	let pickingItem = $state(false);
 
 	async function handleSave() {
 		saving = true;
@@ -60,8 +69,14 @@
 		<DaisyUISearchSelect
 			value={draftManualLine?.itemId ? String(draftManualLine.itemId) : ''}
 			searchFn={searchItemsFn}
-			onChange={(v: string) => {
-				if (v) void onPickItem(Number(v));
+			onChange={async (v: string) => {
+				if (!v) return;
+				pickingItem = true;
+				try {
+					await onPickItem(Number(v));
+				} finally {
+					pickingItem = false;
+				}
 			}}
 			placeholder={m.inv_line_modal_search_item()}
 			className="w-full"
@@ -81,7 +96,7 @@
 			}}
 			placeholder={m.inv_line_modal_select_conversion()}
 			className="w-full"
-			disabled={draftManualLine?.itemId == null}
+			disabled={draftManualLine?.itemId == null || pickingItem}
 		/>
 	</div>
 
@@ -93,7 +108,7 @@
 			bind:value={draftManualLine.quantity}
 			step="1"
 			min="0"
-			disabled={draftManualLine?.itemId == null}
+			disabled={draftManualLine?.itemId == null || pickingItem}
 			aria-label={m.inv_common_quantity()}
 		/>
 	</div>
@@ -106,7 +121,7 @@
 			bind:value={draftManualLine.unitPrice}
 			step="0.01"
 			min="0"
-			disabled={draftManualLine?.itemId == null}
+			disabled={draftManualLine?.itemId == null || pickingItem}
 			aria-label={m.inv_po_line_unit_price()}
 		/>
 	</div>
@@ -127,13 +142,20 @@
 	</div>
 </div>
 
-<InventoryLineItemMetricTiles tiles={lineItemMetricTiles} draftLine={draftManualLine} />
+<InventoryLineItemMetricTiles tiles={resolvedMetricTiles} draftLine={draftManualLine} />
 
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton type="button" className="d-btn" disabled={saving || pickingItem} onClick={() => cancel()}>
 		{m.cancel()}
 	</DaisyUiButton>
-	<DaisyUiButton type="button" className="d-btn d-btn-primary" disabled={saving} onClick={() => void handleSave()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn d-btn-primary"
+		disabled={saving || pickingItem}
+		loading={pickingItem}
+		loadingText="Loading item…"
+		onClick={() => void handleSave()}
+	>
 		{m.save()}
 	</DaisyUiButton>
 </div>

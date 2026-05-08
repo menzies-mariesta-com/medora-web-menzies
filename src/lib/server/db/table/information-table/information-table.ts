@@ -1579,6 +1579,8 @@ export const opBillingLineTable = pgTable(
 			() => serviceOrderDetailTable.id,
 			{ onDelete: 'set null' }
 		),
+		/** Set when the bill line is sourced from a saved medication (internal) order line. */
+		medicationOrderLineId: integer('medication_order_line_id'),
 		serviceId: integer('service_id')
 			.notNull()
 			.references(() => serviceItemTable.id, { onDelete: 'restrict' }),
@@ -1615,7 +1617,10 @@ export const opBillingLineTable = pgTable(
 		index('op_billing_line_service_id_idx').on(table.serviceId),
 		index(
 			'op_billing_line_service_order_detail_id_idx'
-		).on(table.serviceOrderDetailId)
+		).on(table.serviceOrderDetailId),
+		index('op_billing_line_medication_order_line_id_idx').on(
+			table.medicationOrderLineId
+		)
 	]
 );
 
