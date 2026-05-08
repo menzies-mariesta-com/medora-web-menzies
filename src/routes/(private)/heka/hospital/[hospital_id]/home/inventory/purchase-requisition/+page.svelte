@@ -22,6 +22,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import { toastError } from '$lib/util/toast-copy.util';
 
 	const dt = new DateTimeUtil();
 
@@ -202,7 +203,12 @@
 			total = j.total ?? 0;
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') return;
-			toastService.addErrorToast('Could not load purchase requisitions', e);
+			toastError(
+				toastService,
+				m.entity_purchase_requisition(),
+				m.toast_action_loaded_failed(),
+				e
+			);
 		} finally {
 			loading = false;
 		}

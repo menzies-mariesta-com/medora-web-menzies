@@ -10,6 +10,7 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -140,9 +141,10 @@
 					statusId
 				});
 			}
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.observation_emr_plan_of_care_note_label(),
+				isEdit ? m.toast_action_updated() : m.toast_action_created()
 			);
 			ObservationPlanOfCareDialogState.onSaved?.();
 			await confirm({ saved: true });

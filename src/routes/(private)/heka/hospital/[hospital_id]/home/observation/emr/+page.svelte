@@ -52,6 +52,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	type OrderDetailVisitRow = ServiceOrderDetailListRow & {
 		orderNo: string | null;
@@ -1091,9 +1092,10 @@
 		if (!result.confirmed) return;
 		try {
 			await apiPost('allergy.delete', { id: row.id });
-			toastService.addToast(
-				'Allergy removed.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_allergy(),
+				m.toast_action_removed()
 			);
 			await reloadAllergiesForVisit();
 		} catch (err) {
@@ -1173,9 +1175,10 @@
 		if (!result.confirmed) return;
 		try {
 			await apiPost('vital.delete', { id: v.id });
-			toastService.addToast(
-				'Vital deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_vital(),
+				m.toast_action_deleted()
 			);
 			await reloadVitalsForVisit();
 		} catch (err) {
@@ -1282,9 +1285,10 @@
 		if (!result.confirmed || !result.data?.confirmed) return;
 		try {
 			await apiPost('diagnosis.delete', { id: row.id });
-			toastService.addToast(
-				'Diagnosis inactivated.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_patient_diagnosis(),
+				m.toast_action_inactivated()
 			);
 			await reloadDiagnosesForVisit();
 		} catch (err) {
@@ -1593,9 +1597,10 @@
 		if (!result.confirmed || !result.data?.confirmed) return;
 		try {
 			await apiPost('formEntry.delete', { id: row.id });
-			toastService.addToast(
-				'Entry deleted.',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_emr_entry(),
+				m.toast_action_deleted()
 			);
 			await reloadFormEntriesForVisit();
 		} catch (err) {
@@ -1640,9 +1645,10 @@
 					formCode: targetFormCode
 				}
 			});
-			toastService.addToast(
-				m.observation_emr_saved(),
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_emr_entry(),
+				m.toast_action_saved()
 			);
 			await reloadFormEntriesForVisit();
 		} catch (err) {

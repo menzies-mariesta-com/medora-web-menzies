@@ -47,6 +47,8 @@
 	import LPatientCheckDuplicateDialogContent from '$lib/component/own/local/private/heka/patient/registration/LPatientCheckDuplicateDialogContent.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LPatientCardPrintModal from '$lib/component/own/local/private/heka/patient/list/LPatientCardPrintModal.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -864,9 +866,10 @@
 					});
 				}
 
-				toastService.addToast(
-					'Patient updated successfully.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_patient(),
+					m.toast_action_updated()
 				);
 				removePhotoRequested = false;
 
@@ -1033,9 +1036,11 @@
 					);
 				}
 
-				toastService.addToast(
-					`Patient (${patientCode}) created successfully.`,
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_patient(),
+					m.toast_action_created(),
+					patientCode
 				);
 
 				if (emailValue) {

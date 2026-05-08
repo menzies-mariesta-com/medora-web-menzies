@@ -22,6 +22,7 @@
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { toastLine } from '$lib/util/toast-copy.util';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -167,11 +168,19 @@
 	async function handleSave() {
 		const parsedLevel = parseInt(levelInput, 10);
 		if (!levelInput || isNaN(parsedLevel) || parsedLevel < 1) {
-			toastService.addToast('Valid positive level is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				m.toast_field_required(),
+				StatusColorEnum.WARNING,
+				m.inv_common_level()
+			);
 			return;
 		}
 		if (storeId == null) {
-			toastService.addToast('Store is required', StatusColorEnum.WARNING);
+			toastService.addToast(
+				m.toast_field_required(),
+				StatusColorEnum.WARNING,
+				m.entity_store()
+			);
 			return;
 		}
 
@@ -198,13 +207,22 @@
 					error?: string;
 				};
 				toastService.addToast(
-					body.message || body.error || 'Failed to save',
-					StatusColorEnum.ERROR
+					toastLine(
+						m.inv_page_approval_config_title(),
+						m.toast_action_saved_failed()
+					),
+					StatusColorEnum.ERROR,
+					body.message || body.error || ''
 				);
 				return;
 			}
 			toastService.addToast(
-				editingId != null ? 'Level updated' : 'Level created',
+				toastLine(
+					m.entity_approval_config_level(),
+					editingId != null
+						? m.toast_action_updated()
+						: m.toast_action_created()
+				),
 				StatusColorEnum.SUCCESS
 			);
 			resetForm();
@@ -229,10 +247,22 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addToast('Failed to delete', StatusColorEnum.ERROR);
+				toastService.addToast(
+					toastLine(
+						m.entity_approval_config_level(),
+						m.toast_action_deleted_failed()
+					),
+					StatusColorEnum.ERROR
+				);
 				return;
 			}
-			toastService.addToast('Level deleted', StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				toastLine(
+					m.entity_approval_config_level(),
+					m.toast_action_deleted()
+				),
+				StatusColorEnum.SUCCESS
+			);
 			fetchData();
 		});
 	}
@@ -417,10 +447,10 @@
 						type="submit"
 						className="d-btn-wide {editingId != null ? 'd-btn-accent' : 'd-btn-primary'}"
 					>
-						{editingId != null ? 'Edit' : 'Save'}
+						{editingId != null ? m.update() : m.create()}
 					</DaisyUiButton>
 					<DaisyUiButton type="button" className="d-btn-outline d-btn-wide" onClick={resetForm}>
-						Cancel
+						{m.cancel()}
 					</DaisyUiButton>
 				</DaisyUiCardBodyAction>
 			</form>

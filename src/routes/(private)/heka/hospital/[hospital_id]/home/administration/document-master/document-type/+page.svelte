@@ -23,6 +23,7 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -121,9 +122,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'Document type updated',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document_type(),
+					m.toast_action_updated()
 				);
 			} else {
 				const res = await fetch(baseUrl, {
@@ -134,9 +136,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(
-					'Document type created',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document_type(),
+					m.toast_action_created()
 				);
 			}
 			resetForm();
@@ -170,9 +173,10 @@
 				);
 				if (!res.ok) throw new Error(await res.text());
 				await fetchData({ bustCache: true });
-				toastService.addToast(
-					'Document type deleted',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_document_type(),
+					m.toast_action_deleted()
 				);
 			}
 		} catch (err) {
@@ -302,7 +306,7 @@
 							className="d-btn-primary d-btn-sm"
 							onClick={handleSave}
 						>
-							{editingId ? 'Update' : 'Create'}
+							{editingId ? m.update() : m.create()}
 						</DaisyUiButton>
 					</div>
 				</div>

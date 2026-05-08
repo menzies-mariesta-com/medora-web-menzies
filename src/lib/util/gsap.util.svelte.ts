@@ -41,7 +41,11 @@ export function fadeInUp(
 			y: 0,
 			duration: opts?.duration ?? GSAP_DURATION,
 			delay: opts?.delay ?? 0,
-			ease: opts?.ease ?? GSAP_EASE
+			ease: opts?.ease ?? GSAP_EASE,
+			// IMPORTANT: GSAP leaves a `transform` style on the node (even when y=0),
+			// which makes `position: fixed` descendants behave like they're fixed to
+			// this element in some browsers. Clear it after the animation completes.
+			clearProps: 'transform'
 		}
 	);
 }
@@ -59,7 +63,8 @@ export function scaleIn(
 			scale: 1,
 			duration: opts?.duration ?? GSAP_DURATION,
 			delay: opts?.delay ?? 0,
-			ease: opts?.ease ?? GSAP_EASE
+			ease: opts?.ease ?? GSAP_EASE,
+			clearProps: 'transform'
 		}
 	);
 }
@@ -86,7 +91,8 @@ export function staggerIn(
 			duration: opts?.duration ?? GSAP_DURATION,
 			delay: opts?.delay ?? 0,
 			stagger: opts?.stagger ?? 0.05,
-			ease: GSAP_EASE
+			ease: GSAP_EASE,
+			clearProps: 'transform'
 		}
 	);
 }

@@ -22,6 +22,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import type { FinancialYearListRow } from '$lib/model/type/heka/ui-rows.type';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -104,7 +105,7 @@
 	async function handleSave() {
 		if (!codeInput.trim()) {
 			toastService.addToast(
-				'Code is required',
+				m.toast_code_required(),
 				StatusColorEnum.WARNING
 			);
 			return;
@@ -112,17 +113,23 @@
 
 		const isValidDate = (v: string) => !v || /^\d{4}-\d{2}-\d{2}(T|$)/.test(v);
 		if (startDateInput && !isValidDate(startDateInput)) {
-			toastService.addToast('Invalid Start Date format. Pick a full date.', StatusColorEnum.WARNING);
+			toastService.addToast(
+				m.toast_invalid_date_format_full(),
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		if (endDateInput && !isValidDate(endDateInput)) {
-			toastService.addToast('Invalid End Date format. Pick a full date.', StatusColorEnum.WARNING);
+			toastService.addToast(
+				m.toast_invalid_date_format_full(),
+				StatusColorEnum.WARNING
+			);
 			return;
 		}
 		await saveLock.run(async () => {
 			if (!hospitalId) {
 				toastService.addToast(
-					'Missing hospital context',
+					m.toast_missing_hospital_context(),
 					StatusColorEnum.WARNING
 				);
 				return;
@@ -137,18 +144,20 @@
 					method: 'PUT',
 					body: JSON.stringify({ id: editingId, ...payload })
 				});
-				toastService.addToast(
-					'Financial year updated',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_financial_year(),
+					m.toast_action_updated()
 				);
 			} else {
 				await apiFetch(financialYearApiUrl(), {
 					method: 'POST',
 					body: JSON.stringify(payload)
 				});
-				toastService.addToast(
-					'Financial year created',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_financial_year(),
+					m.toast_action_created()
 				);
 			}
 			resetForm();
@@ -168,9 +177,10 @@
 				method: 'DELETE',
 				body: JSON.stringify({ id: item.id })
 			});
-			toastService.addToast(
-				'Financial year deleted',
-				StatusColorEnum.SUCCESS
+			toastSuccess(
+				toastService,
+				m.entity_financial_year(),
+				m.toast_action_deleted()
 			);
 			fetchData({ bustCache: true });
 		});
@@ -315,14 +325,14 @@
 							? 'd-btn-accent'
 							: 'd-btn-primary'}"
 					>
-						{editingId != null ? 'Edit' : 'Save'}
+						{editingId != null ? m.update() : m.create()}
 					</DaisyUiButton>
 					<DaisyUiButton
 						type="button"
 						className="d-btn-outline d-btn-wide"
 						onClick={resetForm}
 					>
-						Cancel
+						{m.cancel()}
 					</DaisyUiButton>
 				</DaisyUiCardBodyAction>
 			</form>

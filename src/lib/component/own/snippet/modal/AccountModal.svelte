@@ -27,6 +27,8 @@
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import LucideUser from '$lib/component/own/library/lucide/LucideUser.svelte';
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	let { open, onClose, hospitalId, userEmail, staffId } = $props<{
 		open: boolean;
@@ -473,9 +475,10 @@
 					const t = await res.text().catch(() => '');
 					throw new Error(t || `Update failed: ${res.status}`);
 				}
-				toastService.addToast(
-					'Account deactivated.',
-					StatusColorEnum.SUCCESS
+				toastSuccess(
+					toastService,
+					m.entity_account(),
+					m.toast_action_inactivated()
 				);
 				onClose();
 				await authClient.signOut();
@@ -537,7 +540,7 @@
 								className="d-btn-ghost d-btn-sm d-btn-circle"
 								onClick={handleClose}
 								disabled={isBusy}
-								ariaLabel="Close"
+								title="Close"
 							>
 								<LucideX className="size-5" />
 							</DaisyUiButton>
@@ -871,7 +874,7 @@
 							<DaisyUiButton
 								className="d-btn-ghost d-btn-sm d-btn-circle"
 								onClick={handleClose}
-								ariaLabel="Close"
+								title="Close"
 							>
 								<LucideX className="size-5" />
 							</DaisyUiButton>
