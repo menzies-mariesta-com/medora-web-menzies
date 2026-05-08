@@ -3,16 +3,31 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import InventoryBatchQtyPickTable from '$lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte';
+	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type {
-		ConsumptionDraftLine,
+		ConsumptionBatchAllocationDraft,
 		ConsumptionDraftLineIum
 	} from '$lib/model/type/heka/department-consumption-detail.type';
-	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
-	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+
+	type DeptIssueDraftLine = {
+		key: string;
+		itemSearch: string;
+		hits: { id: number; itemName: string | null }[];
+		itemId: number | null;
+		itemLabel: string;
+		iumList: ConsumptionDraftLineIum[];
+		itemUnitMasterId: number | null;
+		batchAllocations: ConsumptionBatchAllocationDraft[];
+		/** For indent mode: lock item selection */
+		lockItem?: boolean;
+		/** For indent mode: lock purchase unit label when iumList isn't loaded */
+		purchaseUnitLabel?: string;
+	};
 
 	let {
 		confirm,
@@ -25,7 +40,7 @@
 	}: DialogSlotProps & {
 		hospitalId: string;
 		storeId: number | null;
-		draftLine: ConsumptionDraftLine;
+		draftLine: DeptIssueDraftLine;
 		searchItemsFn: (q: string) => Promise<{ label: string; value: string }[]>;
 		onPersist: () => void;
 	} = $props();
@@ -38,7 +53,7 @@
 		return enrichItemSearchOptionsWithStock(hospitalId, base, storeId);
 	}
 
-	async function hydrateLineItemMeta(line: ConsumptionDraftLine, itemId: number) {
+	async function hydrateLineItemMeta(line: DeptIssueDraftLine, itemId: number) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -67,10 +82,11 @@
 		if (!chosen && allowedRows.length > 0) chosen = allowedRows[0];
 		line.iumList = chosen ? [chosen] : [];
 		line.itemUnitMasterId = chosen?.id ?? null;
+		line.purchaseUnitLabel = chosen?.purchaseUnitName ?? line.purchaseUnitLabel;
 		await refreshBatchAllocations(line);
 	}
 
-	async function refreshBatchAllocations(line: ConsumptionDraftLine) {
+	async function refreshBatchAllocations(line: DeptIssueDraftLine) {
 		line.batchAllocations = [];
 		if (!hospitalId || storeId == null || line.itemId == null) return;
 		try {
@@ -106,20 +122,13 @@
 					qtyPurchase: ''
 				}));
 		} catch (e) {
-			toast.addErrorToast(m.inv_dc_batch(), e);
+			toast.addToast(m.inv_dc_batch(), StatusColorEnum.ERROR, String(e));
 		}
 	}
 
 	async function onPickItem(itemId: number) {
 		await hydrateLineItemMeta(draftLine, itemId);
 	}
-
-	function purchaseUnitId(line: ConsumptionDraftLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
-		return ium?.purchaseUnitId ?? null;
-	}
-
-	let saving = $state(false);
 
 	const chosenIum = $derived(
 		draftLine.iumList.find((u) => u.id === draftLine.itemUnitMasterId) ?? null
@@ -142,10 +151,16 @@
 					'')
 	);
 
+	const purchaseUnitLabel = $derived(
+		(chosenIum?.purchaseUnitName ?? draftLine.purchaseUnitLabel ?? '').trim()
+	);
+	const issueUnitLabel = $derived((chosenIum?.issueUnitName ?? '').trim());
+
+	let saving = $state(false);
+
 	async function handleSave() {
-		const uid = purchaseUnitId(draftLine);
-		if (draftLine.itemId == null || uid == null) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
+		if (draftLine.itemId == null) {
+			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_item());
 			return;
 		}
 		if (!iumFactors) {
@@ -159,11 +174,7 @@
 			if (!qp) continue;
 			const n = Number(qp);
 			if (!Number.isFinite(n) || n <= 0) {
-				toast.addToast(
-					m.inv_dc_edit_line(),
-					StatusColorEnum.ERROR,
-					m.inv_common_quantity()
-				);
+				toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
 				return;
 			}
 			hasPositive = true;
@@ -190,21 +201,48 @@
 			saving = false;
 		}
 	}
+
+	$effect(() => {
+		// For indent mode, item is prefilled but iumList may be empty.
+		// Hydrate item meta (IUM + default conversion) the same way as Consumption.
+		if (draftLine.lockItem && draftLine.itemId != null) {
+			if (draftLine.iumList.length === 0) {
+				void hydrateLineItemMeta(draftLine, draftLine.itemId);
+				return;
+			}
+			// If meta is present but batches are empty (e.g. store changed), refresh lots.
+			if (draftLine.batchAllocations.length === 0) {
+				void refreshBatchAllocations(draftLine);
+			}
+		}
+	});
 </script>
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
-		<DaisyUISearchSelect
-			value={draftLine.itemId ? String(draftLine.itemId) : ''}
-			searchFn={searchItemsWithStock}
-			invalidateKey={`${hospitalId}:${storeId ?? ''}`}
-			onChange={(v: string) => {
-				if (v) void onPickItem(Number(v));
-			}}
-			placeholder={m.inv_line_modal_search_item()}
-			className="w-full"
-		/>
+		{#if draftLine.lockItem}
+			<input
+				type="text"
+				readonly
+				disabled
+				class="d-input d-input-bordered mt-1 w-full cursor-not-allowed opacity-90"
+				value={draftLine.itemLabel || '—'}
+				title={draftLine.itemLabel || undefined}
+				aria-label={m.inv_pr_line_item_search()}
+			/>
+		{:else}
+			<DaisyUISearchSelect
+				value={draftLine.itemId ? String(draftLine.itemId) : ''}
+				searchFn={searchItemsWithStock}
+				invalidateKey={`${hospitalId}:${storeId ?? ''}`}
+				onChange={(v: string) => {
+					if (v) void onPickItem(Number(v));
+				}}
+				placeholder={m.inv_line_modal_search_item()}
+				className="w-full"
+			/>
+		{/if}
 	</div>
 
 	<div class="sm:col-span-2">
@@ -226,8 +264,8 @@
 		<InventoryBatchQtyPickTable
 			bind:allocations={draftLine.batchAllocations}
 			factors={iumFactors}
-			purchaseUnitLabel={chosenIum?.purchaseUnitName ?? ''}
-			issueUnitLabel={chosenIum?.issueUnitName ?? ''}
+			purchaseUnitLabel={purchaseUnitLabel || '—'}
+			issueUnitLabel={issueUnitLabel || ''}
 			disabled={draftLine.itemId == null || storeId == null}
 		/>
 	</div>
@@ -246,3 +284,4 @@
 		{m.save()}
 	</DaisyUiButton>
 </div>
+

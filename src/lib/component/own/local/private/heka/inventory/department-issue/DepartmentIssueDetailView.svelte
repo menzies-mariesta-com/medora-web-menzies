@@ -10,7 +10,10 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import type { DepartmentIssueDetailLine } from '$lib/model/type/heka/department-issue-detail.type';
+	import type {
+		DepartmentIssueAllocationRow,
+		DepartmentIssueDetailLine
+	} from '$lib/model/type/heka/department-issue-detail.type';
 	import { formatPurchaseQtyCellForDetailLine } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const toast = new ToastService();
@@ -45,10 +48,25 @@
 		statusName?: string | null;
 		createdAt?: string | null;
 		lines: DepartmentIssueDetailLine[];
+		allocations?: DepartmentIssueAllocationRow[];
 	};
 
 	let detail = $state<IssueDetail | null>(null);
 	let loading = $state(false);
+
+	const allocationsByLineId = $derived.by(() => {
+		const map: Record<number, DepartmentIssueAllocationRow[]> = {};
+		for (const a of detail?.allocations ?? []) {
+			(map[a.lineId] ??= []).push(a);
+		}
+		return map;
+	});
+
+	function formatExpiryDate(dateStr: string | null) {
+		const s = dateStr?.trim() ?? '';
+		if (!s) return '—';
+		return s.length >= 10 ? s.slice(0, 10) : s;
+	}
 
 	const lineColumns: MariTableColumn<DepartmentIssueDetailLine>[] = [
 		{
@@ -59,7 +77,7 @@
 		},
 		{
 			id: 'qty',
-			header: m.inv_common_quantity(),
+			header: m.inv_rfs_col_requested_qty(),
 			field: 'quantity',
 			format: (_v, r) => formatPurchaseQtyCellForDetailLine(r)
 		},
@@ -70,8 +88,34 @@
 			format: (_v, r) => r.unitName ?? '—'
 		},
 		{
+			id: 'batchNo',
+			header: m.inv_stock_col_batch(),
+			filterable: false,
+			cellClass: 'whitespace-pre-line',
+			format: (_v, r) => {
+				const allocs = allocationsByLineId[r.id] ?? [];
+				const batchNos = allocs
+					.map((a) => a.batchNo?.trim() ?? '')
+					.filter(Boolean);
+				return batchNos.length ? Array.from(new Set(batchNos)).join('\n') : '—';
+			}
+		},
+		{
+			id: 'expiryDate',
+			header: m.inv_stock_col_expiry(),
+			filterable: false,
+			cellClass: 'whitespace-pre-line',
+			format: (_v, r) => {
+				const allocs = allocationsByLineId[r.id] ?? [];
+				const dates = allocs
+					.map((a) => formatExpiryDate(a.expiryDate))
+					.filter((s) => s !== '—');
+				return dates.length ? Array.from(new Set(dates)).join('\n') : '—';
+			}
+		},
+		{
 			id: 'qtyIssued',
-			header: m.inv_di_col_qty_issued(),
+			header: m.inv_rfs_col_incoming_qty(),
 			field: 'qtyIssued',
 			format: (_v, r) =>
 				formatPurchaseQtyCellForDetailLine({ ...r, quantity: r.qtyIssued })

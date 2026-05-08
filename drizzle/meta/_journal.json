@@ -67,6 +67,8 @@
     { "idx": 57, "version": "7", "when": 1780100000000, "tag": "0061_drop_si_sr_approval_modules", "breakpoints": true },
     { "idx": 58, "version": "7", "when": 1780200000000, "tag": "0062_remove_store_transfer_and_stock_issue_pages", "breakpoints": true },
     { "idx": 59, "version": "7", "when": 1780300000000, "tag": "0063_inv_approval_modules_diss_rfs", "breakpoints": true },
-    { "idx": 60, "version": "7", "when": 1780400000000, "tag": "0064_store_user_groups_multi", "breakpoints": true }
+    { "idx": 60, "version": "7", "when": 1780400000000, "tag": "0064_store_user_groups_multi", "breakpoints": true },
+    { "idx": 61, "version": "7", "when": 1780500000000, "tag": "0065_grn_free_unit_id", "breakpoints": true },
+    { "idx": 62, "version": "7", "when": 1780505000000, "tag": "0066_inventory_int_qty_price_2dp", "breakpoints": true }
   ]
 }

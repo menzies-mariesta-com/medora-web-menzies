@@ -27,6 +27,7 @@ import {
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 
 export async function listDepartmentIssues(
 	event: RequestEvent,
@@ -390,14 +391,56 @@ export async function createDepartmentIssue(
 		hospitalId: string;
 		fromStoreId: number;
 		toStoreId: number;
+		/** Optional: create issue from this indent (PENDING_CENTRAL). */
+		sourceIndentId: string | null;
 		remarks: string | null;
-		lines: { itemId: number; quantity: string; unitId: number }[];
+		/**
+		 * UI sends flattened per-batch lines:
+		 * - `quantity` is purchase qty (integer, purchase unit)
+		 * - `batchId` is chosen stock lot
+		 */
+		lines: { itemId: number; quantity: string; unitId: number; batchId: number }[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	if (input.lines.length === 0) throw error(400, 'At least one line required');
+
+	let sourceIndent: typeof table.invDepartmentIndentTable.$inferSelect | null = null;
+	if (input.sourceIndentId) {
+		const [ind] = await ensureDb()
+			.select()
+			.from(table.invDepartmentIndentTable)
+			.where(
+				and(
+					eq(table.invDepartmentIndentTable.id, input.sourceIndentId),
+					eq(table.invDepartmentIndentTable.hospitalId, input.hospitalId),
+					isNull(table.invDepartmentIndentTable.deletedAt)
+				)
+			)
+			.limit(1);
+		if (!ind) throw error(404, 'Indent not found');
+		if (ind.statusTaggingId !== InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL) {
+			throw error(400, 'Indent is not awaiting fulfillment at the central store');
+		}
+		// For indent mode, the central store must be the fulfilling store.
+		if (ind.toStoreId !== input.fromStoreId) {
+			throw error(
+				403,
+				'Select the central store (indent “to” store) in the top bar to create this issue'
+			);
+		}
+		// Enforce store direction to match indent: central → requesting store.
+		input = {
+			...input,
+			fromStoreId: ind.toStoreId,
+			toStoreId: ind.fromStoreId,
+			remarks: input.remarks ?? ind.remarks,
+			sourceIndentId: ind.id
+		};
+		sourceIndent = ind;
+	}
 
 	const fromS = await assertStoreInHospital(input.hospitalId, input.fromStoreId);
 	const toS = await assertStoreInHospital(input.hospitalId, input.toStoreId);
@@ -435,26 +478,58 @@ export async function createDepartmentIssue(
 			id: newId,
 			hospitalId: input.hospitalId,
 			issueNo,
-			sourceIndentId: null,
+			sourceIndentId: input.sourceIndentId,
 			fromStoreId: input.fromStoreId,
 			toStoreId: input.toStoreId,
-			requestedBy: userId,
+			requestedBy: sourceIndent?.requestedBy ?? userId,
 			statusTaggingId: InvDepartmentIssueStatusTaggingEnum.PENDING,
 			currentLevel: 1,
 			remarks: input.remarks,
 			createdBy: userId,
 			updatedBy: userId
 		});
-		await tx.insert(table.invDepartmentIssueLineTable).values(
-			input.lines.map((l) => ({
-				issueId: newId,
+
+		const lineValues = input.lines.map((l) => {
+			const q = parsePositiveIntQty(String(l.quantity), 'quantity');
+			if (l.batchId <= 0) throw error(400, 'batchId required');
+			return {
 				itemId: l.itemId,
-				quantity: l.quantity,
 				unitId: l.unitId,
-				createdBy: userId,
-				updatedBy: userId
-			}))
-		);
+				quantity: String(q),
+				batchId: l.batchId
+			};
+		});
+
+		const inserted = await tx
+			.insert(table.invDepartmentIssueLineTable)
+			.values(
+				lineValues.map((l) => ({
+					issueId: newId,
+					itemId: l.itemId,
+					quantity: l.quantity,
+					unitId: l.unitId,
+					createdBy: userId,
+					updatedBy: userId
+				}))
+			)
+			.returning({ id: table.invDepartmentIssueLineTable.id });
+
+		for (let i = 0; i < inserted.length; i++) {
+			const lineId = inserted[i]!.id;
+			const l = lineValues[i]!;
+			const issueQty = await issueQtyStringFromPurchaseReceipt({
+				hospitalId: input.hospitalId,
+				itemId: l.itemId,
+				purchaseUnitId: l.unitId,
+				purchaseQtyStr: l.quantity
+			});
+			const qtyIssueInt = parsePositiveIntQty(issueQty, 'quantity');
+			await tx.insert(table.invDepartmentIssueLineAllocTable).values({
+				lineId,
+				batchId: l.batchId,
+				quantity: String(qtyIssueInt)
+			});
+		}
 		return newId;
 	});
 
@@ -689,16 +764,43 @@ export async function approveDepartmentIssue(
 				.orderBy(asc(table.invDepartmentIssueLineTable.id));
 
 			for (const line of lines) {
+				// If the UI already chose batches (and we stored them on create),
+				// issue exactly those batches; otherwise fallback to FEFO.
+				const presetAllocs = await tx
+					.select()
+					.from(table.invDepartmentIssueLineAllocTable)
+					.where(eq(table.invDepartmentIssueLineAllocTable.lineId, line.id));
+
+				if (presetAllocs.length > 0) {
+					let sum = 0;
+					for (const a of presetAllocs) {
+						const q = parsePositiveIntQty(String(a.quantity), 'quantity');
+						if (q <= 0) continue;
+						sum += q;
+						await addDeltaToInvStock(tx, {
+							hospitalId: input.hospitalId,
+							itemId: line.itemId,
+							storeId: iss.fromStoreId,
+							batchId: a.batchId,
+							delta: String(-q),
+							userId
+						});
+					}
+					if (sum <= 0) throw error(400, 'Invalid issue allocations');
+					await tx
+						.update(table.invDepartmentIssueLineTable)
+						.set({ qtyIssued: String(sum), updatedBy: userId })
+						.where(eq(table.invDepartmentIssueLineTable.id, line.id));
+					continue;
+				}
+
 				const needIssue = await issueQtyStringFromPurchaseReceipt({
 					hospitalId: input.hospitalId,
 					itemId: line.itemId,
 					purchaseUnitId: line.unitId,
 					purchaseQtyStr: String(line.quantity)
 				});
-				let remaining = Number(needIssue);
-				if (!Number.isFinite(remaining) || remaining <= 0) {
-					throw error(400, 'Invalid line quantity');
-				}
+				let remaining = parsePositiveIntQty(needIssue, 'quantity');
 
 				const rows = await tx
 					.select({
@@ -734,18 +836,18 @@ export async function approveDepartmentIssue(
 						itemId: line.itemId,
 						storeId: iss.fromStoreId,
 						batchId: row.stock.batchId,
-						delta: (-take).toFixed(6),
+						delta: String(-take),
 						userId
 					});
 					await tx.insert(table.invDepartmentIssueLineAllocTable).values({
 						lineId: line.id,
 						batchId: row.stock.batchId,
-						quantity: take.toFixed(6)
+						quantity: String(take)
 					});
 					remaining -= take;
 				}
 
-				if (remaining > 1e-6) throw error(400, 'Insufficient stock at fulfilling store');
+				if (remaining > 0) throw error(400, 'Insufficient stock at fulfilling store');
 
 				await tx
 					.update(table.invDepartmentIssueLineTable)

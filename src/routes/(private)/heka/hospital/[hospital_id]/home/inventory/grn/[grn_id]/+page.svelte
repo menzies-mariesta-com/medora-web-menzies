@@ -105,7 +105,7 @@
 			header: 'Purchase Price',
 			field: 'purchasePrice',
 			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
+				const t = String(row.purchasePrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		}
