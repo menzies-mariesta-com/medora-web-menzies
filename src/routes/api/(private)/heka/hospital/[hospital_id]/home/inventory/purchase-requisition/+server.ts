@@ -35,6 +35,9 @@ export const GET: RequestHandler = async (event) => {
 	const prNoRaw = event.url.searchParams.get('prNo');
 	const prNo =
 		prNoRaw != null && prNoRaw !== '' ? prNoRaw : undefined;
+	const itemRaw = event.url.searchParams.get('item');
+	const item =
+		itemRaw != null && itemRaw !== '' ? itemRaw : undefined;
 	const data = await listPurchaseRequisitions(event, {
 		hospitalId,
 		page,
@@ -45,6 +48,7 @@ export const GET: RequestHandler = async (event) => {
 			? statusTaggingId
 			: undefined,
 		prNo,
+		item,
 		onlyWithRemainingQty: mode === 'poEligible'
 	});
 	return json(data);

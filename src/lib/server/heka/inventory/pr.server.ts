@@ -65,6 +65,8 @@ export async function listPurchaseRequisitions(
 		toStoreId?: number;
 		statusTaggingId?: number;
 		prNo?: string;
+		/** Substring match against any PR line item name. */
+		item?: string;
 		/** When true, only return PRs with remaining qty to order (sum(qty_remaining) > 0). */
 		onlyWithRemainingQty?: boolean;
 	}
@@ -105,6 +107,25 @@ export async function listPurchaseRequisitions(
 			cond = and(
 				cond,
 				ilike(table.purchaseRequisitionTable.prNo, `%${safe}%`)
+			)!;
+		}
+	}
+
+	const itemTerm = input.item?.trim();
+	if (itemTerm) {
+		const safe = itemTerm.replace(/[%_\\]/g, '');
+		if (safe.length > 0) {
+			cond = and(
+				cond,
+				sql`exists (
+					select 1
+					from purchase_requisition_line prl
+					inner join item_master im
+						on prl.item_id = im.id
+					where prl.pr_id = ${table.purchaseRequisitionTable.id}
+						and prl.deleted_at is null
+						and im.item_name ilike ${`%${safe}%`}
+				)`
 			)!;
 		}
 	}

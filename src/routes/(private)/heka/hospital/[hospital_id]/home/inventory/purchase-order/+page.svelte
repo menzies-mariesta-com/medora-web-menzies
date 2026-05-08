@@ -7,6 +7,7 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -68,6 +69,36 @@
 	let lastInitHospitalId = $state<string | null>(null);
 	let listAbort: AbortController | null = null;
 
+	const STORE_FILTER_OPTIONS = $derived.by(() => {
+		const nav = (
+			data as {
+				inventoryFromStoresForNav?: { id: number; storeName: string | null }[];
+			}
+		).inventoryFromStoresForNav;
+		return (nav ?? [])
+			.filter((s) => typeof s.id === 'number' && s.id > 0)
+			.map((s) => ({
+				value: String(s.id),
+				label: s.storeName?.trim() || `Store ${s.id}`
+			}));
+	});
+
+	const SUPPLIER_FILTER_OPTIONS = $derived.by(() => {
+		const seen = new Set<number>();
+		const out: { value: string; label: string }[] = [];
+		for (const r of list) {
+			if (typeof r.supplierId !== 'number' || r.supplierId <= 0) continue;
+			if (seen.has(r.supplierId)) continue;
+			seen.add(r.supplierId);
+			out.push({
+				value: String(r.supplierId),
+				label: r.supplierName?.trim() || `Supplier ${r.supplierId}`
+			});
+		}
+		out.sort((a, b) => a.label.localeCompare(b.label));
+		return out;
+	});
+
 	const PO_STATUS_FILTER_OPTIONS = $derived([
 		{ label: m.inv_po_filter_status_draft(), value: String(InvPoStatusTaggingEnum.DRAFT) },
 		{ label: m.inv_po_filter_status_pending(), value: String(InvPoStatusTaggingEnum.PENDING) },
@@ -101,6 +132,14 @@
 			if (poNo) sp.set('poNo', poNo);
 			const statusId = tableFilters.statusTaggingId?.trim();
 			if (statusId) sp.set('statusTaggingId', statusId);
+			const storeId = tableFilters.storeId?.trim();
+			if (storeId) sp.set('storeId', storeId);
+			const supplierId = tableFilters.supplierId?.trim();
+			if (supplierId) sp.set('supplierId', supplierId);
+			const totalAmount = tableFilters.totalAmount?.trim();
+			if (totalAmount) sp.set('totalAmount', totalAmount);
+			const item = tableFilters.item?.trim();
+			if (item) sp.set('item', item);
 
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/inventory/purchase-order?${sp.toString()}`,
@@ -147,17 +186,19 @@
 			format: (_v, row) => row.poNo ?? '—'
 		},
 		{
-			id: 'storeName',
+			id: 'storeId',
 			header: m.inv_common_store(),
-			field: 'storeName',
-			filterable: false,
+			field: 'storeId',
+			filterType: 'select',
+			filterOptionsGetter: () => STORE_FILTER_OPTIONS,
 			format: (_v, row) => row.storeName ?? '—'
 		},
 		{
-			id: 'supplierName',
+			id: 'supplierId',
 			header: m.inv_po_select_supplier(),
-			field: 'supplierName',
-			filterable: false,
+			field: 'supplierId',
+			filterType: 'select',
+			filterOptionsGetter: () => SUPPLIER_FILTER_OPTIONS,
 			format: (_v, row) => row.supplierName ?? '—'
 		},
 		{
@@ -172,14 +213,14 @@
 			id: 'totalAmount',
 			header: m.inv_po_line_total(),
 			field: 'totalAmount',
-			filterable: false
+			filterable: true
 		},
 		{
-			id: 'itemNames',
+			id: 'item',
 			header: m.inv_common_item(),
 			field: 'itemNames',
 			cellClass: 'whitespace-pre-line',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) =>
 				(row.itemNames ?? '')
 					.split(',')
@@ -248,7 +289,12 @@
 		>
 			{#snippet rowActions(row, _rowIndex)}
 				{@const r = row as PoRow}
-				<div class="flex flex-col items-center gap-1">
+				{@const canPrint =
+					r.statusTaggingId === InvPoStatusTaggingEnum.APPROVED ||
+					r.statusTaggingId === InvPoStatusTaggingEnum.SENT_TO_SUPPLIER ||
+					r.statusTaggingId === InvPoStatusTaggingEnum.PARTIALLY_RECEIVED ||
+					r.statusTaggingId === InvPoStatusTaggingEnum.CLOSED}
+				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
 						className="d-tooltip-ghost d-tooltip-right"
@@ -262,14 +308,31 @@
 						</DaisyUiButton>
 					</DaisyUiTooltip>
 
+					{#if canPrint}
+						<DaisyUiTooltip tooltipText="Print" className="d-tooltip-ghost d-tooltip-right">
+							<DaisyUiButton
+								className="d-btn-sm d-btn-ghost d-btn-square"
+								disabled={loading}
+								onClick={() => void goto(purchaseOrderDetailHref(r.id) + '?print=1')}
+							>
+								<LucidePrinter className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+					{/if}
+
 					{#if r.statusTaggingId === InvPoStatusTaggingEnum.PENDING}
+						{@const approveDisabled = loading || r.canApprove !== true}
 						<DaisyUiTooltip
-							tooltipText={m.inv_nav_po_approval()}
-							className="d-tooltip-accent d-tooltip-right"
+							tooltipText={
+								approveDisabled
+									? 'Approval not available (no permission for this level)'
+									: m.inv_nav_po_approval()
+							}
+							className={`d-tooltip-right ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={loading || r.canApprove !== true}
+								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}
+								disabled={approveDisabled}
 								onClick={() => {
 									void goto(purchaseOrderApproveHref(r.id));
 								}}

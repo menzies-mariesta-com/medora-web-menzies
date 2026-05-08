@@ -74,6 +74,20 @@
 	let lastInitHospitalId = $state<string | null>(null);
 	let listAbort: AbortController | null = null;
 
+	const STORE_FILTER_OPTIONS = $derived.by(() => {
+		const nav = (
+			layoutData as {
+				inventoryFromStoresForNav?: { id: number; storeName: string | null }[];
+			}
+		).inventoryFromStoresForNav;
+		return (nav ?? [])
+			.filter((s) => typeof s.id === 'number' && s.id > 0)
+			.map((s) => ({
+				value: String(s.id),
+				label: s.storeName?.trim() || `Store ${s.id}`
+			}));
+	});
+
 	const PR_STATUS_FILTER_OPTIONS: { label: string; value: string }[] = [
 		{ label: 'Draft', value: String(InvPrStatusTaggingEnum.DRAFT) },
 		{ label: 'Pending', value: String(InvPrStatusTaggingEnum.PENDING) },
@@ -187,11 +201,16 @@
 			sp.set('pageSize', String(pageSize));
 			const prNo = tableFilters.prNo?.trim();
 			if (prNo) sp.set('prNo', prNo);
-			if (selectedInventoryFromStoreId != null) {
+			const storeId = tableFilters.storeId?.trim();
+			if (storeId) {
+				sp.set('storeId', storeId);
+			} else if (selectedInventoryFromStoreId != null) {
 				sp.set('storeId', String(selectedInventoryFromStoreId));
 			}
 			const statusId = tableFilters.statusTaggingId?.trim();
 			if (statusId) sp.set('statusTaggingId', statusId);
+			const item = tableFilters.item?.trim();
+			if (item) sp.set('item', item);
 
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/inventory/purchase-requisition?${sp.toString()}`,
@@ -246,7 +265,8 @@
 			id: 'storeId',
 			header: m.inv_common_store(),
 			field: 'storeId',
-			filterable: false,
+			filterType: 'select',
+			filterOptionsGetter: () => STORE_FILTER_OPTIONS,
 			format: (_v, row) => {
 				const a = row.fromStoreName ?? '—';
 				const b = row.toStoreName ?? '—';
@@ -262,10 +282,10 @@
 			format: (_v, row) => row.statusName ?? row.statusCode ?? '—'
 		},
 		{
-			id: 'itemNames',
+			id: 'item',
 			header: m.inv_common_item(),
 			field: 'itemNames',
-			filterable: false,
+			filterable: true,
 			cellClass: 'whitespace-pre-line',
 			format: (_v, row) =>
 				(row.itemNames ?? '')
@@ -337,7 +357,8 @@
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const r = row as PrRow}
-				<div class="flex flex-col items-center gap-1">
+				{@const cancelDisabled = loading || !prRowCanCancel(r)}
+				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
 						className="d-tooltip-ghost d-tooltip-right"
@@ -352,13 +373,16 @@
 					</DaisyUiTooltip>
 
 					{#if prRowEditVisible(r)}
+						{@const editDisabled = loading || !prRowCanEdit(r)}
 						<DaisyUiTooltip
-							tooltipText={m.inv_pr_edit()}
-							className="d-tooltip-accent d-tooltip-right"
+							tooltipText={
+								editDisabled ? 'Edit not available (only the creator can edit)' : m.inv_pr_edit()
+							}
+							className={`d-tooltip-right ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={loading || !prRowCanEdit(r)}
+								className={`d-btn-sm d-btn-ghost d-btn-square ${editDisabled ? '' : 'text-accent'}`}
+								disabled={editDisabled}
 								onClick={() => void goto(prEditHref(r.id))}
 							>
 								<LucidePencil className="size-5" />
@@ -367,13 +391,18 @@
 					{/if}
 
 					{#if r.statusTaggingId === InvPrStatusTaggingEnum.PENDING}
+						{@const approveDisabled = loading || r.canApprove !== true}
 						<DaisyUiTooltip
-							tooltipText={m.inv_nav_pr_approval()}
-							className="d-tooltip-accent d-tooltip-right"
+							tooltipText={
+								approveDisabled
+									? 'Approval not available (no permission for this level)'
+									: m.inv_nav_pr_approval()
+							}
+							className={`d-tooltip-right ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={loading || r.canApprove !== true}
+								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}
+								disabled={approveDisabled}
 								onClick={() => {
 									void goto(prApproveHref(r.id));
 								}}
@@ -384,12 +413,16 @@
 					{/if}
 
 					<DaisyUiTooltip
-						tooltipText={m.inv_pr_cancel()}
-						className="d-tooltip-error d-tooltip-right"
+						tooltipText={
+							cancelDisabled
+								? 'Cancel not available (not allowed or already linked to PO)'
+								: m.inv_pr_cancel()
+						}
+						className={`d-tooltip-right ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
 					>
 						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-square text-error"
-							disabled={loading || !prRowCanCancel(r)}
+							className={`d-btn-sm d-btn-ghost d-btn-square ${cancelDisabled ? '' : 'text-error'}`}
+							disabled={cancelDisabled}
 							onClick={() => openCancelDialog(r)}
 						>
 							<LucideCircleX className="size-5" />
