@@ -17,6 +17,7 @@
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MariTable, {
 		type MariTableColumn,
@@ -238,7 +239,6 @@
 		}));
 	}
 
-	let directLineItemFilter = $state('');
 	let directLineDialogActive = $state(false);
 	let editingDirectKey = $state<string | null>(null);
 	let draftDirectLine = $state<GrnDirectLine>(newDirectLine());
@@ -289,39 +289,23 @@
 		return ium?.conversionDisplay ?? '—';
 	}
 
-	const filteredDirectLines = $derived.by(() => {
-		const q = directLineItemFilter.trim().toLowerCase();
-		if (!q) return directLines;
-		return directLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelDirect(l).toLowerCase();
-			const r = (l.receivedQty ?? '').toLowerCase();
-			const b = (l.batchNo ?? '').toLowerCase();
-			const p = (l.purchasePrice ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || r.includes(q) || b.includes(q) || p.includes(q);
-		});
-	});
-
 	const directLineTableColumns: MariTableColumn<GrnDirectLine>[] = [
 		{
 			id: 'item',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
-			filterable: false,
 			format: (_v, row) => `${row.itemLabel || '—'}${row.isBatchRequired ? ' · batch' : ''}`
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
-			filterable: false,
 			format: (_v, row) => conversionLabelDirect(row)
 		},
 		{
 			id: 'receivedQty',
 			header: m.inv_grn_line_received_qty(),
 			field: 'receivedQty',
-			filterable: false,
 			format: (_v, row) => {
 				const t = row.receivedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
@@ -331,21 +315,18 @@
 			id: 'batchNo',
 			header: m.inv_stock_col_batch(),
 			field: 'batchNo',
-			filterable: false,
 			format: (_v, row) => row.batchNo?.trim() || '—'
 		},
 		{
 			id: 'expiryDate',
 			header: m.inv_stock_col_expiry(),
 			field: 'expiryDate',
-			filterable: false,
 			format: (_v, row) => row.expiryDate?.trim() || '—'
 		},
 		{
 			id: 'purchasePrice',
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
-			filterable: false,
 			format: (_v, row) => {
 				const t = row.purchasePrice?.trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
@@ -998,7 +979,6 @@
 			directStoreId = selectedInventoryFromStoreId;
 			directSupplierId = null;
 			directLines = [];
-			directLineItemFilter = '';
 			receivedDate = new Date().toISOString().slice(0, 10);
 		} else {
 			grnFormMode = 'fromPo';
@@ -1134,183 +1114,175 @@
 					</div>
 				</fieldset>
 
-				<div class="mb-6 mt-4 rounded-box border border-base-200 bg-base-200/20 p-4">
-					<div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-						<h3 class="font-medium text-base-content/90">Invoice & Receiving</h3>
-						{#if invoicePhotoUploading}
-							<span class="text-xs text-base-content/70">Uploading…</span>
-						{/if}
-					</div>
-
-					<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice No</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUiInputField inputType="text" bind:value={invoiceNo} />
+				{#snippet invoiceReceivingBlock(innerGridClass: string, fileColSpanClass: string)}
+					<div class="rounded-box border border-base-200 bg-base-200/20 p-4">
+						<div class="grid min-w-0 gap-x-6 gap-y-4 {innerGridClass}">
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">Invoice No</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
+									<DaisyUiInputField inputType="text" bind:value={invoiceNo} />
+								</div>
 							</div>
-						</div>
 
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Date</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUiInputField inputType="date" bind:value={invoiceDate} />
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Date</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
+									<DaisyUiInputField inputType="date" bind:value={invoiceDate} />
+								</div>
 							</div>
-						</div>
 
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Amount</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<input
-									type="number"
-									step="0.01"
-									inputmode="decimal"
-									class="d-input d-input-bordered w-full"
-									placeholder="0.00"
-									bind:value={invoiceAmount}
-								/>
-							</div>
-						</div>
-
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Received By</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUISearchSelect
-									value={receivedByUserId != null ? String(receivedByUserId) : ''}
-									searchFn={searchReceivedByUsers}
-									onChange={(v: string) => {
-										receivedByUserId = v ? Number(v) : null;
-									}}
-									placeholder="Current user"
-									className="w-full"
-								/>
-							</div>
-						</div>
-
-						<div class="md:col-span-2">
-							<div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">Invoice File</DaisyUiLabel>
-								<div class="min-w-0 flex-1">
+							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+								<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Amount</DaisyUiLabel>
+								<div class="max-w-80 flex-1">
 									<input
-										type="file"
-										class="d-file-input d-file-input-bordered w-full"
-										accept="image/*,application/pdf"
-										disabled={invoicePhotoUploading}
-										onchange={(e) => {
-											const input = e.currentTarget as HTMLInputElement;
-											const file = input.files?.[0] ?? null;
-											if (!file) return;
-											void uploadInvoicePhoto(file);
-											input.value = '';
-										}}
+										type="number"
+										step="0.01"
+										inputmode="decimal"
+										class="d-input d-input-bordered w-full"
+										placeholder="0.00"
+										bind:value={invoiceAmount}
 									/>
+								</div>
+							</div>
 
-									{#if invoicePhotoUrl}
-										<div class="mt-2 flex flex-wrap items-center gap-3">
-											<span class="text-sm text-base-content/70">Uploaded file available</span>
-											<DaisyUiTooltip
-												tooltipText={m.inv_common_remove_line()}
-												className="d-tooltip-error d-tooltip-right"
-											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-sm d-btn-ghost d-btn-square text-error"
-													onClick={() => {
-														invoicePhotoUrl = null;
-													}}
+							<div class={fileColSpanClass}>
+								<div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+									<DaisyUiLabel className="shrink-0 sm:w-36">Invoice File</DaisyUiLabel>
+									<div class="max-w-80 min-w-0 flex-1">
+										<input
+											type="file"
+											class="d-file-input d-file-input-bordered w-full"
+											accept="image/*,application/pdf"
+											disabled={invoicePhotoUploading}
+											onchange={(e) => {
+												const input = e.currentTarget as HTMLInputElement;
+												const file = input.files?.[0] ?? null;
+												if (!file) return;
+												void uploadInvoicePhoto(file);
+												input.value = '';
+											}}
+										/>
+
+										{#if invoicePhotoUrl}
+											<div class="mt-2 flex flex-wrap items-center gap-3">
+												<span class="text-sm text-base-content/70">Uploaded file available</span>
+												<DaisyUiTooltip
+													tooltipText={m.inv_common_remove_line()}
+													className="d-tooltip-error d-tooltip-right"
 												>
-													<LucideTrash2 className="size-4" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-										</div>
-
-										{#if isInvoicePhotoPreviewable}
-											<div class="mt-2">
-												<img
-													src={invoicePhotoUrl}
-													alt="Invoice preview"
-													class="max-h-24 rounded-box border border-base-200"
-													loading="lazy"
-												/>
+													<DaisyUiButton
+														type="button"
+														className="d-btn-sm d-btn-ghost d-btn-square text-error"
+														onClick={() => {
+															invoicePhotoUrl = null;
+														}}
+													>
+														<LucideTrash2 className="size-4" />
+													</DaisyUiButton>
+												</DaisyUiTooltip>
 											</div>
+
+											{#if isInvoicePhotoPreviewable}
+												<div class="mt-2">
+													<img
+														src={invoicePhotoUrl}
+														alt="Invoice preview"
+														class="max-h-24 rounded-box border border-base-200"
+														loading="lazy"
+													/>
+												</div>
+											{/if}
 										{/if}
-									{/if}
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				{/snippet}
 
 				{#if grnFormMode === 'fromPo'}
-				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
-					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_select_po()}</DaisyUiLabel>
-									<div
-										class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
-									>
-										<input
-											type="text"
-											readonly
-											disabled
-											class="d-input d-input-bordered min-w-0 flex-1 text-sm"
-											value={selectedPoSummary || '—'}
-											aria-label={m.inv_grn_select_po()}
-										/>
-										<DaisyUiButton
-											type="button"
-											className="d-btn-outline shrink-0"
-											disabled={poPickerBusy}
-											loading={poPickerBusy}
-											onClick={() => void openPoPicker()}
+					<div class="mt-4 mb-6">
+						{@render invoiceReceivingBlock('grid-cols-1 md:grid-cols-2', 'md:col-span-2')}
+					</div>
+					<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+						<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
+							<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+								<div class="flex flex-col gap-4">
+									<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+										<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_select_po()}</DaisyUiLabel>
+										<div
+											class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
 										>
-											{m.inv_common_btn_select()}
-										</DaisyUiButton>
+											<input
+												type="text"
+												readonly
+												disabled
+												class="d-input d-input-bordered min-w-0 flex-1 text-sm"
+												value={selectedPoSummary || '—'}
+												aria-label={m.inv_grn_select_po()}
+											/>
+											<DaisyUiButton
+												type="button"
+												className="d-btn-outline shrink-0"
+												disabled={poPickerBusy}
+												loading={poPickerBusy}
+												onClick={() => void openPoPicker()}
+											>
+												{m.inv_common_btn_select()}
+											</DaisyUiButton>
+										</div>
+									</div>
+
+									<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+										<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
+										<div class="max-w-80 flex-1">
+											<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+										</div>
 									</div>
 								</div>
 
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+								<div class="flex flex-col gap-4">
+									<div class="p-4 bg-base-200 rounded-lg">
+										{#if receivingStore}
+											<p class="text-sm">
+												<span class="opacity-70 inline-block mb-1">{m.inv_grn_receiving_store()}:</span><br/>
+												<strong class="text-lg">
+													{receivingStore.storeName ?? '—'}
+												</strong>
+											</p>
+										{:else if selectedPoId}
+											<p class="text-sm text-warning font-medium">
+												{m.inv_grn_receiving_store()}: —
+											</p>
+											{#if receivingStoreHint}
+												<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
+													{receivingStoreHint}
+												</div>
+											{/if}
+										{:else}
+											<p class="text-sm opacity-50 text-center py-2">—</p>
+										{/if}
 									</div>
 								</div>
 							</div>
-							
-							<div class="flex flex-col gap-4">
-								<div class="p-4 bg-base-200 rounded-lg">
-									{#if receivingStore}
-										<p class="text-sm">
-											<span class="opacity-70 inline-block mb-1">{m.inv_grn_receiving_store()}:</span><br/>
-											<strong class="text-lg">
-												{receivingStore.storeName ?? '—'}
-											</strong>
-										</p>
-									{:else if selectedPoId}
-										<p class="text-sm text-warning font-medium">
-											{m.inv_grn_receiving_store()}: —
-										</p>
-										{#if receivingStoreHint}
-											<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
-												{receivingStoreHint}
-											</div>
-										{/if}
-									{:else}
-										<p class="text-sm opacity-50 text-center py-2">—</p>
-									{/if}
-								</div>
-							</div>
-						</div>
-					</fieldset>
-				</div>
+						</fieldset>
+					</div>
 				{:else}
-					<fieldset class="m-0 min-w-0 border-0 p-0 mb-6">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+					<div
+						class="mt-4 mb-6 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-start lg:gap-8"
+					>
+						<div class="min-w-0 flex-1">
+							{@render invoiceReceivingBlock('grid-cols-1', '')}
+						</div>
+
+						<div class="min-w-0 flex-1">
+							<div class="rounded-box border border-base-200 bg-base-200/20 p-4 flex flex-col gap-4">
 							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_receiving_store()}</DaisyUiLabel>
+								<DaisyUiLabel className="shrink-0 sm:w-36">
+									{m.inv_grn_receiving_store()}
+								</DaisyUiLabel>
 								<div
-									class="max-w-80 min-w-0 flex-1 rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm"
+									class="min-w-0 flex-1 rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm"
 								>
 									<p class="font-medium">{navReceivingStoreLabel}</p>
 									{#if selectedInventoryFromStoreId == null}
@@ -1322,43 +1294,71 @@
 							</div>
 
 							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUISearchSelect
-										value={directSupplierId != null ? String(directSupplierId) : ''}
-										searchFn={async (q: string) => {
-											const qEnc = encodeURIComponent(q.trim());
-											const res = await fetch(
-												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-											);
-											const j = await res.json();
-											return (j ?? []).map((s: { id: number; name: string | null }) => ({
-												label: s.name ?? '—',
-												value: String(s.id)
-											}));
-										}}
-										onChange={(v: string) => {
-											directSupplierId = v ? Number(v) : null;
-										}}
-										placeholder="Search supplier…"
-										className="w-full"
-									/>
+								<DaisyUiLabel className="shrink-0 sm:w-36">
+									{m.inv_grn_received_date()}
+								</DaisyUiLabel>
+								<div class="min-w-0 flex-1">
+									<DaisyUiInputField inputType="date" bind:value={receivedDate} />
 								</div>
 							</div>
 
 							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+								<DaisyUiLabel className="shrink-0 sm:w-36">Received By</DaisyUiLabel>
+								<div class="max-w-80 min-w-0 flex-1">
+									<DaisyUISearchSelect
+										value={receivedByUserId != null ? String(receivedByUserId) : ''}
+										searchFn={searchReceivedByUsers}
+										onChange={(v: string) => {
+											receivedByUserId = v ? Number(v) : null;
+										}}
+										placeholder="Current user"
+										className="w-full"
+									/>
+								</div>
+							</div>
+							</div>
+						</div>
+
+						<div class="min-w-0 flex-1">
+							<div class="rounded-box border border-base-200 bg-base-200/20 p-4">
+								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+									<DaisyUiLabel className="shrink-0 sm:w-36 sm:pt-2">
+										{m.inv_po_supplier_search()}
+									</DaisyUiLabel>
+									<div class="max-w-80 min-w-0 flex-1">
+										<DaisyUISearchSelect
+											value={directSupplierId != null ? String(directSupplierId) : ''}
+											searchFn={async (q: string) => {
+												const qEnc = encodeURIComponent(q.trim());
+												const res = await fetch(
+													`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+												);
+												const j = await res.json();
+												return (j ?? []).map((s: { id: number; name: string | null }) => ({
+													label: s.name ?? '—',
+													value: String(s.id)
+												}));
+											}}
+											onChange={(v: string) => {
+												directSupplierId = v ? Number(v) : null;
+											}}
+											placeholder="Search supplier…"
+											className="w-full"
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
-					</fieldset>
+					</div>
+
 					<GrnDirectLinesCard
-						bind:directLineItemFilter
 						totalCount={directLines.length}
 						columns={directLineTableColumns}
-						rows={filteredDirectLines}
+						rows={directLines}
+						useColumnFilters={true}
+						hideQuickFilter={true}
+						hideAddButton={true}
+						toolbarRight={directLinesToolbarRight}
 						onAddItem={() => void openDirectLineDialogForCreate()}
 						onEditLine={(line) => void openDirectLineDialogForEdit(line)}
 						onDeleteLine={deleteDirectLine}
@@ -1449,5 +1449,18 @@
 				{/if}
 
 			</form>
+
+			{#snippet directLinesToolbarRight()}
+				<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+					<DaisyUiButton
+						type="button"
+						className="d-btn-primary d-btn-square d-btn-outline d-btn-sm"
+						aria-label={m.inv_line_items_add()}
+						onClick={() => void openDirectLineDialogForCreate()}
+					>
+						<LucidePlus className="size-4" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			{/snippet}
 		</DaisyUiCardBody>
 	</DaisyUiCard>

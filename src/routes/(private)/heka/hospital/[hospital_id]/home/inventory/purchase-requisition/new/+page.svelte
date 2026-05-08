@@ -492,7 +492,7 @@
 	}}
 	class="space-y-5"
 >
-	<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+	<divlass="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 		<div class="min-w-0">
 			<div class="flex items-center gap-2">
 				<DaisyUiTooltip
