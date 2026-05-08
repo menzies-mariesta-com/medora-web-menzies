@@ -10,6 +10,7 @@
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -71,7 +72,6 @@
 		itemUnitMasterId: number | null;
 	};
 
-	let lineItemFilter = $state('');
 	let createLines = $state<PrLineForm[]>([]);
 
 	let lineItemDialogActive = $state(false);
@@ -121,7 +121,6 @@
 		void loadStores();
 		toStoreIdStr = '';
 		remarks = '';
-		lineItemFilter = '';
 		createLines = [];
 		lineItemDialogActive = false;
 		editingLineKey = null;
@@ -421,36 +420,25 @@
 			id: 'itemLabel',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
-			filterable: false,
+			filterable: true,
 			format: (_v: unknown, row: PrLineForm) => row.itemLabel || '—'
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
-			filterable: false,
+			filterable: true,
 			format: (_v: unknown, row: PrLineForm) => conversionLabelForLine(row)
 		},
 		{
 			id: 'quantity',
 			header: m.inv_common_quantity(),
 			field: 'quantity',
-			filterable: false,
+			filterable: true,
 			format: (_v: unknown, row: PrLineForm) =>
 				formatPurchaseQtyCellWithIssueEquivalent(row)
 		}
 	]);
-
-	const filteredLines = $derived.by(() => {
-		const q = lineItemFilter.trim().toLowerCase();
-		if (!q) return createLines;
-		return createLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelForLine(l).toLowerCase();
-			const qty = (l.quantity ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || qty.includes(q);
-		});
-	});
 
 	async function submitCreate() {
 		if (!hospitalId) return;
@@ -519,49 +507,53 @@
 	<DaisyUiCard>
 		<DaisyUiCardBody className="gap-3">
 			<DaisyUiCardBodyTitle className="text-base">{m.inv_common_store()}</DaisyUiCardBodyTitle>
-			<div class="grid gap-3 sm:grid-cols-3">
-				<div>
-					<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
-					<input
-						type="text"
-						readonly
-						disabled
-						class="d-input d-input-bordered mt-1 w-full text-sm"
-						value={
-							selectedInventoryFromStoreId != null
-								? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
-								: '—'
-						}
-						aria-label={m.inv_nav_from_store()}
-					/>
+			<div class="flex flex-col gap-6 sm:flex-row sm:items-stretch md:gap-12 lg:gap-24">
+				<div class="min-w-0 flex-1">
+					<div class="flex h-full flex-col justify-between gap-3">
+						<div>
+							<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
+							<input
+								type="text"
+								readonly
+								disabled
+								class="d-input d-input-bordered mt-1 w-full text-sm"
+								value={
+									selectedInventoryFromStoreId != null
+										? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
+										: '—'
+								}
+								aria-label={m.inv_nav_from_store()}
+							/>
+						</div>
+						<div>
+							<DaisyUiLabel forText="to-st" className="text-xs">{m.inv_dept_indent_to()}</DaisyUiLabel>
+							<DaisyUISearchSelect
+								inputId="to-st"
+								value={toStoreIdStr}
+								searchFn={async (q: string) => {
+									// Use already-fetched `stores` so this stays client-side and fast.
+									const query = q.trim().toLowerCase();
+									const base = toStoreOptions.map((s) => ({
+										label: s.storeName?.trim() ? s.storeName.trim() : '—',
+										value: String(s.id)
+									}));
+									if (query === '') return base;
+									return base.filter((o) => o.label.toLowerCase().includes(query));
+								}}
+								onChange={(v: string) => {
+									toStoreIdStr = v;
+								}}
+								placeholder={m.inv_common_search()}
+								className="w-full"
+								minSearchLength={0}
+							/>
+						</div>
+					</div>
 				</div>
-				<div>
-					<DaisyUiLabel forText="to-st" className="text-xs">{m.inv_dept_indent_to()}</DaisyUiLabel>
-					<DaisyUISearchSelect
-						inputId="to-st"
-						value={toStoreIdStr}
-						searchFn={async (q: string) => {
-							// Use already-fetched `stores` so this stays client-side and fast.
-							const query = q.trim().toLowerCase();
-							const base = toStoreOptions.map((s) => ({
-								label: s.storeName?.trim() ? s.storeName.trim() : '—',
-								value: String(s.id)
-							}));
-							if (query === '') return base;
-							return base.filter((o) => o.label.toLowerCase().includes(query));
-						}}
-						onChange={(v: string) => {
-							toStoreIdStr = v;
-						}}
-						placeholder={m.inv_common_search()}
-						className="w-full"
-						minSearchLength={0}
-					/>
-				</div>
-				<div>
+				<div class="min-w-0 flex-1 flex flex-col">
 					<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
 					<textarea
-						class="d-textarea d-textarea-bordered w-full"
+						class="d-textarea d-textarea-bordered mt-1 w-full flex-1"
 						rows="2"
 						bind:value={remarks}
 					></textarea>
@@ -571,15 +563,34 @@
 	</DaisyUiCard>
 	<PrLineItemsCard
 		viewOnly={false}
-		bind:lineItemFilter
 		createLinesCount={createLines.length}
 		columns={lineColumns}
-		rows={filteredLines}
+		rows={createLines}
+		useColumnFilters={true}
+		hideQuickFilter={true}
+		hideAddButton={true}
+		toolbarRight={lineItemsToolbarRight}
 		onAddItem={() => void openLineDialogForCreate()}
 		onEditLine={(line) => void openLineDialogForEdit(line)}
 		onDeleteLine={deleteLine}
 	/>
-	<DaisyUiButton type="submit" className="d-btn-primary" loading={submitting}>
-		{m.inv_common_submit()}
-	</DaisyUiButton>
 </form>
+
+{#snippet lineItemsToolbarRight()}
+	<div class="flex items-center gap-2">
+		<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+			<DaisyUiButton
+				type="button"
+				className="d-btn-primary d-btn-square d-btn-outline"
+				disabled={submitting}
+				aria-label={m.inv_line_items_add()}
+				onClick={() => void openLineDialogForCreate()}
+			>
+				<LucidePlus className="size-4" />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
+		<DaisyUiButton type="submit" className="d-btn-primary" loading={submitting}>
+			{m.inv_common_submit()}
+		</DaisyUiButton>
+	</div>
+{/snippet}
