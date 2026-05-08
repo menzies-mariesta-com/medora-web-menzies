@@ -103,7 +103,8 @@
 		{
 			id: 'store',
 			header: m.inv_dc_store(),
-			filterable: false,
+			field: 'storeId',
+			filterable: true,
 			format: (_v, r) => r.storeName ?? '—'
 		},
 		{
@@ -138,6 +139,10 @@
 			ps.set('pageSize', pageSizeStr);
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('storeId', String(selectedInventoryFromStoreId));
+			}
+			const storeIdFilter = tableFilters.storeId?.trim() ?? '';
+			if (storeIdFilter !== '') {
+				ps.set('storeId', storeIdFilter);
 			}
 			const statusId = tableFilters.statusTaggingId?.trim() ?? '';
 			if (statusId !== '') ps.set('statusTaggingId', statusId);
@@ -305,7 +310,7 @@
 		>
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}
-				<div class="flex flex-col items-center gap-1">
+				<div class="flex flex-row items-center justify-center gap-1">
 					<DaisyUiTooltip tooltipText={m.inv_common_view()} className="d-tooltip-ghost d-tooltip-right">
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"

@@ -71,11 +71,15 @@
 	);
 
 	const footerBorderClass = $derived(noCard ? 'border-base-300' : 'border-base-200');
+
+	const toolbarJustifyClass = $derived(
+		hideTitle ? 'sm:justify-end' : 'sm:justify-between'
+	);
 </script>
 
 {#snippet inner()}
 	{#if showCardToolbar}
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center {toolbarJustifyClass}">
 			{#if !hideTitle}
 				<DaisyUiCardBodyTitle className="text-base">{title}</DaisyUiCardBodyTitle>
 			{/if}
