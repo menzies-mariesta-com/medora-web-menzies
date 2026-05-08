@@ -134,13 +134,15 @@
 		{
 			id: 'from',
 			header: m.inv_dept_indent_from(),
-			filterable: false,
+			field: 'fromStoreId',
+			filterable: true,
 			format: (_v, r) => r.fromStoreName ?? '—'
 		},
 		{
 			id: 'to',
 			header: m.inv_dept_indent_to(),
-			filterable: false,
+			field: 'toStoreId',
+			filterable: true,
 			format: (_v, r) => r.toStoreName ?? '—'
 		},
 		{
@@ -163,6 +165,14 @@
 			ps.set('pageSize', pageSizeStr);
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('fromStoreId', String(selectedInventoryFromStoreId));
+			}
+			const fromStoreIdFilter = tableFilters.fromStoreId?.trim() ?? '';
+			if (fromStoreIdFilter !== '') {
+				ps.set('fromStoreId', fromStoreIdFilter);
+			}
+			const toStoreIdFilter = tableFilters.toStoreId?.trim() ?? '';
+			if (toStoreIdFilter !== '') {
+				ps.set('toStoreId', toStoreIdFilter);
 			}
 			const statusId = tableFilters.statusTaggingId?.trim() ?? '';
 			if (statusId !== '') {
@@ -357,7 +367,7 @@
 		>
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}
-				<div class="flex flex-col items-center gap-1">
+				<div class="flex flex-row items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
 						className="d-tooltip-ghost d-tooltip-right"

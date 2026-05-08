@@ -17,7 +17,6 @@
 	import type { ConsumptionDraftLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
-	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -313,31 +312,40 @@
 </div>
 
 <DaisyUiCard className="mb-4">
-	<DaisyUiCardBody className="grid gap-3 sm:max-w-xl">
+	<DaisyUiCardBody className="grid gap-3 sm:max-w-3xl">
 		<DaisyUiCardBodyTitle>{m.inv_dc_store()}</DaisyUiCardBodyTitle>
-		<div>
-			<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
-			<input
-				type="text"
-				readonly
-				disabled
-				class="d-input d-input-bordered mt-1 w-full text-sm"
-				value={
-					selectedInventoryFromStoreId != null
-						? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
-						: '—'
-				}
-				aria-label={m.inv_nav_from_store()}
-			/>
-		</div>
-		{#if selectedInventoryFromStoreId == null}
-			<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
-				{m.inv_inventory_from_store_topbar_hint()}
+		<div class="flex flex-col gap-6 sm:flex-row sm:items-start">
+			<div class="min-w-0 flex-1">
+				<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
+				<input
+					type="text"
+					readonly
+					disabled
+					class="d-input d-input-bordered mt-1 w-full text-sm"
+					value={
+						selectedInventoryFromStoreId != null
+							? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
+							: '—'
+					}
+					aria-label={m.inv_nav_from_store()}
+				/>
+				{#if selectedInventoryFromStoreId == null}
+					<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
+						{m.inv_inventory_from_store_topbar_hint()}
+					</div>
+				{/if}
 			</div>
-		{/if}
-		<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
-		<textarea class="d-textarea d-textarea-bordered w-full text-sm" rows="2" bind:value={remarks}
-		></textarea>
+
+			<div class="min-w-0 flex-1">
+				<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
+				<input
+					type="text"
+					class="d-input d-input-bordered mt-1 w-full text-sm"
+					placeholder={m.inv_dept_indent_remarks()}
+					bind:value={remarks}
+				/>
+			</div>
+		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
 
@@ -345,12 +353,29 @@
 	<DaisyUiCardBody>
 		<div class="mb-2 flex items-center justify-between gap-2">
 			<DaisyUiCardBodyTitle>{m.inv_dc_lines_title()}</DaisyUiCardBodyTitle>
-			<DaisyUiButton type="button" className="d-btn-sm d-btn-primary" onClick={() => void openCreateLine()}>
-			<LucidePlus className="size-4" />
-				{m.inv_dc_add_line()}
-			</DaisyUiButton>
+			<div class="flex items-center justify-end gap-2">
+				<DaisyUiTooltip tooltipText={m.inv_dc_add_line()} className="d-tooltip-ghost">
+					<DaisyUiButton
+						type="button"
+						className="d-btn d-btn-primary d-btn-square d-btn-outline"
+						disabled={submitting || storeId == null}
+						aria-label={m.inv_dc_add_line()}
+						onClick={() => void openCreateLine()}
+					>
+						<LucidePlus className="size-4" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				<DaisyUiButton
+					type="button"
+					className="d-btn d-btn-primary"
+					disabled={submitting || storeId == null}
+					onClick={() => void submitConsumption()}
+				>
+					{m.inv_dc_submit_for_approval()}
+				</DaisyUiButton>
+			</div>
 		</div>
-		<div class={TableEnum.HEIGHT}>
+		<div class="h-[420px] min-h-0">
 			<MariTable
 				columns={columns as MariTableColumn[]}
 				rows={lines.map((ln) => ({
@@ -367,13 +392,13 @@
 					batchNo: batchAllocationsSummary(ln)
 				}))}
 				showRefreshButton={false}
-				enableColumnFilters={false}
+				enableColumnFilters={true}
 				showRowActions={true}
 				actionsVariant="none"
 			>
 				{#snippet rowActions(_row, index)}
 					{@const ln = lines[index]}
-					<div class="flex flex-col items-center gap-1">
+					<div class="flex flex-row items-center justify-center gap-1">
 						<DaisyUiTooltip
 							tooltipText={m.inv_line_items_tooltip_edit()}
 							className="d-tooltip-accent d-tooltip-right"
@@ -410,12 +435,3 @@
 		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
-
-<DaisyUiButton
-	type="button"
-	className="d-btn-primary"
-	disabled={submitting || storeId == null}
-	onClick={() => void submitConsumption()}
->
-	{m.inv_dc_submit_for_approval()}
-</DaisyUiButton>
