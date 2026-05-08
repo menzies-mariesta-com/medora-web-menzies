@@ -105,6 +105,9 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 | DC-1 | UI — store locked on **New** | Open **`…/inventory/department-consumption/new`**. Set **From store** in the top bar to store A; refresh if needed. | **From store** on the form shows store A’s name **readonly** (no dropdown). |
 | DC-2 | UI — no navbar store | Clear **From store** (or never select one); open **New**. | Hint explains changing **From store** in the top bar; **Submit** disabled until a store is selected. |
 | DC-3 | Submit for approval | With navbar store set, add lines and **Submit for approval** on **New**. | Record created **pending approval** with **`consumption_no`**; **Approve** / **Reject** are separate (approvers only when pending). |
+| DC-4 | UI — batch selection table | In **New**, add/edit a line: pick an item that has multiple batches in stock. | Modal shows **batch rows** (Batch, Expiry, Stock, optional Sale price) and per-row qty inputs; no batch dropdown. |
+| DC-5 | UI — multi-batch quantities | Enter qty in purchase unit across 2+ batches and save the line; submit the document. | POST payload contains **multiple DC lines** (one per batch with qty) for the same item; server accepts if stock is sufficient. |
+| DC-6 | UI — qty exceeds stock (conversion-aware) | Enter a purchase-unit qty that (after conversion) exceeds available stock for a batch row. | Save / submit is blocked with a user-facing error; the offending row is visually highlighted. |
 
 ---
 

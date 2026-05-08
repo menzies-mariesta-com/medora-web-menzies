@@ -65,11 +65,16 @@ export const POST: RequestHandler = async (event) => {
 		hospitalId,
 		fromStoreId: Number(body.fromStoreId ?? 0),
 		toStoreId: Number(body.toStoreId ?? 0),
+		sourceIndentId:
+			body.sourceIndentId != null && String(body.sourceIndentId).trim() !== ''
+				? String(body.sourceIndentId).trim()
+				: null,
 		remarks: body.remarks != null ? String(body.remarks) : null,
 		lines: lines.map((l) => ({
 			itemId: Number(l.itemId ?? 0),
 			quantity: String(l.quantity ?? '0'),
-			unitId: Number(l.unitId ?? 0)
+			unitId: Number(l.unitId ?? 0),
+			batchId: Number(l.batchId ?? 0)
 		}))
 	});
 

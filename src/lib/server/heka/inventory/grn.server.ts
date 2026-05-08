@@ -18,17 +18,20 @@ import {
 	assertStaffAssignedForModule,
 	listAssignedStoreIdsForStaff
 } from './approval-workflow.server';
+import {
+	parseMoney2dp,
+	parseNonNegativeIntQty,
+	parsePositiveIntQty
+} from './inv-validate.server';
 
 function parseGrnOptionalQty(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
-	const n = Number(String(s).trim());
-	return Number.isFinite(n) && n >= 0 ? n : 0;
+	return parseNonNegativeIntQty(s, 'quantity');
 }
 
 function parseGrnMoney(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
-	const n = Number(String(s).trim());
-	return Number.isFinite(n) ? n : 0;
+	return Number(parseMoney2dp(s, 'amount'));
 }
 
 /**
@@ -67,11 +70,67 @@ function computeGrnLinePriceStrings(p: {
 	const tot = r + f;
 	const emp = tot > 0 ? afterTax / tot : sale;
 	return {
-		salePerPurch: sale.toFixed(4),
-		empPerPurch: emp.toFixed(4),
-		discountTotal: discTotal.toFixed(4),
-		taxTotal: taxTotal.toFixed(4)
+		salePerPurch: sale.toFixed(2),
+		empPerPurch: emp.toFixed(2),
+		discountTotal: discTotal.toFixed(2),
+		taxTotal: taxTotal.toFixed(2)
 	};
+}
+
+function issueQtyStringFromAnyUnit(params: {
+	qty: number;
+	unitId: number;
+	/** The GRN line purchase unit id (ordered/received unit). */
+	linePurchaseUnitId: number;
+	/** The GRN line issue/stock unit id (derived from the line purchase unit IUM). */
+	lineIssueUnitId: number;
+	/** Item-unit-master resolved for the GRN line purchase unit. */
+	lineIum: { purchaseConversionFactor: string; issueConversionFactor: string };
+	/** All item unit masters for the item. */
+	allIums: {
+		purchaseUnitId: number;
+		issueUnitId: number;
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
+	}[];
+}): string {
+	const q = params.qty;
+	if (!Number.isFinite(q) || q <= 0) return '0.000000';
+	const pfLine = Number(params.lineIum.purchaseConversionFactor);
+	const itfLine = Number(params.lineIum.issueConversionFactor);
+	if (!Number.isFinite(pfLine) || pfLine <= 0 || !Number.isFinite(itfLine) || itfLine <= 0) {
+		throw error(500, 'Invalid unit conversion factors');
+	}
+	// base = purchaseQty * purchaseFactor = issueQty * issueFactor
+	const base = (() => {
+		if (params.unitId === params.linePurchaseUnitId) {
+			return q * pfLine;
+		}
+		// qty entered in issue unit of the line IUM
+		if (params.unitId === params.lineIssueUnitId) {
+			return q * itfLine;
+		}
+		const asPurch = params.allIums.find((x) => x.purchaseUnitId === params.unitId);
+		if (asPurch) {
+			const pf = Number(asPurch.purchaseConversionFactor);
+			if (!Number.isFinite(pf) || pf <= 0) throw error(500, 'Invalid free unit conversion factor');
+			return q * pf;
+		}
+		const asIssue = params.allIums.find((x) => x.issueUnitId === params.unitId);
+		if (asIssue) {
+			const itf = Number(asIssue.issueConversionFactor);
+			if (!Number.isFinite(itf) || itf <= 0) throw error(500, 'Invalid free unit conversion factor');
+			return q * itf;
+		}
+		throw error(400, 'Invalid free unit for this item');
+	})();
+	const issue = base / itfLine;
+	if (!Number.isFinite(issue)) throw error(500, 'Unit conversion failed');
+	const rounded = Math.round(issue);
+	if (Math.abs(issue - rounded) > 1e-9) {
+		throw error(400, 'Unit conversion must result in an integer quantity');
+	}
+	return String(rounded);
 }
 import {
 	addDeltaToInvStock,
@@ -80,6 +139,8 @@ import {
 } from './item-batch.server';
 import {
 	issueQtyStringFromPurchaseReceipt,
+	issueQtyToPurchaseQtyString,
+	listItemUnitMastersForItem,
 	purchaseUnitPriceToIssueUnitPriceString,
 	resolveItemUnitMasterForItemPurchaseUnit
 } from './item-unit-inventory.server';
@@ -400,6 +461,7 @@ export async function createAndPostGoodsReceipt(
 			/** Unit purchase price at receipt (required when item `is_batch_required`). */
 			purchasePrice?: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -507,9 +569,7 @@ export async function createAndPostGoodsReceipt(
 				)
 				.limit(1);
 			if (!poLine) throw error(400, `Invalid PO line ${ln.poLineId}`);
-			const recv = Number(ln.receivedQty);
-			if (!Number.isFinite(recv) || recv <= 0)
-				throw error(400, 'Invalid received quantity');
+			const recv = parsePositiveIntQty(ln.receivedQty, 'receivedQty');
 			const prev = Number(poLine.qtyReceivedCumulative);
 			const ordered = Number(poLine.quantity);
 			if (prev + recv > ordered + 1e-9) {
@@ -534,12 +594,12 @@ export async function createAndPostGoodsReceipt(
 				if (!bn) throw error(400, 'batch_no required for this item');
 				if (!ln.expiryDate) throw error(400, 'expiry_date required for this item');
 				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
+				if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
 					throw error(400, 'purchase_price required');
 				}
 				batchNo = bn;
 				expiryDate = ln.expiryDate;
-				purchasePriceStr = Number(pp).toFixed(4);
+				purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 			} else {
 				batchNo =
 					ln.batchNo?.trim() && ln.batchNo.trim().length > 0
@@ -547,10 +607,10 @@ export async function createAndPostGoodsReceipt(
 						: OPEN_STOCK_BATCH_NO;
 				expiryDate = ln.expiryDate ?? null;
 				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
+				if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
 					throw error(400, 'purchase_price required');
 				}
-				purchasePriceStr = Number(pp).toFixed(4);
+				purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 			}
 
 			const manufacturerId =
@@ -575,13 +635,64 @@ export async function createAndPostGoodsReceipt(
 			});
 
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
+			const freeUnitIdRaw =
+				typeof ln.freeUnitId === 'number' && Number.isInteger(ln.freeUnitId)
+					? ln.freeUnitId
+					: null;
+			const { ium } = await resolveItemUnitMasterForItemPurchaseUnit({
+				hospitalId: input.hospitalId,
+				itemId: poLine.itemId,
+				purchaseUnitId: poLine.unitId
+			});
+			const freeUnitId = freeUnitIdRaw ?? poLine.unitId;
+			const allIums = await listItemUnitMastersForItem({
+				hospitalId: input.hospitalId,
+				itemId: poLine.itemId
+			});
+			const pfOrdered = Number(ium.purchaseConversionFactor);
+			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
+				throw error(500, 'Invalid ordered unit conversion factor');
+			}
+			const freePurch = (() => {
+				if (freeUnitId === poLine.unitId) return freeQ;
+				// free qty entered in issue unit of the ordered IUM
+				if (freeUnitId === ium.issueUnitId) {
+					return Number(
+						issueQtyToPurchaseQtyString(
+							String(freeQ),
+							ium.purchaseConversionFactor,
+							ium.issueConversionFactor
+						)
+					);
+				}
+				// free qty entered in some other purchase/issue unit of another IUM -> convert via base
+				const asPurch = allIums.find((x) => x.purchaseUnitId === freeUnitId);
+				if (asPurch) {
+					const pfFree = Number(asPurch.purchaseConversionFactor);
+					if (!Number.isFinite(pfFree) || pfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * pfFree;
+					return base / pfOrdered;
+				}
+				const asIssue = allIums.find((x) => x.issueUnitId === freeUnitId);
+				if (asIssue) {
+					const itfFree = Number(asIssue.issueConversionFactor);
+					if (!Number.isFinite(itfFree) || itfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * itfFree;
+					return base / pfOrdered;
+				}
+				throw error(400, 'Invalid free unit for this item');
+			})();
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const priceBits = computeGrnLinePriceStrings({
 				receivedQty: recv,
-				freeQty: freeQ,
+				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -626,11 +737,12 @@ export async function createAndPostGoodsReceipt(
 					batchId,
 					purchasePrice: purchasePriceStr,
 					unitId: poLine.unitId,
-					freeQty: freeQ.toFixed(6),
+					freeQty: String(freeQ),
+					freeUnitId,
 					discountAmount: priceBits.discountTotal,
-					discountPercent: discPct.toFixed(4),
+					discountPercent: Number(discPct).toFixed(2),
 					taxAmount: priceBits.taxTotal,
-					taxPercent: taxPct.toFixed(4),
+					taxPercent: Number(taxPct).toFixed(2),
 					salePrice: priceBits.salePerPurch,
 					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
@@ -639,27 +751,38 @@ export async function createAndPostGoodsReceipt(
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
 
-			const issueDelta = await issueQtyStringFromPurchaseReceipt({
+			const issueDeltaReceived = await issueQtyStringFromPurchaseReceipt({
 				hospitalId: input.hospitalId,
 				itemId: poLine.itemId,
 				purchaseUnitId: poLine.unitId,
 				purchaseQtyStr: ln.receivedQty
 			});
+			const issueDeltaFree = issueQtyStringFromAnyUnit({
+				qty: freeQ,
+				unitId: freeUnitId,
+				linePurchaseUnitId: poLine.unitId,
+				lineIssueUnitId: ium.issueUnitId,
+				lineIum: ium,
+				allIums
+			});
+			const issueDeltaTotal =
+				parsePositiveIntQty(issueDeltaReceived, 'issueQty') +
+				parseNonNegativeIntQty(issueDeltaFree, 'freeIssueQty');
 
 			await addDeltaToInvStock(tx, {
 				hospitalId: input.hospitalId,
 				itemId: poLine.itemId,
 				storeId: input.storeId,
 				batchId,
-				delta: issueDelta,
+				delta: String(issueDeltaTotal),
 				userId
 			});
 
-			const newCum = (prev + recv).toFixed(6);
+			const newCum = prev + recv;
 			await tx
 				.update(table.purchaseOrderLineTable)
 				.set({
-					qtyReceivedCumulative: newCum,
+					qtyReceivedCumulative: String(newCum),
 					updatedBy: userId
 				})
 				.where(eq(table.purchaseOrderLineTable.id, ln.poLineId));
@@ -723,6 +846,7 @@ export async function createAndPostDirectGoodsReceipt(
 			expiryDate?: string | null;
 			purchasePrice?: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -804,12 +928,12 @@ export async function createAndPostDirectGoodsReceipt(
 					throw error(400, 'expiry_date required for this item');
 				}
 				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
+				if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
 					throw error(400, 'purchase_price required');
 				}
 				batchNo = bn;
 				expiryDate = ln.expiryDate;
-				purchasePriceStr = Number(pp).toFixed(4);
+				purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 			} else {
 				batchNo =
 					ln.batchNo?.trim() && ln.batchNo.trim().length > 0
@@ -817,10 +941,10 @@ export async function createAndPostDirectGoodsReceipt(
 						: OPEN_STOCK_BATCH_NO;
 				expiryDate = ln.expiryDate ?? null;
 				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
+				if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
 					throw error(400, 'purchase_price required');
 				}
-				purchasePriceStr = Number(pp).toFixed(4);
+				purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 			}
 
 			const manufacturerId = im.manufacturerId ?? null;
@@ -842,13 +966,62 @@ export async function createAndPostDirectGoodsReceipt(
 			});
 
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
+			const freeUnitIdRaw =
+				typeof ln.freeUnitId === 'number' && Number.isInteger(ln.freeUnitId)
+					? ln.freeUnitId
+					: null;
+			const { ium } = await resolveItemUnitMasterForItemPurchaseUnit({
+				hospitalId: input.hospitalId,
+				itemId: ln.itemId,
+				purchaseUnitId: ln.unitId
+			});
+			const freeUnitId = freeUnitIdRaw ?? ln.unitId;
+			const allIums = await listItemUnitMastersForItem({
+				hospitalId: input.hospitalId,
+				itemId: ln.itemId
+			});
+			const pfOrdered = Number(ium.purchaseConversionFactor);
+			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
+				throw error(500, 'Invalid ordered unit conversion factor');
+			}
+			const freePurch = (() => {
+				if (freeUnitId === ln.unitId) return freeQ;
+				if (freeUnitId === ium.issueUnitId) {
+					return Number(
+						issueQtyToPurchaseQtyString(
+							String(freeQ),
+							ium.purchaseConversionFactor,
+							ium.issueConversionFactor
+						)
+					);
+				}
+				const asPurch = allIums.find((x) => x.purchaseUnitId === freeUnitId);
+				if (asPurch) {
+					const pfFree = Number(asPurch.purchaseConversionFactor);
+					if (!Number.isFinite(pfFree) || pfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * pfFree;
+					return base / pfOrdered;
+				}
+				const asIssue = allIums.find((x) => x.issueUnitId === freeUnitId);
+				if (asIssue) {
+					const itfFree = Number(asIssue.issueConversionFactor);
+					if (!Number.isFinite(itfFree) || itfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * itfFree;
+					return base / pfOrdered;
+				}
+				throw error(400, 'Invalid free unit for this item');
+			})();
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const priceBits = computeGrnLinePriceStrings({
 				receivedQty: recv,
-				freeQty: freeQ,
+				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -893,11 +1066,12 @@ export async function createAndPostDirectGoodsReceipt(
 					batchId,
 					purchasePrice: purchasePriceStr,
 					unitId: ln.unitId,
-					freeQty: freeQ.toFixed(6),
+					freeQty: String(freeQ),
+					freeUnitId,
 					discountAmount: priceBits.discountTotal,
-					discountPercent: discPct.toFixed(4),
+					discountPercent: Number(discPct).toFixed(2),
 					taxAmount: priceBits.taxTotal,
-					taxPercent: taxPct.toFixed(4),
+					taxPercent: Number(taxPct).toFixed(2),
 					salePrice: priceBits.salePerPurch,
 					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
@@ -906,19 +1080,30 @@ export async function createAndPostDirectGoodsReceipt(
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
 
-			const issueDelta = await issueQtyStringFromPurchaseReceipt({
+			const issueDeltaReceived = await issueQtyStringFromPurchaseReceipt({
 				hospitalId: input.hospitalId,
 				itemId: ln.itemId,
 				purchaseUnitId: ln.unitId,
 				purchaseQtyStr: ln.receivedQty
 			});
+			const issueDeltaFree = issueQtyStringFromAnyUnit({
+				qty: freeQ,
+				unitId: freeUnitId,
+				linePurchaseUnitId: ln.unitId,
+				lineIssueUnitId: ium.issueUnitId,
+				lineIum: ium,
+				allIums
+			});
+			const issueDeltaTotal =
+				parsePositiveIntQty(issueDeltaReceived, 'issueQty') +
+				parseNonNegativeIntQty(issueDeltaFree, 'freeIssueQty');
 
 			await addDeltaToInvStock(tx, {
 				hospitalId: input.hospitalId,
 				itemId: ln.itemId,
 				storeId: input.storeId,
 				batchId,
-				delta: issueDelta,
+				delta: String(issueDeltaTotal),
 				userId
 			});
 		}
@@ -1020,16 +1205,36 @@ export async function transferGrnToRequestingStore(
 			itemId: line.itemId,
 			purchaseUnitId: line.unitId
 		});
-		const qty = await issueQtyStringFromPurchaseReceipt({
+		const qtyReceived = await issueQtyStringFromPurchaseReceipt({
 			hospitalId: input.hospitalId,
 			itemId: line.itemId,
 			purchaseUnitId: line.unitId,
 			purchaseQtyStr: String(line.receivedQty)
 		});
+		const allIums = await listItemUnitMastersForItem({
+			hospitalId: input.hospitalId,
+			itemId: line.itemId
+		});
+		const freeQ = parseGrnOptionalQty(String(line.freeQty));
+		const freeUnitId =
+			typeof (line as { freeUnitId?: unknown }).freeUnitId === 'number'
+				? ((line as { freeUnitId: number }).freeUnitId as number)
+				: line.unitId;
+		const qtyFree = issueQtyStringFromAnyUnit({
+			qty: freeQ,
+			unitId: freeUnitId,
+			linePurchaseUnitId: line.unitId,
+			lineIssueUnitId: ium.issueUnitId,
+			lineIum: ium,
+			allIums
+		});
+		const qtyTotal =
+			parsePositiveIntQty(qtyReceived, 'issueQty') +
+			parseNonNegativeIntQty(qtyFree, 'freeIssueQty');
 		xferLines.push({
 			itemId: line.itemId,
 			batchId: line.batchId,
-			quantity: qty,
+			quantity: String(qtyTotal),
 			unitId: ium.issueUnitId
 		});
 	}

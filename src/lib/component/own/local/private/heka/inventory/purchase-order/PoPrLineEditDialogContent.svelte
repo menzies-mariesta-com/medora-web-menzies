@@ -51,18 +51,22 @@
 		<div>
 			<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_quantity()}</DaisyUiLabel>
 			<input
-				type="text"
+				type="number"
 				class="d-input d-input-bordered w-full"
 				bind:value={draftPoPrLine.quantity}
+				step="1"
+				min="0"
 				aria-label={m.inv_common_quantity()}
 			/>
 		</div>
 		<div>
 			<DaisyUiLabel className="text-xs opacity-80">{m.inv_po_line_unit_price()}</DaisyUiLabel>
 			<input
-				type="text"
+				type="number"
 				class="d-input d-input-bordered w-full"
 				bind:value={draftPoPrLine.unitPrice}
+				step="0.01"
+				min="0"
 				aria-label={m.inv_po_line_unit_price()}
 			/>
 		</div>

@@ -17,9 +17,10 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/heka/inventory/InventoryTablePickerDialogContent.svelte';
 	import PoManualLinesCard from '$lib/component/own/local/private/heka/inventory/purchase-order/PoManualLinesCard.svelte';
-	import PrLineItemDialogContent from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
+	import DepartmentIssueLineDialogContent from '$lib/component/own/local/private/heka/inventory/department-issue/DepartmentIssueLineDialogContent.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -27,10 +28,16 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
-	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
-	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-	import type { DepartmentIndentDetailLine } from '$lib/model/type/heka/department-indent-detail.type';
+	import type {
+		DepartmentIndentDetail,
+		DepartmentIndentDetailLine
+	} from '$lib/model/type/heka/department-indent-detail.type';
+	import type {
+		ConsumptionBatchAllocationDraft,
+		ConsumptionDraftLineIum
+	} from '$lib/model/type/heka/department-consumption-detail.type';
+	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 	const lifeCycle = new LifeCycleUtil();
 	const toast = new ToastService();
 
@@ -84,7 +91,6 @@
 	let pendingIndents = $state<PendingIndentRow[]>([]);
 	let pendingIndentsLoading = $state(false);
 	let issueIdByIndentId = $state<Record<string, string | null>>({});
-	let actIndentId = $state<string | null>(null);
 	let selectedIndentId = $state<string | null>(null);
 	let indentPickerBusy = $state(false);
 
@@ -92,47 +98,29 @@
 	let indentPreviewLoading = $state(false);
 	let indentPreviewError = $state<string | null>(null);
 
-	type IumOpt = {
-		id: number;
-		conversionDisplay: string;
-		purchaseUnitId: number;
-		issueUnitId: number;
-		purchaseConversionFactor?: string;
-		issueConversionFactor?: string;
-		issueUnitName?: string;
-	};
-
-	type PrLineForm = {
+	type IssueDraftLine = {
 		key: string;
 		// These are only used by the shared PR line UX components.
 		itemSearch: string;
 		hits: { id: number; itemName: string | null }[];
 		itemId: number | null;
 		itemLabel: string;
-		quantity: string;
-		iumList: IumOpt[];
+		iumList: ConsumptionDraftLineIum[];
 		itemUnitMasterId: number | null;
+		batchAllocations: ConsumptionBatchAllocationDraft[];
+		lockItem?: boolean;
+		purchaseUnitLabel?: string;
 	};
 
-	let createLines = $state<PrLineForm[]>([]);
+	let createLines = $state<IssueDraftLine[]>([]);
 
 	let lineItemDialogActive = $state(false);
 	let editingLineKey = $state<string | null>(null);
-	let draftLine = $state<PrLineForm>(newLine());
-	let lineDialogMetricTiles = $state<LineItemMetricTile[] | null>(null);
+	let editingIndentLineKey = $state<string | null>(null);
+	let draftLine = $state<IssueDraftLine>(newLine());
 
-	const deptIssueManualLineStockEnrichment = $derived(
-		issueCreateMode === 'manual' && hospitalId
-			? {
-					hospitalId,
-					selectedStoreId: selectedInventoryFromStoreId,
-					toStoreId:
-						toStoreIdStr !== '' && Number.isFinite(Number(toStoreIdStr))
-							? Number(toStoreIdStr)
-							: null
-				}
-			: null
-	);
+	let selectedIndentDetail = $state<DepartmentIndentDetail | null>(null);
+	let indentCreateLines = $state<IssueDraftLine[]>([]);
 
 	const departmentIssueListPath = $derived(
 		hekaHospitalPageUrl(
@@ -159,7 +147,7 @@
 		try {
 			const ps = new URLSearchParams();
 			ps.set('page', '1');
-			ps.set('pageSize', '150');
+			ps.set('pageSize', String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE));
 			ps.set(
 				'statusTaggingId',
 				String(InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL)
@@ -196,37 +184,6 @@
 		}
 	}
 
-	async function createIssueFromIndent(indentId: string) {
-		if (!hospitalId || selectedInventoryFromStoreId == null) return;
-		actIndentId = indentId;
-		try {
-			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory/department-issue/from-indent`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						indentId,
-						actingFromStoreId: selectedInventoryFromStoreId
-					})
-				}
-			);
-			if (!res.ok) {
-				toast.addToast('Issue', StatusColorEnum.ERROR, await res.text());
-				return;
-			}
-			const created = (await res.json()) as { id: string };
-			if (created?.id) {
-				await goto(resolve(issueDetailHref(created.id) as any));
-			} else {
-				selectedIndentId = null;
-				await loadPendingIndents();
-			}
-		} finally {
-			actIndentId = null;
-		}
-	}
-
 	$effect(() => {
 		if (issueCreateMode !== 'indent') return;
 		void hospitalId;
@@ -252,7 +209,7 @@
 					title: m.inv_dept_issue_select_indent(),
 					columns: indentPickerColumns as MariTableColumnsInput,
 					rows: pendingIndents,
-					pageSize: '150'
+					pageSize: String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 				}
 			});
 			if (result.confirmed && result.data) {
@@ -352,6 +309,8 @@
 		if (!hospitalId || !selectedIndentId) {
 			indentPreviewLines = null;
 			indentPreviewError = null;
+			selectedIndentDetail = null;
+			indentCreateLines = [];
 			return;
 		}
 		void (async () => {
@@ -364,13 +323,48 @@
 				if (!res.ok) {
 					throw new Error(String(res.status));
 				}
-				const j = (await res.json()) as
-					| { lines?: DepartmentIndentDetailLine[] }
-					| null;
+				const j = (await res.json()) as DepartmentIndentDetail | null;
+				selectedIndentDetail = j ?? null;
 				indentPreviewLines = j?.lines ?? null;
+				remarks = j?.remarks?.trim() ? j.remarks.trim() : remarks;
+				indentCreateLines = (j?.lines ?? []).map((ln) => {
+					const pf = ln.purchaseConversionFactor?.trim() || '';
+					const iff = ln.issueConversionFactor?.trim() || '';
+					const hasFactors = pf !== '' && iff !== '';
+					const itemUnitMasterId = ln.itemUnitMasterId ?? null;
+					const purchaseUnitName = ln.unitName?.trim() ? ln.unitName.trim() : '—';
+					const ium: ConsumptionDraftLineIum | null =
+						hasFactors && itemUnitMasterId != null
+							? {
+									id: itemUnitMasterId,
+									conversionDisplay:
+										ln.itemUnitMasterConversion?.trim() || purchaseUnitName,
+									purchaseUnitId: ln.unitId,
+									issueUnitId: 0,
+									purchaseUnitName,
+									issueUnitName: ln.issueUnitName?.trim() || '',
+									purchaseConversionFactor: pf,
+									issueConversionFactor: iff
+								}
+							: null;
+					return {
+						key: crypto.randomUUID(),
+						itemSearch: ln.itemName ?? '',
+						hits: [],
+						itemId: ln.itemId,
+						itemLabel: ln.itemName ?? '—',
+						iumList: ium ? [ium] : [],
+						itemUnitMasterId: ium?.id ?? itemUnitMasterId,
+						batchAllocations: [],
+						lockItem: true,
+						purchaseUnitLabel: purchaseUnitName
+					} satisfies IssueDraftLine;
+				});
 			} catch (e) {
 				console.error('Failed to load indent lines', e);
 				indentPreviewLines = null;
+				selectedIndentDetail = null;
+				indentCreateLines = [];
 				indentPreviewError = 'Failed to load indent lines';
 			} finally {
 				indentPreviewLoading = false;
@@ -434,24 +428,44 @@
 		lineItemDialogActive = false;
 		editingLineKey = null;
 		draftLine = newLine();
+		selectedIndentDetail = null;
+		indentCreateLines = [];
 	});
 
-	function newLine(): PrLineForm {
+	function newLine(): IssueDraftLine {
 		return {
 			key: crypto.randomUUID(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,
 			itemLabel: '',
-			quantity: '1',
 			iumList: [],
-			itemUnitMasterId: null
+			itemUnitMasterId: null,
+			batchAllocations: []
 		};
 	}
 
-	function conversionLabelForLine(line: PrLineForm): string {
+	function conversionLabelForLine(line: IssueDraftLine): string {
 		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
 		return ium?.conversionDisplay ?? '—';
+	}
+
+	function totalPurchaseQty(line: IssueDraftLine): string {
+		let sum = 0;
+		for (const a of line.batchAllocations) {
+			const n = Number(String(a.qtyPurchase).trim());
+			if (Number.isFinite(n) && n > 0) sum += n;
+		}
+		return sum > 0 ? String(sum) : '—';
+	}
+
+	function lineIumFactors(line: IssueDraftLine): {
+		pf: string;
+		iff: string;
+	} | null {
+		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		if (!ium) return null;
+		return { pf: ium.purchaseConversionFactor, iff: ium.issueConversionFactor };
 	}
 
 	async function openLineDialogForCreate() {
@@ -461,15 +475,14 @@
 		try {
 			await dialogService.open({
 				title: m.inv_line_modal_title_add(),
-				modalClassName: 'max-w-2xl',
-				component: PrLineItemDialogContent,
+				modalClassName: 'max-w-4xl',
+				component: DepartmentIssueLineDialogContent,
 				props: {
+					hospitalId,
+					storeId: selectedInventoryFromStoreId,
 					draftLine,
-					stockEnrichment: deptIssueManualLineStockEnrichment,
 					searchItemsFn: searchItemsForPrLine,
-					onPickItem: pickDraftItem,
-					onSaveAttempt: saveDraftLine,
-					lineItemMetricTiles: lineDialogMetricTiles
+					onPersist: persistDraftLineFromModal
 				}
 			});
 		} finally {
@@ -478,26 +491,26 @@
 		}
 	}
 
-	async function openLineDialogForEdit(line: PrLineForm) {
+	async function openLineDialogForEdit(line: IssueDraftLine) {
 		editingLineKey = line.key;
 		draftLine = {
 			...line,
 			hits: [...line.hits],
-			iumList: [...line.iumList]
+			iumList: [...line.iumList],
+			batchAllocations: line.batchAllocations.map((a) => ({ ...a }))
 		};
 		lineItemDialogActive = true;
 		try {
 			await dialogService.open({
 				title: m.inv_line_modal_title_edit(),
-				modalClassName: 'max-w-2xl',
-				component: PrLineItemDialogContent,
+				modalClassName: 'max-w-4xl',
+				component: DepartmentIssueLineDialogContent,
 				props: {
+					hospitalId,
+					storeId: selectedInventoryFromStoreId,
 					draftLine,
-					stockEnrichment: deptIssueManualLineStockEnrichment,
 					searchItemsFn: searchItemsForPrLine,
-					onPickItem: pickDraftItem,
-					onSaveAttempt: saveDraftLine,
-					lineItemMetricTiles: lineDialogMetricTiles
+					onPersist: persistDraftLineFromModal
 				}
 			});
 		} finally {
@@ -520,238 +533,168 @@
 		}));
 	}
 
-	async function pickDraftItem(itemId: number) {
-		await hydrateLineItemMeta(draftLine, itemId);
-		// Keep the same `draftLine` object reference while the dialog is open.
-	}
-
-	async function hydrateLineItemMeta(line: PrLineForm, itemId: number) {
-		if (!hospitalId) return;
-		line.itemId = itemId;
-
-		const [detailRes, iumRes] = await Promise.all([
-			fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
-				{ method: 'GET' }
-			),
-			fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
-				{ method: 'GET' }
-			)
-		]);
-		const detail = (await detailRes.json()) as {
-			itemName?: string | null;
-			itemUnitMasterIds?: number[];
-			defaultItemUnitMasterId?: number | null;
-		};
-
-		const allIum = (await iumRes.json()) as IumOpt[];
-		const allowed = new Set(detail.itemUnitMasterIds ?? []);
-		line.iumList = allIum.filter((u) => allowed.has(u.id));
-
-		line.itemLabel = detail.itemName ?? '—';
-		line.itemSearch = line.itemLabel;
-
-		const def = detail.defaultItemUnitMasterId;
-		line.itemUnitMasterId =
-			def != null && line.iumList.some((u) => u.id === def)
-				? def
-				: line.iumList[0]?.id ?? null;
-	}
-
-	function purchaseUnitForLine(line: PrLineForm): number | null {
+	function purchaseUnitForLine(line: IssueDraftLine): number | null {
 		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
 		return ium?.purchaseUnitId ?? null;
 	}
 
-	function sumCurrentDraftForLine(itemId: number, unitId: number): string {
-		let s = 0;
-		for (const l of createLines) {
-			if (editingLineKey && l.key === editingLineKey) continue;
-			const u = purchaseUnitForLine(l);
-			if (l.itemId === itemId && u === unitId) s += Number(l.quantity) || 0;
-		}
-		if (
-			draftLine.itemId === itemId &&
-			purchaseUnitForLine(draftLine) === unitId
-		) {
-			s += Number(draftLine.quantity) || 0;
-		}
-		return String(s);
-	}
-
-	async function refreshDeptIssueLineDialogMetricTiles() {
-		if (!hospitalId || !lineItemDialogActive || issueCreateMode !== 'manual') {
-			lineDialogMetricTiles = null;
-			return;
-		}
-		const itemId = draftLine.itemId;
-		const unitId = purchaseUnitForLine(draftLine);
-		if (itemId == null || unitId == null) {
-			lineDialogMetricTiles = null;
-			return;
-		}
-		const fromS = selectedInventoryFromStoreId;
-		const toS =
-			toStoreIdStr !== '' && Number.isFinite(Number(toStoreIdStr))
-				? Number(toStoreIdStr)
-				: null;
-		const tiles: LineItemMetricTile[] = [];
-		try {
-			if (fromS != null && toS != null && fromS === toS) {
-				const map = await fetchStockLabelsForItemsAtStore(hospitalId, fromS, [itemId]);
-				tiles.push({
-					label: m.inv_line_modal_on_hand_selected(),
-					value: map.get(itemId) ?? '0'
-				});
-			} else {
-				if (fromS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, fromS, [itemId]);
-					tiles.push({
-						label: m.inv_line_modal_on_hand_selected(),
-						value: map.get(itemId) ?? '0'
-					});
-				}
-				if (toS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, toS, [itemId]);
-					tiles.push({
-						label: m.inv_line_modal_on_hand_to(),
-						value: map.get(itemId) ?? '0'
-					});
-				}
-			}
-			tiles.push({
-				label: m.inv_line_modal_metric_line_qty(),
-				value: sumCurrentDraftForLine(itemId, unitId),
-				convertPurchaseQtyToIssueForDisplay: true
-			});
-			lineDialogMetricTiles = tiles.length > 0 ? tiles : null;
-		} catch {
-			lineDialogMetricTiles = null;
-		}
-	}
-
-	$effect(() => {
-		if (!lineItemDialogActive || issueCreateMode !== 'manual') {
-			lineDialogMetricTiles = null;
-			return;
-		}
-		void draftLine.itemId;
-		void draftLine.itemUnitMasterId;
-		void draftLine.quantity;
-		void toStoreIdStr;
-		void selectedInventoryFromStoreId;
-		void createLines;
-		void editingLineKey;
-		void hospitalId;
-		void issueCreateMode;
-		void refreshDeptIssueLineDialogMetricTiles();
-	});
-
-	function validateDraftLine():
-		| { ok: true; quantity: string; unitId: number; itemId: number }
-		| { ok: false; title: string; detail: string } {
-		const unitId = purchaseUnitForLine(draftLine);
-		if (draftLine.itemId == null || unitId == null) {
-			return {
-				ok: false,
-				title: 'Could not save line',
-				detail: 'Please select an item and a purchase unit conversion.'
-			};
-		}
-		const q = draftLine.quantity.trim();
-		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-			return {
-				ok: false,
-				title: 'Could not save line',
-				detail: 'Quantity must be greater than 0.'
-			};
-		}
-		return { ok: true, quantity: q, unitId, itemId: draftLine.itemId };
-	}
-
-	function saveDraftLine(): boolean {
-		const v = validateDraftLine();
-		if (!v.ok) {
-			toast.addToast(v.title, StatusColorEnum.ERROR, v.detail);
-			return false;
-		}
-
+	function persistDraftLineFromModal() {
+		const src = draftLine;
+		const row: IssueDraftLine = {
+			...src,
+			hits: [...src.hits],
+			iumList: [...src.iumList],
+			batchAllocations: src.batchAllocations.map((a) => ({ ...a }))
+		};
 		if (editingLineKey) {
-			const idx = createLines.findIndex((l) => l.key === editingLineKey);
-			if (idx >= 0) {
-				const next = [...createLines];
-				next[idx] = { ...draftLine, quantity: v.quantity };
-				createLines = next;
-			}
+			createLines = createLines.map((x) => (x.key === editingLineKey ? row : x));
 		} else {
-			createLines = [...createLines, { ...draftLine, quantity: v.quantity }];
+			createLines = [...createLines, row];
 		}
-		return true;
 	}
 
 	function deleteLine(lineKey: string) {
 		createLines = createLines.filter((l) => l.key !== lineKey);
 	}
 
-	function buildLinesPayload():
-		| { ok: true; lines: { itemId: number; quantity: string; unitId: number }[] }
+	async function openIndentLineDialogForEdit(line: IssueDraftLine) {
+		editingIndentLineKey = line.key;
+		draftLine = {
+			...line,
+			hits: [...line.hits],
+			iumList: [...line.iumList],
+			batchAllocations: line.batchAllocations.map((a) => ({ ...a })),
+			lockItem: true
+		};
+		lineItemDialogActive = true;
+		try {
+			await dialogService.open({
+				title: m.inv_line_modal_title_edit(),
+				modalClassName: 'max-w-4xl',
+				component: DepartmentIssueLineDialogContent,
+				props: {
+					hospitalId,
+					storeId: selectedInventoryFromStoreId,
+					draftLine,
+					searchItemsFn: searchItemsForPrLine,
+					onPersist: persistIndentDraftLineFromModal
+				}
+			});
+		} finally {
+			lineItemDialogActive = false;
+			editingIndentLineKey = null;
+		}
+	}
+
+	function persistIndentDraftLineFromModal() {
+		const src = draftLine;
+		const row: IssueDraftLine = {
+			...src,
+			hits: [...src.hits],
+			iumList: [...src.iumList],
+			batchAllocations: src.batchAllocations.map((a) => ({ ...a })),
+			lockItem: true
+		};
+		if (editingIndentLineKey) {
+			indentCreateLines = indentCreateLines.map((x) =>
+				x.key === editingIndentLineKey ? row : x
+			);
+		}
+	}
+
+	function buildLinesPayload(
+		lines: IssueDraftLine[]
+	):
+		| {
+				ok: true;
+				lines: { itemId: number; quantity: string; unitId: number; batchId: number }[];
+		  }
 		| { ok: false; title: string; detail: string } {
-		const linesPayload: { itemId: number; quantity: string; unitId: number }[] = [];
-		for (const ln of createLines) {
+		const payload: { itemId: number; quantity: string; unitId: number; batchId: number }[] = [];
+		for (const ln of lines) {
 			const uid = purchaseUnitForLine(ln);
-			if (ln.itemId == null || uid == null) {
+			const factors = lineIumFactors(ln);
+			if (ln.itemId == null || uid == null || factors == null) {
 				return {
 					ok: false,
 					title: 'Issue',
 					detail: 'Each line needs an item and unit conversion.'
 				};
 			}
-			const q = ln.quantity.trim();
-			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
+			const { pf, iff } = factors;
+			let hasPositive = false;
+			for (const a of ln.batchAllocations) {
+				const q = a.qtyPurchase.trim();
+				if (!q) continue;
+				const n = Number(q);
+				if (!Number.isFinite(n) || n <= 0) {
+					return {
+						ok: false,
+						title: 'Issue',
+						detail: 'Invalid quantity on a batch allocation.'
+					};
+				}
+				hasPositive = true;
+				const need = purchaseQtyToIssueQtyNumber(q, pf, iff);
+				if (need == null || need > Number(a.stockIssueQty) + 1e-6) {
+					return {
+						ok: false,
+						title: 'Issue',
+						detail: 'Allocated quantity exceeds stock.'
+					};
+				}
+				payload.push({ itemId: ln.itemId, quantity: q, unitId: uid, batchId: a.batchId });
+			}
+			if (!hasPositive) {
 				return {
 					ok: false,
 					title: 'Issue',
-					detail: 'Invalid quantity on a line.'
+					detail: 'Total qty to use must be greater than 0.'
 				};
 			}
-			linesPayload.push({ itemId: ln.itemId, quantity: q, unitId: uid });
 		}
-		if (linesPayload.length === 0) {
-			return {
-				ok: false,
-				title: 'Issue',
-				detail: 'Add at least one line.'
-			};
+		if (payload.length === 0) {
+			return { ok: false, title: 'Issue', detail: 'Add at least one line.' };
 		}
-		return { ok: true, lines: linesPayload };
+		return { ok: true, lines: payload };
 	}
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLineForm>[] => [
+	const lineColumns = $derived.by((): MariTableColumn<IssueDraftLine>[] => [
 		{
 			id: 'itemLabel',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
 			filterable: true,
-			format: (_v: unknown, row: PrLineForm) => row.itemLabel || '—'
+			format: (_v: unknown, row: IssueDraftLine) => row.itemLabel || '—'
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
 			filterable: true,
-			format: (_v: unknown, row: PrLineForm) => conversionLabelForLine(row)
+			format: (_v: unknown, row: IssueDraftLine) => conversionLabelForLine(row)
 		},
 		{
 			id: 'quantity',
 			header: m.inv_common_quantity(),
-			field: 'quantity',
 			filterable: true,
-			format: (_v: unknown, row: PrLineForm) =>
-				formatPurchaseQtyCellWithIssueEquivalent(row)
+			field: 'qtySearch',
+			format: (_v: unknown, row: IssueDraftLine) =>
+				formatPurchaseQtyCellWithIssueEquivalent({
+					quantity: (row as any).qtySearch ?? totalPurchaseQty(row),
+					itemUnitMasterId: row.itemUnitMasterId,
+					purchaseConversionFactor:
+						row.iumList.find((u) => u.id === row.itemUnitMasterId)
+							?.purchaseConversionFactor ?? null,
+					issueConversionFactor:
+						row.iumList.find((u) => u.id === row.itemUnitMasterId)
+							?.issueConversionFactor ?? null,
+					issueUnitName:
+						row.iumList.find((u) => u.id === row.itemUnitMasterId)?.issueUnitName ??
+						null
+				} as any)
 		}
 	]);
-
 	async function submitCreate() {
 		if (!hospitalId) return;
 		const from = selectedInventoryFromStoreId;
@@ -761,7 +704,7 @@
 			return;
 		}
 
-		const built = buildLinesPayload();
+		const built = buildLinesPayload(createLines);
 		if (!built.ok) {
 			toast.addToast(built.title, StatusColorEnum.ERROR, built.detail);
 			return;
@@ -786,6 +729,56 @@
 			);
 			if (!res.ok) {
 				toast.addToast('Issue', StatusColorEnum.ERROR, await res.text());
+				return;
+			}
+			await goBackToList();
+		} finally {
+			submitting = false;
+		}
+	}
+
+	async function submitCreateFromIndent() {
+		if (!hospitalId) return;
+		const ind = selectedIndentDetail;
+		const from = selectedInventoryFromStoreId;
+		if (!ind || from == null) return;
+		if (ind.toStoreId !== from) {
+			toast.addToast(
+				'Issue',
+				StatusColorEnum.ERROR,
+				'Select the central store (indent “to” store) in the top bar.'
+			);
+			return;
+		}
+		const built = buildLinesPayload(indentCreateLines);
+		if (!built.ok) {
+			toast.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			return;
+		}
+		const payload = {
+			fromStoreId: from,
+			toStoreId: ind.fromStoreId,
+			sourceIndentId: ind.id,
+			remarks: remarks.trim() || null,
+			lines: built.lines
+		};
+		submitting = true;
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory/department-issue`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload)
+				}
+			);
+			if (!res.ok) {
+				toast.addToast('Issue', StatusColorEnum.ERROR, await res.text());
+				return;
+			}
+			const created = (await res.json()) as { id?: string };
+			if (created?.id) {
+				await goto(resolve(issueDetailHref(created.id) as any));
 				return;
 			}
 			await goBackToList();
@@ -878,7 +871,7 @@
 				<PoManualLinesCard
 					totalCount={createLines.length}
 					columns={lineColumns}
-					rows={createLines}
+					rows={createLines.map((ln) => ({ ...ln, qtySearch: totalPurchaseQty(ln) }))}
 					useColumnFilters={true}
 					hideQuickFilter={true}
 					hideAddButton={true}
@@ -1013,6 +1006,40 @@
 							/>
 						{/if}
 					</div>
+
+					<div class="mb-4 rounded-box border border-base-300 bg-base-100 p-3">
+						<div class="mb-2 text-sm font-medium">{m.inv_dc_batch()}</div>
+						<p class="mb-3 text-xs opacity-70">
+							{m.inv_dc_modal_batch_help()}
+						</p>
+						<MariTable
+							rows={indentCreateLines}
+							columns={lineColumns as MariTableColumn[]}
+							showRefreshButton={false}
+							enableColumnFilters={false}
+							showRowActions={true}
+							actionsVariant="none"
+						>
+							{#snippet rowActions(_row, index)}
+								{@const ln = indentCreateLines[index]}
+								<DaisyUiTooltip
+									tooltipText={m.inv_line_items_tooltip_edit()}
+									className="d-tooltip-accent d-tooltip-left"
+								>
+									<DaisyUiButton
+										type="button"
+										className="d-btn-sm d-btn-ghost d-btn-square text-accent"
+										disabled={!ln || submitting}
+										onClick={() => {
+											if (ln) void openIndentLineDialogForEdit(ln);
+										}}
+									>
+										<LucidePencil className="size-5" />
+									</DaisyUiButton>
+								</DaisyUiTooltip>
+							{/snippet}
+						</MariTable>
+					</div>
 				{/if}
 				{#if selectedIndentId}
 					{@const selIndentId = selectedIndentId}
@@ -1035,9 +1062,9 @@
 							<DaisyUiButton
 								type="button"
 								className="d-btn-wide d-btn-primary"
-								disabled={actIndentId != null || pendingIndentsLoading}
-								loading={actIndentId === selIndentId}
-								onClick={() => void createIssueFromIndent(selIndentId)}
+								disabled={pendingIndentsLoading || submitting || indentCreateLines.length === 0}
+								loading={submitting}
+								onClick={() => void submitCreateFromIndent()}
 							>
 								{m.inv_dept_issue_btn_create()}
 							</DaisyUiButton>
