@@ -89,9 +89,19 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		colorClass: string;
 	};
 
-	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+	/**
+	 * Column definitions are generic in `MariTableColumn<T>`, but passing
+	 * `MariTableColumn<MyRow>[]` to a prop typed as `MariTableColumn<unknown>[]`
+	 * fails under TypeScript’s generic variance. Call sites use concrete row
+	 * types; the table only passes rows as `unknown`. `any` keeps the contract
+	 * ergonomic for all pages.
+	 */
+	export type MariTableColumnsInput = MariTableColumn<any>[];
 
-	type RowEventDetail = unknown;
+	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+
+	/** Emitted with concrete row types from each page; `any` avoids variance noise. */
+	type RowEventDetail = any;
 	type RowLike = Record<string, unknown>;
 
 	const dispatch = createEventDispatcher<{
@@ -142,7 +152,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		crudDeleteDisabled
 	} = $props<{
 		rows: unknown[];
-		columns: MariTableColumn[];
+		columns: MariTableColumnsInput;
 		pageSizeOptions?: number[];
 		pageSize?: string;
 		currentPage?: number;
@@ -163,18 +173,18 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		/** Optional legend items shown above the table. */
 		legendItems?: MariTableLegendItem[];
 		/** Optional row class generator. Useful for status color mapping with legend. */
-		rowClassGetter?: (row: unknown, rowIndex: number) => string;
+		rowClassGetter?: (row: any, rowIndex: number) => string;
 		/**
 		 * Optional function to provide a tooltip for each row.
 		 * Return a string to show as the native browser tooltip on row hover.
 		 */
-		rowTooltipGetter?: (row: unknown, rowIndex: number) => string;
+		rowTooltipGetter?: (row: any, rowIndex: number) => string;
 		fillParent?: boolean;
 		/** Custom actions cell when `actionsVariant` is `none` but the actions column is shown. */
-		rowActions?: Snippet<[unknown, number]>;
+		rowActions?: Snippet<[any, number]>;
 		/** When true, the row’s edit control is disabled (e.g. OP billing lock). */
-		crudEditDisabled?: (row: unknown) => boolean;
-		crudDeleteDisabled?: (row: unknown) => boolean;
+		crudEditDisabled?: (row: any) => boolean;
+		crudDeleteDisabled?: (row: any) => boolean;
 	}>();
 
 	const rootClass = $derived(
@@ -239,7 +249,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 	const filteredRows = $derived(
 		useRemoteFilters
 			? rows
-			: rows.filter((row, index: number) => {
+			: rows.filter((row: unknown, index: number) => {
 					for (const column of columns) {
 						const rawFilter = columnFilters[column.id];
 						const filter = rawFilter

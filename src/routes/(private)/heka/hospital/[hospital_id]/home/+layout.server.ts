@@ -9,10 +9,74 @@ import * as table from '$lib/server/db/schema';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import type { PageWithRelations } from '$lib/model/type/heka/page.type';
 import { and, eq, inArray } from 'drizzle-orm';
+import { listStoresForApprovalConfig } from '$lib/server/heka/inventory/approval-config.server';
+import type { Cookies, RequestEvent } from '@sveltejs/kit';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
 const COOKIE_SELECTED_BRANCH_ID = 'heka_selected_branch_id';
+const COOKIE_SELECTED_INVENTORY_FROM_STORE_ID =
+	'heka_selected_inventory_from_store_id';
 const BRANCH_ALL_VALUE = '__all__';
+
+function isInventoryOpsPathname(pathname: string, hid: string): boolean {
+	const base = `/heka/hospital/${hid}/home/inventory`;
+	if (pathname === base) return true;
+	if (!pathname.startsWith(`${base}/`)) return false;
+	return !pathname.includes('inventory-setup');
+}
+
+async function inventoryFromStoreNavContext(
+	event: RequestEvent,
+	hospitalId: string,
+	pathname: string,
+	cookies: Cookies,
+	selectedBranchId: string | null,
+	selectedUserGroupId: number | null
+): Promise<{
+	inventoryFromStoresForNav: { id: number; storeName: string | null }[];
+	selectedInventoryFromStoreId: number | null;
+}> {
+	if (!hospitalId || !isInventoryOpsPathname(pathname, hospitalId)) {
+		return {
+			inventoryFromStoresForNav: [],
+			selectedInventoryFromStoreId: null
+		};
+	}
+	const raw = await listStoresForApprovalConfig(event, hospitalId, {
+		userGroupId: selectedUserGroupId
+	});
+	let rows = raw;
+	if (
+		selectedBranchId &&
+		selectedBranchId !== BRANCH_ALL_VALUE &&
+		raw.length > 0
+	) {
+		rows = raw.filter(
+			(s) => String(s.branchId ?? '') === selectedBranchId
+		);
+	}
+	const list = rows.map((s) => ({
+		id: s.id,
+		storeName: s.storeName
+	}));
+	if (list.length === 0) {
+		return {
+			inventoryFromStoresForNav: [],
+			selectedInventoryFromStoreId: null
+		};
+	}
+	const cookieRaw = cookies.get(COOKIE_SELECTED_INVENTORY_FROM_STORE_ID);
+	const cookieNum = cookieRaw != null ? Number(cookieRaw) : NaN;
+	const selectedFromCookie =
+		Number.isFinite(cookieNum) && list.some((s) => s.id === cookieNum)
+			? cookieNum
+			: null;
+	const selectedInventoryFromStoreId = selectedFromCookie ?? list[0]!.id;
+	return {
+		inventoryFromStoresForNav: list,
+		selectedInventoryFromStoreId
+	};
+}
 
 /**
  * Load page list for the module bar.
@@ -22,12 +86,8 @@ const BRANCH_ALL_VALUE = '__all__';
  *
  * For STAFF, also enforces page access: if the current URL maps to a page not allowed for the selected group, redirect to hospital home.
  */
-export const load: LayoutServerLoad = async ({
-	locals,
-	url,
-	params,
-	cookies
-}) => {
+export const load: LayoutServerLoad = async (event) => {
+	const { locals, url, params, cookies } = event;
 	try {
 		const fullPages = (await ensureDb().query.pageTable.findMany({
 			with: {
@@ -37,6 +97,7 @@ export const load: LayoutServerLoad = async ({
 		})) as unknown as PageWithRelations[];
 
 	const userRoleId = locals.userRoleId ?? null;
+	const currentUserId = locals.user?.id ?? null;
 	const staffId = locals.staff?.id ?? null;
 	const hospitalId = params.hospital_id ?? '';
 	const [hospital] = hospitalId
@@ -82,15 +143,26 @@ export const load: LayoutServerLoad = async ({
 					? (staffBranchesForNav[0]?.id ?? null)
 					: null;
 
+		const invNav = await inventoryFromStoreNavContext(
+			event,
+			hospitalId,
+			url.pathname,
+			cookies,
+			selectedBranchId,
+			null
+		);
+
 		return {
 			pageData: fullPages,
 			currentHospitalName,
+			currentUserId,
 			staffUserGroupsForNav: [],
 			selectedUserGroupId: null,
 			staffBranchesForNav,
 			selectedBranchId,
 			/** All branches the user is allowed to use (this hospital only). For OWNER/SYSTEM_ADMIN = all hospital branches. */
-			allowedBranches: allHospitalBranches
+			allowedBranches: allHospitalBranches,
+			...invNav
 		};
 	}
 
@@ -123,7 +195,9 @@ export const load: LayoutServerLoad = async ({
 				selectedUserGroupId: null,
 				staffBranchesForNav: [],
 				selectedBranchId: null,
-				allowedBranches: []
+				allowedBranches: [],
+				inventoryFromStoresForNav: [],
+				selectedInventoryFromStoreId: null
 			};
 		}
 
@@ -232,7 +306,7 @@ export const load: LayoutServerLoad = async ({
 						)
 					: eq(table.userGroupPageTable.userGroupId, -1)
 			);
-		let allowedPageIds = new Set(
+		const allowedPageIds = new Set(
 			userGroupPages.map((r) => r.pageId).filter((id) => id != null)
 		);
 
@@ -288,15 +362,25 @@ export const load: LayoutServerLoad = async ({
 		const filtered = fullPages.filter((p) =>
 			allowedPageIds.has(p.id)
 		);
+		const invNav = await inventoryFromStoreNavContext(
+			event,
+			hospitalId,
+			url.pathname,
+			cookies,
+			selectedBranchId,
+			selectedUserGroupId
+		);
 		return {
 			pageData: filtered,
 			currentHospitalName,
+			currentUserId,
 			staffUserGroupsForNav,
 			selectedUserGroupId,
 			staffBranchesForNav: staffBranchesForNavWithAll,
 			selectedBranchId,
 			/** All branches the user is allowed to use. For STAFF = branches they are assigned to. */
-			allowedBranches: staffBranchesForNav
+			allowedBranches: staffBranchesForNav,
+			...invNav
 		};
 	}
 
@@ -304,11 +388,14 @@ export const load: LayoutServerLoad = async ({
 	return {
 		pageData: fullPages,
 		currentHospitalName,
+		currentUserId,
 		staffUserGroupsForNav: [],
 		selectedUserGroupId: null,
 		staffBranchesForNav: [],
 		selectedBranchId: null,
-		allowedBranches: []
+		allowedBranches: [],
+		inventoryFromStoresForNav: [],
+		selectedInventoryFromStoreId: null
 	};
 	} catch (err) {
 		// Let SvelteKit redirects/errors bubble up unchanged.
@@ -327,11 +414,14 @@ export const load: LayoutServerLoad = async ({
 		return {
 			pageData: [],
 			currentHospitalName: null,
+			currentUserId: null,
 			staffUserGroupsForNav: [],
 			selectedUserGroupId: null,
 			staffBranchesForNav: [],
 			selectedBranchId: null,
-			allowedBranches: []
+			allowedBranches: [],
+			inventoryFromStoresForNav: [],
+			selectedInventoryFromStoreId: null
 		};
 	}
 };

@@ -201,14 +201,12 @@ export type ItemUnitMasterListRow = PatientRegMasterTimestamps & {
 export type StoreListRow = PatientRegMasterTimestamps & {
 	id: number;
 	branchId: string;
-	userGroupId: number | null;
-	departmentId: number | null;
 	storeName: string | null;
 	remark: string | null;
+	isPurchaseRequisitable?: boolean;
 	statusId: number;
 	branch?: { id: string; name: string | null; code: string | null } | null;
-	userGroup?: { id: number; name: string | null } | null;
-	department?: { id: number; name: string | null; code: string | null } | null;
+	userGroups: { id: number; name: string | null }[];
 };
 
 export type PatientAttachmentListRow = PatientRegMasterTimestamps & {

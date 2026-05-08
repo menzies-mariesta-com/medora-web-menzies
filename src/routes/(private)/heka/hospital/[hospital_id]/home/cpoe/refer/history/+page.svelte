@@ -117,7 +117,7 @@
 		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
 	];
 
-	const columns: MariTableColumn[] = [
+	const columns: MariTableColumn<ReferHistoryWithRelations>[] = [
 		{
 			id: 'referAt',
 			header: 'Refer At',

@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -14,7 +14,8 @@ import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server'
 import {
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
-	listApprovalLogs
+	listApprovalLogs,
+	listPoApproverStoreLevelsForStaff
 } from './approval-workflow.server';
 import {
 	assertStoreInHospital,
@@ -22,12 +23,21 @@ import {
 	getStaffIdForUser
 } from './inventory-scope.server';
 import type { InvApprovalModule } from './approval-config.server';
-import { resolveItemUnitMasterForItemPurchaseUnit } from './item-unit-inventory.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
+import { resolveItemUnitMasterForItemPurchaseUnit } from './item-unit-inventory.server';
 
 export async function listPurchaseOrders(
 	event: RequestEvent,
-	input: { hospitalId: string; page?: number; pageSize?: number; prId?: string }
+	input: {
+		hospitalId: string;
+		page?: number;
+		pageSize?: number;
+		prId?: string;
+		/** When set, only POs for this store (e.g. navbar-selected inventory store; CPS for PR/PO). */
+		storeId?: number;
+		statusTaggingId?: number;
+		poNo?: string;
+	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const { page, pageSize, limit, offset } = normalizePagination(input);
@@ -38,6 +48,25 @@ export async function listPurchaseOrders(
 	);
 	if (input.prId) {
 		cond = and(cond, eq(table.purchaseOrderTable.prId, input.prId))!;
+	}
+	if (input.storeId != null) {
+		cond = and(cond, eq(table.purchaseOrderTable.storeId, input.storeId))!;
+	}
+	if (typeof input.statusTaggingId === 'number') {
+		cond = and(
+			cond,
+			eq(table.purchaseOrderTable.statusTaggingId, input.statusTaggingId)
+		)!;
+	}
+	const poNoTerm = input.poNo?.trim();
+	if (poNoTerm) {
+		const safe = poNoTerm.replace(/[%_\\]/g, '');
+		if (safe) {
+			cond = and(
+				cond,
+				ilike(table.purchaseOrderTable.poNo, `%${safe}%`)
+			)!;
+		}
 	}
 
 	const uCreated = alias(table.userTable, 'po_created_by_user');
@@ -94,6 +123,40 @@ export async function listPurchaseOrders(
 	]);
 
 	const total = cnt[0]?.c ?? 0;
+
+	const userId = event.locals.user?.id ?? null;
+	const staffId = userId ? await getStaffIdForUser(userId) : null;
+	let approverPairSet = new Set<string>();
+	if (staffId) {
+		const pairs = await listPoApproverStoreLevelsForStaff(
+			input.hospitalId,
+			staffId
+		);
+		approverPairSet = new Set(
+			pairs.map((p) => `${p.storeId}:${p.level}`)
+		);
+	}
+
+	const poIds = data.map((r) => r.po.id);
+	const itemNamesByPo = new Map<string, string>();
+	if (poIds.length > 0) {
+		const rows = await ensureDb()
+			.select({
+				poId: table.purchaseOrderLineTable.poId,
+				itemNames: sql<string>`string_agg(distinct ${table.itemMasterTable.itemName}, ', ')`
+			})
+			.from(table.purchaseOrderLineTable)
+			.innerJoin(
+				table.itemMasterTable,
+				eq(table.purchaseOrderLineTable.itemId, table.itemMasterTable.id)
+			)
+			.where(inArray(table.purchaseOrderLineTable.poId, poIds))
+			.groupBy(table.purchaseOrderLineTable.poId);
+		for (const r of rows) {
+			if (r.poId) itemNamesByPo.set(r.poId, r.itemNames ?? '');
+		}
+	}
+
 	return {
 		data: data.map((r) => ({
 			...r.po,
@@ -102,7 +165,13 @@ export async function listPurchaseOrders(
 			storeName: r.storeName,
 			createdByName: r.createdByName ?? null,
 			updatedByName: r.updatedByName ?? null,
-			approvedByName: r.approvedByName ?? null
+			approvedByName: r.approvedByName ?? null,
+			itemNames: itemNamesByPo.get(r.po.id) ?? '',
+			canApprove:
+				r.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING &&
+				approverPairSet.has(
+					`${r.po.storeId}:${r.po.currentLevel}`
+				)
 		})),
 		total,
 		page,
@@ -119,6 +188,7 @@ export async function getPurchaseOrderById(
 	const uCreated = alias(table.userTable, 'po_detail_created_by_user');
 	const uUpdated = alias(table.userTable, 'po_detail_updated_by_user');
 	const uApproved = alias(table.userTable, 'po_detail_approved_by_user');
+	const prLinked = alias(table.purchaseRequisitionTable, 'po_detail_linked_pr');
 
 	const [row] = await ensureDb()
 		.select({
@@ -128,7 +198,8 @@ export async function getPurchaseOrderById(
 			storeName: table.storeTable.storeName,
 			createdByName: uCreated.name,
 			updatedByName: uUpdated.name,
-			approvedByName: uApproved.name
+			approvedByName: uApproved.name,
+			linkedRequisitionNo: prLinked.prNo
 		})
 		.from(table.purchaseOrderTable)
 		.innerJoin(
@@ -154,6 +225,13 @@ export async function getPurchaseOrderById(
 		.leftJoin(
 			uApproved,
 			eq(table.purchaseOrderTable.approvedBy, uApproved.id)
+		)
+		.leftJoin(
+			prLinked,
+			and(
+				eq(table.purchaseOrderTable.prId, prLinked.id),
+				isNull(prLinked.deletedAt)
+			)
 		)
 		.where(
 			and(
@@ -193,14 +271,35 @@ export async function getPurchaseOrderById(
 
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
 
+	const userId = event.locals.user?.id ?? null;
+	const staffIdForApprove = userId ? await getStaffIdForUser(userId) : null;
+	let canApprove = false;
+	if (
+		staffIdForApprove &&
+		row.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING
+	) {
+		const pairs = await listPoApproverStoreLevelsForStaff(
+			input.hospitalId,
+			staffIdForApprove
+		);
+		const approverPairSet = new Set(
+			pairs.map((p) => `${p.storeId}:${p.level}`)
+		);
+		canApprove = approverPairSet.has(
+			`${row.po.storeId}:${row.po.currentLevel}`
+		);
+	}
+
 	return {
 		...row.po,
+		canApprove,
 		statusName: row.statusName,
 		supplierName: row.supplierName,
 		storeName: row.storeName,
 		createdByName: row.createdByName ?? null,
 		updatedByName: row.updatedByName ?? null,
 		approvedByName: row.approvedByName ?? null,
+		linkedRequisitionNo: row.linkedRequisitionNo ?? null,
 		lines: lineRows.map((l) => {
 			const k = `${l.line.itemId}:${l.line.unitId}`;
 			const ium = iumMap.get(k);
@@ -220,6 +319,8 @@ export async function createPurchaseOrder(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
+		/** Store selected in top bar; must match PR `toStoreId` (receiver) for PR-backed PO. */
+		storeId: number;
 		prId: string;
 		supplierId: number;
 		lines: {
@@ -236,6 +337,9 @@ export async function createPurchaseOrder(
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
 	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (!Number.isFinite(input.storeId) || input.storeId <= 0) {
+		throw error(400, 'Store is required');
+	}
 
 	const [pr] = await ensureDb()
 		.select()
@@ -274,7 +378,12 @@ export async function createPurchaseOrder(
 		);
 	}
 
-	const store = await assertStoreInHospital(input.hospitalId, pr.storeId);
+	/** PO is owned by the PR’s *to* store (receiver), not the requesting (from) store. */
+	const poStoreId = pr.toStoreId;
+	if (input.storeId !== poStoreId) {
+		throw error(400, 'Purchase order must be created by the PR receiving store');
+	}
+	const store = await assertStoreInHospital(input.hospitalId, poStoreId);
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
@@ -370,7 +479,7 @@ export async function createPurchaseOrder(
 				poNo,
 				hospitalId: input.hospitalId,
 				prId: input.prId,
-				storeId: pr.storeId,
+				storeId: poStoreId,
 				supplierId: input.supplierId,
 				statusTaggingId: InvPoStatusTaggingEnum.PENDING,
 				currentLevel: 1,
@@ -797,4 +906,132 @@ export async function resubmitPurchaseOrder(
 		hospitalId: input.hospitalId,
 		id: input.poId
 	});
+}
+
+export async function closePurchaseOrderLineRemaining(
+	event: RequestEvent,
+	input: { hospitalId: string; poId: string; lineId: number }
+) {
+	await ensureHospitalInventoryAccess(event, input.hospitalId);
+	const userId = event.locals.user?.id;
+	if (!userId) throw error(401, 'Unauthorized');
+
+	const lineId = Number(input.lineId);
+	if (!Number.isFinite(lineId) || lineId <= 0) {
+		throw error(400, 'Invalid line id');
+	}
+
+	await ensureDb().transaction(async (tx) => {
+		const [po] = await tx
+			.select()
+			.from(table.purchaseOrderTable)
+			.where(
+				and(
+					eq(table.purchaseOrderTable.id, input.poId),
+					eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
+					isNull(table.purchaseOrderTable.deletedAt)
+				)
+			)
+			.limit(1);
+		if (!po) throw error(404, 'PO not found');
+
+		// Only allow when PO is beyond approvals (or in-flight). Closing is about remaining receipt.
+		if (
+			po.statusTaggingId === InvPoStatusTaggingEnum.DRAFT ||
+			po.statusTaggingId === InvPoStatusTaggingEnum.REJECTED ||
+			po.statusTaggingId === InvPoStatusTaggingEnum.SENT_BACK
+		) {
+			throw error(400, 'Cannot close line in current PO status');
+		}
+
+		const [ln] = await tx
+			.select()
+			.from(table.purchaseOrderLineTable)
+			.where(
+				and(
+					eq(table.purchaseOrderLineTable.id, lineId),
+					eq(table.purchaseOrderLineTable.poId, input.poId),
+					isNull(table.purchaseOrderLineTable.deletedAt)
+				)
+			)
+			.limit(1);
+		if (!ln) throw error(404, 'PO line not found');
+
+		const ordered = Number(ln.quantity);
+		const received = Number(ln.qtyReceivedCumulative);
+		if (!Number.isFinite(ordered) || !Number.isFinite(received)) {
+			throw error(400, 'Invalid line quantity state');
+		}
+		if (received >= ordered) return; // already fully received (or closed previously)
+
+		const newQty = received.toFixed(6);
+		const unitPrice = Number(ln.unitPrice);
+		if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+			throw error(400, 'Invalid unit price');
+		}
+		const newLineTotal = (received * unitPrice).toFixed(2);
+
+		await tx
+			.update(table.purchaseOrderLineTable)
+			.set({
+				quantity: newQty,
+				lineTotal: newLineTotal,
+				updatedBy: userId
+			})
+			.where(eq(table.purchaseOrderLineTable.id, lineId));
+
+		// If this PO came from a PR line, releasing the unreceived remainder should
+		// restore PR `qty_remaining` so it can be ordered again.
+		if (ln.prLineId != null) {
+			const diff = (ordered - received).toFixed(6);
+			await tx
+				.update(table.purchaseRequisitionLineTable)
+				.set({
+					qtyRemaining: sql`${table.purchaseRequisitionLineTable.qtyRemaining} + ${diff}::numeric`,
+					updatedBy: userId
+				})
+				.where(eq(table.purchaseRequisitionLineTable.id, ln.prLineId));
+		}
+
+		// Recompute PO header total and status.
+		const poLines = await tx
+			.select({
+				qty: table.purchaseOrderLineTable.quantity,
+				received: table.purchaseOrderLineTable.qtyReceivedCumulative,
+				lineTotal: table.purchaseOrderLineTable.lineTotal
+			})
+			.from(table.purchaseOrderLineTable)
+			.where(
+				and(
+					eq(table.purchaseOrderLineTable.poId, input.poId),
+					isNull(table.purchaseOrderLineTable.deletedAt)
+				)
+			);
+
+		const nextTotal = poLines
+			.reduce((s, r) => s + (Number(r.lineTotal) || 0), 0)
+			.toFixed(2);
+
+		const allDone = poLines.every(
+			(r) => Number(r.received) >= Number(r.qty)
+		);
+		const anyReceived = poLines.some((r) => Number(r.received) > 0);
+
+		const nextStatus = allDone
+			? InvPoStatusTaggingEnum.CLOSED
+			: anyReceived
+				? InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
+				: po.statusTaggingId;
+
+		await tx
+			.update(table.purchaseOrderTable)
+			.set({
+				totalAmount: nextTotal,
+				statusTaggingId: nextStatus,
+				updatedBy: userId
+			})
+			.where(eq(table.purchaseOrderTable.id, input.poId));
+	});
+
+	return getPurchaseOrderById(event, { hospitalId: input.hospitalId, id: input.poId });
 }

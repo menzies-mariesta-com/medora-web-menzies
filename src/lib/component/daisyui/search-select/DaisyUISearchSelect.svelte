@@ -40,6 +40,8 @@
 	}>();
 
 	let search = $state('');
+	/** Sync mode only: narrows `options` in the list; cleared on focus so full list shows while input shows `displayLabel`. */
+	let listFilter = $state('');
 	let open = $state(false);
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let inputEl = $state<HTMLInputElement | null>(null);
@@ -61,15 +63,18 @@
 	const filtered = $derived(
 		isAsync
 			? optionsList
-			: options.filter((o: Option) =>
-					o.label.toLowerCase().includes(search.toLowerCase())
-				)
+			: options.filter((o: Option) => {
+					const q = listFilter.trim().toLowerCase();
+					if (!q) return true;
+					return o.label.toLowerCase().includes(q);
+				})
 	);
 	const inputValue = $derived(open ? search : displayLabel);
 
 	function handleInput(e: Event) {
 		const target = e.currentTarget as HTMLInputElement;
 		search = target.value;
+		if (!isAsync) listFilter = target.value;
 		open = true;
 		if (isAsync && searchFn) {
 			if (debounceTimer) clearTimeout(debounceTimer);
@@ -92,6 +97,7 @@
 	function handleFocus() {
 		open = true;
 		search = displayLabel;
+		if (!isAsync) listFilter = '';
 		if (isAsync && searchFn && search.length >= minSearchLength) {
 			isLoading = true;
 			searchFn(search).then((r: Option[]) => {
@@ -106,6 +112,7 @@
 	function selectOption(option: Option) {
 		value = option.value;
 		search = option.label;
+		listFilter = '';
 		open = false;
 		onChange?.(option.value);
 		inputEl?.blur();

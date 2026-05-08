@@ -41,11 +41,17 @@ export function defaultFormatPartsForStorageKey(
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
 		| 'PURCHASE_ORDER_NO'
+		| 'DEPARTMENT_INDENT_NO'
+		| 'DEPARTMENT_ISSUE_NO'
+		| 'DEPARTMENT_CONSUMPTION_NO'
 		| 'MEDICATION_ORDER_BATCH_NO'
 ): UiFormatPart[] {
 	if (
 		storageKey === 'PURCHASE_REQUISITION_NO' ||
-		storageKey === 'PURCHASE_ORDER_NO'
+		storageKey === 'PURCHASE_ORDER_NO' ||
+		storageKey === 'DEPARTMENT_INDENT_NO' ||
+		storageKey === 'DEPARTMENT_ISSUE_NO' ||
+		storageKey === 'DEPARTMENT_CONSUMPTION_NO'
 	) {
 		return [
 			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
@@ -101,6 +107,9 @@ export function fieldPathsForEdit(
 		| 'ORDER_NO'
 		| 'PURCHASE_REQUISITION_NO'
 		| 'PURCHASE_ORDER_NO'
+		| 'DEPARTMENT_INDENT_NO'
+		| 'DEPARTMENT_ISSUE_NO'
+		| 'DEPARTMENT_CONSUMPTION_NO'
 		| 'MEDICATION_ORDER_BATCH_NO',
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
