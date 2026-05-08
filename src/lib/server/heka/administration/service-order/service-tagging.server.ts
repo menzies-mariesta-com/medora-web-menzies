@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -189,6 +189,7 @@ export async function getServiceTaggingsPaginated(
 			.select()
 			.from(table.serviceTaggingTable)
 			.where(whereExpr)
+			.orderBy(desc(table.serviceTaggingTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

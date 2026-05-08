@@ -10,6 +10,7 @@
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
@@ -94,7 +95,6 @@
 			poCreateMode = 'manual';
 			manualStoreId = selectedInventoryFromStoreId;
 			manualLines = [];
-			manualLineItemFilter = '';
 			supplierId = null;
 		}
 	});
@@ -170,7 +170,6 @@
 	let manualStoreId = $state<number | null>(null);
 	let manualLines = $state<ManualLineForm[]>([]);
 
-	let manualLineItemFilter = $state('');
 	let manualLineDialogActive = $state(false);
 	let editingManualKey = $state<string | null>(null);
 	let draftManualLine = $state<ManualLineForm>(newManualLine());
@@ -211,48 +210,33 @@
 		return ium?.conversionDisplay ?? '—';
 	}
 
-	const filteredManualLines = $derived.by(() => {
-		const q = manualLineItemFilter.trim().toLowerCase();
-		if (!q) return manualLines;
-		return manualLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelForManualLine(l).toLowerCase();
-			const qty = (l.quantity ?? '').toLowerCase();
-			const up = (l.unitPrice ?? '').toLowerCase();
-			const mfg = (manualMfgLabelByKey[l.key] ?? '').toLowerCase();
-			return (
-				item.includes(q) || conv.includes(q) || qty.includes(q) || up.includes(q) || mfg.includes(q)
-			);
-		});
-	});
-
 	const manualLineTableColumns: MariTableColumn<ManualLineForm>[] = [
 		{
 			id: 'itemLabel',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => row.itemLabel || '—'
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => conversionLabelForManualLine(row)
 		},
 		{
 			id: 'quantity',
 			header: m.inv_common_quantity(),
 			field: 'quantity',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
 		},
 		{
 			id: 'unitPrice',
 			header: m.inv_po_line_unit_price(),
 			field: 'unitPrice',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => {
 				const t = String(row.unitPrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
@@ -262,7 +246,7 @@
 			id: 'manufacturerId',
 			header: m.inv_common_manufacturer(),
 			field: 'manufacturerId',
-			filterable: false,
+			filterable: true,
 			format: (_v, row) => manualMfgLabelByKey[row.key] ?? (row.manufacturerId?.trim() ? '…' : '—')
 		}
 	];
@@ -283,7 +267,7 @@
 					getManufacturerLabelForValue,
 					onPickItem: pickDraftManualItem,
 					onSaveAttempt: saveManualDraftLine,
-					lineItemMetricTiles: poManualLineMetricTiles
+					getLineItemMetricTiles: () => poManualLineMetricTiles
 				}
 			});
 		} finally {
@@ -312,7 +296,7 @@
 					getManufacturerLabelForValue,
 					onPickItem: pickDraftManualItem,
 					onSaveAttempt: saveManualDraftLine,
-					lineItemMetricTiles: poManualLineMetricTiles
+					getLineItemMetricTiles: () => poManualLineMetricTiles
 				}
 			});
 		} finally {
@@ -1221,12 +1205,35 @@
 								</div>
 							</div>
 						</fieldset>
+						<div
+							class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3"
+						>
+							<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+								<DaisyUiButton
+									type="button"
+									className="d-btn-primary d-btn-square d-btn-outline"
+									aria-label={m.inv_line_items_add()}
+									onClick={() => void openManualLineDialogForCreate()}
+								>
+									<LucidePlus  />
+								</DaisyUiButton>
+							</DaisyUiTooltip>
+							<DaisyUiButton
+								type="submit"
+								className="d-btn-primary"
+								disabled={createSubmitting}
+							>
+								{m.inv_po_create_submit()}
+							</DaisyUiButton>
+						</div>
 					</div>
 					<PoManualLinesCard
-						bind:manualLineItemFilter
 						totalCount={manualLines.length}
 						columns={manualLineTableColumns}
-						rows={filteredManualLines}
+						rows={manualLines}
+						useColumnFilters={true}
+						hideAddButton={true}
+						noCard={true}
 						onAddItem={() => void openManualLineDialogForCreate()}
 						onEditLine={(line) => void openManualLineDialogForEdit(line)}
 						onDeleteLine={deleteManualLine}
@@ -1290,15 +1297,17 @@
 					{/if}
 				{/if}
 
-				<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-					<DaisyUiButton
-						type="submit"
-						className="d-btn-wide d-btn-primary"
-						disabled={createSubmitting}
-					>
-						{m.inv_po_create_submit()}
-					</DaisyUiButton>
-				</DaisyUiCardBodyAction>
+				{#if poCreateMode === 'pr'}
+					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
+						<DaisyUiButton
+							type="submit"
+							className="d-btn-wide d-btn-primary"
+							disabled={createSubmitting}
+						>
+							{m.inv_po_create_submit()}
+						</DaisyUiButton>
+					</DaisyUiCardBodyAction>
+				{/if}
 			</form>
 		</DaisyUiCardBody>
 	</DaisyUiCard>

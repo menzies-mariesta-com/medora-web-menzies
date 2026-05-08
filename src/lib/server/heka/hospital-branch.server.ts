@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -85,7 +85,7 @@ export async function getBranchesByHospitalIdPaginated(
 			.select()
 			.from(table.hospitalBranchTable)
 			.where(whereExpr)
-			.orderBy(table.hospitalBranchTable.name)
+			.orderBy(desc(table.hospitalBranchTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

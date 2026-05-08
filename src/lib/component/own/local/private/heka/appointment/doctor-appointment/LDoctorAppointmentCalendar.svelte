@@ -131,6 +131,32 @@
 		)
 	);
 
+	const legendCounts = $derived.by(() => {
+		const counts: Record<
+			'blocked' | 'unconfirmed' | 'confirmed' | 'check-in' | 'cancel',
+			number
+		> = {
+			blocked: 0,
+			unconfirmed: 0,
+			confirmed: 0,
+			'check-in': 0,
+			cancel: 0
+		};
+
+		for (const s of appointmentSlots) {
+			const st = s.slotState ?? 'unconfirmed';
+			if (st === 'confirmed') counts.confirmed += 1;
+			else if (st === 'check-in') counts['check-in'] += 1;
+			else if (st === 'cancel') counts.cancel += 1;
+			else counts.unconfirmed += 1;
+		}
+
+		// Block slots might include rows outside the current view; count only the visible range.
+		const visibleDateSet = new Set(headerCells.map((h) => h.dateString));
+		counts.blocked = blockSlots.filter((b) => visibleDateSet.has(b.date)).length;
+		return counts;
+	});
+
 	/** Local YYYY-MM-DD so column dates match schedule slot dates (no UTC shift). */
 	function toLocalDateString(d: Date): string {
 		const c = dateTimeUtil.getDateComponents(d);
@@ -1084,22 +1110,22 @@
 			<div class="flex items-center gap-2">
 				<span class="h-5 w-5 rounded-md bg-error" aria-hidden="true"
 				></span>
-				blocked (no appointments)
+				blocked (no appointments) ({legendCounts.blocked})
 			</div>
 			<div class="flex items-center gap-2">
 				<span class="h-5 w-5 rounded-md bg-warning" aria-hidden="true"
 				></span>
-				unconfirmed
+				unconfirmed ({legendCounts.unconfirmed})
 			</div>
 			<div class="flex items-center gap-2">
 				<span class="h-5 w-5 rounded-md bg-primary" aria-hidden="true"
 				></span>
-				confirmed
+				confirmed ({legendCounts.confirmed})
 			</div>
 			<div class="flex items-center gap-2">
 				<span class="h-5 w-5 rounded-md bg-success" aria-hidden="true"
 				></span>
-				check-in
+				check-in ({legendCounts['check-in']})
 			</div>
 			{#if hasCancelledAppointments}
 				<div class="flex items-center gap-2">
@@ -1107,7 +1133,7 @@
 						class="h-5 w-5 rounded-md bg-neutral"
 						aria-hidden="true"
 					></span>
-					cancel
+					cancel ({legendCounts.cancel})
 				</div>
 			{/if}
 			<div class="flex items-center gap-2">

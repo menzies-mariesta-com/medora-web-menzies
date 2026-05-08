@@ -35,8 +35,13 @@ export async function listPurchaseOrders(
 		prId?: string;
 		/** When set, only POs for this store (e.g. navbar-selected inventory store; CPS for PR/PO). */
 		storeId?: number;
+		supplierId?: number;
 		statusTaggingId?: number;
 		poNo?: string;
+		/** Substring match against total_amount (cast to text). */
+		totalAmount?: string;
+		/** Substring match against any PO line item name. */
+		item?: string;
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
@@ -52,6 +57,12 @@ export async function listPurchaseOrders(
 	if (input.storeId != null) {
 		cond = and(cond, eq(table.purchaseOrderTable.storeId, input.storeId))!;
 	}
+	if (typeof input.supplierId === 'number') {
+		cond = and(
+			cond,
+			eq(table.purchaseOrderTable.supplierId, input.supplierId)
+		)!;
+	}
 	if (typeof input.statusTaggingId === 'number') {
 		cond = and(
 			cond,
@@ -65,6 +76,33 @@ export async function listPurchaseOrders(
 			cond = and(
 				cond,
 				ilike(table.purchaseOrderTable.poNo, `%${safe}%`)
+			)!;
+		}
+	}
+	const totalTerm = input.totalAmount?.trim();
+	if (totalTerm) {
+		const safe = totalTerm.replace(/[%_\\]/g, '');
+		if (safe) {
+			cond = and(
+				cond,
+				ilike(sql`${table.purchaseOrderTable.totalAmount}::text`, `%${safe}%`)
+			)!;
+		}
+	}
+	const itemTerm = input.item?.trim();
+	if (itemTerm) {
+		const safe = itemTerm.replace(/[%_\\]/g, '');
+		if (safe) {
+			cond = and(
+				cond,
+				sql`exists (
+					select 1
+					from ${table.purchaseOrderLineTable} pol
+					inner join ${table.itemMasterTable} im
+						on pol.item_id = im.id
+					where pol.po_id = ${table.purchaseOrderTable.id}
+						and im.item_name ilike ${`%${safe}%`}
+				)`
 			)!;
 		}
 	}

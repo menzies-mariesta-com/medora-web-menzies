@@ -1,8 +1,5 @@
 <script lang="ts">
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -10,14 +7,12 @@
 	import DeletePatientConfirmModal from '$lib/component/own/snippet/modal/DeletePatientConfirmModal.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { YesNoEnum } from '$lib/model/enum/db-link';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import {
@@ -26,9 +21,7 @@
 	} from '$lib/model/enum/routes.enum';
 	import LPatientListViewEditModal from '$lib/component/own/local/private/heka/patient/list/LPatientListViewEditModal.svelte';
 	import LPatientCardPrintModal from '$lib/component/own/local/private/heka/patient/list/LPatientCardPrintModal.svelte';
-	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import MariTable, {
@@ -41,7 +34,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
-	const stringUtil = new StringUtil();
 	const dateTimeUtil = new DateTimeUtil();
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -67,7 +59,6 @@
 		null;
 
 	let patientList = $derived(patientResult?.data ?? []);
-	const totalPages = $derived(patientResult?.totalPages ?? 1);
 	const total = $derived(patientResult?.total ?? 0);
 
 	const hospitalId = $derived(
@@ -384,7 +375,7 @@
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const patientRow = row as PatientWithRelations}
-				<div class="flex flex-col items-center gap-1">
+				<div class="flex flex-row flex-wrap items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText="view data"
 						className="d-tooltip-ghost d-tooltip-right"

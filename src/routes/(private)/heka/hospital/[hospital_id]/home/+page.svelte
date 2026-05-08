@@ -25,6 +25,8 @@
 
 	type PageData = {
 		currentHospitalName?: string | null;
+		/** Label for the nav-selected branch (or “All branches”); from `+page.server`. */
+		branchScopeName?: string | null;
 		stats?: DashboardStats | null;
 		visitsLast7Days?: DailyVisitCount[];
 	};
@@ -98,8 +100,14 @@
 				{data.currentHospitalName ?? 'Hospital'} dashboard
 			</h2>
 			<p class="text-sm text-base-content/70">
-				Key activity and volume overview for this hospital.
+				Key activity for the branch in your nav bar. Only active records
+				(visits, appointments, schedules) are included.
 			</p>
+			{#if data.branchScopeName}
+				<p class="text-sm font-medium text-base-content/80">
+					Current scope: {data.branchScopeName}
+				</p>
+			{/if}
 		</div>
 	</div>
 
@@ -129,7 +137,8 @@
 					{displayOrNA(data.stats?.doctors)}
 				</div>
 				<div class="d-stat-desc">
-					Active doctors scheduled in this hospital
+					Doctors with an active schedule in this branch (or in your
+					selected scope)
 				</div>
 			</div>
 
@@ -154,7 +163,7 @@
 					{displayOrNA(data.stats?.patients)}
 				</div>
 				<div class="d-stat-desc">
-					Registered patients for this hospital
+					Active patients with an active visit in this branch
 				</div>
 			</div>
 
@@ -178,7 +187,9 @@
 				<div class="d-stat-value text-accent">
 					{displayOrNA(data.stats?.appointmentsToday)}
 				</div>
-				<div class="d-stat-desc">Booked for today (all branches)</div>
+				<div class="d-stat-desc">
+					Active appointments booked for today in this branch
+				</div>
 			</div>
 
 			<div class="d-stat">
@@ -231,7 +242,7 @@
 					{displayOrNA(data.stats?.caseHistory)}
 				</div>
 				<div class="d-stat-desc">
-					Diagnosis records across all visits
+					Active case history (vitals / diagnosis rows) in this branch
 				</div>
 			</div>
 
@@ -256,7 +267,7 @@
 					{displayOrNA(data.stats?.documents)}
 				</div>
 				<div class="d-stat-desc">
-					Clinical documents &amp; attachments
+					Active clinical documents for visits in this branch
 				</div>
 			</div>
 
@@ -306,7 +317,7 @@
 					{displayOrNA(data.stats?.visitsLast7DaysTotal)}
 				</div>
 				<div class="d-stat-desc">
-					Total patient visits in the last 7 days
+					Active visits in the last 7 days in this branch
 				</div>
 			</div>
 		</div>
@@ -361,7 +372,7 @@
 					{checkInRatioText(data.stats?.checkInRatio)}
 				</div>
 				<div class="d-stat-desc">
-					Today: checked in vs confirmed appointments
+					Today, active appointments: checked in vs confirmed (this branch)
 				</div>
 			</div>
 		</div>
@@ -377,7 +388,8 @@
 					Visits in the last 7 days
 				</h3>
 				<p class="text-xs text-base-content/70">
-					Daily visit volume based on patient visits.
+					Active patient visits in the selected branch (same scope as
+					above); counts use visit created date.
 				</p>
 				<div
 					class="mt-4 h-64 w-full min-w-0 overflow-hidden"

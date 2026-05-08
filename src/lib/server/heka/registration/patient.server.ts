@@ -7,7 +7,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, count, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, ne, or, sql, desc } from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 
 const patientWithRelationsWith = {
@@ -87,6 +87,7 @@ export async function getPatientListPaginated(
 		ensureDb().query.patientTable.findMany({
 			where: whereExpr,
 			with: patientWithRelationsWith,
+			orderBy: (t, { desc }) => [desc(t.createdAt), desc(t.id)],
 			limit,
 			offset
 		}),

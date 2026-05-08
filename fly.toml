@@ -8,6 +8,9 @@ primary_region = 'sin'
 
 [build]
 
+[deploy]
+  release_command = "pnpm db:push && pnpm db:seed"
+
 [http_service]
   internal_port = 5173
   force_https = true

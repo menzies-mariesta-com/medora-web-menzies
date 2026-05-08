@@ -12,7 +12,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, eq, ilike, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, isNull, ne, sql } from 'drizzle-orm';
 
 export async function listUnitTypesForUnitMaster() {
 	return ensureDb()
@@ -66,7 +66,7 @@ export async function getUnitsPaginated(
 				eq(table.unitTable.unitTypeId, table.unitTypeTable.id)
 			)
 			.where(whereClause)
-			.orderBy(asc(table.unitTable.name))
+			.orderBy(desc(table.unitTable.id))
 			.limit(limit)
 			.offset(offset),
 		ensureDb()

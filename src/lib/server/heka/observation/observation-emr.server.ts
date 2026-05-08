@@ -8,7 +8,9 @@ import {
 	ilike,
 	inArray,
 	isNotNull,
+	isNull,
 	max,
+	min,
 	ne,
 	or,
 	sql
@@ -1175,6 +1177,227 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 	return set;
 }
 
+/** Medication order line IDs already on a closed (`printed_at`) OP bill for this visit. */
+export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
+	visitId: number;
+}): Promise<Set<number>> {
+	const rows = await ensureDb()
+		.select({ lineId: table.opBillingLineTable.medicationOrderLineId })
+		.from(table.opBillingLineTable)
+		.innerJoin(
+			table.opBillingTable,
+			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+		)
+		.where(
+			and(
+				eq(table.opBillingTable.visitId, input.visitId),
+				isNotNull(table.opBillingTable.printedAt),
+				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
+				isNotNull(table.opBillingLineTable.medicationOrderLineId)
+			)
+		);
+
+	const set = new Set<number>();
+	for (const r of rows) {
+		const id = r.lineId;
+		if (id != null) set.add(id);
+	}
+	return set;
+}
+
+export type OpBillingPendingServiceLineRow = Awaited<
+	ReturnType<typeof getServiceOrderDetailRowsForVisit>
+>[number] & {
+	lineSource: 'service_order_detail';
+	medicationOrderLineId: null;
+};
+
+export type OpBillingPendingMedicationLineRow = {
+	lineSource: 'medication_order_line';
+	/** `medication_order_line.id` (used as stable row id and for OP billing line FK) */
+	id: number;
+	medicationOrderLineId: number;
+	serviceId: number;
+	/** Shown on bill: the inventory item (drug) name. */
+	serviceName: string | null;
+	subCategoryId: number | null;
+	subCategoryName: string | null;
+	orderNo: string | null;
+	discount: string | null;
+	serviceAmount: string | null;
+	serviceTaxAmount: string | null;
+	serviceUnit: number | null;
+};
+
+export type OpBillingPendingLineRow =
+	| OpBillingPendingServiceLineRow
+	| OpBillingPendingMedicationLineRow;
+
+async function getDefaultServiceItemForPharmacyOpBilling(input: {
+	hospitalId: string;
+	branchId: string;
+}): Promise<{
+	id: number;
+	subCategoryId: number;
+	serviceName: string | null;
+}> {
+	const { hospitalId, branchId } = input;
+	const [st] = await ensureDb()
+		.select({
+			id: table.serviceItemTable.id,
+			subCategoryId: table.serviceItemTable.subCategoryId,
+			serviceName: table.serviceItemTable.serviceName
+		})
+		.from(table.serviceTaggingTable)
+		.innerJoin(
+			table.serviceItemTable,
+			eq(table.serviceTaggingTable.serviceId, table.serviceItemTable.id)
+		)
+		.where(
+			and(
+				eq(table.serviceTaggingTable.branchId, branchId),
+				eq(table.serviceItemTable.hospitalId, hospitalId),
+				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE),
+				eq(table.serviceTaggingTable.statusId, StatusEnum.ACTIVE)
+			)
+		)
+		.orderBy(asc(table.serviceTaggingTable.id))
+		.limit(1);
+	if (st) {
+		return st;
+	}
+	const [any] = await ensureDb()
+		.select({
+			id: table.serviceItemTable.id,
+			subCategoryId: table.serviceItemTable.subCategoryId,
+			serviceName: table.serviceItemTable.serviceName
+		})
+		.from(table.serviceItemTable)
+		.where(
+			and(
+				eq(table.serviceItemTable.hospitalId, hospitalId),
+				eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
+			)
+		)
+		.orderBy(asc(table.serviceItemTable.id))
+		.limit(1);
+	if (!any) {
+		throw error(
+			500,
+			'No service item is configured for this hospital. OP billing cannot add medication lines.'
+		);
+	}
+	return any;
+}
+
+async function getPendingMedicationOrderRowsForOpBilling(input: {
+	visitId: number;
+	hospitalId: string;
+	branchId: string;
+}): Promise<OpBillingPendingMedicationLineRow[]> {
+	const { visitId, hospitalId, branchId } = input;
+	const mob = table.medicationOrderBatchTable;
+	const mol = table.medicationOrderLineTable;
+	const im = table.itemMasterTable;
+	const inv = table.invStockTable;
+	const ib = table.itemBatchTable;
+
+	const onClosed = await getMedicationOrderLineIdsOnClosedOpBillsForVisit({ visitId });
+
+	const rawLines = await ensureDb()
+		.select({
+			id: mol.id,
+			itemMasterId: mol.itemMasterId,
+			itemName: im.itemName,
+			storeId: mob.storeId,
+			batchNo: mob.batchNo
+		})
+		.from(mol)
+		.innerJoin(mob, eq(mol.batchId, mob.id))
+		.innerJoin(im, eq(mol.itemMasterId, im.id))
+		.where(
+			and(
+				eq(mob.visitId, visitId),
+				eq(mob.hospitalId, hospitalId),
+				isNotNull(mob.visitId),
+				isNull(mol.deletedAt),
+				isNull(mob.deletedAt)
+			)
+		)
+		.orderBy(desc(mob.id), asc(mol.lineNo));
+
+	if (rawLines.length === 0) return [];
+
+	const svc = await getDefaultServiceItemForPharmacyOpBilling({ hospitalId, branchId });
+	let subCategoryName: string | null = null;
+	const [sc] = await ensureDb()
+		.select({ name: table.subCategoryTable.subCategoryName })
+		.from(table.subCategoryTable)
+		.where(eq(table.subCategoryTable.id, svc.subCategoryId))
+		.limit(1);
+	if (sc?.name) subCategoryName = sc.name;
+
+	const pairSet = new Set<string>();
+	for (const r of rawLines) {
+		pairSet.add(`${r.storeId}:${r.itemMasterId}`);
+	}
+	const orPairs = [...pairSet]
+		.map((k) => {
+			const [s, i] = k.split(':').map((x) => Number(x)) as [number, number];
+			return and(eq(inv.storeId, s), eq(inv.itemId, i))!;
+		})
+		.filter(Boolean);
+
+	const priceByPair = new Map<string, string | null>();
+	if (orPairs.length > 0) {
+		const storeItemOr =
+			orPairs.length === 1
+				? orPairs[0]!
+				: or(...orPairs);
+		const priceRows = await ensureDb()
+			.select({
+				storeId: inv.storeId,
+				itemId: inv.itemId,
+				minP: min(ib.purchasePrice)
+			})
+			.from(inv)
+			.innerJoin(ib, eq(inv.batchId, ib.id))
+			.where(
+				and(
+					eq(inv.hospitalId, hospitalId),
+					sql`cast(${inv.quantity} as numeric) > 0`,
+					storeItemOr
+				)
+			)
+			.groupBy(inv.storeId, inv.itemId);
+		for (const pr of priceRows) {
+			priceByPair.set(`${pr.storeId}:${pr.itemId}`, pr.minP != null ? String(pr.minP) : null);
+		}
+	}
+
+	const out: OpBillingPendingMedicationLineRow[] = [];
+	for (const r of rawLines) {
+		if (onClosed.has(r.id)) continue;
+		const k = `${r.storeId}:${r.itemMasterId}`;
+		const minPrice = priceByPair.get(k) ?? '0';
+		out.push({
+			lineSource: 'medication_order_line',
+			id: r.id,
+			medicationOrderLineId: r.id,
+			serviceId: svc.id,
+			serviceName: r.itemName?.trim() || null,
+			subCategoryId: svc.subCategoryId,
+			subCategoryName,
+			orderNo: r.batchNo?.trim() || null,
+			discount: null,
+			serviceAmount: minPrice,
+			serviceTaxAmount: '0',
+			serviceUnit: 1
+		});
+	}
+	return out;
+}
+
 function isNursingCompleteTimeSet(nursingCompleteTime: string | null): boolean {
 	return (
 		nursingCompleteTime != null && String(nursingCompleteTime).trim() !== ''
@@ -1182,19 +1405,33 @@ function isNursingCompleteTimeSet(nursingCompleteTime: string | null): boolean {
 }
 
 /**
- * Nursing-complete lines for the visit that are not yet on any closed OP bill.
- * These are the lines eligible for the current (open) OP billing snapshot.
+ * Nursing-complete service lines plus in-house medication order lines for the visit that
+ * are not already on a **closed** OP bill. Medication lines never use nursing-complete; they
+ * appear when saved for the visit until billed on a closed print.
  */
 export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 	visitId: number;
-}): Promise<
-	Awaited<ReturnType<typeof getServiceOrderDetailRowsForVisit>>
-> {
+	hospitalId: string;
+	branchId: string;
+}): Promise<OpBillingPendingLineRow[]> {
 	const all = await getServiceOrderDetailRowsForVisit(input);
 	const onClosed = await getServiceOrderDetailIdsOnClosedOpBillsForVisit(input);
-	return all.filter(
-		(r) => isNursingCompleteTimeSet(r.nursingCompleteTime) && !onClosed.has(r.id)
-	);
+	const serviceRows: OpBillingPendingServiceLineRow[] = all
+		.filter(
+			(r) =>
+				isNursingCompleteTimeSet(r.nursingCompleteTime) && !onClosed.has(r.id)
+		)
+		.map((r) => ({
+			...r,
+			lineSource: 'service_order_detail' as const,
+			medicationOrderLineId: null as const
+		}));
+	const medRows = await getPendingMedicationOrderRowsForOpBilling({
+		visitId: input.visitId,
+		hospitalId: input.hospitalId,
+		branchId: input.branchId
+	});
+	return [...serviceRows, ...medRows];
 }
 
 export async function assertServiceOrderDetailNotLockedByClosedOpBill(
