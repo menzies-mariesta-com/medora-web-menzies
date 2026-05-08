@@ -26,6 +26,7 @@ import {
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 
 export type ConsumptionLineInput = {
 	itemId: number;
@@ -628,10 +629,7 @@ export async function approveDepartmentConsumption(
 				purchaseUnitId: line.unitId,
 				purchaseQtyStr: String(line.quantity)
 			});
-			const needN = Number(needIssue);
-			if (!Number.isFinite(needN) || needN <= 0) {
-				throw error(400, 'Invalid line quantity');
-			}
+			const needN = parsePositiveIntQty(needIssue, 'quantity');
 
 			const [stockRow] = await tx
 				.select()
@@ -656,7 +654,7 @@ export async function approveDepartmentConsumption(
 				itemId: line.itemId,
 				storeId: doc.storeId,
 				batchId: line.batchId,
-				delta: (-needN).toFixed(6),
+				delta: String(-needN),
 				userId
 			});
 		}

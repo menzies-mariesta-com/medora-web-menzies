@@ -39,6 +39,8 @@ export const GET: RequestHandler = async (event) => {
 					batchNo: batch.batchNo,
 					expiryDate: batch.expiryDate,
 					purchasePrice: batch.purchasePrice,
+					salePrice: batch.salePrice,
+					empSalePrice: batch.empSalePrice,
 					itemName,
 					storeName,
 					issueUnitName: issueUnitName ?? null

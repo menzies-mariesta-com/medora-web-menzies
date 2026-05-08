@@ -16,6 +16,7 @@
 	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import type { ConsumptionDraftLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/heka/department-consumption-detail.type';
+	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -54,17 +55,49 @@
 			hits: [],
 			itemId: null,
 			itemLabel: '',
-			quantity: '1',
 			iumList: [],
 			itemUnitMasterId: null,
-			batchId: null,
-			batchOptions: []
+			batchAllocations: []
 		};
 	}
 
 	function purchaseUnitForLine(line: ConsumptionDraftLine): number | null {
 		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
 		return ium?.purchaseUnitId ?? null;
+	}
+
+	function lineIumFactors(line: ConsumptionDraftLine): {
+		pf: string;
+		iff: string;
+	} | null {
+		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		if (!ium) return null;
+		return {
+			pf: ium.purchaseConversionFactor,
+			iff: ium.issueConversionFactor
+		};
+	}
+
+	function totalPurchaseQtyDisplay(line: ConsumptionDraftLine): string {
+		let sum = 0;
+		for (const a of line.batchAllocations) {
+			const n = Number(String(a.qtyPurchase).trim());
+			if (Number.isFinite(n) && n > 0) sum += n;
+		}
+		return sum > 0 ? String(sum) : '—';
+	}
+
+	function batchAllocationsSummary(line: ConsumptionDraftLine): string {
+		const parts = line.batchAllocations
+			.filter((a) => {
+				const n = Number(String(a.qtyPurchase).trim());
+				return Number.isFinite(n) && n > 0;
+			})
+			.map(
+				(a) =>
+					`${(a.batchNo ?? '').trim() || '—'} (${String(a.qtyPurchase).trim()})`
+			);
+		return parts.length > 0 ? parts.join('; ') : '—';
 	}
 
 	async function loadStores() {
@@ -99,7 +132,7 @@
 		if (!dl) return;
 		await dialogService.open({
 			title: m.inv_dc_add_line(),
-			modalClassName: 'max-w-2xl',
+			modalClassName: 'max-w-4xl',
 			component: ConsumptionLineDialogContent,
 			props: {
 				hospitalId,
@@ -121,13 +154,13 @@
 			...line,
 			hits: [...line.hits],
 			iumList: [...line.iumList],
-			batchOptions: [...line.batchOptions]
+			batchAllocations: line.batchAllocations.map((a) => ({ ...a }))
 		};
 		const dl = draftLineModal;
 		if (!dl) return;
 		await dialogService.open({
 			title: m.inv_dc_edit_line(),
-			modalClassName: 'max-w-2xl',
+			modalClassName: 'max-w-4xl',
 			component: ConsumptionLineDialogContent,
 			props: {
 				hospitalId,
@@ -145,7 +178,13 @@
 
 	function persistDraftLineFromModal() {
 		if (!draftLineModal) return;
-		const row = { ...draftLineModal };
+		const src = draftLineModal;
+		const row: ConsumptionDraftLine = {
+			...src,
+			hits: [...src.hits],
+			iumList: [...src.iumList],
+			batchAllocations: src.batchAllocations.map((a) => ({ ...a }))
+		};
 		if (editingLineKey) {
 			lines = lines.map((x) => (x.key === editingLineKey ? row : x));
 		} else {
@@ -194,23 +233,41 @@
 		}[] = [];
 		for (const ln of lines) {
 			const uid = purchaseUnitForLine(ln);
-			const q = ln.quantity.trim();
-			if (
-				ln.itemId == null ||
-				uid == null ||
-				ln.batchId == null ||
-				!q ||
-				Number(q) <= 0
-			) {
+			const factors = lineIumFactors(ln);
+			if (ln.itemId == null || uid == null || factors == null) {
 				toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_common_quantity()));
 				return;
 			}
-			payloadLines.push({
-				itemId: ln.itemId,
-				quantity: q,
-				unitId: uid,
-				batchId: ln.batchId
-			});
+			const { pf, iff } = factors;
+			let lineHasQty = false;
+			for (const a of ln.batchAllocations) {
+				const q = a.qtyPurchase.trim();
+				if (!q) continue;
+				const n = Number(q);
+				if (!Number.isFinite(n) || n <= 0) {
+					toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_common_quantity()));
+					return;
+				}
+				lineHasQty = true;
+				const need = purchaseQtyToIssueQtyNumber(q, pf, iff);
+				if (need == null || need > Number(a.stockIssueQty) + 1e-6) {
+					toast.addErrorToast(
+						m.inv_dc_new_title(),
+						new Error(m.inv_dc_batch_qty_exceeds_stock())
+					);
+					return;
+				}
+				payloadLines.push({
+					itemId: ln.itemId,
+					quantity: q,
+					unitId: uid,
+					batchId: a.batchId
+				});
+			}
+			if (!lineHasQty) {
+				toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_common_quantity()));
+				return;
+			}
 		}
 		if (payloadLines.length === 0) {
 			toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_dc_lines_title()));
@@ -300,14 +357,14 @@
 					id: 0,
 					consumptionId: '',
 					itemId: ln.itemId ?? 0,
-					quantity: ln.quantity,
+					quantity: totalPurchaseQtyDisplay(ln),
 					unitId: purchaseUnitForLine(ln) ?? 0,
-					batchId: ln.batchId ?? 0,
+					batchId: ln.batchAllocations[0]?.batchId ?? 0,
 					remarks: null,
 					itemName: ln.itemLabel,
 					unitName:
 						ln.iumList.find((u) => u.id === ln.itemUnitMasterId)?.conversionDisplay ?? '—',
-					batchNo: ln.batchOptions.find((b) => b.value === ln.batchId)?.label ?? '—'
+					batchNo: batchAllocationsSummary(ln)
 				}))}
 				showRefreshButton={false}
 				enableColumnFilters={false}

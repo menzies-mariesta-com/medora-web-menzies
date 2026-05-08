@@ -1,12 +1,19 @@
 <script lang="ts">
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
-	export let draft: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- page-local GRN draft
-	export let disableUnlessItem = false;
-	/** When false (default), parents should toggle true when the modal opens so values normalize once. */
-	export let open = false;
+	let {
+		draft,
+		disableUnlessItem = false,
+		/** When false (default), parents should toggle true when the modal opens so values normalize once. */
+		open = false
+	}: {
+		draft: any;
+		disableUnlessItem?: boolean;
+		open?: boolean;
+	} = $props();
 
 	const GRN_NUMERIC_FIELD_KEYS = [
 		'receivedQty',
@@ -19,24 +26,60 @@
 	] as const;
 
 	let prevOpen = false;
-	$: {
+	let discountMode = $state<'percent' | 'amount'>('percent');
+	let taxMode = $state<'percent' | 'amount'>('percent');
+
+	$effect(() => {
 		const nowOpen = open;
 		if (nowOpen && !prevOpen && draft) {
 			trimInventoryDraftNumericFieldsInPlace(draft as Record<string, unknown>, GRN_NUMERIC_FIELD_KEYS);
+			discountMode = Number(draft.discountAmount) > 0 ? 'amount' : 'percent';
+			taxMode = Number(draft.taxAmount) > 0 ? 'amount' : 'percent';
 		}
 		prevOpen = nowOpen;
+	});
+
+	const itemLocked = $derived(disableUnlessItem && draft?.itemId == null);
+
+	// Free unit picker should show *item unit master rows* (conversionDisplay), like PR.
+	const freeUnitMasterOptions = $derived.by(() => {
+		const list = (draft?.iumList ?? []) as Array<{
+			id?: number | null;
+			conversionDisplay?: string | null;
+		}>;
+		if (!Array.isArray(list) || list.length === 0) return [];
+		return list
+			.filter((x) => typeof x?.id === 'number')
+			.map((x) => ({
+				label: String(x.conversionDisplay ?? '').trim() || String(x.id),
+				value: String(x.id)
+			}));
+	});
+
+	function setDiscountMode(next: 'percent' | 'amount') {
+		discountMode = next;
+		if (!draft) return;
+		if (next === 'percent') draft.discountAmount = '0';
+		else draft.discountPercent = '0';
 	}
 
-	$: itemLocked = disableUnlessItem && draft?.itemId == null;
+	function setTaxMode(next: 'percent' | 'amount') {
+		taxMode = next;
+		if (!draft) return;
+		if (next === 'percent') draft.taxAmount = '0';
+		else draft.taxPercent = '0';
+	}
 </script>
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_line_received_qty()}</DaisyUiLabel>
 		<input
-			type="text"
+			type="number"
 			class="d-input d-input-bordered w-full"
 			bind:value={draft.receivedQty}
+			step="1"
+			min="0"
 			disabled={itemLocked}
 			aria-label={m.inv_grn_line_received_qty()}
 		/>
@@ -64,61 +107,137 @@
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_price()}</DaisyUiLabel>
 		<input
-			type="text"
+			type="number"
 			class="d-input d-input-bordered w-full"
 			bind:value={draft.purchasePrice}
+			step="0.01"
+			min="0"
 			disabled={itemLocked}
 			aria-label={m.inv_stock_col_price()}
 		/>
 	</div>
-	<div>
+	<div class="sm:col-span-2">
 		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_free_qty()}</DaisyUiLabel>
-		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.freeQty}
-			disabled={itemLocked}
-			aria-label={m.inv_grn_free_qty()}
-		/>
+		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+			<input
+				type="number"
+				class="d-input d-input-bordered w-full"
+				bind:value={draft.freeQty}
+				step="1"
+				min="0"
+				disabled={itemLocked}
+				aria-label={m.inv_grn_free_qty()}
+			/>
+			<DaisyUISearchSelect
+				value={draft?.freeUnitIumId != null ? String(draft.freeUnitIumId) : ''}
+				options={freeUnitMasterOptions}
+				placeholder={m.inv_line_modal_select_conversion()}
+				onChange={(v: string) => {
+					const id = v ? Number(v) : null;
+					draft.freeUnitIumId = id;
+					const list = (draft?.iumList ?? []) as Array<{
+						id?: number | null;
+						purchaseUnitId?: number | null;
+					}>;
+					const ium =
+						id != null
+							? list.find((x) => typeof x?.id === 'number' && x.id === id) ?? null
+							: null;
+					draft.freeUnitId = ium?.purchaseUnitId ?? null;
+				}}
+				className="w-full"
+				disabled={itemLocked || freeUnitMasterOptions.length === 0}
+			/>
+		</div>
 	</div>
-	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_discount_percent()}</DaisyUiLabel>
-		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.discountPercent}
-			disabled={itemLocked}
-			aria-label={m.inv_grn_discount_percent()}
-		/>
+	<div class="sm:col-span-2">
+		<DaisyUiLabel className="text-xs opacity-80">
+			{discountMode === 'amount' ? m.inv_grn_discount_amount() : m.inv_grn_discount_percent()}
+		</DaisyUiLabel>
+		<div class="flex items-center gap-3">
+			<div class="flex-1">
+				{#if discountMode === 'amount'}
+					<input
+						type="number"
+						class="d-input d-input-bordered w-full"
+						bind:value={draft.discountAmount}
+						step="0.01"
+						min="0"
+						disabled={itemLocked}
+						aria-label={m.inv_grn_discount_amount()}
+					/>
+				{:else}
+					<input
+						type="number"
+						class="d-input d-input-bordered w-full"
+						bind:value={draft.discountPercent}
+						step="0.01"
+						min="0"
+						disabled={itemLocked}
+						aria-label={m.inv_grn_discount_percent()}
+					/>
+				{/if}
+			</div>
+			<label class="flex shrink-0 items-center gap-2 text-xs opacity-80">
+				<span>%</span>
+				<input
+					type="checkbox"
+					class="d-toggle d-toggle-accent"
+					checked={discountMode === 'amount'}
+					disabled={itemLocked}
+					aria-label="Toggle discount percent/amount"
+					onchange={(e) => {
+						const checked = (e.currentTarget as HTMLInputElement).checked;
+						setDiscountMode(checked ? 'amount' : 'percent');
+					}}
+				/>
+				<span>$</span>
+			</label>
+		</div>
 	</div>
-	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_discount_amount()}</DaisyUiLabel>
-		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.discountAmount}
-			disabled={itemLocked}
-			aria-label={m.inv_grn_discount_amount()}
-		/>
-	</div>
-	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_tax_percent()}</DaisyUiLabel>
-		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.taxPercent}
-			disabled={itemLocked}
-			aria-label={m.inv_grn_tax_percent()}
-		/>
-	</div>
-	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_tax_amount()}</DaisyUiLabel>
-		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.taxAmount}
-			disabled={itemLocked}
-			aria-label={m.inv_grn_tax_amount()}
-		/>
+	<div class="sm:col-span-2">
+		<DaisyUiLabel className="text-xs opacity-80">
+			{taxMode === 'amount' ? m.inv_grn_tax_amount() : m.inv_grn_tax_percent()}
+		</DaisyUiLabel>
+		<div class="flex items-center gap-3">
+			<div class="flex-1">
+				{#if taxMode === 'amount'}
+					<input
+						type="number"
+						class="d-input d-input-bordered w-full"
+						bind:value={draft.taxAmount}
+						step="0.01"
+						min="0"
+						disabled={itemLocked}
+						aria-label={m.inv_grn_tax_amount()}
+					/>
+				{:else}
+					<input
+						type="number"
+						class="d-input d-input-bordered w-full"
+						bind:value={draft.taxPercent}
+						step="0.01"
+						min="0"
+						disabled={itemLocked}
+						aria-label={m.inv_grn_tax_percent()}
+					/>
+				{/if}
+			</div>
+			<label class="flex shrink-0 items-center gap-2 text-xs opacity-80">
+				<span>%</span>
+				<input
+					type="checkbox"
+					class="d-toggle d-toggle-primary"
+					checked={taxMode === 'amount'}
+					disabled={itemLocked}
+					aria-label="Toggle tax percent/amount"
+					onchange={(e) => {
+						const checked = (e.currentTarget as HTMLInputElement).checked;
+						setTaxMode(checked ? 'amount' : 'percent');
+					}}
+				/>
+				<span>$</span>
+			</label>
+		</div>
 	</div>
 </div>

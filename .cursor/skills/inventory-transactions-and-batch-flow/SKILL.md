@@ -57,6 +57,98 @@ flowchart LR
 4. **GRN**: **PO-backed**: `goods_receipt_note.po_id` set; receipt **`store_id`** must equal the PR’s **`to_store_id`** when `pr_id` is present, or the PO’s **`store_id`** for manual POs. **Direct GRN** (no PO): `po_id` null, `supplier_id` + lines with `po_line_id` null — `createAndPostDirectGoodsReceipt` in [`grn.server.ts`](../../../src/lib/server/heka/inventory/grn.server.ts). Each line creates/links **`item_batch`**, and **`inv_stock.quantity` is in issue units** (via [`item-unit-inventory.server.ts`](../../../src/lib/server/heka/inventory/item-unit-inventory.server.ts)).
 5. **UI — From store (navbar)**: On routes under `/heka/hospital/{id}/home/inventory` (not `inventory-setup`), the top bar can show a **From store** selector (cookie `heka_selected_inventory_from_store_id`, POST `set-selected-inventory-from-store`). PR create and manual PO / direct GRN default to this store where applicable. **Department consumption — New** (`inventory/department-consumption/new`): **`store_id` is fixed to that navbar From store** (readonly display); submit stays disabled until a store is selected, matching **department indent / New** “From store” behavior.
 6. **Stock listing**: Aggregates from `inv_stock` (quantities in **issue units**); display joins default `item_unit_master` for the issue unit name. Lot view joins `item_batch`. **FEFO** = order by `item_batch.expiry_date ASC NULLS LAST`.
+   - **Batch selection UX (stock issue UIs)**: Prefer a **batch/expiry table** (one row per `inv_stock` lot) rather than a batch search/select dropdown. Users enter **purchase-unit qty per batch**, UI validates against **issue-unit stock** by converting purchase→issue.
+     - Reusable: [`InventoryBatchQtyPickTable.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte)
+     - Conversion helper: [`purchase-issue-qty-convert.util.ts`](../../../src/lib/tool/inventory/purchase-issue-qty-convert.util.ts)
+
+### UI pattern — implementing `InventoryBatchQtyPickTable` (detailed)
+
+Use this pattern in **any stock-issuing UI** (Department consumption, Department issue, Stock issue, etc.) where users must choose **which batches** to consume.
+
+#### Data model (client)
+
+- **Draft line should store allocations (not a single batch/qty):**
+  - `draftLine.batchAllocations: ConsumptionBatchAllocationDraft[]`
+  - Each allocation row corresponds to a lot row from `/inventory/stock?mode=lots`:
+    - `batchId`, `batchNo`, `expiryDate`, `stockIssueQty` (string), optional `salePrice`
+    - `qtyPurchase` (string) user-entered in purchase unit
+
+#### Hydration (client)
+
+When item is picked (or prefilled + locked, e.g. From Indent flow):
+
+1) **Hydrate item meta and choose a conversion (IUM):**
+   - Fetch item detail: `/inventory-setup/item-master?id={itemId}`
+   - Fetch IUM list: `/inventory-setup/item-master?mode=itemUnitMasters`
+   - Filter IUM to the item’s allowed conversions, choose default, and set:
+     - `draftLine.iumList = [chosen]`
+     - `draftLine.itemUnitMasterId = chosen.id`
+
+2) **Fetch lots for the current store + item:**
+   - `GET /inventory/stock?mode=lots&storeId={storeId}&itemId={itemId}`
+   - **Important:** only show lots with stock:
+     - `rows.filter((r) => Number(r.quantity) > 1e-9)` (stock is in issue unit)
+   - Map to allocations:
+     - `stockIssueQty = String(r.quantity)`
+     - `qtyPurchase = ''`
+
+3) **Locked-item (indent) flows must still hydrate IUM:**
+   - If `draftLine.lockItem === true` and `draftLine.itemId != null` but `draftLine.iumList.length === 0`,
+     call the same `hydrateLineItemMeta(draftLine, draftLine.itemId)` used for free-pick flows.
+   - Do **not** only refresh batches; you need IUM factors for validation.
+
+Reference implementations:
+- Consumption: [`ConsumptionLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-consumption/ConsumptionLineDialogContent.svelte)
+- Issue: [`DepartmentIssueLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-issue/DepartmentIssueLineDialogContent.svelte)
+
+#### Rendering the table (client)
+
+In the line dialog, render the table like:
+
+- `bind:allocations={draftLine.batchAllocations}`
+- `factors={iumFactors}` where `iumFactors = { purchaseConversionFactor, issueConversionFactor }`
+- Pass labels for hints:
+  - `purchaseUnitLabel={chosenIum.purchaseUnitName}`
+  - `issueUnitLabel={chosenIum.issueUnitName}`
+
+#### Validation rules (client)
+
+On Save:
+
+1) Require item + chosen IUM factors.
+2) Require at least one allocation with `qtyPurchase > 0`.
+3) For each allocation with qty:
+   - Parse `qtyPurchase` number; must be finite and \(> 0\)
+   - Convert to issue unit using `purchaseQtyToIssueQtyNumber(qp, pf, iff)`
+   - Check `need <= stockIssueQty` (allow small epsilon only for display; server enforces ints)
+
+#### Submitting (client → API)
+
+Flatten each draft line allocations into **multiple API lines**:
+
+- For each `allocation` where `qtyPurchase > 0`, submit:
+  - `{ itemId, unitId: purchaseUnitId, quantity: qtyPurchase, batchId: allocation.batchId }`
+
+This ensures the server can issue **exactly** the chosen batches (no FEFO guessing).
+
+#### Reactivity + solved bugs (must keep)
+
+Two bugs were fixed while adopting this component. Do not reintroduce them.
+
+1) **Deep mutation doesn’t always update derived totals**
+   - Bug: editing `allocations[rowIndex].qtyPurchase` directly can fail to trigger `$derived` recomputation.
+   - Fix: the table reassigns the array on edits:
+     - `allocations = allocations.map((a,i) => i===rowIndex ? { ...a, qtyPurchase: next } : a)`
+
+2) **Stale value on input event (causes “Quantity” alert)**
+   - Bug: using `oninput={() => onChange?.(value)}` can send stale `value`.
+   - Fix: read from event target:
+     - `oninput={(e) => onChange?.((e.currentTarget as HTMLInputElement).value)}`
+
+Files containing these fixes:
+- [`InventoryBatchQtyPickTable.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte)
+- [`InventoryBatchQtyPickQtyCell.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickQtyCell.svelte)
+
 7. **Transfer**: Lines are **batch-scoped**: `{ itemId, batchId, quantity, unitId }`; moves quantity between stores for the same `batch_id`.
 8. **Issue**: Lines may omit **`batchId`** → auto **FEFO** across `inv_stock` rows for that item in the store; or set **`batchId`** for a single-batch deduction. Multiple `inv_stock_issue_line` rows may be inserted when FEFO spans batches.
 
