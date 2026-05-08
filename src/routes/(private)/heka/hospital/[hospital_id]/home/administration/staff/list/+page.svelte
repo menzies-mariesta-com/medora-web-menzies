@@ -229,6 +229,16 @@
 
 	const staffColumns: MariTableColumn<StaffWithRelations>[] = [
 		{
+			id: 'no',
+			header: 'No.',
+			widthClass: 'w-16 min-w-[4rem]',
+			filterable: false,
+			format: (_value, _row, rowIndex) => {
+				const pageSize = Number(filterPageSize) || 10;
+				return (currentPage - 1) * pageSize + rowIndex + 1;
+			}
+		},
+		{
 			id: 'code',
 			header: m.staff_code(),
 			widthClass: 'w-32 min-w-[8rem]',
@@ -383,7 +393,7 @@
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const staffRow = row as StaffWithRelations}
-				<div class="flex flex-col items-center gap-1">
+				<div class="flex flex-row flex-wrap items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.view_data()}
 						className="d-tooltip-ghost d-tooltip-right"
