@@ -33,7 +33,11 @@ export type AppointmentWithRelations = PatientRegMasterTimestamps & {
 	cancelRemark: string | null;
 	statusId: number;
 	hospital?: { id: string; name?: string | null } | null;
-	branch?: { id: string; name?: string | null; code?: string | null } | null;
+	branch?: {
+		id: string;
+		name?: string | null;
+		code?: string | null;
+	} | null;
 	patient?: PatientWithRelations | null;
 	staff?: StaffWithRelations | null;
 	patientTitle?: NamedLookup | null;

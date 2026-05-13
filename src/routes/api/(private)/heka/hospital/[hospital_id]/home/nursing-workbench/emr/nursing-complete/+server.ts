@@ -24,13 +24,21 @@ export async function GET(event: RequestEvent) {
 
 	switch (mode) {
 		case 'visit.get': {
-			const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
-			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
-			return json(await obs.getPatientVisitById({ id: visitId, hospitalId }));
+			const visitId = Number(
+				event.url.searchParams.get('visitId') ?? '0'
+			);
+			if (!Number.isFinite(visitId) || visitId <= 0)
+				throw error(400, 'visitId is required');
+			return json(
+				await obs.getPatientVisitById({ id: visitId, hospitalId })
+			);
 		}
 		case 'serviceOrder.list': {
-			const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
-			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
+			const visitId = Number(
+				event.url.searchParams.get('visitId') ?? '0'
+			);
+			if (!Number.isFinite(visitId) || visitId <= 0)
+				throw error(400, 'visitId is required');
 			return json(await obs.getServiceOrder({ visitId }));
 		}
 		case 'orderDetail.paginated': {
@@ -38,12 +46,17 @@ export async function GET(event: RequestEvent) {
 				.getAll('serviceOrderIds')
 				.map((v) => Number(v))
 				.filter((n) => Number.isFinite(n));
-			if (!serviceOrderIds.length) throw error(400, 'serviceOrderIds is required');
+			if (!serviceOrderIds.length)
+				throw error(400, 'serviceOrderIds is required');
 			const statusIdRaw = event.url.searchParams.get('statusId');
 			const statusId =
-				statusIdRaw != null && statusIdRaw.trim() !== '' ? Number(statusIdRaw) : undefined;
+				statusIdRaw != null && statusIdRaw.trim() !== ''
+					? Number(statusIdRaw)
+					: undefined;
 			const page = Number(event.url.searchParams.get('page') ?? '1');
-			const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+			const pageSize = Number(
+				event.url.searchParams.get('pageSize') ?? '10'
+			);
 			return json(
 				await getServiceOrderDetailPaginatedForOrders(event, {
 					hospitalId,
@@ -55,11 +68,16 @@ export async function GET(event: RequestEvent) {
 			);
 		}
 		case 'nursingIncomplete.count': {
-			const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
-			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
+			const visitId = Number(
+				event.url.searchParams.get('visitId') ?? '0'
+			);
+			if (!Number.isFinite(visitId) || visitId <= 0)
+				throw error(400, 'visitId is required');
 			const statusIdRaw = event.url.searchParams.get('statusId');
 			const statusId =
-				statusIdRaw != null && statusIdRaw.trim() !== '' ? Number(statusIdRaw) : undefined;
+				statusIdRaw != null && statusIdRaw.trim() !== ''
+					? Number(statusIdRaw)
+					: undefined;
 			return json(
 				await getNursingIncompleteLineCountForVisit(event, {
 					hospitalId,
@@ -75,7 +93,10 @@ export async function GET(event: RequestEvent) {
 			const code = event.url.searchParams.get('code') ?? '';
 			if (!code) throw error(400, 'code is required');
 			const docs = await getDocumentsWithRelations(event);
-			const found = (docs as any[]).find((d) => String(d?.code ?? '').trim() === code) ?? null;
+			const found =
+				(docs as any[]).find(
+					(d) => String(d?.code ?? '').trim() === code
+				) ?? null;
 			return json(found);
 		}
 		case 'documentSettings.list': {
@@ -102,17 +123,27 @@ export async function POST(event: RequestEvent) {
 	switch (mode) {
 		case 'nursingComplete.mark': {
 			const id = Number(body?.id ?? 0);
-			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
-			return json(await markServiceOrderDetailNursingComplete(event, { hospitalId, id }));
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
+			return json(
+				await markServiceOrderDetailNursingComplete(event, {
+					hospitalId,
+					id
+				})
+			);
 		}
 		case 'nursingComplete.markBatch': {
 			const visitId = Number(body?.visitId ?? 0);
 			const batchSize = Number(body?.batchSize ?? 0);
 			const statusIdRaw = body?.statusId;
 			const statusId =
-				statusIdRaw != null && String(statusIdRaw).trim() !== '' ? Number(statusIdRaw) : undefined;
-			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
-			if (!Number.isFinite(batchSize) || batchSize <= 0) throw error(400, 'batchSize is required');
+				statusIdRaw != null && String(statusIdRaw).trim() !== ''
+					? Number(statusIdRaw)
+					: undefined;
+			if (!Number.isFinite(visitId) || visitId <= 0)
+				throw error(400, 'visitId is required');
+			if (!Number.isFinite(batchSize) || batchSize <= 0)
+				throw error(400, 'batchSize is required');
 			return json(
 				await markServiceOrderDetailNursingCompleteBatch(event, {
 					hospitalId,
@@ -126,4 +157,3 @@ export async function POST(event: RequestEvent) {
 			throw error(400, `Unknown mode: ${mode}`);
 	}
 }
-

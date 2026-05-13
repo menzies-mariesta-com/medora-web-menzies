@@ -15,7 +15,11 @@ export function parseIdInt(v: unknown, fieldName: string): number {
 export function parseUuid(v: unknown, fieldName: string): string {
 	const s = asTrimmedString(v);
 	// UUIDv7 still matches the standard UUID format.
-	if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+	if (
+		!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+			s
+		)
+	) {
 		throw error(400, `${fieldName} is required`);
 	}
 	return s;
@@ -33,27 +37,42 @@ export function parseOptionalTrimmedString(
 }
 
 /** Accepts YYYY-MM-DD (stored as string in DB). */
-export function parseIsoDateYmd(v: unknown, fieldName: string): string {
+export function parseIsoDateYmd(
+	v: unknown,
+	fieldName: string
+): string {
 	const s = asTrimmedString(v);
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw error(400, `${fieldName} is invalid`);
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(s))
+		throw error(400, `${fieldName} is invalid`);
 	return s;
 }
 
-export function parseIntStrict(v: unknown, fieldName: string): number {
+export function parseIntStrict(
+	v: unknown,
+	fieldName: string
+): number {
 	const s = asTrimmedString(v);
-	if (!/^-?\d+$/.test(s)) throw error(400, `${fieldName} must be an integer`);
+	if (!/^-?\d+$/.test(s))
+		throw error(400, `${fieldName} must be an integer`);
 	const n = Number(s);
-	if (!Number.isSafeInteger(n)) throw error(400, `${fieldName} is out of range`);
+	if (!Number.isSafeInteger(n))
+		throw error(400, `${fieldName} is out of range`);
 	return n;
 }
 
-export function parsePositiveIntQty(v: unknown, fieldName: string): number {
+export function parsePositiveIntQty(
+	v: unknown,
+	fieldName: string
+): number {
 	const n = parseIntStrict(v, fieldName);
 	if (n <= 0) throw error(400, `${fieldName} must be > 0`);
 	return n;
 }
 
-export function parseNonNegativeIntQty(v: unknown, fieldName: string): number {
+export function parseNonNegativeIntQty(
+	v: unknown,
+	fieldName: string
+): number {
 	const n = parseIntStrict(v, fieldName);
 	if (n < 0) throw error(400, `${fieldName} must be >= 0`);
 	return n;
@@ -70,7 +89,8 @@ export function parseMoney2dp(v: unknown, fieldName: string): string {
 		throw error(400, `${fieldName} must have up to 2 decimals`);
 	}
 	const n = Number(s);
-	if (!Number.isFinite(n)) throw error(400, `${fieldName} is invalid`);
+	if (!Number.isFinite(n))
+		throw error(400, `${fieldName} is invalid`);
 	return n.toFixed(2);
 }
 
@@ -83,4 +103,3 @@ export function parseOptionalMoney2dp(
 	if (!s) return null;
 	return parseMoney2dp(s, fieldName);
 }
-

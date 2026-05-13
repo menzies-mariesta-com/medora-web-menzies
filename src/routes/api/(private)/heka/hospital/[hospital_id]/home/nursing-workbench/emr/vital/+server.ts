@@ -19,8 +19,13 @@ export async function GET(event: RequestEvent) {
 	const action = event.url.searchParams.get('action') ?? 'list';
 
 	if (action === 'visitBasics') {
-		const visitId = Number(event.url.searchParams.get('visitId') ?? 0);
-		const data = await getVisitBasicsForVital(event, { hospitalId, visitId });
+		const visitId = Number(
+			event.url.searchParams.get('visitId') ?? 0
+		);
+		const data = await getVisitBasicsForVital(event, {
+			hospitalId,
+			visitId
+		});
 		return json({ data });
 	}
 
@@ -35,16 +40,22 @@ export async function GET(event: RequestEvent) {
 	const visitNo = event.url.searchParams.get('visitNo');
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : null;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: null;
 	const page = Number(event.url.searchParams.get('page') ?? 1);
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? 10);
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? 10
+	);
 
 	const data = await getPatientVitalsByPatientIdPaginated(event, {
 		hospitalId,
 		patientId,
 		visitNo: visitNo?.trim() ? visitNo : null,
 		statusId:
-			statusId != null && Number.isFinite(statusId) ? statusId : undefined,
+			statusId != null && Number.isFinite(statusId)
+				? statusId
+				: undefined,
 		page,
 		pageSize
 	});
@@ -120,7 +131,11 @@ export async function PATCH(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	const body = patchSchema.parse(await event.request.json());
 	const { id, ...patch } = body;
-	const row = await updatePatientVital(event, { hospitalId, id, ...patch } as any);
+	const row = await updatePatientVital(event, {
+		hospitalId,
+		id,
+		...patch
+	} as any);
 	return json({ data: row });
 }
 
@@ -130,4 +145,3 @@ export async function DELETE(event: RequestEvent) {
 	await deletePatientVital(event, { hospitalId, id });
 	return json({ ok: true });
 }
-

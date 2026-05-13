@@ -64,7 +64,10 @@
 		state?: { id: number; name: string | null } | null;
 		city?: { id: number; name: string | null } | null;
 		postalCode?: { id: number; value: unknown } | null;
-		phoneCountry?: { id: number; countryCallingCode: string | null } | null;
+		phoneCountry?: {
+			id: number;
+			countryCallingCode: string | null;
+		} | null;
 		phone: string | null;
 		email: string | null;
 		status?: { id: number; name: string | null } | null;
@@ -84,8 +87,10 @@
 			);
 			url.searchParams.set('page', String(currentPage));
 			url.searchParams.set('pageSize', String(pageSize));
-			if (searchInput.trim()) url.searchParams.set('search', searchInput.trim());
-			if (opts?.bustCache) url.searchParams.set('_t', String(Date.now()));
+			if (searchInput.trim())
+				url.searchParams.set('search', searchInput.trim());
+			if (opts?.bustCache)
+				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
 			if (!res.ok) throw new Error(await res.text());
@@ -282,70 +287,70 @@
 </div>
 
 <div class="{TableEnum.HEIGHT} overflow-auto">
-		<MariTable
-			rows={referList}
-			columns={referColumns}
-			{isLoading}
-			bind:pageSize={filterPageSize}
-			bind:currentPage
-			totalRowCount={total}
-			showRefreshButton={true}
-			refreshTooltip={m.refresh_data()}
-			emptyMessage={m.no_refer_found()}
-			showRowActions={true}
-			actionsHeader={m.actions()}
-			actionsVariant="none"
-			enableColumnFilters={false}
-			useRemoteFilters={true}
-			on:refresh={() => fetchRefer({ bustCache: true })}
-			on:pageSizeChange={() => {
-				currentPage = 1;
-				fetchRefer();
-			}}
-			on:pageChange={() => fetchRefer()}
-		>
-			{#snippet rowActions(row, rowIndex)}
-				<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
-					<div class="flex flex-col items-center gap-1">
-						<DaisyUiTooltip
-							tooltipText={m.view_data()}
-							className="d-tooltip-ghost d-tooltip-right"
+	<MariTable
+		rows={referList}
+		columns={referColumns}
+		{isLoading}
+		bind:pageSize={filterPageSize}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage={m.no_refer_found()}
+		showRowActions={true}
+		actionsHeader={m.actions()}
+		actionsVariant="none"
+		enableColumnFilters={false}
+		useRemoteFilters={true}
+		on:refresh={() => fetchRefer({ bustCache: true })}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchRefer();
+		}}
+		on:pageChange={() => fetchRefer()}
+	>
+		{#snippet rowActions(row, rowIndex)}
+			<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
+				<div class="flex flex-col items-center gap-1">
+					<DaisyUiTooltip
+						tooltipText={m.view_data()}
+						className="d-tooltip-ghost d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm"
+							onClick={() => viewData(row.id)}
 						>
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm"
-								onClick={() => viewData(row.id)}
-							>
-								<LucideEye className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-						<DaisyUiTooltip
-							tooltipText={m.edit_data()}
-							className="d-tooltip-accent d-tooltip-right"
+							<LucideEye className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip
+						tooltipText={m.edit_data()}
+						className="d-tooltip-accent d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-sm d-btn-ghost d-btn-accent"
+							onClick={() => editData(row.id)}
 						>
-							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-accent"
-								onClick={() => editData(row.id)}
-							>
-								<LucidePencil className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-						<DaisyUiTooltip
-							tooltipText={m.delete_data()}
-							className="d-tooltip-error d-tooltip-right"
+							<LucidePencil className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiTooltip
+						tooltipText={m.delete_data()}
+						className="d-tooltip-error d-tooltip-right"
+					>
+						<DaisyUiButton
+							className="d-btn-ghost d-btn-sm d-btn-error"
+							disabled={isLoading}
+							onClick={() => handleDelete(row.id)}
 						>
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-error"
-								disabled={isLoading}
-								onClick={() => handleDelete(row.id)}
-							>
-								<LucideTrash2 className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-					</div>
-				</td>
-			{/snippet}
-		</MariTable>
-	</div>
+							<LucideTrash2 className="size-5" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+				</div>
+			</td>
+		{/snippet}
+	</MariTable>
+</div>
 
 {#if modalState}
 	<LExternalReferMasterModal {modalState} onClose={closeModal} />

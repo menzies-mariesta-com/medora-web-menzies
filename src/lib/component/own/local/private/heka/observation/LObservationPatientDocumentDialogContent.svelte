@@ -47,7 +47,10 @@
 		statusId: number | null;
 	};
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(
@@ -84,7 +87,8 @@
 	}
 
 	let cachedDocuments: DocumentWithRelations[] | null = null;
-	let documentsPromise: Promise<DocumentWithRelations[]> | null = null;
+	let documentsPromise: Promise<DocumentWithRelations[]> | null =
+		null;
 	async function getAllDocuments(): Promise<DocumentWithRelations[]> {
 		if (cachedDocuments) return cachedDocuments;
 		if (!documentsPromise) {
@@ -189,7 +193,11 @@
 		try {
 			if (isEdit && patientDocumentId != null) {
 				await apiPost('patientDocument.update', {
-					payload: { id: patientDocumentId, documentId: docId, statusId }
+					payload: {
+						id: patientDocumentId,
+						documentId: docId,
+						statusId
+					}
 				});
 			} else {
 				await apiPost('patientDocument.create', {
@@ -202,9 +210,7 @@
 			toastSuccess(
 				toastService,
 				title,
-				isEdit
-					? m.toast_action_updated()
-					: m.toast_action_created()
+				isEdit ? m.toast_action_updated() : m.toast_action_created()
 			);
 			ObservationPatientDocumentDialogState.onSaved?.();
 			await confirm({ saved: true });

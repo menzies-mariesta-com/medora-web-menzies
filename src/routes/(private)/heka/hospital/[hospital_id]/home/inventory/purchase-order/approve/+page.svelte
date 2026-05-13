@@ -10,7 +10,9 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import InventoryTableTextCell from '$lib/component/own/local/private/heka/inventory/InventoryTableTextCell.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -30,12 +32,17 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 	const poId = $derived(page.url.searchParams.get('poId') ?? '');
 
 	const poListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-order' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-order' as any
+		)
 	);
 
 	type PoLine = {
@@ -46,10 +53,8 @@
 		unitId: number;
 		unitPrice: string;
 		lineTotal: string;
-		manufacturerId: number | null;
 		qtyReceivedCumulative: string;
 		itemName?: string | null;
-		isBatchRequired?: boolean;
 		itemUnitMasterId?: number | null;
 		itemUnitMasterConversion?: string | null;
 	};
@@ -100,13 +105,16 @@
 	function isLineClosable(line: PoLine) {
 		const ordered = Number(line.quantity);
 		const received = Number(line.qtyReceivedCumulative);
-		if (!Number.isFinite(ordered) || !Number.isFinite(received)) return false;
+		if (!Number.isFinite(ordered) || !Number.isFinite(received))
+			return false;
 		return received < ordered;
 	}
 
 	function actionLabel(a: number): string {
-		if (a === InvApprovalActionEnum.APPROVED) return m.inv_approval_action_approved();
-		if (a === InvApprovalActionEnum.REJECTED) return m.inv_approval_action_rejected();
+		if (a === InvApprovalActionEnum.APPROVED)
+			return m.inv_approval_action_approved();
+		if (a === InvApprovalActionEnum.REJECTED)
+			return m.inv_approval_action_rejected();
 		return String(a);
 	}
 
@@ -167,14 +175,22 @@
 		| { lineId: number; quantity: string; unitPrice?: string }[]
 		| undefined {
 		if (!detail) return undefined;
-		const adj: { lineId: number; quantity: string; unitPrice?: string }[] = [];
+		const adj: {
+			lineId: number;
+			quantity: string;
+			unitPrice?: string;
+		}[] = [];
 		for (const ln of detail.lines) {
 			const dq = (lineQtyDraft[ln.id] ?? '').trim();
 			const dp = (linePriceDraft[ln.id] ?? '').trim();
 			const oq = baselineQty[ln.id] ?? String(ln.quantity);
 			const op = baselinePrice[ln.id] ?? String(ln.unitPrice);
 			if (dq && dq !== oq) {
-				const row: { lineId: number; quantity: string; unitPrice?: string } = {
+				const row: {
+					lineId: number;
+					quantity: string;
+					unitPrice?: string;
+				} = {
 					lineId: ln.id,
 					quantity: dq
 				};
@@ -227,7 +243,9 @@
 		loading = true;
 		try {
 			const lineAdjustments =
-				action === InvApprovalActionEnum.APPROVED ? buildPoAdjustments() : undefined;
+				action === InvApprovalActionEnum.APPROVED
+					? buildPoAdjustments()
+					: undefined;
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/inventory/purchase-order/approve`,
 				{
@@ -243,7 +261,11 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addToast('Action failed', StatusColorEnum.ERROR, t || String(res.status));
+				toastService.addToast(
+					'Action failed',
+					StatusColorEnum.ERROR,
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PoDetail;
@@ -271,7 +293,11 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toastService.addToast('Action failed', StatusColorEnum.ERROR, t || String(res.status));
+				toastService.addToast(
+					'Action failed',
+					StatusColorEnum.ERROR,
+					t || String(res.status)
+				);
 				return;
 			}
 			const j = (await res.json()) as PoDetail;
@@ -292,7 +318,8 @@
 
 	const lineColumns = $derived.by((): MariTableColumn<PoLine>[] => {
 		const cat = iumCatalogById;
-		const pending = detail?.statusTaggingId === InvPoStatusTaggingEnum.PENDING;
+		const pending =
+			detail?.statusTaggingId === InvPoStatusTaggingEnum.PENDING;
 		const qtyCol: MariTableColumn<PoLine> = pending
 			? {
 					id: 'quantity',
@@ -409,16 +436,9 @@
 						cat
 					);
 				}
-			},
-			{
-				id: 'batch',
-				header: 'Batch?',
-				field: 'isBatchRequired',
-				format: (_v, row) => (row.isBatchRequired ? 'Y' : '—')
 			}
 		];
 	});
-
 </script>
 
 <DaisyUiCard>
@@ -441,32 +461,52 @@
 			</DaisyUiCardBodyTitle>
 		</div>
 		{#if !poId}
-			<p class="text-sm text-base-content/70">{m.inv_po_approve_need_poId()}</p>
+			<p class="text-sm text-base-content/70">
+				{m.inv_po_approve_need_poId()}
+			</p>
 		{:else if loading && !detail}
 			<p class="text-sm text-base-content/70">{m.loading()}</p>
 		{:else if detail}
-			<div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div class="space-y-2 text-sm bg-base-200 p-4 rounded-lg">
+			<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div class="space-y-2 rounded-lg bg-base-200 p-4 text-sm">
 					<div class="flex flex-col gap-1">
-						<div class="flex justify-between border-b border-base-300 pb-1">
+						<div
+							class="flex justify-between border-b border-base-300 pb-1"
+						>
 							<span class="opacity-70">{m.inv_po_no()}:</span>
-							<strong class="font-medium text-right">{detail.poNo ?? '—'}</strong>
+							<strong class="text-right font-medium"
+								>{detail.poNo ?? '—'}</strong
+							>
 						</div>
-						<div class="flex justify-between border-b border-base-300 pb-1">
+						<div
+							class="flex justify-between border-b border-base-300 pb-1"
+						>
 							<span class="opacity-70">{m.status()}:</span>
-							<strong class="font-medium text-right text-primary">{detail.statusName ?? '—'}</strong>
+							<strong class="text-right font-medium text-primary"
+								>{detail.statusName ?? '—'}</strong
+							>
 						</div>
-						<div class="flex justify-between border-b border-base-300 pb-1">
+						<div
+							class="flex justify-between border-b border-base-300 pb-1"
+						>
 							<span class="opacity-70">{m.inv_common_level()}:</span>
-							<strong class="font-medium text-right">{detail.currentLevel}</strong>
+							<strong class="text-right font-medium"
+								>{detail.currentLevel}</strong
+							>
 						</div>
-						<div class="flex justify-between border-b border-base-300 pb-1">
+						<div
+							class="flex justify-between border-b border-base-300 pb-1"
+						>
 							<span class="opacity-70">{m.inv_common_store()}:</span>
-							<strong class="font-medium text-right">{detail.storeName ?? '—'}</strong>
+							<strong class="text-right font-medium"
+								>{detail.storeName ?? '—'}</strong
+							>
 						</div>
-						<div class="flex justify-between border-b border-base-300 pb-1">
+						<div
+							class="flex justify-between border-b border-base-300 pb-1"
+						>
 							<span class="opacity-70">{m.inv_po_linked_pr()}</span>
-							<strong class="font-medium text-right">
+							<strong class="text-right font-medium">
 								{#if detail.prId}
 									<span class="d-link d-link-primary">
 										{detail.linkedRequisitionNo?.trim()
@@ -479,22 +519,31 @@
 							</strong>
 						</div>
 						<div class="flex justify-between pb-1">
-							<span class="opacity-70">{m.inv_po_select_supplier()}:</span>
-							<strong class="font-medium text-right">{detail.supplierName ?? '—'}</strong>
+							<span class="opacity-70"
+								>{m.inv_po_select_supplier()}:</span
+							>
+							<strong class="text-right font-medium"
+								>{detail.supplierName ?? '—'}</strong
+							>
 						</div>
 					</div>
 				</div>
 				<div class="flex flex-col justify-end space-y-4">
-					<div class="p-4 bg-primary/10 rounded-lg text-primary text-right mb-2">
-						<span class="opacity-80 text-xs uppercase font-semibold tracking-wider block mb-1"
+					<div
+						class="mb-2 rounded-lg bg-primary/10 p-4 text-right text-primary"
+					>
+						<span
+							class="mb-1 block text-xs font-semibold tracking-wider uppercase opacity-80"
 							>{m.inv_po_line_unit_price()} Total</span
 						>
-						<span class="text-2xl font-bold">{detail.totalAmount}</span>
+						<span class="text-2xl font-bold"
+							>{detail.totalAmount}</span
+						>
 					</div>
 					<div class="space-y-1">
 						<DaisyUiLabel>{m.inv_common_remarks()}</DaisyUiLabel>
 						<textarea
-							class="textarea textarea-bordered w-full resize-none h-[88px]"
+							class="textarea textarea-bordered h-[88px] w-full resize-none"
 							bind:value={remarks}
 							placeholder="Optional approval remarks..."
 						></textarea>
@@ -503,7 +552,9 @@
 			</div>
 
 			{#if detail.statusTaggingId === InvPoStatusTaggingEnum.PENDING}
-				<div class="mb-6 p-4 border border-base-200 rounded-lg bg-base-100/50">
+				<div
+					class="mb-6 rounded-lg border border-base-200 bg-base-100/50 p-4"
+				>
 					<div class="flex flex-wrap gap-2">
 						<DaisyUiButton
 							className="d-btn-primary"
@@ -533,8 +584,12 @@
 				</div>
 			{/if}
 
-			<h2 class="font-semibold text-lg mb-3 mt-4 text-base-content/90">{m.inv_po_lines()}</h2>
-			<div class={`${TableEnum.HEIGHT} min-w-0 mb-8`}>
+			<h2
+				class="mt-4 mb-3 text-lg font-semibold text-base-content/90"
+			>
+				{m.inv_po_lines()}
+			</h2>
+			<div class={`${TableEnum.HEIGHT} mb-8 min-w-0`}>
 				<MariTable
 					columns={lineColumns}
 					rows={detail.lines}
@@ -545,19 +600,22 @@
 					emptyMessage="No lines"
 				>
 					{#snippet rowActions(row)}
-					<div class="flex flex-col items-center gap-1">
-						{#if poAllowsLineClose && isLineClosable(row)}
-							<DaisyUiTooltip tooltipText={m.inv_po_close_line()} className="d-tooltip-warning d-tooltip-right">
-								<DaisyUiButton
-									className="d-btn-sm d-btn-ghost d-btn-warning"
-									disabled={loading}
-									onClick={() => void closeLine(row.id)}
+						<div class="flex flex-col items-center gap-1">
+							{#if poAllowsLineClose && isLineClosable(row)}
+								<DaisyUiTooltip
+									tooltipText={m.inv_po_close_line()}
+									className="d-tooltip-warning d-tooltip-right"
 								>
-									<LucideX className="size-5"/>
-								</DaisyUiButton>
-							</DaisyUiTooltip>
-						{/if}
-					</div>
+									<DaisyUiButton
+										className="d-btn-sm d-btn-ghost d-btn-warning"
+										disabled={loading}
+										onClick={() => void closeLine(row.id)}
+									>
+										<LucideX className="size-5" />
+									</DaisyUiButton>
+								</DaisyUiTooltip>
+							{/if}
+						</div>
 					{/snippet}
 				</MariTable>
 			</div>

@@ -134,7 +134,8 @@
 	let referTypeData = $state<ReferTypeListRow[]>([]);
 	let externalReferData = $state<ExternalReferListRow[]>([]);
 	let statusTaggingData = $state<StatusTaggingListRow[]>([]);
-	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID = StatusTaggingTypeEnum.DOCTOR_APPOINTMENT;
+	const DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID =
+		StatusTaggingTypeEnum.DOCTOR_APPOINTMENT;
 
 	// Form state
 	let patientMode = $state<'existing' | 'new'>('existing');
@@ -179,9 +180,12 @@
 	async function getPatientLabelForValue(
 		id: string
 	): Promise<string> {
-		const p = await apiGet<PatientWithRelations | null>('patient.byId', {
-			id
-		});
+		const p = await apiGet<PatientWithRelations | null>(
+			'patient.byId',
+			{
+				id
+			}
+		);
 		if (!p) return '';
 		return StringUtil.patientOptionDisplayName(p);
 	}
@@ -277,10 +281,7 @@
 		const opts = availableStatusTaggingData;
 		if (opts.length === 0) return;
 		const cur = selectedStatusTaggingId?.trim();
-		if (
-			!cur ||
-			!opts.some((s) => String(s.id) === cur)
-		) {
+		if (!cur || !opts.some((s) => String(s.id) === cur)) {
 			selectedStatusTaggingId = String(opts[0].id);
 		}
 	});

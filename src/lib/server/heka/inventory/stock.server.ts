@@ -28,10 +28,16 @@ async function defaultIssueUnitNameByItemIds(
 				table.itemUnitMasterTable.id
 			)
 		)
-		.innerJoin(issueU, eq(table.itemUnitMasterTable.issueUnitId, issueU.id))
+		.innerJoin(
+			issueU,
+			eq(table.itemUnitMasterTable.issueUnitId, issueU.id)
+		)
 		.where(
 			and(
-				eq(table.itemMasterItemUnitMasterTable.hospitalId, hospitalId),
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					hospitalId
+				),
 				inArray(
 					table.itemMasterItemUnitMasterTable.itemMasterId,
 					itemIds
@@ -84,7 +90,10 @@ export async function listStockAggregated(
 		)
 	].slice(0, MAX_ITEM_IDS_AGG);
 	if (itemIdsUnique.length > 0) {
-		cond = and(cond, inArray(table.invStockTable.itemId, itemIdsUnique))!;
+		cond = and(
+			cond,
+			inArray(table.invStockTable.itemId, itemIdsUnique)
+		)!;
 	} else if (typeof input.itemId === 'number') {
 		cond = and(cond, eq(table.invStockTable.itemId, input.itemId))!;
 	}
@@ -118,10 +127,9 @@ export async function listStockAggregated(
 			table.storeTable.storeName
 		);
 
-	const uom = await defaultIssueUnitNameByItemIds(
-		input.hospitalId,
-		[...new Set(rows.map((r) => r.itemId))]
-	);
+	const uom = await defaultIssueUnitNameByItemIds(input.hospitalId, [
+		...new Set(rows.map((r) => r.itemId))
+	]);
 	return rows.map((r) => ({
 		...r,
 		issueUnitName: uom.get(r.itemId) ?? null
@@ -177,10 +185,9 @@ export async function listStockLots(
 			sql`${table.itemBatchTable.expiryDate} ASC NULLS LAST`,
 			asc(table.invStockTable.id)
 		);
-	const uom = await defaultIssueUnitNameByItemIds(
-		input.hospitalId,
-		[...new Set(lotRows.map((r) => r.stock.itemId))]
-	);
+	const uom = await defaultIssueUnitNameByItemIds(input.hospitalId, [
+		...new Set(lotRows.map((r) => r.stock.itemId))
+	]);
 	return lotRows.map((r) => ({
 		...r,
 		issueUnitName: uom.get(r.stock.itemId) ?? null

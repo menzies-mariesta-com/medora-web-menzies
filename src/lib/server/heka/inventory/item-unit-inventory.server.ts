@@ -16,7 +16,11 @@ export function purchaseQtyToIssueQtyString(
 	const q = Number(purchaseQtyStr);
 	const pf = Number(purchaseFactorStr);
 	const itf = Number(issueFactorStr);
-	if (!Number.isFinite(q) || !Number.isFinite(pf) || !Number.isFinite(itf)) {
+	if (
+		!Number.isFinite(q) ||
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf)
+	) {
 		throw error(500, 'Invalid conversion inputs');
 	}
 	if (itf <= 0 || pf <= 0) {
@@ -28,7 +32,10 @@ export function purchaseQtyToIssueQtyString(
 	}
 	const rounded = Math.round(issue);
 	if (Math.abs(issue - rounded) > 1e-9) {
-		throw error(400, 'Unit conversion must result in an integer quantity');
+		throw error(
+			400,
+			'Unit conversion must result in an integer quantity'
+		);
 	}
 	return String(rounded);
 }
@@ -45,7 +52,11 @@ export function issueQtyToPurchaseQtyString(
 	const q = Number(issueQtyStr);
 	const pf = Number(purchaseFactorStr);
 	const itf = Number(issueFactorStr);
-	if (!Number.isFinite(q) || !Number.isFinite(pf) || !Number.isFinite(itf)) {
+	if (
+		!Number.isFinite(q) ||
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf)
+	) {
 		throw error(500, 'Invalid conversion inputs');
 	}
 	if (itf <= 0 || pf <= 0) {
@@ -57,7 +68,10 @@ export function issueQtyToPurchaseQtyString(
 	}
 	const rounded = Math.round(purch);
 	if (Math.abs(purch - rounded) > 1e-9) {
-		throw error(400, 'Unit conversion must result in an integer quantity');
+		throw error(
+			400,
+			'Unit conversion must result in an integer quantity'
+		);
 	}
 	return String(rounded);
 }
@@ -97,7 +111,10 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 		)
 		.where(
 			and(
-				eq(table.itemMasterItemUnitMasterTable.hospitalId, input.hospitalId),
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					input.hospitalId
+				),
 				eq(
 					table.itemMasterItemUnitMasterTable.itemMasterId,
 					input.itemId
@@ -120,7 +137,8 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 	}
 
 	const defaultLink =
-		links.find((l) => l.link.isDefaultYesNo === YesNoEnum.YES) ?? links[0];
+		links.find((l) => l.link.isDefaultYesNo === YesNoEnum.YES) ??
+		links[0];
 	const i = defaultLink.ium;
 	const [issueU] = await ensureDb()
 		.select({ name: table.unitTable.name })
@@ -157,8 +175,14 @@ export async function listItemUnitMastersForItem(input: {
 		)
 		.where(
 			and(
-				eq(table.itemMasterItemUnitMasterTable.hospitalId, input.hospitalId),
-				eq(table.itemMasterItemUnitMasterTable.itemMasterId, input.itemId),
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					input.hospitalId
+				),
+				eq(
+					table.itemMasterItemUnitMasterTable.itemMasterId,
+					input.itemId
+				),
 				isNull(table.itemMasterItemUnitMasterTable.deletedAt),
 				isNull(table.itemUnitMasterTable.deletedAt),
 				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
@@ -218,7 +242,12 @@ export async function purchaseUnitPriceToIssueUnitPriceString(input: {
 	});
 	const pf = Number(ium.purchaseConversionFactor);
 	const itf = Number(ium.issueConversionFactor);
-	if (!Number.isFinite(pf) || !Number.isFinite(itf) || pf <= 0 || itf <= 0) {
+	if (
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf) ||
+		pf <= 0 ||
+		itf <= 0
+	) {
 		throw error(500, 'Invalid unit conversion factors');
 	}
 	const issueUnitPrice = (price * itf) / pf;

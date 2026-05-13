@@ -47,8 +47,11 @@ export async function GET(event: RequestEvent) {
 			page,
 			pageSize,
 			search:
-				search != null && search.trim() !== '' ? search.trim() : undefined,
-			code: code != null && code.trim() !== '' ? code.trim() : undefined,
+				search != null && search.trim() !== ''
+					? search.trim()
+					: undefined,
+			code:
+				code != null && code.trim() !== '' ? code.trim() : undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined
@@ -59,7 +62,10 @@ export async function GET(event: RequestEvent) {
 export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const name = body.name != null ? String(body.name) : '';
 	const code = body.code != null ? String(body.code) : null;
 	const statusId =
@@ -80,7 +86,10 @@ export async function POST(event: RequestEvent) {
 export async function PUT(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const id = Number(body.id);
 	if (!Number.isFinite(id)) throw error(400, 'id is required');
 	return json(
@@ -108,7 +117,8 @@ export async function DELETE(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	await pg.deletePharmacyGeneric(hospitalId, { id });
 	return json({ ok: true });
 }

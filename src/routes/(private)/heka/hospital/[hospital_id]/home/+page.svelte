@@ -1,7 +1,18 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve -- hospital-scoped URLs are passed through resolve() in the reactive block below */
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { D3Util, type BarChartOptions } from '$lib/util/d3.util';
 	import { formatIntegerDisplay } from '$lib/util/number-display.util';
+	import type {
+		InventoryDashboardCounts,
+		InventoryDashboardStockAlertCounts
+	} from './+page.server';
 
 	type DailyVisitCount = {
 		date: string;
@@ -29,11 +40,69 @@
 		branchScopeName?: string | null;
 		stats?: DashboardStats | null;
 		visitsLast7Days?: DailyVisitCount[];
+		inventoryDashboard?: InventoryDashboardCounts;
+		inventoryStockAlerts?: InventoryDashboardStockAlertCounts;
 	};
 
 	export let data: PageData;
 
 	let visitsChartContainer: HTMLDivElement | null = null;
+
+	$: inventoryDashboard = data.inventoryDashboard ?? {
+		storeCount: 0,
+		itemMasterCount: 0,
+		stockLotCount: 0
+	};
+	$: stockAlerts = data.inventoryStockAlerts ?? {
+		lowStockCount: 0,
+		expiredLotCount: 0,
+		expiringSoonLotCount: 0
+	};
+
+	function invFmt(n: number): string {
+		return formatIntegerDisplay(n, '0');
+	}
+
+	function buildInvDashboardHrefs(
+		hospitalIdParam: string | undefined
+	) {
+		const hid = hospitalIdParam ?? '';
+		/* eslint-disable @typescript-eslint/no-explicit-any -- dynamic /heka/hospital/[id]/… paths */
+		const out = {
+			lowStock: resolve(
+				hekaHospitalPageUrl(
+					hid,
+					'/heka/home/inventory/reports/low-stock'
+				) as any
+			),
+			expired: resolve(
+				hekaHospitalPageUrl(
+					hid,
+					'/heka/home/inventory/reports/expired?mode=expired'
+				) as any
+			),
+			expiringSoon: resolve(
+				hekaHospitalPageUrl(
+					hid,
+					'/heka/home/inventory/reports/expired?mode=soon'
+				) as any
+			),
+			setupStores: resolve(
+				hekaHospitalPageUrl(
+					hid,
+					'/heka/home/inventory-setup/stores'
+				) as any
+			),
+			stock: resolve(
+				hekaHospitalPageUrl(hid, '/heka/home/inventory/stock') as any
+			)
+		};
+		/* eslint-enable @typescript-eslint/no-explicit-any */
+		return out;
+	}
+
+	// eslint-disable-next-line svelte/no-immutable-reactive-statements -- `page` from `$app/state` updates on navigation (rule cannot trace)
+	$: invDashHref = buildInvDashboardHrefs(page.params.hospital_id);
 
 	type BarPoint = {
 		label: string;
@@ -100,8 +169,8 @@
 				{data.currentHospitalName ?? 'Hospital'} dashboard
 			</h2>
 			<p class="text-sm text-base-content/70">
-				Key activity for the branch in your nav bar. Only active records
-				(visits, appointments, schedules) are included.
+				Key activity for the branch in your nav bar. Only active
+				records (visits, appointments, schedules) are included.
 			</p>
 			{#if data.branchScopeName}
 				<p class="text-sm font-medium text-base-content/80">
@@ -110,6 +179,107 @@
 			{/if}
 		</div>
 	</div>
+
+	<section
+		class="space-y-4 rounded-2xl border border-base-300/70 bg-base-100/95 p-4 shadow-lg"
+	>
+		<div class="space-y-1">
+			<h3 class="text-lg font-semibold">
+				{m.home_inv_dashboard_title()}
+			</h3>
+			<p class="text-sm text-base-content/70">
+				{m.home_inv_dashboard_subtitle()}
+			</p>
+		</div>
+		<div
+			class="d-stats w-full d-stats-vertical rounded-xl border border-base-300/60 bg-base-100 lg:d-stats-horizontal"
+		>
+			<div class="d-stat">
+				<div class="d-stat-title">
+					{m.home_inv_dashboard_stores()}
+				</div>
+				<div class="d-stat-value text-primary">
+					{invFmt(inventoryDashboard.storeCount)}
+				</div>
+			</div>
+			<div class="d-stat">
+				<div class="d-stat-title">{m.home_inv_dashboard_items()}</div>
+				<div class="d-stat-value text-secondary">
+					{invFmt(inventoryDashboard.itemMasterCount)}
+				</div>
+			</div>
+			<div class="d-stat">
+				<div class="d-stat-title">
+					{m.home_inv_dashboard_stock_lots()}
+				</div>
+				<div class="d-stat-value text-accent">
+					{invFmt(inventoryDashboard.stockLotCount)}
+				</div>
+			</div>
+		</div>
+		<div class="space-y-2">
+			<div class="text-sm font-semibold text-base-content/80">
+				{m.home_inv_dashboard_stock_alerts_title()}
+			</div>
+			<p class="text-xs text-base-content/60">
+				{m.home_inv_dashboard_stock_alerts_hint()}
+			</p>
+			<div
+				class="d-stats w-full d-stats-vertical rounded-xl border border-base-300/60 bg-base-100 lg:d-stats-horizontal"
+			>
+				<a
+					class="d-stat hover:bg-base-200/40"
+					href={invDashHref.lowStock}
+					data-sveltekit-preload-data
+				>
+					<div class="d-stat-title">
+						{m.home_inv_dashboard_low_stock()}
+					</div>
+					<div class="d-stat-value text-warning">
+						{invFmt(stockAlerts.lowStockCount)}
+					</div>
+				</a>
+				<a
+					class="d-stat hover:bg-base-200/40"
+					href={invDashHref.expired}
+					data-sveltekit-preload-data
+				>
+					<div class="d-stat-title">
+						{m.home_inv_dashboard_expired()}
+					</div>
+					<div class="d-stat-value text-error">
+						{invFmt(stockAlerts.expiredLotCount)}
+					</div>
+				</a>
+				<a
+					class="d-stat hover:bg-base-200/40"
+					href={invDashHref.expiringSoon}
+					data-sveltekit-preload-data
+				>
+					<div class="d-stat-title">
+						{m.home_inv_dashboard_expiring_soon()}
+					</div>
+					<div class="d-stat-value text-warning">
+						{invFmt(stockAlerts.expiringSoonLotCount)}
+					</div>
+				</a>
+			</div>
+		</div>
+		<div class="flex flex-wrap gap-3">
+			<DaisyUiButton
+				className="d-btn-primary"
+				onClick={() => void goto(invDashHref.setupStores)}
+			>
+				{m.home_inv_dashboard_open_setup()}
+			</DaisyUiButton>
+			<DaisyUiButton
+				className="d-btn-outline"
+				onClick={() => void goto(invDashHref.stock)}
+			>
+				{m.home_inv_dashboard_open_inventory()}
+			</DaisyUiButton>
+		</div>
+	</section>
 
 	<!-- Primary stats (DaisyUI stats, responsive) -->
 	<div class="w-full space-y-4">
@@ -372,7 +542,8 @@
 					{checkInRatioText(data.stats?.checkInRatio)}
 				</div>
 				<div class="d-stat-desc">
-					Today, active appointments: checked in vs confirmed (this branch)
+					Today, active appointments: checked in vs confirmed (this
+					branch)
 				</div>
 			</div>
 		</div>

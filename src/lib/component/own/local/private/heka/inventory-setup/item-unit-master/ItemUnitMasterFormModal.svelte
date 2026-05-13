@@ -22,7 +22,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -56,7 +57,8 @@
 				units.find((u) => String(u.id) === purchaseUnitIdStr)?.name ??
 				'',
 			issueUnitName:
-				units.find((u) => String(u.id) === issueUnitIdStr)?.name ?? '',
+				units.find((u) => String(u.id) === issueUnitIdStr)?.name ??
+				'',
 			purchaseFactor: parsePositiveDecimal(purchaseFactorStr),
 			issueFactor: parsePositiveDecimal(issueFactorStr)
 		})

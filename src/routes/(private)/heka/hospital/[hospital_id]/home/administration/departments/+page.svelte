@@ -27,7 +27,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -48,47 +49,48 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const departmentColumns: MariTableColumn<StaffRegDepartmentRow>[] = [
-		{
-			id: 'id',
-			header: m.id(),
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false
-		},
-		{
-			id: 'name',
-			header: m.name(),
-			widthClass: 'w-56 min-w-[12rem]',
-			filterable: true,
-			field: 'name'
-		},
-		{
-			id: 'code',
-			header: m.code(),
-			widthClass: 'w-36 min-w-[8rem]',
-			filterable: true,
-			field: 'code'
-		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: (statusOptions.find((s) => s.id === row.statusId)
-								?.name ?? String(row.statusId))
-		}
-	];
+	const departmentColumns: MariTableColumn<StaffRegDepartmentRow>[] =
+		[
+			{
+				id: 'id',
+				header: m.id(),
+				widthClass: 'w-16 min-w-[4rem]',
+				filterable: false
+			},
+			{
+				id: 'name',
+				header: m.name(),
+				widthClass: 'w-56 min-w-[12rem]',
+				filterable: true,
+				field: 'name'
+			},
+			{
+				id: 'code',
+				header: m.code(),
+				widthClass: 'w-36 min-w-[8rem]',
+				filterable: true,
+				field: 'code'
+			},
+			{
+				id: 'status',
+				header: m.status(),
+				widthClass: 'w-40 min-w-[10rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: [
+					{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+					{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				],
+				defaultFilterValue: String(StatusEnum.ACTIVE),
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: (statusOptions.find((s) => s.id === row.statusId)
+									?.name ?? String(row.statusId))
+			}
+		];
 
 	async function fetchRows(_forceRefresh = false) {
 		if (!deptApi) return;
@@ -105,10 +107,7 @@
 			const code = tableFilters.code?.trim();
 			if (name) qs.set('name', name);
 			if (code) qs.set('code', code);
-			if (
-				parsedStatusId != null &&
-				Number.isFinite(parsedStatusId)
-			) {
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
 				qs.set('statusId', String(parsedStatusId));
 			}
 			const res = await fetch(`${deptApi}?${qs.toString()}`, {
@@ -214,7 +213,7 @@
 		<DaisyUiCardBody>
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
-					rows={rows}
+					{rows}
 					columns={departmentColumns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}

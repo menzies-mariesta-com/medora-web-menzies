@@ -16,8 +16,6 @@
 		cancel,
 		draftManualLine,
 		searchItemsFn,
-		searchManufacturersFn,
-		getManufacturerLabelForValue,
 		onPickItem,
 		onSaveAttempt,
 		lineItemMetricTiles = null,
@@ -25,8 +23,6 @@
 	}: DialogSlotProps & {
 		draftManualLine: any;
 		searchItemsFn: (q: string) => Promise<SearchOpt[]>;
-		searchManufacturersFn: (q: string) => Promise<SearchOpt[]>;
-		getManufacturerLabelForValue: (value: string) => Promise<string>;
 		onPickItem: (itemId: number) => void | Promise<void>;
 		onSaveAttempt: () => boolean;
 		lineItemMetricTiles?: LineItemMetricTile[] | null;
@@ -36,16 +32,18 @@
 
 	/** Global dialog spreads props once; a getter reads live parent state for metric tiles. */
 	const resolvedMetricTiles = $derived.by(() =>
-		getLineItemMetricTiles != null ? getLineItemMetricTiles() : lineItemMetricTiles
+		getLineItemMetricTiles != null
+			? getLineItemMetricTiles()
+			: lineItemMetricTiles
 	);
 
 	let trimmedOnce = false;
 	$effect(() => {
 		if (!draftManualLine || trimmedOnce) return;
-		trimInventoryDraftNumericFieldsInPlace(draftManualLine as Record<string, unknown>, [
-			'quantity',
-			'unitPrice'
-		]);
+		trimInventoryDraftNumericFieldsInPlace(
+			draftManualLine as Record<string, unknown>,
+			['quantity', 'unitPrice']
+		);
 		trimmedOnce = true;
 	});
 
@@ -65,9 +63,13 @@
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_pr_line_item_search()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
-			value={draftManualLine?.itemId ? String(draftManualLine.itemId) : ''}
+			value={draftManualLine?.itemId
+				? String(draftManualLine.itemId)
+				: ''}
 			searchFn={searchItemsFn}
 			onChange={async (v: string) => {
 				if (!v) return;
@@ -84,9 +86,13 @@
 	</div>
 
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_unit()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
-			value={draftManualLine?.itemUnitMasterId != null ? String(draftManualLine.itemUnitMasterId) : ''}
+			value={draftManualLine?.itemUnitMasterId != null
+				? String(draftManualLine.itemUnitMasterId)
+				: ''}
 			options={(draftManualLine?.iumList ?? []).map((u: any) => ({
 				label: u.conversionDisplay,
 				value: String(u.id)
@@ -101,11 +107,19 @@
 	</div>
 
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_quantity()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_quantity()}</DaisyUiLabel
+		>
 		<input
 			type="number"
-			class="d-input d-input-bordered w-full"
-			bind:value={draftManualLine.quantity}
+			class="d-input-bordered d-input w-full"
+			value={draftManualLine.quantity == null ||
+			draftManualLine.quantity === ''
+				? ''
+				: String(draftManualLine.quantity)}
+			oninput={(e) => {
+				draftManualLine.quantity = e.currentTarget.value;
+			}}
 			step="1"
 			min="0"
 			disabled={draftManualLine?.itemId == null || pickingItem}
@@ -114,38 +128,39 @@
 	</div>
 
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_po_line_unit_price()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_po_line_unit_price()}</DaisyUiLabel
+		>
 		<input
 			type="number"
-			class="d-input d-input-bordered w-full"
-			bind:value={draftManualLine.unitPrice}
+			class="d-input-bordered d-input w-full"
+			value={draftManualLine.unitPrice == null ||
+			draftManualLine.unitPrice === ''
+				? ''
+				: String(draftManualLine.unitPrice)}
+			oninput={(e) => {
+				draftManualLine.unitPrice = e.currentTarget.value;
+			}}
 			step="0.01"
 			min="0"
 			disabled={draftManualLine?.itemId == null || pickingItem}
 			aria-label={m.inv_po_line_unit_price()}
 		/>
 	</div>
-
-	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_manufacturer()}</DaisyUiLabel>
-		<DaisyUISearchSelect
-			value={draftManualLine.manufacturerId}
-			placeholder={m.inv_common_manufacturer()}
-			className="d-input w-full"
-			searchFn={searchManufacturersFn}
-			getLabelForValue={getManufacturerLabelForValue}
-			minSearchLength={0}
-			onChange={(v: string) => {
-				draftManualLine.manufacturerId = v;
-			}}
-		/>
-	</div>
 </div>
 
-<InventoryLineItemMetricTiles tiles={resolvedMetricTiles} draftLine={draftManualLine} />
+<InventoryLineItemMetricTiles
+	tiles={resolvedMetricTiles}
+	draftLine={draftManualLine}
+/>
 
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving || pickingItem} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving || pickingItem}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
 	<DaisyUiButton

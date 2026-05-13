@@ -29,9 +29,7 @@
 		const code = row.patient?.code?.trim() ?? '';
 		const name =
 			row.patientName?.trim() ??
-			(row.patient
-				? StringUtil.patientDisplayName(row.patient)
-				: '');
+			(row.patient ? StringUtil.patientDisplayName(row.patient) : '');
 		if (code && name) return `${code} – ${name}`;
 		return name || code || '–';
 	}

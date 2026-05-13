@@ -30,24 +30,34 @@ export const POST: RequestHandler = async (event) => {
 				})()
 			: null;
 
-	const stores = await listStoresForApprovalConfig(event, hospitalId, {
-		userGroupId: selectedUserGroupId
-	});
+	const stores = await listStoresForApprovalConfig(
+		event,
+		hospitalId,
+		{
+			userGroupId: selectedUserGroupId
+		}
+	);
 	if (!stores.some((s) => s.id === storeId)) {
 		throw redirect(303, hekaHospitalHome(hospitalId));
 	}
 
-	cookies.set(COOKIE_SELECTED_INVENTORY_FROM_STORE_ID, String(storeId), {
-		path: '/',
-		httpOnly: true,
-		sameSite: 'lax',
-		maxAge: 60 * 60 * 24 * 365
-	});
+	cookies.set(
+		COOKIE_SELECTED_INVENTORY_FROM_STORE_ID,
+		String(storeId),
+		{
+			path: '/',
+			httpOnly: true,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 365
+		}
+	);
 
 	const referer = request.headers.get('referer');
 	const redirectUrl =
 		referer &&
-		new URL(referer).pathname.startsWith(`/heka/hospital/${hospitalId}/home`)
+		new URL(referer).pathname.startsWith(
+			`/heka/hospital/${hospitalId}/home`
+		)
 			? referer
 			: hekaHospitalHome(hospitalId);
 	throw redirect(303, redirectUrl);

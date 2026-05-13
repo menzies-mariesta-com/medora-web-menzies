@@ -30,14 +30,28 @@
 
 {#if draftGrnFromPoLine}
 	<div class="mt-4">
-		<GrnLineReceiptFields draft={draftGrnFromPoLine} disableUnlessItem={false} open={true} />
+		<GrnLineReceiptFields
+			draft={draftGrnFromPoLine}
+			disableUnlessItem={false}
+			open={true}
+		/>
 	</div>
 {/if}
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
-	<DaisyUiButton type="button" className="d-btn d-btn-primary" disabled={saving} onClick={() => void handleSave()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn d-btn-primary"
+		disabled={saving}
+		onClick={() => void handleSave()}
+	>
 		{m.save()}
 	</DaisyUiButton>
 </div>

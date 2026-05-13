@@ -2,4 +2,4 @@
 	let { href, label }: { href: string; label: string } = $props();
 </script>
 
-<a class="d-link d-link-primary text-sm" {href}>{label}</a>
+<a class="d-link text-sm d-link-primary" {href}>{label}</a>

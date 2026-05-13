@@ -13,10 +13,22 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, eq, ilike, isNull, ne, or } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	eq,
+	ilike,
+	isNull,
+	ne,
+	or
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
-const purchaseUnitAlias = alias(table.unitTable, 'item_unit_purchase');
+const purchaseUnitAlias = alias(
+	table.unitTable,
+	'item_unit_purchase'
+);
 const issueUnitAlias = alias(table.unitTable, 'item_unit_issue');
 
 function hospitalScope(hospitalId: string) {
@@ -54,7 +66,8 @@ export async function getItemUnitMasterPaginated(
 	hospitalId: string,
 	params?: PaginationParams & { search?: string; statusId?: number }
 ): Promise<PaginatedResult<ItemUnitMasterListRow>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const parts = [hospitalScope(hospitalId), activeItemUnitRow()];
 	const search = params?.search?.trim();
 	if (search && search.length > 0) {
@@ -66,7 +79,9 @@ export async function getItemUnitMasterPaginated(
 		);
 	}
 	if (typeof params?.statusId === 'number') {
-		parts.push(eq(table.itemUnitMasterTable.statusId, params.statusId));
+		parts.push(
+			eq(table.itemUnitMasterTable.statusId, params.statusId)
+		);
 	}
 	const whereClause = and(...parts);
 
@@ -79,7 +94,10 @@ export async function getItemUnitMasterPaginated(
 		.from(table.itemUnitMasterTable)
 		.leftJoin(
 			purchaseUnitAlias,
-			eq(table.itemUnitMasterTable.purchaseUnitId, purchaseUnitAlias.id)
+			eq(
+				table.itemUnitMasterTable.purchaseUnitId,
+				purchaseUnitAlias.id
+			)
 		)
 		.leftJoin(
 			issueUnitAlias,
@@ -107,7 +125,10 @@ export async function getItemUnitMasterPaginated(
 		.from(table.itemUnitMasterTable)
 		.leftJoin(
 			purchaseUnitAlias,
-			eq(table.itemUnitMasterTable.purchaseUnitId, purchaseUnitAlias.id)
+			eq(
+				table.itemUnitMasterTable.purchaseUnitId,
+				purchaseUnitAlias.id
+			)
 		)
 		.leftJoin(
 			issueUnitAlias,
@@ -138,7 +159,10 @@ export async function getItemUnitMasterById(
 		.from(table.itemUnitMasterTable)
 		.leftJoin(
 			purchaseUnitAlias,
-			eq(table.itemUnitMasterTable.purchaseUnitId, purchaseUnitAlias.id)
+			eq(
+				table.itemUnitMasterTable.purchaseUnitId,
+				purchaseUnitAlias.id
+			)
 		)
 		.leftJoin(
 			issueUnitAlias,
@@ -161,18 +185,19 @@ export async function getItemUnitMasterById(
 
 export async function createItemUnitMaster(
 	hospitalId: string,
-	payload: Omit<
-		ItemUnitMasterSchemaInsert,
-		'hospitalId' | 'statusId'
-	>
+	payload: Omit<ItemUnitMasterSchemaInsert, 'hospitalId' | 'statusId'>
 ): Promise<ItemUnitMasterSchema> {
 	const p = Number(payload.purchaseConversionFactor);
 	const i = Number(payload.issueConversionFactor);
 	if (!Number.isFinite(p) || p <= 0) {
-		throw new Error('Purchase conversion factor must be a positive number.');
+		throw new Error(
+			'Purchase conversion factor must be a positive number.'
+		);
 	}
 	if (!Number.isFinite(i) || i <= 0) {
-		throw new Error('Issue conversion factor must be a positive number.');
+		throw new Error(
+			'Issue conversion factor must be a positive number.'
+		);
 	}
 
 	const [existing] = await ensureDb()
@@ -181,8 +206,14 @@ export async function createItemUnitMaster(
 		.where(
 			and(
 				hospitalScope(hospitalId),
-				eq(table.itemUnitMasterTable.purchaseUnitId, payload.purchaseUnitId),
-				eq(table.itemUnitMasterTable.issueUnitId, payload.issueUnitId),
+				eq(
+					table.itemUnitMasterTable.purchaseUnitId,
+					payload.purchaseUnitId
+				),
+				eq(
+					table.itemUnitMasterTable.issueUnitId,
+					payload.issueUnitId
+				),
 				activeItemUnitRow()
 			)
 		)
@@ -234,14 +265,18 @@ export async function updateItemUnitMaster(
 	if (rest.purchaseConversionFactor !== undefined) {
 		const p = Number(rest.purchaseConversionFactor);
 		if (!Number.isFinite(p) || p <= 0) {
-			throw new Error('Purchase conversion factor must be a positive number.');
+			throw new Error(
+				'Purchase conversion factor must be a positive number.'
+			);
 		}
 		nextPurchase = String(p);
 	}
 	if (rest.issueConversionFactor !== undefined) {
 		const i = Number(rest.issueConversionFactor);
 		if (!Number.isFinite(i) || i <= 0) {
-			throw new Error('Issue conversion factor must be a positive number.');
+			throw new Error(
+				'Issue conversion factor must be a positive number.'
+			);
 		}
 		nextIssue = String(i);
 	}
@@ -258,7 +293,10 @@ export async function updateItemUnitMaster(
 		.where(
 			and(
 				hospitalScope(hospitalId),
-				eq(table.itemUnitMasterTable.purchaseUnitId, nextPurchaseUnit),
+				eq(
+					table.itemUnitMasterTable.purchaseUnitId,
+					nextPurchaseUnit
+				),
 				eq(table.itemUnitMasterTable.issueUnitId, nextIssueUnit),
 				activeItemUnitRow(),
 				ne(table.itemUnitMasterTable.id, id)
@@ -308,8 +346,14 @@ export async function deleteItemUnitMaster(
 		.from(table.itemMasterItemUnitMasterTable)
 		.where(
 			and(
-				eq(table.itemMasterItemUnitMasterTable.hospitalId, hospitalId),
-				eq(table.itemMasterItemUnitMasterTable.itemUnitMasterId, input.id),
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					hospitalId
+				),
+				eq(
+					table.itemMasterItemUnitMasterTable.itemUnitMasterId,
+					input.id
+				),
 				isNull(table.itemMasterItemUnitMasterTable.deletedAt)
 			)
 		)

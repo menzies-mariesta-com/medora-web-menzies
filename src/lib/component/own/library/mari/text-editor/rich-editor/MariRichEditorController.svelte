@@ -310,7 +310,7 @@
 	<div class="flex items-center rounded border border-base-300">
 		<button
 			type="button"
-			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
+			class="min-h-8 min-w-8 px-2.5 py-1.5 transition-colors hover:bg-base-300"
 			onmousedown={(e) => e.preventDefault()}
 			onclick={(e) => {
 				e.preventDefault();
@@ -318,7 +318,7 @@
 				execute('fontSizeDecrease');
 			}}
 		>
-			<span class="text-base font-bold leading-none">−</span>
+			<span class="text-base leading-none font-bold">−</span>
 		</button>
 		<input
 			type="text"
@@ -336,7 +336,7 @@
 		/>
 		<button
 			type="button"
-			class="min-h-8 min-w-8 px-2.5 py-1.5 hover:bg-base-300 transition-colors"
+			class="min-h-8 min-w-8 px-2.5 py-1.5 transition-colors hover:bg-base-300"
 			onmousedown={(e) => e.preventDefault()}
 			onclick={(e) => {
 				e.preventDefault();
@@ -344,7 +344,7 @@
 				execute('fontSizeIncrease');
 			}}
 		>
-			<span class="text-base font-bold leading-none">+</span>
+			<span class="text-base leading-none font-bold">+</span>
 		</button>
 	</div>
 

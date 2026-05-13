@@ -24,9 +24,15 @@ export const GET: RequestHandler = async (event) => {
 	if (op === 'list') {
 		const scope = event.url.searchParams.get('scope') ?? 'my';
 		const page = Number(event.url.searchParams.get('page') ?? '1');
-		const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
-		const statusRaw = event.url.searchParams.get('status')?.trim() ?? '';
-		const status = statusRaw && isSupportTicketStatus(statusRaw) ? statusRaw : undefined;
+		const pageSize = Number(
+			event.url.searchParams.get('pageSize') ?? '10'
+		);
+		const statusRaw =
+			event.url.searchParams.get('status')?.trim() ?? '';
+		const status =
+			statusRaw && isSupportTicketStatus(statusRaw)
+				? statusRaw
+				: undefined;
 
 		if (scope === 'all') {
 			const data = await getAllSupportTicketsPaginated(event, {
@@ -55,19 +61,27 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const created = await createSupportTicket(event, {
 		subject: String(body.subject ?? ''),
 		description: String(body.description ?? ''),
 		priority: Number(body.priority ?? 2),
-		hospitalId: body.hospitalId != null ? String(body.hospitalId) : null,
-		contextUrl: body.contextUrl != null ? String(body.contextUrl) : null
+		hospitalId:
+			body.hospitalId != null ? String(body.hospitalId) : null,
+		contextUrl:
+			body.contextUrl != null ? String(body.contextUrl) : null
 	});
 	return json(created);
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const updated = await updateSupportTicket(event, {
 		id: Number(body.id ?? 0),
 		status:
@@ -89,4 +103,3 @@ export const PUT: RequestHandler = async (event) => {
 	});
 	return json(updated);
 };
-

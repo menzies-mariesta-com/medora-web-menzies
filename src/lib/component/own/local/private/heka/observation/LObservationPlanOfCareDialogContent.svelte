@@ -22,8 +22,12 @@
 			''
 	);
 	const visitId = $derived(ObservationPlanOfCareDialogState.visitId);
-	const patientId = $derived(ObservationPlanOfCareDialogState.patientId);
-	const planOfCareId = $derived(ObservationPlanOfCareDialogState.planOfCareId);
+	const patientId = $derived(
+		ObservationPlanOfCareDialogState.patientId
+	);
+	const planOfCareId = $derived(
+		ObservationPlanOfCareDialogState.planOfCareId
+	);
 	const isEdit = $derived(planOfCareId != null);
 
 	let note = $state('');
@@ -37,7 +41,10 @@
 		statusId: number | null;
 	};
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(

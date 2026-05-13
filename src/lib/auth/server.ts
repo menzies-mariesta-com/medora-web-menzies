@@ -20,7 +20,9 @@ import { authLogger } from '$lib/logger';
 const passwordHashUtil = new PasswordHashUtil();
 const baseURL = env.BETTER_AUTH_BASE_URL || 'http://localhost:5173';
 
-function normalizeOrigin(value: string | null | undefined): string | null {
+function normalizeOrigin(
+	value: string | null | undefined
+): string | null {
 	if (!value) return null;
 	try {
 		return new URL(value).origin;

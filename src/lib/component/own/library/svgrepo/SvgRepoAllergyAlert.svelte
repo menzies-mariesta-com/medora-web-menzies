@@ -4,7 +4,6 @@
 	}>();
 </script>
 
-
 <svg
 	viewBox="0 0 512 512"
 	id="Layer_1"
@@ -33,8 +32,22 @@
 		Scale down the content slightly so its visual footprint matches `LucideTriangleAlert`.
 	-->
 	<g transform="translate(256 256) scale(0.9) translate(-256 -256)">
-		<line class="st0" id="XMLID_5_" x1="148.5" x2="75" y1="363.5" y2="437" />
-		<line class="st0" id="XMLID_4_" x1="437" x2="363.5" y1="75" y2="148.5" />
+		<line
+			class="st0"
+			id="XMLID_5_"
+			x1="148.5"
+			x2="75"
+			y1="363.5"
+			y2="437"
+		/>
+		<line
+			class="st0"
+			id="XMLID_4_"
+			x1="437"
+			x2="363.5"
+			y1="75"
+			y2="148.5"
+		/>
 		<g id="XMLID_1_">
 			<path
 				class="st0"
@@ -55,12 +68,30 @@
 					id="XMLID_831_"
 					d="M185,258c16.3-31.9,56.4-8.9,75.9,9.6c22.6,21.5,49.3,30.3,67.9-4.4"
 				/>
-				<circle class="st1" id="XMLID_829_" cx="229.2" cy="295.5" r="9.6" />
-				<circle class="st1" id="XMLID_828_" cx="286.8" cy="353.1" r="9.6" />
+				<circle
+					class="st1"
+					id="XMLID_829_"
+					cx="229.2"
+					cy="295.5"
+					r="9.6"
+				/>
+				<circle
+					class="st1"
+					id="XMLID_828_"
+					cx="286.8"
+					cy="353.1"
+					r="9.6"
+				/>
 			</g>
 
-			<line class="st1" id="XMLID_145_" x1="191" x2="319" y1="80" y2="80" />
+			<line
+				class="st1"
+				id="XMLID_145_"
+				x1="191"
+				x2="319"
+				y1="80"
+				y2="80"
+			/>
 		</g>
 	</g>
 </svg>
-

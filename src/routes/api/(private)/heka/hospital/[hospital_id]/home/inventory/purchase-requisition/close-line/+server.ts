@@ -4,7 +4,10 @@ import { closePurchaseRequisitionLineRemaining } from '$lib/server/heka/inventor
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await closePurchaseRequisitionLineRemaining(event, {
 		hospitalId,
 		prId: String(body.prId ?? ''),
@@ -12,4 +15,3 @@ export const POST: RequestHandler = async (event) => {
 	});
 	return json(data);
 };
-

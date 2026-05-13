@@ -3,12 +3,15 @@ import * as users from '$lib/server/heka/auth/user-admin.server';
 
 export async function GET(event: RequestEvent) {
 	const roleId = Number(event.url.searchParams.get('roleId') ?? '');
-	if (!Number.isFinite(roleId)) throw error(400, 'roleId is required');
+	if (!Number.isFinite(roleId))
+		throw error(400, 'roleId is required');
 	if (event.url.searchParams.get('all') === '1') {
 		return json(await users.listUsersByRole(event, roleId));
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '20');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '20'
+	);
 	const name = event.url.searchParams.get('name') ?? undefined;
 	const email = event.url.searchParams.get('email') ?? undefined;
 	const statusIdRaw = event.url.searchParams.get('statusId');
@@ -49,7 +52,10 @@ export async function POST(event: RequestEvent) {
 }
 
 export async function PUT(event: RequestEvent) {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const id = String(body?.id ?? '');
 	if (!id) throw error(400, 'id is required');
 	const { id: _drop, ...rest } = body;

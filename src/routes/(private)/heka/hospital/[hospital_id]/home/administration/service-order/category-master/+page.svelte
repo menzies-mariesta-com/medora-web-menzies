@@ -22,9 +22,8 @@
 			: ''
 	);
 
-	let categoryResult = $state<PaginatedResult<CategoryListRow> | null>(
-		null
-	);
+	let categoryResult =
+		$state<PaginatedResult<CategoryListRow> | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
@@ -116,7 +115,9 @@
 			if (params.statusId != null)
 				qs.set('statusId', String(params.statusId));
 
-			categoryResult = await fetchJson<PaginatedResult<CategoryListRow>>(
+			categoryResult = await fetchJson<
+				PaginatedResult<CategoryListRow>
+			>(
 				`/api/heka/hospital/${hospitalId}/home/administration/service-order/category-master?${qs.toString()}`
 			);
 		} finally {

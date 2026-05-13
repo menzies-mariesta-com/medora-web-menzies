@@ -85,7 +85,11 @@ dialog.d-modal::backdrop {
 
 /* Primary ring for all dialogs */
 :root {
-	--dialog-primary-ring: color-mix(in oklch, var(--color-primary) 55%, transparent);
+	--dialog-primary-ring: color-mix(
+		in oklch,
+		var(--color-primary) 55%,
+		transparent
+	);
 }
 
 /* Content box: visible primary ring */
@@ -98,7 +102,8 @@ dialog.d-modal::backdrop {
 /* Overlay: subtle primary ring at viewport edge */
 dialog.d-modal,
 .d-modal {
-	outline: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+	outline: 1px solid
+		color-mix(in oklch, var(--color-primary) 25%, transparent);
 	outline-offset: -1px;
 }
 
@@ -109,7 +114,8 @@ dialog.d-modal,
 .clinical-visit-locked {
 	cursor: not-allowed;
 }
-.clinical-visit-locked :is(
+.clinical-visit-locked
+	:is(
 		button,
 		input:not([type='hidden']),
 		select,
@@ -122,7 +128,9 @@ dialog.d-modal,
 .clinical-visit-locked .d-join,
 .clinical-visit-locked .d-join :is(button, a),
 .clinical-visit-locked .mari-table-toolbar,
-.clinical-visit-locked .mari-table-toolbar :is(button, select, input, a),
+.clinical-visit-locked
+	.mari-table-toolbar
+	:is(button, select, input, a),
 .clinical-visit-locked .mari-table-header-filters,
 .clinical-visit-locked .mari-table-header-filters :is(select, input) {
 	pointer-events: auto;

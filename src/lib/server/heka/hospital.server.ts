@@ -50,8 +50,12 @@ export async function getHospitalsWithOwnerPaginated(
 ): Promise<PaginatedResult<HospitalWithOwner>> {
 	requireUser(event);
 
-	const effectiveOwnerId = resolveEffectiveOwnerId(event, params?.ownerId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const effectiveOwnerId = resolveEffectiveOwnerId(
+		event,
+		params?.ownerId
+	);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	const hasOwnerFilter =
 		effectiveOwnerId != null && effectiveOwnerId !== '';
@@ -60,8 +64,12 @@ export async function getHospitalsWithOwnerPaginated(
 		: undefined;
 
 	if (params?.statusId != null) {
-		const statusEq = eq(table.hospitalTable.statusId, params.statusId);
-		whereExpr = whereExpr != null ? and(whereExpr, statusEq) : statusEq;
+		const statusEq = eq(
+			table.hospitalTable.statusId,
+			params.statusId
+		);
+		whereExpr =
+			whereExpr != null ? and(whereExpr, statusEq) : statusEq;
 	}
 
 	const db = ensureDb();
@@ -79,9 +87,9 @@ export async function getHospitalsWithOwnerPaginated(
 					...baseOpts,
 					where: whereExpr
 				}) as Promise<HospitalWithOwner[]>)
-			: (db.query.hospitalTable.findMany(
-					baseOpts
-				) as Promise<HospitalWithOwner[]>),
+			: (db.query.hospitalTable.findMany(baseOpts) as Promise<
+					HospitalWithOwner[]
+				>),
 		whereExpr != null
 			? db
 					.select({ count: count() })
@@ -192,4 +200,3 @@ export async function deleteHospital(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.hospitalTable.id, id));
 }
-

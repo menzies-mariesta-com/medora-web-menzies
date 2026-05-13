@@ -55,9 +55,15 @@ export async function GET(event: RequestEvent) {
 			page,
 			pageSize,
 			search:
-				search != null && search.trim() !== '' ? search.trim() : undefined,
-			code: code != null && code.trim() !== '' ? code.trim() : undefined,
-			phone: phone != null && phone.trim() !== '' ? phone.trim() : undefined,
+				search != null && search.trim() !== ''
+					? search.trim()
+					: undefined,
+			code:
+				code != null && code.trim() !== '' ? code.trim() : undefined,
+			phone:
+				phone != null && phone.trim() !== ''
+					? phone.trim()
+					: undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined
@@ -68,7 +74,10 @@ export async function GET(event: RequestEvent) {
 export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const name = body.name != null ? String(body.name) : '';
 	const rawSt = body.statusId;
 	const statusId =
@@ -96,13 +105,17 @@ export async function POST(event: RequestEvent) {
 export async function PUT(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const id = Number(body.id);
 	if (!Number.isFinite(id)) throw error(400, 'id is required');
 	return json(
 		await sp.updateSupplier(hospitalId, {
 			id,
-			name: body.name === undefined ? undefined : String(body.name ?? ''),
+			name:
+				body.name === undefined ? undefined : String(body.name ?? ''),
 			code:
 				body.code === undefined
 					? undefined
@@ -116,9 +129,13 @@ export async function PUT(event: RequestEvent) {
 						? String(body.address)
 						: null,
 			countryId:
-				body.countryId === undefined ? undefined : optNum(body.countryId),
-			stateId: body.stateId === undefined ? undefined : optNum(body.stateId),
-			cityId: body.cityId === undefined ? undefined : optNum(body.cityId),
+				body.countryId === undefined
+					? undefined
+					: optNum(body.countryId),
+			stateId:
+				body.stateId === undefined ? undefined : optNum(body.stateId),
+			cityId:
+				body.cityId === undefined ? undefined : optNum(body.cityId),
 			postalCodeId:
 				body.postalCodeId === undefined
 					? undefined
@@ -159,7 +176,8 @@ export async function DELETE(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	await sp.deleteSupplier(hospitalId, { id });
 	return json({ ok: true });
 }

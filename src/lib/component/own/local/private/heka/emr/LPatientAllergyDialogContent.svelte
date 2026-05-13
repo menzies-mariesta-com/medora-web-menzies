@@ -86,7 +86,9 @@
 		return data;
 	}
 
-	async function emrPost(body: Record<string, unknown>): Promise<unknown> {
+	async function emrPost(
+		body: Record<string, unknown>
+	): Promise<unknown> {
 		const base = emrMutationBase();
 		if (!base) throw new Error('Hospital context missing.');
 		const r = await fetch(base, {
@@ -295,7 +297,8 @@
 
 			// When changing status to Active, apply No Known Allergy rules
 			if (newStatusId === StatusEnum.ACTIVE && patientId) {
-				const activeList = await fetchActivePatientAllergies(patientId);
+				const activeList =
+					await fetchActivePatientAllergies(patientId);
 				const othersActive = activeList.filter(
 					(r) => r.id !== patientAllergyId
 				);

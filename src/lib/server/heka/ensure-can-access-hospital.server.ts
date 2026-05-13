@@ -48,4 +48,3 @@ export async function ensureCanAccessHospital(
 
 	throw error(403, 'Forbidden');
 }
-

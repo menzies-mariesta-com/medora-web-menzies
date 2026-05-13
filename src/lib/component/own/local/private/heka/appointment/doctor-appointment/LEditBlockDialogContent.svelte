@@ -153,15 +153,13 @@
 			type="button"
 			class="d-btn d-btn-error"
 			onclick={() => handleConfirm()}
-			disabled={
-				isConfirming ||
+			disabled={isConfirming ||
 				!date.trim() ||
 				!startTime ||
 				!endTime ||
 				!remark.trim() ||
 				toHHmm(endTime) <= toHHmm(startTime) ||
-				isBlockStartInPast
-			}
+				isBlockStartInPast}
 		>
 			{#if isConfirming}
 				<span class="inline-flex items-center gap-2">

@@ -130,11 +130,12 @@ async function syncOpenOpBillingForVisit(opts: {
 	pendingRows: PendingDetailRow[];
 }> {
 	const db = ensureDb();
-	const pendingRows = await getPendingOpBillingServiceDetailRowsForVisit({
-		visitId: opts.visitId,
-		hospitalId: opts.hospitalId,
-		branchId: opts.branchId
-	});
+	const pendingRows =
+		await getPendingOpBillingServiceDetailRowsForVisit({
+			visitId: opts.visitId,
+			hospitalId: opts.hospitalId,
+			branchId: opts.branchId
+		});
 
 	let openBill = await consolidateOpenOpBillings({
 		visitId: opts.visitId,
@@ -191,13 +192,19 @@ async function syncOpenOpBillingForVisit(opts: {
 		(openBill.discountTypeId as number | null | undefined) ??
 		BillingDiscountTypeEnum.NONE;
 	const discountPercent = Number(openBill.discountPercent ?? 0) || 0;
-	const discountAmountExisting = Number(openBill.discountAmount ?? 0) || 0;
+	const discountAmountExisting =
+		Number(openBill.discountAmount ?? 0) || 0;
 
 	let discountAmount = 0;
 	if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
 		const pct = clamp(discountPercent, 0, 100);
-		discountAmount = Math.min(linesSubtotal, (linesSubtotal * pct) / 100);
-	} else if (discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT) {
+		discountAmount = Math.min(
+			linesSubtotal,
+			(linesSubtotal * pct) / 100
+		);
+	} else if (
+		discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT
+	) {
 		discountAmount = Math.min(
 			linesSubtotal,
 			Math.max(0, discountAmountExisting)
@@ -215,7 +222,9 @@ async function syncOpenOpBillingForVisit(opts: {
 			const serviceOrderDetailId =
 				r.lineSource === 'service_order_detail' ? r.id : null;
 			const medicationOrderLineId =
-				r.lineSource === 'medication_order_line' ? r.medicationOrderLineId : null;
+				r.lineSource === 'medication_order_line'
+					? r.medicationOrderLineId
+					: null;
 			return {
 				opBillingId: billingId,
 				lineIndex: idx + 1,
@@ -278,31 +287,54 @@ export const GET: RequestHandler = async (event) => {
 
 	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
 		return json(
-			{ error: 'Invalid visitId', items: [], visit: null, billing: null },
+			{
+				error: 'Invalid visitId',
+				items: [],
+				visit: null,
+				billing: null
+			},
 			{ status: 400 }
 		);
 	}
 
-	const visitRow = await ensureDb().query.patientVisitTable.findFirst({
-		where: (t, { eq }) => eq(t.id, visitId),
-		with: {
-			patient: { with: { title: true, gender: true } },
-			hospital: true,
-			branch: true,
-			doctor: {
-				with: {
-					title: true,
-					specialization: true,
-					staffDetail: true
+	const visitRow = await ensureDb().query.patientVisitTable.findFirst(
+		{
+			where: (t, { eq }) => eq(t.id, visitId),
+			with: {
+				patient: { with: { title: true, gender: true } },
+				hospital: true,
+				branch: true,
+				doctor: {
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
 				}
 			}
 		}
-	});
+	);
 	if (!visitRow) {
-		return json({ error: 'Visit not found', items: [], visit: null, billing: null }, { status: 404 });
+		return json(
+			{
+				error: 'Visit not found',
+				items: [],
+				visit: null,
+				billing: null
+			},
+			{ status: 404 }
+		);
 	}
 	if (String(visitRow.hospitalId ?? '') !== hospitalId) {
-		return json({ error: 'Visit mismatch', items: [], visit: null, billing: null }, { status: 400 });
+		return json(
+			{
+				error: 'Visit mismatch',
+				items: [],
+				visit: null,
+				billing: null
+			},
+			{ status: 400 }
+		);
 	}
 
 	const nowIso = new Date().toISOString();
@@ -363,21 +395,23 @@ export const POST: RequestHandler = async (event) => {
 		throw error(400, 'Invalid visitId');
 	}
 
-	const visitRow = await ensureDb().query.patientVisitTable.findFirst({
-		where: (t, { eq }) => eq(t.id, visitId),
-		with: {
-			patient: { with: { title: true, gender: true } },
-			hospital: true,
-			branch: true,
-			doctor: {
-				with: {
-					title: true,
-					specialization: true,
-					staffDetail: true
+	const visitRow = await ensureDb().query.patientVisitTable.findFirst(
+		{
+			where: (t, { eq }) => eq(t.id, visitId),
+			with: {
+				patient: { with: { title: true, gender: true } },
+				hospital: true,
+				branch: true,
+				doctor: {
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
 				}
 			}
 		}
-	});
+	);
 	if (!visitRow) throw error(404, 'Visit not found');
 	if (String(visitRow.hospitalId ?? '') !== hospitalId) {
 		throw error(400, 'Visit does not belong to hospital');
@@ -402,7 +436,10 @@ export const POST: RequestHandler = async (event) => {
 			!sync.billingRow ||
 			sync.pendingRows.length === 0
 		) {
-			throw error(400, 'There are no completed services pending billing for this visit.');
+			throw error(
+				400,
+				'There are no completed services pending billing for this visit.'
+			);
 		}
 
 		await ensureDb()
@@ -444,9 +481,9 @@ export const POST: RequestHandler = async (event) => {
 	const rawTypeId = Number(
 		discountBody.discountTypeId ?? BillingDiscountTypeEnum.NONE
 	);
-	const discountTypeId = (Object.values(BillingDiscountTypeEnum) as unknown[]).includes(
-		rawTypeId
-	)
+	const discountTypeId = (
+		Object.values(BillingDiscountTypeEnum) as unknown[]
+	).includes(rawTypeId)
 		? (rawTypeId as BillingDiscountTypeEnum)
 		: BillingDiscountTypeEnum.NONE;
 
@@ -457,8 +494,13 @@ export const POST: RequestHandler = async (event) => {
 	if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
 		const pctRaw = Number(discountBody.discountPercent ?? 0) || 0;
 		discountPercent = clamp(pctRaw, 0, 100);
-		discountAmount = Math.min(subtotal, (subtotal * discountPercent) / 100);
-	} else if (discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT) {
+		discountAmount = Math.min(
+			subtotal,
+			(subtotal * discountPercent) / 100
+		);
+	} else if (
+		discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT
+	) {
 		const amtRaw = Number(discountBody.discountAmount ?? 0) || 0;
 		discountAmount = Math.min(subtotal, Math.max(0, amtRaw));
 	} else {

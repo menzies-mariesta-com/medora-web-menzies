@@ -102,7 +102,7 @@ export const POST: RequestHandler = async (event) => {
 				subCategoryName:
 					l.subCategoryNameSnapshot ??
 					(l.subCategoryId != null
-						? subCategoryNameById.get(l.subCategoryId) ?? null
+						? (subCategoryNameById.get(l.subCategoryId) ?? null)
 						: null),
 				serviceName: l.serviceNameSnapshot ?? null,
 				orderNo: l.orderNoSnapshot ?? null
@@ -111,4 +111,3 @@ export const POST: RequestHandler = async (event) => {
 		{ status: 200 }
 	);
 };
-

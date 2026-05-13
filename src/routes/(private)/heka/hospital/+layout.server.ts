@@ -6,7 +6,11 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 
 const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
 
-export const load: LayoutServerLoad = async ({ locals, url, cookies }) => {
+export const load: LayoutServerLoad = async ({
+	locals,
+	url,
+	cookies
+}) => {
 	if (!locals.user) {
 		const redirectTo = `${url.pathname}${url.search}`;
 		throw redirect(
@@ -28,7 +32,8 @@ export const load: LayoutServerLoad = async ({ locals, url, cookies }) => {
 		// No assigned hospital: redirect to /heka/hospital so the page can show "No hospital assigned"
 	}
 	const sessionId = locals.session?.id ?? null;
-	const extendedFor = cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
+	const extendedFor =
+		cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
 	return {
 		sessionId,
 		sessionExpiresAt: locals.session?.expiresAt ?? null,

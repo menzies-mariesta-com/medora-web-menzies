@@ -26,7 +26,11 @@ export const GET: RequestHandler = async (event) => {
 			: isInvApprovalModule(moduleParam)
 				? moduleParam
 				: undefined;
-	if (moduleParam != null && moduleParam !== '' && module === undefined) {
+	if (
+		moduleParam != null &&
+		moduleParam !== '' &&
+		module === undefined
+	) {
 		return json({ error: 'Invalid module' }, { status: 400 });
 	}
 	if (!storeIdStr) {
@@ -43,7 +47,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const storeId = Number(body.storeId ?? 0);
 	const moduleRaw = String(body.module ?? '');
 	if (!isInvApprovalModule(moduleRaw)) {
@@ -69,7 +76,10 @@ export const POST: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteApprovalLevel(event, {
 		hospitalId,
 		levelId: Number(body.levelId ?? 0)

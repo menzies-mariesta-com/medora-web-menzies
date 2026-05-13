@@ -11,7 +11,16 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	ne,
+	or
+} from 'drizzle-orm';
 
 function hospitalScope(hospitalId: string) {
 	return eq(table.pharmacyGenericTable.hospitalId, hospitalId);
@@ -21,7 +30,8 @@ export async function getPharmacyGenericPaginated(
 	hospitalId: string,
 	params?: PaginationParams & { search?: string; code?: string }
 ): Promise<PaginatedResult<PharmacyGenericSchema>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const parts = [
 		hospitalScope(hospitalId),
 		ne(table.pharmacyGenericTable.statusId, StatusEnum.DELETED)
@@ -32,10 +42,14 @@ export async function getPharmacyGenericPaginated(
 	}
 	const codeOnly = params?.code?.trim();
 	if (codeOnly && codeOnly.length > 0) {
-		parts.push(ilike(table.pharmacyGenericTable.code, `%${codeOnly}%`));
+		parts.push(
+			ilike(table.pharmacyGenericTable.code, `%${codeOnly}%`)
+		);
 	}
 	if (typeof params?.statusId === 'number') {
-		parts.push(eq(table.pharmacyGenericTable.statusId, params.statusId));
+		parts.push(
+			eq(table.pharmacyGenericTable.statusId, params.statusId)
+		);
 	}
 	const whereClause = and(...parts);
 
@@ -171,7 +185,9 @@ export async function deletePharmacyGeneric(
 	hospitalId: string,
 	input: { id: number }
 ): Promise<void> {
-	const existing = await getPharmacyGenericById(hospitalId, { id: input.id });
+	const existing = await getPharmacyGenericById(hospitalId, {
+		id: input.id
+	});
 	if (!existing) throw new Error('Pharmacy generic not found.');
 
 	const [ref] = await ensureDb()

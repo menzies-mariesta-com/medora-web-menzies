@@ -44,7 +44,8 @@ export const VisitState = (() => {
 
 		/** Call when `getPatientVisitByIdWithRelations` (or equivalent) loads the current visit row. */
 		setClinicalSignedAtFromVisit(iso: string | null | undefined) {
-			const next = iso == null || String(iso).trim() === '' ? null : String(iso);
+			const next =
+				iso == null || String(iso).trim() === '' ? null : String(iso);
 			clinicalSignedAt = next;
 		},
 

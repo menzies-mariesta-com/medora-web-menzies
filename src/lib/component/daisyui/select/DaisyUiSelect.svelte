@@ -24,7 +24,7 @@
 	class="d-select {className}"
 	bind:value
 	{disabled}
-	id={id}
+	{id}
 	{name}
 	onchange={onChange}
 >

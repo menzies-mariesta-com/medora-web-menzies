@@ -68,7 +68,10 @@
 		isUrgent: boolean | null;
 	};
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(
@@ -77,7 +80,8 @@
 		);
 		url.searchParams.set('mode', mode);
 		if (params) {
-			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+			for (const [k, v] of Object.entries(params))
+				url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
 		if (!res.ok) throw new Error(await res.text());
@@ -174,7 +178,9 @@
 		return effectiveIds;
 	}
 
-	function serviceMatchesFilter(service: ServiceItemListRow): boolean {
+	function serviceMatchesFilter(
+		service: ServiceItemListRow
+	): boolean {
 		const subCategoryId = service.subCategoryId;
 		if (subCategoryId == null) return false;
 		const ids = serviceFilterSubCategoryIds;
@@ -302,9 +308,12 @@
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await apiGet<StaffWithRelations | null>('staff.get', {
-			id
-		});
+		const staff = await apiGet<StaffWithRelations | null>(
+			'staff.get',
+			{
+				id
+			}
+		);
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -506,9 +515,7 @@
 			toastSuccess(
 				toastService,
 				title,
-				isEdit
-					? m.toast_action_updated()
-					: m.toast_action_created()
+				isEdit ? m.toast_action_updated() : m.toast_action_created()
 			);
 			ObservationOrderLineDialogState.onSaved?.();
 			await confirm({ saved: true });

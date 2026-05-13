@@ -153,12 +153,11 @@
 	);
 
 	const availableStatusTaggingData = $derived.by(() => {
-		const doctorAppointmentStatusTaggings =
-			statusTaggingData.filter(
-				(s) =>
-					s.statusTaggingTypeId ===
-					DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID
-			);
+		const doctorAppointmentStatusTaggings = statusTaggingData.filter(
+			(s) =>
+				s.statusTaggingTypeId ===
+				DOCTOR_APPOINTMENT_STATUS_TAGGING_TYPE_ID
+		);
 		// For new patients (no linked account), hide "Check In" status
 		if (patientMode === 'new') {
 			return doctorAppointmentStatusTaggings.filter((s) => {
@@ -238,9 +237,12 @@
 	async function getPatientLabelForValue(
 		id: string
 	): Promise<string> {
-		const p = await apiGet<PatientWithRelations | null>('patient.byId', {
-			id
-		});
+		const p = await apiGet<PatientWithRelations | null>(
+			'patient.byId',
+			{
+				id
+			}
+		);
 		if (!p) return '';
 		return StringUtil.patientOptionDisplayName(p);
 	}
@@ -391,9 +393,12 @@
 			apiGet<ExternalReferListRow[]>('externalRefer.list'),
 			apiGet<StatusTaggingListRow[]>('statusTagging.list'),
 			appointmentId != null
-				? apiGet<AppointmentWithRelations | null>('appointment.byId', {
-						id: String(appointmentId)
-					})
+				? apiGet<AppointmentWithRelations | null>(
+						'appointment.byId',
+						{
+							id: String(appointmentId)
+						}
+					)
 				: Promise.resolve(null)
 		]);
 
@@ -403,9 +408,12 @@
 		const statusTaggingsRes = results[3];
 		const aptRes = results[4];
 
-		titleData = titlesRes?.status === 'fulfilled' ? titlesRes.value : [];
+		titleData =
+			titlesRes?.status === 'fulfilled' ? titlesRes.value : [];
 		referTypeData =
-			referTypesRes?.status === 'fulfilled' ? referTypesRes.value : [];
+			referTypesRes?.status === 'fulfilled'
+				? referTypesRes.value
+				: [];
 		externalReferData =
 			externalRefersRes?.status === 'fulfilled'
 				? externalRefersRes.value
@@ -616,7 +624,10 @@
 		// the time range is unchanged, so we allow the update without re-validating overlap.
 		// Overlap validation still applies when date/time are actually edited.
 		const overlap = await (() => {
-			const prevDate = String(latest?.appointmentDate ?? '').slice(0, 10);
+			const prevDate = String(latest?.appointmentDate ?? '').slice(
+				0,
+				10
+			);
 			const prevFrom = toHHmm(String(latest?.fromTime ?? ''));
 			const prevTo = toHHmm(String(latest?.toTime ?? ''));
 			const nextDateUnchanged = prevDate === manualAppointmentDate;
