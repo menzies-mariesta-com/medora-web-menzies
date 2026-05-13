@@ -38,9 +38,13 @@
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_pr_line_item_search()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
-			value={draftDirectLine?.itemId != null ? String(draftDirectLine.itemId) : ''}
+			value={draftDirectLine?.itemId != null
+				? String(draftDirectLine.itemId)
+				: ''}
 			searchFn={searchItemsFn}
 			onChange={(v: string) => {
 				if (v) void onPickItem(Number(v));
@@ -50,9 +54,13 @@
 		/>
 	</div>
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_unit()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
-			value={draftDirectLine?.itemUnitMasterId != null ? String(draftDirectLine.itemUnitMasterId) : ''}
+			value={draftDirectLine?.itemUnitMasterId != null
+				? String(draftDirectLine.itemUnitMasterId)
+				: ''}
 			options={(draftDirectLine?.iumList ?? []).map((u: any) => ({
 				label: u.conversionDisplay,
 				value: String(u.id)
@@ -66,14 +74,28 @@
 		/>
 	</div>
 	<div class="sm:col-span-2">
-		<GrnLineReceiptFields draft={draftDirectLine} disableUnlessItem={true} open={true} />
+		<GrnLineReceiptFields
+			draft={draftDirectLine}
+			disableUnlessItem={true}
+			open={true}
+		/>
 	</div>
 </div>
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
-	<DaisyUiButton type="button" className="d-btn d-btn-primary" disabled={saving} onClick={() => void handleSave()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn d-btn-primary"
+		disabled={saving}
+		onClick={() => void handleSave()}
+	>
 		{m.save()}
 	</DaisyUiButton>
 </div>

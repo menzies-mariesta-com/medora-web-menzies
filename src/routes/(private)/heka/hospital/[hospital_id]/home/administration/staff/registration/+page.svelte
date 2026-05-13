@@ -60,9 +60,8 @@
 	let bloodTypeData: PatientRegBloodTypeRow[] = $state([]);
 	let identityTypeData: PatientRegIdentityTypeRow[] = $state([]);
 	let userGroupData: StaffRegUserGroupRow[] = $state([]);
-	let staffEmploymentTypeData: StaffRegStaffEmploymentTypeRow[] = $state(
-		[]
-	);
+	let staffEmploymentTypeData: StaffRegStaffEmploymentTypeRow[] =
+		$state([]);
 	let stateData: PatientRegStateRow[] = $state([]);
 	let cityData: PatientRegCityRow[] = $state([]);
 	let postalCodeData: PatientRegPostalCodeRow[] = $state([]);
@@ -239,7 +238,10 @@
 		return `/api/heka/hospital/${hid}/home/administration/staff/registration?${usp.toString()}`;
 	}
 
-	async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
+	async function getJson<T>(
+		url: string,
+		init?: RequestInit
+	): Promise<T> {
 		const res = await fetch(url, {
 			credentials: 'include',
 			cache: 'no-store',
@@ -649,17 +651,21 @@
 					: null;
 				if (!staff) {
 					toastService.addToast(
-						toastLine(m.entity_staff(), m.toast_action_loaded_failed()),
+						toastLine(
+							m.entity_staff(),
+							m.toast_action_loaded_failed()
+						),
 						StatusColorEnum.ERROR
 					);
 					return;
 				}
 
 				const previousEmail =
-					(staff as { user?: { email?: string | null } }).user?.email ??
-					'';
+					(staff as { user?: { email?: string | null } }).user
+						?.email ?? '';
 				const previousName =
-					(staff as { user?: { name?: string | null } }).user?.name ?? '';
+					(staff as { user?: { name?: string | null } }).user?.name ??
+					'';
 				const userId =
 					(staff as { user?: { id?: string | null } }).user?.id ?? '';
 
@@ -698,15 +704,21 @@
 								phonePrimaryCountryId: selectedPhoneCountryId
 									? Number(selectedPhoneCountryId)
 									: undefined,
-								phoneSecondaryCountryId: selectedPhoneSecondaryCountryId
-									? Number(selectedPhoneSecondaryCountryId)
-									: undefined,
+								phoneSecondaryCountryId:
+									selectedPhoneSecondaryCountryId
+										? Number(selectedPhoneSecondaryCountryId)
+										: undefined,
 								dateOfBirth: selectedDateOfBirth || undefined,
 								address: selectedAddress || undefined,
 								remark: selectedRemark || undefined,
-								identityNo: selectedIdentityNumber.trim() || undefined,
-								titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
-								genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+								identityNo:
+									selectedIdentityNumber.trim() || undefined,
+								titleId: selectedTitleId
+									? Number(selectedTitleId)
+									: undefined,
+								genderId: selectedGenderId
+									? Number(selectedGenderId)
+									: undefined,
 								maritalStatusId: selectedMaritalStatusId
 									? Number(selectedMaritalStatusId)
 									: undefined,
@@ -716,9 +728,15 @@
 								staffTypeId: selectedStaffTypeId
 									? Number(selectedStaffTypeId)
 									: undefined,
-								countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
-								stateId: selectedStateId ? Number(selectedStateId) : undefined,
-								cityId: selectedCityId ? Number(selectedCityId) : undefined,
+								countryId: selectedCountryId
+									? Number(selectedCountryId)
+									: undefined,
+								stateId: selectedStateId
+									? Number(selectedStateId)
+									: undefined,
+								cityId: selectedCityId
+									? Number(selectedCityId)
+									: undefined,
 								postalCodeId: selectedPostalCodeId
 									? Number(selectedPostalCodeId)
 									: undefined,
@@ -747,8 +765,10 @@
 									? Number(selectedBloodTypeId)
 									: undefined,
 								licenseNo: selectedLicenseNo.trim() || undefined,
-								licenseExpiryDate: selectedLicenseExpiryDate || undefined,
-								signatureText: selectedSignatureText.trim() || undefined
+								licenseExpiryDate:
+									selectedLicenseExpiryDate || undefined,
+								signatureText:
+									selectedSignatureText.trim() || undefined
 							}
 						})
 					}
@@ -781,14 +801,17 @@
 						photoUploading = false;
 					}
 				} else if (removePhotoRequested) {
-					await getJson(staffRegistrationApiUrl(hid, { mode: 'update' }), {
-						method: 'POST',
-						headers: { 'content-type': 'application/json' },
-						body: JSON.stringify({
-							id: staffEditId,
-							staff: { photoUrl: null }
-						})
-					});
+					await getJson(
+						staffRegistrationApiUrl(hid, { mode: 'update' }),
+						{
+							method: 'POST',
+							headers: { 'content-type': 'application/json' },
+							body: JSON.stringify({
+								id: staffEditId,
+								staff: { photoUrl: null }
+							})
+						}
+					);
 				}
 
 				if (signatureFile) {
@@ -800,15 +823,18 @@
 					});
 					const data = await res.json().catch(() => ({}));
 					if (res.ok && data.url) {
-						await getJson(staffRegistrationApiUrl(hid, { mode: 'update' }), {
-							method: 'POST',
-							headers: { 'content-type': 'application/json' },
-							body: JSON.stringify({
-								id: staffEditId,
-								staff: {},
-								staffDetail: { signatureImageUrl: data.url }
-							})
-						});
+						await getJson(
+							staffRegistrationApiUrl(hid, { mode: 'update' }),
+							{
+								method: 'POST',
+								headers: { 'content-type': 'application/json' },
+								body: JSON.stringify({
+									id: staffEditId,
+									staff: {},
+									staffDetail: { signatureImageUrl: data.url }
+								})
+							}
+						);
 					}
 				}
 
@@ -879,8 +905,12 @@
 					address: selectedAddress || undefined,
 					remark: selectedRemark || undefined,
 					identityNo: selectedIdentityNumber.trim() || undefined,
-					titleId: selectedTitleId ? Number(selectedTitleId) : undefined,
-					genderId: selectedGenderId ? Number(selectedGenderId) : undefined,
+					titleId: selectedTitleId
+						? Number(selectedTitleId)
+						: undefined,
+					genderId: selectedGenderId
+						? Number(selectedGenderId)
+						: undefined,
 					maritalStatusId: selectedMaritalStatusId
 						? Number(selectedMaritalStatusId)
 						: undefined,
@@ -896,8 +926,12 @@
 					specializationId: selectedSpecializationId
 						? Number(selectedSpecializationId)
 						: undefined,
-					countryId: selectedCountryId ? Number(selectedCountryId) : undefined,
-					stateId: selectedStateId ? Number(selectedStateId) : undefined,
+					countryId: selectedCountryId
+						? Number(selectedCountryId)
+						: undefined,
+					stateId: selectedStateId
+						? Number(selectedStateId)
+						: undefined,
 					cityId: selectedCityId ? Number(selectedCityId) : undefined,
 					postalCodeId: selectedPostalCodeId
 						? Number(selectedPostalCodeId)
@@ -926,15 +960,21 @@
 
 			const staffId = result.staff.id;
 			if (usingDefaultEmailForCreate) {
-				await getJson(staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }), {
-					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({
-						id: staffId,
-						user: { id: result.userId, email: StringUtil.defaultNoEmail(staffId) },
-						staff: {}
-					})
-				});
+				await getJson(
+					staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }),
+					{
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							id: staffId,
+							user: {
+								id: result.userId,
+								email: StringUtil.defaultNoEmail(staffId)
+							},
+							staff: {}
+						})
+					}
+				);
 			}
 
 			// 2. Upload profile photo and update staff
@@ -957,7 +997,9 @@
 					}
 					if (data.url) {
 						await getJson(
-							staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }),
+							staffRegistrationApiUrl(urlHospitalId, {
+								mode: 'update'
+							}),
 							{
 								method: 'POST',
 								headers: { 'content-type': 'application/json' },
@@ -991,7 +1033,9 @@
 				}
 				if (data.url) {
 					await getJson(
-						staffRegistrationApiUrl(urlHospitalId, { mode: 'update' }),
+						staffRegistrationApiUrl(urlHospitalId, {
+							mode: 'update'
+						}),
 						{
 							method: 'POST',
 							headers: { 'content-type': 'application/json' },

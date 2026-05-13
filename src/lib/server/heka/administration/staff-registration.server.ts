@@ -121,7 +121,9 @@ function generateRandomPassword(length: number = 16): string {
 		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
 	let password = '';
 	for (let i = 0; i < length; i++) {
-		password += charset.charAt(Math.floor(Math.random() * charset.length));
+		password += charset.charAt(
+			Math.floor(Math.random() * charset.length)
+		);
 	}
 	return password;
 }
@@ -267,7 +269,8 @@ export async function getStaffRegistrationLookups(
 		staffTypeData,
 		departmentData,
 		branchData,
-		specializationData: specializationData as SpecializationWithRelations[],
+		specializationData:
+			specializationData as SpecializationWithRelations[],
 		genderData,
 		maritalStatusData,
 		countryData,
@@ -303,7 +306,9 @@ async function upsertStaffDetail(
 		education: input.patch.education || undefined,
 		designation: input.patch.designation || undefined,
 		licenseNo: input.patch.licenseNo || undefined,
-		licenseExpiryDate: toDateOnlyString(input.patch.licenseExpiryDate),
+		licenseExpiryDate: toDateOnlyString(
+			input.patch.licenseExpiryDate
+		),
 		signatureImageUrl:
 			input.patch.signatureImageUrl === null
 				? null
@@ -333,7 +338,11 @@ async function upsertStaffDetail(
 export async function createStaffRegistration(
 	event: RequestEvent,
 	input: CreateStaffRegistrationInput
-): Promise<{ staff: StaffSchema; userId: string; generatedPassword: string }> {
+): Promise<{
+	staff: StaffSchema;
+	userId: string;
+	generatedPassword: string;
+}> {
 	await ensureCanRegisterStaff(event, input.hospitalId);
 	const passwordHashUtil = new PasswordHashUtil();
 
@@ -345,10 +354,12 @@ export async function createStaffRegistration(
 		.from(table.userTable)
 		.where(eq(table.userTable.email, trimmedEmail))
 		.limit(1);
-	if (existing.length > 0) throw error(400, 'Staff with this email already exists');
+	if (existing.length > 0)
+		throw error(400, 'Staff with this email already exists');
 
 	const generatedPassword = generateRandomPassword(16);
-	const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+	const hashedPassword =
+		await passwordHashUtil.hash(generatedPassword);
 
 	const userId = uuidv7();
 
@@ -374,9 +385,12 @@ export async function createStaffRegistration(
 		});
 
 		const staffDetailId = input.staffDetail
-			? await upsertStaffDetail(tx as unknown as ReturnType<typeof ensureDb>, {
-					patch: input.staffDetail
-				})
+			? await upsertStaffDetail(
+					tx as unknown as ReturnType<typeof ensureDb>,
+					{
+						patch: input.staffDetail
+					}
+				)
 			: undefined;
 
 		const effectiveStatusId = input.statusId ?? StatusEnum.ACTIVE;
@@ -391,8 +405,10 @@ export async function createStaffRegistration(
 				lastName: input.lastName || undefined,
 				phonePrimary: input.phonePrimary || undefined,
 				phoneSecondary: input.phoneSecondary || undefined,
-				phonePrimaryCountryId: input.phonePrimaryCountryId ?? undefined,
-				phoneSecondaryCountryId: input.phoneSecondaryCountryId ?? undefined,
+				phonePrimaryCountryId:
+					input.phonePrimaryCountryId ?? undefined,
+				phoneSecondaryCountryId:
+					input.phoneSecondaryCountryId ?? undefined,
 				dateOfBirth: toDateOnlyString(input.dateOfBirth),
 				joinDate: toDateOnlyString(input.joinDate),
 				resignDate: toDateOnlyString(input.resignDate),
@@ -403,7 +419,8 @@ export async function createStaffRegistration(
 				titleId: input.titleId ?? undefined,
 				genderId: input.genderId ?? undefined,
 				maritalStatusId: input.maritalStatusId ?? undefined,
-				staffEmploymentTypeId: input.staffEmploymentTypeId ?? undefined,
+				staffEmploymentTypeId:
+					input.staffEmploymentTypeId ?? undefined,
 				staffTypeId: input.staffTypeId ?? undefined,
 				staffDetailId: staffDetailId ?? undefined,
 				countryId: input.countryId ?? undefined,
@@ -425,9 +442,9 @@ export async function createStaffRegistration(
 			});
 		}
 
-		const uniqueUserGroupIds = [...new Set(input.userGroupIds ?? [])].filter(
-			(n) => Number.isFinite(n)
-		);
+		const uniqueUserGroupIds = [
+			...new Set(input.userGroupIds ?? [])
+		].filter((n) => Number.isFinite(n));
 		if (uniqueUserGroupIds.length > 0) {
 			const groups = await tx
 				.select({ id: table.userGroupTable.id })
@@ -454,14 +471,19 @@ export async function createStaffRegistration(
 			hospitalId: input.hospitalId
 		});
 
-		const uniqueBranchIds = [...new Set(input.branchIds ?? [])].filter(Boolean);
+		const uniqueBranchIds = [
+			...new Set(input.branchIds ?? [])
+		].filter(Boolean);
 		if (uniqueBranchIds.length > 0) {
 			const branches = await tx
 				.select({ id: table.hospitalBranchTable.id })
 				.from(table.hospitalBranchTable)
 				.where(
 					and(
-						eq(table.hospitalBranchTable.hospitalId, input.hospitalId),
+						eq(
+							table.hospitalBranchTable.hospitalId,
+							input.hospitalId
+						),
 						inArray(table.hospitalBranchTable.id, uniqueBranchIds),
 						eq(table.hospitalBranchTable.statusId, StatusEnum.ACTIVE)
 					)
@@ -551,7 +573,9 @@ export async function updateStaffRegistration(
 
 		const staffPatch = { ...input.staff };
 		if (typeof staffPatch.dateOfBirth === 'string') {
-			staffPatch.dateOfBirth = toDateOnlyString(staffPatch.dateOfBirth);
+			staffPatch.dateOfBirth = toDateOnlyString(
+				staffPatch.dateOfBirth
+			);
 		}
 		if (typeof staffPatch.joinDate === 'string') {
 			staffPatch.joinDate = toDateOnlyString(staffPatch.joinDate);
@@ -566,7 +590,9 @@ export async function updateStaffRegistration(
 		await tx
 			.update(table.staffTable)
 			.set(staffPatch)
-			.where(and(eq(table.staffTable.id, input.id), hospitalCondition));
+			.where(
+				and(eq(table.staffTable.id, input.id), hospitalCondition)
+			);
 
 		// Department: replace all
 		if (input.departmentId !== undefined) {
@@ -591,7 +617,10 @@ export async function updateStaffRegistration(
 				.from(table.staffUserGroupTable)
 				.innerJoin(
 					table.userGroupTable,
-					eq(table.userGroupTable.id, table.staffUserGroupTable.userGroupId)
+					eq(
+						table.userGroupTable.id,
+						table.staffUserGroupTable.userGroupId
+					)
 				)
 				.where(
 					and(
@@ -600,14 +629,12 @@ export async function updateStaffRegistration(
 					)
 				);
 			if (existingSug.length > 0) {
-				await tx
-					.delete(table.staffUserGroupTable)
-					.where(
-						inArray(
-							table.staffUserGroupTable.id,
-							existingSug.map((r) => r.id)
-						)
-					);
+				await tx.delete(table.staffUserGroupTable).where(
+					inArray(
+						table.staffUserGroupTable.id,
+						existingSug.map((r) => r.id)
+					)
+				);
 			}
 			const uniqueIds = [...new Set(input.userGroupIds)].filter((n) =>
 				Number.isFinite(n)
@@ -641,7 +668,10 @@ export async function updateStaffRegistration(
 				.from(table.staffBranchTable)
 				.innerJoin(
 					table.hospitalBranchTable,
-					eq(table.hospitalBranchTable.id, table.staffBranchTable.branchId)
+					eq(
+						table.hospitalBranchTable.id,
+						table.staffBranchTable.branchId
+					)
 				)
 				.where(
 					and(
@@ -650,25 +680,31 @@ export async function updateStaffRegistration(
 					)
 				);
 			if (existingSb.length > 0) {
-				await tx
-					.delete(table.staffBranchTable)
-					.where(
-						inArray(
-							table.staffBranchTable.id,
-							existingSb.map((r) => r.id)
-						)
-					);
+				await tx.delete(table.staffBranchTable).where(
+					inArray(
+						table.staffBranchTable.id,
+						existingSb.map((r) => r.id)
+					)
+				);
 			}
-			const uniqueBranchIds = [...new Set(input.branchIds)].filter(Boolean);
+			const uniqueBranchIds = [...new Set(input.branchIds)].filter(
+				Boolean
+			);
 			if (uniqueBranchIds.length > 0) {
 				const branches = await tx
 					.select({ id: table.hospitalBranchTable.id })
 					.from(table.hospitalBranchTable)
 					.where(
 						and(
-							eq(table.hospitalBranchTable.hospitalId, input.hospitalId),
+							eq(
+								table.hospitalBranchTable.hospitalId,
+								input.hospitalId
+							),
 							inArray(table.hospitalBranchTable.id, uniqueBranchIds),
-							eq(table.hospitalBranchTable.statusId, StatusEnum.ACTIVE)
+							eq(
+								table.hospitalBranchTable.statusId,
+								StatusEnum.ACTIVE
+							)
 						)
 					);
 				if (branches.length > 0) {
@@ -685,4 +721,3 @@ export async function updateStaffRegistration(
 		return { ok: true, staffId: input.id, staffDetailId };
 	});
 }
-

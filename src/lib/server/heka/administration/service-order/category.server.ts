@@ -39,12 +39,19 @@ export async function getCategoriesPaginated(
 	}
 ): Promise<PaginatedResult<CategorySchema>> {
 	ensureAuthed(event);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
-	let whereExpr: SQL = ne(table.categoryTable.statusId, StatusEnum.DELETED);
+	let whereExpr: SQL = ne(
+		table.categoryTable.statusId,
+		StatusEnum.DELETED
+	);
 
 	if (params.id != null) {
-		whereExpr = and(whereExpr, eq(table.categoryTable.id, params.id))!;
+		whereExpr = and(
+			whereExpr,
+			eq(table.categoryTable.id, params.id)
+		)!;
 	}
 
 	const nameTerm = params.categoryName?.trim();
@@ -131,4 +138,3 @@ export async function deleteCategory(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.categoryTable.id, input.id));
 }
-

@@ -13,7 +13,9 @@ export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
+	const visitId = Number(
+		event.url.searchParams.get('visitId') ?? '0'
+	);
 	const mode = event.url.searchParams.get('mode') ?? 'bootstrap';
 
 	if (mode !== 'bootstrap') throw error(400, `Unknown mode: ${mode}`);
@@ -50,4 +52,3 @@ export async function POST(event: RequestEvent) {
 			throw error(400, `Unknown mode: ${mode}`);
 	}
 }
-

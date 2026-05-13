@@ -15,7 +15,9 @@ export const GET: RequestHandler = async (event) => {
 		return json(row);
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const prId = event.url.searchParams.get('prId') ?? undefined;
 	const storeIdRaw = event.url.searchParams.get('storeId');
 	const storeIdNum =
@@ -33,15 +35,21 @@ export const GET: RequestHandler = async (event) => {
 			: undefined;
 	const supplierIdStr = event.url.searchParams.get('supplierId');
 	const supplierIdNum =
-		supplierIdStr != null && supplierIdStr !== '' ? Number(supplierIdStr) : NaN;
+		supplierIdStr != null && supplierIdStr !== ''
+			? Number(supplierIdStr)
+			: NaN;
 	const supplierId =
-		Number.isFinite(supplierIdNum) && supplierIdNum > 0 ? supplierIdNum : undefined;
+		Number.isFinite(supplierIdNum) && supplierIdNum > 0
+			? supplierIdNum
+			: undefined;
 	const poNoRaw = event.url.searchParams.get('poNo');
 	const poNo =
 		poNoRaw != null && poNoRaw !== '' ? poNoRaw : undefined;
 	const totalAmountRaw = event.url.searchParams.get('totalAmount');
 	const totalAmount =
-		totalAmountRaw != null && totalAmountRaw !== '' ? totalAmountRaw : undefined;
+		totalAmountRaw != null && totalAmountRaw !== ''
+			? totalAmountRaw
+			: undefined;
 	const itemRaw = event.url.searchParams.get('item');
 	const item =
 		itemRaw != null && itemRaw !== '' ? itemRaw : undefined;
@@ -64,7 +72,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 	if (body.mode === 'direct' || body.source === 'direct') {
 		const data = await createPurchaseOrderDirect(event, {
@@ -75,11 +86,7 @@ export const POST: RequestHandler = async (event) => {
 				itemId: Number(l.itemId ?? 0),
 				quantity: String(l.quantity ?? '0'),
 				unitId: Number(l.unitId ?? 0),
-				unitPrice: String(l.unitPrice ?? '0'),
-				manufacturerId:
-					l.manufacturerId === undefined || l.manufacturerId === null
-						? null
-						: Number(l.manufacturerId)
+				unitPrice: String(l.unitPrice ?? '0')
 			}))
 		});
 		return json(data);
@@ -94,11 +101,7 @@ export const POST: RequestHandler = async (event) => {
 			itemId: Number(l.itemId ?? 0),
 			quantity: String(l.quantity ?? '0'),
 			unitId: Number(l.unitId ?? 0),
-			unitPrice: String(l.unitPrice ?? '0'),
-			manufacturerId:
-				l.manufacturerId === undefined || l.manufacturerId === null
-					? null
-					: Number(l.manufacturerId)
+			unitPrice: String(l.unitPrice ?? '0')
 		}))
 	});
 	return json(data);

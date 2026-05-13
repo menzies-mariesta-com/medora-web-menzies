@@ -38,7 +38,11 @@
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
-	type InventoryFromStoreForNav = { id: number; storeName: string | null };
+	type InventoryFromStoreForNav = {
+		id: number;
+		storeName: string | null;
+		isPurchaseRequisitable?: boolean;
+	};
 
 	let {
 		hospitalId = null,
@@ -267,7 +271,9 @@
 	}
 
 	// User group select: only for STAFF with multiple user groups (after logged in)
-	const staffUserGroupCount = $derived(staffUserGroupsForNav?.length ?? 0);
+	const staffUserGroupCount = $derived(
+		staffUserGroupsForNav?.length ?? 0
+	);
 	const showUserGroupSelect = $derived(
 		userRoleId === RoleEnum.STAFF && staffUserGroupCount >= 1
 	);
@@ -400,7 +406,11 @@
 						onChange={() => inventoryFromStoreForm?.requestSubmit()}
 					>
 						{#each inventoryFromStoresForNav as s, i (`ifs-${s.id}-${i}`)}
-							<option value={String(s.id)}>{s.storeName?.trim() ? s.storeName : `Store #${s.id}`}</option>
+							<option value={String(s.id)}
+								>{s.storeName?.trim()
+									? s.storeName
+									: `Store #${s.id}`}</option
+							>
 						{/each}
 					</DaisyUiSelect>
 				</form>
@@ -442,16 +452,14 @@
 						<span class="truncate text-left text-sm font-medium">
 							{staffDisplayName.trim()}
 						</span>
+					{:else if hasProfilePhoto}
+						<img
+							src={profilePhotoDisplayUrl}
+							alt="Profile"
+							class="size-full object-cover"
+						/>
 					{:else}
-						{#if hasProfilePhoto}
-							<img
-								src={profilePhotoDisplayUrl}
-								alt="Profile"
-								class="size-full object-cover"
-							/>
-						{:else}
-							<LucideUser />
-						{/if}
+						<LucideUser />
 					{/if}
 				</DaisyUiButton>
 			</DaisyUiTooltip>

@@ -14,7 +14,9 @@ export const GET: RequestHandler = async (event) => {
 	const pageSizeStr = event.url.searchParams.get('pageSize');
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : null;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: null;
 
 	// If caller sends pagination params, return paginated. Otherwise return full list (for dropdowns).
 	if (pageStr != null || pageSizeStr != null || statusIdStr != null) {
@@ -33,18 +35,26 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const created = await createDocumentType(event, {
 		hospitalId,
-		documentType: body.documentType != null ? String(body.documentType) : null,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+		documentType:
+			body.documentType != null ? String(body.documentType) : null,
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	});
 	return json(created);
 };
 
 export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const updated = await updateDocumentType(event, {
 		hospitalId,
 		id: Number(body.id),
@@ -66,8 +76,13 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
-	await deleteDocumentType(event, { hospitalId, id: Number(body.id) });
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
+	await deleteDocumentType(event, {
+		hospitalId,
+		id: Number(body.id)
+	});
 	return json({ ok: true });
 };
-

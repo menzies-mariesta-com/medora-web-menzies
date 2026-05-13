@@ -30,7 +30,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -54,12 +55,6 @@
 
 	const columns = $derived.by(
 		(): MariTableColumn<UnitMasterListRow>[] => [
-			{
-				id: 'id',
-				header: m.id(),
-				widthClass: 'w-16 min-w-[4rem]',
-				filterable: false
-			},
 			{
 				id: 'name',
 				header: m.unit_master_name(),
@@ -86,8 +81,14 @@
 				filterable: true,
 				filterType: 'select',
 				filterOptions: [
-					{ label: m.active_label(), value: String(StatusEnum.ACTIVE) },
-					{ label: m.inactive_label(), value: String(StatusEnum.INACTIVE) }
+					{
+						label: m.active_label(),
+						value: String(StatusEnum.ACTIVE)
+					},
+					{
+						label: m.inactive_label(),
+						value: String(StatusEnum.INACTIVE)
+					}
 				],
 				defaultFilterValue: String(StatusEnum.ACTIVE),
 				format: (_value, row) =>
@@ -116,17 +117,19 @@
 			const search = tableFilters.name?.trim();
 			if (search) parts.push(`search=${encodeURIComponent(search)}`);
 			const unitTypeId =
-				tableFilters.unitTypeName != null && tableFilters.unitTypeName !== ''
+				tableFilters.unitTypeName != null &&
+				tableFilters.unitTypeName !== ''
 					? Number(tableFilters.unitTypeName)
 					: undefined;
 			if (unitTypeId != null && Number.isFinite(unitTypeId)) {
-				parts.push(`unitTypeId=${encodeURIComponent(String(unitTypeId))}`);
+				parts.push(
+					`unitTypeId=${encodeURIComponent(String(unitTypeId))}`
+				);
 			}
-			if (
-				parsedStatusId != null &&
-				Number.isFinite(parsedStatusId)
-			) {
-				parts.push(`statusId=${encodeURIComponent(String(parsedStatusId))}`);
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				parts.push(
+					`statusId=${encodeURIComponent(String(parsedStatusId))}`
+				);
 			}
 			const res = await fetch(`${apiBase}?${parts.join('&')}`, {
 				credentials: 'include',
@@ -241,7 +244,7 @@
 		<DaisyUiCardBody>
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
-					rows={rows}
+					{rows}
 					{columns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}

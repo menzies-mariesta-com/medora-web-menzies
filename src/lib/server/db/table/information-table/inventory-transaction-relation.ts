@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
 	itemMasterTable,
+	itemUnitMasterTable,
 	hospitalTable,
 	staffTable,
 	storeTable,
@@ -12,6 +13,10 @@ import {
 	goodsReceiptNoteTable,
 	invApprovalAssigneeTable,
 	invApprovalLevelTable,
+	invItemReorderLevelTable,
+	invStockAlertEmailSentTable,
+	invStockAlertRecipientTable,
+	invStockAlertSettingTable,
 	invDepartmentConsumptionLineTable,
 	invDepartmentConsumptionTable,
 	invStockIssueLineTable,
@@ -50,6 +55,74 @@ export const invApprovalAssigneeTableRelations = relations(
 		}),
 		staff: one(staffTable, {
 			fields: [invApprovalAssigneeTable.staffId],
+			references: [staffTable.id]
+		})
+	})
+);
+
+export const invItemReorderLevelTableRelations = relations(
+	invItemReorderLevelTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invItemReorderLevelTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		store: one(storeTable, {
+			fields: [invItemReorderLevelTable.storeId],
+			references: [storeTable.id]
+		}),
+		item: one(itemMasterTable, {
+			fields: [invItemReorderLevelTable.itemId],
+			references: [itemMasterTable.id]
+		}),
+		itemUnitMaster: one(itemUnitMasterTable, {
+			fields: [invItemReorderLevelTable.itemUnitMasterId],
+			references: [itemUnitMasterTable.id]
+		})
+	})
+);
+
+export const invStockAlertSettingTableRelations = relations(
+	invStockAlertSettingTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invStockAlertSettingTable.hospitalId],
+			references: [hospitalTable.id]
+		})
+	})
+);
+
+export const invStockAlertRecipientTableRelations = relations(
+	invStockAlertRecipientTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invStockAlertRecipientTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		store: one(storeTable, {
+			fields: [invStockAlertRecipientTable.storeId],
+			references: [storeTable.id]
+		}),
+		staff: one(staffTable, {
+			fields: [invStockAlertRecipientTable.staffId],
+			references: [staffTable.id]
+		})
+	})
+);
+
+export const invStockAlertEmailSentTableRelations = relations(
+	invStockAlertEmailSentTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invStockAlertEmailSentTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		store: one(storeTable, {
+			fields: [invStockAlertEmailSentTable.storeId],
+			references: [storeTable.id]
+		}),
+		staff: one(staffTable, {
+			fields: [invStockAlertEmailSentTable.recipientStaffId],
 			references: [staffTable.id]
 		})
 	})
@@ -117,36 +190,42 @@ export const purchaseOrderLineTableRelations = relations(
 	})
 );
 
-export const itemBatchTableRelations = relations(itemBatchTable, ({ one, many }) => ({
-	hospital: one(hospitalTable, {
-		fields: [itemBatchTable.hospitalId],
-		references: [hospitalTable.id]
-	}),
-	item: one(itemMasterTable, {
-		fields: [itemBatchTable.itemId],
-		references: [itemMasterTable.id]
-	}),
-	stocks: many(invStockTable)
-}));
-
-export const invStockTableRelations = relations(invStockTable, ({ one }) => ({
-	hospital: one(hospitalTable, {
-		fields: [invStockTable.hospitalId],
-		references: [hospitalTable.id]
-	}),
-	store: one(storeTable, {
-		fields: [invStockTable.storeId],
-		references: [storeTable.id]
-	}),
-	item: one(itemMasterTable, {
-		fields: [invStockTable.itemId],
-		references: [itemMasterTable.id]
-	}),
-	batch: one(itemBatchTable, {
-		fields: [invStockTable.batchId],
-		references: [itemBatchTable.id]
+export const itemBatchTableRelations = relations(
+	itemBatchTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [itemBatchTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		item: one(itemMasterTable, {
+			fields: [itemBatchTable.itemId],
+			references: [itemMasterTable.id]
+		}),
+		stocks: many(invStockTable)
 	})
-}));
+);
+
+export const invStockTableRelations = relations(
+	invStockTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invStockTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		store: one(storeTable, {
+			fields: [invStockTable.storeId],
+			references: [storeTable.id]
+		}),
+		item: one(itemMasterTable, {
+			fields: [invStockTable.itemId],
+			references: [itemMasterTable.id]
+		}),
+		batch: one(itemBatchTable, {
+			fields: [invStockTable.batchId],
+			references: [itemBatchTable.id]
+		})
+	})
+);
 
 export const goodsReceiptNoteTableRelations = relations(
 	goodsReceiptNoteTable,

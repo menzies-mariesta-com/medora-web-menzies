@@ -53,7 +53,12 @@
 		if (isBlockStartInPast) return;
 		isConfirming = true;
 		try {
-			await confirm({ date: d, startTime: from, endTime: to, remark: r });
+			await confirm({
+				date: d,
+				startTime: from,
+				endTime: to,
+				remark: r
+			});
 		} finally {
 			isConfirming = false;
 		}

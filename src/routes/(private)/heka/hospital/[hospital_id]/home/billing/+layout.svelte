@@ -13,7 +13,10 @@
 	// Keep VisitState <-> URL (?visitId=) in sync, same as EMR modules.
 	$effect(() => {
 		const urlVisitId = page.url.searchParams.get('visitId') ?? '';
-		if (urlVisitId && urlVisitId !== untrack(() => VisitState.visitId)) {
+		if (
+			urlVisitId &&
+			urlVisitId !== untrack(() => VisitState.visitId)
+		) {
 			VisitState.visitId = urlVisitId;
 		} else if (!urlVisitId && VisitState.visitId) {
 			const vid = VisitState.visitId;
@@ -29,13 +32,18 @@
 
 	const selectedVisitId = $derived(VisitState.visitId);
 
-	function handleVisitSelected(data: { visitId: number; patientName: string }) {
+	function handleVisitSelected(data: {
+		visitId: number;
+		patientName: string;
+	}) {
 		VisitState.select(data);
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
 		const url =
-			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+			search.toString().length > 0
+				? `${base}?${search.toString()}`
+				: base;
 		routerUtil.replaceRoute(url);
 	}
 
@@ -45,7 +53,9 @@
 		search.delete('visitId');
 		const base = page.url.pathname;
 		const url =
-			search.toString().length > 0 ? `${base}?${search.toString()}` : base;
+			search.toString().length > 0
+				? `${base}?${search.toString()}`
+				: base;
 		routerUtil.replaceRoute(url);
 	}
 </script>
@@ -76,4 +86,3 @@
 		padding: 0;
 	}
 </style>
-

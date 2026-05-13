@@ -19,25 +19,32 @@ export async function getVisitDashboardPayload(
 		throw error(400, 'visitId is required');
 	}
 
-	const selectedVisit = (await ensureDb().query.patientVisitTable.findFirst({
-		where: (t, { and, eq, ne }) =>
-			and(
-				eq(t.id, input.visitId),
-				eq(t.hospitalId, input.hospitalId),
-				ne(t.statusId, StatusEnum.DELETED)
-			),
-		with: {
-			patient: { with: { title: true, gender: true } },
-			status: true,
-			visitType: true,
-			hospital: true,
-			branch: true,
-			doctor: { with: { title: true, specialization: true, staffDetail: true } },
-			appointment: true,
-			diagnoses: true,
-			patientDocuments: true
-		}
-	})) as VisitDashboardPayload['selectedVisit'] | null;
+	const selectedVisit =
+		(await ensureDb().query.patientVisitTable.findFirst({
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.id, input.visitId),
+					eq(t.hospitalId, input.hospitalId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			with: {
+				patient: { with: { title: true, gender: true } },
+				status: true,
+				visitType: true,
+				hospital: true,
+				branch: true,
+				doctor: {
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
+				},
+				appointment: true,
+				diagnoses: true,
+				patientDocuments: true
+			}
+		})) as VisitDashboardPayload['selectedVisit'] | null;
 
 	if (!selectedVisit) {
 		return { selectedVisit: null, patientVisits: [], orderLines: [] };
@@ -48,26 +55,33 @@ export async function getVisitDashboardPayload(
 		return { selectedVisit, patientVisits: [], orderLines: [] };
 	}
 
-	const patientVisits = (await ensureDb().query.patientVisitTable.findMany({
-		where: (t, { and, eq, ne }) =>
-			and(
-				eq(t.patientId, patientId),
-				eq(t.hospitalId, input.hospitalId),
-				ne(t.statusId, StatusEnum.DELETED)
-			),
-		with: {
-			patient: { with: { title: true, gender: true } },
-			status: true,
-			visitType: true,
-			hospital: true,
-			branch: true,
-			doctor: { with: { title: true, specialization: true, staffDetail: true } },
-			appointment: true,
-			diagnoses: true,
-			patientDocuments: true
-		},
-		orderBy: (t) => desc(t.createdAt)
-	})) as VisitDashboardPayload['patientVisits'];
+	const patientVisits =
+		(await ensureDb().query.patientVisitTable.findMany({
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.patientId, patientId),
+					eq(t.hospitalId, input.hospitalId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			with: {
+				patient: { with: { title: true, gender: true } },
+				status: true,
+				visitType: true,
+				hospital: true,
+				branch: true,
+				doctor: {
+					with: {
+						title: true,
+						specialization: true,
+						staffDetail: true
+					}
+				},
+				appointment: true,
+				diagnoses: true,
+				patientDocuments: true
+			},
+			orderBy: (t) => desc(t.createdAt)
+		})) as VisitDashboardPayload['patientVisits'];
 
 	const orderLines = await getOrderLinesForVisit(input.visitId);
 
@@ -106,4 +120,3 @@ async function getOrderLinesForVisit(
 	out.sort((a, b) => b.id - a.id);
 	return out;
 }
-

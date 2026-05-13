@@ -8,7 +8,9 @@
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		InvApprovalActionEnum,
@@ -28,13 +30,15 @@
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
-		(data as { selectedInventoryFromStoreId?: number | null }).selectedInventoryFromStoreId ??
-			null
+		(data as { selectedInventoryFromStoreId?: number | null })
+			.selectedInventoryFromStoreId ?? null
 	);
 
 	type Row = {
@@ -61,9 +65,12 @@
 	let loading = $state(false);
 	let total = $state(0);
 	let currentPage = $state(1);
-	let pageSizeStr = $state(String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE));
+	let pageSizeStr = $state(
+		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
+	);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 	let actId = $state<string | null>(null);
 	let cancelConsumptionId = $state<string | null>(null);
@@ -80,12 +87,17 @@
 		},
 		{
 			label: m.inv_dc_status_cancelled(),
-			value: String(InvDepartmentConsumptionStatusTaggingEnum.CANCELLED)
+			value: String(
+				InvDepartmentConsumptionStatusTaggingEnum.CANCELLED
+			)
 		}
 	]);
 
 	const newPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/department-consumption/new' as const)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/department-consumption/new' as const
+		)
 	);
 
 	function detailHref(id: string) {
@@ -104,7 +116,7 @@
 			id: 'store',
 			header: m.inv_dc_store(),
 			field: 'storeId',
-			filterable: true,
+			filterable: false,
 			format: (_v, r) => r.storeName ?? '—'
 		},
 		{
@@ -140,10 +152,6 @@
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('storeId', String(selectedInventoryFromStoreId));
 			}
-			const storeIdFilter = tableFilters.storeId?.trim() ?? '';
-			if (storeIdFilter !== '') {
-				ps.set('storeId', storeIdFilter);
-			}
 			const statusId = tableFilters.statusTaggingId?.trim() ?? '';
 			if (statusId !== '') ps.set('statusTaggingId', statusId);
 			const cno = tableFilters.consumptionNo?.trim();
@@ -157,7 +165,10 @@
 			list = j.data ?? [];
 			total = j.total ?? 0;
 		} catch (e) {
-			toast.addErrorToast(m.inv_page_department_consumption_title(), e);
+			toast.addErrorToast(
+				m.inv_page_department_consumption_title(),
+				e
+			);
 		} finally {
 			loading = false;
 		}
@@ -220,7 +231,10 @@
 			{
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ consumptionId: cancelConsumptionId, reason })
+				body: JSON.stringify({
+					consumptionId: cancelConsumptionId,
+					reason
+				})
 			}
 		);
 		if (!res.ok) {
@@ -254,7 +268,9 @@
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 	<div>
-		<h1 class="text-xl font-semibold">{m.inv_page_department_consumption_title()}</h1>
+		<h1 class="text-xl font-semibold">
+			{m.inv_page_department_consumption_title()}
+		</h1>
 	</div>
 	<div class="flex items-center gap-2">
 		<DaisyUiButton
@@ -289,10 +305,14 @@
 				void loadList();
 			}}
 			on:filtersChange={(event) => {
-				if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+				if (filterDebounceTimeout)
+					clearTimeout(filterDebounceTimeout);
 				tableFilters = event.detail.filters;
 				currentPage = 1;
-				filterDebounceTimeout = setTimeout(() => void loadList(), 350);
+				filterDebounceTimeout = setTimeout(
+					() => void loadList(),
+					350
+				);
 			}}
 			rowTooltipGetter={(row) =>
 				StringUtil.inventoryAuditRowTooltip(
@@ -311,7 +331,10 @@
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}
 				<div class="flex flex-row items-center justify-center gap-1">
-					<DaisyUiTooltip tooltipText={m.inv_common_view()} className="d-tooltip-ghost d-tooltip-right">
+					<DaisyUiTooltip
+						tooltipText={m.inv_common_view()}
+						className="d-tooltip-ghost d-tooltip-right"
+					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
 							disabled={loading || actId != null}
@@ -330,7 +353,8 @@
 								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
 								disabled={actId != null}
 								loading={actId === r.id}
-								onClick={() => void approveRow(r, InvApprovalActionEnum.APPROVED)}
+								onClick={() =>
+									void approveRow(r, InvApprovalActionEnum.APPROVED)}
 							>
 								<LucideCircleCheck className="size-5" />
 							</DaisyUiButton>
@@ -343,7 +367,8 @@
 								className="d-btn-sm d-btn-ghost d-btn-square text-error"
 								disabled={actId != null}
 								loading={actId === r.id}
-								onClick={() => void approveRow(r, InvApprovalActionEnum.REJECTED)}
+								onClick={() =>
+									void approveRow(r, InvApprovalActionEnum.REJECTED)}
 							>
 								<LucideBan className="size-5" />
 							</DaisyUiButton>

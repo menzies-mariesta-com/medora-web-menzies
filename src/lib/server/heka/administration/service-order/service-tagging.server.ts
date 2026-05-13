@@ -33,13 +33,18 @@ async function ensureBranchBelongsToHospital(
 	if (!row) throw error(400, 'Invalid branch for this hospital');
 }
 
-async function hospitalIdForTaggingId(id: number): Promise<string | null> {
+async function hospitalIdForTaggingId(
+	id: number
+): Promise<string | null> {
 	const [row] = await ensureDb()
 		.select({ hospitalId: table.hospitalBranchTable.hospitalId })
 		.from(table.serviceTaggingTable)
 		.innerJoin(
 			table.hospitalBranchTable,
-			eq(table.hospitalBranchTable.id, table.serviceTaggingTable.branchId)
+			eq(
+				table.hospitalBranchTable.id,
+				table.serviceTaggingTable.branchId
+			)
 		)
 		.where(eq(table.serviceTaggingTable.id, id))
 		.limit(1);
@@ -61,10 +66,16 @@ export async function getServiceTaggings(
 ): Promise<ServiceTaggingSchema[]> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 	if (input.branchId) {
-		await ensureBranchBelongsToHospital(input.hospitalId, input.branchId);
+		await ensureBranchBelongsToHospital(
+			input.hospitalId,
+			input.branchId
+		);
 	}
 
-	let whereExpr: SQL = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
+	let whereExpr: SQL = ne(
+		table.serviceTaggingTable.statusId,
+		StatusEnum.DELETED
+	);
 
 	if (input.branchId) {
 		whereExpr = and(
@@ -86,12 +97,18 @@ export async function getServiceTaggings(
 		)!;
 	}
 	if (input.id != null) {
-		whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, input.id))!;
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceTaggingTable.id, input.id)
+		)!;
 	}
 	if (input.serviceAmount != null) {
 		whereExpr = and(
 			whereExpr,
-			eq(table.serviceTaggingTable.serviceAmount, String(input.serviceAmount))
+			eq(
+				table.serviceTaggingTable.serviceAmount,
+				String(input.serviceAmount)
+			)
 		)!;
 	}
 	if (input.serviceTaxAmount != null) {
@@ -131,12 +148,19 @@ export async function getServiceTaggingsPaginated(
 ): Promise<PaginatedResult<ServiceTaggingSchema>> {
 	await ensureCanAccessHospital(event, params.hospitalId);
 	if (params.branchId) {
-		await ensureBranchBelongsToHospital(params.hospitalId, params.branchId);
+		await ensureBranchBelongsToHospital(
+			params.hospitalId,
+			params.branchId
+		);
 	}
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
-	let whereExpr: SQL = ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED);
+	let whereExpr: SQL = ne(
+		table.serviceTaggingTable.statusId,
+		StatusEnum.DELETED
+	);
 
 	if (params.branchId) {
 		whereExpr = and(
@@ -160,12 +184,18 @@ export async function getServiceTaggingsPaginated(
 		)!;
 	}
 	if (params.id != null) {
-		whereExpr = and(whereExpr, eq(table.serviceTaggingTable.id, params.id))!;
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceTaggingTable.id, params.id)
+		)!;
 	}
 	if (params.serviceAmount != null) {
 		whereExpr = and(
 			whereExpr,
-			eq(table.serviceTaggingTable.serviceAmount, String(params.serviceAmount))
+			eq(
+				table.serviceTaggingTable.serviceAmount,
+				String(params.serviceAmount)
+			)
 		)!;
 	}
 	if (params.serviceTaxAmount != null) {
@@ -213,7 +243,10 @@ export async function createServiceTagging(
 	input: ServiceTaggingSchemaInsert & { hospitalId: string }
 ): Promise<ServiceTaggingSchema> {
 	await ensureCanAccessHospital(event, input.hospitalId);
-	await ensureBranchBelongsToHospital(input.hospitalId, input.branchId);
+	await ensureBranchBelongsToHospital(
+		input.hospitalId,
+		input.branchId
+	);
 
 	const { hospitalId: _hid, ...payload } = input;
 	const [row] = await ensureDb()
@@ -226,7 +259,10 @@ export async function createServiceTagging(
 
 export async function updateServiceTagging(
 	event: RequestEvent,
-	input: ServiceTaggingSchemaUpdate & { id: number; hospitalId: string }
+	input: ServiceTaggingSchemaUpdate & {
+		id: number;
+		hospitalId: string;
+	}
 ): Promise<ServiceTaggingSchema> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 	const hid = await hospitalIdForTaggingId(input.id);
@@ -261,4 +297,3 @@ export async function deleteServiceTagging(
 		})
 		.where(eq(table.serviceTaggingTable.id, input.id));
 }
-

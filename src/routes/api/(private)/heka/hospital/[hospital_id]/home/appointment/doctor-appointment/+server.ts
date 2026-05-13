@@ -75,15 +75,21 @@ export const GET: RequestHandler = async (event) => {
 
 	if (mode === 'doctor.byId') {
 		const id = event.url.searchParams.get('id') ?? '';
-		const data = await getDoctorByIdWithRelations(event, { hospitalId, id });
+		const data = await getDoctorByIdWithRelations(event, {
+			hospitalId,
+			id
+		});
 		return json(data);
 	}
 
 	if (mode === 'doctor.paginated') {
 		const page = Number(event.url.searchParams.get('page') ?? '1');
-		const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+		const pageSize = Number(
+			event.url.searchParams.get('pageSize') ?? '10'
+		);
 		const search = event.url.searchParams.get('search') ?? undefined;
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
 		const data = await getDoctorStaffPaginated(event, {
 			hospitalId,
 			page,
@@ -96,25 +102,38 @@ export const GET: RequestHandler = async (event) => {
 
 	if (mode === 'doctor.list') {
 		// This route is used for sidebar "doctorList" (includes staffBranches).
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
-		const data = await listDoctorStaff(event, { hospitalId, branchId });
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
+		const data = await listDoctorStaff(event, {
+			hospitalId,
+			branchId
+		});
 		return json(data);
 	}
 
 	if (mode === 'doctorSchedule.list') {
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
-		const data = await listDoctorSchedules(event, { hospitalId, branchId });
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
+		const data = await listDoctorSchedules(event, {
+			hospitalId,
+			branchId
+		});
 		return json(data);
 	}
 
 	if (mode === 'appointment.list') {
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
-		const data = await listAppointments(event, { hospitalId, branchId });
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
+		const data = await listAppointments(event, {
+			hospitalId,
+			branchId
+		});
 		return json(data);
 	}
 
 	if (mode === 'appointment.withRelations') {
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
 		const data = await listAppointmentsWithRelations(event, {
 			hospitalId,
 			branchId
@@ -130,13 +149,18 @@ export const GET: RequestHandler = async (event) => {
 
 	if (mode === 'appointmentBlock.list') {
 		const staffId = event.url.searchParams.get('staffId') ?? '';
-		const data = await listAppointmentBlocks(event, { hospitalId, staffId });
+		const data = await listAppointmentBlocks(event, {
+			hospitalId,
+			staffId
+		});
 		return json(data);
 	}
 
 	if (mode === 'patient.paginated') {
 		const page = Number(event.url.searchParams.get('page') ?? '1');
-		const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+		const pageSize = Number(
+			event.url.searchParams.get('pageSize') ?? '10'
+		);
 		const search = event.url.searchParams.get('search') ?? undefined;
 		const data = await getPatientListPaginated(event, {
 			hospitalId,
@@ -149,15 +173,20 @@ export const GET: RequestHandler = async (event) => {
 
 	if (mode === 'patient.byId') {
 		const id = event.url.searchParams.get('id') ?? '';
-		const data = await getPatientByIdWithRelations(event, { hospitalId, id });
+		const data = await getPatientByIdWithRelations(event, {
+			hospitalId,
+			id
+		});
 		return json(data);
 	}
 
 	if (mode === 'title.list') return json(await listTitles(event));
-	if (mode === 'referType.list') return json(await listReferTypes(event));
+	if (mode === 'referType.list')
+		return json(await listReferTypes(event));
 	if (mode === 'externalRefer.list')
 		return json(await listExternalRefers(event, { hospitalId }));
-	if (mode === 'statusTagging.list') return json(await listStatusTaggings(event));
+	if (mode === 'statusTagging.list')
+		return json(await listStatusTaggings(event));
 
 	return json({ error: 'Unknown mode' }, { status: 400 });
 };
@@ -190,7 +219,10 @@ export const POST: RequestHandler = async (event) => {
 			...payload,
 			id,
 			hospitalId
-		} as AppointmentSchemaUpdate & { id: number; hospitalId: string });
+		} as AppointmentSchemaUpdate & {
+			id: number;
+			hospitalId: string;
+		});
 		return json(updated);
 	}
 	if (mode === 'appointment.delete') {
@@ -231,16 +263,12 @@ export const POST: RequestHandler = async (event) => {
 	}
 	if (mode === 'patientVisit.create') {
 		const payload = body.payload as Record<string, unknown>;
-		const created = await createPatientVisitInHospital(
-			event,
-			{
-				...payload,
-				hospitalId: String(hospitalId ?? '')
-			} as PatientVisitCreateApiPayload
-		);
+		const created = await createPatientVisitInHospital(event, {
+			...payload,
+			hospitalId: String(hospitalId ?? '')
+		} as PatientVisitCreateApiPayload);
 		return json(created);
 	}
 
 	return json({ error: 'Unknown mode' }, { status: 400 });
 };
-

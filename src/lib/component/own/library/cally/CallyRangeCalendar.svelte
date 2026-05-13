@@ -47,7 +47,9 @@
 
 	// Internal Cally value: "from/to"
 	let internalValue = $state('');
-	const monthsCount = $derived.by(() => Math.max(1, Math.floor(months ?? 1)));
+	const monthsCount = $derived.by(() =>
+		Math.max(1, Math.floor(months ?? 1))
+	);
 
 	let callyLoaded = $state(false);
 	let calendarEl: HTMLElement | null = $state(null);
@@ -70,7 +72,9 @@
 		return /^\d{4}-\d{2}-\d{2}$/.test(raw);
 	}
 
-	function normalizeRangeRaw(raw: string): { from: string; to: string; raw: string } | null {
+	function normalizeRangeRaw(
+		raw: string
+	): { from: string; to: string; raw: string } | null {
 		if (!raw) return { from: '', to: '', raw: '' };
 		const [startRaw = '', endRaw = ''] = raw.split('/');
 		const start = startRaw.trim();
@@ -108,7 +112,11 @@
 				internalValue = normalized.raw;
 				from = normalized.from;
 				to = normalized.to;
-				onChange?.({ from: normalized.from, to: normalized.to, raw: normalized.raw });
+				onChange?.({
+					from: normalized.from,
+					to: normalized.to,
+					raw: normalized.raw
+				});
 			};
 
 			apply();

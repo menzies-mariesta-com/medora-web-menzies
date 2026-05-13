@@ -115,8 +115,10 @@
 			String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
 		);
 		const r = await fetch(url.toString(), { method: 'GET' });
-		if (!r.ok) throw new Error(`Failed to search doctors (${r.status})`);
-		const res = (await r.json()) as PaginatedResult<StaffWithRelations>;
+		if (!r.ok)
+			throw new Error(`Failed to search doctors (${r.status})`);
+		const res =
+			(await r.json()) as PaginatedResult<StaffWithRelations>;
 		return (res.data ?? []).map((staff) => ({
 			label: StringUtil.doctorOptionDisplayName(staff),
 			value: String(staff.id)

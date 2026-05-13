@@ -13,16 +13,24 @@ export async function GET(event: RequestEvent) {
 	const mode = event.url.searchParams.get('mode') ?? '';
 
 	if (mode === 'masters') {
-		return json(await mo.listMastersForInternalForm(event, hospitalId));
+		return json(
+			await mo.listMastersForInternalForm(event, hospitalId)
+		);
 	}
 	if (mode === 'stores.search') {
 		const name = event.url.searchParams.get('name') ?? undefined;
-		return json(await mo.searchStores(event, hospitalId, name ?? undefined));
+		return json(
+			await mo.searchStores(event, hospitalId, name ?? undefined)
+		);
 	}
 	if (mode === 'items.search') {
-		const storeId = Number(event.url.searchParams.get('storeId') ?? '0');
+		const storeId = Number(
+			event.url.searchParams.get('storeId') ?? '0'
+		);
 		const search = event.url.searchParams.get('search') ?? undefined;
-		const pharmacyGenericIdRaw = event.url.searchParams.get('pharmacyGenericId');
+		const pharmacyGenericIdRaw = event.url.searchParams.get(
+			'pharmacyGenericId'
+		);
 		const pharmacyGenericId =
 			pharmacyGenericIdRaw != null && pharmacyGenericIdRaw !== ''
 				? Number(pharmacyGenericIdRaw)
@@ -33,25 +41,36 @@ export async function GET(event: RequestEvent) {
 				storeId,
 				search: search?.trim() ? search.trim() : undefined,
 				pharmacyGenericId:
-					pharmacyGenericId != null && Number.isFinite(pharmacyGenericId)
+					pharmacyGenericId != null &&
+					Number.isFinite(pharmacyGenericId)
 						? pharmacyGenericId
 						: null
 			})
 		);
 	}
 	if (mode === 'batch.list') {
-		const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
+		const visitId = Number(
+			event.url.searchParams.get('visitId') ?? '0'
+		);
 		if (!Number.isFinite(visitId) || visitId <= 0) {
 			throw error(400, 'visitId is required');
 		}
-		return json(await mo.listBatchesByVisit(event, hospitalId, visitId));
+		return json(
+			await mo.listBatchesByVisit(event, hospitalId, visitId)
+		);
 	}
 	if (mode === 'batch.get') {
-		const batchId = Number(event.url.searchParams.get('batchId') ?? '0');
+		const batchId = Number(
+			event.url.searchParams.get('batchId') ?? '0'
+		);
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
 		}
-		const pack = await mo.getBatchWithLines(event, hospitalId, batchId);
+		const pack = await mo.getBatchWithLines(
+			event,
+			hospitalId,
+			batchId
+		);
 		if (!pack) throw error(404, 'Not found');
 		return json(pack);
 	}
@@ -112,7 +131,8 @@ export async function POST(event: RequestEvent) {
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
 		}
-		if (!Array.isArray(b.lines)) throw error(400, 'lines is required');
+		if (!Array.isArray(b.lines))
+			throw error(400, 'lines is required');
 		return json(
 			await mo.updateMedicationOrderBatch(event, {
 				hospitalId,
@@ -127,7 +147,9 @@ export async function POST(event: RequestEvent) {
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
 		}
-		return json(await mo.deleteMedicationOrderBatch(event, hospitalId, batchId));
+		return json(
+			await mo.deleteMedicationOrderBatch(event, hospitalId, batchId)
+		);
 	}
 	throw error(400, 'mode is required');
 }

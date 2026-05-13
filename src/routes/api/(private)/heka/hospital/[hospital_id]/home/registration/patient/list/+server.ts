@@ -19,7 +19,9 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const search = event.url.searchParams.get('search') ?? undefined;
 	const patientCode =
 		event.url.searchParams.get('patientCode') ?? undefined;
@@ -42,8 +44,13 @@ export const GET: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
-	await deletePatient(event, { hospitalId, id: String(body.id ?? '') });
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
+	await deletePatient(event, {
+		hospitalId,
+		id: String(body.id ?? '')
+	});
 	return json({ ok: true });
 };
-

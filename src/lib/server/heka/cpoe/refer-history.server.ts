@@ -45,12 +45,18 @@ function normalizePagination(params?: PaginationParams): {
 	limit: number;
 	offset: number;
 } {
-	const page = Math.max(1, Math.floor(Number(params?.page ?? 1) || 1));
+	const page = Math.max(
+		1,
+		Math.floor(Number(params?.page ?? 1) || 1)
+	);
 	const pageSize = Math.max(
 		1,
 		Math.floor(Number(params?.pageSize ?? 25) || 25)
 	);
-	const limit = Math.max(1, Math.floor(Number(params?.limit ?? pageSize) || pageSize));
+	const limit = Math.max(
+		1,
+		Math.floor(Number(params?.limit ?? pageSize) || pageSize)
+	);
 	const offset = Math.max(
 		0,
 		Math.floor(Number(params?.offset ?? (page - 1) * limit) || 0)
@@ -106,7 +112,9 @@ export async function getReferHistoryWithRelations(input?: {
 			},
 			fromBranch: true,
 			toBranch: true,
-			fromReferDoctor: { with: { title: true, specialization: true } },
+			fromReferDoctor: {
+				with: { title: true, specialization: true }
+			},
 			toReferDoctor: { with: { title: true, specialization: true } },
 			createdByUser: true,
 			updatedByUser: true,
@@ -124,8 +132,11 @@ export async function createReferHistory(
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const sessionStaffId =
-		event.locals?.staff?.id != null ? String(event.locals.staff.id) : null;
-	const fromReferDoctorId = payload.fromReferDoctorId ?? sessionStaffId ?? null;
+		event.locals?.staff?.id != null
+			? String(event.locals.staff.id)
+			: null;
+	const fromReferDoctorId =
+		payload.fromReferDoctorId ?? sessionStaffId ?? null;
 
 	const [row] = await ensureDb()
 		.insert(table.referHistoryTable)
@@ -171,7 +182,9 @@ export async function acceptReferHistory(
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const staffId =
-		event.locals?.staff?.id != null ? String(event.locals.staff.id) : null;
+		event.locals?.staff?.id != null
+			? String(event.locals.staff.id)
+			: null;
 	if (!staffId) throw error(401, 'Unauthorized');
 
 	const [existing] = await ensureDb()
@@ -189,15 +202,22 @@ export async function acceptReferHistory(
 		.limit(1);
 
 	if (!existing) throw error(404, 'Referral not found');
-	if (existing.acceptAt != null && String(existing.acceptAt).trim() !== '') {
+	if (
+		existing.acceptAt != null &&
+		String(existing.acceptAt).trim() !== ''
+	) {
 		throw error(400, 'Referral already accepted');
 	}
-	if (existing.cancelAt != null) throw error(400, 'Referral is cancelled');
+	if (existing.cancelAt != null)
+		throw error(400, 'Referral is cancelled');
 	if (
 		!existing.toReferDoctorId ||
 		staffId !== String(existing.toReferDoctorId)
 	) {
-		throw error(403, 'Only the receiving doctor can accept this referral');
+		throw error(
+			403,
+			'Only the receiving doctor can accept this referral'
+		);
 	}
 
 	const nowIso = new Date().toISOString();
@@ -221,7 +241,9 @@ export async function acceptReferHistory(
 	});
 	if (recipientStaffId) {
 		const subject = row.subject?.trim();
-		const message = subject ? `Referral accepted: ${subject}` : 'Referral accepted.';
+		const message = subject
+			? `Referral accepted: ${subject}`
+			: 'Referral accepted.';
 		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
 
 		await ensureDb().insert(table.notificationTable).values({
@@ -248,11 +270,15 @@ export async function rejectReferHistory(
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const staffId =
-		event.locals?.staff?.id != null ? String(event.locals.staff.id) : null;
+		event.locals?.staff?.id != null
+			? String(event.locals.staff.id)
+			: null;
 	if (!staffId) throw error(401, 'Unauthorized');
 
 	const userId =
-		event.locals?.user?.id != null ? String(event.locals.user.id) : null;
+		event.locals?.user?.id != null
+			? String(event.locals.user.id)
+			: null;
 	const [existing] = await ensureDb()
 		.select({
 			visitId: table.referHistoryTable.visitId,
@@ -275,7 +301,10 @@ export async function rejectReferHistory(
 		!existing.toReferDoctorId ||
 		staffId !== String(existing.toReferDoctorId)
 	) {
-		throw error(403, 'Only the receiving doctor can reject this referral');
+		throw error(
+			403,
+			'Only the receiving doctor can reject this referral'
+		);
 	}
 
 	const cancelDate = new Date().toISOString();
@@ -301,17 +330,19 @@ export async function rejectReferHistory(
 	});
 	if (recipientStaffId) {
 		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
-		await ensureDb().insert(table.notificationTable).values({
-			recipientStaffId,
-			hospitalId,
-			eventType: ReferNotificationEventType.REJECTED,
-			severity: StatusColorEnum.ERROR,
-			title: 'Referral rejected',
-			message: `Referral rejected${input.replyNote ? `: ${input.replyNote}` : ''}`,
-			link,
-			visitId: existing.visitId,
-			referHistoryId: input.id
-		});
+		await ensureDb()
+			.insert(table.notificationTable)
+			.values({
+				recipientStaffId,
+				hospitalId,
+				eventType: ReferNotificationEventType.REJECTED,
+				severity: StatusColorEnum.ERROR,
+				title: 'Referral rejected',
+				message: `Referral rejected${input.replyNote ? `: ${input.replyNote}` : ''}`,
+				link,
+				visitId: existing.visitId,
+				referHistoryId: input.id
+			});
 	}
 }
 
@@ -324,7 +355,9 @@ export async function cancelReferHistory(
 
 	const cancelDate = new Date().toISOString();
 	const userId =
-		event.locals?.user?.id != null ? String(event.locals.user.id) : null;
+		event.locals?.user?.id != null
+			? String(event.locals.user.id)
+			: null;
 
 	const [existing] = await ensureDb()
 		.select({
@@ -361,30 +394,38 @@ export async function cancelReferHistory(
 		.returning();
 
 	const cancellerStaffId =
-		event.locals?.staff?.id != null ? String(event.locals.staff.id) : null;
+		event.locals?.staff?.id != null
+			? String(event.locals.staff.id)
+			: null;
 	const fromId = existing.fromReferDoctorId;
 	const toId = existing.toReferDoctorId;
 
 	let recipientStaffId: string | null = null;
 	if (cancellerStaffId && toId && cancellerStaffId === toId) {
 		recipientStaffId = fromId ?? null;
-	} else if (cancellerStaffId && fromId && cancellerStaffId === fromId) {
+	} else if (
+		cancellerStaffId &&
+		fromId &&
+		cancellerStaffId === fromId
+	) {
 		recipientStaffId = toId ?? null;
 	}
 
 	if (recipientStaffId) {
 		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
-		await ensureDb().insert(table.notificationTable).values({
-			recipientStaffId,
-			hospitalId,
-			eventType: ReferNotificationEventType.CANCELED,
-			severity: StatusColorEnum.ERROR,
-			title: 'Referral cancelled',
-			message: `Referral cancelled: ${input.cancelReason}`,
-			link,
-			visitId: existing.visitId,
-			referHistoryId: input.id
-		});
+		await ensureDb()
+			.insert(table.notificationTable)
+			.values({
+				recipientStaffId,
+				hospitalId,
+				eventType: ReferNotificationEventType.CANCELED,
+				severity: StatusColorEnum.ERROR,
+				title: 'Referral cancelled',
+				message: `Referral cancelled: ${input.cancelReason}`,
+				link,
+				visitId: existing.visitId,
+				referHistoryId: input.id
+			});
 	}
 }
 
@@ -394,7 +435,8 @@ export async function getReferHistoryPaginated(input: {
 	pageSize?: number;
 	filters?: Record<string, string>;
 }): Promise<PaginatedResult<ReferHistoryWithRelations>> {
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let whereExpr: SQL | undefined;
 	if (input.visitId) {
@@ -423,7 +465,10 @@ export async function getReferHistoryPaginated(input: {
 
 	const subject = filters.subject?.trim();
 	if (subject) {
-		const expr = ilike(table.referHistoryTable.subject, `%${subject}%`);
+		const expr = ilike(
+			table.referHistoryTable.subject,
+			`%${subject}%`
+		);
 		whereExpr = whereExpr ? and(whereExpr, expr) : expr;
 	}
 
@@ -501,8 +546,12 @@ export async function getReferHistoryPaginated(input: {
 				},
 				fromBranch: true,
 				toBranch: true,
-				fromReferDoctor: { with: { title: true, specialization: true } },
-				toReferDoctor: { with: { title: true, specialization: true } },
+				fromReferDoctor: {
+					with: { title: true, specialization: true }
+				},
+				toReferDoctor: {
+					with: { title: true, specialization: true }
+				},
 				createdByUser: true,
 				updatedByUser: true,
 				cancelByUser: true
@@ -511,7 +560,10 @@ export async function getReferHistoryPaginated(input: {
 			limit,
 			offset
 		}),
-		ensureDb().select({ count: count() }).from(table.referHistoryTable).where(whereExpr)
+		ensureDb()
+			.select({ count: count() })
+			.from(table.referHistoryTable)
+			.where(whereExpr)
 	]);
 
 	const total = countResult[0]?.count ?? 0;
@@ -523,4 +575,3 @@ export async function getReferHistoryPaginated(input: {
 		totalPages: Math.ceil(total / pageSize) || 1
 	};
 }
-

@@ -4,8 +4,6 @@ import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import * as schema from '$lib/server/db/schema';
 import { parseIntStrict } from './inv-validate.server';
 
-export const OPEN_STOCK_BATCH_NO = '__OPEN_STOCK__';
-
 type Db = NeonDatabase<typeof schema>;
 
 export async function findOrCreateItemBatch(
@@ -15,7 +13,6 @@ export async function findOrCreateItemBatch(
 		itemId: number;
 		batchNo: string;
 		expiryDate: string | null;
-		manufacturerId: number | null;
 		supplierId: number | null;
 		/** Normalized unit price per issue/stock unit (stored in `item_batch.purchase_price`). */
 		purchasePrice: string;
@@ -33,12 +30,6 @@ export async function findOrCreateItemBatch(
 				input.expiryDate == null
 					? isNull(schema.itemBatchTable.expiryDate)
 					: eq(schema.itemBatchTable.expiryDate, input.expiryDate),
-				input.manufacturerId == null
-					? isNull(schema.itemBatchTable.manufacturerId)
-					: eq(
-							schema.itemBatchTable.manufacturerId,
-							input.manufacturerId
-						),
 				input.supplierId == null
 					? isNull(schema.itemBatchTable.supplierId)
 					: eq(schema.itemBatchTable.supplierId, input.supplierId),
@@ -53,7 +44,6 @@ export async function findOrCreateItemBatch(
 		itemId: input.itemId,
 		batchNo: input.batchNo,
 		expiryDate: input.expiryDate,
-		manufacturerId: input.manufacturerId,
 		supplierId: input.supplierId,
 		purchasePrice: price
 	});
@@ -69,12 +59,6 @@ export async function findOrCreateItemBatch(
 				input.expiryDate == null
 					? isNull(schema.itemBatchTable.expiryDate)
 					: eq(schema.itemBatchTable.expiryDate, input.expiryDate),
-				input.manufacturerId == null
-					? isNull(schema.itemBatchTable.manufacturerId)
-					: eq(
-							schema.itemBatchTable.manufacturerId,
-							input.manufacturerId
-						),
 				input.supplierId == null
 					? isNull(schema.itemBatchTable.supplierId)
 					: eq(schema.itemBatchTable.supplierId, input.supplierId),

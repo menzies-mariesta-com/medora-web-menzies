@@ -117,16 +117,14 @@ export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	itemName: string;
 	categoryId: number;
 	itemCode: string | null;
-	barcode: string | null;
-	manufacturerId: number | null;
 	manufacturerName: string | null;
 	pharmacyGenericId: number | null;
 	pharmacyGenericName: string | null;
 	description: string | null;
 	remark: string | null;
+	/** Override days-before-expiry for “expiring soon” alerts; null uses hospital default. */
+	expiryAlertLeadDays: number | null;
 	statusId: number;
-	/** When true, GRN must send batch_no, expiry_date, purchase_price for this item. */
-	isBatchRequired?: boolean;
 	/** Unit conversion ids tagged to this item (optional, only on detail fetch). */
 	itemUnitMasterIds?: number[];
 	/** Which linked conversion is default (detail fetch); null if none. */
@@ -142,8 +140,8 @@ export type PharmacyGenericListRow = PatientRegMasterTimestamps & {
 	statusId: number;
 };
 
-/** Manufacturer / supplier grid + detail (mirrors API JSON; geography is FK ids + joined labels). */
-export type ManufacturerListRow = PatientRegMasterTimestamps & {
+/** Supplier grid + detail (mirrors API JSON; geography is FK ids + joined labels). */
+export type SupplierListRow = PatientRegMasterTimestamps & {
 	id: number;
 	hospitalId: string;
 	name: string;
@@ -162,8 +160,6 @@ export type ManufacturerListRow = PatientRegMasterTimestamps & {
 	countryName?: string | null;
 	postalCodeLabel?: string | null;
 };
-
-export type SupplierListRow = ManufacturerListRow;
 
 export type UnitTypeListRow = PatientRegMasterTimestamps & {
 	id: number;
@@ -205,7 +201,11 @@ export type StoreListRow = PatientRegMasterTimestamps & {
 	remark: string | null;
 	isPurchaseRequisitable?: boolean;
 	statusId: number;
-	branch?: { id: string; name: string | null; code: string | null } | null;
+	branch?: {
+		id: string;
+		name: string | null;
+		code: string | null;
+	} | null;
 	userGroups: { id: number; name: string | null }[];
 };
 
@@ -228,7 +228,11 @@ export type SupportTicketListRow = PatientRegMasterTimestamps & {
 	contextUrl: string | null;
 	assignedToUserId: string | null;
 	resolution: string | null;
-	requester?: { id?: string; name?: string | null; email?: string | null } | null;
+	requester?: {
+		id?: string;
+		name?: string | null;
+		email?: string | null;
+	} | null;
 	hospital?: { id?: string; name?: string | null } | null;
 };
 

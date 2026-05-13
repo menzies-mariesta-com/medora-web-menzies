@@ -44,6 +44,9 @@
 		id: string;
 		indentNo: string | null;
 		issueNo: string | null;
+		sourceIndentNo?: string | null;
+		sourceIndentFromStoreName?: string | null;
+		sourceIndentToStoreName?: string | null;
 		fromStoreId?: number;
 		fromStoreName: string | null;
 		toStoreName: string | null;
@@ -72,9 +75,12 @@
 		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 	);
 	let tableFilters = $state<Record<string, string>>({
-		statusTaggingId: String(InvDepartmentIssueStatusTaggingEnum.PENDING)
+		statusTaggingId: String(
+			InvDepartmentIssueStatusTaggingEnum.PENDING
+		)
 	});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 	let actId = $state<string | null>(null);
 
@@ -119,6 +125,20 @@
 			format: (_v, r) => r.issueNo ?? '—'
 		},
 		{
+			id: 'sourceIndent',
+			header: m.inv_dept_issue_source_indent_col(),
+			field: 'sourceIndentNo',
+			filterable: false,
+			cellClass: 'whitespace-pre-wrap',
+			format: (_v, r) => {
+				const no = r.sourceIndentNo?.trim();
+				if (!no) return '—';
+				const a = r.sourceIndentFromStoreName?.trim() || '—';
+				const b = r.sourceIndentToStoreName?.trim() || '—';
+				return `${no}: ${a} → ${b}`;
+			}
+		},
+		{
 			id: 'itemNames',
 			header: m.inv_common_item(),
 			field: 'itemNames',
@@ -135,7 +155,7 @@
 			id: 'from',
 			header: m.inv_dept_indent_from(),
 			field: 'fromStoreId',
-			filterable: true,
+			filterable: false,
 			format: (_v, r) => r.fromStoreName ?? '—'
 		},
 		{
@@ -151,7 +171,9 @@
 			field: 'statusTaggingId',
 			filterType: 'select',
 			filterOptions: ISSUE_STATUS_FILTER_OPTIONS,
-			defaultFilterValue: String(InvDepartmentIssueStatusTaggingEnum.PENDING),
+			defaultFilterValue: String(
+				InvDepartmentIssueStatusTaggingEnum.PENDING
+			),
 			format: (_v, r) => r.statusName ?? '—'
 		}
 	]);
@@ -166,11 +188,7 @@
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('fromStoreId', String(selectedInventoryFromStoreId));
 			}
-			const fromStoreIdFilter = tableFilters.fromStoreId?.trim() ?? '';
-			if (fromStoreIdFilter !== '') {
-				ps.set('fromStoreId', fromStoreIdFilter);
-			}
-			const toStoreIdFilter = tableFilters.toStoreId?.trim() ?? '';
+			const toStoreIdFilter = tableFilters.to?.trim() ?? '';
 			if (toStoreIdFilter !== '') {
 				ps.set('toStoreId', toStoreIdFilter);
 			}
@@ -206,7 +224,9 @@
 		lastInitHospitalId = h;
 		currentPage = 1;
 		tableFilters = {
-			statusTaggingId: String(InvDepartmentIssueStatusTaggingEnum.PENDING)
+			statusTaggingId: String(
+				InvDepartmentIssueStatusTaggingEnum.PENDING
+			)
 		};
 	});
 
@@ -387,12 +407,10 @@
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={
-									actId != null ||
+								disabled={actId != null ||
 									r.canApprove !== true ||
 									selectedInventoryFromStoreId == null ||
-									r.fromStoreId !== selectedInventoryFromStoreId
-								}
+									r.fromStoreId !== selectedInventoryFromStoreId}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.APPROVED)}
@@ -406,12 +424,10 @@
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-error"
-								disabled={
-									actId != null ||
+								disabled={actId != null ||
 									r.canApprove !== true ||
 									selectedInventoryFromStoreId == null ||
-									r.fromStoreId !== selectedInventoryFromStoreId
-								}
+									r.fromStoreId !== selectedInventoryFromStoreId}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.REJECTED)}
@@ -437,4 +453,3 @@
 		</MariTable>
 	{/key}
 </div>
-

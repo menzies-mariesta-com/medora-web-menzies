@@ -35,17 +35,23 @@ export const GET: RequestHandler = async (event) => {
 		const categoryIds = parseNumberList(
 			event.url.searchParams.get('categoryIds')
 		);
-		const data = await getSubCategories(event, { categoryId, categoryIds });
+		const data = await getSubCategories(event, {
+			categoryId,
+			categoryIds
+		});
 		return json(data);
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const statusId = parseNumberOrNull(
 		event.url.searchParams.get('statusId')
 	);
 	const id = parseNumberOrNull(event.url.searchParams.get('id'));
-	const subCategoryName = event.url.searchParams.get('subCategoryName');
+	const subCategoryName =
+		event.url.searchParams.get('subCategoryName');
 
 	const categoryIds = parseNumberList(
 		event.url.searchParams.get('categoryIds')
@@ -63,7 +69,10 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createSubCategory(event, {
 		categoryId: Number(body.categoryId),
 		subCategoryName: String(body.subCategoryName ?? ''),
@@ -73,21 +82,27 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updateSubCategory(event, {
 		id: Number(body.id),
 		subCategoryName:
 			body.subCategoryName != null
 				? String(body.subCategoryName)
 				: undefined,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	} as any);
 	return json(data);
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteSubCategory(event, { id: Number(body.id) });
 	return json({ ok: true });
 };
-

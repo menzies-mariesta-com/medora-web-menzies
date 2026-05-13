@@ -13,7 +13,9 @@
 	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -28,7 +30,9 @@
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	const editPrId = $derived(
@@ -92,6 +96,12 @@
 	let createLines = $state<PrLineForm[]>([]);
 	let createSubmitting = $state(false);
 
+	const toStoreOptions = $derived.by(() => {
+		const from = createFromStoreId;
+		if (from == null) return stores;
+		return stores.filter((s) => s.id !== from);
+	});
+
 	const fromStoreLabel = $derived.by(() => {
 		const id = createFromStoreId;
 		if (id == null) return '—';
@@ -104,14 +114,14 @@
 	let headerStatusCode = $state<string | null>(null);
 	let detailStatusTaggingId = $state<number | null>(null);
 
-	let lineItemFilter = $state('');
-
 	let lineItemDialogActive = $state(false);
 	let editingLineKey = $state<string | null>(null);
 	let draftLine = $state<PrLineForm>(newLine());
 	let prLineMetricTiles = $state<LineItemMetricTile[] | null>(null);
 
-	let linkedPurchaseOrders = $state<{ id: string; poNo: string | null }[]>([]);
+	let linkedPurchaseOrders = $state<
+		{ id: string; poNo: string | null }[]
+	>([]);
 	let prDetailPoCount = $state(0);
 
 	let detailLoading = $state(true);
@@ -120,7 +130,10 @@
 	let lastLoadedKey = $state<string | null>(null);
 
 	const prListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-requisition' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-requisition' as any
+		)
 	);
 
 	function prViewPath(prIdVal: string) {
@@ -143,10 +156,12 @@
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
 		);
 		const j = await res.json();
-		return (j.data ?? []).map((x: { itemName?: string | null; id: number }) => ({
-			label: x.itemName ?? '—',
-			value: String(x.id)
-		}));
+		return (j.data ?? []).map(
+			(x: { itemName?: string | null; id: number }) => ({
+				label: x.itemName ?? '—',
+				value: String(x.id)
+			})
+		);
 	}
 
 	function newLine(): PrLineForm {
@@ -163,7 +178,9 @@
 	}
 
 	function conversionLabelForLine(line: PrLineForm): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -232,10 +249,11 @@
 			return {
 				ok: false,
 				title: 'Could not save line',
-				detail: 'Please select an item and a purchase unit conversion.'
+				detail:
+					'Please select an item and a purchase unit conversion.'
 			};
 		}
-		const q = draftLine.quantity.trim();
+		const q = String(draftLine.quantity ?? '').trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 			return {
 				ok: false,
@@ -243,7 +261,12 @@
 				detail: 'Quantity must be greater than 0.'
 			};
 		}
-		return { ok: true, quantity: q, unitId, itemId: draftLine.itemId };
+		return {
+			ok: true,
+			quantity: q,
+			unitId,
+			itemId: draftLine.itemId
+		};
 	}
 
 	function saveDraftLine(): boolean {
@@ -254,14 +277,19 @@
 		}
 
 		if (editingLineKey) {
-			const idx = createLines.findIndex((l) => l.key === editingLineKey);
+			const idx = createLines.findIndex(
+				(l) => l.key === editingLineKey
+			);
 			if (idx >= 0) {
 				const next = [...createLines];
 				next[idx] = { ...draftLine, quantity: v.quantity };
 				createLines = next;
 			}
 		} else {
-			createLines = [...createLines, { ...draftLine, quantity: v.quantity }];
+			createLines = [
+				...createLines,
+				{ ...draftLine, quantity: v.quantity }
+			];
 		}
 		return true;
 	}
@@ -303,13 +331,17 @@
 			prLineMetricTiles = null;
 			return;
 		}
-		prLineMetricTiles = tilesFromPrItemMetricsRow(row, row.currentPrPurchaseQty, {
-			store: m.inv_pr_line_metric_store(),
-			global: m.inv_pr_line_metric_global(),
-			pendingPr: m.inv_pr_line_metric_pending_pr_qty(),
-			pendingPo: m.inv_po_line_metric_pending_po_qty(),
-			current: m.inv_pr_line_metric_current()
-		});
+		prLineMetricTiles = tilesFromPrItemMetricsRow(
+			row,
+			row.currentPrPurchaseQty,
+			{
+				store: m.inv_pr_line_metric_store(),
+				global: m.inv_pr_line_metric_global(),
+				pendingPr: m.inv_pr_line_metric_pending_pr_qty(),
+				pendingPo: m.inv_po_line_metric_pending_po_qty(),
+				current: m.inv_pr_line_metric_current()
+			}
+		);
 	}
 
 	$effect(() => {
@@ -333,13 +365,16 @@
 		storesAbort?.abort();
 		storesAbort = new AbortController();
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`,
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
 			{ method: 'GET', signal: storesAbort.signal }
 		);
 		stores = (await res.json()) as typeof stores;
 	}
 
-	async function hydrateLineItemMeta(line: PrLineForm, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: PrLineForm,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -377,7 +412,8 @@
 		line.quantity = String(apiLine.quantity ?? '0');
 		line.prLineId = apiLine.id != null ? String(apiLine.id) : null;
 		line.qtyRemainingOnPr =
-			apiLine.qtyRemaining != null && String(apiLine.qtyRemaining).trim() !== ''
+			apiLine.qtyRemaining != null &&
+			String(apiLine.qtyRemaining).trim() !== ''
 				? String(apiLine.qtyRemaining)
 				: null;
 		await hydrateLineItemMeta(line, apiLine.itemId);
@@ -385,7 +421,9 @@
 			line.itemLabel = apiLine.itemName;
 			line.itemSearch = apiLine.itemName;
 		}
-		const match = line.iumList.find((u) => u.purchaseUnitId === apiLine.unitId);
+		const match = line.iumList.find(
+			(u) => u.purchaseUnitId === apiLine.unitId
+		);
 		if (match) line.itemUnitMasterId = match.id;
 		line.pendingPrPurchaseQty =
 			apiLine.pendingPrPurchaseQty != null &&
@@ -419,14 +457,23 @@
 	}
 
 	function purchaseUnitForLine(line: PrLineForm): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
 	function buildLinesPayload():
-		| { ok: true; lines: { itemId: number; quantity: string; unitId: number }[] }
+		| {
+				ok: true;
+				lines: { itemId: number; quantity: string; unitId: number }[];
+		  }
 		| { ok: false; title: string; detail: string } {
-		const linesPayload: { itemId: number; quantity: string; unitId: number }[] = [];
+		const linesPayload: {
+			itemId: number;
+			quantity: string;
+			unitId: number;
+		}[] = [];
 		for (const ln of createLines) {
 			const uid = purchaseUnitForLine(ln);
 			if (ln.itemId == null || uid == null) {
@@ -436,7 +483,7 @@
 					detail: 'Each line needs an item and unit conversion.'
 				};
 			}
-			const q = ln.quantity.trim();
+			const q = String(ln.quantity ?? '').trim();
 			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 				return {
 					ok: false,
@@ -444,7 +491,11 @@
 					detail: 'Invalid quantity on a line.'
 				};
 			}
-			linesPayload.push({ itemId: ln.itemId, quantity: q, unitId: uid });
+			linesPayload.push({
+				itemId: ln.itemId,
+				quantity: q,
+				unitId: uid
+			});
 		}
 		if (linesPayload.length === 0) {
 			return {
@@ -480,7 +531,11 @@
 				return;
 			}
 			if (!detail.lines?.length) {
-				toastService.addToast(m.inv_pr_edit(), StatusColorEnum.ERROR, 'PR has no lines.');
+				toastService.addToast(
+					m.inv_pr_edit(),
+					StatusColorEnum.ERROR,
+					'PR has no lines.'
+				);
 				await goto(prViewPath(editPrId));
 				return;
 			}
@@ -502,20 +557,45 @@
 	}
 
 	$effect(() => {
-		const key = hospitalId && editPrId ? `${hospitalId}:${editPrId}` : '';
+		const key =
+			hospitalId && editPrId ? `${hospitalId}:${editPrId}` : '';
 		if (!key) return;
 		if (lastLoadedKey === key) return;
 		lastLoadedKey = key;
 		void loadPrForEdit();
 	});
 
+	$effect(() => {
+		void createFromStoreId;
+		void stores;
+		const from = createFromStoreId;
+		const opts =
+			from == null ? stores : stores.filter((s) => s.id !== from);
+		if (
+			createToStoreId != null &&
+			(createToStoreId === from ||
+				!opts.some((s) => s.id === createToStoreId))
+		) {
+			createToStoreId = opts[0]?.id ?? null;
+		}
+	});
+
 	async function submitPrForm() {
-		if (!hospitalId || !editPrId || createFromStoreId == null || createToStoreId == null) {
+		if (
+			!hospitalId ||
+			!editPrId ||
+			createFromStoreId == null ||
+			createToStoreId == null
+		) {
 			return;
 		}
 		const built = buildLinesPayload();
 		if (!built.ok) {
-			toastService.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			toastService.addToast(
+				built.title,
+				StatusColorEnum.ERROR,
+				built.detail
+			);
 			return;
 		}
 		createSubmitting = true;
@@ -559,98 +639,80 @@
 			: null
 	);
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLineForm>[] => [
-		{
-			id: 'itemLabel',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: false,
-			format: (_v, row) => row.itemLabel || '—'
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: false,
-			format: (_v, row) => conversionLabelForLine(row)
-		},
-		{
-			id: 'quantity',
-			header: m.inv_pr_line_requested_qty(),
-			field: 'quantity',
-			filterable: false,
-			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
-		},
-		{
-			id: 'pendingPrPurchaseQty',
-			header: m.inv_pr_line_metric_pending_pr_qty(),
-			field: 'pendingPrPurchaseQty',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.pendingPrPurchaseQty?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
+	const lineColumns = $derived.by(
+		(): MariTableColumn<PrLineForm>[] => [
+			{
+				id: 'itemLabel',
+				header: m.inv_common_item(),
+				field: 'itemLabel',
+				filterable: true,
+				format: (_v, row) => row.itemLabel || '—'
+			},
+			{
+				id: 'conversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterId',
+				filterable: true,
+				format: (_v, row) => conversionLabelForLine(row)
+			},
+			{
+				id: 'quantity',
+				header: m.inv_pr_line_requested_qty(),
+				field: 'quantity',
+				filterable: true,
+				format: (_v, row) =>
+					formatPurchaseQtyCellWithIssueEquivalent(row)
+			},
+			{
+				id: 'pendingPrPurchaseQty',
+				header: m.inv_pr_line_metric_pending_pr_qty(),
+				field: 'pendingPrPurchaseQty',
+				filterable: true,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.pendingPrPurchaseQty?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
+			},
+			{
+				id: 'pendingPoPurchaseQty',
+				header: m.inv_po_line_metric_pending_po_qty(),
+				field: 'pendingPoPurchaseQty',
+				filterable: true,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.pendingPoPurchaseQty?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
+			},
+			{
+				id: 'qtyRemainingOnPr',
+				header: m.inv_pr_line_open_for_po(),
+				field: 'qtyRemainingOnPr',
+				filterable: true,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.qtyRemainingOnPr?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
 			}
-		},
-		{
-			id: 'pendingPoPurchaseQty',
-			header: m.inv_po_line_metric_pending_po_qty(),
-			field: 'pendingPoPurchaseQty',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.pendingPoPurchaseQty?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
-			}
-		},
-		{
-			id: 'qtyRemainingOnPr',
-			header: m.inv_pr_line_open_for_po(),
-			field: 'qtyRemainingOnPr',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.qtyRemainingOnPr?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
-			}
-		}
-	]);
-
-	const filteredLines = $derived.by(() => {
-		const q = lineItemFilter.trim().toLowerCase();
-		if (!q) return createLines;
-		return createLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelForLine(l).toLowerCase();
-			const qty = (l.quantity ?? '').toLowerCase();
-			const rem = (l.qtyRemainingOnPr ?? '').toLowerCase();
-			const ppr = (l.pendingPrPurchaseQty ?? '').toLowerCase();
-			const ppo = (l.pendingPoPurchaseQty ?? '').toLowerCase();
-			return (
-				item.includes(q) ||
-				conv.includes(q) ||
-				qty.includes(q) ||
-				rem.includes(q) ||
-				ppr.includes(q) ||
-				ppo.includes(q)
-			);
-		});
-	});
+		]
+	);
 </script>
 
 <form
@@ -661,7 +723,9 @@
 	class="space-y-5"
 	aria-busy={detailLoading}
 >
-	<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+	<div
+		class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+	>
 		<div class="min-w-0">
 			<div class="flex items-center gap-2">
 				<DaisyUiTooltip
@@ -679,12 +743,16 @@
 				</DaisyUiTooltip>
 				<h2 class="text-lg font-semibold">{m.inv_pr_edit_title()}</h2>
 				{#if detailLoading}
-					<span class="d-loading d-loading-spinner d-loading-sm text-base-content/50"></span>
+					<span
+						class="d-loading d-loading-sm d-loading-spinner text-base-content/50"
+					></span>
 				{/if}
 			</div>
 		</div>
 
-		<div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+		<div
+			class="flex flex-wrap items-center justify-start gap-2 sm:justify-end"
+		>
 			<span
 				class="d-badge d-badge-outline"
 				title={headerStatusCode ?? undefined}
@@ -693,93 +761,117 @@
 				{headerStatusLabel}
 			</span>
 			{#if headerPrNo}
-				<span class="d-badge d-badge-ghost" aria-label={`PR No: ${headerPrNo}`}>
+				<span
+					class="d-badge d-badge-ghost"
+					aria-label={`PR No: ${headerPrNo}`}
+				>
 					{m.inv_pr_no()}: {headerPrNo}
 				</span>
 			{:else}
-				<span class="d-badge d-badge-ghost" aria-label="PR No">PR No: —</span>
+				<span class="d-badge d-badge-ghost" aria-label="PR No"
+					>PR No: —</span
+				>
 			{/if}
 		</div>
 	</div>
 
-		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-			<DaisyUiCard>
-				<DaisyUiCardBody className="gap-3">
-					<DaisyUiCardBodyTitle className="text-base">Store selection</DaisyUiCardBodyTitle>
-					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<div class="flex min-w-0 flex-col gap-2">
-							<DaisyUiLabel className="text-xs opacity-80">{m.inv_nav_from_store()}</DaisyUiLabel>
-							<input
-								type="text"
-								readonly
-								disabled
-								class="d-input d-input-bordered w-full text-sm"
-								value={fromStoreLabel}
-								aria-label={m.inv_nav_from_store()}
-							/>
-						</div>
-						<div class="flex min-w-0 flex-col gap-2">
-							<DaisyUiLabel className="text-xs opacity-80">{m.inv_transfer_to_store()}</DaisyUiLabel>
-							<DaisyUISearchSelect
-								value={createToStoreId != null ? String(createToStoreId) : ''}
-								options={stores.map((s) => ({
-									label: s.storeName ?? '—',
-									value: String(s.id)
-								}))}
-								onChange={(v: string) => {
-									createToStoreId = v ? Number(v) : null;
-								}}
-								placeholder="To store…"
-								className="w-full"
-							/>
-						</div>
-					</div>
-				</DaisyUiCardBody>
-			</DaisyUiCard>
-
-			<DaisyUiCard>
-				<DaisyUiCardBody className="gap-3">
-					<DaisyUiCardBodyTitle className="text-base">Requisition Remarks</DaisyUiCardBodyTitle>
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<DaisyUiCard>
+			<DaisyUiCardBody className="gap-3">
+				<DaisyUiCardBodyTitle className="text-base"
+					>Store selection</DaisyUiCardBodyTitle
+				>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_remarks()}</DaisyUiLabel>
-						<textarea
-							class="d-textarea d-textarea-bordered w-full"
-							bind:value={createRemarks}
-							rows="3"
-							aria-label={m.inv_common_remarks()}
-						></textarea>
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_nav_from_store()}</DaisyUiLabel
+						>
+						<input
+							type="text"
+							readonly
+							disabled
+							class="d-input-bordered d-input w-full text-sm"
+							value={fromStoreLabel}
+							aria-label={m.inv_nav_from_store()}
+						/>
 					</div>
-				</DaisyUiCardBody>
-			</DaisyUiCard>
-		</div>
+					<div class="flex min-w-0 flex-col gap-2">
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_transfer_to_store()}</DaisyUiLabel
+						>
+						<DaisyUISearchSelect
+							value={createToStoreId != null
+								? String(createToStoreId)
+								: ''}
+							options={toStoreOptions.map((s) => ({
+								label: s.storeName ?? '—',
+								value: String(s.id)
+							}))}
+							onChange={(v: string) => {
+								createToStoreId = v ? Number(v) : null;
+							}}
+							placeholder="To store…"
+							className="w-full"
+						/>
+					</div>
+				</div>
+			</DaisyUiCardBody>
+		</DaisyUiCard>
 
-		{#if linkedPurchaseOrders.length > 0 || (prDetailPoCount ?? 0) > 0}
-			<DaisyUiCard>
-				<DaisyUiCardBody className="gap-3">
-					<DaisyUiCardBodyTitle className="text-base">{m.inv_pr_trace_title()}</DaisyUiCardBodyTitle>
-					{#if linkedPurchaseOrders.length > 0}
-						<ul class="flex flex-wrap gap-2">
-							{#each linkedPurchaseOrders as po (po.id)}
-								<li>
-									<span class="d-link d-link-primary text-sm font-medium">
-										{po.poNo?.trim() ? po.poNo : po.id}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="text-sm text-warning">{m.inv_pr_trace_po_mismatch()}</p>
-					{/if}
-				</DaisyUiCardBody>
-			</DaisyUiCard>
-		{/if}
+		<DaisyUiCard>
+			<DaisyUiCardBody className="gap-3">
+				<DaisyUiCardBodyTitle className="text-base"
+					>Requisition Remarks</DaisyUiCardBodyTitle
+				>
+				<div class="flex min-w-0 flex-col gap-2">
+					<DaisyUiLabel className="text-xs opacity-80"
+						>{m.inv_common_remarks()}</DaisyUiLabel
+					>
+					<textarea
+						class="d-textarea-bordered d-textarea w-full"
+						bind:value={createRemarks}
+						rows="3"
+						aria-label={m.inv_common_remarks()}
+					></textarea>
+				</div>
+			</DaisyUiCardBody>
+		</DaisyUiCard>
+	</div>
+
+	{#if linkedPurchaseOrders.length > 0 || (prDetailPoCount ?? 0) > 0}
+		<DaisyUiCard>
+			<DaisyUiCardBody className="gap-3">
+				<DaisyUiCardBodyTitle className="text-base"
+					>{m.inv_pr_trace_title()}</DaisyUiCardBodyTitle
+				>
+				{#if linkedPurchaseOrders.length > 0}
+					<ul class="flex flex-wrap gap-2">
+						{#each linkedPurchaseOrders as po (po.id)}
+							<li>
+								<span
+									class="d-link text-sm font-medium d-link-primary"
+								>
+									{po.poNo?.trim() ? po.poNo : po.id}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-sm text-warning">
+						{m.inv_pr_trace_po_mismatch()}
+					</p>
+				{/if}
+			</DaisyUiCardBody>
+		</DaisyUiCard>
+	{/if}
 
 	<PrLineItemsCard
 		viewOnly={false}
-		bind:lineItemFilter
+		useColumnFilters={true}
+		hideQuickFilter={true}
 		createLinesCount={createLines.length}
 		columns={lineColumns}
-		rows={filteredLines}
+		rows={createLines}
 		onAddItem={() => {
 			if (detailLoading) return;
 			void openLineDialogForCreate();
@@ -794,16 +886,15 @@
 		}}
 	/>
 
-		<div
-			class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-end"
+	<div
+		class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-end"
+	>
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary"
+			disabled={detailLoading || createSubmitting}
 		>
-			<DaisyUiButton
-				type="submit"
-				className="d-btn-primary"
-				disabled={detailLoading || createSubmitting}
-			>
-				{m.inv_pr_save_submit()}
-			</DaisyUiButton>
-		</div>
-	</form>
-
+			{m.inv_pr_save_submit()}
+		</DaisyUiButton>
+	</div>
+</form>

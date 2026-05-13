@@ -71,7 +71,7 @@
 			type="button"
 			className="d-btn-ghost"
 			onClick={handleCancel}
-				disabled={isConfirming}
+			disabled={isConfirming}
 		>
 			{m.observation_emr_cancel()}
 		</DaisyUiButton>
@@ -79,8 +79,8 @@
 			type="button"
 			className="d-btn d-btn-error"
 			onClick={handleConfirmDelete}
-				disabled={isConfirming}
-				loading={isConfirming}
+			disabled={isConfirming}
+			loading={isConfirming}
 		>
 			Inactivate
 		</DaisyUiButton>

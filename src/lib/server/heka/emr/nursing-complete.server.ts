@@ -47,14 +47,26 @@ export async function getNursingIncompleteLineCountForVisit(
 	const whereExpr =
 		statusFilter != null
 			? and(
-					inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
-					ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED),
+					inArray(
+						table.serviceOrderDetailTable.serviceOrderId,
+						orderIds
+					),
+					ne(
+						table.serviceOrderDetailTable.statusId,
+						StatusEnum.DELETED
+					),
 					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
 					statusFilter
 				)
 			: and(
-					inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
-					ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED),
+					inArray(
+						table.serviceOrderDetailTable.serviceOrderId,
+						orderIds
+					),
+					ne(
+						table.serviceOrderDetailTable.statusId,
+						StatusEnum.DELETED
+					),
 					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`
 				);
 
@@ -76,18 +88,24 @@ export async function getServiceOrderDetailPaginatedForOrders(
 ): Promise<PaginatedResult<ServiceOrderDetailSchema>> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, params.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	if (!params.serviceOrderIds.length) {
 		return { data: [], total: 0, page, pageSize, totalPages: 1 };
 	}
 
 	const baseConditions = [
-		inArray(table.serviceOrderDetailTable.serviceOrderId, params.serviceOrderIds),
+		inArray(
+			table.serviceOrderDetailTable.serviceOrderId,
+			params.serviceOrderIds
+		),
 		ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
 	];
 	if (params.statusId != null) {
-		baseConditions.push(eq(table.serviceOrderDetailTable.statusId, params.statusId));
+		baseConditions.push(
+			eq(table.serviceOrderDetailTable.statusId, params.statusId)
+		);
 	}
 	const whereExpr = and(...baseConditions);
 
@@ -96,7 +114,11 @@ export async function getServiceOrderDetailPaginatedForOrders(
 			.select()
 			.from(table.serviceOrderDetailTable)
 			.where(whereExpr)
-			.orderBy(desc(sql`coalesce(${table.serviceOrderDetailTable.updatedAt}, ${table.serviceOrderDetailTable.createdAt})`))
+			.orderBy(
+				desc(
+					sql`coalesce(${table.serviceOrderDetailTable.updatedAt}, ${table.serviceOrderDetailTable.createdAt})`
+				)
+			)
 			.limit(limit)
 			.offset(offset),
 		ensureDb()
@@ -149,7 +171,10 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 		batchSize: number;
 		statusId?: number;
 	}
-): Promise<{ markedCount: number; remainingIncompleteCount: number }> {
+): Promise<{
+	markedCount: number;
+	remainingIncompleteCount: number;
+}> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
 
@@ -180,14 +205,26 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 	const whereExpr =
 		statusFilter != null
 			? and(
-					inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
-					ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED),
+					inArray(
+						table.serviceOrderDetailTable.serviceOrderId,
+						orderIds
+					),
+					ne(
+						table.serviceOrderDetailTable.statusId,
+						StatusEnum.DELETED
+					),
 					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
 					statusFilter
 				)
 			: and(
-					inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
-					ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED),
+					inArray(
+						table.serviceOrderDetailTable.serviceOrderId,
+						orderIds
+					),
+					ne(
+						table.serviceOrderDetailTable.statusId,
+						StatusEnum.DELETED
+					),
 					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`
 				);
 
@@ -200,11 +237,12 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 
 	const ids = candidates.map((c) => c.id);
 	if (ids.length === 0) {
-		const remainingIncompleteCount = await getNursingIncompleteLineCountForVisit(event, {
-			hospitalId: input.hospitalId,
-			visitId: input.visitId,
-			statusId: input.statusId
-		});
+		const remainingIncompleteCount =
+			await getNursingIncompleteLineCountForVisit(event, {
+				hospitalId: input.hospitalId,
+				visitId: input.visitId,
+				statusId: input.statusId
+			});
 		return { markedCount: 0, remainingIncompleteCount };
 	}
 
@@ -217,12 +255,12 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 		} as any)
 		.where(inArray(table.serviceOrderDetailTable.id, ids));
 
-	const remainingIncompleteCount = await getNursingIncompleteLineCountForVisit(event, {
-		hospitalId: input.hospitalId,
-		visitId: input.visitId,
-		statusId: input.statusId
-	});
+	const remainingIncompleteCount =
+		await getNursingIncompleteLineCountForVisit(event, {
+			hospitalId: input.hospitalId,
+			visitId: input.visitId,
+			statusId: input.statusId
+		});
 
 	return { markedCount: ids.length, remainingIncompleteCount };
 }
-

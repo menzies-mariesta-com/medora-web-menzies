@@ -25,7 +25,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -37,11 +38,6 @@
 	const pharmacyGenericApi = $derived(
 		hospitalId
 			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pharmacy-generic`
-			: ''
-	);
-	const manufacturerApi = $derived(
-		hospitalId
-			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/manufacture-setup`
 			: ''
 	);
 
@@ -71,7 +67,6 @@
 	let itemName = $state('');
 	let categoryIdStr = $state('');
 	let itemCode = $state('');
-	let barcode = $state('');
 	let itemUnitMasterIdStrs = $state<string[]>([]);
 	/** Radio `bind:group` for default conversion among included rows. */
 	let defaultItemUnitMasterIdStr = $state('');
@@ -79,8 +74,9 @@
 	let description = $state('');
 	let remark = $state('');
 	let pharmacyGenericIdStr = $state('');
-	let manufacturerIdStr = $state('');
-	let isBatchRequired = $state(false);
+	let manufacturerNameStr = $state('');
+	/** Empty string = use hospital default (stored as null). */
+	let expiryAlertLeadDaysStr = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
@@ -110,7 +106,9 @@
 	function toggleItemUnitMaster(id: number) {
 		const key = String(id);
 		if (itemUnitMasterIdStrs.includes(key)) {
-			itemUnitMasterIdStrs = itemUnitMasterIdStrs.filter((x) => x !== key);
+			itemUnitMasterIdStrs = itemUnitMasterIdStrs.filter(
+				(x) => x !== key
+			);
 			if (defaultItemUnitMasterIdStr === key) {
 				defaultItemUnitMasterIdStr = firstIncludedIdByListOrder();
 			}
@@ -180,49 +178,6 @@
 		}));
 	}
 
-	async function searchManufacturers(
-		query: string
-	): Promise<{ label: string; value: string }[]> {
-		if (!manufacturerApi) return [];
-		const q = new URLSearchParams({
-			mode: 'search',
-			q: query,
-			limit: '50'
-		});
-		const res = await fetch(`${manufacturerApi}?${q.toString()}`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
-		if (!res.ok) return [];
-		const rows = (await res.json()) as {
-			id: number;
-			name: string;
-			code: string | null;
-		}[];
-		return rows.map((r) => ({
-			value: String(r.id),
-			label: r.code ? `${r.name} (${r.code})` : r.name
-		}));
-	}
-
-	async function getManufacturerLabelForValue(
-		value: string
-	): Promise<string> {
-		if (!value?.trim() || !manufacturerApi) return '';
-		const res = await fetch(
-			`${manufacturerApi}?id=${encodeURIComponent(value)}`,
-			{ credentials: 'include', cache: 'no-store' }
-		);
-		if (!res.ok) return '—';
-		const row = (await res.json()) as {
-			name?: string | null;
-			code?: string | null;
-		} | null;
-		if (!row) return '—';
-		const n = row.name ?? '—';
-		return row.code ? `${n} (${row.code})` : n;
-	}
-
 	async function getPharmacyGenericLabelForValue(
 		value: string
 	): Promise<string> {
@@ -268,7 +223,6 @@
 					itemName = row.itemName ?? '';
 					categoryIdStr = String(row.categoryId);
 					itemCode = row.itemCode ?? '';
-					barcode = row.barcode ?? '';
 					description = row.description ?? '';
 					remark = row.remark ?? '';
 					const idStrs = (row.itemUnitMasterIds ?? []).map((id) =>
@@ -292,22 +246,21 @@
 						defaultItemUnitMasterIdStr = '';
 					}
 					formActive =
-						(row.statusId ?? StatusEnum.ACTIVE) ===
-						StatusEnum.ACTIVE;
+						(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 
 					pharmacyGenericIdStr =
 						row.pharmacyGenericId != null
 							? String(row.pharmacyGenericId)
 							: '';
-					manufacturerIdStr =
-						row.manufacturerId != null
-							? String(row.manufacturerId)
+					manufacturerNameStr = row.manufacturerName ?? '';
+					expiryAlertLeadDaysStr =
+						row.expiryAlertLeadDays != null
+							? String(row.expiryAlertLeadDays)
 							: '';
-					isBatchRequired = row.isBatchRequired === true;
 				}
 			} else if (cats.length > 0) {
 				categoryIdStr = String(cats[0].id);
-				isBatchRequired = false;
+				expiryAlertLeadDaysStr = '';
 			}
 		} finally {
 			isLoading = false;
@@ -339,6 +292,31 @@
 			);
 			return;
 		}
+
+		const leadTrim = expiryAlertLeadDaysStr.trim();
+		let expiryAlertLeadDays: number | null;
+		if (leadTrim === '') {
+			expiryAlertLeadDays = null;
+		} else {
+			const n = Number(leadTrim);
+			if (!Number.isFinite(n)) {
+				toastService.addToast(
+					m.item_master_expiry_alert_lead_days_invalid(),
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			const d = Math.floor(n);
+			if (d < 1 || d > 365) {
+				toastService.addToast(
+					m.item_master_expiry_alert_lead_days_invalid(),
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			expiryAlertLeadDays = d;
+		}
+
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
@@ -351,11 +329,6 @@
 				pharmacyGenericIdStr.trim() !== '' &&
 				Number.isFinite(Number(pharmacyGenericIdStr))
 					? Number(pharmacyGenericIdStr)
-					: null;
-			const manufacturerId =
-				manufacturerIdStr.trim() !== '' &&
-				Number.isFinite(Number(manufacturerIdStr))
-					? Number(manufacturerIdStr)
 					: null;
 			const itemUnitMasterIds = itemUnitMasterIdStrs
 				.map((s) => Number(s))
@@ -378,14 +351,16 @@
 				itemName: itemName.trim(),
 				categoryId: catId,
 				itemCode: itemCode.trim() || null,
-				barcode: barcode.trim() || null,
 				pharmacyGenericId,
-				manufacturerId,
+				manufacturerName:
+					manufacturerNameStr.trim() !== ''
+						? manufacturerNameStr.trim()
+						: null,
 				itemUnitMasterIds,
 				description: description.trim() || null,
 				remark: remark.trim() || null,
-				statusId,
-				isBatchRequired
+				expiryAlertLeadDays,
+				statusId
 			};
 			if (itemUnitMasterIds.length > 0) {
 				body.defaultItemUnitMasterId = Number(
@@ -412,7 +387,10 @@
 					method: 'PUT',
 					headers: { 'content-type': 'application/json' },
 					credentials: 'include',
-					body: JSON.stringify({ ...body, id: modalState.editItem.id })
+					body: JSON.stringify({
+						...body,
+						id: modalState.editItem.id
+					})
 				});
 				if (!res.ok) {
 					const t = await res.text().catch(() => '');
@@ -503,20 +481,15 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<DaisyUiLabel
-					forText="im-mfr"
-					className="shrink-0 sm:w-40"
+				<DaisyUiLabel forText="im-mfr" className="shrink-0 sm:w-40"
 					>{m.item_master_manufacturer()}</DaisyUiLabel
 				>
 				<div class="max-w-lg flex-1">
-					<DaisyUISearchSelect
-						inputId="im-mfr"
-						bind:value={manufacturerIdStr}
-						placeholder={m.item_master_manufacturer_placeholder()}
-						searchFn={searchManufacturers}
-						getLabelForValue={getManufacturerLabelForValue}
-						invalidateKey={`${hospitalId}-mfr`}
-						className="w-full"
+					<DaisyUiInputField
+						id="im-mfr"
+						bind:value={manufacturerNameStr}
+						inputType="text"
+						inputPlaceholderText={m.item_master_manufacturer_placeholder()}
 					/>
 				</div>
 			</div>
@@ -533,37 +506,6 @@
 						inputType="text"
 						inputPlaceholderText={m.item_master_code_placeholder()}
 					/>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<DaisyUiLabel forText="im-barcode" className="shrink-0 sm:w-40"
-					>{m.item_master_barcode()}</DaisyUiLabel
-				>
-				<div class="max-w-lg flex-1">
-					<DaisyUiInputField
-						id="im-barcode"
-						bind:value={barcode}
-						inputType="text"
-						inputPlaceholderText={m.item_master_barcode_placeholder()}
-					/>
-					<p class="mt-1 text-xs opacity-70">
-						{m.item_master_barcode_scan_hint()}
-					</p>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<DaisyUiLabel className="shrink-0 pt-2 sm:w-40"
-					>{m.item_master_batch_required()}</DaisyUiLabel
-				>
-				<div class="max-w-lg flex-1">
-					<label class="flex cursor-pointer items-start gap-2">
-						<DaisyUiCheckbox bind:checked={isBatchRequired} />
-						<span class="text-sm">{m.item_master_batch_required_help()}</span>
-					</label>
 				</div>
 			</div>
 			<div
@@ -589,6 +531,27 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 			>
+				<DaisyUiLabel forText="im-expiry-lead" className="shrink-0 pt-2 sm:w-40"
+					>{m.item_master_expiry_alert_lead_days()}</DaisyUiLabel
+				>
+				<div class="max-w-lg flex-1">
+					<DaisyUiInputField
+						id="im-expiry-lead"
+						bind:value={expiryAlertLeadDaysStr}
+						inputType="text"
+						minLength={0}
+						maxlength={4}
+						inputPlaceholderText={m.item_master_expiry_alert_lead_days_placeholder()}
+						inputTitle={m.item_master_expiry_alert_lead_days_invalid()}
+					/>
+					<p class="mt-1 text-xs text-base-content/60">
+						{m.item_master_expiry_alert_lead_days_hint()}
+					</p>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
 				<DaisyUiLabel className="shrink-0 pt-1 sm:w-40"
 					>{m.item_master_unit_conversions()}</DaisyUiLabel
 				>
@@ -607,7 +570,7 @@
 							class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2"
 						>
 							<div
-								class="border-base-300/80 text-base-content/70 grid grid-cols-[2.5rem_2.5rem_1fr] gap-x-2 border-b pb-1 text-xs font-medium"
+								class="grid grid-cols-[2.5rem_2.5rem_1fr] gap-x-2 border-b border-base-300/80 pb-1 text-xs font-medium text-base-content/70"
 							>
 								<span class="text-center"
 									>{m.item_master_unit_conversions_include()}</span
@@ -624,11 +587,9 @@
 							{/if}
 							{#each filteredItemUnitMasters as opt (opt.id)}
 								<div
-									class="border-base-300/50 grid grid-cols-[2.5rem_2.5rem_1fr] items-center gap-x-2 border-b border-dotted py-1.5 last:border-0"
+									class="grid grid-cols-[2.5rem_2.5rem_1fr] items-center gap-x-2 border-b border-dotted border-base-300/50 py-1.5 last:border-0"
 								>
-									<label
-										class="flex cursor-pointer justify-center"
-									>
+									<label class="flex cursor-pointer justify-center">
 										<DaisyUiCheckbox
 											checked={itemUnitMasterIdStrs.includes(
 												String(opt.id)
@@ -650,7 +611,7 @@
 										/>
 									</div>
 									<span
-										class="text-sm font-mono break-all"
+										class="font-mono text-sm break-all"
 										title={opt.conversionDisplay}
 										>{opt.conversionDisplay}</span
 									>
@@ -663,8 +624,12 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<DaisyUiLabel className="shrink-0 sm:w-40">{m.status()}</DaisyUiLabel>
-				<div class="flex max-w-lg flex-1 flex-wrap items-center gap-2">
+				<DaisyUiLabel className="shrink-0 sm:w-40"
+					>{m.status()}</DaisyUiLabel
+				>
+				<div
+					class="flex max-w-lg flex-1 flex-wrap items-center gap-2"
+				>
 					<label class="flex cursor-pointer items-center gap-2">
 						<DaisyUiCheckbox bind:checked={formActive} />
 						<span class="text-sm opacity-80">{m.active_label()}</span>

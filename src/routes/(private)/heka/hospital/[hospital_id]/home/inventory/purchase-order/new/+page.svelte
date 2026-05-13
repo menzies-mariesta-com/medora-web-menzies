@@ -8,7 +8,6 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -49,7 +48,10 @@
 		const id = selectedInventoryFromStoreId;
 		const nav = (
 			data as {
-				inventoryFromStoresForNav?: { id: number; storeName: string | null }[];
+				inventoryFromStoresForNav?: {
+					id: number;
+					storeName: string | null;
+				}[];
 			}
 		).inventoryFromStoresForNav;
 		const row = nav?.find((s) => s.id === id);
@@ -58,10 +60,15 @@
 	});
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 	const poListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-order' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-order' as any
+		)
 	);
 
 	function purchaseOrderDetailHref(poId: string) {
@@ -80,7 +87,6 @@
 		qtyRemaining: string;
 		quantity: string;
 		unitPrice: string;
-		manufacturerId: string;
 	};
 
 	type CreatedPo = { id: string };
@@ -136,7 +142,6 @@
 			quantity: string;
 			unitId: number;
 			unitPrice: string;
-			manufacturerId: string;
 		}[]
 	>([]);
 	let createSubmitting = $state(false);
@@ -162,7 +167,6 @@
 		itemLabel: string;
 		quantity: string;
 		unitPrice: string;
-		manufacturerId: string;
 		iumList: IumOpt[];
 		itemUnitMasterId: number | null;
 	};
@@ -173,17 +177,16 @@
 	let manualLineDialogActive = $state(false);
 	let editingManualKey = $state<string | null>(null);
 	let draftManualLine = $state<ManualLineForm>(newManualLine());
-	let poManualLineMetricTiles = $state<LineItemMetricTile[] | null>(null);
+	let poManualLineMetricTiles = $state<LineItemMetricTile[] | null>(
+		null
+	);
 
 	let poPrLineDialogActive = $state(false);
 	let draftPoPrLine = $state<{
 		prLineId: number;
 		quantity: string;
 		unitPrice: string;
-		manufacturerId: string;
 	} | null>(null);
-	let poMfgLabelByPrLine = $state<Record<number, string>>({});
-	let manualMfgLabelByKey = $state<Record<string, string>>({});
 
 	function newManualLine(): ManualLineForm {
 		return {
@@ -194,19 +197,26 @@
 			itemLabel: '',
 			quantity: '1',
 			unitPrice: '',
-			manufacturerId: '',
 			iumList: [],
 			itemUnitMasterId: null
 		};
 	}
 
-	function purchaseUnitForManual(line: ManualLineForm): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+	function purchaseUnitForManual(
+		line: ManualLineForm
+	): number | null {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
-	function conversionLabelForManualLine(line: ManualLineForm): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+	function conversionLabelForManualLine(
+		line: ManualLineForm
+	): string {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -230,7 +240,8 @@
 			header: m.inv_common_quantity(),
 			field: 'quantity',
 			filterable: true,
-			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
+			format: (_v, row) =>
+				formatPurchaseQtyCellWithIssueEquivalent(row)
 		},
 		{
 			id: 'unitPrice',
@@ -241,13 +252,6 @@
 				const t = String(row.unitPrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
-		},
-		{
-			id: 'manufacturerId',
-			header: m.inv_common_manufacturer(),
-			field: 'manufacturerId',
-			filterable: true,
-			format: (_v, row) => manualMfgLabelByKey[row.key] ?? (row.manufacturerId?.trim() ? '…' : '—')
 		}
 	];
 
@@ -263,8 +267,6 @@
 				props: {
 					draftManualLine,
 					searchItemsFn: searchItemsForManual,
-					searchManufacturersFn: searchManufacturers,
-					getManufacturerLabelForValue,
 					onPickItem: pickDraftManualItem,
 					onSaveAttempt: saveManualDraftLine,
 					getLineItemMetricTiles: () => poManualLineMetricTiles
@@ -292,8 +294,6 @@
 				props: {
 					draftManualLine,
 					searchItemsFn: searchItemsForManual,
-					searchManufacturersFn: searchManufacturers,
-					getManufacturerLabelForValue,
 					onPickItem: pickDraftManualItem,
 					onSaveAttempt: saveManualDraftLine,
 					getLineItemMetricTiles: () => poManualLineMetricTiles
@@ -319,19 +319,27 @@
 			);
 			return false;
 		}
-		const q = draftManualLine.quantity.trim();
-		const p = draftManualLine.unitPrice.trim();
+		const q = String(draftManualLine.quantity ?? '').trim();
+		const p = String(draftManualLine.unitPrice ?? '').trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid quantity greater than 0.');
+			toastService.addErrorToast(
+				'Could not save line',
+				'Enter a valid quantity greater than 0.'
+			);
 			return false;
 		}
 		if (!Number.isFinite(Number(p)) || Number(p) < 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid unit price.');
+			toastService.addErrorToast(
+				'Could not save line',
+				'Enter a valid unit price.'
+			);
 			return false;
 		}
 		const saved = { ...draftManualLine, quantity: q, unitPrice: p };
 		if (editingManualKey) {
-			manualLines = manualLines.map((l) => (l.key === editingManualKey ? saved : l));
+			manualLines = manualLines.map((l) =>
+				l.key === editingManualKey ? saved : l
+			);
 		} else {
 			manualLines = [...manualLines, saved];
 		}
@@ -342,12 +350,16 @@
 		manualLines = manualLines.filter((l) => l.key !== lineKey);
 	}
 
-	function sumCurrentManualDraftForLine(itemId: number, unitId: number): string {
+	function sumCurrentManualDraftForLine(
+		itemId: number,
+		unitId: number
+	): string {
 		let s = 0;
 		for (const l of manualLines) {
 			if (editingManualKey && l.key === editingManualKey) continue;
 			const u = purchaseUnitForManual(l);
-			if (l.itemId === itemId && u === unitId) s += Number(l.quantity) || 0;
+			if (l.itemId === itemId && u === unitId)
+				s += Number(l.quantity) || 0;
 		}
 		if (
 			draftManualLine.itemId === itemId &&
@@ -359,7 +371,11 @@
 	}
 
 	async function refreshPoManualLineMetrics() {
-		if (!hospitalId || !manualLineDialogActive || poCreateMode !== 'manual') {
+		if (
+			!hospitalId ||
+			!manualLineDialogActive ||
+			poCreateMode !== 'manual'
+		) {
 			poManualLineMetricTiles = null;
 			return;
 		}
@@ -394,14 +410,21 @@
 			poManualLineMetricTiles = null;
 			return;
 		}
-		const current = sumCurrentManualDraftForLine(draftManualLine.itemId, unitId);
-		poManualLineMetricTiles = tilesFromPrItemMetricsRow(row, current, {
-			store: m.inv_pr_line_metric_store(),
-			global: m.inv_pr_line_metric_global(),
-			pendingPr: m.inv_pr_line_metric_pending_pr_qty(),
-			pendingPo: m.inv_po_line_metric_pending_po_qty(),
-			current: m.inv_pr_line_metric_current()
-		});
+		const current = sumCurrentManualDraftForLine(
+			draftManualLine.itemId,
+			unitId
+		);
+		poManualLineMetricTiles = tilesFromPrItemMetricsRow(
+			row,
+			current,
+			{
+				store: m.inv_pr_line_metric_store(),
+				global: m.inv_pr_line_metric_global(),
+				pendingPr: m.inv_pr_line_metric_pending_pr_qty(),
+				pendingPo: m.inv_po_line_metric_pending_po_qty(),
+				current: m.inv_pr_line_metric_current()
+			}
+		);
 	}
 
 	$effect(() => {
@@ -425,8 +448,7 @@
 		draftPoPrLine = {
 			prLineId: row.prLineId,
 			quantity: row.quantity,
-			unitPrice: row.unitPrice,
-			manufacturerId: row.manufacturerId
+			unitPrice: row.unitPrice
 		};
 		poPrLineDialogActive = true;
 		try {
@@ -436,8 +458,6 @@
 				component: PoPrLineEditDialogContent,
 				props: {
 					draftPoPrLine,
-					searchManufacturersFn: searchManufacturers,
-					getManufacturerLabelForValue,
 					onSaveAttempt: savePoPrLineDraft
 				}
 			});
@@ -449,20 +469,25 @@
 
 	function savePoPrLineDraft(): boolean {
 		if (!draftPoPrLine) return false;
-		const q = draftPoPrLine.quantity.trim();
-		const p = draftPoPrLine.unitPrice.trim();
+		const q = String(draftPoPrLine.quantity ?? '').trim();
+		const p = String(draftPoPrLine.unitPrice ?? '').trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid quantity greater than 0.');
+			toastService.addErrorToast(
+				'Could not save line',
+				'Enter a valid quantity greater than 0.'
+			);
 			return false;
 		}
 		if (!Number.isFinite(Number(p)) || Number(p) < 0) {
-			toastService.addErrorToast('Could not save line', 'Enter a valid unit price.');
+			toastService.addErrorToast(
+				'Could not save line',
+				'Enter a valid unit price.'
+			);
 			return false;
 		}
 		patchPoCreateLine(draftPoPrLine.prLineId, {
 			quantity: q,
-			unitPrice: p,
-			manufacturerId: draftPoPrLine.manufacturerId.trim()
+			unitPrice: p
 		});
 		return true;
 	}
@@ -471,7 +496,10 @@
 		poLineDraft = poLineDraft.filter((r) => r.prLineId !== prLineId);
 	}
 
-	async function hydrateManualLineItem(line: ManualLineForm, itemId: number) {
+	async function hydrateManualLineItem(
+		line: ManualLineForm,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -514,80 +542,14 @@
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?${sp.toString()}`
 		);
 		if (!res.ok) return [];
-		const j = (await res.json()) as { data: { id: number; itemName?: string | null }[] };
+		const j = (await res.json()) as {
+			data: { id: number; itemName?: string | null }[];
+		};
 		return (j.data ?? []).map((r) => ({
 			label: r.itemName ?? '—',
 			value: String(r.id)
 		}));
 	}
-
-	async function searchManufacturers(q: string) {
-		if (!hospitalId) return [];
-		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/manufacture-setup?mode=search&q=${encodeURIComponent(q)}&limit=30`
-		);
-		if (!res.ok) return [];
-		const rows = (await res.json()) as { id: number; name: string; code: string | null }[];
-		if (!Array.isArray(rows)) return [];
-		return rows.map((r) => {
-			const code = r.code?.trim();
-			return {
-				label: code ? `${r.name} (${code})` : r.name,
-				value: String(r.id)
-			};
-		});
-	}
-
-	async function getManufacturerLabelForValue(value: string) {
-		if (!hospitalId || !value?.trim()) return '';
-		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/manufacture-setup?id=${encodeURIComponent(value)}`
-		);
-		if (!res.ok) return '—';
-		const data = (await res.json()) as { name?: string } | null;
-		if (data == null) return '—';
-		return data.name ?? '—';
-	}
-
-	$effect(() => {
-		const draft = poLineDraft;
-		let cancel = false;
-		void (async () => {
-			const next: Record<number, string> = {};
-			for (const d of draft) {
-				const mid = d.manufacturerId?.trim();
-				if (!mid) {
-					next[d.prLineId] = '—';
-					continue;
-				}
-				next[d.prLineId] = await getManufacturerLabelForValue(mid);
-			}
-			if (!cancel) poMfgLabelByPrLine = next;
-		})();
-		return () => {
-			cancel = true;
-		};
-	});
-
-	$effect(() => {
-		const lines = manualLines;
-		let cancel = false;
-		void (async () => {
-			const next: Record<string, string> = {};
-			for (const l of lines) {
-				const mid = l.manufacturerId?.trim();
-				if (!mid) {
-					next[l.key] = '—';
-					continue;
-				}
-				next[l.key] = await getManufacturerLabelForValue(mid);
-			}
-			if (!cancel) manualMfgLabelByKey = next;
-		})();
-		return () => {
-			cancel = true;
-		};
-	});
 
 	async function loadApprovedPrs() {
 		if (!hospitalId) return;
@@ -602,7 +564,10 @@
 		}
 		const sp = new URLSearchParams();
 		sp.set('mode', 'poEligible');
-		sp.set('statusTaggingId', String(InvPrStatusTaggingEnum.APPROVED));
+		sp.set(
+			'statusTaggingId',
+			String(InvPrStatusTaggingEnum.APPROVED)
+		);
 		sp.set('toStoreId', String(toStoreId));
 		sp.set('pageSize', '150');
 		const res = await fetch(
@@ -658,7 +623,9 @@
 		return `${pr.prNo ?? '—'} · ${pr.fromStoreName ?? '—'} → ${pr.toStoreName ?? '—'}`;
 	});
 
-	function pickerCsvItemLines(csv: string | null | undefined): string {
+	function pickerCsvItemLines(
+		csv: string | null | undefined
+	): string {
 		const lines = (csv ?? '')
 			.split(',')
 			.map((s) => s.trim())
@@ -679,21 +646,24 @@
 			header: m.inv_dept_indent_from(),
 			field: 'fromStoreName',
 			filterable: false,
-			format: (_v, row) => (row as ApprovedPrOptionRow).fromStoreName ?? '—'
+			format: (_v, row) =>
+				(row as ApprovedPrOptionRow).fromStoreName ?? '—'
 		},
 		{
 			id: 'toStore',
 			header: m.inv_dept_indent_to(),
 			field: 'toStoreName',
 			filterable: false,
-			format: (_v, row) => (row as ApprovedPrOptionRow).toStoreName ?? '—'
+			format: (_v, row) =>
+				(row as ApprovedPrOptionRow).toStoreName ?? '—'
 		},
 		{
 			id: 'status',
 			header: m.status(),
 			field: 'statusName',
 			filterable: false,
-			format: (_v, row) => (row as ApprovedPrOptionRow).statusName ?? '—'
+			format: (_v, row) =>
+				(row as ApprovedPrOptionRow).statusName ?? '—'
 		},
 		{
 			id: 'items',
@@ -773,8 +743,7 @@
 			itemId: ln.itemId,
 			quantity: ln.qtyRemaining,
 			unitId: ln.unitId,
-			unitPrice: '',
-			manufacturerId: ''
+			unitPrice: ''
 		}));
 	}
 
@@ -792,7 +761,6 @@
 			quantity: string;
 			unitId: number;
 			unitPrice: string;
-			manufacturerId: number | null;
 		}[] = [];
 		for (const ln of manualLines) {
 			const unitId = purchaseUnitForManual(ln);
@@ -803,27 +771,34 @@
 				);
 				return;
 			}
-			const q = ln.quantity.trim();
-			const p = ln.unitPrice.trim();
-			const m = ln.manufacturerId.trim();
+			const q = String(ln.quantity ?? '').trim();
+			const p = String(ln.unitPrice ?? '').trim();
 			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid quantity.');
+				toastService.addErrorToast(
+					'Could not create purchase order',
+					'Invalid quantity.'
+				);
 				return;
 			}
 			if (!p || !Number.isFinite(Number(p)) || Number(p) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid unit price.');
+				toastService.addErrorToast(
+					'Could not create purchase order',
+					'Invalid unit price.'
+				);
 				return;
 			}
 			lines.push({
 				itemId: ln.itemId,
 				quantity: q,
 				unitId,
-				unitPrice: p,
-				manufacturerId: m === '' ? null : Number(m)
+				unitPrice: p
 			});
 		}
 		if (lines.length === 0) {
-			toastService.addErrorToast('Could not create purchase order', 'Add at least one line.');
+			toastService.addErrorToast(
+				'Could not create purchase order',
+				'Add at least one line.'
+			);
 			return;
 		}
 		createSubmitting = true;
@@ -842,7 +817,10 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addErrorToast('Could not create purchase order', await res.text());
+				toastService.addErrorToast(
+					'Could not create purchase order',
+					await res.text()
+				);
 				return;
 			}
 			const created = (await res.json()) as CreatedPo;
@@ -854,7 +832,10 @@
 				await goto(purchaseOrderDetailHref(created.id));
 			}
 		} catch (e) {
-			toastService.addErrorToast('Could not create purchase order', e);
+			toastService.addErrorToast(
+				'Could not create purchase order',
+				e
+			);
 		} finally {
 			createSubmitting = false;
 		}
@@ -867,7 +848,10 @@
 			!selectedPrId ||
 			supplierId == null
 		) {
-			toastService.addErrorToast('Could not create purchase order', 'PR and supplier are required.');
+			toastService.addErrorToast(
+				'Could not create purchase order',
+				'PR and supplier are required.'
+			);
 			return;
 		}
 		if (poLineDraft.length === 0) {
@@ -879,33 +863,34 @@
 		}
 		const lines = poLineDraft
 			.map((l) => {
-				const q = l.quantity.trim();
-				const p = l.unitPrice.trim();
-				const m = l.manufacturerId.trim();
+				const q = String(l.quantity ?? '').trim();
+				const p = String(l.unitPrice ?? '').trim();
 				return {
 					prLineId: l.prLineId,
 					itemId: l.itemId,
 					quantity: q,
 					unitId: l.unitId,
-					unitPrice: p,
-					manufacturerId: m === '' ? null : Number(m)
+					unitPrice: p
 				};
 			})
 			.filter((l) => Number(l.quantity) > 0);
 		if (lines.length === 0) {
-			toastService.addErrorToast('Could not create purchase order', 'At least one line with quantity.');
+			toastService.addErrorToast(
+				'Could not create purchase order',
+				'At least one line with quantity.'
+			);
 			return;
 		}
 		for (const l of lines) {
-			if (!l.unitPrice || !Number.isFinite(Number(l.unitPrice)) || Number(l.unitPrice) <= 0) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid unit price.');
-				return;
-			}
 			if (
-				l.manufacturerId != null &&
-				(!Number.isFinite(l.manufacturerId) || l.manufacturerId <= 0)
+				!l.unitPrice ||
+				!Number.isFinite(Number(l.unitPrice)) ||
+				Number(l.unitPrice) <= 0
 			) {
-				toastService.addErrorToast('Could not create purchase order', 'Invalid manufacturer id.');
+				toastService.addErrorToast(
+					'Could not create purchase order',
+					'Invalid unit price.'
+				);
 				return;
 			}
 		}
@@ -925,7 +910,10 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addErrorToast('Could not create purchase order', await res.text());
+				toastService.addErrorToast(
+					'Could not create purchase order',
+					await res.text()
+				);
 				return;
 			}
 			const created = (await res.json()) as CreatedPo;
@@ -938,7 +926,10 @@
 				await goto(purchaseOrderDetailHref(created.id));
 			}
 		} catch (e) {
-			toastService.addErrorToast('Could not create purchase order', e);
+			toastService.addErrorToast(
+				'Could not create purchase order',
+				e
+			);
 		} finally {
 			createSubmitting = false;
 		}
@@ -971,142 +962,192 @@
 				prLineId: row.prLineId,
 				itemName: pl?.itemName ?? null,
 				itemUnitMasterId:
-					typeof pl?.itemUnitMasterId === 'number' ? pl.itemUnitMasterId : null,
+					typeof pl?.itemUnitMasterId === 'number'
+						? pl.itemUnitMasterId
+						: null,
 				itemUnitMasterConversion: pl?.itemUnitMasterConversion?.trim()
 					? pl.itemUnitMasterConversion
 					: null,
 				qtyRemaining: pl?.qtyRemaining ?? '—',
 				quantity: row.quantity,
-				unitPrice: row.unitPrice,
-				manufacturerId: row.manufacturerId
+				unitPrice: row.unitPrice
 			};
 		});
 	});
 
-	const poCreateLineColumns = $derived.by((): MariTableColumn<PoCreateLineTableRow>[] => {
-		const cat = poCreateIumCatalog;
-		return [
-		{
-			id: 'itemName',
-			header: m.inv_common_item(),
-			field: 'itemName',
-			format: (_v, row) => row.itemName ?? '—'
-		},
-		{
-			id: 'itemUnitMasterConversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterConversion',
-			widthClass: 'min-w-[12rem] max-w-md',
-			headerClass: 'min-w-[12rem] max-w-md',
-			cellClass: 'whitespace-normal align-middle',
-			filterable: false,
-			format: (_v, row) => row.itemUnitMasterConversion ?? '—'
-		},
-		{
-			id: 'qtyRemaining',
-			header: m.inv_common_remaining(),
-			field: 'qtyRemaining',
-			format: (_v, row) => {
-				const t = row.qtyRemaining == null ? '' : String(row.qtyRemaining).trim();
-				if (!t || t === '—') return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent(
-					{ quantity: t, itemUnitMasterId: row.itemUnitMasterId, iumList: [] },
-					cat
-				);
-			}
-		},
-		{
-			id: 'quantity',
-			header: m.inv_common_quantity(),
-			field: 'quantity',
-			format: (_v, row) =>
-				formatPurchaseQtyCellWithIssueEquivalent(
-					{
-						quantity: row.quantity,
-						itemUnitMasterId: row.itemUnitMasterId,
-						iumList: []
-					},
-					cat
-				)
-		},
-		{
-			id: 'unitPrice',
-			header: m.inv_po_line_unit_price(),
-			field: 'unitPrice',
-			format: (_v, row) => {
-				const t = String(row.unitPrice ?? '').trim();
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
-			}
-		},
-		{
-			id: 'manufacturerId',
-			header: m.inv_common_manufacturer(),
-			field: 'manufacturerId',
-			widthClass: 'min-w-[10rem]',
-			format: (_v, row) => poMfgLabelByPrLine[row.prLineId] ?? '—'
+	const poCreateLineColumns = $derived.by(
+		(): MariTableColumn<PoCreateLineTableRow>[] => {
+			const cat = poCreateIumCatalog;
+			return [
+				{
+					id: 'itemName',
+					header: m.inv_common_item(),
+					field: 'itemName',
+					format: (_v, row) => row.itemName ?? '—'
+				},
+				{
+					id: 'itemUnitMasterConversion',
+					header: m.inv_common_unit(),
+					field: 'itemUnitMasterConversion',
+					widthClass: 'min-w-[12rem] max-w-md',
+					headerClass: 'min-w-[12rem] max-w-md',
+					cellClass: 'whitespace-normal align-middle',
+					format: (_v, row) => row.itemUnitMasterConversion ?? '—'
+				},
+				{
+					id: 'qtyRemaining',
+					header: m.inv_common_remaining(),
+					field: 'qtyRemaining',
+					format: (_v, row) => {
+						const t =
+							row.qtyRemaining == null
+								? ''
+								: String(row.qtyRemaining).trim();
+						if (!t || t === '—') return '—';
+						return formatPurchaseQtyCellWithIssueEquivalent(
+							{
+								quantity: t,
+								itemUnitMasterId: row.itemUnitMasterId,
+								iumList: []
+							},
+							cat
+						);
+					}
+				},
+				{
+					id: 'quantity',
+					header: m.inv_common_quantity(),
+					field: 'quantity',
+					format: (_v, row) =>
+						formatPurchaseQtyCellWithIssueEquivalent(
+							{
+								quantity: row.quantity,
+								itemUnitMasterId: row.itemUnitMasterId,
+								iumList: []
+							},
+							cat
+						)
+				},
+				{
+					id: 'unitPrice',
+					header: m.inv_po_line_unit_price(),
+					field: 'unitPrice',
+					format: (_v, row) => {
+						const t = String(row.unitPrice ?? '').trim();
+						return t ? trimInventoryNumericDisplay(t, 4) : '—';
+					}
+				}
+			];
 		}
-	];
-	});
-
+	);
 </script>
 
-	<DaisyUiCard>
-		<DaisyUiCardBody>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					if (poCreateMode === 'manual') {
-						void submitCreateManual();
-					} else {
-						void submitCreatePo();
-					}
-				}}
-			>
-				<fieldset class="m-0 min-w-0 border-0 p-0">
-					<div class="mb-5 flex items-center gap-2">
-						<DaisyUiTooltip
-							tooltipText={m.inv_common_back_to_list()}
-							className="d-tooltip-ghost d-tooltip-right"
+<DaisyUiCard>
+	<DaisyUiCardBody>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				if (poCreateMode === 'manual') {
+					void submitCreateManual();
+				} else {
+					void submitCreatePo();
+				}
+			}}
+		>
+			{#snippet poCreatePrSubmitBar()}
+				<div
+					class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+				>
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-wide"
+						disabled={createSubmitting || poLineDraft.length === 0}
+					>
+						{m.inv_po_create_submit()}
+					</DaisyUiButton>
+				</div>
+			{/snippet}
+			{#snippet poCreateManualSubmitBar()}
+				<div
+					class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+				>
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-wide"
+						disabled={createSubmitting || manualLines.length === 0}
+					>
+						{m.inv_po_create_submit()}
+					</DaisyUiButton>
+				</div>
+			{/snippet}
+			{#snippet manualPoLinesToolbarPlus()}
+				<DaisyUiTooltip
+					tooltipText={m.inv_line_items_add()}
+					className="d-tooltip-ghost"
+				>
+					<DaisyUiButton
+						type="button"
+						className="d-btn-primary d-btn-square d-btn-outline"
+						disabled={createSubmitting}
+						title={m.inv_line_items_add()}
+						onClick={() => void openManualLineDialogForCreate()}
+					>
+						<LucidePlus className="size-4" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			{/snippet}
+			<fieldset class="m-0 min-w-0 border-0 p-0">
+				<div class="mb-5 flex items-center gap-2">
+					<DaisyUiTooltip
+						tooltipText={m.inv_common_back_to_list()}
+						className="d-tooltip-ghost d-tooltip-right"
+					>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-sm d-btn-ghost d-btn-square"
+							onClick={() => void goto(resolve(poListPath as any))}
 						>
-							<DaisyUiButton
-								type="button"
-								className="d-btn-sm d-btn-ghost d-btn-square"
-								onClick={() => void goto(resolve(poListPath as any))}
-							>
-								<LucideArrowLeft className="size-4" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-						<DaisyUiCardBodyTitle className="mb-0">
-							{poCreateMode === 'manual'
-								? 'New purchase order (manual)'
-								: m.inv_po_new_title()}
-						</DaisyUiCardBodyTitle>
-					</div>
-				</fieldset>
+							<LucideArrowLeft className="size-4" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiCardBodyTitle className="mb-0">
+						{poCreateMode === 'manual'
+							? 'New purchase order (manual)'
+							: m.inv_po_new_title()}
+					</DaisyUiCardBodyTitle>
+				</div>
+			</fieldset>
 
-				{#if poCreateMode === 'pr'}
-				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+			{#if poCreateMode === 'pr'}
+				<div
+					class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
+				>
 					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_select_pr()}</DaisyUiLabel>
+						<div
+							class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2"
+						>
+							<div
+								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+							>
+								<DaisyUiLabel className="shrink-0 sm:w-36"
+									>{m.inv_po_select_pr()}</DaisyUiLabel
+								>
 								<div
-									class="flex min-w-0 max-w-80 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
+									class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
 								>
 									<input
 										type="text"
 										readonly
 										disabled
-										class="d-input d-input-bordered min-w-0 flex-1 text-sm"
+										class="d-input-bordered d-input min-w-0 flex-1 text-sm"
 										value={selectedPrSummary || '—'}
 										aria-label={m.inv_po_select_pr()}
 									/>
 									<DaisyUiButton
 										type="button"
 										className="d-btn-outline shrink-0"
-										disabled={
-											selectedInventoryFromStoreId == null || prPickerBusy
-										}
+										disabled={selectedInventoryFromStoreId == null ||
+											prPickerBusy}
 										loading={prPickerBusy}
 										onClick={() => void openPrPicker()}
 									>
@@ -1114,11 +1155,17 @@
 									</DaisyUiButton>
 								</div>
 							</div>
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
-								<div class="min-w-0 max-w-80 flex-1">
+							<div
+								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+							>
+								<DaisyUiLabel className="shrink-0 sm:w-36"
+									>{m.inv_po_supplier_search()}</DaisyUiLabel
+								>
+								<div class="max-w-80 min-w-0 flex-1">
 									<DaisyUISearchSelect
-										value={supplierId != null ? String(supplierId) : ''}
+										value={supplierId != null
+											? String(supplierId)
+											: ''}
 										searchFn={async (q: string) => {
 											const qEnc = encodeURIComponent(q.trim());
 											const res = await fetch(
@@ -1149,165 +1196,158 @@
 					<p class="mb-3 text-sm text-base-content/80">
 						<span class="opacity-70">{m.inv_pr_route()}</span>
 						<strong
-							>{prDetailForCreate.fromStoreName ?? '—'} → {prDetailForCreate.toStoreName ?? '—'}</strong
+							>{prDetailForCreate.fromStoreName ?? '—'} → {prDetailForCreate.toStoreName ??
+								'—'}</strong
 						>
 					</p>
 				{/if}
-				{:else}
-					<div class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
-						<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-							<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_nav_from_store()}</DaisyUiLabel>
-									<div class="min-w-0 max-w-80 flex-1">
-										<input
-											type="text"
-											readonly
-											disabled
-											class="d-input d-input-bordered w-full text-sm"
-											value={navFromStoreLabel}
-											aria-label={m.inv_nav_from_store()}
-										/>
-										{#if selectedInventoryFromStoreId == null}
-											<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
-												{m.inv_inventory_from_store_topbar_hint()}
-											</div>
-										{/if}
-									</div>
-								</div>
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
-									<div class="min-w-0 max-w-80 flex-1">
-										<DaisyUISearchSelect
-											value={supplierId != null ? String(supplierId) : ''}
-											searchFn={async (q: string) => {
-												const qEnc = encodeURIComponent(q.trim());
-												const res = await fetch(
-													`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-												);
-												const j = await res.json();
-												return (j ?? []).map((s: any) => ({
-													label: s.name ?? '—',
-													value: String(s.id)
-												}));
-											}}
-											onChange={(v: string) => {
-												if (v) {
-													supplierId = Number(v);
-												} else {
-													supplierId = null;
-												}
-											}}
-											placeholder="Search supplier..."
-											className="d-input w-full"
-										/>
-									</div>
+				{@render poCreatePrSubmitBar()}
+			{:else}
+				<div
+					class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
+				>
+					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
+						<div
+							class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2"
+						>
+							<div
+								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+							>
+								<DaisyUiLabel className="shrink-0 sm:w-36"
+									>{m.inv_nav_from_store()}</DaisyUiLabel
+								>
+								<div class="max-w-80 min-w-0 flex-1">
+									<input
+										type="text"
+										readonly
+										disabled
+										class="d-input-bordered d-input w-full text-sm"
+										value={navFromStoreLabel}
+										aria-label={m.inv_nav_from_store()}
+									/>
+									{#if selectedInventoryFromStoreId == null}
+										<div
+											class="mt-2 d-alert text-sm d-alert-warning"
+											role="status"
+										>
+											{m.inv_inventory_from_store_topbar_hint()}
+										</div>
+									{/if}
 								</div>
 							</div>
-						</fieldset>
-						<div
-							class="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3"
-						>
-							<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
-								<DaisyUiButton
-									type="button"
-									className="d-btn-primary d-btn-square d-btn-outline"
-									aria-label={m.inv_line_items_add()}
-									onClick={() => void openManualLineDialogForCreate()}
+							<div
+								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+							>
+								<DaisyUiLabel className="shrink-0 sm:w-36"
+									>{m.inv_po_supplier_search()}</DaisyUiLabel
 								>
-									<LucidePlus  />
-								</DaisyUiButton>
-							</DaisyUiTooltip>
-							<DaisyUiButton
-								type="submit"
-								className="d-btn-primary"
-								disabled={createSubmitting}
-							>
-								{m.inv_po_create_submit()}
-							</DaisyUiButton>
+								<div class="max-w-80 min-w-0 flex-1">
+									<DaisyUISearchSelect
+										value={supplierId != null
+											? String(supplierId)
+											: ''}
+										searchFn={async (q: string) => {
+											const qEnc = encodeURIComponent(q.trim());
+											const res = await fetch(
+												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+											);
+											const j = await res.json();
+											return (j ?? []).map((s: any) => ({
+												label: s.name ?? '—',
+												value: String(s.id)
+											}));
+										}}
+										onChange={(v: string) => {
+											if (v) {
+												supplierId = Number(v);
+											} else {
+												supplierId = null;
+											}
+										}}
+										placeholder="Search supplier..."
+										className="d-input w-full"
+									/>
+								</div>
+							</div>
 						</div>
+					</fieldset>
+				</div>
+				{@render poCreateManualSubmitBar()}
+				<PoManualLinesCard
+					totalCount={manualLines.length}
+					columns={manualLineTableColumns}
+					rows={manualLines}
+					useColumnFilters={true}
+					hideQuickFilter={true}
+					hideAddButton={true}
+					noCard={true}
+					toolbarRight={manualPoLinesToolbarPlus}
+					onAddItem={() => void openManualLineDialogForCreate()}
+					onEditLine={(line) =>
+						void openManualLineDialogForEdit(line)}
+					onDeleteLine={deleteManualLine}
+				/>
+			{/if}
+
+			{#if poCreateMode === 'pr'}
+				<h3 class="mt-6 mb-3 text-lg font-medium">
+					{m.inv_po_lines()}
+				</h3>
+				{#if prDetailForCreate && poLineDraft.length > 0}
+					<div class="h-[420px] min-h-0 w-full">
+						<MariTable
+							columns={poCreateLineColumns}
+							rows={poCreateLineRows}
+							isLoading={false}
+							showRowActions={true}
+							actionsVariant="none"
+							showRefreshButton={false}
+							enableColumnFilters={true}
+						>
+							{#snippet rowActions(row)}
+								<div class="flex flex-col items-center gap-1">
+									<DaisyUiTooltip
+										tooltipText={m.inv_line_items_tooltip_edit()}
+										className="d-tooltip-accent d-tooltip-right"
+									>
+										<DaisyUiButton
+											type="button"
+											className="d-btn-sm d-btn-ghost d-btn-square text-accent"
+											onClick={() =>
+												void openPoPrLineDialog(row.prLineId)}
+										>
+											<LucidePencil className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+									<DaisyUiTooltip
+										tooltipText={m.inv_common_remove_line()}
+										className="d-tooltip-error d-tooltip-right"
+									>
+										<DaisyUiButton
+											type="button"
+											className="d-btn-sm d-btn-ghost d-btn-square text-error"
+											onClick={() => removePoPrLine(row.prLineId)}
+										>
+											<LucideTrash2 className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								</div>
+							{/snippet}
+						</MariTable>
 					</div>
-					<PoManualLinesCard
-						totalCount={manualLines.length}
-						columns={manualLineTableColumns}
-						rows={manualLines}
-						useColumnFilters={true}
-						hideAddButton={true}
-						noCard={true}
-						onAddItem={() => void openManualLineDialogForCreate()}
-						onEditLine={(line) => void openManualLineDialogForEdit(line)}
-						onDeleteLine={deleteManualLine}
-					/>
+				{:else if prDetailForCreate && selectedPrId && poLineDraft.length === 0}
+					<div
+						class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80"
+					>
+						All lines were removed. Reselect the PR to restore lines
+						from the requisition, or choose a different PR.
+					</div>
+				{:else}
+					<div class="d-alert text-sm d-alert-warning" role="status">
+						{m.inv_po_new_lines_need_pr_hint()}
+					</div>
 				{/if}
-
-				{#if poCreateMode === 'pr'}
-					<h3 class="font-medium text-lg mt-6 mb-3">{m.inv_po_lines()}</h3>
-					{#if prDetailForCreate && poLineDraft.length > 0}
-						<div class="h-[420px] min-h-0 w-full">
-							<MariTable
-								columns={poCreateLineColumns}
-								rows={poCreateLineRows}
-								isLoading={false}
-								showRowActions={true}
-								actionsVariant="none"
-								showRefreshButton={false}
-								enableColumnFilters={false}
-							>
-								{#snippet rowActions(row)}
-									<div class="flex flex-col items-center gap-1">
-										<DaisyUiTooltip
-											tooltipText={m.inv_line_items_tooltip_edit()}
-											className="d-tooltip-accent d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-												onClick={() => void openPoPrLineDialog(row.prLineId)}
-											>
-												<LucidePencil className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-										<DaisyUiTooltip
-											tooltipText={m.inv_common_remove_line()}
-											className="d-tooltip-error d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-square text-error"
-												onClick={() => removePoPrLine(row.prLineId)}
-											>
-												<LucideTrash2 className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-									</div>
-								{/snippet}
-							</MariTable>
-						</div>
-					{:else if prDetailForCreate && selectedPrId && poLineDraft.length === 0}
-						<div
-							class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80"
-						>
-							All lines were removed. Reselect the PR to restore lines from the requisition, or
-							choose a different PR.
-						</div>
-					{:else}
-						<div class="d-alert d-alert-warning text-sm" role="status">
-							{m.inv_po_new_lines_need_pr_hint()}
-						</div>
-					{/if}
-				{/if}
-
-				{#if poCreateMode === 'pr'}
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide d-btn-primary"
-							disabled={createSubmitting}
-						>
-							{m.inv_po_create_submit()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{/if}
-			</form>
-		</DaisyUiCardBody>
-	</DaisyUiCard>
+			{/if}
+		</form>
+	</DaisyUiCardBody>
+</DaisyUiCard>

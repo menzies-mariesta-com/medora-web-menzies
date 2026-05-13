@@ -39,7 +39,11 @@ export async function getFinancialYearIdToday(
 			)
 		)
 		.limit(1);
-	if (!fy) throw error(400, 'Financial year is not configured for this hospital.');
+	if (!fy)
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	return fy.id;
 }
 
@@ -55,7 +59,8 @@ export async function searchStores(
 		.from(table.hospitalBranchTable)
 		.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
 	const branchIds = branches.map((b) => b.id);
-	if (branchIds.length === 0) return [] as { id: number; storeName: string | null }[];
+	if (branchIds.length === 0)
+		return [] as { id: number; storeName: string | null }[];
 
 	const wh = and(
 		inArray(table.storeTable.branchId, branchIds),
@@ -90,7 +95,8 @@ export async function searchItemNamePrice(
 	const { hospitalId, storeId, search, pharmacyGenericId } = input;
 	const limit = input.limit ?? 80;
 	await ensureCanAccessHospital(event, hospitalId);
-	if (!Number.isFinite(storeId) || storeId <= 0) throw error(400, 'storeId is required');
+	if (!Number.isFinite(storeId) || storeId <= 0)
+		throw error(400, 'storeId is required');
 
 	// prove store belongs to hospital
 	const branches = await ensureDb()
@@ -144,7 +150,8 @@ export async function searchItemNamePrice(
 	return rows.map((r) => ({
 		id: r.id,
 		itemName: r.itemName,
-		displayPrice: r.displayPrice != null ? String(r.displayPrice) : null
+		displayPrice:
+			r.displayPrice != null ? String(r.displayPrice) : null
 	}));
 }
 
@@ -278,7 +285,11 @@ export async function saveMedicationOrderBatch(
  */
 export async function reorderFromHistoryBatch(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number; sourceBatchId: number }
+	input: {
+		hospitalId: string;
+		visitId: number;
+		sourceBatchId: number;
+	}
 ) {
 	const { hospitalId, visitId, sourceBatchId } = input;
 	await ensureCanAccessHospital(event, hospitalId);
@@ -310,9 +321,7 @@ export async function reorderFromHistoryBatch(
 	const [firstLine] = await db
 		.select()
 		.from(mol)
-		.where(
-			and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt))
-		)
+		.where(and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt)))
 		.orderBy(mol.lineNo)
 		.limit(1);
 	if (!firstLine) throw error(400, 'Batch has no lines');
@@ -339,9 +348,7 @@ export async function reorderFromHistoryBatch(
 		.where(
 			and(
 				isNull(table.medOrderDurationUnitTable.deletedAt),
-				isNull(
-					table.medOrderDurationUnitInactiveTable.durationUnitId
-				)
+				isNull(table.medOrderDurationUnitInactiveTable.durationUnitId)
 			) as any
 		)
 		.orderBy(
@@ -349,7 +356,10 @@ export async function reorderFromHistoryBatch(
 			table.medOrderDurationUnitTable.id
 		);
 	if (durUnits.length === 0) {
-		throw error(400, 'Duration units are not configured for this hospital');
+		throw error(
+			400,
+			'Duration units are not configured for this hospital'
+		);
 	}
 
 	const visitLines = await db
@@ -370,7 +380,10 @@ export async function reorderFromHistoryBatch(
 		);
 
 	if (visitLines.length === 0) {
-		throw error(500, 'No medication order lines found for this visit');
+		throw error(
+			500,
+			'No medication order lines found for this visit'
+		);
 	}
 
 	let maxEndMs = 0;
@@ -446,9 +459,16 @@ export async function listBatchesByVisit(
 			updatedAt: b.updatedAt,
 			createdBy: b.createdBy,
 			updatedBy: b.updatedBy,
-			createdByName: sql<string | null>`coalesce(${uCreat.name}, ${uCreat.email})`,
-			updatedByName: sql<string | null>`coalesce(${uUpd.name}, ${uUpd.email})`,
-			lineCount: sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(Number)
+			createdByName: sql<
+				string | null
+			>`coalesce(${uCreat.name}, ${uCreat.email})`,
+			updatedByName: sql<
+				string | null
+			>`coalesce(${uUpd.name}, ${uUpd.email})`,
+			lineCount:
+				sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(
+					Number
+				)
 		})
 		.from(b)
 		.leftJoin(uCreat, eq(b.createdBy, uCreat.id))
@@ -633,190 +653,208 @@ export async function listMastersForInternalForm(
 ) {
 	await ensureCanAccessHospital(event, hospitalId);
 	const db = ensureDb();
-	const [forms, routes, orderTypes, doseUnits, foodRels, durUnits, freqs] =
-		await Promise.all([
-			db
-				.select({ id: table.medOrderFormTable.id, name: table.medOrderFormTable.name })
-				.from(table.medOrderFormTable)
-				.leftJoin(
-					table.medOrderFormInactiveTable,
-					and(
-						eq(
-							table.medOrderFormInactiveTable.formId,
-							table.medOrderFormTable.id
-						),
-						eq(
-							table.medOrderFormInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderFormTable.deletedAt),
-						isNull(table.medOrderFormInactiveTable.formId)
-					) as any
-				)
-				.orderBy(table.medOrderFormTable.name),
-			db
-				.select({ id: table.medOrderRouteTable.id, name: table.medOrderRouteTable.name })
-				.from(table.medOrderRouteTable)
-				.leftJoin(
-					table.medOrderRouteInactiveTable,
-					and(
-						eq(
-							table.medOrderRouteInactiveTable.routeId,
-							table.medOrderRouteTable.id
-						),
-						eq(
-							table.medOrderRouteInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderRouteTable.deletedAt),
-						isNull(table.medOrderRouteInactiveTable.routeId)
-					) as any
-				)
-				.orderBy(table.medOrderRouteTable.name),
-			db
-				.select({
-					id: table.medOrderOrderTypeTable.id,
-					name: table.medOrderOrderTypeTable.name
-				})
-				.from(table.medOrderOrderTypeTable)
-				.leftJoin(
-					table.medOrderOrderTypeInactiveTable,
-					and(
-						eq(
-							table.medOrderOrderTypeInactiveTable.orderTypeId,
-							table.medOrderOrderTypeTable.id
-						),
-						eq(
-							table.medOrderOrderTypeInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderOrderTypeTable.deletedAt),
-						isNull(table.medOrderOrderTypeInactiveTable.orderTypeId)
-					) as any
-				)
-				.orderBy(table.medOrderOrderTypeTable.name),
-			db
-				.select({ id: table.medOrderDoseUnitTable.id, name: table.medOrderDoseUnitTable.name })
-				.from(table.medOrderDoseUnitTable)
-				.leftJoin(
-					table.medOrderDoseUnitInactiveTable,
-					and(
-						eq(
-							table.medOrderDoseUnitInactiveTable.doseUnitId,
-							table.medOrderDoseUnitTable.id
-						),
-						eq(
-							table.medOrderDoseUnitInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderDoseUnitTable.deletedAt),
-						isNull(table.medOrderDoseUnitInactiveTable.doseUnitId)
-					) as any
-				)
-				.orderBy(table.medOrderDoseUnitTable.name),
-			db
-				.select({
-					id: table.medOrderFoodRelationTable.id,
-					name: table.medOrderFoodRelationTable.name
-				})
-				.from(table.medOrderFoodRelationTable)
-				.leftJoin(
-					table.medOrderFoodRelationInactiveTable,
-					and(
-						eq(
-							table.medOrderFoodRelationInactiveTable.foodRelationId,
-							table.medOrderFoodRelationTable.id
-						),
-						eq(
-							table.medOrderFoodRelationInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderFoodRelationTable.deletedAt),
-						isNull(
-							table.medOrderFoodRelationInactiveTable.foodRelationId
-						)
-					) as any
-				)
-				.orderBy(table.medOrderFoodRelationTable.name),
-			db
-				.select({
-					id: table.medOrderDurationUnitTable.id,
-					code: table.medOrderDurationUnitTable.code,
-					name: table.medOrderDurationUnitTable.name
-				})
-				.from(table.medOrderDurationUnitTable)
-				.leftJoin(
-					table.medOrderDurationUnitInactiveTable,
-					and(
-						eq(
-							table.medOrderDurationUnitInactiveTable.durationUnitId,
-							table.medOrderDurationUnitTable.id
-						),
-						eq(
-							table.medOrderDurationUnitInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderDurationUnitTable.deletedAt),
-						isNull(
-							table.medOrderDurationUnitInactiveTable.durationUnitId
-						)
-					) as any
-				)
-				.orderBy(
-					table.medOrderDurationUnitTable.sequenceNo,
-					table.medOrderDurationUnitTable.id
-				),
-			db
-				.select({
-					id: table.medOrderFrequencyTable.id,
-					label: table.medOrderFrequencyTable.label,
-					summaryText: table.medOrderFrequencyTable.summaryText
-				})
-				.from(table.medOrderFrequencyTable)
-				.leftJoin(
-					table.medOrderFrequencyInactiveTable,
-					and(
-						eq(
-							table.medOrderFrequencyInactiveTable.frequencyId,
-							table.medOrderFrequencyTable.id
-						),
-						eq(
-							table.medOrderFrequencyInactiveTable.hospitalId,
-							hospitalId
-						)
-					) as any
-				)
-				.where(
-					and(
-						isNull(table.medOrderFrequencyTable.deletedAt),
-						isNull(table.medOrderFrequencyInactiveTable.frequencyId)
-					) as any
-				)
-				.orderBy(table.medOrderFrequencyTable.label)
-		]);
-	return { forms, routes, orderTypes, doseUnits, foodRels, durUnits, freqs };
+	const [
+		forms,
+		routes,
+		orderTypes,
+		doseUnits,
+		foodRels,
+		durUnits,
+		freqs
+	] = await Promise.all([
+		db
+			.select({
+				id: table.medOrderFormTable.id,
+				name: table.medOrderFormTable.name
+			})
+			.from(table.medOrderFormTable)
+			.leftJoin(
+				table.medOrderFormInactiveTable,
+				and(
+					eq(
+						table.medOrderFormInactiveTable.formId,
+						table.medOrderFormTable.id
+					),
+					eq(table.medOrderFormInactiveTable.hospitalId, hospitalId)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderFormTable.deletedAt),
+					isNull(table.medOrderFormInactiveTable.formId)
+				) as any
+			)
+			.orderBy(table.medOrderFormTable.name),
+		db
+			.select({
+				id: table.medOrderRouteTable.id,
+				name: table.medOrderRouteTable.name
+			})
+			.from(table.medOrderRouteTable)
+			.leftJoin(
+				table.medOrderRouteInactiveTable,
+				and(
+					eq(
+						table.medOrderRouteInactiveTable.routeId,
+						table.medOrderRouteTable.id
+					),
+					eq(table.medOrderRouteInactiveTable.hospitalId, hospitalId)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderRouteTable.deletedAt),
+					isNull(table.medOrderRouteInactiveTable.routeId)
+				) as any
+			)
+			.orderBy(table.medOrderRouteTable.name),
+		db
+			.select({
+				id: table.medOrderOrderTypeTable.id,
+				name: table.medOrderOrderTypeTable.name
+			})
+			.from(table.medOrderOrderTypeTable)
+			.leftJoin(
+				table.medOrderOrderTypeInactiveTable,
+				and(
+					eq(
+						table.medOrderOrderTypeInactiveTable.orderTypeId,
+						table.medOrderOrderTypeTable.id
+					),
+					eq(
+						table.medOrderOrderTypeInactiveTable.hospitalId,
+						hospitalId
+					)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderOrderTypeTable.deletedAt),
+					isNull(table.medOrderOrderTypeInactiveTable.orderTypeId)
+				) as any
+			)
+			.orderBy(table.medOrderOrderTypeTable.name),
+		db
+			.select({
+				id: table.medOrderDoseUnitTable.id,
+				name: table.medOrderDoseUnitTable.name
+			})
+			.from(table.medOrderDoseUnitTable)
+			.leftJoin(
+				table.medOrderDoseUnitInactiveTable,
+				and(
+					eq(
+						table.medOrderDoseUnitInactiveTable.doseUnitId,
+						table.medOrderDoseUnitTable.id
+					),
+					eq(
+						table.medOrderDoseUnitInactiveTable.hospitalId,
+						hospitalId
+					)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderDoseUnitTable.deletedAt),
+					isNull(table.medOrderDoseUnitInactiveTable.doseUnitId)
+				) as any
+			)
+			.orderBy(table.medOrderDoseUnitTable.name),
+		db
+			.select({
+				id: table.medOrderFoodRelationTable.id,
+				name: table.medOrderFoodRelationTable.name
+			})
+			.from(table.medOrderFoodRelationTable)
+			.leftJoin(
+				table.medOrderFoodRelationInactiveTable,
+				and(
+					eq(
+						table.medOrderFoodRelationInactiveTable.foodRelationId,
+						table.medOrderFoodRelationTable.id
+					),
+					eq(
+						table.medOrderFoodRelationInactiveTable.hospitalId,
+						hospitalId
+					)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderFoodRelationTable.deletedAt),
+					isNull(
+						table.medOrderFoodRelationInactiveTable.foodRelationId
+					)
+				) as any
+			)
+			.orderBy(table.medOrderFoodRelationTable.name),
+		db
+			.select({
+				id: table.medOrderDurationUnitTable.id,
+				code: table.medOrderDurationUnitTable.code,
+				name: table.medOrderDurationUnitTable.name
+			})
+			.from(table.medOrderDurationUnitTable)
+			.leftJoin(
+				table.medOrderDurationUnitInactiveTable,
+				and(
+					eq(
+						table.medOrderDurationUnitInactiveTable.durationUnitId,
+						table.medOrderDurationUnitTable.id
+					),
+					eq(
+						table.medOrderDurationUnitInactiveTable.hospitalId,
+						hospitalId
+					)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderDurationUnitTable.deletedAt),
+					isNull(
+						table.medOrderDurationUnitInactiveTable.durationUnitId
+					)
+				) as any
+			)
+			.orderBy(
+				table.medOrderDurationUnitTable.sequenceNo,
+				table.medOrderDurationUnitTable.id
+			),
+		db
+			.select({
+				id: table.medOrderFrequencyTable.id,
+				label: table.medOrderFrequencyTable.label,
+				summaryText: table.medOrderFrequencyTable.summaryText
+			})
+			.from(table.medOrderFrequencyTable)
+			.leftJoin(
+				table.medOrderFrequencyInactiveTable,
+				and(
+					eq(
+						table.medOrderFrequencyInactiveTable.frequencyId,
+						table.medOrderFrequencyTable.id
+					),
+					eq(
+						table.medOrderFrequencyInactiveTable.hospitalId,
+						hospitalId
+					)
+				) as any
+			)
+			.where(
+				and(
+					isNull(table.medOrderFrequencyTable.deletedAt),
+					isNull(table.medOrderFrequencyInactiveTable.frequencyId)
+				) as any
+			)
+			.orderBy(table.medOrderFrequencyTable.label)
+	]);
+	return {
+		forms,
+		routes,
+		orderTypes,
+		doseUnits,
+		foodRels,
+		durUnits,
+		freqs
+	};
 }

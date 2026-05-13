@@ -19,5 +19,6 @@
 	class={className}
 	{value}
 	{disabled}
-	oninput={(e) => onValueChange((e.currentTarget as HTMLInputElement).value)}
+	oninput={(e) =>
+		onValueChange((e.currentTarget as HTMLInputElement).value)}
 />

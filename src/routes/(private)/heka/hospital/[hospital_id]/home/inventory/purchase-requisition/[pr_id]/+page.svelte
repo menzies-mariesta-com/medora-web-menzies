@@ -8,7 +8,9 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -19,7 +21,9 @@
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	const prId = $derived(
@@ -91,7 +95,9 @@
 	let createLines = $state<PrLineForm[]>([]);
 	let lineItemFilter = $state('');
 
-	let linkedPurchaseOrders = $state<{ id: string; poNo: string | null }[]>([]);
+	let linkedPurchaseOrders = $state<
+		{ id: string; poNo: string | null }[]
+	>([]);
 	let prDetailPoCount = $state(0);
 
 	let detailLoading = $state(true);
@@ -108,7 +114,10 @@
 	});
 
 	const prListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-requisition' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-requisition' as any
+		)
 	);
 
 	function prRowCanEdit(statusTaggingId: number | null): boolean {
@@ -135,7 +144,9 @@
 	}
 
 	function conversionLabelForLine(line: PrLineForm): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -144,13 +155,16 @@
 		storesAbort?.abort();
 		storesAbort = new AbortController();
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`,
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
 			{ method: 'GET', signal: storesAbort.signal }
 		);
 		stores = (await res.json()) as typeof stores;
 	}
 
-	async function hydrateLineItemMeta(line: PrLineForm, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: PrLineForm,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -188,7 +202,8 @@
 		line.quantity = String(apiLine.quantity ?? '0');
 		line.prLineId = apiLine.id != null ? String(apiLine.id) : null;
 		line.qtyRemainingOnPr =
-			apiLine.qtyRemaining != null && String(apiLine.qtyRemaining).trim() !== ''
+			apiLine.qtyRemaining != null &&
+			String(apiLine.qtyRemaining).trim() !== ''
 				? String(apiLine.qtyRemaining)
 				: null;
 		await hydrateLineItemMeta(line, apiLine.itemId);
@@ -196,7 +211,9 @@
 			line.itemLabel = apiLine.itemName;
 			line.itemSearch = apiLine.itemName;
 		}
-		const match = line.iumList.find((u) => u.purchaseUnitId === apiLine.unitId);
+		const match = line.iumList.find(
+			(u) => u.purchaseUnitId === apiLine.unitId
+		);
 		if (match) line.itemUnitMasterId = match.id;
 		line.pendingPrPurchaseQty =
 			apiLine.pendingPrPurchaseQty != null &&
@@ -212,8 +229,7 @@
 
 	async function populateFromDetail(detail: PrDetailApi) {
 		headerPrNo = detail.prNo ?? null;
-		headerStatusLabel =
-			detail.statusName ?? detail.statusCode ?? '—';
+		headerStatusLabel = detail.statusName ?? detail.statusCode ?? '—';
 		headerStatusCode = detail.statusCode ?? null;
 		detailStatusTaggingId = detail.statusTaggingId ?? null;
 		detailCanApprove = Boolean(detail.canApprove);
@@ -271,77 +287,80 @@
 		void loadPrDetail();
 	});
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLineForm>[] => [
-		{
-			id: 'itemLabel',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: false,
-			format: (_v, row) => row.itemLabel || '—'
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: false,
-			format: (_v, row) => conversionLabelForLine(row)
-		},
-		{
-			id: 'quantity',
-			header: m.inv_pr_line_requested_qty(),
-			field: 'quantity',
-			filterable: false,
-			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
-		},
-		{
-			id: 'pendingPrPurchaseQty',
-			header: m.inv_pr_line_metric_pending_pr_qty(),
-			field: 'pendingPrPurchaseQty',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.pendingPrPurchaseQty?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
+	const lineColumns = $derived.by(
+		(): MariTableColumn<PrLineForm>[] => [
+			{
+				id: 'itemLabel',
+				header: m.inv_common_item(),
+				field: 'itemLabel',
+				filterable: false,
+				format: (_v, row) => row.itemLabel || '—'
+			},
+			{
+				id: 'conversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterId',
+				filterable: false,
+				format: (_v, row) => conversionLabelForLine(row)
+			},
+			{
+				id: 'quantity',
+				header: m.inv_pr_line_requested_qty(),
+				field: 'quantity',
+				filterable: false,
+				format: (_v, row) =>
+					formatPurchaseQtyCellWithIssueEquivalent(row)
+			},
+			{
+				id: 'pendingPrPurchaseQty',
+				header: m.inv_pr_line_metric_pending_pr_qty(),
+				field: 'pendingPrPurchaseQty',
+				filterable: false,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.pendingPrPurchaseQty?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
+			},
+			{
+				id: 'pendingPoPurchaseQty',
+				header: m.inv_po_line_metric_pending_po_qty(),
+				field: 'pendingPoPurchaseQty',
+				filterable: false,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.pendingPoPurchaseQty?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
+			},
+			{
+				id: 'qtyRemainingOnPr',
+				header: m.inv_pr_line_open_for_po(),
+				field: 'qtyRemainingOnPr',
+				filterable: false,
+				widthClass: 'min-w-[7rem]',
+				format: (_v, row) => {
+					const raw = row.qtyRemainingOnPr?.trim();
+					if (!raw) return '—';
+					return formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: raw,
+						itemUnitMasterId: row.itemUnitMasterId,
+						iumList: row.iumList
+					});
+				}
 			}
-		},
-		{
-			id: 'pendingPoPurchaseQty',
-			header: m.inv_po_line_metric_pending_po_qty(),
-			field: 'pendingPoPurchaseQty',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.pendingPoPurchaseQty?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
-			}
-		},
-		{
-			id: 'qtyRemainingOnPr',
-			header: m.inv_pr_line_open_for_po(),
-			field: 'qtyRemainingOnPr',
-			filterable: false,
-			widthClass: 'min-w-[7rem]',
-			format: (_v, row) => {
-				const raw = row.qtyRemainingOnPr?.trim();
-				if (!raw) return '—';
-				return formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: raw,
-					itemUnitMasterId: row.itemUnitMasterId,
-					iumList: row.iumList
-				});
-			}
-		}
-	]);
+		]
+	);
 
 	const filteredLines = $derived.by(() => {
 		const q = lineItemFilter.trim().toLowerCase();
@@ -411,7 +430,9 @@
 </script>
 
 <div class="space-y-5" aria-busy={detailLoading}>
-	<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+	<div
+		class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+	>
 		<div class="min-w-0">
 			<div class="flex items-center gap-2">
 				<DaisyUiTooltip
@@ -427,14 +448,20 @@
 						<LucideArrowLeft className="size-4" />
 					</DaisyUiButton>
 				</DaisyUiTooltip>
-				<h2 class="text-lg font-semibold">View purchase requisition</h2>
+				<h2 class="text-lg font-semibold">
+					View purchase requisition
+				</h2>
 				{#if detailLoading}
-					<span class="d-loading d-loading-spinner d-loading-sm text-base-content/50"></span>
+					<span
+						class="d-loading d-loading-sm d-loading-spinner text-base-content/50"
+					></span>
 				{/if}
 			</div>
 		</div>
 
-		<div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+		<div
+			class="flex flex-wrap items-center justify-start gap-2 sm:justify-end"
+		>
 			<span
 				class="d-badge d-badge-outline"
 				title={headerStatusCode ?? undefined}
@@ -443,36 +470,50 @@
 				{headerStatusLabel}
 			</span>
 			{#if headerPrNo}
-				<span class="d-badge d-badge-ghost" aria-label={`PR No: ${headerPrNo}`}>
+				<span
+					class="d-badge d-badge-ghost"
+					aria-label={`PR No: ${headerPrNo}`}
+				>
 					{m.inv_pr_no()}: {headerPrNo}
 				</span>
 			{:else}
-				<span class="d-badge d-badge-ghost" aria-label="PR No">PR No: —</span>
+				<span class="d-badge d-badge-ghost" aria-label="PR No"
+					>PR No: —</span
+				>
 			{/if}
-
 		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<DaisyUiCard>
 			<DaisyUiCardBody className="gap-3">
-				<DaisyUiCardBodyTitle className="text-base">Store selection</DaisyUiCardBodyTitle>
+				<DaisyUiCardBodyTitle className="text-base"
+					>Store selection</DaisyUiCardBodyTitle
+				>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<DaisyUiLabel className="text-xs opacity-80">{m.inv_nav_from_store()}</DaisyUiLabel>
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_nav_from_store()}</DaisyUiLabel
+						>
 						<input
 							type="text"
 							readonly
 							disabled
-							class="d-input d-input-bordered w-full text-sm"
+							class="d-input-bordered d-input w-full text-sm"
 							value={fromStoreNavLabel}
 							aria-label={m.inv_nav_from_store()}
 						/>
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
-						<DaisyUiLabel className="text-xs opacity-80">{m.inv_transfer_to_store()}</DaisyUiLabel>
-						<div class="rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm">
-							{stores.find((s) => s.id === createToStoreId)?.storeName?.trim() ?? '—'}
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_transfer_to_store()}</DaisyUiLabel
+						>
+						<div
+							class="rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm"
+						>
+							{stores
+								.find((s) => s.id === createToStoreId)
+								?.storeName?.trim() ?? '—'}
 						</div>
 					</div>
 				</div>
@@ -481,11 +522,15 @@
 
 		<DaisyUiCard>
 			<DaisyUiCardBody className="gap-3">
-				<DaisyUiCardBodyTitle className="text-base">Requisition Remarks</DaisyUiCardBodyTitle>
+				<DaisyUiCardBodyTitle className="text-base"
+					>Requisition Remarks</DaisyUiCardBodyTitle
+				>
 				<div class="flex min-w-0 flex-col gap-2">
-					<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_remarks()}</DaisyUiLabel>
+					<DaisyUiLabel className="text-xs opacity-80"
+						>{m.inv_common_remarks()}</DaisyUiLabel
+					>
 					<textarea
-						class="d-textarea d-textarea-bordered w-full opacity-80"
+						class="d-textarea-bordered d-textarea w-full opacity-80"
 						value={createRemarks}
 						readonly
 						rows="3"
@@ -496,38 +541,42 @@
 		</DaisyUiCard>
 	</div>
 
-		{#if linkedPurchaseOrders.length > 0 || (prDetailPoCount ?? 0) > 0}
-			<DaisyUiCard>
-				<DaisyUiCardBody className="gap-3">
-					<DaisyUiCardBodyTitle className="text-base">{m.inv_pr_trace_title()}</DaisyUiCardBodyTitle>
-					{#if linkedPurchaseOrders.length > 0}
-						<ul class="flex flex-wrap gap-2">
-							{#each linkedPurchaseOrders as po (po.id)}
-								<li>
-									<span class="text-sm font-medium">
-										{po.poNo?.trim() ? po.poNo : po.id}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="text-sm text-warning">{m.inv_pr_trace_po_mismatch()}</p>
-					{/if}
-				</DaisyUiCardBody>
-			</DaisyUiCard>
-		{/if}
+	{#if linkedPurchaseOrders.length > 0 || (prDetailPoCount ?? 0) > 0}
+		<DaisyUiCard>
+			<DaisyUiCardBody className="gap-3">
+				<DaisyUiCardBodyTitle className="text-base"
+					>{m.inv_pr_trace_title()}</DaisyUiCardBodyTitle
+				>
+				{#if linkedPurchaseOrders.length > 0}
+					<ul class="flex flex-wrap gap-2">
+						{#each linkedPurchaseOrders as po (po.id)}
+							<li>
+								<span class="text-sm font-medium">
+									{po.poNo?.trim() ? po.poNo : po.id}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-sm text-warning">
+						{m.inv_pr_trace_po_mismatch()}
+					</p>
+				{/if}
+			</DaisyUiCardBody>
+		</DaisyUiCard>
+	{/if}
 
-		<PrLineItemsCard
-			viewOnly={true}
-			bind:lineItemFilter
-			createLinesCount={createLines.length}
-			columns={lineColumns}
-			rows={filteredLines}
-			onAddItem={noopAdd}
-			onEditLine={noopEdit}
-			onDeleteLine={noopDelete}
-			showCloseLine={prAllowsLineClose()}
-			isCloseableFn={(row) => isCloseableLine(row)}
-			onCloseLine={(row) => void closeLine(row)}
-		/>
-	</div>
+	<PrLineItemsCard
+		viewOnly={true}
+		bind:lineItemFilter
+		createLinesCount={createLines.length}
+		columns={lineColumns}
+		rows={filteredLines}
+		onAddItem={noopAdd}
+		onEditLine={noopEdit}
+		onDeleteLine={noopDelete}
+		showCloseLine={prAllowsLineClose()}
+		isCloseableFn={(row) => isCloseableLine(row)}
+		onCloseLine={(row) => void closeLine(row)}
+	/>
+</div>

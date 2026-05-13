@@ -59,9 +59,11 @@
 		onAddItem,
 		onEditLine,
 		onDeleteLine
-	} = $props<Props>();
+	}: Props = $props();
 
-	const shouldHideQuickFilter = $derived(hideQuickFilter || useColumnFilters);
+	const shouldHideQuickFilter = $derived(
+		hideQuickFilter || useColumnFilters
+	);
 
 	const showCardToolbar = $derived(
 		!hideTitle ||
@@ -70,7 +72,9 @@
 			toolbarRight != null
 	);
 
-	const footerBorderClass = $derived(noCard ? 'border-base-300' : 'border-base-200');
+	const footerBorderClass = $derived(
+		noCard ? 'border-base-300' : 'border-base-200'
+	);
 
 	const toolbarJustifyClass = $derived(
 		hideTitle ? 'sm:justify-end' : 'sm:justify-between'
@@ -79,15 +83,21 @@
 
 {#snippet inner()}
 	{#if showCardToolbar}
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center {toolbarJustifyClass}">
+		<div
+			class="flex flex-col gap-3 sm:flex-row sm:items-center {toolbarJustifyClass}"
+		>
 			{#if !hideTitle}
-				<DaisyUiCardBodyTitle className="text-base">{title}</DaisyUiCardBodyTitle>
+				<DaisyUiCardBodyTitle className="text-base"
+					>{title}</DaisyUiCardBodyTitle
+				>
 			{/if}
-			<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+			<div
+				class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
+			>
 				{#if !shouldHideQuickFilter}
 					<input
 						type="text"
-						class="d-input d-input-bordered w-full sm:w-56"
+						class="d-input-bordered d-input w-full sm:w-56"
 						placeholder={m.inv_line_items_filter_placeholder()}
 						bind:value={lineItemFilter}
 						aria-label={m.inv_line_items_filter_aria()}
@@ -95,18 +105,25 @@
 				{/if}
 				{#if !viewOnly && !hideAddButton}
 					{#if addButtonIconOnly}
-						<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+						<DaisyUiTooltip
+							tooltipText={m.inv_line_items_add()}
+							className="d-tooltip-ghost"
+						>
 							<DaisyUiButton
 								className="d-btn-primary d-btn-square d-btn-sm"
 								type="button"
-								aria-label={m.inv_line_items_add()}
+								title={m.inv_line_items_add()}
 								onClick={() => onAddItem()}
 							>
 								<LucidePlus className="size-4" />
 							</DaisyUiButton>
 						</DaisyUiTooltip>
 					{:else}
-						<DaisyUiButton className="d-btn-primary" type="button" onClick={() => onAddItem()}>
+						<DaisyUiButton
+							className="d-btn-primary"
+							type="button"
+							onClick={() => onAddItem()}
+						>
 							<LucidePlus className="size-4" />
 							{m.inv_line_items_add()}
 						</DaisyUiButton>
@@ -166,7 +183,8 @@
 							type="button"
 							className="d-btn-ghost d-btn-sm d-btn-error"
 							disabled={viewOnly}
-							onClick={() => onDeleteLine((row as { key: string }).key)}
+							onClick={() =>
+								onDeleteLine((row as { key: string }).key)}
 						>
 							<LucideTrash2 className="size-5" />
 						</DaisyUiButton>

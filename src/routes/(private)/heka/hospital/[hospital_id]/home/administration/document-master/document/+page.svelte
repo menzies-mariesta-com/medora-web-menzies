@@ -87,11 +87,13 @@
 			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
 				url.searchParams.set('statusId', String(parsedStatusId));
 			}
-			if (opts?.bustCache) url.searchParams.set('_t', String(Date.now()));
+			if (opts?.bustCache)
+				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
 			if (!res.ok) throw new Error(await res.text());
-			documentResult = (await res.json()) as PaginatedResult<DocumentWithRelations>;
+			documentResult =
+				(await res.json()) as PaginatedResult<DocumentWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -366,7 +368,8 @@
 			filterable: false,
 			format: (_v, _row, rowIndex) =>
 				(currentPage - 1) *
-					(Number(filterPageSize) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
+					(Number(filterPageSize) ||
+						AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
 				rowIndex +
 				1
 		},
@@ -461,80 +464,80 @@
 		</DaisyUiCard>
 
 		<DaisyUiCard>
-				<DaisyUiCardBody>
-					<div class="{TableEnum.HEIGHT} overflow-auto">
-						<MariTable
-							rows={documentList}
-							{columns}
-							{isLoading}
-							bind:pageSize={filterPageSize}
-							bind:currentPage
-							totalRowCount={total}
-							showRefreshButton={true}
-							refreshTooltip={m.refresh_data()}
-							emptyMessage="No documents found"
-							showRowActions={true}
-							actionsHeader={m.actions()}
-							actionsVariant="none"
-							enableColumnFilters={true}
-							useRemoteFilters={true}
-							on:refresh={() => fetchData({ bustCache: true })}
-							on:pageSizeChange={() => {
-								currentPage = 1;
-								fetchData();
-							}}
-							on:pageChange={() => fetchData()}
-							on:filtersChange={(e) => {
-								tableFilters = e.detail.filters;
-								currentPage = 1;
-								fetchData();
-							}}
-						>
-							{#snippet rowActions(row, rowIndex)}
-								{@const typedRow = row as DocumentWithRelations}
-								<td class="w-28 shrink-0 text-right">
-									<div class="flex justify-end gap-1">
-										<DaisyUiTooltip
-											tooltipText={m.view_data()}
-											className="d-tooltip-ghost d-tooltip-top"
+			<DaisyUiCardBody>
+				<div class="{TableEnum.HEIGHT} overflow-auto">
+					<MariTable
+						rows={documentList}
+						{columns}
+						{isLoading}
+						bind:pageSize={filterPageSize}
+						bind:currentPage
+						totalRowCount={total}
+						showRefreshButton={true}
+						refreshTooltip={m.refresh_data()}
+						emptyMessage="No documents found"
+						showRowActions={true}
+						actionsHeader={m.actions()}
+						actionsVariant="none"
+						enableColumnFilters={true}
+						useRemoteFilters={true}
+						on:refresh={() => fetchData({ bustCache: true })}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchData();
+						}}
+						on:pageChange={() => fetchData()}
+						on:filtersChange={(e) => {
+							tableFilters = e.detail.filters;
+							currentPage = 1;
+							fetchData();
+						}}
+					>
+						{#snippet rowActions(row, rowIndex)}
+							{@const typedRow = row as DocumentWithRelations}
+							<td class="w-28 shrink-0 text-right">
+								<div class="flex justify-end gap-1">
+									<DaisyUiTooltip
+										tooltipText={m.view_data()}
+										className="d-tooltip-ghost d-tooltip-top"
+									>
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm"
+											onClick={() => startView(typedRow)}
 										>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm"
-												onClick={() => startView(typedRow)}
-											>
-												<LucideEye className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-										<DaisyUiTooltip
-											tooltipText={m.edit_data()}
-											className="d-tooltip-accent d-tooltip-top"
+											<LucideEye className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+									<DaisyUiTooltip
+										tooltipText={m.edit_data()}
+										className="d-tooltip-accent d-tooltip-top"
+									>
+										<DaisyUiButton
+											className="d-btn-sm d-btn-ghost d-btn-accent"
+											onClick={() => startEdit(typedRow)}
 										>
-											<DaisyUiButton
-												className="d-btn-sm d-btn-ghost d-btn-accent"
-												onClick={() => startEdit(typedRow)}
-											>
-												<LucidePencil className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-										<DaisyUiTooltip
-											tooltipText={m.delete_data()}
-											className="d-tooltip-error d-tooltip-top"
+											<LucidePencil className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+									<DaisyUiTooltip
+										tooltipText={m.delete_data()}
+										className="d-tooltip-error d-tooltip-top"
+									>
+										<DaisyUiButton
+											className="d-btn-ghost d-btn-sm d-btn-error"
+											disabled={isLoading}
+											onClick={() => handleDelete(typedRow.id)}
 										>
-											<DaisyUiButton
-												className="d-btn-ghost d-btn-sm d-btn-error"
-												disabled={isLoading}
-												onClick={() => handleDelete(typedRow.id)}
-											>
-												<LucideTrash2 className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-									</div>
-								</td>
-							{/snippet}
-						</MariTable>
-					</div>
-				</DaisyUiCardBody>
-			</DaisyUiCard>
+											<LucideTrash2 className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								</div>
+							</td>
+						{/snippet}
+					</MariTable>
+				</div>
+			</DaisyUiCardBody>
+		</DaisyUiCard>
 	{:else}
 		<DaisyUiCard>
 			<DaisyUiCardBody>

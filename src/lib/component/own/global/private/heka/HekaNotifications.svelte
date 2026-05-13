@@ -35,7 +35,8 @@
 	let {
 		hospitalId: hospitalIdProp = undefined,
 		triggerClassName = ''
-	}: { hospitalId?: string | null; triggerClassName?: string } = $props();
+	}: { hospitalId?: string | null; triggerClassName?: string } =
+		$props();
 
 	const routeHospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -75,7 +76,9 @@
 
 	async function refreshUnreadCount() {
 		try {
-			const r = await fetch('/api/heka/notification?mode=unreadCount');
+			const r = await fetch(
+				'/api/heka/notification?mode=unreadCount'
+			);
 			if (!r.ok) throw new Error('unread count failed');
 			const j = (await r.json()) as { count?: number };
 			unreadCount = j.count ?? 0;
@@ -127,6 +130,16 @@
 
 	function getSeverityBadgeClass(severity: string) {
 		return severityToBadgeClass[severity] ?? 'd-badge-info';
+	}
+
+	/** Locale-aware date + time from API ISO string. */
+	function formatNotificationDateTime(iso: string): string {
+		const t = Date.parse(iso);
+		if (!Number.isFinite(t)) return '';
+		return new Intl.DateTimeFormat(undefined, {
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(new Date(t));
 	}
 
 	async function handleNotificationClick(item: NotificationListItem) {
@@ -302,6 +315,9 @@
 			{:else}
 				<div class="flex flex-col gap-2">
 					{#each modalItems as item (item.id)}
+						{@const createdLabel = formatNotificationDateTime(
+							item.createdAt
+						)}
 						<DaisyUiButton
 							className="d-btn-ghost d-btn-sm h-auto justify-start gap-3 whitespace-normal py-2 px-3"
 							onClick={() => handleNotificationClick(item)}
@@ -311,13 +327,22 @@
 									item.severity
 								)}`}
 							></span>
-							<div class="flex flex-col text-left">
+							<div
+								class="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+							>
 								<span class="font-medium">
 									{item.title ?? 'Notification'}
 								</span>
 								<span class="text-xs opacity-70">
 									{item.message}
 								</span>
+								{#if createdLabel}
+									<span
+										class="text-xs text-base-content/50 tabular-nums"
+									>
+										{createdLabel}
+									</span>
+								{/if}
 							</div>
 							{#if item.readAt == null}
 								<span class="ms-auto h-2 w-2 rounded-full bg-error"

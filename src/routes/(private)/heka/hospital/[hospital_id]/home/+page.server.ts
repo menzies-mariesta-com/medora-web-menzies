@@ -2,10 +2,36 @@ import type { PageServerLoad } from './$types';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { and, count, eq, inArray, ne, sql, gte, lt, isNotNull, type SQL } from 'drizzle-orm';
+import {
+	and,
+	count,
+	eq,
+	inArray,
+	isNull,
+	ne,
+	sql,
+	gte,
+	lt,
+	isNotNull,
+	type SQL
+} from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
+import {
+	evaluateStockAlertsForHospital,
+	scheduleStockAlertsDispatch,
+	type StockAlertsSummary
+} from '$lib/server/heka/inventory/stock-alerts.server';
 
 /** Matches `home/+layout.server.ts` “All Branches” sentinel. */
 const BRANCH_ALL_VALUE = '__all__';
+
+export type InventoryDashboardCounts = {
+	storeCount: number;
+	itemMasterCount: number;
+	stockLotCount: number;
+};
+
+export type InventoryDashboardStockAlertCounts = StockAlertsSummary;
 
 type DailyVisitCount = {
 	date: string; // YYYY-MM-DD
@@ -41,9 +67,10 @@ type ParentLayoutData = {
  * - “All branches” (where applicable): all ids the user is allowed to use for this hospital.
  * - null / invalid cookie: first allowed branch (matches nav behaviour).
  */
-function resolveBranchIdsForScope(
-	parent: ParentLayoutData
-): { branchIds: string[]; scopeLabel: string | null } {
+function resolveBranchIdsForScope(parent: ParentLayoutData): {
+	branchIds: string[];
+	scopeLabel: string | null;
+} {
 	const { selectedBranchId, allowedBranches } = parent;
 	if (allowedBranches.length === 0) {
 		return { branchIds: [], scopeLabel: null };
@@ -72,7 +99,7 @@ function resolveBranchIdsForScope(
 }
 
 function branchWhere(
-	branchColumn: typeof table.patientVisitTable.branchId,
+	branchColumn: AnyPgColumn,
 	branchIds: string[]
 ): SQL {
 	if (branchIds.length === 0) {
@@ -84,13 +111,26 @@ function branchWhere(
 	return inArray(branchColumn, branchIds);
 }
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load: PageServerLoad = async (event) => {
+	const { params, parent } = event;
 	const hospitalId = params.hospital_id;
+	const emptyInventory: InventoryDashboardCounts = {
+		storeCount: 0,
+		itemMasterCount: 0,
+		stockLotCount: 0
+	};
+	const emptyAlerts: InventoryDashboardStockAlertCounts = {
+		lowStockCount: 0,
+		expiredLotCount: 0,
+		expiringSoonLotCount: 0
+	};
 	if (!hospitalId) {
 		return {
 			stats: null,
 			visitsLast7Days: [] as DailyVisitCount[],
-			branchScopeName: null as string | null
+			branchScopeName: null as string | null,
+			inventoryDashboard: emptyInventory,
+			inventoryStockAlerts: emptyAlerts
 		};
 	}
 
@@ -119,10 +159,44 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			d.setDate(t.getDate() - i);
 			last7.push({ date: d.toISOString().slice(0, 10), count: 0 });
 		}
-		return { stats: emptyStats, visitsLast7Days: last7, branchScopeName: null };
+		return {
+			stats: emptyStats,
+			visitsLast7Days: last7,
+			branchScopeName: null,
+			inventoryDashboard: emptyInventory,
+			inventoryStockAlerts: emptyAlerts
+		};
 	}
 
 	const db = ensureDb();
+
+	const branchFilterStores =
+		branchIds.length === 1
+			? eq(table.storeTable.branchId, branchIds[0]!)
+			: inArray(table.storeTable.branchId, branchIds);
+
+	const storeWhereInventory = and(
+		eq(table.hospitalBranchTable.hospitalId, hospitalId),
+		branchFilterStores,
+		eq(table.storeTable.statusId, StatusEnum.ACTIVE)
+	);
+
+	const branchStoresPromise = db
+		.select({ id: table.storeTable.id })
+		.from(table.storeTable)
+		.innerJoin(
+			table.hospitalBranchTable,
+			eq(table.storeTable.branchId, table.hospitalBranchTable.id)
+		)
+		.where(storeWhereInventory);
+
+	const alertEvalPromise = branchStoresPromise.then((rows) =>
+		evaluateStockAlertsForHospital(event, {
+			hospitalId,
+			storeIdsInScope: rows.map((r) => r.id)
+		})
+	);
+
 	const todayStr = new Date().toISOString().slice(0, 10);
 
 	const ds = table.doctorScheduleTable;
@@ -161,7 +235,11 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		appointmentTagRows,
 		caseHistoryRow,
 		documentRow,
-		visitRows
+		visitRows,
+		storesInventoryRow,
+		itemsInventoryRow,
+		stockInventoryRow,
+		alertEval
 	] = await Promise.all([
 		db
 			.select({ n: sql<number>`count(distinct ${ds.staffId})::int` })
@@ -242,8 +320,52 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 					gte(pv.createdAt, rangeStart.toISOString()),
 					lt(pv.createdAt, rangeEndExclusive.toISOString())
 				)
+			),
+		db
+			.select({ n: count() })
+			.from(table.storeTable)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
 			)
+			.where(storeWhereInventory),
+		db
+			.select({ n: count() })
+			.from(table.itemMasterTable)
+			.where(
+				and(
+					eq(table.itemMasterTable.hospitalId, hospitalId),
+					eq(table.itemMasterTable.statusId, StatusEnum.ACTIVE)
+				)
+			),
+		db
+			.select({ n: count() })
+			.from(table.invStockTable)
+			.innerJoin(
+				table.storeTable,
+				eq(table.invStockTable.storeId, table.storeTable.id)
+			)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
+			)
+			.where(
+				and(
+					eq(table.invStockTable.hospitalId, hospitalId),
+					eq(table.hospitalBranchTable.hospitalId, hospitalId),
+					branchFilterStores,
+					isNull(table.invStockTable.deletedAt)
+				)
+			),
+		alertEvalPromise
 	]);
+
+	scheduleStockAlertsDispatch({
+		hospitalId,
+		settings: alertEval.settings,
+		baselineSoon: alertEval.baselineSoon,
+		sendEmail: true
+	});
 
 	const doctors = Number(doctorRow[0]?.n ?? 0);
 	const patients = Number(patientRow[0]?.n ?? 0);
@@ -297,9 +419,17 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		visitsLast7DaysTotal
 	};
 
+	const inventoryDashboard: InventoryDashboardCounts = {
+		storeCount: Number(storesInventoryRow[0]?.n ?? 0),
+		itemMasterCount: Number(itemsInventoryRow[0]?.n ?? 0),
+		stockLotCount: Number(stockInventoryRow[0]?.n ?? 0)
+	};
+
 	return {
 		stats,
 		visitsLast7Days,
-		branchScopeName
+		branchScopeName,
+		inventoryDashboard,
+		inventoryStockAlerts: alertEval.summary
 	};
 };

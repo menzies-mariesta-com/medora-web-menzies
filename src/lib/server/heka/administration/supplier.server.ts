@@ -12,7 +12,16 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, desc, eq, ilike, ne, or } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	ne,
+	or
+} from 'drizzle-orm';
 import { assertInventoryPartyGeo } from '$lib/server/heka/administration/inventory-party-geo.server';
 
 function hospitalScope(hospitalId: string) {
@@ -33,7 +42,8 @@ export async function getSupplierPaginated(
 		phone?: string;
 	}
 ): Promise<PaginatedResult<SupplierListRow>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const parts = [
 		hospitalScope(hospitalId),
 		ne(table.supplierTable.statusId, StatusEnum.DELETED)
@@ -168,17 +178,31 @@ export async function createSupplier(
 		.values({
 			hospitalId,
 			name,
-			code: payload.code != null ? String(payload.code).trim() || null : null,
+			code:
+				payload.code != null
+					? String(payload.code).trim() || null
+					: null,
 			address:
-				payload.address != null ? String(payload.address).trim() || null : null,
+				payload.address != null
+					? String(payload.address).trim() || null
+					: null,
 			countryId: nullableInt(payload.countryId),
 			stateId: nullableInt(payload.stateId),
 			cityId: nullableInt(payload.cityId),
 			postalCodeId: nullableInt(payload.postalCodeId),
-			phone: payload.phone != null ? String(payload.phone).trim() || null : null,
+			phone:
+				payload.phone != null
+					? String(payload.phone).trim() || null
+					: null,
 			phoneCountryId: nullableInt(payload.phoneCountryId),
-			email: payload.email != null ? String(payload.email).trim() || null : null,
-			remark: payload.remark != null ? String(payload.remark).trim() || null : null,
+			email:
+				payload.email != null
+					? String(payload.email).trim() || null
+					: null,
+			remark:
+				payload.remark != null
+					? String(payload.remark).trim() || null
+					: null,
 			statusId: payload.statusId ?? StatusEnum.ACTIVE
 		})
 		.returning();
@@ -204,7 +228,9 @@ export async function updateSupplier(
 				? nullableInt(rest.stateId)
 				: existing.stateId,
 		cityId:
-			rest.cityId !== undefined ? nullableInt(rest.cityId) : existing.cityId,
+			rest.cityId !== undefined
+				? nullableInt(rest.cityId)
+				: existing.cityId,
 		postalCodeId:
 			rest.postalCodeId !== undefined
 				? nullableInt(rest.postalCodeId)
@@ -232,7 +258,10 @@ export async function updateSupplier(
 		setPayload = { ...setPayload, code: rest.code?.trim() || null };
 	}
 	if (rest.address !== undefined) {
-		setPayload = { ...setPayload, address: rest.address?.trim() || null };
+		setPayload = {
+			...setPayload,
+			address: rest.address?.trim() || null
+		};
 	}
 	if (rest.phone !== undefined) {
 		setPayload = { ...setPayload, phone: rest.phone?.trim() || null };
@@ -241,7 +270,10 @@ export async function updateSupplier(
 		setPayload = { ...setPayload, email: rest.email?.trim() || null };
 	}
 	if (rest.remark !== undefined) {
-		setPayload = { ...setPayload, remark: rest.remark?.trim() || null };
+		setPayload = {
+			...setPayload,
+			remark: rest.remark?.trim() || null
+		};
 	}
 
 	const [row] = await ensureDb()
@@ -259,13 +291,18 @@ export async function deleteSupplier(
 	hospitalId: string,
 	input: { id: number }
 ): Promise<void> {
-	const existing = await getSupplierById(hospitalId, { id: input.id });
+	const existing = await getSupplierById(hospitalId, {
+		id: input.id
+	});
 	if (!existing) throw new Error('Supplier not found.');
 
 	await ensureDb()
 		.update(table.supplierTable)
 		.set({ statusId: StatusEnum.DELETED })
 		.where(
-			and(eq(table.supplierTable.id, input.id), hospitalScope(hospitalId))
+			and(
+				eq(table.supplierTable.id, input.id),
+				hospitalScope(hospitalId)
+			)
 		);
 }

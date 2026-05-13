@@ -60,7 +60,9 @@
 	type Weekday = { id: number; name: string | null };
 	type DoctorStaff = StaffWithRelations & {
 		photoUrl?: string | null;
-		staffBranches?: { branch: { id: string; name: string | null } | null }[];
+		staffBranches?: {
+			branch: { id: string; name: string | null } | null;
+		}[];
 	};
 	let DAYS = $state<Weekday[]>([]);
 	let DOCTOR_STAFF_LIST = $state<DoctorStaff[]>([]);

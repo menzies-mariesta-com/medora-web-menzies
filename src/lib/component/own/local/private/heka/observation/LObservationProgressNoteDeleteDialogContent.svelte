@@ -26,7 +26,10 @@
 		{m.observation_emr_progress_note_delete_hint()}
 	</p>
 	<div class="flex flex-col gap-1">
-		<DaisyUiLabel forText="progress-note-delete-remark" className="text-sm">
+		<DaisyUiLabel
+			forText="progress-note-delete-remark"
+			className="text-sm"
+		>
 			{m.observation_emr_progress_note_delete_remark_label()}
 		</DaisyUiLabel>
 		<DaisyUiTextarea

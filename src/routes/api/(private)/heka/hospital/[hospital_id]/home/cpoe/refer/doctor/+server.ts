@@ -19,9 +19,12 @@ export async function GET(event: RequestEvent) {
 	switch (mode) {
 		case 'doctor.search': {
 			const search = event.url.searchParams.get('search') ?? '';
-			const branchId = event.url.searchParams.get('branchId') ?? undefined;
+			const branchId =
+				event.url.searchParams.get('branchId') ?? undefined;
 			const page = Number(event.url.searchParams.get('page') ?? '1');
-			const pageSize = Number(event.url.searchParams.get('pageSize') ?? '20');
+			const pageSize = Number(
+				event.url.searchParams.get('pageSize') ?? '20'
+			);
 			return json(
 				await appointment.getDoctorStaffPaginated(event, {
 					hospitalId,
@@ -57,12 +60,14 @@ export async function POST(event: RequestEvent) {
 
 	switch (mode) {
 		case 'referHistory.create': {
-			const payload = body?.payload as ReferHistorySchemaInsert | null;
+			const payload =
+				body?.payload as ReferHistorySchemaInsert | null;
 			if (!payload) throw error(400, 'payload is required');
-			return json(await createReferHistory(event, hospitalId, payload));
+			return json(
+				await createReferHistory(event, hospitalId, payload)
+			);
 		}
 		default:
 			throw error(400, `Unknown mode: ${mode}`);
 	}
 }
-

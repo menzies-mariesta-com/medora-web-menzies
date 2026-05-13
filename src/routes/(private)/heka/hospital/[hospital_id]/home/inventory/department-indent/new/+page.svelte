@@ -29,7 +29,9 @@
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
@@ -41,7 +43,7 @@
 	type StoreRow = {
 		id: number;
 		storeName: string | null;
-		branchId: number | null;
+		branchId: string | null;
 	};
 	let stores = $state<StoreRow[]>([]);
 
@@ -77,7 +79,9 @@
 	let lineItemDialogActive = $state(false);
 	let editingLineKey = $state<string | null>(null);
 	let draftLine = $state<PrLineForm>(newLine());
-	let lineDialogMetricTiles = $state<LineItemMetricTile[] | null>(null);
+	let lineDialogMetricTiles = $state<LineItemMetricTile[] | null>(
+		null
+	);
 
 	const diLineItemStockEnrichment = $derived(
 		hospitalId
@@ -85,7 +89,8 @@
 					hospitalId,
 					selectedStoreId: selectedInventoryFromStoreId,
 					toStoreId:
-						toStoreIdStr !== '' && Number.isFinite(Number(toStoreIdStr))
+						toStoreIdStr !== '' &&
+						Number.isFinite(Number(toStoreIdStr))
 							? Number(toStoreIdStr)
 							: null
 				}
@@ -93,7 +98,10 @@
 	);
 
 	const diListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/department-indent' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/department-indent' as any
+		)
 	);
 
 	async function goBackToList() {
@@ -111,14 +119,18 @@
 	async function loadStores() {
 		if (!hospitalId) return;
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`
 		);
 		const raw = (await res.json()) as StoreRow[];
 		stores = raw;
 	}
 
-	lifeCycle.onMount(() => {
+	$effect(() => {
+		void hospitalId;
 		void loadStores();
+	});
+
+	lifeCycle.onMount(() => {
 		toStoreIdStr = '';
 		remarks = '';
 		createLines = [];
@@ -141,7 +153,9 @@
 	}
 
 	function conversionLabelForLine(line: PrLineForm): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -205,7 +219,10 @@
 		const j = (await res.json()) as {
 			data: { id: number; itemName: string | null }[];
 		};
-		return (j.data ?? []).map((x) => ({ label: x.itemName ?? '—', value: String(x.id) }));
+		return (j.data ?? []).map((x) => ({
+			label: x.itemName ?? '—',
+			value: String(x.id)
+		}));
 	}
 
 	async function pickDraftItem(itemId: number) {
@@ -214,7 +231,10 @@
 		// The dialog system passes props as a snapshot; reassigning would desync what the dialog edits vs what save reads.
 	}
 
-	async function hydrateLineItemMeta(line: PrLineForm, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: PrLineForm,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 
@@ -249,16 +269,22 @@
 	}
 
 	function purchaseUnitForLine(line: PrLineForm): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
-	function sumCurrentDraftForLine(itemId: number, unitId: number): string {
+	function sumCurrentDraftForLine(
+		itemId: number,
+		unitId: number
+	): string {
 		let s = 0;
 		for (const l of createLines) {
 			if (editingLineKey && l.key === editingLineKey) continue;
 			const u = purchaseUnitForLine(l);
-			if (l.itemId === itemId && u === unitId) s += Number(l.quantity) || 0;
+			if (l.itemId === itemId && u === unitId)
+				s += Number(l.quantity) || 0;
 		}
 		if (
 			draftLine.itemId === itemId &&
@@ -288,21 +314,33 @@
 		const tiles: LineItemMetricTile[] = [];
 		try {
 			if (fromS != null && toS != null && fromS === toS) {
-				const map = await fetchStockLabelsForItemsAtStore(hospitalId, fromS, [itemId]);
+				const map = await fetchStockLabelsForItemsAtStore(
+					hospitalId,
+					fromS,
+					[itemId]
+				);
 				tiles.push({
 					label: m.inv_line_modal_on_hand_selected(),
 					value: map.get(itemId) ?? '0'
 				});
 			} else {
 				if (fromS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, fromS, [itemId]);
+					const map = await fetchStockLabelsForItemsAtStore(
+						hospitalId,
+						fromS,
+						[itemId]
+					);
 					tiles.push({
 						label: m.inv_line_modal_on_hand_selected(),
 						value: map.get(itemId) ?? '0'
 					});
 				}
 				if (toS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, toS, [itemId]);
+					const map = await fetchStockLabelsForItemsAtStore(
+						hospitalId,
+						toS,
+						[itemId]
+					);
 					tiles.push({
 						label: m.inv_line_modal_on_hand_to(),
 						value: map.get(itemId) ?? '0'
@@ -344,10 +382,11 @@
 			return {
 				ok: false,
 				title: 'Could not save line',
-				detail: 'Please select an item and a purchase unit conversion.'
+				detail:
+					'Please select an item and a purchase unit conversion.'
 			};
 		}
-		const q = draftLine.quantity.trim();
+		const q = String(draftLine.quantity ?? '').trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 			return {
 				ok: false,
@@ -355,7 +394,12 @@
 				detail: 'Quantity must be greater than 0.'
 			};
 		}
-		return { ok: true, quantity: q, unitId, itemId: draftLine.itemId };
+		return {
+			ok: true,
+			quantity: q,
+			unitId,
+			itemId: draftLine.itemId
+		};
 	}
 
 	function saveDraftLine(): boolean {
@@ -366,14 +410,19 @@
 		}
 
 		if (editingLineKey) {
-			const idx = createLines.findIndex((l) => l.key === editingLineKey);
+			const idx = createLines.findIndex(
+				(l) => l.key === editingLineKey
+			);
 			if (idx >= 0) {
 				const next = [...createLines];
 				next[idx] = { ...draftLine, quantity: v.quantity };
 				createLines = next;
 			}
 		} else {
-			createLines = [...createLines, { ...draftLine, quantity: v.quantity }];
+			createLines = [
+				...createLines,
+				{ ...draftLine, quantity: v.quantity }
+			];
 		}
 		return true;
 	}
@@ -383,9 +432,16 @@
 	}
 
 	function buildLinesPayload():
-		| { ok: true; lines: { itemId: number; quantity: string; unitId: number }[] }
+		| {
+				ok: true;
+				lines: { itemId: number; quantity: string; unitId: number }[];
+		  }
 		| { ok: false; title: string; detail: string } {
-		const linesPayload: { itemId: number; quantity: string; unitId: number }[] = [];
+		const linesPayload: {
+			itemId: number;
+			quantity: string;
+			unitId: number;
+		}[] = [];
 		for (const ln of createLines) {
 			const uid = purchaseUnitForLine(ln);
 			if (ln.itemId == null || uid == null) {
@@ -395,7 +451,7 @@
 					detail: 'Each line needs an item and unit conversion.'
 				};
 			}
-			const q = ln.quantity.trim();
+			const q = String(ln.quantity ?? '').trim();
 			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 				return {
 					ok: false,
@@ -403,7 +459,11 @@
 					detail: 'Invalid quantity on a line.'
 				};
 			}
-			linesPayload.push({ itemId: ln.itemId, quantity: q, unitId: uid });
+			linesPayload.push({
+				itemId: ln.itemId,
+				quantity: q,
+				unitId: uid
+			});
 		}
 		if (linesPayload.length === 0) {
 			return {
@@ -415,42 +475,54 @@
 		return { ok: true, lines: linesPayload };
 	}
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLineForm>[] => [
-		{
-			id: 'itemLabel',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: true,
-			format: (_v: unknown, row: PrLineForm) => row.itemLabel || '—'
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: true,
-			format: (_v: unknown, row: PrLineForm) => conversionLabelForLine(row)
-		},
-		{
-			id: 'quantity',
-			header: m.inv_common_quantity(),
-			field: 'quantity',
-			filterable: true,
-			format: (_v: unknown, row: PrLineForm) =>
-				formatPurchaseQtyCellWithIssueEquivalent(row)
-		}
-	]);
+	const lineColumns = $derived.by(
+		(): MariTableColumn<PrLineForm>[] => [
+			{
+				id: 'itemLabel',
+				header: m.inv_common_item(),
+				field: 'itemLabel',
+				filterable: true,
+				format: (_v: unknown, row: PrLineForm) => row.itemLabel || '—'
+			},
+			{
+				id: 'conversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterId',
+				filterable: true,
+				format: (_v: unknown, row: PrLineForm) =>
+					conversionLabelForLine(row)
+			},
+			{
+				id: 'quantity',
+				header: m.inv_common_quantity(),
+				field: 'quantity',
+				filterable: true,
+				format: (_v: unknown, row: PrLineForm) =>
+					formatPurchaseQtyCellWithIssueEquivalent(row)
+			}
+		]
+	);
 
 	async function submitCreate() {
 		if (!hospitalId) return;
 		const from = selectedInventoryFromStoreId;
-		const toStoreId = toStoreIdStr !== '' ? Number(toStoreIdStr) : null;
+		const toStoreId =
+			toStoreIdStr !== '' ? Number(toStoreIdStr) : null;
 		if (from == null || toStoreId == null) {
-			toast.addToast('Indent', StatusColorEnum.ERROR, 'From / to store required');
+			toast.addToast(
+				'Indent',
+				StatusColorEnum.ERROR,
+				'From / to store required'
+			);
 			return;
 		}
 		const built = buildLinesPayload();
 		if (!built.ok) {
-			toast.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			toast.addToast(
+				built.title,
+				StatusColorEnum.ERROR,
+				built.detail
+			);
 			return;
 		}
 
@@ -472,7 +544,11 @@
 				}
 			);
 			if (!res.ok) {
-				toast.addToast('Indent', StatusColorEnum.ERROR, await res.text());
+				toast.addToast(
+					'Indent',
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			await goBackToList();
@@ -506,27 +582,37 @@
 	</div>
 	<DaisyUiCard>
 		<DaisyUiCardBody className="gap-3">
-			<DaisyUiCardBodyTitle className="text-base">{m.inv_common_store()}</DaisyUiCardBodyTitle>
-			<div class="flex flex-col gap-6 sm:flex-row sm:items-stretch md:gap-12 lg:gap-24">
+			<DaisyUiCardBodyTitle className="text-base"
+				>{m.inv_common_store()}</DaisyUiCardBodyTitle
+			>
+			<div
+				class="flex flex-col gap-6 sm:flex-row sm:items-stretch md:gap-12 lg:gap-24"
+			>
 				<div class="min-w-0 flex-1">
 					<div class="flex h-full flex-col justify-between gap-3">
 						<div>
-							<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
+							<DaisyUiLabel className="text-xs"
+								>{m.inv_nav_from_store()}</DaisyUiLabel
+							>
 							<input
 								type="text"
 								readonly
 								disabled
-								class="d-input d-input-bordered mt-1 w-full text-sm"
-								value={
-									selectedInventoryFromStoreId != null
-										? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
-										: '—'
-								}
+								class="d-input-bordered d-input mt-1 w-full text-sm"
+								value={selectedInventoryFromStoreId != null
+									? stores
+											.find(
+												(s) => s.id === selectedInventoryFromStoreId
+											)
+											?.storeName?.trim() || '—'
+									: '—'}
 								aria-label={m.inv_nav_from_store()}
 							/>
 						</div>
 						<div>
-							<DaisyUiLabel forText="to-st" className="text-xs">{m.inv_dept_indent_to()}</DaisyUiLabel>
+							<DaisyUiLabel forText="to-st" className="text-xs"
+								>{m.inv_dept_indent_to()}</DaisyUiLabel
+							>
 							<DaisyUISearchSelect
 								inputId="to-st"
 								value={toStoreIdStr}
@@ -534,11 +620,15 @@
 									// Use already-fetched `stores` so this stays client-side and fast.
 									const query = q.trim().toLowerCase();
 									const base = toStoreOptions.map((s) => ({
-										label: s.storeName?.trim() ? s.storeName.trim() : '—',
+										label: s.storeName?.trim()
+											? s.storeName.trim()
+											: '—',
 										value: String(s.id)
 									}));
 									if (query === '') return base;
-									return base.filter((o) => o.label.toLowerCase().includes(query));
+									return base.filter((o) =>
+										o.label.toLowerCase().includes(query)
+									);
 								}}
 								onChange={(v: string) => {
 									toStoreIdStr = v;
@@ -550,10 +640,12 @@
 						</div>
 					</div>
 				</div>
-				<div class="min-w-0 flex-1 flex flex-col">
-					<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
+				<div class="flex min-w-0 flex-1 flex-col">
+					<DaisyUiLabel className="text-xs"
+						>{m.inv_dept_indent_remarks()}</DaisyUiLabel
+					>
 					<textarea
-						class="d-textarea d-textarea-bordered mt-1 w-full flex-1"
+						class="d-textarea-bordered d-textarea mt-1 w-full flex-1"
 						rows="2"
 						bind:value={remarks}
 					></textarea>
@@ -561,6 +653,37 @@
 			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
+
+	{#snippet lineItemsToolbarRight()}
+		<DaisyUiTooltip
+			tooltipText={m.inv_line_items_add()}
+			className="d-tooltip-ghost"
+		>
+			<DaisyUiButton
+				type="button"
+				className="d-btn-primary d-btn-square d-btn-outline"
+				disabled={submitting}
+				title={m.inv_line_items_add()}
+				onClick={() => void openLineDialogForCreate()}
+			>
+				<LucidePlus className="size-4" />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
+	{/snippet}
+
+	<div
+		class="flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+	>
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary d-btn-wide"
+			disabled={submitting || createLines.length === 0}
+			loading={submitting}
+		>
+			{m.inv_common_submit()}
+		</DaisyUiButton>
+	</div>
+
 	<PrLineItemsCard
 		viewOnly={false}
 		createLinesCount={createLines.length}
@@ -575,22 +698,3 @@
 		onDeleteLine={deleteLine}
 	/>
 </form>
-
-{#snippet lineItemsToolbarRight()}
-	<div class="flex items-center gap-2">
-		<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
-			<DaisyUiButton
-				type="button"
-				className="d-btn-primary d-btn-square d-btn-outline"
-				disabled={submitting}
-				aria-label={m.inv_line_items_add()}
-				onClick={() => void openLineDialogForCreate()}
-			>
-				<LucidePlus className="size-4" />
-			</DaisyUiButton>
-		</DaisyUiTooltip>
-		<DaisyUiButton type="submit" className="d-btn-primary" loading={submitting}>
-			{m.inv_common_submit()}
-		</DaisyUiButton>
-	</div>
-{/snippet}

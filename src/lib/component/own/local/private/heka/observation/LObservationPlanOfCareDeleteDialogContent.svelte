@@ -26,7 +26,10 @@
 		{m.observation_emr_plan_of_care_delete_hint()}
 	</p>
 	<div class="flex flex-col gap-1">
-		<DaisyUiLabel forText="plan-of-care-delete-remark" className="text-sm">
+		<DaisyUiLabel
+			forText="plan-of-care-delete-remark"
+			className="text-sm"
+		>
 			{m.observation_emr_plan_of_care_delete_remark_label()}
 		</DaisyUiLabel>
 		<DaisyUiTextarea

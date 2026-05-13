@@ -31,8 +31,9 @@
 			: undefined
 	);
 
-	let result =
-		$state<PaginatedResult<PatientVisitForEmrList> | null>(null);
+	let result = $state<PaginatedResult<PatientVisitForEmrList> | null>(
+		null
+	);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let visitTypeOptions = $state<VisitTypeOption[]>([]);
@@ -98,156 +99,156 @@
 	}
 
 	const visitColumns: MariTableColumn<PatientVisitForEmrList>[] = [
-			{
-				id: 'visitNo',
-				header: 'Visit No',
-				widthClass: TableRowEnum.VISIT_NO_WIDTH,
-				filterable: true,
-				field: 'visitNo'
-			},
-			{
-				id: 'patientCode',
-				header: 'Patient Code',
-				widthClass: TableRowEnum.PATIENT_CODE_WIDTH,
-				filterable: true,
-				field: 'patient.code'
-			},
-			{
-				id: 'patientName',
-				header: 'Patient Name',
-				widthClass: 'w-48 min-w-[12rem]',
-				filterable: true,
-				format: (_value, row) =>
-					row.patient
-						? StringUtil.patientDisplayName(row.patient as any)
-						: '—'
-			},
-			{
-				id: 'patientAge',
-				header: 'Age',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) =>
-					row.patient
-						? getPatientAgeYears(
-								(row.patient as any).dateOfBirth as
-									| string
-									| null
-									| undefined
-							)
-						: '—'
-			},
-			{
-				id: 'patientGender',
-				header: 'Gender',
-				widthClass: 'w-24 min-w-[6rem]',
-				filterable: false,
-				format: (_value, row) => row.patient?.gender?.name ?? '—'
-			},
-			{
-				id: 'hospitalName',
-				header: 'Hospital Name',
-				widthClass: 'w-40 min-w-[10rem]',
-				filterable: true,
-				field: 'hospital.name'
-			},
-			{
-				id: 'branchName',
-				header: 'Branch Name',
-				widthClass: 'w-40 min-w-[10rem]',
-				filterable: true,
-				field: 'branch.name'
-			},
-			{
-				id: 'doctorName',
-				header: 'Doctor Name',
-				widthClass: 'w-40 min-w-[10rem]',
-				filterable: true,
-				format: (_value, row) =>
-					row.doctor
-						? StringUtil.fullNameWithTitle(
-								row.doctor.title?.name ?? null,
-								row.doctor.firstName,
-								row.doctor.middleName,
-								row.doctor.lastName
-							)
-						: '—'
-			},
-			{
-				id: 'visitDate',
-				header: 'Visit Date',
-				widthClass: 'w-40 min-w-[10rem]',
-				filterable: false,
-				format: (_value, row) =>
-					formatVisitDate(
-						(row as any).createdAt as string | null | undefined
-					)
-			},
-			{
-				id: 'visitType',
-				header: 'Visit Type',
-				widthClass: 'w-32 min-w-[8rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptionsGetter: () =>
-					visitTypeOptions.map((vt) => ({
-						value: String(vt.id),
-						label: vt.name ?? `Type ${vt.id}`
-					})),
-				field: 'visitType.name'
-			},
-			{
-				id: 'visitStatus',
-				header: 'Visit Status',
-				widthClass: 'w-28 min-w-[7rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptionsGetter: () => visitStatusOptions,
-				field: 'visitStatus',
-				format: (_value, row) => formatVisitStatus(row.visitStatus)
-			},
-			{
-				id: 'alert',
-				header: m.observation_emr_alert(),
-				widthClass: 'w-14 min-w-[3.5rem]',
-				filterable: false,
-				format: () => '—',
-				cellComponentGetter: (row) => {
-					const patientId = row.patient?.id;
-					const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
-					if (patientId == null && !hasAbnormalVital) return null;
-					const hasAllergyAlert = activeAllergyPatientIds.has(
-						String(patientId)
-					);
+		{
+			id: 'visitNo',
+			header: 'Visit No',
+			widthClass: TableRowEnum.VISIT_NO_WIDTH,
+			filterable: true,
+			field: 'visitNo'
+		},
+		{
+			id: 'patientCode',
+			header: 'Patient Code',
+			widthClass: TableRowEnum.PATIENT_CODE_WIDTH,
+			filterable: true,
+			field: 'patient.code'
+		},
+		{
+			id: 'patientName',
+			header: 'Patient Name',
+			widthClass: 'w-48 min-w-[12rem]',
+			filterable: true,
+			format: (_value, row) =>
+				row.patient
+					? StringUtil.patientDisplayName(row.patient as any)
+					: '—'
+		},
+		{
+			id: 'patientAge',
+			header: 'Age',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) =>
+				row.patient
+					? getPatientAgeYears(
+							(row.patient as any).dateOfBirth as
+								| string
+								| null
+								| undefined
+						)
+					: '—'
+		},
+		{
+			id: 'patientGender',
+			header: 'Gender',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+			format: (_value, row) => row.patient?.gender?.name ?? '—'
+		},
+		{
+			id: 'hospitalName',
+			header: 'Hospital Name',
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true,
+			field: 'hospital.name'
+		},
+		{
+			id: 'branchName',
+			header: 'Branch Name',
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true,
+			field: 'branch.name'
+		},
+		{
+			id: 'doctorName',
+			header: 'Doctor Name',
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: true,
+			format: (_value, row) =>
+				row.doctor
+					? StringUtil.fullNameWithTitle(
+							row.doctor.title?.name ?? null,
+							row.doctor.firstName,
+							row.doctor.middleName,
+							row.doctor.lastName
+						)
+					: '—'
+		},
+		{
+			id: 'visitDate',
+			header: 'Visit Date',
+			widthClass: 'w-40 min-w-[10rem]',
+			filterable: false,
+			format: (_value, row) =>
+				formatVisitDate(
+					(row as any).createdAt as string | null | undefined
+				)
+		},
+		{
+			id: 'visitType',
+			header: 'Visit Type',
+			widthClass: 'w-32 min-w-[8rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: () =>
+				visitTypeOptions.map((vt) => ({
+					value: String(vt.id),
+					label: vt.name ?? `Type ${vt.id}`
+				})),
+			field: 'visitType.name'
+		},
+		{
+			id: 'visitStatus',
+			header: 'Visit Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptionsGetter: () => visitStatusOptions,
+			field: 'visitStatus',
+			format: (_value, row) => formatVisitStatus(row.visitStatus)
+		},
+		{
+			id: 'alert',
+			header: m.observation_emr_alert(),
+			widthClass: 'w-14 min-w-[3.5rem]',
+			filterable: false,
+			format: () => '—',
+			cellComponentGetter: (row) => {
+				const patientId = row.patient?.id;
+				const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
+				if (patientId == null && !hasAbnormalVital) return null;
+				const hasAllergyAlert = activeAllergyPatientIds.has(
+					String(patientId)
+				);
 
-					return hasAbnormalVital || hasAllergyAlert
-						? {
-								component: LVisitAlertIndicators,
-								props: {
-									hasVitalAlert: hasAbnormalVital,
-									hasAllergyAlert
-								}
+				return hasAbnormalVital || hasAllergyAlert
+					? {
+							component: LVisitAlertIndicators,
+							props: {
+								hasVitalAlert: hasAbnormalVital,
+								hasAllergyAlert
 							}
-						: null;
-				},
-				cellClassGetter: (row) => {
-					const patientId = row.patient?.id;
-					const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
-					if (!patientId && !hasAbnormalVital)
-						return 'text-base-content/60';
-					const hasAllergyAlert = activeAllergyPatientIds.has(
-						String(patientId)
-					);
-					if (hasAbnormalVital && hasAllergyAlert) {
-						return 'text-error font-semibold';
-					}
-					if (hasAbnormalVital || hasAllergyAlert) {
-						return 'text-warning font-semibold';
-					}
+						}
+					: null;
+			},
+			cellClassGetter: (row) => {
+				const patientId = row.patient?.id;
+				const hasAbnormalVital = abnormalVitalVisitIds.has(row.id);
+				if (!patientId && !hasAbnormalVital)
 					return 'text-base-content/60';
+				const hasAllergyAlert = activeAllergyPatientIds.has(
+					String(patientId)
+				);
+				if (hasAbnormalVital && hasAllergyAlert) {
+					return 'text-error font-semibold';
 				}
+				if (hasAbnormalVital || hasAllergyAlert) {
+					return 'text-warning font-semibold';
+				}
+				return 'text-base-content/60';
 			}
-		];
+		}
+	];
 
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
 		if (!endpointBase) return;
@@ -278,7 +279,8 @@
 			if (opts?.bustCache) params.set('_t', String(Date.now()));
 
 			const res = await fetch(`${endpointBase}?${params.toString()}`);
-			if (!res.ok) throw new Error(`Failed to load visits (${res.status})`);
+			if (!res.ok)
+				throw new Error(`Failed to load visits (${res.status})`);
 			const data = (await res.json()) as {
 				result: PaginatedResult<PatientVisitForEmrList>;
 				activeAllergyPatientIds: string[];
@@ -410,9 +412,7 @@
 				}, 350);
 			}}
 			on:select={(event) =>
-				void selectPatient(
-					event.detail as PatientVisitForEmrList
-				)}
+				void selectPatient(event.detail as PatientVisitForEmrList)}
 		/>
 	</div>
 

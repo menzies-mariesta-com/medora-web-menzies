@@ -53,4 +53,3 @@ export type PatientWithRelations = {
 	state?: NamedLookup | null;
 	country?: NamedLookup | null;
 };
-

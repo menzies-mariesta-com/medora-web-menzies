@@ -65,9 +65,12 @@
 		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 	);
 	let tableFilters = $state<Record<string, string>>({
-		statusTaggingId: String(InvDepartmentIssueStatusTaggingEnum.ISSUED)
+		statusTaggingId: String(
+			InvDepartmentIssueStatusTaggingEnum.ISSUED
+		)
 	});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 	let actId = $state<string | null>(null);
 	let cancelIssueId = $state<string | null>(null);
@@ -107,7 +110,7 @@
 			id: 'to',
 			header: m.inv_dept_indent_to(),
 			field: 'toStoreId',
-			filterable: true,
+			filterable: fromStoreId == null,
 			format: (_v, r) => r.toStoreName ?? '—'
 		},
 		{
@@ -136,7 +139,9 @@
 			field: 'statusTaggingId',
 			filterType: 'select',
 			filterOptions: RECEIPT_STATUS_FILTER_OPTIONS,
-			defaultFilterValue: String(InvDepartmentIssueStatusTaggingEnum.ISSUED),
+			defaultFilterValue: String(
+				InvDepartmentIssueStatusTaggingEnum.ISSUED
+			),
 			format: (_v, r) => r.statusName ?? '—'
 		}
 	]);
@@ -154,16 +159,16 @@
 			}
 			const issueNo = tableFilters.issueNo?.trim();
 			if (issueNo) ps.set('issueNo', issueNo);
-			const toStoreIdFilter = tableFilters.toStoreId?.trim() ?? '';
+			const toStoreFilter = tableFilters.to?.trim() ?? '';
 			if (fromStoreId != null) {
 				// Receipt-from-store list is scoped to the selected (receiving) store.
 				ps.set('toStoreId', String(fromStoreId));
-			} else if (toStoreIdFilter !== '') {
-				ps.set('toStoreId', toStoreIdFilter);
+			} else if (toStoreFilter !== '') {
+				ps.set('toStoreId', toStoreFilter);
 			}
-			const fromStoreIdFilter = tableFilters.fromStoreId?.trim() ?? '';
-			if (fromStoreIdFilter !== '') {
-				ps.set('fromStoreId', fromStoreIdFilter);
+			const fromStoreFilter = tableFilters.from?.trim() ?? '';
+			if (fromStoreFilter !== '') {
+				ps.set('fromStoreId', fromStoreFilter);
 			}
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/inventory/department-issue?${ps}`
@@ -190,7 +195,9 @@
 		lastInitHospitalId = h;
 		currentPage = 1;
 		tableFilters = {
-			statusTaggingId: String(InvDepartmentIssueStatusTaggingEnum.ISSUED)
+			statusTaggingId: String(
+				InvDepartmentIssueStatusTaggingEnum.ISSUED
+			)
 		};
 	});
 
@@ -348,7 +355,9 @@
 						<DaisyUiButton
 							type="button"
 							className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-							disabled={actId != null || fromStoreId == null || r.canReceive !== true}
+							disabled={actId != null ||
+								fromStoreId == null ||
+								r.canReceive !== true}
 							loading={actId === r.id}
 							onClick={() => void receiveRow(r)}
 						>
@@ -372,4 +381,3 @@
 		</MariTable>
 	{/key}
 </div>
-

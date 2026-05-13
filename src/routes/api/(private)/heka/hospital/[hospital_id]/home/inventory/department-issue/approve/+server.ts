@@ -4,7 +4,10 @@ import { approveDepartmentIssue } from '$lib/server/heka/inventory/department-is
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await approveDepartmentIssue(event, {
 		hospitalId,
 		issueId: String(body.issueId ?? ''),
@@ -13,4 +16,3 @@ export const POST: RequestHandler = async (event) => {
 	});
 	return json(data);
 };
-
