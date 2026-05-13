@@ -89,9 +89,12 @@
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const doctor = await apiGet<StaffWithRelations | null>('doctor.byId', {
-			id
-		});
+		const doctor = await apiGet<StaffWithRelations | null>(
+			'doctor.byId',
+			{
+				id
+			}
+		);
 		if (!doctor) return '';
 		return StringUtil.doctorOptionDisplayName(doctor);
 	}

@@ -4,7 +4,10 @@ import { postDepartmentIndentIssue } from '$lib/server/heka/inventory/department
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await postDepartmentIndentIssue(event, {
 		hospitalId,
 		indentId: String(body.indentId ?? '')

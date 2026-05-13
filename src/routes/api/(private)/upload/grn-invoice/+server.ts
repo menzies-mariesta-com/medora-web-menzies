@@ -12,13 +12,16 @@ const ALLOWED_TYPES = [
 ];
 
 /** Server may receive Blob or File from formData(); accept any blob-like (avoids instanceof across runtimes). */
-function isFileLike(value: unknown): value is Blob & { name?: string } {
+function isFileLike(
+	value: unknown
+): value is Blob & { name?: string } {
 	if (typeof value !== 'object' || value === null) return false;
 	const o = value as Record<string, unknown>;
 	return (
 		typeof o.size === 'number' &&
 		typeof o.type === 'string' &&
-		(typeof o.arrayBuffer === 'function' || typeof o.stream === 'function')
+		(typeof o.arrayBuffer === 'function' ||
+			typeof o.stream === 'function')
 	);
 }
 
@@ -45,12 +48,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 		if (file.size > MAX_SIZE_BYTES) {
-			return json({ error: 'File too large (max 10MB)' }, { status: 400 });
+			return json(
+				{ error: 'File too large (max 10MB)' },
+				{ status: 400 }
+			);
 		}
 		const type = file.type?.toLowerCase();
 		if (!type || !ALLOWED_TYPES.includes(type)) {
 			return json(
-				{ error: 'Invalid file type. Use JPEG, PNG, WebP, GIF or PDF.' },
+				{
+					error: 'Invalid file type. Use JPEG, PNG, WebP, GIF or PDF.'
+				},
 				{ status: 400 }
 			);
 		}
@@ -63,8 +71,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 		return json({ url: `/api/grn-invoice/${path}` });
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Upload failed';
+		const message =
+			err instanceof Error ? err.message : 'Upload failed';
 		return json({ error: message }, { status: 500 });
 	}
 };
-

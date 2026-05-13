@@ -44,7 +44,10 @@ export function toastErrorParts(
 /**
  * Single-line error toast text when detail is not needed.
  */
-export function toastErrorLine(whatFailed: string, err?: unknown): string {
+export function toastErrorLine(
+	whatFailed: string,
+	err?: unknown
+): string {
 	const { message, detail } = toastErrorParts(whatFailed, err);
 	return detail ? `${message} — ${detail}` : message;
 }

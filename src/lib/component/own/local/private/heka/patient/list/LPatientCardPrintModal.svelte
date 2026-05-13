@@ -52,8 +52,11 @@
 					`${patientListApiBase(hospitalId)}?id=${encodeURIComponent(patientId)}&_t=${Date.now()}`
 				);
 				if (!res.ok)
-					throw new Error(`Failed to load patient details (${res.status})`);
-				const data = (await res.json()) as PatientWithRelations | null;
+					throw new Error(
+						`Failed to load patient details (${res.status})`
+					);
+				const data =
+					(await res.json()) as PatientWithRelations | null;
 				if (cancelled) return;
 				patient = data;
 			} catch (err) {
@@ -108,10 +111,13 @@
 	});
 
 	const genderDisplay = $derived(patient?.gender?.name ?? '—');
-	const dobDisplay = $derived(dateTimeUtil.formatDate(patient?.dateOfBirth));
+	const dobDisplay = $derived(
+		dateTimeUtil.formatDate(patient?.dateOfBirth)
+	);
 
 	const phonePrimaryDisplay = $derived.by(() => {
-		if (!patient?.phonePrimaryCountry || !patient?.phonePrimary) return '—';
+		if (!patient?.phonePrimaryCountry || !patient?.phonePrimary)
+			return '—';
 		const v = StringUtil.fullPhoneNo(
 			patient.phonePrimaryCountry,
 			patient.phonePrimary
@@ -123,12 +129,18 @@
 		if (!patient) return '—';
 
 		const parts: string[] = [];
-		if (typeof patient.address === 'string' && patient.address.trim()) {
+		if (
+			typeof patient.address === 'string' &&
+			patient.address.trim()
+		) {
 			parts.push(patient.address.trim());
 		}
-		if (patient.city?.name?.trim()) parts.push(patient.city.name.trim());
-		if (patient.state?.name?.trim()) parts.push(patient.state.name.trim());
-		if (patient.country?.name?.trim()) parts.push(patient.country.name.trim());
+		if (patient.city?.name?.trim())
+			parts.push(patient.city.name.trim());
+		if (patient.state?.name?.trim())
+			parts.push(patient.state.name.trim());
+		if (patient.country?.name?.trim())
+			parts.push(patient.country.name.trim());
 
 		return parts.length ? parts.join(', ') : '—';
 	});
@@ -246,10 +258,12 @@
 <DaisyUiModal
 	groupName="patient-card-print-modal"
 	open={true}
-	onClose={onClose}
+	{onClose}
 >
 	<div class="d-modal-box max-w-2xl" role="document">
-		<div class="flex items-center justify-between border-b border-base-300 px-4 py-2">
+		<div
+			class="flex items-center justify-between border-b border-base-300 px-4 py-2"
+		>
 			<h2 class="text-lg font-semibold">Patient card</h2>
 			<DaisyUiButton
 				className="d-btn-ghost d-btn-sm d-btn-circle"
@@ -271,78 +285,104 @@
 			{:else}
 				<DaisyUiCard animate={true}>
 					<DaisyUiCardBody className="p-4">
-							<div class="flex items-start gap-4">
-								<div class="relative shrink-0">
-									{#if patientPhotoUrl}
-										<img
-											src={patientPhotoUrl}
-											alt="Patient profile"
-											class="h-20 w-20 rounded-full border border-base-300 object-cover shadow-sm"
-										/>
-									{:else}
-										<div
-											class="h-20 w-20 rounded-full border border-base-300 bg-base-200 flex items-center justify-center shadow-sm"
+						<div class="flex items-start gap-4">
+							<div class="relative shrink-0">
+								{#if patientPhotoUrl}
+									<img
+										src={patientPhotoUrl}
+										alt="Patient profile"
+										class="h-20 w-20 rounded-full border border-base-300 object-cover shadow-sm"
+									/>
+								{:else}
+									<div
+										class="flex h-20 w-20 items-center justify-center rounded-full border border-base-300 bg-base-200 shadow-sm"
+									>
+										<span
+											class="text-sm font-bold text-base-content/70"
 										>
-											<span class="text-sm font-bold text-base-content/70">
-												{patientInitials}
-											</span>
-										</div>
-									{/if}
-								</div>
+											{patientInitials}
+										</span>
+									</div>
+								{/if}
+							</div>
 
-								<div class="flex flex-col gap-2">
-									<DaisyUiCardBodyTitle className="text-base-content">
-										{patientFullName}
-									</DaisyUiCardBodyTitle>
+							<div class="flex flex-col gap-2">
+								<DaisyUiCardBodyTitle className="text-base-content">
+									{patientFullName}
+								</DaisyUiCardBodyTitle>
 
-									<p class="text-sm text-base-content/70">
-										Patient code: <span class="font-semibold">{patientCode}</span>
-									</p>
+								<p class="text-sm text-base-content/70">
+									Patient code: <span class="font-semibold"
+										>{patientCode}</span
+									>
+								</p>
 
-									<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-										<div class="field">
-											<div class="label text-xs font-semibold uppercase tracking-wide text-base-content/60">
-												Identity
-											</div>
-											<div class="value break-words text-sm font-semibold">
-												{identityDisplay}
-											</div>
+								<div
+									class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
+								>
+									<div class="field">
+										<div
+											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+										>
+											Identity
 										</div>
-										<div class="field">
-											<div class="label text-xs font-semibold uppercase tracking-wide text-base-content/60">
-												Gender
-											</div>
-											<div class="value break-words text-sm font-semibold">
-												{genderDisplay}
-											</div>
-										</div>
-										<div class="field">
-											<div class="label text-xs font-semibold uppercase tracking-wide text-base-content/60">
-												Date of birth
-											</div>
-											<div class="value break-words text-sm font-semibold">
-												{dobDisplay}
-											</div>
-										</div>
-										<div class="field">
-											<div class="label text-xs font-semibold uppercase tracking-wide text-base-content/60">
-												Phone primary
-											</div>
-											<div class="value break-words text-sm font-semibold">
-												{phonePrimaryDisplay}
-											</div>
+										<div
+											class="value text-sm font-semibold break-words"
+										>
+											{identityDisplay}
 										</div>
 									</div>
-
-									<div class="mt-4">
-										<div class="label text-xs font-semibold uppercase tracking-wide text-base-content/60">
-											Address
+									<div class="field">
+										<div
+											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+										>
+											Gender
 										</div>
-										<div class="value mt-1 break-words text-sm font-semibold">
-											{addressDisplay}
+										<div
+											class="value text-sm font-semibold break-words"
+										>
+											{genderDisplay}
+										</div>
+									</div>
+									<div class="field">
+										<div
+											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+										>
+											Date of birth
+										</div>
+										<div
+											class="value text-sm font-semibold break-words"
+										>
+											{dobDisplay}
+										</div>
+									</div>
+									<div class="field">
+										<div
+											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+										>
+											Phone primary
+										</div>
+										<div
+											class="value text-sm font-semibold break-words"
+										>
+											{phonePrimaryDisplay}
 										</div>
 									</div>
 								</div>
+
+								<div class="mt-4">
+									<div
+										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+									>
+										Address
+									</div>
+									<div
+										class="value mt-1 text-sm font-semibold break-words"
+									>
+										{addressDisplay}
+									</div>
+								</div>
+							</div>
 						</div>
 					</DaisyUiCardBody>
 				</DaisyUiCard>
@@ -361,4 +401,3 @@
 		</div>
 	</div>
 </DaisyUiModal>
-

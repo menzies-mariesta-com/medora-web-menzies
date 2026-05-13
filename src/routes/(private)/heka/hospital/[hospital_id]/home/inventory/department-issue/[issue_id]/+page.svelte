@@ -5,10 +5,14 @@
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 	const issueId = $derived(
-		typeof page.params.issue_id === 'string' ? page.params.issue_id : ''
+		typeof page.params.issue_id === 'string'
+			? page.params.issue_id
+			: ''
 	);
 	const backHref = $derived(
 		resolve(

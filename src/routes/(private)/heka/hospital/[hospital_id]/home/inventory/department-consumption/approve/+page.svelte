@@ -12,7 +12,9 @@
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		InvApprovalActionEnum,
@@ -27,17 +29,22 @@
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
-		(data as { selectedInventoryFromStoreId?: number | null }).selectedInventoryFromStoreId ??
-			null
+		(data as { selectedInventoryFromStoreId?: number | null })
+			.selectedInventoryFromStoreId ?? null
 	);
 
 	const backHref = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/department-consumption' as const)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/department-consumption' as const
+		)
 	);
 
 	type Row = {
@@ -55,7 +62,9 @@
 	let loading = $state(false);
 	let total = $state(0);
 	let currentPage = $state(1);
-	let pageSizeStr = $state(String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE));
+	let pageSizeStr = $state(
+		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
+	);
 	let remarks = $state('');
 	let actId = $state<string | null>(null);
 
@@ -155,7 +164,11 @@
 			);
 			if (!res.ok) {
 				const t = await res.text();
-				toast.addToast('Action failed', StatusColorEnum.ERROR, t || String(res.status));
+				toast.addToast(
+					'Action failed',
+					StatusColorEnum.ERROR,
+					t || String(res.status)
+				);
 				return;
 			}
 			await loadList();
@@ -177,7 +190,7 @@
 				<DaisyUiButton
 					type="button"
 					className="d-btn-sm d-btn-ghost d-btn-square"
-						onClick={() => void goto(resolve(backHref as any))}
+					onClick={() => void goto(resolve(backHref as any))}
 				>
 					<LucideArrowLeft className="size-4" />
 				</DaisyUiButton>
@@ -190,7 +203,7 @@
 		<div class="mb-4 max-w-xl">
 			<DaisyUiLabel>{m.inv_common_remarks()}</DaisyUiLabel>
 			<input
-				class="d-input d-input-bordered mt-1 w-full text-sm"
+				class="d-input-bordered d-input mt-1 w-full text-sm"
 				type="text"
 				bind:value={remarks}
 				placeholder="Optional approval remarks..."
@@ -241,7 +254,11 @@
 									className="d-btn-sm d-btn-ghost d-btn-square text-accent"
 									disabled={actId != null}
 									loading={actId === r.id}
-									onClick={() => void approveRow(r, InvApprovalActionEnum.APPROVED)}
+									onClick={() =>
+										void approveRow(
+											r,
+											InvApprovalActionEnum.APPROVED
+										)}
 								>
 									<LucideCircleCheck className="size-4" />
 								</DaisyUiButton>
@@ -254,7 +271,11 @@
 									className="d-btn-sm d-btn-ghost d-btn-square text-error"
 									disabled={actId != null}
 									loading={actId === r.id}
-									onClick={() => void approveRow(r, InvApprovalActionEnum.REJECTED)}
+									onClick={() =>
+										void approveRow(
+											r,
+											InvApprovalActionEnum.REJECTED
+										)}
 								>
 									<LucideBan className="size-4" />
 								</DaisyUiButton>

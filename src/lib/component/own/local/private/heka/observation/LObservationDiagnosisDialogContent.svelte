@@ -49,7 +49,8 @@
 	let loadSeq = 0;
 
 	const allDiagnosisTypesSelected = $derived(
-		types.length > 0 && selectedDiagnosisTypeIds.length === types.length
+		types.length > 0 &&
+			selectedDiagnosisTypeIds.length === types.length
 	);
 
 	function resetDiagnosisForm() {
@@ -58,7 +59,10 @@
 		statusIdStr = String(StatusEnum.ACTIVE);
 	}
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(
@@ -260,7 +264,9 @@
 						checked={selectedDiagnosisTypeIds.includes(Number(t.id))}
 						disabled={isSubmitting}
 						onchange={(event) => {
-							const checked = (event.currentTarget as HTMLInputElement).checked;
+							const checked = (
+								event.currentTarget as HTMLInputElement
+							).checked;
 							const typeId = Number(t.id);
 
 							if (isEdit) {
@@ -278,9 +284,10 @@
 									];
 								}
 							} else {
-								selectedDiagnosisTypeIds = selectedDiagnosisTypeIds.filter(
-									(id) => id !== typeId
-								);
+								selectedDiagnosisTypeIds =
+									selectedDiagnosisTypeIds.filter(
+										(id) => id !== typeId
+									);
 							}
 						}}
 					/>

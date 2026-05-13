@@ -30,47 +30,72 @@ export const GET: RequestHandler = async (event) => {
 
 	// Default: paginated table
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const search = event.url.searchParams.get('search') ?? undefined;
 
 	const data = await getExternalReferPaginated(event, {
 		hospitalId,
 		page,
 		pageSize,
-		search: search != null && search.trim() !== '' ? search : undefined
+		search:
+			search != null && search.trim() !== '' ? search : undefined
 	});
 	return json(data);
 };
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const created = await createExternalRefer(event, {
 		hospitalId,
 		titleId: body.titleId != null ? Number(body.titleId) : null,
 		name: body.name != null ? String(body.name) : null,
 		address: body.address != null ? String(body.address) : null,
-		phoneCountryId: body.phoneCountryId != null ? Number(body.phoneCountryId) : null,
+		phoneCountryId:
+			body.phoneCountryId != null
+				? Number(body.phoneCountryId)
+				: null,
 		phone: body.phone != null ? String(body.phone) : null,
 		email: body.email != null ? String(body.email) : null,
-		referTypeId: body.referTypeId != null ? Number(body.referTypeId) : null,
+		referTypeId:
+			body.referTypeId != null ? Number(body.referTypeId) : null,
 		countryId: body.countryId != null ? Number(body.countryId) : null,
 		stateId: body.stateId != null ? Number(body.stateId) : null,
 		cityId: body.cityId != null ? Number(body.cityId) : null,
-		postalCodeId: body.postalCodeId != null ? Number(body.postalCodeId) : null,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+		postalCodeId:
+			body.postalCodeId != null ? Number(body.postalCodeId) : null,
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	});
 	return json(created);
 };
 
 export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const updated = await updateExternalRefer(event, {
 		hospitalId,
 		id: Number(body.id),
-		titleId: body.titleId === undefined ? undefined : body.titleId != null ? Number(body.titleId) : null,
-		name: body.name === undefined ? undefined : body.name != null ? String(body.name) : null,
+		titleId:
+			body.titleId === undefined
+				? undefined
+				: body.titleId != null
+					? Number(body.titleId)
+					: null,
+		name:
+			body.name === undefined
+				? undefined
+				: body.name != null
+					? String(body.name)
+					: null,
 		address:
 			body.address === undefined
 				? undefined
@@ -83,8 +108,18 @@ export const PUT: RequestHandler = async (event) => {
 				: body.phoneCountryId != null
 					? Number(body.phoneCountryId)
 					: null,
-		phone: body.phone === undefined ? undefined : body.phone != null ? String(body.phone) : null,
-		email: body.email === undefined ? undefined : body.email != null ? String(body.email) : null,
+		phone:
+			body.phone === undefined
+				? undefined
+				: body.phone != null
+					? String(body.phone)
+					: null,
+		email:
+			body.email === undefined
+				? undefined
+				: body.email != null
+					? String(body.email)
+					: null,
 		referTypeId:
 			body.referTypeId === undefined
 				? undefined
@@ -127,8 +162,13 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
-	await deleteExternalRefer(event, { hospitalId, id: Number(body.id) });
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
+	await deleteExternalRefer(event, {
+		hospitalId,
+		id: Number(body.id)
+	});
 	return json({ ok: true });
 };
-

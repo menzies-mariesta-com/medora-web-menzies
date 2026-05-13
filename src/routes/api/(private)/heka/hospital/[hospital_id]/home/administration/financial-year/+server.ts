@@ -9,13 +9,18 @@ import {
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const data = await getFinancialYearsByHospital(event, { hospitalId });
+	const data = await getFinancialYearsByHospital(event, {
+		hospitalId
+	});
 	return json(data);
 };
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createFinancialYear(event, {
 		hospitalId,
 		code: String(body.code ?? ''),
@@ -26,7 +31,10 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updateFinancialYear(event, {
 		id: Number(body.id),
 		code: body.code != null ? String(body.code) : undefined,
@@ -47,8 +55,10 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteFinancialYear(event, { id: Number(body.id) });
 	return json({ ok: true });
 };
-

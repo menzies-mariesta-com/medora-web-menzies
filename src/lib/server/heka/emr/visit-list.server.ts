@@ -2,11 +2,32 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
-import { AllergyEnum, StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
+import {
+	AllergyEnum,
+	StaffTypeEnum,
+	StatusEnum
+} from '$lib/model/enum/db-link';
 import { VITAL_REFERENCE_RANGES } from '$lib/config/vital.config';
-import { normalizePagination, type PaginationParams, type PaginatedResult } from '$lib/model/type/pagination.type';
-import { and, count, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
-import type { PatientVisitForEmrList, VisitStatusCode, VisitTypeOption } from '$lib/model/type/heka/emr/visit-list.type';
+import {
+	normalizePagination,
+	type PaginationParams,
+	type PaginatedResult
+} from '$lib/model/type/pagination.type';
+import {
+	and,
+	count,
+	eq,
+	ilike,
+	inArray,
+	ne,
+	or,
+	sql
+} from 'drizzle-orm';
+import type {
+	PatientVisitForEmrList,
+	VisitStatusCode,
+	VisitTypeOption
+} from '$lib/model/type/heka/emr/visit-list.type';
 
 const BRANCH_ALL_VALUE = '__all__';
 
@@ -29,7 +50,10 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 		.from(table.statusTaggingTable)
 		.leftJoin(
 			table.statusTaggingTypeTable,
-			eq(table.statusTaggingTable.statusTaggingTypeId, table.statusTaggingTypeTable.id)
+			eq(
+				table.statusTaggingTable.statusTaggingTypeId,
+				table.statusTaggingTypeTable.id
+			)
 		)
 		.where(sql`${table.statusTaggingTypeTable.name} ILIKE 'Visit'`);
 
@@ -46,9 +70,12 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 	};
 }
 
-function getDoctorEmrVisitScopeFilter(event: RequestEvent): ReturnType<typeof or> | null {
+function getDoctorEmrVisitScopeFilter(
+	event: RequestEvent
+): ReturnType<typeof or> | null {
 	const staff = event.locals.staff;
-	if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR) return null;
+	if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR)
+		return null;
 
 	const doctorId = staff.id;
 	return or(
@@ -68,9 +95,15 @@ function resolveVisitStatusCode(params: {
 	statusTaggingId: number | null | undefined;
 	tagging: Awaited<ReturnType<typeof getVisitStatusTaggingIds>>;
 }): VisitStatusCode {
-	if (params.tagging.closedId != null && params.statusTaggingId === params.tagging.closedId)
+	if (
+		params.tagging.closedId != null &&
+		params.statusTaggingId === params.tagging.closedId
+	)
 		return 'closed';
-	if (params.tagging.seenId != null && params.statusTaggingId === params.tagging.seenId)
+	if (
+		params.tagging.seenId != null &&
+		params.statusTaggingId === params.tagging.seenId
+	)
 		return 'seen';
 	if (params.hasVitals) return 'vital';
 	return 'open';
@@ -78,7 +111,10 @@ function resolveVisitStatusCode(params: {
 
 export async function getVisitTypes(): Promise<VisitTypeOption[]> {
 	return ensureDb()
-		.select({ id: table.visitTypeTable.id, name: table.visitTypeTable.name })
+		.select({
+			id: table.visitTypeTable.id,
+			name: table.visitTypeTable.name
+		})
 		.from(table.visitTypeTable)
 		.where(ne(table.visitTypeTable.statusId, StatusEnum.DELETED))
 		.orderBy(table.visitTypeTable.name);
@@ -87,7 +123,9 @@ export async function getVisitTypes(): Promise<VisitTypeOption[]> {
 export async function getActivePatientAllergiesPatientIdsByPatientIds(params: {
 	patientIds: string[];
 }): Promise<string[]> {
-	const ids = params.patientIds.map(String).filter((id) => id.trim() !== '');
+	const ids = params.patientIds
+		.map(String)
+		.filter((id) => id.trim() !== '');
 	if (ids.length === 0) return [];
 
 	const rows = await ensureDb()
@@ -97,7 +135,10 @@ export async function getActivePatientAllergiesPatientIdsByPatientIds(params: {
 			and(
 				inArray(table.patientAllergyTable.patientId, ids),
 				eq(table.patientAllergyTable.statusId, StatusEnum.ACTIVE),
-				ne(table.patientAllergyTable.allergyId, AllergyEnum.NO_KNOWN_ALLERGY)
+				ne(
+					table.patientAllergyTable.allergyId,
+					AllergyEnum.NO_KNOWN_ALLERGY
+				)
 			)
 		);
 
@@ -107,7 +148,9 @@ export async function getActivePatientAllergiesPatientIdsByPatientIds(params: {
 export async function getAbnormalVitalVisitIdsByVisitIds(params: {
 	visitIds: number[];
 }): Promise<number[]> {
-	const ids = params.visitIds.filter((id) => Number.isInteger(id) && id > 0);
+	const ids = params.visitIds.filter(
+		(id) => Number.isInteger(id) && id > 0
+	);
 	if (ids.length === 0) return [];
 
 	const pd = table.patientDiagnosisTable;
@@ -145,13 +188,18 @@ export async function markPatientVisitSeenOnDoctorSelect(
 	if (visitStatusTagging.seenId == null) return;
 
 	const [current] = await ensureDb()
-		.select({ statusTaggingId: table.patientVisitTable.statusTaggingId })
+		.select({
+			statusTaggingId: table.patientVisitTable.statusTaggingId
+		})
 		.from(table.patientVisitTable)
 		.where(eq(table.patientVisitTable.id, params.visitId))
 		.limit(1);
 	if (!current) return;
 
-	if (visitStatusTagging.closedId != null && current.statusTaggingId === visitStatusTagging.closedId)
+	if (
+		visitStatusTagging.closedId != null &&
+		current.statusTaggingId === visitStatusTagging.closedId
+	)
 		return;
 	if (current.statusTaggingId === visitStatusTagging.seenId) return;
 
@@ -203,7 +251,8 @@ export async function getPatientVisitPaginatedForEmr(
 		visitStatus?: VisitStatusCode;
 	}
 ): Promise<PaginatedResult<PatientVisitForEmrList>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	// Hide soft-deleted and inactive (e.g. appointment cancel after check-in) visits.
 	let whereExpr: any = and(
@@ -212,12 +261,18 @@ export async function getPatientVisitPaginatedForEmr(
 	);
 
 	if (params?.hospitalId) {
-		whereExpr = and(whereExpr, eq(table.patientVisitTable.hospitalId, params.hospitalId));
+		whereExpr = and(
+			whereExpr,
+			eq(table.patientVisitTable.hospitalId, params.hospitalId)
+		);
 	}
 
 	const selectedBranchId = getSelectedBranchId(event);
 	if (selectedBranchId) {
-		whereExpr = and(whereExpr, eq(table.patientVisitTable.branchId, selectedBranchId));
+		whereExpr = and(
+			whereExpr,
+			eq(table.patientVisitTable.branchId, selectedBranchId)
+		);
 	}
 
 	const searchTerm = params?.search?.trim();
@@ -242,7 +297,10 @@ export async function getPatientVisitPaginatedForEmr(
 
 	const visitNoTerm = params?.visitNo?.trim();
 	if (visitNoTerm) {
-		whereExpr = and(whereExpr, ilike(table.patientVisitTable.visitNo, `%${visitNoTerm}%`));
+		whereExpr = and(
+			whereExpr,
+			ilike(table.patientVisitTable.visitNo, `%${visitNoTerm}%`)
+		);
 	}
 
 	const patientCodeTerm = params?.patientCode?.trim();
@@ -298,7 +356,10 @@ export async function getPatientVisitPaginatedForEmr(
 	}
 
 	if (params?.visitTypeId != null) {
-		whereExpr = and(whereExpr, eq(table.patientVisitTable.visitTypeId, params.visitTypeId));
+		whereExpr = and(
+			whereExpr,
+			eq(table.patientVisitTable.visitTypeId, params.visitTypeId)
+		);
 	}
 
 	const tagging = await getVisitStatusTaggingIds();
@@ -307,7 +368,12 @@ export async function getPatientVisitPaginatedForEmr(
 		if (visitStatus === 'seen') {
 			whereExpr = and(
 				whereExpr,
-				tagging.seenId != null ? eq(table.patientVisitTable.statusTaggingId, tagging.seenId) : (sql`1=0` as any)
+				tagging.seenId != null
+					? eq(
+							table.patientVisitTable.statusTaggingId,
+							tagging.seenId
+						)
+					: (sql`1=0` as any)
 			);
 		} else if (visitStatus === 'vital') {
 			whereExpr = and(
@@ -342,7 +408,16 @@ export async function getPatientVisitPaginatedForEmr(
 				)` as any
 			);
 		} else if (visitStatus === 'closed') {
-			whereExpr = tagging.closedId != null ? and(whereExpr, eq(table.patientVisitTable.statusTaggingId, tagging.closedId)) : and(whereExpr, sql`1=0` as any);
+			whereExpr =
+				tagging.closedId != null
+					? and(
+							whereExpr,
+							eq(
+								table.patientVisitTable.statusTaggingId,
+								tagging.closedId
+							)
+						)
+					: and(whereExpr, sql`1=0` as any);
 		}
 	}
 
@@ -363,10 +438,15 @@ export async function getPatientVisitPaginatedForEmr(
 			limit,
 			offset
 		}),
-		ensureDb().select({ count: count() }).from(table.patientVisitTable).where(whereExpr)
+		ensureDb()
+			.select({ count: count() })
+			.from(table.patientVisitTable)
+			.where(whereExpr)
 	]);
 
-	const visitIds = data.map((d) => d.id).filter((id): id is number => id != null);
+	const visitIds = data
+		.map((d) => d.id)
+		.filter((id): id is number => id != null);
 	const vitalsByVisitId = new Set<number>();
 	if (visitIds.length) {
 		const vitalRows = await ensureDb()
@@ -382,15 +462,20 @@ export async function getPatientVisitPaginatedForEmr(
 		for (const r of vitalRows) vitalsByVisitId.add(r.visitId);
 	}
 
-	const dataWithStatus: PatientVisitForEmrList[] = data.map((row: any) => {
-		const hasVitals = vitalsByVisitId.has(row.id);
-		const visitStatus = resolveVisitStatusCode({
-			hasVitals,
-			statusTaggingId: row.statusTaggingId as number | null | undefined,
-			tagging
-		});
-		return { ...row, visitStatus } as PatientVisitForEmrList;
-	});
+	const dataWithStatus: PatientVisitForEmrList[] = data.map(
+		(row: any) => {
+			const hasVitals = vitalsByVisitId.has(row.id);
+			const visitStatus = resolveVisitStatusCode({
+				hasVitals,
+				statusTaggingId: row.statusTaggingId as
+					| number
+					| null
+					| undefined,
+				tagging
+			});
+			return { ...row, visitStatus } as PatientVisitForEmrList;
+		}
+	);
 
 	const total = countResult[0]?.count ?? 0;
 	return {
@@ -401,4 +486,3 @@ export async function getPatientVisitPaginatedForEmr(
 		totalPages: Math.ceil(total / pageSize) || 1
 	};
 }
-

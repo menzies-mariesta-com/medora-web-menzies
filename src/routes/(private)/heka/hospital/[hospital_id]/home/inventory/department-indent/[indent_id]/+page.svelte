@@ -70,7 +70,6 @@
 
 	let actBusy = $state(false);
 
-
 	function indentStatusLabel(id: number): string {
 		switch (id) {
 			case InvDepartmentIndentStatusTaggingEnum.DRAFT:
@@ -114,7 +113,10 @@
 			header: m.inv_di_col_qty_issued(),
 			field: 'qtyIssued',
 			format: (_v, row) =>
-				formatPurchaseQtyCellForDetailLine({ ...row, quantity: row.qtyIssued })
+				formatPurchaseQtyCellForDetailLine({
+					...row,
+					quantity: row.qtyIssued
+				})
 		}
 	];
 
@@ -257,7 +259,6 @@
 			actBusy = false;
 		}
 	}
-
 </script>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -290,13 +291,8 @@
 </div>
 
 {#if detail && !detailLoading}
-	{#if
-		detail.statusTaggingId ===
-			InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL &&
-		selectedInventoryFromStoreId != null &&
-		detail.toStoreId === selectedInventoryFromStoreId
-	}
-		<div class="d-alert d-alert-info mb-4 text-sm" role="status">
+	{#if detail.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL && selectedInventoryFromStoreId != null && detail.toStoreId === selectedInventoryFromStoreId}
+		<div class="mb-4 d-alert text-sm d-alert-info" role="status">
 			{m.inv_di_pending_central_fulfill_hint()}
 			<DaisyUiButton
 				type="button"
@@ -344,7 +340,9 @@
 		</div>
 	</div>
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
-		<div class="text-sm text-base-content/60">{m.support_requester()}</div>
+		<div class="text-sm text-base-content/60">
+			{m.support_requester()}
+		</div>
 		<div class="font-medium">{detail?.requestedByName ?? '—'}</div>
 	</div>
 	{#if detail?.fromApprovedAt}
@@ -419,4 +417,3 @@
 		/>
 	</div>
 {/if}
-

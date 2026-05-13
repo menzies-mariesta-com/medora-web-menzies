@@ -176,8 +176,11 @@
 		try {
 			const base = apiBase();
 			if (!base) throw new Error('Missing hospital context');
-			const res = await fetch(`${base}?id=${v.id}`, { method: 'DELETE' });
-			if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+			const res = await fetch(`${base}?id=${v.id}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok)
+				throw new Error(await res.text().catch(() => res.statusText));
 			toastSuccess(
 				toastService,
 				m.entity_patient_vital(),
@@ -207,9 +210,9 @@
 		try {
 			const base = apiBase();
 			if (!base) return null;
-			const res = await apiGet<{ data: { patientId: string; hospitalId: string } | null }>(
-				`${base}?action=visitBasics&visitId=${visitId}`
-			);
+			const res = await apiGet<{
+				data: { patientId: string; hospitalId: string } | null;
+			}>(`${base}?action=visitBasics&visitId=${visitId}`);
 			if (!res.data) {
 				visit = null;
 				return null;
@@ -248,7 +251,10 @@
 		try {
 			const statusIdStr = tableFilters.status?.trim() || '';
 			const visitNo = tableFilters.visitNo?.trim() || '';
-			const url = new URL(base, globalThis.location?.origin ?? 'http://local');
+			const url = new URL(
+				base,
+				globalThis.location?.origin ?? 'http://local'
+			);
 			url.searchParams.set('patientId', patientId);
 			url.searchParams.set('page', String(currentPage));
 			url.searchParams.set('pageSize', String(pageSize));
@@ -480,7 +486,9 @@
 					</DaisyUiButton>
 				</div>
 				{#if !visit}
-					<div class="flex min-h-32 items-center justify-center text-sm text-base-content/70">
+					<div
+						class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
+					>
 						Loading visit…
 					</div>
 				{:else if vitals.length === 0 && !isLoadingVitals}

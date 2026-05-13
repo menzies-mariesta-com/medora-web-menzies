@@ -19,7 +19,9 @@ export async function GET(event: RequestEvent) {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const name = event.url.searchParams.get('name') ?? undefined;
 	const code = event.url.searchParams.get('code') ?? undefined;
 	const statusIdRaw = event.url.searchParams.get('statusId');
@@ -34,7 +36,9 @@ export async function GET(event: RequestEvent) {
 			pageSize,
 			name,
 			code,
-			statusId: Number.isFinite(statusId as number) ? statusId : undefined
+			statusId: Number.isFinite(statusId as number)
+				? statusId
+				: undefined
 		})
 	);
 }
@@ -57,7 +61,8 @@ export async function DELETE(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	await dept.deleteDepartment({ id });
 	return json({ ok: true });
 }

@@ -1,5 +1,13 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, ilike, inArray, ne } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	ne
+} from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -21,10 +29,16 @@ function ensureAuthed(event: RequestEvent): void {
 
 export async function getSubCategories(
 	event: RequestEvent,
-	params?: { categoryId?: number | null; categoryIds?: number[] | null }
+	params?: {
+		categoryId?: number | null;
+		categoryIds?: number[] | null;
+	}
 ): Promise<SubCategorySchema[]> {
 	ensureAuthed(event);
-	let whereExpr: SQL = ne(table.subCategoryTable.statusId, StatusEnum.DELETED);
+	let whereExpr: SQL = ne(
+		table.subCategoryTable.statusId,
+		StatusEnum.DELETED
+	);
 
 	if (params?.categoryId != null) {
 		whereExpr = and(
@@ -59,9 +73,13 @@ export async function getSubCategoriesPaginated(
 	}
 ): Promise<PaginatedResult<SubCategorySchema>> {
 	ensureAuthed(event);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
-	let whereExpr: SQL = ne(table.subCategoryTable.statusId, StatusEnum.DELETED);
+	let whereExpr: SQL = ne(
+		table.subCategoryTable.statusId,
+		StatusEnum.DELETED
+	);
 
 	if (params.categoryId != null) {
 		whereExpr = and(
@@ -81,7 +99,10 @@ export async function getSubCategoriesPaginated(
 	}
 
 	if (params.id != null) {
-		whereExpr = and(whereExpr, eq(table.subCategoryTable.id, params.id))!;
+		whereExpr = and(
+			whereExpr,
+			eq(table.subCategoryTable.id, params.id)
+		)!;
 	}
 
 	const nameTerm = params.subCategoryName?.trim();
@@ -168,4 +189,3 @@ export async function deleteSubCategory(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.subCategoryTable.id, input.id));
 }
-

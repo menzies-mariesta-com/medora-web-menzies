@@ -29,7 +29,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -51,12 +52,6 @@
 		null;
 
 	const columns: MariTableColumn<SupplierListRow>[] = [
-		{
-			id: 'id',
-			header: m.id(),
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false
-		},
 		{
 			id: 'name',
 			header: m.supplier_name(),
@@ -102,7 +97,10 @@
 			filterType: 'select',
 			filterOptions: [
 				{ label: m.active_label(), value: String(StatusEnum.ACTIVE) },
-				{ label: m.inactive_label(), value: String(StatusEnum.INACTIVE) }
+				{
+					label: m.inactive_label(),
+					value: String(StatusEnum.INACTIVE)
+				}
 			],
 			defaultFilterValue: String(StatusEnum.ACTIVE),
 			format: (_value, row) =>
@@ -133,11 +131,10 @@
 			if (search) parts.push(`search=${encodeURIComponent(search)}`);
 			if (code) parts.push(`code=${encodeURIComponent(code)}`);
 			if (phone) parts.push(`phone=${encodeURIComponent(phone)}`);
-			if (
-				parsedStatusId != null &&
-				Number.isFinite(parsedStatusId)
-			) {
-				parts.push(`statusId=${encodeURIComponent(String(parsedStatusId))}`);
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
+				parts.push(
+					`statusId=${encodeURIComponent(String(parsedStatusId))}`
+				);
 			}
 			const res = await fetch(`${apiBase}?${parts.join('&')}`, {
 				credentials: 'include',
@@ -241,7 +238,7 @@
 		<DaisyUiCardBody>
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
-					rows={rows}
+					{rows}
 					{columns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}

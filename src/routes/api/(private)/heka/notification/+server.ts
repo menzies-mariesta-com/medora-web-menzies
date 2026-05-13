@@ -11,7 +11,9 @@ export async function GET(event: RequestEvent) {
 	if (mode !== 'list') throw error(400, 'Unknown mode');
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const read = (event.url.searchParams.get('read') ?? 'all') as
 		| 'all'
 		| 'unread'
@@ -33,7 +35,8 @@ export async function POST(event: RequestEvent) {
 	const mode = String(body?.mode ?? '');
 	if (mode === 'markRead') {
 		const id = Number(body?.id ?? 0);
-		if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+		if (!Number.isFinite(id) || id <= 0)
+			throw error(400, 'id is required');
 		await notif.markNotificationRead(event, { id });
 		return json({ ok: true });
 	}

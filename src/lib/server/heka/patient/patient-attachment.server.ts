@@ -51,7 +51,12 @@ export async function getPatientAttachmentsByPatientId(
 
 export async function createPatientAttachment(
 	event: RequestEvent,
-	input: { hospitalId: string; patientId: string; fileUrl: string; description?: string | null }
+	input: {
+		hospitalId: string;
+		patientId: string;
+		fileUrl: string;
+		description?: string | null;
+	}
 ): Promise<PatientAttachmentSchema> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
@@ -79,7 +84,10 @@ export async function deletePatientAttachment(
 
 	await ensureDb()
 		.update(table.patientAttachmentTable)
-		.set({ statusId: StatusEnum.DELETED, updatedBy: event.locals.user?.id ?? null } as any)
+		.set({
+			statusId: StatusEnum.DELETED,
+			updatedBy: event.locals.user?.id ?? null
+		} as any)
 		.where(eq(table.patientAttachmentTable.id, input.id));
 }
 
@@ -92,13 +100,25 @@ export async function getPatientDisplayName(
 
 	const row = await ensureDb().query.patientTable.findFirst({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.id, input.patientId), ne(t.statusId, StatusEnum.DELETED)),
-		columns: { id: true, firstName: true, middleName: true, lastName: true, code: true }
+			and(
+				eq(t.id, input.patientId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
+		columns: {
+			id: true,
+			firstName: true,
+			middleName: true,
+			lastName: true,
+			code: true
+		}
 	});
 	if (!row) return null;
-	const parts = [row.firstName, row.middleName, row.lastName].filter(Boolean);
+	const parts = [row.firstName, row.middleName, row.lastName].filter(
+		Boolean
+	);
 	const name = parts.join(' ').trim();
-	const label = row.code?.trim() ? `${name} (${row.code.trim()})` : name || row.id;
+	const label = row.code?.trim()
+		? `${name} (${row.code.trim()})`
+		: name || row.id;
 	return { label };
 }
-

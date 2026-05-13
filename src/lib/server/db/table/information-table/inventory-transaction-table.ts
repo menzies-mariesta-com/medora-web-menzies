@@ -22,7 +22,7 @@ import { unitTable } from '../master-table/master-table';
 import {
 	hospitalTable,
 	itemMasterTable,
-	manufacturerTable,
+	itemUnitMasterTable,
 	staffTable,
 	statusTaggingTable,
 	storeTable,
@@ -76,6 +76,163 @@ const invJunctionTimestamps = {
 		.defaultNow()
 		.$onUpdate(() => sql`now()`)
 } as const;
+
+/**
+ * Low-stock threshold per store+item (issue-unit quantity).
+ * Used for alerts and reporting.
+ */
+export const invItemReorderLevelTable = pgTable(
+	'inv_item_reorder_level',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		itemId: integer('item_id')
+			.notNull()
+			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
+		/** Threshold in stock/issue unit. */
+		minQty: decimal('min_qty', { precision: 18, scale: 0 })
+			.notNull()
+			.default('0'),
+		/** Purchase/issue conversion row used when entering Min qty in purchase unit (nullable legacy rows). */
+		itemUnitMasterId: integer('item_unit_master_id').references(
+			() => itemUnitMasterTable.id,
+			{ onDelete: 'set null' }
+		),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_item_reorder_level_store_item_active_uidx')
+			.on(t.hospitalId, t.storeId, t.itemId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('inv_item_reorder_level_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		),
+		index('inv_item_reorder_level_item_idx').on(
+			t.hospitalId,
+			t.itemId
+		)
+	]
+);
+
+/** Hospital-wide stock alert defaults and email toggles (one row per hospital). */
+export const invStockAlertSettingTable = pgTable(
+	'inv_stock_alert_setting',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.unique()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		defaultExpiringSoonDays: integer('default_expiring_soon_days')
+			.notNull()
+			.default(30),
+		emailLowStock: boolean('email_low_stock')
+			.notNull()
+			.default(false),
+		emailExpired: boolean('email_expired').notNull().default(false),
+		emailExpiringSoon: boolean('email_expiring_soon')
+			.notNull()
+			.default(false),
+		emailMinGapMinutes: integer('email_min_gap_minutes')
+			.notNull()
+			.default(360),
+		inAppMinGapMinutes: integer('in_app_min_gap_minutes')
+			.notNull()
+			.default(360),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		index('inv_stock_alert_setting_hospital_idx').on(t.hospitalId)
+	]
+);
+
+/** Staff subscribed to inventory stock alerts per hospital and store. */
+export const invStockAlertRecipientTable = pgTable(
+	'inv_stock_alert_recipient',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		staffId: uuid('staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		notifyLowStock: boolean('notify_low_stock')
+			.notNull()
+			.default(true),
+		notifyExpired: boolean('notify_expired').notNull().default(true),
+		notifyExpiringSoon: boolean('notify_expiring_soon')
+			.notNull()
+			.default(true),
+		...invTimestamps
+	},
+	(t) => [
+		uniqueIndex('inv_stock_alert_recipient_hospital_store_staff_uidx')
+			.on(t.hospitalId, t.storeId, t.staffId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		index('inv_stock_alert_recipient_hospital_idx').on(t.hospitalId),
+		index('inv_stock_alert_recipient_store_idx').on(
+			t.hospitalId,
+			t.storeId
+		)
+	]
+);
+
+/** Dedupe log for outbound stock alert emails (per recipient + store + event type). */
+export const invStockAlertEmailSentTable = pgTable(
+	'inv_stock_alert_email_sent',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		storeId: integer('store_id')
+			.notNull()
+			.references(() => storeTable.id, { onDelete: 'cascade' }),
+		recipientStaffId: uuid('recipient_staff_id')
+			.notNull()
+			.references(() => staffTable.id, { onDelete: 'cascade' }),
+		eventType: varchar('event_type', { length: 64 }).notNull(),
+		/** Hash of plain-text body; null = legacy rows (time-only cooldown). */
+		payloadDigest: varchar('payload_digest', { length: 32 }),
+		sentAt: timestamp('sent_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+	},
+	(t) => [
+		index('inv_stock_alert_email_sent_lookup_idx').on(
+			t.hospitalId,
+			t.recipientStaffId,
+			t.storeId,
+			t.eventType,
+			t.sentAt
+		)
+	]
+);
 
 /** Per-store PR/PO approval levels (many staff per level via inv_approval_assignee). */
 export const invApprovalLevelTable = pgTable(
@@ -339,10 +496,6 @@ export const purchaseOrderLineTable = pgTable(
 			precision: 14,
 			scale: 2
 		}).notNull(),
-		manufacturerId: integer('manufacturer_id').references(
-			() => manufacturerTable.id,
-			{ onDelete: 'set null' }
-		),
 		qtyReceivedCumulative: decimal('qty_received_cumulative', {
 			precision: 18,
 			scale: 0
@@ -355,7 +508,7 @@ export const purchaseOrderLineTable = pgTable(
 );
 
 /**
- * Normalized batch master (identity includes supplier, manufacturer, unit purchase price).
+ * Normalized batch master (identity includes supplier + purchase price per migration SQL index).
  * Unique index `item_batch_identity_uidx` (NULLS NOT DISTINCT) is created in SQL migration.
  */
 export const itemBatchTable = pgTable(
@@ -370,10 +523,6 @@ export const itemBatchTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		batchNo: varchar('batch_no', { length: 128 }).notNull(),
 		expiryDate: date('expiry_date'),
-		manufacturerId: integer('manufacturer_id').references(
-			() => manufacturerTable.id,
-			{ onDelete: 'set null' }
-		),
 		supplierId: integer('supplier_id').references(
 			() => supplierTable.id,
 			{
@@ -534,9 +683,12 @@ export const goodsReceiptLineTable = pgTable(
 			.notNull()
 			.default('0'),
 		/** Unit for `freeQty` (can differ from ordered/received unit). */
-		freeUnitId: integer('free_unit_id').references(() => unitTable.id, {
-			onDelete: 'restrict'
-		}),
+		freeUnitId: integer('free_unit_id').references(
+			() => unitTable.id,
+			{
+				onDelete: 'restrict'
+			}
+		),
 		discountAmount: decimal('discount_amount', {
 			precision: 14,
 			scale: 2
@@ -872,21 +1024,32 @@ export const invDepartmentIssueTable = pgTable(
 			.references(() => userTable.id, { onDelete: 'restrict' }),
 		statusTaggingId: integer('status_tagging_id')
 			.notNull()
-			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
 		currentLevel: integer('current_level').notNull().default(1),
 		remarks: text('remarks'),
 		approvedBy: text('approved_by').references(() => userTable.id, {
 			onDelete: 'set null'
 		}),
-		approvedAt: timestamp('approved_at', { withTimezone: true, mode: 'string' }),
+		approvedAt: timestamp('approved_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		issuedBy: text('issued_by').references(() => userTable.id, {
 			onDelete: 'set null'
 		}),
-		issuedAt: timestamp('issued_at', { withTimezone: true, mode: 'string' }),
+		issuedAt: timestamp('issued_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		receivedBy: text('received_by').references(() => userTable.id, {
 			onDelete: 'set null'
 		}),
-		receivedAt: timestamp('received_at', { withTimezone: true, mode: 'string' }),
+		receivedAt: timestamp('received_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		cancelledBy: text('cancelled_by').references(() => userTable.id, {
 			onDelete: 'set null'
 		}),
@@ -902,10 +1065,18 @@ export const invDepartmentIssueTable = pgTable(
 			'inv_department_issue_stores_distinct_chk',
 			sql`${t.fromStoreId} <> ${t.toStoreId}`
 		),
-		index('inv_department_issue_hospital_from_idx').on(t.hospitalId, t.fromStoreId),
-		index('inv_department_issue_hospital_to_idx').on(t.hospitalId, t.toStoreId),
+		index('inv_department_issue_hospital_from_idx').on(
+			t.hospitalId,
+			t.fromStoreId
+		),
+		index('inv_department_issue_hospital_to_idx').on(
+			t.hospitalId,
+			t.toStoreId
+		),
 		index('inv_department_issue_status_idx').on(t.statusTaggingId),
-		index('inv_department_issue_source_indent_idx').on(t.sourceIndentId)
+		index('inv_department_issue_source_indent_idx').on(
+			t.sourceIndentId
+		)
 	]
 );
 
@@ -915,11 +1086,16 @@ export const invDepartmentIssueLineTable = pgTable(
 		id: serial('id').primaryKey(),
 		issueId: uuid('issue_id')
 			.notNull()
-			.references(() => invDepartmentIssueTable.id, { onDelete: 'cascade' }),
+			.references(() => invDepartmentIssueTable.id, {
+				onDelete: 'cascade'
+			}),
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
@@ -928,7 +1104,9 @@ export const invDepartmentIssueLineTable = pgTable(
 			.default('0'),
 		...invTimestamps
 	},
-	(t) => [index('inv_department_issue_line_issue_id_idx').on(t.issueId)]
+	(t) => [
+		index('inv_department_issue_line_issue_id_idx').on(t.issueId)
+	]
 );
 
 export const invDepartmentIssueLineAllocTable = pgTable(
@@ -943,12 +1121,20 @@ export const invDepartmentIssueLineAllocTable = pgTable(
 		batchId: integer('batch_id')
 			.notNull()
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
-		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
 			.notNull()
 			.defaultNow()
 	},
-	(t) => [index('inv_department_issue_line_alloc_line_idx').on(t.lineId)]
+	(t) => [
+		index('inv_department_issue_line_alloc_line_idx').on(t.lineId)
+	]
 );
 
 /** Department consumption: deduct stock at a store after multi-level approval (module DC). */
@@ -970,7 +1156,9 @@ export const invDepartmentConsumptionTable = pgTable(
 			.references(() => userTable.id, { onDelete: 'restrict' }),
 		statusTaggingId: integer('status_tagging_id')
 			.notNull()
-			.references(() => statusTaggingTable.id, { onDelete: 'restrict' }),
+			.references(() => statusTaggingTable.id, {
+				onDelete: 'restrict'
+			}),
 		currentLevel: integer('current_level').notNull().default(1),
 		remarks: text('remarks'),
 		approvedBy: text('approved_by').references(() => userTable.id, {
@@ -995,7 +1183,9 @@ export const invDepartmentConsumptionTable = pgTable(
 			t.hospitalId,
 			t.storeId
 		),
-		index('inv_department_consumption_status_idx').on(t.statusTaggingId)
+		index('inv_department_consumption_status_idx').on(
+			t.statusTaggingId
+		)
 	]
 );
 
@@ -1011,7 +1201,10 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		quantity: decimal('quantity', { precision: 18, scale: 0 }).notNull(),
+		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
 		unitId: integer('unit_id')
 			.notNull()
 			.references(() => unitTable.id, { onDelete: 'restrict' }),
@@ -1022,6 +1215,8 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		...invTimestamps
 	},
 	(t) => [
-		index('inv_department_consumption_line_consumption_id_idx').on(t.consumptionId)
+		index('inv_department_consumption_line_consumption_id_idx').on(
+			t.consumptionId
+		)
 	]
 );

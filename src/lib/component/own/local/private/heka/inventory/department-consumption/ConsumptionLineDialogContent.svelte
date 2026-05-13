@@ -26,7 +26,9 @@
 		hospitalId: string;
 		storeId: number | null;
 		draftLine: ConsumptionDraftLine;
-		searchItemsFn: (q: string) => Promise<{ label: string; value: string }[]>;
+		searchItemsFn: (
+			q: string
+		) => Promise<{ label: string; value: string }[]>;
 		onPersist: () => void;
 	} = $props();
 
@@ -35,10 +37,17 @@
 	async function searchItemsWithStock(q: string) {
 		const base = await searchItemsFn(q);
 		if (!hospitalId || storeId == null) return base;
-		return enrichItemSearchOptionsWithStock(hospitalId, base, storeId);
+		return enrichItemSearchOptionsWithStock(
+			hospitalId,
+			base,
+			storeId
+		);
 	}
 
-	async function hydrateLineItemMeta(line: ConsumptionDraftLine, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: ConsumptionDraftLine,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -115,20 +124,25 @@
 	}
 
 	function purchaseUnitId(line: ConsumptionDraftLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
 	let saving = $state(false);
 
 	const chosenIum = $derived(
-		draftLine.iumList.find((u) => u.id === draftLine.itemUnitMasterId) ?? null
+		draftLine.iumList.find(
+			(u) => u.id === draftLine.itemUnitMasterId
+		) ?? null
 	);
 
 	const iumFactors = $derived(
 		chosenIum
 			? {
-					purchaseConversionFactor: chosenIum.purchaseConversionFactor,
+					purchaseConversionFactor:
+						chosenIum.purchaseConversionFactor,
 					issueConversionFactor: chosenIum.issueConversionFactor
 				}
 			: null
@@ -145,15 +159,26 @@
 	async function handleSave() {
 		const uid = purchaseUnitId(draftLine);
 		if (draftLine.itemId == null || uid == null) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_quantity()
+			);
 			return;
 		}
 		if (!iumFactors) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_unit());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_unit()
+			);
 			return;
 		}
 		let hasPositive = false;
-		const { purchaseConversionFactor: pf, issueConversionFactor: iff } = iumFactors;
+		const {
+			purchaseConversionFactor: pf,
+			issueConversionFactor: iff
+		} = iumFactors;
 		for (const a of draftLine.batchAllocations) {
 			const qp = a.qtyPurchase.trim();
 			if (!qp) continue;
@@ -179,7 +204,11 @@
 			}
 		}
 		if (!hasPositive) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_quantity()
+			);
 			return;
 		}
 		saving = true;
@@ -194,7 +223,9 @@
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_pr_line_item_search()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
 			value={draftLine.itemId ? String(draftLine.itemId) : ''}
 			searchFn={searchItemsWithStock}
@@ -208,12 +239,14 @@
 	</div>
 
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_unit()}</DaisyUiLabel
+		>
 		<input
 			type="text"
 			readonly
 			disabled
-			class="d-input d-input-bordered mt-1 w-full cursor-not-allowed opacity-90"
+			class="d-input-bordered d-input mt-1 w-full cursor-not-allowed opacity-90"
 			value={lockedUnitLabel || '—'}
 			title={lockedUnitLabel || undefined}
 			aria-label={m.inv_common_unit()}
@@ -221,8 +254,12 @@
 	</div>
 
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_dc_batch()}</DaisyUiLabel>
-		<p class="mb-2 text-xs opacity-70">{m.inv_dc_modal_batch_help()}</p>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_dc_batch()}</DaisyUiLabel
+		>
+		<p class="mb-2 text-xs opacity-70">
+			{m.inv_dc_modal_batch_help()}
+		</p>
 		<InventoryBatchQtyPickTable
 			bind:allocations={draftLine.batchAllocations}
 			factors={iumFactors}
@@ -234,7 +271,12 @@
 </div>
 
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
 	<DaisyUiButton

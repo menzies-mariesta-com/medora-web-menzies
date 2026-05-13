@@ -38,12 +38,27 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 	{ id: 'patient', storageKey: PREFIX_PURPOSE_STORAGE.PATIENT_CODE },
 	{ id: 'visit', storageKey: PREFIX_PURPOSE_STORAGE.VISIT_NO },
 	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO },
-	{ id: 'pr', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO },
+	{
+		id: 'pr',
+		storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO
+	},
 	{ id: 'po', storageKey: PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO },
-	{ id: 'di', storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_INDENT_NO },
-	{ id: 'di_issue', storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_ISSUE_NO },
-	{ id: 'dc', storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_CONSUMPTION_NO },
-	{ id: 'med_order_batch', storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO }
+	{
+		id: 'di',
+		storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_INDENT_NO
+	},
+	{
+		id: 'di_issue',
+		storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_ISSUE_NO
+	},
+	{
+		id: 'dc',
+		storageKey: PREFIX_PURPOSE_STORAGE.DEPARTMENT_CONSUMPTION_NO
+	},
+	{
+		id: 'med_order_batch',
+		storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO
+	}
 ] as const;
 
 export function findPurposeByStorageKey(

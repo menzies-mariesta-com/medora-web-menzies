@@ -29,7 +29,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -102,8 +103,7 @@
 					value: '13'
 				}
 			],
-			format: (_v, row) =>
-				categoryNameById.get(row.categoryId) ?? '—'
+			format: (_v, row) => categoryNameById.get(row.categoryId) ?? '—'
 		},
 		{
 			id: 'pharmacyGeneric',
@@ -116,11 +116,12 @@
 					: '—'
 		},
 		{
-			id: 'manufacturer',
+			id: 'manufacturerName',
 			header: m.item_master_manufacturer(),
 			widthClass: 'w-44 min-w-[10rem]',
 			filterable: false,
-			format: (_v, row) => row.manufacturerName ?? '—'
+			field: 'manufacturerName',
+			format: (v) => (v != null && String(v).trim() !== '' ? String(v) : '—')
 		},
 		{
 			id: 'itemCode',
@@ -131,12 +132,13 @@
 			format: (v) => v ?? '—'
 		},
 		{
-			id: 'barcode',
-			header: m.item_master_barcode(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: true,
-			field: 'barcode',
-			format: (v) => v ?? '—'
+			id: 'expiryAlertLeadDays',
+			header: m.item_master_expiry_alert_lead_days(),
+			widthClass: 'w-36 min-w-[9rem]',
+			filterable: false,
+			field: 'expiryAlertLeadDays',
+			format: (v) =>
+				v != null && Number.isFinite(Number(v)) ? String(v) : '—'
 		},
 		{
 			id: 'status',
@@ -175,20 +177,15 @@
 			qs.set('pageSize', String(pageSize));
 			const name = tableFilters.itemName?.trim();
 			const itemCode = tableFilters.itemCode?.trim();
-			const barcode = tableFilters.barcode?.trim();
 			if (name) qs.set('name', name);
 			if (itemCode) qs.set('itemCode', itemCode);
-			if (barcode) qs.set('barcode', barcode);
 			if (
 				parsedCategoryId != null &&
 				Number.isFinite(parsedCategoryId)
 			) {
 				qs.set('categoryId', String(parsedCategoryId));
 			}
-			if (
-				parsedStatusId != null &&
-				Number.isFinite(parsedStatusId)
-			) {
+			if (parsedStatusId != null && Number.isFinite(parsedStatusId)) {
 				qs.set('statusId', String(parsedStatusId));
 			}
 			const res = await fetch(`${itemMasterApi}?${qs.toString()}`, {
@@ -301,8 +298,8 @@
 		<DaisyUiCardBody>
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
-					rows={rows}
-					columns={columns}
+					{rows}
+					{columns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}
 					bind:currentPage

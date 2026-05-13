@@ -15,9 +15,7 @@ export function setPageData(data: PageWithRelations[]) {
 
 /** Use in reactive context, e.g. $derived(getPageData()) */
 export function getPageData(): HekaPageRow[] {
-	return fullPageData.map(
-		({ module: _m, status: _s, ...p }) => p
-	);
+	return fullPageData.map(({ module: _m, status: _s, ...p }) => p);
 }
 
 /** Use in reactive context, e.g. $derived(getUniqueModuleData()) */

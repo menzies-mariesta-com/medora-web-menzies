@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<title>{{metaTitle}}</title>
+	</head>
+	<body
+		style="
+			margin: 0;
+			font-family:
+				system-ui,
+				-apple-system,
+				Segoe UI,
+				Roboto,
+				sans-serif;
+			background: #ecfaf5;
+			padding: 28px;
+		"
+	>
+		<div
+			style="
+				max-width: 420px;
+				margin: 0 auto;
+				background: #fff;
+				border-radius: 16px;
+				box-shadow: 0 4px 12px rgba(13, 148, 136, 0.12);
+				overflow: hidden;
+				border: 1px solid rgba(13, 148, 136, 0.15);
+			"
+		>
+			<div
+				style="
+					height: 4px;
+					background: linear-gradient(90deg, #0d9488, #70ecad);
+				"
+			></div>
+			<div style="padding: 32px 28px">
+				<h1
+					style="
+						margin: 0 0 10px;
+						font-size: 22px;
+						font-weight: 600;
+						color: #134e4a;
+					"
+				>
+					{{title}}
+				</h1>
+				<p
+					style="
+						margin: 0 0 28px;
+						font-size: 15px;
+						line-height: 1.55;
+						color: #4b5563;
+					"
+				>
+					{{body}}
+				</p>
+				<a
+					href="{{url}}"
+					style="
+						display: inline-block;
+						padding: 14px 28px;
+						background: #0d9488;
+						color: #fff;
+						text-decoration: none;
+						font-size: 14px;
+						font-weight: 600;
+						border-radius: 10px;
+						box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+					"
+					>{{ctaLabel}}</a
+				>
+				<p
+					style="
+						margin: 28px 0 0;
+						font-size: 13px;
+						line-height: 1.5;
+						color: #9ca3af;
+					"
+				>
+					{{footnote}}
+				</p>
+			</div>
+		</div>
+		<p
+			style="
+				margin: 20px auto 0;
+				max-width: 420px;
+				text-align: center;
+				font-size: 12px;
+				color: #6b7280;
+			"
+		>
+			This email was sent by Heka.
+		</p>
+	</body>
+</html>

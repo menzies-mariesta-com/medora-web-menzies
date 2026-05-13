@@ -12,12 +12,18 @@
 {#if hasVitalAlert || hasAllergyAlert}
 	<div class="flex items-center justify-center gap-1">
 		{#if hasVitalAlert}
-			<DaisyUiTooltip tooltipText="Abnormal vital signs" className="d-tooltip-left">
+			<DaisyUiTooltip
+				tooltipText="Abnormal vital signs"
+				className="d-tooltip-left"
+			>
 				<LucideTriangleAlert className="size-8 text-warning" />
 			</DaisyUiTooltip>
 		{/if}
 		{#if hasAllergyAlert}
-			<DaisyUiTooltip tooltipText="Allergy alert" className="d-tooltip-left">
+			<DaisyUiTooltip
+				tooltipText="Allergy alert"
+				className="d-tooltip-left"
+			>
 				<SvgRepoAllergyAlert className="size-8 text-error" />
 			</DaisyUiTooltip>
 		{/if}

@@ -16,7 +16,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -151,7 +152,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel className="shrink-0 sm:w-36">{m.status()}</DaisyUiLabel>
+			<DaisyUiLabel className="shrink-0 sm:w-36"
+				>{m.status()}</DaisyUiLabel
+			>
 			<div class="flex max-w-80 flex-1 flex-wrap items-center gap-2">
 				<label class="flex cursor-pointer items-center gap-2">
 					<DaisyUiCheckbox bind:checked={formActive} />

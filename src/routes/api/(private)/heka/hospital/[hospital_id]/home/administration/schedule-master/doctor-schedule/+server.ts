@@ -43,15 +43,21 @@ export const GET: RequestHandler = async (event) => {
 
 	if (mode === 'doctor.byId') {
 		const id = event.url.searchParams.get('id') ?? '';
-		const data = await getDoctorByIdWithRelations(event, { hospitalId, id });
+		const data = await getDoctorByIdWithRelations(event, {
+			hospitalId,
+			id
+		});
 		return json(data);
 	}
 
 	if (mode === 'doctor.paginated') {
 		const page = Number(event.url.searchParams.get('page') ?? '1');
-		const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+		const pageSize = Number(
+			event.url.searchParams.get('pageSize') ?? '10'
+		);
 		const search = event.url.searchParams.get('search') ?? undefined;
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
 		const data = await getDoctorStaffPaginated(event, {
 			hospitalId,
 			page,
@@ -63,14 +69,22 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	if (mode === 'doctor.list') {
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
-		const data = await listDoctorStaff(event, { hospitalId, branchId });
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
+		const data = await listDoctorStaff(event, {
+			hospitalId,
+			branchId
+		});
 		return json(data);
 	}
 
 	if (mode === 'doctorSchedule.list') {
-		const branchId = event.url.searchParams.get('branchId') ?? undefined;
-		const data = await listDoctorSchedules(event, { hospitalId, branchId });
+		const branchId =
+			event.url.searchParams.get('branchId') ?? undefined;
+		const data = await listDoctorSchedules(event, {
+			hospitalId,
+			branchId
+		});
 		return json(data);
 	}
 
@@ -102,4 +116,3 @@ export const POST: RequestHandler = async (event) => {
 
 	return json({ error: 'Unknown mode' }, { status: 400 });
 };
-

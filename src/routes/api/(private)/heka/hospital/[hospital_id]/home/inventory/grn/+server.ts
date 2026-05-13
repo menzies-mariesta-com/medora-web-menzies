@@ -14,7 +14,10 @@ export const GET: RequestHandler = async (event) => {
 	const mode = event.url.searchParams.get('mode');
 	if (mode === 'canPost') {
 		const storeIdStr = event.url.searchParams.get('storeId');
-		const storeId = storeIdStr != null && storeIdStr !== '' ? Number(storeIdStr) : NaN;
+		const storeId =
+			storeIdStr != null && storeIdStr !== ''
+				? Number(storeIdStr)
+				: NaN;
 		if (!Number.isFinite(storeId) || storeId <= 0) {
 			return json({ error: 'storeId required' }, { status: 400 });
 		}
@@ -37,11 +40,16 @@ export const GET: RequestHandler = async (event) => {
 	}
 	const id = event.url.searchParams.get('id');
 	if (id) {
-		const row = await getGoodsReceiptNoteById(event, { hospitalId, id });
+		const row = await getGoodsReceiptNoteById(event, {
+			hospitalId,
+			id
+		});
 		return json(row);
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const poId = event.url.searchParams.get('poId') ?? undefined;
 	const storeIdRaw = event.url.searchParams.get('storeId');
 	const storeIdNum =
@@ -62,7 +70,9 @@ export const GET: RequestHandler = async (event) => {
 		poNoRaw != null && poNoRaw !== '' ? poNoRaw : undefined;
 	const invoiceNoRaw = event.url.searchParams.get('invoiceNo');
 	const invoiceNo =
-		invoiceNoRaw != null && invoiceNoRaw !== '' ? invoiceNoRaw : undefined;
+		invoiceNoRaw != null && invoiceNoRaw !== ''
+			? invoiceNoRaw
+			: undefined;
 	const data = await listGoodsReceiptNotes(event, {
 		hospitalId,
 		page,
@@ -80,7 +90,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 
 	const invoiceNo =
@@ -92,11 +105,13 @@ export const POST: RequestHandler = async (event) => {
 			? String(body.invoiceDate).trim()
 			: null;
 	const invoiceAmount =
-		body.invoiceAmount != null && String(body.invoiceAmount).trim() !== ''
+		body.invoiceAmount != null &&
+		String(body.invoiceAmount).trim() !== ''
 			? String(body.invoiceAmount).trim()
 			: null;
 	const invoicePhotoUrl =
-		body.invoicePhotoUrl != null && String(body.invoicePhotoUrl).trim() !== ''
+		body.invoicePhotoUrl != null &&
+		String(body.invoicePhotoUrl).trim() !== ''
 			? String(body.invoicePhotoUrl).trim()
 			: null;
 	const receivedBy =
@@ -115,7 +130,10 @@ export const POST: RequestHandler = async (event) => {
 	if (invoiceAmount) {
 		const n = Number(invoiceAmount);
 		if (!Number.isFinite(n) || n < 0) {
-			return json({ error: 'Invalid invoiceAmount' }, { status: 400 });
+			return json(
+				{ error: 'Invalid invoiceAmount' },
+				{ status: 400 }
+			);
 		}
 	}
 
@@ -135,7 +153,8 @@ export const POST: RequestHandler = async (event) => {
 				unitId: Number(l.unitId ?? 0),
 				receivedQty: String(l.receivedQty ?? '0'),
 				batchNo: l.batchNo != null ? String(l.batchNo) : null,
-				expiryDate: l.expiryDate != null ? String(l.expiryDate) : null,
+				expiryDate:
+					l.expiryDate != null ? String(l.expiryDate) : null,
 				purchasePrice:
 					l.purchasePrice != null ? String(l.purchasePrice) : null,
 				freeQty: l.freeQty != null ? String(l.freeQty) : null,
@@ -146,7 +165,9 @@ export const POST: RequestHandler = async (event) => {
 				discountAmount:
 					l.discountAmount != null ? String(l.discountAmount) : null,
 				discountPercent:
-					l.discountPercent != null ? String(l.discountPercent) : null,
+					l.discountPercent != null
+						? String(l.discountPercent)
+						: null,
 				taxAmount: l.taxAmount != null ? String(l.taxAmount) : null,
 				taxPercent: l.taxPercent != null ? String(l.taxPercent) : null
 			}))

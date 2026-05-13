@@ -7,7 +7,16 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, count, desc, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	isNotNull,
+	isNull,
+	ne,
+	sql
+} from 'drizzle-orm';
 
 export type NotificationListItem = {
 	id: number;
@@ -50,7 +59,8 @@ export async function getNotificationsPaginated(
 	event: RequestEvent,
 	params?: PaginationParams & { read?: 'all' | 'unread' | 'read' }
 ): Promise<PaginatedResult<NotificationListItem>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const recipientStaffId = requireRecipientStaffId(event);
 
 	const whereBase = and(
@@ -62,9 +72,15 @@ export async function getNotificationsPaginated(
 	let whereExpr = whereBase;
 	const readFilter = params?.read ?? 'all';
 	if (readFilter === 'unread') {
-		whereExpr = and(whereBase, isNull(table.notificationTable.readAt));
+		whereExpr = and(
+			whereBase,
+			isNull(table.notificationTable.readAt)
+		);
 	} else if (readFilter === 'read') {
-		whereExpr = and(whereBase, isNotNull(table.notificationTable.readAt));
+		whereExpr = and(
+			whereBase,
+			isNotNull(table.notificationTable.readAt)
+		);
 	}
 
 	const [data, countResult] = await Promise.all([

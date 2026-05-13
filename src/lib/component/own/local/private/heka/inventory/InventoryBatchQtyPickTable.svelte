@@ -34,8 +34,13 @@
 		showSalePrice?: boolean;
 	} = $props();
 
-	function stockDisplay(row: ConsumptionBatchAllocationDraft): string {
-		const q = row.stockIssueQty != null ? String(row.stockIssueQty).trim() : '';
+	function stockDisplay(
+		row: ConsumptionBatchAllocationDraft
+	): string {
+		const q =
+			row.stockIssueQty != null
+				? String(row.stockIssueQty).trim()
+				: '';
 		const qtyDisp = q ? trimMetricQtyDisplay(q) : '';
 		const iu = (issueUnitLabel ?? '').trim();
 		if (!qtyDisp) return '—';
@@ -43,13 +48,16 @@
 	}
 
 	function saleDisp(row: ConsumptionBatchAllocationDraft): string {
-		const t = row.salePrice != null ? String(row.salePrice).trim() : '';
+		const t =
+			row.salePrice != null ? String(row.salePrice).trim() : '';
 		return t ? trimInventoryNumericDisplay(t, 4) : '—';
 	}
 
-	function exceedsStock(row: ConsumptionBatchAllocationDraft): boolean {
+	function exceedsStock(
+		row: ConsumptionBatchAllocationDraft
+	): boolean {
 		if (!factors) return false;
-		const qp = row.qtyPurchase.trim();
+		const qp = String(row.qtyPurchase ?? '').trim();
 		if (!qp || Number(qp) <= 0) return false;
 		const need = purchaseQtyToIssueQtyNumber(
 			qp,
@@ -117,7 +125,8 @@
 				props: {
 					value: row.qtyPurchase,
 					disabled,
-					ariaLabel: `${m.inv_dc_batch_table_qty_purchase()} ${row.batchNo ?? ''}`.trim(),
+					ariaLabel:
+						`${m.inv_dc_batch_table_qty_purchase()} ${row.batchNo ?? ''}`.trim(),
 					onChange: (v: string) => setQtyPurchase(rowIndex, v)
 				}
 			})
@@ -158,7 +167,9 @@
 </DaisyUiLabel>
 
 <div class="mt-1 text-right text-sm">
-	<span class="opacity-70">{m.inv_dc_batch_table_total_to_use()}:</span>
+	<span class="opacity-70"
+		>{m.inv_dc_batch_table_total_to_use()}:</span
+	>
 	<span class="ml-2 font-semibold">
 		{totalQtyToUse > 0 ? String(totalQtyToUse) : '—'}
 	</span>

@@ -9,10 +9,7 @@
 		const hid = typeof hospitalId === 'string' ? hospitalId : '';
 		if (hid) {
 			goto(
-				hekaHospitalPageUrl(
-					hid,
-					'/heka/home/inventory-setup/stores'
-				),
+				hekaHospitalPageUrl(hid, '/heka/home/inventory-setup/stores'),
 				{ replaceState: true }
 			);
 		}

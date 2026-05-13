@@ -16,7 +16,9 @@ export async function fetchVisitServiceLinePrintRows(params: {
 	);
 	if (!res.ok) {
 		const text = await res.text().catch(() => '');
-		throw new Error(text || `Failed to load service lines: ${res.status}`);
+		throw new Error(
+			text || `Failed to load service lines: ${res.status}`
+		);
 	}
 	return (await res.json()) as VisitServiceLinePrintRow[];
 }

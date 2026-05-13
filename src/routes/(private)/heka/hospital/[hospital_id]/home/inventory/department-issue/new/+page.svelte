@@ -11,7 +11,6 @@
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
@@ -42,11 +41,15 @@
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	const issueCreateMode = $derived(
-		page.url.searchParams.get('mode') === 'manual' ? 'manual' : 'indent'
+		page.url.searchParams.get('mode') === 'manual'
+			? 'manual'
+			: 'indent'
 	);
 
 	let { data } = $props();
@@ -56,9 +59,14 @@
 	);
 	const navFromStoreLabel = $derived.by(() => {
 		const id = selectedInventoryFromStoreId;
+		const fromMaster = stores.find((s) => s.id === id);
+		if (fromMaster?.storeName?.trim()) return fromMaster.storeName.trim();
 		const nav = (
 			data as {
-				inventoryFromStoresForNav?: { id: number; storeName: string | null }[];
+				inventoryFromStoresForNav?: {
+					id: number;
+					storeName: string | null;
+				}[];
 			}
 		).inventoryFromStoresForNav;
 		const row = nav?.find((s) => s.id === id);
@@ -69,9 +77,21 @@
 	type StoreRow = {
 		id: number;
 		storeName: string | null;
-		branchId: string | null;
+		branchId: string;
 	};
 	let stores = $state<StoreRow[]>([]);
+	let storesAbort: AbortController | null = null;
+
+	async function loadStores() {
+		if (!hospitalId) return;
+		storesAbort?.abort();
+		storesAbort = new AbortController();
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
+			{ method: 'GET', signal: storesAbort.signal }
+		);
+		stores = (await res.json()) as StoreRow[];
+	}
 
 	let toStoreIdStr = $state('');
 	let remarks = $state('');
@@ -94,7 +114,9 @@
 	let selectedIndentId = $state<string | null>(null);
 	let indentPickerBusy = $state(false);
 
-	let indentPreviewLines = $state<DepartmentIndentDetailLine[] | null>(null);
+	let indentPreviewLines = $state<
+		DepartmentIndentDetailLine[] | null
+	>(null);
 	let indentPreviewLoading = $state(false);
 	let indentPreviewError = $state<string | null>(null);
 
@@ -119,7 +141,9 @@
 	let editingIndentLineKey = $state<string | null>(null);
 	let draftLine = $state<IssueDraftLine>(newLine());
 
-	let selectedIndentDetail = $state<DepartmentIndentDetail | null>(null);
+	let selectedIndentDetail = $state<DepartmentIndentDetail | null>(
+		null
+	);
 	let indentCreateLines = $state<IssueDraftLine[]>([]);
 
 	const departmentIssueListPath = $derived(
@@ -194,7 +218,8 @@
 	const selectedIndentRow = $derived(
 		selectedIndentId == null
 			? null
-			: (pendingIndents.find((r) => r.id === selectedIndentId) ?? null)
+			: (pendingIndents.find((r) => r.id === selectedIndentId) ??
+					null)
 	);
 
 	async function openIndentPicker() {
@@ -246,7 +271,9 @@
 		}
 	}
 
-	function pickerCsvItemLines(csv: string | null | undefined): string {
+	function pickerCsvItemLines(
+		csv: string | null | undefined
+	): string {
 		const lines = (csv ?? '')
 			.split(',')
 			.map((s) => s.trim())
@@ -276,14 +303,16 @@
 			header: m.inv_dept_indent_from(),
 			field: 'fromStoreName',
 			filterable: false,
-			format: (_v, row) => (row as PendingIndentRow).fromStoreName ?? '—'
+			format: (_v, row) =>
+				(row as PendingIndentRow).fromStoreName ?? '—'
 		},
 		{
 			id: 'toStore',
 			header: m.inv_dept_indent_to(),
 			field: 'toStoreName',
 			filterable: false,
-			format: (_v, row) => (row as PendingIndentRow).toStoreName ?? '—'
+			format: (_v, row) =>
+				(row as PendingIndentRow).toStoreName ?? '—'
 		},
 		{
 			id: 'items',
@@ -332,13 +361,16 @@
 					const iff = ln.issueConversionFactor?.trim() || '';
 					const hasFactors = pf !== '' && iff !== '';
 					const itemUnitMasterId = ln.itemUnitMasterId ?? null;
-					const purchaseUnitName = ln.unitName?.trim() ? ln.unitName.trim() : '—';
+					const purchaseUnitName = ln.unitName?.trim()
+						? ln.unitName.trim()
+						: '—';
 					const ium: ConsumptionDraftLineIum | null =
 						hasFactors && itemUnitMasterId != null
 							? {
 									id: itemUnitMasterId,
 									conversionDisplay:
-										ln.itemUnitMasterConversion?.trim() || purchaseUnitName,
+										ln.itemUnitMasterConversion?.trim() ||
+										purchaseUnitName,
 									purchaseUnitId: ln.unitId,
 									issueUnitId: 0,
 									purchaseUnitName,
@@ -391,24 +423,8 @@
 	});
 
 	$effect(() => {
-		// Use server-provided nav stores to avoid auth/cookie issues
-		// with client-side store list fetching.
 		void hospitalId;
-		const nav =
-			(
-				data as {
-					inventoryFromStoresForNav?: {
-						id: number;
-						storeName: string | null;
-						branchId?: string | null;
-					}[];
-				}
-			).inventoryFromStoresForNav ?? [];
-		stores = nav.map((s) => ({
-			id: s.id,
-			storeName: s.storeName,
-			branchId: s.branchId ?? null
-		}));
+		void loadStores();
 	});
 
 	$effect(() => {
@@ -446,7 +462,9 @@
 	}
 
 	function conversionLabelForLine(line: IssueDraftLine): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -463,9 +481,14 @@
 		pf: string;
 		iff: string;
 	} | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		if (!ium) return null;
-		return { pf: ium.purchaseConversionFactor, iff: ium.issueConversionFactor };
+		return {
+			pf: ium.purchaseConversionFactor,
+			iff: ium.issueConversionFactor
+		};
 	}
 
 	async function openLineDialogForCreate() {
@@ -534,7 +557,9 @@
 	}
 
 	function purchaseUnitForLine(line: IssueDraftLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
@@ -547,7 +572,9 @@
 			batchAllocations: src.batchAllocations.map((a) => ({ ...a }))
 		};
 		if (editingLineKey) {
-			createLines = createLines.map((x) => (x.key === editingLineKey ? row : x));
+			createLines = createLines.map((x) =>
+				x.key === editingLineKey ? row : x
+			);
 		} else {
 			createLines = [...createLines, row];
 		}
@@ -602,15 +629,23 @@
 		}
 	}
 
-	function buildLinesPayload(
-		lines: IssueDraftLine[]
-	):
+	function buildLinesPayload(lines: IssueDraftLine[]):
 		| {
 				ok: true;
-				lines: { itemId: number; quantity: string; unitId: number; batchId: number }[];
+				lines: {
+					itemId: number;
+					quantity: string;
+					unitId: number;
+					batchId: number;
+				}[];
 		  }
 		| { ok: false; title: string; detail: string } {
-		const payload: { itemId: number; quantity: string; unitId: number; batchId: number }[] = [];
+		const payload: {
+			itemId: number;
+			quantity: string;
+			unitId: number;
+			batchId: number;
+		}[] = [];
 		for (const ln of lines) {
 			const uid = purchaseUnitForLine(ln);
 			const factors = lineIumFactors(ln);
@@ -643,7 +678,12 @@
 						detail: 'Allocated quantity exceeds stock.'
 					};
 				}
-				payload.push({ itemId: ln.itemId, quantity: q, unitId: uid, batchId: a.batchId });
+				payload.push({
+					itemId: ln.itemId,
+					quantity: q,
+					unitId: uid,
+					batchId: a.batchId
+				});
 			}
 			if (!hasPositive) {
 				return {
@@ -654,59 +694,76 @@
 			}
 		}
 		if (payload.length === 0) {
-			return { ok: false, title: 'Issue', detail: 'Add at least one line.' };
+			return {
+				ok: false,
+				title: 'Issue',
+				detail: 'Add at least one line.'
+			};
 		}
 		return { ok: true, lines: payload };
 	}
 
-	const lineColumns = $derived.by((): MariTableColumn<IssueDraftLine>[] => [
-		{
-			id: 'itemLabel',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: true,
-			format: (_v: unknown, row: IssueDraftLine) => row.itemLabel || '—'
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: true,
-			format: (_v: unknown, row: IssueDraftLine) => conversionLabelForLine(row)
-		},
-		{
-			id: 'quantity',
-			header: m.inv_common_quantity(),
-			filterable: true,
-			field: 'qtySearch',
-			format: (_v: unknown, row: IssueDraftLine) =>
-				formatPurchaseQtyCellWithIssueEquivalent({
-					quantity: (row as any).qtySearch ?? totalPurchaseQty(row),
-					itemUnitMasterId: row.itemUnitMasterId,
-					purchaseConversionFactor:
-						row.iumList.find((u) => u.id === row.itemUnitMasterId)
-							?.purchaseConversionFactor ?? null,
-					issueConversionFactor:
-						row.iumList.find((u) => u.id === row.itemUnitMasterId)
-							?.issueConversionFactor ?? null,
-					issueUnitName:
-						row.iumList.find((u) => u.id === row.itemUnitMasterId)?.issueUnitName ??
-						null
-				} as any)
-		}
-	]);
+	const lineColumns = $derived.by(
+		(): MariTableColumn<IssueDraftLine>[] => [
+			{
+				id: 'itemLabel',
+				header: m.inv_common_item(),
+				field: 'itemLabel',
+				filterable: true,
+				format: (_v: unknown, row: IssueDraftLine) =>
+					row.itemLabel || '—'
+			},
+			{
+				id: 'conversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterId',
+				filterable: true,
+				format: (_v: unknown, row: IssueDraftLine) =>
+					conversionLabelForLine(row)
+			},
+			{
+				id: 'quantity',
+				header: m.inv_common_quantity(),
+				filterable: true,
+				field: 'qtySearch',
+				format: (_v: unknown, row: IssueDraftLine) =>
+					formatPurchaseQtyCellWithIssueEquivalent({
+						quantity: (row as any).qtySearch ?? totalPurchaseQty(row),
+						itemUnitMasterId: row.itemUnitMasterId,
+						purchaseConversionFactor:
+							row.iumList.find((u) => u.id === row.itemUnitMasterId)
+								?.purchaseConversionFactor ?? null,
+						issueConversionFactor:
+							row.iumList.find((u) => u.id === row.itemUnitMasterId)
+								?.issueConversionFactor ?? null,
+						issueUnitName:
+							row.iumList.find((u) => u.id === row.itemUnitMasterId)
+								?.issueUnitName ?? null
+					} as any)
+			}
+		]
+	);
 	async function submitCreate() {
 		if (!hospitalId) return;
 		const from = selectedInventoryFromStoreId;
-		const toStoreId = toStoreIdStr !== '' ? Number(toStoreIdStr) : null;
+		const toStoreId =
+			toStoreIdStr !== '' ? Number(toStoreIdStr) : null;
 		if (from == null || toStoreId == null) {
-			toast.addToast('Issue', StatusColorEnum.ERROR, 'From / to store required');
+			toast.addToast(
+				'Issue',
+				StatusColorEnum.ERROR,
+				'From / to store required'
+			);
 			return;
 		}
 
 		const built = buildLinesPayload(createLines);
 		if (!built.ok) {
-			toast.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			toast.addToast(
+				built.title,
+				StatusColorEnum.ERROR,
+				built.detail
+			);
 			return;
 		}
 
@@ -728,7 +785,11 @@
 				}
 			);
 			if (!res.ok) {
-				toast.addToast('Issue', StatusColorEnum.ERROR, await res.text());
+				toast.addToast(
+					'Issue',
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			await goBackToList();
@@ -752,7 +813,11 @@
 		}
 		const built = buildLinesPayload(indentCreateLines);
 		if (!built.ok) {
-			toast.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			toast.addToast(
+				built.title,
+				StatusColorEnum.ERROR,
+				built.detail
+			);
 			return;
 		}
 		const payload = {
@@ -773,7 +838,11 @@
 				}
 			);
 			if (!res.ok) {
-				toast.addToast('Issue', StatusColorEnum.ERROR, await res.text());
+				toast.addToast(
+					'Issue',
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			const created = (await res.json()) as { id?: string };
@@ -817,32 +886,72 @@
 					void submitCreate();
 				}}
 			>
+				{#snippet manualLinesToolbarRight()}
+					<DaisyUiTooltip
+						tooltipText={m.inv_line_items_add()}
+						className="d-tooltip-ghost"
+					>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-primary d-btn-square d-btn-outline"
+							disabled={submitting}
+							title={m.inv_line_items_add()}
+							onClick={() => void openLineDialogForCreate()}
+						>
+							<LucidePlus className="size-4" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+				{/snippet}
+				<div
+					class="mb-6 flex flex-wrap items-center justify-end gap-3 border-b border-base-200 pb-6"
+				>
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-wide"
+						disabled={submitting || createLines.length === 0}
+						loading={submitting}
+					>
+						{m.inv_common_submit()}
+					</DaisyUiButton>
+				</div>
 				<fieldset class="m-0 min-w-0 border-0 p-0">
-					<div class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+					<div
+						class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
+					>
 						<div class="min-w-0 flex-1">
-							<div class="flex flex-col gap-6 sm:flex-row sm:items-stretch">
+							<div
+								class="flex flex-col gap-6 sm:flex-row sm:items-stretch"
+							>
 								<div class="min-w-0 flex-1">
-									<div class="flex h-full flex-col justify-between gap-3">
+									<div
+										class="flex h-full flex-col justify-between gap-3"
+									>
 										<div class="flex min-w-0 flex-col gap-2">
-											<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
+											<DaisyUiLabel className="text-xs"
+												>{m.inv_nav_from_store()}</DaisyUiLabel
+											>
 											<input
 												type="text"
 												readonly
 												disabled
-												class="d-input d-input-bordered w-full text-sm"
+												class="d-input-bordered d-input w-full text-sm"
 												value={navFromStoreLabel}
 												aria-label={m.inv_nav_from_store()}
 											/>
 										</div>
 										<div class="flex min-w-0 flex-col gap-2">
-											<DaisyUiLabel forText="di-issue-to-store" className="text-xs"
+											<DaisyUiLabel
+												forText="di-issue-to-store"
+												className="text-xs"
 												>{m.inv_dept_indent_to()}</DaisyUiLabel
 											>
 											<DaisyUISearchSelect
 												inputId="di-issue-to-store"
 												value={toStoreIdStr}
 												options={toStoreOptions.map((s) => ({
-													label: s.storeName?.trim() ? s.storeName.trim() : '—',
+													label: s.storeName?.trim()
+														? s.storeName.trim()
+														: '—',
 													value: String(s.id)
 												}))}
 												onChange={(v: string) => {
@@ -855,10 +964,12 @@
 									</div>
 								</div>
 
-								<div class="min-w-0 flex-1 flex flex-col">
-									<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
+								<div class="flex min-w-0 flex-1 flex-col">
+									<DaisyUiLabel className="text-xs"
+										>{m.inv_dept_indent_remarks()}</DaisyUiLabel
+									>
 									<textarea
-										class="d-textarea d-textarea-bordered mt-1 w-full flex-1"
+										class="d-textarea-bordered d-textarea mt-1 w-full flex-1"
 										rows="2"
 										bind:value={remarks}
 									></textarea>
@@ -871,7 +982,10 @@
 				<PoManualLinesCard
 					totalCount={createLines.length}
 					columns={lineColumns}
-					rows={createLines.map((ln) => ({ ...ln, qtySearch: totalPurchaseQty(ln) }))}
+					rows={createLines.map((ln) => ({
+						...ln,
+						qtySearch: totalPurchaseQty(ln)
+					}))}
 					useColumnFilters={true}
 					hideQuickFilter={true}
 					hideAddButton={true}
@@ -881,196 +995,191 @@
 					onDeleteLine={deleteLine}
 				/>
 			</form>
-			{#snippet manualLinesToolbarRight()}
-				<div class="flex items-center gap-2">
-					<DaisyUiTooltip tooltipText={m.inv_line_items_add()} className="d-tooltip-ghost">
+		{:else if selectedInventoryFromStoreId == null}
+			<div class="d-alert text-sm d-alert-warning" role="status">
+				{m.inv_dept_issue_select_store_hint()}
+			</div>
+		{:else}
+			<div
+				class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10"
+			>
+				<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
+					<div
+						class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2"
+					>
+						<div
+							class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+						>
+							<DaisyUiLabel
+								className="shrink-0 sm:w-36"
+								forText="di-issue-indent-display"
+							>
+								{m.inv_dept_issue_select_indent()}
+							</DaisyUiLabel>
+							<div
+								class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
+							>
+								<input
+									id="di-issue-indent-display"
+									type="text"
+									readonly
+									disabled
+									class="d-input-bordered d-input min-w-0 flex-1 text-sm"
+									value={selectedIndentSummary || '—'}
+									aria-label={m.inv_dept_issue_select_indent()}
+								/>
+								<DaisyUiButton
+									type="button"
+									className="d-btn-outline shrink-0"
+									disabled={pendingIndentsLoading || indentPickerBusy}
+									loading={indentPickerBusy}
+									onClick={() => void openIndentPicker()}
+								>
+									{m.inv_common_btn_select()}
+								</DaisyUiButton>
+							</div>
+						</div>
+					</div>
+				</fieldset>
+			</div>
+			{#if selectedIndentId}
+				{@const selIndentId = selectedIndentId}
+				<div
+					class="mb-6 flex flex-wrap items-center justify-end gap-3 border-b border-base-200 pb-6"
+				>
+					{#if issueIdByIndentId[selIndentId]}
 						<DaisyUiButton
 							type="button"
-							className="d-btn-primary d-btn-square d-btn-outline"
-							disabled={submitting}
-							aria-label={m.inv_line_items_add()}
-							onClick={() => void openLineDialogForCreate()}
+							className="d-btn-wide d-btn-primary"
+							disabled={pendingIndentsLoading}
+							onClick={() =>
+								void goto(
+									resolve(
+										issueDetailHref(
+											issueIdByIndentId[selIndentId]!
+										) as any
+									)
+								)}
 						>
-							<LucidePlus className="size-4" />
+							{m.inv_dept_issue_btn_open()}
 						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiButton
-						type="submit"
-						className="d-btn-primary"
-						disabled={submitting}
-						loading={submitting}
-					>
-						{m.inv_common_submit()}
-					</DaisyUiButton>
-				</div>
-			{/snippet}
-		{:else}
-			{#if selectedInventoryFromStoreId == null}
-				<div class="d-alert d-alert-warning text-sm" role="status">
-					{m.inv_dept_issue_select_store_hint()}
-				</div>
-			{:else}
-				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
-					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36" forText="di-issue-indent-display">
-									{m.inv_dept_issue_select_indent()}
-								</DaisyUiLabel>
-								<div
-									class="flex min-w-0 max-w-80 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
-								>
-									<input
-										id="di-issue-indent-display"
-										type="text"
-										readonly
-										disabled
-										class="d-input d-input-bordered min-w-0 flex-1 text-sm"
-										value={selectedIndentSummary || '—'}
-										aria-label={m.inv_dept_issue_select_indent()}
-									/>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-outline shrink-0"
-										disabled={
-											pendingIndentsLoading || indentPickerBusy
-										}
-										loading={indentPickerBusy}
-										onClick={() => void openIndentPicker()}
-									>
-										{m.inv_common_btn_select()}
-									</DaisyUiButton>
-								</div>
-							</div>
-						</div>
-					</fieldset>
-				</div>
-				{#if !pendingIndentsLoading && pendingIndents.length === 0}
-					<div
-						class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80"
-					>
-						{m.inv_dept_issue_no_pending_indents()}
-					</div>
-				{/if}
-				{#if selectedIndentRow}
-					<p class="mb-3 text-sm text-base-content/80">
-						<span class="opacity-70">{m.inv_pr_route()}</span>
-						<strong
-							>{selectedIndentRow.fromStoreName ?? '—'} → {selectedIndentRow.toStoreName ?? '—'}</strong
+					{:else}
+						<DaisyUiButton
+							type="button"
+							className="d-btn-wide d-btn-primary"
+							disabled={pendingIndentsLoading ||
+								submitting ||
+								indentCreateLines.length === 0}
+							loading={submitting}
+							onClick={() => void submitCreateFromIndent()}
 						>
-					</p>
-					<div class="mb-4 rounded-box border border-base-300 bg-base-100 p-3">
-						<div class="mb-2 text-sm font-medium">
-							{m.inv_di_detail_lines()}
-						</div>
-						{#if indentPreviewLoading}
-							<div class="text-xs text-base-content/70">
-								{m.loading()}
-							</div>
-						{:else if indentPreviewError}
-							<div class="text-xs text-error">{indentPreviewError}</div>
-						{:else if !indentPreviewLines || indentPreviewLines.length === 0}
-							<div class="text-xs text-base-content/70">—</div>
-						{:else}
-							<MariTable
-								rows={indentPreviewLines}
-								columns={[
-									{
-										id: 'itemName',
-										header: m.inv_common_item(),
-										field: 'itemName',
-										filterable: false,
-										format: (_v, r: DepartmentIndentDetailLine) =>
-											r.itemName ?? '—'
-									},
-									{
-										id: 'quantity',
-										header: m.inv_common_quantity(),
-										field: 'quantity',
-										filterable: false,
-										format: (_v, r: DepartmentIndentDetailLine) =>
-											r.quantity
-									},
-									{
-										id: 'unitName',
-										header: m.inv_common_unit(),
-										field: 'unitName',
-										filterable: false,
-										format: (_v, r: DepartmentIndentDetailLine) =>
-											r.unitName ?? '—'
-									}
-								] as MariTableColumn[]}
-								showRowActions={false}
-								actionsVariant="none"
-								showRefreshButton={false}
-							/>
-						{/if}
+							{m.inv_dept_issue_btn_create()}
+						</DaisyUiButton>
+					{/if}
+				</div>
+			{/if}
+			{#if !pendingIndentsLoading && pendingIndents.length === 0}
+				<div
+					class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80"
+				>
+					{m.inv_dept_issue_no_pending_indents()}
+				</div>
+			{/if}
+			{#if selectedIndentRow}
+				<p class="mb-3 text-sm text-base-content/80">
+					<span class="opacity-70">{m.inv_pr_route()}</span>
+					<strong
+						>{selectedIndentRow.fromStoreName ?? '—'} → {selectedIndentRow.toStoreName ??
+							'—'}</strong
+					>
+				</p>
+				<div
+					class="mb-4 rounded-box border border-base-300 bg-base-100 p-3"
+				>
+					<div class="mb-2 text-sm font-medium">
+						{m.inv_di_detail_lines()}
 					</div>
-
-					<div class="mb-4 rounded-box border border-base-300 bg-base-100 p-3">
-						<div class="mb-2 text-sm font-medium">{m.inv_dc_batch()}</div>
-						<p class="mb-3 text-xs opacity-70">
-							{m.inv_dc_modal_batch_help()}
-						</p>
+					{#if indentPreviewLoading}
+						<div class="text-xs text-base-content/70">
+							{m.loading()}
+						</div>
+					{:else if indentPreviewError}
+						<div class="text-xs text-error">{indentPreviewError}</div>
+					{:else if !indentPreviewLines || indentPreviewLines.length === 0}
+						<div class="text-xs text-base-content/70">—</div>
+					{:else}
 						<MariTable
-							rows={indentCreateLines}
-							columns={lineColumns as MariTableColumn[]}
-							showRefreshButton={false}
-							enableColumnFilters={false}
-							showRowActions={true}
+							rows={indentPreviewLines}
+							columns={[
+								{
+									id: 'itemName',
+									header: m.inv_common_item(),
+									field: 'itemName',
+									filterable: false,
+									format: (_v, r: DepartmentIndentDetailLine) =>
+										r.itemName ?? '—'
+								},
+								{
+									id: 'quantity',
+									header: m.inv_common_quantity(),
+									field: 'quantity',
+									filterable: false,
+									format: (_v, r: DepartmentIndentDetailLine) =>
+										r.quantity
+								},
+								{
+									id: 'unitName',
+									header: m.inv_common_unit(),
+									field: 'unitName',
+									filterable: false,
+									format: (_v, r: DepartmentIndentDetailLine) =>
+										r.unitName ?? '—'
+								}
+							] as MariTableColumn[]}
+							showRowActions={false}
 							actionsVariant="none"
-						>
-							{#snippet rowActions(_row, index)}
-								{@const ln = indentCreateLines[index]}
-								<DaisyUiTooltip
-									tooltipText={m.inv_line_items_tooltip_edit()}
-									className="d-tooltip-accent d-tooltip-left"
-								>
-									<DaisyUiButton
-										type="button"
-										className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-										disabled={!ln || submitting}
-										onClick={() => {
-											if (ln) void openIndentLineDialogForEdit(ln);
-										}}
-									>
-										<LucidePencil className="size-5" />
-									</DaisyUiButton>
-								</DaisyUiTooltip>
-							{/snippet}
-						</MariTable>
+							showRefreshButton={false}
+						/>
+					{/if}
+				</div>
+
+				<div
+					class="mb-4 rounded-box border border-base-300 bg-base-100 p-3"
+				>
+					<div class="mb-2 text-sm font-medium">
+						{m.inv_dc_batch()}
 					</div>
-				{/if}
-				{#if selectedIndentId}
-					{@const selIndentId = selectedIndentId}
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						{#if issueIdByIndentId[selIndentId]}
-							<DaisyUiButton
-								type="button"
-								className="d-btn-wide d-btn-primary"
-								disabled={pendingIndentsLoading}
-								onClick={() =>
-									void goto(
-										resolve(
-											issueDetailHref(issueIdByIndentId[selIndentId]!) as any
-										)
-									)}
+					<p class="mb-3 text-xs opacity-70">
+						{m.inv_dc_modal_batch_help()}
+					</p>
+					<MariTable
+						rows={indentCreateLines}
+						columns={lineColumns as MariTableColumn[]}
+						showRefreshButton={false}
+						enableColumnFilters={false}
+						showRowActions={true}
+						actionsVariant="none"
+					>
+						{#snippet rowActions(_row, index)}
+							{@const ln = indentCreateLines[index]}
+							<DaisyUiTooltip
+								tooltipText={m.inv_line_items_tooltip_edit()}
+								className="d-tooltip-accent d-tooltip-left"
 							>
-								{m.inv_dept_issue_btn_open()}
-							</DaisyUiButton>
-						{:else}
-							<DaisyUiButton
-								type="button"
-								className="d-btn-wide d-btn-primary"
-								disabled={pendingIndentsLoading || submitting || indentCreateLines.length === 0}
-								loading={submitting}
-								onClick={() => void submitCreateFromIndent()}
-							>
-								{m.inv_dept_issue_btn_create()}
-							</DaisyUiButton>
-						{/if}
-					</DaisyUiCardBodyAction>
-				{/if}
+								<DaisyUiButton
+									type="button"
+									className="d-btn-sm d-btn-ghost d-btn-square text-accent"
+									disabled={!ln || submitting}
+									onClick={() => {
+										if (ln) void openIndentLineDialogForEdit(ln);
+									}}
+								>
+									<LucidePencil className="size-5" />
+								</DaisyUiButton>
+							</DaisyUiTooltip>
+						{/snippet}
+					</MariTable>
+				</div>
 			{/if}
 		{/if}
 	</DaisyUiCardBody>

@@ -31,7 +31,7 @@
 		onAddItem,
 		onEditLine,
 		onDeleteLine
-	} = $props<Props>();
+	}: Props = $props();
 </script>
 
 <InventoryLineItemsCard

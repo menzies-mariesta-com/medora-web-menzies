@@ -24,7 +24,9 @@ export type {
 } from '$lib/model/type/heka/prefix-format.type';
 
 /** Used when no `prefix_format` row exists yet (in-memory default only). */
-function defaultFormatSpecForKey(prefixKey: string): PrefixFormatSpec {
+function defaultFormatSpecForKey(
+	prefixKey: string
+): PrefixFormatSpec {
 	if (
 		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_REQUISITION_NO ||
 		prefixKey === PREFIX_PURPOSE_STORAGE.PURCHASE_ORDER_NO ||
@@ -79,7 +81,9 @@ function defaultFormatSpecForKey(prefixKey: string): PrefixFormatSpec {
 			]
 		};
 	}
-	if (prefixKey === PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO) {
+	if (
+		prefixKey === PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO
+	) {
 		return {
 			parts: [
 				{ type: 'field', path: 'financial_year.code' },
@@ -119,10 +123,12 @@ async function loadFormatAndScopeFromDb(
 	const [row] = await db
 		.select({
 			format: table.prefixFormatTable.format,
-			counterIncludeBranch: table.prefixFormatTable.counterIncludeBranch,
+			counterIncludeBranch:
+				table.prefixFormatTable.counterIncludeBranch,
 			counterIncludeFinancialYear:
 				table.prefixFormatTable.counterIncludeFinancialYear,
-			counterIncludeVisitType: table.prefixFormatTable.counterIncludeVisitType,
+			counterIncludeVisitType:
+				table.prefixFormatTable.counterIncludeVisitType,
 			counterIncludeVisit: table.prefixFormatTable.counterIncludeVisit
 		})
 		.from(table.prefixFormatTable)
@@ -209,10 +215,7 @@ async function resolveField(
 				.select({ code: table.financialYearTable.code })
 				.from(table.financialYearTable)
 				.where(
-					eq(
-						table.financialYearTable.id,
-						params.financialYearId
-					)
+					eq(table.financialYearTable.id, params.financialYearId)
 				);
 			return (fy?.code ?? '').toString().toUpperCase();
 		}
@@ -252,7 +255,9 @@ export async function generatePrefix(
 	const financialYearIdStored = scope.includeFinancialYear
 		? (params.financialYearId ?? null)
 		: null;
-	const visitTypeIdStored = scope.includeVisitType ? visitTypeId : null;
+	const visitTypeIdStored = scope.includeVisitType
+		? visitTypeId
+		: null;
 
 	const counterTbl = table.prefixCounterTable;
 	const [counterRow] = await db

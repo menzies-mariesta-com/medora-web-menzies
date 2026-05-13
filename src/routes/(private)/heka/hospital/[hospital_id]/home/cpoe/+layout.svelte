@@ -80,7 +80,10 @@
 		return `/api/heka/hospital/${hid}/home/observation/emr`;
 	}
 
-	async function apiPost<T>(mode: string, payload: Record<string, unknown>) {
+	async function apiPost<T>(
+		mode: string,
+		payload: Record<string, unknown>
+	) {
 		const res = await fetch(getApiBase(), {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -149,7 +152,7 @@
 {#snippet signedBannerTrailing()}
 	<button
 		type="button"
-		class="d-btn d-btn-ghost d-btn-sm d-btn-square min-h-8 min-w-8 border-0 text-current hover:bg-current/10"
+		class="d-btn d-btn-square min-h-8 min-w-8 border-0 text-current d-btn-ghost d-btn-sm hover:bg-current/10"
 		aria-label={msg.clinical_visit_unsign_x_aria()}
 		onclick={handleUnsignVisit}
 	>

@@ -33,7 +33,8 @@ export async function postStoreTransfer(
 	if (input.fromStoreId === input.toStoreId) {
 		throw error(400, 'Stores must differ');
 	}
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
 	await assertStoreInHospital(input.hospitalId, input.fromStoreId);
 	await assertStoreInHospital(input.hospitalId, input.toStoreId);

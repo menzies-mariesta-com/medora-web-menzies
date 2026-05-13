@@ -11,10 +11,14 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : null;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: null;
 
 	const data = await getDocumentSettingsPaginated(event, {
 		hospitalId,
@@ -27,23 +31,33 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createDocumentSetting(event, {
 		hospitalId,
 		name: String(body.name ?? ''),
 		documentTypeId:
-			body.documentTypeId != null ? Number(body.documentTypeId) : null,
-		description: body.description != null ? String(body.description) : null,
+			body.documentTypeId != null
+				? Number(body.documentTypeId)
+				: null,
+		description:
+			body.description != null ? String(body.description) : null,
 		pageSize: body.pageSize != null ? String(body.pageSize) : null,
 		pageOrientation:
-			body.pageOrientation != null ? String(body.pageOrientation) : null,
+			body.pageOrientation != null
+				? String(body.pageOrientation)
+				: null,
 		marginTop: body.marginTop != null ? Number(body.marginTop) : null,
 		marginBottom:
 			body.marginBottom != null ? Number(body.marginBottom) : null,
-		marginLeft: body.marginLeft != null ? Number(body.marginLeft) : null,
+		marginLeft:
+			body.marginLeft != null ? Number(body.marginLeft) : null,
 		marginRight:
 			body.marginRight != null ? Number(body.marginRight) : null,
-		paddingTop: body.paddingTop != null ? Number(body.paddingTop) : null,
+		paddingTop:
+			body.paddingTop != null ? Number(body.paddingTop) : null,
 		paddingBottom:
 			body.paddingBottom != null ? Number(body.paddingBottom) : null,
 		paddingLeft:
@@ -54,15 +68,21 @@ export const POST: RequestHandler = async (event) => {
 			body.showHeader != null ? Boolean(body.showHeader) : null,
 		showFooter:
 			body.showFooter != null ? Boolean(body.showFooter) : null,
-		headerHtml: body.headerHtml != null ? String(body.headerHtml) : null,
-		footerHtml: body.footerHtml != null ? String(body.footerHtml) : null,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+		headerHtml:
+			body.headerHtml != null ? String(body.headerHtml) : null,
+		footerHtml:
+			body.footerHtml != null ? String(body.footerHtml) : null,
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	});
 	return json(data);
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updateDocumentSetting(event, {
 		id: Number(body.id),
 		name: body.name != null ? String(body.name) : undefined,
@@ -173,7 +193,10 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteDocumentSetting(event, { id: Number(body.id) });
 	return json({ ok: true });
 };

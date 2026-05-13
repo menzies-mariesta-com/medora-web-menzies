@@ -58,7 +58,9 @@
 		return (await res.json()) as T;
 	}
 
-	function documentSettingApiUrl(params?: Record<string, string | number>) {
+	function documentSettingApiUrl(
+		params?: Record<string, string | number>
+	) {
 		const base = `/api/heka/hospital/${hospitalId}/home/administration/document-master/document-setting`;
 		if (!params) return base;
 		const usp = new URLSearchParams();
@@ -340,8 +342,7 @@
 			if (!trimmed) return nextPlaceholder;
 
 			const lastChar = trimmed[trimmed.length - 1] ?? '';
-			const needsSpace =
-				!/\s/.test(lastChar) && lastChar !== '>';
+			const needsSpace = !/\s/.test(lastChar) && lastChar !== '>';
 
 			return current + (needsSpace ? ' ' : '') + nextPlaceholder;
 		}
@@ -366,7 +367,8 @@
 			filterable: false,
 			format: (_v, _row, rowIndex) =>
 				(currentPage - 1) *
-					(Number(filterPageSize) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
+					(Number(filterPageSize) ||
+						AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE) +
 				rowIndex +
 				1
 		},
@@ -539,7 +541,7 @@
 									<input
 										id="marginTop"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={marginTop}
 										disabled={viewMode === 'view'}
 									/>
@@ -552,7 +554,7 @@
 									<input
 										id="marginBottom"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={marginBottom}
 										disabled={viewMode === 'view'}
 									/>
@@ -565,7 +567,7 @@
 									<input
 										id="marginLeft"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={marginLeft}
 										disabled={viewMode === 'view'}
 									/>
@@ -578,7 +580,7 @@
 									<input
 										id="marginRight"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={marginRight}
 										disabled={viewMode === 'view'}
 									/>
@@ -597,7 +599,7 @@
 									<input
 										id="paddingTop"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={paddingTop}
 										disabled={viewMode === 'view'}
 									/>
@@ -610,7 +612,7 @@
 									<input
 										id="paddingBottom"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={paddingBottom}
 										disabled={viewMode === 'view'}
 									/>
@@ -623,7 +625,7 @@
 									<input
 										id="paddingLeft"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={paddingLeft}
 										disabled={viewMode === 'view'}
 									/>
@@ -636,7 +638,7 @@
 									<input
 										id="paddingRight"
 										type="number"
-										class="heka-number-input d-input-bordered d-input w-full h-9 text-[0.98rem]"
+										class="heka-number-input d-input-bordered d-input h-9 w-full text-[0.98rem]"
 										bind:value={paddingRight}
 										disabled={viewMode === 'view'}
 									/>
@@ -838,67 +840,67 @@
 	<DaisyUiCard>
 		<DaisyUiCardBody>
 			<div class="{TableEnum.HEIGHT} overflow-auto">
-					<MariTable
-						rows={settingList}
-						{columns}
-						{isLoading}
-						bind:pageSize={filterPageSize}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip="Refresh"
-						emptyMessage="No document settings found"
-						showRowActions={true}
-						actionsHeader="Actions"
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:refresh={() => fetchData({ bustCache: true })}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							fetchData();
-						}}
-						on:pageChange={() => fetchData()}
-						on:filtersChange={(e) => {
-							tableFilters = e.detail.filters;
-							currentPage = 1;
-							fetchData();
-						}}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							{@const typedRow = row as DocumentSettingWithRelations}
-							<td class="w-32 shrink-0 text-right">
-								<div class="flex justify-end gap-1">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-xs"
-										onClick={() => startView(typedRow)}
-										disabled={deleteLock.pending}
-										loadingText=""
-									>
-										<LucideEye className="w-3 h-3" />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-xs d-btn-accent"
-										onClick={() => startEdit(typedRow)}
-										disabled={deleteLock.pending}
-										loadingText=""
-									>
-										<LucidePencil className="w-3 h-3" />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-xs d-btn-error"
-										onClick={() => handleDelete(typedRow)}
-										loading={deletingId === typedRow.id}
-										loadingText=""
-										disabled={deleteLock.pending || isLoading}
-									>
-										<LucideTrash2 className="w-3 h-3" />
-									</DaisyUiButton>
-								</div>
-							</td>
-						{/snippet}
-					</MariTable>
-				</div>
+				<MariTable
+					rows={settingList}
+					{columns}
+					{isLoading}
+					bind:pageSize={filterPageSize}
+					bind:currentPage
+					totalRowCount={total}
+					showRefreshButton={true}
+					refreshTooltip="Refresh"
+					emptyMessage="No document settings found"
+					showRowActions={true}
+					actionsHeader="Actions"
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchData({ bustCache: true })}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchData();
+					}}
+					on:pageChange={() => fetchData()}
+					on:filtersChange={(e) => {
+						tableFilters = e.detail.filters;
+						currentPage = 1;
+						fetchData();
+					}}
+				>
+					{#snippet rowActions(row, rowIndex)}
+						{@const typedRow = row as DocumentSettingWithRelations}
+						<td class="w-32 shrink-0 text-right">
+							<div class="flex justify-end gap-1">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-xs"
+									onClick={() => startView(typedRow)}
+									disabled={deleteLock.pending}
+									loadingText=""
+								>
+									<LucideEye className="w-3 h-3" />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-xs d-btn-accent"
+									onClick={() => startEdit(typedRow)}
+									disabled={deleteLock.pending}
+									loadingText=""
+								>
+									<LucidePencil className="w-3 h-3" />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-xs d-btn-error"
+									onClick={() => handleDelete(typedRow)}
+									loading={deletingId === typedRow.id}
+									loadingText=""
+									disabled={deleteLock.pending || isLoading}
+								>
+									<LucideTrash2 className="w-3 h-3" />
+								</DaisyUiButton>
+							</div>
+						</td>
+					{/snippet}
+				</MariTable>
+			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

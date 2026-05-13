@@ -32,14 +32,20 @@
 	$effect(() => {
 		const nowOpen = open;
 		if (nowOpen && !prevOpen && draft) {
-			trimInventoryDraftNumericFieldsInPlace(draft as Record<string, unknown>, GRN_NUMERIC_FIELD_KEYS);
-			discountMode = Number(draft.discountAmount) > 0 ? 'amount' : 'percent';
+			trimInventoryDraftNumericFieldsInPlace(
+				draft as Record<string, unknown>,
+				GRN_NUMERIC_FIELD_KEYS
+			);
+			discountMode =
+				Number(draft.discountAmount) > 0 ? 'amount' : 'percent';
 			taxMode = Number(draft.taxAmount) > 0 ? 'amount' : 'percent';
 		}
 		prevOpen = nowOpen;
 	});
 
-	const itemLocked = $derived(disableUnlessItem && draft?.itemId == null);
+	const itemLocked = $derived(
+		disableUnlessItem && draft?.itemId == null
+	);
 
 	// Free unit picker should show *item unit master rows* (conversionDisplay), like PR.
 	const freeUnitMasterOptions = $derived.by(() => {
@@ -51,7 +57,8 @@
 		return list
 			.filter((x) => typeof x?.id === 'number')
 			.map((x) => ({
-				label: String(x.conversionDisplay ?? '').trim() || String(x.id),
+				label:
+					String(x.conversionDisplay ?? '').trim() || String(x.id),
 				value: String(x.id)
 			}));
 	});
@@ -73,11 +80,18 @@
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_line_received_qty()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_grn_line_received_qty()}</DaisyUiLabel
+		>
 		<input
 			type="number"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.receivedQty}
+			class="d-input-bordered d-input w-full"
+			value={draft.receivedQty == null || draft.receivedQty === ''
+				? ''
+				: String(draft.receivedQty)}
+			oninput={(e) => {
+				draft.receivedQty = e.currentTarget.value;
+			}}
 			step="1"
 			min="0"
 			disabled={itemLocked}
@@ -85,31 +99,42 @@
 		/>
 	</div>
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_batch()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_stock_col_batch()}</DaisyUiLabel
+		>
 		<input
 			type="text"
-			class="d-input d-input-bordered w-full"
+			class="d-input-bordered d-input w-full"
 			bind:value={draft.batchNo}
 			disabled={itemLocked}
 			aria-label={m.inv_stock_col_batch()}
 		/>
 	</div>
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_expiry()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_stock_col_expiry()}</DaisyUiLabel
+		>
 		<input
 			type="date"
-			class="d-input d-input-bordered w-full"
+			class="d-input-bordered d-input w-full"
 			bind:value={draft.expiryDate}
 			disabled={itemLocked}
 			aria-label={m.inv_stock_col_expiry()}
 		/>
 	</div>
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_stock_col_price()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_stock_col_price()}</DaisyUiLabel
+		>
 		<input
 			type="number"
-			class="d-input d-input-bordered w-full"
-			bind:value={draft.purchasePrice}
+			class="d-input-bordered d-input w-full"
+			value={draft.purchasePrice == null || draft.purchasePrice === ''
+				? ''
+				: String(draft.purchasePrice)}
+			oninput={(e) => {
+				draft.purchasePrice = e.currentTarget.value;
+			}}
 			step="0.01"
 			min="0"
 			disabled={itemLocked}
@@ -117,19 +142,28 @@
 		/>
 	</div>
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_grn_free_qty()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_grn_free_qty()}</DaisyUiLabel
+		>
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 			<input
 				type="number"
-				class="d-input d-input-bordered w-full"
-				bind:value={draft.freeQty}
+				class="d-input-bordered d-input w-full"
+				value={draft.freeQty == null || draft.freeQty === ''
+					? ''
+					: String(draft.freeQty)}
+				oninput={(e) => {
+					draft.freeQty = e.currentTarget.value;
+				}}
 				step="1"
 				min="0"
 				disabled={itemLocked}
 				aria-label={m.inv_grn_free_qty()}
 			/>
 			<DaisyUISearchSelect
-				value={draft?.freeUnitIumId != null ? String(draft.freeUnitIumId) : ''}
+				value={draft?.freeUnitIumId != null
+					? String(draft.freeUnitIumId)
+					: ''}
 				options={freeUnitMasterOptions}
 				placeholder={m.inv_line_modal_select_conversion()}
 				onChange={(v: string) => {
@@ -141,7 +175,9 @@
 					}>;
 					const ium =
 						id != null
-							? list.find((x) => typeof x?.id === 'number' && x.id === id) ?? null
+							? (list.find(
+									(x) => typeof x?.id === 'number' && x.id === id
+								) ?? null)
 							: null;
 					draft.freeUnitId = ium?.purchaseUnitId ?? null;
 				}}
@@ -152,15 +188,23 @@
 	</div>
 	<div class="sm:col-span-2">
 		<DaisyUiLabel className="text-xs opacity-80">
-			{discountMode === 'amount' ? m.inv_grn_discount_amount() : m.inv_grn_discount_percent()}
+			{discountMode === 'amount'
+				? m.inv_grn_discount_amount()
+				: m.inv_grn_discount_percent()}
 		</DaisyUiLabel>
 		<div class="flex items-center gap-3">
 			<div class="flex-1">
 				{#if discountMode === 'amount'}
 					<input
 						type="number"
-						class="d-input d-input-bordered w-full"
-						bind:value={draft.discountAmount}
+						class="d-input-bordered d-input w-full"
+						value={draft.discountAmount == null ||
+						draft.discountAmount === ''
+							? ''
+							: String(draft.discountAmount)}
+						oninput={(e) => {
+							draft.discountAmount = e.currentTarget.value;
+						}}
 						step="0.01"
 						min="0"
 						disabled={itemLocked}
@@ -169,8 +213,14 @@
 				{:else}
 					<input
 						type="number"
-						class="d-input d-input-bordered w-full"
-						bind:value={draft.discountPercent}
+						class="d-input-bordered d-input w-full"
+						value={draft.discountPercent == null ||
+						draft.discountPercent === ''
+							? ''
+							: String(draft.discountPercent)}
+						oninput={(e) => {
+							draft.discountPercent = e.currentTarget.value;
+						}}
 						step="0.01"
 						min="0"
 						disabled={itemLocked}
@@ -178,7 +228,9 @@
 					/>
 				{/if}
 			</div>
-			<label class="flex shrink-0 items-center gap-2 text-xs opacity-80">
+			<label
+				class="flex shrink-0 items-center gap-2 text-xs opacity-80"
+			>
 				<span>%</span>
 				<input
 					type="checkbox"
@@ -187,7 +239,8 @@
 					disabled={itemLocked}
 					aria-label="Toggle discount percent/amount"
 					onchange={(e) => {
-						const checked = (e.currentTarget as HTMLInputElement).checked;
+						const checked = (e.currentTarget as HTMLInputElement)
+							.checked;
 						setDiscountMode(checked ? 'amount' : 'percent');
 					}}
 				/>
@@ -197,15 +250,22 @@
 	</div>
 	<div class="sm:col-span-2">
 		<DaisyUiLabel className="text-xs opacity-80">
-			{taxMode === 'amount' ? m.inv_grn_tax_amount() : m.inv_grn_tax_percent()}
+			{taxMode === 'amount'
+				? m.inv_grn_tax_amount()
+				: m.inv_grn_tax_percent()}
 		</DaisyUiLabel>
 		<div class="flex items-center gap-3">
 			<div class="flex-1">
 				{#if taxMode === 'amount'}
 					<input
 						type="number"
-						class="d-input d-input-bordered w-full"
-						bind:value={draft.taxAmount}
+						class="d-input-bordered d-input w-full"
+						value={draft.taxAmount == null || draft.taxAmount === ''
+							? ''
+							: String(draft.taxAmount)}
+						oninput={(e) => {
+							draft.taxAmount = e.currentTarget.value;
+						}}
 						step="0.01"
 						min="0"
 						disabled={itemLocked}
@@ -214,8 +274,13 @@
 				{:else}
 					<input
 						type="number"
-						class="d-input d-input-bordered w-full"
-						bind:value={draft.taxPercent}
+						class="d-input-bordered d-input w-full"
+						value={draft.taxPercent == null || draft.taxPercent === ''
+							? ''
+							: String(draft.taxPercent)}
+						oninput={(e) => {
+							draft.taxPercent = e.currentTarget.value;
+						}}
 						step="0.01"
 						min="0"
 						disabled={itemLocked}
@@ -223,7 +288,9 @@
 					/>
 				{/if}
 			</div>
-			<label class="flex shrink-0 items-center gap-2 text-xs opacity-80">
+			<label
+				class="flex shrink-0 items-center gap-2 text-xs opacity-80"
+			>
 				<span>%</span>
 				<input
 					type="checkbox"
@@ -232,7 +299,8 @@
 					disabled={itemLocked}
 					aria-label="Toggle tax percent/amount"
 					onchange={(e) => {
-						const checked = (e.currentTarget as HTMLInputElement).checked;
+						const checked = (e.currentTarget as HTMLInputElement)
+							.checked;
 						setTaxMode(checked ? 'amount' : 'percent');
 					}}
 				/>

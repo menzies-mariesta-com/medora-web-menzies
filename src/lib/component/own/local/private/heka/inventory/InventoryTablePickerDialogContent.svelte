@@ -41,7 +41,11 @@
 		class="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 pb-3"
 	>
 		<h3 class="text-lg font-bold">{title}</h3>
-		<DaisyUiButton type="button" className="d-btn-sm" onClick={() => cancel()}>
+		<DaisyUiButton
+			type="button"
+			className="d-btn-sm"
+			onClick={() => cancel()}
+		>
 			{m.cancel()}
 		</DaisyUiButton>
 	</div>

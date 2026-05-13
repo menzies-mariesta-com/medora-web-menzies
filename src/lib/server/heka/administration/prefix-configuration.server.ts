@@ -78,7 +78,9 @@ export function rethrowPrefixFormatDbError(e: unknown): never {
 	}
 
 	const short =
-		raw.length > 420 ? `${raw.slice(0, 420)}…` : raw || 'Database error';
+		raw.length > 420
+			? `${raw.slice(0, 420)}…`
+			: raw || 'Database error';
 	throw error(500, short);
 }
 
@@ -113,7 +115,8 @@ export async function createPrefixConfiguration(
 			.insert(table.prefixFormatTable)
 			.values(input)
 			.returning();
-		if (!inserted) throw new Error('Failed to create prefix configuration');
+		if (!inserted)
+			throw new Error('Failed to create prefix configuration');
 		return inserted;
 	} catch (e) {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
@@ -140,7 +143,8 @@ export async function updatePrefixConfiguration(
 			.set(data)
 			.where(eq(table.prefixFormatTable.id, id))
 			.returning();
-		if (!updated) throw new Error('Failed to update prefix configuration');
+		if (!updated)
+			throw new Error('Failed to update prefix configuration');
 		return updated;
 	} catch (e) {
 		if (e && typeof e === 'object' && 'status' in e) throw e;
@@ -175,4 +179,3 @@ export async function deletePrefixConfiguration(
 		rethrowPrefixFormatDbError(e);
 	}
 }
-

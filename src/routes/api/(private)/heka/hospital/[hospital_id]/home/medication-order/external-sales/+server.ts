@@ -14,16 +14,24 @@ export async function GET(event: RequestEvent) {
 	const mode = event.url.searchParams.get('mode') ?? '';
 
 	if (mode === 'masters') {
-		return json(await ex.listMastersForInternalForm(event, hospitalId));
+		return json(
+			await ex.listMastersForInternalForm(event, hospitalId)
+		);
 	}
 	if (mode === 'stores.search') {
 		const name = event.url.searchParams.get('name') ?? undefined;
-		return json(await ex.searchStores(event, hospitalId, name ?? undefined));
+		return json(
+			await ex.searchStores(event, hospitalId, name ?? undefined)
+		);
 	}
 	if (mode === 'items.search') {
-		const storeId = Number(event.url.searchParams.get('storeId') ?? '0');
+		const storeId = Number(
+			event.url.searchParams.get('storeId') ?? '0'
+		);
 		const search = event.url.searchParams.get('search') ?? undefined;
-		const pharmacyGenericIdRaw = event.url.searchParams.get('pharmacyGenericId');
+		const pharmacyGenericIdRaw = event.url.searchParams.get(
+			'pharmacyGenericId'
+		);
 		const pharmacyGenericId =
 			pharmacyGenericIdRaw != null && pharmacyGenericIdRaw !== ''
 				? Number(pharmacyGenericIdRaw)
@@ -34,7 +42,8 @@ export async function GET(event: RequestEvent) {
 				storeId,
 				search: search?.trim() ? search.trim() : undefined,
 				pharmacyGenericId:
-					pharmacyGenericId != null && Number.isFinite(pharmacyGenericId)
+					pharmacyGenericId != null &&
+					Number.isFinite(pharmacyGenericId)
 						? pharmacyGenericId
 						: null
 			})
@@ -44,11 +53,17 @@ export async function GET(event: RequestEvent) {
 		return json(await ex.listExternalBatches(event, hospitalId));
 	}
 	if (mode === 'batch.get') {
-		const batchId = Number(event.url.searchParams.get('batchId') ?? '0');
+		const batchId = Number(
+			event.url.searchParams.get('batchId') ?? '0'
+		);
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
 		}
-		const pack = await internal.getBatchWithLines(event, hospitalId, batchId);
+		const pack = await internal.getBatchWithLines(
+			event,
+			hospitalId,
+			batchId
+		);
 		if (!pack) throw error(404, 'Not found');
 		if (pack.batch.visitId != null) {
 			throw error(400, 'Not an external sale batch');
@@ -97,7 +112,8 @@ export async function POST(event: RequestEvent) {
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
 		}
-		if (!Array.isArray(b.lines)) throw error(400, 'lines is required');
+		if (!Array.isArray(b.lines))
+			throw error(400, 'lines is required');
 		return json(
 			await ex.updateMedicationOrderBatchExternal(event, {
 				hospitalId,
@@ -115,7 +131,11 @@ export async function POST(event: RequestEvent) {
 			throw error(400, 'batchId is required');
 		}
 		return json(
-			await ex.deleteMedicationOrderBatchExternal(event, hospitalId, batchId)
+			await ex.deleteMedicationOrderBatchExternal(
+				event,
+				hospitalId,
+				batchId
+			)
 		);
 	}
 	if (mode === 'batch.reorder') {
