@@ -66,24 +66,36 @@ function hasColumnFilters(
 	f: Record<string, string> | undefined
 ): boolean {
 	if (!f) return false;
-	return Object.values(f).some((v) => v != null && String(v).trim() !== '');
+	return Object.values(f).some(
+		(v) => v != null && String(v).trim() !== ''
+	);
 }
 
 export async function listMasterPaginated(
 	event: RequestEvent,
-	input: { hospitalId: string; entity: MasterEntity } & PaginationParams & {
+	input: {
+		hospitalId: string;
+		entity: MasterEntity;
+	} & PaginationParams & {
 			search?: string;
 			/** Per-column filter values; keys match MariTable column `id` */
 			columnFilters?: Record<string, string | undefined>;
 		}
 ) {
-	const { hospitalId, entity, search, columnFilters: rawCols } = input;
+	const {
+		hospitalId,
+		entity,
+		search,
+		columnFilters: rawCols
+	} = input;
 	await requireHospital(event, hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 	const f: Record<string, string> = {};
 	if (rawCols) {
 		for (const [k, v] of Object.entries(rawCols)) {
-			if (v != null && String(v).trim() !== '') f[k] = String(v).trim();
+			if (v != null && String(v).trim() !== '')
+				f[k] = String(v).trim();
 		}
 	}
 	const db = ensureDb();
@@ -519,7 +531,13 @@ export async function listMasterPaginated(
 				.where(wh)
 		]);
 		const total = tot[0]?.c ?? 0;
-		return { data, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+		return {
+			data,
+			total,
+			page,
+			pageSize,
+			totalPages: Math.max(1, Math.ceil(total / pageSize))
+		};
 	}
 	{
 		const t = table.medOrderFrequencyTable;
@@ -547,7 +565,9 @@ export async function listMasterPaginated(
 		}
 		if (!hasColumnFilters(f) && search?.trim()) {
 			const q = likePat(search);
-			parts.push(or(ilike(t.label, q), ilike(t.summaryText, q)) as any);
+			parts.push(
+				or(ilike(t.label, q), ilike(t.summaryText, q)) as any
+			);
 		}
 		const wh = and(...(parts as any)) as any;
 		const [data, tot] = await Promise.all([
@@ -690,7 +710,8 @@ export async function createMaster(
 			isPreset: false,
 			description: (payload.description as string | null) ?? null,
 			abbreviation: (payload.abbreviation as string | null) ?? null,
-			frequencyPerDay: (payload.frequencyPerDay as string | null) ?? null,
+			frequencyPerDay:
+				(payload.frequencyPerDay as string | null) ?? null,
 			sequenceNo: Number(payload.sequenceNo ?? 0) || 0,
 			isCommonFrequency: Boolean(payload.isCommonFrequency ?? false),
 			isTimingRequired: Boolean(payload.isTimingRequired ?? false),
@@ -715,8 +736,11 @@ export async function createMaster(
 					? Number(payload.diffPlotSixHourlyValue)
 					: null,
 			variableDose: Boolean(payload.variableDose ?? false),
-			pictorialDefinition: (payload.pictorialDefinition as string | null) ?? null,
-			isFrequencyInfusion: Boolean(payload.isFrequencyInfusion ?? false),
+			pictorialDefinition:
+				(payload.pictorialDefinition as string | null) ?? null,
+			isFrequencyInfusion: Boolean(
+				payload.isFrequencyInfusion ?? false
+			),
 			localLanguage: (payload.localLanguage as string | null) ?? null,
 			kind: String(payload.kind ?? 'custom'),
 			summaryText: (payload.summaryText as string | null) ?? null,
@@ -738,12 +762,15 @@ export async function updateMaster(
 ) {
 	const { hospitalId, entity, id, payload } = input;
 	await requireHospital(event, hospitalId);
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const statusIdRaw = payload.statusId;
 	const statusId =
-		statusIdRaw != null && statusIdRaw !== '' ? Number(statusIdRaw) : undefined;
+		statusIdRaw != null && statusIdRaw !== ''
+			? Number(statusIdRaw)
+			: undefined;
 	if (!Number.isFinite(statusId as number)) {
 		throw error(400, 'statusId is required');
 	}
@@ -783,12 +810,7 @@ export async function updateMaster(
 		const [existing] = await db
 			.select({ id: t.id })
 			.from(t)
-			.where(
-				and(
-					eq(t.id, id),
-					isNull(t.deletedAt)
-				)
-			)
+			.where(and(eq(t.id, id), isNull(t.deletedAt)))
 			.limit(1);
 		if (!existing) throw error(404, 'Not found');
 		if (statusId === StatusEnum.INACTIVE) {
@@ -804,10 +826,7 @@ export async function updateMaster(
 			await db
 				.delete(inact)
 				.where(
-					and(
-						eq(inact.hospitalId, hospitalId),
-						eq(inact.routeId, id)
-					)
+					and(eq(inact.hospitalId, hospitalId), eq(inact.routeId, id))
 				);
 		}
 		const [row] = await db
@@ -951,12 +970,7 @@ export async function updateMaster(
 	const [existing] = await db
 		.select({ isPreset: t.isPreset })
 		.from(t)
-		.where(
-			and(
-				eq(t.id, id),
-				isNull(t.deletedAt)
-			)
-		)
+		.where(and(eq(t.id, id), isNull(t.deletedAt)))
 		.limit(1);
 	if (!existing) throw error(404, 'Not found');
 
@@ -975,7 +989,12 @@ export async function updateMaster(
 	} else if (statusId === StatusEnum.ACTIVE) {
 		await db
 			.delete(inact)
-			.where(and(eq(inact.hospitalId, hospitalId), eq(inact.frequencyId, id)));
+			.where(
+				and(
+					eq(inact.hospitalId, hospitalId),
+					eq(inact.frequencyId, id)
+				)
+			);
 	}
 	// Keep master row status as-is (global); allow global delete via deleteMaster.
 
@@ -997,7 +1016,8 @@ export async function deleteMaster(
 ) {
 	const { hospitalId, entity, id } = input;
 	await requireHospital(event, hospitalId);
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	const userId = event.locals.user?.id ?? null;
 	const now = new Date().toISOString();
 	const db = ensureDb();
@@ -1028,12 +1048,7 @@ export async function deleteMaster(
 		const [existingRoute] = await db
 			.select({ isPreset: t.isPreset })
 			.from(t)
-			.where(
-				and(
-					eq(t.id, id),
-					isNull(t.deletedAt)
-				)
-			)
+			.where(and(eq(t.id, id), isNull(t.deletedAt)))
 			.limit(1);
 		if (existingRoute?.isPreset) {
 			throw error(
@@ -1041,10 +1056,7 @@ export async function deleteMaster(
 				'Preset routes cannot be deleted. Set Active/Inactive instead.'
 			);
 		}
-		await db
-			.update(t)
-			.set(del)
-			.where(eq(t.id, id));
+		await db.update(t).set(del).where(eq(t.id, id));
 		return { ok: true };
 	}
 	if (entity === 'orderType') {

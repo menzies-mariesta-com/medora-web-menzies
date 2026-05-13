@@ -37,4 +37,3 @@ export type VisitDashboardPayload = {
 	patientVisits: PatientVisitWithRelationsLite[];
 	orderLines: ServiceOrderDetailRowForVisit[];
 };
-

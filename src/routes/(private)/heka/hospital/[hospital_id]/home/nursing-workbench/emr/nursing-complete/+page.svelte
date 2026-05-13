@@ -205,7 +205,8 @@
 			const visitRes = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`
 			);
-			if (!visitRes.ok) throw new Error(`Visit load failed (${visitRes.status})`);
+			if (!visitRes.ok)
+				throw new Error(`Visit load failed (${visitRes.status})`);
 			const currentVisit = await visitRes.json();
 			if (!currentVisit) {
 				visit = null;
@@ -225,7 +226,8 @@
 			const ordersRes = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=serviceOrder.list&visitId=${visitId}`
 			);
-			if (!ordersRes.ok) throw new Error(`Orders load failed (${ordersRes.status})`);
+			if (!ordersRes.ok)
+				throw new Error(`Orders load failed (${ordersRes.status})`);
 			const orders = await ordersRes.json();
 			if (orders.length === 0) {
 				rows = [];
@@ -244,12 +246,15 @@
 				page: String(currentPage),
 				pageSize: String(pageSize)
 			});
-			for (const id of orderIds) detailQs.append('serviceOrderIds', String(id));
-			if (statusId != null && Number.isFinite(statusId)) detailQs.set('statusId', String(statusId));
+			for (const id of orderIds)
+				detailQs.append('serviceOrderIds', String(id));
+			if (statusId != null && Number.isFinite(statusId))
+				detailQs.set('statusId', String(statusId));
 			const detailsRes = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?${detailQs.toString()}`
 			);
-			if (!detailsRes.ok) throw new Error(`Details load failed (${detailsRes.status})`);
+			if (!detailsRes.ok)
+				throw new Error(`Details load failed (${detailsRes.status})`);
 			const detailsResult = await detailsRes.json();
 			const details = detailsResult.data;
 			totalRows = detailsResult.total;
@@ -464,7 +469,8 @@
 					EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
 				)}`
 			);
-			if (!docRes.ok) throw new Error(`Template load failed (${docRes.status})`);
+			if (!docRes.ok)
+				throw new Error(`Template load failed (${docRes.status})`);
 			const masterDoc = await docRes.json();
 			if (!masterDoc) {
 				toastService.addToast(
@@ -477,7 +483,8 @@
 			const visitFullRes = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=visit.get&visitId=${visitId}`
 			);
-			if (!visitFullRes.ok) throw new Error(`Visit load failed (${visitFullRes.status})`);
+			if (!visitFullRes.ok)
+				throw new Error(`Visit load failed (${visitFullRes.status})`);
 			const visitFull = await visitFullRes.json();
 			const patientId = visitFull?.patient?.id;
 			if (!visitFull || !patientId) {
@@ -612,7 +619,10 @@
 				{
 					method: 'POST',
 					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ mode: 'nursingComplete.mark', id: row.id })
+					body: JSON.stringify({
+						mode: 'nursingComplete.mark',
+						id: row.id
+					})
 				}
 			);
 			if (!res.ok) throw new Error(`Mark failed (${res.status})`);
@@ -649,7 +659,8 @@
 				}
 			);
 			if (!res.ok) throw new Error(`Batch failed (${res.status})`);
-			const { markedCount, remainingIncompleteCount } = await res.json();
+			const { markedCount, remainingIncompleteCount } =
+				await res.json();
 			if (markedCount === 0) {
 				toastService.addToast(
 					'No lines could be marked complete.',

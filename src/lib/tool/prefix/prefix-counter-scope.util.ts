@@ -104,13 +104,7 @@ export function buildPrefixCounterScopeKey(params: {
 			? ''
 			: String(params.visitTypeId)
 		: '';
-	const parts = [
-		params.hospitalId,
-		b,
-		fy,
-		params.prefixKey,
-		vt
-	];
+	const parts = [params.hospitalId, b, fy, params.prefixKey, vt];
 	if (
 		params.scope.includeVisit &&
 		params.visitIdForScope != null &&

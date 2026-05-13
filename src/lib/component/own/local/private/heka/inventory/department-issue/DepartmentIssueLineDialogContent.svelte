@@ -41,19 +41,50 @@
 		hospitalId: string;
 		storeId: number | null;
 		draftLine: DeptIssueDraftLine;
-		searchItemsFn: (q: string) => Promise<{ label: string; value: string }[]>;
+		searchItemsFn: (
+			q: string
+		) => Promise<{ label: string; value: string }[]>;
 		onPersist: () => void;
 	} = $props();
 
 	const toast = new ToastService();
 
+	/** Local rows for batch table — avoids invalid `bind:` through dialog chrome on `draftLine.*`. */
+	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>(
+		[]
+	);
+
+	let lastAutoBatchFetchKey = $state<string | null>(null);
+	const batchAutoFetchKey = $derived(
+		`${draftLine.key}|${storeId ?? ''}|${draftLine.itemId ?? ''}`
+	);
+
+	let syncedDraftContextKey = $state<string | null>(null);
+	$effect(() => {
+		const ctx = `${draftLine.key}|${storeId ?? ''}`;
+		if (ctx !== syncedDraftContextKey) {
+			syncedDraftContextKey = ctx;
+			batchAllocations = draftLine.batchAllocations.map((a) => ({
+				...a
+			}));
+			lastAutoBatchFetchKey = null;
+		}
+	});
+
 	async function searchItemsWithStock(q: string) {
 		const base = await searchItemsFn(q);
 		if (!hospitalId || storeId == null) return base;
-		return enrichItemSearchOptionsWithStock(hospitalId, base, storeId);
+		return enrichItemSearchOptionsWithStock(
+			hospitalId,
+			base,
+			storeId
+		);
 	}
 
-	async function hydrateLineItemMeta(line: DeptIssueDraftLine, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: DeptIssueDraftLine,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -82,12 +113,13 @@
 		if (!chosen && allowedRows.length > 0) chosen = allowedRows[0];
 		line.iumList = chosen ? [chosen] : [];
 		line.itemUnitMasterId = chosen?.id ?? null;
-		line.purchaseUnitLabel = chosen?.purchaseUnitName ?? line.purchaseUnitLabel;
+		line.purchaseUnitLabel =
+			chosen?.purchaseUnitName ?? line.purchaseUnitLabel;
 		await refreshBatchAllocations(line);
 	}
 
 	async function refreshBatchAllocations(line: DeptIssueDraftLine) {
-		line.batchAllocations = [];
+		batchAllocations = [];
 		if (!hospitalId || storeId == null || line.itemId == null) return;
 		try {
 			const ps = new URLSearchParams();
@@ -107,7 +139,7 @@
 				salePrice?: string | null;
 				issueUnitName?: string | null;
 			}[];
-			line.batchAllocations = rows
+			batchAllocations = rows
 				.filter((r) => Number(r.quantity) > 1e-9)
 				.map((r) => ({
 					batchId: r.batchId,
@@ -122,7 +154,11 @@
 					qtyPurchase: ''
 				}));
 		} catch (e) {
-			toast.addToast(m.inv_dc_batch(), StatusColorEnum.ERROR, String(e));
+			toast.addToast(
+				m.inv_dc_batch(),
+				StatusColorEnum.ERROR,
+				String(e)
+			);
 		}
 	}
 
@@ -131,13 +167,16 @@
 	}
 
 	const chosenIum = $derived(
-		draftLine.iumList.find((u) => u.id === draftLine.itemUnitMasterId) ?? null
+		draftLine.iumList.find(
+			(u) => u.id === draftLine.itemUnitMasterId
+		) ?? null
 	);
 
 	const iumFactors = $derived(
 		chosenIum
 			? {
-					purchaseConversionFactor: chosenIum.purchaseConversionFactor,
+					purchaseConversionFactor:
+						chosenIum.purchaseConversionFactor,
 					issueConversionFactor: chosenIum.issueConversionFactor
 				}
 			: null
@@ -152,29 +191,50 @@
 	);
 
 	const purchaseUnitLabel = $derived(
-		(chosenIum?.purchaseUnitName ?? draftLine.purchaseUnitLabel ?? '').trim()
+		(
+			chosenIum?.purchaseUnitName ??
+			draftLine.purchaseUnitLabel ??
+			''
+		).trim()
 	);
-	const issueUnitLabel = $derived((chosenIum?.issueUnitName ?? '').trim());
+	const issueUnitLabel = $derived(
+		(chosenIum?.issueUnitName ?? '').trim()
+	);
 
 	let saving = $state(false);
 
 	async function handleSave() {
 		if (draftLine.itemId == null) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_item());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_item()
+			);
 			return;
 		}
 		if (!iumFactors) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_unit());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_unit()
+			);
 			return;
 		}
 		let hasPositive = false;
-		const { purchaseConversionFactor: pf, issueConversionFactor: iff } = iumFactors;
-		for (const a of draftLine.batchAllocations) {
+		const {
+			purchaseConversionFactor: pf,
+			issueConversionFactor: iff
+		} = iumFactors;
+		for (const a of batchAllocations) {
 			const qp = a.qtyPurchase.trim();
 			if (!qp) continue;
 			const n = Number(qp);
 			if (!Number.isFinite(n) || n <= 0) {
-				toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
+				toast.addToast(
+					m.inv_dc_edit_line(),
+					StatusColorEnum.ERROR,
+					m.inv_common_quantity()
+				);
 				return;
 			}
 			hasPositive = true;
@@ -190,11 +250,18 @@
 			}
 		}
 		if (!hasPositive) {
-			toast.addToast(m.inv_dc_edit_line(), StatusColorEnum.ERROR, m.inv_common_quantity());
+			toast.addToast(
+				m.inv_dc_edit_line(),
+				StatusColorEnum.ERROR,
+				m.inv_common_quantity()
+			);
 			return;
 		}
 		saving = true;
 		try {
+			draftLine.batchAllocations = batchAllocations.map((a) => ({
+				...a
+			}));
 			onPersist();
 			confirm();
 		} finally {
@@ -205,28 +272,36 @@
 	$effect(() => {
 		// For indent mode, item is prefilled but iumList may be empty.
 		// Hydrate item meta (IUM + default conversion) the same way as Consumption.
-		if (draftLine.lockItem && draftLine.itemId != null) {
-			if (draftLine.iumList.length === 0) {
-				void hydrateLineItemMeta(draftLine, draftLine.itemId);
-				return;
-			}
-			// If meta is present but batches are empty (e.g. store changed), refresh lots.
-			if (draftLine.batchAllocations.length === 0) {
-				void refreshBatchAllocations(draftLine);
-			}
+		if (!draftLine.lockItem || draftLine.itemId == null) return;
+
+		if (draftLine.iumList.length === 0) {
+			lastAutoBatchFetchKey = null;
+			void hydrateLineItemMeta(draftLine, draftLine.itemId);
+			return;
+		}
+
+		// Batch rows live in local state; guard so “no stock” (still []) does not loop forever.
+		if (
+			batchAllocations.length === 0 &&
+			lastAutoBatchFetchKey !== batchAutoFetchKey
+		) {
+			lastAutoBatchFetchKey = batchAutoFetchKey;
+			void refreshBatchAllocations(draftLine);
 		}
 	});
 </script>
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_pr_line_item_search()}</DaisyUiLabel
+		>
 		{#if draftLine.lockItem}
 			<input
 				type="text"
 				readonly
 				disabled
-				class="d-input d-input-bordered mt-1 w-full cursor-not-allowed opacity-90"
+				class="d-input-bordered d-input mt-1 w-full cursor-not-allowed opacity-90"
 				value={draftLine.itemLabel || '—'}
 				title={draftLine.itemLabel || undefined}
 				aria-label={m.inv_pr_line_item_search()}
@@ -246,12 +321,14 @@
 	</div>
 
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_unit()}</DaisyUiLabel
+		>
 		<input
 			type="text"
 			readonly
 			disabled
-			class="d-input d-input-bordered mt-1 w-full cursor-not-allowed opacity-90"
+			class="d-input-bordered d-input mt-1 w-full cursor-not-allowed opacity-90"
 			value={lockedUnitLabel || '—'}
 			title={lockedUnitLabel || undefined}
 			aria-label={m.inv_common_unit()}
@@ -259,10 +336,14 @@
 	</div>
 
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_dc_batch()}</DaisyUiLabel>
-		<p class="mb-2 text-xs opacity-70">{m.inv_dc_modal_batch_help()}</p>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_dc_batch()}</DaisyUiLabel
+		>
+		<p class="mb-2 text-xs opacity-70">
+			{m.inv_dc_modal_batch_help()}
+		</p>
 		<InventoryBatchQtyPickTable
-			bind:allocations={draftLine.batchAllocations}
+			bind:allocations={batchAllocations}
 			factors={iumFactors}
 			purchaseUnitLabel={purchaseUnitLabel || '—'}
 			issueUnitLabel={issueUnitLabel || ''}
@@ -272,7 +353,12 @@
 </div>
 
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
 	<DaisyUiButton
@@ -284,4 +370,3 @@
 		{m.save()}
 	</DaisyUiButton>
 </div>
-

@@ -8,7 +8,9 @@ export async function fetchStockLabelsForItemsAtStore(
 	itemIds: number[]
 ): Promise<Map<number, string>> {
 	const out = new Map<number, string>();
-	const uniq = [...new Set(itemIds.filter((n) => Number.isFinite(n) && n > 0))].slice(0, 150);
+	const uniq = [
+		...new Set(itemIds.filter((n) => Number.isFinite(n) && n > 0))
+	].slice(0, 150);
 	if (!hospitalId || uniq.length === 0) return out;
 	const sp = new URLSearchParams();
 	sp.set('mode', 'aggregated');
@@ -46,7 +48,8 @@ export async function enrichItemSearchOptionsWithStock(
 		.filter((n) => Number.isFinite(n) && n > 0);
 	if (ids.length === 0) return options;
 	const uniq = [...new Set(ids)];
-	const hasSel = selectedStoreId != null && Number.isFinite(selectedStoreId);
+	const hasSel =
+		selectedStoreId != null && Number.isFinite(selectedStoreId);
 	if (!hasSel) return options;
 	const mapSel = await fetchStockLabelsForItemsAtStore(
 		hospitalId,

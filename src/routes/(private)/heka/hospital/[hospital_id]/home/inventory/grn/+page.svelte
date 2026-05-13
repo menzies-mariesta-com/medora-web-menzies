@@ -7,7 +7,9 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -22,7 +24,9 @@
 	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
@@ -61,7 +65,8 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 	let listAbort: AbortController | null = null;
 	let transferSubmittingId = $state<string | null>(null);
@@ -69,13 +74,25 @@
 	let canPostLoading = $state(false);
 
 	const GRN_STATUS_FILTER_OPTIONS = $derived([
-		{ label: m.inv_grn_filter_status_draft(), value: String(InvGrnStatusTaggingEnum.DRAFT) },
-		{ label: m.inv_grn_filter_status_posted(), value: String(InvGrnStatusTaggingEnum.POSTED) },
-		{ label: m.inv_grn_filter_status_cancelled(), value: String(InvGrnStatusTaggingEnum.CANCELLED) }
+		{
+			label: m.inv_grn_filter_status_draft(),
+			value: String(InvGrnStatusTaggingEnum.DRAFT)
+		},
+		{
+			label: m.inv_grn_filter_status_posted(),
+			value: String(InvGrnStatusTaggingEnum.POSTED)
+		},
+		{
+			label: m.inv_grn_filter_status_cancelled(),
+			value: String(InvGrnStatusTaggingEnum.CANCELLED)
+		}
 	]);
 
 	const grnNewPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/grn/new' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/grn/new' as any
+		)
 	);
 
 	function canTransferGrnToRequestingStore(row: GrnRow): boolean {
@@ -96,7 +113,8 @@
 		listAbort?.abort();
 		listAbort = new AbortController();
 		try {
-			const pageSize = Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE;
+			const pageSize =
+				Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE;
 			const sp = new URLSearchParams();
 			sp.set('page', String(currentPage));
 			sp.set('pageSize', String(pageSize));
@@ -122,11 +140,15 @@
 				);
 				return;
 			}
-			const j = (await res.json()) as { data: GrnRow[]; total?: number };
+			const j = (await res.json()) as {
+				data: GrnRow[];
+				total?: number;
+			};
 			list = j.data ?? [];
 			total = j.total ?? 0;
 		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (e instanceof DOMException && e.name === 'AbortError')
+				return;
 			toastService.addErrorToast(m.inv_page_grn_title(), e);
 		} finally {
 			listLoading = false;
@@ -198,7 +220,10 @@
 				);
 				return;
 			}
-			toastService.addToast(m.inv_common_success(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.inv_common_success(),
+				StatusColorEnum.SUCCESS
+			);
 			await loadList();
 		} catch (e) {
 			toastService.addErrorToast('Transfer', e);
@@ -229,7 +254,7 @@
 					? row.poNo?.trim()
 						? row.poNo
 						: m.inv_grn_select_po()
-					: '—',
+					: '—'
 		},
 		{
 			id: 'retransfer',
@@ -240,7 +265,8 @@
 				if (!row.poId) return '—';
 				if (row.poPrId == null || row.poPrId === '')
 					return m.inv_grn_retransfer_no_pr();
-				if (row.grnTransferDone) return m.inv_grn_transfer_status_done();
+				if (row.grnTransferDone)
+					return m.inv_grn_transfer_status_done();
 				return m.inv_grn_transfer_status_pending();
 			}
 		},
@@ -312,7 +338,9 @@
 	<div class="flex flex-wrap gap-2">
 		<DaisyUiButton
 			className="d-btn-primary"
-			disabled={selectedInventoryFromStoreId == null || !canPost || canPostLoading}
+			disabled={selectedInventoryFromStoreId == null ||
+				!canPost ||
+				canPostLoading}
 			onClick={() => void goto(resolve(grnNewPath as any))}
 		>
 			<LucidePlus className="size-4" />
@@ -320,7 +348,9 @@
 		</DaisyUiButton>
 		<DaisyUiButton
 			className="d-btn-outline"
-			disabled={selectedInventoryFromStoreId == null || !canPost || canPostLoading}
+			disabled={selectedInventoryFromStoreId == null ||
+				!canPost ||
+				canPostLoading}
 			onClick={() =>
 				void goto(resolve(grnNewPath as any) + '?mode=direct')}
 		>
@@ -374,10 +404,14 @@
 			{#snippet rowActions(row, _i)}
 				{@const r = row as GrnRow}
 				<div class="flex flex-col items-center gap-1">
-					<DaisyUiTooltip tooltipText={m.inv_common_view()} className="d-tooltip-ghost d-tooltip-right">
+					<DaisyUiTooltip
+						tooltipText={m.inv_common_view()}
+						className="d-tooltip-ghost d-tooltip-right"
+					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
-							onClick={() => void goto(resolve(grnDetailUrl(r.id) as any))}
+							onClick={() =>
+								void goto(resolve(grnDetailUrl(r.id) as any))}
 						>
 							<LucideEye className="size-5" />
 						</DaisyUiButton>
@@ -390,7 +424,9 @@
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-primary"
 								loading={transferSubmittingId === r.id}
-								disabled={transferSubmittingId != null || !canPost || canPostLoading}
+								disabled={transferSubmittingId != null ||
+									!canPost ||
+									canPostLoading}
 								onClick={() => void transferToRequestingStore(r)}
 							>
 								<LucideChevronRight className="size-5" />

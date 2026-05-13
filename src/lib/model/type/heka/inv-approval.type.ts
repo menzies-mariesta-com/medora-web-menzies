@@ -8,8 +8,11 @@ export const INV_APPROVAL_MODULE_CODES = [
 	'GRN',
 	'DC'
 ] as const;
-export type InvApprovalModule = (typeof INV_APPROVAL_MODULE_CODES)[number];
+export type InvApprovalModule =
+	(typeof INV_APPROVAL_MODULE_CODES)[number];
 
-export function isInvApprovalModule(s: string): s is InvApprovalModule {
+export function isInvApprovalModule(
+	s: string
+): s is InvApprovalModule {
 	return (INV_APPROVAL_MODULE_CODES as readonly string[]).includes(s);
 }

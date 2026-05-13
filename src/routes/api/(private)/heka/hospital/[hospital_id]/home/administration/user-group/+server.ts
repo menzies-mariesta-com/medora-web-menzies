@@ -46,11 +46,15 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const name = event.url.searchParams.get('name');
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : undefined;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: undefined;
 
 	const data = await getUserGroupsPaginated(event, {
 		hospitalId,
@@ -66,7 +70,10 @@ export const POST: RequestHandler = async (event) => {
 	const hospitalId = String(event.params.hospital_id ?? '');
 	if (!hospitalId) throw error(400, 'Missing hospital id');
 
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const name = String(body.name ?? '').trim();
 	if (!name) throw error(400, 'Name is required');
 
@@ -91,7 +98,10 @@ export const PUT: RequestHandler = async (event) => {
 	if (!hospitalId) throw error(400, 'Missing hospital id');
 
 	const mode = event.url.searchParams.get('mode') ?? '';
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 
 	if (mode === 'pages') {
 		const userGroupIdRaw = body.userGroupId;
@@ -140,11 +150,13 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const idRaw = body.id;
 	const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
 	if (!Number.isFinite(id)) throw error(400, 'Invalid id');
 	await deleteUserGroup(event, { id });
 	return json({ ok: true });
 };
-

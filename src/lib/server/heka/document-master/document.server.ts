@@ -35,7 +35,8 @@ export async function getDocumentsWithRelations(
 	opts?: { hospitalId?: string }
 ) {
 	requireUser(event);
-	if (opts?.hospitalId) await ensureCanAccessHospital(event, opts.hospitalId);
+	if (opts?.hospitalId)
+		await ensureCanAccessHospital(event, opts.hospitalId);
 	return ensureDb().query.documentTable.findMany({
 		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
 		with: documentWithRelationsWith
@@ -44,20 +45,29 @@ export async function getDocumentsWithRelations(
 
 export async function getDocumentsPaginatedWithRelations(
 	event: RequestEvent,
-	params?: PaginationParams & { statusId?: number | null; hospitalId?: string }
+	params?: PaginationParams & {
+		statusId?: number | null;
+		hospitalId?: string;
+	}
 ): Promise<PaginatedResult<DocumentWithRelations>> {
 	requireUser(event);
 	if (params?.hospitalId)
 		await ensureCanAccessHospital(event, params.hospitalId);
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
-	const notDeletedFilter = ne(table.documentTable.statusId, StatusEnum.DELETED);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
+	const notDeletedFilter = ne(
+		table.documentTable.statusId,
+		StatusEnum.DELETED
+	);
 	const statusFilter =
 		params?.statusId != null
 			? eq(table.documentTable.statusId, params.statusId)
 			: null;
 	const whereExpr =
-		statusFilter != null ? and(notDeletedFilter, statusFilter) : notDeletedFilter;
+		statusFilter != null
+			? and(notDeletedFilter, statusFilter)
+			: notDeletedFilter;
 
 	const [data, countResult] = await Promise.all([
 		ensureDb().query.documentTable.findMany({
@@ -92,7 +102,10 @@ export async function createDocument(
 		await ensureCanAccessHospital(event, payload.hospitalId);
 
 	const { hospitalId: _hospitalId, ...data } = payload;
-	const [row] = await ensureDb().insert(table.documentTable).values(data).returning();
+	const [row] = await ensureDb()
+		.insert(table.documentTable)
+		.values(data)
+		.returning();
 	if (!row) throw error(500, 'Insert failed');
 	return row;
 }
@@ -126,4 +139,3 @@ export async function deleteDocument(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.documentTable.id, id));
 }
-

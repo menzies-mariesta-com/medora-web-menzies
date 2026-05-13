@@ -106,7 +106,10 @@
 		if (isAsync && searchFn && search.length >= minSearchLength) {
 			isLoading = true;
 			searchFn(search).then((r: Option[]) => {
-				optionsFromServer = r.slice(0, AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT);
+				optionsFromServer = r.slice(
+					0,
+					AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT
+				);
 				isLoading = false;
 			});
 		} else if (isAsync && search.length < minSearchLength) {
@@ -193,7 +196,7 @@
 	{#if open}
 		<ul
 			id={listboxId}
-			class="d-menu absolute z-50 left-0 right-0 flex max-h-60 w-full flex-col overflow-y-auto overflow-x-hidden rounded-box border bg-base-100 shadow-lg {placement ===
+			class="d-menu absolute right-0 left-0 z-50 flex max-h-60 w-full flex-col overflow-x-hidden overflow-y-auto rounded-box border bg-base-100 shadow-lg {placement ===
 			'up'
 				? 'bottom-full mb-1'
 				: 'top-full mt-1'}"

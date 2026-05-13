@@ -4,7 +4,10 @@ import { resubmitPurchaseRequisition } from '$lib/server/heka/inventory/pr.serve
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await resubmitPurchaseRequisition(event, {
 		hospitalId,
 		prId: String(body.prId ?? '')

@@ -109,7 +109,9 @@
 		if (vid) {
 			const base = apiBase();
 			if (!base) return;
-			apiGet<{ data: any | null }>(`${base}?action=byId&id=${vid}`).then((res) => {
+			apiGet<{ data: any | null }>(
+				`${base}?action=byId&id=${vid}`
+			).then((res) => {
 				const v = res.data;
 				if (v) {
 					height = asStr(v.height);
@@ -121,8 +123,7 @@
 					if (stored != null) {
 						bmi = String(stored);
 						bmiUserOverridden =
-							calc == null ||
-							Math.abs(stored - calc) > 0.051;
+							calc == null || Math.abs(stored - calc) > 0.051;
 					} else if (calc != null) {
 						bmi = String(calc);
 						bmiUserOverridden = false;
@@ -249,7 +250,10 @@
 					headers: { 'content-type': 'application/json' },
 					body: JSON.stringify({ id: vitalId, ...vitalPayload })
 				});
-				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+				if (!res.ok)
+					throw new Error(
+						await res.text().catch(() => res.statusText)
+					);
 				toastSuccess(
 					toastService,
 					m.entity_patient_vital(),
@@ -265,7 +269,10 @@
 						...vitalPayload
 					})
 				});
-				if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+				if (!res.ok)
+					throw new Error(
+						await res.text().catch(() => res.statusText)
+					);
 				toastSuccess(
 					toastService,
 					m.entity_patient_vital(),
@@ -346,11 +353,13 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 		>
-			<DaisyUiLabel forText="vital-bmi" className="shrink-0 sm:w-36 pt-2"
+			<DaisyUiLabel
+				forText="vital-bmi"
+				className="shrink-0 sm:w-36 pt-2"
 				>{m.emr_vital_bmi()}</DaisyUiLabel
 			>
 			<div
-				class="flex min-w-0 max-w-md flex-1 flex-col gap-2 sm:flex-row sm:items-center"
+				class="flex max-w-md min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center"
 			>
 				<DaisyUiInputField
 					id="vital-bmi"
@@ -385,10 +394,15 @@
 					id="vital-temp"
 					bind:value={temperature}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder(VitalEnum.TEMPERATURE)}
+					inputPlaceholderText={getVitalPlaceholder(
+						VitalEnum.TEMPERATURE
+					)}
 					min="0"
 					step="any"
-					className={vitalInputClass(temperature, VitalEnum.TEMPERATURE)}
+					className={vitalInputClass(
+						temperature,
+						VitalEnum.TEMPERATURE
+					)}
 				/>
 			</div>
 		</div>
@@ -404,10 +418,15 @@
 					id="vital-bp-sys"
 					bind:value={bpSystolic}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder(VitalEnum.BP_SYSTOLIC)}
+					inputPlaceholderText={getVitalPlaceholder(
+						VitalEnum.BP_SYSTOLIC
+					)}
 					min="0"
 					step="any"
-					className={vitalInputClass(bpSystolic, VitalEnum.BP_SYSTOLIC)}
+					className={vitalInputClass(
+						bpSystolic,
+						VitalEnum.BP_SYSTOLIC
+					)}
 				/>
 			</div>
 		</div>
@@ -423,10 +442,15 @@
 					id="vital-bp-dia"
 					bind:value={bpDiastolic}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder(VitalEnum.BP_DIASTOLIC)}
+					inputPlaceholderText={getVitalPlaceholder(
+						VitalEnum.BP_DIASTOLIC
+					)}
 					min="0"
 					step="any"
-					className={vitalInputClass(bpDiastolic, VitalEnum.BP_DIASTOLIC)}
+					className={vitalInputClass(
+						bpDiastolic,
+						VitalEnum.BP_DIASTOLIC
+					)}
 				/>
 			</div>
 		</div>
@@ -459,7 +483,9 @@
 					id="vital-resp"
 					bind:value={respiration}
 					inputType="number"
-					inputPlaceholderText={getVitalPlaceholder(VitalEnum.RESPIRATION)}
+					inputPlaceholderText={getVitalPlaceholder(
+						VitalEnum.RESPIRATION
+					)}
 					min="0"
 					step="any"
 					className={vitalInputClass(
@@ -571,7 +597,9 @@
 			className="d-btn-primary d-btn-wide"
 			loading={isSubmitting}
 		>
-			{isEditMode ? m.emr_vitals_submit_update() : m.emr_vitals_submit_save()}
+			{isEditMode
+				? m.emr_vitals_submit_update()
+				: m.emr_vitals_submit_save()}
 		</DaisyUiButton>
 		<DaisyUiButton
 			type="button"

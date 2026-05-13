@@ -28,7 +28,8 @@ export async function GET(event: RequestEvent) {
 			const pageSize = Number(
 				event.url.searchParams.get('pageSize') ?? '25'
 			);
-			const filtersRaw = event.url.searchParams.get('filters') ?? '{}';
+			const filtersRaw =
+				event.url.searchParams.get('filters') ?? '{}';
 			const filters = ((): Record<string, string> => {
 				try {
 					const parsed = JSON.parse(filtersRaw);
@@ -66,7 +67,8 @@ export async function POST(event: RequestEvent) {
 	switch (mode) {
 		case 'referHistory.accept': {
 			const id = Number(body?.id ?? 0);
-			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
 			return json(
 				await acceptReferHistory(event, hospitalId, {
 					id,
@@ -76,7 +78,8 @@ export async function POST(event: RequestEvent) {
 		}
 		case 'referHistory.reject': {
 			const id = Number(body?.id ?? 0);
-			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
 			await rejectReferHistory(event, hospitalId, {
 				id,
 				replyNote: body?.replyNote ?? undefined
@@ -86,13 +89,16 @@ export async function POST(event: RequestEvent) {
 		case 'referHistory.cancel': {
 			const id = Number(body?.id ?? 0);
 			const cancelReason = String(body?.cancelReason ?? '').trim();
-			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
 			if (!cancelReason) throw error(400, 'cancelReason is required');
-			await cancelReferHistory(event, hospitalId, { id, cancelReason });
+			await cancelReferHistory(event, hospitalId, {
+				id,
+				cancelReason
+			});
 			return json({ ok: true });
 		}
 		default:
 			throw error(400, `Unknown mode: ${mode}`);
 	}
 }
-

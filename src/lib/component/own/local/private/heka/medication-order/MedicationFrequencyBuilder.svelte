@@ -3,10 +3,8 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	let {
-		kind = $bindable('prn'),
-		summaryText = $bindable('')
-	} = $props();
+	let { kind = $bindable('prn'), summaryText = $bindable('') } =
+		$props();
 
 	/** Local editors (freq row load / user edit) */
 	let timesText = $state('');
@@ -56,7 +54,8 @@
 
 	function applyKind(next: string) {
 		kind = next;
-		if (next === 'fixed_times' && !timesText) timesText = '08:00, 20:00';
+		if (next === 'fixed_times' && !timesText)
+			timesText = '08:00, 20:00';
 		if (next === 'interval' && !intervalHours) intervalHours = '6';
 	}
 
@@ -85,11 +84,15 @@
 	}
 </script>
 
-<div class="flex flex-col gap-3 rounded-box border border-base-300 p-3">
+<div
+	class="flex flex-col gap-3 rounded-box border border-base-300 p-3"
+>
 	<div class="flex flex-wrap gap-2">
-		<span class="text-sm font-medium">{m.med_order_freq_kind_label()}</span>
+		<span class="text-sm font-medium"
+			>{m.med_order_freq_kind_label()}</span
+		>
 		<select
-			class="d-select d-select-bordered d-select-sm max-w-xs"
+			class="d-select-bordered d-select max-w-xs d-select-sm"
 			value={kind}
 			onchange={(e) =>
 				applyKind((e.currentTarget as HTMLSelectElement).value)}
@@ -98,7 +101,9 @@
 			<option value="fixed_times"
 				>{m.med_order_freq_kind_fixed_times()}</option
 			>
-			<option value="interval">{m.med_order_freq_kind_interval()}</option>
+			<option value="interval"
+				>{m.med_order_freq_kind_interval()}</option
+			>
 			<option value="custom">{m.med_order_freq_kind_custom()}</option>
 		</select>
 	</div>

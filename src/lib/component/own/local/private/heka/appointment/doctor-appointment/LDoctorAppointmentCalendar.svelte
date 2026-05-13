@@ -152,8 +152,12 @@
 		}
 
 		// Block slots might include rows outside the current view; count only the visible range.
-		const visibleDateSet = new Set(headerCells.map((h) => h.dateString));
-		counts.blocked = blockSlots.filter((b) => visibleDateSet.has(b.date)).length;
+		const visibleDateSet = new Set(
+			headerCells.map((h) => h.dateString)
+		);
+		counts.blocked = blockSlots.filter((b: BlockSlot) =>
+			visibleDateSet.has(b.date)
+		).length;
 		return counts;
 	});
 
@@ -838,19 +842,23 @@
 
 	async function handleDeleteSelected() {
 		if (selectedAppointmentId == null) return;
-		const elig = await apiPost<{
-			allowed: true;
-		} | { allowed: false; message: string }>(
-			'appointment.cancelEligibility',
-			{ appointmentId: selectedAppointmentId }
-		);
+		const elig = await apiPost<
+			| {
+					allowed: true;
+			  }
+			| { allowed: false; message: string }
+		>('appointment.cancelEligibility', {
+			appointmentId: selectedAppointmentId
+		});
 		if (!elig.allowed) {
 			toastService.addToast(elig.message, StatusColorEnum.ERROR);
 			return;
 		}
 		if (!confirm('Delete this appointment?')) return;
 		try {
-			await apiPost('appointment.delete', { id: selectedAppointmentId });
+			await apiPost('appointment.delete', {
+				id: selectedAppointmentId
+			});
 			selectedAppointmentId = null;
 			await tick();
 			await onAppointmentCreated?.();
@@ -1071,13 +1079,11 @@
 												>
 													<button
 														type="button"
-														class="d-btn d-btn-sm d-btn-circle shrink-0 bg-primary text-primary-content"
+														class="d-btn d-btn-circle shrink-0 bg-primary text-primary-content d-btn-sm"
 														aria-label="Print appointment slip"
 														onclick={(e) => {
 															e.stopPropagation();
-															printAppointmentSlip(
-																cellAptSlot
-															);
+															printAppointmentSlip(cellAptSlot);
 														}}
 													>
 														<LucidePrinter />
@@ -1085,14 +1091,13 @@
 												</DaisyUiTooltip>
 											{/if}
 											<span
-												class="min-w-0 line-clamp-2 text-xs font-medium {cellAptId !=
+												class="line-clamp-2 min-w-0 text-xs font-medium {cellAptId !=
 												null
 													? getCellAppointmentLabelClass(
 															cell.dateString,
 															timeSlot
 														)
-													: 'text-primary-content'}"
-												>{cellLabel}</span
+													: 'text-primary-content'}">{cellLabel}</span
 											>
 										</div>
 									{/if}

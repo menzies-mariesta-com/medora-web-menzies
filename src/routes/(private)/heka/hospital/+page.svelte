@@ -169,12 +169,17 @@
 					}),
 				...(forceRefresh && { _t: String(Date.now()) })
 			};
-			const url = new URL('/api/heka/hospital', window.location.origin);
-			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+			const url = new URL(
+				'/api/heka/hospital',
+				window.location.origin
+			);
+			for (const [k, v] of Object.entries(params))
+				url.searchParams.set(k, v);
 
 			const res = await fetch(url, { method: 'GET' });
 			if (!res.ok) throw new Error(await res.text());
-			hospitalResult = (await res.json()) as PaginatedResult<HospitalWithOwner>;
+			hospitalResult =
+				(await res.json()) as PaginatedResult<HospitalWithOwner>;
 		} finally {
 			isLoading = false;
 		}

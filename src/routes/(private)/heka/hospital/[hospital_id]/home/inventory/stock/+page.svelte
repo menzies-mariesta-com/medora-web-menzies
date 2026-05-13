@@ -3,7 +3,9 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import {
@@ -12,7 +14,9 @@
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
@@ -52,6 +56,41 @@
 	let rowsAgg = $state<AggRow[]>([]);
 	let rowsLots = $state<LotRow[]>([]);
 	let loading = $state(false);
+
+	type LotsExpiryFilter = 'all' | 'expired' | 'expiringSoon';
+	let lotsExpiryFilter = $state<LotsExpiryFilter>('all');
+
+	function parseExpiryDate(s: string | null | undefined) {
+		if (!s) return null;
+		const d = new Date(s);
+		return Number.isNaN(d.getTime()) ? null : d;
+	}
+
+	function isLotsExpiryMatch(
+		expiryDate: string | null,
+		filter: LotsExpiryFilter
+	) {
+		if (filter === 'all') return true;
+		const d = parseExpiryDate(expiryDate);
+		if (!d) return false;
+
+		const now = new Date();
+		const today = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate()
+		);
+		const days = (d.getTime() - today.getTime()) / 86_400_000;
+
+		if (filter === 'expired') return days < 0;
+		return days >= 0 && days <= 30;
+	}
+
+	const filteredRowsLotsByExpiry = $derived.by(() =>
+		rowsLots.filter((r) =>
+			isLotsExpiryMatch(r.expiryDate, lotsExpiryFilter)
+		)
+	);
 
 	async function load() {
 		if (!hospitalId) return;
@@ -108,20 +147,24 @@
 			id: 'storeName',
 			header: m.inv_common_store(),
 			field: 'storeName',
+			filterable: true,
 			format: (v, row) => row.storeName ?? '—'
 		},
 		{
 			id: 'itemName',
 			header: 'Item',
 			field: 'itemName',
+			filterable: true,
 			format: (v, row) => row.itemName ?? '—'
 		},
 		{
 			id: 'totalQty',
 			header: 'Qty (stock unit)',
 			field: 'totalQty',
+			filterable: true,
 			format: (_v, row) => {
-				const q = row.totalQty != null ? String(row.totalQty).trim() : '';
+				const q =
+					row.totalQty != null ? String(row.totalQty).trim() : '';
 				const qtyDisp = q ? trimMetricQtyDisplay(q) : '';
 				const iu = (row.issueUnitName ?? '').trim();
 				if (!qtyDisp) return '—';
@@ -135,32 +178,39 @@
 			id: 'storeName',
 			header: m.inv_common_store(),
 			field: 'storeName',
+			filterable: true,
 			format: (v, row) => row.storeName ?? '—'
 		},
 		{
 			id: 'itemName',
 			header: 'Item',
 			field: 'itemName',
+			filterable: true,
 			format: (v, row) => row.itemName ?? '—'
 		},
 		{
 			id: 'batchNo',
 			header: m.inv_stock_col_batch(),
-			field: 'batchNo'
+			field: 'batchNo',
+			filterable: true
 		},
 		{
 			id: 'expiryDate',
 			header: m.inv_stock_col_expiry(),
 			field: 'expiryDate',
+			filterable: true,
 			format: (v) => v ?? '—'
 		},
 		{
 			id: 'purchasePrice',
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
+			filterable: false,
 			format: (_v, row) => {
 				const t =
-					row.purchasePrice != null ? String(row.purchasePrice).trim() : '';
+					row.purchasePrice != null
+						? String(row.purchasePrice).trim()
+						: '';
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},
@@ -168,8 +218,10 @@
 			id: 'salePrice',
 			header: m.inv_stock_col_sale_price(),
 			field: 'salePrice',
+			filterable: false,
 			format: (_v, row) => {
-				const t = row.salePrice != null ? String(row.salePrice).trim() : '';
+				const t =
+					row.salePrice != null ? String(row.salePrice).trim() : '';
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},
@@ -177,9 +229,12 @@
 			id: 'empSalePrice',
 			header: m.inv_stock_col_emp_sale_price(),
 			field: 'empSalePrice',
+			filterable: false,
 			format: (_v, row) => {
 				const t =
-					row.empSalePrice != null ? String(row.empSalePrice).trim() : '';
+					row.empSalePrice != null
+						? String(row.empSalePrice).trim()
+						: '';
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		},
@@ -187,8 +242,10 @@
 			id: 'quantity',
 			header: 'Qty (stock unit)',
 			field: 'quantity',
+			filterable: true,
 			format: (_v, row) => {
-				const q = row.quantity != null ? String(row.quantity).trim() : '';
+				const q =
+					row.quantity != null ? String(row.quantity).trim() : '';
 				const qtyDisp = q ? trimMetricQtyDisplay(q) : '';
 				const iu = (row.issueUnitName ?? '').trim();
 				if (!qtyDisp) return '—';
@@ -198,12 +255,18 @@
 	];
 </script>
 
-<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-	<h1 class="text-lg font-semibold w-full sm:w-auto sm:mr-4">{m.inv_page_stock_title()}</h1>
+<div
+	class="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+>
+	<h1 class="w-full text-lg font-semibold sm:mr-4 sm:w-auto">
+		{m.inv_page_stock_title()}
+	</h1>
 	<div class="join">
 		<DaisyUiButton
 			type="button"
-			className="join-item d-btn-sm {view === 'aggregated' ? 'd-btn-primary' : 'd-btn-outline'}"
+			className="join-item d-btn-sm {view === 'aggregated'
+				? 'd-btn-primary'
+				: 'd-btn-outline'}"
 			disabled={loading}
 			onClick={() => {
 				view = 'aggregated';
@@ -213,7 +276,9 @@
 		</DaisyUiButton>
 		<DaisyUiButton
 			type="button"
-			className="join-item d-btn-sm {view === 'lots' ? 'd-btn-primary' : 'd-btn-outline'}"
+			className="join-item d-btn-sm {view === 'lots'
+				? 'd-btn-primary'
+				: 'd-btn-outline'}"
 			disabled={loading}
 			onClick={() => {
 				view = 'lots';
@@ -248,6 +313,16 @@
 			{m.inv_list_scope_all_stores()}
 		</DaisyUiButton>
 	</div>
+	{#if view === 'lots'}
+		<select
+			class="d-select-bordered d-select w-full d-select-sm sm:w-44"
+			bind:value={lotsExpiryFilter}
+		>
+			<option value="all">All expiry</option>
+			<option value="expired">Expired</option>
+			<option value="expiringSoon">Expiring soon (≤ 30 days)</option>
+		</select>
+	{/if}
 </div>
 
 <DaisyUiCard>
@@ -259,15 +334,17 @@
 					rows={rowsAgg}
 					isLoading={loading}
 					showRefreshButton={false}
+					enableColumnFilters={true}
 				/>
 			</div>
 		{:else}
 			<div class={TableEnum.HEIGHT}>
 				<MariTable
 					columns={lotColumns}
-					rows={rowsLots}
+					rows={filteredRowsLotsByExpiry}
 					isLoading={loading}
 					showRefreshButton={false}
+					enableColumnFilters={true}
 				/>
 			</div>
 		{/if}

@@ -228,90 +228,90 @@
 	<DaisyUiCard>
 		<DaisyUiCardBody>
 			<div class={TableEnum.HEIGHT}>
-					<MariTable
-						rows={groups}
-						columns={userGroupColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage={m.no_user_groups_create()}
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:refresh={() => fetchGroups()}
-						on:pageSizeChange={() => {
-							currentPage = 1;
+				<MariTable
+					rows={groups}
+					columns={userGroupColumns}
+					{isLoading}
+					bind:pageSize={pageSizeStr}
+					bind:currentPage
+					totalRowCount={total}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage={m.no_user_groups_create()}
+					showRowActions={true}
+					actionsHeader={m.actions()}
+					actionsVariant="none"
+					enableColumnFilters={true}
+					useRemoteFilters={true}
+					on:refresh={() => fetchGroups()}
+					on:pageSizeChange={() => {
+						currentPage = 1;
+						fetchGroups();
+					}}
+					on:pageChange={() => fetchGroups()}
+					on:filtersChange={(event) => {
+						if (filterDebounceTimeout) {
+							clearTimeout(filterDebounceTimeout);
+						}
+						tableFilters = event.detail.filters;
+						currentPage = 1;
+						filterDebounceTimeout = setTimeout(() => {
 							fetchGroups();
-						}}
-						on:pageChange={() => fetchGroups()}
-						on:filtersChange={(event) => {
-							if (filterDebounceTimeout) {
-								clearTimeout(filterDebounceTimeout);
-							}
-							tableFilters = event.detail.filters;
-							currentPage = 1;
-							filterDebounceTimeout = setTimeout(() => {
-								fetchGroups();
-							}, 350);
-						}}
+						}, 350);
+					}}
+				>
+					{#snippet rowActions(row, rowIndex)}
+						<td class="text-right">
+							<div class="flex justify-end gap-2">
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openPagesModal(row)}
+									title="Manage which pages this group can access"
+								>
+									<LucideList />
+									{m.pages()}
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-sm"
+									onClick={() => openEdit(row)}
+								>
+									<LucidePencil />
+								</DaisyUiButton>
+								<DaisyUiButton
+									className="d-btn-ghost d-btn-error d-btn-sm"
+									onClick={() => handleDelete(row)}
+								>
+									<LucideTrash2 />
+								</DaisyUiButton>
+							</div>
+						</td>
+					{/snippet}
+				</MariTable>
+			</div>
+			{#if totalPages > 1}
+				<div class="mt-4 flex justify-center gap-2">
+					<DaisyUiButton
+						className="d-btn-sm"
+						disabled={currentPage <= 1}
+						onClick={() => goToPage(currentPage - 1)}
 					>
-						{#snippet rowActions(row, rowIndex)}
-							<td class="text-right">
-								<div class="flex justify-end gap-2">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openPagesModal(row)}
-										title="Manage which pages this group can access"
-									>
-										<LucideList />
-										{m.pages()}
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEdit(row)}
-									>
-										<LucidePencil />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row)}
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
-								</div>
-							</td>
-						{/snippet}
-					</MariTable>
+						{m.previous()}
+					</DaisyUiButton>
+					<span class="flex items-center px-2">
+						{m.page()}
+						{currentPage}
+						{m.of()}
+						{totalPages}
+					</span>
+					<DaisyUiButton
+						className="d-btn-sm"
+						disabled={currentPage >= totalPages}
+						onClick={() => goToPage(currentPage + 1)}
+					>
+						{m.next()}
+					</DaisyUiButton>
 				</div>
-				{#if totalPages > 1}
-					<div class="mt-4 flex justify-center gap-2">
-						<DaisyUiButton
-							className="d-btn-sm"
-							disabled={currentPage <= 1}
-							onClick={() => goToPage(currentPage - 1)}
-						>
-							{m.previous()}
-						</DaisyUiButton>
-						<span class="flex items-center px-2">
-							{m.page()}
-							{currentPage}
-							{m.of()}
-							{totalPages}
-						</span>
-						<DaisyUiButton
-							className="d-btn-sm"
-							disabled={currentPage >= totalPages}
-							onClick={() => goToPage(currentPage + 1)}
-						>
-							{m.next()}
-						</DaisyUiButton>
-					</div>
-				{/if}
+			{/if}
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 </div>

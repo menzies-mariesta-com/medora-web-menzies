@@ -4,10 +4,10 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 **Prerequisites**
 
-- Run migrations `drizzle/0032_inventory_transactions.sql` and **`drizzle/0033_item_batch_normalized_stock.sql`** (PostgreSQL **15+** required for `item_batch` unique index `NULLS NOT DISTINCT`).
+- Run migrations `drizzle/0032_inventory_transactions.sql` and **`drizzle/0033_item_batch_normalized_stock.sql`** (PostgreSQL **15+** required for `item_batch` unique index `NULLS NOT DISTINCT`), then apply **all subsequent `drizzle/` migrations through head**. In particular, **`0073_item_master_manufacturer_text_drop_master.sql`** removes the **`manufacturer`** master table and **`manufacturer_id`** from PO lines / **`item_batch`**; batch identity becomes **`item_batch_identity_uidx`** on `(hospital_id, item_id, batch_no, expiry_date, supplier_id, purchase_price)` only.
 - For **department indents**, **`inv_approval_level.module = DI`**, **`DC`** (department consumption), **`GRN`** on approvals, and **`SI` / `SR`**: apply **`0039`**+ through **`0050`** as applicable, or ensure **`pnpm db:seed:information`** has run (seed **7b** aligns `inv_approval_level` / `inv_approval_log` module `CHECK` and the partial unique index; see [`.cursor/skills/inventory-transactions-and-batch-flow/SKILL.md`](../.cursor/skills/inventory-transactions-and-batch-flow/SKILL.md)).
 - Apply seeds so `status_tagging_type` **3–10** and `status_tagging` **9–30**, **40–45** (department indent), **46–49** (department issue), and **50–53** (department consumption) exist where needed; verify they match `src/lib/model/enum/db-link.ts` (`Inv*StatusTaggingEnum`, `StatusTaggingTypeEnum`, `InvDepartmentIndentStatusTaggingEnum`, `InvDepartmentConsumptionStatusTaggingEnum`).
-- At least one **branch**, **store** (mark one store **central** per branch via Inventory Setup → Stores), **item_master** (optional **`is_batch_required`** for pharmacy-style GRN validation), **unit**, **supplier**, **manufacturer** (optional on PO lines / batch identity), and **staff** linked to the acting **user**.
+- At least one **branch**, **store** (mark one store **central** per branch via Inventory Setup → Stores), **item_master** (GRN always requires **batch number, expiry, and purchase price** per line; optional **manufacturer** is **free text** on the item only via **`item_master.manufacturer_name`**; optional **`expiry_alert_lead_days`** overrides the hospital default expiring-soon window), **unit**, **supplier**, and **staff** linked to the acting **user**.
 - Module **10 (Inventory)** and child pages seeded; assign **user_group** / page permissions so test users can open the new routes.
 
 **API base** (replace placeholders):
@@ -70,9 +70,9 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 | --- | --- | --- | --- |
 | GRN-1 | Against approved / sent PO | Post GRN only when PO status allows receiving. | Otherwise rejected. |
 | GRN-2 | Receipt cap | `received_qty` over PO line open qty. | Rejected in same transaction. |
-| GRN-3 | Batch master + stock | Post lines with `batch_no`, `expiry_date`, `purchase_price` when `item_master.is_batch_required`; otherwise optional (defaults to `__OPEN_STOCK__` / PO unit price). | `item_batch` row (unique on hospital, item, batch_no, expiry, supplier_id, manufacturer_id, purchase_price); `goods_receipt_line.batch_id` + `purchase_price`; `inv_stock` incremented for `(store_id, batch_id)`. |
-| GRN-3b | Batch identity split | Same `batch_no` + expiry but different `purchase_price` or PO supplier context producing different composite key. | Distinct `item_batch` rows per plan (split costing). |
-| IM-1 | Item batch flag | Set **Batch tracking required** on item; post GRN without batch fields. | Rejected for that line. |
+| GRN-3 | Batch master + stock | Post lines with `batch_no`, `expiry_date`, and `purchase_price` (required for every item). | `item_batch` row (unique on hospital, item, batch_no, expiry, supplier_id, purchase_price per **`item_batch_identity_uidx`** after **0073**); `goods_receipt_line.batch_id` + `purchase_price`; `inv_stock` incremented for `(store_id, batch_id)`. |
+| GRN-3b | Batch identity split | Same `batch_no` + expiry but different `purchase_price` or resolved **supplier_id** so the composite unique key differs. | Distinct `item_batch` rows (split costing). |
+| IM-1 | GRN batch fields | Post GRN line without `batch_no`, `expiry_date`, or `purchase_price`. | Rejected for that line (400). |
 | GRN-4 | Central store | GRN `store_id` must be **central** store for branch (if enforced). | Non-central rejected or documented exception. |
 | GRN-5 | Idempotency / double post | Post same GRN line twice with overlapping qty. | Second post rejected or no over-receipt. |
 | GRN-6 | PO / PR receipt state | After post, PO status **partially_received** / **closed** as appropriate; PR cumulative receipt updated if implemented. | Consistent header/line state. |
@@ -115,7 +115,7 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 
 | ID | Case | Expected |
 | --- | --- | --- |
-| R-1 | FKs to masters | PR/PO/GRN lines reference valid `item_master`, `unit`, `supplier`, `manufacturer`, `store`; `inv_stock.batch_id` → `item_batch`. |
+| R-1 | FKs to masters | PR/PO/GRN lines reference valid `item_master`, `unit`, `supplier`, `store`; `inv_stock.batch_id` → `item_batch`. (No **`manufacturer`** table; manufacturer label is optional text on **`item_master`** only.) |
 | R-2 | Workflow tagging type | Status transitions only use `status_tagging` rows whose `status_tagging_type_id` matches PR (3), PO (4), GRN (5), transfer (6), issue (7), department indent (8), department issue (9), department consumption (10). |
 | R-3 | Soft delete | Deleted PR/PO not listed; approval config respects `deleted_at` where applicable; `inv_stock` uses partial unique on `(store_id, batch_id)` for active rows. |
 | R-4 | Store central uniqueness | Only one `is_central_store = true` per `branch_id` (partial unique index). |

@@ -35,7 +35,9 @@
 	let isLoading = $state(true);
 	let isPurchaseRequisitable = $state(false);
 
-	const normalizedUserGroupFilter = $derived(userGroupFilter.trim().toLowerCase());
+	const normalizedUserGroupFilter = $derived(
+		userGroupFilter.trim().toLowerCase()
+	);
 	const filteredUserGroups = $derived(
 		normalizedUserGroupFilter
 			? userGroups.filter((g) =>
@@ -79,7 +81,9 @@
 		return (await res.json()) as StaffRegHospitalBranchRow[];
 	}
 
-	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
+	async function fetchStoreLookups(
+		hid: string
+	): Promise<StoreLookups> {
 		const res = await fetch(
 			`/api/heka/hospital/${hid}/home/inventory-setup/stores?mode=lookups`,
 			{ method: 'GET' }
@@ -109,7 +113,9 @@
 		if (idx === -1) {
 			selectedUserGroupIds = [...selectedUserGroupIds, id];
 		} else {
-			selectedUserGroupIds = selectedUserGroupIds.filter((v) => v !== id);
+			selectedUserGroupIds = selectedUserGroupIds.filter(
+				(v) => v !== id
+			);
 		}
 	}
 
@@ -119,7 +125,8 @@
 			return;
 		}
 		const editing =
-			StoreModalState.mode === 'edit' && StoreModalState.editStore != null;
+			StoreModalState.mode === 'edit' &&
+			StoreModalState.editStore != null;
 		try {
 			const [branches, lookups] = await Promise.all([
 				fetchBranchesAll(hospitalId),
@@ -140,7 +147,9 @@
 					isPurchaseRequisitable = s.isPurchaseRequisitable === true;
 					formActive =
 						(s.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
-					selectedUserGroupIds = (s.userGroups ?? []).map((g) => g.id);
+					selectedUserGroupIds = (s.userGroups ?? []).map(
+						(g) => g.id
+					);
 				}
 			} else {
 				isPurchaseRequisitable = false;
@@ -165,7 +174,9 @@
 			return;
 		}
 
-		const statusId = formActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
+		const statusId = formActive
+			? StatusEnum.ACTIVE
+			: StatusEnum.INACTIVE;
 
 		isSubmitting = true;
 		try {
@@ -323,16 +334,21 @@
 							{:else}
 								<ul class="flex flex-col gap-1">
 									{#each filteredUserGroups as g (g.id)}
-										{@const checked = selectedUserGroupIds.includes(g.id)}
+										{@const checked = selectedUserGroupIds.includes(
+											g.id
+										)}
 										<li>
 											<label
 												class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-base-200"
 											>
 												<DaisyUiCheckbox
 													{checked}
-													onCheckedChange={() => toggleUserGroup(g.id)}
+													onCheckedChange={() =>
+														toggleUserGroup(g.id)}
 												/>
-												<span class="text-sm">{g.name ?? `#${g.id}`}</span>
+												<span class="text-sm"
+													>{g.name ?? `#${g.id}`}</span
+												>
 											</label>
 										</li>
 									{/each}
@@ -340,14 +356,20 @@
 							{/if}
 						</div>
 					{/if}
-					<p class="text-xs opacity-70">{m.user_groups_optional_hint()}</p>
+					<p class="text-xs opacity-70">
+						{m.user_groups_optional_hint()}
+					</p>
 				</div>
 			</div>
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<DaisyUiLabel className="shrink-0 sm:w-40">{m.status()}</DaisyUiLabel>
-				<div class="flex max-w-md flex-1 flex-wrap items-center gap-2">
+				<DaisyUiLabel className="shrink-0 sm:w-40"
+					>{m.status()}</DaisyUiLabel
+				>
+				<div
+					class="flex max-w-md flex-1 flex-wrap items-center gap-2"
+				>
 					<label class="flex cursor-pointer items-center gap-2">
 						<DaisyUiCheckbox bind:checked={formActive} />
 						<span class="text-sm opacity-80">{m.active_label()}</span>

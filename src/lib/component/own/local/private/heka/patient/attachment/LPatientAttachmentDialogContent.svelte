@@ -224,7 +224,11 @@
 	async function handleOnSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		if (!browser) return;
-		if (!payload || !('patientId' in payload) || !('hospitalId' in payload))
+		if (
+			!payload ||
+			!('patientId' in payload) ||
+			!('hospitalId' in payload)
+		)
 			return;
 		const base = apiBase();
 		if (!base) return;
@@ -267,11 +271,10 @@
 				});
 				const createData = await createRes
 					.json()
-					.catch(() => ({} as any));
+					.catch(() => ({}) as any);
 				if (!createRes.ok || !createData?.data) {
 					toastService.addToast(
-						createData?.error ??
-							`Save failed for ${file.name}.`,
+						createData?.error ?? `Save failed for ${file.name}.`,
 						StatusColorEnum.ERROR
 					);
 					continue;
@@ -317,7 +320,9 @@
 		try {
 			const base = apiBase();
 			if (!base) throw new Error('Missing hospital context');
-			const res = await fetch(`${base}?id=${att.id}`, { method: 'DELETE' });
+			const res = await fetch(`${base}?id=${att.id}`, {
+				method: 'DELETE'
+			});
 			if (!res.ok)
 				throw new Error(await res.text().catch(() => res.statusText));
 			existingAttachments = existingAttachments.filter(

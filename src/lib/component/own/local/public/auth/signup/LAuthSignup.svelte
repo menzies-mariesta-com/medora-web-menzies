@@ -29,7 +29,13 @@
 		countries: countryData = [],
 		genders: genderData = []
 	}: {
-		countries?: { id: number; name: string | null; code: string; imageUrl?: string | null; countryCallingCode?: string | null }[];
+		countries?: {
+			id: number;
+			name: string | null;
+			code: string;
+			imageUrl?: string | null;
+			countryCallingCode?: string | null;
+		}[];
 		genders?: { id: number; name: string | null }[];
 	} = $props();
 
@@ -141,19 +147,22 @@
 				: undefined;
 
 			try {
-				const res = await fetch('/api/heka/auth/signup-owner-profile', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						firstName,
-						middleName,
-						lastName,
-						countryId,
-						genderId,
-						phonePrimary:
-							(fd.get('phonePrimary') as string) || undefined
-					})
-				});
+				const res = await fetch(
+					'/api/heka/auth/signup-owner-profile',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							firstName,
+							middleName,
+							lastName,
+							countryId,
+							genderId,
+							phonePrimary:
+								(fd.get('phonePrimary') as string) || undefined
+						})
+					}
+				);
 				if (!res.ok) {
 					const text = await res.text();
 					throw new Error(text || m.profile_create_failed());

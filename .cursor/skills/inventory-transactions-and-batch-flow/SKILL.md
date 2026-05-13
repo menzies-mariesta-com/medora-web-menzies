@@ -1,7 +1,7 @@
 ---
 name: inventory-transactions-and-batch-flow
 description: >-
-  Documents the hospital-scoped inventory workflow (PR → multi-level approval → PO → GRN → item_batch + inv_stock), department indent (DI), department consumption (DC), store-scoped approval config (PR/PO/DI/GRN/DC modules), status_tagging usage, FEFO consumption, and item_master.is_batch_required. Use when implementing or debugging inventory, GRN, stock, batches, purchase requisitions/orders, department indents, department consumption, or related Drizzle schema/migrations/seeds/APIs in this repo.
+  Documents the hospital-scoped inventory workflow (PR → multi-level approval → PO → GRN → item_batch + inv_stock), department indent (DI), department consumption (DC), store-scoped approval config (PR/PO/DI/GRN/DC modules), status_tagging usage, and FEFO consumption. GRN always requires batch identity fields per line. Use when implementing or debugging inventory, GRN, stock, batches, purchase requisitions/orders, department indents, department consumption, or related Drizzle schema/migrations/seeds/APIs in this repo.
 ---
 
 # Inventory transactions and batch flow (Heka)
@@ -9,7 +9,7 @@ description: >-
 ## When to load this skill
 
 - Adding or changing **purchase requisition**, **purchase order**, **GRN**, **stock**, **transfer**, **issue**, **department consumption**, or **approval configuration** behavior.
-- Touching **`item_batch`**, **`inv_stock`**, **`goods_receipt_line`**, or **`item_master.is_batch_required`**.
+- Touching **`item_batch`**, **`inv_stock`**, **`goods_receipt_line`**, or **`item_master`** (catalog).
 - Writing migrations or seeds that affect inventory tables or **`status_tagging`** IDs for inventory document types.
 - Mirroring new **SvelteKit routes** under `home/inventory` or `home/inventory-setup` per project rules.
 
@@ -158,24 +158,18 @@ Files containing these fixes:
 |------|----------------|
 | PR/PO/GRN, approval, `item_batch`, `inv_stock`, transfer, issue | [`src/lib/server/db/table/information-table/inventory-transaction-table.ts`](../../../src/lib/server/db/table/information-table/inventory-transaction-table.ts) |
 | Relations | [`src/lib/server/db/table/information-table/inventory-transaction-relation.ts`](../../../src/lib/server/db/table/information-table/inventory-transaction-relation.ts) |
-| `item_master` (incl. `is_batch_required`) | [`src/lib/server/db/table/information-table/information-table.ts`](../../../src/lib/server/db/table/information-table/information-table.ts) |
+| `item_master` | [`src/lib/server/db/table/information-table/information-table.ts`](../../../src/lib/server/db/table/information-table/information-table.ts) |
 | Exported from | [`src/lib/server/db/schema.ts`](../../../src/lib/server/db/schema.ts) |
 
 ### Normalized batch + stock (critical)
 
-- **`item_batch`**: Master row for a batch **identity**. Uniqueness in the database is enforced with a **unique index** on `(hospital_id, item_id, batch_no, expiry_date, supplier_id, manufacturer_id, purchase_price)` with **`NULLS NOT DISTINCT`** (PostgreSQL **15+**). Different supplier/manufacturer/price can therefore split logically separate batches even with the same printed batch number and expiry.
+- **`item_batch`**: Master row for a batch **identity**. After migration **`0073_item_master_manufacturer_text_drop_master.sql`**, uniqueness is **`item_batch_identity_uidx`** on `(hospital_id, item_id, batch_no, expiry_date, supplier_id, purchase_price)` with **`NULLS NOT DISTINCT`** (PostgreSQL **15+**). There is **no** `manufacturer_id` on batches or PO lines; manufacturer is **free text** on **`item_master.manufacturer_name`** only (for labels/reporting). Different supplier or purchase price still splits batches even when batch number and expiry match.
 - **`inv_stock`**: **Quantity per store per batch** (`store_id`, `batch_id`, `quantity`, soft delete). Active rows: partial unique **`(store_id, batch_id) WHERE deleted_at IS NULL`** (see migration).
 - **Legacy**: `inv_stock_lot` was **dropped** after migration **`0033_item_batch_normalized_stock.sql`**. Do not reintroduce it; extend `item_batch` / `inv_stock` instead.
 
-### Synthetic “open” batch
+### GRN batch capture
 
-- Constant **`__OPEN_STOCK__`** (`OPEN_STOCK_BATCH_NO`) in [`src/lib/server/heka/inventory/item-batch.server.ts`](../../../src/lib/server/heka/inventory/item-batch.server.ts) for items **without** strict batch capture on GRN (when `is_batch_required` is false and line omits a real batch no).
-
-### Item master: `is_batch_required`
-
-- When **true**, GRN **must** supply `batch_no`, `expiry_date`, and `purchase_price` for that item’s line.
-- When **false**, GRN may omit them; server uses open batch and PO `unit_price` (or line override) for `purchase_price` where applicable.
-- UI: Inventory Setup → Item Master form checkbox; API: `isBatchRequired` on POST/PUT [`item-master/+server.ts`](../../../src/routes/api/(private)/heka/hospital/[hospital_id]/home/inventory-setup/item-master/+server.ts).
+- Every item master line on GRN **must** supply `batch_no`, `expiry_date`, and `purchase_price`; see [`grn.server.ts`](../../../src/lib/server/heka/inventory/grn.server.ts).
 
 ## Server modules (under `src/lib/server/heka/inventory/`)
 
@@ -212,7 +206,7 @@ Base: `/api/heka/hospital/{hospital_id}/home/...`
 ## Migrations (order)
 
 1. **`drizzle/0032_inventory_transactions.sql`**: Core inventory tables (before batch normalization), `store.is_central_store`, etc.
-2. **`drizzle/0033_item_batch_normalized_stock.sql`**: `item_batch`, `inv_stock`, `item_master.is_batch_required`, GRN line `batch_id`/`purchase_price`, migrate off `inv_stock_lot`, transfer/issue `batch_id`, drop `inv_stock_lot`.
+2. **`drizzle/0033_item_batch_normalized_stock.sql`**: `item_batch`, `inv_stock`, GRN line `batch_id`/`purchase_price`, migrate off `inv_stock_lot`, transfer/issue `batch_id`, drop `inv_stock_lot`. (Legacy `item_master.is_batch_required` was added here and removed in **`0074_item_master_drop_barcode_batch_required.sql`**.)
 3. **`drizzle/0037_inventory_po_grn_destock_units.sql`**: `purchase_order.store_id` + nullable `pr_id`; `goods_receipt_note` nullable `po_id`, `supplier_id`, nullable `goods_receipt_line.po_line_id`; one-time `inv_stock` quantity conversion using default `item_unit_master`.
 4. **`drizzle/0038_pr_inter_store_drop_central.sql`**: `purchase_requisition.from_store_id` / `to_store_id` (replaces `store_id`); drops `store.is_central_store` and the partial unique index.
 5. **`drizzle/0039_store_type_hospital_config_grn_pricing_dept_indent.sql`**: `store_type`, `hospital_inventory_config`, GRN line pricing fields, `inv_department_indent`, **`inv_approval_level.module`** extended to include **`DI`**, department-indent **`status_tagging`** (type **8**, ids **40–45**).

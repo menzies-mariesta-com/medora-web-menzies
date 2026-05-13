@@ -14,7 +14,9 @@ export async function GET(event: RequestEvent) {
 	if (!entity) throw error(400, 'Invalid entity');
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '20');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '20'
+	);
 	const search = event.url.searchParams.get('search') ?? undefined;
 	const columnFilterKeys = new Set([
 		'id',
@@ -64,11 +66,17 @@ export async function PUT(event: RequestEvent) {
 		[key: string]: unknown;
 	};
 	const id = Number(body.id ?? 0);
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	// Only allow active/inactive toggle. All other edits are disabled.
 	const payload = { statusId: body.statusId };
 	return json(
-		await setup.updateMaster(event, { hospitalId, entity, id, payload })
+		await setup.updateMaster(event, {
+			hospitalId,
+			entity,
+			id,
+			payload
+		})
 	);
 }
 

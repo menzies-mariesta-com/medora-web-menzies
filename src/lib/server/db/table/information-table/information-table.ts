@@ -225,7 +225,9 @@ export const prefixFormatTable = pgTable(
 		counterIncludeBranch: integer('counter_include_branch')
 			.notNull()
 			.default(YesNoEnum.NO),
-		counterIncludeFinancialYear: integer('counter_include_financial_year')
+		counterIncludeFinancialYear: integer(
+			'counter_include_financial_year'
+		)
 			.notNull()
 			.default(YesNoEnum.YES),
 		counterIncludeVisitType: integer('counter_include_visit_type')
@@ -238,7 +240,10 @@ export const prefixFormatTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		unique('prefix_format_hospital_key_unique').on(table.hospitalId, table.key)
+		unique('prefix_format_hospital_key_unique').on(
+			table.hospitalId,
+			table.key
+		)
 	]
 );
 
@@ -251,16 +256,22 @@ export const prefixCounterTable = pgTable('prefix_counter', {
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-	branchId: uuid('branch_id').references(() => hospitalBranchTable.id, {
-		onDelete: 'cascade'
-	}),
+	branchId: uuid('branch_id').references(
+		() => hospitalBranchTable.id,
+		{
+			onDelete: 'cascade'
+		}
+	),
 	financialYearId: integer('financial_year_id').references(
 		() => financialYearTable.id,
 		{ onDelete: 'set null' }
 	),
-	visitTypeId: integer('visit_type_id').references(() => visitTypeTable.id, {
-		onDelete: 'set null'
-	}),
+	visitTypeId: integer('visit_type_id').references(
+		() => visitTypeTable.id,
+		{
+			onDelete: 'set null'
+		}
+	),
 	key: varchar('key', { length: 128 }).notNull(),
 	scopeKey: text('scope_key').notNull().unique(),
 	lastNo: integer('last_no').notNull().default(0),
@@ -1164,42 +1175,6 @@ export const pharmacyGenericTable = pgTable(
 	]
 );
 
-/** Per-hospital manufacturer (Item Master link; address pattern matches hospital_branch). */
-export const manufacturerTable = pgTable(
-	'manufacturer',
-	{
-		id: serial('id').primaryKey(),
-		hospitalId: uuid('hospital_id')
-			.notNull()
-			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		name: varchar('name', { length: 512 }).notNull(),
-		code: varchar('code', { length: 128 }),
-		address: text('address'),
-		phone: varchar('phone', { length: 64 }),
-		phoneCountryId: integer('phone_country_id').references(
-			() => countryTable.id
-		),
-		email: varchar('email', { length: 256 }),
-		postalCodeId: integer('postal_code_id').references(
-			() => postalCodeTable.id
-		),
-		cityId: integer('city_id').references(() => cityTable.id),
-		stateId: integer('state_id').references(() => stateTable.id),
-		countryId: integer('country_id').references(() => countryTable.id),
-		remark: text('remark'),
-		statusId: integer('status_id')
-			.references(() => statusTable.id)
-			.notNull()
-			.default(StatusEnum.ACTIVE),
-		...timestamps
-	},
-	(t) => [
-		index('manufacturer_hospital_id_idx').on(t.hospitalId),
-		index('manufacturer_name_idx').on(t.name),
-		index('manufacturer_status_id_idx').on(t.statusId)
-	]
-);
-
 /** Per-hospital supplier master (inventory / purchasing). */
 export const supplierTable = pgTable(
 	'supplier',
@@ -1221,7 +1196,9 @@ export const supplierTable = pgTable(
 		),
 		cityId: integer('city_id').references(() => cityTable.id),
 		stateId: integer('state_id').references(() => stateTable.id),
-		countryId: integer('country_id').references(() => countryTable.id),
+		countryId: integer('country_id').references(
+			() => countryTable.id
+		),
 		remark: text('remark'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
@@ -1252,20 +1229,16 @@ export const itemMasterTable = pgTable(
 			.notNull()
 			.references(() => categoryTable.id, { onDelete: 'restrict' }),
 		itemCode: varchar('item_code', { length: 128 }),
-		/** EAN/UPC/Code128 or internal barcode; unique per hospital when not null. */
-		barcode: varchar('barcode', { length: 128 }),
-		manufacturerId: integer('manufacturer_id').references(
-			() => manufacturerTable.id,
-			{ onDelete: 'restrict' }
-		),
+		/** Free text; no manufacturer master table. */
+		manufacturerName: varchar('manufacturer_name', { length: 512 }),
 		pharmacyGenericId: integer('pharmacy_generic_id').references(
 			() => pharmacyGenericTable.id,
 			{ onDelete: 'restrict' }
 		),
 		description: text('description'),
 		remark: text('remark'),
-		/** Pharmacy / regulated items: GRN must capture batch, expiry, and purchase price. */
-		isBatchRequired: boolean('is_batch_required').notNull().default(false),
+		/** Optional override for expiring-soon alerts (days before expiry); null uses hospital default. */
+		expiryAlertLeadDays: integer('expiry_alert_lead_days'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1277,11 +1250,6 @@ export const itemMasterTable = pgTable(
 		index('item_master_category_id_idx').on(t.categoryId),
 		index('item_master_item_name_idx').on(t.itemName),
 		index('item_master_status_id_idx').on(t.statusId),
-		index('item_master_barcode_idx').on(t.barcode),
-		index('item_master_manufacturer_id_idx').on(t.manufacturerId),
-		uniqueIndex('item_master_hospital_barcode_unique')
-			.on(t.hospitalId, t.barcode)
-			.where(sql`${t.barcode} IS NOT NULL`),
 		check(
 			'item_master_category_supply_chk',
 			sql`(${t.categoryId}) IN (11, 12, 13)`
@@ -1347,7 +1315,9 @@ export const itemMasterItemUnitMasterTable = pgTable(
 			.references(() => itemMasterTable.id, { onDelete: 'cascade' }),
 		itemUnitMasterId: integer('item_unit_master_id')
 			.notNull()
-			.references(() => itemUnitMasterTable.id, { onDelete: 'restrict' }),
+			.references(() => itemUnitMasterTable.id, {
+				onDelete: 'restrict'
+			}),
 		/** {@link YesNoEnum}: exactly one YES per item among active links. */
 		isDefaultYesNo: integer('is_default_yes_no')
 			.notNull()
@@ -1367,9 +1337,7 @@ export const itemMasterItemUnitMasterTable = pgTable(
 		),
 		uniqueIndex('im_ium_one_default_per_item_unique')
 			.on(t.hospitalId, t.itemMasterId)
-			.where(
-				sql`${t.deletedAt} IS NULL AND ${t.isDefaultYesNo} = 1`
-			)
+			.where(sql`${t.deletedAt} IS NULL AND ${t.isDefaultYesNo} = 1`)
 	]
 );
 
@@ -1495,13 +1463,17 @@ export const opBillingTable = pgTable(
 		id: serial('id').primaryKey(),
 		visitId: integer('visit_id')
 			.notNull()
-			.references(() => patientVisitTable.id, { onDelete: 'cascade' }),
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		branchId: uuid('branch_id')
 			.notNull()
-			.references(() => hospitalBranchTable.id, { onDelete: 'cascade' }),
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
 		billNo: varchar('bill_no', { length: 128 }),
 		/** Sum of `op_billing_line.line_total` before visit-level discount. */
 		linesSubtotal: decimal('lines_subtotal', {
@@ -1575,15 +1547,18 @@ export const opBillingLineTable = pgTable(
 			.notNull()
 			.references(() => opBillingTable.id, { onDelete: 'cascade' }),
 		lineIndex: integer('line_index').notNull(),
-		serviceOrderDetailId: integer('service_order_detail_id').references(
-			() => serviceOrderDetailTable.id,
-			{ onDelete: 'set null' }
-		),
+		serviceOrderDetailId: integer(
+			'service_order_detail_id'
+		).references(() => serviceOrderDetailTable.id, {
+			onDelete: 'set null'
+		}),
 		/** Set when the bill line is sourced from a saved medication (internal) order line. */
 		medicationOrderLineId: integer('medication_order_line_id'),
 		serviceId: integer('service_id')
 			.notNull()
-			.references(() => serviceItemTable.id, { onDelete: 'restrict' }),
+			.references(() => serviceItemTable.id, {
+				onDelete: 'restrict'
+			}),
 		serviceNameSnapshot: varchar('service_name_snapshot', {
 			length: 512
 		}),
@@ -1615,9 +1590,9 @@ export const opBillingLineTable = pgTable(
 	(table) => [
 		index('op_billing_line_op_billing_id_idx').on(table.opBillingId),
 		index('op_billing_line_service_id_idx').on(table.serviceId),
-		index(
-			'op_billing_line_service_order_detail_id_idx'
-		).on(table.serviceOrderDetailId),
+		index('op_billing_line_service_order_detail_id_idx').on(
+			table.serviceOrderDetailId
+		),
 		index('op_billing_line_medication_order_line_id_idx').on(
 			table.medicationOrderLineId
 		)

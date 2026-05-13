@@ -79,25 +79,32 @@
 	role="alert"
 	class="{alertClass} flex flex-row items-center gap-3 shadow-lg"
 >
-	<span class="inline-flex shrink-0 text-[currentColor]" aria-hidden="true">
+	<span
+		class="inline-flex shrink-0 text-[currentColor]"
+		aria-hidden="true"
+	>
 		<IconComponent className="size-5 text-[currentColor]" />
 	</span>
 	<div class="min-w-0 flex-1 text-sm leading-snug">
 		{#if hasDetail}
 			<p class="font-medium">{message}</p>
-			<p class="mt-1 text-xs font-normal opacity-[0.92]">{detail?.trim()}</p>
+			<p class="mt-1 text-xs font-normal opacity-[0.92]">
+				{detail?.trim()}
+			</p>
 		{:else}
 			<p>{message}</p>
 		{/if}
 	</div>
 	{#if hasTrailing}
-		<div class="flex shrink-0 items-center">{@render trailing?.()}</div>
+		<div class="flex shrink-0 items-center">
+			{@render trailing?.()}
+		</div>
 	{/if}
 	{#if showToastActions}
 		<div class="flex shrink-0 items-center gap-0.5">
 			<button
 				type="button"
-				class="d-btn d-btn-ghost d-btn-sm d-btn-square min-h-8 min-w-8 border-0 text-current hover:bg-current/10"
+				class="d-btn d-btn-square min-h-8 min-w-8 border-0 text-current d-btn-ghost d-btn-sm hover:bg-current/10"
 				aria-label={msg.toast_copy_message_aria()}
 				onclick={copyToastText}
 			>
@@ -105,7 +112,7 @@
 			</button>
 			<button
 				type="button"
-				class="d-btn d-btn-ghost d-btn-sm d-btn-square min-h-8 min-w-8 border-0 text-current hover:bg-current/10"
+				class="d-btn d-btn-square min-h-8 min-w-8 border-0 text-current d-btn-ghost d-btn-sm hover:bg-current/10"
 				aria-label={msg.toast_dismiss_aria()}
 				onclick={() => onDismissToast?.()}
 			>

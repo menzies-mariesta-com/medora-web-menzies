@@ -108,10 +108,13 @@
 			if (statusId != null && Number.isFinite(statusId)) {
 				qs.set('statusId', String(statusId));
 			}
-			const res = await fetch(`/api/heka/auth/user?${qs.toString()}`, {
-				credentials: 'include',
-				cache: 'no-store'
-			});
+			const res = await fetch(
+				`/api/heka/auth/user?${qs.toString()}`,
+				{
+					credentials: 'include',
+					cache: 'no-store'
+				}
+			);
 			if (!res.ok) {
 				const t = await res.text().catch(() => '');
 				throw new Error(t || `Load failed: ${res.status}`);
@@ -181,9 +184,7 @@
 					await loadOwners(true);
 				} catch (err) {
 					const msg =
-						err instanceof Error
-							? err.message
-							: m.delete_failed();
+						err instanceof Error ? err.message : m.delete_failed();
 					toastService.addToast(msg, StatusColorEnum.ERROR);
 				}
 			} finally {
@@ -264,33 +265,24 @@
 								<div class="flex justify-end gap-2">
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm"
-										onClick={() =>
-											openEditOwnerModal(ownerRow)}
+										onClick={() => openEditOwnerModal(ownerRow)}
 										loading={editingOwnerId === ownerRow.id}
-										disabled={
-											createLock.pending ||
+										disabled={createLock.pending ||
 											deleteLock.pending ||
 											(editLock.pending &&
-												editingOwnerId !== ownerRow.id)
-										}
+												editingOwnerId !== ownerRow.id)}
 										loadingText=""
 									>
 										<LucidePencil />
 									</DaisyUiButton>
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() =>
-											handleDelete(ownerRow)}
-										loading={
-											deletingOwnerId === ownerRow.id
-										}
-										disabled={
-											createLock.pending ||
+										onClick={() => handleDelete(ownerRow)}
+										loading={deletingOwnerId === ownerRow.id}
+										disabled={createLock.pending ||
 											editLock.pending ||
 											(deleteLock.pending &&
-												deletingOwnerId !==
-													ownerRow.id)
-										}
+												deletingOwnerId !== ownerRow.id)}
 										loadingText=""
 									>
 										<LucideTrash2 />

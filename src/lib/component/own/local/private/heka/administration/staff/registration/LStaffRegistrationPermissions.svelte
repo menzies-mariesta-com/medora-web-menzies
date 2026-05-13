@@ -165,8 +165,9 @@
 				bind:checked={isActive}
 				onCheckedChange={handleActiveClick}
 			/>
-			<label class="cursor-pointer select-none" for="staff-reg-perm-active"
-				>Active</label
+			<label
+				class="cursor-pointer select-none"
+				for="staff-reg-perm-active">Active</label
 			>
 		</div>
 
@@ -176,8 +177,9 @@
 				bind:checked={isLocked}
 				onCheckedChange={handleLockClick}
 			/>
-			<label class="cursor-pointer select-none" for="staff-reg-perm-lock"
-				>Lock</label
+			<label
+				class="cursor-pointer select-none"
+				for="staff-reg-perm-lock">Lock</label
 			>
 		</div>
 

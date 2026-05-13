@@ -7,7 +7,16 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, count, eq, ilike, ne, or, sql, desc } from 'drizzle-orm';
+import {
+	and,
+	count,
+	eq,
+	ilike,
+	ne,
+	or,
+	sql,
+	desc
+} from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 
 const patientWithRelationsWith = {
@@ -34,7 +43,8 @@ export async function getPatientListPaginated(
 	const hospitalId = params.hospitalId;
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const searchTerm = params.search?.trim();
 	const patientCode = params.patientCode?.trim();
 	const patientName = params.patientName?.trim();
@@ -57,7 +67,9 @@ export async function getPatientListPaginated(
 		);
 		if (orExpr) {
 			conditions.push(orExpr);
-			conditions.push(ne(table.patientTable.nameMasking, YesNoEnum.YES));
+			conditions.push(
+				ne(table.patientTable.nameMasking, YesNoEnum.YES)
+			);
 		}
 	}
 
@@ -73,11 +85,16 @@ export async function getPatientListPaginated(
 				`%${patientName}%`
 			)
 		);
-		conditions.push(ne(table.patientTable.nameMasking, YesNoEnum.YES));
+		conditions.push(
+			ne(table.patientTable.nameMasking, YesNoEnum.YES)
+		);
 	}
 	if (patientPhonePrimary) {
 		conditions.push(
-			ilike(table.patientTable.phonePrimary, `%${patientPhonePrimary}%`)
+			ilike(
+				table.patientTable.phonePrimary,
+				`%${patientPhonePrimary}%`
+			)
 		);
 	}
 
@@ -143,4 +160,3 @@ export async function deletePatient(
 			)
 		);
 }
-

@@ -4,7 +4,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { and, eq, ne } from 'drizzle-orm';
 
 /**
- * Validates optional geography / phone-country FKs for manufacturer or supplier rows.
+ * Validates optional geography / phone-country FKs for supplier rows.
  */
 export async function assertInventoryPartyGeo(input: {
 	countryId?: number | null;
@@ -13,7 +13,10 @@ export async function assertInventoryPartyGeo(input: {
 	postalCodeId?: number | null;
 	phoneCountryId?: number | null;
 }): Promise<void> {
-	if (input.phoneCountryId != null && Number.isFinite(input.phoneCountryId)) {
+	if (
+		input.phoneCountryId != null &&
+		Number.isFinite(input.phoneCountryId)
+	) {
 		const [c] = await ensureDb()
 			.select({ id: table.countryTable.id })
 			.from(table.countryTable)
@@ -58,7 +61,9 @@ export async function assertInventoryPartyGeo(input: {
 			Number.isFinite(input.countryId) &&
 			s.countryId !== input.countryId
 		) {
-			throw new Error('State does not belong to the selected country.');
+			throw new Error(
+				'State does not belong to the selected country.'
+			);
 		}
 	}
 
@@ -85,7 +90,10 @@ export async function assertInventoryPartyGeo(input: {
 		}
 	}
 
-	if (input.postalCodeId != null && Number.isFinite(input.postalCodeId)) {
+	if (
+		input.postalCodeId != null &&
+		Number.isFinite(input.postalCodeId)
+	) {
 		const [pc] = await ensureDb()
 			.select({
 				id: table.postalCodeTable.id,
@@ -104,7 +112,9 @@ export async function assertInventoryPartyGeo(input: {
 			Number.isFinite(input.cityId) &&
 			pc.cityId !== input.cityId
 		) {
-			throw new Error('Postal code does not belong to the selected city.');
+			throw new Error(
+				'Postal code does not belong to the selected city.'
+			);
 		}
 	}
 }

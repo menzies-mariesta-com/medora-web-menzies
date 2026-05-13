@@ -52,74 +52,75 @@
 
 	let tableFilters = $state<Record<string, string>>({});
 
-	const branchColumns: MariTableColumn<StaffRegHospitalBranchRow>[] = [
-		{
-			id: 'no',
-			header: 'No.',
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false,
-			format: (_value, _row, rowIndex) => {
-				const pageSize = Number(pageSizeStr) || 10;
-				return (currentPage - 1) * pageSize + rowIndex + 1;
+	const branchColumns: MariTableColumn<StaffRegHospitalBranchRow>[] =
+		[
+			{
+				id: 'no',
+				header: 'No.',
+				widthClass: 'w-16 min-w-[4rem]',
+				filterable: false,
+				format: (_value, _row, rowIndex) => {
+					const pageSize = Number(pageSizeStr) || 10;
+					return (currentPage - 1) * pageSize + rowIndex + 1;
+				}
+			},
+			{
+				id: 'name',
+				header: m.name(),
+				widthClass: 'w-64 min-w-[12rem]',
+				filterable: false,
+				field: 'name'
+			},
+			{
+				id: 'code',
+				header: m.code(),
+				widthClass: 'w-32 min-w-[8rem]',
+				filterable: false,
+				field: 'code'
+			},
+			{
+				id: 'phone',
+				header: m.phone(),
+				widthClass: 'w-40 min-w-[10rem]',
+				filterable: false,
+				field: 'phone'
+			},
+			{
+				id: 'email',
+				header: m.email(),
+				widthClass: 'w-56 min-w-[14rem]',
+				filterable: false,
+				field: 'email'
+			},
+			{
+				id: 'status',
+				header: m.status(),
+				widthClass: 'w-28 min-w-[7rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: [
+					{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+					{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+				],
+				defaultFilterValue: String(StatusEnum.ACTIVE),
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: row.statusId === StatusEnum.DELETED
+								? 'Deleted'
+								: `Status ${row.statusId ?? 'Unknown'}`
+			},
+			{
+				id: 'address',
+				header: m.address(),
+				widthClass: 'w-80 min-w-[16rem]',
+				filterable: false,
+				format: (_value, row) => row.address ?? '—',
+				cellClass: 'max-w-[200px] truncate'
 			}
-		},
-		{
-			id: 'name',
-			header: m.name(),
-			widthClass: 'w-64 min-w-[12rem]',
-			filterable: false,
-			field: 'name'
-		},
-		{
-			id: 'code',
-			header: m.code(),
-			widthClass: 'w-32 min-w-[8rem]',
-			filterable: false,
-			field: 'code'
-		},
-		{
-			id: 'phone',
-			header: m.phone(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: false,
-			field: 'phone'
-		},
-		{
-			id: 'email',
-			header: m.email(),
-			widthClass: 'w-56 min-w-[14rem]',
-			filterable: false,
-			field: 'email'
-		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: row.statusId === StatusEnum.DELETED
-							? 'Deleted'
-							: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'address',
-			header: m.address(),
-			widthClass: 'w-80 min-w-[16rem]',
-			filterable: false,
-			format: (_value, row) => row.address ?? '—',
-			cellClass: 'max-w-[200px] truncate'
-		}
-	];
+		];
 
 	async function fetchBranches(forceRefresh = false) {
 		if (!hospitalId) return;
@@ -140,7 +141,8 @@
 				parsedStatusId != null && Number.isFinite(parsedStatusId)
 					? parsedStatusId
 					: undefined;
-			if (statusId != null) url.searchParams.set('statusId', String(statusId));
+			if (statusId != null)
+				url.searchParams.set('statusId', String(statusId));
 
 			const res = await fetch(url.pathname + url.search, {
 				method: 'GET',
@@ -209,7 +211,9 @@
 						}
 					);
 					if (!res.ok) {
-						throw new Error(`Failed to delete branch (${res.status})`);
+						throw new Error(
+							`Failed to delete branch (${res.status})`
+						);
 					}
 					toastService.addToast(
 						m.branch_deleted(),

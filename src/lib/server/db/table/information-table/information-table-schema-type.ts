@@ -39,7 +39,6 @@ import type {
 	appointmentBlockTable,
 	subCategoryTable,
 	pharmacyGenericTable,
-	manufacturerTable,
 	supplierTable,
 	itemMasterTable,
 	itemUnitMasterTable,
@@ -101,24 +100,32 @@ export type HospitalSchemaInsert = InferInsertModel<
 >;
 export type HospitalSchemaUpdate = Partial<HospitalSchemaInsert>;
 
-export type FinancialYearSchema = InferSelectModel<typeof financialYearTable>;
+export type FinancialYearSchema = InferSelectModel<
+	typeof financialYearTable
+>;
 export type FinancialYearSchemaInsert = InferInsertModel<
 	typeof financialYearTable
 >;
 export type FinancialYearSchemaUpdate =
 	Partial<FinancialYearSchemaInsert>;
 
-export type PrefixFormatSchema = InferSelectModel<typeof prefixFormatTable>;
+export type PrefixFormatSchema = InferSelectModel<
+	typeof prefixFormatTable
+>;
 export type PrefixFormatSchemaInsert = InferInsertModel<
 	typeof prefixFormatTable
 >;
-export type PrefixFormatSchemaUpdate = Partial<PrefixFormatSchemaInsert>;
+export type PrefixFormatSchemaUpdate =
+	Partial<PrefixFormatSchemaInsert>;
 
-export type PrefixCounterSchema = InferSelectModel<typeof prefixCounterTable>;
+export type PrefixCounterSchema = InferSelectModel<
+	typeof prefixCounterTable
+>;
 export type PrefixCounterSchemaInsert = InferInsertModel<
 	typeof prefixCounterTable
 >;
-export type PrefixCounterSchemaUpdate = Partial<PrefixCounterSchemaInsert>;
+export type PrefixCounterSchemaUpdate =
+	Partial<PrefixCounterSchemaInsert>;
 
 export type ModuleSchema = InferSelectModel<typeof moduleTable>;
 export type ModuleSchemaInsert = InferInsertModel<typeof moduleTable>;
@@ -318,17 +325,22 @@ export type PatientFormEntrySchemaInsert = InferInsertModel<
 export type PatientFormEntrySchemaUpdate =
 	Partial<PatientFormEntrySchemaInsert>;
 
-export type PlanOfCareSchema = InferSelectModel<typeof planOfCareTable>;
+export type PlanOfCareSchema = InferSelectModel<
+	typeof planOfCareTable
+>;
 export type PlanOfCareSchemaInsert = InferInsertModel<
 	typeof planOfCareTable
 >;
 export type PlanOfCareSchemaUpdate = Partial<PlanOfCareSchemaInsert>;
 
-export type ProgressNoteSchema = InferSelectModel<typeof progressNoteTable>;
+export type ProgressNoteSchema = InferSelectModel<
+	typeof progressNoteTable
+>;
 export type ProgressNoteSchemaInsert = InferInsertModel<
 	typeof progressNoteTable
 >;
-export type ProgressNoteSchemaUpdate = Partial<ProgressNoteSchemaInsert>;
+export type ProgressNoteSchemaUpdate =
+	Partial<ProgressNoteSchemaInsert>;
 
 export type SubCategorySchema = InferSelectModel<
 	typeof subCategoryTable
@@ -348,20 +360,15 @@ export type PharmacyGenericSchemaInsert = InferInsertModel<
 export type PharmacyGenericSchemaUpdate =
 	Partial<PharmacyGenericSchemaInsert>;
 
-export type ManufacturerSchema = InferSelectModel<
-	typeof manufacturerTable
->;
-export type ManufacturerSchemaInsert = InferInsertModel<
-	typeof manufacturerTable
->;
-export type ManufacturerSchemaUpdate =
-	Partial<ManufacturerSchemaInsert>;
-
 export type SupplierSchema = InferSelectModel<typeof supplierTable>;
-export type SupplierSchemaInsert = InferInsertModel<typeof supplierTable>;
+export type SupplierSchemaInsert = InferInsertModel<
+	typeof supplierTable
+>;
 export type SupplierSchemaUpdate = Partial<SupplierSchemaInsert>;
 
-export type ItemMasterSchema = InferSelectModel<typeof itemMasterTable>;
+export type ItemMasterSchema = InferSelectModel<
+	typeof itemMasterTable
+>;
 export type ItemMasterSchemaInsert = InferInsertModel<
 	typeof itemMasterTable
 >;
@@ -465,7 +472,9 @@ export type ServiceOrderDetailSchemaUpdate =
 	Partial<ServiceOrderDetailSchemaInsert>;
 
 export type OpBillingSchema = InferSelectModel<typeof opBillingTable>;
-export type OpBillingSchemaInsert = InferInsertModel<typeof opBillingTable>;
+export type OpBillingSchemaInsert = InferInsertModel<
+	typeof opBillingTable
+>;
 export type OpBillingSchemaUpdate = Partial<OpBillingSchemaInsert>;
 
 export type OpBillingLineSchema = InferSelectModel<

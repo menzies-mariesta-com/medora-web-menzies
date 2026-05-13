@@ -6,11 +6,11 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import {
-		InvDepartmentConsumptionStatusTaggingEnum
-	} from '$lib/model/enum/db-link';
+	import { InvDepartmentConsumptionStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -52,7 +52,8 @@
 	let loading = $state(false);
 
 	const isPending = $derived(
-		detail?.statusTaggingId === InvDepartmentConsumptionStatusTaggingEnum.PENDING
+		detail?.statusTaggingId ===
+			InvDepartmentConsumptionStatusTaggingEnum.PENDING
 	);
 
 	async function loadDetail() {
@@ -80,43 +81,47 @@
 		void loadDetail();
 	});
 
-	const readColumns: MariTableColumn<DepartmentConsumptionDetailLine>[] = [
-		{
-			id: 'item',
-			header: m.inv_common_item(),
-			field: 'itemName',
-			format: (_v, r) => r.itemName ?? '—'
-		},
-		{
-			id: 'qty',
-			header: m.inv_common_quantity(),
-			field: 'quantity',
-			format: (_v, r) => formatPurchaseQtyCellForDetailLine(r)
-		},
-		{
-			id: 'unit',
-			header: m.inv_common_unit(),
-			field: 'unitName',
-			format: (_v, r) => r.unitName ?? '—'
-		},
-		{
-			id: 'batch',
-			header: m.inv_dc_batch(),
-			field: 'batchNo',
-			format: (_v, r) => r.batchNo ?? '—'
-		},
-		{
-			id: 'exp',
-			header: m.inv_stock_col_expiry(),
-			field: 'expiryDate',
-			format: (_v, r) => r.expiryDate ?? '—'
-		}
-	];
+	const readColumns: MariTableColumn<DepartmentConsumptionDetailLine>[] =
+		[
+			{
+				id: 'item',
+				header: m.inv_common_item(),
+				field: 'itemName',
+				format: (_v, r) => r.itemName ?? '—'
+			},
+			{
+				id: 'qty',
+				header: m.inv_common_quantity(),
+				field: 'quantity',
+				format: (_v, r) => formatPurchaseQtyCellForDetailLine(r)
+			},
+			{
+				id: 'unit',
+				header: m.inv_common_unit(),
+				field: 'unitName',
+				format: (_v, r) => r.unitName ?? '—'
+			},
+			{
+				id: 'batch',
+				header: m.inv_dc_batch(),
+				field: 'batchNo',
+				format: (_v, r) => r.batchNo ?? '—'
+			},
+			{
+				id: 'exp',
+				header: m.inv_stock_col_expiry(),
+				field: 'expiryDate',
+				format: (_v, r) => r.expiryDate ?? '—'
+			}
+		];
 </script>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
 	<div class="flex items-center gap-2">
-		<DaisyUiTooltip tooltipText={m.inv_common_back_to_list()} className="d-tooltip-ghost d-tooltip-right">
+		<DaisyUiTooltip
+			tooltipText={m.inv_common_back_to_list()}
+			className="d-tooltip-ghost d-tooltip-right"
+		>
 			<DaisyUiButton
 				type="button"
 				className="d-btn-sm d-btn-ghost d-btn-square"
@@ -133,7 +138,10 @@
 		</h1>
 	</div>
 	{#if loading}
-		<span class="d-loading d-loading-sm d-loading-spinner" aria-label={m.loading()}></span>
+		<span
+			class="d-loading d-loading-sm d-loading-spinner"
+			aria-label={m.loading()}
+		></span>
 	{/if}
 </div>
 
@@ -146,25 +154,29 @@
 					type="text"
 					readonly
 					disabled
-					class="d-input d-input-bordered mt-1 w-full text-sm"
+					class="d-input-bordered d-input mt-1 w-full text-sm"
 					value={detail.statusName ?? '—'}
 				/>
 			</div>
 			<div class="sm:col-span-2">
-				<DaisyUiLabel className="text-xs">{m.inv_dc_store()}</DaisyUiLabel>
+				<DaisyUiLabel className="text-xs"
+					>{m.inv_dc_store()}</DaisyUiLabel
+				>
 				<input
 					type="text"
 					readonly
 					disabled
-					class="d-input d-input-bordered mt-1 w-full text-sm"
+					class="d-input-bordered d-input mt-1 w-full text-sm"
 					value={detail.storeName ?? '—'}
 				/>
 			</div>
 			{#if detail.remarks?.trim()}
 				<div class="sm:col-span-2">
-					<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
+					<DaisyUiLabel className="text-xs"
+						>{m.inv_dept_indent_remarks()}</DaisyUiLabel
+					>
 					<textarea
-						class="d-textarea d-textarea-bordered mt-1 w-full text-sm"
+						class="d-textarea-bordered d-textarea mt-1 w-full text-sm"
 						rows="2"
 						readonly
 						disabled
@@ -192,7 +204,6 @@
 			</div>
 		</DaisyUiCardBody>
 	</DaisyUiCard>
-
 {:else if !loading}
 	<p class="text-sm opacity-70">{m.inv_detail_not_found()}</p>
 {/if}

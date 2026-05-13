@@ -36,9 +36,22 @@
 		countryCallingCode: string | null;
 	};
 	type TitleRow = { id: number; name: string | null };
-	type StateRow = { id: number; name: string | null; countryId: number | null };
-	type CityRow = { id: number; name: string | null; code: string | null; stateId: number | null };
-	type PostalCodeRow = { id: number; value: unknown; cityId: number | null };
+	type StateRow = {
+		id: number;
+		name: string | null;
+		countryId: number | null;
+	};
+	type CityRow = {
+		id: number;
+		name: string | null;
+		code: string | null;
+		stateId: number | null;
+	};
+	type PostalCodeRow = {
+		id: number;
+		value: unknown;
+		cityId: number | null;
+	};
 	type ExternalReferRow = {
 		id: number;
 		titleId: number | null;
@@ -181,7 +194,9 @@
 		const hospitalId = page.params.hospital_id;
 		const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/external-refer-master`;
 
-		const metaRes = await fetch(`${baseUrl}?meta=1`, { method: 'GET' });
+		const metaRes = await fetch(`${baseUrl}?meta=1`, {
+			method: 'GET'
+		});
 		if (!metaRes.ok) throw new Error(await metaRes.text());
 		const meta = (await metaRes.json()) as {
 			countries: CountryRow[];
@@ -198,7 +213,9 @@
 
 		let refer: ExternalReferRow | null = null;
 		if (modalState.id != null) {
-			const referRes = await fetch(`${baseUrl}?id=${modalState.id}`, { method: 'GET' });
+			const referRes = await fetch(`${baseUrl}?id=${modalState.id}`, {
+				method: 'GET'
+			});
 			if (!referRes.ok) throw new Error(await referRes.text());
 			refer = (await referRes.json()) as ExternalReferRow | null;
 		}
@@ -242,15 +259,21 @@
 						titleId: titleId ? parseInt(titleId, 10) : null,
 						name: name.trim() || null,
 						address: address.trim() || null,
-						phoneCountryId: phoneCountryId ? parseInt(phoneCountryId, 10) : null,
+						phoneCountryId: phoneCountryId
+							? parseInt(phoneCountryId, 10)
+							: null,
 						phone: phone.trim() || null,
 						email: email.trim() || null,
 						referTypeId: ReferTypeEnum.EXTERNAL,
 						countryId: countryId ? parseInt(countryId, 10) : null,
 						stateId: stateId ? parseInt(stateId, 10) : null,
 						cityId: cityId ? parseInt(cityId, 10) : null,
-						postalCodeId: postalCodeId ? parseInt(postalCodeId, 10) : null,
-						statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
+						postalCodeId: postalCodeId
+							? parseInt(postalCodeId, 10)
+							: null,
+						statusId: isActive
+							? StatusEnum.ACTIVE
+							: StatusEnum.INACTIVE
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
@@ -268,15 +291,21 @@
 						titleId: titleId ? parseInt(titleId, 10) : null,
 						name: name.trim() || null,
 						address: address.trim() || null,
-						phoneCountryId: phoneCountryId ? parseInt(phoneCountryId, 10) : null,
+						phoneCountryId: phoneCountryId
+							? parseInt(phoneCountryId, 10)
+							: null,
 						phone: phone.trim() || null,
 						email: email.trim() || null,
 						referTypeId: ReferTypeEnum.EXTERNAL,
 						countryId: countryId ? parseInt(countryId, 10) : null,
 						stateId: stateId ? parseInt(stateId, 10) : null,
 						cityId: cityId ? parseInt(cityId, 10) : null,
-						postalCodeId: postalCodeId ? parseInt(postalCodeId, 10) : null,
-						statusId: isActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE
+						postalCodeId: postalCodeId
+							? parseInt(postalCodeId, 10)
+							: null,
+						statusId: isActive
+							? StatusEnum.ACTIVE
+							: StatusEnum.INACTIVE
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());

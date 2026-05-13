@@ -1,5 +1,13 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, ilike, inArray, ne } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	ne
+} from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -45,12 +53,18 @@ export async function getServiceItems(
 		if (input.subCategoryIds.length === 0) return [];
 		whereExpr = and(
 			whereExpr,
-			inArray(table.serviceItemTable.subCategoryId, input.subCategoryIds)
+			inArray(
+				table.serviceItemTable.subCategoryId,
+				input.subCategoryIds
+			)
 		);
 	}
 
 	if (input.id != null) {
-		whereExpr = and(whereExpr, eq(table.serviceItemTable.id, input.id));
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, input.id)
+		);
 	}
 
 	const nameTerm = input.serviceName?.trim();
@@ -96,7 +110,8 @@ export async function getServiceItemsPaginated(
 	}
 ): Promise<PaginatedResult<ServiceItemSchema>> {
 	await ensureCanAccessHospital(event, params.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	let whereExpr = and(
 		ne(table.serviceItemTable.statusId, StatusEnum.DELETED),
@@ -116,12 +131,18 @@ export async function getServiceItemsPaginated(
 		}
 		whereExpr = and(
 			whereExpr,
-			inArray(table.serviceItemTable.subCategoryId, params.subCategoryIds)
+			inArray(
+				table.serviceItemTable.subCategoryId,
+				params.subCategoryIds
+			)
 		);
 	}
 
 	if (params.id != null) {
-		whereExpr = and(whereExpr, eq(table.serviceItemTable.id, params.id));
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, params.id)
+		);
 	}
 
 	const nameTerm = params.serviceName?.trim();
@@ -230,4 +251,3 @@ export async function deleteServiceItem(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.serviceItemTable.id, input.id));
 }
-

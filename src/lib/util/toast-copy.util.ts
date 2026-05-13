@@ -51,4 +51,3 @@ export function toastError(
 ) {
 	toast.addErrorToast(toastLine(entity, actionFailed), err);
 }
-

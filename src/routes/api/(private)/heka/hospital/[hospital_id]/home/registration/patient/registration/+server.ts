@@ -30,10 +30,9 @@ export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	if (!hospitalId) throw error(400, 'hospital_id is required');
 
-	const body = (await event.request.json().catch(() => null)) as Record<
-		string,
-		unknown
-	> | null;
+	const body = (await event.request
+		.json()
+		.catch(() => null)) as Record<string, unknown> | null;
 	if (!body) throw error(400, 'Body required');
 	const mode = String(body.mode ?? '');
 
@@ -85,7 +84,9 @@ export async function POST(event: RequestEvent) {
 					? Number(body.titleId)
 					: undefined,
 			firstName:
-				typeof body.firstName === 'string' ? body.firstName : undefined,
+				typeof body.firstName === 'string'
+					? body.firstName
+					: undefined,
 			middleName:
 				typeof body.middleName === 'string'
 					? body.middleName
@@ -191,7 +192,10 @@ export async function POST(event: RequestEvent) {
 				body.religionId != null && body.religionId !== ''
 					? Number(body.religionId)
 					: undefined,
-			isActive: typeof body.isActive === 'boolean' ? body.isActive : undefined,
+			isActive:
+				typeof body.isActive === 'boolean'
+					? body.isActive
+					: undefined,
 			nameMasking:
 				typeof body.nameMasking === 'boolean'
 					? body.nameMasking
@@ -207,10 +211,9 @@ export async function PUT(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	if (!hospitalId) throw error(400, 'hospital_id is required');
 
-	const body = (await event.request.json().catch(() => null)) as Record<
-		string,
-		unknown
-	> | null;
+	const body = (await event.request
+		.json()
+		.catch(() => null)) as Record<string, unknown> | null;
 	if (!body) throw error(400, 'Body required');
 	const id = String(body.id ?? '');
 	if (!id) throw error(400, 'id is required');
@@ -224,9 +227,13 @@ export async function PUT(event: RequestEvent) {
 	const updates: Record<string, unknown> = { ...body };
 	// Optional: update linked auth user fields (allowed for staff within hospital).
 	const userName =
-		typeof updates.userName === 'string' ? String(updates.userName) : null;
+		typeof updates.userName === 'string'
+			? String(updates.userName)
+			: null;
 	const userEmail =
-		typeof updates.userEmail === 'string' ? String(updates.userEmail) : null;
+		typeof updates.userEmail === 'string'
+			? String(updates.userEmail)
+			: null;
 	delete updates.id;
 	delete updates.hospitalId;
 	delete updates.userName;

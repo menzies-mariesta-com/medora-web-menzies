@@ -4,7 +4,10 @@ import { approvePurchaseRequisition } from '$lib/server/heka/inventory/pr.server
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const adjRaw = body.lineAdjustments as
 		| { lineId: unknown; quantity: unknown }[]
 		| undefined;

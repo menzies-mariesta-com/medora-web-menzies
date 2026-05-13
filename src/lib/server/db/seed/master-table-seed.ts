@@ -71,7 +71,9 @@ export async function seedMasterTables() {
 
 	// 2b. Medication Order Setup master: dosing frequencies (global master)
 	// Keep this list small and common; hospitals can disable rows via `med_order_frequency_inactive`.
-	const presetFreqsRaw: Array<[number, string, string | null, string]> = [
+	const presetFreqsRaw: Array<
+		[number, string, string | null, string]
+	> = [
 		[1, 'Once a Day (OD)', 'OD', '1'],
 		[2, '2 times a Day (BD)', 'BD', '2'],
 		[3, '3 times a day (TDS)', 'TDS', '3'],
@@ -92,20 +94,20 @@ export async function seedMasterTables() {
 	const seenFreqKey = new Set<string>();
 	const presetFreqs = presetFreqsRaw
 		.filter(([_seq, description, abbreviation]) => {
-			const key = (abbreviation?.trim() || description.trim()).toLowerCase();
+			const key = (
+				abbreviation?.trim() || description.trim()
+			).toLowerCase();
 			if (seenFreqKey.has(key)) return false;
 			seenFreqKey.add(key);
 			return true;
 		})
-		.map(
-		([sequenceNo, description, abbreviation, freqPerDay]) => ({
+		.map(([sequenceNo, description, abbreviation, freqPerDay]) => ({
 			label: description,
 			description,
 			abbreviation,
 			frequencyPerDay: normalizePerDay(freqPerDay),
 			sequenceNo
-		})
-	);
+		}));
 
 	// Global seed (shared across all hospitals/branches).
 	for (const p of presetFreqs) {
@@ -150,7 +152,10 @@ export async function seedMasterTables() {
 	seedLogger.info('Seeded: med_order_frequency presets');
 
 	// 2c. Medication order setup: route of administration (global presets; hospitals opt out via `med_order_route_inactive`)
-	const presetMedRoutes: Array<{ name: string; description: string | null }> = [
+	const presetMedRoutes: Array<{
+		name: string;
+		description: string | null;
+	}> = [
 		{ name: 'Oral', description: 'By mouth (PO)' },
 		{ name: 'Sublingual', description: 'Under the tongue' },
 		{ name: 'Buccal', description: 'Between gum and cheek' },

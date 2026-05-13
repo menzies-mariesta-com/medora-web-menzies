@@ -4,7 +4,10 @@ import { cancelDepartmentIssue } from '$lib/server/heka/inventory/department-iss
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await cancelDepartmentIssue(event, {
 		hospitalId,
 		issueId: String(body.issueId ?? ''),
@@ -12,4 +15,3 @@ export const POST: RequestHandler = async (event) => {
 	});
 	return json(data);
 };
-

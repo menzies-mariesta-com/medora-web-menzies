@@ -35,7 +35,9 @@ export const GET: RequestHandler = async (event) => {
 	);
 	const serviceName = event.url.searchParams.get('serviceName');
 	const serviceCode = event.url.searchParams.get('serviceCode');
-	const statusId = parseNumberOrNull(event.url.searchParams.get('statusId'));
+	const statusId = parseNumberOrNull(
+		event.url.searchParams.get('statusId')
+	);
 	const id = parseNumberOrNull(event.url.searchParams.get('id'));
 
 	if (mode === 'all') {
@@ -52,7 +54,9 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 
 	const data = await getServiceItemsPaginated(event, {
 		hospitalId,
@@ -72,12 +76,16 @@ export const POST: RequestHandler = async (event) => {
 	const hospitalId = String(event.params.hospital_id ?? '');
 	if (!hospitalId) throw error(400, 'Missing hospital id');
 
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createServiceItem(event, {
 		hospitalId,
 		subCategoryId: Number(body.subCategoryId),
 		serviceName: String(body.serviceName ?? ''),
-		serviceCode: body.serviceCode != null ? String(body.serviceCode) : null,
+		serviceCode:
+			body.serviceCode != null ? String(body.serviceCode) : null,
 		remark: body.remark != null ? String(body.remark) : null,
 		statusId: Number(body.statusId ?? 1)
 	} as any);
@@ -88,7 +96,10 @@ export const PUT: RequestHandler = async (event) => {
 	const hospitalId = String(event.params.hospital_id ?? '');
 	if (!hospitalId) throw error(400, 'Missing hospital id');
 
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updateServiceItem(event, {
 		hospitalId,
 		id: Number(body.id),
@@ -106,7 +117,8 @@ export const PUT: RequestHandler = async (event) => {
 					? null
 					: String(body.remark)
 				: undefined,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	} as any);
 	return json(data);
 };
@@ -115,8 +127,10 @@ export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = String(event.params.hospital_id ?? '');
 	if (!hospitalId) throw error(400, 'Missing hospital id');
 
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteServiceItem(event, { hospitalId, id: Number(body.id) });
 	return json({ ok: true });
 };
-

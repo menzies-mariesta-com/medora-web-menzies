@@ -139,7 +139,9 @@
 		// that endpoint blocks non-self updates (403). Linked patient user updates
 		// are handled via the patient registration API endpoint instead.
 		void body;
-		throw new Error('User update is handled by patient registration endpoint');
+		throw new Error(
+			'User update is handled by patient registration endpoint'
+		);
 	}
 
 	async function apiUpdatePatient(body: Record<string, unknown>) {
@@ -156,7 +158,9 @@
 		return r.json();
 	}
 
-	async function apiCreatePatientWithUser(body: Record<string, unknown>) {
+	async function apiCreatePatientWithUser(
+		body: Record<string, unknown>
+	) {
 		const base = registrationPatientApiBase();
 		if (!base) throw new Error('Missing hospital context');
 		const r = await fetch(base, {
@@ -174,7 +178,9 @@
 		}>;
 	}
 
-	async function apiGetDuplicatePatients(payload: Record<string, unknown>) {
+	async function apiGetDuplicatePatients(
+		payload: Record<string, unknown>
+	) {
 		const base = registrationPatientApiBase();
 		if (!base) throw new Error('Missing hospital context');
 		const r = await fetch(base, {
@@ -626,9 +632,7 @@
 					component: LPatientCheckDuplicateDialogContent
 				});
 				if (result.confirmed && result.data) {
-					handleSelectDuplicatePatient(
-							result.data as any
-					);
+					handleSelectDuplicatePatient(result.data as any);
 				}
 				PatientDuplicateModalState.duplicates = [];
 			}
@@ -643,9 +647,7 @@
 		}
 	}
 
-	function handleSelectDuplicatePatient(
-		patient: any
-	) {
+	function handleSelectDuplicatePatient(patient: any) {
 		routerUtil.replaceRoute(
 			`${page.url.pathname}?edit=${patient.id}`
 		);
@@ -726,9 +728,8 @@
 		try {
 			if (currentPatientId) {
 				// Edit: update existing patient
-				const previous = await apiGetPatientByIdForForm(
-					currentPatientId
-				);
+				const previous =
+					await apiGetPatientByIdForForm(currentPatientId);
 				if (!previous) {
 					toastService.addToast(
 						'Patient not found.',
@@ -1221,8 +1222,8 @@
 							className="d-btn-ghost d-btn-sm gap-2"
 							disabled={!currentPatientId}
 							onClick={() =>
-								currentPatientId && openPatientCardDialog(currentPatientId)
-							}
+								currentPatientId &&
+								openPatientCardDialog(currentPatientId)}
 						>
 							<LucidePrinter className="size-5" />
 							Card
