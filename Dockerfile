@@ -22,6 +22,9 @@ ENV PORT=5173
 
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/.npmrc ./
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 5173
