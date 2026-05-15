@@ -40,7 +40,6 @@ import {
 	staffDetailTable,
 	subCategoryTable,
 	pharmacyGenericTable,
-	manufacturerTable,
 	supplierTable,
 	itemMasterTable,
 	itemMasterItemUnitMasterTable,
@@ -136,7 +135,6 @@ export const hospitalTableRelations = relations(
 		opBillings: many(opBillingTable),
 		itemMasters: many(itemMasterTable),
 		pharmacyGenerics: many(pharmacyGenericTable),
-		manufacturers: many(manufacturerTable),
 		suppliers: many(supplierTable),
 		itemUnitMasters: many(itemUnitMasterTable)
 	})
@@ -1041,41 +1039,6 @@ export const pharmacyGenericTableRelations = relations(
 	})
 );
 
-export const manufacturerTableRelations = relations(
-	manufacturerTable,
-	({ one, many }) => ({
-		hospital: one(hospitalTable, {
-			fields: [manufacturerTable.hospitalId],
-			references: [hospitalTable.id]
-		}),
-		status: one(statusTable, {
-			fields: [manufacturerTable.statusId],
-			references: [statusTable.id]
-		}),
-		city: one(cityTable, {
-			fields: [manufacturerTable.cityId],
-			references: [cityTable.id]
-		}),
-		state: one(stateTable, {
-			fields: [manufacturerTable.stateId],
-			references: [stateTable.id]
-		}),
-		country: one(countryTable, {
-			fields: [manufacturerTable.countryId],
-			references: [countryTable.id]
-		}),
-		phoneCountry: one(countryTable, {
-			fields: [manufacturerTable.phoneCountryId],
-			references: [countryTable.id]
-		}),
-		postalCode: one(postalCodeTable, {
-			fields: [manufacturerTable.postalCodeId],
-			references: [postalCodeTable.id]
-		}),
-		itemMasters: many(itemMasterTable)
-	})
-);
-
 export const supplierTableRelations = relations(
 	supplierTable,
 	({ one }) => ({
@@ -1120,10 +1083,6 @@ export const itemMasterTableRelations = relations(
 		category: one(categoryTable, {
 			fields: [itemMasterTable.categoryId],
 			references: [categoryTable.id]
-		}),
-		manufacturer: one(manufacturerTable, {
-			fields: [itemMasterTable.manufacturerId],
-			references: [manufacturerTable.id]
 		}),
 		pharmacyGeneric: one(pharmacyGenericTable, {
 			fields: [itemMasterTable.pharmacyGenericId],

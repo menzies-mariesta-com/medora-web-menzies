@@ -21,7 +21,8 @@ async function getSelectedBranchConstraintForStaff(
 		const staffId = event.locals.staff?.id ?? null;
 		if (roleId !== RoleEnum.STAFF || !staffId) return null;
 
-		const selected = event.cookies.get('heka_selected_branch_id') ?? null;
+		const selected =
+			event.cookies.get('heka_selected_branch_id') ?? null;
 
 		const staffBranchesForNavRaw = await ensureDb()
 			.select({
@@ -54,8 +55,12 @@ async function getSelectedBranchConstraintForStaff(
 			.from(table.hospitalBranchTable)
 			.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
 
-		const allHospitalBranchIds = allHospitalBranchesRaw.map((b) => b.id);
-		const staffBranchIdSet = new Set(staffBranchesForNav.map((b) => b.id));
+		const allHospitalBranchIds = allHospitalBranchesRaw.map(
+			(b) => b.id
+		);
+		const staffBranchIdSet = new Set(
+			staffBranchesForNav.map((b) => b.id)
+		);
 		const hasAllBranchesAccess =
 			allHospitalBranchIds.length > 0 &&
 			allHospitalBranchIds.every((id) => staffBranchIdSet.has(id));
@@ -70,7 +75,10 @@ async function getSelectedBranchConstraintForStaff(
 					? selected
 					: (branchNavIds[0] ?? null);
 
-		if (!fallbackSelectedId || fallbackSelectedId === BRANCH_ALL_VALUE)
+		if (
+			!fallbackSelectedId ||
+			fallbackSelectedId === BRANCH_ALL_VALUE
+		)
 			return null;
 		return fallbackSelectedId;
 	} catch {
@@ -130,9 +138,13 @@ async function ensureDoctorBranchContext(input: {
 		]);
 
 	if (!branchInHospital)
-		throw new Error('Selected branch does not belong to this hospital');
+		throw new Error(
+			'Selected branch does not belong to this hospital'
+		);
 	if (!staffInHospital)
-		throw new Error('Selected doctor is not assigned to this hospital');
+		throw new Error(
+			'Selected doctor is not assigned to this hospital'
+		);
 	if (!staffInBranch)
 		throw new Error('Selected doctor is not assigned to this branch');
 }
@@ -182,7 +194,10 @@ async function assertNoOverlappingDoctorSchedule(
 		.from(table.doctorScheduleTable)
 		.innerJoin(
 			table.hospitalBranchTable,
-			eq(table.doctorScheduleTable.branchId, table.hospitalBranchTable.id)
+			eq(
+				table.doctorScheduleTable.branchId,
+				table.hospitalBranchTable.id
+			)
 		)
 		.where(
 			and(
@@ -211,13 +226,16 @@ async function assertNoOverlappingDoctorSchedule(
 		const rowFromTime = normalizeTime(row.fromShiftTime) || MIN_TIME;
 		const rowToTime = normalizeTime(row.toShiftTime) || MAX_TIME;
 
-		const dateOverlap = rowFromDate <= newToDate && newFromDate <= rowToDate;
-		const timeOverlap = rowFromTime < newToTime && newFromTime < rowToTime;
+		const dateOverlap =
+			rowFromDate <= newToDate && newFromDate <= rowToDate;
+		const timeOverlap =
+			rowFromTime < newToTime && newFromTime < rowToTime;
 		return dateOverlap && timeOverlap;
 	});
 
 	if (conflict) {
-		const branchLabel = conflict.branchName ?? conflict.schedule.branchId;
+		const branchLabel =
+			conflict.branchName ?? conflict.schedule.branchId;
 		throw new Error(
 			`Doctor already has an overlapping schedule at branch "${branchLabel}" for this time.`
 		);
@@ -229,12 +247,18 @@ export async function createDoctorSchedule(
 	payload: DoctorScheduleSchemaInsert
 ): Promise<DoctorScheduleSchema> {
 	await ensureCanAccessHospital(event, payload.hospitalId);
-	const selectedBranchConstraint = await getSelectedBranchConstraintForStaff(
-		event,
-		payload.hospitalId
-	);
-	if (selectedBranchConstraint && payload.branchId !== selectedBranchConstraint) {
-		throw new Error('You can only create schedules for your selected branch');
+	const selectedBranchConstraint =
+		await getSelectedBranchConstraintForStaff(
+			event,
+			payload.hospitalId
+		);
+	if (
+		selectedBranchConstraint &&
+		payload.branchId !== selectedBranchConstraint
+	) {
+		throw new Error(
+			'You can only create schedules for your selected branch'
+		);
 	}
 
 	await ensureDoctorBranchContext({
@@ -283,15 +307,19 @@ export async function updateDoctorSchedule(
 	const nextWeekdayId = rest.weekdayId ?? existing.weekdayId;
 	const nextFromDate = rest.fromDate ?? existing.fromDate;
 	const nextToDate = rest.toDate ?? existing.toDate;
-	const nextFromShiftTime = rest.fromShiftTime ?? existing.fromShiftTime;
+	const nextFromShiftTime =
+		rest.fromShiftTime ?? existing.fromShiftTime;
 	const nextToShiftTime = rest.toShiftTime ?? existing.toShiftTime;
 
-	const selectedBranchConstraint = await getSelectedBranchConstraintForStaff(
-		event,
-		nextHospitalId
-	);
-	if (selectedBranchConstraint && nextBranchId !== selectedBranchConstraint) {
-		throw new Error('You can only update schedules in your selected branch');
+	const selectedBranchConstraint =
+		await getSelectedBranchConstraintForStaff(event, nextHospitalId);
+	if (
+		selectedBranchConstraint &&
+		nextBranchId !== selectedBranchConstraint
+	) {
+		throw new Error(
+			'You can only update schedules in your selected branch'
+		);
 	}
 
 	await ensureDoctorBranchContext({
@@ -301,9 +329,12 @@ export async function updateDoctorSchedule(
 	});
 
 	const onlyDeactivating =
-		rest.statusId === StatusEnum.INACTIVE || rest.statusId === StatusEnum.DELETED;
+		rest.statusId === StatusEnum.INACTIVE ||
+		rest.statusId === StatusEnum.DELETED;
 	const hasOtherChanges = Object.keys(rest).some(
-		(k) => k !== 'statusId' && (rest as Record<string, unknown>)[k] !== undefined
+		(k) =>
+			k !== 'statusId' &&
+			(rest as Record<string, unknown>)[k] !== undefined
 	);
 	if (!onlyDeactivating || hasOtherChanges) {
 		await assertNoOverlappingDoctorSchedule(event, {
@@ -326,4 +357,3 @@ export async function updateDoctorSchedule(
 	if (!row) throw new Error('Update failed');
 	return row;
 }
-

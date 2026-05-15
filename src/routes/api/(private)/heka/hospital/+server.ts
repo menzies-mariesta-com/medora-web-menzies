@@ -15,10 +15,14 @@ export const GET: RequestHandler = async (event) => {
 		return json(row);
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : null;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: null;
 	const ownerId = event.url.searchParams.get('ownerId');
 
 	const data = await getHospitalsWithOwnerPaginated(event, {
@@ -31,7 +35,10 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const created = await createHospital(event, {
 		name: body.name != null ? String(body.name) : null,
 		code: body.code != null ? String(body.code) : null,
@@ -40,36 +47,65 @@ export const POST: RequestHandler = async (event) => {
 		email: body.email != null ? String(body.email) : null,
 		website: body.website != null ? String(body.website) : null,
 		logoUrl: body.logoUrl != null ? String(body.logoUrl) : null,
-		description: body.description != null ? String(body.description) : null,
+		description:
+			body.description != null ? String(body.description) : null,
 		ownerId: body.ownerId != null ? String(body.ownerId) : null,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined,
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined,
 		phoneCountryId:
-			body.phoneCountryId != null ? Number(body.phoneCountryId) : null,
+			body.phoneCountryId != null
+				? Number(body.phoneCountryId)
+				: null,
 		postalCodeId:
 			body.postalCodeId != null ? Number(body.postalCodeId) : null,
 		cityId: body.cityId != null ? Number(body.cityId) : null,
 		stateId: body.stateId != null ? Number(body.stateId) : null,
 		countryId: body.countryId != null ? Number(body.countryId) : null,
 		establishedDate:
-			body.establishedDate != null ? String(body.establishedDate) : null
+			body.establishedDate != null
+				? String(body.establishedDate)
+				: null
 	});
 	return json(created);
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const updated = await updateHospital(event, {
 		id: String(body.id ?? ''),
-		name: body.name === undefined ? undefined : body.name != null ? String(body.name) : null,
-		code: body.code === undefined ? undefined : body.code != null ? String(body.code) : null,
+		name:
+			body.name === undefined
+				? undefined
+				: body.name != null
+					? String(body.name)
+					: null,
+		code:
+			body.code === undefined
+				? undefined
+				: body.code != null
+					? String(body.code)
+					: null,
 		address:
 			body.address === undefined
 				? undefined
 				: body.address != null
 					? String(body.address)
 					: null,
-		phone: body.phone === undefined ? undefined : body.phone != null ? String(body.phone) : null,
-		email: body.email === undefined ? undefined : body.email != null ? String(body.email) : null,
+		phone:
+			body.phone === undefined
+				? undefined
+				: body.phone != null
+					? String(body.phone)
+					: null,
+		email:
+			body.email === undefined
+				? undefined
+				: body.email != null
+					? String(body.email)
+					: null,
 		website:
 			body.website === undefined
 				? undefined
@@ -141,8 +177,10 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteHospital(event, { id: String(body.id ?? '') });
 	return json({ ok: true });
 };
-

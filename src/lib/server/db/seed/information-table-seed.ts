@@ -18,6 +18,10 @@ const db = drizzle(client);
  *
  * Run after master-table-seed. Inserts in FK-safe order.
  *
+ * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
+ * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
+ * **`is_batch_required`** columns; no seed SQL references those columns.
+ *
  * Also applies inventory approval DDL (module CHECK + active unique on
  * `inv_approval_level`) so environments that use `pnpm db:seed` without a full
  * `db:migrate` run still match drizzle 0039–0041 for approval config.
@@ -159,9 +163,12 @@ export async function seedInformationTables() {
 			(21, 'Pharmacy Generic', 9, 1, null, '/heka/home/inventory-setup/pharmacy-generic', 3),
 			(22, 'Unit Master', 9, 1, null, '/heka/home/inventory-setup/unit-master', 4),
 			(23, 'Item Unit Master', 9, 1, null, '/heka/home/inventory-setup/item-unit-master', 5),
-			(24, 'Manufacture Setup', 9, 1, null, '/heka/home/inventory-setup/manufacture-setup', 6),
 			(25, 'Supplier Setup', 9, 1, null, '/heka/home/inventory-setup/supplier-setup', 7),
 			(26, 'Approval Config', 9, 1, null, '/heka/home/inventory-setup/approval-config', 8),
+			(32, 'Reorder level', 9, 1, null, '/heka/home/inventory-setup/reorder-level', 9),
+			(42, 'Stock alerts', 9, 1, null, '/heka/home/inventory-setup/stock-alerts', 10),
+			(420001, 'Policy', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/policy', 1),
+			(420002, 'Recipients', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/recipients', 2),
 
 			-- Inventory Module (main pages; no parent Inventory page)
 			(27, 'Purchase Requisition', 10, 1, null, '/heka/home/inventory/purchase-requisition', 1),
@@ -177,7 +184,11 @@ export async function seedInformationTables() {
 			(37, 'Department indent', 10, 1, null, '/heka/home/inventory/department-indent', 5),
 			(38, 'Department issue', 10, 1, null, '/heka/home/inventory/department-issue', 6),
 			(39, 'Receipt from store', 10, 1, null, '/heka/home/inventory/receipt-from-store', 7),
-			(40, 'Department consumption', 10, 1, null, '/heka/home/inventory/department-consumption', 8)
+			(40, 'Department consumption', 10, 1, null, '/heka/home/inventory/department-consumption', 8),
+			(41, 'Reports', 10, 1, null, '/heka/home/inventory/reports', 9),
+			(410001, 'Low stock report', 10, 1, 41, '/heka/home/inventory/reports/low-stock', 1),
+			(410002, 'Expired/expiring report', 10, 1, 41, '/heka/home/inventory/reports/expired', 2),
+			(410003, 'Movement log', 10, 1, 41, '/heka/home/inventory/reports/movement', 3)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -289,16 +300,16 @@ export async function seedInformationTables() {
 
 	// 7b. `inv_approval_level` / `inv_approval_log`: module CHECK + partial unique index
 	// (mirrors `drizzle/manual_inv_approval_module_check.sql` and 0041; no-op on already-migrated DBs)
-		await db.execute(
-			sql`ALTER TABLE "inv_approval_level" DROP CONSTRAINT IF EXISTS "inv_approval_level_module_chk"`
-		);
-		await db.execute(sql`
+	await db.execute(
+		sql`ALTER TABLE "inv_approval_level" DROP CONSTRAINT IF EXISTS "inv_approval_level_module_chk"`
+	);
+	await db.execute(sql`
 		ALTER TABLE "inv_approval_level" ADD CONSTRAINT "inv_approval_level_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
 		`);
-		await db.execute(
-			sql`ALTER TABLE "inv_approval_log" DROP CONSTRAINT IF EXISTS "inv_approval_log_module_chk"`
-		);
-		await db.execute(sql`
+	await db.execute(
+		sql`ALTER TABLE "inv_approval_log" DROP CONSTRAINT IF EXISTS "inv_approval_log_module_chk"`
+	);
+	await db.execute(sql`
 		ALTER TABLE "inv_approval_log" ADD CONSTRAINT "inv_approval_log_module_chk" CHECK ("module" IN ('PR', 'PO', 'DI', 'DISS', 'RFS', 'GRN', 'DC'))
 		`);
 	await db.execute(
@@ -312,7 +323,9 @@ export async function seedInformationTables() {
 		ON "inv_approval_level" ("hospital_id", "store_id", "module", "level")
 		WHERE "deleted_at" IS NULL
 	`);
-	seedLogger.info('Seeded: inv_approval_level schema (module CHECK + active unique index)');
+	seedLogger.info(
+		'Seeded: inv_approval_level schema (module CHECK + active unique index)'
+	);
 
 	// 8. Document types (consent, form, instruction, certificate, help)
 	// Note: column is 'name' in old schema, 'document_type' in new schema after migration
@@ -385,7 +398,9 @@ export async function seedInformationTables() {
 			(90003, 5, '[Dev test] Laboratory — General', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
-	seedLogger.info('Seeded: sub_category (dev test rows for order service-type filter)');
+	seedLogger.info(
+		'Seeded: sub_category (dev test rows for order service-type filter)'
+	);
 
 	// 9. Allergy
 	await db.execute(sql`

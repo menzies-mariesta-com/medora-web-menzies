@@ -23,7 +23,11 @@
 	import { m } from '$lib/paraglide/messages';
 
 	type SupportTicketSessionResult =
-		| { authenticated: true; userId: string; userRoleId: number | null }
+		| {
+				authenticated: true;
+				userId: string;
+				userRoleId: number | null;
+		  }
 		| { authenticated: false; userId: null; userRoleId: null };
 
 	type SupportTicketDetail = SupportTicketListRow & {
@@ -146,13 +150,6 @@
 
 	const ticketColumns: MariTableColumn<SupportTicketListRow>[] = [
 		{
-			id: 'id',
-			header: 'ID',
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false,
-			field: 'id'
-		},
-		{
 			id: 'subject',
 			header: m.support_subject(),
 			widthClass: 'min-w-[12rem]',
@@ -227,9 +224,9 @@
 			if (status) sp.set('status', status);
 			if (opts?.bustCache) sp.set('_t', String(Date.now()));
 
-			listResult = await apiJson<PaginatedResult<SupportTicketListRow>>(
-				`/api/support-ticket?${sp.toString()}`
-			);
+			listResult = await apiJson<
+				PaginatedResult<SupportTicketListRow>
+			>(`/api/support-ticket?${sp.toString()}`);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			toastService.addToast(msg, StatusColorEnum.ERROR);

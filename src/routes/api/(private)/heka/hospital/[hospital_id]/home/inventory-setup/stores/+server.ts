@@ -6,6 +6,7 @@ import {
 	getStoreById,
 	getStoreLookups,
 	getStoresPaginated,
+	listStoresForHospitalAll,
 	updateStore
 } from '$lib/server/heka/administration/store.server';
 
@@ -30,6 +31,13 @@ export const GET: RequestHandler = async (event) => {
 		return json(data);
 	}
 
+	if (mode === 'allForPicker') {
+		const data = await listStoresForHospitalAll(event, {
+			hospitalId
+		});
+		return json(data);
+	}
+
 	const idStr = event.url.searchParams.get('id');
 	if (idStr) {
 		const id = Number(idStr);
@@ -40,11 +48,15 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const name = event.url.searchParams.get('name') ?? undefined;
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : undefined;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: undefined;
 
 	const data = await getStoresPaginated(event, {
 		hospitalId,
@@ -58,7 +70,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 
 	const data = await createStore(event, {
 		hospitalId,
@@ -80,13 +95,18 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 
 	const data = await updateStore(event, {
 		hospitalId,
 		id: Number(body.id ?? 0),
-		branchId: body.branchId != null ? String(body.branchId) : undefined,
-		storeName: body.storeName != null ? String(body.storeName) : undefined,
+		branchId:
+			body.branchId != null ? String(body.branchId) : undefined,
+		storeName:
+			body.storeName != null ? String(body.storeName) : undefined,
 		remark: body.remark != null ? String(body.remark) : undefined,
 		isPurchaseRequisitable:
 			body.isPurchaseRequisitable === undefined
@@ -107,7 +127,10 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteStore(event, { hospitalId, id: Number(body.id ?? 0) });
 	return json({ ok: true });
 };

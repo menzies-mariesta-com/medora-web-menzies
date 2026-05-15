@@ -24,7 +24,9 @@ function generateRandomPassword(length = 16): string {
 		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
 	let password = '';
 	for (let i = 0; i < length; i++) {
-		password += charset.charAt(Math.floor(Math.random() * charset.length));
+		password += charset.charAt(
+			Math.floor(Math.random() * charset.length)
+		);
 	}
 	return password;
 }
@@ -47,7 +49,8 @@ export async function createOwner(
 		throw error(400, 'A user with this email already exists.');
 	}
 	const generatedPassword = generateRandomPassword(16);
-	const hashedPassword = await passwordHashUtil.hash(generatedPassword);
+	const hashedPassword =
+		await passwordHashUtil.hash(generatedPassword);
 	const userId = uuidv7();
 	const [user] = await ensureDb()
 		.insert(userTable)
@@ -76,10 +79,7 @@ export async function updateUser(
 ): Promise<UserSchema> {
 	if (!event.locals.user) throw error(401, 'Unauthorized');
 	const isSelf = event.locals.user.id === payload.id;
-	if (
-		!isSelf &&
-		event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN
-	) {
+	if (!isSelf && event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
 		throw error(403, 'Forbidden');
 	}
 	const { id, ...rest } = payload;
@@ -105,7 +105,8 @@ export async function getUsersByRolePaginated(
 	if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
 		throw error(403, 'Forbidden');
 	}
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	let whereExpr = eq(table.userTable.roleId, params.roleId);
 	const nameTerm = params.name?.trim();
 	if (nameTerm) {
@@ -133,7 +134,10 @@ export async function getUsersByRolePaginated(
 						eq(table.userTable.roleId, table.roleTable.id)
 					)
 					.where(
-						and(whereExpr, eq(table.roleTable.statusId, params.statusId!))
+						and(
+							whereExpr,
+							eq(table.roleTable.statusId, params.statusId!)
+						)
 					)
 					.limit(limit)
 					.offset(offset)
@@ -153,7 +157,10 @@ export async function getUsersByRolePaginated(
 						eq(table.userTable.roleId, table.roleTable.id)
 					)
 					.where(
-						and(whereExpr, eq(table.roleTable.statusId, params.statusId!))
+						and(
+							whereExpr,
+							eq(table.roleTable.statusId, params.statusId!)
+						)
 					)
 			: ensureDb()
 					.select({ count: count() })

@@ -16,7 +16,11 @@ export function purchaseQtyToIssueQtyString(
 	const q = Number(purchaseQtyStr);
 	const pf = Number(purchaseFactorStr);
 	const itf = Number(issueFactorStr);
-	if (!Number.isFinite(q) || !Number.isFinite(pf) || !Number.isFinite(itf)) {
+	if (
+		!Number.isFinite(q) ||
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf)
+	) {
 		throw error(500, 'Invalid conversion inputs');
 	}
 	if (itf <= 0 || pf <= 0) {
@@ -26,7 +30,50 @@ export function purchaseQtyToIssueQtyString(
 	if (!Number.isFinite(issue)) {
 		throw error(500, 'Unit conversion failed');
 	}
-	return issue.toFixed(6);
+	const rounded = Math.round(issue);
+	if (Math.abs(issue - rounded) > 1e-9) {
+		throw error(
+			400,
+			'Unit conversion must result in an integer quantity'
+		);
+	}
+	return String(rounded);
+}
+
+/**
+ * Convert an issue quantity (in issue units) to purchase quantity (in purchase units)
+ * using item_unit_master factors: base = purchaseQty * purchaseFactor = issueQty * issueFactor.
+ */
+export function issueQtyToPurchaseQtyString(
+	issueQtyStr: string,
+	purchaseFactorStr: string,
+	issueFactorStr: string
+): string {
+	const q = Number(issueQtyStr);
+	const pf = Number(purchaseFactorStr);
+	const itf = Number(issueFactorStr);
+	if (
+		!Number.isFinite(q) ||
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf)
+	) {
+		throw error(500, 'Invalid conversion inputs');
+	}
+	if (itf <= 0 || pf <= 0) {
+		throw error(500, 'Unit conversion factors must be positive');
+	}
+	const purch = (q * itf) / pf;
+	if (!Number.isFinite(purch)) {
+		throw error(500, 'Unit conversion failed');
+	}
+	const rounded = Math.round(purch);
+	if (Math.abs(purch - rounded) > 1e-9) {
+		throw error(
+			400,
+			'Unit conversion must result in an integer quantity'
+		);
+	}
+	return String(rounded);
 }
 
 export type ItemUnitMasterRow = {
@@ -64,7 +111,10 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 		)
 		.where(
 			and(
-				eq(table.itemMasterItemUnitMasterTable.hospitalId, input.hospitalId),
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					input.hospitalId
+				),
 				eq(
 					table.itemMasterItemUnitMasterTable.itemMasterId,
 					input.itemId
@@ -87,7 +137,8 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 	}
 
 	const defaultLink =
-		links.find((l) => l.link.isDefaultYesNo === YesNoEnum.YES) ?? links[0];
+		links.find((l) => l.link.isDefaultYesNo === YesNoEnum.YES) ??
+		links[0];
 	const i = defaultLink.ium;
 	const [issueU] = await ensureDb()
 		.select({ name: table.unitTable.name })
@@ -105,6 +156,45 @@ export async function resolveItemUnitMasterForItemPurchaseUnit(input: {
 		},
 		issueUnitName: issueU?.name ?? null
 	};
+}
+
+/** All item_unit_masters linked to an item (active only). */
+export async function listItemUnitMastersForItem(input: {
+	hospitalId: string;
+	itemId: number;
+}): Promise<ItemUnitMasterRow[]> {
+	const rows = await ensureDb()
+		.select({ ium: table.itemUnitMasterTable })
+		.from(table.itemMasterItemUnitMasterTable)
+		.innerJoin(
+			table.itemUnitMasterTable,
+			eq(
+				table.itemMasterItemUnitMasterTable.itemUnitMasterId,
+				table.itemUnitMasterTable.id
+			)
+		)
+		.where(
+			and(
+				eq(
+					table.itemMasterItemUnitMasterTable.hospitalId,
+					input.hospitalId
+				),
+				eq(
+					table.itemMasterItemUnitMasterTable.itemMasterId,
+					input.itemId
+				),
+				isNull(table.itemMasterItemUnitMasterTable.deletedAt),
+				isNull(table.itemUnitMasterTable.deletedAt),
+				ne(table.itemUnitMasterTable.statusId, StatusEnum.DELETED)
+			)
+		);
+	return rows.map((r) => ({
+		id: r.ium.id,
+		purchaseUnitId: r.ium.purchaseUnitId,
+		issueUnitId: r.ium.issueUnitId,
+		purchaseConversionFactor: String(r.ium.purchaseConversionFactor),
+		issueConversionFactor: String(r.ium.issueConversionFactor)
+	}));
 }
 
 /** Issue quantity to add to `inv_stock` from a purchase-denominated receipt. */
@@ -152,12 +242,17 @@ export async function purchaseUnitPriceToIssueUnitPriceString(input: {
 	});
 	const pf = Number(ium.purchaseConversionFactor);
 	const itf = Number(ium.issueConversionFactor);
-	if (!Number.isFinite(pf) || !Number.isFinite(itf) || pf <= 0 || itf <= 0) {
+	if (
+		!Number.isFinite(pf) ||
+		!Number.isFinite(itf) ||
+		pf <= 0 ||
+		itf <= 0
+	) {
 		throw error(500, 'Invalid unit conversion factors');
 	}
 	const issueUnitPrice = (price * itf) / pf;
 	if (!Number.isFinite(issueUnitPrice)) {
 		throw error(500, 'Unit price conversion failed');
 	}
-	return issueUnitPrice.toFixed(4);
+	return issueUnitPrice.toFixed(2);
 }

@@ -65,12 +65,15 @@ export async function listPurchaseRequisitions(
 		toStoreId?: number;
 		statusTaggingId?: number;
 		prNo?: string;
+		/** Substring match against any PR line item name. */
+		item?: string;
 		/** When true, only return PRs with remaining qty to order (sum(qty_remaining) > 0). */
 		onlyWithRemainingQty?: boolean;
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let cond = and(
 		eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
@@ -105,6 +108,25 @@ export async function listPurchaseRequisitions(
 			cond = and(
 				cond,
 				ilike(table.purchaseRequisitionTable.prNo, `%${safe}%`)
+			)!;
+		}
+	}
+
+	const itemTerm = input.item?.trim();
+	if (itemTerm) {
+		const safe = itemTerm.replace(/[%_\\]/g, '');
+		if (safe.length > 0) {
+			cond = and(
+				cond,
+				sql`exists (
+					select 1
+					from purchase_requisition_line prl
+					inner join item_master im
+						on prl.item_id = im.id
+					where prl.pr_id = ${table.purchaseRequisitionTable.id}
+						and prl.deleted_at is null
+						and im.item_name ilike ${`%${safe}%`}
+				)`
 			)!;
 		}
 	}
@@ -280,10 +302,22 @@ export async function getPurchaseRequisitionById(
 	input: { hospitalId: string; id: string }
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const uCreated = alias(table.userTable, 'pr_detail_created_by_user');
-	const uUpdated = alias(table.userTable, 'pr_detail_updated_by_user');
-	const uApproved = alias(table.userTable, 'pr_detail_approved_by_user');
-	const uCancelled = alias(table.userTable, 'pr_detail_cancelled_by_user');
+	const uCreated = alias(
+		table.userTable,
+		'pr_detail_created_by_user'
+	);
+	const uUpdated = alias(
+		table.userTable,
+		'pr_detail_updated_by_user'
+	);
+	const uApproved = alias(
+		table.userTable,
+		'pr_detail_approved_by_user'
+	);
+	const uCancelled = alias(
+		table.userTable,
+		'pr_detail_cancelled_by_user'
+	);
 	const fromStoreD = alias(table.storeTable, 'pr_detail_from_store');
 	const toStoreD = alias(table.storeTable, 'pr_detail_to_store');
 
@@ -309,10 +343,7 @@ export async function getPurchaseRequisitionById(
 		)
 		.innerJoin(
 			fromStoreD,
-			eq(
-				table.purchaseRequisitionTable.fromStoreId,
-				fromStoreD.id
-			)
+			eq(table.purchaseRequisitionTable.fromStoreId, fromStoreD.id)
 		)
 		.innerJoin(
 			toStoreD,
@@ -337,7 +368,10 @@ export async function getPurchaseRequisitionById(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.id),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -416,12 +450,14 @@ export async function getPurchaseRequisitionById(
 	>();
 	if (metricLineKeys.length > 0) {
 		await assertStoreInHospital(input.hospitalId, row.pr.fromStoreId);
-		const metricRows = await computePurchaseRequisitionLineMetricRows({
-			hospitalId: input.hospitalId,
-			fromStoreId: row.pr.fromStoreId,
-			prId: input.id,
-			lines: metricLineKeys
-		});
+		const metricRows = await computePurchaseRequisitionLineMetricRows(
+			{
+				hospitalId: input.hospitalId,
+				fromStoreId: row.pr.fromStoreId,
+				prId: input.id,
+				lines: metricLineKeys
+			}
+		);
 		metricByKey = new Map(
 			metricRows.map((r) => [
 				`${r.itemId}:${r.unitId}`,
@@ -436,7 +472,9 @@ export async function getPurchaseRequisitionById(
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
 
 	const userId = event.locals.user?.id ?? null;
-	const staffIdForApprove = userId ? await getStaffIdForUser(userId) : null;
+	const staffIdForApprove = userId
+		? await getStaffIdForUser(userId)
+		: null;
 	let canApprove = false;
 	if (
 		staffIdForApprove &&
@@ -508,7 +546,8 @@ export async function createPurchaseRequisition(
 	);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
 	// PR No: require explicit prefix configuration for this hospital.
 	const [prefixRow] = await ensureDb()
@@ -549,7 +588,10 @@ export async function createPurchaseRequisition(
 		)
 		.limit(1);
 	if (!financialYear) {
-		throw error(400, 'Financial year is not configured for this hospital.');
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	}
 
 	let prNo: string;
@@ -628,7 +670,10 @@ export async function updatePurchaseRequisition(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.id),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -639,15 +684,23 @@ export async function updatePurchaseRequisition(
 	}
 
 	const nextFrom =
-		input.fromStoreId !== undefined ? input.fromStoreId : pr.fromStoreId;
+		input.fromStoreId !== undefined
+			? input.fromStoreId
+			: pr.fromStoreId;
 	const nextTo =
 		input.toStoreId !== undefined ? input.toStoreId : pr.toStoreId;
-	if (input.fromStoreId !== undefined || input.toStoreId !== undefined) {
+	if (
+		input.fromStoreId !== undefined ||
+		input.toStoreId !== undefined
+	) {
 		const fromStore = await assertStoreInHospital(
 			input.hospitalId,
 			nextFrom
 		);
-		const toStore = await assertStoreInHospital(input.hospitalId, nextTo);
+		const toStore = await assertStoreInHospital(
+			input.hospitalId,
+			nextTo
+		);
 	}
 
 	await ensureDb().transaction(async (tx) => {
@@ -673,7 +726,8 @@ export async function updatePurchaseRequisition(
 				.where(eq(table.purchaseRequisitionTable.id, input.id));
 		}
 		if (input.lines) {
-			if (input.lines.length === 0) throw error(400, 'Lines required');
+			if (input.lines.length === 0)
+				throw error(400, 'Lines required');
 			await tx
 				.delete(table.purchaseRequisitionLineTable)
 				.where(eq(table.purchaseRequisitionLineTable.prId, input.id));
@@ -719,7 +773,10 @@ export async function approvePurchaseRequisition(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.prId),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -774,7 +831,9 @@ export async function approvePurchaseRequisition(
 						qtyRemaining: adj.quantity,
 						updatedBy: userId
 					})
-					.where(eq(table.purchaseRequisitionLineTable.id, adj.lineId));
+					.where(
+						eq(table.purchaseRequisitionLineTable.id, adj.lineId)
+					);
 			}
 		}
 
@@ -849,7 +908,10 @@ export async function resubmitPurchaseRequisition(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.prId),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -917,7 +979,10 @@ async function computePurchaseRequisitionLineMetricRows(input: {
 		currentPrPurchaseQty: string;
 	}>
 > {
-	const keys = input.lines.map((l) => ({ itemId: l.itemId, unitId: l.unitId }));
+	const keys = input.lines.map((l) => ({
+		itemId: l.itemId,
+		unitId: l.unitId
+	}));
 	const itemIdSet = [...new Set(keys.map((k) => k.itemId))];
 
 	const storeStockCond = and(
@@ -947,168 +1012,171 @@ async function computePurchaseRequisitionLineMetricRows(input: {
 		keys
 	);
 
-	const [storeRows, globalRows, pendingPrRows, pendingPoRows, currentRows] =
-		await Promise.all([
-			ensureDb()
-				.select({
-					itemId: table.invStockTable.itemId,
-					qty: sql<string>`coalesce(sum(${table.invStockTable.quantity}::numeric), 0)::text`
-				})
-				.from(table.invStockTable)
-				.innerJoin(
-					table.storeTable,
-					eq(table.invStockTable.storeId, table.storeTable.id)
+	const [
+		storeRows,
+		globalRows,
+		pendingPrRows,
+		pendingPoRows,
+		currentRows
+	] = await Promise.all([
+		ensureDb()
+			.select({
+				itemId: table.invStockTable.itemId,
+				qty: sql<string>`coalesce(sum(${table.invStockTable.quantity}::numeric), 0)::text`
+			})
+			.from(table.invStockTable)
+			.innerJoin(
+				table.storeTable,
+				eq(table.invStockTable.storeId, table.storeTable.id)
+			)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
+			)
+			.where(storeStockCond)
+			.groupBy(table.invStockTable.itemId),
+		ensureDb()
+			.select({
+				itemId: table.invStockTable.itemId,
+				qty: sql<string>`coalesce(sum(${table.invStockTable.quantity}::numeric), 0)::text`
+			})
+			.from(table.invStockTable)
+			.innerJoin(
+				table.storeTable,
+				eq(table.invStockTable.storeId, table.storeTable.id)
+			)
+			.innerJoin(
+				table.hospitalBranchTable,
+				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
+			)
+			.where(globalStockCond)
+			.groupBy(table.invStockTable.itemId),
+		ensureDb()
+			.select({
+				itemId: table.purchaseRequisitionLineTable.itemId,
+				unitId: table.purchaseRequisitionLineTable.unitId,
+				pending: sql<string>`coalesce(sum(${table.purchaseRequisitionLineTable.qtyRemaining}::numeric), 0)::text`
+			})
+			.from(table.purchaseRequisitionLineTable)
+			.innerJoin(
+				table.purchaseRequisitionTable,
+				eq(
+					table.purchaseRequisitionLineTable.prId,
+					table.purchaseRequisitionTable.id
 				)
-				.innerJoin(
-					table.hospitalBranchTable,
-					eq(table.storeTable.branchId, table.hospitalBranchTable.id)
-				)
-				.where(storeStockCond)
-				.groupBy(table.invStockTable.itemId),
-			ensureDb()
-				.select({
-					itemId: table.invStockTable.itemId,
-					qty: sql<string>`coalesce(sum(${table.invStockTable.quantity}::numeric), 0)::text`
-				})
-				.from(table.invStockTable)
-				.innerJoin(
-					table.storeTable,
-					eq(table.invStockTable.storeId, table.storeTable.id)
-				)
-				.innerJoin(
-					table.hospitalBranchTable,
-					eq(table.storeTable.branchId, table.hospitalBranchTable.id)
-				)
-				.where(globalStockCond)
-				.groupBy(table.invStockTable.itemId),
-			ensureDb()
-				.select({
-					itemId: table.purchaseRequisitionLineTable.itemId,
-					unitId: table.purchaseRequisitionLineTable.unitId,
-					pending: sql<string>`coalesce(sum(${table.purchaseRequisitionLineTable.qtyRemaining}::numeric), 0)::text`
-				})
-				.from(table.purchaseRequisitionLineTable)
-				.innerJoin(
-					table.purchaseRequisitionTable,
+			)
+			.where(
+				and(
 					eq(
-						table.purchaseRequisitionLineTable.prId,
-						table.purchaseRequisitionTable.id
-					)
-				)
-				.where(
-					and(
-						eq(
-							table.purchaseRequisitionTable.hospitalId,
-							input.hospitalId
-						),
-						eq(
-							table.purchaseRequisitionTable.fromStoreId,
-							input.fromStoreId
-						),
-						isNull(table.purchaseRequisitionTable.deletedAt),
-						isNull(table.purchaseRequisitionLineTable.deletedAt),
-						inArray(
-							table.purchaseRequisitionTable.statusTaggingId,
-							[
-								InvPrStatusTaggingEnum.PENDING,
-								InvPrStatusTaggingEnum.SENT_BACK,
-								InvPrStatusTaggingEnum.APPROVED
-							]
-						),
-						prPairCond
-					)
-				)
-				.groupBy(
-					table.purchaseRequisitionLineTable.itemId,
-					table.purchaseRequisitionLineTable.unitId
-				),
-			ensureDb()
-				.select({
-					itemId: table.purchaseOrderLineTable.itemId,
-					unitId: table.purchaseOrderLineTable.unitId,
-					pendingPo: sql<string>`coalesce(sum(greatest((${table.purchaseOrderLineTable.quantity}::numeric - ${table.purchaseOrderLineTable.qtyReceivedCumulative}::numeric), 0)), 0)::text`
-				})
-				.from(table.purchaseOrderLineTable)
-				.innerJoin(
-					table.purchaseOrderTable,
+						table.purchaseRequisitionTable.hospitalId,
+						input.hospitalId
+					),
 					eq(
-						table.purchaseOrderLineTable.poId,
-						table.purchaseOrderTable.id
-					)
+						table.purchaseRequisitionTable.fromStoreId,
+						input.fromStoreId
+					),
+					isNull(table.purchaseRequisitionTable.deletedAt),
+					isNull(table.purchaseRequisitionLineTable.deletedAt),
+					inArray(table.purchaseRequisitionTable.statusTaggingId, [
+						InvPrStatusTaggingEnum.PENDING,
+						InvPrStatusTaggingEnum.SENT_BACK,
+						InvPrStatusTaggingEnum.APPROVED
+					]),
+					prPairCond
 				)
-				.innerJoin(
-					table.purchaseRequisitionTable,
+			)
+			.groupBy(
+				table.purchaseRequisitionLineTable.itemId,
+				table.purchaseRequisitionLineTable.unitId
+			),
+		ensureDb()
+			.select({
+				itemId: table.purchaseOrderLineTable.itemId,
+				unitId: table.purchaseOrderLineTable.unitId,
+				pendingPo: sql<string>`coalesce(sum(greatest((${table.purchaseOrderLineTable.quantity}::numeric - ${table.purchaseOrderLineTable.qtyReceivedCumulative}::numeric), 0)), 0)::text`
+			})
+			.from(table.purchaseOrderLineTable)
+			.innerJoin(
+				table.purchaseOrderTable,
+				eq(
+					table.purchaseOrderLineTable.poId,
+					table.purchaseOrderTable.id
+				)
+			)
+			.innerJoin(
+				table.purchaseRequisitionTable,
+				eq(
+					table.purchaseOrderTable.prId,
+					table.purchaseRequisitionTable.id
+				)
+			)
+			.where(
+				and(
+					eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
 					eq(
-						table.purchaseOrderTable.prId,
-						table.purchaseRequisitionTable.id
-					)
+						table.purchaseRequisitionTable.fromStoreId,
+						input.fromStoreId
+					),
+					isNull(table.purchaseOrderTable.deletedAt),
+					isNull(table.purchaseOrderLineTable.deletedAt),
+					isNull(table.purchaseRequisitionTable.deletedAt),
+					inArray(table.purchaseOrderTable.statusTaggingId, [
+						InvPoStatusTaggingEnum.PENDING,
+						InvPoStatusTaggingEnum.SENT_BACK,
+						InvPoStatusTaggingEnum.APPROVED,
+						InvPoStatusTaggingEnum.SENT_TO_SUPPLIER,
+						InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
+					]),
+					poPairCond
 				)
-				.where(
-					and(
-						eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
-						eq(
-							table.purchaseRequisitionTable.fromStoreId,
-							input.fromStoreId
-						),
-						isNull(table.purchaseOrderTable.deletedAt),
-						isNull(table.purchaseOrderLineTable.deletedAt),
-						isNull(table.purchaseRequisitionTable.deletedAt),
-						inArray(table.purchaseOrderTable.statusTaggingId, [
-							InvPoStatusTaggingEnum.PENDING,
-							InvPoStatusTaggingEnum.SENT_BACK,
-							InvPoStatusTaggingEnum.APPROVED,
-							InvPoStatusTaggingEnum.SENT_TO_SUPPLIER,
-							InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
-						]),
-						poPairCond
-					)
-				)
-				.groupBy(
-					table.purchaseOrderLineTable.itemId,
-					table.purchaseOrderLineTable.unitId
-				),
-			input.prId
-				? ensureDb()
-						.select({
-							itemId: table.purchaseRequisitionLineTable.itemId,
-							unitId: table.purchaseRequisitionLineTable.unitId,
-							cur: sql<string>`coalesce(sum(${table.purchaseRequisitionLineTable.quantity}::numeric), 0)::text`
-						})
-						.from(table.purchaseRequisitionLineTable)
-						.where(
-							and(
-								eq(
-									table.purchaseRequisitionLineTable.prId,
-									input.prId
-								),
-								isNull(table.purchaseRequisitionLineTable.deletedAt),
-								inArray(
-									table.purchaseRequisitionLineTable.itemId,
-									itemIdSet
-								)
+			)
+			.groupBy(
+				table.purchaseOrderLineTable.itemId,
+				table.purchaseOrderLineTable.unitId
+			),
+		input.prId
+			? ensureDb()
+					.select({
+						itemId: table.purchaseRequisitionLineTable.itemId,
+						unitId: table.purchaseRequisitionLineTable.unitId,
+						cur: sql<string>`coalesce(sum(${table.purchaseRequisitionLineTable.quantity}::numeric), 0)::text`
+					})
+					.from(table.purchaseRequisitionLineTable)
+					.where(
+						and(
+							eq(table.purchaseRequisitionLineTable.prId, input.prId),
+							isNull(table.purchaseRequisitionLineTable.deletedAt),
+							inArray(
+								table.purchaseRequisitionLineTable.itemId,
+								itemIdSet
 							)
 						)
-						.groupBy(
-							table.purchaseRequisitionLineTable.itemId,
-							table.purchaseRequisitionLineTable.unitId
-						)
-				: Promise.resolve(
-						[] as {
-							itemId: number;
-							unitId: number;
-							cur: string;
-						}[]
 					)
-		]);
+					.groupBy(
+						table.purchaseRequisitionLineTable.itemId,
+						table.purchaseRequisitionLineTable.unitId
+					)
+			: Promise.resolve(
+					[] as {
+						itemId: number;
+						unitId: number;
+						cur: string;
+					}[]
+				)
+	]);
 
 	const storeMap = new Map(storeRows.map((r) => [r.itemId, r.qty]));
 	const globalMap = new Map(globalRows.map((r) => [r.itemId, r.qty]));
-	const pendKey = (itemId: number, unitId: number) => `${itemId}:${unitId}`;
+	const pendKey = (itemId: number, unitId: number) =>
+		`${itemId}:${unitId}`;
 	const pendingPrMap = new Map(
 		pendingPrRows.map((r) => [pendKey(r.itemId, r.unitId), r.pending])
 	);
 	const pendingPoMap = new Map(
-		pendingPoRows.map((r) => [pendKey(r.itemId, r.unitId), r.pendingPo])
+		pendingPoRows.map((r) => [
+			pendKey(r.itemId, r.unitId),
+			r.pendingPo
+		])
 	);
 	const currentMap = new Map(
 		currentRows.map((r) => [pendKey(r.itemId, r.unitId), r.cur])
@@ -1172,7 +1240,10 @@ export async function cancelPurchaseRequisition(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.prId),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -1195,7 +1266,10 @@ export async function cancelPurchaseRequisition(
 			)
 		);
 	if (Number(poCntRow?.c ?? 0) > 0) {
-		throw error(400, 'Cannot cancel: a purchase order exists for this PR');
+		throw error(
+			400,
+			'Cannot cancel: a purchase order exists for this PR'
+		);
 	}
 
 	await ensureDb()
@@ -1224,7 +1298,8 @@ export async function closePurchaseRequisitionLineRemaining(
 	if (!userId) throw error(401, 'Unauthorized');
 
 	const lineId = Number(input.lineId);
-	if (!Number.isFinite(lineId) || lineId <= 0) throw error(400, 'Invalid line id');
+	if (!Number.isFinite(lineId) || lineId <= 0)
+		throw error(400, 'Invalid line id');
 
 	await ensureDb().transaction(async (tx) => {
 		const [pr] = await tx
@@ -1233,7 +1308,10 @@ export async function closePurchaseRequisitionLineRemaining(
 			.where(
 				and(
 					eq(table.purchaseRequisitionTable.id, input.prId),
-					eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+					eq(
+						table.purchaseRequisitionTable.hospitalId,
+						input.hospitalId
+					),
 					isNull(table.purchaseRequisitionTable.deletedAt)
 				)
 			)
@@ -1257,7 +1335,8 @@ export async function closePurchaseRequisitionLineRemaining(
 		if (!ln) throw error(404, 'PR line not found');
 
 		const rem = Number(ln.qtyRemaining);
-		if (!Number.isFinite(rem)) throw error(400, 'Invalid remaining quantity');
+		if (!Number.isFinite(rem))
+			throw error(400, 'Invalid remaining quantity');
 		if (rem <= 0) return; // already closed / fully allocated
 
 		await tx
@@ -1269,5 +1348,8 @@ export async function closePurchaseRequisitionLineRemaining(
 			.where(eq(table.purchaseRequisitionLineTable.id, lineId));
 	});
 
-	return getPurchaseRequisitionById(event, { hospitalId: input.hospitalId, id: input.prId });
+	return getPurchaseRequisitionById(event, {
+		hospitalId: input.hospitalId,
+		id: input.prId
+	});
 }

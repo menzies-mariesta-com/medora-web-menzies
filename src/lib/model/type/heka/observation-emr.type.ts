@@ -44,5 +44,8 @@ export type ObservationEmrFormEntryRow = {
 	description: string | null;
 	createdAt?: string | null;
 	formName?: { code: string | null } | null;
-	visit?: { visitNo: string | null; createdAt?: string | null } | null;
+	visit?: {
+		visitNo: string | null;
+		createdAt?: string | null;
+	} | null;
 };

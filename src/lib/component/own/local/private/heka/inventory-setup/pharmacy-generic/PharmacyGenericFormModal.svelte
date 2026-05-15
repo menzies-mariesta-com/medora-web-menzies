@@ -18,7 +18,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -41,10 +42,7 @@
 
 	lifeCycleUtil.onMount(async () => {
 		try {
-			if (
-				modalState.mode === 'edit' &&
-				modalState.editRow != null
-			) {
+			if (modalState.mode === 'edit' && modalState.editRow != null) {
 				const r = modalState.editRow;
 				name = r.name ?? '';
 				code = r.code ?? '';
@@ -162,7 +160,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel className="shrink-0 sm:w-40">{m.status()}</DaisyUiLabel>
+			<DaisyUiLabel className="shrink-0 sm:w-40"
+				>{m.status()}</DaisyUiLabel
+			>
 			<div class="flex max-w-lg flex-1 flex-wrap items-center gap-2">
 				<label class="flex cursor-pointer items-center gap-2">
 					<DaisyUiCheckbox bind:checked={formActive} />

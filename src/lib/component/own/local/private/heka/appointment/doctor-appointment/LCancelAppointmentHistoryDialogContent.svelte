@@ -5,6 +5,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { AppointmentWithRelations } from '$lib/model/type/heka/appointment.type';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -28,9 +29,7 @@
 		const code = row.patient?.code?.trim() ?? '';
 		const name =
 			row.patientName?.trim() ??
-			(row.patient
-				? StringUtil.patientDisplayName(row.patient)
-				: '');
+			(row.patient ? StringUtil.patientDisplayName(row.patient) : '');
 		if (code && name) return `${code} – ${name}`;
 		return name || code || '–';
 	}
@@ -112,7 +111,7 @@
 						{columns}
 						{isLoading}
 						showRefreshButton={false}
-						pageSize="10"
+						pageSize={String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)}
 						currentPage={1}
 						emptyMessage="No items."
 						showRowActions={false}

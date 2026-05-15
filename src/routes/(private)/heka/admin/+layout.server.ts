@@ -6,7 +6,11 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
 
 /** Only SYSTEM_ADMIN can access /heka/admin/* */
-export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
+export const load: LayoutServerLoad = async ({
+	locals,
+	cookies,
+	url
+}) => {
 	if (!locals.user) {
 		const redirectTo = `${url.pathname}${url.search}`;
 		throw redirect(
@@ -18,7 +22,8 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 		throw redirect(302, WebRoutesEnum.HEKA_HOSPITAL);
 	}
 	const sessionId = locals.session?.id ?? null;
-	const extendedFor = cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
+	const extendedFor =
+		cookies.get(COOKIE_SESSION_EXTENDED_FOR) ?? null;
 	return {
 		user: locals.user,
 		staff: locals.staff ?? null,

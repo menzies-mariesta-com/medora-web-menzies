@@ -263,7 +263,9 @@ export class StringUtil {
 		return formatItemUnitConversionDisplay(input);
 	}
 
-	static serviceOptionDisplayName(service: ServiceItemDisplay): string {
+	static serviceOptionDisplayName(
+		service: ServiceItemDisplay
+	): string {
 		return `${service.serviceName ?? 'Unknown Service'} (${service.serviceCode ?? '-'})`;
 	}
 

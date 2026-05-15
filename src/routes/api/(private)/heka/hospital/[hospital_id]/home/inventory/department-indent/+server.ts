@@ -10,11 +10,16 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	const id = event.url.searchParams.get('id');
 	if (id) {
-		const row = await getDepartmentIndentById(event, { hospitalId, id });
+		const row = await getDepartmentIndentById(event, {
+			hospitalId,
+			id
+		});
 		return json(row);
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const fromStoreIdStr = event.url.searchParams.get('fromStoreId');
 	const toStoreIdStr = event.url.searchParams.get('toStoreId');
 	const statusIdStr = event.url.searchParams.get('statusTaggingId');
@@ -32,7 +37,9 @@ export const GET: RequestHandler = async (event) => {
 			: undefined;
 	const indentNoRaw = event.url.searchParams.get('indentNo');
 	const indentNo =
-		indentNoRaw != null && indentNoRaw !== '' ? indentNoRaw : undefined;
+		indentNoRaw != null && indentNoRaw !== ''
+			? indentNoRaw
+			: undefined;
 	const data = await listDepartmentIndents(event, {
 		hospitalId,
 		page,
@@ -40,7 +47,9 @@ export const GET: RequestHandler = async (event) => {
 		fromStoreId: Number.isFinite(fromStoreId as number)
 			? fromStoreId
 			: undefined,
-		toStoreId: Number.isFinite(toStoreId as number) ? toStoreId : undefined,
+		toStoreId: Number.isFinite(toStoreId as number)
+			? toStoreId
+			: undefined,
 		statusTaggingId: Number.isFinite(statusTaggingId as number)
 			? statusTaggingId
 			: undefined,
@@ -51,7 +60,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 	const data = await createDepartmentIndent(event, {
 		hospitalId,

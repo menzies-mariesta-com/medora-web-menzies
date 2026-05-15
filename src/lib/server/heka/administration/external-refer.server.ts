@@ -42,7 +42,8 @@ export async function getExternalReferPaginated(
 	requireUser(event);
 	await ensureCanAccessHospital(event, params.hospitalId);
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const notDeletedCondition = ne(
 		table.externalReferTable.statusId,
 		StatusEnum.DELETED
@@ -120,7 +121,10 @@ export async function createExternalRefer(
 
 export async function updateExternalRefer(
 	event: RequestEvent,
-	payload: ExternalReferSchemaUpdate & { id: number; hospitalId: string }
+	payload: ExternalReferSchemaUpdate & {
+		id: number;
+		hospitalId: string;
+	}
 ): Promise<ExternalReferSchema> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, payload.hospitalId);
@@ -159,13 +163,13 @@ export async function deleteExternalRefer(
 export async function getExternalReferMeta(event: RequestEvent) {
 	requireUser(event);
 	const db = ensureDb();
-	const [countries, titles, states, cities, postalCodes] = await Promise.all([
-		db.select().from(table.countryTable),
-		db.select().from(table.titleTable),
-		db.select().from(table.stateTable),
-		db.select().from(table.cityTable),
-		db.select().from(table.postalCodeTable)
-	]);
+	const [countries, titles, states, cities, postalCodes] =
+		await Promise.all([
+			db.select().from(table.countryTable),
+			db.select().from(table.titleTable),
+			db.select().from(table.stateTable),
+			db.select().from(table.cityTable),
+			db.select().from(table.postalCodeTable)
+		]);
 	return { countries, titles, states, cities, postalCodes };
 }
-

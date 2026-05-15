@@ -9,7 +9,9 @@
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/heka/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -27,7 +29,9 @@
 	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data: layoutData } = $props();
@@ -36,7 +40,8 @@
 			.selectedInventoryFromStoreId ?? null
 	);
 	const currentUserId = $derived(
-		(layoutData as { currentUserId?: string | null }).currentUserId ?? null
+		(layoutData as { currentUserId?: string | null }).currentUserId ??
+			null
 	);
 
 	const toastService = new ToastService();
@@ -70,22 +75,61 @@
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 	let listAbort: AbortController | null = null;
 
-	const PR_STATUS_FILTER_OPTIONS: { label: string; value: string }[] = [
-		{ label: 'Draft', value: String(InvPrStatusTaggingEnum.DRAFT) },
-		{ label: 'Pending', value: String(InvPrStatusTaggingEnum.PENDING) },
-		{ label: 'Approved', value: String(InvPrStatusTaggingEnum.APPROVED) },
-		{ label: 'Rejected', value: String(InvPrStatusTaggingEnum.REJECTED) },
-		{ label: 'Cancelled', value: String(InvPrStatusTaggingEnum.CANCELLED) }
-	];
+	type InventoryStoreNavRow = {
+		id: number;
+		storeName: string | null;
+		isPurchaseRequisitable?: boolean;
+	};
+
+	const inventoryStoresForNav = $derived(
+		(
+			layoutData as {
+				inventoryFromStoresForNav?: InventoryStoreNavRow[];
+			}
+		).inventoryFromStoresForNav ?? []
+	);
+
+	const prCreateAllowed = $derived.by(() => {
+		if (selectedInventoryFromStoreId == null) return false;
+		const s = inventoryStoresForNav.find(
+			(x) => x.id === selectedInventoryFromStoreId
+		);
+		return s?.isPurchaseRequisitable === true;
+	});
+
+	const PR_STATUS_FILTER_OPTIONS: { label: string; value: string }[] =
+		[
+			{ label: 'Draft', value: String(InvPrStatusTaggingEnum.DRAFT) },
+			{
+				label: 'Pending',
+				value: String(InvPrStatusTaggingEnum.PENDING)
+			},
+			{
+				label: 'Approved',
+				value: String(InvPrStatusTaggingEnum.APPROVED)
+			},
+			{
+				label: 'Rejected',
+				value: String(InvPrStatusTaggingEnum.REJECTED)
+			},
+			{
+				label: 'Cancelled',
+				value: String(InvPrStatusTaggingEnum.CANCELLED)
+			}
+		];
 
 	let cancelPrId = $state<string | null>(null);
 
 	const prNewPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-requisition/new' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-requisition/new' as any
+		)
 	);
 
 	function prViewHref(prId: string) {
@@ -120,7 +164,8 @@
 	}
 
 	function prRowCanCancel(row: PrRow): boolean {
-		if (row.statusTaggingId === InvPrStatusTaggingEnum.CANCELLED) return false;
+		if (row.statusTaggingId === InvPrStatusTaggingEnum.CANCELLED)
+			return false;
 		if ((row.poCount ?? 0) > 0) return false;
 		const statusOk =
 			row.statusTaggingId === InvPrStatusTaggingEnum.DRAFT ||
@@ -181,7 +226,8 @@
 		listAbort?.abort();
 		listAbort = new AbortController();
 		try {
-			const pageSize = Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE;
+			const pageSize =
+				Number(pageSizeStr) || AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE;
 			const sp = new URLSearchParams();
 			sp.set('page', String(currentPage));
 			sp.set('pageSize', String(pageSize));
@@ -192,17 +238,23 @@
 			}
 			const statusId = tableFilters.statusTaggingId?.trim();
 			if (statusId) sp.set('statusTaggingId', statusId);
+			const item = tableFilters.item?.trim();
+			if (item) sp.set('item', item);
 
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/inventory/purchase-requisition?${sp.toString()}`,
 				{ method: 'GET', signal: listAbort.signal }
 			);
 			if (!res.ok) throw new Error(String(res.status));
-			const j = (await res.json()) as { data: PrRow[]; total?: number };
+			const j = (await res.json()) as {
+				data: PrRow[];
+				total?: number;
+			};
 			list = j.data ?? [];
 			total = j.total ?? 0;
 		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') return;
+			if (e instanceof DOMException && e.name === 'AbortError')
+				return;
 			toastError(
 				toastService,
 				m.entity_purchase_requisition(),
@@ -262,10 +314,10 @@
 			format: (_v, row) => row.statusName ?? row.statusCode ?? '—'
 		},
 		{
-			id: 'itemNames',
+			id: 'item',
 			header: m.inv_common_item(),
 			field: 'itemNames',
-			filterable: false,
+			filterable: true,
 			cellClass: 'whitespace-pre-line',
 			format: (_v, row) =>
 				(row.itemNames ?? '')
@@ -286,10 +338,21 @@
 
 <div class="mb-4 flex items-center justify-between">
 	<h1 class="text-lg font-semibold">{m.inv_page_pr_title()}</h1>
-	<DaisyUiButton className="d-btn-primary" onClick={() => void goto(resolve(prNewPath as any))}>
-		<LucidePlus className="size-4" />
-		{m.inv_pr_new_title()}
-	</DaisyUiButton>
+	<DaisyUiTooltip
+		className="d-tooltip-left"
+		tooltipText={prCreateAllowed
+			? ''
+			: m.inv_pr_create_disabled_store_not_requisitable()}
+	>
+		<DaisyUiButton
+			className="d-btn-primary"
+			disabled={!prCreateAllowed}
+			onClick={() => void goto(resolve(prNewPath as any))}
+		>
+			<LucidePlus className="size-4" />
+			{m.inv_pr_new_title()}
+		</DaisyUiButton>
+	</DaisyUiTooltip>
 </div>
 
 <div class={TableEnum.HEIGHT}>
@@ -337,7 +400,8 @@
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const r = row as PrRow}
-				<div class="flex flex-col items-center gap-1">
+				{@const cancelDisabled = loading || !prRowCanCancel(r)}
+				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
 						className="d-tooltip-ghost d-tooltip-right"
@@ -352,13 +416,16 @@
 					</DaisyUiTooltip>
 
 					{#if prRowEditVisible(r)}
+						{@const editDisabled = loading || !prRowCanEdit(r)}
 						<DaisyUiTooltip
-							tooltipText={m.inv_pr_edit()}
-							className="d-tooltip-accent d-tooltip-right"
+							tooltipText={editDisabled
+								? 'Edit not available (only the creator can edit)'
+								: m.inv_pr_edit()}
+							className={`d-tooltip-right ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={loading || !prRowCanEdit(r)}
+								className={`d-btn-sm d-btn-ghost d-btn-square ${editDisabled ? '' : 'text-accent'}`}
+								disabled={editDisabled}
 								onClick={() => void goto(prEditHref(r.id))}
 							>
 								<LucidePencil className="size-5" />
@@ -367,13 +434,17 @@
 					{/if}
 
 					{#if r.statusTaggingId === InvPrStatusTaggingEnum.PENDING}
+						{@const approveDisabled =
+							loading || r.canApprove !== true}
 						<DaisyUiTooltip
-							tooltipText={m.inv_nav_pr_approval()}
-							className="d-tooltip-accent d-tooltip-right"
+							tooltipText={approveDisabled
+								? 'Approval not available (no permission for this level)'
+								: m.inv_nav_pr_approval()}
+							className={`d-tooltip-right ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
-								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-								disabled={loading || r.canApprove !== true}
+								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}
+								disabled={approveDisabled}
 								onClick={() => {
 									void goto(prApproveHref(r.id));
 								}}
@@ -384,12 +455,14 @@
 					{/if}
 
 					<DaisyUiTooltip
-						tooltipText={m.inv_pr_cancel()}
-						className="d-tooltip-error d-tooltip-right"
+						tooltipText={cancelDisabled
+							? 'Cancel not available (not allowed or already linked to PO)'
+							: m.inv_pr_cancel()}
+						className={`d-tooltip-right ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
 					>
 						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-square text-error"
-							disabled={loading || !prRowCanCancel(r)}
+							className={`d-btn-sm d-btn-ghost d-btn-square ${cancelDisabled ? '' : 'text-error'}`}
+							disabled={cancelDisabled}
 							onClick={() => openCancelDialog(r)}
 						>
 							<LucideCircleX className="size-5" />
@@ -400,4 +473,3 @@
 		</MariTable>
 	{/key}
 </div>
-

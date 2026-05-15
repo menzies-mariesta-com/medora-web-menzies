@@ -13,10 +13,12 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import ConsumptionLineDialogContent from '$lib/component/own/local/private/heka/inventory/department-consumption/ConsumptionLineDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import type { ConsumptionDraftLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/heka/department-consumption-detail.type';
-	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -25,13 +27,15 @@
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
-		(data as { selectedInventoryFromStoreId?: number | null }).selectedInventoryFromStoreId ??
-			null
+		(data as { selectedInventoryFromStoreId?: number | null })
+			.selectedInventoryFromStoreId ?? null
 	);
 
 	let stores = $state<{ id: number; storeName: string | null }[]>([]);
@@ -44,7 +48,10 @@
 	let submitting = $state(false);
 
 	const listPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/department-consumption' as const)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/department-consumption' as const
+		)
 	);
 
 	function newLine(): ConsumptionDraftLine {
@@ -54,23 +61,65 @@
 			hits: [],
 			itemId: null,
 			itemLabel: '',
-			quantity: '1',
 			iumList: [],
 			itemUnitMasterId: null,
-			batchId: null,
-			batchOptions: []
+			batchAllocations: []
 		};
 	}
 
-	function purchaseUnitForLine(line: ConsumptionDraftLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+	function purchaseUnitForLine(
+		line: ConsumptionDraftLine
+	): number | null {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
+	}
+
+	function lineIumFactors(line: ConsumptionDraftLine): {
+		pf: string;
+		iff: string;
+	} | null {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
+		if (!ium) return null;
+		return {
+			pf: ium.purchaseConversionFactor,
+			iff: ium.issueConversionFactor
+		};
+	}
+
+	function totalPurchaseQtyDisplay(
+		line: ConsumptionDraftLine
+	): string {
+		let sum = 0;
+		for (const a of line.batchAllocations) {
+			const n = Number(String(a.qtyPurchase).trim());
+			if (Number.isFinite(n) && n > 0) sum += n;
+		}
+		return sum > 0 ? String(sum) : '—';
+	}
+
+	function batchAllocationsSummary(
+		line: ConsumptionDraftLine
+	): string {
+		const parts = line.batchAllocations
+			.filter((a) => {
+				const n = Number(String(a.qtyPurchase).trim());
+				return Number.isFinite(n) && n > 0;
+			})
+			.map(
+				(a) =>
+					`${(a.batchNo ?? '').trim() || '—'} (${String(a.qtyPurchase).trim()})`
+			);
+		return parts.length > 0 ? parts.join('; ') : '—';
 	}
 
 	async function loadStores() {
 		if (!hospitalId) return;
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`,
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
 			{ method: 'GET' }
 		);
 		stores = (await res.json()) as typeof stores;
@@ -86,10 +135,12 @@
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
 		);
 		const j = await res.json();
-		return (j.data ?? []).map((x: { itemName?: string | null; id: number }) => ({
-			label: x.itemName ?? '—',
-			value: String(x.id)
-		}));
+		return (j.data ?? []).map(
+			(x: { itemName?: string | null; id: number }) => ({
+				label: x.itemName ?? '—',
+				value: String(x.id)
+			})
+		);
 	}
 
 	async function openCreateLine() {
@@ -99,7 +150,7 @@
 		if (!dl) return;
 		await dialogService.open({
 			title: m.inv_dc_add_line(),
-			modalClassName: 'max-w-2xl',
+			modalClassName: 'max-w-4xl',
 			component: ConsumptionLineDialogContent,
 			props: {
 				hospitalId,
@@ -121,13 +172,13 @@
 			...line,
 			hits: [...line.hits],
 			iumList: [...line.iumList],
-			batchOptions: [...line.batchOptions]
+			batchAllocations: line.batchAllocations.map((a) => ({ ...a }))
 		};
 		const dl = draftLineModal;
 		if (!dl) return;
 		await dialogService.open({
 			title: m.inv_dc_edit_line(),
-			modalClassName: 'max-w-2xl',
+			modalClassName: 'max-w-4xl',
 			component: ConsumptionLineDialogContent,
 			props: {
 				hospitalId,
@@ -145,7 +196,13 @@
 
 	function persistDraftLineFromModal() {
 		if (!draftLineModal) return;
-		const row = { ...draftLineModal };
+		const src = draftLineModal;
+		const row: ConsumptionDraftLine = {
+			...src,
+			hits: [...src.hits],
+			iumList: [...src.iumList],
+			batchAllocations: src.batchAllocations.map((a) => ({ ...a }))
+		};
 		if (editingLineKey) {
 			lines = lines.map((x) => (x.key === editingLineKey ? row : x));
 		} else {
@@ -157,32 +214,33 @@
 		lines = lines.filter((x) => x.key !== key);
 	}
 
-	const columns: MariTableColumn<DepartmentConsumptionDetailLine>[] = [
-		{
-			id: 'item',
-			header: m.inv_common_item(),
-			field: 'itemName',
-			format: (_v, r) => r.itemName ?? '—'
-		},
-		{
-			id: 'qty',
-			header: m.inv_common_quantity(),
-			field: 'quantity',
-			format: (_v, r) => String(r.quantity)
-		},
-		{
-			id: 'unit',
-			header: m.inv_common_unit(),
-			field: 'unitName',
-			format: (_v, r) => r.unitName ?? '—'
-		},
-		{
-			id: 'batch',
-			header: m.inv_dc_batch(),
-			field: 'batchNo',
-			format: (_v, r) => r.batchNo ?? '—'
-		}
-	];
+	const columns: MariTableColumn<DepartmentConsumptionDetailLine>[] =
+		[
+			{
+				id: 'item',
+				header: m.inv_common_item(),
+				field: 'itemName',
+				format: (_v, r) => r.itemName ?? '—'
+			},
+			{
+				id: 'qty',
+				header: m.inv_common_quantity(),
+				field: 'quantity',
+				format: (_v, r) => String(r.quantity)
+			},
+			{
+				id: 'unit',
+				header: m.inv_common_unit(),
+				field: 'unitName',
+				format: (_v, r) => r.unitName ?? '—'
+			},
+			{
+				id: 'batch',
+				header: m.inv_dc_batch(),
+				field: 'batchNo',
+				format: (_v, r) => r.batchNo ?? '—'
+			}
+		];
 
 	async function submitConsumption() {
 		if (!hospitalId || storeId == null) return;
@@ -194,26 +252,56 @@
 		}[] = [];
 		for (const ln of lines) {
 			const uid = purchaseUnitForLine(ln);
-			const q = ln.quantity.trim();
-			if (
-				ln.itemId == null ||
-				uid == null ||
-				ln.batchId == null ||
-				!q ||
-				Number(q) <= 0
-			) {
-				toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_common_quantity()));
+			const factors = lineIumFactors(ln);
+			if (ln.itemId == null || uid == null || factors == null) {
+				toast.addErrorToast(
+					m.inv_dc_new_title(),
+					new Error(m.inv_common_quantity())
+				);
 				return;
 			}
-			payloadLines.push({
-				itemId: ln.itemId,
-				quantity: q,
-				unitId: uid,
-				batchId: ln.batchId
-			});
+			const { pf, iff } = factors;
+			let lineHasQty = false;
+			for (const a of ln.batchAllocations) {
+				const q = a.qtyPurchase.trim();
+				if (!q) continue;
+				const n = Number(q);
+				if (!Number.isFinite(n) || n <= 0) {
+					toast.addErrorToast(
+						m.inv_dc_new_title(),
+						new Error(m.inv_common_quantity())
+					);
+					return;
+				}
+				lineHasQty = true;
+				const need = purchaseQtyToIssueQtyNumber(q, pf, iff);
+				if (need == null || need > Number(a.stockIssueQty) + 1e-6) {
+					toast.addErrorToast(
+						m.inv_dc_new_title(),
+						new Error(m.inv_dc_batch_qty_exceeds_stock())
+					);
+					return;
+				}
+				payloadLines.push({
+					itemId: ln.itemId,
+					quantity: q,
+					unitId: uid,
+					batchId: a.batchId
+				});
+			}
+			if (!lineHasQty) {
+				toast.addErrorToast(
+					m.inv_dc_new_title(),
+					new Error(m.inv_common_quantity())
+				);
+				return;
+			}
 		}
 		if (payloadLines.length === 0) {
-			toast.addErrorToast(m.inv_dc_new_title(), new Error(m.inv_dc_lines_title()));
+			toast.addErrorToast(
+				m.inv_dc_new_title(),
+				new Error(m.inv_dc_lines_title())
+			);
 			return;
 		}
 		submitting = true;
@@ -249,74 +337,124 @@
 </script>
 
 <div class="mb-4 flex flex-wrap items-center gap-2">
-	<DaisyUiButton type="button" className="d-btn-ghost d-btn-sm" onClick={() => void goto(listPath)}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn-ghost d-btn-sm"
+		onClick={() => void goto(listPath)}
+	>
 		<LucideArrowLeft className="mr-1 size-4" />
 	</DaisyUiButton>
 	<h1 class="text-xl font-semibold">{m.inv_dc_new_title()}</h1>
 </div>
 
 <DaisyUiCard className="mb-4">
-	<DaisyUiCardBody className="grid gap-3 sm:max-w-xl">
+	<DaisyUiCardBody className="grid gap-3 sm:max-w-3xl">
 		<DaisyUiCardBodyTitle>{m.inv_dc_store()}</DaisyUiCardBodyTitle>
-		<div>
-			<DaisyUiLabel className="text-xs">{m.inv_nav_from_store()}</DaisyUiLabel>
-			<input
-				type="text"
-				readonly
-				disabled
-				class="d-input d-input-bordered mt-1 w-full text-sm"
-				value={
-					selectedInventoryFromStoreId != null
-						? stores.find((s) => s.id === selectedInventoryFromStoreId)?.storeName?.trim() || '—'
-						: '—'
-				}
-				aria-label={m.inv_nav_from_store()}
-			/>
-		</div>
-		{#if selectedInventoryFromStoreId == null}
-			<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
-				{m.inv_inventory_from_store_topbar_hint()}
+		<div class="flex flex-col gap-6 sm:flex-row sm:items-start">
+			<div class="min-w-0 flex-1">
+				<DaisyUiLabel className="text-xs"
+					>{m.inv_nav_from_store()}</DaisyUiLabel
+				>
+				<input
+					type="text"
+					readonly
+					disabled
+					class="d-input-bordered d-input mt-1 w-full text-sm"
+					value={selectedInventoryFromStoreId != null
+						? stores
+								.find((s) => s.id === selectedInventoryFromStoreId)
+								?.storeName?.trim() || '—'
+						: '—'}
+					aria-label={m.inv_nav_from_store()}
+				/>
+				{#if selectedInventoryFromStoreId == null}
+					<div
+						class="mt-2 d-alert text-sm d-alert-warning"
+						role="status"
+					>
+						{m.inv_inventory_from_store_topbar_hint()}
+					</div>
+				{/if}
 			</div>
-		{/if}
-		<DaisyUiLabel className="text-xs">{m.inv_dept_indent_remarks()}</DaisyUiLabel>
-		<textarea class="d-textarea d-textarea-bordered w-full text-sm" rows="2" bind:value={remarks}
-		></textarea>
+
+			<div class="min-w-0 flex-1">
+				<DaisyUiLabel className="text-xs"
+					>{m.inv_dept_indent_remarks()}</DaisyUiLabel
+				>
+				<input
+					type="text"
+					class="d-input-bordered d-input mt-1 w-full text-sm"
+					placeholder={m.inv_dept_indent_remarks()}
+					bind:value={remarks}
+				/>
+			</div>
+		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
+
+<div
+	class="mb-4 flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+>
+	<DaisyUiButton
+		type="button"
+		className="d-btn-primary d-btn-wide"
+		disabled={submitting || storeId == null || lines.length === 0}
+		onClick={() => void submitConsumption()}
+	>
+		{m.inv_dc_submit_for_approval()}
+	</DaisyUiButton>
+</div>
 
 <DaisyUiCard className="mb-4">
 	<DaisyUiCardBody>
 		<div class="mb-2 flex items-center justify-between gap-2">
-			<DaisyUiCardBodyTitle>{m.inv_dc_lines_title()}</DaisyUiCardBodyTitle>
-			<DaisyUiButton type="button" className="d-btn-sm d-btn-primary" onClick={() => void openCreateLine()}>
-			<LucidePlus className="size-4" />
-				{m.inv_dc_add_line()}
-			</DaisyUiButton>
+			<DaisyUiCardBodyTitle
+				>{m.inv_dc_lines_title()}</DaisyUiCardBodyTitle
+			>
+			<div class="flex items-center justify-end gap-2">
+				<DaisyUiTooltip
+					tooltipText={m.inv_dc_add_line()}
+					className="d-tooltip-ghost"
+				>
+					<DaisyUiButton
+						type="button"
+						className="d-btn d-btn-primary d-btn-square d-btn-outline"
+						disabled={submitting || storeId == null}
+						title={m.inv_dc_add_line()}
+						onClick={() => void openCreateLine()}
+					>
+						<LucidePlus className="size-4" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			</div>
 		</div>
-		<div class={TableEnum.HEIGHT}>
+		<div class="h-[420px] min-h-0">
 			<MariTable
 				columns={columns as MariTableColumn[]}
 				rows={lines.map((ln) => ({
 					id: 0,
 					consumptionId: '',
 					itemId: ln.itemId ?? 0,
-					quantity: ln.quantity,
+					quantity: totalPurchaseQtyDisplay(ln),
 					unitId: purchaseUnitForLine(ln) ?? 0,
-					batchId: ln.batchId ?? 0,
+					batchId: ln.batchAllocations[0]?.batchId ?? 0,
 					remarks: null,
 					itemName: ln.itemLabel,
 					unitName:
-						ln.iumList.find((u) => u.id === ln.itemUnitMasterId)?.conversionDisplay ?? '—',
-					batchNo: ln.batchOptions.find((b) => b.value === ln.batchId)?.label ?? '—'
+						ln.iumList.find((u) => u.id === ln.itemUnitMasterId)
+							?.conversionDisplay ?? '—',
+					batchNo: batchAllocationsSummary(ln)
 				}))}
 				showRefreshButton={false}
-				enableColumnFilters={false}
+				enableColumnFilters={true}
 				showRowActions={true}
 				actionsVariant="none"
 			>
 				{#snippet rowActions(_row, index)}
 					{@const ln = lines[index]}
-					<div class="flex flex-col items-center gap-1">
+					<div
+						class="flex flex-row items-center justify-center gap-1"
+					>
 						<DaisyUiTooltip
 							tooltipText={m.inv_line_items_tooltip_edit()}
 							className="d-tooltip-accent d-tooltip-right"
@@ -353,12 +491,3 @@
 		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
-
-<DaisyUiButton
-	type="button"
-	className="d-btn-primary"
-	disabled={submitting || storeId == null}
-	onClick={() => void submitConsumption()}
->
-	{m.inv_dc_submit_for_approval()}
-</DaisyUiButton>

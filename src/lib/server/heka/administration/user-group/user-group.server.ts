@@ -23,7 +23,8 @@ export async function getUserGroupsPaginated(
 	input: PaginationParams & { hospitalId: string }
 ): Promise<PaginatedResult<UserGroupSchema>> {
 	await ensureCanAccessHospital(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	const conditions = [
 		eq(table.userGroupTable.hospitalId, input.hospitalId),
@@ -32,10 +33,14 @@ export async function getUserGroupsPaginated(
 
 	const nameFilter = input.name?.trim();
 	if (nameFilter) {
-		conditions.push(ilike(table.userGroupTable.name, `%${nameFilter}%`));
+		conditions.push(
+			ilike(table.userGroupTable.name, `%${nameFilter}%`)
+		);
 	}
 	if (typeof input.statusId === 'number') {
-		conditions.push(eq(table.userGroupTable.statusId, input.statusId));
+		conditions.push(
+			eq(table.userGroupTable.statusId, input.statusId)
+		);
 	}
 
 	const whereExpr = and(...conditions);
@@ -111,7 +116,8 @@ export async function updateUserGroup(
 		.limit(1);
 	if (!row) throw error(404, 'User group not found');
 	const hidUpdate = row.hospitalId;
-	if (!hidUpdate) throw error(400, 'User group has no hospital scope');
+	if (!hidUpdate)
+		throw error(400, 'User group has no hospital scope');
 	await ensureCanAccessHospital(event, hidUpdate);
 
 	const { id, ...data } = input;
@@ -172,7 +178,9 @@ export async function getUserGroupPageAssignments(
 		ensureDb()
 			.select()
 			.from(table.userGroupPageTable)
-			.where(eq(table.userGroupPageTable.userGroupId, input.userGroupId))
+			.where(
+				eq(table.userGroupPageTable.userGroupId, input.userGroupId)
+			)
 	]);
 
 	return { pages, modules, assignments };
@@ -180,7 +188,11 @@ export async function getUserGroupPageAssignments(
 
 export async function setPagesForUserGroup(
 	event: RequestEvent,
-	input: { hospitalId: string; userGroupId: number; pageIds: number[] }
+	input: {
+		hospitalId: string;
+		userGroupId: number;
+		pageIds: number[];
+	}
 ): Promise<void> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 
@@ -203,7 +215,9 @@ export async function setPagesForUserGroup(
 	await ensureDb().transaction(async (tx) => {
 		await tx
 			.delete(table.userGroupPageTable)
-			.where(eq(table.userGroupPageTable.userGroupId, input.userGroupId));
+			.where(
+				eq(table.userGroupPageTable.userGroupId, input.userGroupId)
+			);
 		if (uniquePageIds.length > 0) {
 			await tx.insert(table.userGroupPageTable).values(
 				uniquePageIds.map((pageId) => ({
@@ -214,4 +228,3 @@ export async function setPagesForUserGroup(
 		}
 	});
 }
-

@@ -22,7 +22,10 @@ export type SelfAccountSettings = {
 	signatureText: string | null;
 };
 
-async function ensureStaffInHospital(staffId: string, hospitalId: string) {
+async function ensureStaffInHospital(
+	staffId: string,
+	hospitalId: string
+) {
 	const [row] = await ensureDb()
 		.select({ id: table.staffHospitalTable.id })
 		.from(table.staffHospitalTable)
@@ -33,7 +36,8 @@ async function ensureStaffInHospital(staffId: string, hospitalId: string) {
 			)
 		)
 		.limit(1);
-	if (!row) throw error(403, 'Staff is not assigned to this hospital');
+	if (!row)
+		throw error(403, 'Staff is not assigned to this hospital');
 }
 
 export async function getSelfAccountSettings(
@@ -42,7 +46,8 @@ export async function getSelfAccountSettings(
 ): Promise<SelfAccountSettings> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 	const staffId = event.locals.staff?.id ?? null;
-	if (!staffId) throw error(400, 'No staff profile linked to this account');
+	if (!staffId)
+		throw error(400, 'No staff profile linked to this account');
 	await ensureStaffInHospital(staffId, input.hospitalId);
 
 	const [staff] = await ensureDb()
@@ -70,11 +75,12 @@ export async function getSelfAccountSettings(
 	const staffDetail =
 		staff.staffDetailId == null
 			? null
-			: (
+			: ((
 					await ensureDb()
 						.select({
 							licenseNo: table.staffDetailTable.licenseNo,
-							licenseExpiryDate: table.staffDetailTable.licenseExpiryDate,
+							licenseExpiryDate:
+								table.staffDetailTable.licenseExpiryDate,
 							signatureImageUrl:
 								table.staffDetailTable.signatureImageUrl,
 							signatureText: table.staffDetailTable.signatureText
@@ -82,7 +88,7 @@ export async function getSelfAccountSettings(
 						.from(table.staffDetailTable)
 						.where(eq(table.staffDetailTable.id, staff.staffDetailId))
 						.limit(1)
-				)[0] ?? null;
+				)[0] ?? null);
 
 	return {
 		email: event.locals.user?.email ?? null,
@@ -131,7 +137,8 @@ function normalizeDateOnly(v: unknown): string | null | undefined {
 	if (s === undefined) return undefined;
 	if (s === null) return null;
 	// Accept YYYY-MM-DD only
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw error(400, 'Invalid date');
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(s))
+		throw error(400, 'Invalid date');
 	return s;
 }
 
@@ -141,7 +148,8 @@ export async function updateSelfAccountSettings(
 ): Promise<{ ok: true }> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 	const staffId = event.locals.staff?.id ?? null;
-	if (!staffId) throw error(400, 'No staff profile linked to this account');
+	if (!staffId)
+		throw error(400, 'No staff profile linked to this account');
 	await ensureStaffInHospital(staffId, input.hospitalId);
 
 	const setObj: Partial<typeof table.staffTable.$inferInsert> = {};
@@ -179,8 +187,9 @@ export async function updateSelfAccountSettings(
 		setObj.photoUrl = p ?? null;
 	}
 
-	const detailSetObj: Partial<typeof table.staffDetailTable.$inferInsert> =
-		{};
+	const detailSetObj: Partial<
+		typeof table.staffDetailTable.$inferInsert
+	> = {};
 
 	if (input.licenseNo !== undefined) {
 		detailSetObj.licenseNo = normalizeString(input.licenseNo) ?? null;
@@ -231,7 +240,8 @@ export async function updateSelfAccountSettings(
 			})
 			.returning({ id: table.staffDetailTable.id });
 
-		if (!created?.id) throw error(500, 'Failed to create staff detail');
+		if (!created?.id)
+			throw error(500, 'Failed to create staff detail');
 		staffDetailId = created.id;
 		await db
 			.update(table.staffTable)
@@ -244,12 +254,12 @@ export async function updateSelfAccountSettings(
 
 	if (Object.keys(setObj).length) {
 		await db
-		.update(table.staffTable)
-		.set({
-			...setObj,
-			updatedBy: event.locals.user?.id ?? null
-		})
-		.where(eq(table.staffTable.id, staffId));
+			.update(table.staffTable)
+			.set({
+				...setObj,
+				updatedBy: event.locals.user?.id ?? null
+			})
+			.where(eq(table.staffTable.id, staffId));
 	}
 
 	if (staffDetailId != null && Object.keys(detailSetObj).length) {
@@ -264,4 +274,3 @@ export async function updateSelfAccountSettings(
 
 	return { ok: true };
 }
-

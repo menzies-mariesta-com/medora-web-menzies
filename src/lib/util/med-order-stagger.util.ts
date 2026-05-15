@@ -55,9 +55,7 @@ export function addDurationToStart(
 			const d2 = new Date(d);
 			d2.setMonth(d2.getMonth() + whole);
 			if (frac > 0) {
-				d2.setTime(
-					d2.getTime() + frac * 30.44 * MS_PER_DAY
-				);
+				d2.setTime(d2.getTime() + frac * 30.44 * MS_PER_DAY);
 			}
 			return d2;
 		}
@@ -70,10 +68,9 @@ export function addDurationToStart(
  * Recompute `startAt` for every line after the first. First line keeps its current
  * `startAt` (order anchor). For i ≥ 1: start[i] = end of line i-1, where end = start + duration of line i-1.
  */
-export function applyStaggeredStartDates<T extends MedOrderStaggerLine>(
-	lines: T[],
-	durUnits: { id: number; code: string }[]
-): T[] {
+export function applyStaggeredStartDates<
+	T extends MedOrderStaggerLine
+>(lines: T[], durUnits: { id: number; code: string }[]): T[] {
 	if (lines.length <= 1) return lines.map((l) => ({ ...l }));
 	if (!durUnits.length) return lines.map((l) => ({ ...l }));
 	const out: T[] = lines.map((l) => ({ ...l }) as T);

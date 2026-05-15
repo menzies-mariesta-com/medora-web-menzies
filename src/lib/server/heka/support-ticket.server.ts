@@ -32,14 +32,19 @@ function requireUser(event: RequestEvent): {
 } {
 	const user = event.locals.user;
 	if (!user?.id) throw error(401, 'Unauthorized');
-	return { userId: user.id, userRoleId: event.locals.userRoleId ?? null };
+	return {
+		userId: user.id,
+		userRoleId: event.locals.userRoleId ?? null
+	};
 }
 
 function isSystemAdmin(roleId: number | null): boolean {
 	return roleId === RoleEnum.SYSTEM_ADMIN;
 }
 
-const activeTicketCondition = isNull(table.supportTicketTable.deletedAt);
+const activeTicketCondition = isNull(
+	table.supportTicketTable.deletedAt
+);
 
 export async function getSupportTicketSession(
 	event: RequestEvent
@@ -119,16 +124,20 @@ export async function getMySupportTicketsPaginated(
 	params?: TicketListParams
 ): Promise<PaginatedResult<SupportTicketSchema>> {
 	const { userId } = requireUser(event);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const statusFilter =
-		params?.status?.trim() && isSupportTicketStatus(params.status.trim())
+		params?.status?.trim() &&
+		isSupportTicketStatus(params.status.trim())
 			? params.status.trim()
 			: null;
 
 	const whereClause = and(
 		activeTicketCondition,
 		eq(table.supportTicketTable.requesterId, userId),
-		statusFilter ? eq(table.supportTicketTable.status, statusFilter) : undefined
+		statusFilter
+			? eq(table.supportTicketTable.status, statusFilter)
+			: undefined
 	);
 
 	const [data, countResult] = await Promise.all([
@@ -160,17 +169,24 @@ export async function getAllSupportTicketsPaginated(
 ): Promise<PaginatedResult<SupportTicketSchema>> {
 	const { userRoleId } = requireUser(event);
 	if (!isSystemAdmin(userRoleId)) {
-		throw error(403, 'Only system administrators can view all tickets');
+		throw error(
+			403,
+			'Only system administrators can view all tickets'
+		);
 	}
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const statusFilter =
-		params?.status?.trim() && isSupportTicketStatus(params.status.trim())
+		params?.status?.trim() &&
+		isSupportTicketStatus(params.status.trim())
 			? params.status.trim()
 			: null;
 
 	const whereClause = and(
 		activeTicketCondition,
-		statusFilter ? eq(table.supportTicketTable.status, statusFilter) : undefined
+		statusFilter
+			? eq(table.supportTicketTable.status, statusFilter)
+			: undefined
 	);
 
 	const [data, countResult] = await Promise.all([
@@ -202,7 +218,10 @@ export async function getSupportTicketById(
 ) {
 	const { userId, userRoleId } = requireUser(event);
 	const row = await ensureDb().query.supportTicketTable.findFirst({
-		where: and(eq(table.supportTicketTable.id, id), activeTicketCondition),
+		where: and(
+			eq(table.supportTicketTable.id, id),
+			activeTicketCondition
+		),
 		with: {
 			requester: true,
 			hospital: true,
@@ -231,7 +250,10 @@ export async function updateSupportTicket(
 		throw error(403, 'Only system administrators can update tickets');
 	}
 	const { id, status, assignedToUserId, resolution } = payload;
-	if (status !== undefined && !isSupportTicketStatus(String(status))) {
+	if (
+		status !== undefined &&
+		!isSupportTicketStatus(String(status))
+	) {
 		throw error(400, 'Invalid status');
 	}
 
@@ -254,10 +276,11 @@ export async function updateSupportTicket(
 	const [row] = await ensureDb()
 		.update(table.supportTicketTable)
 		.set(patch as never)
-		.where(and(eq(table.supportTicketTable.id, id), activeTicketCondition))
+		.where(
+			and(eq(table.supportTicketTable.id, id), activeTicketCondition)
+		)
 		.returning();
 	if (!row) throw error(404, 'Ticket not found');
 
 	return row;
 }
-

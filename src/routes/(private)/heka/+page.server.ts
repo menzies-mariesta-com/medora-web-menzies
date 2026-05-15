@@ -5,4 +5,3 @@ import { base } from '$app/paths';
 export const load: PageServerLoad = async () => {
 	throw redirect(302, `${base}/heka/hospital`);
 };
-

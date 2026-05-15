@@ -14,11 +14,15 @@ export const GET: RequestHandler = async (event) => {
 
 	const mode = event.url.searchParams.get('mode') ?? 'lookups';
 	if (mode === 'lookups') {
-		return json(await getStaffRegistrationLookups(event, { hospitalId }));
+		return json(
+			await getStaffRegistrationLookups(event, { hospitalId })
+		);
 	}
 	if (mode === 'staff') {
 		const id = event.url.searchParams.get('id') ?? '';
-		return json(await getStaffByIdWithRelations(event, { hospitalId, id }));
+		return json(
+			await getStaffByIdWithRelations(event, { hospitalId, id })
+		);
 	}
 
 	return json({ error: 'Unsupported mode' }, { status: 400 });
@@ -29,7 +33,10 @@ export const POST: RequestHandler = async (event) => {
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const mode = event.url.searchParams.get('mode') ?? '';
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 
 	if (mode === 'create') {
 		const result = await createStaffRegistration(event, {
@@ -38,9 +45,13 @@ export const POST: RequestHandler = async (event) => {
 			name: String(body.name ?? ''),
 			code: typeof body.code === 'string' ? body.code : undefined,
 			firstName:
-				typeof body.firstName === 'string' ? body.firstName : undefined,
+				typeof body.firstName === 'string'
+					? body.firstName
+					: undefined,
 			middleName:
-				typeof body.middleName === 'string' ? body.middleName : undefined,
+				typeof body.middleName === 'string'
+					? body.middleName
+					: undefined,
 			lastName:
 				typeof body.lastName === 'string' ? body.lastName : undefined,
 			phonePrimary:
@@ -60,16 +71,27 @@ export const POST: RequestHandler = async (event) => {
 					? body.phoneSecondaryCountryId
 					: undefined,
 			dateOfBirth:
-				typeof body.dateOfBirth === 'string' ? body.dateOfBirth : undefined,
-			joinDate: typeof body.joinDate === 'string' ? body.joinDate : undefined,
+				typeof body.dateOfBirth === 'string'
+					? body.dateOfBirth
+					: undefined,
+			joinDate:
+				typeof body.joinDate === 'string' ? body.joinDate : undefined,
 			resignDate:
-				typeof body.resignDate === 'string' ? body.resignDate : undefined,
-			address: typeof body.address === 'string' ? body.address : undefined,
-			remark: typeof body.remark === 'string' ? body.remark : undefined,
+				typeof body.resignDate === 'string'
+					? body.resignDate
+					: undefined,
+			address:
+				typeof body.address === 'string' ? body.address : undefined,
+			remark:
+				typeof body.remark === 'string' ? body.remark : undefined,
 			identityNo:
-				typeof body.identityNo === 'string' ? body.identityNo : undefined,
-			titleId: typeof body.titleId === 'number' ? body.titleId : undefined,
-			genderId: typeof body.genderId === 'number' ? body.genderId : undefined,
+				typeof body.identityNo === 'string'
+					? body.identityNo
+					: undefined,
+			titleId:
+				typeof body.titleId === 'number' ? body.titleId : undefined,
+			genderId:
+				typeof body.genderId === 'number' ? body.genderId : undefined,
 			maritalStatusId:
 				typeof body.maritalStatusId === 'number'
 					? body.maritalStatusId
@@ -79,19 +101,29 @@ export const POST: RequestHandler = async (event) => {
 					? body.staffEmploymentTypeId
 					: undefined,
 			staffTypeId:
-				typeof body.staffTypeId === 'number' ? body.staffTypeId : undefined,
+				typeof body.staffTypeId === 'number'
+					? body.staffTypeId
+					: undefined,
 			departmentId:
-				typeof body.departmentId === 'number' ? body.departmentId : undefined,
+				typeof body.departmentId === 'number'
+					? body.departmentId
+					: undefined,
 			specializationId:
 				typeof body.specializationId === 'number'
 					? body.specializationId
 					: undefined,
 			countryId:
-				typeof body.countryId === 'number' ? body.countryId : undefined,
-			stateId: typeof body.stateId === 'number' ? body.stateId : undefined,
-			cityId: typeof body.cityId === 'number' ? body.cityId : undefined,
+				typeof body.countryId === 'number'
+					? body.countryId
+					: undefined,
+			stateId:
+				typeof body.stateId === 'number' ? body.stateId : undefined,
+			cityId:
+				typeof body.cityId === 'number' ? body.cityId : undefined,
 			postalCodeId:
-				typeof body.postalCodeId === 'number' ? body.postalCodeId : undefined,
+				typeof body.postalCodeId === 'number'
+					? body.postalCodeId
+					: undefined,
 			nationalityId:
 				typeof body.nationalityId === 'number'
 					? body.nationalityId
@@ -109,10 +141,14 @@ export const POST: RequestHandler = async (event) => {
 						? body.photoUrl
 						: undefined,
 			userGroupIds: Array.isArray(body.userGroupIds)
-				? (body.userGroupIds.filter((n) => typeof n === 'number') as number[])
+				? (body.userGroupIds.filter(
+						(n) => typeof n === 'number'
+					) as number[])
 				: undefined,
 			branchIds: Array.isArray(body.branchIds)
-				? (body.branchIds.filter((s) => typeof s === 'string') as string[])
+				? (body.branchIds.filter(
+						(s) => typeof s === 'string'
+					) as string[])
 				: undefined,
 			staffDetail:
 				body.staffDetail && typeof body.staffDetail === 'object'
@@ -141,10 +177,14 @@ export const POST: RequestHandler = async (event) => {
 						? body.departmentId
 						: undefined,
 			userGroupIds: Array.isArray(body.userGroupIds)
-				? (body.userGroupIds.filter((n) => typeof n === 'number') as number[])
+				? (body.userGroupIds.filter(
+						(n) => typeof n === 'number'
+					) as number[])
 				: undefined,
 			branchIds: Array.isArray(body.branchIds)
-				? (body.branchIds.filter((s) => typeof s === 'string') as string[])
+				? (body.branchIds.filter(
+						(s) => typeof s === 'string'
+					) as string[])
 				: undefined,
 			staffDetail:
 				body.staffDetail === null
@@ -158,4 +198,3 @@ export const POST: RequestHandler = async (event) => {
 
 	return json({ error: 'Unsupported mode' }, { status: 400 });
 };
-

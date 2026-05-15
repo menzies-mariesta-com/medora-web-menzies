@@ -71,7 +71,11 @@ export function defaultFormatPartsForStorageKey(
 	}
 	if (storageKey === 'ORDER_NO') {
 		return [
-			{ id: newPartId(), kind: 'field', path: 'order_date.year_2digit' },
+			{
+				id: newPartId(),
+				kind: 'field',
+				path: 'order_date.year_2digit'
+			},
 			{ id: newPartId(), kind: 'literal', value: '/' },
 			{ id: newPartId(), kind: 'field', path: 'visit.order_key' },
 			{ id: newPartId(), kind: 'literal', value: '/' },
@@ -114,10 +118,15 @@ export function fieldPathsForEdit(
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
 	const base =
-		storageKey === 'PATIENT_CODE' ? FIELD_PATHS_PATIENT : KNOWN_FIELD_PATHS;
+		storageKey === 'PATIENT_CODE'
+			? FIELD_PATHS_PATIENT
+			: KNOWN_FIELD_PATHS;
 	const used = new Set(
 		currentParts
-			.filter((p): p is Extract<UiFormatPart, { kind: 'field' }> => p.kind === 'field')
+			.filter(
+				(p): p is Extract<UiFormatPart, { kind: 'field' }> =>
+					p.kind === 'field'
+			)
 			.map((p) => p.path)
 	);
 	const allowed = new Set<PrefixFieldPath>([...base]);
@@ -183,7 +192,10 @@ export function formatSpecToUi(
 				value: part.value
 			});
 		} else if (part.type === 'field') {
-			if (typeof part.path !== 'string' || !isPrefixFieldPath(part.path)) {
+			if (
+				typeof part.path !== 'string' ||
+				!isPrefixFieldPath(part.path)
+			) {
 				return { ok: false };
 			}
 			ui.push({

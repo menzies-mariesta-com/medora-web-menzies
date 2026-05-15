@@ -51,7 +51,9 @@
 			: undefined
 	);
 	const cpoeOrderApiBase = $derived(
-		hospitalId ? `/api/heka/hospital/${hospitalId}/home/cpoe/order` : ''
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/cpoe/order`
+			: ''
 	);
 
 	async function apiGet<T>(
@@ -184,9 +186,12 @@
 		isLoadingVisit = true;
 		try {
 			await ensureServiceFilterSubCategoryIdsLoaded();
-			const v = await apiGet<CpoeOrderVisitPayload | null>('visit.get', {
-				visitId: String(visitId)
-			});
+			const v = await apiGet<CpoeOrderVisitPayload | null>(
+				'visit.get',
+				{
+					visitId: String(visitId)
+				}
+			);
 			if (v) {
 				visit = {
 					patientId: v.patientId,
@@ -214,7 +219,10 @@
 			return;
 		}
 		serviceFilterSubCategoryPromise = (async () => {
-			const all = await apiGet<SubCategoryListRow[]>('subCategory.list', {});
+			const all = await apiGet<SubCategoryListRow[]>(
+				'subCategory.list',
+				{}
+			);
 			const map = new Map<number, number>();
 			for (const s of all) {
 				map.set(Number(s.id), Number(s.categoryId));
@@ -309,9 +317,9 @@
 		const res = await apiGet<PaginatedResult<StaffWithRelations>>(
 			'doctor.search',
 			{
-			search: query.trim(),
-			page: '1',
-			pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+				search: query.trim(),
+				page: '1',
+				pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
 			}
 		);
 		return (res.data ?? []).map((staff) => ({
@@ -321,9 +329,12 @@
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await apiGet<StaffWithRelations | null>('staff.get', {
-			id
-		});
+		const staff = await apiGet<StaffWithRelations | null>(
+			'staff.get',
+			{
+				id
+			}
+		);
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -877,7 +888,9 @@
 
 			const doctorIdList = Array.from(doctorIdSet);
 			const resolvedStaff = await Promise.all(
-				doctorIdList.map((id) => apiGet<any | null>('staff.get', { id }))
+				doctorIdList.map((id) =>
+					apiGet<any | null>('staff.get', { id })
+				)
 			);
 			const doctorNameMap = new Map<string, string>();
 			doctorIdList.forEach((id, i) => {
@@ -1014,10 +1027,10 @@
 			{:else if !visit}
 				<DaisyUiCard>
 					<DaisyUiCardBody>
-						<DaisyUiCardBodyTitle className="mb-0">Order</DaisyUiCardBodyTitle>
-						<div
-							class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
+						<DaisyUiCardBodyTitle className="mb-0"
+							>Order</DaisyUiCardBodyTitle
 						>
+						<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
 							<MariTable
 								rows={[]}
 								columns={detailColumns}

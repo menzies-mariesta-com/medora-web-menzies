@@ -68,7 +68,8 @@
 		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 	);
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let lastInitHospitalId = $state<string | null>(null);
 
 	let actId = $state<string | null>(null);
@@ -114,15 +115,10 @@
 			format: (_v, r) => r.indentNo ?? '—'
 		},
 		{
-			id: 'from',
-			header: m.inv_dept_indent_from(),
-			filterable: false,
-			format: (_v, r) => r.fromStoreName ?? '—'
-		},
-		{
 			id: 'to',
 			header: m.inv_dept_indent_to(),
-			filterable: false,
+			field: 'toStoreId',
+			filterable: true,
 			format: (_v, r) => r.toStoreName ?? '—'
 		},
 		{
@@ -163,7 +159,9 @@
 					label: m.inv_dept_status_issued()
 				},
 				{
-					value: String(InvDepartmentIndentStatusTaggingEnum.RECEIVED),
+					value: String(
+						InvDepartmentIndentStatusTaggingEnum.RECEIVED
+					),
 					label: m.inv_dept_status_received()
 				},
 				{
@@ -186,6 +184,10 @@
 			ps.set('pageSize', pageSizeStr);
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('fromStoreId', String(selectedInventoryFromStoreId));
+			}
+			const toStoreIdFilter = tableFilters.to?.trim() ?? '';
+			if (toStoreIdFilter !== '') {
+				ps.set('toStoreId', toStoreIdFilter);
 			}
 			const sf = tableFilters.statusTaggingId?.trim() ?? '';
 			if (sf !== '') {
@@ -358,64 +360,63 @@
 					}
 				)}
 		>
-		{#snippet rowActions(row, _i)}
-			{@const r = row as Row}
-			<div class="flex flex-col items-center gap-1">
-				<DaisyUiTooltip
-					tooltipText={m.inv_common_view()}
-					className="d-tooltip-ghost d-tooltip-right"
-				>
-					<DaisyUiButton
-						className="d-btn-sm d-btn-ghost d-btn-square"
-						disabled={loading}
-						onClick={() => void goto(diDetailHref(r.id))}
-					>
-						<LucideEye className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
-				{#if r.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING}
+			{#snippet rowActions(row, _i)}
+				{@const r = row as Row}
+				<div class="flex flex-row items-center justify-center gap-1">
 					<DaisyUiTooltip
-						tooltipText={m.inv_btn_approve()}
-						className="d-tooltip-accent d-tooltip-right"
+						tooltipText={m.inv_common_view()}
+						className="d-tooltip-ghost d-tooltip-right"
 					>
 						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-							disabled={actId != null || r.canApprove !== true}
-							onClick={() =>
-								void approve(r, InvApprovalActionEnum.APPROVED)}
+							className="d-btn-sm d-btn-ghost d-btn-square"
+							disabled={loading}
+							onClick={() => void goto(diDetailHref(r.id))}
 						>
-							<LucideCircleCheck className="size-5" />
+							<LucideEye className="size-5" />
 						</DaisyUiButton>
 					</DaisyUiTooltip>
+					{#if r.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING}
+						<DaisyUiTooltip
+							tooltipText={m.inv_btn_approve()}
+							className="d-tooltip-accent d-tooltip-right"
+						>
+							<DaisyUiButton
+								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
+								disabled={actId != null || r.canApprove !== true}
+								onClick={() =>
+									void approve(r, InvApprovalActionEnum.APPROVED)}
+							>
+								<LucideCircleCheck className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+						<DaisyUiTooltip
+							tooltipText={m.inv_btn_reject()}
+							className="d-tooltip-error d-tooltip-right"
+						>
+							<DaisyUiButton
+								className="d-btn-sm d-btn-ghost d-btn-square text-error"
+								disabled={actId != null || r.canApprove !== true}
+								onClick={() =>
+									void approve(r, InvApprovalActionEnum.REJECTED)}
+							>
+								<LucideBan className="size-5" />
+							</DaisyUiButton>
+						</DaisyUiTooltip>
+					{/if}
 					<DaisyUiTooltip
-						tooltipText={m.inv_btn_reject()}
+						tooltipText={m.inv_di_cancel()}
 						className="d-tooltip-error d-tooltip-right"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square text-error"
-							disabled={actId != null || r.canApprove !== true}
-							onClick={() =>
-								void approve(r, InvApprovalActionEnum.REJECTED)}
+							disabled={r.canCancel !== true}
+							onClick={() => openCancelDialog(r)}
 						>
-							<LucideBan className="size-5" />
+							<LucideCircleX className="size-5" />
 						</DaisyUiButton>
 					</DaisyUiTooltip>
-				{/if}
-				<DaisyUiTooltip
-					tooltipText={m.inv_di_cancel()}
-					className="d-tooltip-error d-tooltip-right"
-				>
-					<DaisyUiButton
-						className="d-btn-sm d-btn-ghost d-btn-square text-error"
-						disabled={r.canCancel !== true}
-						onClick={() => openCancelDialog(r)}
-					>
-						<LucideCircleX className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
-			</div>
-		{/snippet}
+				</div>
+			{/snippet}
 		</MariTable>
 	{/key}
 </div>
-

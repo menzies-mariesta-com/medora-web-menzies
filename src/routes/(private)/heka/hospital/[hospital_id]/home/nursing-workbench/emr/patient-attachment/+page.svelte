@@ -61,9 +61,9 @@
 		try {
 			const base = apiBase();
 			if (!base) return;
-			const res = await apiGet<{ data: { patientId: string; hospitalId: string } | null }>(
-				`${base}?action=visitBasics&visitId=${visitId}`
-			);
+			const res = await apiGet<{
+				data: { patientId: string; hospitalId: string } | null;
+			}>(`${base}?action=visitBasics&visitId=${visitId}`);
 			visit = res.data;
 		} finally {
 			isLoadingVisit = false;
@@ -106,7 +106,7 @@
 	{#if !visitId}
 		<DaisyUiAlert
 			type={StatusColorEnum.INFO}
-			message='Choose a visit using the "Choose Visit" bar above to manage patient attachments.'
+			message={'Choose a visit using the "Choose Visit" bar above to manage patient attachments.'}
 		/>
 	{:else if !visit && !isLoadingVisit}
 		<DaisyUiAlert
@@ -117,18 +117,20 @@
 		<DaisyUiCard>
 			<DaisyUiCardBody className="m-0 p-1">
 				{#if !visit}
-					<div class="flex min-h-32 items-center justify-center gap-2 text-sm text-base-content/70">
+					<div
+						class="flex min-h-32 items-center justify-center gap-2 text-sm text-base-content/70"
+					>
 						<DaisyUiLoading className="d-loading-md" />
 						Loading visit…
 					</div>
 				{:else}
-				<div class="flex flex-col">
-					<LPatientAttachmentDialogContent
-						cancel={() => {}}
-						confirm={() => {}}
-						embedded={true}
-					/>
-				</div>
+					<div class="flex flex-col">
+						<LPatientAttachmentDialogContent
+							cancel={() => {}}
+							confirm={() => {}}
+							embedded={true}
+						/>
+					</div>
 				{/if}
 			</DaisyUiCardBody>
 		</DaisyUiCard>

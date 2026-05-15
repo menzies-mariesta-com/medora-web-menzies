@@ -29,7 +29,8 @@
 	} = $props();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -39,10 +40,13 @@
 	let list = $state<Row[]>([]);
 	let total = $state(0);
 	let currentPage = $state(1);
-	let pageSizeStr = $state(String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE));
+	let pageSizeStr = $state(
+		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
+	);
 	/** Per-column filter values; keys match `tableColumns` ids (server-side + MariTable) */
 	let tableFilters = $state<Record<string, string>>({});
-	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
 	let isLoading = $state(false);
 
 	const statusFilterOptions = [
@@ -77,24 +81,21 @@
 					header: m.med_order_code(),
 					widthClass: 'min-w-[6rem]',
 					filterable: true,
-					format: (_v, r) =>
-						String((r as Row).code ?? '—')
+					format: (_v, r) => String((r as Row).code ?? '—')
 				},
 				{
 					id: 'name',
 					header: m.name(),
 					widthClass: 'min-w-[10rem]',
 					filterable: true,
-					format: (_v, r) =>
-						String((r as Row).name ?? '—')
+					format: (_v, r) => String((r as Row).name ?? '—')
 				},
 				{
 					id: 'sequenceNo',
 					header: m.med_order_sequence(),
 					widthClass: 'w-28 min-w-[7rem]',
 					filterable: true,
-					format: (_v, r) =>
-						String((r as Row).sequenceNo ?? '—')
+					format: (_v, r) => String((r as Row).sequenceNo ?? '—')
 				}
 			];
 		}
@@ -116,24 +117,21 @@
 					header: m.med_order_label(),
 					widthClass: 'min-w-[10rem]',
 					filterable: true,
-					format: (_v, r) =>
-						String((r as Row).label ?? '—')
+					format: (_v, r) => String((r as Row).label ?? '—')
 				},
 				{
 					id: 'abbreviation',
 					header: m.med_order_code(),
 					widthClass: 'w-32 min-w-[8rem]',
 					filterable: false,
-					format: (_v, r) =>
-						String((r as Row).abbreviation ?? '—')
+					format: (_v, r) => String((r as Row).abbreviation ?? '—')
 				},
 				{
 					id: 'kind',
 					header: m.med_order_kind(),
 					widthClass: 'w-32 min-w-[8rem]',
 					filterable: true,
-					format: (_v, r) =>
-						String((r as Row).kind ?? '—')
+					format: (_v, r) => String((r as Row).kind ?? '—')
 				},
 				{
 					id: 'summaryText',
@@ -142,7 +140,10 @@
 					filterable: true,
 					cellClass: 'max-w-md truncate',
 					format: (_v, r) => {
-						const t = (r as Row).summaryText as string | null | undefined;
+						const t = (r as Row).summaryText as
+							| string
+							| null
+							| undefined;
 						return t != null && t !== '' ? t : '—';
 					}
 				}
@@ -174,7 +175,10 @@
 				filterable: true,
 				cellClass: 'max-w-lg truncate',
 				format: (_v, r) => {
-					const d = (r as Row).description as string | null | undefined;
+					const d = (r as Row).description as
+						| string
+						| null
+						| undefined;
 					return d != null && d !== '' ? d : '—';
 				}
 			}
@@ -186,14 +190,18 @@
 	}
 
 	function isRowActive(row: Row): boolean {
-		return Number(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
+		return (
+			Number(row.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE
+		);
 	}
 
 	async function setRowActive(row: Row, nextActive: boolean) {
 		if (!hospitalId) return;
 		const id = Number(row.id ?? 0);
 		if (!Number.isFinite(id) || id <= 0) return;
-		const statusId = nextActive ? StatusEnum.ACTIVE : StatusEnum.INACTIVE;
+		const statusId = nextActive
+			? StatusEnum.ACTIVE
+			: StatusEnum.INACTIVE;
 		try {
 			const res = await fetch(apiBase(), {
 				method: 'PUT',
@@ -297,10 +305,12 @@
 				}}
 			>
 				{#snippet rowActions(row)}
-					<label class="flex cursor-pointer items-center justify-end gap-2">
+					<label
+						class="flex cursor-pointer items-center justify-end gap-2"
+					>
 						<input
 							type="checkbox"
-							class="d-toggle d-toggle-primary d-toggle-sm shrink-0 appearance-none"
+							class="d-toggle shrink-0 appearance-none d-toggle-primary d-toggle-sm"
 							checked={isRowActive(row as Row)}
 							on:change={(e) =>
 								setRowActive(
@@ -308,7 +318,6 @@
 									(e.currentTarget as HTMLInputElement).checked
 								)}
 						/>
-						
 					</label>
 				{/snippet}
 			</MariTable>

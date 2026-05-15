@@ -10,10 +10,13 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/heka/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -27,7 +30,9 @@
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data: layoutData } = $props();
@@ -62,6 +67,12 @@
 	let stores = $state<{ id: number; storeName: string | null }[]>([]);
 	let createFromStoreId = $state<number | null>(null);
 	let createToStoreId = $state<number | null>(null);
+
+	const toStoreOptions = $derived.by(() => {
+		const from = createFromStoreId;
+		if (from == null) return stores;
+		return stores.filter((s) => s.id !== from);
+	});
 	let createRemarks = $state('');
 	let createLines = $state<PrLineForm[]>([]);
 	let createSubmitting = $state(false);
@@ -69,8 +80,6 @@
 	let headerPrNo = $state<string | null>(null);
 	let headerStatusLabel = $state<string>('Draft');
 	let headerStatusCode = $state<string | null>(null);
-
-	let lineItemFilter = $state('');
 
 	let lineItemDialogActive = $state(false);
 	let editingLineKey = $state<string | null>(null);
@@ -89,7 +98,10 @@
 	});
 
 	const prListPath = $derived(
-		hekaHospitalPageUrl(hospitalId, '/heka/home/inventory/purchase-requisition' as any)
+		hekaHospitalPageUrl(
+			hospitalId,
+			'/heka/home/inventory/purchase-requisition' as any
+		)
 	);
 
 	async function goBackToList() {
@@ -102,10 +114,12 @@
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?name=${qEnc}&pageSize=${AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT}`
 		);
 		const j = await res.json();
-		return (j.data ?? []).map((x: { itemName?: string | null; id: number }) => ({
-			label: x.itemName ?? '—',
-			value: String(x.id)
-		}));
+		return (j.data ?? []).map(
+			(x: { itemName?: string | null; id: number }) => ({
+				label: x.itemName ?? '—',
+				value: String(x.id)
+			})
+		);
 	}
 
 	function newLine(): PrLineForm {
@@ -122,7 +136,9 @@
 	}
 
 	function conversionLabelForLine(line: PrLineForm): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.conversionDisplay ?? '—';
 	}
 
@@ -191,10 +207,11 @@
 			return {
 				ok: false,
 				title: 'Could not save line',
-				detail: 'Please select an item and a purchase unit conversion.'
+				detail:
+					'Please select an item and a purchase unit conversion.'
 			};
 		}
-		const q = draftLine.quantity.trim();
+		const q = String(draftLine.quantity ?? '').trim();
 		if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 			return {
 				ok: false,
@@ -202,7 +219,12 @@
 				detail: 'Quantity must be greater than 0.'
 			};
 		}
-		return { ok: true, quantity: q, unitId, itemId: draftLine.itemId };
+		return {
+			ok: true,
+			quantity: q,
+			unitId,
+			itemId: draftLine.itemId
+		};
 	}
 
 	function saveDraftLine(): boolean {
@@ -213,14 +235,19 @@
 		}
 
 		if (editingLineKey) {
-			const idx = createLines.findIndex((l) => l.key === editingLineKey);
+			const idx = createLines.findIndex(
+				(l) => l.key === editingLineKey
+			);
 			if (idx >= 0) {
 				const next = [...createLines];
 				next[idx] = { ...draftLine, quantity: v.quantity };
 				createLines = next;
 			}
 		} else {
-			createLines = [...createLines, { ...draftLine, quantity: v.quantity }];
+			createLines = [
+				...createLines,
+				{ ...draftLine, quantity: v.quantity }
+			];
 		}
 		return true;
 	}
@@ -229,12 +256,16 @@
 		createLines = createLines.filter((l) => l.key !== lineKey);
 	}
 
-	function sumCurrentDraftForLine(itemId: number, unitId: number): string {
+	function sumCurrentDraftForLine(
+		itemId: number,
+		unitId: number
+	): string {
 		let s = 0;
 		for (const l of createLines) {
 			if (editingLineKey && l.key === editingLineKey) continue;
 			const u = purchaseUnitForLine(l);
-			if (l.itemId === itemId && u === unitId) s += Number(l.quantity) || 0;
+			if (l.itemId === itemId && u === unitId)
+				s += Number(l.quantity) || 0;
 		}
 		if (
 			draftLine.itemId === itemId &&
@@ -308,13 +339,16 @@
 		storesAbort?.abort();
 		storesAbort = new AbortController();
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/inventory-setup/approval-config?mode=stores`,
+			`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?mode=allForPicker`,
 			{ method: 'GET', signal: storesAbort.signal }
 		);
 		stores = (await res.json()) as typeof stores;
 	}
 
-	async function hydrateLineItemMeta(line: PrLineForm, itemId: number) {
+	async function hydrateLineItemMeta(
+		line: PrLineForm,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -346,14 +380,23 @@
 	}
 
 	function purchaseUnitForLine(line: PrLineForm): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
 	function buildLinesPayload():
-		| { ok: true; lines: { itemId: number; quantity: string; unitId: number }[] }
+		| {
+				ok: true;
+				lines: { itemId: number; quantity: string; unitId: number }[];
+		  }
 		| { ok: false; title: string; detail: string } {
-		const linesPayload: { itemId: number; quantity: string; unitId: number }[] = [];
+		const linesPayload: {
+			itemId: number;
+			quantity: string;
+			unitId: number;
+		}[] = [];
 		for (const ln of createLines) {
 			const uid = purchaseUnitForLine(ln);
 			if (ln.itemId == null || uid == null) {
@@ -363,7 +406,7 @@
 					detail: 'Each line needs an item and unit conversion.'
 				};
 			}
-			const q = ln.quantity.trim();
+			const q = String(ln.quantity ?? '').trim();
 			if (!q || !Number.isFinite(Number(q)) || Number(q) <= 0) {
 				return {
 					ok: false,
@@ -371,7 +414,11 @@
 					detail: 'Invalid quantity on a line.'
 				};
 			}
-			linesPayload.push({ itemId: ln.itemId, quantity: q, unitId: uid });
+			linesPayload.push({
+				itemId: ln.itemId,
+				quantity: q,
+				unitId: uid
+			});
 		}
 		if (linesPayload.length === 0) {
 			return {
@@ -384,12 +431,20 @@
 	}
 
 	async function submitPrForm() {
-		if (!hospitalId || createFromStoreId == null || createToStoreId == null) {
+		if (
+			!hospitalId ||
+			createFromStoreId == null ||
+			createToStoreId == null
+		) {
 			return;
 		}
 		const built = buildLinesPayload();
 		if (!built.ok) {
-			toastService.addToast(built.title, StatusColorEnum.ERROR, built.detail);
+			toastService.addToast(
+				built.title,
+				StatusColorEnum.ERROR,
+				built.detail
+			);
 			return;
 		}
 		createSubmitting = true;
@@ -436,11 +491,19 @@
 		if (lastInitHospitalId === h) return;
 		lastInitHospitalId = h;
 		void loadStores().then(() => {
-			createFromStoreId = selectedInventoryFromStoreId ?? stores[0]?.id ?? null;
-			if (createToStoreId == null && stores.length >= 1) {
-				const pick = stores.find((s) => s.id !== createFromStoreId);
-				createToStoreId =
-					pick?.id ?? (stores.length > 1 ? stores[1]!.id : null);
+			createFromStoreId =
+				selectedInventoryFromStoreId ?? stores[0]?.id ?? null;
+			const from = createFromStoreId;
+			const opts =
+				from == null
+					? stores
+					: stores.filter((s) => s.id !== from);
+			if (
+				createToStoreId == null ||
+				createToStoreId === from ||
+				!opts.some((s) => s.id === createToStoreId)
+			) {
+				createToStoreId = opts[0]?.id ?? null;
 			}
 		});
 	});
@@ -448,6 +511,21 @@
 	$effect(() => {
 		if (selectedInventoryFromStoreId != null) {
 			createFromStoreId = selectedInventoryFromStoreId;
+		}
+	});
+
+	$effect(() => {
+		void createFromStoreId;
+		void stores;
+		const from = createFromStoreId;
+		const opts =
+			from == null ? stores : stores.filter((s) => s.id !== from);
+		if (
+			createToStoreId != null &&
+			(createToStoreId === from ||
+				!opts.some((s) => s.id === createToStoreId))
+		) {
+			createToStoreId = opts[0]?.id ?? null;
 		}
 	});
 
@@ -461,40 +539,32 @@
 			: null
 	);
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLineForm>[] => [
-		{
-			id: 'itemLabel',
-			header: m.inv_common_item(),
-			field: 'itemLabel',
-			filterable: false,
-			format: (_v, row) => row.itemLabel || '—'
-		},
-		{
-			id: 'conversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterId',
-			filterable: false,
-			format: (_v, row) => conversionLabelForLine(row)
-		},
-		{
-			id: 'quantity',
-			header: m.inv_common_quantity(),
-			field: 'quantity',
-			filterable: false,
-			format: (_v, row) => formatPurchaseQtyCellWithIssueEquivalent(row)
-		}
-	]);
-
-	const filteredLines = $derived.by(() => {
-		const q = lineItemFilter.trim().toLowerCase();
-		if (!q) return createLines;
-		return createLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelForLine(l).toLowerCase();
-			const qty = (l.quantity ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || qty.includes(q);
-		});
-	});
+	const lineColumns = $derived.by(
+		(): MariTableColumn<PrLineForm>[] => [
+			{
+				id: 'itemLabel',
+				header: m.inv_common_item(),
+				field: 'itemLabel',
+				filterable: true,
+				format: (_v, row) => row.itemLabel || '—'
+			},
+			{
+				id: 'conversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterId',
+				filterable: true,
+				format: (_v, row) => conversionLabelForLine(row)
+			},
+			{
+				id: 'quantity',
+				header: m.inv_common_quantity(),
+				field: 'quantity',
+				filterable: true,
+				format: (_v, row) =>
+					formatPurchaseQtyCellWithIssueEquivalent(row)
+			}
+		]
+	);
 </script>
 
 <form
@@ -504,7 +574,9 @@
 	}}
 	class="space-y-5"
 >
-	<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+	<div
+		class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+	>
 		<div class="min-w-0">
 			<div class="flex items-center gap-2">
 				<DaisyUiTooltip
@@ -523,7 +595,9 @@
 			</div>
 		</div>
 
-		<div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+		<div
+			class="flex flex-wrap items-center justify-start gap-2 sm:justify-end"
+		>
 			<span
 				class="d-badge d-badge-outline"
 				title={headerStatusCode ?? undefined}
@@ -532,11 +606,17 @@
 				{headerStatusLabel}
 			</span>
 			{#if headerPrNo}
-				<span class="d-badge d-badge-ghost" aria-label={`PR No: ${headerPrNo}`}>
+				<span
+					class="d-badge d-badge-ghost"
+					aria-label={`PR No: ${headerPrNo}`}
+				>
 					{m.inv_pr_no()}: {headerPrNo}
 				</span>
 			{:else}
-				<span class="d-badge d-badge-ghost" aria-label="PR No: pending">PR No: —</span>
+				<span
+					class="d-badge d-badge-ghost"
+					aria-label="PR No: pending">PR No: —</span
+				>
 			{/if}
 		</div>
 	</div>
@@ -544,29 +624,40 @@
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<DaisyUiCard>
 			<DaisyUiCardBody className="gap-3">
-				<DaisyUiCardBodyTitle className="text-base">Store selection</DaisyUiCardBodyTitle>
+				<DaisyUiCardBodyTitle className="text-base"
+					>Store selection</DaisyUiCardBodyTitle
+				>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<DaisyUiLabel className="text-xs opacity-80">{m.inv_nav_from_store()}</DaisyUiLabel>
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_nav_from_store()}</DaisyUiLabel
+						>
 						<input
 							type="text"
 							readonly
 							disabled
-							class="d-input d-input-bordered w-full text-sm"
+							class="d-input-bordered d-input w-full text-sm"
 							value={fromStoreNavLabel}
 							aria-label={m.inv_nav_from_store()}
 						/>
 						{#if createFromStoreId == null}
-							<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
+							<div
+								class="mt-2 d-alert text-sm d-alert-warning"
+								role="status"
+							>
 								{m.inv_inventory_from_store_topbar_hint()}
 							</div>
 						{/if}
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
-						<DaisyUiLabel className="text-xs opacity-80">{m.inv_transfer_to_store()}</DaisyUiLabel>
+						<DaisyUiLabel className="text-xs opacity-80"
+							>{m.inv_transfer_to_store()}</DaisyUiLabel
+						>
 						<DaisyUISearchSelect
-							value={createToStoreId != null ? String(createToStoreId) : ''}
-							options={stores.map((s) => ({
+							value={createToStoreId != null
+								? String(createToStoreId)
+								: ''}
+							options={toStoreOptions.map((s) => ({
 								label: s.storeName ?? '—',
 								value: String(s.id)
 							}))}
@@ -583,11 +674,15 @@
 
 		<DaisyUiCard>
 			<DaisyUiCardBody className="gap-3">
-				<DaisyUiCardBodyTitle className="text-base">Requisition Remarks</DaisyUiCardBodyTitle>
+				<DaisyUiCardBodyTitle className="text-base"
+					>Requisition Remarks</DaisyUiCardBodyTitle
+				>
 				<div class="flex min-w-0 flex-col gap-2">
-					<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_remarks()}</DaisyUiLabel>
+					<DaisyUiLabel className="text-xs opacity-80"
+						>{m.inv_common_remarks()}</DaisyUiLabel
+					>
 					<textarea
-						class="d-textarea d-textarea-bordered w-full"
+						class="d-textarea-bordered d-textarea w-full"
 						bind:value={createRemarks}
 						rows="3"
 						aria-label={m.inv_common_remarks()}
@@ -597,22 +692,46 @@
 		</DaisyUiCard>
 	</div>
 
+	{#snippet lineItemsToolbarRight()}
+		<DaisyUiTooltip
+			tooltipText={m.inv_line_items_add()}
+			className="d-tooltip-ghost"
+		>
+			<DaisyUiButton
+				type="button"
+				className="d-btn-primary d-btn-square d-btn-outline"
+				disabled={createSubmitting}
+				title={m.inv_line_items_add()}
+				onClick={() => void openLineDialogForCreate()}
+			>
+				<LucidePlus className="size-4" />
+			</DaisyUiButton>
+		</DaisyUiTooltip>
+	{/snippet}
+
+	<div
+		class="flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+	>
+		<DaisyUiButton
+			type="submit"
+			className="d-btn-primary d-btn-wide"
+			disabled={createSubmitting || createLines.length === 0}
+		>
+			{m.inv_pr_create_submit()}
+		</DaisyUiButton>
+	</div>
+
 	<PrLineItemsCard
 		viewOnly={false}
-		bind:lineItemFilter
 		createLinesCount={createLines.length}
 		columns={lineColumns}
-		rows={filteredLines}
+		rows={createLines}
+		useColumnFilters={true}
+		hideQuickFilter={true}
+		hideAddButton={true}
+		toolbarRight={lineItemsToolbarRight}
 		onAddItem={() => void openLineDialogForCreate()}
 		onEditLine={(line) => void openLineDialogForEdit(line)}
 		onDeleteLine={deleteLine}
 	/>
-
-	<div
-		class="flex flex-col-reverse gap-2 border-t border-base-200 pt-4 sm:flex-row sm:items-center sm:justify-end"
-	>
-		<DaisyUiButton type="submit" className="d-btn-primary" disabled={createSubmitting}>
-			{m.inv_pr_create_submit()}
-		</DaisyUiButton>
-	</div>
 </form>

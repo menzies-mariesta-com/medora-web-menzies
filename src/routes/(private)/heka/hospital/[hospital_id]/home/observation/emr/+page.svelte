@@ -144,18 +144,25 @@
 		return `/api/heka/hospital/${hid}/home/observation/emr`;
 	}
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const url = new URL(getApiBase(), location.origin);
 		url.searchParams.set('mode', mode);
 		if (params) {
-			for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+			for (const [k, v] of Object.entries(params))
+				url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
 		if (!res.ok) throw new Error(await res.text());
 		return (await res.json()) as T;
 	}
 
-	async function apiPost<T>(mode: string, payload: Record<string, unknown>) {
+	async function apiPost<T>(
+		mode: string,
+		payload: Record<string, unknown>
+	) {
 		const res = await fetch(getApiBase(), {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -244,17 +251,20 @@
 			const statusId = allergyColumnFilters.status
 				? Number(allergyColumnFilters.status)
 				: undefined;
-			const result = await apiGet<{ data: PatientAllergyWithRelations[]; total: number }>(
-				'allergy.listPaginated',
-				{
-					patientId,
-					page: String(allergyCurrentPage),
-					pageSize: String(pageSize),
-					visitNo: allergyColumnFilters.visitNo?.trim() || '',
-					severityName: allergyColumnFilters.severity?.trim() || '',
-					statusId: statusId != null && Number.isFinite(statusId) ? String(statusId) : ''
-				}
-			);
+			const result = await apiGet<{
+				data: PatientAllergyWithRelations[];
+				total: number;
+			}>('allergy.listPaginated', {
+				patientId,
+				page: String(allergyCurrentPage),
+				pageSize: String(pageSize),
+				visitNo: allergyColumnFilters.visitNo?.trim() || '',
+				severityName: allergyColumnFilters.severity?.trim() || '',
+				statusId:
+					statusId != null && Number.isFinite(statusId)
+						? String(statusId)
+						: ''
+			});
 			allergies = result.data;
 			allergyTotal = result.total;
 		} catch {
@@ -264,8 +274,8 @@
 			);
 			const filtered = hospitalIdParam
 				? data.filter(
-							(row: PatientAllergyWithRelations) =>
-								row.visit?.hospitalId === hospitalIdParam
+						(row: PatientAllergyWithRelations) =>
+							row.visit?.hospitalId === hospitalIdParam
 					)
 				: data;
 			allergies = filtered;
@@ -382,7 +392,7 @@
 			| CustomEvent<void>
 			| {
 					skipRowLoading?: boolean;
-				}
+			  }
 	) {
 		const skipRowLoading =
 			typeof eOrOptions === 'object' &&
@@ -914,48 +924,49 @@
 		}
 	];
 
-	const progressNoteColumns: MariTableColumn<ProgressNoteListRow>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'note',
-			header: m.observation_emr_progress_note_column_note(),
-			widthClass: 'min-w-[12rem]',
-			filterable: false,
-			format: (_value, row) => planOfCareNotePreview(row.note),
-			cellClass: 'max-w-80 whitespace-normal'
-		},
-		{
-			id: 'doctor',
-			header: m.observation_emr_advising_doctor(),
-			widthClass: 'min-w-[10rem]',
-			filterable: false,
-			format: (_value, row) =>
-				row.doctor
-					? StringUtil.doctorOptionDisplayName(row.doctor)
-					: '–'
-		},
-		{
-			id: 'createdAt',
-			header: 'Created',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.createdAt ?? null)
-		}
-	];
+	const progressNoteColumns: MariTableColumn<ProgressNoteListRow>[] =
+		[
+			{
+				id: 'status',
+				header: 'Status',
+				widthClass: 'w-28 min-w-[7rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: statusFilterOptions,
+				defaultFilterValue: 'active',
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: `Status ${row.statusId ?? 'Unknown'}`
+			},
+			{
+				id: 'note',
+				header: m.observation_emr_progress_note_column_note(),
+				widthClass: 'min-w-[12rem]',
+				filterable: false,
+				format: (_value, row) => planOfCareNotePreview(row.note),
+				cellClass: 'max-w-80 whitespace-normal'
+			},
+			{
+				id: 'doctor',
+				header: m.observation_emr_advising_doctor(),
+				widthClass: 'min-w-[10rem]',
+				filterable: false,
+				format: (_value, row) =>
+					row.doctor
+						? StringUtil.doctorOptionDisplayName(row.doctor)
+						: '–'
+			},
+			{
+				id: 'createdAt',
+				header: 'Created',
+				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+				filterable: false,
+				format: (_value, row) => formatDateTime(row.createdAt ?? null)
+			}
+		];
 
 	const formEntryColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
 		[
@@ -1372,12 +1383,13 @@
 	}
 
 	async function handlePlanOfCareDelete(row: PlanOfCareListRow) {
-		const result = await dialogService.open<{ deleteRemark?: string }>({
+		const result = await dialogService.open<{
+			deleteRemark?: string;
+		}>({
 			title: m.observation_emr_plan_of_care_delete_title(),
 			component: LObservationPlanOfCareDeleteDialogContent,
 			fullScreen: false,
-			modalClassName:
-				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
 		if (!result.confirmed) return;
 		try {
@@ -1471,12 +1483,13 @@
 	}
 
 	async function handleProgressNoteDelete(row: ProgressNoteListRow) {
-		const result = await dialogService.open<{ deleteRemark?: string }>({
+		const result = await dialogService.open<{
+			deleteRemark?: string;
+		}>({
 			title: m.observation_emr_progress_note_delete_title(),
 			component: LObservationProgressNoteDeleteDialogContent,
 			fullScreen: false,
-			modalClassName:
-				'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
+			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
 		if (!result.confirmed) return;
 		try {
@@ -1613,12 +1626,10 @@
 		}
 	}
 
-	async function handleFormEntryMove(
-		detail: {
-			row: PatientFormEntryWithRelations;
-			toFormCode: string;
-		}
-	) {
+	async function handleFormEntryMove(detail: {
+		row: PatientFormEntryWithRelations;
+		toFormCode: string;
+	}) {
 		const { row, toFormCode } = detail;
 		const allowedFormCodes = new Set([
 			'chief_complaint',
@@ -1626,8 +1637,9 @@
 		]);
 		if (!allowedFormCodes.has(toFormCode)) return;
 
-		const targetFormCode =
-			toFormCode as 'chief_complaint' | 'patient_condition';
+		const targetFormCode = toFormCode as
+			| 'chief_complaint'
+			| 'patient_condition';
 
 		const currentCode = row.formName?.code;
 		if (currentCode === targetFormCode) return;
@@ -1656,10 +1668,7 @@
 				err instanceof Error
 					? err.message
 					: m.observation_emr_delete_failed();
-			toastService.addToast(
-				msg as string,
-				StatusColorEnum.ERROR
-			);
+			toastService.addToast(msg as string, StatusColorEnum.ERROR);
 		}
 	}
 
@@ -1732,7 +1741,6 @@
 			);
 		}
 	}
-
 </script>
 
 <svelte:head>
@@ -1754,7 +1762,9 @@
 		/>
 	{:else}
 		{#if !clinicalVisitReadOnly}
-			<div class="sticky top-0 z-10 -mx-2 flex justify-end bg-base-100/90 px-2 py-2 backdrop-blur">
+			<div
+				class="sticky top-0 z-10 -mx-2 flex justify-end bg-base-100/90 px-2 py-2 backdrop-blur"
+			>
 				<DaisyUiButton
 					className="d-btn-primary d-btn-sm"
 					disabled={isSigningClinical || isLoadingVisit}
@@ -1780,8 +1790,14 @@
 				emptyMessage="No chief complaint entries."
 				on:add={() => openFormEntryAdd('chief_complaint')}
 				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) => openFormEntryEdit(e.detail as PatientFormEntryWithRelations)}
-				on:delete={(e) => handleFormEntryDelete(e.detail as PatientFormEntryWithRelations)}
+				on:edit={(e) =>
+					openFormEntryEdit(
+						e.detail as PatientFormEntryWithRelations
+					)}
+				on:delete={(e) =>
+					handleFormEntryDelete(
+						e.detail as PatientFormEntryWithRelations
+					)}
 				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
@@ -1799,8 +1815,14 @@
 				emptyMessage="No patient condition entries."
 				on:add={() => openFormEntryAdd('patient_condition')}
 				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) => openFormEntryEdit(e.detail as PatientFormEntryWithRelations)}
-				on:delete={(e) => handleFormEntryDelete(e.detail as PatientFormEntryWithRelations)}
+				on:edit={(e) =>
+					openFormEntryEdit(
+						e.detail as PatientFormEntryWithRelations
+					)}
+				on:delete={(e) =>
+					handleFormEntryDelete(
+						e.detail as PatientFormEntryWithRelations
+					)}
 				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
 			<ObservationCardTable
@@ -1815,15 +1837,19 @@
 				bind:columnFilters={diagnosisColumnFilters}
 				on:add={openDiagnosisAdd}
 				on:refresh={reloadDiagnosesForVisit}
-				on:edit={(e) => openDiagnosisEdit(e.detail as DiagnosisWithType)}
-				on:delete={(e) => handleDiagnosisDelete(e.detail as DiagnosisWithType)}
+				on:edit={(e) =>
+					openDiagnosisEdit(e.detail as DiagnosisWithType)}
+				on:delete={(e) =>
+					handleDiagnosisDelete(e.detail as DiagnosisWithType)}
 			/>
 
 			<ObservationCardTable
 				title={m.observation_emr_allergies()}
 				rows={allergies}
 				columns={allergyColumns}
-				isLoading={isLoadingGrid || isLoadingAllergies || isLoadingVisit}
+				isLoading={isLoadingGrid ||
+					isLoadingAllergies ||
+					isLoadingVisit}
 				crudShowView={false}
 				showRefreshButton={true}
 				enableColumnFilters={true}
@@ -1860,8 +1886,12 @@
 						void fetchAllergies({ force: true });
 					}, 350);
 				}}
-				on:edit={(e) => openAllergyEdit(e.detail as PatientAllergyWithRelations)}
-				on:delete={(e) => handleAllergyDelete(e.detail as PatientAllergyWithRelations)}
+				on:edit={(e) =>
+					openAllergyEdit(e.detail as PatientAllergyWithRelations)}
+				on:delete={(e) =>
+					handleAllergyDelete(
+						e.detail as PatientAllergyWithRelations
+					)}
 			/>
 
 			<ObservationCardTable
@@ -1878,8 +1908,10 @@
 				bind:columnFilters={vitalColumnFilters}
 				on:add={openVitalAdd}
 				on:refresh={reloadVitalsForVisit}
-				on:edit={(e) => openVitalEdit(e.detail as PatientDiagnosisListRow)}
-				on:delete={(e) => handleVitalDelete(e.detail as PatientDiagnosisListRow)}
+				on:edit={(e) =>
+					openVitalEdit(e.detail as PatientDiagnosisListRow)}
+				on:delete={(e) =>
+					handleVitalDelete(e.detail as PatientDiagnosisListRow)}
 			/>
 
 			<ObservationCardTable
@@ -1899,8 +1931,10 @@
 				showRefreshButton={true}
 				emptyMessage="No order lines for this visit."
 				on:refresh={reloadOrdersForVisit}
-				on:edit={(e) => openOrderLineEdit(e.detail as OrderDetailVisitRow)}
-				on:delete={(e) => handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
+				on:edit={(e) =>
+					openOrderLineEdit(e.detail as OrderDetailVisitRow)}
+				on:delete={(e) =>
+					handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_casesheet()}
@@ -1914,8 +1948,10 @@
 				bind:columnFilters={planOfCareColumnFilters}
 				on:add={openPlanOfCareAdd}
 				on:refresh={reloadPlanOfCareForVisit}
-				on:edit={(e) => openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
-				on:delete={(e) => handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
+				on:edit={(e) =>
+					openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
+				on:delete={(e) =>
+					handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
 			/>
 			<ObservationCardTable
 				title={m.observation_emr_progress_note()}
@@ -1929,8 +1965,10 @@
 				bind:columnFilters={progressNoteColumnFilters}
 				on:add={openProgressNoteAdd}
 				on:refresh={reloadProgressNoteForVisit}
-				on:edit={(e) => openProgressNoteEdit(e.detail as ProgressNoteListRow)}
-				on:delete={(e) => handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
+				on:edit={(e) =>
+					openProgressNoteEdit(e.detail as ProgressNoteListRow)}
+				on:delete={(e) =>
+					handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
 			/>
 		</div>
 	{/if}

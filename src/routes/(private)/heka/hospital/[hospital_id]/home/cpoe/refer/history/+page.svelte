@@ -238,14 +238,24 @@
 
 		isLoading = true;
 		try {
-			const url = new URL(referHistoryApiBase, window.location.origin);
+			const url = new URL(
+				referHistoryApiBase,
+				window.location.origin
+			);
 			url.searchParams.set('mode', 'referHistory.paginated');
 			url.searchParams.set('visitId', String(visitId));
 			url.searchParams.set('page', String(currentPage));
-			url.searchParams.set('pageSize', String(parseInt(pageSize, 10)));
-			url.searchParams.set('filters', JSON.stringify(tableFilters ?? {}));
+			url.searchParams.set(
+				'pageSize',
+				String(parseInt(pageSize, 10))
+			);
+			url.searchParams.set(
+				'filters',
+				JSON.stringify(tableFilters ?? {})
+			);
 			const r = await fetch(url.toString(), { method: 'GET' });
-			if (!r.ok) throw new Error(`Failed to load history (${r.status})`);
+			if (!r.ok)
+				throw new Error(`Failed to load history (${r.status})`);
 			const res = (await r.json()) as {
 				data: ReferHistoryWithRelations[];
 				total: number;

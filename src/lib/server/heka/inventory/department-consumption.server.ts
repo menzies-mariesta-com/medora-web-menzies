@@ -1,6 +1,16 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
 import { alias } from 'drizzle-orm/pg-core';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	sql
+} from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -26,6 +36,7 @@ import {
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 
 export type ConsumptionLineInput = {
 	itemId: number;
@@ -102,7 +113,10 @@ async function allocateConsumptionNo(
 		)
 		.limit(1);
 	if (!financialYear) {
-		throw error(400, 'Financial year is not configured for this hospital.');
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	}
 
 	try {
@@ -134,19 +148,29 @@ export async function listDepartmentConsumptions(
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let cond = and(
-		eq(table.invDepartmentConsumptionTable.hospitalId, input.hospitalId),
+		eq(
+			table.invDepartmentConsumptionTable.hospitalId,
+			input.hospitalId
+		),
 		isNull(table.invDepartmentConsumptionTable.deletedAt)
 	);
 	if (typeof input.storeId === 'number') {
-		cond = and(cond, eq(table.invDepartmentConsumptionTable.storeId, input.storeId))!;
+		cond = and(
+			cond,
+			eq(table.invDepartmentConsumptionTable.storeId, input.storeId)
+		)!;
 	}
 	if (typeof input.statusTaggingId === 'number') {
 		cond = and(
 			cond,
-			eq(table.invDepartmentConsumptionTable.statusTaggingId, input.statusTaggingId)
+			eq(
+				table.invDepartmentConsumptionTable.statusTaggingId,
+				input.statusTaggingId
+			)
 		)!;
 	}
 	const noTerm = input.consumptionNo?.trim();
@@ -155,7 +179,10 @@ export async function listDepartmentConsumptions(
 		if (safe) {
 			cond = and(
 				cond,
-				ilike(table.invDepartmentConsumptionTable.consumptionNo, `%${safe}%`)
+				ilike(
+					table.invDepartmentConsumptionTable.consumptionNo,
+					`%${safe}%`
+				)
 			)!;
 		}
 	}
@@ -172,7 +199,10 @@ export async function listDepartmentConsumptions(
 	const itemNamesAgg = ensureDb()
 		.select({
 			consumptionId: line.consumptionId,
-			itemNames: sql<string>`string_agg(distinct ${item.itemName}, ', ')`.as('itemNames')
+			itemNames:
+				sql<string>`string_agg(distinct ${item.itemName}, ', ')`.as(
+					'itemNames'
+				)
 		})
 		.from(line)
 		.innerJoin(item, eq(line.itemId, item.id))
@@ -195,13 +225,22 @@ export async function listDepartmentConsumptions(
 			.from(table.invDepartmentConsumptionTable)
 			.leftJoin(
 				itemNamesAgg,
-				eq(table.invDepartmentConsumptionTable.id, itemNamesAgg.consumptionId)
+				eq(
+					table.invDepartmentConsumptionTable.id,
+					itemNamesAgg.consumptionId
+				)
 			)
 			.innerJoin(
 				table.storeTable,
-				eq(table.invDepartmentConsumptionTable.storeId, table.storeTable.id)
+				eq(
+					table.invDepartmentConsumptionTable.storeId,
+					table.storeTable.id
+				)
 			)
-			.innerJoin(st, eq(table.invDepartmentConsumptionTable.statusTaggingId, st.id))
+			.innerJoin(
+				st,
+				eq(table.invDepartmentConsumptionTable.statusTaggingId, st.id)
+			)
 			.leftJoin(
 				uReq,
 				eq(table.invDepartmentConsumptionTable.requestedBy, uReq.id)
@@ -220,7 +259,10 @@ export async function listDepartmentConsumptions(
 			)
 			.leftJoin(
 				uCancel,
-				eq(table.invDepartmentConsumptionTable.cancelledBy, uCancel.id)
+				eq(
+					table.invDepartmentConsumptionTable.cancelledBy,
+					uCancel.id
+				)
 			)
 			.where(cond)
 			.orderBy(desc(table.invDepartmentConsumptionTable.createdAt))
@@ -238,7 +280,10 @@ export async function listDepartmentConsumptions(
 	const staffId = userId ? await getStaffIdForUser(userId) : null;
 	let dcPairSet = new Set<string>();
 	if (staffId) {
-		const pairs = await listDcApproverStoreLevelsForStaff(input.hospitalId, staffId);
+		const pairs = await listDcApproverStoreLevelsForStaff(
+			input.hospitalId,
+			staffId
+		);
 		dcPairSet = new Set(pairs.map((p) => `${p.storeId}:${p.level}`));
 	}
 
@@ -246,7 +291,8 @@ export async function listDepartmentConsumptions(
 		data.map(async (r) => {
 			const row = r.row;
 			const canApprove =
-				row.statusTaggingId === InvDepartmentConsumptionStatusTaggingEnum.PENDING &&
+				row.statusTaggingId ===
+					InvDepartmentConsumptionStatusTaggingEnum.PENDING &&
 				dcPairSet.has(`${row.storeId}:${row.currentLevel}`);
 			const canManageOpen = await computeCanManageOpenConsumption({
 				hospitalId: input.hospitalId,
@@ -258,7 +304,8 @@ export async function listDepartmentConsumptions(
 			});
 			const canSubmitForApproval =
 				canManageOpen &&
-				row.statusTaggingId === InvDepartmentConsumptionStatusTaggingEnum.DRAFT;
+				row.statusTaggingId ===
+					InvDepartmentConsumptionStatusTaggingEnum.DRAFT;
 			return {
 				...row,
 				storeName: r.storeName ?? null,
@@ -293,7 +340,10 @@ async function computeCanManageOpenConsumption(input: {
 	statusTaggingId: number;
 }): Promise<boolean> {
 	// No draft flow: only pending docs can be managed/cancelled.
-	if (input.statusTaggingId !== InvDepartmentConsumptionStatusTaggingEnum.PENDING) {
+	if (
+		input.statusTaggingId !==
+		InvDepartmentConsumptionStatusTaggingEnum.PENDING
+	) {
 		return false;
 	}
 	// Requirement: only the requester (creator) can cancel from UI.
@@ -308,7 +358,10 @@ export async function getDepartmentConsumptionById(
 
 	const uReq = alias(table.userTable, 'dc_consumption_req_user');
 	const uAppr = alias(table.userTable, 'dc_consumption_appr_user');
-	const uCancel = alias(table.userTable, 'dc_consumption_cancel_user');
+	const uCancel = alias(
+		table.userTable,
+		'dc_consumption_cancel_user'
+	);
 
 	const [joined] = await ensureDb()
 		.select({
@@ -330,15 +383,30 @@ export async function getDepartmentConsumptionById(
 		)
 		.innerJoin(
 			table.storeTable,
-			eq(table.invDepartmentConsumptionTable.storeId, table.storeTable.id)
+			eq(
+				table.invDepartmentConsumptionTable.storeId,
+				table.storeTable.id
+			)
 		)
-		.leftJoin(uReq, eq(table.invDepartmentConsumptionTable.requestedBy, uReq.id))
-		.leftJoin(uAppr, eq(table.invDepartmentConsumptionTable.approvedBy, uAppr.id))
-		.leftJoin(uCancel, eq(table.invDepartmentConsumptionTable.cancelledBy, uCancel.id))
+		.leftJoin(
+			uReq,
+			eq(table.invDepartmentConsumptionTable.requestedBy, uReq.id)
+		)
+		.leftJoin(
+			uAppr,
+			eq(table.invDepartmentConsumptionTable.approvedBy, uAppr.id)
+		)
+		.leftJoin(
+			uCancel,
+			eq(table.invDepartmentConsumptionTable.cancelledBy, uCancel.id)
+		)
 		.where(
 			and(
 				eq(table.invDepartmentConsumptionTable.id, input.id),
-				eq(table.invDepartmentConsumptionTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentConsumptionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentConsumptionTable.deletedAt)
 			)
 		)
@@ -357,19 +425,31 @@ export async function getDepartmentConsumptionById(
 		.from(table.invDepartmentConsumptionLineTable)
 		.innerJoin(
 			table.itemMasterTable,
-			eq(table.invDepartmentConsumptionLineTable.itemId, table.itemMasterTable.id)
+			eq(
+				table.invDepartmentConsumptionLineTable.itemId,
+				table.itemMasterTable.id
+			)
 		)
 		.innerJoin(
 			table.unitTable,
-			eq(table.invDepartmentConsumptionLineTable.unitId, table.unitTable.id)
+			eq(
+				table.invDepartmentConsumptionLineTable.unitId,
+				table.unitTable.id
+			)
 		)
 		.innerJoin(
 			table.itemBatchTable,
-			eq(table.invDepartmentConsumptionLineTable.batchId, table.itemBatchTable.id)
+			eq(
+				table.invDepartmentConsumptionLineTable.batchId,
+				table.itemBatchTable.id
+			)
 		)
 		.where(
 			and(
-				eq(table.invDepartmentConsumptionLineTable.consumptionId, input.id),
+				eq(
+					table.invDepartmentConsumptionLineTable.consumptionId,
+					input.id
+				),
 				isNull(table.invDepartmentConsumptionLineTable.deletedAt)
 			)
 		)
@@ -384,7 +464,9 @@ export async function getDepartmentConsumptionById(
 	);
 
 	const userId = event.locals.user?.id ?? null;
-	const staffIdForApprove = userId ? await getStaffIdForUser(userId) : null;
+	const staffIdForApprove = userId
+		? await getStaffIdForUser(userId)
+		: null;
 	let canApprove = false;
 	if (
 		staffIdForApprove &&
@@ -453,9 +535,13 @@ export async function createDepartmentConsumptionSubmitted(
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
-	const store = await assertStoreInHospital(input.hospitalId, input.storeId);
+	const store = await assertStoreInHospital(
+		input.hospitalId,
+		input.storeId
+	);
 	await validateLineBatchesForHospital(
 		input.hospitalId,
 		input.lines.map((l) => ({ itemId: l.itemId, batchId: l.batchId }))
@@ -464,7 +550,11 @@ export async function createDepartmentConsumptionSubmitted(
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
-	const maxLevel = await getMaxApprovalLevel(input.hospitalId, input.storeId, 'DC');
+	const maxLevel = await getMaxApprovalLevel(
+		input.hospitalId,
+		input.storeId,
+		'DC'
+	);
 	if (maxLevel < 1) {
 		throw error(
 			400,
@@ -472,7 +562,10 @@ export async function createDepartmentConsumptionSubmitted(
 		);
 	}
 
-	const consumptionNo = await allocateConsumptionNo(input.hospitalId, branchId);
+	const consumptionNo = await allocateConsumptionNo(
+		input.hospitalId,
+		branchId
+	);
 
 	const id = await ensureDb().transaction(async (tx) => {
 		const newId = uuidv7();
@@ -482,7 +575,8 @@ export async function createDepartmentConsumptionSubmitted(
 			consumptionNo,
 			storeId: input.storeId,
 			requestedBy: userId,
-			statusTaggingId: InvDepartmentConsumptionStatusTaggingEnum.PENDING,
+			statusTaggingId:
+				InvDepartmentConsumptionStatusTaggingEnum.PENDING,
 			currentLevel: 1,
 			remarks: input.remarks,
 			createdBy: userId,
@@ -529,18 +623,31 @@ export async function approveDepartmentConsumption(
 		.from(table.invDepartmentConsumptionTable)
 		.where(
 			and(
-				eq(table.invDepartmentConsumptionTable.id, input.consumptionId),
-				eq(table.invDepartmentConsumptionTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentConsumptionTable.id,
+					input.consumptionId
+				),
+				eq(
+					table.invDepartmentConsumptionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentConsumptionTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!doc) throw error(404, 'Consumption not found');
-	if (doc.statusTaggingId !== InvDepartmentConsumptionStatusTaggingEnum.PENDING) {
+	if (
+		doc.statusTaggingId !==
+		InvDepartmentConsumptionStatusTaggingEnum.PENDING
+	) {
 		throw error(400, 'Consumption is not awaiting approval');
 	}
 
-	const maxLevel = await getMaxApprovalLevel(input.hospitalId, doc.storeId, 'DC');
+	const maxLevel = await getMaxApprovalLevel(
+		input.hospitalId,
+		doc.storeId,
+		'DC'
+	);
 	if (maxLevel < 1) {
 		throw error(
 			400,
@@ -565,13 +672,19 @@ export async function approveDepartmentConsumption(
 			await tx
 				.update(table.invDepartmentConsumptionTable)
 				.set({
-					statusTaggingId: InvDepartmentConsumptionStatusTaggingEnum.CANCELLED,
+					statusTaggingId:
+						InvDepartmentConsumptionStatusTaggingEnum.CANCELLED,
 					cancelledBy: userId,
 					cancelledAt: sql<string>`now()`,
 					cancelReason: rejectReason,
 					updatedBy: userId
 				})
-				.where(eq(table.invDepartmentConsumptionTable.id, input.consumptionId));
+				.where(
+					eq(
+						table.invDepartmentConsumptionTable.id,
+						input.consumptionId
+					)
+				);
 
 			await tx.insert(table.invApprovalLogTable).values({
 				hospitalId: input.hospitalId,
@@ -596,7 +709,12 @@ export async function approveDepartmentConsumption(
 					currentLevel: doc.currentLevel + 1,
 					updatedBy: userId
 				})
-				.where(eq(table.invDepartmentConsumptionTable.id, input.consumptionId));
+				.where(
+					eq(
+						table.invDepartmentConsumptionTable.id,
+						input.consumptionId
+					)
+				);
 
 			await tx.insert(table.invApprovalLogTable).values({
 				hospitalId: input.hospitalId,
@@ -615,7 +733,10 @@ export async function approveDepartmentConsumption(
 			.from(table.invDepartmentConsumptionLineTable)
 			.where(
 				and(
-					eq(table.invDepartmentConsumptionLineTable.consumptionId, input.consumptionId),
+					eq(
+						table.invDepartmentConsumptionLineTable.consumptionId,
+						input.consumptionId
+					),
 					isNull(table.invDepartmentConsumptionLineTable.deletedAt)
 				)
 			)
@@ -628,10 +749,7 @@ export async function approveDepartmentConsumption(
 				purchaseUnitId: line.unitId,
 				purchaseQtyStr: String(line.quantity)
 			});
-			const needN = Number(needIssue);
-			if (!Number.isFinite(needN) || needN <= 0) {
-				throw error(400, 'Invalid line quantity');
-			}
+			const needN = parsePositiveIntQty(needIssue, 'quantity');
 
 			const [stockRow] = await tx
 				.select()
@@ -656,7 +774,7 @@ export async function approveDepartmentConsumption(
 				itemId: line.itemId,
 				storeId: doc.storeId,
 				batchId: line.batchId,
-				delta: (-needN).toFixed(6),
+				delta: String(-needN),
 				userId
 			});
 		}
@@ -664,12 +782,18 @@ export async function approveDepartmentConsumption(
 		await tx
 			.update(table.invDepartmentConsumptionTable)
 			.set({
-				statusTaggingId: InvDepartmentConsumptionStatusTaggingEnum.POSTED,
+				statusTaggingId:
+					InvDepartmentConsumptionStatusTaggingEnum.POSTED,
 				approvedBy: userId,
 				approvedAt: sql<string>`now()`,
 				updatedBy: userId
 			})
-			.where(eq(table.invDepartmentConsumptionTable.id, input.consumptionId));
+			.where(
+				eq(
+					table.invDepartmentConsumptionTable.id,
+					input.consumptionId
+				)
+			);
 
 		await tx.insert(table.invApprovalLogTable).values({
 			hospitalId: input.hospitalId,
@@ -703,21 +827,35 @@ export async function cancelDepartmentConsumption(
 		.from(table.invDepartmentConsumptionTable)
 		.where(
 			and(
-				eq(table.invDepartmentConsumptionTable.id, input.consumptionId),
-				eq(table.invDepartmentConsumptionTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentConsumptionTable.id,
+					input.consumptionId
+				),
+				eq(
+					table.invDepartmentConsumptionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentConsumptionTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!doc) throw error(404, 'Consumption not found');
-	if (doc.statusTaggingId === InvDepartmentConsumptionStatusTaggingEnum.CANCELLED) {
+	if (
+		doc.statusTaggingId ===
+		InvDepartmentConsumptionStatusTaggingEnum.CANCELLED
+	) {
 		throw error(400, 'Consumption is already cancelled');
 	}
 	if (
-		doc.statusTaggingId !== InvDepartmentConsumptionStatusTaggingEnum.DRAFT &&
-		doc.statusTaggingId !== InvDepartmentConsumptionStatusTaggingEnum.PENDING
+		doc.statusTaggingId !==
+			InvDepartmentConsumptionStatusTaggingEnum.DRAFT &&
+		doc.statusTaggingId !==
+			InvDepartmentConsumptionStatusTaggingEnum.PENDING
 	) {
-		throw error(400, 'Consumption cannot be cancelled in current status');
+		throw error(
+			400,
+			'Consumption cannot be cancelled in current status'
+		);
 	}
 
 	const staffIdForCancel = await getStaffIdForUser(userId);
@@ -734,13 +872,16 @@ export async function cancelDepartmentConsumption(
 	await ensureDb()
 		.update(table.invDepartmentConsumptionTable)
 		.set({
-			statusTaggingId: InvDepartmentConsumptionStatusTaggingEnum.CANCELLED,
+			statusTaggingId:
+				InvDepartmentConsumptionStatusTaggingEnum.CANCELLED,
 			cancelledBy: userId,
 			cancelledAt: sql<string>`now()`,
 			cancelReason: reason,
 			updatedBy: userId
 		})
-		.where(eq(table.invDepartmentConsumptionTable.id, input.consumptionId));
+		.where(
+			eq(table.invDepartmentConsumptionTable.id, input.consumptionId)
+		);
 
 	return getDepartmentConsumptionById(event, {
 		hospitalId: input.hospitalId,

@@ -1,5 +1,14 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	eq,
+	ilike,
+	inArray,
+	ne,
+	or,
+	sql
+} from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
@@ -73,7 +82,8 @@ export async function getDoctorStaffPaginated(
 	params: PaginationParams & { hospitalId: string; branchId?: string }
 ): Promise<PaginatedResult<any>> {
 	await ensureCanAccessHospital(event, params.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	const searchTerm = params.search?.trim();
 	const pattern = searchTerm ? `%${searchTerm}%` : null;
@@ -88,7 +98,10 @@ export async function getDoctorStaffPaginated(
 			ilike(table.staffTable.phonePrimary, pattern)
 		);
 
-	const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+	const notDeletedCondition = ne(
+		table.staffTable.statusId,
+		StatusEnum.DELETED
+	);
 	const doctorCondition = eq(table.staffTable.staffTypeId, 3);
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${params.hospitalId})`;
 	const branchCondition =
@@ -103,7 +116,12 @@ export async function getDoctorStaffPaginated(
 			: undefined;
 
 	let whereExpr = searchCondition
-		? and(notDeletedCondition, doctorCondition, hospitalCondition, searchCondition)
+		? and(
+				notDeletedCondition,
+				doctorCondition,
+				hospitalCondition,
+				searchCondition
+			)
 		: and(notDeletedCondition, doctorCondition, hospitalCondition);
 	if (branchCondition) whereExpr = and(whereExpr, branchCondition);
 
@@ -114,7 +132,10 @@ export async function getDoctorStaffPaginated(
 			limit,
 			offset
 		}),
-		ensureDb().select({ count: count() }).from(table.staffTable).where(whereExpr)
+		ensureDb()
+			.select({ count: count() })
+			.from(table.staffTable)
+			.where(whereExpr)
 	]);
 
 	const total = countResult[0]?.count ?? 0;
@@ -155,7 +176,9 @@ export async function listAppointments(
 		ne(table.appointmentTable.statusId, StatusEnum.DELETED)
 	];
 	if (input.branchId) {
-		conditions.push(eq(table.appointmentTable.branchId, input.branchId));
+		conditions.push(
+			eq(table.appointmentTable.branchId, input.branchId)
+		);
 	}
 	return ensureDb()
 		.select()
@@ -173,7 +196,9 @@ export async function listAppointmentsWithRelations(
 		ne(table.appointmentTable.statusId, StatusEnum.DELETED)
 	];
 	if (input.branchId) {
-		conditions.push(eq(table.appointmentTable.branchId, input.branchId));
+		conditions.push(
+			eq(table.appointmentTable.branchId, input.branchId)
+		);
 	}
 	return ensureDb().query.appointmentTable.findMany({
 		where: and(...conditions),
@@ -288,9 +313,8 @@ export async function getAppointmentCancelEligibility(
 		);
 	for (const { id } of visits) {
 		// Inline import to avoid pulling heavy module into every request.
-		const { visitHasBlockingClinicalData } = await import(
-			'$lib/server/visit-blocking-clinical.server'
-		);
+		const { visitHasBlockingClinicalData } =
+			await import('$lib/server/visit-blocking-clinical.server');
 		if (await visitHasBlockingClinicalData(id)) {
 			return {
 				allowed: false,
@@ -311,7 +335,9 @@ export async function listDoctorSchedules(
 		eq(table.doctorScheduleTable.hospitalId, input.hospitalId)
 	];
 	if (input.branchId) {
-		conditions.push(eq(table.doctorScheduleTable.branchId, input.branchId));
+		conditions.push(
+			eq(table.doctorScheduleTable.branchId, input.branchId)
+		);
 	}
 	return ensureDb()
 		.select()
@@ -352,7 +378,10 @@ export async function createAppointmentBlock(
 
 export async function updateAppointmentBlock(
 	event: RequestEvent,
-	input: AppointmentBlockSchemaUpdate & { id: number; hospitalId: string }
+	input: AppointmentBlockSchemaUpdate & {
+		id: number;
+		hospitalId: string;
+	}
 ): Promise<AppointmentBlockSchema> {
 	await ensureCanAccessHospital(event, input.hospitalId);
 	const { id, hospitalId, ...rest } = input;
@@ -417,4 +446,3 @@ export async function listExternalRefers(
 			)
 		);
 }
-

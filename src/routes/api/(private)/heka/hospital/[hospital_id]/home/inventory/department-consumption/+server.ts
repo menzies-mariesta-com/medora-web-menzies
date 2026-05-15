@@ -10,18 +10,28 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	const id = event.url.searchParams.get('id');
 	if (id) {
-		const row = await getDepartmentConsumptionById(event, { hospitalId, id });
+		const row = await getDepartmentConsumptionById(event, {
+			hospitalId,
+			id
+		});
 		return json(row);
 	}
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const storeIdStr = event.url.searchParams.get('storeId');
 	const statusIdStr = event.url.searchParams.get('statusTaggingId');
 	const storeId =
-		storeIdStr != null && storeIdStr !== '' ? Number(storeIdStr) : undefined;
+		storeIdStr != null && storeIdStr !== ''
+			? Number(storeIdStr)
+			: undefined;
 	const statusTaggingId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : undefined;
-	const consumptionNoRaw = event.url.searchParams.get('consumptionNo');
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: undefined;
+	const consumptionNoRaw =
+		event.url.searchParams.get('consumptionNo');
 	const consumptionNo =
 		consumptionNoRaw != null && consumptionNoRaw !== ''
 			? consumptionNoRaw
@@ -42,7 +52,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 
 	const data = await createDepartmentConsumptionSubmitted(event, {

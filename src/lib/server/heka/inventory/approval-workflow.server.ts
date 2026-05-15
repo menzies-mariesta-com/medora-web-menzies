@@ -20,7 +20,10 @@ export async function assertStaffAssignedForModule(
 		.from(table.invApprovalAssigneeTable)
 		.innerJoin(
 			table.invApprovalLevelTable,
-			eq(table.invApprovalAssigneeTable.levelId, table.invApprovalLevelTable.id)
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
 		)
 		.where(
 			and(
@@ -220,7 +223,10 @@ export async function listAssignedStoreIdsForStaff(
 		.from(table.invApprovalAssigneeTable)
 		.innerJoin(
 			table.invApprovalLevelTable,
-			eq(table.invApprovalAssigneeTable.levelId, table.invApprovalLevelTable.id)
+			eq(
+				table.invApprovalAssigneeTable.levelId,
+				table.invApprovalLevelTable.id
+			)
 		)
 		.where(
 			and(

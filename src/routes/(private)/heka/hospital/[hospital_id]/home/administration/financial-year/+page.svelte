@@ -28,7 +28,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -71,7 +72,9 @@
 		if (!hospitalId) return;
 		isLoading = true;
 		try {
-			items = await apiFetch<FinancialYearListRow[]>(financialYearApiUrl());
+			items = await apiFetch<FinancialYearListRow[]>(
+				financialYearApiUrl()
+			);
 		} finally {
 			isLoading = false;
 		}
@@ -98,8 +101,12 @@
 		viewMode = 'edit';
 		editingId = item.id;
 		codeInput = item.code ?? '';
-		startDateInput = item.startDate ? String(item.startDate).slice(0, 10) : '';
-		endDateInput = item.endDate ? String(item.endDate).slice(0, 10) : '';
+		startDateInput = item.startDate
+			? String(item.startDate).slice(0, 10)
+			: '';
+		endDateInput = item.endDate
+			? String(item.endDate).slice(0, 10)
+			: '';
 	}
 
 	async function handleSave() {
@@ -111,7 +118,8 @@
 			return;
 		}
 
-		const isValidDate = (v: string) => !v || /^\d{4}-\d{2}-\d{2}(T|$)/.test(v);
+		const isValidDate = (v: string) =>
+			!v || /^\d{4}-\d{2}-\d{2}(T|$)/.test(v);
 		if (startDateInput && !isValidDate(startDateInput)) {
 			toastService.addToast(
 				m.toast_invalid_date_format_full(),
@@ -262,7 +270,9 @@
 			>
 				<fieldset class="m-0 min-w-0 border-0 p-0">
 					<DaisyUiCardBodyTitle className="mb-5">
-						{editingId != null ? 'Edit Financial Year' : 'Create Financial Year'}
+						{editingId != null
+							? 'Edit Financial Year'
+							: 'Create Financial Year'}
 					</DaisyUiCardBodyTitle>
 				</fieldset>
 				<div

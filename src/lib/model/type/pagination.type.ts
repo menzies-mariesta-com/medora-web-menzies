@@ -19,7 +19,6 @@ export type PaginationParams = {
 	name?: string;
 	code?: string;
 	itemCode?: string;
-	barcode?: string;
 	statusId?: number;
 	hospitalId?: string;
 	branchId?: string;
@@ -45,4 +44,3 @@ export function normalizePagination(params?: PaginationParams): {
 	const offset = (page - 1) * pageSize;
 	return { page, pageSize, limit: pageSize, offset };
 }
-

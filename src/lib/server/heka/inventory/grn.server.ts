@@ -1,5 +1,14 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, ilike, isNotNull, isNull, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	ilike,
+	isNotNull,
+	isNull,
+	sql
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -18,17 +27,20 @@ import {
 	assertStaffAssignedForModule,
 	listAssignedStoreIdsForStaff
 } from './approval-workflow.server';
+import {
+	parseMoney2dp,
+	parseNonNegativeIntQty,
+	parsePositiveIntQty
+} from './inv-validate.server';
 
 function parseGrnOptionalQty(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
-	const n = Number(String(s).trim());
-	return Number.isFinite(n) && n >= 0 ? n : 0;
+	return parseNonNegativeIntQty(s, 'quantity');
 }
 
 function parseGrnMoney(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
-	const n = Number(String(s).trim());
-	return Number.isFinite(n) ? n : 0;
+	return Number(parseMoney2dp(s, 'amount'));
 }
 
 /**
@@ -42,7 +54,12 @@ function computeGrnLinePriceStrings(p: {
 	discountPercent: number;
 	taxAmount: number;
 	taxPercent: number;
-}): { salePerPurch: string; empPerPurch: string; discountTotal: string; taxTotal: string } {
+}): {
+	salePerPurch: string;
+	empPerPurch: string;
+	discountTotal: string;
+	taxTotal: string;
+} {
 	const r = p.receivedQty;
 	const f = p.freeQty;
 	if (!Number.isFinite(r) || r <= 0) {
@@ -56,9 +73,7 @@ function computeGrnLinePriceStrings(p: {
 	const sub = r * p.purchaseUnitPrice;
 	const discFromPct = sub * (p.discountPercent / 100);
 	const discTotal =
-		p.discountAmount > 0
-			? p.discountAmount
-			: discFromPct;
+		p.discountAmount > 0 ? p.discountAmount : discFromPct;
 	const afterDisc = Math.max(0, sub - discTotal);
 	const taxFromPct = afterDisc * (p.taxPercent / 100);
 	const taxTotal = p.taxAmount > 0 ? p.taxAmount : taxFromPct;
@@ -67,19 +82,91 @@ function computeGrnLinePriceStrings(p: {
 	const tot = r + f;
 	const emp = tot > 0 ? afterTax / tot : sale;
 	return {
-		salePerPurch: sale.toFixed(4),
-		empPerPurch: emp.toFixed(4),
-		discountTotal: discTotal.toFixed(4),
-		taxTotal: taxTotal.toFixed(4)
+		salePerPurch: sale.toFixed(2),
+		empPerPurch: emp.toFixed(2),
+		discountTotal: discTotal.toFixed(2),
+		taxTotal: taxTotal.toFixed(2)
 	};
 }
-import {
-	addDeltaToInvStock,
-	findOrCreateItemBatch,
-	OPEN_STOCK_BATCH_NO
-} from './item-batch.server';
+
+function issueQtyStringFromAnyUnit(params: {
+	qty: number;
+	unitId: number;
+	/** The GRN line purchase unit id (ordered/received unit). */
+	linePurchaseUnitId: number;
+	/** The GRN line issue/stock unit id (derived from the line purchase unit IUM). */
+	lineIssueUnitId: number;
+	/** Item-unit-master resolved for the GRN line purchase unit. */
+	lineIum: {
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
+	};
+	/** All item unit masters for the item. */
+	allIums: {
+		purchaseUnitId: number;
+		issueUnitId: number;
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
+	}[];
+}): string {
+	const q = params.qty;
+	if (!Number.isFinite(q) || q <= 0) return '0.000000';
+	const pfLine = Number(params.lineIum.purchaseConversionFactor);
+	const itfLine = Number(params.lineIum.issueConversionFactor);
+	if (
+		!Number.isFinite(pfLine) ||
+		pfLine <= 0 ||
+		!Number.isFinite(itfLine) ||
+		itfLine <= 0
+	) {
+		throw error(500, 'Invalid unit conversion factors');
+	}
+	// base = purchaseQty * purchaseFactor = issueQty * issueFactor
+	const base = (() => {
+		if (params.unitId === params.linePurchaseUnitId) {
+			return q * pfLine;
+		}
+		// qty entered in issue unit of the line IUM
+		if (params.unitId === params.lineIssueUnitId) {
+			return q * itfLine;
+		}
+		const asPurch = params.allIums.find(
+			(x) => x.purchaseUnitId === params.unitId
+		);
+		if (asPurch) {
+			const pf = Number(asPurch.purchaseConversionFactor);
+			if (!Number.isFinite(pf) || pf <= 0)
+				throw error(500, 'Invalid free unit conversion factor');
+			return q * pf;
+		}
+		const asIssue = params.allIums.find(
+			(x) => x.issueUnitId === params.unitId
+		);
+		if (asIssue) {
+			const itf = Number(asIssue.issueConversionFactor);
+			if (!Number.isFinite(itf) || itf <= 0)
+				throw error(500, 'Invalid free unit conversion factor');
+			return q * itf;
+		}
+		throw error(400, 'Invalid free unit for this item');
+	})();
+	const issue = base / itfLine;
+	if (!Number.isFinite(issue))
+		throw error(500, 'Unit conversion failed');
+	const rounded = Math.round(issue);
+	if (Math.abs(issue - rounded) > 1e-9) {
+		throw error(
+			400,
+			'Unit conversion must result in an integer quantity'
+		);
+	}
+	return String(rounded);
+}
+import { addDeltaToInvStock, findOrCreateItemBatch } from './item-batch.server';
 import {
 	issueQtyStringFromPurchaseReceipt,
+	issueQtyToPurchaseQtyString,
+	listItemUnitMastersForItem,
 	purchaseUnitPriceToIssueUnitPriceString,
 	resolveItemUnitMasterForItemPurchaseUnit
 } from './item-unit-inventory.server';
@@ -102,7 +189,10 @@ export async function getReceivingStoreForPurchaseOrder(
 		)
 		.limit(1);
 	if (!po) return null;
-	const st = await assertStoreInHospital(input.hospitalId, po.storeId);
+	const st = await assertStoreInHospital(
+		input.hospitalId,
+		po.storeId
+	);
 	if (!st.branchId) return null;
 	return {
 		storeId: st.id,
@@ -132,22 +222,32 @@ export async function listGoodsReceiptNotes(
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let cond = and(
 		eq(table.goodsReceiptNoteTable.hospitalId, input.hospitalId),
 		isNull(table.goodsReceiptNoteTable.deletedAt)
 	);
 	if (input.poId) {
-		cond = and(cond, eq(table.goodsReceiptNoteTable.poId, input.poId))!;
+		cond = and(
+			cond,
+			eq(table.goodsReceiptNoteTable.poId, input.poId)
+		)!;
 	}
 	if (input.storeId != null) {
-		cond = and(cond, eq(table.goodsReceiptNoteTable.storeId, input.storeId))!;
+		cond = and(
+			cond,
+			eq(table.goodsReceiptNoteTable.storeId, input.storeId)
+		)!;
 	}
 	if (typeof input.statusTaggingId === 'number') {
 		cond = and(
 			cond,
-			eq(table.goodsReceiptNoteTable.statusTaggingId, input.statusTaggingId)
+			eq(
+				table.goodsReceiptNoteTable.statusTaggingId,
+				input.statusTaggingId
+			)
 		)!;
 	}
 	const invoiceNoTerm = input.invoiceNo?.trim();
@@ -216,10 +316,7 @@ export async function listGoodsReceiptNotes(
 			.leftJoin(
 				grnXfer,
 				and(
-					eq(
-						grnXfer.sourceGrnId,
-						table.goodsReceiptNoteTable.id
-					),
+					eq(grnXfer.sourceGrnId, table.goodsReceiptNoteTable.id),
 					isNull(grnXfer.deletedAt)
 				)
 			)
@@ -296,7 +393,10 @@ export async function getGoodsReceiptNoteById(
 	input: { hospitalId: string; id: string }
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const uReceived = alias(table.userTable, 'grn_detail_received_by_user');
+	const uReceived = alias(
+		table.userTable,
+		'grn_detail_received_by_user'
+	);
 	const [row] = await ensureDb()
 		.select({
 			grn: table.goodsReceiptNoteTable,
@@ -321,11 +421,17 @@ export async function getGoodsReceiptNoteById(
 		)
 		.innerJoin(
 			table.supplierTable,
-			eq(table.goodsReceiptNoteTable.supplierId, table.supplierTable.id)
+			eq(
+				table.goodsReceiptNoteTable.supplierId,
+				table.supplierTable.id
+			)
 		)
 		.leftJoin(
 			table.purchaseOrderTable,
-			eq(table.goodsReceiptNoteTable.poId, table.purchaseOrderTable.id)
+			eq(
+				table.goodsReceiptNoteTable.poId,
+				table.purchaseOrderTable.id
+			)
 		)
 		.leftJoin(
 			uReceived,
@@ -397,9 +503,10 @@ export async function createAndPostGoodsReceipt(
 			receivedQty: string;
 			batchNo?: string | null;
 			expiryDate?: string | null;
-			/** Unit purchase price at receipt (required when item `is_batch_required`). */
+			/** Unit purchase price at receipt (batch/expiry required for all items). */
 			purchasePrice?: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -418,7 +525,8 @@ export async function createAndPostGoodsReceipt(
 		'GRN',
 		staffId
 	);
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
 	const [po] = await ensureDb()
 		.select()
@@ -454,7 +562,10 @@ export async function createAndPostGoodsReceipt(
 		if (!pr) throw error(404, 'Purchase requisition not found');
 		// PR-backed GRN must be posted into the PR destination store (receiver).
 		if (input.storeId !== pr.toStoreId) {
-			throw error(400, 'Goods must be received into the PR destination store');
+			throw error(
+				400,
+				'Goods must be received into the PR destination store'
+			);
 		}
 	} else if (input.storeId !== po.storeId) {
 		throw error(
@@ -464,7 +575,9 @@ export async function createAndPostGoodsReceipt(
 	}
 
 	const grnId = await ensureDb().transaction(async (tx) => {
-		const receivedByUserId = input.receivedBy?.trim() ? input.receivedBy.trim() : userId;
+		const receivedByUserId = input.receivedBy?.trim()
+			? input.receivedBy.trim()
+			: userId;
 		if (receivedByUserId !== userId) {
 			const [u] = await tx
 				.select({ id: table.userTable.id })
@@ -507,20 +620,18 @@ export async function createAndPostGoodsReceipt(
 				)
 				.limit(1);
 			if (!poLine) throw error(400, `Invalid PO line ${ln.poLineId}`);
-			const recv = Number(ln.receivedQty);
-			if (!Number.isFinite(recv) || recv <= 0)
-				throw error(400, 'Invalid received quantity');
+			const recv = parsePositiveIntQty(ln.receivedQty, 'receivedQty');
 			const prev = Number(poLine.qtyReceivedCumulative);
 			const ordered = Number(poLine.quantity);
 			if (prev + recv > ordered + 1e-9) {
-				throw error(400, 'Received quantity exceeds ordered quantity');
+				throw error(
+					400,
+					'Received quantity exceeds ordered quantity'
+				);
 			}
 
 			const [im] = await tx
-				.select({
-					isBatchRequired: table.itemMasterTable.isBatchRequired,
-					manufacturerId: table.itemMasterTable.manufacturerId
-				})
+				.select({ id: table.itemMasterTable.id })
 				.from(table.itemMasterTable)
 				.where(eq(table.itemMasterTable.id, poLine.itemId))
 				.limit(1);
@@ -529,59 +640,100 @@ export async function createAndPostGoodsReceipt(
 			let batchNo: string;
 			let expiryDate: string | null;
 			let purchasePriceStr: string;
-			if (im.isBatchRequired) {
-				const bn = ln.batchNo?.trim();
-				if (!bn) throw error(400, 'batch_no required for this item');
-				if (!ln.expiryDate) throw error(400, 'expiry_date required for this item');
-				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
-					throw error(400, 'purchase_price required');
-				}
-				batchNo = bn;
-				expiryDate = ln.expiryDate;
-				purchasePriceStr = Number(pp).toFixed(4);
-			} else {
-				batchNo =
-					ln.batchNo?.trim() && ln.batchNo.trim().length > 0
-						? ln.batchNo.trim()
-						: OPEN_STOCK_BATCH_NO;
-				expiryDate = ln.expiryDate ?? null;
-				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
-					throw error(400, 'purchase_price required');
-				}
-				purchasePriceStr = Number(pp).toFixed(4);
+			const bn = ln.batchNo?.trim();
+			if (!bn) throw error(400, 'batch_no required for this item');
+			if (!ln.expiryDate)
+				throw error(400, 'expiry_date required for this item');
+			const pp = ln.purchasePrice?.trim();
+			if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
+				throw error(400, 'purchase_price required');
 			}
+			batchNo = bn;
+			expiryDate = ln.expiryDate;
+			purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 
-			const manufacturerId =
-				poLine.manufacturerId ?? im.manufacturerId ?? null;
-
-			const issueUnitPriceStr = await purchaseUnitPriceToIssueUnitPriceString({
-				hospitalId: input.hospitalId,
-				itemId: poLine.itemId,
-				purchaseUnitId: poLine.unitId,
-				purchaseUnitPriceStr: purchasePriceStr
-			});
+			const issueUnitPriceStr =
+				await purchaseUnitPriceToIssueUnitPriceString({
+					hospitalId: input.hospitalId,
+					itemId: poLine.itemId,
+					purchaseUnitId: poLine.unitId,
+					purchaseUnitPriceStr: purchasePriceStr
+				});
 
 			const batchId = await findOrCreateItemBatch(tx, {
 				hospitalId: input.hospitalId,
 				itemId: poLine.itemId,
 				batchNo,
 				expiryDate,
-				manufacturerId,
 				supplierId: po.supplierId,
 				// item_batch.purchase_price stores normalized price per issue unit
 				purchasePrice: issueUnitPriceStr
 			});
 
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
+			const freeUnitIdRaw =
+				typeof ln.freeUnitId === 'number' &&
+				Number.isInteger(ln.freeUnitId)
+					? ln.freeUnitId
+					: null;
+			const { ium } = await resolveItemUnitMasterForItemPurchaseUnit({
+				hospitalId: input.hospitalId,
+				itemId: poLine.itemId,
+				purchaseUnitId: poLine.unitId
+			});
+			const freeUnitId = freeUnitIdRaw ?? poLine.unitId;
+			const allIums = await listItemUnitMastersForItem({
+				hospitalId: input.hospitalId,
+				itemId: poLine.itemId
+			});
+			const pfOrdered = Number(ium.purchaseConversionFactor);
+			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
+				throw error(500, 'Invalid ordered unit conversion factor');
+			}
+			const freePurch = (() => {
+				if (freeUnitId === poLine.unitId) return freeQ;
+				// free qty entered in issue unit of the ordered IUM
+				if (freeUnitId === ium.issueUnitId) {
+					return Number(
+						issueQtyToPurchaseQtyString(
+							String(freeQ),
+							ium.purchaseConversionFactor,
+							ium.issueConversionFactor
+						)
+					);
+				}
+				// free qty entered in some other purchase/issue unit of another IUM -> convert via base
+				const asPurch = allIums.find(
+					(x) => x.purchaseUnitId === freeUnitId
+				);
+				if (asPurch) {
+					const pfFree = Number(asPurch.purchaseConversionFactor);
+					if (!Number.isFinite(pfFree) || pfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * pfFree;
+					return base / pfOrdered;
+				}
+				const asIssue = allIums.find(
+					(x) => x.issueUnitId === freeUnitId
+				);
+				if (asIssue) {
+					const itfFree = Number(asIssue.issueConversionFactor);
+					if (!Number.isFinite(itfFree) || itfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * itfFree;
+					return base / pfOrdered;
+				}
+				throw error(400, 'Invalid free unit for this item');
+			})();
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const priceBits = computeGrnLinePriceStrings({
 				receivedQty: recv,
-				freeQty: freeQ,
+				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -626,11 +778,12 @@ export async function createAndPostGoodsReceipt(
 					batchId,
 					purchasePrice: purchasePriceStr,
 					unitId: poLine.unitId,
-					freeQty: freeQ.toFixed(6),
+					freeQty: String(freeQ),
+					freeUnitId,
 					discountAmount: priceBits.discountTotal,
-					discountPercent: discPct.toFixed(4),
+					discountPercent: Number(discPct).toFixed(2),
 					taxAmount: priceBits.taxTotal,
-					taxPercent: taxPct.toFixed(4),
+					taxPercent: Number(taxPct).toFixed(2),
 					salePrice: priceBits.salePerPurch,
 					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
@@ -639,27 +792,39 @@ export async function createAndPostGoodsReceipt(
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
 
-			const issueDelta = await issueQtyStringFromPurchaseReceipt({
-				hospitalId: input.hospitalId,
-				itemId: poLine.itemId,
-				purchaseUnitId: poLine.unitId,
-				purchaseQtyStr: ln.receivedQty
+			const issueDeltaReceived =
+				await issueQtyStringFromPurchaseReceipt({
+					hospitalId: input.hospitalId,
+					itemId: poLine.itemId,
+					purchaseUnitId: poLine.unitId,
+					purchaseQtyStr: ln.receivedQty
+				});
+			const issueDeltaFree = issueQtyStringFromAnyUnit({
+				qty: freeQ,
+				unitId: freeUnitId,
+				linePurchaseUnitId: poLine.unitId,
+				lineIssueUnitId: ium.issueUnitId,
+				lineIum: ium,
+				allIums
 			});
+			const issueDeltaTotal =
+				parsePositiveIntQty(issueDeltaReceived, 'issueQty') +
+				parseNonNegativeIntQty(issueDeltaFree, 'freeIssueQty');
 
 			await addDeltaToInvStock(tx, {
 				hospitalId: input.hospitalId,
 				itemId: poLine.itemId,
 				storeId: input.storeId,
 				batchId,
-				delta: issueDelta,
+				delta: String(issueDeltaTotal),
 				userId
 			});
 
-			const newCum = (prev + recv).toFixed(6);
+			const newCum = prev + recv;
 			await tx
 				.update(table.purchaseOrderLineTable)
 				.set({
-					qtyReceivedCumulative: newCum,
+					qtyReceivedCumulative: String(newCum),
 					updatedBy: userId
 				})
 				.where(eq(table.purchaseOrderLineTable.id, ln.poLineId));
@@ -677,7 +842,10 @@ export async function createAndPostGoodsReceipt(
 
 		let allClosed = true;
 		for (const pl of poLines) {
-			if (Number(pl.qtyReceivedCumulative) < Number(pl.quantity) - 1e-9) {
+			if (
+				Number(pl.qtyReceivedCumulative) <
+				Number(pl.quantity) - 1e-9
+			) {
 				allClosed = false;
 				break;
 			}
@@ -723,6 +891,7 @@ export async function createAndPostDirectGoodsReceipt(
 			expiryDate?: string | null;
 			purchasePrice?: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -741,15 +910,21 @@ export async function createAndPostDirectGoodsReceipt(
 		'GRN',
 		staffId
 	);
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
-	const store = await assertStoreInHospital(input.hospitalId, input.storeId);
+	const store = await assertStoreInHospital(
+		input.hospitalId,
+		input.storeId
+	);
 	if (!store.branchId) {
 		throw error(400, 'Store is missing branch context');
 	}
 
 	const grnId = await ensureDb().transaction(async (tx) => {
-		const receivedByUserId = input.receivedBy?.trim() ? input.receivedBy.trim() : userId;
+		const receivedByUserId = input.receivedBy?.trim()
+			? input.receivedBy.trim()
+			: userId;
 		if (receivedByUserId !== userId) {
 			const [u] = await tx
 				.select({ id: table.userTable.id })
@@ -785,10 +960,7 @@ export async function createAndPostDirectGoodsReceipt(
 				throw error(400, 'Invalid received quantity');
 			}
 			const [im] = await tx
-				.select({
-					isBatchRequired: table.itemMasterTable.isBatchRequired,
-					manufacturerId: table.itemMasterTable.manufacturerId
-				})
+				.select({ id: table.itemMasterTable.id })
 				.from(table.itemMasterTable)
 				.where(eq(table.itemMasterTable.id, ln.itemId))
 				.limit(1);
@@ -797,58 +969,97 @@ export async function createAndPostDirectGoodsReceipt(
 			let batchNo: string;
 			let expiryDate: string | null;
 			let purchasePriceStr: string;
-			if (im.isBatchRequired) {
-				const bn = ln.batchNo?.trim();
-				if (!bn) throw error(400, 'batch_no required for this item');
-				if (!ln.expiryDate) {
-					throw error(400, 'expiry_date required for this item');
-				}
-				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
-					throw error(400, 'purchase_price required');
-				}
-				batchNo = bn;
-				expiryDate = ln.expiryDate;
-				purchasePriceStr = Number(pp).toFixed(4);
-			} else {
-				batchNo =
-					ln.batchNo?.trim() && ln.batchNo.trim().length > 0
-						? ln.batchNo.trim()
-						: OPEN_STOCK_BATCH_NO;
-				expiryDate = ln.expiryDate ?? null;
-				const pp = ln.purchasePrice?.trim();
-				if (!pp || !Number.isFinite(Number(pp)) || Number(pp) <= 0) {
-					throw error(400, 'purchase_price required');
-				}
-				purchasePriceStr = Number(pp).toFixed(4);
+			const bn = ln.batchNo?.trim();
+			if (!bn) throw error(400, 'batch_no required for this item');
+			if (!ln.expiryDate) {
+				throw error(400, 'expiry_date required for this item');
 			}
+			const pp = ln.purchasePrice?.trim();
+			if (!pp || Number(parseMoney2dp(pp, 'purchasePrice')) <= 0) {
+				throw error(400, 'purchase_price required');
+			}
+			batchNo = bn;
+			expiryDate = ln.expiryDate;
+			purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 
-			const manufacturerId = im.manufacturerId ?? null;
-
-			const issueUnitPriceStr = await purchaseUnitPriceToIssueUnitPriceString({
-				hospitalId: input.hospitalId,
-				itemId: ln.itemId,
-				purchaseUnitId: ln.unitId,
-				purchaseUnitPriceStr: purchasePriceStr
-			});
+			const issueUnitPriceStr =
+				await purchaseUnitPriceToIssueUnitPriceString({
+					hospitalId: input.hospitalId,
+					itemId: ln.itemId,
+					purchaseUnitId: ln.unitId,
+					purchaseUnitPriceStr: purchasePriceStr
+				});
 			const batchId = await findOrCreateItemBatch(tx, {
 				hospitalId: input.hospitalId,
 				itemId: ln.itemId,
 				batchNo,
 				expiryDate,
-				manufacturerId,
 				supplierId: input.supplierId,
 				purchasePrice: issueUnitPriceStr
 			});
 
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
+			const freeUnitIdRaw =
+				typeof ln.freeUnitId === 'number' &&
+				Number.isInteger(ln.freeUnitId)
+					? ln.freeUnitId
+					: null;
+			const { ium } = await resolveItemUnitMasterForItemPurchaseUnit({
+				hospitalId: input.hospitalId,
+				itemId: ln.itemId,
+				purchaseUnitId: ln.unitId
+			});
+			const freeUnitId = freeUnitIdRaw ?? ln.unitId;
+			const allIums = await listItemUnitMastersForItem({
+				hospitalId: input.hospitalId,
+				itemId: ln.itemId
+			});
+			const pfOrdered = Number(ium.purchaseConversionFactor);
+			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
+				throw error(500, 'Invalid ordered unit conversion factor');
+			}
+			const freePurch = (() => {
+				if (freeUnitId === ln.unitId) return freeQ;
+				if (freeUnitId === ium.issueUnitId) {
+					return Number(
+						issueQtyToPurchaseQtyString(
+							String(freeQ),
+							ium.purchaseConversionFactor,
+							ium.issueConversionFactor
+						)
+					);
+				}
+				const asPurch = allIums.find(
+					(x) => x.purchaseUnitId === freeUnitId
+				);
+				if (asPurch) {
+					const pfFree = Number(asPurch.purchaseConversionFactor);
+					if (!Number.isFinite(pfFree) || pfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * pfFree;
+					return base / pfOrdered;
+				}
+				const asIssue = allIums.find(
+					(x) => x.issueUnitId === freeUnitId
+				);
+				if (asIssue) {
+					const itfFree = Number(asIssue.issueConversionFactor);
+					if (!Number.isFinite(itfFree) || itfFree <= 0) {
+						throw error(500, 'Invalid free unit conversion factor');
+					}
+					const base = freeQ * itfFree;
+					return base / pfOrdered;
+				}
+				throw error(400, 'Invalid free unit for this item');
+			})();
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const priceBits = computeGrnLinePriceStrings({
 				receivedQty: recv,
-				freeQty: freeQ,
+				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -893,11 +1104,12 @@ export async function createAndPostDirectGoodsReceipt(
 					batchId,
 					purchasePrice: purchasePriceStr,
 					unitId: ln.unitId,
-					freeQty: freeQ.toFixed(6),
+					freeQty: String(freeQ),
+					freeUnitId,
 					discountAmount: priceBits.discountTotal,
-					discountPercent: discPct.toFixed(4),
+					discountPercent: Number(discPct).toFixed(2),
 					taxAmount: priceBits.taxTotal,
-					taxPercent: taxPct.toFixed(4),
+					taxPercent: Number(taxPct).toFixed(2),
 					salePrice: priceBits.salePerPurch,
 					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
@@ -906,19 +1118,31 @@ export async function createAndPostDirectGoodsReceipt(
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
 
-			const issueDelta = await issueQtyStringFromPurchaseReceipt({
-				hospitalId: input.hospitalId,
-				itemId: ln.itemId,
-				purchaseUnitId: ln.unitId,
-				purchaseQtyStr: ln.receivedQty
+			const issueDeltaReceived =
+				await issueQtyStringFromPurchaseReceipt({
+					hospitalId: input.hospitalId,
+					itemId: ln.itemId,
+					purchaseUnitId: ln.unitId,
+					purchaseQtyStr: ln.receivedQty
+				});
+			const issueDeltaFree = issueQtyStringFromAnyUnit({
+				qty: freeQ,
+				unitId: freeUnitId,
+				linePurchaseUnitId: ln.unitId,
+				lineIssueUnitId: ium.issueUnitId,
+				lineIum: ium,
+				allIums
 			});
+			const issueDeltaTotal =
+				parsePositiveIntQty(issueDeltaReceived, 'issueQty') +
+				parseNonNegativeIntQty(issueDeltaFree, 'freeIssueQty');
 
 			await addDeltaToInvStock(tx, {
 				hospitalId: input.hospitalId,
 				itemId: ln.itemId,
 				storeId: input.storeId,
 				batchId,
-				delta: issueDelta,
+				delta: String(issueDeltaTotal),
 				userId
 			});
 		}
@@ -960,10 +1184,7 @@ export async function transferGrnToRequestingStore(
 		.where(
 			and(
 				eq(table.purchaseOrderTable.id, grn.poId),
-				eq(
-					table.purchaseOrderTable.hospitalId,
-					input.hospitalId
-				),
+				eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
 				isNull(table.purchaseOrderTable.deletedAt)
 			)
 		)
@@ -1001,7 +1222,10 @@ export async function transferGrnToRequestingStore(
 
 	// Ensure the GRN was posted into the PR destination store.
 	if (grn.storeId !== pr.toStoreId) {
-		throw error(400, 'Goods receipt store does not match PR destination store');
+		throw error(
+			400,
+			'Goods receipt store does not match PR destination store'
+		);
 	}
 
 	const lines = grn.lines;
@@ -1020,16 +1244,37 @@ export async function transferGrnToRequestingStore(
 			itemId: line.itemId,
 			purchaseUnitId: line.unitId
 		});
-		const qty = await issueQtyStringFromPurchaseReceipt({
+		const qtyReceived = await issueQtyStringFromPurchaseReceipt({
 			hospitalId: input.hospitalId,
 			itemId: line.itemId,
 			purchaseUnitId: line.unitId,
 			purchaseQtyStr: String(line.receivedQty)
 		});
+		const allIums = await listItemUnitMastersForItem({
+			hospitalId: input.hospitalId,
+			itemId: line.itemId
+		});
+		const freeQ = parseGrnOptionalQty(String(line.freeQty));
+		const freeUnitId =
+			typeof (line as { freeUnitId?: unknown }).freeUnitId ===
+			'number'
+				? ((line as { freeUnitId: number }).freeUnitId as number)
+				: line.unitId;
+		const qtyFree = issueQtyStringFromAnyUnit({
+			qty: freeQ,
+			unitId: freeUnitId,
+			linePurchaseUnitId: line.unitId,
+			lineIssueUnitId: ium.issueUnitId,
+			lineIum: ium,
+			allIums
+		});
+		const qtyTotal =
+			parsePositiveIntQty(qtyReceived, 'issueQty') +
+			parseNonNegativeIntQty(qtyFree, 'freeIssueQty');
 		xferLines.push({
 			itemId: line.itemId,
 			batchId: line.batchId,
-			quantity: qty,
+			quantity: String(qtyTotal),
 			unitId: ium.issueUnitId
 		});
 	}
@@ -1051,7 +1296,10 @@ export async function transferGrnToRequestingStore(
 		)
 		.limit(1);
 	if (existingXfer) {
-		throw error(400, 'This goods receipt was already transferred to the requesting store');
+		throw error(
+			400,
+			'This goods receipt was already transferred to the requesting store'
+		);
 	}
 
 	await postStoreTransfer(event, {
@@ -1072,7 +1320,10 @@ export async function searchGrnReceivedByUsers(
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const q = input.q.trim();
 	if (!q) return [];
-	const limit = Math.max(1, Math.min(50, Number(input.limit ?? 20) || 20));
+	const limit = Math.max(
+		1,
+		Math.min(50, Number(input.limit ?? 20) || 20)
+	);
 	return ensureDb()
 		.select({
 			userId: table.userTable.id,
@@ -1095,4 +1346,36 @@ export async function searchGrnReceivedByUsers(
 		)
 		.orderBy(table.userTable.name)
 		.limit(limit);
+}
+
+/** Resolve label for a user who may appear as GRN "received by" (staff linked to this hospital). */
+export async function lookupGrnReceivedByUserForHospital(
+	event: RequestEvent,
+	input: { hospitalId: string; userId: string }
+): Promise<{ userId: string; name: string | null } | null> {
+	await ensureHospitalInventoryAccess(event, input.hospitalId);
+	const uid = input.userId.trim();
+	if (!uid) return null;
+	const [row] = await ensureDb()
+		.select({
+			userId: table.userTable.id,
+			name: table.userTable.name
+		})
+		.from(table.staffHospitalTable)
+		.innerJoin(
+			table.staffTable,
+			eq(table.staffHospitalTable.staffId, table.staffTable.id)
+		)
+		.innerJoin(
+			table.userTable,
+			eq(table.staffTable.userId, table.userTable.id)
+		)
+		.where(
+			and(
+				eq(table.staffHospitalTable.hospitalId, input.hospitalId),
+				eq(table.userTable.id, uid)
+			)
+		)
+		.limit(1);
+	return row ?? null;
 }

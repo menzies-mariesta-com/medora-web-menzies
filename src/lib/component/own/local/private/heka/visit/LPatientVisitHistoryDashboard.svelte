@@ -18,8 +18,8 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -237,8 +237,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 					),
 					primaryDiagnosis: diag,
 					diagnosisCellClass: diagnosisCellTint(diag),
-					patientDisplayName:
-						patientDisplayName?.trim() || '—',
+					patientDisplayName: patientDisplayName?.trim() || '—',
 					patientCode,
 					patientDobLabel,
 					hospitalName: v.hospital?.name?.trim() || '—',
@@ -628,9 +627,7 @@ import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte
 							<div class="text-end text-sm text-base-content/70">
 								<div>
 									{#if visitRow}
-										{datetimeUtil.formatDateTime(
-											visitRow.createdAt
-										)}
+										{datetimeUtil.formatDateTime(visitRow.createdAt)}
 									{:else}
 										—
 									{/if}

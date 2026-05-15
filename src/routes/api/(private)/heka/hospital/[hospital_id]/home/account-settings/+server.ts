@@ -12,7 +12,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	return json(
 		await updateSelfAccountSettings(event, {
 			hospitalId,
@@ -36,4 +39,3 @@ export const PUT: RequestHandler = async (event) => {
 		})
 	);
 };
-

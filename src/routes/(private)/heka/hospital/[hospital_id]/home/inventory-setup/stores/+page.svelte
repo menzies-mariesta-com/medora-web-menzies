@@ -5,7 +5,10 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import type { StoreListRow, StatusListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type {
+		StoreListRow,
+		StatusListRow
+	} from '$lib/model/type/heka/ui-rows.type';
 	import type { StaffRegUserGroupRow } from '$lib/model/type/heka/staff-reg-ui.type';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import StoreFormModal from '$lib/component/own/local/private/heka/inventory-setup/store/StoreFormModal.svelte';
@@ -61,10 +64,16 @@
 		if (!res.ok) {
 			throw new Error(`Failed to load branches (${res.status})`);
 		}
-		return (await res.json()) as { id: string; name?: string | null; code?: string | null }[];
+		return (await res.json()) as {
+			id: string;
+			name?: string | null;
+			code?: string | null;
+		}[];
 	}
 
-	async function fetchStoreLookups(hid: string): Promise<StoreLookups> {
+	async function fetchStoreLookups(
+		hid: string
+	): Promise<StoreLookups> {
 		const res = await fetch(
 			`/api/heka/hospital/${hid}/home/inventory-setup/stores?mode=lookups`,
 			{ method: 'GET' }
@@ -89,12 +98,6 @@
 
 	const storeColumns: MariTableColumn<StoreListRow>[] = [
 		{
-			id: 'id',
-			header: m.id(),
-			widthClass: 'w-16 min-w-[4rem]',
-			filterable: false
-		},
-		{
 			id: 'storeName',
 			header: m.store_name(),
 			widthClass: 'w-56 min-w-[12rem]',
@@ -106,8 +109,7 @@
 			header: m.branches(),
 			widthClass: 'w-44 min-w-[10rem]',
 			filterable: false,
-			format: (_v, row) =>
-				branchNameById.get(row.branchId) ?? '—'
+			format: (_v, row) => branchNameById.get(row.branchId) ?? '—'
 		},
 		{
 			id: 'requisitable',

@@ -13,9 +13,17 @@ type DraftLike = {
 	quantity?: string | null;
 };
 
-function selectedIum(draft: DraftLike | null | undefined): IumLike | null {
-	if (draft?.itemUnitMasterId == null || !Array.isArray(draft?.iumList)) return null;
-	return draft.iumList.find((u) => u.id === draft.itemUnitMasterId) ?? null;
+function selectedIum(
+	draft: DraftLike | null | undefined
+): IumLike | null {
+	if (
+		draft?.itemUnitMasterId == null ||
+		!Array.isArray(draft?.iumList)
+	)
+		return null;
+	return (
+		draft.iumList.find((u) => u.id === draft.itemUnitMasterId) ?? null
+	);
 }
 
 function stripTrailingZerosAfterDot(s: string): string {
@@ -26,7 +34,9 @@ function stripTrailingZerosAfterDot(s: string): string {
 }
 
 /** Strip trailing fractional zeros without losing digits present in the string (e.g. DB `decimal` text). */
-function trimTrailingZerosFromPlainDecimalString(raw: string): string {
+function trimTrailingZerosFromPlainDecimalString(
+	raw: string
+): string {
 	const t = raw.trim();
 	const neg = t.startsWith('-');
 	const u = neg ? t.slice(1) : t;
@@ -102,7 +112,8 @@ export function purchaseQtyStrToIssueQtyTrimmed(
 		return trimMetricQtyDisplay(purchaseQtyStr);
 	}
 	const issue = (q * pf) / itf;
-	if (!Number.isFinite(issue)) return trimMetricQtyDisplay(purchaseQtyStr);
+	if (!Number.isFinite(issue))
+		return trimMetricQtyDisplay(purchaseQtyStr);
 	return trimInventoryNumericDisplay(issue, 6);
 }
 
@@ -117,10 +128,19 @@ export function formatLineItemMetricTileValue(
 	if (tile.convertPurchaseQtyToIssueForDisplay) {
 		const ium = selectedIum(draft);
 		const pf =
-			ium?.purchaseConversionFactor != null ? String(ium.purchaseConversionFactor) : '';
-		const itf = ium?.issueConversionFactor != null ? String(ium.issueConversionFactor) : '';
+			ium?.purchaseConversionFactor != null
+				? String(ium.purchaseConversionFactor)
+				: '';
+		const itf =
+			ium?.issueConversionFactor != null
+				? String(ium.issueConversionFactor)
+				: '';
 		if (!ium || !pf || !itf) return trimMetricQtyDisplay(tile.value);
-		const issue = purchaseQtyStrToIssueQtyTrimmed(tile.value, pf, itf);
+		const issue = purchaseQtyStrToIssueQtyTrimmed(
+			tile.value,
+			pf,
+			itf
+		);
 		const iu = (ium.issueUnitName ?? '').trim();
 		return iu ? `${issue} ${iu}`.trim() : issue;
 	}
@@ -141,11 +161,17 @@ export function formatPurchaseQtyAsIssueEquivalent(
 	draft: DraftLike | null | undefined
 ): string | null {
 	const raw = draft?.quantity?.trim();
-	if (!raw || !Number.isFinite(Number(raw)) || Number(raw) <= 0) return null;
+	if (!raw || !Number.isFinite(Number(raw)) || Number(raw) <= 0)
+		return null;
 	const ium = selectedIum(draft);
 	const pf =
-		ium?.purchaseConversionFactor != null ? String(ium.purchaseConversionFactor) : '';
-	const itf = ium?.issueConversionFactor != null ? String(ium.issueConversionFactor) : '';
+		ium?.purchaseConversionFactor != null
+			? String(ium.purchaseConversionFactor)
+			: '';
+	const itf =
+		ium?.issueConversionFactor != null
+			? String(ium.issueConversionFactor)
+			: '';
 	if (!ium || !pf || !itf) return null;
 	const issue = purchaseQtyStrToIssueQtyTrimmed(raw, pf, itf);
 	const iu = (ium.issueUnitName ?? '').trim();
@@ -154,10 +180,13 @@ export function formatPurchaseQtyAsIssueEquivalent(
 }
 
 function resolveIumForPurchaseQtyRow(
-	row: {
-		itemUnitMasterId?: number | null;
-		iumList?: IumLike[] | null;
-	} | null | undefined,
+	row:
+		| {
+				itemUnitMasterId?: number | null;
+				iumList?: IumLike[] | null;
+		  }
+		| null
+		| undefined,
 	catalog?: Map<number, IumLike> | null
 ): IumLike | null {
 	const id = row?.itemUnitMasterId;
@@ -211,8 +240,13 @@ export function formatPurchaseQtyCellWithIssueEquivalent(
 
 	const ium = resolveIumForPurchaseQtyRow(row, catalog);
 	const pf =
-		ium?.purchaseConversionFactor != null ? String(ium.purchaseConversionFactor) : '';
-	const itf = ium?.issueConversionFactor != null ? String(ium.issueConversionFactor) : '';
+		ium?.purchaseConversionFactor != null
+			? String(ium.purchaseConversionFactor)
+			: '';
+	const itf =
+		ium?.issueConversionFactor != null
+			? String(ium.issueConversionFactor)
+			: '';
 	if (!ium || !pf || !itf) {
 		return trimMetricQtyDisplay(qRaw);
 	}
@@ -231,7 +265,9 @@ export type DetailLineQtyRow = {
 	issueUnitName?: string | null;
 };
 
-export function formatPurchaseQtyCellForDetailLine(row: DetailLineQtyRow): string {
+export function formatPurchaseQtyCellForDetailLine(
+	row: DetailLineQtyRow
+): string {
 	const id = row.itemUnitMasterId;
 	const pf = row.purchaseConversionFactor;
 	const itf = row.issueConversionFactor;

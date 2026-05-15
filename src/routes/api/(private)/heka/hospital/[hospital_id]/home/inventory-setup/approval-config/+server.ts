@@ -26,7 +26,11 @@ export const GET: RequestHandler = async (event) => {
 			: isInvApprovalModule(moduleParam)
 				? moduleParam
 				: undefined;
-	if (moduleParam != null && moduleParam !== '' && module === undefined) {
+	if (
+		moduleParam != null &&
+		moduleParam !== '' &&
+		module === undefined
+	) {
 		return json({ error: 'Invalid module' }, { status: 400 });
 	}
 	if (!storeIdStr) {
@@ -43,14 +47,16 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const storeId = Number(body.storeId ?? 0);
 	const moduleRaw = String(body.module ?? '');
 	if (!isInvApprovalModule(moduleRaw)) {
 		return json({ error: 'Invalid module' }, { status: 400 });
 	}
 	const module = moduleRaw;
-	const level = Number(body.level ?? 0);
 	const id = body.id != null ? Number(body.id) : undefined;
 	const assigneeStaffIds = Array.isArray(body.assigneeStaffIds)
 		? (body.assigneeStaffIds as unknown[]).map((x) => String(x))
@@ -61,7 +67,6 @@ export const POST: RequestHandler = async (event) => {
 		hospitalId,
 		storeId,
 		module,
-		level,
 		isRequired,
 		id: Number.isFinite(id) ? id : undefined,
 		assigneeStaffIds
@@ -71,7 +76,10 @@ export const POST: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteApprovalLevel(event, {
 		hospitalId,
 		levelId: Number(body.levelId ?? 0)

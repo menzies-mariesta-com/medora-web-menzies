@@ -1,7 +1,7 @@
 ---
 name: inventory-transactions-and-batch-flow
 description: >-
-  Documents the hospital-scoped inventory workflow (PR → multi-level approval → PO → GRN → item_batch + inv_stock), department indent (DI), department consumption (DC), store-scoped approval config (PR/PO/DI/GRN/DC modules), status_tagging usage, FEFO consumption, and item_master.is_batch_required. Use when implementing or debugging inventory, GRN, stock, batches, purchase requisitions/orders, department indents, department consumption, or related Drizzle schema/migrations/seeds/APIs in this repo.
+  Documents the hospital-scoped inventory workflow (PR → multi-level approval → PO → GRN → item_batch + inv_stock), department indent (DI), department consumption (DC), store-scoped approval config (PR/PO/DI/GRN/DC modules), status_tagging usage, and FEFO consumption. GRN always requires batch identity fields per line. Use when implementing or debugging inventory, GRN, stock, batches, purchase requisitions/orders, department indents, department consumption, or related Drizzle schema/migrations/seeds/APIs in this repo.
 ---
 
 # Inventory transactions and batch flow (Heka)
@@ -9,7 +9,7 @@ description: >-
 ## When to load this skill
 
 - Adding or changing **purchase requisition**, **purchase order**, **GRN**, **stock**, **transfer**, **issue**, **department consumption**, or **approval configuration** behavior.
-- Touching **`item_batch`**, **`inv_stock`**, **`goods_receipt_line`**, or **`item_master.is_batch_required`**.
+- Touching **`item_batch`**, **`inv_stock`**, **`goods_receipt_line`**, or **`item_master`** (catalog).
 - Writing migrations or seeds that affect inventory tables or **`status_tagging`** IDs for inventory document types.
 - Mirroring new **SvelteKit routes** under `home/inventory` or `home/inventory-setup` per project rules.
 
@@ -57,6 +57,98 @@ flowchart LR
 4. **GRN**: **PO-backed**: `goods_receipt_note.po_id` set; receipt **`store_id`** must equal the PR’s **`to_store_id`** when `pr_id` is present, or the PO’s **`store_id`** for manual POs. **Direct GRN** (no PO): `po_id` null, `supplier_id` + lines with `po_line_id` null — `createAndPostDirectGoodsReceipt` in [`grn.server.ts`](../../../src/lib/server/heka/inventory/grn.server.ts). Each line creates/links **`item_batch`**, and **`inv_stock.quantity` is in issue units** (via [`item-unit-inventory.server.ts`](../../../src/lib/server/heka/inventory/item-unit-inventory.server.ts)).
 5. **UI — From store (navbar)**: On routes under `/heka/hospital/{id}/home/inventory` (not `inventory-setup`), the top bar can show a **From store** selector (cookie `heka_selected_inventory_from_store_id`, POST `set-selected-inventory-from-store`). PR create and manual PO / direct GRN default to this store where applicable. **Department consumption — New** (`inventory/department-consumption/new`): **`store_id` is fixed to that navbar From store** (readonly display); submit stays disabled until a store is selected, matching **department indent / New** “From store” behavior.
 6. **Stock listing**: Aggregates from `inv_stock` (quantities in **issue units**); display joins default `item_unit_master` for the issue unit name. Lot view joins `item_batch`. **FEFO** = order by `item_batch.expiry_date ASC NULLS LAST`.
+   - **Batch selection UX (stock issue UIs)**: Prefer a **batch/expiry table** (one row per `inv_stock` lot) rather than a batch search/select dropdown. Users enter **purchase-unit qty per batch**, UI validates against **issue-unit stock** by converting purchase→issue.
+     - Reusable: [`InventoryBatchQtyPickTable.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte)
+     - Conversion helper: [`purchase-issue-qty-convert.util.ts`](../../../src/lib/tool/inventory/purchase-issue-qty-convert.util.ts)
+
+### UI pattern — implementing `InventoryBatchQtyPickTable` (detailed)
+
+Use this pattern in **any stock-issuing UI** (Department consumption, Department issue, Stock issue, etc.) where users must choose **which batches** to consume.
+
+#### Data model (client)
+
+- **Draft line should store allocations (not a single batch/qty):**
+  - `draftLine.batchAllocations: ConsumptionBatchAllocationDraft[]`
+  - Each allocation row corresponds to a lot row from `/inventory/stock?mode=lots`:
+    - `batchId`, `batchNo`, `expiryDate`, `stockIssueQty` (string), optional `salePrice`
+    - `qtyPurchase` (string) user-entered in purchase unit
+
+#### Hydration (client)
+
+When item is picked (or prefilled + locked, e.g. From Indent flow):
+
+1) **Hydrate item meta and choose a conversion (IUM):**
+   - Fetch item detail: `/inventory-setup/item-master?id={itemId}`
+   - Fetch IUM list: `/inventory-setup/item-master?mode=itemUnitMasters`
+   - Filter IUM to the item’s allowed conversions, choose default, and set:
+     - `draftLine.iumList = [chosen]`
+     - `draftLine.itemUnitMasterId = chosen.id`
+
+2) **Fetch lots for the current store + item:**
+   - `GET /inventory/stock?mode=lots&storeId={storeId}&itemId={itemId}`
+   - **Important:** only show lots with stock:
+     - `rows.filter((r) => Number(r.quantity) > 1e-9)` (stock is in issue unit)
+   - Map to allocations:
+     - `stockIssueQty = String(r.quantity)`
+     - `qtyPurchase = ''`
+
+3) **Locked-item (indent) flows must still hydrate IUM:**
+   - If `draftLine.lockItem === true` and `draftLine.itemId != null` but `draftLine.iumList.length === 0`,
+     call the same `hydrateLineItemMeta(draftLine, draftLine.itemId)` used for free-pick flows.
+   - Do **not** only refresh batches; you need IUM factors for validation.
+
+Reference implementations:
+- Consumption: [`ConsumptionLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-consumption/ConsumptionLineDialogContent.svelte)
+- Issue: [`DepartmentIssueLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-issue/DepartmentIssueLineDialogContent.svelte)
+
+#### Rendering the table (client)
+
+In the line dialog, render the table like:
+
+- `bind:allocations={draftLine.batchAllocations}`
+- `factors={iumFactors}` where `iumFactors = { purchaseConversionFactor, issueConversionFactor }`
+- Pass labels for hints:
+  - `purchaseUnitLabel={chosenIum.purchaseUnitName}`
+  - `issueUnitLabel={chosenIum.issueUnitName}`
+
+#### Validation rules (client)
+
+On Save:
+
+1) Require item + chosen IUM factors.
+2) Require at least one allocation with `qtyPurchase > 0`.
+3) For each allocation with qty:
+   - Parse `qtyPurchase` number; must be finite and \(> 0\)
+   - Convert to issue unit using `purchaseQtyToIssueQtyNumber(qp, pf, iff)`
+   - Check `need <= stockIssueQty` (allow small epsilon only for display; server enforces ints)
+
+#### Submitting (client → API)
+
+Flatten each draft line allocations into **multiple API lines**:
+
+- For each `allocation` where `qtyPurchase > 0`, submit:
+  - `{ itemId, unitId: purchaseUnitId, quantity: qtyPurchase, batchId: allocation.batchId }`
+
+This ensures the server can issue **exactly** the chosen batches (no FEFO guessing).
+
+#### Reactivity + solved bugs (must keep)
+
+Two bugs were fixed while adopting this component. Do not reintroduce them.
+
+1) **Deep mutation doesn’t always update derived totals**
+   - Bug: editing `allocations[rowIndex].qtyPurchase` directly can fail to trigger `$derived` recomputation.
+   - Fix: the table reassigns the array on edits:
+     - `allocations = allocations.map((a,i) => i===rowIndex ? { ...a, qtyPurchase: next } : a)`
+
+2) **Stale value on input event (causes “Quantity” alert)**
+   - Bug: using `oninput={() => onChange?.(value)}` can send stale `value`.
+   - Fix: read from event target:
+     - `oninput={(e) => onChange?.((e.currentTarget as HTMLInputElement).value)}`
+
+Files containing these fixes:
+- [`InventoryBatchQtyPickTable.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickTable.svelte)
+- [`InventoryBatchQtyPickQtyCell.svelte`](../../../src/lib/component/own/local/private/heka/inventory/InventoryBatchQtyPickQtyCell.svelte)
+
 7. **Transfer**: Lines are **batch-scoped**: `{ itemId, batchId, quantity, unitId }`; moves quantity between stores for the same `batch_id`.
 8. **Issue**: Lines may omit **`batchId`** → auto **FEFO** across `inv_stock` rows for that item in the store; or set **`batchId`** for a single-batch deduction. Multiple `inv_stock_issue_line` rows may be inserted when FEFO spans batches.
 
@@ -66,24 +158,18 @@ flowchart LR
 |------|----------------|
 | PR/PO/GRN, approval, `item_batch`, `inv_stock`, transfer, issue | [`src/lib/server/db/table/information-table/inventory-transaction-table.ts`](../../../src/lib/server/db/table/information-table/inventory-transaction-table.ts) |
 | Relations | [`src/lib/server/db/table/information-table/inventory-transaction-relation.ts`](../../../src/lib/server/db/table/information-table/inventory-transaction-relation.ts) |
-| `item_master` (incl. `is_batch_required`) | [`src/lib/server/db/table/information-table/information-table.ts`](../../../src/lib/server/db/table/information-table/information-table.ts) |
+| `item_master` | [`src/lib/server/db/table/information-table/information-table.ts`](../../../src/lib/server/db/table/information-table/information-table.ts) |
 | Exported from | [`src/lib/server/db/schema.ts`](../../../src/lib/server/db/schema.ts) |
 
 ### Normalized batch + stock (critical)
 
-- **`item_batch`**: Master row for a batch **identity**. Uniqueness in the database is enforced with a **unique index** on `(hospital_id, item_id, batch_no, expiry_date, supplier_id, manufacturer_id, purchase_price)` with **`NULLS NOT DISTINCT`** (PostgreSQL **15+**). Different supplier/manufacturer/price can therefore split logically separate batches even with the same printed batch number and expiry.
+- **`item_batch`**: Master row for a batch **identity**. After migration **`0073_item_master_manufacturer_text_drop_master.sql`**, uniqueness is **`item_batch_identity_uidx`** on `(hospital_id, item_id, batch_no, expiry_date, supplier_id, purchase_price)` with **`NULLS NOT DISTINCT`** (PostgreSQL **15+**). There is **no** `manufacturer_id` on batches or PO lines; manufacturer is **free text** on **`item_master.manufacturer_name`** only (for labels/reporting). Different supplier or purchase price still splits batches even when batch number and expiry match.
 - **`inv_stock`**: **Quantity per store per batch** (`store_id`, `batch_id`, `quantity`, soft delete). Active rows: partial unique **`(store_id, batch_id) WHERE deleted_at IS NULL`** (see migration).
 - **Legacy**: `inv_stock_lot` was **dropped** after migration **`0033_item_batch_normalized_stock.sql`**. Do not reintroduce it; extend `item_batch` / `inv_stock` instead.
 
-### Synthetic “open” batch
+### GRN batch capture
 
-- Constant **`__OPEN_STOCK__`** (`OPEN_STOCK_BATCH_NO`) in [`src/lib/server/heka/inventory/item-batch.server.ts`](../../../src/lib/server/heka/inventory/item-batch.server.ts) for items **without** strict batch capture on GRN (when `is_batch_required` is false and line omits a real batch no).
-
-### Item master: `is_batch_required`
-
-- When **true**, GRN **must** supply `batch_no`, `expiry_date`, and `purchase_price` for that item’s line.
-- When **false**, GRN may omit them; server uses open batch and PO `unit_price` (or line override) for `purchase_price` where applicable.
-- UI: Inventory Setup → Item Master form checkbox; API: `isBatchRequired` on POST/PUT [`item-master/+server.ts`](../../../src/routes/api/(private)/heka/hospital/[hospital_id]/home/inventory-setup/item-master/+server.ts).
+- Every item master line on GRN **must** supply `batch_no`, `expiry_date`, and `purchase_price`; see [`grn.server.ts`](../../../src/lib/server/heka/inventory/grn.server.ts).
 
 ## Server modules (under `src/lib/server/heka/inventory/`)
 
@@ -120,7 +206,7 @@ Base: `/api/heka/hospital/{hospital_id}/home/...`
 ## Migrations (order)
 
 1. **`drizzle/0032_inventory_transactions.sql`**: Core inventory tables (before batch normalization), `store.is_central_store`, etc.
-2. **`drizzle/0033_item_batch_normalized_stock.sql`**: `item_batch`, `inv_stock`, `item_master.is_batch_required`, GRN line `batch_id`/`purchase_price`, migrate off `inv_stock_lot`, transfer/issue `batch_id`, drop `inv_stock_lot`.
+2. **`drizzle/0033_item_batch_normalized_stock.sql`**: `item_batch`, `inv_stock`, GRN line `batch_id`/`purchase_price`, migrate off `inv_stock_lot`, transfer/issue `batch_id`, drop `inv_stock_lot`. (Legacy `item_master.is_batch_required` was added here and removed in **`0074_item_master_drop_barcode_batch_required.sql`**.)
 3. **`drizzle/0037_inventory_po_grn_destock_units.sql`**: `purchase_order.store_id` + nullable `pr_id`; `goods_receipt_note` nullable `po_id`, `supplier_id`, nullable `goods_receipt_line.po_line_id`; one-time `inv_stock` quantity conversion using default `item_unit_master`.
 4. **`drizzle/0038_pr_inter_store_drop_central.sql`**: `purchase_requisition.from_store_id` / `to_store_id` (replaces `store_id`); drops `store.is_central_store` and the partial unique index.
 5. **`drizzle/0039_store_type_hospital_config_grn_pricing_dept_indent.sql`**: `store_type`, `hospital_inventory_config`, GRN line pricing fields, `inv_department_indent`, **`inv_approval_level.module`** extended to include **`DI`**, department-indent **`status_tagging`** (type **8**, ids **40–45**).
