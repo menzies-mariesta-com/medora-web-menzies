@@ -1,4 +1,7 @@
-onlyBuiltDependencies:
-  - esbuild
-  - argon2
-  - core-js
+packages:
+  - '.'
+
+allowBuilds:
+  argon2: true
+  core-js: true
+  esbuild: true
