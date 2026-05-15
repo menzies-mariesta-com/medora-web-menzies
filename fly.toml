@@ -9,10 +9,6 @@ primary_region = 'sin'
 [build]
 
 [deploy]
-  # Use npm so Fly's release machine does not run pnpm's dependency sync (full reinstall → OOM).
-  # `db:seed` already runs `db:push` first (see package.json).
-  release_command = "npm run db:seed"
-
   [deploy.release_command_vm]
     size = "shared-cpu-1x"
     memory = "1gb"
