@@ -62,11 +62,17 @@ async function getNextVisitNo(params: {
 	]);
 
 	if (!hospital)
-		throw error(400, 'Hospital is required to generate visit number.');
+		throw error(
+			400,
+			'Hospital is required to generate visit number.'
+		);
 	if (!branch)
 		throw error(400, 'Branch is required to generate visit number.');
 	if (!visitType)
-		throw error(400, 'Visit type is required to generate visit number.');
+		throw error(
+			400,
+			'Visit type is required to generate visit number.'
+		);
 
 	const db = ensureDb();
 	const today = new Date();
@@ -118,7 +124,10 @@ export async function createPatientVisitInHospital(
 		throw error(400, 'Hospital is required to create patient visit');
 	}
 	if (!payload.visitTypeId) {
-		throw error(400, 'Visit type is required to create patient visit');
+		throw error(
+			400,
+			'Visit type is required to create patient visit'
+		);
 	}
 
 	await ensureCanAccessHospital(event, payload.hospitalId);

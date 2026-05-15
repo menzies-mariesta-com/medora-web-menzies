@@ -16,30 +16,43 @@ export async function GET(event: RequestEvent) {
 
 	switch (mode) {
 		case 'visit.get': {
-			const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
-			if (!Number.isFinite(visitId) || visitId <= 0) throw error(400, 'visitId is required');
-			return json(await obs.getPatientVisitById({ id: visitId, hospitalId }));
+			const visitId = Number(
+				event.url.searchParams.get('visitId') ?? '0'
+			);
+			if (!Number.isFinite(visitId) || visitId <= 0)
+				throw error(400, 'visitId is required');
+			return json(
+				await obs.getPatientVisitById({ id: visitId, hospitalId })
+			);
 		}
 		case 'allergy.listPaginated': {
 			const patientId = event.url.searchParams.get('patientId') ?? '';
 			if (!patientId) throw error(400, 'patientId is required');
 			const page = Number(event.url.searchParams.get('page') ?? '1');
-			const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
-			const visitNo = event.url.searchParams.get('visitNo') ?? undefined;
-			const severityName = event.url.searchParams.get('severityName') ?? undefined;
+			const pageSize = Number(
+				event.url.searchParams.get('pageSize') ?? '10'
+			);
+			const visitNo =
+				event.url.searchParams.get('visitNo') ?? undefined;
+			const severityName =
+				event.url.searchParams.get('severityName') ?? undefined;
 			const statusIdRaw = event.url.searchParams.get('statusId');
 			const statusId =
-				statusIdRaw != null && statusIdRaw.trim() !== '' ? Number(statusIdRaw) : undefined;
+				statusIdRaw != null && statusIdRaw.trim() !== ''
+					? Number(statusIdRaw)
+					: undefined;
 			return json(
-				await obs.getPatientAllergiesByPatientIdWithRelationsPaginated({
-					patientId,
-					hospitalId,
-					page,
-					pageSize,
-					visitNo,
-					severityName,
-					statusId
-				})
+				await obs.getPatientAllergiesByPatientIdWithRelationsPaginated(
+					{
+						patientId,
+						hospitalId,
+						page,
+						pageSize,
+						visitNo,
+						severityName,
+						statusId
+					}
+				)
 			);
 		}
 		default:
@@ -52,7 +65,8 @@ export async function DELETE(event: RequestEvent) {
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	await obs.deletePatientAllergies({ id, skipClinicalLock: true });
 	return json({ ok: true });
 }
@@ -62,10 +76,9 @@ export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const body = (await event.request.json().catch(() => null)) as Record<
-		string,
-		unknown
-	> | null;
+	const body = (await event.request
+		.json()
+		.catch(() => null)) as Record<string, unknown> | null;
 	const mode = String(body?.mode ?? '');
 	if (!mode) throw error(400, 'mode is required');
 
@@ -98,11 +111,13 @@ export async function POST(event: RequestEvent) {
 						allergyId,
 						severityId,
 						reaction:
-							body?.reaction != null && String(body.reaction).trim() !== ''
+							body?.reaction != null &&
+							String(body.reaction).trim() !== ''
 								? String(body.reaction).trim()
 								: null,
 						remark:
-							body?.remark != null && String(body.remark).trim() !== ''
+							body?.remark != null &&
+							String(body.remark).trim() !== ''
 								? String(body.remark).trim()
 								: null
 					},
@@ -114,7 +129,8 @@ export async function POST(event: RequestEvent) {
 			const id = Number(body?.id);
 			const severityId = Number(body?.severityId);
 			const statusId = Number(body?.statusId);
-			if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
 			if (!Number.isFinite(severityId) || severityId <= 0) {
 				throw error(400, 'severityId is required');
 			}
@@ -128,11 +144,13 @@ export async function POST(event: RequestEvent) {
 						severityId,
 						statusId,
 						reaction:
-							body?.reaction != null && String(body.reaction).trim() !== ''
+							body?.reaction != null &&
+							String(body.reaction).trim() !== ''
 								? String(body.reaction).trim()
 								: null,
 						remark:
-							body?.remark != null && String(body.remark).trim() !== ''
+							body?.remark != null &&
+							String(body.remark).trim() !== ''
 								? String(body.remark).trim()
 								: null,
 						deactivationRemark:
@@ -186,4 +204,3 @@ export async function POST(event: RequestEvent) {
 			throw error(400, `Unknown mode: ${mode}`);
 	}
 }
-

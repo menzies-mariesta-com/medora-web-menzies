@@ -24,7 +24,8 @@ export async function getDocumentTypes(
 	opts?: { hospitalId?: string }
 ): Promise<DocumentTypeSchema[]> {
 	requireUser(event);
-	if (opts?.hospitalId) await ensureCanAccessHospital(event, opts.hospitalId);
+	if (opts?.hospitalId)
+		await ensureCanAccessHospital(event, opts.hospitalId);
 	return ensureDb()
 		.select()
 		.from(table.documentTypeTable)
@@ -34,13 +35,17 @@ export async function getDocumentTypes(
 
 export async function getDocumentTypesPaginated(
 	event: RequestEvent,
-	params?: PaginationParams & { statusId?: number | null; hospitalId?: string }
+	params?: PaginationParams & {
+		statusId?: number | null;
+		hospitalId?: string;
+	}
 ): Promise<PaginatedResult<DocumentTypeSchema>> {
 	requireUser(event);
 	if (params?.hospitalId)
 		await ensureCanAccessHospital(event, params.hospitalId);
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const notDeletedFilter = ne(
 		table.documentTypeTable.statusId,
 		StatusEnum.DELETED
@@ -50,7 +55,9 @@ export async function getDocumentTypesPaginated(
 			? eq(table.documentTypeTable.statusId, params.statusId)
 			: null;
 	const whereExpr =
-		statusFilter != null ? and(notDeletedFilter, statusFilter) : notDeletedFilter;
+		statusFilter != null
+			? and(notDeletedFilter, statusFilter)
+			: notDeletedFilter;
 
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -81,7 +88,8 @@ export async function createDocumentType(
 	input: DocumentTypeSchemaInsert & { hospitalId?: string }
 ): Promise<DocumentTypeSchema> {
 	requireUser(event);
-	if (input.hospitalId) await ensureCanAccessHospital(event, input.hospitalId);
+	if (input.hospitalId)
+		await ensureCanAccessHospital(event, input.hospitalId);
 
 	const { hospitalId: _hospitalId, ...payload } = input;
 	const [row] = await ensureDb()
@@ -124,4 +132,3 @@ export async function deleteDocumentType(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.documentTypeTable.id, id));
 }
-

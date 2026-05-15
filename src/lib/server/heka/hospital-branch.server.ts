@@ -45,9 +45,12 @@ async function ensureCanManageHospital(
 	throw error(403, 'Forbidden');
 }
 
-export async function getBranchesByHospitalId(event: RequestEvent, input: {
-	hospitalId: string;
-}): Promise<HospitalBranchSchema[]> {
+export async function getBranchesByHospitalId(
+	event: RequestEvent,
+	input: {
+		hospitalId: string;
+	}
+): Promise<HospitalBranchSchema[]> {
 	await ensureCanManageHospital(event, input.hospitalId);
 	return ensureDb()
 		.select()
@@ -63,10 +66,14 @@ export async function getBranchesByHospitalId(event: RequestEvent, input: {
 
 export async function getBranchesByHospitalIdPaginated(
 	event: RequestEvent,
-	params: PaginationParams & { hospitalId: string; statusId?: number | null }
+	params: PaginationParams & {
+		hospitalId: string;
+		statusId?: number | null;
+	}
 ): Promise<PaginatedResult<HospitalBranchSchema>> {
 	await ensureCanManageHospital(event, params.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	const hospitalEq = eq(
 		table.hospitalBranchTable.hospitalId,
@@ -168,4 +175,3 @@ export async function deleteBranch(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.hospitalBranchTable.id, input.id));
 }
-

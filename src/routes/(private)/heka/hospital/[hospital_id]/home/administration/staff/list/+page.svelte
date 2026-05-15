@@ -82,15 +82,21 @@
 			sp.set('page', String(currentPage));
 			sp.set('pageSize', String(pageSize));
 			if (searchInput.trim()) sp.set('search', searchInput.trim());
-			if (tableFilters.code?.trim()) sp.set('staffCode', tableFilters.code.trim());
-			if (tableFilters.name?.trim()) sp.set('staffName', tableFilters.name.trim());
+			if (tableFilters.code?.trim())
+				sp.set('staffCode', tableFilters.code.trim());
+			if (tableFilters.name?.trim())
+				sp.set('staffName', tableFilters.name.trim());
 			if (tableFilters.phonePrimary?.trim())
 				sp.set('staffPhonePrimary', tableFilters.phonePrimary.trim());
 			if (forceRefresh) sp.set('_t', String(Date.now()));
 
-			const res = await fetch(`${staffListApiBase(hospitalId)}?${sp.toString()}`);
-			if (!res.ok) throw new Error(`Failed to fetch staff list (${res.status})`);
-			staffResult = (await res.json()) as PaginatedResult<StaffWithRelations>;
+			const res = await fetch(
+				`${staffListApiBase(hospitalId)}?${sp.toString()}`
+			);
+			if (!res.ok)
+				throw new Error(`Failed to fetch staff list (${res.status})`);
+			staffResult =
+				(await res.json()) as PaginatedResult<StaffWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -132,7 +138,8 @@
 				const res = await fetch(
 					`${staffListApiBase(hospitalId)}?id=${encodeURIComponent(staffId)}&_t=${Date.now()}`
 				);
-				if (!res.ok) throw new Error(`Failed to load staff (${res.status})`);
+				if (!res.ok)
+					throw new Error(`Failed to load staff (${res.status})`);
 				const staff = (await res.json()) as StaffWithRelations | null;
 				if (!staff) throw new Error('Staff not found');
 				const staffEmail =
@@ -152,7 +159,9 @@
 						body: JSON.stringify({ id: result.data })
 					});
 					if (!delRes.ok)
-						throw new Error(`Failed to delete staff (${delRes.status})`);
+						throw new Error(
+							`Failed to delete staff (${delRes.status})`
+						);
 					await fetchStaff(true);
 					toastService.addToast(
 						m.staff_deleted(),
@@ -354,104 +363,100 @@
 </script>
 
 <div class={TableEnum.HEIGHT}>
-		<MariTable
-			rows={staffList}
-			columns={staffColumns}
-			{isLoading}
-			bind:pageSize={filterPageSize}
-			bind:currentPage
-			totalRowCount={total}
-			showRefreshButton={true}
-			refreshTooltip={m.refresh_data()}
-			emptyMessage={m.no_staff_found()}
-			showRowActions={true}
-			actionsVariant="none"
-			enableColumnFilters={true}
-			useRemoteFilters={true}
-			rowTooltipGetter={(row) => {
-				return StringUtil.tableToolTip(row);
-			}}
-			on:refresh={() =>
-				refreshLock.run(async () => {
-					await fetchStaff(true);
-				})}
-			on:pageSizeChange={() => {
-				currentPage = 1;
+	<MariTable
+		rows={staffList}
+		columns={staffColumns}
+		{isLoading}
+		bind:pageSize={filterPageSize}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage={m.no_staff_found()}
+		showRowActions={true}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		useRemoteFilters={true}
+		rowTooltipGetter={(row) => {
+			return StringUtil.tableToolTip(row);
+		}}
+		on:refresh={() =>
+			refreshLock.run(async () => {
+				await fetchStaff(true);
+			})}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchStaff();
+		}}
+		on:pageChange={() => fetchStaff()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
 				fetchStaff();
-			}}
-			on:pageChange={() => fetchStaff()}
-			on:filtersChange={(event) => {
-				if (filterDebounceTimeout) {
-					clearTimeout(filterDebounceTimeout);
-				}
-				tableFilters = event.detail.filters;
-				currentPage = 1;
-				filterDebounceTimeout = setTimeout(() => {
-					fetchStaff();
-				}, 350);
-			}}
-		>
-			{#snippet rowActions(row, rowIndex)}
-				{@const staffRow = row as StaffWithRelations}
-				<div class="flex flex-row flex-wrap items-center justify-center gap-1">
-					<DaisyUiTooltip
-						tooltipText={m.view_data()}
-						className="d-tooltip-ghost d-tooltip-right"
+			}, 350);
+		}}
+	>
+		{#snippet rowActions(row, rowIndex)}
+			{@const staffRow = row as StaffWithRelations}
+			<div
+				class="flex flex-row flex-wrap items-center justify-center gap-1"
+			>
+				<DaisyUiTooltip
+					tooltipText={m.view_data()}
+					className="d-tooltip-ghost d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm"
+						onClick={() => viewData(staffRow.id)}
+						loading={viewingStaffId === staffRow.id}
+						disabled={isLoading ||
+							editingStaffId === staffRow.id ||
+							deletingStaffId === staffRow.id}
+						loadingText=""
 					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm"
-							onClick={() => viewData(staffRow.id)}
-							loading={viewingStaffId === staffRow.id}
-							disabled={
-								isLoading ||
-								editingStaffId === staffRow.id ||
-								deletingStaffId === staffRow.id
-							}
-							loadingText=""
-						>
-							<LucideEye className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText={m.edit_data()}
-						className="d-tooltip-accent d-tooltip-right"
+						<LucideEye className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				<DaisyUiTooltip
+					tooltipText={m.edit_data()}
+					className="d-tooltip-accent d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-sm d-btn-ghost d-btn-accent"
+						onClick={() => editData(staffRow.id)}
+						loading={editingStaffId === staffRow.id}
+						disabled={isLoading ||
+							viewingStaffId === staffRow.id ||
+							deletingStaffId === staffRow.id}
+						loadingText=""
 					>
-						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-accent"
-							onClick={() => editData(staffRow.id)}
-							loading={editingStaffId === staffRow.id}
-							disabled={
-								isLoading ||
-								viewingStaffId === staffRow.id ||
-								deletingStaffId === staffRow.id
-							}
-							loadingText=""
-						>
-							<LucidePencil className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText={m.delete_data()}
-						className="d-tooltip-error d-tooltip-right"
+						<LucidePencil className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				<DaisyUiTooltip
+					tooltipText={m.delete_data()}
+					className="d-tooltip-error d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm d-btn-error"
+						onClick={() => handleDelete(staffRow.id)}
+						loading={deletingStaffId === staffRow.id}
+						disabled={isLoading ||
+							viewingStaffId === staffRow.id ||
+							editingStaffId === staffRow.id}
+						loadingText=""
 					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm d-btn-error"
-							onClick={() => handleDelete(staffRow.id)}
-							loading={deletingStaffId === staffRow.id}
-							disabled={
-								isLoading ||
-								viewingStaffId === staffRow.id ||
-								editingStaffId === staffRow.id
-							}
-							loadingText=""
-						>
-							<LucideTrash2 className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-				</div>
-			{/snippet}
-		</MariTable>
-	</div>
+						<LucideTrash2 className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			</div>
+		{/snippet}
+	</MariTable>
+</div>
 
 <!-- Full-screen view/edit staff dialog -->
 {#if staffDialog}

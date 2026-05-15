@@ -1,25 +1,52 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- forwards to shared card with page-typed rows */
 	import InventoryLineItemsCard from '../InventoryLineItemsCard.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import type { Snippet } from 'svelte';
 
-	export let manualLineItemFilter = '';
-	export let totalCount = 0;
-	export let columns: unknown[] = [];
-	export let rows: unknown[] = [];
+	type Props = {
+		totalCount?: number;
+		columns?: unknown[];
+		rows?: unknown[];
+		useColumnFilters?: boolean;
+		hideQuickFilter?: boolean;
+		/** Parent renders add line button elsewhere */
+		hideAddButton?: boolean;
+		/** No DaisyUiCard wrapper — table only */
+		noCard?: boolean;
+		toolbarRight?: Snippet<[]>;
+		onAddItem: () => void;
+		onEditLine: (row: any) => void;
+		onDeleteLine: (key: string) => void;
+	};
 
-	export let onAddItem: () => void;
-	export let onEditLine: (row: any) => void;
-	export let onDeleteLine: (key: string) => void;
+	let {
+		totalCount = 0,
+		columns = [],
+		rows = [],
+		useColumnFilters = false,
+		hideQuickFilter = false,
+		hideAddButton = false,
+		noCard = false,
+		toolbarRight,
+		onAddItem,
+		onEditLine,
+		onDeleteLine
+	}: Props = $props();
 </script>
 
 <InventoryLineItemsCard
 	title={m.inv_po_lines()}
-	bind:lineItemFilter={manualLineItemFilter}
+	hideTitle={true}
+	addButtonIconOnly={true}
+	{hideAddButton}
+	{noCard}
+	{hideQuickFilter}
+	{toolbarRight}
 	{totalCount}
 	{columns}
 	{rows}
 	viewOnly={false}
+	{useColumnFilters}
 	{onAddItem}
 	{onEditLine}
 	{onDeleteLine}

@@ -54,9 +54,10 @@ export type StaffRegStaffTypeRow = PatientRegMasterTimestamps & {
 	statusId: number;
 };
 
-export type StaffRegStaffEmploymentTypeRow = PatientRegMasterTimestamps & {
-	id: number;
-	name: string | null;
-	code: string | null;
-	statusId: number;
-};
+export type StaffRegStaffEmploymentTypeRow =
+	PatientRegMasterTimestamps & {
+		id: number;
+		name: string | null;
+		code: string | null;
+		statusId: number;
+	};

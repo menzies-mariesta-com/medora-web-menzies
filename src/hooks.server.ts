@@ -36,8 +36,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
-		let staff: Awaited<ReturnType<typeof getStaffByUserIdWithRelations>> | null =
-			null;
+		let staff: Awaited<
+			ReturnType<typeof getStaffByUserIdWithRelations>
+		> | null = null;
 		try {
 			staff = await getStaffByUserIdWithRelations(session.user.id);
 		} catch (err) {
@@ -63,13 +64,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 		(auth as { options?: { basePath?: string } }).options?.basePath ??
 		'/api/auth';
 	const pathname = event.url.pathname;
-	const authPrefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
+	const authPrefix = basePath.endsWith('/')
+		? basePath
+		: `${basePath}/`;
 
 	// Better Auth's `svelteKitHandler` checks request origin against `baseURL`.
 	// When you access the app via different hosts (e.g. `localhost` vs LAN IP),
 	// that origin check can fail and SvelteKit will return 404 for `/api/auth/*`.
 	// Here we route by pathname only to keep auth endpoints working as expected.
-	if (!building && (pathname === basePath || pathname.startsWith(authPrefix))) {
+	if (
+		!building &&
+		(pathname === basePath || pathname.startsWith(authPrefix))
+	) {
 		return auth.handler(event.request);
 	}
 

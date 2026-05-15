@@ -64,7 +64,9 @@
 
 	const apiBase = $derived.by(() => {
 		const hid = hospitalId?.trim() ?? '';
-		return hid ? `/api/heka/hospital/${hid}/home/account-settings` : '';
+		return hid
+			? `/api/heka/hospital/${hid}/home/account-settings`
+			: '';
 	});
 
 	let isLoading = $state(false);
@@ -147,9 +149,7 @@
 			phone: (row?.phonePrimary ?? '').trim(),
 			address: (row?.address ?? '').trim(),
 			dateOfBirth: (row?.dateOfBirth ?? '').trim(),
-			genderIdStr:
-				row?.genderId != null ? String(row.genderId) : ''
-			,
+			genderIdStr: row?.genderId != null ? String(row.genderId) : '',
 			licenseNo: (row?.licenseNo ?? '').trim(),
 			licenseExpiryDate: (row?.licenseExpiryDate ?? '').trim(),
 			signatureImageUrl: (row?.signatureImageUrl ?? '').trim(),
@@ -302,10 +302,7 @@
 				phonePrimary: form.phone.trim() || null,
 				address: form.address.trim() || null,
 				dateOfBirth: form.dateOfBirth || null,
-				genderId: form.genderIdStr
-					? Number(form.genderIdStr)
-					: null
-				,
+				genderId: form.genderIdStr ? Number(form.genderIdStr) : null,
 				licenseNo: selectedLicenseNo.trim() || null,
 				licenseExpiryDate: selectedLicenseExpiryDate || null,
 				signatureImageUrl: signatureImageUrlToSave,
@@ -549,7 +546,9 @@
 						<div class="mt-4 flex flex-col gap-4">
 							{#if isLoading}
 								<div class="flex items-center gap-3">
-									<span class="d-loading d-loading-spinner d-loading-sm"></span>
+									<span
+										class="d-loading d-loading-sm d-loading-spinner"
+									></span>
 									<span class="text-sm text-base-content/70"
 										>Loading…</span
 									>
@@ -817,8 +816,9 @@
 								</fieldset>
 							</form>
 
-							<DaisyUiDivider position="horizontal" className="text-xs"
-								>Security</DaisyUiDivider
+							<DaisyUiDivider
+								position="horizontal"
+								className="text-xs">Security</DaisyUiDivider
 							>
 
 							<div class="mt-1">
@@ -833,7 +833,9 @@
 								>
 									<p class="text-sm">
 										<span class="text-base-content/60">Email:</span>
-										<span class="ml-2 font-medium">{emailDisplay}</span>
+										<span class="ml-2 font-medium"
+											>{emailDisplay}</span
+										>
 									</p>
 									<DaisyUiButton
 										className="d-btn d-btn-outline"
@@ -900,8 +902,9 @@
 								</DaisyUiButton>
 							</div>
 
-							<DaisyUiDivider position="horizontal" className="text-xs"
-								>Danger zone</DaisyUiDivider
+							<DaisyUiDivider
+								position="horizontal"
+								className="text-xs">Danger zone</DaisyUiDivider
 							>
 
 							<DaisyUiButton

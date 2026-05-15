@@ -5,10 +5,14 @@
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 	const consumptionId = $derived(
-		typeof page.params.consumption_id === 'string' ? page.params.consumption_id : ''
+		typeof page.params.consumption_id === 'string'
+			? page.params.consumption_id
+			: ''
 	);
 	const backHref = $derived(
 		resolve(
@@ -20,4 +24,8 @@
 	);
 </script>
 
-<DepartmentConsumptionDetailView {hospitalId} {consumptionId} {backHref} />
+<DepartmentConsumptionDetailView
+	{hospitalId}
+	{consumptionId}
+	{backHref}
+/>

@@ -1,5 +1,14 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	sql
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -35,12 +44,18 @@ export async function listPurchaseOrders(
 		prId?: string;
 		/** When set, only POs for this store (e.g. navbar-selected inventory store; CPS for PR/PO). */
 		storeId?: number;
+		supplierId?: number;
 		statusTaggingId?: number;
 		poNo?: string;
+		/** Substring match against total_amount (cast to text). */
+		totalAmount?: string;
+		/** Substring match against any PO line item name. */
+		item?: string;
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let cond = and(
 		eq(table.purchaseOrderTable.hospitalId, input.hospitalId),
@@ -50,12 +65,24 @@ export async function listPurchaseOrders(
 		cond = and(cond, eq(table.purchaseOrderTable.prId, input.prId))!;
 	}
 	if (input.storeId != null) {
-		cond = and(cond, eq(table.purchaseOrderTable.storeId, input.storeId))!;
+		cond = and(
+			cond,
+			eq(table.purchaseOrderTable.storeId, input.storeId)
+		)!;
+	}
+	if (typeof input.supplierId === 'number') {
+		cond = and(
+			cond,
+			eq(table.purchaseOrderTable.supplierId, input.supplierId)
+		)!;
 	}
 	if (typeof input.statusTaggingId === 'number') {
 		cond = and(
 			cond,
-			eq(table.purchaseOrderTable.statusTaggingId, input.statusTaggingId)
+			eq(
+				table.purchaseOrderTable.statusTaggingId,
+				input.statusTaggingId
+			)
 		)!;
 	}
 	const poNoTerm = input.poNo?.trim();
@@ -65,6 +92,36 @@ export async function listPurchaseOrders(
 			cond = and(
 				cond,
 				ilike(table.purchaseOrderTable.poNo, `%${safe}%`)
+			)!;
+		}
+	}
+	const totalTerm = input.totalAmount?.trim();
+	if (totalTerm) {
+		const safe = totalTerm.replace(/[%_\\]/g, '');
+		if (safe) {
+			cond = and(
+				cond,
+				ilike(
+					sql`${table.purchaseOrderTable.totalAmount}::text`,
+					`%${safe}%`
+				)
+			)!;
+		}
+	}
+	const itemTerm = input.item?.trim();
+	if (itemTerm) {
+		const safe = itemTerm.replace(/[%_\\]/g, '');
+		if (safe) {
+			cond = and(
+				cond,
+				sql`exists (
+					select 1
+					from ${table.purchaseOrderLineTable} pol
+					inner join ${table.itemMasterTable} im
+						on pol.item_id = im.id
+					where pol.po_id = ${table.purchaseOrderTable.id}
+						and im.item_name ilike ${`%${safe}%`}
+				)`
 			)!;
 		}
 	}
@@ -98,7 +155,10 @@ export async function listPurchaseOrders(
 			)
 			.innerJoin(
 				table.supplierTable,
-				eq(table.purchaseOrderTable.supplierId, table.supplierTable.id)
+				eq(
+					table.purchaseOrderTable.supplierId,
+					table.supplierTable.id
+				)
 			)
 			.leftJoin(
 				uCreated,
@@ -148,7 +208,10 @@ export async function listPurchaseOrders(
 			.from(table.purchaseOrderLineTable)
 			.innerJoin(
 				table.itemMasterTable,
-				eq(table.purchaseOrderLineTable.itemId, table.itemMasterTable.id)
+				eq(
+					table.purchaseOrderLineTable.itemId,
+					table.itemMasterTable.id
+				)
 			)
 			.where(inArray(table.purchaseOrderLineTable.poId, poIds))
 			.groupBy(table.purchaseOrderLineTable.poId);
@@ -169,9 +232,7 @@ export async function listPurchaseOrders(
 			itemNames: itemNamesByPo.get(r.po.id) ?? '',
 			canApprove:
 				r.po.statusTaggingId === InvPoStatusTaggingEnum.PENDING &&
-				approverPairSet.has(
-					`${r.po.storeId}:${r.po.currentLevel}`
-				)
+				approverPairSet.has(`${r.po.storeId}:${r.po.currentLevel}`)
 		})),
 		total,
 		page,
@@ -185,10 +246,22 @@ export async function getPurchaseOrderById(
 	input: { hospitalId: string; id: string }
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const uCreated = alias(table.userTable, 'po_detail_created_by_user');
-	const uUpdated = alias(table.userTable, 'po_detail_updated_by_user');
-	const uApproved = alias(table.userTable, 'po_detail_approved_by_user');
-	const prLinked = alias(table.purchaseRequisitionTable, 'po_detail_linked_pr');
+	const uCreated = alias(
+		table.userTable,
+		'po_detail_created_by_user'
+	);
+	const uUpdated = alias(
+		table.userTable,
+		'po_detail_updated_by_user'
+	);
+	const uApproved = alias(
+		table.userTable,
+		'po_detail_approved_by_user'
+	);
+	const prLinked = alias(
+		table.purchaseRequisitionTable,
+		'po_detail_linked_pr'
+	);
 
 	const [row] = await ensureDb()
 		.select({
@@ -204,7 +277,10 @@ export async function getPurchaseOrderById(
 		.from(table.purchaseOrderTable)
 		.innerJoin(
 			table.statusTaggingTable,
-			eq(table.purchaseOrderTable.statusTaggingId, table.statusTaggingTable.id)
+			eq(
+				table.purchaseOrderTable.statusTaggingId,
+				table.statusTaggingTable.id
+			)
 		)
 		.innerJoin(
 			table.storeTable,
@@ -246,13 +322,15 @@ export async function getPurchaseOrderById(
 	const lineRows = await ensureDb()
 		.select({
 			line: table.purchaseOrderLineTable,
-			itemName: table.itemMasterTable.itemName,
-			isBatchRequired: table.itemMasterTable.isBatchRequired
+			itemName: table.itemMasterTable.itemName
 		})
 		.from(table.purchaseOrderLineTable)
 		.innerJoin(
 			table.itemMasterTable,
-			eq(table.purchaseOrderLineTable.itemId, table.itemMasterTable.id)
+			eq(
+				table.purchaseOrderLineTable.itemId,
+				table.itemMasterTable.id
+			)
 		)
 		.where(
 			and(
@@ -272,7 +350,9 @@ export async function getPurchaseOrderById(
 	const logs = await listApprovalLogs(input.hospitalId, input.id);
 
 	const userId = event.locals.user?.id ?? null;
-	const staffIdForApprove = userId ? await getStaffIdForUser(userId) : null;
+	const staffIdForApprove = userId
+		? await getStaffIdForUser(userId)
+		: null;
 	let canApprove = false;
 	if (
 		staffIdForApprove &&
@@ -306,7 +386,6 @@ export async function getPurchaseOrderById(
 			return {
 				...l.line,
 				itemName: l.itemName,
-				isBatchRequired: l.isBatchRequired,
 				itemUnitMasterId: ium?.id ?? null,
 				itemUnitMasterConversion: ium?.conversionDisplay ?? null
 			};
@@ -329,14 +408,14 @@ export async function createPurchaseOrder(
 			quantity: string;
 			unitId: number;
 			unitPrice: string;
-			manufacturerId?: number | null;
 		}[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 	if (!Number.isFinite(input.storeId) || input.storeId <= 0) {
 		throw error(400, 'Store is required');
 	}
@@ -347,7 +426,10 @@ export async function createPurchaseOrder(
 		.where(
 			and(
 				eq(table.purchaseRequisitionTable.id, input.prId),
-				eq(table.purchaseRequisitionTable.hospitalId, input.hospitalId),
+				eq(
+					table.purchaseRequisitionTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.purchaseRequisitionTable.deletedAt)
 			)
 		)
@@ -381,9 +463,15 @@ export async function createPurchaseOrder(
 	/** PO is owned by the PR’s *to* store (receiver), not the requesting (from) store. */
 	const poStoreId = pr.toStoreId;
 	if (input.storeId !== poStoreId) {
-		throw error(400, 'Purchase order must be created by the PR receiving store');
+		throw error(
+			400,
+			'Purchase order must be created by the PR receiving store'
+		);
 	}
-	const store = await assertStoreInHospital(input.hospitalId, poStoreId);
+	const store = await assertStoreInHospital(
+		input.hospitalId,
+		poStoreId
+	);
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
@@ -401,7 +489,10 @@ export async function createPurchaseOrder(
 		)
 		.limit(1);
 	if (!financialYear) {
-		throw error(400, 'Financial year is not configured for this hospital.');
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	}
 
 	let poNo: string;
@@ -430,7 +521,6 @@ export async function createPurchaseOrder(
 			unitId: number;
 			unitPrice: string;
 			lineTotal: string;
-			manufacturerId: number | null;
 			createdBy: string;
 			updatedBy: string;
 		}> = [];
@@ -455,7 +545,8 @@ export async function createPurchaseOrder(
 			if (!Number.isFinite(price) || price <= 0)
 				throw error(400, 'Invalid price');
 			const rem = Number(prLine.qtyRemaining);
-			if (qty > rem) throw error(400, 'Quantity exceeds remaining on PR line');
+			if (qty > rem)
+				throw error(400, 'Quantity exceeds remaining on PR line');
 
 			const lineTotal = (qty * price).toFixed(2);
 			total += qty * price;
@@ -467,7 +558,6 @@ export async function createPurchaseOrder(
 				unitId: l.unitId,
 				unitPrice: l.unitPrice,
 				lineTotal,
-				manufacturerId: l.manufacturerId ?? null,
 				createdBy: userId,
 				updatedBy: userId
 			});
@@ -490,22 +580,26 @@ export async function createPurchaseOrder(
 			.returning({ id: table.purchaseOrderTable.id });
 		if (!po) throw error(500, 'PO insert failed');
 
-		await tx.insert(table.purchaseOrderLineTable).values(
-			lineRows.map((r) => ({ ...r, poId: po.id }))
-		);
+		await tx
+			.insert(table.purchaseOrderLineTable)
+			.values(lineRows.map((r) => ({ ...r, poId: po.id })));
 
 		for (const l of input.lines) {
 			const [pln] = await tx
 				.select()
 				.from(table.purchaseRequisitionLineTable)
-				.where(
-					eq(table.purchaseRequisitionLineTable.id, l.prLineId)
-				)
+				.where(eq(table.purchaseRequisitionLineTable.id, l.prLineId))
 				.limit(1);
 			if (!pln) throw error(500, 'PR line missing');
-			const newRem = (
-				Number(pln.qtyRemaining) - Number(l.quantity)
-			).toFixed(6);
+			const orderedQty = Number(l.quantity);
+			if (!Number.isInteger(orderedQty) || orderedQty <= 0) {
+				throw error(400, 'Quantity must be an integer');
+			}
+			const prevRem = Number(pln.qtyRemaining);
+			if (!Number.isInteger(prevRem)) {
+				throw error(400, 'PR remaining quantity must be an integer');
+			}
+			const newRem = String(prevRem - orderedQty);
 			await tx
 				.update(table.purchaseRequisitionLineTable)
 				.set({
@@ -518,7 +612,10 @@ export async function createPurchaseOrder(
 		return po.id;
 	});
 
-	return getPurchaseOrderById(event, { hospitalId: input.hospitalId, id: poId });
+	return getPurchaseOrderById(event, {
+		hospitalId: input.hospitalId,
+		id: poId
+	});
 }
 
 export async function createPurchaseOrderDirect(
@@ -532,14 +629,14 @@ export async function createPurchaseOrderDirect(
 			quantity: string;
 			unitId: number;
 			unitPrice: string;
-			manufacturerId?: number | null;
 		}[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
 	for (const l of input.lines) {
 		await resolveItemUnitMasterForItemPurchaseUnit({
@@ -570,7 +667,10 @@ export async function createPurchaseOrderDirect(
 		);
 	}
 
-	const store = await assertStoreInHospital(input.hospitalId, input.storeId);
+	const store = await assertStoreInHospital(
+		input.hospitalId,
+		input.storeId
+	);
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
@@ -588,7 +688,10 @@ export async function createPurchaseOrderDirect(
 		)
 		.limit(1);
 	if (!financialYear) {
-		throw error(400, 'Financial year is not configured for this hospital.');
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	}
 
 	let poNo: string;
@@ -617,7 +720,6 @@ export async function createPurchaseOrderDirect(
 			unitId: number;
 			unitPrice: string;
 			lineTotal: string;
-			manufacturerId: number | null;
 			createdBy: string;
 			updatedBy: string;
 		}> = [];
@@ -640,7 +742,6 @@ export async function createPurchaseOrderDirect(
 				unitId: l.unitId,
 				unitPrice: l.unitPrice,
 				lineTotal,
-				manufacturerId: l.manufacturerId ?? null,
 				createdBy: userId,
 				updatedBy: userId
 			});
@@ -663,13 +764,16 @@ export async function createPurchaseOrderDirect(
 			.returning({ id: table.purchaseOrderTable.id });
 		if (!po) throw error(500, 'PO insert failed');
 
-		await tx.insert(table.purchaseOrderLineTable).values(
-			lineRows.map((r) => ({ ...r, poId: po.id }))
-		);
+		await tx
+			.insert(table.purchaseOrderLineTable)
+			.values(lineRows.map((r) => ({ ...r, poId: po.id })));
 		return po.id;
 	});
 
-	return getPurchaseOrderById(event, { hospitalId: input.hospitalId, id: poId });
+	return getPurchaseOrderById(event, {
+		hospitalId: input.hospitalId,
+		id: poId
+	});
 }
 
 export async function approvePurchaseOrder(
@@ -679,7 +783,11 @@ export async function approvePurchaseOrder(
 		poId: string;
 		action: number;
 		remarks: string | null;
-		lineAdjustments?: { lineId: number; quantity: string; unitPrice?: string }[];
+		lineAdjustments?: {
+			lineId: number;
+			quantity: string;
+			unitPrice?: string;
+		}[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
@@ -848,7 +956,10 @@ export async function sendPurchaseOrderToSupplier(
 		.limit(1);
 	if (!po) throw error(404, 'PO not found');
 	if (po.statusTaggingId !== InvPoStatusTaggingEnum.APPROVED) {
-		throw error(400, 'PO must be approved before sending to supplier');
+		throw error(
+			400,
+			'PO must be approved before sending to supplier'
+		);
 	}
 
 	await ensureDb()
@@ -964,7 +1075,10 @@ export async function closePurchaseOrderLineRemaining(
 		}
 		if (received >= ordered) return; // already fully received (or closed previously)
 
-		const newQty = received.toFixed(6);
+		if (!Number.isInteger(received)) {
+			throw error(400, 'Received quantity must be an integer');
+		}
+		const newQty = String(received);
 		const unitPrice = Number(ln.unitPrice);
 		if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
 			throw error(400, 'Invalid unit price');
@@ -983,14 +1097,19 @@ export async function closePurchaseOrderLineRemaining(
 		// If this PO came from a PR line, releasing the unreceived remainder should
 		// restore PR `qty_remaining` so it can be ordered again.
 		if (ln.prLineId != null) {
-			const diff = (ordered - received).toFixed(6);
+			if (!Number.isInteger(ordered)) {
+				throw error(400, 'Ordered quantity must be an integer');
+			}
+			const diff = String(ordered - received);
 			await tx
 				.update(table.purchaseRequisitionLineTable)
 				.set({
 					qtyRemaining: sql`${table.purchaseRequisitionLineTable.qtyRemaining} + ${diff}::numeric`,
 					updatedBy: userId
 				})
-				.where(eq(table.purchaseRequisitionLineTable.id, ln.prLineId));
+				.where(
+					eq(table.purchaseRequisitionLineTable.id, ln.prLineId)
+				);
 		}
 
 		// Recompute PO header total and status.
@@ -1033,5 +1152,8 @@ export async function closePurchaseOrderLineRemaining(
 			.where(eq(table.purchaseOrderTable.id, input.poId));
 	});
 
-	return getPurchaseOrderById(event, { hospitalId: input.hospitalId, id: input.poId });
+	return getPurchaseOrderById(event, {
+		hospitalId: input.hospitalId,
+		id: input.poId
+	});
 }

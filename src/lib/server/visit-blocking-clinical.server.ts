@@ -25,91 +25,84 @@ export async function visitHasBlockingClinicalData(
 	if (String(v.diagnosisNotes ?? '').trim()) return true;
 
 	/** Per-table status columns are distinct Drizzle types but comparable to DELETED. */
-	const notDel = (statusCol: unknown) => ne(statusCol as any, StatusEnum.DELETED);
+	const notDel = (statusCol: unknown) =>
+		ne(statusCol as any, StatusEnum.DELETED);
 
-	const [
-		nPd,
-		nDx,
-		nAl,
-		nDoc,
-		nForm,
-		nOrd,
-		nBill,
-		nRef
-	] = await Promise.all([
-		db
-			.select({ n: count() })
-			.from(t.patientDiagnosisTable)
-			.where(
-				and(
-					eq(t.patientDiagnosisTable.visitId, visitId),
-					notDel(t.patientDiagnosisTable.statusId)
+	const [nPd, nDx, nAl, nDoc, nForm, nOrd, nBill, nRef] =
+		await Promise.all([
+			db
+				.select({ n: count() })
+				.from(t.patientDiagnosisTable)
+				.where(
+					and(
+						eq(t.patientDiagnosisTable.visitId, visitId),
+						notDel(t.patientDiagnosisTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.diagnosisTable)
+				.where(
+					and(
+						eq(t.diagnosisTable.visitId, visitId),
+						notDel(t.diagnosisTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.patientAllergyTable)
+				.where(
+					and(
+						eq(t.patientAllergyTable.visitId, visitId),
+						ne(t.patientAllergyTable.statusId, StatusEnum.DELETED)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.patientDocumentTable)
+				.where(
+					and(
+						eq(t.patientDocumentTable.visitId, visitId),
+						notDel(t.patientDocumentTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.patientFormEntryTable)
+				.where(
+					and(
+						eq(t.patientFormEntryTable.visitId, visitId),
+						notDel(t.patientFormEntryTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.serviceOrderTable)
+				.where(
+					and(
+						eq(t.serviceOrderTable.visitId, visitId),
+						notDel(t.serviceOrderTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.opBillingTable)
+				.where(
+					and(
+						eq(t.opBillingTable.visitId, visitId),
+						notDel(t.opBillingTable.statusId)
+					)
+				),
+			db
+				.select({ n: count() })
+				.from(t.referHistoryTable)
+				.where(
+					and(
+						eq(t.referHistoryTable.visitId, visitId),
+						isNull(t.referHistoryTable.cancelAt)
+					)
 				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.diagnosisTable)
-			.where(
-				and(
-					eq(t.diagnosisTable.visitId, visitId),
-					notDel(t.diagnosisTable.statusId)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.patientAllergyTable)
-			.where(
-				and(
-					eq(t.patientAllergyTable.visitId, visitId),
-					ne(t.patientAllergyTable.statusId, StatusEnum.DELETED)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.patientDocumentTable)
-			.where(
-				and(
-					eq(t.patientDocumentTable.visitId, visitId),
-					notDel(t.patientDocumentTable.statusId)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.patientFormEntryTable)
-			.where(
-				and(
-					eq(t.patientFormEntryTable.visitId, visitId),
-					notDel(t.patientFormEntryTable.statusId)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.serviceOrderTable)
-			.where(
-				and(
-					eq(t.serviceOrderTable.visitId, visitId),
-					notDel(t.serviceOrderTable.statusId)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.opBillingTable)
-			.where(
-				and(
-					eq(t.opBillingTable.visitId, visitId),
-					notDel(t.opBillingTable.statusId)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(t.referHistoryTable)
-			.where(
-				and(
-					eq(t.referHistoryTable.visitId, visitId),
-					isNull(t.referHistoryTable.cancelAt)
-				)
-			)
-	]);
+		]);
 
 	const nums = [
 		nPd[0]?.n,

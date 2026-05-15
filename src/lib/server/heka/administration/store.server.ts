@@ -1,5 +1,14 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, ilike, inArray, isNull, ne, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	ne,
+	sql
+} from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -69,7 +78,9 @@ async function ensureUserGroupsBelongToHospital(
 	}
 }
 
-function uniqueValidUserGroupIds(input: readonly number[] | null | undefined): number[] {
+function uniqueValidUserGroupIds(
+	input: readonly number[] | null | undefined
+): number[] {
 	if (!input) return [];
 	const out = new Set<number>();
 	for (const v of input) {
@@ -94,7 +105,10 @@ async function fetchUserGroupsForStores(
 		.from(table.storeUserGroupTable)
 		.innerJoin(
 			table.userGroupTable,
-			eq(table.userGroupTable.id, table.storeUserGroupTable.userGroupId)
+			eq(
+				table.userGroupTable.id,
+				table.storeUserGroupTable.userGroupId
+			)
 		)
 		.where(inArray(table.storeUserGroupTable.storeId, storeIds))
 		.orderBy(table.userGroupTable.name);
@@ -111,16 +125,23 @@ export async function getStoresPaginated(
 	input: PaginationParams & { hospitalId: string }
 ): Promise<PaginatedResult<StoreWithUserGroups>> {
 	await ensureCanAccessHospital(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
-	const notDeleted = ne(table.storeTable.statusId, StatusEnum.DELETED);
+	const notDeleted = ne(
+		table.storeTable.statusId,
+		StatusEnum.DELETED
+	);
 	let whereExpr: SQL = notDeleted;
 
 	const ids = await branchIdsForHospital(input.hospitalId);
 	if (ids.length === 0) {
 		return { data: [], total: 0, page, pageSize, totalPages: 1 };
 	}
-	whereExpr = and(whereExpr, inArray(table.storeTable.branchId, ids))!;
+	whereExpr = and(
+		whereExpr,
+		inArray(table.storeTable.branchId, ids)
+	)!;
 
 	const nameFilter = input.name?.trim();
 	if (nameFilter) {
@@ -169,6 +190,36 @@ export async function getStoresPaginated(
 	};
 }
 
+/** All non-deleted stores under the hospital’s branches (store master), for pickers — not paginated, not user-group filtered. */
+export type StorePickerRow = {
+	id: number;
+	storeName: string | null;
+	branchId: string;
+};
+
+export async function listStoresForHospitalAll(
+	event: RequestEvent,
+	input: { hospitalId: string }
+): Promise<StorePickerRow[]> {
+	await ensureCanAccessHospital(event, input.hospitalId);
+	const ids = await branchIdsForHospital(input.hospitalId);
+	if (ids.length === 0) return [];
+	return ensureDb()
+		.select({
+			id: table.storeTable.id,
+			storeName: table.storeTable.storeName,
+			branchId: table.storeTable.branchId
+		})
+		.from(table.storeTable)
+		.where(
+			and(
+				inArray(table.storeTable.branchId, ids),
+				ne(table.storeTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.orderBy(table.storeTable.storeName);
+}
+
 export async function getStoreById(
 	event: RequestEvent,
 	input: { hospitalId: string; id: number }
@@ -213,10 +264,16 @@ export async function createStore(
 	input: CreateStoreInput
 ): Promise<StoreWithUserGroups> {
 	await ensureCanAccessHospital(event, input.hospitalId);
-	await ensureBranchBelongsToHospital(input.hospitalId, input.branchId);
+	await ensureBranchBelongsToHospital(
+		input.hospitalId,
+		input.branchId
+	);
 
 	const userGroupIds = uniqueValidUserGroupIds(input.userGroupIds);
-	await ensureUserGroupsBelongToHospital(input.hospitalId, userGroupIds);
+	await ensureUserGroupsBelongToHospital(
+		input.hospitalId,
+		userGroupIds
+	);
 
 	const userId = event.locals.user?.id ?? null;
 
@@ -304,7 +361,8 @@ export async function updateStore(
 
 	const setObj: Partial<typeof table.storeTable.$inferInsert> = {};
 	if (input.branchId !== undefined) setObj.branchId = input.branchId;
-	if (input.storeName !== undefined) setObj.storeName = input.storeName;
+	if (input.storeName !== undefined)
+		setObj.storeName = input.storeName;
 	if (input.remark !== undefined) setObj.remark = input.remark;
 	if (input.isPurchaseRequisitable !== undefined) {
 		setObj.isPurchaseRequisitable = input.isPurchaseRequisitable;

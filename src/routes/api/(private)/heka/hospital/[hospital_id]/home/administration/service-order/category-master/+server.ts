@@ -19,10 +19,14 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const statusIdStr = event.url.searchParams.get('statusId');
 	const statusId =
-		statusIdStr != null && statusIdStr !== '' ? Number(statusIdStr) : null;
+		statusIdStr != null && statusIdStr !== ''
+			? Number(statusIdStr)
+			: null;
 
 	const idStr = event.url.searchParams.get('id');
 	const id = idStr != null && idStr !== '' ? Number(idStr) : null;
@@ -34,13 +38,18 @@ export const GET: RequestHandler = async (event) => {
 		id: id != null && Number.isFinite(id) ? id : undefined,
 		categoryName: categoryName?.trim() || null,
 		statusId:
-			statusId != null && Number.isFinite(statusId) ? statusId : undefined
+			statusId != null && Number.isFinite(statusId)
+				? statusId
+				: undefined
 	});
 	return json(data);
 };
 
 export const POST: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createCategory(event, {
 		categoryName: String(body.categoryName ?? ''),
 		statusId: Number(body.statusId ?? 1)
@@ -49,19 +58,27 @@ export const POST: RequestHandler = async (event) => {
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updateCategory(event, {
 		id: Number(body.id),
 		categoryName:
-			body.categoryName != null ? String(body.categoryName) : undefined,
-		statusId: body.statusId != null ? Number(body.statusId) : undefined
+			body.categoryName != null
+				? String(body.categoryName)
+				: undefined,
+		statusId:
+			body.statusId != null ? Number(body.statusId) : undefined
 	} as any);
 	return json(data);
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deleteCategory(event, { id: Number(body.id) });
 	return json({ ok: true });
 };
-

@@ -377,22 +377,25 @@ export const unitTypeTableRelations = relations(
 	})
 );
 
-export const unitTableRelations = relations(unitTable, ({ one, many }) => ({
-	unitType: one(unitTypeTable, {
-		fields: [unitTable.unitTypeId],
-		references: [unitTypeTable.id]
-	}),
-	status: one(statusTable, {
-		fields: [unitTable.statusId],
-		references: [statusTable.id]
-	}),
-	itemUnitMastersAsPurchase: many(itemUnitMasterTable, {
-		relationName: 'item_unit_master_purchase_unit'
-	}),
-	itemUnitMastersAsIssue: many(itemUnitMasterTable, {
-		relationName: 'item_unit_master_issue_unit'
+export const unitTableRelations = relations(
+	unitTable,
+	({ one, many }) => ({
+		unitType: one(unitTypeTable, {
+			fields: [unitTable.unitTypeId],
+			references: [unitTypeTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [unitTable.statusId],
+			references: [statusTable.id]
+		}),
+		itemUnitMastersAsPurchase: many(itemUnitMasterTable, {
+			relationName: 'item_unit_master_purchase_unit'
+		}),
+		itemUnitMastersAsIssue: many(itemUnitMasterTable, {
+			relationName: 'item_unit_master_issue_unit'
+		})
 	})
-}));
+);
 
 export const visitTypeTableRelations = relations(
 	visitTypeTable,

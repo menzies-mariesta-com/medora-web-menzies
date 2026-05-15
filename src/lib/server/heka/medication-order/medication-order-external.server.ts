@@ -1,5 +1,13 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	eq,
+	inArray,
+	isNull,
+	sql
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -22,7 +30,10 @@ export {
 
 export { getBatchWithLines } from './medication-order-internal.server';
 
-export async function listExternalBatches(event: RequestEvent, hospitalId: string) {
+export async function listExternalBatches(
+	event: RequestEvent,
+	hospitalId: string
+) {
 	await ensureCanAccessHospital(event, hospitalId);
 	const db = ensureDb();
 	const b = table.medicationOrderBatchTable;
@@ -51,9 +62,16 @@ export async function listExternalBatches(event: RequestEvent, hospitalId: strin
 			updatedAt: b.updatedAt,
 			createdBy: b.createdBy,
 			updatedBy: b.updatedBy,
-			createdByName: sql<string | null>`coalesce(${uCreat.name}, ${uCreat.email})`,
-			updatedByName: sql<string | null>`coalesce(${uUpd.name}, ${uUpd.email})`,
-			lineCount: sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(Number)
+			createdByName: sql<
+				string | null
+			>`coalesce(${uCreat.name}, ${uCreat.email})`,
+			updatedByName: sql<
+				string | null
+			>`coalesce(${uUpd.name}, ${uUpd.email})`,
+			lineCount:
+				sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(
+					Number
+				)
 		})
 		.from(b)
 		.leftJoin(uCreat, eq(b.createdBy, uCreat.id))
@@ -111,9 +129,7 @@ export async function reorderFromHistoryBatchExternal(
 	const [firstLine] = await db
 		.select()
 		.from(mol)
-		.where(
-			and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt))
-		)
+		.where(and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt)))
 		.orderBy(mol.lineNo)
 		.limit(1);
 	if (!firstLine) throw error(400, 'Batch has no lines');
@@ -140,9 +156,7 @@ export async function reorderFromHistoryBatchExternal(
 		.where(
 			and(
 				isNull(table.medOrderDurationUnitTable.deletedAt),
-				isNull(
-					table.medOrderDurationUnitInactiveTable.durationUnitId
-				)
+				isNull(table.medOrderDurationUnitInactiveTable.durationUnitId)
 			) as any
 		)
 		.orderBy(
@@ -150,7 +164,10 @@ export async function reorderFromHistoryBatchExternal(
 			table.medOrderDurationUnitTable.id
 		);
 	if (durUnits.length === 0) {
-		throw error(400, 'Duration units are not configured for this hospital');
+		throw error(
+			400,
+			'Duration units are not configured for this hospital'
+		);
 	}
 
 	const externalLines = await db
@@ -171,7 +188,10 @@ export async function reorderFromHistoryBatchExternal(
 		);
 
 	if (externalLines.length === 0) {
-		throw error(500, 'No medication order lines found for external sales');
+		throw error(
+			500,
+			'No medication order lines found for external sales'
+		);
 	}
 
 	let maxEndMs = 0;
@@ -241,7 +261,10 @@ export async function saveMedicationOrderBatchExternal(
 	const advisingDoctor = input.advisingDoctor.trim();
 	await ensureCanAccessHospital(event, hospitalId);
 	if (extCustomerName.length === 0 || advisingDoctor.length === 0) {
-		throw error(400, 'Customer name and advising doctor are required');
+		throw error(
+			400,
+			'Customer name and advising doctor are required'
+		);
 	}
 	if (extCustomerName.length > 512 || advisingDoctor.length > 512) {
 		throw error(400, 'Name or doctor is too long');
@@ -342,7 +365,10 @@ export async function updateMedicationOrderBatchExternal(
 		.where(
 			and(
 				eq(table.medicationOrderBatchTable.id, input.batchId),
-				eq(table.medicationOrderBatchTable.hospitalId, input.hospitalId),
+				eq(
+					table.medicationOrderBatchTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.medicationOrderBatchTable.deletedAt)
 			)
 		);

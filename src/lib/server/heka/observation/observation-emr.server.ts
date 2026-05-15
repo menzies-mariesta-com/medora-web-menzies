@@ -16,7 +16,10 @@ import {
 	sql
 } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { normalizePagination, type PaginationParams } from '$lib/model/type/pagination.type';
+import {
+	normalizePagination,
+	type PaginationParams
+} from '$lib/model/type/pagination.type';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -65,7 +68,9 @@ export type DiagnosisWithType = DiagnosisSchema & {
 	diagnosisType: DiagnosisTypeSchema | null;
 };
 
-export async function getDiagnosisTypes(): Promise<DiagnosisTypeSchema[]> {
+export async function getDiagnosisTypes(): Promise<
+	DiagnosisTypeSchema[]
+> {
 	return ensureDb()
 		.select()
 		.from(table.diagnosisTypeTable)
@@ -89,7 +94,10 @@ export async function getDiagnosesByVisitId(input: {
 }): Promise<DiagnosisWithType[]> {
 	return (await ensureDb().query.diagnosisTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+			and(
+				eq(t.visitId, input.visitId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
 		with: { diagnosisType: true },
 		orderBy: (t, { desc }) => desc(t.createdAt)
 	})) as DiagnosisWithType[];
@@ -107,9 +115,11 @@ export async function createDiagnosis(
 	return row;
 }
 
-export async function updateDiagnosis(payload: {
-	id: number;
-} & DiagnosisSchemaUpdate): Promise<DiagnosisSchema> {
+export async function updateDiagnosis(
+	payload: {
+		id: number;
+	} & DiagnosisSchemaUpdate
+): Promise<DiagnosisSchema> {
 	const { id, ...data } = payload;
 	const [existing] = await ensureDb()
 		.select({ visitId: table.diagnosisTable.visitId })
@@ -127,7 +137,9 @@ export async function updateDiagnosis(payload: {
 	return row;
 }
 
-export async function deleteDiagnosis(input: { id: number }): Promise<void> {
+export async function deleteDiagnosis(input: {
+	id: number;
+}): Promise<void> {
 	const [existing] = await ensureDb()
 		.select({ visitId: table.diagnosisTable.visitId })
 		.from(table.diagnosisTable)
@@ -152,11 +164,17 @@ export async function getPlanOfCareRowsByVisitId(input: {
 	if (!visit) return [];
 	return ensureDb().query.planOfCareTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+			and(
+				eq(t.visitId, input.visitId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
 		with: {
 			doctor: { with: { staffDetail: true, title: true } }
 		},
-		orderBy: (t, { asc, desc }) => [asc(t.sequenceNo), desc(t.createdAt)]
+		orderBy: (t, { asc, desc }) => [
+			asc(t.sequenceNo),
+			desc(t.createdAt)
+		]
 	});
 }
 
@@ -176,7 +194,8 @@ export async function getPlanOfCareById(input: {
 			doctor: { with: { staffDetail: true, title: true } }
 		}
 	});
-	if (!row?.visit || row.visit.hospitalId !== input.hospitalId) return null;
+	if (!row?.visit || row.visit.hospitalId !== input.hospitalId)
+		return null;
 	return row as PlanOfCareRowWithDoctor;
 }
 
@@ -209,7 +228,8 @@ export async function createPlanOfCare(
 			visitId: payload.visitId,
 			note,
 			doctorId:
-				payload.doctorId != null && String(payload.doctorId).trim() !== ''
+				payload.doctorId != null &&
+				String(payload.doctorId).trim() !== ''
 					? String(payload.doctorId).trim()
 					: null,
 			statusId: payload.statusId ?? StatusEnum.ACTIVE,
@@ -263,7 +283,8 @@ export async function deletePlanOfCare(input: {
 	if (!existing) throw new Error('Plan of care not found');
 	await assertVisitNotClinicallySigned(existing.visitId);
 	const remark =
-		input.deleteRemark != null && String(input.deleteRemark).trim() !== ''
+		input.deleteRemark != null &&
+		String(input.deleteRemark).trim() !== ''
 			? String(input.deleteRemark).trim()
 			: null;
 	await ensureDb()
@@ -286,11 +307,17 @@ export async function getProgressNoteRowsByVisitId(input: {
 	if (!visit) return [];
 	return ensureDb().query.progressNoteTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+			and(
+				eq(t.visitId, input.visitId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
 		with: {
 			doctor: { with: { staffDetail: true, title: true } }
 		},
-		orderBy: (t, { asc, desc }) => [asc(t.sequenceNo), desc(t.createdAt)]
+		orderBy: (t, { asc, desc }) => [
+			asc(t.sequenceNo),
+			desc(t.createdAt)
+		]
 	});
 }
 
@@ -310,7 +337,8 @@ export async function getProgressNoteById(input: {
 			doctor: { with: { staffDetail: true, title: true } }
 		}
 	});
-	if (!row?.visit || row.visit.hospitalId !== input.hospitalId) return null;
+	if (!row?.visit || row.visit.hospitalId !== input.hospitalId)
+		return null;
 	return row as ProgressNoteRowWithDoctor;
 }
 
@@ -343,7 +371,8 @@ export async function createProgressNote(
 			visitId: payload.visitId,
 			note,
 			doctorId:
-				payload.doctorId != null && String(payload.doctorId).trim() !== ''
+				payload.doctorId != null &&
+				String(payload.doctorId).trim() !== ''
 					? String(payload.doctorId).trim()
 					: null,
 			statusId: payload.statusId ?? StatusEnum.ACTIVE,
@@ -397,7 +426,8 @@ export async function deleteProgressNote(input: {
 	if (!existing) throw new Error('Progress note not found');
 	await assertVisitNotClinicallySigned(existing.visitId);
 	const remark =
-		input.deleteRemark != null && String(input.deleteRemark).trim() !== ''
+		input.deleteRemark != null &&
+		String(input.deleteRemark).trim() !== ''
 			? String(input.deleteRemark).trim()
 			: null;
 	await ensureDb()
@@ -467,24 +497,30 @@ export async function getPatientFormEntriesByPatientIdAndFormCode(input: {
 	const formNameId = await getFormNameIdByCode(code);
 	if (!formNameId) return [];
 
-	const rows = (await ensureDb().query.patientFormEntryTable.findMany({
-		where: (t, { and, eq, ne }) =>
-			and(
-				eq(t.patientId, patientId),
-				eq(t.formNameId, formNameId),
-				ne(t.statusId, StatusEnum.DELETED)
-			),
-		with: { formName: true, visit: true },
-		orderBy: (t, { desc }) => desc(t.createdAt)
-	})) as PatientFormEntryWithRelations[];
+	const rows = (await ensureDb().query.patientFormEntryTable.findMany(
+		{
+			where: (t, { and, eq, ne }) =>
+				and(
+					eq(t.patientId, patientId),
+					eq(t.formNameId, formNameId),
+					ne(t.statusId, StatusEnum.DELETED)
+				),
+			with: { formName: true, visit: true },
+			orderBy: (t, { desc }) => desc(t.createdAt)
+		}
+	)) as PatientFormEntryWithRelations[];
 
 	if (input.hospitalId) {
-		return rows.filter((r) => r.visit?.hospitalId === input.hospitalId);
+		return rows.filter(
+			(r) => r.visit?.hospitalId === input.hospitalId
+		);
 	}
 	return rows;
 }
 
-async function getFormNameIdByCode(code: string): Promise<number | null> {
+async function getFormNameIdByCode(
+	code: string
+): Promise<number | null> {
 	const row = await ensureDb().query.formNameTable.findFirst({
 		where: (t, { and, eq, ne }) =>
 			and(eq(t.code, code.trim()), ne(t.statusId, StatusEnum.DELETED))
@@ -505,7 +541,8 @@ async function ensureFormNameIdByCode(code: string): Promise<number> {
 			statusId: StatusEnum.ACTIVE
 		})
 		.returning({ id: table.formNameTable.id });
-	if (!created) throw new Error(`Unable to create form name: ${normalizedCode}`);
+	if (!created)
+		throw new Error(`Unable to create form name: ${normalizedCode}`);
 	return created.id;
 }
 
@@ -534,9 +571,11 @@ export async function createPatientFormEntry(payload: {
 	return row;
 }
 
-export async function updatePatientFormEntry(payload: {
-	id: number;
-} & PatientFormEntrySchemaUpdate): Promise<PatientFormEntrySchema> {
+export async function updatePatientFormEntry(
+	payload: {
+		id: number;
+	} & PatientFormEntrySchemaUpdate
+): Promise<PatientFormEntrySchema> {
 	const { id, ...data } = payload;
 	const [existing] = await ensureDb()
 		.select({
@@ -556,7 +595,9 @@ export async function updatePatientFormEntry(payload: {
 	return row;
 }
 
-export async function deletePatientFormEntry(input: { id: number }): Promise<void> {
+export async function deletePatientFormEntry(input: {
+	id: number;
+}): Promise<void> {
 	const [existing] = await ensureDb()
 		.select({
 			visitId: table.patientFormEntryTable.visitId
@@ -579,7 +620,9 @@ export type DocumentWithRelations = DocumentSchema & {
 	patientDocuments: any;
 };
 
-export async function getDocumentsWithRelations(): Promise<DocumentWithRelations[]> {
+export async function getDocumentsWithRelations(): Promise<
+	DocumentWithRelations[]
+> {
 	return (await ensureDb().query.documentTable.findMany({
 		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
 		with: {
@@ -596,7 +639,10 @@ export async function getPatientDocumentsByVisitIdWithRelations(input: {
 }) {
 	return ensureDb().query.patientDocumentTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+			and(
+				eq(t.visitId, input.visitId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
 		with: {
 			patient: true,
 			visit: true,
@@ -634,9 +680,11 @@ export async function createPatientDocument(
 	return row;
 }
 
-export async function updatePatientDocument(payload: {
-	id: number;
-} & PatientDocumentSchemaUpdate): Promise<PatientDocumentSchema> {
+export async function updatePatientDocument(
+	payload: {
+		id: number;
+	} & PatientDocumentSchemaUpdate
+): Promise<PatientDocumentSchema> {
 	const { id, ...rest } = payload;
 	const [pre] = await ensureDb()
 		.select({ visitId: table.patientDocumentTable.visitId })
@@ -696,12 +744,17 @@ export async function signPatientVisitClinical(input: {
 }): Promise<PatientVisitSchema> {
 	// Delegate to existing logic by reproducing minimal checks.
 	const [cur] = await ensureDb()
-		.select({ clinicalSignedAt: table.patientVisitTable.clinicalSignedAt })
+		.select({
+			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt
+		})
 		.from(table.patientVisitTable)
 		.where(eq(table.patientVisitTable.id, input.visitId))
 		.limit(1);
 	if (!cur) throw new Error('Visit not found');
-	if (cur.clinicalSignedAt != null && String(cur.clinicalSignedAt).trim() !== '') {
+	if (
+		cur.clinicalSignedAt != null &&
+		String(cur.clinicalSignedAt).trim() !== ''
+	) {
 		throw new Error('This visit is already saved as signed.');
 	}
 	const [row] = await ensureDb()
@@ -727,7 +780,8 @@ export async function unsignPatientVisitClinical(input: {
 
 	// Only allow "unsign" if it was previously signed; otherwise return the row as-is.
 	const isSigned =
-		cur.clinicalSignedAt != null && String(cur.clinicalSignedAt).trim() !== '';
+		cur.clinicalSignedAt != null &&
+		String(cur.clinicalSignedAt).trim() !== '';
 	if (!isSigned) {
 		const [row] = await ensureDb()
 			.select()
@@ -752,8 +806,17 @@ export async function getPatientAllergiesByPatientIdWithRelations(input: {
 }) {
 	return ensureDb().query.patientAllergyTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.patientId, input.patientId), ne(t.statusId, StatusEnum.DELETED)),
-		with: { patient: true, allergy: true, severity: true, visit: true, status: true },
+			and(
+				eq(t.patientId, input.patientId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
+		with: {
+			patient: true,
+			allergy: true,
+			severity: true,
+			visit: true,
+			status: true
+		},
 		orderBy: (t, { desc }) => desc(t.id)
 	});
 }
@@ -777,21 +840,38 @@ export async function getPatientAllergiesByPatientIdWithRelationsPaginated(input
 	const visitNoTerm = input.visitNo?.trim().toLowerCase();
 	const severityTerm = input.severityName?.trim().toLowerCase();
 	const filtered = rows.filter((row: any) => {
-		if (input.hospitalId && row.visit?.hospitalId !== input.hospitalId) return false;
-		if (input.statusId != null && row.statusId !== input.statusId) return false;
-		if (visitNoTerm && !(row.visit?.visitNo ?? '').toLowerCase().includes(visitNoTerm)) return false;
-		if (severityTerm && !(row.severity?.name ?? '').toLowerCase().includes(severityTerm)) return false;
+		if (
+			input.hospitalId &&
+			row.visit?.hospitalId !== input.hospitalId
+		)
+			return false;
+		if (input.statusId != null && row.statusId !== input.statusId)
+			return false;
+		if (
+			visitNoTerm &&
+			!(row.visit?.visitNo ?? '').toLowerCase().includes(visitNoTerm)
+		)
+			return false;
+		if (
+			severityTerm &&
+			!(row.severity?.name ?? '').toLowerCase().includes(severityTerm)
+		)
+			return false;
 		return true;
 	});
 	const page = Math.max(1, Math.floor(input.page));
 	const pageSize = Math.max(1, Math.floor(input.pageSize));
 	const offset = (page - 1) * pageSize;
-	return { data: filtered.slice(offset, offset + pageSize), total: filtered.length };
+	return {
+		data: filtered.slice(offset, offset + pageSize),
+		total: filtered.length
+	};
 }
 
-export async function deletePatientAllergies(
-	input: { id: number; skipClinicalLock?: boolean }
-): Promise<void> {
+export async function deletePatientAllergies(input: {
+	id: number;
+	skipClinicalLock?: boolean;
+}): Promise<void> {
 	const { skipClinicalLock, ...rest } = input;
 	const [existing] = await ensureDb()
 		.select({ visitId: table.patientAllergyTable.visitId })
@@ -807,7 +887,9 @@ export async function deletePatientAllergies(
 		.where(eq(table.patientAllergyTable.id, rest.id));
 }
 
-export async function listAllergiesMaster(): Promise<AllergySchema[]> {
+export async function listAllergiesMaster(): Promise<
+	AllergySchema[]
+> {
 	return ensureDb()
 		.select()
 		.from(table.allergyTable)
@@ -840,7 +922,8 @@ export async function getAllergyMasterPaginated(
 	pageSize: number;
 	totalPages: number;
 }> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const search = params?.search?.trim();
 	let whereExpr = ne(table.allergyTable.statusId, StatusEnum.DELETED);
 	if (search) {
@@ -876,7 +959,8 @@ export async function createAllergyMaster(
 	payload: AllergySchemaInsert
 ): Promise<AllergySchema> {
 	// Normalize to reduce case/whitespace duplicates and align with likely DB uniqueness rules.
-	const nameRaw = typeof payload.name === 'string' ? payload.name : '';
+	const nameRaw =
+		typeof payload.name === 'string' ? payload.name : '';
 	const name = nameRaw.replace(/\s+/g, ' ').trim();
 	if (!name) throw error(400, 'Allergy name is required.');
 
@@ -1063,7 +1147,9 @@ export async function getPatientVitalsByVisitId(input: {
 		.orderBy(desc(table.patientDiagnosisTable.createdAt));
 }
 
-export async function deletePatientVital(input: { id: number }): Promise<void> {
+export async function deletePatientVital(input: {
+	id: number;
+}): Promise<void> {
 	const [existing] = await ensureDb()
 		.select({ visitId: table.patientDiagnosisTable.visitId })
 		.from(table.patientDiagnosisTable)
@@ -1093,7 +1179,10 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 > {
 	const orders = await ensureDb().query.serviceOrderTable.findMany({
 		where: (t, { and, eq, ne }) =>
-			and(eq(t.visitId, input.visitId), ne(t.statusId, StatusEnum.DELETED)),
+			and(
+				eq(t.visitId, input.visitId),
+				ne(t.statusId, StatusEnum.DELETED)
+			),
 		columns: { id: true, orderNo: true },
 		with: {
 			details: {
@@ -1119,8 +1208,12 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 				name: table.subCategoryTable.subCategoryName
 			})
 			.from(table.subCategoryTable)
-			.where(inArray(table.subCategoryTable.id, Array.from(subCategoryIds)));
-		subCategoryNameById = new Map(subCategories.map((r) => [r.id, r.name]));
+			.where(
+				inArray(table.subCategoryTable.id, Array.from(subCategoryIds))
+			);
+		subCategoryNameById = new Map(
+			subCategories.map((r) => [r.id, r.name])
+		);
 	}
 
 	const out: (ServiceOrderDetailSchema & {
@@ -1135,7 +1228,9 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 			const { serviceItem, ...detailRow } = d as any;
 			const subCategoryId = serviceItem?.subCategoryId ?? null;
 			const subCategoryName =
-				subCategoryId != null ? subCategoryNameById.get(subCategoryId) ?? null : null;
+				subCategoryId != null
+					? (subCategoryNameById.get(subCategoryId) ?? null)
+					: null;
 			out.push({
 				...(detailRow as ServiceOrderDetailSchema),
 				orderNo: ord.orderNo ?? null,
@@ -1154,11 +1249,16 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
 	const rows = await ensureDb()
-		.select({ detailId: table.opBillingLineTable.serviceOrderDetailId })
+		.select({
+			detailId: table.opBillingLineTable.serviceOrderDetailId
+		})
 		.from(table.opBillingLineTable)
 		.innerJoin(
 			table.opBillingTable,
-			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+			eq(
+				table.opBillingLineTable.opBillingId,
+				table.opBillingTable.id
+			)
 		)
 		.where(
 			and(
@@ -1182,11 +1282,16 @@ export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
 	const rows = await ensureDb()
-		.select({ lineId: table.opBillingLineTable.medicationOrderLineId })
+		.select({
+			lineId: table.opBillingLineTable.medicationOrderLineId
+		})
 		.from(table.opBillingLineTable)
 		.innerJoin(
 			table.opBillingTable,
-			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+			eq(
+				table.opBillingLineTable.opBillingId,
+				table.opBillingTable.id
+			)
 		)
 		.where(
 			and(
@@ -1251,7 +1356,10 @@ async function getDefaultServiceItemForPharmacyOpBilling(input: {
 		.from(table.serviceTaggingTable)
 		.innerJoin(
 			table.serviceItemTable,
-			eq(table.serviceTaggingTable.serviceId, table.serviceItemTable.id)
+			eq(
+				table.serviceTaggingTable.serviceId,
+				table.serviceItemTable.id
+			)
 		)
 		.where(
 			and(
@@ -1302,7 +1410,10 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	const inv = table.invStockTable;
 	const ib = table.itemBatchTable;
 
-	const onClosed = await getMedicationOrderLineIdsOnClosedOpBillsForVisit({ visitId });
+	const onClosed =
+		await getMedicationOrderLineIdsOnClosedOpBillsForVisit({
+			visitId
+		});
 
 	const rawLines = await ensureDb()
 		.select({
@@ -1328,7 +1439,10 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 
 	if (rawLines.length === 0) return [];
 
-	const svc = await getDefaultServiceItemForPharmacyOpBilling({ hospitalId, branchId });
+	const svc = await getDefaultServiceItemForPharmacyOpBilling({
+		hospitalId,
+		branchId
+	});
 	let subCategoryName: string | null = null;
 	const [sc] = await ensureDb()
 		.select({ name: table.subCategoryTable.subCategoryName })
@@ -1343,7 +1457,10 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	}
 	const orPairs = [...pairSet]
 		.map((k) => {
-			const [s, i] = k.split(':').map((x) => Number(x)) as [number, number];
+			const [s, i] = k.split(':').map((x) => Number(x)) as [
+				number,
+				number
+			];
 			return and(eq(inv.storeId, s), eq(inv.itemId, i))!;
 		})
 		.filter(Boolean);
@@ -1351,9 +1468,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	const priceByPair = new Map<string, string | null>();
 	if (orPairs.length > 0) {
 		const storeItemOr =
-			orPairs.length === 1
-				? orPairs[0]!
-				: or(...orPairs);
+			orPairs.length === 1 ? orPairs[0]! : or(...orPairs);
 		const priceRows = await ensureDb()
 			.select({
 				storeId: inv.storeId,
@@ -1371,7 +1486,10 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			)
 			.groupBy(inv.storeId, inv.itemId);
 		for (const pr of priceRows) {
-			priceByPair.set(`${pr.storeId}:${pr.itemId}`, pr.minP != null ? String(pr.minP) : null);
+			priceByPair.set(
+				`${pr.storeId}:${pr.itemId}`,
+				pr.minP != null ? String(pr.minP) : null
+			);
 		}
 	}
 
@@ -1398,9 +1516,12 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	return out;
 }
 
-function isNursingCompleteTimeSet(nursingCompleteTime: string | null): boolean {
+function isNursingCompleteTimeSet(
+	nursingCompleteTime: string | null
+): boolean {
 	return (
-		nursingCompleteTime != null && String(nursingCompleteTime).trim() !== ''
+		nursingCompleteTime != null &&
+		String(nursingCompleteTime).trim() !== ''
 	);
 }
 
@@ -1415,16 +1536,18 @@ export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 	branchId: string;
 }): Promise<OpBillingPendingLineRow[]> {
 	const all = await getServiceOrderDetailRowsForVisit(input);
-	const onClosed = await getServiceOrderDetailIdsOnClosedOpBillsForVisit(input);
+	const onClosed =
+		await getServiceOrderDetailIdsOnClosedOpBillsForVisit(input);
 	const serviceRows: OpBillingPendingServiceLineRow[] = all
 		.filter(
 			(r) =>
-				isNursingCompleteTimeSet(r.nursingCompleteTime) && !onClosed.has(r.id)
+				isNursingCompleteTimeSet(r.nursingCompleteTime) &&
+				!onClosed.has(r.id)
 		)
 		.map((r) => ({
 			...r,
 			lineSource: 'service_order_detail' as const,
-			medicationOrderLineId: null as const
+			medicationOrderLineId: null
 		}));
 	const medRows = await getPendingMedicationOrderRowsForOpBilling({
 		visitId: input.visitId,
@@ -1442,7 +1565,10 @@ export async function assertServiceOrderDetailNotLockedByClosedOpBill(
 		.from(table.opBillingLineTable)
 		.innerJoin(
 			table.opBillingTable,
-			eq(table.opBillingLineTable.opBillingId, table.opBillingTable.id)
+			eq(
+				table.opBillingLineTable.opBillingId,
+				table.opBillingTable.id
+			)
 		)
 		.where(
 			and(
@@ -1482,7 +1608,9 @@ export async function createServiceOrderDetail(
 	opts?: { skipClinicalLock?: boolean }
 ): Promise<ServiceOrderDetailSchema> {
 	if (!opts?.skipClinicalLock) {
-		await assertVisitNotClinicallySignedByServiceOrderId(payload.serviceOrderId);
+		await assertVisitNotClinicallySignedByServiceOrderId(
+			payload.serviceOrderId
+		);
 	}
 	const [row] = await ensureDb()
 		.insert(table.serviceOrderDetailTable)
@@ -1498,11 +1626,14 @@ export async function updateServiceOrderDetail(
 ): Promise<ServiceOrderDetailSchema> {
 	const { id, ...rest } = payload;
 	const [existingDetail] = await ensureDb()
-		.select({ serviceOrderId: table.serviceOrderDetailTable.serviceOrderId })
+		.select({
+			serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
+		})
 		.from(table.serviceOrderDetailTable)
 		.where(eq(table.serviceOrderDetailTable.id, id))
 		.limit(1);
-	if (!existingDetail) throw new Error('Service order detail not found');
+	if (!existingDetail)
+		throw new Error('Service order detail not found');
 	if (!opts?.skipClinicalLock) {
 		await assertVisitNotClinicallySignedByServiceOrderId(
 			existingDetail.serviceOrderId
@@ -1518,17 +1649,22 @@ export async function updateServiceOrderDetail(
 	return row;
 }
 
-export async function deleteServiceOrderDetail(
-	input: { id: number; skipClinicalLock?: boolean }
-): Promise<void> {
+export async function deleteServiceOrderDetail(input: {
+	id: number;
+	skipClinicalLock?: boolean;
+}): Promise<void> {
 	const { skipClinicalLock, id } = input;
 	const [existing] = await ensureDb()
-		.select({ serviceOrderId: table.serviceOrderDetailTable.serviceOrderId })
+		.select({
+			serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
+		})
 		.from(table.serviceOrderDetailTable)
 		.where(eq(table.serviceOrderDetailTable.id, id))
 		.limit(1);
 	if (existing && !skipClinicalLock) {
-		await assertVisitNotClinicallySignedByServiceOrderId(existing.serviceOrderId);
+		await assertVisitNotClinicallySignedByServiceOrderId(
+			existing.serviceOrderId
+		);
 	}
 	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
 	await ensureDb()
@@ -1674,7 +1810,10 @@ export async function getServiceTagging(input: {
 		ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED)
 	);
 	if (input.serviceId != null) {
-		whereExpr = and(whereExpr, eq(table.serviceTaggingTable.serviceId, input.serviceId));
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceTaggingTable.serviceId, input.serviceId)
+		);
 	}
 	return ensureDb()
 		.select()
@@ -1688,14 +1827,29 @@ export async function getServiceItem(input: {
 	statusId: number | null;
 	id?: number;
 }): Promise<ServiceItemSchema[]> {
-	let whereExpr: any = and(eq(table.serviceItemTable.hospitalId, input.hospitalId));
+	let whereExpr: any = and(
+		eq(table.serviceItemTable.hospitalId, input.hospitalId)
+	);
 	if (input.statusId != null) {
-		whereExpr = and(whereExpr, eq(table.serviceItemTable.statusId, input.statusId));
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, input.statusId)
+		);
 	} else {
-		whereExpr = and(whereExpr, ne(table.serviceItemTable.statusId, StatusEnum.DELETED));
+		whereExpr = and(
+			whereExpr,
+			ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+		);
 	}
-	if (input.id != null) whereExpr = and(whereExpr, eq(table.serviceItemTable.id, input.id));
-	return ensureDb().select().from(table.serviceItemTable).where(whereExpr);
+	if (input.id != null)
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, input.id)
+		);
+	return ensureDb()
+		.select()
+		.from(table.serviceItemTable)
+		.where(whereExpr);
 }
 
 export async function getServiceItemPaginated(input: {
@@ -1706,13 +1860,35 @@ export async function getServiceItemPaginated(input: {
 	pageSize: number;
 }): Promise<{ data: ServiceItemSchema[] }> {
 	const q = input.serviceName?.trim();
-	let whereExpr: any = and(eq(table.serviceItemTable.hospitalId, input.hospitalId));
-	if (input.statusId != null) whereExpr = and(whereExpr, eq(table.serviceItemTable.statusId, input.statusId));
-	else whereExpr = and(whereExpr, ne(table.serviceItemTable.statusId, StatusEnum.DELETED));
-	if (q) whereExpr = and(whereExpr, ilike(table.serviceItemTable.serviceName, `%${q}%`));
+	let whereExpr: any = and(
+		eq(table.serviceItemTable.hospitalId, input.hospitalId)
+	);
+	if (input.statusId != null)
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, input.statusId)
+		);
+	else
+		whereExpr = and(
+			whereExpr,
+			ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+		);
+	if (q)
+		whereExpr = and(
+			whereExpr,
+			ilike(table.serviceItemTable.serviceName, `%${q}%`)
+		);
 	const limit = Math.max(1, Math.floor(input.pageSize));
-	const offset = Math.max(0, (Math.max(1, Math.floor(input.page)) - 1) * limit);
-	const data = await ensureDb().select().from(table.serviceItemTable).where(whereExpr).limit(limit).offset(offset);
+	const offset = Math.max(
+		0,
+		(Math.max(1, Math.floor(input.page)) - 1) * limit
+	);
+	const data = await ensureDb()
+		.select()
+		.from(table.serviceItemTable)
+		.where(whereExpr)
+		.limit(limit)
+		.offset(offset);
 	return { data };
 }
 
@@ -1725,7 +1901,10 @@ export async function getDoctorStaffPaginated(input: {
 	const q = input.search?.trim();
 	const pattern = q ? `%${q}%` : null;
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${input.hospitalId})`;
-	const notDeletedCondition = ne(table.staffTable.statusId, StatusEnum.DELETED);
+	const notDeletedCondition = ne(
+		table.staffTable.statusId,
+		StatusEnum.DELETED
+	);
 	const doctorCondition = eq(table.staffTable.staffTypeId, 3);
 	const searchCondition =
 		pattern &&
@@ -1736,10 +1915,18 @@ export async function getDoctorStaffPaginated(input: {
 			sql`concat_ws(' ', ${table.staffTable.firstName}, ${table.staffTable.middleName}, ${table.staffTable.lastName}) ILIKE ${pattern}`
 		);
 	let whereExpr: any = searchCondition
-		? and(notDeletedCondition, doctorCondition, hospitalCondition, searchCondition)
+		? and(
+				notDeletedCondition,
+				doctorCondition,
+				hospitalCondition,
+				searchCondition
+			)
 		: and(notDeletedCondition, doctorCondition, hospitalCondition);
 	const limit = Math.max(1, Math.floor(input.pageSize));
-	const offset = Math.max(0, (Math.max(1, Math.floor(input.page)) - 1) * limit);
+	const offset = Math.max(
+		0,
+		(Math.max(1, Math.floor(input.page)) - 1) * limit
+	);
 	const data = (await ensureDb().query.staffTable.findMany({
 		where: whereExpr,
 		with: { title: true, specialization: true, staffDetail: true },
@@ -1766,7 +1953,9 @@ export async function getStaffByIdWithRelations(input: {
 	);
 }
 
-export function assertValidHospitalIdOrThrow(hospitalId: string): void {
+export function assertValidHospitalIdOrThrow(
+	hospitalId: string
+): void {
 	if (!hospitalId) throw error(400, 'Hospital is required');
 }
 
@@ -1782,7 +1971,9 @@ function formatPrintDate(value: string | null | undefined): string {
 	return date.toLocaleDateString();
 }
 
-function formatPrintDateTime(value: string | null | undefined): string {
+function formatPrintDateTime(
+	value: string | null | undefined
+): string {
 	if (!value) return '—';
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return '—';
@@ -1803,7 +1994,10 @@ export async function getVisitServiceLinePrintRows(input: {
 		.from(table.serviceOrderDetailTable)
 		.where(
 			and(
-				inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
+				inArray(
+					table.serviceOrderDetailTable.serviceOrderId,
+					orderIds
+				),
 				ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
 			)
 		)
@@ -1858,4 +2052,3 @@ export async function getVisitServiceLinePrintRows(input: {
 		};
 	});
 }
-

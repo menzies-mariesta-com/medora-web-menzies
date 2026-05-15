@@ -7,7 +7,16 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, count, desc, ilike, ne, or, sql, eq } from 'drizzle-orm';
+import {
+	and,
+	count,
+	desc,
+	ilike,
+	ne,
+	or,
+	sql,
+	eq
+} from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 
 const staffWithRelationsWith = {
@@ -56,13 +65,16 @@ export async function getStaffListPaginated(
 	const hospitalId = params.hospitalId;
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const searchTerm = params.search?.trim();
 	const staffCode = params.staffCode?.trim();
 	const staffName = params.staffName?.trim();
 	const staffPhonePrimary = params.staffPhonePrimary?.trim();
 
-	const conditions = [ne(table.staffTable.statusId, StatusEnum.DELETED)];
+	const conditions = [
+		ne(table.staffTable.statusId, StatusEnum.DELETED)
+	];
 
 	if (searchTerm) {
 		const pattern = `%${searchTerm}%`;
@@ -156,7 +168,9 @@ export async function deleteStaff(
 	await ensureDb()
 		.update(table.staffTable)
 		.set({ statusId: StatusEnum.DELETED })
-		.where(and(eq(table.staffTable.id, params.id), hospitalCondition));
+		.where(
+			and(eq(table.staffTable.id, params.id), hospitalCondition)
+		);
 }
 
 /** Session bootstrap: staff row + relations for the logged-in user (any hospital). */
@@ -206,4 +220,3 @@ export async function updateStaffStatusForSelf(
 	if (!row) throw error(404, 'Staff not found');
 	return row;
 }
-

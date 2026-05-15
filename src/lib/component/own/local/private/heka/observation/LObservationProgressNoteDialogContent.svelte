@@ -25,8 +25,12 @@
 			page.params.hospital_id ??
 			''
 	);
-	const visitId = $derived(ObservationProgressNoteDialogState.visitId);
-	const patientId = $derived(ObservationProgressNoteDialogState.patientId);
+	const visitId = $derived(
+		ObservationProgressNoteDialogState.visitId
+	);
+	const patientId = $derived(
+		ObservationProgressNoteDialogState.patientId
+	);
 	const progressNoteId = $derived(
 		ObservationProgressNoteDialogState.progressNoteId
 	);
@@ -45,7 +49,10 @@
 		statusId: number | null;
 	};
 
-	async function apiGet<T>(mode: string, params?: Record<string, string>) {
+	async function apiGet<T>(
+		mode: string,
+		params?: Record<string, string>
+	) {
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(
@@ -101,9 +108,12 @@
 	}
 
 	async function getDoctorLabelForValue(id: string): Promise<string> {
-		const staff = await apiGet<StaffWithRelations | null>('staff.get', {
-			id
-		});
+		const staff = await apiGet<StaffWithRelations | null>(
+			'staff.get',
+			{
+				id
+			}
+		);
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
@@ -169,7 +179,9 @@
 						id: progressNoteId,
 						note: trimmedNote,
 						doctorId:
-							doctorIdInput.trim() !== '' ? doctorIdInput.trim() : null,
+							doctorIdInput.trim() !== ''
+								? doctorIdInput.trim()
+								: null,
 						statusId
 					}
 				});
@@ -235,7 +247,10 @@
 	</div>
 	{#if isEdit}
 		<div class="flex flex-col gap-1">
-			<DaisyUiLabel forText="progress-note-status" className="text-sm">
+			<DaisyUiLabel
+				forText="progress-note-status"
+				className="text-sm"
+			>
 				{m.observation_emr_status()}
 			</DaisyUiLabel>
 			<DaisyUiSelect

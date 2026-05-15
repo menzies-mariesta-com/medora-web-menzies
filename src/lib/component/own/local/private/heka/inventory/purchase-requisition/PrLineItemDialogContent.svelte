@@ -38,17 +38,31 @@
 	let lastTrimKey: string | null = null;
 	$effect(() => {
 		if (!draftLine) return;
-		const k = typeof draftLine?.key === 'string' ? (draftLine.key as string) : null;
+		const k =
+			typeof draftLine?.key === 'string'
+				? (draftLine.key as string)
+				: null;
 		// Dialog component can be reused across opens; trim once per line key.
 		if (k && lastTrimKey === k) return;
-		trimInventoryDraftNumericFieldsInPlace(draftLine as Record<string, unknown>, ['quantity']);
+		trimInventoryDraftNumericFieldsInPlace(
+			draftLine as Record<string, unknown>,
+			['quantity']
+		);
 		lastTrimKey = k;
 	});
 
 	function purchaseUnitForDraftLine(): number | null {
-		const list = (draftLine?.iumList ?? []) as Array<{ id: number; purchaseUnitId?: number }>;
-		const selectedId = (draftLine?.itemUnitMasterId ?? null) as number | null;
-		const ium = selectedId != null ? list.find((u) => u.id === selectedId) : undefined;
+		const list = (draftLine?.iumList ?? []) as Array<{
+			id: number;
+			purchaseUnitId?: number;
+		}>;
+		const selectedId = (draftLine?.itemUnitMasterId ?? null) as
+			| number
+			| null;
+		const ium =
+			selectedId != null
+				? list.find((u) => u.id === selectedId)
+				: undefined;
 		return ium?.purchaseUnitId ?? null;
 	}
 
@@ -62,7 +76,9 @@
 		};
 	}
 
-	async function searchItemsWithStock(q: string): Promise<SearchOpt[]> {
+	async function searchItemsWithStock(
+		q: string
+	): Promise<SearchOpt[]> {
 		const base = await searchItemsFn(q);
 		const se = stockEnrichment;
 		if (!se?.hospitalId) return base;
@@ -78,10 +94,18 @@
 
 		const [fromMap, toMap] = await Promise.all([
 			fromStoreId != null
-				? fetchStockLabelsForItemsAtStore(se.hospitalId, fromStoreId, uniq)
+				? fetchStockLabelsForItemsAtStore(
+						se.hospitalId,
+						fromStoreId,
+						uniq
+					)
 				: Promise.resolve(new Map<number, string>()),
 			toStoreId != null
-				? fetchStockLabelsForItemsAtStore(se.hospitalId, toStoreId, uniq)
+				? fetchStockLabelsForItemsAtStore(
+						se.hospitalId,
+						toStoreId,
+						uniq
+					)
 				: Promise.resolve(new Map<number, string>())
 		]);
 
@@ -131,14 +155,22 @@
 		(async () => {
 			try {
 				if (fromS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, fromS, [itemId]);
+					const map = await fetchStockLabelsForItemsAtStore(
+						hospitalId,
+						fromS,
+						[itemId]
+					);
 					tiles.push({
 						label: m.inv_line_modal_on_hand_selected(),
 						value: map.get(itemId) ?? '0'
 					});
 				}
 				if (toS != null) {
-					const map = await fetchStockLabelsForItemsAtStore(hospitalId, toS, [itemId]);
+					const map = await fetchStockLabelsForItemsAtStore(
+						hospitalId,
+						toS,
+						[itemId]
+					);
 					tiles.push({
 						label: m.inv_line_modal_on_hand_to(),
 						value: map.get(itemId) ?? '0'
@@ -173,10 +205,14 @@
 
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_pr_line_item_search()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_pr_line_item_search()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
 			value={draftLine?.itemId ? String(draftLine.itemId) : ''}
-			searchFn={stockEnrichment ? searchItemsWithStock : searchItemsFn}
+			searchFn={stockEnrichment
+				? searchItemsWithStock
+				: searchItemsFn}
 			invalidateKey={stockEnrichment
 				? `${stockEnrichment.hospitalId}:${stockEnrichment.selectedStoreId ?? ''}:${
 						stockEnrichment.toStoreId ?? ''
@@ -199,9 +235,13 @@
 	</div>
 
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_unit()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_unit()}</DaisyUiLabel
+		>
 		<DaisyUISearchSelect
-			value={draftLine?.itemUnitMasterId != null ? String(draftLine.itemUnitMasterId) : ''}
+			value={draftLine?.itemUnitMasterId != null
+				? String(draftLine.itemUnitMasterId)
+				: ''}
 			options={(draftLine?.iumList ?? []).map((u: any) => ({
 				label: u.conversionDisplay,
 				value: String(u.id)
@@ -216,11 +256,20 @@
 	</div>
 
 	<div>
-		<DaisyUiLabel className="text-xs opacity-80">{m.inv_common_quantity()}</DaisyUiLabel>
+		<DaisyUiLabel className="text-xs opacity-80"
+			>{m.inv_common_quantity()}</DaisyUiLabel
+		>
 		<input
-			type="text"
-			class="d-input d-input-bordered w-full"
-			bind:value={draftLine.quantity}
+			type="number"
+			class="d-input-bordered d-input w-full"
+			value={draftLine.quantity == null || draftLine.quantity === ''
+				? ''
+				: String(draftLine.quantity)}
+			oninput={(e) => {
+				draftLine.quantity = e.currentTarget.value;
+			}}
+			step="1"
+			min="0"
 			disabled={draftLine?.itemId == null || pickingItem}
 			aria-label={m.inv_common_quantity()}
 		/>
@@ -233,7 +282,12 @@
 />
 
 <div class="d-modal-action mt-6">
-	<DaisyUiButton type="button" className="d-btn" disabled={saving} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={saving}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
 	<DaisyUiButton

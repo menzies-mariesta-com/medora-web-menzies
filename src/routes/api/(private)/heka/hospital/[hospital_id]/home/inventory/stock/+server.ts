@@ -39,6 +39,8 @@ export const GET: RequestHandler = async (event) => {
 					batchNo: batch.batchNo,
 					expiryDate: batch.expiryDate,
 					purchasePrice: batch.purchasePrice,
+					salePrice: batch.salePrice,
+					empSalePrice: batch.empSalePrice,
 					itemName,
 					storeName,
 					issueUnitName: issueUnitName ?? null
@@ -49,8 +51,10 @@ export const GET: RequestHandler = async (event) => {
 	const data = await listStockAggregated(event, {
 		hospitalId,
 		storeId,
-		itemId: itemIds != null && itemIds.length > 0 ? undefined : itemId,
-		itemIds: itemIds != null && itemIds.length > 0 ? itemIds : undefined
+		itemId:
+			itemIds != null && itemIds.length > 0 ? undefined : itemId,
+		itemIds:
+			itemIds != null && itemIds.length > 0 ? itemIds : undefined
 	});
 	return json(data);
 };

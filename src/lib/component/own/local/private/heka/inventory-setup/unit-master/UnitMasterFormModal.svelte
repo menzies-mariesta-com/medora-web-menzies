@@ -20,7 +20,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -52,10 +53,7 @@
 			if (typesRes.ok) {
 				unitTypes = (await typesRes.json()) as UnitTypeListRow[];
 			}
-			if (
-				modalState.mode === 'edit' &&
-				modalState.editRow != null
-			) {
+			if (modalState.mode === 'edit' && modalState.editRow != null) {
 				const r = modalState.editRow;
 				name = r.name ?? '';
 				unitTypeIdStr =
@@ -76,14 +74,16 @@
 			return;
 		}
 		if (!apiBase) {
-			toastService.addToast(m.unit_master_load_failed(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.unit_master_load_failed(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
-		const ut =
-			unitTypeIdStr === '' ? null : Number(unitTypeIdStr);
+		const ut = unitTypeIdStr === '' ? null : Number(unitTypeIdStr);
 		isSubmitting = true;
 		try {
 			if (modalState.mode === 'create') {
@@ -179,7 +179,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel className="shrink-0 sm:w-40">{m.status()}</DaisyUiLabel>
+			<DaisyUiLabel className="shrink-0 sm:w-40"
+				>{m.status()}</DaisyUiLabel
+			>
 			<div class="flex max-w-lg flex-1 flex-wrap items-center gap-2">
 				<label class="flex cursor-pointer items-center gap-2">
 					<DaisyUiCheckbox bind:checked={formActive} />

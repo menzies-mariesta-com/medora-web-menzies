@@ -18,11 +18,10 @@
 		className = '',
 		menubar = false,
 		id = `tinymce-${crypto.randomUUID()}`,
-		apiKey =
-			typeof env.PUBLIC_TINYMCE_API_KEY === 'string' &&
-			env.PUBLIC_TINYMCE_API_KEY
-				? env.PUBLIC_TINYMCE_API_KEY
-				: 'no-api-key',
+		apiKey = typeof env.PUBLIC_TINYMCE_API_KEY === 'string' &&
+		env.PUBLIC_TINYMCE_API_KEY
+			? env.PUBLIC_TINYMCE_API_KEY
+			: 'no-api-key',
 		channel = '8',
 		conf: confUser = {} as TinyMceConf,
 		cssClass = 'tinymce-editor-wrap',

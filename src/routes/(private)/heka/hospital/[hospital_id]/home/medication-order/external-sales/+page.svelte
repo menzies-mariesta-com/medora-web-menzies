@@ -12,7 +12,9 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -31,7 +33,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -57,7 +60,9 @@
 		return new Date(s).toISOString();
 	}
 
-	const minStart = $derived.by(() => toDateTimeLocalValue(new Date()));
+	const minStart = $derived.by(() =>
+		toDateTimeLocalValue(new Date())
+	);
 
 	let masters = $state<MedicationOrderMastersResponse | null>(null);
 
@@ -69,12 +74,18 @@
 	);
 	let storeLabel = $state('');
 
-	let pharmacyGenerics = $state<{ id: number; name: string; code: string | null }[]>([]);
+	let pharmacyGenerics = $state<
+		{ id: number; name: string; code: string | null }[]
+	>([]);
 	let pharmacyGenericId = $state('');
 
 	let itemValueStr = $state('');
 	let lastItemSearchRows = $state<
-		{ id: number; itemName: string | null; displayPrice: string | null }[]
+		{
+			id: number;
+			itemName: string | null;
+			displayPrice: string | null;
+		}[]
 	>([]);
 	let selectedItem = $state<{
 		id: number;
@@ -82,7 +93,9 @@
 		displayPrice: string | null;
 	} | null>(null);
 
-	const itemFilterKey = $derived(`${storeIdStr}|${pharmacyGenericId}`);
+	const itemFilterKey = $derived(
+		`${storeIdStr}|${pharmacyGenericId}`
+	);
 	let prevItemFilterKey = $state<string | null>(null);
 
 	let dose = $state('1');
@@ -166,15 +179,22 @@
 		pharmacyGenerics = pack.data ?? [];
 	}
 
-	async function resolveStoreLabelForId(idStr: string): Promise<string> {
+	async function resolveStoreLabelForId(
+		idStr: string
+	): Promise<string> {
 		if (!idStr || !hospitalId) return '';
 		const u = new URL(apiRoot(), window.location.origin);
 		u.searchParams.set('mode', 'stores.search');
 		const res = await fetch(u, { credentials: 'include' });
 		if (!res.ok) return `Store #${idStr}`;
-		const rows = (await res.json()) as { id: number; storeName: string | null }[];
+		const rows = (await res.json()) as {
+			id: number;
+			storeName: string | null;
+		}[];
 		const hit = rows.find((r) => String(r.id) === idStr);
-		return hit ? (hit.storeName?.trim() || `#${hit.id}`) : `Store #${idStr}`;
+		return hit
+			? hit.storeName?.trim() || `#${hit.id}`
+			: `Store #${idStr}`;
 	}
 
 	async function searchStoresForSelect(query: string) {
@@ -184,7 +204,10 @@
 		if (query.trim()) u.searchParams.set('name', query.trim());
 		const res = await fetch(u, { credentials: 'include' });
 		if (!res.ok) return [];
-		const rows = (await res.json()) as { id: number; storeName: string | null }[];
+		const rows = (await res.json()) as {
+			id: number;
+			storeName: string | null;
+		}[];
 		return rows.map((s) => ({
 			value: String(s.id),
 			label: s.storeName?.trim() || `Store #${s.id}`
@@ -216,7 +239,9 @@
 		}));
 	}
 
-	async function getItemLabelForValue(idStr: string): Promise<string> {
+	async function getItemLabelForValue(
+		idStr: string
+	): Promise<string> {
 		if (!idStr) return '';
 		if (selectedItem && String(selectedItem.id) === idStr) {
 			return `${selectedItem.itemName?.trim() || '—'}${selectedItem.displayPrice != null ? ` · ${selectedItem.displayPrice}` : ''}`;
@@ -282,117 +307,125 @@
 
 	const dash = () => m.med_order_int_not_applicable();
 
-	const historyColumns = $derived.by((): MariTableColumn<MedicationOrderBatchHistoryRow>[] => [
-		{
-			id: 'id',
-			header: m.med_order_int_hist_id(),
-			widthClass: 'min-w-[4rem]',
-			filterable: true,
-			field: 'id',
-			format: (v) => String(v ?? dash())
-		},
-		{
-			id: 'hospitalId',
-			header: m.med_order_int_hist_hospital_id(),
-			widthClass: 'min-w-[12rem] max-w-[14rem] font-mono text-xs',
-			filterable: true,
-			field: 'hospitalId',
-			format: (v) => (typeof v === 'string' && v ? v : dash())
-		},
-		{
-			id: 'visitId',
-			header: m.med_order_int_hist_visit_id(),
-			widthClass: 'min-w-[5rem]',
-			filterable: true,
-			field: 'visitId',
-			format: (v) => (v != null && v !== '' ? String(v) : dash())
-		},
-		{
-			id: 'batchNo',
-			header: m.med_order_int_batch(),
-			widthClass: 'min-w-[8rem]',
-			filterable: true,
-			field: 'batchNo'
-		},
-		{
-			id: 'store',
-			header: m.med_order_int_store(),
-			widthClass: 'min-w-[10rem]',
-			filterable: true,
-			format: (_v, row) =>
-				storeNameById[row.storeId] ?? String(row.storeId)
-		},
-		{
-			id: 'extCustomerName',
-			header: m.med_order_int_hist_ext_customer(),
-			widthClass: 'min-w-[8rem]',
-			filterable: true,
-			field: 'extCustomerName',
-			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
-		},
-		{
-			id: 'advisingDoctor',
-			header: m.med_order_int_hist_advising_doctor(),
-			widthClass: 'min-w-[8rem]',
-			filterable: true,
-			field: 'advisingDoctor',
-			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
-		},
-		{
-			id: 'lineCount',
-			header: m.med_order_int_hist_lines(),
-			widthClass: 'min-w-[4rem]',
-			filterable: true,
-			field: 'lineCount',
-			format: (v) => String(v ?? dash())
-		},
-		{
-			id: 'createdAt',
-			header: m.created_at(),
-			widthClass: 'min-w-[11rem]',
-			filterable: false,
-			format: (_v, row) => toDateTimeLocalValue(new Date(row.createdAt))
-		},
-		{
-			id: 'updatedAt',
-			header: m.updated_at(),
-			widthClass: 'min-w-[11rem]',
-			filterable: false,
-			format: (_v, row) => toDateTimeLocalValue(new Date(row.updatedAt))
-		},
-		{
-			id: 'createdByName',
-			header: m.med_order_int_hist_created_by(),
-			widthClass: 'min-w-[9rem]',
-			filterable: true,
-			field: 'createdByName',
-			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
-		},
-		{
-			id: 'createdBy',
-			header: m.med_order_int_hist_created_by_id(),
-			widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
-			filterable: true,
-			field: 'createdBy',
-			format: (v) => (v != null && String(v) ? String(v) : dash())
-		},
-		{
-			id: 'updatedByName',
-			header: m.med_order_int_hist_updated_by(),
-			widthClass: 'min-w-[9rem]',
-			filterable: true,
-			field: 'updatedByName',
-			format: (v) => (v != null && String(v).trim() ? String(v) : dash())
-		},
-		{
-			id: 'updatedBy',
-			header: m.med_order_int_hist_updated_by_id(),
-			widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
-			filterable: true,
-			field: 'updatedBy',
-			format: (v) => (v != null && String(v) ? String(v) : dash())
-		}
-	]);
+	const historyColumns = $derived.by(
+		(): MariTableColumn<MedicationOrderBatchHistoryRow>[] => [
+			{
+				id: 'id',
+				header: m.med_order_int_hist_id(),
+				widthClass: 'min-w-[4rem]',
+				filterable: true,
+				field: 'id',
+				format: (v) => String(v ?? dash())
+			},
+			{
+				id: 'hospitalId',
+				header: m.med_order_int_hist_hospital_id(),
+				widthClass: 'min-w-[12rem] max-w-[14rem] font-mono text-xs',
+				filterable: true,
+				field: 'hospitalId',
+				format: (v) => (typeof v === 'string' && v ? v : dash())
+			},
+			{
+				id: 'visitId',
+				header: m.med_order_int_hist_visit_id(),
+				widthClass: 'min-w-[5rem]',
+				filterable: true,
+				field: 'visitId',
+				format: (v) => (v != null && v !== '' ? String(v) : dash())
+			},
+			{
+				id: 'batchNo',
+				header: m.med_order_int_batch(),
+				widthClass: 'min-w-[8rem]',
+				filterable: true,
+				field: 'batchNo'
+			},
+			{
+				id: 'store',
+				header: m.med_order_int_store(),
+				widthClass: 'min-w-[10rem]',
+				filterable: true,
+				format: (_v, row) =>
+					storeNameById[row.storeId] ?? String(row.storeId)
+			},
+			{
+				id: 'extCustomerName',
+				header: m.med_order_int_hist_ext_customer(),
+				widthClass: 'min-w-[8rem]',
+				filterable: true,
+				field: 'extCustomerName',
+				format: (v) =>
+					v != null && String(v).trim() ? String(v) : dash()
+			},
+			{
+				id: 'advisingDoctor',
+				header: m.med_order_int_hist_advising_doctor(),
+				widthClass: 'min-w-[8rem]',
+				filterable: true,
+				field: 'advisingDoctor',
+				format: (v) =>
+					v != null && String(v).trim() ? String(v) : dash()
+			},
+			{
+				id: 'lineCount',
+				header: m.med_order_int_hist_lines(),
+				widthClass: 'min-w-[4rem]',
+				filterable: true,
+				field: 'lineCount',
+				format: (v) => String(v ?? dash())
+			},
+			{
+				id: 'createdAt',
+				header: m.created_at(),
+				widthClass: 'min-w-[11rem]',
+				filterable: false,
+				format: (_v, row) =>
+					toDateTimeLocalValue(new Date(row.createdAt))
+			},
+			{
+				id: 'updatedAt',
+				header: m.updated_at(),
+				widthClass: 'min-w-[11rem]',
+				filterable: false,
+				format: (_v, row) =>
+					toDateTimeLocalValue(new Date(row.updatedAt))
+			},
+			{
+				id: 'createdByName',
+				header: m.med_order_int_hist_created_by(),
+				widthClass: 'min-w-[9rem]',
+				filterable: true,
+				field: 'createdByName',
+				format: (v) =>
+					v != null && String(v).trim() ? String(v) : dash()
+			},
+			{
+				id: 'createdBy',
+				header: m.med_order_int_hist_created_by_id(),
+				widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
+				filterable: true,
+				field: 'createdBy',
+				format: (v) => (v != null && String(v) ? String(v) : dash())
+			},
+			{
+				id: 'updatedByName',
+				header: m.med_order_int_hist_updated_by(),
+				widthClass: 'min-w-[9rem]',
+				filterable: true,
+				field: 'updatedByName',
+				format: (v) =>
+					v != null && String(v).trim() ? String(v) : dash()
+			},
+			{
+				id: 'updatedBy',
+				header: m.med_order_int_hist_updated_by_id(),
+				widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
+				filterable: true,
+				field: 'updatedBy',
+				format: (v) => (v != null && String(v) ? String(v) : dash())
+			}
+		]
+	);
 
 	$effect(() => {
 		const k = itemFilterKey;
@@ -438,7 +471,8 @@
 			selectedItem = null;
 			return;
 		}
-		const row = lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
+		const row =
+			lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
 		selectedItem = row;
 	}
 
@@ -465,7 +499,8 @@
 		durationUnitIdStr = String(line.durationUnitId);
 		formId = line.formId != null ? String(line.formId) : '';
 		routeId = line.routeId != null ? String(line.routeId) : '';
-		orderTypeId = line.orderTypeId != null ? String(line.orderTypeId) : '';
+		orderTypeId =
+			line.orderTypeId != null ? String(line.orderTypeId) : '';
 		foodRelationId =
 			line.foodRelationId != null ? String(line.foodRelationId) : '';
 		startAtLocal = toDateTimeLocalValue(new Date(line.startAt));
@@ -483,7 +518,10 @@
 			!editingBatchId &&
 			(!customerName.trim() || !advisingDoctor.trim())
 		) {
-			toastService.addToast(m.med_order_ext_no_party(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.med_order_ext_no_party(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (storeId <= 0) {
@@ -553,7 +591,8 @@
 			{
 				...line,
 				_key: `d-${Date.now()}-${Math.random()}`,
-				_itemName: selectedItem.itemName ?? `Item #${selectedItem.id}`,
+				_itemName:
+					selectedItem.itemName ?? `Item #${selectedItem.id}`,
 				_freqLabel: fRow?.label ?? '—'
 			}
 		];
@@ -564,8 +603,14 @@
 	}
 
 	async function persistBatch() {
-		if (!editingBatchId && (!customerName.trim() || !advisingDoctor.trim())) {
-			toastService.addToast(m.med_order_ext_no_party(), StatusColorEnum.ERROR);
+		if (
+			!editingBatchId &&
+			(!customerName.trim() || !advisingDoctor.trim())
+		) {
+			toastService.addToast(
+				m.med_order_ext_no_party(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		if (storeId <= 0) {
@@ -599,7 +644,10 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				toastService.addToast(m.med_order_int_updated(), StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					m.med_order_int_updated(),
+					StatusColorEnum.SUCCESS
+				);
 			} else {
 				const res = await fetch(apiRoot(), {
 					method: 'POST',
@@ -615,7 +663,10 @@
 				});
 				if (!res.ok) throw new Error(await res.text());
 				void (await res.json());
-				toastService.addToast(m.med_order_int_saved(), StatusColorEnum.SUCCESS);
+				toastService.addToast(
+					m.med_order_int_saved(),
+					StatusColorEnum.SUCCESS
+				);
 			}
 			resetEditing();
 		} catch (e) {
@@ -640,11 +691,11 @@
 			historyRows = [];
 			return;
 		}
-		historyRows = (await res.json()) as MedicationOrderBatchHistoryRow[];
-		const r = await fetch(
-			`${apiRoot()}?mode=stores.search`,
-			{ credentials: 'include' }
-		);
+		historyRows =
+			(await res.json()) as MedicationOrderBatchHistoryRow[];
+		const r = await fetch(`${apiRoot()}?mode=stores.search`, {
+			credentials: 'include'
+		});
 		if (r.ok) {
 			const stores = (await r.json()) as {
 				id: number;
@@ -675,7 +726,8 @@
 			durationUnitId: Number(ln.durationUnitId),
 			formId: ln.formId != null ? Number(ln.formId) : null,
 			routeId: ln.routeId != null ? Number(ln.routeId) : null,
-			orderTypeId: ln.orderTypeId != null ? Number(ln.orderTypeId) : null,
+			orderTypeId:
+				ln.orderTypeId != null ? Number(ln.orderTypeId) : null,
 			foodRelationId:
 				ln.foodRelationId != null ? Number(ln.foodRelationId) : null,
 			startAt: String(ln.startAt),
@@ -684,7 +736,9 @@
 		};
 	}
 
-	async function fetchItemDisplayName(itemMasterId: number): Promise<string> {
+	async function fetchItemDisplayName(
+		itemMasterId: number
+	): Promise<string> {
 		if (!hospitalId) return `Item #${itemMasterId}`;
 		const res = await fetch(
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemMasterId}`,
@@ -701,7 +755,10 @@
 		u.searchParams.set('batchId', String(id));
 		const res = await fetch(u, { credentials: 'include' });
 		if (!res.ok) {
-			toastService.addToast(m.med_order_int_load_failed(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.med_order_int_load_failed(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		const pack = (await res.json()) as {
@@ -789,7 +846,10 @@
 				})
 			});
 			if (!res.ok) throw new Error(await res.text());
-			toastService.addToast(m.med_order_int_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.med_order_int_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			historyRows = historyRows.filter((b) => b.id !== id);
 			if (editingBatchId === id) {
 				historyOpen = false;
@@ -822,7 +882,10 @@
 				})
 			});
 			if (!res.ok) throw new Error(await res.text());
-			toastService.addToast(m.med_order_int_deleted(), StatusColorEnum.SUCCESS);
+			toastService.addToast(
+				m.med_order_int_deleted(),
+				StatusColorEnum.SUCCESS
+			);
 			historyOpen = false;
 			resetEditing();
 		} catch (e) {
@@ -1073,7 +1136,7 @@
 						>
 						<input
 							type="datetime-local"
-							class="d-input d-input-bordered w-full min-w-0"
+							class="d-input-bordered d-input w-full min-w-0"
 							bind:value={startAtLocal}
 							min={minStart}
 						/>
@@ -1096,7 +1159,9 @@
 						<div
 							class="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap"
 						>
-							<label class="flex cursor-pointer items-center gap-2 text-sm">
+							<label
+								class="flex cursor-pointer items-center gap-2 text-sm"
+							>
 								<input
 									type="radio"
 									checked={!substituteNotAllowed}
@@ -1105,7 +1170,9 @@
 								/>
 								{m.med_order_int_substitue_no()}
 							</label>
-							<label class="flex cursor-pointer items-center gap-2 text-sm">
+							<label
+								class="flex cursor-pointer items-center gap-2 text-sm"
+							>
 								<input
 									type="radio"
 									checked={substituteNotAllowed}
@@ -1152,65 +1219,63 @@
 	</DaisyUiCardBody>
 </DaisyUiCard>
 
-	<DaisyUiCard className="mt-5">
-		<DaisyUiCardBody className="gap-2">
-			<h2 class="text-base font-semibold">{m.med_order_int_draft_title()}</h2>
-			{#if draftLines.length === 0}
-				<p class="text-sm text-base-content/60">
-					{m.medication_order_external_sales_empty()}
-				</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="table-zebra table w-full text-sm">
-						<thead>
+<DaisyUiCard className="mt-5">
+	<DaisyUiCardBody className="gap-2">
+		<h2 class="text-base font-semibold">
+			{m.med_order_int_draft_title()}
+		</h2>
+		{#if draftLines.length === 0}
+			<p class="text-sm text-base-content/60">
+				{m.medication_order_external_sales_empty()}
+			</p>
+		{:else}
+			<div class="overflow-x-auto">
+				<table class="table-zebra table w-full text-sm">
+					<thead>
+						<tr>
+							<th>{m.med_order_int_item()}</th>
+							<th>{m.med_order_int_dose()}</th>
+							<th>{m.med_order_int_frequency()}</th>
+							<th>{m.med_order_int_start()}</th>
+							<th class="w-20">{m.actions()}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each draftLines as ln (ln._key)}
 							<tr>
-								<th>{m.med_order_int_item()}</th>
-								<th>{m.med_order_int_dose()}</th>
-								<th>{m.med_order_int_frequency()}</th>
-								<th>{m.med_order_int_start()}</th>
-								<th class="w-20">{m.actions()}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each draftLines as ln (ln._key)}
-								<tr>
-									<td>{ln._itemName}</td>
-									<td>{ln.dose}</td>
-									<td>{ln._freqLabel}</td>
-									<td
-										>{toDateTimeLocalValue(
-											new Date(ln.startAt)
-										)}</td
+								<td>{ln._itemName}</td>
+								<td>{ln.dose}</td>
+								<td>{ln._freqLabel}</td>
+								<td>{toDateTimeLocalValue(new Date(ln.startAt))}</td>
+								<td>
+									<DaisyUiButton
+										className="d-btn-ghost d-btn-xs"
+										onClick={() => removeDraft(ln._key)}
 									>
-									<td>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-xs"
-											onClick={() => removeDraft(ln._key)}
-										>
-											<LucideTrash2
-												className="text-error size-4"
-											/>
-										</DaisyUiButton>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
-		</DaisyUiCardBody>
-	</DaisyUiCard>
+										<LucideTrash2 className="text-error size-4" />
+									</DaisyUiButton>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
+	</DaisyUiCardBody>
+</DaisyUiCard>
 
 {#if historyOpen}
-	<dialog class="d-modal d-modal-open" open>
+	<dialog class="d-modal-open d-modal" open>
 		<div
-			class="d-modal-box flex max-h-[90vh] max-w-[min(96rem,98vw)] min-h-0 flex-col overflow-y-auto"
+			class="d-modal-box flex max-h-[90vh] min-h-0 max-w-[min(96rem,98vw)] flex-col overflow-y-auto"
 		>
 			<h3 class="d-modal-title text-lg font-semibold">
 				{m.med_order_int_history()}
 			</h3>
 			<div class="flex min-h-0 min-w-0 flex-1 flex-col py-2">
-				<div class="min-h-[12rem] w-full min-w-0 {TableEnum.HEIGHT_SMALL}">
+				<div
+					class="min-h-[12rem] w-full min-w-0 {TableEnum.HEIGHT_SMALL}"
+				>
 					<MariTable
 						rows={historyRows}
 						columns={historyColumns}

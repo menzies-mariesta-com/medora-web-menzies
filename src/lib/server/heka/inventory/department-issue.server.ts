@@ -1,5 +1,15 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	sql
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -27,6 +37,7 @@ import {
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 
 export async function listDepartmentIssues(
 	event: RequestEvent,
@@ -43,25 +54,44 @@ export async function listDepartmentIssues(
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(input);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(input);
 
 	let cond = and(
 		eq(table.invDepartmentIssueTable.hospitalId, input.hospitalId),
 		isNull(table.invDepartmentIssueTable.deletedAt)
 	);
 	if (typeof input.fromStoreId === 'number') {
-		cond = and(cond, eq(table.invDepartmentIssueTable.fromStoreId, input.fromStoreId))!;
-	}
-	if (typeof input.toStoreId === 'number') {
-		cond = and(cond, eq(table.invDepartmentIssueTable.toStoreId, input.toStoreId))!;
-	}
-	if (typeof input.statusTaggingId === 'number') {
-		cond = and(cond, eq(table.invDepartmentIssueTable.statusTaggingId, input.statusTaggingId))!;
-	}
-	if (input.sourceIndentId != null && input.sourceIndentId.trim() !== '') {
 		cond = and(
 			cond,
-			eq(table.invDepartmentIssueTable.sourceIndentId, input.sourceIndentId.trim())
+			eq(table.invDepartmentIssueTable.fromStoreId, input.fromStoreId)
+		)!;
+	}
+	if (typeof input.toStoreId === 'number') {
+		cond = and(
+			cond,
+			eq(table.invDepartmentIssueTable.toStoreId, input.toStoreId)
+		)!;
+	}
+	if (typeof input.statusTaggingId === 'number') {
+		cond = and(
+			cond,
+			eq(
+				table.invDepartmentIssueTable.statusTaggingId,
+				input.statusTaggingId
+			)
+		)!;
+	}
+	if (
+		input.sourceIndentId != null &&
+		input.sourceIndentId.trim() !== ''
+	) {
+		cond = and(
+			cond,
+			eq(
+				table.invDepartmentIssueTable.sourceIndentId,
+				input.sourceIndentId.trim()
+			)
 		)!;
 	}
 	const issueNoTerm = input.issueNo?.trim();
@@ -77,12 +107,30 @@ export async function listDepartmentIssues(
 
 	const fromSt = alias(table.storeTable, 'dept_issue_from_store');
 	const toSt = alias(table.storeTable, 'dept_issue_to_store');
-	const issueSt = alias(table.statusTaggingTable, 'dept_issue_list_status');
-	const uCreated = alias(table.userTable, 'dept_issue_list_created_by');
-	const uUpdated = alias(table.userTable, 'dept_issue_list_updated_by');
-	const uRequested = alias(table.userTable, 'dept_issue_list_requested_by');
-	const uApproved = alias(table.userTable, 'dept_issue_list_approved_by');
-	const uCancelled = alias(table.userTable, 'dept_issue_list_cancelled_by');
+	const issueSt = alias(
+		table.statusTaggingTable,
+		'dept_issue_list_status'
+	);
+	const uCreated = alias(
+		table.userTable,
+		'dept_issue_list_created_by'
+	);
+	const uUpdated = alias(
+		table.userTable,
+		'dept_issue_list_updated_by'
+	);
+	const uRequested = alias(
+		table.userTable,
+		'dept_issue_list_requested_by'
+	);
+	const uApproved = alias(
+		table.userTable,
+		'dept_issue_list_approved_by'
+	);
+	const uCancelled = alias(
+		table.userTable,
+		'dept_issue_list_cancelled_by'
+	);
 
 	const [data, cnt] = await Promise.all([
 		ensureDb()
@@ -98,8 +146,14 @@ export async function listDepartmentIssues(
 				cancelledByName: uCancelled.name
 			})
 			.from(table.invDepartmentIssueTable)
-			.innerJoin(fromSt, eq(table.invDepartmentIssueTable.fromStoreId, fromSt.id))
-			.innerJoin(toSt, eq(table.invDepartmentIssueTable.toStoreId, toSt.id))
+			.innerJoin(
+				fromSt,
+				eq(table.invDepartmentIssueTable.fromStoreId, fromSt.id)
+			)
+			.innerJoin(
+				toSt,
+				eq(table.invDepartmentIssueTable.toStoreId, toSt.id)
+			)
 			.innerJoin(
 				issueSt,
 				eq(table.invDepartmentIssueTable.statusTaggingId, issueSt.id)
@@ -108,9 +162,18 @@ export async function listDepartmentIssues(
 				uRequested,
 				eq(table.invDepartmentIssueTable.requestedBy, uRequested.id)
 			)
-			.leftJoin(uCreated, eq(table.invDepartmentIssueTable.createdBy, uCreated.id))
-			.leftJoin(uUpdated, eq(table.invDepartmentIssueTable.updatedBy, uUpdated.id))
-			.leftJoin(uApproved, eq(table.invDepartmentIssueTable.approvedBy, uApproved.id))
+			.leftJoin(
+				uCreated,
+				eq(table.invDepartmentIssueTable.createdBy, uCreated.id)
+			)
+			.leftJoin(
+				uUpdated,
+				eq(table.invDepartmentIssueTable.updatedBy, uUpdated.id)
+			)
+			.leftJoin(
+				uApproved,
+				eq(table.invDepartmentIssueTable.approvedBy, uApproved.id)
+			)
 			.leftJoin(
 				uCancelled,
 				eq(table.invDepartmentIssueTable.cancelledBy, uCancelled.id)
@@ -119,7 +182,10 @@ export async function listDepartmentIssues(
 			.orderBy(desc(table.invDepartmentIssueTable.createdAt))
 			.limit(limit)
 			.offset(offset),
-		ensureDb().select({ c: count() }).from(table.invDepartmentIssueTable).where(cond)
+		ensureDb()
+			.select({ c: count() })
+			.from(table.invDepartmentIssueTable)
+			.where(cond)
 	]);
 
 	const total = cnt[0]?.c ?? 0;
@@ -135,17 +201,24 @@ export async function listDepartmentIssues(
 			.from(table.invDepartmentIssueLineTable)
 			.innerJoin(
 				table.itemMasterTable,
-				eq(table.invDepartmentIssueLineTable.itemId, table.itemMasterTable.id)
+				eq(
+					table.invDepartmentIssueLineTable.itemId,
+					table.itemMasterTable.id
+				)
 			)
 			.where(
 				and(
-					inArray(table.invDepartmentIssueLineTable.issueId, issueIds),
+					inArray(
+						table.invDepartmentIssueLineTable.issueId,
+						issueIds
+					),
 					isNull(table.invDepartmentIssueLineTable.deletedAt)
 				)
 			)
 			.groupBy(table.invDepartmentIssueLineTable.issueId);
 		for (const r of nameRows) {
-			if (r.issueId) itemNamesByIssue.set(r.issueId, r.itemNames ?? '');
+			if (r.issueId)
+				itemNamesByIssue.set(r.issueId, r.itemNames ?? '');
 		}
 	}
 
@@ -158,7 +231,9 @@ export async function listDepartmentIssues(
 			listDissApproverStoreLevelsForStaff(input.hospitalId, staffId),
 			listAssignedStoreIdsForStaff(input.hospitalId, 'RFS', staffId)
 		]);
-		approverPairSet = new Set(pairs.map((p) => `${p.storeId}:${p.level}`));
+		approverPairSet = new Set(
+			pairs.map((p) => `${p.storeId}:${p.level}`)
+		);
 		receiveStoreSet = new Set(rfsStores);
 	}
 
@@ -174,10 +249,14 @@ export async function listDepartmentIssues(
 			approvedByName: r.approvedByName ?? null,
 			cancelledByName: r.cancelledByName ?? null,
 			canApprove:
-				r.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.PENDING &&
-				approverPairSet.has(`${r.issue.fromStoreId}:${r.issue.currentLevel}`),
+				r.issue.statusTaggingId ===
+					InvDepartmentIssueStatusTaggingEnum.PENDING &&
+				approverPairSet.has(
+					`${r.issue.fromStoreId}:${r.issue.currentLevel}`
+				),
 			canReceive:
-				r.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.ISSUED &&
+				r.issue.statusTaggingId ===
+					InvDepartmentIssueStatusTaggingEnum.ISSUED &&
 				receiveStoreSet.has(r.issue.toStoreId)
 		})),
 		total,
@@ -195,12 +274,21 @@ export async function getDepartmentIssueById(
 
 	const fromSt = alias(table.storeTable, 'dept_issue_detail_from');
 	const toSt = alias(table.storeTable, 'dept_issue_detail_to');
-	const srcIndent = alias(table.invDepartmentIndentTable, 'dept_issue_source_indent');
+	const srcIndent = alias(
+		table.invDepartmentIndentTable,
+		'dept_issue_source_indent'
+	);
 	const uReq = alias(table.userTable, 'dept_issue_req_user');
 	const uAppr = alias(table.userTable, 'dept_issue_appr_user');
 	const uIssued = alias(table.userTable, 'dept_issue_issued_user');
-	const uReceived = alias(table.userTable, 'dept_issue_received_user');
-	const uCancelled = alias(table.userTable, 'dept_issue_cancelled_user');
+	const uReceived = alias(
+		table.userTable,
+		'dept_issue_received_user'
+	);
+	const uCancelled = alias(
+		table.userTable,
+		'dept_issue_cancelled_user'
+	);
 
 	const [joined] = await ensureDb()
 		.select({
@@ -219,20 +307,50 @@ export async function getDepartmentIssueById(
 		.from(table.invDepartmentIssueTable)
 		.innerJoin(
 			table.statusTaggingTable,
-			eq(table.invDepartmentIssueTable.statusTaggingId, table.statusTaggingTable.id)
+			eq(
+				table.invDepartmentIssueTable.statusTaggingId,
+				table.statusTaggingTable.id
+			)
 		)
-		.innerJoin(fromSt, eq(table.invDepartmentIssueTable.fromStoreId, fromSt.id))
-		.innerJoin(toSt, eq(table.invDepartmentIssueTable.toStoreId, toSt.id))
-		.leftJoin(srcIndent, eq(table.invDepartmentIssueTable.sourceIndentId, srcIndent.id))
-		.leftJoin(uReq, eq(table.invDepartmentIssueTable.requestedBy, uReq.id))
-		.leftJoin(uAppr, eq(table.invDepartmentIssueTable.approvedBy, uAppr.id))
-		.leftJoin(uIssued, eq(table.invDepartmentIssueTable.issuedBy, uIssued.id))
-		.leftJoin(uReceived, eq(table.invDepartmentIssueTable.receivedBy, uReceived.id))
-		.leftJoin(uCancelled, eq(table.invDepartmentIssueTable.cancelledBy, uCancelled.id))
+		.innerJoin(
+			fromSt,
+			eq(table.invDepartmentIssueTable.fromStoreId, fromSt.id)
+		)
+		.innerJoin(
+			toSt,
+			eq(table.invDepartmentIssueTable.toStoreId, toSt.id)
+		)
+		.leftJoin(
+			srcIndent,
+			eq(table.invDepartmentIssueTable.sourceIndentId, srcIndent.id)
+		)
+		.leftJoin(
+			uReq,
+			eq(table.invDepartmentIssueTable.requestedBy, uReq.id)
+		)
+		.leftJoin(
+			uAppr,
+			eq(table.invDepartmentIssueTable.approvedBy, uAppr.id)
+		)
+		.leftJoin(
+			uIssued,
+			eq(table.invDepartmentIssueTable.issuedBy, uIssued.id)
+		)
+		.leftJoin(
+			uReceived,
+			eq(table.invDepartmentIssueTable.receivedBy, uReceived.id)
+		)
+		.leftJoin(
+			uCancelled,
+			eq(table.invDepartmentIssueTable.cancelledBy, uCancelled.id)
+		)
 		.where(
 			and(
 				eq(table.invDepartmentIssueTable.id, input.id),
-				eq(table.invDepartmentIssueTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentIssueTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentIssueTable.deletedAt)
 			)
 		)
@@ -249,7 +367,10 @@ export async function getDepartmentIssueById(
 		.from(table.invDepartmentIssueLineTable)
 		.innerJoin(
 			table.itemMasterTable,
-			eq(table.invDepartmentIssueLineTable.itemId, table.itemMasterTable.id)
+			eq(
+				table.invDepartmentIssueLineTable.itemId,
+				table.itemMasterTable.id
+			)
 		)
 		.innerJoin(
 			table.unitTable,
@@ -291,8 +412,10 @@ export async function getDepartmentIssueById(
 		issueUnitName: string | null;
 	}> = [];
 	if (
-		joined.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.ISSUED ||
-		joined.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.RECEIVED
+		joined.issue.statusTaggingId ===
+			InvDepartmentIssueStatusTaggingEnum.ISSUED ||
+		joined.issue.statusTaggingId ===
+			InvDepartmentIssueStatusTaggingEnum.RECEIVED
 	) {
 		const allocJoined = await ensureDb()
 			.select({
@@ -307,15 +430,24 @@ export async function getDepartmentIssueById(
 			.from(table.invDepartmentIssueLineAllocTable)
 			.innerJoin(
 				table.invDepartmentIssueLineTable,
-				eq(table.invDepartmentIssueLineAllocTable.lineId, table.invDepartmentIssueLineTable.id)
+				eq(
+					table.invDepartmentIssueLineAllocTable.lineId,
+					table.invDepartmentIssueLineTable.id
+				)
 			)
 			.innerJoin(
 				table.itemMasterTable,
-				eq(table.invDepartmentIssueLineTable.itemId, table.itemMasterTable.id)
+				eq(
+					table.invDepartmentIssueLineTable.itemId,
+					table.itemMasterTable.id
+				)
 			)
 			.innerJoin(
 				table.itemBatchTable,
-				eq(table.invDepartmentIssueLineAllocTable.batchId, table.itemBatchTable.id)
+				eq(
+					table.invDepartmentIssueLineAllocTable.batchId,
+					table.itemBatchTable.id
+				)
 			)
 			.where(eq(table.invDepartmentIssueLineTable.issueId, input.id));
 
@@ -332,7 +464,8 @@ export async function getDepartmentIssueById(
 				expiryDate: a.expiryDate,
 				quantity: String(a.qty),
 				itemUnitMasterId: ium?.id ?? null,
-				purchaseConversionFactor: ium?.purchaseConversionFactor ?? null,
+				purchaseConversionFactor:
+					ium?.purchaseConversionFactor ?? null,
 				issueConversionFactor: ium?.issueConversionFactor ?? null,
 				issueUnitName: ium?.issueUnitName ?? null
 			};
@@ -341,16 +474,32 @@ export async function getDepartmentIssueById(
 
 	const userId = event.locals.user?.id ?? null;
 	let canApprove = false;
-	if (userId && joined.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.PENDING) {
+	if (
+		userId &&
+		joined.issue.statusTaggingId ===
+			InvDepartmentIssueStatusTaggingEnum.PENDING
+	) {
 		const staffId = await getStaffIdForUser(userId);
 		if (staffId) {
-			const pairs = await listDissApproverStoreLevelsForStaff(input.hospitalId, staffId);
-			const set = new Set(pairs.map((p: { storeId: number; level: number }) => `${p.storeId}:${p.level}`));
-			canApprove = set.has(`${joined.issue.fromStoreId}:${joined.issue.currentLevel}`);
+			const pairs = await listDissApproverStoreLevelsForStaff(
+				input.hospitalId,
+				staffId
+			);
+			const set = new Set(
+				pairs.map(
+					(p: { storeId: number; level: number }) =>
+						`${p.storeId}:${p.level}`
+				)
+			);
+			canApprove = set.has(
+				`${joined.issue.fromStoreId}:${joined.issue.currentLevel}`
+			);
 		}
 	}
 
-	const canReceive = joined.issue.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.ISSUED;
+	const canReceive =
+		joined.issue.statusTaggingId ===
+		InvDepartmentIssueStatusTaggingEnum.ISSUED;
 
 	return {
 		...joined.issue,
@@ -375,7 +524,8 @@ export async function getDepartmentIssueById(
 				unitName: r.unitName,
 				itemUnitMasterId: ium?.id ?? null,
 				itemUnitMasterConversion: ium?.conversionDisplay ?? null,
-				purchaseConversionFactor: ium?.purchaseConversionFactor ?? null,
+				purchaseConversionFactor:
+					ium?.purchaseConversionFactor ?? null,
 				issueConversionFactor: ium?.issueConversionFactor ?? null,
 				issueUnitName: ium?.issueUnitName ?? null
 			};
@@ -390,19 +540,86 @@ export async function createDepartmentIssue(
 		hospitalId: string;
 		fromStoreId: number;
 		toStoreId: number;
+		/** Optional: create issue from this indent (PENDING_CENTRAL). */
+		sourceIndentId: string | null;
 		remarks: string | null;
-		lines: { itemId: number; quantity: string; unitId: number }[];
+		/**
+		 * UI sends flattened per-batch lines:
+		 * - `quantity` is purchase qty (integer, purchase unit)
+		 * - `batchId` is chosen stock lot
+		 */
+		lines: {
+			itemId: number;
+			quantity: string;
+			unitId: number;
+			batchId: number;
+		}[];
 	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
 	if (!userId) throw error(401, 'Unauthorized');
-	if (input.lines.length === 0) throw error(400, 'At least one line required');
+	if (input.lines.length === 0)
+		throw error(400, 'At least one line required');
 
-	const fromS = await assertStoreInHospital(input.hospitalId, input.fromStoreId);
-	const toS = await assertStoreInHospital(input.hospitalId, input.toStoreId);
-	if (fromS.id === toS.id) throw error(400, 'From and to stores must differ');
-	if (fromS.branchId !== toS.branchId) throw error(400, 'Stores must be in the same branch');
+	let sourceIndent:
+		| typeof table.invDepartmentIndentTable.$inferSelect
+		| null = null;
+	if (input.sourceIndentId) {
+		const [ind] = await ensureDb()
+			.select()
+			.from(table.invDepartmentIndentTable)
+			.where(
+				and(
+					eq(table.invDepartmentIndentTable.id, input.sourceIndentId),
+					eq(
+						table.invDepartmentIndentTable.hospitalId,
+						input.hospitalId
+					),
+					isNull(table.invDepartmentIndentTable.deletedAt)
+				)
+			)
+			.limit(1);
+		if (!ind) throw error(404, 'Indent not found');
+		if (
+			ind.statusTaggingId !==
+			InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL
+		) {
+			throw error(
+				400,
+				'Indent is not awaiting fulfillment at the central store'
+			);
+		}
+		// For indent mode, the central store must be the fulfilling store.
+		if (ind.toStoreId !== input.fromStoreId) {
+			throw error(
+				403,
+				'Select the central store (indent “to” store) in the top bar to create this issue'
+			);
+		}
+		// Enforce store direction to match indent: central → requesting store.
+		input = {
+			...input,
+			fromStoreId: ind.toStoreId,
+			toStoreId: ind.fromStoreId,
+			remarks: input.remarks ?? ind.remarks,
+			sourceIndentId: ind.id
+		};
+		sourceIndent = ind;
+	}
+
+	const fromS = await assertStoreInHospital(
+		input.hospitalId,
+		input.fromStoreId
+	);
+	const toS = await assertStoreInHospital(
+		input.hospitalId,
+		input.toStoreId
+	);
+	if (fromS.id === toS.id)
+		throw error(400, 'From and to stores must differ');
+	if (fromS.branchId !== toS.branchId)
+		throw error(400, 'Stores must be in the same branch');
 	const branchId = fromS.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
@@ -419,7 +636,11 @@ export async function createDepartmentIssue(
 			)
 		)
 		.limit(1);
-	if (!financialYear) throw error(400, 'Financial year is not configured for this hospital.');
+	if (!financialYear)
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 
 	const issueNo = await generatePrefix({
 		hospitalId: input.hospitalId,
@@ -435,30 +656,65 @@ export async function createDepartmentIssue(
 			id: newId,
 			hospitalId: input.hospitalId,
 			issueNo,
-			sourceIndentId: null,
+			sourceIndentId: input.sourceIndentId,
 			fromStoreId: input.fromStoreId,
 			toStoreId: input.toStoreId,
-			requestedBy: userId,
+			requestedBy: sourceIndent?.requestedBy ?? userId,
 			statusTaggingId: InvDepartmentIssueStatusTaggingEnum.PENDING,
 			currentLevel: 1,
 			remarks: input.remarks,
 			createdBy: userId,
 			updatedBy: userId
 		});
-		await tx.insert(table.invDepartmentIssueLineTable).values(
-			input.lines.map((l) => ({
-				issueId: newId,
+
+		const lineValues = input.lines.map((l) => {
+			const q = parsePositiveIntQty(String(l.quantity), 'quantity');
+			if (l.batchId <= 0) throw error(400, 'batchId required');
+			return {
 				itemId: l.itemId,
-				quantity: l.quantity,
 				unitId: l.unitId,
-				createdBy: userId,
-				updatedBy: userId
-			}))
-		);
+				quantity: String(q),
+				batchId: l.batchId
+			};
+		});
+
+		const inserted = await tx
+			.insert(table.invDepartmentIssueLineTable)
+			.values(
+				lineValues.map((l) => ({
+					issueId: newId,
+					itemId: l.itemId,
+					quantity: l.quantity,
+					unitId: l.unitId,
+					createdBy: userId,
+					updatedBy: userId
+				}))
+			)
+			.returning({ id: table.invDepartmentIssueLineTable.id });
+
+		for (let i = 0; i < inserted.length; i++) {
+			const lineId = inserted[i]!.id;
+			const l = lineValues[i]!;
+			const issueQty = await issueQtyStringFromPurchaseReceipt({
+				hospitalId: input.hospitalId,
+				itemId: l.itemId,
+				purchaseUnitId: l.unitId,
+				purchaseQtyStr: l.quantity
+			});
+			const qtyIssueInt = parsePositiveIntQty(issueQty, 'quantity');
+			await tx.insert(table.invDepartmentIssueLineAllocTable).values({
+				lineId,
+				batchId: l.batchId,
+				quantity: String(qtyIssueInt)
+			});
+		}
 		return newId;
 	});
 
-	return getDepartmentIssueById(event, { hospitalId: input.hospitalId, id });
+	return getDepartmentIssueById(event, {
+		hospitalId: input.hospitalId,
+		id
+	});
 }
 
 /**
@@ -484,14 +740,23 @@ export async function createDepartmentIssueFromIndent(
 		.where(
 			and(
 				eq(table.invDepartmentIndentTable.id, input.indentId),
-				eq(table.invDepartmentIndentTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentIndentTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentIndentTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!ind) throw error(404, 'Indent not found');
-	if (ind.statusTaggingId !== InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL) {
-		throw error(400, 'Indent is not awaiting fulfillment at the central store');
+	if (
+		ind.statusTaggingId !==
+		InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL
+	) {
+		throw error(
+			400,
+			'Indent is not awaiting fulfillment at the central store'
+		);
 	}
 	if (ind.toStoreId !== input.actingFromStoreId) {
 		throw error(
@@ -505,8 +770,14 @@ export async function createDepartmentIssueFromIndent(
 		.from(table.invDepartmentIssueTable)
 		.where(
 			and(
-				eq(table.invDepartmentIssueTable.hospitalId, input.hospitalId),
-				eq(table.invDepartmentIssueTable.sourceIndentId, input.indentId),
+				eq(
+					table.invDepartmentIssueTable.hospitalId,
+					input.hospitalId
+				),
+				eq(
+					table.invDepartmentIssueTable.sourceIndentId,
+					input.indentId
+				),
 				isNull(table.invDepartmentIssueTable.deletedAt)
 			)
 		)
@@ -541,7 +812,10 @@ export async function createDepartmentIssueFromIndent(
 		)
 		.limit(1);
 	if (!financialYear) {
-		throw error(400, 'Financial year is not configured for this hospital.');
+		throw error(
+			400,
+			'Financial year is not configured for this hospital.'
+		);
 	}
 
 	let issueNo: string;
@@ -609,12 +883,20 @@ export async function createDepartmentIssueFromIndent(
 		return issueId;
 	});
 
-	return getDepartmentIssueById(event, { hospitalId: input.hospitalId, id: newId });
+	return getDepartmentIssueById(event, {
+		hospitalId: input.hospitalId,
+		id: newId
+	});
 }
 
 export async function approveDepartmentIssue(
 	event: RequestEvent,
-	input: { hospitalId: string; issueId: string; action: number; remarks: string | null }
+	input: {
+		hospitalId: string;
+		issueId: string;
+		action: number;
+		remarks: string | null;
+	}
 ) {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 	const userId = event.locals.user?.id;
@@ -628,21 +910,40 @@ export async function approveDepartmentIssue(
 		.where(
 			and(
 				eq(table.invDepartmentIssueTable.id, input.issueId),
-				eq(table.invDepartmentIssueTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentIssueTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentIssueTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!iss) throw error(404, 'Issue not found');
-	if (iss.statusTaggingId !== InvDepartmentIssueStatusTaggingEnum.PENDING) {
+	if (
+		iss.statusTaggingId !==
+		InvDepartmentIssueStatusTaggingEnum.PENDING
+	) {
 		throw error(400, 'Issue is not awaiting approval');
 	}
 
-	const maxLevel = await getMaxApprovalLevel(input.hospitalId, iss.fromStoreId, 'DISS');
+	const maxLevel = await getMaxApprovalLevel(
+		input.hospitalId,
+		iss.fromStoreId,
+		'DISS'
+	);
 	if (maxLevel < 1) {
-		throw error(400, 'Configure department-issue approvers (Inventory Setup → Approval) for this store');
+		throw error(
+			400,
+			'Configure department-issue approvers (Inventory Setup → Approval) for this store'
+		);
 	}
-	await assertStaffCanApproveLevel(input.hospitalId, iss.fromStoreId, 'DISS', iss.currentLevel, staffId);
+	await assertStaffCanApproveLevel(
+		input.hospitalId,
+		iss.fromStoreId,
+		'DISS',
+		iss.currentLevel,
+		staffId
+	);
 
 	const rejectReason =
 		input.remarks != null && String(input.remarks).trim() !== ''
@@ -654,7 +955,8 @@ export async function approveDepartmentIssue(
 			await tx
 				.update(table.invDepartmentIssueTable)
 				.set({
-					statusTaggingId: InvDepartmentIssueStatusTaggingEnum.CANCELLED,
+					statusTaggingId:
+						InvDepartmentIssueStatusTaggingEnum.CANCELLED,
 					cancelledBy: userId,
 					cancelledAt: sql<string>`now()`,
 					cancelReason: rejectReason,
@@ -682,23 +984,58 @@ export async function approveDepartmentIssue(
 				.from(table.invDepartmentIssueLineTable)
 				.where(
 					and(
-						eq(table.invDepartmentIssueLineTable.issueId, input.issueId),
+						eq(
+							table.invDepartmentIssueLineTable.issueId,
+							input.issueId
+						),
 						isNull(table.invDepartmentIssueLineTable.deletedAt)
 					)
 				)
 				.orderBy(asc(table.invDepartmentIssueLineTable.id));
 
 			for (const line of lines) {
+				// If the UI already chose batches (and we stored them on create),
+				// issue exactly those batches; otherwise fallback to FEFO.
+				const presetAllocs = await tx
+					.select()
+					.from(table.invDepartmentIssueLineAllocTable)
+					.where(
+						eq(table.invDepartmentIssueLineAllocTable.lineId, line.id)
+					);
+
+				if (presetAllocs.length > 0) {
+					let sum = 0;
+					for (const a of presetAllocs) {
+						const q = parsePositiveIntQty(
+							String(a.quantity),
+							'quantity'
+						);
+						if (q <= 0) continue;
+						sum += q;
+						await addDeltaToInvStock(tx, {
+							hospitalId: input.hospitalId,
+							itemId: line.itemId,
+							storeId: iss.fromStoreId,
+							batchId: a.batchId,
+							delta: String(-q),
+							userId
+						});
+					}
+					if (sum <= 0) throw error(400, 'Invalid issue allocations');
+					await tx
+						.update(table.invDepartmentIssueLineTable)
+						.set({ qtyIssued: String(sum), updatedBy: userId })
+						.where(eq(table.invDepartmentIssueLineTable.id, line.id));
+					continue;
+				}
+
 				const needIssue = await issueQtyStringFromPurchaseReceipt({
 					hospitalId: input.hospitalId,
 					itemId: line.itemId,
 					purchaseUnitId: line.unitId,
 					purchaseQtyStr: String(line.quantity)
 				});
-				let remaining = Number(needIssue);
-				if (!Number.isFinite(remaining) || remaining <= 0) {
-					throw error(400, 'Invalid line quantity');
-				}
+				let remaining = parsePositiveIntQty(needIssue, 'quantity');
 
 				const rows = await tx
 					.select({
@@ -734,18 +1071,21 @@ export async function approveDepartmentIssue(
 						itemId: line.itemId,
 						storeId: iss.fromStoreId,
 						batchId: row.stock.batchId,
-						delta: (-take).toFixed(6),
+						delta: String(-take),
 						userId
 					});
-					await tx.insert(table.invDepartmentIssueLineAllocTable).values({
-						lineId: line.id,
-						batchId: row.stock.batchId,
-						quantity: take.toFixed(6)
-					});
+					await tx
+						.insert(table.invDepartmentIssueLineAllocTable)
+						.values({
+							lineId: line.id,
+							batchId: row.stock.batchId,
+							quantity: String(take)
+						});
 					remaining -= take;
 				}
 
-				if (remaining > 1e-6) throw error(400, 'Insufficient stock at fulfilling store');
+				if (remaining > 0)
+					throw error(400, 'Insufficient stock at fulfilling store');
 
 				await tx
 					.update(table.invDepartmentIssueLineTable)
@@ -776,7 +1116,10 @@ export async function approveDepartmentIssue(
 					.from(table.invDepartmentIssueLineTable)
 					.where(
 						and(
-							eq(table.invDepartmentIssueLineTable.issueId, input.issueId),
+							eq(
+								table.invDepartmentIssueLineTable.issueId,
+								input.issueId
+							),
 							isNull(table.invDepartmentIssueLineTable.deletedAt)
 						)
 					);
@@ -790,8 +1133,14 @@ export async function approveDepartmentIssue(
 						.where(
 							and(
 								eq(table.invDepartmentIndentLineTable.indentId, sid),
-								eq(table.invDepartmentIndentLineTable.itemId, dl.itemId),
-								eq(table.invDepartmentIndentLineTable.unitId, dl.unitId),
+								eq(
+									table.invDepartmentIndentLineTable.itemId,
+									dl.itemId
+								),
+								eq(
+									table.invDepartmentIndentLineTable.unitId,
+									dl.unitId
+								),
 								isNull(table.invDepartmentIndentLineTable.deletedAt)
 							)
 						);
@@ -799,7 +1148,8 @@ export async function approveDepartmentIssue(
 				await tx
 					.update(table.invDepartmentIndentTable)
 					.set({
-						statusTaggingId: InvDepartmentIndentStatusTaggingEnum.ISSUED,
+						statusTaggingId:
+							InvDepartmentIndentStatusTaggingEnum.ISSUED,
 						issuedBy: userId,
 						issuedAt: sql<string>`now()`,
 						updatedBy: userId
@@ -809,7 +1159,10 @@ export async function approveDepartmentIssue(
 		}
 	});
 
-	return getDepartmentIssueById(event, { hospitalId: input.hospitalId, id: input.issueId });
+	return getDepartmentIssueById(event, {
+		hospitalId: input.hospitalId,
+		id: input.issueId
+	});
 }
 
 export async function postDepartmentIssueReceive(
@@ -827,11 +1180,19 @@ export async function postDepartmentIssueReceive(
 		id: input.issueId
 	});
 	if (!detail) throw error(404, 'Issue not found');
-	if (detail.statusTaggingId !== InvDepartmentIssueStatusTaggingEnum.ISSUED) {
+	if (
+		detail.statusTaggingId !==
+		InvDepartmentIssueStatusTaggingEnum.ISSUED
+	) {
 		throw error(400, 'Issue is not issued or already received');
 	}
 
-	await assertStaffAssignedForModule(input.hospitalId, detail.toStoreId, 'RFS', staffId);
+	await assertStaffAssignedForModule(
+		input.hospitalId,
+		detail.toStoreId,
+		'RFS',
+		staffId
+	);
 
 	const allocRows = await ensureDb()
 		.select({
@@ -841,10 +1202,16 @@ export async function postDepartmentIssueReceive(
 		.from(table.invDepartmentIssueLineAllocTable)
 		.innerJoin(
 			table.invDepartmentIssueLineTable,
-			eq(table.invDepartmentIssueLineAllocTable.lineId, table.invDepartmentIssueLineTable.id)
+			eq(
+				table.invDepartmentIssueLineAllocTable.lineId,
+				table.invDepartmentIssueLineTable.id
+			)
 		)
-		.where(eq(table.invDepartmentIssueLineTable.issueId, input.issueId));
-	if (allocRows.length === 0) throw error(400, 'No allocations to receive');
+		.where(
+			eq(table.invDepartmentIssueLineTable.issueId, input.issueId)
+		);
+	if (allocRows.length === 0)
+		throw error(400, 'No allocations to receive');
 
 	const sourceIndentId = detail.sourceIndentId ?? null;
 
@@ -873,7 +1240,8 @@ export async function postDepartmentIssueReceive(
 			await tx
 				.update(table.invDepartmentIndentTable)
 				.set({
-					statusTaggingId: InvDepartmentIndentStatusTaggingEnum.RECEIVED,
+					statusTaggingId:
+						InvDepartmentIndentStatusTaggingEnum.RECEIVED,
 					receivedBy: userId,
 					receivedAt: sql<string>`now()`,
 					updatedBy: userId
@@ -882,7 +1250,10 @@ export async function postDepartmentIssueReceive(
 		}
 	});
 
-	return getDepartmentIssueById(event, { hospitalId: input.hospitalId, id: input.issueId });
+	return getDepartmentIssueById(event, {
+		hospitalId: input.hospitalId,
+		id: input.issueId
+	});
 }
 
 export async function cancelDepartmentIssue(
@@ -901,16 +1272,25 @@ export async function cancelDepartmentIssue(
 		.where(
 			and(
 				eq(table.invDepartmentIssueTable.id, input.issueId),
-				eq(table.invDepartmentIssueTable.hospitalId, input.hospitalId),
+				eq(
+					table.invDepartmentIssueTable.hospitalId,
+					input.hospitalId
+				),
 				isNull(table.invDepartmentIssueTable.deletedAt)
 			)
 		)
 		.limit(1);
 	if (!iss) throw error(404, 'Issue not found');
-	if (iss.statusTaggingId === InvDepartmentIssueStatusTaggingEnum.CANCELLED) {
+	if (
+		iss.statusTaggingId ===
+		InvDepartmentIssueStatusTaggingEnum.CANCELLED
+	) {
 		throw error(400, 'Issue is already cancelled');
 	}
-	if (iss.statusTaggingId !== InvDepartmentIssueStatusTaggingEnum.PENDING) {
+	if (
+		iss.statusTaggingId !==
+		InvDepartmentIssueStatusTaggingEnum.PENDING
+	) {
 		throw error(400, 'Issue cannot be cancelled in current status');
 	}
 
@@ -919,7 +1299,12 @@ export async function cancelDepartmentIssue(
 		const staffId = await getStaffIdForUser(userId);
 		if (staffId) {
 			try {
-				await assertStaffAssignedForModule(input.hospitalId, iss.fromStoreId, 'DISS', staffId);
+				await assertStaffAssignedForModule(
+					input.hospitalId,
+					iss.fromStoreId,
+					'DISS',
+					staffId
+				);
 				allowed = true;
 			} catch {
 				allowed = false;
@@ -939,6 +1324,8 @@ export async function cancelDepartmentIssue(
 		})
 		.where(eq(table.invDepartmentIssueTable.id, input.issueId));
 
-	return getDepartmentIssueById(event, { hospitalId: input.hospitalId, id: input.issueId });
+	return getDepartmentIssueById(event, {
+		hospitalId: input.hospitalId,
+		id: input.issueId
+	});
 }
-

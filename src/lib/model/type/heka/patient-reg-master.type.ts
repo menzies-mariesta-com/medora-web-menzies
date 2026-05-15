@@ -24,11 +24,12 @@ export type PatientRegGenderRow = PatientRegMasterTimestamps & {
 	statusId: number;
 };
 
-export type PatientRegMaritalStatusRow = PatientRegMasterTimestamps & {
-	id: number;
-	name: string | null;
-	statusId: number;
-};
+export type PatientRegMaritalStatusRow =
+	PatientRegMasterTimestamps & {
+		id: number;
+		name: string | null;
+		statusId: number;
+	};
 
 export type PatientRegIdentityTypeRow = PatientRegMasterTimestamps & {
 	id: number;

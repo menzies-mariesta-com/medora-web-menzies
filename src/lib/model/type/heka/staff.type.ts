@@ -57,4 +57,3 @@ export type DoctorListStaffRow = StaffWithRelations & {
 		branch: { id: string; name: string | null } | null;
 	}[];
 };
-

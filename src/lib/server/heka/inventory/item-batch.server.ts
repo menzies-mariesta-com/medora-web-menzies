@@ -2,8 +2,7 @@ import { error } from '@sveltejs/kit';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import * as schema from '$lib/server/db/schema';
-
-export const OPEN_STOCK_BATCH_NO = '__OPEN_STOCK__';
+import { parseIntStrict } from './inv-validate.server';
 
 type Db = NeonDatabase<typeof schema>;
 
@@ -14,7 +13,6 @@ export async function findOrCreateItemBatch(
 		itemId: number;
 		batchNo: string;
 		expiryDate: string | null;
-		manufacturerId: number | null;
 		supplierId: number | null;
 		/** Normalized unit price per issue/stock unit (stored in `item_batch.purchase_price`). */
 		purchasePrice: string;
@@ -32,12 +30,6 @@ export async function findOrCreateItemBatch(
 				input.expiryDate == null
 					? isNull(schema.itemBatchTable.expiryDate)
 					: eq(schema.itemBatchTable.expiryDate, input.expiryDate),
-				input.manufacturerId == null
-					? isNull(schema.itemBatchTable.manufacturerId)
-					: eq(
-							schema.itemBatchTable.manufacturerId,
-							input.manufacturerId
-						),
 				input.supplierId == null
 					? isNull(schema.itemBatchTable.supplierId)
 					: eq(schema.itemBatchTable.supplierId, input.supplierId),
@@ -52,7 +44,6 @@ export async function findOrCreateItemBatch(
 		itemId: input.itemId,
 		batchNo: input.batchNo,
 		expiryDate: input.expiryDate,
-		manufacturerId: input.manufacturerId,
 		supplierId: input.supplierId,
 		purchasePrice: price
 	});
@@ -68,12 +59,6 @@ export async function findOrCreateItemBatch(
 				input.expiryDate == null
 					? isNull(schema.itemBatchTable.expiryDate)
 					: eq(schema.itemBatchTable.expiryDate, input.expiryDate),
-				input.manufacturerId == null
-					? isNull(schema.itemBatchTable.manufacturerId)
-					: eq(
-							schema.itemBatchTable.manufacturerId,
-							input.manufacturerId
-						),
 				input.supplierId == null
 					? isNull(schema.itemBatchTable.supplierId)
 					: eq(schema.itemBatchTable.supplierId, input.supplierId),
@@ -96,6 +81,7 @@ export async function addDeltaToInvStock(
 		userId: string;
 	}
 ): Promise<void> {
+	const delta = parseIntStrict(input.delta, 'delta');
 	const [row] = await tx
 		.select()
 		.from(schema.invStockTable)
@@ -109,23 +95,23 @@ export async function addDeltaToInvStock(
 		.limit(1);
 
 	if (row) {
-		const next = (Number(row.quantity) + Number(input.delta)).toFixed(6);
-		if (Number(next) < -1e-9) error(400, 'Stock quantity would be negative');
+		const next = parseIntStrict(row.quantity, 'quantity') + delta;
+		if (next < 0) error(400, 'Stock quantity would be negative');
 		await tx
 			.update(schema.invStockTable)
 			.set({
-				quantity: next,
+				quantity: String(next),
 				updatedBy: input.userId
 			})
 			.where(eq(schema.invStockTable.id, row.id));
 	} else {
-		if (Number(input.delta) < 0) error(400, 'No stock row to deduct');
+		if (delta < 0) error(400, 'No stock row to deduct');
 		await tx.insert(schema.invStockTable).values({
 			hospitalId: input.hospitalId,
 			itemId: input.itemId,
 			storeId: input.storeId,
 			batchId: input.batchId,
-			quantity: input.delta,
+			quantity: String(delta),
 			createdBy: input.userId,
 			updatedBy: input.userId
 		});

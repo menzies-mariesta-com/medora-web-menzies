@@ -90,13 +90,21 @@
 			if (tableFilters.name?.trim())
 				sp.set('patientName', tableFilters.name.trim());
 			if (tableFilters.phonePrimary?.trim())
-				sp.set('patientPhonePrimary', tableFilters.phonePrimary.trim());
+				sp.set(
+					'patientPhonePrimary',
+					tableFilters.phonePrimary.trim()
+				);
 			if (opts?.bustCache) sp.set('_t', String(Date.now()));
 
-			const res = await fetch(`${patientListApiBase(hospitalId)}?${sp.toString()}`);
+			const res = await fetch(
+				`${patientListApiBase(hospitalId)}?${sp.toString()}`
+			);
 			if (!res.ok)
-				throw new Error(`Failed to fetch patient list (${res.status})`);
-			patientResult = (await res.json()) as PaginatedResult<PatientWithRelations>;
+				throw new Error(
+					`Failed to fetch patient list (${res.status})`
+				);
+			patientResult =
+				(await res.json()) as PaginatedResult<PatientWithRelations>;
 		} finally {
 			isLoading = false;
 		}
@@ -154,11 +162,12 @@
 				);
 				if (!res.ok)
 					throw new Error(`Failed to load patient (${res.status})`);
-				const patient = (await res.json()) as PatientWithRelations | null;
+				const patient =
+					(await res.json()) as PatientWithRelations | null;
 				if (!patient) throw new Error('Patient not found');
 				const patientEmail =
-					(patient as { user?: { email?: string } })?.user
-						?.email ?? '(no email)';
+					(patient as { user?: { email?: string } })?.user?.email ??
+					'(no email)';
 				DeletePatientConfirmState.pending = {
 					id: patientId,
 					email: patientEmail
@@ -173,7 +182,9 @@
 						body: JSON.stringify({ id: result.data })
 					});
 					if (!delRes.ok)
-						throw new Error(`Failed to delete patient (${delRes.status})`);
+						throw new Error(
+							`Failed to delete patient (${delRes.status})`
+						);
 					await fetchPatients();
 					toastSuccess(
 						toastService,
@@ -342,108 +353,110 @@
 </script>
 
 <div class={TableEnum.HEIGHT}>
-		<MariTable
-			rows={patientList}
-			columns={patientColumns}
-			{isLoading}
-			bind:pageSize={filterPageSize}
-			bind:currentPage
-			totalRowCount={total}
-			showRefreshButton={true}
-			refreshTooltip="Refresh data"
-			emptyMessage="No patients found."
-			showRowActions={true}
-			actionsVariant="none"
-			enableColumnFilters={true}
-			useRemoteFilters={true}
-			rowTooltipGetter={(row) => {
-				return StringUtil.tableToolTip(row);
-			}}
-			on:refresh={handleTableRefresh}
-			on:pageSizeChange={handleTablePageSizeChange}
-			on:pageChange={handleTablePageChange}
-			on:filtersChange={(event) => {
-				if (filterDebounceTimeout) {
-					clearTimeout(filterDebounceTimeout);
-				}
-				tableFilters = event.detail.filters;
-				currentPage = 1;
-				filterDebounceTimeout = setTimeout(() => {
-					void filterFetchLock.run(async () => fetchPatients());
-				}, 350);
-			}}
-		>
-			{#snippet rowActions(row, rowIndex)}
-				{@const patientRow = row as PatientWithRelations}
-				<div class="flex flex-row flex-wrap items-center justify-center gap-1">
-					<DaisyUiTooltip
-						tooltipText="view data"
-						className="d-tooltip-ghost d-tooltip-right"
+	<MariTable
+		rows={patientList}
+		columns={patientColumns}
+		{isLoading}
+		bind:pageSize={filterPageSize}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip="Refresh data"
+		emptyMessage="No patients found."
+		showRowActions={true}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		useRemoteFilters={true}
+		rowTooltipGetter={(row) => {
+			return StringUtil.tableToolTip(row);
+		}}
+		on:refresh={handleTableRefresh}
+		on:pageSizeChange={handleTablePageSizeChange}
+		on:pageChange={handleTablePageChange}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
+				void filterFetchLock.run(async () => fetchPatients());
+			}, 350);
+		}}
+	>
+		{#snippet rowActions(row, rowIndex)}
+			{@const patientRow = row as PatientWithRelations}
+			<div
+				class="flex flex-row flex-wrap items-center justify-center gap-1"
+			>
+				<DaisyUiTooltip
+					tooltipText="view data"
+					className="d-tooltip-ghost d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm"
+						disabled={rowActionDisabled(patientRow.id)}
+						onClick={() => viewData(patientRow.id)}
 					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm"
-							disabled={rowActionDisabled(patientRow.id)}
-							onClick={() => viewData(patientRow.id)}
-						>
-							<LucideEye className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText="edit data"
-						className="d-tooltip-accent d-tooltip-right"
+						<LucideEye className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				<DaisyUiTooltip
+					tooltipText="edit data"
+					className="d-tooltip-accent d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-sm d-btn-ghost d-btn-accent"
+						disabled={rowActionDisabled(patientRow.id)}
+						onClick={() => editData(patientRow.id)}
 					>
-						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-accent"
-							disabled={rowActionDisabled(patientRow.id)}
-							onClick={() => editData(patientRow.id)}
-						>
-							<LucidePencil className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					{#if selectForEmr}
-						<DaisyUiTooltip
-							tooltipText="select for EMR"
-							className="d-tooltip-info d-tooltip-right"
-						>
-							<DaisyUiButton
-								className="d-btn-sm d-btn-info"
-								disabled={rowActionDisabled(patientRow.id)}
-								onClick={() => handleSelectForEmr(patientRow)}
-							>
-								<LucideChevronRight className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-					{/if}
+						<LucidePencil className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				{#if selectForEmr}
 					<DaisyUiTooltip
-						tooltipText="patient card / print"
+						tooltipText="select for EMR"
 						className="d-tooltip-info d-tooltip-right"
 					>
 						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm"
+							className="d-btn-sm d-btn-info"
 							disabled={rowActionDisabled(patientRow.id)}
-							onClick={() => openPatientCard(patientRow.id)}
+							onClick={() => handleSelectForEmr(patientRow)}
 						>
-							<LucidePrinter className="size-5" />
+							<LucideChevronRight className="size-5" />
 						</DaisyUiButton>
 					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText="delete data"
-						className="d-tooltip-error d-tooltip-right"
+				{/if}
+				<DaisyUiTooltip
+					tooltipText="patient card / print"
+					className="d-tooltip-info d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm"
+						disabled={rowActionDisabled(patientRow.id)}
+						onClick={() => openPatientCard(patientRow.id)}
 					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={rowActionDisabled(patientRow.id)}
-							loading={deletingId === patientRow.id}
-							loadingText=""
-							onClick={() => handleDelete(patientRow.id)}
-						>
-							<LucideTrash2 className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-				</div>
-			{/snippet}
-		</MariTable>
-	</div>
+						<LucidePrinter className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+				<DaisyUiTooltip
+					tooltipText="delete data"
+					className="d-tooltip-error d-tooltip-right"
+				>
+					<DaisyUiButton
+						className="d-btn-ghost d-btn-sm d-btn-error"
+						disabled={rowActionDisabled(patientRow.id)}
+						loading={deletingId === patientRow.id}
+						loadingText=""
+						onClick={() => handleDelete(patientRow.id)}
+					>
+						<LucideTrash2 className="size-5" />
+					</DaisyUiButton>
+				</DaisyUiTooltip>
+			</div>
+		{/snippet}
+	</MariTable>
+</div>
 
 <!-- Full-screen view/edit patient dialog -->
 {#if patientDialog}

@@ -20,17 +20,19 @@
 	let extendedLocally = $state(false);
 
 	const sessionData = $derived(
-		(page.data as
-			| {
-					sessionId?: string | null;
-					sessionExpiresAt?: string | null;
-					sessionExtendedOnce?: boolean;
-			  }
-			| null) ?? null
+		(page.data as {
+			sessionId?: string | null;
+			sessionExpiresAt?: string | null;
+			sessionExtendedOnce?: boolean;
+		} | null) ?? null
 	);
 	const sessionId = $derived(sessionData?.sessionId ?? null);
-	const sessionExtendedOnce = $derived(!!sessionData?.sessionExtendedOnce);
-	const sessionExpiresAtFromServer = $derived(sessionData?.sessionExpiresAt ?? null);
+	const sessionExtendedOnce = $derived(
+		!!sessionData?.sessionExtendedOnce
+	);
+	const sessionExpiresAtFromServer = $derived(
+		sessionData?.sessionExpiresAt ?? null
+	);
 	/** Client-side expiry after a successful extend (until next full load sync). */
 	let sessionExpiresAtOverride = $state<string | null>(null);
 	const sessionExpiresAtEffective = $derived(
@@ -114,7 +116,8 @@
 			await invalidateAll();
 			sessionExpiresAtOverride = null;
 		} catch (e) {
-			extendError = e instanceof Error ? e.message : 'Failed to extend session';
+			extendError =
+				e instanceof Error ? e.message : 'Failed to extend session';
 		} finally {
 			isExtending = false;
 		}
@@ -154,9 +157,13 @@
 		</div>
 
 		{#if sessionExpiresAtEffective}
-			<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+			<div
+				class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2"
+			>
 				<span class="text-sm font-semibold text-base-content/70">
-					Session left: <span class="font-mono tabular-nums">{sessionLeft || '—'}</span>
+					Session left: <span class="font-mono tabular-nums"
+						>{sessionLeft || '—'}</span
+					>
 				</span>
 				<DaisyUiButton
 					className="d-btn d-btn-xs d-btn-outline"
@@ -166,7 +173,9 @@
 					{isExtending ? 'Extending...' : 'Extend +2h'}
 				</DaisyUiButton>
 				{#if extendError}
-					<span class="text-xs text-error" role="alert">{extendError}</span>
+					<span class="text-xs text-error" role="alert"
+						>{extendError}</span
+					>
 				{/if}
 			</div>
 		{/if}

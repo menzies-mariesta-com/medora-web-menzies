@@ -18,7 +18,9 @@ export async function GET(event: RequestEvent) {
 	const action = event.url.searchParams.get('action') ?? 'list';
 
 	if (action === 'visitBasics') {
-		const visitId = Number(event.url.searchParams.get('visitId') ?? 0);
+		const visitId = Number(
+			event.url.searchParams.get('visitId') ?? 0
+		);
 		const data = await getVisitBasicsForPatientAttachment(event, {
 			hospitalId,
 			visitId
@@ -28,12 +30,18 @@ export async function GET(event: RequestEvent) {
 
 	if (action === 'patientLabel') {
 		const patientId = event.url.searchParams.get('patientId') ?? '';
-		const data = await getPatientDisplayName(event, { hospitalId, patientId });
+		const data = await getPatientDisplayName(event, {
+			hospitalId,
+			patientId
+		});
 		return json({ data });
 	}
 
 	const patientId = event.url.searchParams.get('patientId') ?? '';
-	const data = await getPatientAttachmentsByPatientId(event, { hospitalId, patientId });
+	const data = await getPatientAttachmentsByPatientId(event, {
+		hospitalId,
+		patientId
+	});
 	return json({ data });
 }
 
@@ -61,4 +69,3 @@ export async function DELETE(event: RequestEvent) {
 	await deletePatientAttachment(event, { hospitalId, id });
 	return json({ ok: true });
 }
-

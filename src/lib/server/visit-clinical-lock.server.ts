@@ -16,7 +16,10 @@ export async function assertVisitNotClinicallySigned(
 		.from(table.patientVisitTable)
 		.where(eq(table.patientVisitTable.id, visitId))
 		.limit(1);
-	if (row?.clinicalSignedAt != null && String(row.clinicalSignedAt).trim() !== '') {
+	if (
+		row?.clinicalSignedAt != null &&
+		String(row.clinicalSignedAt).trim() !== ''
+	) {
 		throw new Error(LOCKED_MESSAGE);
 	}
 }
@@ -24,7 +27,8 @@ export async function assertVisitNotClinicallySigned(
 export async function assertVisitNotClinicallySignedByServiceOrderId(
 	serviceOrderId: number | null | undefined
 ): Promise<void> {
-	if (serviceOrderId == null || !Number.isFinite(serviceOrderId)) return;
+	if (serviceOrderId == null || !Number.isFinite(serviceOrderId))
+		return;
 	const [ord] = await ensureDb()
 		.select({ visitId: table.serviceOrderTable.visitId })
 		.from(table.serviceOrderTable)

@@ -3,15 +3,18 @@ import { completeOwnerSignupProfile } from '$lib/server/heka/auth/signup-owner.s
 
 export async function POST(event: RequestEvent) {
 	if (!event.locals.user) throw error(401, 'Unauthorized');
-	const body = (await event.request.json().catch(() => null)) as Record<
-		string,
-		unknown
-	> | null;
+	const body = (await event.request
+		.json()
+		.catch(() => null)) as Record<string, unknown> | null;
 	const row = await completeOwnerSignupProfile(event, {
 		firstName:
-			typeof body?.firstName === 'string' ? body.firstName : undefined,
+			typeof body?.firstName === 'string'
+				? body.firstName
+				: undefined,
 		middleName:
-			typeof body?.middleName === 'string' ? body.middleName : undefined,
+			typeof body?.middleName === 'string'
+				? body.middleName
+				: undefined,
 		lastName:
 			typeof body?.lastName === 'string' ? body.lastName : undefined,
 		countryId:

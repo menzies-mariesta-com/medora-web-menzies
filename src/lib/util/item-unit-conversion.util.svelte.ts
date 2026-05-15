@@ -10,9 +10,15 @@ export function formatItemUnitConversionDisplay(input: {
 }): string {
 	const p = input.purchaseFactor;
 	const i = input.issueFactor;
-	const pu = (input.purchaseUnitName || 'purchase').trim() || 'purchase';
+	const pu =
+		(input.purchaseUnitName || 'purchase').trim() || 'purchase';
 	const iu = (input.issueUnitName || 'issue').trim() || 'issue';
-	if (!Number.isFinite(p) || !Number.isFinite(i) || i <= 0 || p <= 0) {
+	if (
+		!Number.isFinite(p) ||
+		!Number.isFinite(i) ||
+		i <= 0 ||
+		p <= 0
+	) {
 		return '—';
 	}
 	const ratio = p / i;
@@ -20,9 +26,7 @@ export function formatItemUnitConversionDisplay(input: {
 	if (Number.isInteger(ratio)) {
 		rLabel = String(ratio);
 	} else {
-		rLabel = ratio
-			.toFixed(6)
-			.replace(/\.?0+$/, '');
+		rLabel = ratio.toFixed(6).replace(/\.?0+$/, '');
 	}
 	return `1 ${pu} = ${rLabel} ${iu}`;
 }

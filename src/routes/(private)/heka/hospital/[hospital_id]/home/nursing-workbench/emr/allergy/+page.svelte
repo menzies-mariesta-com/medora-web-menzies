@@ -199,7 +199,8 @@
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?mode=visit.get&visitId=${visitId}`
 			);
-			if (!res.ok) throw new Error(`Visit load failed (${res.status})`);
+			if (!res.ok)
+				throw new Error(`Visit load failed (${res.status})`);
 			const v = await res.json();
 			if (v) {
 				const nextVisit = {
@@ -250,14 +251,18 @@
 				page: String(currentPage),
 				pageSize: String(pageSize)
 			});
-			if (tableFilters.visitNo?.trim()) qs.set('visitNo', tableFilters.visitNo.trim());
-			if (tableFilters.severity?.trim()) qs.set('severityName', tableFilters.severity.trim());
-			if (statusId != null && Number.isFinite(statusId)) qs.set('statusId', String(statusId));
+			if (tableFilters.visitNo?.trim())
+				qs.set('visitNo', tableFilters.visitNo.trim());
+			if (tableFilters.severity?.trim())
+				qs.set('severityName', tableFilters.severity.trim());
+			if (statusId != null && Number.isFinite(statusId))
+				qs.set('statusId', String(statusId));
 
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/allergy?${qs.toString()}`
 			);
-			if (!res.ok) throw new Error(`Allergy load failed (${res.status})`);
+			if (!res.ok)
+				throw new Error(`Allergy load failed (${res.status})`);
 			const result = await res.json();
 			patientAllergies = result.data;
 			totalAllergies = result.total;
@@ -444,7 +449,9 @@
 					</DaisyUiButton>
 				</div>
 				{#if !visit}
-					<div class="flex min-h-32 items-center justify-center text-sm text-base-content/70">
+					<div
+						class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
+					>
 						Loading visit…
 					</div>
 				{:else if patientAllergies.length === 0 && !isLoadingAllergies}

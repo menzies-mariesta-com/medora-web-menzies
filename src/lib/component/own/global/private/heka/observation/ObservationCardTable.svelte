@@ -14,7 +14,9 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import MariTable, { type MariTableColumnsInput } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumnsInput
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 
 	/** Event payloads; matches MariTable’s untyped row wire-up. */
 	type Row = any;
@@ -133,7 +135,10 @@
 		>
 			<span class="text-sm font-semibold">{title}</span>
 			{#if addButtonVariant === 'add'}
-				<DaisyUiTooltip tooltipText="Add" className="d-tooltip-bottom">
+				<DaisyUiTooltip
+					tooltipText="Add"
+					className="d-tooltip-bottom"
+				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-xs d-btn-square"
 						onClick={handleAdd}
@@ -172,16 +177,14 @@
 				bind:columnFilters
 				{crudEditDisabled}
 				{crudDeleteDisabled}
-				showRowActions={showRowActions}
-				actionsVariant={
-					enableMoveAction
-						? 'none'
-						: showRowActions
-							? rowActionsVariant === 'crud'
-								? 'crud'
-								: 'none'
+				{showRowActions}
+				actionsVariant={enableMoveAction
+					? 'none'
+					: showRowActions
+						? rowActionsVariant === 'crud'
+							? 'crud'
 							: 'none'
-				}
+						: 'none'}
 				{enableColumnFilters}
 				{useRemoteFilters}
 				{crudShowView}
@@ -237,8 +240,7 @@
 										dispatch('move', {
 											row,
 											toFormCode: moveToFormCode
-										})
-									}
+										})}
 								>
 									{#if moveDirection === 'up'}
 										<LucideChevronLeft className="size-4" />

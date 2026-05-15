@@ -18,16 +18,26 @@ import type { DocumentSettingWithRelations } from '$lib/model/type/document-sett
 
 export async function getDocumentSettingsPaginated(
 	event: RequestEvent,
-	params: PaginationParams & { hospitalId: string; statusId?: number | null }
+	params: PaginationParams & {
+		hospitalId: string;
+		statusId?: number | null;
+	}
 ): Promise<PaginatedResult<DocumentSettingWithRelations>> {
 	await ensureCanAccessHospital(event, params.hospitalId, {
 		ownerErrorMessage:
 			'You can only manage document settings of your own hospitals'
 	});
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
-	const notDeleted = ne(table.documentSettingTable.statusId, StatusEnum.DELETED);
-	const hospitalFilter = eq(table.documentSettingTable.hospitalId, params.hospitalId);
+	const notDeleted = ne(
+		table.documentSettingTable.statusId,
+		StatusEnum.DELETED
+	);
+	const hospitalFilter = eq(
+		table.documentSettingTable.hospitalId,
+		params.hospitalId
+	);
 	const statusFilter =
 		params.statusId != null
 			? eq(table.documentSettingTable.statusId, params.statusId)
@@ -62,7 +72,9 @@ export async function getDocumentSettingsPaginated(
 
 export async function createDocumentSetting(
 	event: RequestEvent,
-	input: Omit<DocumentSettingSchemaInsert, 'hospitalId'> & { hospitalId: string }
+	input: Omit<DocumentSettingSchemaInsert, 'hospitalId'> & {
+		hospitalId: string;
+	}
 ): Promise<DocumentSettingSchema> {
 	await ensureCanAccessHospital(event, input.hospitalId, {
 		ownerErrorMessage:
@@ -115,4 +127,3 @@ export async function deleteDocumentSetting(
 		.set({ statusId: StatusEnum.DELETED })
 		.where(eq(table.documentSettingTable.id, input.id));
 }
-

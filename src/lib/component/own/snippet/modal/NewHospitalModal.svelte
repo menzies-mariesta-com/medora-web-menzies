@@ -115,9 +115,15 @@
 			postalCodesData,
 			ownersRes
 		] = await Promise.all([
-			fetch('/api/heka/master/lookup?kind=country').then((r) => r.json()),
-			fetch('/api/heka/master/lookup?kind=state').then((r) => r.json()),
-			fetch('/api/heka/master/lookup?kind=city').then((r) => r.json()),
+			fetch('/api/heka/master/lookup?kind=country').then((r) =>
+				r.json()
+			),
+			fetch('/api/heka/master/lookup?kind=state').then((r) =>
+				r.json()
+			),
+			fetch('/api/heka/master/lookup?kind=city').then((r) =>
+				r.json()
+			),
 			fetch('/api/heka/master/lookup?kind=postalCode').then((r) =>
 				r.json()
 			),
@@ -143,9 +149,7 @@
 				? String(h.countryId)
 				: '';
 		const loadedStateId =
-			h.stateId != null && h.stateId !== ''
-				? String(h.stateId)
-				: '';
+			h.stateId != null && h.stateId !== '' ? String(h.stateId) : '';
 		const loadedCityId =
 			h.cityId != null && h.cityId !== '' ? String(h.cityId) : '';
 		const loadedPostalCodeId =
@@ -172,7 +176,10 @@
 		description = (h.description as string | null | undefined) ?? '';
 		establishedDate =
 			(h.establishedDate as string | null | undefined) ?? '';
-		const phoneCountryIdRaw = h.phoneCountryId as number | null | undefined;
+		const phoneCountryIdRaw = h.phoneCountryId as
+			| number
+			| null
+			| undefined;
 		if (phoneCountryIdRaw != null) {
 			phoneCountryId = String(phoneCountryIdRaw);
 			const country = countries.find(

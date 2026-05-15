@@ -8,10 +8,15 @@ function hospitalIdFrom(event: RequestEvent): string {
 
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
-	const visitId = Number(event.url.searchParams.get('visitId') ?? '0');
+	const visitId = Number(
+		event.url.searchParams.get('visitId') ?? '0'
+	);
 	if (!Number.isFinite(visitId) || visitId <= 0) {
 		throw error(400, 'visitId is required');
 	}
-	const data = await getVisitDashboardPayload(event, { hospitalId, visitId });
+	const data = await getVisitDashboardPayload(event, {
+		hospitalId,
+		visitId
+	});
 	return json(data);
 }

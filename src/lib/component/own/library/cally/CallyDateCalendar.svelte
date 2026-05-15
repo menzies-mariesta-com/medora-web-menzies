@@ -40,7 +40,9 @@
 
 	let callyLoaded = $state(false);
 	const currentYear = new Date().getFullYear();
-	const monthsCount = $derived.by(() => Math.max(1, Math.floor(months ?? 1)));
+	const monthsCount = $derived.by(() =>
+		Math.max(1, Math.floor(months ?? 1))
+	);
 	let focusedDate = $state('');
 	let lastValue = $state('');
 	let calendarEl: HTMLElement | null = $state(null);
@@ -55,7 +57,11 @@
 		return Number.isFinite(parsedYear) ? parsedYear : undefined;
 	});
 	const maxYears = $derived.by(() => {
-		if (minYear !== undefined && maxYear !== undefined && maxYear >= minYear) {
+		if (
+			minYear !== undefined &&
+			maxYear !== undefined &&
+			maxYear >= minYear
+		) {
 			return maxYear - minYear + 1;
 		}
 		if (minYear !== undefined) {
@@ -75,7 +81,10 @@
 	const yearOptions = $derived.by(() => {
 		const start = Math.min(yearStart, yearEnd);
 		const end = Math.max(yearStart, yearEnd);
-		return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+		return Array.from(
+			{ length: end - start + 1 },
+			(_, i) => start + i
+		);
 	});
 	const monthOptions = $derived.by(() => {
 		const monthFormatter = new Intl.DateTimeFormat(locale, {
@@ -92,7 +101,8 @@
 		});
 	});
 	const focusedParts = $derived.by(() => {
-		const source = parseIsoDate(focusedDate) ?? parseIsoDate(value) ?? new Date();
+		const source =
+			parseIsoDate(focusedDate) ?? parseIsoDate(value) ?? new Date();
 		return {
 			year: source.getUTCFullYear(),
 			month: source.getUTCMonth() + 1,
@@ -128,7 +138,10 @@
 		const handler = (event: Event) => handleFocusDay(event);
 		calendarEl.addEventListener('focusday', handler as EventListener);
 		return () => {
-			calendarEl?.removeEventListener('focusday', handler as EventListener);
+			calendarEl?.removeEventListener(
+				'focusday',
+				handler as EventListener
+			);
 		};
 	});
 
@@ -144,24 +157,32 @@
 		function readIsoFromHost(host: HTMLElement): string {
 			const h = host as HTMLElement & { value?: unknown };
 			const v = h.value;
-			if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+			if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v))
+				return v;
 			const attr = host.getAttribute('value');
-			if (typeof attr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(attr)) return attr;
+			if (
+				typeof attr === 'string' &&
+				/^\d{4}-\d{2}-\d{2}$/.test(attr)
+			)
+				return attr;
 			return '';
 		}
 
 		function commitFromDetail(ev: Event) {
 			const d = (ev as CustomEvent<unknown>).detail;
 			if (d == null) return '';
-			if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+			if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+				return d;
 			if (
 				typeof d === 'object' &&
 				d !== null &&
 				'toString' in d &&
-				typeof (d as { toString: () => string }).toString === 'function'
+				typeof (d as { toString: () => string }).toString ===
+					'function'
 			) {
 				const s = (d as { toString: () => string }).toString();
-				if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+				if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s))
+					return s;
 			}
 			return '';
 		}
@@ -216,7 +237,9 @@
 	function setFocusedDate(year: number, month: number) {
 		const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
 		const day = Math.min(focusedParts.day, maxDay);
-		focusedDate = formatIsoDate(new Date(Date.UTC(year, month - 1, day)));
+		focusedDate = formatIsoDate(
+			new Date(Date.UTC(year, month - 1, day))
+		);
 	}
 
 	function parseIsoDate(raw: string | undefined): Date | null {
@@ -271,7 +294,7 @@
 		{#if monthsCount === 1}
 			<div slot="heading" class="d-cally-heading-controls">
 				<select
-					class="d-select d-select-sm d-select-bordered min-w-28"
+					class="d-select-bordered d-select min-w-28 d-select-sm"
 					bind:value={yearSelectValue}
 					onchange={(e) => {
 						e.stopPropagation();
@@ -284,7 +307,7 @@
 				</select>
 
 				<select
-					class="d-select d-select-sm d-select-bordered min-w-28"
+					class="d-select-bordered d-select min-w-28 d-select-sm"
 					bind:value={monthSelectValue}
 					onchange={(e) => {
 						e.stopPropagation();

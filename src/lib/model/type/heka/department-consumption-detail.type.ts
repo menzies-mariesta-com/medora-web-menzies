@@ -1,3 +1,28 @@
+/** Per-batch row while drafting consumption (purchase qty per batch). */
+export type ConsumptionBatchAllocationDraft = {
+	batchId: number;
+	batchNo: string;
+	expiryDate: string | null;
+	/** `inv_stock.quantity` in issue/stock unit */
+	stockIssueQty: string;
+	salePrice: string | null;
+	issueUnitName: string | null;
+	/** User-entered qty in purchase unit for this batch */
+	qtyPurchase: string;
+};
+
+/** Item unit master row shape from item-master API (subset used on draft lines). */
+export type ConsumptionDraftLineIum = {
+	id: number;
+	conversionDisplay: string;
+	purchaseUnitId: number;
+	issueUnitId: number;
+	purchaseUnitName: string;
+	issueUnitName: string;
+	purchaseConversionFactor: string;
+	issueConversionFactor: string;
+};
+
 /** Draft line while editing consumption (UI ↔ modal). */
 export type ConsumptionDraftLine = {
 	key: string;
@@ -5,16 +30,9 @@ export type ConsumptionDraftLine = {
 	hits: { id: number; itemName: string | null }[];
 	itemId: number | null;
 	itemLabel: string;
-	quantity: string;
-	iumList: {
-		id: number;
-		conversionDisplay: string;
-		purchaseUnitId: number;
-		issueUnitId: number;
-	}[];
+	iumList: ConsumptionDraftLineIum[];
 	itemUnitMasterId: number | null;
-	batchId: number | null;
-	batchOptions: { value: number; label: string; qty: string }[];
+	batchAllocations: ConsumptionBatchAllocationDraft[];
 };
 
 /** Line row on GET `/inventory/department-consumption?id=` */

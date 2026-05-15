@@ -4,7 +4,10 @@ import { cancelDepartmentConsumption } from '$lib/server/heka/inventory/departme
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await cancelDepartmentConsumption(event, {
 		hospitalId,
 		consumptionId: String(body.consumptionId ?? ''),

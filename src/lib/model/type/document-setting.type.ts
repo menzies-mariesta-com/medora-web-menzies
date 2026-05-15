@@ -29,11 +29,12 @@ export type DocumentSettingRow = PatientRegMasterTimestamps & {
 	statusId: number;
 };
 
-export type DocumentHospitalRelationRow = PatientRegMasterTimestamps & {
-	id: string;
-	name: string | null;
-	code: string | null;
-};
+export type DocumentHospitalRelationRow =
+	PatientRegMasterTimestamps & {
+		id: string;
+		name: string | null;
+		code: string | null;
+	};
 
 export type DocumentStatusRelationRow = PatientRegMasterTimestamps & {
 	id: number;

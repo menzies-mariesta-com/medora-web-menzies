@@ -17,7 +17,12 @@ export type MedicationOrderLineInput = {
 };
 
 export type MedicationOrderBatchSaveResponse = {
-	batch: { id: number; batchNo: string; visitId: number; storeId: number };
+	batch: {
+		id: number;
+		batchNo: string;
+		visitId: number;
+		storeId: number;
+	};
 	batchNo: string;
 };
 
@@ -28,7 +33,11 @@ export type MedicationOrderMastersResponse = {
 	doseUnits: { id: number; name: string | null }[];
 	foodRels: { id: number; name: string | null }[];
 	durUnits: { id: number; code: string; name: string | null }[];
-	freqs: { id: number; label: string | null; summaryText: string | null }[];
+	freqs: {
+		id: number;
+		label: string | null;
+		summaryText: string | null;
+	}[];
 };
 
 export type StoreSearchRow = { id: number; storeName: string | null };
@@ -66,4 +75,6 @@ export type MedOrderSetupEntity =
 	| 'duration'
 	| 'frequency';
 
-export type MedOrderMasterListResult = PaginatedResult<Record<string, unknown>>;
+export type MedOrderMasterListResult = PaginatedResult<
+	Record<string, unknown>
+>;

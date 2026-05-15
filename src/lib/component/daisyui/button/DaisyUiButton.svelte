@@ -44,13 +44,13 @@
 </script>
 
 <button
-	class="d-btn disabled:opacity-40 disabled:cursor-not-allowed {className}"
+	class="d-btn disabled:cursor-not-allowed disabled:opacity-40 {className}"
 	bind:this={btnEl}
 	type={resolvedType}
 	onclick={onClick}
 	disabled={isDisabled}
 	aria-busy={loading}
-	title={title}
+	{title}
 >
 	{#if loading}
 		<span class="inline-flex items-center gap-2">

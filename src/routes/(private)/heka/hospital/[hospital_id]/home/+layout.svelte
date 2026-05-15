@@ -69,14 +69,17 @@
 			null
 	);
 	const userEmail = $derived(
-		((data as { user?: { email?: string | null } | null })?.user?.email ??
-			null) as string | null
+		((data as { user?: { email?: string | null } | null })?.user
+			?.email ?? null) as string | null
 	);
 
 	/** Display name in module bar: `user.name` (auth `user` table) first, then staff legal name, then email. */
 	const staffDisplayName = $derived.by(() => {
-		const u = (data as { user?: { name?: string | null; email?: string | null } | null })
-			?.user;
+		const u = (
+			data as {
+				user?: { name?: string | null; email?: string | null } | null;
+			}
+		)?.user;
 		if (u?.name?.trim()) return u.name.trim();
 		const s = data?.staff as StaffWithRelations | null | undefined;
 		if (s) {
@@ -105,32 +108,31 @@
 				pageList={pageData}
 				staffId={currentStaffId}
 				staffPhotoUrl={currentStaffPhotoUrl}
-				staffDisplayName={staffDisplayName}
+				{staffDisplayName}
 				userRoleId={data?.userRoleId ?? null}
-				staffUserGroupsForNav={(data as any)?.staffUserGroupsForNav ?? []}
+				staffUserGroupsForNav={(data as any)?.staffUserGroupsForNav ??
+					[]}
 				selectedUserGroupId={data?.selectedUserGroupId ?? null}
 				staffBranchesForNav={(data as any)?.staffBranchesForNav ?? []}
 				selectedBranchId={data?.selectedBranchId ?? null}
-				inventoryFromStoresForNav={(data as any)?.inventoryFromStoresForNav ?? []}
-				selectedInventoryFromStoreId={(data as any)?.selectedInventoryFromStoreId ?? null}
-				navbarVisible={
-					isInAppointmentModule
-						? appointmentNavbarOpen
-						: isInEmrCloneEmr
-							? emrNavbarOpen
-							: undefined
-				}
-				onToggleNavbar={
-					isInAppointmentModule
-						? () => (appointmentNavbarOpen = !appointmentNavbarOpen)
-						: isInEmrCloneEmr
-							? () => (emrNavbarOpen = !emrNavbarOpen)
-							: undefined
-				}
+				inventoryFromStoresForNav={(data as any)
+					?.inventoryFromStoresForNav ?? []}
+				selectedInventoryFromStoreId={(data as any)
+					?.selectedInventoryFromStoreId ?? null}
+				navbarVisible={isInAppointmentModule
+					? appointmentNavbarOpen
+					: isInEmrCloneEmr
+						? emrNavbarOpen
+						: undefined}
+				onToggleNavbar={isInAppointmentModule
+					? () => (appointmentNavbarOpen = !appointmentNavbarOpen)
+					: isInEmrCloneEmr
+						? () => (emrNavbarOpen = !emrNavbarOpen)
+						: undefined}
 			/>
 		{/key}
 	{/if}
-	<div class="my-main p-3 bg-base-100" class:my-main-embed={isEmbed}>
+	<div class="my-main bg-base-100 p-3" class:my-main-embed={isEmbed}>
 		{#key page.url.pathname}
 			<AnimatedPageContent>
 				{@render children?.()}

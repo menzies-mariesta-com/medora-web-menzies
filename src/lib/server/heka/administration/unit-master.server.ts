@@ -12,7 +12,17 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, asc, count, desc, eq, ilike, isNull, ne, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	isNull,
+	ne,
+	sql
+} from 'drizzle-orm';
 
 export async function listUnitTypesForUnitMaster() {
 	return ensureDb()
@@ -29,7 +39,8 @@ export async function getUnitsPaginated(
 		statusId?: number;
 	}
 ): Promise<PaginatedResult<UnitMasterListRow>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 	const notDeleted = ne(table.unitTable.statusId, StatusEnum.DELETED);
 	const parts = [notDeleted];
 	const search = params?.search?.trim();
@@ -186,7 +197,9 @@ export async function updateUnit(
 	return row;
 }
 
-export async function deleteUnit(input: { id: number }): Promise<void> {
+export async function deleteUnit(input: {
+	id: number;
+}): Promise<void> {
 	const existing = await ensureDb()
 		.select()
 		.from(table.unitTable)

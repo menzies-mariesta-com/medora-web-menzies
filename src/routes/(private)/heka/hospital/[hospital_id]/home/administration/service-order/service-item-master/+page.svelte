@@ -339,11 +339,18 @@
 			const qs = new URLSearchParams();
 			qs.set('page', String(paginatedParams.page));
 			qs.set('pageSize', String(paginatedParams.pageSize));
-			if (paginatedParams.id != null) qs.set('id', String(paginatedParams.id));
+			if (paginatedParams.id != null)
+				qs.set('id', String(paginatedParams.id));
 			if (paginatedParams.subCategoryId != null)
-				qs.set('subCategoryId', String(paginatedParams.subCategoryId));
+				qs.set(
+					'subCategoryId',
+					String(paginatedParams.subCategoryId)
+				);
 			if (paginatedParams.subCategoryIds?.length)
-				qs.set('subCategoryIds', paginatedParams.subCategoryIds.join(','));
+				qs.set(
+					'subCategoryIds',
+					paginatedParams.subCategoryIds.join(',')
+				);
 			if (paginatedParams.serviceName)
 				qs.set('serviceName', paginatedParams.serviceName);
 			if (paginatedParams.serviceCode)
@@ -351,7 +358,9 @@
 			if (paginatedParams.statusId != null)
 				qs.set('statusId', String(paginatedParams.statusId));
 
-			serviceResult = await fetchJson<PaginatedResult<ServiceItemListRow>>(
+			serviceResult = await fetchJson<
+				PaginatedResult<ServiceItemListRow>
+			>(
 				`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-master?${qs.toString()}`
 			);
 		} finally {
@@ -545,7 +554,8 @@
 				const result = await dialogService.open({
 					title: m.service_item_delete_confirm_title(),
 					message: `${m.service_item_delete_confirm_prefix()} "${
-						row.serviceName ?? m.service_item_this_service_item_fallback()
+						row.serviceName ??
+						m.service_item_this_service_item_fallback()
 					}"${m.service_item_delete_confirm_suffix()}`,
 					variant: DialogVariantEnum.CONFIRM
 				});
@@ -607,7 +617,9 @@
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium" for="service-item-form-category"
+						<label
+							class="text-sm font-medium"
+							for="service-item-form-category"
 							>{m.service_item_category_label()}</label
 						>
 						<DaisyUiSelect
@@ -625,7 +637,9 @@
 						</DaisyUiSelect>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium" for="service-item-form-subcategory"
+						<label
+							class="text-sm font-medium"
+							for="service-item-form-subcategory"
 							>{m.service_item_sub_category_label()}</label
 						>
 						<DaisyUiSelect
@@ -644,7 +658,10 @@
 						</DaisyUiSelect>
 					</div>
 					<div class="flex min-w-52 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium" for="service-item-form-name">
+						<label
+							class="text-sm font-medium"
+							for="service-item-form-name"
+						>
 							{m.service_item_service_name_label()}<span
 								class="text-error"
 							>
@@ -661,7 +678,9 @@
 						/>
 					</div>
 					<div class="flex min-w-40 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium" for="service-item-form-code"
+						<label
+							class="text-sm font-medium"
+							for="service-item-form-code"
 							>{m.service_item_service_code_label()}</label
 						>
 						<DaisyUiInputField
@@ -676,7 +695,9 @@
 
 				<div class="flex flex-wrap gap-4">
 					<div class="flex min-w-56 flex-1 flex-col gap-1">
-						<label class="text-sm font-medium" for="service-item-form-remark"
+						<label
+							class="text-sm font-medium"
+							for="service-item-form-remark"
 							>{m.service_item_remark_label()}</label
 						>
 						<DaisyUiTextarea

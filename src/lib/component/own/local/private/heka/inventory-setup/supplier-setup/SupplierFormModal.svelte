@@ -26,7 +26,8 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -62,7 +63,8 @@
 	);
 
 	const selectedCountry = $derived(
-		countryData.find((c) => String(c.id) === selectedCountryId) ?? null
+		countryData.find((c) => String(c.id) === selectedCountryId) ??
+			null
 	);
 	const selectedState = $derived(
 		stateData.find((s) => String(s.id) === selectedStateId) ?? null
@@ -126,8 +128,9 @@
 	});
 
 	const selectedPostalCode = $derived(
-		postalCodeData.find((p) => String(p.id) === selectedPostalCodeId) ??
-			null
+		postalCodeData.find(
+			(p) => String(p.id) === selectedPostalCodeId
+		) ?? null
 	);
 
 	lifeCycleUtil.onMount(async () => {
@@ -259,7 +262,10 @@
 {#if isLoading}
 	<p class="text-sm opacity-70">{m.loading()}</p>
 {:else}
-	<form onsubmit={handleSubmit} class="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pe-1">
+	<form
+		onsubmit={handleSubmit}
+		class="flex max-h-[min(70vh,36rem)] flex-col gap-4 overflow-y-auto pe-1"
+	>
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
@@ -292,7 +298,9 @@
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
 			<DaisyUiLabel forText="sup-addr" className="shrink-0 sm:w-40"
 				>{m.address()}</DaisyUiLabel
 			>
@@ -337,7 +345,9 @@
 					optionHeader={m.state()}
 				>
 					{#each filteredStateData as s (s.id)}
-						<option value={String(s.id)}>{s.name ?? s.code ?? s.id}</option>
+						<option value={String(s.id)}
+							>{s.name ?? s.code ?? s.id}</option
+						>
 					{/each}
 				</DaisyUiSelect>
 			</div>
@@ -356,7 +366,9 @@
 					optionHeader={m.city()}
 				>
 					{#each filteredCityData as ct (ct.id)}
-						<option value={String(ct.id)}>{ct.name ?? ct.code ?? ct.id}</option>
+						<option value={String(ct.id)}
+							>{ct.name ?? ct.code ?? ct.id}</option
+						>
 					{/each}
 				</DaisyUiSelect>
 			</div>
@@ -383,7 +395,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel forText="sup-phone-cc" className="shrink-0 sm:w-40"
+			<DaisyUiLabel
+				forText="sup-phone-cc"
+				className="shrink-0 sm:w-40"
 				>{m.inventory_party_phone_country()}</DaisyUiLabel
 			>
 			<div class="max-w-lg flex-1">
@@ -430,7 +444,9 @@
 				/>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
 			<DaisyUiLabel forText="sup-remark" className="shrink-0 sm:w-40"
 				>{m.inventory_party_remark()}</DaisyUiLabel
 			>
@@ -446,7 +462,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel className="shrink-0 sm:w-40">{m.status()}</DaisyUiLabel>
+			<DaisyUiLabel className="shrink-0 sm:w-40"
+				>{m.status()}</DaisyUiLabel
+			>
 			<div class="flex max-w-lg flex-1 flex-wrap items-center gap-2">
 				<label class="flex cursor-pointer items-center gap-2">
 					<DaisyUiCheckbox bind:checked={formActive} />

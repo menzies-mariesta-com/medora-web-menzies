@@ -8,7 +8,6 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
 	import GrnFromPoLineDialogContent from '$lib/component/own/local/private/heka/inventory/grn/GrnFromPoLineDialogContent.svelte';
 	import GrnDirectLineDialogContent from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLineDialogContent.svelte';
 	import GrnDirectLinesCard from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLinesCard.svelte';
@@ -17,6 +16,7 @@
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MariTable, {
 		type MariTableColumn,
@@ -36,10 +36,23 @@
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	let { data } = $props();
+	const layoutSessionUser = $derived.by(() => {
+		const id =
+			(
+				data as { currentUserId?: string | null }
+			).currentUserId?.trim() || null;
+		const name =
+			(
+				data as { currentUserName?: string | null }
+			).currentUserName?.trim() || null;
+		return { id, name };
+	});
 	const selectedInventoryFromStoreId = $derived(
 		(data as { selectedInventoryFromStoreId?: number | null })
 			.selectedInventoryFromStoreId ?? null
@@ -56,7 +69,10 @@
 		const id = selectedInventoryFromStoreId;
 		const nav = (
 			data as {
-				inventoryFromStoresForNav?: { id: number; storeName: string | null }[];
+				inventoryFromStoresForNav?: {
+					id: number;
+					storeName: string | null;
+				}[];
 			}
 		).inventoryFromStoresForNav;
 		const row = nav?.find((s) => s.id === id);
@@ -80,7 +96,6 @@
 		expiryDate: string;
 		purchasePrice: string;
 		itemName: string | null;
-		isBatchRequired: boolean;
 		itemUnitMasterId: number | null;
 		itemUnitMasterConversion: string | null;
 	};
@@ -93,12 +108,14 @@
 		unitPrice: string;
 		qtyReceivedCumulative: string;
 		itemName?: string | null;
-		isBatchRequired?: boolean;
 		itemUnitMasterId?: number | null;
 		itemUnitMasterConversion?: string | null;
 	};
 
-	type ReceivingStore = { storeId: number; storeName: string | null } | null;
+	type ReceivingStore = {
+		storeId: number;
+		storeName: string | null;
+	} | null;
 
 	type PoRowLite = {
 		id: string;
@@ -124,7 +141,7 @@
 	let invoiceDate = $state('');
 	let invoiceAmount = $state('');
 	let invoicePhotoUrl = $state<string | null>(null);
-	let receivedByUserId = $state<number | null>(null);
+	let receivedByUserId = $state<string | null>(null);
 	let invoicePhotoUploading = $state(false);
 	let poLines = $state<PoLine[]>([]);
 	let lineForms = $state<
@@ -135,6 +152,8 @@
 			expiryDate: string;
 			purchasePrice: string;
 			freeQty: string;
+			freeUnitId: number | string | null;
+			freeUnitIumId: number | null;
 			discountAmount: string;
 			discountPercent: string;
 			taxAmount: string;
@@ -164,13 +183,14 @@
 		expiryDate: string;
 		purchasePrice: string;
 		freeQty: string;
+		freeUnitId: number | string | null;
+		freeUnitIumId: number | null;
 		discountAmount: string;
 		discountPercent: string;
 		taxAmount: string;
 		taxPercent: string;
 		iumList: IumOpt[];
 		itemUnitMasterId: number | null;
-		isBatchRequired?: boolean;
 	};
 
 	let directStoreId = $state<number | null>(null);
@@ -195,7 +215,10 @@
 		try {
 			const fd = new FormData();
 			fd.append('file', file);
-			const res = await fetch('/api/upload/grn-invoice', { method: 'POST', body: fd });
+			const res = await fetch('/api/upload/grn-invoice', {
+				method: 'POST',
+				body: fd
+			});
 			if (!res.ok) {
 				toastService.addToast(
 					'Could not upload invoice file',
@@ -231,19 +254,43 @@
 			{ method: 'GET' }
 		);
 		if (!res.ok) return [];
-		const j = (await res.json()) as { userId: number; name: string | null }[];
+		const j = (await res.json()) as {
+			userId: string;
+			name: string | null;
+		}[];
 		return (j ?? []).map((u) => ({
 			label: u.name?.trim() ? u.name.trim() : '—',
-			value: String(u.userId)
+			value: u.userId
 		}));
 	}
 
-	let directLineItemFilter = $state('');
+	async function getReceivedByLabelForValue(
+		userId: string
+	): Promise<string> {
+		const uid = userId.trim();
+		if (!uid) return '—';
+		if (uid === layoutSessionUser.id && layoutSessionUser.name)
+			return layoutSessionUser.name;
+		if (!hospitalId) return '—';
+		const sp = new URLSearchParams();
+		sp.set('userId', uid);
+		const res = await fetch(
+			`/api/heka/hospital/${hospitalId}/home/inventory/grn/received-by-search?${sp.toString()}`,
+			{ method: 'GET' }
+		);
+		if (!res.ok) return '—';
+		const j = (await res.json()) as {
+			userId: string;
+			name: string | null;
+		}[];
+		const row = j?.[0];
+		return row?.name?.trim() ? row.name.trim() : '—';
+	}
+
 	let directLineDialogActive = $state(false);
 	let editingDirectKey = $state<string | null>(null);
 	let draftDirectLine = $state<GrnDirectLine>(newDirectLine());
 
-	let grnLineItemFilter = $state('');
 	let grnFromPoLineDialogActive = $state(false);
 	let draftGrnFromPoLine = $state<{
 		poLineId: number;
@@ -252,11 +299,25 @@
 		expiryDate: string;
 		purchasePrice: string;
 		freeQty: string;
+		freeUnitId: number | string | null;
+		freeUnitIumId: number | null;
 		discountAmount: string;
 		discountPercent: string;
 		taxAmount: string;
 		taxPercent: string;
+		iumList: IumOpt[];
 	} | null>(null);
+
+	function allowedFreeUnitIdsFromIums(list: IumOpt[]): Set<string> {
+		const allowed = new Set<string>();
+		for (const ium of list ?? []) {
+			if (typeof ium?.purchaseUnitId === 'number')
+				allowed.add(String(ium.purchaseUnitId));
+			if (typeof ium?.issueUnitId === 'number')
+				allowed.add(String(ium.issueUnitId));
+		}
+		return allowed;
+	}
 
 	function newDirectLine(): GrnDirectLine {
 		return {
@@ -270,6 +331,8 @@
 			expiryDate: '',
 			purchasePrice: '0',
 			freeQty: '0',
+			freeUnitId: null,
+			freeUnitIumId: null,
 			discountAmount: '0',
 			discountPercent: '0',
 			taxAmount: '0',
@@ -279,49 +342,60 @@
 		};
 	}
 
-	function purchaseUnitForDirectLine(line: GrnDirectLine): number | null {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
+	function purchaseUnitForDirectLine(
+		line: GrnDirectLine
+	): number | null {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
 		return ium?.purchaseUnitId ?? null;
 	}
 
-	function conversionLabelDirect(line: GrnDirectLine): string {
-		const ium = line.iumList.find((u) => u.id === line.itemUnitMasterId);
-		return ium?.conversionDisplay ?? '—';
+	function ensureDirectFreeUnit(line: GrnDirectLine) {
+		const ium =
+			line.iumList.find((u) => u.id === line.itemUnitMasterId) ??
+			null;
+		const purchaseUnitId = ium?.purchaseUnitId ?? null;
+		const allowedIumIds = new Set(
+			(line.iumList ?? []).map((u) => String(u.id))
+		);
+		const currentIum =
+			line.freeUnitIumId != null ? String(line.freeUnitIumId) : '';
+		if (!currentIum || !allowedIumIds.has(currentIum)) {
+			line.freeUnitIumId = ium?.id ?? null;
+		}
+		const chosen =
+			line.freeUnitIumId != null
+				? (line.iumList.find((u) => u.id === line.freeUnitIumId) ??
+					null)
+				: null;
+		line.freeUnitId = chosen?.purchaseUnitId ?? purchaseUnitId;
 	}
 
-	const filteredDirectLines = $derived.by(() => {
-		const q = directLineItemFilter.trim().toLowerCase();
-		if (!q) return directLines;
-		return directLines.filter((l) => {
-			const item = (l.itemLabel ?? '').toLowerCase();
-			const conv = conversionLabelDirect(l).toLowerCase();
-			const r = (l.receivedQty ?? '').toLowerCase();
-			const b = (l.batchNo ?? '').toLowerCase();
-			const p = (l.purchasePrice ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || r.includes(q) || b.includes(q) || p.includes(q);
-		});
-	});
+	function conversionLabelDirect(line: GrnDirectLine): string {
+		const ium = line.iumList.find(
+			(u) => u.id === line.itemUnitMasterId
+		);
+		return ium?.conversionDisplay ?? '—';
+	}
 
 	const directLineTableColumns: MariTableColumn<GrnDirectLine>[] = [
 		{
 			id: 'item',
 			header: m.inv_common_item(),
 			field: 'itemLabel',
-			filterable: false,
-			format: (_v, row) => `${row.itemLabel || '—'}${row.isBatchRequired ? ' · batch' : ''}`
+			format: (_v, row) => row.itemLabel || '—'
 		},
 		{
 			id: 'conversion',
 			header: m.inv_common_unit(),
 			field: 'itemUnitMasterId',
-			filterable: false,
 			format: (_v, row) => conversionLabelDirect(row)
 		},
 		{
 			id: 'receivedQty',
 			header: m.inv_grn_line_received_qty(),
 			field: 'receivedQty',
-			filterable: false,
 			format: (_v, row) => {
 				const t = row.receivedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
@@ -331,23 +405,20 @@
 			id: 'batchNo',
 			header: m.inv_stock_col_batch(),
 			field: 'batchNo',
-			filterable: false,
 			format: (_v, row) => row.batchNo?.trim() || '—'
 		},
 		{
 			id: 'expiryDate',
 			header: m.inv_stock_col_expiry(),
 			field: 'expiryDate',
-			filterable: false,
 			format: (_v, row) => row.expiryDate?.trim() || '—'
 		},
 		{
 			id: 'purchasePrice',
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
-			filterable: false,
 			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
+				const t = String(row.purchasePrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		}
@@ -382,6 +453,8 @@
 			hits: [...line.hits],
 			iumList: [...line.iumList]
 		};
+		ensureDirectFreeUnit(draftDirectLine);
+		draftDirectLine = { ...draftDirectLine };
 		directLineDialogActive = true;
 		try {
 			await dialogService.open({
@@ -403,7 +476,7 @@
 
 	async function pickDraftDirectItem(itemId: number) {
 		await hydrateGrnDirectLineItem(draftDirectLine, itemId);
-		draftDirectLine = { ...draftDirectLine };
+		// Keep the same `draftDirectLine` object reference while the dialog is open.
 	}
 
 	function saveDirectDraftLine(): boolean {
@@ -416,28 +489,36 @@
 			);
 			return false;
 		}
+		ensureDirectFreeUnit(draftDirectLine);
 		const rq = trimField(draftDirectLine.receivedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast('Could not save line', StatusColorEnum.ERROR, 'Invalid received quantity.');
+			toastService.addToast(
+				'Could not save line',
+				StatusColorEnum.ERROR,
+				'Invalid received quantity.'
+			);
 			return false;
 		}
-		if (draftDirectLine.isBatchRequired) {
-			if (
-				!trimField(draftDirectLine.batchNo) ||
-				!trimField(draftDirectLine.expiryDate) ||
-				!trimField(draftDirectLine.purchasePrice)
-			) {
-				toastService.addToast(
-					'Could not save line',
-					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
-				);
-				return false;
-			}
+		const missingDirect: string[] = [];
+		if (!trimField(draftDirectLine.batchNo))
+			missingDirect.push('batch number');
+		if (!trimField(draftDirectLine.expiryDate))
+			missingDirect.push('expiry');
+		if (!trimField(draftDirectLine.purchasePrice))
+			missingDirect.push('purchase price');
+		if (missingDirect.length > 0) {
+			toastService.addToast(
+				'Could not save line',
+				StatusColorEnum.ERROR,
+				`Missing: ${missingDirect.join(', ')}.`
+			);
+			return false;
 		}
 		const saved = { ...draftDirectLine, receivedQty: rq };
 		if (editingDirectKey) {
-			directLines = directLines.map((l) => (l.key === editingDirectKey ? saved : l));
+			directLines = directLines.map((l) =>
+				l.key === editingDirectKey ? saved : l
+			);
 		} else {
 			directLines = [...directLines, saved];
 		}
@@ -458,11 +539,56 @@
 			expiryDate: row.expiryDate,
 			purchasePrice: row.purchasePrice,
 			freeQty: row.freeQty,
+			freeUnitId: row.freeUnitId,
+			freeUnitIumId: row.freeUnitIumId ?? null,
 			discountAmount: row.discountAmount,
 			discountPercent: row.discountPercent,
 			taxAmount: row.taxAmount,
-			taxPercent: row.taxPercent
+			taxPercent: row.taxPercent,
+			iumList: []
 		};
+
+		// Provide iumList (allowed conversions) for unit picking in dialog
+		try {
+			const meta = poLines.find((l) => l.id === poLineId);
+			if (meta?.itemId && hospitalId) {
+				const [detailRes, iumRes] = await Promise.all([
+					fetch(
+						`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${meta.itemId}`,
+						{ method: 'GET' }
+					),
+					fetch(
+						`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
+						{ method: 'GET' }
+					)
+				]);
+				if (detailRes.ok && iumRes.ok && draftGrnFromPoLine) {
+					const detail = (await detailRes.json()) as {
+						itemUnitMasterIds?: number[];
+						defaultItemUnitMasterId?: number | null;
+					};
+					const allIum = (await iumRes.json()) as IumOpt[];
+					const allowed = new Set(detail.itemUnitMasterIds ?? []);
+					const allowedIum = allIum.filter((u) => allowed.has(u.id));
+					const preferred =
+						meta.itemUnitMasterId ??
+						detail.defaultItemUnitMasterId ??
+						null;
+					const chosen =
+						preferred != null &&
+						allowedIum.some((u) => u.id === preferred)
+							? (allowedIum.find((u) => u.id === preferred) ?? null)
+							: (allowedIum[0] ?? null);
+					draftGrnFromPoLine.iumList = allowedIum;
+					draftGrnFromPoLine.freeUnitId =
+						chosen?.purchaseUnitId ?? meta.unitId ?? null;
+					draftGrnFromPoLine.freeUnitIumId = chosen?.id ?? null;
+					draftGrnFromPoLine = { ...draftGrnFromPoLine };
+				}
+			}
+		} catch {
+			// ignore; dialog can still open with disabled selector
+		}
 		grnFromPoLineDialogActive = true;
 		try {
 			await dialogService.open({
@@ -482,25 +608,32 @@
 
 	function saveGrnFromPoLineDraft(): boolean {
 		if (!draftGrnFromPoLine) return false;
-		const meta = poLines.find((l) => l.id === draftGrnFromPoLine!.poLineId);
+		const meta = poLines.find(
+			(l) => l.id === draftGrnFromPoLine!.poLineId
+		);
 		const rq = trimField(draftGrnFromPoLine.receivedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-			toastService.addToast('Could not save line', StatusColorEnum.ERROR, 'Invalid received quantity.');
+			toastService.addToast(
+				'Could not save line',
+				StatusColorEnum.ERROR,
+				'Invalid received quantity.'
+			);
 			return false;
 		}
-		if (meta?.isBatchRequired) {
-			if (
-				!trimField(draftGrnFromPoLine.batchNo) ||
-				!trimField(draftGrnFromPoLine.expiryDate) ||
-				!trimField(draftGrnFromPoLine.purchasePrice)
-			) {
-				toastService.addToast(
-					'Could not save line',
-					StatusColorEnum.ERROR,
-					'Batch number, expiry, and purchase price are required for this item.'
-				);
-				return false;
-			}
+		const missingPo: string[] = [];
+		if (!trimField(draftGrnFromPoLine.batchNo))
+			missingPo.push('batch number');
+		if (!trimField(draftGrnFromPoLine.expiryDate))
+			missingPo.push('expiry');
+		if (!trimField(draftGrnFromPoLine.purchasePrice))
+			missingPo.push('purchase price');
+		if (missingPo.length > 0) {
+			toastService.addToast(
+				'Could not save line',
+				StatusColorEnum.ERROR,
+				`Missing: ${missingPo.join(', ')}.`
+			);
+			return false;
 		}
 		patchLineForm(draftGrnFromPoLine.poLineId, {
 			receivedQty: rq,
@@ -508,6 +641,7 @@
 			expiryDate: draftGrnFromPoLine.expiryDate,
 			purchasePrice: draftGrnFromPoLine.purchasePrice,
 			freeQty: draftGrnFromPoLine.freeQty,
+			freeUnitId: draftGrnFromPoLine.freeUnitId,
 			discountAmount: draftGrnFromPoLine.discountAmount,
 			discountPercent: draftGrnFromPoLine.discountPercent,
 			taxAmount: draftGrnFromPoLine.taxAmount,
@@ -520,7 +654,10 @@
 		lineForms = lineForms.filter((f) => f.poLineId !== poLineId);
 	}
 
-	async function hydrateGrnDirectLineItem(line: GrnDirectLine, itemId: number) {
+	async function hydrateGrnDirectLineItem(
+		line: GrnDirectLine,
+		itemId: number
+	) {
 		if (!hospitalId) return;
 		line.itemId = itemId;
 		const [detailRes, iumRes] = await Promise.all([
@@ -537,7 +674,6 @@
 			itemName?: string | null;
 			itemUnitMasterIds?: number[];
 			defaultItemUnitMasterId?: number | null;
-			isBatchRequired?: boolean;
 		};
 		const itemLabel = detail.itemName ?? '—';
 		line.itemLabel = itemLabel;
@@ -550,7 +686,7 @@
 			def != null && line.iumList.some((u) => u.id === def)
 				? def
 				: (line.iumList[0]?.id ?? null);
-		line.isBatchRequired = detail.isBatchRequired ?? false;
+		ensureDirectFreeUnit(line);
 	}
 
 	async function searchGrnItems(q: string) {
@@ -563,14 +699,18 @@
 			`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?${sp.toString()}`
 		);
 		if (!res.ok) return [];
-		const j = (await res.json()) as { data: { id: number; itemName?: string | null }[] };
+		const j = (await res.json()) as {
+			data: { id: number; itemName?: string | null }[];
+		};
 		return (j.data ?? []).map((r) => ({
 			label: r.itemName ?? '—',
 			value: String(r.id)
 		}));
 	}
 
-	function pickerCsvItemLines(csv: string | null | undefined): string {
+	function pickerCsvItemLines(
+		csv: string | null | undefined
+	): string {
 		const lines = (csv ?? '')
 			.split(',')
 			.map((s) => s.trim())
@@ -683,8 +823,10 @@
 			poList = (j.data ?? []).filter(
 				(p) =>
 					p.statusTaggingId === InvPoStatusTaggingEnum.APPROVED ||
-					p.statusTaggingId === InvPoStatusTaggingEnum.SENT_TO_SUPPLIER ||
-					p.statusTaggingId === InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
+					p.statusTaggingId ===
+						InvPoStatusTaggingEnum.SENT_TO_SUPPLIER ||
+					p.statusTaggingId ===
+						InvPoStatusTaggingEnum.PARTIALLY_RECEIVED
 			);
 		} catch (e) {
 			toastService.addErrorToast('Could not load eligible POs', e);
@@ -714,7 +856,10 @@
 			try {
 				storeBody = await storeRes.json();
 			} catch (e) {
-				toastService.addErrorToast('Could not load receiving store', e);
+				toastService.addErrorToast(
+					'Could not load receiving store',
+					e
+				);
 			}
 
 			if (!storeRes.ok) {
@@ -722,20 +867,26 @@
 					storeBody &&
 					typeof storeBody === 'object' &&
 					'message' in storeBody &&
-					typeof (storeBody as { message: unknown }).message === 'string'
+					typeof (storeBody as { message: unknown }).message ===
+						'string'
 						? (storeBody as { message: string }).message
 						: typeof storeBody === 'object' &&
-								storeBody &&
-								'error' in storeBody
+							  storeBody &&
+							  'error' in storeBody
 							? String((storeBody as { error: unknown }).error)
 							: `HTTP ${storeRes.status}`;
 				receivingStoreHint = msg;
-				toastService.addToast('Could not load receiving store', StatusColorEnum.ERROR, msg);
+				toastService.addToast(
+					'Could not load receiving store',
+					StatusColorEnum.ERROR,
+					msg
+				);
 			} else if (
 				storeBody != null &&
 				typeof storeBody === 'object' &&
 				'storeId' in storeBody &&
-				typeof (storeBody as { storeId: unknown }).storeId === 'number'
+				typeof (storeBody as { storeId: unknown }).storeId ===
+					'number'
 			) {
 				receivingStore = storeBody as {
 					storeId: number;
@@ -772,6 +923,8 @@
 					expiryDate: '',
 					purchasePrice: ln.unitPrice ?? '',
 					freeQty: '0',
+					freeUnitId: ln.unitId,
+					freeUnitIumId: ln.itemUnitMasterId ?? null,
 					discountAmount: '0',
 					discountPercent: '0',
 					taxAmount: '0',
@@ -808,6 +961,7 @@
 				expiryDate: trimField(f.expiryDate) || null,
 				purchasePrice: trimField(f.purchasePrice) || null,
 				freeQty: trimField(f.freeQty) || null,
+				freeUnitId: f.freeUnitId ?? null,
 				discountAmount: trimField(f.discountAmount) || null,
 				discountPercent: trimField(f.discountPercent) || null,
 				taxAmount: trimField(f.taxAmount) || null,
@@ -825,15 +979,13 @@
 		const lnById = new Map(poLines.map((l) => [l.id, l]));
 		for (const l of lines) {
 			const meta = lnById.get(l.poLineId);
-			if (meta?.isBatchRequired) {
-				if (!l.batchNo || !l.expiryDate || !l.purchasePrice) {
-					toastService.addToast(
-						'Could not post GRN',
-						StatusColorEnum.ERROR,
-						'Batch number, expiry, and purchase price are required for batch-tracked items.'
-					);
-					return;
-				}
+			if (!l.batchNo || !l.expiryDate || !l.purchasePrice) {
+				toastService.addToast(
+					'Could not post GRN',
+					StatusColorEnum.ERROR,
+					`Batch fields missing for: ${meta?.itemName ?? `PO line ${l.poLineId}`}.`
+				);
+				return;
 			}
 		}
 		submitting = true;
@@ -857,7 +1009,11 @@
 				}
 			);
 			if (!res.ok) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, await res.text());
+				toastService.addToast(
+					'Could not post GRN',
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			selectedPoId = null;
@@ -869,7 +1025,7 @@
 			invoiceDate = '';
 			invoiceAmount = '';
 			invoicePhotoUrl = null;
-			receivedByUserId = null;
+			receivedByUserId = layoutSessionUser.id;
 			await goBackToGrnList();
 		} catch (e) {
 			toastService.addErrorToast('Could not post GRN', e);
@@ -896,6 +1052,7 @@
 			expiryDate: string | null;
 			purchasePrice: string | null;
 			freeQty?: string | null;
+			freeUnitId?: number | string | null;
 			discountAmount?: string | null;
 			discountPercent?: string | null;
 			taxAmount?: string | null;
@@ -913,22 +1070,24 @@
 			}
 			const rq = trimField(ln.receivedQty);
 			if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, 'Invalid quantity.');
+				toastService.addToast(
+					'Could not post GRN',
+					StatusColorEnum.ERROR,
+					'Invalid quantity.'
+				);
 				return;
 			}
-			if (ln.isBatchRequired) {
-				if (
-					!trimField(ln.batchNo) ||
-					!trimField(ln.expiryDate) ||
-					!trimField(ln.purchasePrice)
-				) {
-					toastService.addToast(
-						'Could not post GRN',
-						StatusColorEnum.ERROR,
-						'Batch number, expiry, and purchase price are required for batch-tracked items.'
-					);
-					return;
-				}
+			if (
+				!trimField(ln.batchNo) ||
+				!trimField(ln.expiryDate) ||
+				!trimField(ln.purchasePrice)
+			) {
+				toastService.addToast(
+					'Could not post GRN',
+					StatusColorEnum.ERROR,
+					'Batch number, expiry, and purchase price are required.'
+				);
+				return;
 			}
 			lines.push({
 				itemId: ln.itemId,
@@ -938,6 +1097,7 @@
 				expiryDate: trimField(ln.expiryDate) || null,
 				purchasePrice: trimField(ln.purchasePrice) || null,
 				freeQty: trimField(ln.freeQty) || null,
+				freeUnitId: ln.freeUnitId ?? null,
 				discountAmount: trimField(ln.discountAmount) || null,
 				discountPercent: trimField(ln.discountPercent) || null,
 				taxAmount: trimField(ln.taxAmount) || null,
@@ -945,14 +1105,20 @@
 			});
 		}
 		if (lines.length === 0) {
-			toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, 'Add at least one line.');
+			toastService.addToast(
+				'Could not post GRN',
+				StatusColorEnum.ERROR,
+				'Add at least one line.'
+			);
 			return;
 		}
 		submitting = true;
 		try {
-			const res = await fetch(`/api/heka/hospital/${hospitalId}/home/inventory/grn`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory/grn`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						mode: 'direct',
 						storeId,
@@ -965,9 +1131,14 @@
 						receivedBy: receivedByUserId ?? null,
 						lines
 					})
-			});
+				}
+			);
 			if (!res.ok) {
-				toastService.addToast('Could not post GRN', StatusColorEnum.ERROR, await res.text());
+				toastService.addToast(
+					'Could not post GRN',
+					StatusColorEnum.ERROR,
+					await res.text()
+				);
 				return;
 			}
 			directLines = [];
@@ -978,7 +1149,7 @@
 			invoiceDate = '';
 			invoiceAmount = '';
 			invoicePhotoUrl = null;
-			receivedByUserId = null;
+			receivedByUserId = layoutSessionUser.id;
 			await goBackToGrnList();
 		} catch (e) {
 			toastService.addErrorToast('Could not post GRN', e);
@@ -998,12 +1169,12 @@
 			directStoreId = selectedInventoryFromStoreId;
 			directSupplierId = null;
 			directLines = [];
-			directLineItemFilter = '';
 			receivedDate = new Date().toISOString().slice(0, 10);
 		} else {
 			grnFormMode = 'fromPo';
 			void loadEligiblePos();
 		}
+		receivedByUserId = layoutSessionUser.id;
 	});
 
 	function patchLineForm(
@@ -1026,235 +1197,275 @@
 				expiryDate: f.expiryDate,
 				purchasePrice: f.purchasePrice,
 				itemName: meta?.itemName ?? null,
-				isBatchRequired: meta?.isBatchRequired ?? false,
 				itemUnitMasterId:
-					typeof meta?.itemUnitMasterId === 'number' ? meta.itemUnitMasterId : null,
-				itemUnitMasterConversion: meta?.itemUnitMasterConversion?.trim()
-					? meta.itemUnitMasterConversion
-					: null
+					typeof meta?.itemUnitMasterId === 'number'
+						? meta.itemUnitMasterId
+						: null,
+				itemUnitMasterConversion:
+					meta?.itemUnitMasterConversion?.trim()
+						? meta.itemUnitMasterConversion
+						: null
 			};
 		})
 	);
 
-	const filteredGrnLineTableRows = $derived.by((): GrnLineTableRow[] => {
-		const q = grnLineItemFilter.trim().toLowerCase();
-		const base = grnLineTableRows;
-		if (!q) return base;
-		return base.filter((row) => {
-			const item = (row.itemName ?? '').toLowerCase();
-			const conv = (row.itemUnitMasterConversion ?? '').toLowerCase();
-			const r = (row.receivedQty ?? '').toLowerCase();
-			return item.includes(q) || conv.includes(q) || r.includes(q);
-		});
-	});
-
-	const grnLineColumns = $derived.by((): MariTableColumn<GrnLineTableRow>[] => [
-		{
-			id: 'item',
-			header: m.inv_common_item(),
-			field: 'itemName',
-			format: (_v, row) =>
-				`${row.itemName ?? '—'}${row.isBatchRequired ? ' · batch' : ''}`
-		},
-		{
-			id: 'itemUnitMasterConversion',
-			header: m.inv_common_unit(),
-			field: 'itemUnitMasterConversion',
-			widthClass: 'min-w-[12rem] max-w-md',
-			headerClass: 'min-w-[12rem] max-w-md',
-			cellClass: 'whitespace-normal align-middle',
-			filterable: false,
-			format: (_v, row) => row.itemUnitMasterConversion ?? '—'
-		},
-		{
-			id: 'receivedQty',
-			header: m.inv_grn_line_received_qty(),
-			field: 'receivedQty',
-			format: (_v, row) => {
-				const t = row.receivedQty?.trim();
-				return t ? trimMetricQtyDisplay(t) : '—';
+	const grnLineColumns = $derived.by(
+		(): MariTableColumn<GrnLineTableRow>[] => [
+			{
+				id: 'item',
+				header: m.inv_common_item(),
+				field: 'itemName',
+				format: (_v, row) => row.itemName ?? '—'
+			},
+			{
+				id: 'itemUnitMasterConversion',
+				header: m.inv_common_unit(),
+				field: 'itemUnitMasterConversion',
+				widthClass: 'min-w-[12rem] max-w-md',
+				headerClass: 'min-w-[12rem] max-w-md',
+				cellClass: 'whitespace-normal align-middle',
+				format: (_v, row) => row.itemUnitMasterConversion ?? '—'
+			},
+			{
+				id: 'receivedQty',
+				header: m.inv_grn_line_received_qty(),
+				field: 'receivedQty',
+				format: (_v, row) => {
+					const t = row.receivedQty?.trim();
+					return t ? trimMetricQtyDisplay(t) : '—';
+				}
+			},
+			{
+				id: 'batchNo',
+				header: m.inv_stock_col_batch(),
+				field: 'batchNo',
+				format: (_v, row) => row.batchNo?.trim() || '—'
+			},
+			{
+				id: 'expiryDate',
+				header: m.inv_stock_col_expiry(),
+				field: 'expiryDate',
+				format: (_v, row) => row.expiryDate?.trim() || '—'
+			},
+			{
+				id: 'purchasePrice',
+				header: m.inv_stock_col_price(),
+				field: 'purchasePrice',
+				format: (_v, row) => {
+					const t = String(row.purchasePrice ?? '').trim();
+					return t ? trimInventoryNumericDisplay(t, 4) : '—';
+				}
 			}
-		},
-		{
-			id: 'batchNo',
-			header: m.inv_stock_col_batch(),
-			field: 'batchNo',
-			format: (_v, row) => row.batchNo?.trim() || '—'
-		},
-		{
-			id: 'expiryDate',
-			header: m.inv_stock_col_expiry(),
-			field: 'expiryDate',
-			format: (_v, row) => row.expiryDate?.trim() || '—'
-		},
-		{
-			id: 'purchasePrice',
-			header: m.inv_stock_col_price(),
-			field: 'purchasePrice',
-			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
-			}
-		}
-	]);
-
+		]
+	);
 </script>
 
-	<DaisyUiCard>
-		<DaisyUiCardBody>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					if (grnFormMode === 'direct') {
-						void submitGrnDirect();
-					} else {
-						void submitGrn();
-					}
-				}}
-			>
-				<fieldset class="m-0 min-w-0 border-0 p-0">
-					<div class="mb-2 flex items-center gap-2">
-						<DaisyUiTooltip
-							tooltipText={m.inv_common_back_to_list()}
-							className="d-tooltip-ghost d-tooltip-right"
+<DaisyUiCard>
+	<DaisyUiCardBody>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				if (grnFormMode === 'direct') {
+					void submitGrnDirect();
+				} else {
+					void submitGrn();
+				}
+			}}
+		>
+			<fieldset class="m-0 min-w-0 border-0 p-0">
+				<div class="mb-4 flex items-center gap-2">
+					<DaisyUiTooltip
+						tooltipText={m.inv_common_back_to_list()}
+						className="d-tooltip-ghost d-tooltip-right"
+					>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-sm d-btn-ghost d-btn-square"
+							onClick={() => void goBackToGrnList()}
 						>
-							<DaisyUiButton
-								type="button"
-								className="d-btn-sm d-btn-ghost d-btn-square"
-								onClick={() => void goBackToGrnList()}
+							<LucideArrowLeft className="size-4" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+					<DaisyUiCardBodyTitle className="mb-0 min-w-0">
+						{grnFormMode === 'direct'
+							? m.inv_grn_new_direct_title()
+							: m.inv_grn_new_title()}
+					</DaisyUiCardBodyTitle>
+				</div>
+			</fieldset>
+
+			{#snippet invoiceReceivingGrid(
+				innerGridClass: string,
+				fileColSpanClass: string
+			)}
+				<div class="grid min-w-0 gap-x-6 gap-y-4 {innerGridClass}">
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel className="shrink-0 sm:w-36"
+							>{m.inv_grn_invoice_no()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1">
+							<DaisyUiInputField
+								inputType="text"
+								bind:value={invoiceNo}
+							/>
+						</div>
+					</div>
+
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel className="shrink-0 sm:w-36"
+							>{m.inv_grn_invoice_date()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1">
+							<DaisyUiInputField
+								inputType="date"
+								bind:value={invoiceDate}
+							/>
+						</div>
+					</div>
+
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<DaisyUiLabel className="shrink-0 sm:w-36"
+							>{m.inv_grn_invoice_amount()}</DaisyUiLabel
+						>
+						<div class="min-w-0 flex-1">
+							<input
+								type="number"
+								step="0.01"
+								inputmode="decimal"
+								class="d-input-bordered d-input w-full"
+								placeholder="0.00"
+								bind:value={invoiceAmount}
+							/>
+						</div>
+					</div>
+
+					<div class={fileColSpanClass}>
+						<div
+							class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3"
+						>
+							<DaisyUiLabel className="shrink-0 sm:w-36 sm:pt-2"
+								>{m.inv_grn_invoice_file()}</DaisyUiLabel
 							>
-								<LucideArrowLeft className="size-4" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
-						<DaisyUiCardBodyTitle className="mb-0">
-							{grnFormMode === 'direct'
-								? 'New goods receipt (direct)'
-								: m.inv_grn_new_title()}
-						</DaisyUiCardBodyTitle>
-					</div>
-				</fieldset>
-
-				<div class="mb-6 mt-4 rounded-box border border-base-200 bg-base-200/20 p-4">
-					<div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-						<h3 class="font-medium text-base-content/90">Invoice & Receiving</h3>
-						{#if invoicePhotoUploading}
-							<span class="text-xs text-base-content/70">Uploading…</span>
-						{/if}
-					</div>
-
-					<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice No</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUiInputField inputType="text" bind:value={invoiceNo} />
-							</div>
-						</div>
-
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Date</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUiInputField inputType="date" bind:value={invoiceDate} />
-							</div>
-						</div>
-
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Invoice Amount</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
+							<div class="min-w-0 flex-1">
 								<input
-									type="number"
-									step="0.01"
-									inputmode="decimal"
-									class="d-input d-input-bordered w-full"
-									placeholder="0.00"
-									bind:value={invoiceAmount}
-								/>
-							</div>
-						</div>
-
-						<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-							<DaisyUiLabel className="shrink-0 sm:w-36">Received By</DaisyUiLabel>
-							<div class="max-w-80 flex-1">
-								<DaisyUISearchSelect
-									value={receivedByUserId != null ? String(receivedByUserId) : ''}
-									searchFn={searchReceivedByUsers}
-									onChange={(v: string) => {
-										receivedByUserId = v ? Number(v) : null;
+									type="file"
+									class="d-file-input-bordered d-file-input w-full"
+									accept="image/*,application/pdf"
+									disabled={invoicePhotoUploading}
+									onchange={(e) => {
+										const input = e.currentTarget as HTMLInputElement;
+										const file = input.files?.[0] ?? null;
+										if (!file) return;
+										void uploadInvoicePhoto(file);
+										input.value = '';
 									}}
-									placeholder="Current user"
-									className="w-full"
 								/>
-							</div>
-						</div>
 
-						<div class="md:col-span-2">
-							<div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">Invoice File</DaisyUiLabel>
-								<div class="min-w-0 flex-1">
-									<input
-										type="file"
-										class="d-file-input d-file-input-bordered w-full"
-										accept="image/*,application/pdf"
-										disabled={invoicePhotoUploading}
-										onchange={(e) => {
-											const input = e.currentTarget as HTMLInputElement;
-											const file = input.files?.[0] ?? null;
-											if (!file) return;
-											void uploadInvoicePhoto(file);
-											input.value = '';
-										}}
-									/>
-
-									{#if invoicePhotoUrl}
-										<div class="mt-2 flex flex-wrap items-center gap-3">
-											<span class="text-sm text-base-content/70">Uploaded file available</span>
-											<DaisyUiTooltip
-												tooltipText={m.inv_common_remove_line()}
-												className="d-tooltip-error d-tooltip-right"
+								{#if invoicePhotoUrl}
+									<div class="mt-2 flex flex-wrap items-center gap-3">
+										<span class="text-sm text-base-content/70"
+											>{m.inv_grn_invoice_uploaded()}</span
+										>
+										<DaisyUiTooltip
+											tooltipText={m.inv_common_remove_line()}
+											className="d-tooltip-error d-tooltip-right"
+										>
+											<DaisyUiButton
+												type="button"
+												className="d-btn-sm d-btn-ghost d-btn-square text-error"
+												onClick={() => {
+													invoicePhotoUrl = null;
+												}}
 											>
-												<DaisyUiButton
-													type="button"
-													className="d-btn-sm d-btn-ghost d-btn-square text-error"
-													onClick={() => {
-														invoicePhotoUrl = null;
-													}}
-												>
-													<LucideTrash2 className="size-4" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
-										</div>
+												<LucideTrash2 className="size-4" />
+											</DaisyUiButton>
+										</DaisyUiTooltip>
+									</div>
 
-										{#if isInvoicePhotoPreviewable}
-											<div class="mt-2">
-												<img
-													src={invoicePhotoUrl}
-													alt="Invoice preview"
-													class="max-h-24 rounded-box border border-base-200"
-													loading="lazy"
-												/>
-											</div>
-										{/if}
+									{#if isInvoicePhotoPreviewable}
+										<div class="mt-2">
+											<img
+												src={invoicePhotoUrl}
+												alt=""
+												class="max-h-24 rounded-box border border-base-200"
+												loading="lazy"
+											/>
+										</div>
 									{/if}
-								</div>
+								{/if}
 							</div>
 						</div>
 					</div>
 				</div>
+			{/snippet}
 
-				{#if grnFormMode === 'fromPo'}
-				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
-					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex flex-col gap-4">
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_select_po()}</DaisyUiLabel>
+			{#snippet postGrnSubmitBar(fromPoMode: boolean)}
+				<div
+					class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
+				>
+					<DaisyUiButton
+						type="submit"
+						className="d-btn-primary d-btn-wide"
+						disabled={submitting ||
+							(fromPoMode
+								? lineForms.length === 0
+								: directLines.length === 0)}
+					>
+						{m.inv_grn_submit()}
+					</DaisyUiButton>
+				</div>
+			{/snippet}
+
+			{#if grnFormMode === 'fromPo'}
+				<div
+					class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8"
+				>
+					<div class="lg:col-span-7 xl:col-span-6">
+						<div
+							class="rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
+						>
+							<p
+								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
+								{m.inv_grn_section_supplier_invoice()}
+							</p>
+							{@render invoiceReceivingGrid(
+								'grid-cols-1 md:grid-cols-2',
+								'md:col-span-2'
+							)}
+						</div>
+					</div>
+
+					<div class="lg:col-span-5 xl:col-span-6">
+						<div
+							class="rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
+						>
+							<p
+								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
+								{m.inv_grn_section_receipt()}
+							</p>
+							<fieldset class="m-0 flex flex-col gap-4 border-0 p-0">
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36"
+										>{m.inv_grn_select_po()}</DaisyUiLabel
+									>
 									<div
-										class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
+										class="flex min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
 									>
 										<input
 											type="text"
 											readonly
 											disabled
-											class="d-input d-input-bordered min-w-0 flex-1 text-sm"
+											class="d-input-bordered d-input min-w-0 flex-1 text-sm"
 											value={selectedPoSummary || '—'}
 											aria-label={m.inv_grn_select_po()}
 										/>
@@ -1270,184 +1481,288 @@
 									</div>
 								</div>
 
-								<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-									<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-									<div class="max-w-80 flex-1">
-										<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36"
+										>{m.inv_grn_received_date()}</DaisyUiLabel
+									>
+									<div class="min-w-0 flex-1">
+										<DaisyUiInputField
+											inputType="date"
+											bind:value={receivedDate}
+										/>
 									</div>
 								</div>
-							</div>
-							
-							<div class="flex flex-col gap-4">
-								<div class="p-4 bg-base-200 rounded-lg">
+
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36"
+										>{m.inv_common_received_by()}</DaisyUiLabel
+									>
+									<div class="min-w-0 flex-1">
+										<DaisyUISearchSelect
+											value={receivedByUserId ?? ''}
+											searchFn={searchReceivedByUsers}
+											getLabelForValue={getReceivedByLabelForValue}
+											invalidateKey={hospitalId}
+											onChange={(v: string) => {
+												receivedByUserId = v.trim() ? v.trim() : null;
+											}}
+											placeholder={m.inv_grn_received_by_placeholder()}
+											className="w-full"
+										/>
+									</div>
+								</div>
+
+								<div class="rounded-lg bg-base-200/80 p-4">
 									{#if receivingStore}
 										<p class="text-sm">
-											<span class="opacity-70 inline-block mb-1">{m.inv_grn_receiving_store()}:</span><br/>
-											<strong class="text-lg">
-												{receivingStore.storeName ?? '—'}
-											</strong>
+											<span class="mb-1 inline-block opacity-70"
+												>{m.inv_grn_receiving_store()}:</span
+											><br />
+											<strong class="text-lg"
+												>{receivingStore.storeName ?? '—'}</strong
+											>
 										</p>
 									{:else if selectedPoId}
-										<p class="text-sm text-warning font-medium">
+										<p class="text-sm font-medium text-warning">
 											{m.inv_grn_receiving_store()}: —
 										</p>
 										{#if receivingStoreHint}
-											<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
+											<div
+												class="mt-2 d-alert text-sm d-alert-warning"
+												role="status"
+											>
 												{receivingStoreHint}
 											</div>
 										{/if}
 									{:else}
-										<p class="text-sm opacity-50 text-center py-2">—</p>
+										<p class="py-2 text-center text-sm opacity-50">
+											—
+										</p>
 									{/if}
 								</div>
-							</div>
+							</fieldset>
 						</div>
-					</fieldset>
+					</div>
 				</div>
-				{:else}
-					<fieldset class="m-0 min-w-0 border-0 p-0 mb-6">
-						<div class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_receiving_store()}</DaisyUiLabel>
+				{@render postGrnSubmitBar(true)}
+			{:else}
+				{#snippet directLinesToolbarRight()}
+					<DaisyUiTooltip
+						tooltipText={m.inv_line_items_add()}
+						className="d-tooltip-ghost"
+					>
+						<DaisyUiButton
+							type="button"
+							className="d-btn-primary d-btn-square d-btn-outline d-btn-sm"
+							title={m.inv_line_items_add()}
+							onClick={() => void openDirectLineDialogForCreate()}
+						>
+							<LucidePlus className="size-4" />
+						</DaisyUiButton>
+					</DaisyUiTooltip>
+				{/snippet}
+				<div
+					class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8"
+				>
+					<div class="lg:col-span-5 xl:col-span-4">
+						<div
+							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
+						>
+							<p
+								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
+								{m.inv_grn_section_supplier_invoice()}
+							</p>
+							{@render invoiceReceivingGrid('grid-cols-1', '')}
+						</div>
+					</div>
+
+					<div class="lg:col-span-4 xl:col-span-5">
+						<div
+							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
+						>
+							<p
+								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
+								{m.inv_grn_section_receipt()}
+							</p>
+							<div class="flex flex-col gap-4">
 								<div
-									class="max-w-80 min-w-0 flex-1 rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm"
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<p class="font-medium">{navReceivingStoreLabel}</p>
-									{#if selectedInventoryFromStoreId == null}
-										<div class="mt-2 d-alert d-alert-warning text-sm" role="status">
-											{m.inv_inventory_from_store_topbar_hint()}
-										</div>
-									{/if}
+									<DaisyUiLabel className="shrink-0 sm:w-36">
+										{m.inv_grn_receiving_store()}
+									</DaisyUiLabel>
+									<div
+										class="min-w-0 flex-1 rounded-lg border border-base-200 bg-base-200/40 px-3 py-2 text-sm"
+									>
+										<p class="font-medium">
+											{navReceivingStoreLabel}
+										</p>
+										{#if selectedInventoryFromStoreId == null}
+											<div
+												class="mt-2 d-alert text-sm d-alert-warning"
+												role="status"
+											>
+												{m.inv_inventory_from_store_topbar_hint()}
+											</div>
+										{/if}
+									</div>
 								</div>
-							</div>
 
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUISearchSelect
-										value={directSupplierId != null ? String(directSupplierId) : ''}
-										searchFn={async (q: string) => {
-											const qEnc = encodeURIComponent(q.trim());
-											const res = await fetch(
-												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-											);
-											const j = await res.json();
-											return (j ?? []).map((s: { id: number; name: string | null }) => ({
-												label: s.name ?? '—',
-												value: String(s.id)
-											}));
-										}}
-										onChange={(v: string) => {
-											directSupplierId = v ? Number(v) : null;
-										}}
-										placeholder="Search supplier…"
-										className="w-full"
-									/>
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36">
+										{m.inv_grn_received_date()}
+									</DaisyUiLabel>
+									<div class="min-w-0 flex-1">
+										<DaisyUiInputField
+											inputType="date"
+											bind:value={receivedDate}
+										/>
+									</div>
 								</div>
-							</div>
 
-							<div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-								<DaisyUiLabel className="shrink-0 sm:w-36">{m.inv_grn_received_date()}</DaisyUiLabel>
-								<div class="max-w-80 flex-1">
-									<DaisyUiInputField inputType="date" bind:value={receivedDate} />
+								<div
+									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+								>
+									<DaisyUiLabel className="shrink-0 sm:w-36"
+										>{m.inv_common_received_by()}</DaisyUiLabel
+									>
+									<div class="min-w-0 flex-1">
+										<DaisyUISearchSelect
+											value={receivedByUserId ?? ''}
+											searchFn={searchReceivedByUsers}
+											getLabelForValue={getReceivedByLabelForValue}
+											invalidateKey={hospitalId}
+											onChange={(v: string) => {
+												receivedByUserId = v.trim() ? v.trim() : null;
+											}}
+											placeholder={m.inv_grn_received_by_placeholder()}
+											className="w-full"
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
-					</fieldset>
-					<GrnDirectLinesCard
-						bind:directLineItemFilter
-						totalCount={directLines.length}
-						columns={directLineTableColumns}
-						rows={filteredDirectLines}
-						onAddItem={() => void openDirectLineDialogForCreate()}
-						onEditLine={(line) => void openDirectLineDialogForEdit(line)}
-						onDeleteLine={deleteDirectLine}
-					/>
-				{/if}
+					</div>
 
-				{#if grnFormMode === 'fromPo' && lineForms.length > 0}
-					<div class="mt-8">
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-							<h3 class="font-medium text-lg text-base-content/90">Items Received</h3>
-							<input
-								type="text"
-								class="d-input d-input-bordered w-full sm:max-w-xs"
-								placeholder="Filter line items…"
-								bind:value={grnLineItemFilter}
-								aria-label="Filter line items"
+					<div class="lg:col-span-3 xl:col-span-3">
+						<div
+							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
+						>
+							<p
+								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+							>
+								{m.inv_po_supplier_search()}
+							</p>
+							<DaisyUISearchSelect
+								value={directSupplierId != null
+									? String(directSupplierId)
+									: ''}
+								searchFn={async (q: string) => {
+									const qEnc = encodeURIComponent(q.trim());
+									const res = await fetch(
+										`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+									);
+									const j = await res.json();
+									return (j ?? []).map(
+										(s: { id: number; name: string | null }) => ({
+											label: s.name ?? '—',
+											value: String(s.id)
+										})
+									);
+								}}
+								onChange={(v: string) => {
+									directSupplierId = v ? Number(v) : null;
+								}}
+								placeholder="Search supplier…"
+								className="w-full"
 							/>
 						</div>
-						<div class="h-[420px] min-h-0 w-full">
-							<MariTable
-								columns={grnLineColumns as MariTableColumn[]}
-								rows={filteredGrnLineTableRows}
-								isLoading={false}
-								showRowActions={true}
-								actionsVariant="none"
-								showRefreshButton={false}
-								enableColumnFilters={false}
-							>
-								{#snippet rowActions(row, _rowIndex)}
-									{@const line = row as GrnLineTableRow}
-									<div class="flex flex-col items-center gap-1">
-										<DaisyUiTooltip
-											tooltipText={m.inv_line_items_tooltip_edit()}
-											className="d-tooltip-accent d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-square text-accent"
-												onClick={() => void openGrnFromPoLineDialog(line.poLineId)}
-											>
-												<LucidePencil className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-										<DaisyUiTooltip
-											tooltipText={m.inv_common_remove_line()}
-											className="d-tooltip-error d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-square text-error"
-												onClick={() => removeGrnFromPoLine(line.poLineId)}
-											>
-												<LucideTrash2 className="size-5" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
-									</div>
-								{/snippet}
-							</MariTable>
-						</div>
 					</div>
+				</div>
+				{@render postGrnSubmitBar(false)}
 
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide d-btn-primary"
-							disabled={submitting}
-						>
-							{m.inv_grn_submit()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{:else if grnFormMode === 'fromPo' && selectedPoId && lineForms.length === 0 && poLines.length > 0}
-					<div
-						class="rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80 mt-8"
-					>
-						All lines were removed. Reselect the purchase order to restore lines, or pick a
-						different PO.
+				<GrnDirectLinesCard
+					totalCount={directLines.length}
+					columns={directLineTableColumns}
+					rows={directLines}
+					useColumnFilters={true}
+					hideQuickFilter={true}
+					hideAddButton={true}
+					toolbarRight={directLinesToolbarRight}
+					onAddItem={() => void openDirectLineDialogForCreate()}
+					onEditLine={(line) =>
+						void openDirectLineDialogForEdit(line)}
+					onDeleteLine={deleteDirectLine}
+				/>
+			{/if}
+
+			{#if grnFormMode === 'fromPo' && lineForms.length > 0}
+				<div class="mt-8">
+					<div class="mb-3">
+						<h3 class="text-lg font-medium text-base-content/90">
+							Items Received
+						</h3>
 					</div>
-				{:else if grnFormMode === 'direct' && directLines.length > 0}
-					<DaisyUiCardBodyAction className="mt-8 flex flex-wrap gap-3 border-t border-base-200 pt-6">
-						<DaisyUiButton
-							type="submit"
-							className="d-btn-wide d-btn-primary"
-							disabled={submitting}
+					<div class="h-[420px] min-h-0 w-full">
+						<MariTable
+							columns={grnLineColumns as MariTableColumn[]}
+							rows={grnLineTableRows}
+							isLoading={false}
+							showRowActions={true}
+							actionsVariant="none"
+							showRefreshButton={false}
+							enableColumnFilters={true}
 						>
-							{m.inv_grn_submit()}
-						</DaisyUiButton>
-					</DaisyUiCardBodyAction>
-				{/if}
-
-			</form>
-		</DaisyUiCardBody>
-	</DaisyUiCard>
+							{#snippet rowActions(row, _rowIndex)}
+								{@const line = row as GrnLineTableRow}
+								<div class="flex flex-col items-center gap-1">
+									<DaisyUiTooltip
+										tooltipText={m.inv_line_items_tooltip_edit()}
+										className="d-tooltip-accent d-tooltip-right"
+									>
+										<DaisyUiButton
+											type="button"
+											className="d-btn-sm d-btn-ghost d-btn-square text-accent"
+											onClick={() =>
+												void openGrnFromPoLineDialog(line.poLineId)}
+										>
+											<LucidePencil className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+									<DaisyUiTooltip
+										tooltipText={m.inv_common_remove_line()}
+										className="d-tooltip-error d-tooltip-right"
+									>
+										<DaisyUiButton
+											type="button"
+											className="d-btn-sm d-btn-ghost d-btn-square text-error"
+											onClick={() =>
+												removeGrnFromPoLine(line.poLineId)}
+										>
+											<LucideTrash2 className="size-5" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								</div>
+							{/snippet}
+						</MariTable>
+					</div>
+				</div>
+			{:else if grnFormMode === 'fromPo' && selectedPoId && lineForms.length === 0 && poLines.length > 0}
+				<div
+					class="mt-8 rounded-box border border-dashed border-base-300 bg-base-200/30 px-4 py-3 text-sm text-base-content/80"
+				>
+					All lines were removed. Reselect the purchase order to
+					restore lines, or pick a different PO.
+				</div>
+			{/if}
+		</form>
+	</DaisyUiCardBody>
+</DaisyUiCard>

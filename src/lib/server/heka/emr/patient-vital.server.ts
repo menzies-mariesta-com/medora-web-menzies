@@ -59,24 +59,39 @@ export async function getPatientVitalById(
 
 export async function getPatientVitalsByVisitId(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number; statusId?: number | null }
+	input: {
+		hospitalId: string;
+		visitId: number;
+		statusId?: number | null;
+	}
 ): Promise<PatientDiagnosisSchema[]> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
 
 	const statusFilter =
-		input.statusId != null ? eq(table.patientDiagnosisTable.statusId, input.statusId) : null;
+		input.statusId != null
+			? eq(table.patientDiagnosisTable.statusId, input.statusId)
+			: null;
 
 	const whereExpr =
 		statusFilter != null
 			? and(
-					eq(table.patientDiagnosisTable.hospitalId, input.hospitalId),
+					eq(
+						table.patientDiagnosisTable.hospitalId,
+						input.hospitalId
+					),
 					eq(table.patientDiagnosisTable.visitId, input.visitId),
-					ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED),
+					ne(
+						table.patientDiagnosisTable.statusId,
+						StatusEnum.DELETED
+					),
 					statusFilter
 				)
 			: and(
-					eq(table.patientDiagnosisTable.hospitalId, input.hospitalId),
+					eq(
+						table.patientDiagnosisTable.hospitalId,
+						input.hospitalId
+					),
 					eq(table.patientDiagnosisTable.visitId, input.visitId),
 					ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED)
 				);
@@ -85,7 +100,10 @@ export async function getPatientVitalsByVisitId(
 		.select()
 		.from(table.patientDiagnosisTable)
 		.where(whereExpr)
-		.orderBy(desc(table.patientDiagnosisTable.vitalDateTime), desc(table.patientDiagnosisTable.createdAt));
+		.orderBy(
+			desc(table.patientDiagnosisTable.vitalDateTime),
+			desc(table.patientDiagnosisTable.createdAt)
+		);
 }
 
 export async function getPatientVitalsByPatientIdPaginated(
@@ -99,7 +117,8 @@ export async function getPatientVitalsByPatientIdPaginated(
 ): Promise<PaginatedResult<PatientVitalWithVisit>> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, params.hospitalId);
-	const { page, pageSize, limit, offset } = normalizePagination(params);
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
 
 	const conditions = [
 		eq(table.patientDiagnosisTable.hospitalId, params.hospitalId),
@@ -107,11 +126,15 @@ export async function getPatientVitalsByPatientIdPaginated(
 		ne(table.patientDiagnosisTable.statusId, StatusEnum.DELETED)
 	];
 	if (params.statusId != null) {
-		conditions.push(eq(table.patientDiagnosisTable.statusId, params.statusId));
+		conditions.push(
+			eq(table.patientDiagnosisTable.statusId, params.statusId)
+		);
 	}
 	const visitNoTerm = params.visitNo?.trim();
 	if (visitNoTerm) {
-		conditions.push(ilike(table.patientVisitTable.visitNo, `%${visitNoTerm}%`));
+		conditions.push(
+			ilike(table.patientVisitTable.visitNo, `%${visitNoTerm}%`)
+		);
 	}
 
 	const whereExpr = and(...conditions);
@@ -128,10 +151,17 @@ export async function getPatientVitalsByPatientIdPaginated(
 			.from(table.patientDiagnosisTable)
 			.innerJoin(
 				table.patientVisitTable,
-				eq(table.patientVisitTable.id, table.patientDiagnosisTable.visitId)
+				eq(
+					table.patientVisitTable.id,
+					table.patientDiagnosisTable.visitId
+				)
 			)
 			.where(whereExpr)
-			.orderBy(desc(sql`coalesce(${table.patientDiagnosisTable.vitalDateTime}, ${table.patientDiagnosisTable.createdAt})`))
+			.orderBy(
+				desc(
+					sql`coalesce(${table.patientDiagnosisTable.vitalDateTime}, ${table.patientDiagnosisTable.createdAt})`
+				)
+			)
 			.limit(limit)
 			.offset(offset),
 		ensureDb()
@@ -139,7 +169,10 @@ export async function getPatientVitalsByPatientIdPaginated(
 			.from(table.patientDiagnosisTable)
 			.innerJoin(
 				table.patientVisitTable,
-				eq(table.patientVisitTable.id, table.patientDiagnosisTable.visitId)
+				eq(
+					table.patientVisitTable.id,
+					table.patientDiagnosisTable.visitId
+				)
 			)
 			.where(whereExpr)
 	]);
@@ -152,13 +185,17 @@ export async function getPatientVitalsByPatientIdPaginated(
 		total: countResult[0]?.count ?? 0,
 		page,
 		pageSize,
-		totalPages: Math.ceil((countResult[0]?.count ?? 0) / pageSize) || 1
+		totalPages:
+			Math.ceil((countResult[0]?.count ?? 0) / pageSize) || 1
 	};
 }
 
 export async function createPatientVital(
 	event: RequestEvent,
-	input: Omit<PatientDiagnosisSchema, 'id' | 'createdAt' | 'updatedAt'> & {
+	input: Omit<
+		PatientDiagnosisSchema,
+		'id' | 'createdAt' | 'updatedAt'
+	> & {
 		hospitalId: string;
 		patientId: string;
 		visitId: number;
@@ -181,7 +218,9 @@ export async function createPatientVital(
 
 export async function updatePatientVital(
 	event: RequestEvent,
-	input: Partial<Omit<PatientDiagnosisSchema, 'id' | 'createdAt' | 'updatedAt'>> & {
+	input: Partial<
+		Omit<PatientDiagnosisSchema, 'id' | 'createdAt' | 'updatedAt'>
+	> & {
 		hospitalId: string;
 		id: number;
 	}
@@ -228,4 +267,3 @@ export async function deletePatientVital(
 			)
 		);
 }
-

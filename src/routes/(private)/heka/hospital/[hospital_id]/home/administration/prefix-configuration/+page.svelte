@@ -43,7 +43,8 @@
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' && page.params.hospital_id
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
 			? page.params.hospital_id
 			: ''
 	);
@@ -86,7 +87,9 @@
 	let counterIncludeFinancialYear = $state(true);
 	let counterIncludeVisitType = $state(false);
 	let counterIncludeVisit = $state(false);
-	let formatParts = $state<UiFormatPart[]>(defaultFormatPartsForStorageKey('PATIENT_CODE'));
+	let formatParts = $state<UiFormatPart[]>(
+		defaultFormatPartsForStorageKey('PATIENT_CODE')
+	);
 
 	const formatPreview = $derived(previewExample(formatParts));
 
@@ -102,10 +105,7 @@
 
 	const fieldPathOptions = $derived(
 		editingPurpose
-			? fieldPathsForEdit(
-					editingPurpose.storageKey,
-					formatParts
-				)
+			? fieldPathsForEdit(editingPurpose.storageKey, formatParts)
 			: ([] as PrefixFieldPath[])
 	);
 
@@ -117,12 +117,15 @@
 	});
 
 	function purposeLabel(p: PrefixPurposeDefinition): string {
-		if (p.id === 'patient') return m.prefix_configuration_purpose_patient();
-		if (p.id === 'visit') return m.prefix_configuration_purpose_visit();
+		if (p.id === 'patient')
+			return m.prefix_configuration_purpose_patient();
+		if (p.id === 'visit')
+			return m.prefix_configuration_purpose_visit();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
 		if (p.id === 'po') return m.prefix_configuration_purpose_po();
 		if (p.id === 'di') return m.prefix_configuration_purpose_di();
-		if (p.id === 'di_issue') return m.prefix_configuration_purpose_di_issue();
+		if (p.id === 'di_issue')
+			return m.prefix_configuration_purpose_di_issue();
 		if (p.id === 'dc') return m.prefix_configuration_purpose_dc();
 		if (p.id === 'med_order_batch')
 			return m.prefix_configuration_purpose_med_order_batch();
@@ -158,12 +161,15 @@
 	}
 
 	function editTitle(p: PrefixPurposeDefinition): string {
-		if (p.id === 'patient') return m.prefix_configuration_edit_patient_title();
-		if (p.id === 'visit') return m.prefix_configuration_edit_visit_title();
+		if (p.id === 'patient')
+			return m.prefix_configuration_edit_patient_title();
+		if (p.id === 'visit')
+			return m.prefix_configuration_edit_visit_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();
 		if (p.id === 'po') return m.prefix_configuration_edit_po_title();
 		if (p.id === 'di') return m.prefix_configuration_edit_di_title();
-		if (p.id === 'di_issue') return m.prefix_configuration_edit_di_issue_title();
+		if (p.id === 'di_issue')
+			return m.prefix_configuration_edit_di_issue_title();
 		if (p.id === 'dc') return m.prefix_configuration_edit_dc_title();
 		if (p.id === 'med_order_batch')
 			return m.prefix_configuration_edit_med_order_batch_title();
@@ -192,7 +198,11 @@
 		if (kind === 'literal') {
 			formatParts[index] = { id, kind: 'literal', value: '' };
 		} else if (kind === 'field') {
-			formatParts[index] = { id, kind: 'field', path: 'hospital.code' };
+			formatParts[index] = {
+				id,
+				kind: 'field',
+				path: 'hospital.code'
+			};
 		} else {
 			formatParts[index] = { id, kind: 'sequence', padStart: 6 };
 		}
@@ -265,24 +275,30 @@
 		const row = findActiveConfigForKey(purpose.storageKey);
 		editingId = row?.id ?? null;
 		descriptionInput = row?.description ?? '';
-		const scopeDefaults = defaultCounterScopeForStorageKey(purpose.storageKey);
+		const scopeDefaults = defaultCounterScopeForStorageKey(
+			purpose.storageKey
+		);
 		if (row) {
 			counterIncludeBranch =
 				row.counterIncludeBranch === YesNoEnum.YES ||
-				(row.counterIncludeBranch == null && scopeDefaults.includeBranch);
+				(row.counterIncludeBranch == null &&
+					scopeDefaults.includeBranch);
 			counterIncludeFinancialYear =
 				row.counterIncludeFinancialYear === YesNoEnum.YES ||
 				(row.counterIncludeFinancialYear == null &&
 					scopeDefaults.includeFinancialYear);
 			counterIncludeVisitType =
 				row.counterIncludeVisitType === YesNoEnum.YES ||
-				(row.counterIncludeVisitType == null && scopeDefaults.includeVisitType);
+				(row.counterIncludeVisitType == null &&
+					scopeDefaults.includeVisitType);
 			counterIncludeVisit =
 				row.counterIncludeVisit === YesNoEnum.YES ||
-				(row.counterIncludeVisit == null && scopeDefaults.includeVisit);
+				(row.counterIncludeVisit == null &&
+					scopeDefaults.includeVisit);
 		} else {
 			counterIncludeBranch = scopeDefaults.includeBranch;
-			counterIncludeFinancialYear = scopeDefaults.includeFinancialYear;
+			counterIncludeFinancialYear =
+				scopeDefaults.includeFinancialYear;
 			counterIncludeVisitType = scopeDefaults.includeVisitType;
 			counterIncludeVisit = scopeDefaults.includeVisit;
 		}
@@ -292,7 +308,9 @@
 		if (parsed.ok) {
 			formatParts = parsed.parts;
 		} else {
-			formatParts = defaultFormatPartsForStorageKey(purpose.storageKey);
+			formatParts = defaultFormatPartsForStorageKey(
+				purpose.storageKey
+			);
 			if (row) {
 				toastService.addToast(
 					m.prefix_configuration_format_load_failed(),
@@ -326,12 +344,18 @@
 				key: purpose.storageKey,
 				description: descriptionInput.trim() || null,
 				format: parsedFormat,
-				counterIncludeBranch: counterIncludeBranch ? YesNoEnum.YES : YesNoEnum.NO,
+				counterIncludeBranch: counterIncludeBranch
+					? YesNoEnum.YES
+					: YesNoEnum.NO,
 				counterIncludeFinancialYear: counterIncludeFinancialYear
 					? YesNoEnum.YES
 					: YesNoEnum.NO,
-				counterIncludeVisitType: counterIncludeVisitType ? YesNoEnum.YES : YesNoEnum.NO,
-				counterIncludeVisit: counterIncludeVisit ? YesNoEnum.YES : YesNoEnum.NO
+				counterIncludeVisitType: counterIncludeVisitType
+					? YesNoEnum.YES
+					: YesNoEnum.NO,
+				counterIncludeVisit: counterIncludeVisit
+					? YesNoEnum.YES
+					: YesNoEnum.NO
 			};
 			if (editingId != null) {
 				await apiFetch(prefixConfigurationApiUrl(), {
@@ -428,7 +452,9 @@
 						{editTitle(editingPurpose)}
 					</DaisyUiCardBodyTitle>
 				</fieldset>
-				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+				<div
+					class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6"
+				>
 					<fieldset class="m-0 min-w-0 flex-1 border-0 p-0">
 						<div
 							class="grid min-w-0 grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
@@ -462,11 +488,15 @@
 										/>
 									</div>
 								</div>
-								<div class="rounded-md border border-base-200 bg-base-200/20 px-3 py-2">
+								<div
+									class="rounded-md border border-base-200 bg-base-200/20 px-3 py-2"
+								>
 									<DaisyUiLabel className="text-sm font-medium"
 										>{m.prefix_configuration_counter_scope_title()}</DaisyUiLabel
 									>
-									<p class="mb-2 mt-1 text-xs leading-snug text-base-content/60">
+									<p
+										class="mt-1 mb-2 text-xs leading-snug text-base-content/60"
+									>
 										{m.prefix_configuration_counter_scope_help()}
 									</p>
 									<div
@@ -524,11 +554,16 @@
 								</div>
 							</div>
 							<div class="col-span-full flex min-w-0 flex-col gap-2">
-								<div class="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
-									<DaisyUiLabel className="text-sm font-medium leading-tight"
+								<div
+									class="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2"
+								>
+									<DaisyUiLabel
+										className="text-sm font-medium leading-tight"
 										>{m.prefix_configuration_format_title()}</DaisyUiLabel
 									>
-									<p class="text-xs leading-snug text-base-content/60">
+									<p
+										class="text-xs leading-snug text-base-content/60"
+									>
 										{m.prefix_configuration_format_help()}
 									</p>
 								</div>
@@ -539,7 +574,8 @@
 									<span class="shrink-0 text-base-content/60"
 										>{m.prefix_configuration_format_preview()}:</span
 									>
-									<code class="break-all font-mono text-[0.7rem] leading-tight text-base-content"
+									<code
+										class="font-mono text-[0.7rem] leading-tight break-all text-base-content"
 										>{formatPreview || '—'}</code
 									>
 								</p>
@@ -552,11 +588,11 @@
 											class="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-2 py-1.5 sm:gap-x-2"
 										>
 											<span
-												class="w-5 shrink-0 text-right text-[0.65rem] tabular-nums text-base-content/45"
+												class="w-5 shrink-0 text-right text-[0.65rem] text-base-content/45 tabular-nums"
 												>{i + 1}</span
 											>
 											<select
-												class="d-select d-select-bordered d-select-xs h-7 min-h-7 max-w-[7.5rem] shrink-0 py-0 text-xs"
+												class="d-select-bordered d-select h-7 min-h-7 max-w-[7.5rem] shrink-0 d-select-xs py-0 text-xs"
 												value={part.kind}
 												onchange={(e) => {
 													const k = e.currentTarget
@@ -575,7 +611,9 @@
 												>
 											</select>
 
-											<div class="min-w-0 flex-1 basis-[12rem] sm:basis-0">
+											<div
+												class="min-w-0 flex-1 basis-[12rem] sm:basis-0"
+											>
 												{#if part.kind === 'literal'}
 													<DaisyUiInputField
 														className="d-input-xs h-7 min-h-7 w-full py-0 text-xs"
@@ -587,7 +625,7 @@
 													/>
 												{:else if part.kind === 'field'}
 													<select
-														class="d-select d-select-bordered d-select-xs h-7 min-h-7 w-full py-0 text-xs"
+														class="d-select-bordered d-select h-7 min-h-7 w-full d-select-xs py-0 text-xs"
 														value={part.path}
 														onchange={(e) =>
 															setFieldPath(
@@ -607,7 +645,7 @@
 														class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
 													>
 														<span
-															class="whitespace-nowrap text-[0.65rem] text-base-content/60"
+															class="text-[0.65rem] whitespace-nowrap text-base-content/60"
 															>{m.prefix_configuration_sequence_width()}</span
 														>
 														<input
@@ -615,7 +653,7 @@
 															min="0"
 															max="24"
 															title={m.prefix_configuration_sequence_width_help()}
-															class="d-input d-input-bordered d-input-xs h-7 w-14 py-0 text-center text-xs tabular-nums"
+															class="d-input-bordered d-input d-input-xs h-7 w-14 py-0 text-center text-xs tabular-nums"
 															value={part.padStart}
 															oninput={(e) =>
 																setSequencePad(
@@ -632,7 +670,7 @@
 											>
 												<button
 													type="button"
-													class="d-btn d-btn-ghost d-btn-xs h-7 min-h-7 px-1.5"
+													class="d-btn h-7 min-h-7 px-1.5 d-btn-ghost d-btn-xs"
 													title={m.prefix_configuration_move_up()}
 													disabled={i === 0}
 													onclick={() => movePart(i, -1)}
@@ -641,7 +679,7 @@
 												</button>
 												<button
 													type="button"
-													class="d-btn d-btn-ghost d-btn-xs h-7 min-h-7 px-1.5"
+													class="d-btn h-7 min-h-7 px-1.5 d-btn-ghost d-btn-xs"
 													title={m.prefix_configuration_move_down()}
 													disabled={i === formatParts.length - 1}
 													onclick={() => movePart(i, 1)}
@@ -650,7 +688,7 @@
 												</button>
 												<button
 													type="button"
-													class="d-btn d-btn-ghost d-btn-xs d-btn-error h-7 min-h-7 px-1.5"
+													class="d-btn h-7 min-h-7 px-1.5 d-btn-ghost d-btn-xs d-btn-error"
 													title={m.prefix_configuration_remove_part()}
 													disabled={formatParts.length <= 1}
 													onclick={() => removePart(i)}

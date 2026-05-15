@@ -26,9 +26,13 @@ export async function persistEmrPrintPdf(params: {
 	});
 	if (!attachRes.ok) {
 		const text = await attachRes.text().catch(() => '');
-		throw new Error(text || `Attachment save failed: ${attachRes.status}`);
+		throw new Error(
+			text || `Attachment save failed: ${attachRes.status}`
+		);
 	}
-	const attachJson = (await attachRes.json()) as { data?: { id: number } };
+	const attachJson = (await attachRes.json()) as {
+		data?: { id: number };
+	};
 	const attachmentId = attachJson.data?.id;
 	if (attachmentId == null) throw new Error('Attachment id missing');
 
@@ -50,7 +54,9 @@ export async function persistEmrPrintPdf(params: {
 		});
 		if (!docRes.ok) {
 			const text = await docRes.text().catch(() => '');
-			throw new Error(text || `Patient document save failed: ${docRes.status}`);
+			throw new Error(
+				text || `Patient document save failed: ${docRes.status}`
+			);
 		}
 	} catch (err) {
 		try {

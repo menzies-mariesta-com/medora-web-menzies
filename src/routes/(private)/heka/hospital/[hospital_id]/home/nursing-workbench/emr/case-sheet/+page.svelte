@@ -27,7 +27,9 @@
 		serviceName: string | null;
 	};
 
-	const visitIdStr = $derived(page.url.searchParams.get('visitId') ?? '');
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
 	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -76,7 +78,9 @@
 		}
 	}
 
-	function getVitalDisplayDate(v: PatientDiagnosisListRow): string | null {
+	function getVitalDisplayDate(
+		v: PatientDiagnosisListRow
+	): string | null {
 		return v.vitalDateTime ?? v.createdAt ?? null;
 	}
 
@@ -90,12 +94,14 @@
 		return userId;
 	}
 
-	function getSectionAudit(rows: {
-		createdAt?: string | null;
-		updatedAt?: string | null;
-		createdBy?: string | null;
-		updatedBy?: string | null;
-	}[]): {
+	function getSectionAudit(
+		rows: {
+			createdAt?: string | null;
+			updatedAt?: string | null;
+			createdBy?: string | null;
+			updatedBy?: string | null;
+		}[]
+	): {
 		enteredAt: string | null;
 		enteredBy: string | null;
 		updatedAt: string | null;
@@ -104,20 +110,34 @@
 		if (!rows.length) return null;
 		let enteredAt: string | null = rows[0]?.createdAt ?? null;
 		let enteredBy: string | null = rows[0]?.createdBy ?? null;
-		let updatedAt: string | null = rows[0]?.updatedAt ?? rows[0]?.createdAt ?? null;
-		let updatedBy: string | null = rows[0]?.updatedBy ?? rows[0]?.createdBy ?? null;
+		let updatedAt: string | null =
+			rows[0]?.updatedAt ?? rows[0]?.createdAt ?? null;
+		let updatedBy: string | null =
+			rows[0]?.updatedBy ?? rows[0]?.createdBy ?? null;
 		for (const row of rows) {
-			if (row.createdAt && (!enteredAt || row.createdAt < enteredAt)) {
+			if (
+				row.createdAt &&
+				(!enteredAt || row.createdAt < enteredAt)
+			) {
 				enteredAt = row.createdAt;
 				enteredBy = row.createdBy ?? enteredBy;
 			}
-			const candidateUpdatedAt = row.updatedAt ?? row.createdAt ?? null;
-			if (candidateUpdatedAt && (!updatedAt || candidateUpdatedAt > updatedAt)) {
+			const candidateUpdatedAt =
+				row.updatedAt ?? row.createdAt ?? null;
+			if (
+				candidateUpdatedAt &&
+				(!updatedAt || candidateUpdatedAt > updatedAt)
+			) {
 				updatedAt = candidateUpdatedAt;
 				updatedBy = row.updatedBy ?? row.createdBy ?? updatedBy;
 			}
 		}
-		return { enteredAt, enteredBy: enteredBy ?? null, updatedAt, updatedBy: updatedBy ?? null };
+		return {
+			enteredAt,
+			enteredBy: enteredBy ?? null,
+			updatedAt,
+			updatedBy: updatedBy ?? null
+		};
 	}
 
 	function vitalStatusLabel(row: PatientDiagnosisListRow): string {
@@ -128,7 +148,9 @@
 				: `${m.observation_emr_status()} ${row.statusId ?? '–'}`;
 	}
 
-	function allergyStatusLabel(row: PatientAllergyWithRelations): string {
+	function allergyStatusLabel(
+		row: PatientAllergyWithRelations
+	): string {
 		return row.statusId === StatusEnum.ACTIVE
 			? m.nursing_case_sheet_status_active()
 			: row.statusId === StatusEnum.INACTIVE
@@ -179,20 +201,27 @@
 			const res = await fetch(
 				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/case-sheet?visitId=${visitId}`
 			);
-			if (!res.ok) throw new Error(`Failed to load case sheet (${res.status})`);
+			if (!res.ok)
+				throw new Error(`Failed to load case sheet (${res.status})`);
 			const data = await res.json();
 
 			visitRow = data.visitRow ?? null;
 			allergies = Array.isArray(data.allergies) ? data.allergies : [];
 			vitals = Array.isArray(data.vitals) ? data.vitals : [];
-			orderLines = Array.isArray(data.orderLines) ? data.orderLines : [];
+			orderLines = Array.isArray(data.orderLines)
+				? data.orderLines
+				: [];
 			visitDiagnoses = Array.isArray(data.visitDiagnoses)
 				? data.visitDiagnoses
 				: [];
-			chiefComplaintEntries = Array.isArray(data.chiefComplaintEntries)
+			chiefComplaintEntries = Array.isArray(
+				data.chiefComplaintEntries
+			)
 				? data.chiefComplaintEntries
 				: [];
-			patientConditionEntries = Array.isArray(data.patientConditionEntries)
+			patientConditionEntries = Array.isArray(
+				data.patientConditionEntries
+			)
 				? data.patientConditionEntries
 				: [];
 		} finally {
@@ -264,254 +293,313 @@
 			</div>
 		{/if}
 		{#if visitRow}
-		<article class="case-sheet-document">
-			<header class="case-sheet-header">
-				<h2 class="case-sheet-doc-title">
-					{m.nursing_case_sheet_title()}
-				</h2>
-				<dl class="case-sheet-meta">
-					<div>
-						<dt>{m.visit_history_visit_label_visit_no()}</dt>
-						<dd>{formatText(visitRow.visitNo)}</dd>
-					</div>
-					<div>
-						<dt>{m.visit_history_visit_label_patient()}</dt>
-						<dd>{patientDisplayName}</dd>
-					</div>
-					{#if visitRow.patient?.code}
+			<article class="case-sheet-document">
+				<header class="case-sheet-header">
+					<h2 class="case-sheet-doc-title">
+						{m.nursing_case_sheet_title()}
+					</h2>
+					<dl class="case-sheet-meta">
 						<div>
-							<dt>{m.visit_history_visit_label_patient_code()}</dt>
-							<dd>{visitRow.patient.code}</dd>
+							<dt>{m.visit_history_visit_label_visit_no()}</dt>
+							<dd>{formatText(visitRow.visitNo)}</dd>
+						</div>
+						<div>
+							<dt>{m.visit_history_visit_label_patient()}</dt>
+							<dd>{patientDisplayName}</dd>
+						</div>
+						{#if visitRow.patient?.code}
+							<div>
+								<dt>{m.visit_history_visit_label_patient_code()}</dt>
+								<dd>{visitRow.patient.code}</dd>
+							</div>
+						{/if}
+						<div>
+							<dt>{m.visit_history_visit_label_visit_date()}</dt>
+							<dd>{formatDateTime(visitRow.createdAt ?? null)}</dd>
+						</div>
+					</dl>
+				</header>
+
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_chief_complaint()}</h3>
+					{#if chiefComplaintEntries.length === 0}
+						<p class="case-sheet-empty">
+							{m.nursing_case_sheet_no_entries()}
+						</p>
+					{:else}
+						<ol class="case-sheet-list">
+							{#each chiefComplaintEntries as row (row.id)}
+								<li>
+									<div>{formatText(row.description)}</div>
+									<p class="case-sheet-audit">
+										Entered by {formatUserName(
+											row.createdBy as string | null
+										)} on
+										{formatDateTime(
+											row.createdAt as string | null | undefined
+										)}
+										· Updated by {formatUserName(
+											row.updatedBy as string | null
+										)} on
+										{formatDateTime(
+											row.updatedAt as string | null | undefined
+										)}
+									</p>
+								</li>
+							{/each}
+						</ol>
+					{/if}
+				</section>
+
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_patient_condition()}</h3>
+					{#if patientConditionEntries.length === 0}
+						<p class="case-sheet-empty">
+							{m.nursing_case_sheet_no_entries()}
+						</p>
+					{:else}
+						<ol class="case-sheet-list">
+							{#each patientConditionEntries as row (row.id)}
+								<li>
+									<div>{formatText(row.description)}</div>
+									<p class="case-sheet-audit">
+										Entered by {formatUserName(
+											row.createdBy as string | null
+										)} on
+										{formatDateTime(
+											row.createdAt as string | null | undefined
+										)}
+										· Updated by {formatUserName(
+											row.updatedBy as string | null
+										)} on
+										{formatDateTime(
+											row.updatedAt as string | null | undefined
+										)}
+									</p>
+								</li>
+							{/each}
+						</ol>
+					{/if}
+				</section>
+
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_diagnosis()}</h3>
+					{#if visitDiagnoses.length === 0}
+						<p class="case-sheet-empty">
+							{m.observation_emr_diagnosis_empty()}
+						</p>
+					{:else}
+						<ol class="case-sheet-list">
+							{#each visitDiagnoses as row (row.id)}
+								<li>
+									<div>
+										{formatText(row.description)}
+										{#if row.diagnosisType?.name}
+											<span class="case-sheet-muted">
+												({m.observation_emr_diagnosis_type_label()}: {row
+													.diagnosisType.name})
+											</span>
+										{/if}
+									</div>
+									<p class="case-sheet-audit">
+										Entered by {formatUserName(
+											row.createdBy as string | null
+										)} on
+										{formatDateTime(
+											row.createdAt as string | null | undefined
+										)}
+										· Updated by {formatUserName(
+											row.updatedBy as string | null
+										)} on
+										{formatDateTime(
+											row.updatedAt as string | null | undefined
+										)}
+									</p>
+								</li>
+							{/each}
+						</ol>
+					{/if}
+				</section>
+
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_allergies()}</h3>
+					{#if allergies.length === 0}
+						<p class="case-sheet-empty">
+							{m.observation_emr_allergy_empty()}
+						</p>
+					{:else}
+						<ol class="case-sheet-list">
+							{#each allergies as row (row.id)}
+								<li>
+									<div>
+										<strong
+											>{formatText(row.allergy?.name ?? null)}</strong
+										>
+										{m.nursing_case_sheet_allergy_severity()}:
+										{formatText(row.severity?.name ?? null)};
+										{m.nursing_case_sheet_allergy_reaction()}:
+										{formatText(row.reaction)}
+									</div>
+									<p class="case-sheet-audit">
+										Entered by {formatUserName(
+											row.createdBy as string | null
+										)} on
+										{formatDateTime(
+											row.createdAt as string | null | undefined
+										)}
+										· Updated by {formatUserName(
+											row.updatedBy as string | null
+										)} on
+										{formatDateTime(
+											row.updatedAt as string | null | undefined
+										)}
+									</p>
+								</li>
+							{/each}
+						</ol>
+					{/if}
+				</section>
+
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_vitals()}</h3>
+					{#if vitals.length === 0}
+						<p class="case-sheet-empty">
+							{m.nursing_case_sheet_no_entries()}
+						</p>
+					{:else}
+						<div class="case-sheet-table-wrap">
+							<table class="case-sheet-table">
+								<thead>
+									<tr>
+										<th>{m.nursing_case_sheet_col_date()}</th>
+										<th>{m.nursing_case_sheet_col_height_cm()}</th>
+										<th>{m.nursing_case_sheet_col_weight_kg()}</th>
+										<th>{m.nursing_case_sheet_col_bmi()}</th>
+										<th>{m.nursing_case_sheet_col_bp()}</th>
+										<th>{m.nursing_case_sheet_col_pulse()}</th>
+										<th>{m.nursing_case_sheet_col_temp()}</th>
+										<th>{m.nursing_case_sheet_col_spo2()}</th>
+										<th>{m.nursing_case_sheet_col_symptom()}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each vitals as row (row.id)}
+										<tr>
+											<td
+												>{formatDateTime(
+													getVitalDisplayDate(row)
+												)}</td
+											>
+											<td>{formatVital(row.height)}</td>
+											<td>{formatVital(row.weight)}</td>
+											<td>{formatVital(row.bmi)}</td>
+											<td
+												>{formatVital(row.bpSystolic)}/{formatVital(
+													row.bpDiastolic
+												)}</td
+											>
+											<td>{formatVital(row.pulse)}</td>
+											<td>{formatVital(row.temperature)}</td>
+											<td>{formatVital(row.spO2)}</td>
+											<td>
+												<div>{formatVital(row.symptom)}</div>
+												<p class="case-sheet-audit">
+													Entered by {formatUserName(
+														row.createdBy as string | null
+													)} on
+													{formatDateTime(
+														row.createdAt as string | null | undefined
+													)}
+													· Updated by {formatUserName(
+														row.updatedBy as string | null
+													)} on
+													{formatDateTime(
+														row.updatedAt as string | null | undefined
+													)}
+												</p>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
 						</div>
 					{/if}
-					<div>
-						<dt>{m.visit_history_visit_label_visit_date()}</dt>
-						<dd>{formatDateTime(visitRow.createdAt ?? null)}</dd>
-					</div>
-				</dl>
-			</header>
+				</section>
 
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_chief_complaint()}</h3>
-				{#if chiefComplaintEntries.length === 0}
-					<p class="case-sheet-empty">{m.nursing_case_sheet_no_entries()}</p>
-				{:else}
-					<ol class="case-sheet-list">
-						{#each chiefComplaintEntries as row (row.id)}
-							<li>
-								<div>{formatText(row.description)}</div>
-								<p class="case-sheet-audit">
-									Entered by {formatUserName(row.createdBy as string | null)} on
-									{formatDateTime(row.createdAt as string | null | undefined)}
-									· Updated by {formatUserName(row.updatedBy as string | null)} on
-									{formatDateTime(row.updatedAt as string | null | undefined)}
-								</p>
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</section>
-
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_patient_condition()}</h3>
-				{#if patientConditionEntries.length === 0}
-					<p class="case-sheet-empty">{m.nursing_case_sheet_no_entries()}</p>
-				{:else}
-					<ol class="case-sheet-list">
-						{#each patientConditionEntries as row (row.id)}
-							<li>
-								<div>{formatText(row.description)}</div>
-								<p class="case-sheet-audit">
-									Entered by {formatUserName(row.createdBy as string | null)} on
-									{formatDateTime(row.createdAt as string | null | undefined)}
-									· Updated by {formatUserName(row.updatedBy as string | null)} on
-									{formatDateTime(row.updatedAt as string | null | undefined)}
-								</p>
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</section>
-
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_diagnosis()}</h3>
-				{#if visitDiagnoses.length === 0}
-					<p class="case-sheet-empty">
-						{m.observation_emr_diagnosis_empty()}
-					</p>
-				{:else}
-					<ol class="case-sheet-list">
-						{#each visitDiagnoses as row (row.id)}
-							<li>
-								<div>
-									{formatText(row.description)}
-									{#if row.diagnosisType?.name}
-										<span class="case-sheet-muted">
-											({m.observation_emr_diagnosis_type_label()}: {row
-												.diagnosisType.name})
-										</span>
-									{/if}
-								</div>
-								<p class="case-sheet-audit">
-									Entered by {formatUserName(row.createdBy as string | null)} on
-									{formatDateTime(row.createdAt as string | null | undefined)}
-									· Updated by {formatUserName(row.updatedBy as string | null)} on
-									{formatDateTime(row.updatedAt as string | null | undefined)}
-								</p>
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</section>
-
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_allergies()}</h3>
-				{#if allergies.length === 0}
-					<p class="case-sheet-empty">
-						{m.observation_emr_allergy_empty()}
-					</p>
-				{:else}
-					<ol class="case-sheet-list">
-						{#each allergies as row (row.id)}
-							<li>
-								<div>
-									<strong>{formatText(row.allergy?.name ?? null)}</strong>
-									{m.nursing_case_sheet_allergy_severity()}:
-									{formatText(row.severity?.name ?? null)};
-									{m.nursing_case_sheet_allergy_reaction()}:
-									{formatText(row.reaction)}
-								</div>
-								<p class="case-sheet-audit">
-									Entered by {formatUserName(row.createdBy as string | null)} on
-									{formatDateTime(row.createdAt as string | null | undefined)}
-									· Updated by {formatUserName(row.updatedBy as string | null)} on
-									{formatDateTime(row.updatedAt as string | null | undefined)}
-								</p>
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			</section>
-
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_vitals()}</h3>
-				{#if vitals.length === 0}
-					<p class="case-sheet-empty">{m.nursing_case_sheet_no_entries()}</p>
-				{:else}
-					<div class="case-sheet-table-wrap">
-						<table class="case-sheet-table">
-							<thead>
-								<tr>
-									<th>{m.nursing_case_sheet_col_date()}</th>
-									<th>{m.nursing_case_sheet_col_height_cm()}</th>
-									<th>{m.nursing_case_sheet_col_weight_kg()}</th>
-									<th>{m.nursing_case_sheet_col_bmi()}</th>
-									<th>{m.nursing_case_sheet_col_bp()}</th>
-									<th>{m.nursing_case_sheet_col_pulse()}</th>
-									<th>{m.nursing_case_sheet_col_temp()}</th>
-									<th>{m.nursing_case_sheet_col_spo2()}</th>
-									<th>{m.nursing_case_sheet_col_symptom()}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each vitals as row (row.id)}
+				<section class="case-sheet-section">
+					<h3>{m.observation_emr_order_history()}</h3>
+					{#if orderLines.length === 0}
+						<p class="case-sheet-empty">
+							{m.nursing_case_sheet_no_entries()}
+						</p>
+					{:else}
+						<div class="case-sheet-table-wrap">
+							<table class="case-sheet-table">
+								<thead>
 									<tr>
-										<td
-											>{formatDateTime(
-												getVitalDisplayDate(row)
-											)}</td
-										>
-										<td>{formatVital(row.height)}</td>
-										<td>{formatVital(row.weight)}</td>
-										<td>{formatVital(row.bmi)}</td>
-										<td
-											>{formatVital(
-												row.bpSystolic
-											)}/{formatVital(row.bpDiastolic)}</td
-										>
-										<td>{formatVital(row.pulse)}</td>
-										<td>{formatVital(row.temperature)}</td>
-										<td>{formatVital(row.spO2)}</td>
-										<td>
-											<div>{formatVital(row.symptom)}</div>
-											<p class="case-sheet-audit">
-												Entered by {formatUserName(row.createdBy as string | null)} on
-												{formatDateTime(row.createdAt as string | null | undefined)}
-												· Updated by {formatUserName(row.updatedBy as string | null)} on
-												{formatDateTime(row.updatedAt as string | null | undefined)}
-											</p>
-										</td>
+										<th>{m.nursing_case_sheet_col_order_no()}</th>
+										<th>{m.observation_emr_service()}</th>
+										<th>{m.nursing_case_sheet_col_description()}</th>
+										<th>{m.observation_emr_service_amount()}</th>
+										<th>{m.observation_emr_units()}</th>
+										<th>{m.observation_emr_urgent()}</th>
 									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				{/if}
-			</section>
+								</thead>
+								<tbody>
+									{#each orderLines as row (row.id)}
+										<tr>
+											<td>{formatText(row.orderNo)}</td>
+											<td>
+												{formatText(
+													row.serviceName ??
+														`Service ${row.serviceId}`
+												)}
+											</td>
+											<td>
+												<div>{formatText(row.instruction)}</div>
+												<p class="case-sheet-audit">
+													Entered by {formatUserName(
+														row.createdBy as string | null
+													)} on
+													{formatDateTime(
+														row.createdAt as string | null | undefined
+													)}
+													· Updated by {formatUserName(
+														row.updatedBy as string | null
+													)} on
+													{formatDateTime(
+														row.updatedAt as string | null | undefined
+													)}
+												</p>
+											</td>
+											<td>{formatNumberDisplay(row.serviceAmount)}</td
+											>
+											<td>
+												{row.serviceUnit != null
+													? String(row.serviceUnit)
+													: '–'}
+											</td>
+											<td>
+												{row.isUrgent
+													? m.nursing_case_sheet_yes()
+													: m.nursing_case_sheet_no()}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				</section>
 
-			<section class="case-sheet-section">
-				<h3>{m.observation_emr_order_history()}</h3>
-				{#if orderLines.length === 0}
-					<p class="case-sheet-empty">{m.nursing_case_sheet_no_entries()}</p>
-				{:else}
-					<div class="case-sheet-table-wrap">
-						<table class="case-sheet-table">
-							<thead>
-								<tr>
-									<th>{m.nursing_case_sheet_col_order_no()}</th>
-									<th>{m.observation_emr_service()}</th>
-									<th>{m.nursing_case_sheet_col_description()}</th>
-									<th>{m.observation_emr_service_amount()}</th>
-									<th>{m.observation_emr_units()}</th>
-									<th>{m.observation_emr_urgent()}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each orderLines as row (row.id)}
-									<tr>
-										<td>{formatText(row.orderNo)}</td>
-										<td>
-											{formatText(
-												row.serviceName ??
-													`Service ${row.serviceId}`
-											)}
-										</td>
-										<td>
-											<div>{formatText(row.instruction)}</div>
-											<p class="case-sheet-audit">
-												Entered by {formatUserName(row.createdBy as string | null)} on
-												{formatDateTime(row.createdAt as string | null | undefined)}
-												· Updated by {formatUserName(row.updatedBy as string | null)} on
-												{formatDateTime(row.updatedAt as string | null | undefined)}
-											</p>
-										</td>
-										<td>{formatNumberDisplay(row.serviceAmount)}</td>
-										<td>
-											{row.serviceUnit != null
-												? String(row.serviceUnit)
-												: '–'}
-										</td>
-										<td>
-											{row.isUrgent
-												? m.nursing_case_sheet_yes()
-												: m.nursing_case_sheet_no()}
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				{/if}
-			</section>
-
-			<footer class="case-sheet-footer">
-				{m.nursing_case_sheet_generated()}:
-				{new Date().toLocaleString('en-US', {
-					dateStyle: 'short',
-					timeStyle: 'short'
-				})}
-			</footer>
-		</article>
+				<footer class="case-sheet-footer">
+					{m.nursing_case_sheet_generated()}:
+					{new Date().toLocaleString('en-US', {
+						dateStyle: 'short',
+						timeStyle: 'short'
+					})}
+				</footer>
+			</article>
 		{/if}
 	{/if}
 </div>
@@ -523,12 +611,10 @@
 		padding: 1.75rem 1.5rem 2rem;
 		background: var(--fallback-b1, oklch(var(--b1)));
 		color: var(--fallback-bc, oklch(var(--bc)));
-		border: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+		border: 1px solid
+			color-mix(in oklab, currentColor 12%, transparent);
 		border-radius: 0.25rem;
-		font-family:
-			'Georgia',
-			'Times New Roman',
-			serif;
+		font-family: 'Georgia', 'Times New Roman', serif;
 		font-size: 0.95rem;
 		line-height: 1.5;
 	}
@@ -553,10 +639,7 @@
 		gap: 0.65rem 1.25rem;
 		margin: 0;
 		font-size: 0.88rem;
-		font-family:
-			ui-sans-serif,
-			system-ui,
-			sans-serif;
+		font-family: ui-sans-serif, system-ui, sans-serif;
 	}
 
 	.case-sheet-meta dt {
@@ -581,10 +664,7 @@
 		font-size: 1rem;
 		font-weight: 700;
 		margin: 0 0 0.5rem;
-		font-family:
-			ui-sans-serif,
-			system-ui,
-			sans-serif;
+		font-family: ui-sans-serif, system-ui, sans-serif;
 		border-bottom: 1px solid
 			color-mix(in oklab, currentColor 14%, transparent);
 		padding-bottom: 0.25rem;
@@ -609,10 +689,7 @@
 		margin-top: 0.4rem;
 		font-size: 0.78rem;
 		color: color-mix(in oklab, currentColor 55%, transparent);
-		font-family:
-			ui-sans-serif,
-			system-ui,
-			sans-serif;
+		font-family: ui-sans-serif, system-ui, sans-serif;
 	}
 
 	.case-sheet-muted {
@@ -623,10 +700,7 @@
 	.case-sheet-table-wrap {
 		margin-top: 0.5rem;
 		overflow-x: auto;
-		font-family:
-			ui-sans-serif,
-			system-ui,
-			sans-serif;
+		font-family: ui-sans-serif, system-ui, sans-serif;
 		font-size: 0.82rem;
 	}
 
@@ -637,7 +711,8 @@
 
 	.case-sheet-table th,
 	.case-sheet-table td {
-		border: 1px solid color-mix(in oklab, currentColor 16%, transparent);
+		border: 1px solid
+			color-mix(in oklab, currentColor 16%, transparent);
 		padding: 0.35rem 0.5rem;
 		text-align: left;
 		vertical-align: top;
@@ -655,10 +730,7 @@
 			color-mix(in oklab, currentColor 14%, transparent);
 		font-size: 0.78rem;
 		color: color-mix(in oklab, currentColor 48%, transparent);
-		font-family:
-			ui-sans-serif,
-			system-ui,
-			sans-serif;
+		font-family: ui-sans-serif, system-ui, sans-serif;
 	}
 
 	@media print {

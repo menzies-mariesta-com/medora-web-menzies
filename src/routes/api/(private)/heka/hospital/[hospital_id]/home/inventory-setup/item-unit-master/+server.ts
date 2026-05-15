@@ -37,8 +37,12 @@ export async function GET(event: RequestEvent) {
 			page,
 			pageSize,
 			search:
-				search != null && search.trim() !== '' ? search.trim() : undefined,
-			statusId: Number.isFinite(statusId as number) ? statusId : undefined
+				search != null && search.trim() !== ''
+					? search.trim()
+					: undefined,
+			statusId: Number.isFinite(statusId as number)
+				? statusId
+				: undefined
 		})
 	);
 }
@@ -46,16 +50,23 @@ export async function GET(event: RequestEvent) {
 export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const purchaseUnitId = Number(body.purchaseUnitId);
 	const issueUnitId = Number(body.issueUnitId);
-	if (!Number.isFinite(purchaseUnitId)) throw error(400, 'purchaseUnitId required');
-	if (!Number.isFinite(issueUnitId)) throw error(400, 'issueUnitId required');
+	if (!Number.isFinite(purchaseUnitId))
+		throw error(400, 'purchaseUnitId required');
+	if (!Number.isFinite(issueUnitId))
+		throw error(400, 'issueUnitId required');
 	return json(
 		await ium.createItemUnitMaster(hospitalId, {
 			purchaseUnitId,
 			issueUnitId,
-			purchaseConversionFactor: String(body.purchaseConversionFactor ?? ''),
+			purchaseConversionFactor: String(
+				body.purchaseConversionFactor ?? ''
+			),
 			issueConversionFactor: String(body.issueConversionFactor ?? '')
 		})
 	);
@@ -64,7 +75,10 @@ export async function POST(event: RequestEvent) {
 export async function PUT(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const id = Number(body.id);
 	if (!Number.isFinite(id)) throw error(400, 'id is required');
 
@@ -76,7 +90,9 @@ export async function PUT(event: RequestEvent) {
 		patch.issueUnitId = Number(body.issueUnitId);
 	}
 	if (body.purchaseConversionFactor !== undefined) {
-		patch.purchaseConversionFactor = String(body.purchaseConversionFactor);
+		patch.purchaseConversionFactor = String(
+			body.purchaseConversionFactor
+		);
 	}
 	if (body.issueConversionFactor !== undefined) {
 		patch.issueConversionFactor = String(body.issueConversionFactor);
@@ -92,7 +108,8 @@ export async function DELETE(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 	const id = Number(event.url.searchParams.get('id') ?? '0');
-	if (!Number.isFinite(id) || id <= 0) throw error(400, 'id is required');
+	if (!Number.isFinite(id) || id <= 0)
+		throw error(400, 'id is required');
 	await ium.deleteItemUnitMaster(hospitalId, { id });
 	return json({ ok: true });
 }

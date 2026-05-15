@@ -459,7 +459,9 @@ export async function createPatientWithUserInHospital(
 			: undefined,
 		cityId: payload.cityId ? Number(payload.cityId) : undefined,
 		stateId: payload.stateId ? Number(payload.stateId) : undefined,
-		countryId: payload.countryId ? Number(payload.countryId) : undefined,
+		countryId: payload.countryId
+			? Number(payload.countryId)
+			: undefined,
 		postalCodeId: payload.postalCodeId
 			? Number(payload.postalCodeId)
 			: undefined,

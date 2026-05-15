@@ -52,21 +52,28 @@
 			: ''
 	);
 
-	async function apiGet<T>(params: Record<string, string | number | undefined>): Promise<T> {
+	async function apiGet<T>(
+		params: Record<string, string | number | undefined>
+	): Promise<T> {
 		const qs = new URLSearchParams();
 		for (const [k, v] of Object.entries(params)) {
 			if (v == null || v === '') continue;
 			qs.set(k, String(v));
 		}
 		const res = await fetch(`${baseApi}?${qs.toString()}`);
-		if (!res.ok) throw new Error(await readFailedResponseMessage(res));
+		if (!res.ok)
+			throw new Error(await readFailedResponseMessage(res));
 		return (await res.json()) as T;
 	}
 
-	async function readFailedResponseMessage(res: Response): Promise<string> {
+	async function readFailedResponseMessage(
+		res: Response
+	): Promise<string> {
 		const text = await res.text();
 		try {
-			const j = text ? (JSON.parse(text) as { message?: string }) : null;
+			const j = text
+				? (JSON.parse(text) as { message?: string })
+				: null;
 			if (j?.message && String(j.message).trim()) {
 				return String(j.message).trim();
 			}
@@ -84,7 +91,8 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!res.ok) throw new Error(await readFailedResponseMessage(res));
+		if (!res.ok)
+			throw new Error(await readFailedResponseMessage(res));
 		return (await res.json()) as T;
 	}
 
@@ -108,7 +116,8 @@
 			mode: 'orderLine.list',
 			visitId: String(vid)
 		});
-		for (const id of serviceOrderIds) qs.append('serviceOrderIds', String(id));
+		for (const id of serviceOrderIds)
+			qs.append('serviceOrderIds', String(id));
 		return fetch(`${baseApi}?${qs.toString()}`).then(async (r) => {
 			if (!r.ok) throw new Error(await readFailedResponseMessage(r));
 			return (await r.json()) as any[];
@@ -122,8 +131,18 @@
 	const deleteServiceOrderDetail = ({ id }: { id: number }) =>
 		apiPost<{ ok: true }>({ mode: 'orderLine.delete', id });
 
-	const getServiceTagging = ({ branchId, serviceId }: { branchId: string; serviceId?: number }) =>
-		apiGet<any[]>({ mode: 'serviceTagging.list', branchId, serviceId });
+	const getServiceTagging = ({
+		branchId,
+		serviceId
+	}: {
+		branchId: string;
+		serviceId?: number;
+	}) =>
+		apiGet<any[]>({
+			mode: 'serviceTagging.list',
+			branchId,
+			serviceId
+		});
 
 	const getServiceItemPaginated = ({
 		hospitalId: _hid,
@@ -141,9 +160,10 @@
 		});
 
 	const getServiceItem = ({ id }: { id: number }) =>
-		apiGet<ServiceItemListRow | null>({ mode: 'serviceItem.byId', id }).then((row) =>
-			row ? [row] : []
-		);
+		apiGet<ServiceItemListRow | null>({
+			mode: 'serviceItem.byId',
+			id
+		}).then((row) => (row ? [row] : []));
 
 	/** Non-deleted items for the hospital (from route); used with branch service tagging. */
 	const getServiceItemsForHospital = () =>
@@ -156,7 +176,12 @@
 	const getSubCategory = (_input: any) =>
 		apiGet<any[]>({ mode: 'subCategory.list' });
 
-	const getDoctorStaffPaginated = ({ search, hospitalId: _hid, page, pageSize }: any) =>
+	const getDoctorStaffPaginated = ({
+		search,
+		hospitalId: _hid,
+		page,
+		pageSize
+	}: any) =>
 		apiGet<any>({ mode: 'doctor.search', search, page, pageSize });
 
 	const getStaffByIdWithRelations = ({ id }: { id: string }) =>
@@ -1048,10 +1073,10 @@
 			{:else if !visit}
 				<DaisyUiCard>
 					<DaisyUiCardBody>
-						<DaisyUiCardBodyTitle className="mb-0">Order</DaisyUiCardBodyTitle>
-						<div
-							class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
+						<DaisyUiCardBodyTitle className="mb-0"
+							>Order</DaisyUiCardBodyTitle
 						>
+						<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
 							<MariTable
 								rows={[]}
 								columns={detailColumns}
@@ -1081,7 +1106,7 @@
 								<DaisyUiButton
 									className="d-btn-outline d-btn-sm"
 									onClick={handleShowHistory}
-								> 
+								>
 									Order history
 								</DaisyUiButton>
 							</div>

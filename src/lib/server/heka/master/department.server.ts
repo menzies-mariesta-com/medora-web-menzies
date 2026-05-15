@@ -16,18 +16,27 @@ import { and, count, eq, ilike, ne } from 'drizzle-orm';
 export async function getDepartmentPaginated(
 	params?: PaginationParams
 ): Promise<PaginatedResult<DepartmentSchema>> {
-	const { page, pageSize, limit, offset } = normalizePagination(params);
-	const conditions = [ne(table.departmentTable.statusId, StatusEnum.DELETED)];
+	const { page, pageSize, limit, offset } =
+		normalizePagination(params);
+	const conditions = [
+		ne(table.departmentTable.statusId, StatusEnum.DELETED)
+	];
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
-		conditions.push(ilike(table.departmentTable.name, `%${nameFilter}%`));
+		conditions.push(
+			ilike(table.departmentTable.name, `%${nameFilter}%`)
+		);
 	}
 	const codeFilter = params?.code?.trim();
 	if (codeFilter) {
-		conditions.push(ilike(table.departmentTable.code, `%${codeFilter}%`));
+		conditions.push(
+			ilike(table.departmentTable.code, `%${codeFilter}%`)
+		);
 	}
 	if (typeof params?.statusId === 'number') {
-		conditions.push(eq(table.departmentTable.statusId, params.statusId));
+		conditions.push(
+			eq(table.departmentTable.statusId, params.statusId)
+		);
 	}
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
@@ -95,7 +104,9 @@ export async function updateDepartment(payload: {
 	return row;
 }
 
-export async function deleteDepartment(input: { id: number }): Promise<void> {
+export async function deleteDepartment(input: {
+	id: number;
+}): Promise<void> {
 	await ensureDb()
 		.update(table.departmentTable)
 		.set({ statusId: StatusEnum.DELETED })

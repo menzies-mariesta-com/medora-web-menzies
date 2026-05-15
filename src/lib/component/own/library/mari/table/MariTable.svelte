@@ -12,11 +12,12 @@
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
-import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
+	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import { AppEnum } from '$lib/model/enum/app.enum';
 
 	export type MariTableColumn<T = unknown> = {
 		/**
@@ -50,7 +51,10 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 			| ((
 					row: T,
 					rowIndex: number
-				) => { component: unknown; props?: Record<string, unknown> } | null)
+			  ) => {
+					component: unknown;
+					props?: Record<string, unknown>;
+			  } | null)
 			| undefined;
 		/**
 		 * Whether this column should show a filter control when column filters are enabled.
@@ -124,7 +128,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		rows,
 		columns,
 		pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
-		pageSize = $bindable('10'),
+		pageSize = $bindable(String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)),
 		currentPage = $bindable(1),
 		totalRowCount,
 		isLoading = false,
@@ -315,7 +319,9 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 		index: number
 	) {
 		if (column.format) {
-			const raw = column.field ? valueAtPath(row, column.field) : row[column.id];
+			const raw = column.field
+				? valueAtPath(row, column.field)
+				: row[column.id];
 			return column.format(raw, row, index);
 		}
 
@@ -605,8 +611,10 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}
-											{@const editLocked = crudEditDisabled?.(row) ?? false}
-											{@const deleteLocked = crudDeleteDisabled?.(row) ?? false}
+											{@const editLocked =
+												crudEditDisabled?.(row) ?? false}
+											{@const deleteLocked =
+												crudDeleteDisabled?.(row) ?? false}
 											<div class="flex items-center gap-2">
 												{#if crudShowView}
 													<DaisyUiTooltip
@@ -673,7 +681,7 @@ import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleChe
 									>
 										{#if cellComponent && cellComponent.component}
 											{@const Component = cellComponent.component}
-											<Component {...(cellComponent.props ?? {})} />
+											<Component {...cellComponent.props ?? {}} />
 										{:else}
 											{getCellValue(row, column, index)}
 										{/if}

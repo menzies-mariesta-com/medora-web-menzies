@@ -320,13 +320,17 @@
 			const qs = new URLSearchParams();
 			qs.set('page', String(paginatedParams.page));
 			qs.set('pageSize', String(paginatedParams.pageSize));
-			if (paginatedParams.id != null) qs.set('id', String(paginatedParams.id));
+			if (paginatedParams.id != null)
+				qs.set('id', String(paginatedParams.id));
 			if (paginatedParams.branchId)
 				qs.set('branchId', paginatedParams.branchId);
 			if (paginatedParams.serviceIds?.length)
 				qs.set('serviceIds', paginatedParams.serviceIds.join(','));
 			if (paginatedParams.serviceAmount != null)
-				qs.set('serviceAmount', String(paginatedParams.serviceAmount));
+				qs.set(
+					'serviceAmount',
+					String(paginatedParams.serviceAmount)
+				);
 			if (paginatedParams.serviceTaxAmount != null)
 				qs.set(
 					'serviceTaxAmount',
@@ -335,17 +339,17 @@
 			if (paginatedParams.statusId != null)
 				qs.set('statusId', String(paginatedParams.statusId));
 
-			let result =
-				await fetchJson<PaginatedResult<ServiceTaggingListRow>>(
-					`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging?${qs.toString()}`
-				);
+			let result = await fetchJson<
+				PaginatedResult<ServiceTaggingListRow>
+			>(
+				`/api/heka/hospital/${hospitalId}/home/administration/service-order/service-item-tagging?${qs.toString()}`
+			);
 
 			// When multiple branches are selected, filter in-memory.
 			if (selectedAllowedBranchIds.length > 1) {
 				const allowedIds = new Set(selectedAllowedBranchIds);
 				const filteredData = result.data.filter(
-					(row: ServiceTaggingListRow) =>
-					allowedIds.has(row.branchId)
+					(row: ServiceTaggingListRow) => allowedIds.has(row.branchId)
 				);
 				const totalFiltered = filteredData.length;
 				result = {
@@ -792,7 +796,9 @@
 
 					<div class="flex flex-wrap gap-4">
 						<div class="flex min-w-60 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium" for="tagging-form-service"
+							<label
+								class="text-sm font-medium"
+								for="tagging-form-service"
 								>Service<span class="text-error"> *</span></label
 							>
 							<DaisyUiSearchSelect
@@ -804,7 +810,9 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium" for="tagging-form-amount"
+							<label
+								class="text-sm font-medium"
+								for="tagging-form-amount"
 								>Amount<span class="text-error"> *</span></label
 							>
 							<DaisyUiInputField
@@ -818,8 +826,9 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium" for="tagging-form-tax"
-								>Tax amount</label
+							<label
+								class="text-sm font-medium"
+								for="tagging-form-tax">Tax amount</label
 							>
 							<DaisyUiInputField
 								id="tagging-form-tax"
@@ -831,8 +840,9 @@
 							/>
 						</div>
 						<div class="flex min-w-40 flex-1 flex-col gap-1">
-							<label class="text-sm font-medium" for="tagging-form-valid-date"
-								>Valid date</label
+							<label
+								class="text-sm font-medium"
+								for="tagging-form-valid-date">Valid date</label
 							>
 							<DaisyUiInputField
 								id="tagging-form-valid-date"
@@ -1014,7 +1024,9 @@
 									<DaisyUiButton
 										className="d-btn-ghost d-btn-sm d-btn-accent"
 										onClick={() => startEdit(taggingRow)}
-										disabled={isLoading || isSaving || deleteLock.pending}
+										disabled={isLoading ||
+											isSaving ||
+											deleteLock.pending}
 										loadingText=""
 									>
 										<LucidePencil className="size-4" />
@@ -1024,7 +1036,9 @@
 										onClick={() => handleDelete(taggingRow)}
 										loading={deletingId === taggingRow.id}
 										loadingText=""
-										disabled={isLoading || isSaving || deleteLock.pending}
+										disabled={isLoading ||
+											isSaving ||
+											deleteLock.pending}
 									>
 										<LucideTrash2 className="size-4" />
 									</DaisyUiButton>

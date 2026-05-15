@@ -1,5 +1,16 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, ne, sql } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	ne,
+	sql
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -25,6 +36,7 @@ import {
 } from './inventory-scope.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
+import { parsePositiveIntQty } from './inv-validate.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 
 async function checkUserCanCancelDepartmentIndent(
@@ -41,7 +53,8 @@ async function checkUserCanCancelDepartmentIndent(
 	if (st === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL) {
 		return indent.requestedBy === userId;
 	}
-	if (st !== InvDepartmentIndentStatusTaggingEnum.PENDING) return false;
+	if (st !== InvDepartmentIndentStatusTaggingEnum.PENDING)
+		return false;
 	return indent.requestedBy === userId;
 }
 
@@ -103,7 +116,10 @@ export async function listDepartmentIndents(
 	const uCreated = alias(table.userTable, 'di_list_created_by');
 	const uUpdated = alias(table.userTable, 'di_list_updated_by');
 	const uRequested = alias(table.userTable, 'di_list_requested_by');
-	const uFromApproved = alias(table.userTable, 'di_list_from_approved_by');
+	const uFromApproved = alias(
+		table.userTable,
+		'di_list_from_approved_by'
+	);
 	const uCancelled = alias(table.userTable, 'di_list_cancelled_by');
 	const [data, cnt] = await Promise.all([
 		ensureDb()
@@ -140,7 +156,10 @@ export async function listDepartmentIndents(
 			)
 			.leftJoin(
 				uFromApproved,
-				eq(table.invDepartmentIndentTable.fromApprovedBy, uFromApproved.id)
+				eq(
+					table.invDepartmentIndentTable.fromApprovedBy,
+					uFromApproved.id
+				)
 			)
 			.leftJoin(
 				uCancelled,
@@ -173,10 +192,16 @@ export async function listDepartmentIndents(
 					table.itemMasterTable.id
 				)
 			)
-			.where(inArray(table.invDepartmentIndentLineTable.indentId, indentIds))
+			.where(
+				inArray(
+					table.invDepartmentIndentLineTable.indentId,
+					indentIds
+				)
+			)
 			.groupBy(table.invDepartmentIndentLineTable.indentId);
 		for (const r of rows) {
-			if (r.indentId) itemNamesByIndent.set(r.indentId, r.itemNames ?? '');
+			if (r.indentId)
+				itemNamesByIndent.set(r.indentId, r.itemNames ?? '');
 		}
 	}
 	const userId = event.locals.user?.id ?? null;
@@ -220,7 +245,8 @@ export async function listDepartmentIndents(
 		}
 		if (
 			canApprovePairSet &&
-			r.row.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING
+			r.row.statusTaggingId ===
+				InvDepartmentIndentStatusTaggingEnum.PENDING
 		) {
 			// From-store approvals use fromStoreId + currentLevel.
 			canApprove = canApprovePairSet.has(
@@ -450,7 +476,8 @@ export async function getDepartmentIndentById(
 				expiryDate: a.expiryDate,
 				quantity: String(a.qty),
 				itemUnitMasterId: ium?.id ?? null,
-				purchaseConversionFactor: ium?.purchaseConversionFactor ?? null,
+				purchaseConversionFactor:
+					ium?.purchaseConversionFactor ?? null,
 				issueConversionFactor: ium?.issueConversionFactor ?? null,
 				issueUnitName: ium?.issueUnitName ?? null
 			};
@@ -519,7 +546,8 @@ export async function getDepartmentIndentById(
 				unitName: r.unitName,
 				itemUnitMasterId: ium?.id ?? null,
 				itemUnitMasterConversion: ium?.conversionDisplay ?? null,
-				purchaseConversionFactor: ium?.purchaseConversionFactor ?? null,
+				purchaseConversionFactor:
+					ium?.purchaseConversionFactor ?? null,
 				issueConversionFactor: ium?.issueConversionFactor ?? null,
 				issueUnitName: ium?.issueUnitName ?? null
 			};
@@ -680,7 +708,10 @@ export async function approveDepartmentIndent(
 		)
 		.limit(1);
 	if (!ind) throw error(404, 'Indent not found');
-	if (ind.statusTaggingId !== InvDepartmentIndentStatusTaggingEnum.PENDING) {
+	if (
+		ind.statusTaggingId !==
+		InvDepartmentIndentStatusTaggingEnum.PENDING
+	) {
 		throw error(400, 'Indent is not awaiting approval');
 	}
 
@@ -747,7 +778,9 @@ export async function approveDepartmentIndent(
 						fromApprovedAt: sql<string>`now()`,
 						updatedBy: userId
 					})
-					.where(eq(table.invDepartmentIndentTable.id, input.indentId));
+					.where(
+						eq(table.invDepartmentIndentTable.id, input.indentId)
+					);
 			}
 		}
 	});
@@ -799,7 +832,10 @@ export async function cancelDepartmentIndent(
 		throw error(400, 'Indent cannot be cancelled in current status');
 	}
 
-	if (ind.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL) {
+	if (
+		ind.statusTaggingId ===
+		InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL
+	) {
 		const [openIssue] = await ensureDb()
 			.select({ id: table.invDepartmentIssueTable.id })
 			.from(table.invDepartmentIssueTable)
@@ -884,10 +920,7 @@ export async function postDepartmentIndentIssue(
 				purchaseUnitId: line.unitId,
 				purchaseQtyStr: String(line.quantity)
 			});
-			let remaining = Number(needIssue);
-			if (!Number.isFinite(remaining) || remaining <= 0) {
-				throw error(400, 'Invalid line quantity');
-			}
+			let remaining = parsePositiveIntQty(needIssue, 'quantity');
 
 			const rows = await tx
 				.select({
@@ -922,7 +955,7 @@ export async function postDepartmentIndentIssue(
 					itemId: line.itemId,
 					storeId: centralStoreId,
 					batchId: row.stock.batchId,
-					delta: (-take).toFixed(6),
+					delta: String(-take),
 					userId
 				});
 				await tx
@@ -930,12 +963,12 @@ export async function postDepartmentIndentIssue(
 					.values({
 						lineId: line.id,
 						batchId: row.stock.batchId,
-						quantity: take.toFixed(6)
+						quantity: String(take)
 					});
 				remaining -= take;
 			}
 
-			if (remaining > 1e-6) {
+			if (remaining > 0) {
 				throw error(400, 'Insufficient stock at fulfilling store');
 			}
 

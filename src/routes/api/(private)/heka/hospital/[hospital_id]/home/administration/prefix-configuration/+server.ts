@@ -9,28 +9,41 @@ import {
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const data = await getPrefixConfigurationByHospital(event, { hospitalId });
+	const data = await getPrefixConfigurationByHospital(event, {
+		hospitalId
+	});
 	return json(data);
 };
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await createPrefixConfiguration(event, {
 		hospitalId,
 		key: String(body.key ?? ''),
-		description: body.description != null ? String(body.description) : null,
+		description:
+			body.description != null ? String(body.description) : null,
 		format: (body.format ?? {}) as any,
 		counterIncludeBranch: Number(body.counterIncludeBranch ?? 0),
-		counterIncludeFinancialYear: Number(body.counterIncludeFinancialYear ?? 0),
-		counterIncludeVisitType: Number(body.counterIncludeVisitType ?? 0),
+		counterIncludeFinancialYear: Number(
+			body.counterIncludeFinancialYear ?? 0
+		),
+		counterIncludeVisitType: Number(
+			body.counterIncludeVisitType ?? 0
+		),
 		counterIncludeVisit: Number(body.counterIncludeVisit ?? 0)
 	});
 	return json(data);
 };
 
 export const PUT: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const data = await updatePrefixConfiguration(event, {
 		id: Number(body.id),
 		key: body.key != null ? String(body.key) : undefined,
@@ -40,7 +53,10 @@ export const PUT: RequestHandler = async (event) => {
 				: body.description != null
 					? String(body.description)
 					: null,
-		format: body.format === undefined ? undefined : ((body.format ?? {}) as any),
+		format:
+			body.format === undefined
+				? undefined
+				: ((body.format ?? {}) as any),
 		counterIncludeBranch:
 			body.counterIncludeBranch === undefined
 				? undefined
@@ -62,7 +78,10 @@ export const PUT: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	await deletePrefixConfiguration(event, { id: Number(body.id) });
 	return json({ ok: true });
 };

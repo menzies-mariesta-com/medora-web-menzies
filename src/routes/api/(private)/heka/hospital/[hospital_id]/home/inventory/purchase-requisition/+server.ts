@@ -11,12 +11,17 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
 	const id = event.url.searchParams.get('id');
 	if (id) {
-		const row = await getPurchaseRequisitionById(event, { hospitalId, id });
+		const row = await getPurchaseRequisitionById(event, {
+			hospitalId,
+			id
+		});
 		return json(row);
 	}
 	const mode = event.url.searchParams.get('mode');
 	const page = Number(event.url.searchParams.get('page') ?? '1');
-	const pageSize = Number(event.url.searchParams.get('pageSize') ?? '10');
+	const pageSize = Number(
+		event.url.searchParams.get('pageSize') ?? '10'
+	);
 	const storeIdStr = event.url.searchParams.get('storeId');
 	const storeId =
 		storeIdStr != null && storeIdStr !== ''
@@ -35,16 +40,22 @@ export const GET: RequestHandler = async (event) => {
 	const prNoRaw = event.url.searchParams.get('prNo');
 	const prNo =
 		prNoRaw != null && prNoRaw !== '' ? prNoRaw : undefined;
+	const itemRaw = event.url.searchParams.get('item');
+	const item =
+		itemRaw != null && itemRaw !== '' ? itemRaw : undefined;
 	const data = await listPurchaseRequisitions(event, {
 		hospitalId,
 		page,
 		pageSize,
 		storeId,
-		toStoreId: Number.isFinite(toStoreId as number) ? toStoreId : undefined,
+		toStoreId: Number.isFinite(toStoreId as number)
+			? toStoreId
+			: undefined,
 		statusTaggingId: Number.isFinite(statusTaggingId as number)
 			? statusTaggingId
 			: undefined,
 		prNo,
+		item,
 		onlyWithRemainingQty: mode === 'poEligible'
 	});
 	return json(data);
@@ -52,7 +63,10 @@ export const GET: RequestHandler = async (event) => {
 
 export const POST: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
 	const lines = (body.lines as Record<string, unknown>[]) ?? [];
 	const data = await createPurchaseRequisition(event, {
 		hospitalId,
@@ -70,8 +84,13 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const body = (await event.request.json()) as Record<string, unknown>;
-	const linesRaw = body.lines as Record<string, unknown>[] | undefined;
+	const body = (await event.request.json()) as Record<
+		string,
+		unknown
+	>;
+	const linesRaw = body.lines as
+		| Record<string, unknown>[]
+		| undefined;
 	const data = await updatePurchaseRequisition(event, {
 		hospitalId,
 		id: String(body.id ?? ''),
@@ -80,7 +99,9 @@ export const PUT: RequestHandler = async (event) => {
 				? Number(body.fromStoreId)
 				: undefined,
 		toStoreId:
-			body.toStoreId !== undefined ? Number(body.toStoreId) : undefined,
+			body.toStoreId !== undefined
+				? Number(body.toStoreId)
+				: undefined,
 		remarks:
 			body.remarks !== undefined
 				? body.remarks == null

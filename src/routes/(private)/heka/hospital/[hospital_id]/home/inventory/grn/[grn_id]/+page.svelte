@@ -5,7 +5,9 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, { type MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -18,7 +20,9 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+		typeof page.params.hospital_id === 'string'
+			? page.params.hospital_id
+			: ''
 	);
 
 	const grnId = $derived(
@@ -105,7 +109,7 @@
 			header: 'Purchase Price',
 			field: 'purchasePrice',
 			format: (_v, row) => {
-				const t = row.purchasePrice?.trim();
+				const t = String(row.purchasePrice ?? '').trim();
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}
 		}
@@ -148,7 +152,6 @@
 		void loadDetail();
 		return () => abort?.abort();
 	});
-
 </script>
 
 <div class="mb-4 flex items-center justify-between gap-2">
@@ -168,21 +171,30 @@
 		<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>
 	</div>
 	{#if detailLoading}
-		<span class="d-loading d-loading-spinner d-loading-sm" aria-label="Loading"></span>
+		<span
+			class="d-loading d-loading-sm d-loading-spinner"
+			aria-label="Loading"
+		></span>
 	{/if}
 </div>
 
 <div class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
-		<div class="text-sm text-base-content/60">{m.inv_grn_col_store()}</div>
+		<div class="text-sm text-base-content/60">
+			{m.inv_grn_col_store()}
+		</div>
 		<div class="font-medium">{detail?.storeName ?? '—'}</div>
 	</div>
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
-		<div class="text-sm text-base-content/60">{m.inv_po_select_supplier()}</div>
+		<div class="text-sm text-base-content/60">
+			{m.inv_po_select_supplier()}
+		</div>
 		<div class="font-medium">{detail?.supplierName ?? '—'}</div>
 	</div>
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
-		<div class="text-sm text-base-content/60">{m.inv_grn_received_date()}</div>
+		<div class="text-sm text-base-content/60">
+			{m.inv_grn_received_date()}
+		</div>
 		<div class="font-medium">{detail?.receivedDate ?? '—'}</div>
 	</div>
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
@@ -190,7 +202,9 @@
 		<div class="font-medium">{detail?.statusName ?? '—'}</div>
 	</div>
 	<div class="rounded-lg border border-base-300 bg-base-100 p-3">
-		<div class="text-sm text-base-content/60">{m.inv_common_received_by()}</div>
+		<div class="text-sm text-base-content/60">
+			{m.inv_common_received_by()}
+		</div>
 		<div class="font-medium">{detail?.receivedByName ?? '—'}</div>
 	</div>
 </div>
@@ -199,17 +213,23 @@
 	<div class="mb-2 flex items-center justify-between">
 		<h2 class="font-semibold">Invoice</h2>
 		{#if detail?.invoicePhotoUrl?.trim()}
-			<span class="text-sm text-base-content/70">Invoice photo available</span>
+			<span class="text-sm text-base-content/70"
+				>Invoice photo available</span
+			>
 		{/if}
 	</div>
 	<div class="grid grid-cols-1 gap-2 md:grid-cols-3">
 		<div>
 			<div class="text-sm text-base-content/60">Invoice No</div>
-			<div class="font-medium">{detail?.invoiceNo?.trim() || '—'}</div>
+			<div class="font-medium">
+				{detail?.invoiceNo?.trim() || '—'}
+			</div>
 		</div>
 		<div>
 			<div class="text-sm text-base-content/60">Invoice Date</div>
-			<div class="font-medium">{detail?.invoiceDate?.trim() || '—'}</div>
+			<div class="font-medium">
+				{detail?.invoiceDate?.trim() || '—'}
+			</div>
 		</div>
 		<div>
 			<div class="text-sm text-base-content/60">Invoice Amount</div>
@@ -241,4 +261,3 @@
 		showRefreshButton={false}
 	/>
 </div>
-

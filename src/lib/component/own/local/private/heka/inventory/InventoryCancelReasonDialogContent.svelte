@@ -53,7 +53,12 @@
 	aria-label={textareaAriaLabel}
 ></textarea>
 <div class="d-modal-action mt-4">
-	<DaisyUiButton type="button" className="d-btn" disabled={submitting} onClick={() => cancel()}>
+	<DaisyUiButton
+		type="button"
+		className="d-btn"
+		disabled={submitting}
+		onClick={() => cancel()}
+	>
 		{m.cancel()}
 	</DaisyUiButton>
 	<DaisyUiButton
