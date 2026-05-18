@@ -8,6 +8,7 @@
  *
  * Usage: pnpm db:baseline:sql
  *        pnpm db:baseline:sql -- --pending 2   # leave last 2 migrations to run
+ *        pnpm db:baseline:sql -- --pending 0   # mark entire journal applied (nothing left to migrate)
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -21,8 +22,8 @@ function parsePendingCount(argv) {
 	const i = argv.indexOf('--pending');
 	if (i === -1 || argv[i + 1] == null) return 1;
 	const n = Number(argv[i + 1]);
-	if (!Number.isInteger(n) || n < 1) {
-		console.error('Invalid --pending N (need integer >= 1)');
+	if (!Number.isInteger(n) || n < 0) {
+		console.error('Invalid --pending N (need integer >= 0)');
 		process.exit(1);
 	}
 	return n;
@@ -36,15 +37,20 @@ const journal = JSON.parse(
 	)
 );
 const entries = journal.entries;
-if (!Array.isArray(entries) || entries.length <= pendingCount) {
+if (!Array.isArray(entries) || entries.length === 0) {
+	console.error('Journal has no entries');
+	process.exit(1);
+}
+if (pendingCount > 0 && entries.length <= pendingCount) {
 	console.error(
-		`Journal needs more than ${pendingCount} entries (found ${entries?.length ?? 0})`
+		`Journal needs more than ${pendingCount} entries (found ${entries.length})`
 	);
 	process.exit(1);
 }
 
-const applied = entries.slice(0, -pendingCount);
-const pending = entries.slice(-pendingCount);
+const applied =
+	pendingCount === 0 ? entries : entries.slice(0, -pendingCount);
+const pending = pendingCount === 0 ? [] : entries.slice(-pendingCount);
 
 const maxWhen = Math.max(...applied.map((e) => e.when));
 const markerEntry = applied.reduce((a, b) =>

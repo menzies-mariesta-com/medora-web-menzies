@@ -24,9 +24,23 @@
 	import { m } from '$lib/paraglide/messages';
 	import type {
 		MedicationOrderBatchHistoryRow,
+		MedicationOrderCheckoutResponse,
 		MedicationOrderMastersResponse,
 		MedicationOrderLineInput
 	} from '$lib/model/type/heka/medication-order.type';
+	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
+	import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
+	import {
+		defaultUnitSalePriceFromAllocations,
+		hydrateMedOrderItemMeta,
+		lineTotal,
+		loadMedOrderIumList,
+		refreshMedOrderBatchAllocations,
+		sumAllocationPurchaseQty,
+		syncMedOrderFefoAllocations,
+		validateMedOrderInventoryLine
+	} from '$lib/tool/medication-order/med-order-line-inventory.util';
 	import { tick, untrack } from 'svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -115,6 +129,18 @@
 	let testDose = $state('');
 	let substituteNotAllowed = $state(false);
 
+	let batchRemarks = $state('');
+	let lineRemarks = $state('');
+	let issueQtyPurchase = $state('');
+	let unitSalePrice = $state('0');
+	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>([]);
+	let iumList = $state<ConsumptionDraftLineIum[]>([]);
+
+	let paymentMethod = $state('cash');
+	let amountPaid = $state('');
+	let batchIsPaid = $state(false);
+	let lastReceipt = $state<MedicationOrderCheckoutResponse | null>(null);
+
 	let isBusy = $state(false);
 	let editingBatchId = $state(0);
 
@@ -122,7 +148,17 @@
 		_key: string;
 		_itemName: string;
 		_freqLabel: string;
+		_batchAllocations: ConsumptionBatchAllocationDraft[];
+		_iumList: ConsumptionDraftLineIum[];
 	};
+
+	const draftTotal = $derived.by(() => {
+		let s = 0;
+		for (const ln of draftLines) {
+			s += lineTotal(ln.issueQtyPurchase, ln.unitSalePrice);
+		}
+		return s.toFixed(2);
+	});
 
 	let draftLines = $state<DraftLine[]>([]);
 
@@ -465,15 +501,43 @@
 		return resolveStoreLabelForId(v);
 	}
 
-	function onItemSearchChange(v: string) {
+	async function hydrateInventoryForItem(itemId: number) {
+		if (!hospitalId || storeId <= 0) return;
+		try {
+			const meta = await hydrateMedOrderItemMeta(hospitalId, itemId);
+			const ium = await loadMedOrderIumList(
+				hospitalId,
+				meta.itemUnitMasterIds,
+				meta.defaultItemUnitMasterId
+			);
+			iumList = ium.iumList;
+			batchAllocations = await refreshMedOrderBatchAllocations(
+				hospitalId,
+				storeId,
+				itemId
+			);
+			issueQtyPurchase = '';
+			unitSalePrice =
+				defaultUnitSalePriceFromAllocations(batchAllocations);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
+			batchAllocations = [];
+			iumList = [];
+		}
+	}
+
+	async function onItemSearchChange(v: string) {
 		itemValueStr = v;
 		if (!v) {
 			selectedItem = null;
+			batchAllocations = [];
+			iumList = [];
 			return;
 		}
 		const row =
 			lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
 		selectedItem = row;
+		if (row) await hydrateInventoryForItem(row.id);
 	}
 
 	function hydrateFormFromLine(line: DraftLine) {
@@ -511,6 +575,18 @@
 	function resetEditing() {
 		editingBatchId = 0;
 		draftLines = [];
+		batchRemarks = '';
+		batchIsPaid = false;
+		amountPaid = '';
+		lastReceipt = null;
+	}
+
+	function resetLineInventoryFields() {
+		lineRemarks = '';
+		issueQtyPurchase = '';
+		unitSalePrice = '0';
+		batchAllocations = [];
+		iumList = [];
 	}
 
 	function addDraft() {
@@ -567,6 +643,23 @@
 			return;
 		}
 
+		batchAllocations = syncMedOrderFefoAllocations({
+			batchAllocations,
+			issueQtyPurchase,
+			ium: iumList[0] ?? null
+		});
+		const invErr = validateMedOrderInventoryLine({
+			batchAllocations,
+			ium: iumList[0] ?? null,
+			issueQtyPurchase,
+			unitSalePrice
+		});
+		if (invErr) {
+			toastService.addToast(invErr, StatusColorEnum.ERROR);
+			return;
+		}
+		const iumId = iumList[0]!.id;
+		const qtySum = sumAllocationPurchaseQty(batchAllocations);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === frequencyId
 		);
@@ -583,7 +676,17 @@
 			foodRelationId: foodRelationId ? Number(foodRelationId) : null,
 			startAt: parseDateTimeLocalToIso(startAtLocal),
 			testDose: testDose.trim() || null,
-			substituteNotAllowed
+			substituteNotAllowed,
+			lineRemarks: lineRemarks.trim() || null,
+			unitSalePrice: unitSalePrice.trim() || '0',
+			issueQtyPurchase: qtySum || issueQtyPurchase.trim(),
+			itemUnitMasterId: iumId,
+			allocations: batchAllocations
+				.filter((a) => Number(a.qtyPurchase) > 0)
+				.map((a) => ({
+					batchId: a.batchId,
+					qtyPurchase: a.qtyPurchase
+				}))
 		};
 
 		draftLines = [
@@ -593,9 +696,14 @@
 				_key: `d-${Date.now()}-${Math.random()}`,
 				_itemName:
 					selectedItem.itemName ?? `Item #${selectedItem.id}`,
-				_freqLabel: fRow?.label ?? '—'
+				_freqLabel: fRow?.label ?? '—',
+				_batchAllocations: batchAllocations.map((a) => ({ ...a })),
+				_iumList: [...iumList]
 			}
 		];
+		resetLineInventoryFields();
+		itemValueStr = '';
+		selectedItem = null;
 	}
 
 	function removeDraft(k: string) {
@@ -629,7 +737,14 @@
 		}
 		isBusy = true;
 		const lines = draftLines.map(
-			({ _key, _itemName, _freqLabel, ...rest }) => rest
+			({
+				_key,
+				_itemName,
+				_freqLabel,
+				_batchAllocations,
+				_iumList,
+				...rest
+			}) => rest
 		);
 		try {
 			if (editingBatchId) {
@@ -640,6 +755,7 @@
 					body: JSON.stringify({
 						mode: 'batch.update',
 						batchId: editingBatchId,
+						batchRemarks,
 						lines
 					})
 				});
@@ -648,6 +764,7 @@
 					m.med_order_int_updated(),
 					StatusColorEnum.SUCCESS
 				);
+				amountPaid = draftTotal;
 			} else {
 				const res = await fetch(apiRoot(), {
 					method: 'POST',
@@ -658,17 +775,23 @@
 						storeId,
 						extCustomerName: customerName.trim(),
 						advisingDoctor: advisingDoctor.trim(),
+						batchRemarks,
 						lines
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				void (await res.json());
+				const saved = (await res.json()) as {
+					batch?: { id?: number };
+				};
+				if (saved.batch?.id) {
+					editingBatchId = saved.batch.id;
+				}
 				toastService.addToast(
 					m.med_order_int_saved(),
 					StatusColorEnum.SUCCESS
 				);
+				amountPaid = draftTotal;
 			}
-			resetEditing();
 		} catch (e) {
 			toastService.addErrorToast(
 				editingBatchId
@@ -679,6 +802,65 @@
 		} finally {
 			isBusy = false;
 		}
+	}
+
+	async function checkoutBatch() {
+		if (!editingBatchId || batchIsPaid) return;
+		if (!amountPaid.trim()) {
+			toastService.addToast(
+				m.med_order_amount_paid(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		isBusy = true;
+		try {
+			const res = await fetch(apiRoot(), {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'batch.checkout',
+					batchId: editingBatchId,
+					paymentMethod,
+					amountPaid: amountPaid.trim()
+				})
+			});
+			if (!res.ok) throw new Error(await res.text());
+			lastReceipt =
+				(await res.json()) as MedicationOrderCheckoutResponse;
+			batchIsPaid = true;
+			toastService.addToast(
+				m.med_order_checkout_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_checkout_failed(), e);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	function printReceipt() {
+		if (!lastReceipt) return;
+		const w = window.open('', '_blank', 'width=480,height=720');
+		if (!w) return;
+		const r = lastReceipt;
+		const rows = r.lines
+			.map(
+				(ln) =>
+					`<tr><td>${ln.itemName ?? '—'}</td><td>${ln.issueQtyPurchase}</td><td>${ln.unitSalePrice}</td><td>${ln.lineTotal}</td></tr>`
+			)
+			.join('');
+		w.document.write(`<!DOCTYPE html><html><head><title>${r.receiptNo}</title></head><body>
+<h2>${m.med_order_receipt_print()}</h2>
+<p><strong>${r.receiptNo}</strong></p>
+<p>${r.batch.extCustomerName ?? ''} · ${r.batch.advisingDoctor ?? ''}</p>
+<table border="1" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+<p>${m.med_order_amount_due()}: ${r.amountDue} · ${m.med_order_amount_paid()}: ${r.amountPaid}</p>
+</body></html>`);
+		w.document.close();
+		w.print();
 	}
 
 	async function openHistory() {
@@ -709,11 +891,30 @@
 
 	function lineToDraft(
 		ln: Record<string, unknown>,
-		itemName: string
+		itemName: string,
+		lineAllocations: {
+			lineId: number;
+			batchId: number;
+			qtyPurchase: string;
+			batchNo: string | null;
+			expiryDate: string | null;
+		}[]
 	): DraftLine {
+		const lineId = Number(ln.id);
+		const myAllocs = lineAllocations.filter((a) => a.lineId === lineId);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === Number(ln.frequencyId)
 		);
+		const batchAllocationsDraft: ConsumptionBatchAllocationDraft[] =
+			myAllocs.map((a) => ({
+				batchId: a.batchId,
+				batchNo: a.batchNo ?? '',
+				expiryDate: a.expiryDate,
+				stockIssueQty: '0',
+				salePrice: null,
+				issueUnitName: null,
+				qtyPurchase: String(a.qtyPurchase)
+			}));
 		return {
 			_key: `e-${String(ln.id)}`,
 			_itemName: itemName,
@@ -732,7 +933,18 @@
 				ln.foodRelationId != null ? Number(ln.foodRelationId) : null,
 			startAt: String(ln.startAt),
 			testDose: ln.testDose != null ? String(ln.testDose) : null,
-			substituteNotAllowed: Boolean(ln.substituteNotAllowed)
+			substituteNotAllowed: Boolean(ln.substituteNotAllowed),
+			lineRemarks:
+				ln.lineRemarks != null ? String(ln.lineRemarks) : null,
+			unitSalePrice: String(ln.unitSalePrice ?? '0'),
+			issueQtyPurchase: String(ln.issueQtyPurchase ?? '1'),
+			itemUnitMasterId: Number(ln.itemUnitMasterId ?? 0),
+			allocations: myAllocs.map((a) => ({
+				batchId: a.batchId,
+				qtyPurchase: String(a.qtyPurchase)
+			})),
+			_batchAllocations: batchAllocationsDraft,
+			_iumList: []
 		};
 	}
 
@@ -768,8 +980,17 @@
 				batchNo: string;
 				extCustomerName: string | null;
 				advisingDoctor: string | null;
+				batchRemarks?: string | null;
 			};
 			lines: Record<string, unknown>[];
+			allocations: {
+				lineId: number;
+				batchId: number;
+				qtyPurchase: string;
+				batchNo: string | null;
+				expiryDate: string | null;
+			}[];
+			payment: { amountPaid: string } | null;
 		};
 		if (!masters) await loadMasters();
 		historyOpen = false;
@@ -778,6 +999,9 @@
 		storeIdStr = sid;
 		customerName = pack.batch.extCustomerName ?? '';
 		advisingDoctor = pack.batch.advisingDoctor ?? '';
+		batchRemarks = pack.batch.batchRemarks?.trim() ?? '';
+		batchIsPaid = pack.payment != null;
+		amountPaid = pack.payment?.amountPaid ?? draftTotal;
 		storeLabel =
 			storeNameById[pack.batch.storeId] ??
 			(await resolveStoreLabelForId(sid));
@@ -785,7 +1009,8 @@
 			pack.lines.map(async (ln) =>
 				lineToDraft(
 					ln,
-					await fetchItemDisplayName(Number(ln.itemMasterId))
+					await fetchItemDisplayName(Number(ln.itemMasterId)),
+					pack.allocations ?? []
 				)
 			)
 		);
@@ -1015,9 +1240,37 @@
 							</p>
 						{/if}
 					</div>
+					<div class="flex w-full min-w-0 flex-col gap-1.5 lg:col-span-3">
+						<DaisyUiLabel className="shrink-0"
+							>{m.med_order_batch_remarks()}</DaisyUiLabel
+						>
+						<DaisyUiInputField
+							nameText="batchRemarks"
+							bind:value={batchRemarks}
+							className="w-full"
+							minLength={0}
+							disabled={batchIsPaid}
+						/>
+					</div>
+					{#if selectedItem && storeId > 0}
+						<div class="lg:col-span-3">
+							<MedicationOrderInventoryFields
+								bind:batchAllocations
+								bind:iumList
+								bind:issueQtyPurchase
+								bind:unitSalePrice
+								bind:lineRemarks
+								disabled={batchIsPaid}
+							/>
+						</div>
+					{/if}
 				</div>
 
-				<div class="flex min-w-0 flex-col items-stretch gap-4">
+				<details class="flex min-w-0 flex-col gap-4 rounded-lg border border-base-200 p-3">
+					<summary class="cursor-pointer text-sm font-medium"
+						>Clinical (optional)</summary
+					>
+				<div class="flex min-w-0 flex-col items-stretch gap-4 pt-3">
 					<div class="flex w-full min-w-0 flex-col gap-1.5">
 						<DaisyUiLabel className="shrink-0"
 							>{m.med_order_int_dose()}</DaisyUiLabel
@@ -1184,7 +1437,7 @@
 						</div>
 					</div>
 				</div>
-			</div>
+				</details>
 
 			<div
 				class="flex flex-wrap gap-2 border-t border-base-300 pt-4 sm:pt-5"
@@ -1192,7 +1445,8 @@
 				<DaisyUiButton
 					className="d-btn d-btn-primary d-btn-sm"
 					onClick={addDraft}
-					disabled={!storeId ||
+					disabled={batchIsPaid ||
+						!storeId ||
 						(!editingBatchId &&
 							(!customerName.trim() || !advisingDoctor.trim()))}
 				>
@@ -1202,7 +1456,8 @@
 				<DaisyUiButton
 					className="d-btn d-btn-secondary d-btn-sm"
 					onClick={persistBatch}
-					disabled={!storeId ||
+					disabled={batchIsPaid ||
+						!storeId ||
 						draftLines.length === 0 ||
 						isBusy ||
 						(!editingBatchId &&
@@ -1218,6 +1473,59 @@
 		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
+
+{#if editingBatchId && draftLines.length > 0}
+	<DaisyUiCard className="mt-5">
+		<DaisyUiCardBody className="gap-4">
+			<h2 class="text-base font-semibold">{m.med_order_checkout_title()}</h2>
+			{#if batchIsPaid}
+				<p class="text-sm text-success">{m.med_order_paid_locked()}</p>
+				{#if lastReceipt}
+					<DaisyUiButton
+						className="d-btn d-btn-sm"
+						onClick={printReceipt}
+					>
+						{m.med_order_receipt_print()}
+					</DaisyUiButton>
+				{/if}
+			{:else}
+				<p class="text-sm">
+					{m.med_order_amount_due()}: <strong>{draftTotal}</strong>
+				</p>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+					<div class="flex flex-col gap-1">
+						<DaisyUiLabel>{m.med_order_payment_method()}</DaisyUiLabel>
+						<select
+							class="d-select d-select-bordered w-full"
+							bind:value={paymentMethod}
+						>
+							<option value="cash">{m.med_order_payment_cash()}</option>
+							<option value="card">{m.med_order_payment_card()}</option>
+						</select>
+					</div>
+					<div class="flex flex-col gap-1 sm:col-span-2">
+						<DaisyUiLabel>{m.med_order_amount_paid()}</DaisyUiLabel>
+						<DaisyUiInputField
+							nameText="amountPaid"
+							bind:value={amountPaid}
+							inputType="text"
+							className="w-full"
+							minLength={0}
+						/>
+					</div>
+				</div>
+				<DaisyUiButton
+					className="d-btn d-btn-primary d-btn-sm"
+					onClick={checkoutBatch}
+					disabled={isBusy}
+					loading={isBusy}
+				>
+					{m.med_order_pay_now()}
+				</DaisyUiButton>
+			{/if}
+		</DaisyUiCardBody>
+	</DaisyUiCard>
+{/if}
 
 <DaisyUiCard className="mt-5">
 	<DaisyUiCardBody className="gap-2">

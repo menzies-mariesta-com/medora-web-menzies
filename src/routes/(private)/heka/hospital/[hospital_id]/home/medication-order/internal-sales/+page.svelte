@@ -29,6 +29,18 @@
 		MedicationOrderMastersResponse,
 		MedicationOrderLineInput
 	} from '$lib/model/type/heka/medication-order.type';
+	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
+	import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
+	import {
+		defaultUnitSalePriceFromAllocations,
+		hydrateMedOrderItemMeta,
+		loadMedOrderIumList,
+		refreshMedOrderBatchAllocations,
+		sumAllocationPurchaseQty,
+		syncMedOrderFefoAllocations,
+		validateMedOrderInventoryLine
+	} from '$lib/tool/medication-order/med-order-line-inventory.util';
 	import { untrack, tick } from 'svelte';
 	import { applyStaggeredStartDates } from '$lib/util/med-order-stagger.util';
 
@@ -117,6 +129,13 @@
 	let testDose = $state('');
 	let substituteNotAllowed = $state(false);
 
+	let batchRemarks = $state('');
+	let lineRemarks = $state('');
+	let issueQtyPurchase = $state('');
+	let unitSalePrice = $state('0');
+	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>([]);
+	let iumList = $state<ConsumptionDraftLineIum[]>([]);
+
 	let isBusy = $state(false);
 	let editingBatchId = $state(0);
 
@@ -124,6 +143,8 @@
 		_key: string;
 		_itemName: string;
 		_freqLabel: string;
+		_batchAllocations: ConsumptionBatchAllocationDraft[];
+		_iumList: ConsumptionDraftLineIum[];
 	};
 
 	let draftLines = $state<DraftLine[]>([]);
@@ -519,20 +540,57 @@
 		return resolveStoreLabelForId(v);
 	}
 
-	function onItemSearchChange(v: string) {
+	async function hydrateInventoryForItem(itemId: number) {
+		if (!hospitalId || storeId <= 0) return;
+		try {
+			const meta = await hydrateMedOrderItemMeta(hospitalId, itemId);
+			const ium = await loadMedOrderIumList(
+				hospitalId,
+				meta.itemUnitMasterIds,
+				meta.defaultItemUnitMasterId
+			);
+			iumList = ium.iumList;
+			batchAllocations = await refreshMedOrderBatchAllocations(
+				hospitalId,
+				storeId,
+				itemId
+			);
+			issueQtyPurchase = '';
+			unitSalePrice =
+				defaultUnitSalePriceFromAllocations(batchAllocations);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
+			batchAllocations = [];
+			iumList = [];
+		}
+	}
+
+	async function onItemSearchChange(v: string) {
 		itemValueStr = v;
 		if (!v) {
 			selectedItem = null;
+			batchAllocations = [];
+			iumList = [];
 			return;
 		}
 		const row =
 			lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
 		selectedItem = row;
+		if (row) await hydrateInventoryForItem(row.id);
 	}
 
 	function resetEditing() {
 		editingBatchId = 0;
 		draftLines = [];
+		batchRemarks = '';
+	}
+
+	function resetLineInventoryFields() {
+		lineRemarks = '';
+		issueQtyPurchase = '';
+		unitSalePrice = '0';
+		batchAllocations = [];
+		iumList = [];
 	}
 
 	function addDraft() {
@@ -586,6 +644,23 @@
 			return;
 		}
 
+		batchAllocations = syncMedOrderFefoAllocations({
+			batchAllocations,
+			issueQtyPurchase,
+			ium: iumList[0] ?? null
+		});
+		const invErr = validateMedOrderInventoryLine({
+			batchAllocations,
+			ium: iumList[0] ?? null,
+			issueQtyPurchase,
+			unitSalePrice
+		});
+		if (invErr) {
+			toastService.addToast(invErr, StatusColorEnum.ERROR);
+			return;
+		}
+		const iumId = iumList[0]!.id;
+		const qtySum = sumAllocationPurchaseQty(batchAllocations);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === frequencyId
 		);
@@ -602,7 +677,17 @@
 			foodRelationId: foodRelationId ? Number(foodRelationId) : null,
 			startAt: parseDateTimeLocalToIso(startAtLocal),
 			testDose: testDose.trim() || null,
-			substituteNotAllowed
+			substituteNotAllowed,
+			lineRemarks: lineRemarks.trim() || null,
+			unitSalePrice: unitSalePrice.trim() || '0',
+			issueQtyPurchase: qtySum || issueQtyPurchase.trim(),
+			itemUnitMasterId: iumId,
+			allocations: batchAllocations
+				.filter((a) => Number(a.qtyPurchase) > 0)
+				.map((a) => ({
+					batchId: a.batchId,
+					qtyPurchase: a.qtyPurchase
+				}))
 		};
 
 		draftLines = [
@@ -612,9 +697,14 @@
 				_key: `d-${Date.now()}-${Math.random()}`,
 				_itemName:
 					selectedItem.itemName ?? `Item #${selectedItem.id}`,
-				_freqLabel: fRow?.label ?? '—'
+				_freqLabel: fRow?.label ?? '—',
+				_batchAllocations: batchAllocations.map((a) => ({ ...a })),
+				_iumList: [...iumList]
 			}
 		];
+		resetLineInventoryFields();
+		itemValueStr = '';
+		selectedItem = null;
 	}
 
 	function staggerDraftLinesFromOrder(): void {
@@ -685,6 +775,43 @@
 		startAtLocal = toDateTimeLocalValue(new Date(line.startAt));
 		testDose = line.testDose ?? '';
 		substituteNotAllowed = line.substituteNotAllowed;
+		lineRemarks = line.lineRemarks ?? '';
+		issueQtyPurchase = line.issueQtyPurchase;
+		unitSalePrice = line.unitSalePrice;
+		batchAllocations = line._batchAllocations.map((a) => ({ ...a }));
+		iumList = [...line._iumList];
+		if (line.itemUnitMasterId && hospitalId) {
+			void (async () => {
+				try {
+					const meta = await hydrateMedOrderItemMeta(
+						hospitalId,
+						line.itemMasterId
+					);
+					const ium = await loadMedOrderIumList(
+						hospitalId,
+						meta.itemUnitMasterIds,
+						line.itemUnitMasterId
+					);
+					iumList = ium.iumList;
+					if (batchAllocations.length === 0 && storeId > 0) {
+						batchAllocations =
+							await refreshMedOrderBatchAllocations(
+								hospitalId,
+								storeId,
+								line.itemMasterId
+							);
+						for (const a of batchAllocations) {
+							const saved = line._batchAllocations.find(
+								(x) => x.batchId === a.batchId
+							);
+							if (saved) a.qtyPurchase = saved.qtyPurchase;
+						}
+					}
+				} catch {
+					/* keep draft allocations */
+				}
+			})();
+		}
 	}
 
 	async function persistBatch() {
@@ -711,7 +838,14 @@
 		}
 		isBusy = true;
 		const lines = draftLines.map(
-			({ _key, _itemName, _freqLabel, ...rest }) => rest
+			({
+				_key,
+				_itemName,
+				_freqLabel,
+				_batchAllocations,
+				_iumList,
+				...rest
+			}) => rest
 		);
 		try {
 			if (editingBatchId) {
@@ -722,6 +856,7 @@
 					body: JSON.stringify({
 						mode: 'batch.update',
 						batchId: editingBatchId,
+						batchRemarks,
 						lines
 					})
 				});
@@ -739,6 +874,7 @@
 						mode: 'batch.save',
 						visitId: visitIdNum,
 						storeId,
+						batchRemarks,
 						lines
 					})
 				});
@@ -798,11 +934,30 @@
 
 	function lineToDraft(
 		ln: Record<string, unknown>,
-		itemName: string
+		itemName: string,
+		lineAllocations: {
+			lineId: number;
+			batchId: number;
+			qtyPurchase: string;
+			batchNo: string | null;
+			expiryDate: string | null;
+		}[]
 	): DraftLine {
+		const lineId = Number(ln.id);
+		const myAllocs = lineAllocations.filter((a) => a.lineId === lineId);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === Number(ln.frequencyId)
 		);
+		const batchAllocationsDraft: ConsumptionBatchAllocationDraft[] =
+			myAllocs.map((a) => ({
+				batchId: a.batchId,
+				batchNo: a.batchNo ?? '',
+				expiryDate: a.expiryDate,
+				stockIssueQty: '0',
+				salePrice: null,
+				issueUnitName: null,
+				qtyPurchase: String(a.qtyPurchase)
+			}));
 		return {
 			_key: `e-${String(ln.id)}`,
 			_itemName: itemName,
@@ -821,7 +976,18 @@
 				ln.foodRelationId != null ? Number(ln.foodRelationId) : null,
 			startAt: String(ln.startAt),
 			testDose: ln.testDose != null ? String(ln.testDose) : null,
-			substituteNotAllowed: Boolean(ln.substituteNotAllowed)
+			substituteNotAllowed: Boolean(ln.substituteNotAllowed),
+			lineRemarks:
+				ln.lineRemarks != null ? String(ln.lineRemarks) : null,
+			unitSalePrice: String(ln.unitSalePrice ?? '0'),
+			issueQtyPurchase: String(ln.issueQtyPurchase ?? '1'),
+			itemUnitMasterId: Number(ln.itemUnitMasterId ?? 0),
+			allocations: myAllocs.map((a) => ({
+				batchId: a.batchId,
+				qtyPurchase: String(a.qtyPurchase)
+			})),
+			_batchAllocations: batchAllocationsDraft,
+			_iumList: []
 		};
 	}
 
@@ -851,8 +1017,20 @@
 			return;
 		}
 		const pack = (await res.json()) as {
-			batch: { id: number; storeId: number; batchNo: string };
+			batch: {
+				id: number;
+				storeId: number;
+				batchNo: string;
+				batchRemarks?: string | null;
+			};
 			lines: Record<string, unknown>[];
+			allocations: {
+				lineId: number;
+				batchId: number;
+				qtyPurchase: string;
+				batchNo: string | null;
+				expiryDate: string | null;
+			}[];
 		};
 		if (!masters) await loadMasters();
 		historyOpen = false;
@@ -860,11 +1038,13 @@
 		storeIdStr = String(pack.batch.storeId);
 		storeLabel =
 			storeNameById[pack.batch.storeId] ?? `#${pack.batch.storeId}`;
+		batchRemarks = pack.batch.batchRemarks?.trim() ?? '';
 		draftLines = await Promise.all(
 			pack.lines.map(async (ln) =>
 				lineToDraft(
 					ln,
-					await fetchItemDisplayName(Number(ln.itemMasterId))
+					await fetchItemDisplayName(Number(ln.itemMasterId)),
+					pack.allocations ?? []
 				)
 			)
 		);
@@ -1087,6 +1267,28 @@
 								</p>
 							{/if}
 						</div>
+						<div class="flex w-full min-w-0 flex-col gap-1.5 lg:col-span-3">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_batch_remarks()}</DaisyUiLabel
+							>
+							<DaisyUiInputField
+								nameText="batchRemarks"
+								bind:value={batchRemarks}
+								className="w-full"
+								minLength={0}
+							/>
+						</div>
+						{#if selectedItem && storeId > 0}
+							<div class="lg:col-span-3">
+								<MedicationOrderInventoryFields
+									bind:batchAllocations
+									bind:iumList
+									bind:issueQtyPurchase
+									bind:unitSalePrice
+									bind:lineRemarks
+								/>
+							</div>
+						{/if}
 					</div>
 
 					<div class="flex min-w-0 flex-col items-stretch gap-4">

@@ -1,10 +1,22 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/heka/observation/observation-emr.server';
+import { getUserDisplayNameByIds } from '$lib/server/heka/user-display.server';
 import type {
 	PatientDiagnosisSchema,
 	ServiceOrderDetailSchema
 } from '$lib/server/db/schema-type';
+
+function collectAuditUserIds(rows: unknown[]): string[] {
+	const ids: string[] = [];
+	for (const row of rows) {
+		if (row == null || typeof row !== 'object') continue;
+		const r = row as { createdBy?: string | null; updatedBy?: string | null };
+		if (r.createdBy?.trim()) ids.push(r.createdBy.trim());
+		if (r.updatedBy?.trim()) ids.push(r.updatedBy.trim());
+	}
+	return ids;
+}
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -38,7 +50,8 @@ export async function GET(event: RequestEvent) {
 			orderLines: [],
 			visitDiagnoses: [],
 			chiefComplaintEntries: [],
-			patientConditionEntries: []
+			patientConditionEntries: [],
+			userDisplayById: {}
 		});
 	}
 
@@ -77,6 +90,16 @@ export async function GET(event: RequestEvent) {
 			)
 		: (allergyAll as any[]);
 
+	const userIds = [
+		...collectAuditUserIds(allergies),
+		...collectAuditUserIds(vitals as unknown[]),
+		...collectAuditUserIds(orderLines as unknown[]),
+		...collectAuditUserIds(visitDiagnoses as unknown[]),
+		...collectAuditUserIds(chiefComplaintEntries as unknown[]),
+		...collectAuditUserIds(patientConditionEntries as unknown[])
+	];
+	const userDisplayById = await getUserDisplayNameByIds(userIds);
+
 	return json({
 		visitRow,
 		allergies,
@@ -84,6 +107,7 @@ export async function GET(event: RequestEvent) {
 		orderLines: orderLines as OrderDetailVisitRow[],
 		visitDiagnoses,
 		chiefComplaintEntries,
-		patientConditionEntries
+		patientConditionEntries,
+		userDisplayById
 	});
 }
