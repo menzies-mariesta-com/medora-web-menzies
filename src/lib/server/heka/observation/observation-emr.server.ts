@@ -1421,7 +1421,9 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			itemMasterId: mol.itemMasterId,
 			itemName: im.itemName,
 			storeId: mob.storeId,
-			batchNo: mob.batchNo
+			batchNo: mob.batchNo,
+			unitSalePrice: mol.unitSalePrice,
+			issueQtyPurchase: mol.issueQtyPurchase
 		})
 		.from(mol)
 		.innerJoin(mob, eq(mol.batchId, mob.id))
@@ -1453,7 +1455,9 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 
 	const pairSet = new Set<string>();
 	for (const r of rawLines) {
-		pairSet.add(`${r.storeId}:${r.itemMasterId}`);
+		if (r.unitSalePrice == null) {
+			pairSet.add(`${r.storeId}:${r.itemMasterId}`);
+		}
 	}
 	const orPairs = [...pairSet]
 		.map((k) => {
@@ -1497,7 +1501,17 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	for (const r of rawLines) {
 		if (onClosed.has(r.id)) continue;
 		const k = `${r.storeId}:${r.itemMasterId}`;
-		const minPrice = priceByPair.get(k) ?? '0';
+		const fallbackPrice = priceByPair.get(k) ?? '0';
+		const unitPrice =
+			r.unitSalePrice != null
+				? String(r.unitSalePrice)
+				: fallbackPrice;
+		const serviceUnit =
+			r.issueQtyPurchase != null &&
+			Number.isFinite(Number(r.issueQtyPurchase)) &&
+			Number(r.issueQtyPurchase) > 0
+				? Number(r.issueQtyPurchase)
+				: 1;
 		out.push({
 			lineSource: 'medication_order_line',
 			id: r.id,
@@ -1508,9 +1522,9 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			subCategoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
-			serviceAmount: minPrice,
+			serviceAmount: unitPrice,
 			serviceTaxAmount: '0',
-			serviceUnit: 1
+			serviceUnit
 		});
 	}
 	return out;

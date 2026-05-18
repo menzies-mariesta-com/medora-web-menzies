@@ -100,6 +100,7 @@ When item is picked (or prefilled + locked, e.g. From Indent flow):
 Reference implementations:
 - Consumption: [`ConsumptionLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-consumption/ConsumptionLineDialogContent.svelte)
 - Issue: [`DepartmentIssueLineDialogContent.svelte`](../../../src/lib/component/own/local/private/heka/inventory/department-issue/DepartmentIssueLineDialogContent.svelte)
+- Medication order internal/external sales: [`medication-order-dispense.server.ts`](../../../src/lib/server/heka/medication-order/medication-order-dispense.server.ts) — deducts `inv_stock` on batch save via `addDeltaToInvStock`; lines store allocations in `medication_order_line_allocation`.
 
 #### Rendering the table (client)
 

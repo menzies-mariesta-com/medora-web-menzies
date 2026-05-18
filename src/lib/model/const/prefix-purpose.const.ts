@@ -12,7 +12,9 @@ export const PREFIX_PURPOSE_STORAGE = {
 	DEPARTMENT_ISSUE_NO: 'DEPARTMENT_ISSUE_NO',
 	DEPARTMENT_CONSUMPTION_NO: 'DEPARTMENT_CONSUMPTION_NO',
 	/** Internal medication order batch number (all lines in one save share it). */
-	MEDICATION_ORDER_BATCH_NO: 'MEDICATION_ORDER_BATCH_NO'
+	MEDICATION_ORDER_BATCH_NO: 'MEDICATION_ORDER_BATCH_NO',
+	/** Walk-in external sale receipt number. */
+	MEDICATION_ORDER_RECEIPT_NO: 'MEDICATION_ORDER_RECEIPT_NO'
 } as const;
 
 export type PrefixPurposeStorageKey =
@@ -27,7 +29,8 @@ export type PrefixPurposeId =
 	| 'di'
 	| 'di_issue'
 	| 'dc'
-	| 'med_order_batch';
+	| 'med_order_batch'
+	| 'med_order_receipt';
 
 export interface PrefixPurposeDefinition {
 	readonly id: PrefixPurposeId;
@@ -58,6 +61,10 @@ export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 	{
 		id: 'med_order_batch',
 		storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_BATCH_NO
+	},
+	{
+		id: 'med_order_receipt',
+		storageKey: PREFIX_PURPOSE_STORAGE.MEDICATION_ORDER_RECEIPT_NO
 	}
 ] as const;
 
