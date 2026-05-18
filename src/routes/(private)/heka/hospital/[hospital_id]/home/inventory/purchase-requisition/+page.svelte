@@ -171,8 +171,7 @@
 			row.statusTaggingId === InvPrStatusTaggingEnum.DRAFT ||
 			row.statusTaggingId === InvPrStatusTaggingEnum.PENDING ||
 			row.statusTaggingId === InvPrStatusTaggingEnum.REJECTED ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.SENT_BACK ||
-			row.statusTaggingId === InvPrStatusTaggingEnum.APPROVED;
+			row.statusTaggingId === InvPrStatusTaggingEnum.SENT_BACK;
 		if (!statusOk) return false;
 		if (!currentUserId) return false;
 		return row.createdBy === currentUserId;

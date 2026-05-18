@@ -48,7 +48,9 @@
 		hits: { id: number; itemName: string | null }[];
 		itemId: number | null;
 		itemLabel: string;
+		/** Approved / current qty (may differ from requested after approval). */
 		quantity: string;
+		requestedQuantity: string;
 		iumList: IumOpt[];
 		itemUnitMasterId: number | null;
 		prLineId?: string | null;
@@ -73,6 +75,7 @@
 			id: number;
 			itemId: number;
 			quantity: string;
+			requestedQuantity?: string | null;
 			unitId: number;
 			qtyRemaining?: string | null;
 			itemName?: string | null;
@@ -138,6 +141,7 @@
 			itemId: null,
 			itemLabel: '',
 			quantity: '1',
+			requestedQuantity: '1',
 			iumList: [],
 			itemUnitMasterId: null
 		};
@@ -200,6 +204,9 @@
 		apiLine: PrDetailApi['lines'][number]
 	) {
 		line.quantity = String(apiLine.quantity ?? '0');
+		line.requestedQuantity = String(
+			apiLine.requestedQuantity ?? apiLine.quantity ?? '0'
+		);
 		line.prLineId = apiLine.id != null ? String(apiLine.id) : null;
 		line.qtyRemainingOnPr =
 			apiLine.qtyRemaining != null &&
@@ -304,8 +311,19 @@
 				format: (_v, row) => conversionLabelForLine(row)
 			},
 			{
-				id: 'quantity',
+				id: 'requestedQuantity',
 				header: m.inv_pr_line_requested_qty(),
+				field: 'requestedQuantity',
+				filterable: false,
+				format: (_v, row) =>
+					formatPurchaseQtyCellWithIssueEquivalent({
+						...row,
+						quantity: row.requestedQuantity
+					})
+			},
+			{
+				id: 'quantity',
+				header: m.inv_pr_approve_approved_qty(),
 				field: 'quantity',
 				filterable: false,
 				format: (_v, row) =>

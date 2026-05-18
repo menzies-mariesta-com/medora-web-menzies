@@ -165,8 +165,9 @@ export async function seedInformationTables() {
 			(23, 'Item Unit Master', 9, 1, null, '/heka/home/inventory-setup/item-unit-master', 5),
 			(25, 'Supplier Setup', 9, 1, null, '/heka/home/inventory-setup/supplier-setup', 7),
 			(26, 'Approval Config', 9, 1, null, '/heka/home/inventory-setup/approval-config', 8),
-			(32, 'Reorder level', 9, 1, null, '/heka/home/inventory-setup/reorder-level', 9),
-			(42, 'Stock alerts', 9, 1, null, '/heka/home/inventory-setup/stock-alerts', 10),
+			(43, 'GRN pricing', 9, 1, null, '/heka/home/inventory-setup/pricing-config', 9),
+			(32, 'Reorder level', 9, 1, null, '/heka/home/inventory-setup/reorder-level', 10),
+			(42, 'Stock alerts', 9, 1, null, '/heka/home/inventory-setup/stock-alerts', 11),
 			(420001, 'Policy', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/policy', 1),
 			(420002, 'Recipients', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/recipients', 2),
 
