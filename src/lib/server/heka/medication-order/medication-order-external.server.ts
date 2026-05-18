@@ -19,8 +19,15 @@ import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import {
 	getFinancialYearIdToday,
 	updateMedicationOrderBatch,
-	deleteMedicationOrderBatch
+	deleteMedicationOrderBatch,
+	type MedicationOrderLineSaveInput
 } from './medication-order-internal.server';
+import {
+	assertBatchNotPaid,
+	validateMedicationOrderLinesForDispense,
+	insertMedicationOrderLineWithAllocations,
+	loadAllocationsForLineIds
+} from './medication-order-dispense.server';
 
 export {
 	listMastersForInternalForm,
@@ -207,7 +214,8 @@ export async function reorderFromHistoryBatchExternal(
 	const now = new Date();
 	const minValidStartMs = now.getTime() - 25_000;
 	const startMs = Math.max(maxEndMs, minValidStartMs);
-	const newLine = {
+	const allocs = await loadAllocationsForLineIds([firstLine.id]);
+	const newLine: MedicationOrderLineSaveInput = {
 		itemMasterId: firstLine.itemMasterId,
 		dose: String(firstLine.dose),
 		doseUnitId: firstLine.doseUnitId,
@@ -220,8 +228,25 @@ export async function reorderFromHistoryBatchExternal(
 		foodRelationId: firstLine.foodRelationId,
 		startAt: new Date(startMs).toISOString(),
 		testDose: firstLine.testDose,
-		substituteNotAllowed: firstLine.substituteNotAllowed
+		substituteNotAllowed: firstLine.substituteNotAllowed,
+		lineRemarks: firstLine.lineRemarks,
+		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
+		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
+		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
+		allocations: allocs.map((a) => ({
+			batchId: a.batchId,
+			qtyPurchase: String(a.qtyPurchase)
+		}))
 	};
+	if (
+		!newLine.itemUnitMasterId ||
+		newLine.allocations.length === 0
+	) {
+		throw error(
+			400,
+			'Source line has no stock allocations; cannot reorder'
+		);
+	}
 
 	return await saveMedicationOrderBatchExternal(event, {
 		hospitalId,
@@ -239,26 +264,14 @@ export async function saveMedicationOrderBatchExternal(
 		storeId: number;
 		extCustomerName: string;
 		advisingDoctor: string;
-		lines: Array<{
-			itemMasterId: number;
-			dose: string;
-			doseUnitId: number;
-			frequencyId: number;
-			durationValue: string;
-			durationUnitId: number;
-			formId: number | null;
-			routeId: number | null;
-			orderTypeId: number | null;
-			foodRelationId: number | null;
-			startAt: string;
-			testDose: string | null;
-			substituteNotAllowed: boolean;
-		}>;
+		batchRemarks?: string | null;
+		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, storeId, lines } = input;
 	const extCustomerName = input.extCustomerName.trim();
 	const advisingDoctor = input.advisingDoctor.trim();
+	const batchRemarks = input.batchRemarks?.trim() || null;
 	await ensureCanAccessHospital(event, hospitalId);
 	if (extCustomerName.length === 0 || advisingDoctor.length === 0) {
 		throw error(
@@ -295,6 +308,12 @@ export async function saveMedicationOrderBatchExternal(
 		.limit(1);
 	if (!st) throw error(400, 'Invalid store');
 
+	await validateMedicationOrderLinesForDispense({
+		hospitalId,
+		storeId,
+		lines
+	});
+
 	for (const ln of lines) {
 		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
 			throw error(400, 'Start date/time must not be in the past');
@@ -320,6 +339,7 @@ export async function saveMedicationOrderBatchExternal(
 				batchNo,
 				extCustomerName,
 				advisingDoctor,
+				batchRemarks,
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -330,24 +350,13 @@ export async function saveMedicationOrderBatchExternal(
 			if (new Date(ln.startAt) < new Date(startLimit)) {
 				throw error(400, 'Start date/time must not be in the past');
 			}
-			await tx.insert(table.medicationOrderLineTable).values({
+			await insertMedicationOrderLineWithAllocations(tx, {
+				hospitalId,
+				storeId,
 				batchId: batch.id,
 				lineNo: lineNo++,
-				itemMasterId: ln.itemMasterId,
-				dose: ln.dose,
-				doseUnitId: ln.doseUnitId,
-				frequencyId: ln.frequencyId,
-				durationValue: ln.durationValue,
-				durationUnitId: ln.durationUnitId,
-				formId: ln.formId,
-				routeId: ln.routeId,
-				orderTypeId: ln.orderTypeId,
-				foodRelationId: ln.foodRelationId,
-				startAt: ln.startAt,
-				testDose: ln.testDose,
-				substituteNotAllowed: ln.substituteNotAllowed,
-				createdBy: userId,
-				updatedBy: userId
+				line: ln,
+				userId
 			});
 		}
 		return { batch, batchNo };
@@ -376,6 +385,7 @@ export async function updateMedicationOrderBatchExternal(
 	if (b.visitId != null) {
 		throw error(400, 'This batch is not an external sale order');
 	}
+	await assertBatchNotPaid(input.hospitalId, input.batchId);
 	return updateMedicationOrderBatch(event, input);
 }
 
@@ -398,5 +408,6 @@ export async function deleteMedicationOrderBatchExternal(
 	if (b.visitId != null) {
 		throw error(400, 'This batch is not an external sale order');
 	}
+	await assertBatchNotPaid(hospitalId, batchId);
 	return deleteMedicationOrderBatch(event, hospitalId, batchId);
 }

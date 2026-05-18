@@ -129,6 +129,8 @@
 		if (p.id === 'dc') return m.prefix_configuration_purpose_dc();
 		if (p.id === 'med_order_batch')
 			return m.prefix_configuration_purpose_med_order_batch();
+		if (p.id === 'med_order_receipt')
+			return m.prefix_configuration_purpose_med_order_receipt();
 		return m.prefix_configuration_purpose_order();
 	}
 
@@ -157,6 +159,9 @@
 		if (p.id === 'med_order_batch') {
 			return m.prefix_configuration_purpose_med_order_batch_help();
 		}
+		if (p.id === 'med_order_receipt') {
+			return m.prefix_configuration_purpose_med_order_receipt_help();
+		}
 		return m.prefix_configuration_purpose_order_help();
 	}
 
@@ -173,6 +178,8 @@
 		if (p.id === 'dc') return m.prefix_configuration_edit_dc_title();
 		if (p.id === 'med_order_batch')
 			return m.prefix_configuration_edit_med_order_batch_title();
+		if (p.id === 'med_order_receipt')
+			return m.prefix_configuration_edit_med_order_receipt_title();
 		return m.prefix_configuration_edit_order_title();
 	}
 
