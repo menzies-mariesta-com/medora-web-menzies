@@ -49,8 +49,7 @@ const CANCELLABLE_PR_STATUSES = new Set([
 	InvPrStatusTaggingEnum.DRAFT,
 	InvPrStatusTaggingEnum.PENDING,
 	InvPrStatusTaggingEnum.REJECTED,
-	InvPrStatusTaggingEnum.SENT_BACK,
-	InvPrStatusTaggingEnum.APPROVED
+	InvPrStatusTaggingEnum.SENT_BACK
 ]);
 
 export async function listPurchaseRequisitions(
@@ -634,6 +633,7 @@ export async function createPurchaseRequisition(
 				prId: pr.id,
 				itemId: l.itemId,
 				quantity: l.quantity,
+				requestedQuantity: l.quantity,
 				unitId: l.unitId,
 				qtyRemaining: l.quantity,
 				createdBy: userId,
@@ -736,6 +736,7 @@ export async function updatePurchaseRequisition(
 					prId: input.id,
 					itemId: l.itemId,
 					quantity: l.quantity,
+					requestedQuantity: l.quantity,
 					unitId: l.unitId,
 					qtyRemaining: l.quantity,
 					createdBy: userId,

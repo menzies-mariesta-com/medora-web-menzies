@@ -256,3 +256,177 @@ export async function purchaseUnitPriceToIssueUnitPriceString(input: {
 	}
 	return issueUnitPrice.toFixed(2);
 }
+
+const INTEGER_ISSUE_QTY_EPS = 1e-9;
+
+function assertIntegerIssueQty(issue: number, context: string): string {
+	if (!Number.isFinite(issue)) {
+		throw error(500, 'Unit conversion failed');
+	}
+	const rounded = Math.round(issue);
+	if (Math.abs(issue - rounded) > INTEGER_ISSUE_QTY_EPS) {
+		throw error(
+			400,
+			`Unit conversion must result in an integer stock quantity (${context})`
+		);
+	}
+	return String(rounded);
+}
+
+/** IUM row shape for multi-unit qty conversion (GRN free qty, etc.). */
+export type IumFactorsForQty = ItemUnitMasterRow;
+
+/**
+ * Convert qty in any linked unit to issue (stock) qty for the line's purchase IUM.
+ * UI sends purchase `unit.id` from the selected item unit master — use `preferredIumId` when set.
+ */
+export function issueQtyStringFromAnyUnit(params: {
+	qty: number;
+	unitId: number;
+	linePurchaseUnitId: number;
+	lineIssueUnitId: number;
+	lineIum: {
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
+	};
+	allIums: IumFactorsForQty[];
+	preferredIumId?: number | null;
+}): string {
+	const q = params.qty;
+	if (!Number.isFinite(q) || q <= 0) return '0.000000';
+	const pfLine = Number(params.lineIum.purchaseConversionFactor);
+	const itfLine = Number(params.lineIum.issueConversionFactor);
+	if (
+		!Number.isFinite(pfLine) ||
+		pfLine <= 0 ||
+		!Number.isFinite(itfLine) ||
+		itfLine <= 0
+	) {
+		throw error(500, 'Invalid unit conversion factors');
+	}
+
+	const baseFromIum = (
+		ium: IumFactorsForQty,
+		unitId: number,
+		qty: number
+	): number | null => {
+		if (unitId === ium.purchaseUnitId) {
+			const pf = Number(ium.purchaseConversionFactor);
+			if (!Number.isFinite(pf) || pf <= 0) return null;
+			return qty * pf;
+		}
+		if (unitId === ium.issueUnitId) {
+			const itf = Number(ium.issueConversionFactor);
+			if (!Number.isFinite(itf) || itf <= 0) return null;
+			return qty * itf;
+		}
+		return null;
+	};
+
+	const base = (() => {
+		if (params.preferredIumId != null) {
+			const picked = params.allIums.find(
+				(x) => x.id === params.preferredIumId
+			);
+			if (picked) {
+				const b = baseFromIum(picked, params.unitId, q);
+				if (b != null) return b;
+				throw error(400, 'Invalid unit for selected conversion');
+			}
+		}
+		const asPurch = params.allIums.find(
+			(x) => x.purchaseUnitId === params.unitId
+		);
+		if (asPurch) {
+			const b = baseFromIum(asPurch, params.unitId, q);
+			if (b != null) return b;
+		}
+		if (params.unitId === params.linePurchaseUnitId) {
+			return q * pfLine;
+		}
+		const asIssue = params.allIums.find(
+			(x) => x.issueUnitId === params.unitId
+		);
+		if (asIssue) {
+			const b = baseFromIum(asIssue, params.unitId, q);
+			if (b != null) return b;
+		}
+		if (params.unitId === params.lineIssueUnitId) {
+			return q * itfLine;
+		}
+		throw error(400, 'Invalid unit for this item');
+	})();
+
+	const issue = base / itfLine;
+	return assertIntegerIssueQty(
+		issue,
+		`entered ${q} in selected unit; check received/free qty and item unit conversion factors`
+	);
+}
+
+/** Convert free qty to the GRN line purchase-unit qty (for pricing). */
+export function freeQtyToLinePurchaseUnitQty(p: {
+	freeQ: number;
+	freeUnitId: number;
+	linePurchaseUnitId: number;
+	lineIssueUnitId: number;
+	lineIum: {
+		purchaseConversionFactor: string;
+		issueConversionFactor: string;
+	};
+	pfOrdered: number;
+	allIums: IumFactorsForQty[];
+	preferredIumId?: number | null;
+}): number {
+	if (p.freeQ <= 0) return 0;
+
+	if (p.preferredIumId != null) {
+		const picked = p.allIums.find((x) => x.id === p.preferredIumId);
+		if (picked) {
+			if (p.freeUnitId === picked.purchaseUnitId) {
+				const pfFree = Number(picked.purchaseConversionFactor);
+				if (!Number.isFinite(pfFree) || pfFree <= 0) {
+					throw error(500, 'Invalid free unit conversion factor');
+				}
+				return (p.freeQ * pfFree) / p.pfOrdered;
+			}
+			if (p.freeUnitId === picked.issueUnitId) {
+				const itfFree = Number(picked.issueConversionFactor);
+				if (!Number.isFinite(itfFree) || itfFree <= 0) {
+					throw error(500, 'Invalid free unit conversion factor');
+				}
+				return (p.freeQ * itfFree) / p.pfOrdered;
+			}
+		}
+	}
+
+	const asPurch = p.allIums.find((x) => x.purchaseUnitId === p.freeUnitId);
+	if (asPurch) {
+		const pfFree = Number(asPurch.purchaseConversionFactor);
+		if (!Number.isFinite(pfFree) || pfFree <= 0) {
+			throw error(500, 'Invalid free unit conversion factor');
+		}
+		return (p.freeQ * pfFree) / p.pfOrdered;
+	}
+	if (p.freeUnitId === p.linePurchaseUnitId) {
+		return p.freeQ;
+	}
+	const asIssue = p.allIums.find((x) => x.issueUnitId === p.freeUnitId);
+	if (asIssue) {
+		const itfFree = Number(asIssue.issueConversionFactor);
+		if (!Number.isFinite(itfFree) || itfFree <= 0) {
+			throw error(500, 'Invalid free unit conversion factor');
+		}
+		return (p.freeQ * itfFree) / p.pfOrdered;
+	}
+	if (p.freeUnitId === p.lineIssueUnitId) {
+		return Number(
+			issueQtyToPurchaseQtyString(
+				String(p.freeQ),
+				p.lineIum.purchaseConversionFactor,
+				p.lineIum.issueConversionFactor
+			)
+		);
+	}
+	throw error(400, 'Invalid free unit for this item');
+}

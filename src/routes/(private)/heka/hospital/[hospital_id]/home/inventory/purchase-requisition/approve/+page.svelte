@@ -49,6 +49,7 @@
 		id: number;
 		itemId: number;
 		quantity: string;
+		requestedQuantity?: string | null;
 		unitId: number;
 		itemName?: string | null;
 		qtyRemaining?: string | null;
@@ -94,6 +95,10 @@
 		if (a === InvApprovalActionEnum.REJECTED)
 			return m.inv_approval_action_rejected();
 		return String(a);
+	}
+
+	function lineRequestedQty(ln: PrLine): string {
+		return String(ln.requestedQuantity ?? ln.quantity).trim();
 	}
 
 	function syncApprovedDrafts(d: PrDetail) {
@@ -151,7 +156,7 @@
 		if (!detail) return undefined;
 		const adj: { lineId: number; quantity: string }[] = [];
 		for (const ln of detail.lines) {
-			const requested = String(ln.quantity).trim();
+			const requested = lineRequestedQty(ln);
 			const approved = (lineApprovedQtyDraft[ln.id] ?? '').trim();
 			if (approved && approved !== requested) {
 				adj.push({ lineId: ln.id, quantity: approved });
@@ -308,12 +313,12 @@
 		const requestedCol: MariTableColumn<PrLine> = {
 			id: 'requestedQty',
 			header: m.inv_pr_line_requested_qty(),
-			field: 'quantity',
+			field: 'requestedQuantity',
 			widthClass: 'w-32',
 			format: (_v, row) =>
 				formatPurchaseQtyCellWithIssueEquivalent(
 					{
-						quantity: String(row.quantity).trim(),
+						quantity: lineRequestedQty(row),
 						itemUnitMasterId: row.itemUnitMasterId,
 						iumList: []
 					},
