@@ -871,20 +871,29 @@ export async function getPatientAllergiesByPatientIdWithRelationsPaginated(input
 export async function deletePatientAllergies(input: {
 	id: number;
 	skipClinicalLock?: boolean;
+	deactivationRemark?: string | null;
 }): Promise<void> {
-	const { skipClinicalLock, ...rest } = input;
+	const { skipClinicalLock, deactivationRemark, id } = input;
 	const [existing] = await ensureDb()
 		.select({ visitId: table.patientAllergyTable.visitId })
 		.from(table.patientAllergyTable)
-		.where(eq(table.patientAllergyTable.id, rest.id))
+		.where(eq(table.patientAllergyTable.id, id))
 		.limit(1);
 	if (existing && !skipClinicalLock) {
 		await assertVisitNotClinicallySigned(existing.visitId);
 	}
+	const remark =
+		deactivationRemark != null &&
+		String(deactivationRemark).trim() !== ''
+			? String(deactivationRemark).trim()
+			: null;
 	await ensureDb()
 		.update(table.patientAllergyTable)
-		.set({ statusId: StatusEnum.DELETED })
-		.where(eq(table.patientAllergyTable.id, rest.id));
+		.set({
+			statusId: StatusEnum.INACTIVE,
+			deactivationRemark: remark
+		})
+		.where(eq(table.patientAllergyTable.id, id));
 }
 
 export async function listAllergiesMaster(): Promise<
@@ -1159,7 +1168,7 @@ export async function deletePatientVital(input: {
 	await assertVisitNotClinicallySigned(existing.visitId);
 	await ensureDb()
 		.update(table.patientDiagnosisTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.patientDiagnosisTable.id, input.id));
 }
 
@@ -1555,6 +1564,7 @@ export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
 	const serviceRows: OpBillingPendingServiceLineRow[] = all
 		.filter(
 			(r) =>
+				r.statusId === StatusEnum.ACTIVE &&
 				isNursingCompleteTimeSet(r.nursingCompleteTime) &&
 				!onClosed.has(r.id)
 		)
@@ -1666,8 +1676,10 @@ export async function updateServiceOrderDetail(
 export async function deleteServiceOrderDetail(input: {
 	id: number;
 	skipClinicalLock?: boolean;
+	cancelRemark?: string | null;
+	cancelBy?: string | null;
 }): Promise<void> {
-	const { skipClinicalLock, id } = input;
+	const { skipClinicalLock, id, cancelRemark, cancelBy } = input;
 	const [existing] = await ensureDb()
 		.select({
 			serviceOrderId: table.serviceOrderDetailTable.serviceOrderId
@@ -1681,9 +1693,19 @@ export async function deleteServiceOrderDetail(input: {
 		);
 	}
 	await assertServiceOrderDetailNotLockedByClosedOpBill(id);
+	const remark =
+		cancelRemark != null && String(cancelRemark).trim() !== ''
+			? String(cancelRemark).trim()
+			: null;
 	await ensureDb()
 		.update(table.serviceOrderDetailTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({
+			statusId: StatusEnum.INACTIVE,
+			...(remark != null ? { cancelRemark: remark } : {}),
+			...(cancelBy != null && String(cancelBy).trim() !== ''
+				? { cancelBy: String(cancelBy).trim() }
+				: {})
+		})
 		.where(eq(table.serviceOrderDetailTable.id, id));
 }
 
@@ -1821,7 +1843,7 @@ export async function getServiceTagging(input: {
 }): Promise<ServiceTaggingSchema[]> {
 	let whereExpr: any = and(
 		eq(table.serviceTaggingTable.branchId, input.branchId),
-		ne(table.serviceTaggingTable.statusId, StatusEnum.DELETED)
+		eq(table.serviceTaggingTable.statusId, StatusEnum.ACTIVE)
 	);
 	if (input.serviceId != null) {
 		whereExpr = and(
@@ -1844,7 +1866,12 @@ export async function getServiceItem(input: {
 	let whereExpr: any = and(
 		eq(table.serviceItemTable.hospitalId, input.hospitalId)
 	);
-	if (input.statusId != null) {
+	if (input.id != null) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, input.id)
+		);
+	} else if (input.statusId != null) {
 		whereExpr = and(
 			whereExpr,
 			eq(table.serviceItemTable.statusId, input.statusId)
@@ -1852,14 +1879,9 @@ export async function getServiceItem(input: {
 	} else {
 		whereExpr = and(
 			whereExpr,
-			ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+			eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
 		);
 	}
-	if (input.id != null)
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceItemTable.id, input.id)
-		);
 	return ensureDb()
 		.select()
 		.from(table.serviceItemTable)
@@ -1885,7 +1907,7 @@ export async function getServiceItemPaginated(input: {
 	else
 		whereExpr = and(
 			whereExpr,
-			ne(table.serviceItemTable.statusId, StatusEnum.DELETED)
+			eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
 		);
 	if (q)
 		whereExpr = and(
@@ -1915,9 +1937,9 @@ export async function getDoctorStaffPaginated(input: {
 	const q = input.search?.trim();
 	const pattern = q ? `%${q}%` : null;
 	const hospitalCondition = sql`${table.staffTable.id} IN (SELECT staff_id FROM staff_hospital WHERE hospital_id = ${input.hospitalId})`;
-	const notDeletedCondition = ne(
+	const activeStaffCondition = eq(
 		table.staffTable.statusId,
-		StatusEnum.DELETED
+		StatusEnum.ACTIVE
 	);
 	const doctorCondition = eq(table.staffTable.staffTypeId, 3);
 	const searchCondition =
@@ -1930,12 +1952,12 @@ export async function getDoctorStaffPaginated(input: {
 		);
 	let whereExpr: any = searchCondition
 		? and(
-				notDeletedCondition,
+				activeStaffCondition,
 				doctorCondition,
 				hospitalCondition,
 				searchCondition
 			)
-		: and(notDeletedCondition, doctorCondition, hospitalCondition);
+		: and(activeStaffCondition, doctorCondition, hospitalCondition);
 	const limit = Math.max(1, Math.floor(input.pageSize));
 	const offset = Math.max(
 		0,
@@ -2012,18 +2034,30 @@ export async function getVisitServiceLinePrintRows(input: {
 					table.serviceOrderDetailTable.serviceOrderId,
 					orderIds
 				),
-				ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
+				eq(
+					table.serviceOrderDetailTable.statusId,
+					StatusEnum.ACTIVE
+				)
 			)
 		)
 		.orderBy(asc(table.serviceOrderDetailTable.id));
-	const services = await getServiceItem({
-		hospitalId: input.hospitalId,
-		statusId: null
-	});
-
+	const serviceIds = [
+		...new Set(details.map((d) => d.serviceId).filter(Boolean))
+	];
 	const serviceById: Record<number, ServiceItemSchema> = {};
-	for (const service of services) {
-		serviceById[service.id] = service;
+	if (serviceIds.length > 0) {
+		const services = await ensureDb()
+			.select()
+			.from(table.serviceItemTable)
+			.where(
+				and(
+					eq(table.serviceItemTable.hospitalId, input.hospitalId),
+					inArray(table.serviceItemTable.id, serviceIds)
+				)
+			);
+		for (const service of services) {
+			serviceById[service.id] = service;
+		}
 	}
 
 	const orderById: Record<number, ServiceOrderSchema> = {};

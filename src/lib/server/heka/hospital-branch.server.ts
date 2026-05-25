@@ -172,6 +172,6 @@ export async function deleteBranch(
 	await ensureCanManageHospital(event, branch.hospitalId);
 	await ensureDb()
 		.update(table.hospitalBranchTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.hospitalBranchTable.id, input.id));
 }

@@ -1024,7 +1024,7 @@ export async function deleteMaster(
 	const del = {
 		deletedAt: now,
 		deletedBy: userId,
-		statusId: StatusEnum.DELETED
+		statusId: StatusEnum.INACTIVE
 	} as const;
 
 	if (entity === 'form') {
