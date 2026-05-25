@@ -156,7 +156,7 @@ export async function createReferHistory(
 		const message = subject
 			? `New referral request: ${subject}${isUrgent ? ' (Urgent)' : ''}`
 			: `New referral request${isUrgent ? ' (Urgent)' : ''}.`;
-		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
+		const link = `/heka/hospital/${hospitalId}/home/consultation/cpoe/refer/history`;
 
 		await ensureDb().insert(table.notificationTable).values({
 			recipientStaffId,
@@ -244,7 +244,7 @@ export async function acceptReferHistory(
 		const message = subject
 			? `Referral accepted: ${subject}`
 			: 'Referral accepted.';
-		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
+		const link = `/heka/hospital/${hospitalId}/home/consultation/cpoe/refer/history`;
 
 		await ensureDb().insert(table.notificationTable).values({
 			recipientStaffId,
@@ -329,7 +329,7 @@ export async function rejectReferHistory(
 		createdBy: existing.createdBy
 	});
 	if (recipientStaffId) {
-		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
+		const link = `/heka/hospital/${hospitalId}/home/consultation/cpoe/refer/history`;
 		await ensureDb()
 			.insert(table.notificationTable)
 			.values({
@@ -412,7 +412,7 @@ export async function cancelReferHistory(
 	}
 
 	if (recipientStaffId) {
-		const link = `/heka/hospital/${hospitalId}/home/cpoe/refer/history`;
+		const link = `/heka/hospital/${hospitalId}/home/consultation/cpoe/refer/history`;
 		await ensureDb()
 			.insert(table.notificationTable)
 			.values({

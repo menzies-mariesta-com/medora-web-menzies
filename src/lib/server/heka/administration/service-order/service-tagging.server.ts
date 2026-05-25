@@ -291,7 +291,7 @@ export async function deleteServiceTagging(
 	await ensureDb()
 		.update(table.serviceTaggingTable)
 		.set({
-			statusId: StatusEnum.DELETED,
+			statusId: StatusEnum.INACTIVE,
 			deletedAt: sql`now()`,
 			deletedBy: event.locals.user?.id ?? null
 		})

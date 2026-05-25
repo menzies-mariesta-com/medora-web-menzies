@@ -146,10 +146,16 @@ export async function getItemMasterPaginated(
 ): Promise<PaginatedResult<ItemMasterListPayload>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const conditions = [
-		hospitalItemScope(hospitalId),
-		ne(table.itemMasterTable.statusId, StatusEnum.DELETED)
-	];
+	const conditions = [hospitalItemScope(hospitalId)];
+	if (typeof params?.statusId === 'number') {
+		conditions.push(
+			eq(table.itemMasterTable.statusId, params.statusId)
+		);
+	} else {
+		conditions.push(
+			eq(table.itemMasterTable.statusId, StatusEnum.ACTIVE)
+		);
+	}
 	const nameFilter = params?.name?.trim();
 	if (nameFilter) {
 		conditions.push(
@@ -165,11 +171,6 @@ export async function getItemMasterPaginated(
 	if (typeof params?.categoryId === 'number') {
 		conditions.push(
 			eq(table.itemMasterTable.categoryId, params.categoryId)
-		);
-	}
-	if (typeof params?.statusId === 'number') {
-		conditions.push(
-			eq(table.itemMasterTable.statusId, params.statusId)
 		);
 	}
 	const whereClause = and(...conditions);
@@ -712,7 +713,7 @@ export async function deleteItemMaster(input: {
 }): Promise<void> {
 	await ensureDb()
 		.update(table.itemMasterTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				hospitalItemScope(input.hospitalId),

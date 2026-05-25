@@ -54,7 +54,7 @@
 	function obsEmrBase(): string {
 		const h = hospitalIdEffective;
 		if (!h) return '';
-		return `/api/heka/hospital/${encodeURIComponent(h)}/home/observation/emr`;
+		return `/api/heka/hospital/${encodeURIComponent(h)}/home/consultation/emr`;
 	}
 
 	function emrMutationBase(): string {

@@ -1,6 +1,6 @@
 /**
  * API/JSON shapes for the EMR observation `+page` ↔
- * `../api/.../observation/emr` contract (not Drizzle row types).
+ * `../api/.../consultation/emr` contract (not Drizzle row types).
  */
 
 /** `visit.get` — fields used by the observation EMR page. */

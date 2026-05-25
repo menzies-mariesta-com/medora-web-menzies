@@ -124,6 +124,6 @@ export async function deleteDocumentSetting(
 
 	await ensureDb()
 		.update(table.documentSettingTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.documentSettingTable.id, input.id));
 }

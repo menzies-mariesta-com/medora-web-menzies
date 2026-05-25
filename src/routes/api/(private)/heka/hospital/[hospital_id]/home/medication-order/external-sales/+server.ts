@@ -89,22 +89,18 @@ export async function POST(event: RequestEvent) {
 			lines?: unknown;
 			extCustomerName?: unknown;
 			advisingDoctor?: unknown;
-			batchRemarks?: unknown;
 		};
 		const storeId = Number(b.storeId ?? 0);
 		const extCustomerName = String(b.extCustomerName ?? '');
 		const advisingDoctor = String(b.advisingDoctor ?? '');
 		const lines = b.lines;
 		if (!Array.isArray(lines)) throw error(400, 'lines is required');
-		const batchRemarks =
-			typeof b.batchRemarks === 'string' ? b.batchRemarks : null;
 		return json(
 			await ex.saveMedicationOrderBatchExternal(event, {
 				hospitalId,
 				storeId,
 				extCustomerName,
 				advisingDoctor,
-				batchRemarks,
 				lines: lines as Parameters<
 					typeof ex.saveMedicationOrderBatchExternal
 				>[1]['lines']
@@ -133,7 +129,6 @@ export async function POST(event: RequestEvent) {
 	if (mode === 'batch.update') {
 		const b = body as {
 			batchId?: unknown;
-			batchRemarks?: unknown;
 			lines?: unknown;
 		};
 		const batchId = Number(b.batchId ?? 0);
@@ -142,13 +137,10 @@ export async function POST(event: RequestEvent) {
 		}
 		if (!Array.isArray(b.lines))
 			throw error(400, 'lines is required');
-		const batchRemarks =
-			typeof b.batchRemarks === 'string' ? b.batchRemarks : undefined;
 		return json(
 			await ex.updateMedicationOrderBatchExternal(event, {
 				hospitalId,
 				batchId,
-				batchRemarks,
 				lines: b.lines as Parameters<
 					typeof ex.updateMedicationOrderBatchExternal
 				>[1]['lines']

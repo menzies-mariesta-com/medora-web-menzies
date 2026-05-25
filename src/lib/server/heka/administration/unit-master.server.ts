@@ -242,6 +242,6 @@ export async function deleteUnit(input: {
 
 	await ensureDb()
 		.update(table.unitTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.unitTable.id, input.id));
 }

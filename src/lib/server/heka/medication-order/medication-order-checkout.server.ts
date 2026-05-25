@@ -30,7 +30,6 @@ export type MedicationOrderCheckoutResult = {
 		issueQtyPurchase: string;
 		unitSalePrice: string;
 		lineTotal: string;
-		lineRemarks: string | null;
 	}>;
 };
 
@@ -122,7 +121,6 @@ export async function checkoutMedicationOrderBatchExternal(
 		startAt: r.line.startAt,
 		testDose: r.line.testDose,
 		substituteNotAllowed: r.line.substituteNotAllowed,
-		lineRemarks: r.line.lineRemarks,
 		unitSalePrice: String(r.line.unitSalePrice ?? '0'),
 		issueQtyPurchase: String(r.line.issueQtyPurchase ?? '0'),
 		itemUnitMasterId: Number(r.line.itemUnitMasterId ?? 0),
@@ -170,8 +168,7 @@ export async function checkoutMedicationOrderBatchExternal(
 			lineTotal: computeLineTotal({
 				issueQtyPurchase,
 				unitSalePrice
-			}).toFixed(2),
-			lineRemarks: r.line.lineRemarks
+			}).toFixed(2)
 		};
 	});
 

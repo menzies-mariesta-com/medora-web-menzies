@@ -1107,6 +1107,38 @@ export const planOfCareTable = pgTable(
 	]
 );
 
+/** CPOE prescription free-text notes (multiple per visit; Consultation → CPOE → Prescription). */
+export const cpoePrescriptionNoteTable = pgTable(
+	'cpoe_prescription_note',
+	{
+		id: serial('id').primaryKey(),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id),
+		note: text('note').notNull().default(''),
+		deleteRemark: text('delete_remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		doctorId: uuid('doctor_id').references(() => staffTable.id),
+		sequenceNo: integer('sequence_no').notNull().default(0),
+		...timestamps
+	},
+	(table) => [
+		index('cpoe_prescription_note_visit_id_idx').on(table.visitId),
+		index('cpoe_prescription_note_patient_id_idx').on(table.patientId),
+		index('cpoe_prescription_note_branch_id_idx').on(table.branchId),
+		index('cpoe_prescription_note_status_id_idx').on(table.statusId)
+	]
+);
+
 /** Visit progress notes (multiple per visit; Observation EMR). */
 export const progressNoteTable = pgTable(
 	'progress_note',

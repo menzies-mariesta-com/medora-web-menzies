@@ -201,7 +201,12 @@ export async function POST(event: RequestEvent) {
 		case 'orderLine.delete': {
 			await obs.deleteServiceOrderDetail({
 				id: Number(body?.id ?? 0),
-				skipClinicalLock: true
+				skipClinicalLock: true,
+				cancelRemark:
+					body?.cancelRemark != null
+						? String(body.cancelRemark)
+						: null,
+				cancelBy: event.locals.user?.id ?? null
 			});
 			return json({ ok: true });
 		}
