@@ -1,5 +1,5 @@
 /** GET `/api/heka/hospital/{id}/home/nursing-workbench/emr/case-sheet` */
-export type CaseSheetGetResponse = {
+export type NursingCaseSheetPayload = {
 	visitRow: unknown | null;
 	allergies: unknown[];
 	vitals: unknown[];
@@ -9,3 +9,6 @@ export type CaseSheetGetResponse = {
 	patientConditionEntries: unknown[];
 	userDisplayById: Record<string, string>;
 };
+
+/** @deprecated Use `NursingCaseSheetPayload` */
+export type CaseSheetGetResponse = NursingCaseSheetPayload;

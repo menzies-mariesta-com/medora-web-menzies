@@ -23,6 +23,7 @@ import {
 	medOrderStartOfLocalDay
 } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
+import type { MedicationOrderLineForVisitRow } from '$lib/model/type/heka/medication-order.type';
 import {
 	assertBatchNotPaid,
 	buildMedOrderItemSearchCategoryFilter,
@@ -878,4 +879,138 @@ export async function listMastersForInternalForm(
 		durUnits,
 		freqs
 	};
+}
+
+function buildMedLineDisplay(row: {
+	itemName: string | null;
+	dose: string | null;
+	doseUnitName: string | null;
+	frequencyLabel: string | null;
+	frequencySummary: string | null;
+	durationValue: string | null;
+	durationUnitName: string | null;
+	formName: string | null;
+	routeName: string | null;
+	foodRelationName: string | null;
+	lineRemarks: string | null;
+}): { displayTitle: string; displaySubtitle: string } {
+	const title =
+		row.itemName?.trim() ||
+		(row.formName?.trim()
+			? `${row.formName.trim()} (item)`
+			: 'Medication');
+
+	const dosePart = [row.dose?.trim(), row.doseUnitName?.trim()]
+		.filter(Boolean)
+		.join(' ');
+	const freqPart =
+		row.frequencySummary?.trim() ||
+		row.frequencyLabel?.trim() ||
+		'';
+	const durPart = [row.durationValue?.trim(), row.durationUnitName?.trim()]
+		.filter(Boolean)
+		.join(' ');
+	const schedule = [dosePart, freqPart, durPart].filter(Boolean).join(' · ');
+
+	const extras = [row.routeName?.trim(), row.foodRelationName?.trim()]
+		.filter(Boolean)
+		.join(' · ');
+	const subtitle =
+		[row.lineRemarks?.trim(), extras].filter(Boolean).join(' · ') ||
+		schedule ||
+		'—';
+
+	return {
+		displayTitle: title,
+		displaySubtitle: schedule ? (extras ? `${schedule} · ${extras}` : schedule) : subtitle
+	};
+}
+
+/** All medication order lines for batches linked to a visit (internal + external). */
+export async function listMedicationOrderLineRowsByVisitId(
+	event: RequestEvent,
+	hospitalId: string,
+	visitId: number
+): Promise<MedicationOrderLineForVisitRow[]> {
+	await ensureCanAccessHospital(event, hospitalId);
+	if (!Number.isFinite(visitId) || visitId <= 0) {
+		throw error(400, 'visitId is required');
+	}
+
+	const db = ensureDb();
+	const mob = table.medicationOrderBatchTable;
+	const mol = table.medicationOrderLineTable;
+	const im = table.itemMasterTable;
+	const du = table.medOrderDoseUnitTable;
+	const freq = table.medOrderFrequencyTable;
+	const dur = table.medOrderDurationUnitTable;
+	const form = table.medOrderFormTable;
+	const route = table.medOrderRouteTable;
+	const food = table.medOrderFoodRelationTable;
+
+	const rows = await db
+		.select({
+			id: mol.id,
+			batchId: mob.id,
+			batchNo: mob.batchNo,
+			itemName: im.itemName,
+			dose: mol.dose,
+			doseUnitName: du.name,
+			frequencyLabel: freq.label,
+			frequencySummary: freq.summaryText,
+			durationValue: mol.durationValue,
+			durationUnitName: dur.name,
+			formName: form.name,
+			routeName: route.name,
+			foodRelationName: food.name,
+			lineRemarks: mol.lineRemarks,
+			startAt: mol.startAt,
+			lineNo: mol.lineNo
+		})
+		.from(mol)
+		.innerJoin(mob, eq(mol.batchId, mob.id))
+		.innerJoin(im, eq(mol.itemMasterId, im.id))
+		.leftJoin(du, eq(mol.doseUnitId, du.id))
+		.leftJoin(freq, eq(mol.frequencyId, freq.id))
+		.leftJoin(dur, eq(mol.durationUnitId, dur.id))
+		.leftJoin(form, eq(mol.formId, form.id))
+		.leftJoin(route, eq(mol.routeId, route.id))
+		.leftJoin(food, eq(mol.foodRelationId, food.id))
+		.where(
+			and(
+				eq(mob.hospitalId, hospitalId),
+				eq(mob.visitId, visitId),
+				isNull(mob.deletedAt),
+				isNull(mol.deletedAt)
+			)
+		)
+		.orderBy(desc(mob.id), mol.lineNo);
+
+	return rows.map((row) => {
+		const normalized = {
+			itemName: row.itemName,
+			dose: row.dose != null ? String(row.dose) : null,
+			doseUnitName: row.doseUnitName,
+			frequencyLabel: row.frequencyLabel,
+			frequencySummary: row.frequencySummary,
+			durationValue:
+				row.durationValue != null ? String(row.durationValue) : null,
+			durationUnitName: row.durationUnitName,
+			formName: row.formName,
+			routeName: row.routeName,
+			foodRelationName: row.foodRelationName,
+			lineRemarks: row.lineRemarks
+		};
+		const { displayTitle, displaySubtitle } =
+			buildMedLineDisplay(normalized);
+		return {
+			id: row.id,
+			batchId: row.batchId,
+			batchNo: row.batchNo,
+			...normalized,
+			startAt: row.startAt,
+			displayTitle,
+			displaySubtitle
+		};
+	});
 }
