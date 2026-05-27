@@ -15,6 +15,7 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { isMedOrderStartBeforeToday } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import {
 	getFinancialYearIdToday,
@@ -229,7 +230,6 @@ export async function reorderFromHistoryBatchExternal(
 		startAt: new Date(startMs).toISOString(),
 		testDose: firstLine.testDose,
 		substituteNotAllowed: firstLine.substituteNotAllowed,
-		lineRemarks: firstLine.lineRemarks,
 		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
 		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
 		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
@@ -264,14 +264,12 @@ export async function saveMedicationOrderBatchExternal(
 		storeId: number;
 		extCustomerName: string;
 		advisingDoctor: string;
-		batchRemarks?: string | null;
 		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, storeId, lines } = input;
 	const extCustomerName = input.extCustomerName.trim();
 	const advisingDoctor = input.advisingDoctor.trim();
-	const batchRemarks = input.batchRemarks?.trim() || null;
 	await ensureCanAccessHospital(event, hospitalId);
 	if (extCustomerName.length === 0 || advisingDoctor.length === 0) {
 		throw error(
@@ -289,7 +287,6 @@ export async function saveMedicationOrderBatchExternal(
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const now = new Date();
-	const startLimit = now.toISOString();
 
 	const branches = await db
 		.select({ id: table.hospitalBranchTable.id })
@@ -315,8 +312,8 @@ export async function saveMedicationOrderBatchExternal(
 	});
 
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
@@ -339,7 +336,7 @@ export async function saveMedicationOrderBatchExternal(
 				batchNo,
 				extCustomerName,
 				advisingDoctor,
-				batchRemarks,
+				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -347,8 +344,8 @@ export async function saveMedicationOrderBatchExternal(
 		if (!batch) throw error(500, 'Failed to create batch');
 		let lineNo = 1;
 		for (const ln of lines) {
-			if (new Date(ln.startAt) < new Date(startLimit)) {
-				throw error(400, 'Start date/time must not be in the past');
+			if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+				throw error(400, 'Start date cannot be before today');
 			}
 			await insertMedicationOrderLineWithAllocations(tx, {
 				hospitalId,
