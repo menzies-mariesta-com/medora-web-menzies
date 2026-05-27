@@ -1,3 +1,7 @@
+import type { NursingCaseSheetPayload } from '$lib/model/type/heka/case-sheet.type';
+import type { CpoePrescriptionNoteListRow } from '$lib/model/type/heka/cpoe-prescription-note.type';
+import type { MedicationOrderLineForVisitRow } from '$lib/model/type/heka/medication-order.type';
+
 export type PatientVisitWithRelationsLite = {
 	id: number;
 	patientId: string | null;
@@ -20,6 +24,7 @@ export type PatientVisitWithRelationsLite = {
 	branch?: { name?: string | null } | null;
 	visitType?: { name?: string | null } | null;
 	doctor?: unknown;
+	diagnoses?: { description?: string | null; statusId?: number | null }[];
 };
 
 export type ServiceOrderDetailRowForVisit = {
@@ -36,4 +41,7 @@ export type VisitDashboardPayload = {
 	selectedVisit: PatientVisitWithRelationsLite | null;
 	patientVisits: PatientVisitWithRelationsLite[];
 	orderLines: ServiceOrderDetailRowForVisit[];
+	caseSheet: NursingCaseSheetPayload | null;
+	prescriptionNotes: CpoePrescriptionNoteListRow[];
+	medicationLines: MedicationOrderLineForVisitRow[];
 };

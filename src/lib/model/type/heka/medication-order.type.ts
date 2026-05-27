@@ -136,6 +136,27 @@ export type MedicationOrderCheckoutResponse = {
 	}>;
 };
 
+/** Flat medication order line for visit-scoped dashboards. */
+export type MedicationOrderLineForVisitRow = {
+	id: number;
+	batchId: number;
+	batchNo: string;
+	itemName: string | null;
+	dose: string | null;
+	doseUnitName: string | null;
+	frequencyLabel: string | null;
+	frequencySummary: string | null;
+	durationValue: string | null;
+	durationUnitName: string | null;
+	formName: string | null;
+	routeName: string | null;
+	foodRelationName: string | null;
+	lineRemarks: string | null;
+	startAt: string | null;
+	displayTitle: string;
+	displaySubtitle: string;
+};
+
 /** UI draft line extensions for sale workspace */
 export type MedicationOrderDraftLineExtras = {
 	iumList: ConsumptionDraftLineIum[];
