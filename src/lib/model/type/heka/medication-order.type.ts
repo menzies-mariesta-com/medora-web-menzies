@@ -21,7 +21,6 @@ export type MedicationOrderLineInput = {
 	startAt: string;
 	testDose: string | null;
 	substituteNotAllowed: boolean;
-	lineRemarks?: string | null;
 	unitSalePrice: string;
 	issueQtyPurchase: string;
 	itemUnitMasterId: number;
@@ -134,7 +133,6 @@ export type MedicationOrderCheckoutResponse = {
 		issueQtyPurchase: string;
 		unitSalePrice: string;
 		lineTotal: string;
-		lineRemarks: string | null;
 	}>;
 };
 
@@ -143,7 +141,6 @@ export type MedicationOrderDraftLineExtras = {
 	iumList: ConsumptionDraftLineIum[];
 	batchAllocations: ConsumptionBatchAllocationDraft[];
 	unitSalePrice: string;
-	lineRemarks: string;
 	issueQtyPurchase: string;
 	itemUnitMasterId: number | null;
 };

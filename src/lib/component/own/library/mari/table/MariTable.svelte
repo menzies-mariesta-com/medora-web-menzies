@@ -18,6 +18,7 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { m } from '$lib/paraglide/messages';
 
 	export type MariTableColumn<T = unknown> = {
 		/**
@@ -642,7 +643,7 @@
 													</DaisyUiButton>
 												</DaisyUiTooltip>
 												<DaisyUiTooltip
-													tooltipText="Delete"
+													tooltipText={m.mari_table_crud_inactivate_tooltip()}
 													className="d-tooltip-right"
 												>
 													<DaisyUiButton

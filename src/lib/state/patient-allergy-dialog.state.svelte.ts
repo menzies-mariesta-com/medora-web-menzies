@@ -1,7 +1,7 @@
 export const PatientAllergyDialogState = $state<{
 	patientId: string | null;
 	visitId: number | null;
-	/** Hospital scope for `/api/heka/hospital/.../observation/emr` */
+	/** Hospital scope for `/api/heka/hospital/.../consultation/emr` */
 	hospitalId: string | null;
 	/** When set, open in edit mode with existing patient allergy record */
 	patientAllergyId: number | null;

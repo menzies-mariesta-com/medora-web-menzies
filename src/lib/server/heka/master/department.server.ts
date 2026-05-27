@@ -109,6 +109,6 @@ export async function deleteDepartment(input: {
 }): Promise<void> {
 	await ensureDb()
 		.update(table.departmentTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.departmentTable.id, input.id));
 }

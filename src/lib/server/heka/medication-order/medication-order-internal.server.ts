@@ -18,6 +18,10 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	isMedOrderStartBeforeToday,
+	medOrderStartOfLocalDay
+} from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import {
 	assertBatchNotPaid,
@@ -171,12 +175,10 @@ export async function saveMedicationOrderBatch(
 		hospitalId: string;
 		visitId: number;
 		storeId: number;
-		batchRemarks?: string | null;
 		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, visitId, storeId, lines } = input;
-	const batchRemarks = input.batchRemarks?.trim() || null;
 	await ensureCanAccessHospital(event, hospitalId);
 	if (!Array.isArray(lines) || lines.length === 0) {
 		throw error(400, 'At least one line is required');
@@ -185,7 +187,6 @@ export async function saveMedicationOrderBatch(
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const now = new Date();
-	const startLimit = now.toISOString();
 
 	const [v] = await db
 		.select()
@@ -223,8 +224,8 @@ export async function saveMedicationOrderBatch(
 	});
 
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
@@ -247,7 +248,7 @@ export async function saveMedicationOrderBatch(
 				batchNo,
 				extCustomerName: null,
 				advisingDoctor: null,
-				batchRemarks,
+				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -255,8 +256,8 @@ export async function saveMedicationOrderBatch(
 		if (!batch) throw error(500, 'Failed to create batch');
 		let lineNo = 1;
 		for (const ln of lines) {
-			if (new Date(ln.startAt) < new Date(startLimit)) {
-				throw error(400, 'Start date/time must not be in the past');
+			if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+				throw error(400, 'Start date cannot be before today');
 			}
 			await insertMedicationOrderLineWithAllocations(tx, {
 				hospitalId,
@@ -275,7 +276,7 @@ export async function saveMedicationOrderBatch(
  * “Reorder”: create a **new** batch (new batch number) with a single line copied from the
  * **first** line of `sourceBatchId`, with `startAt` = after the latest line end on this visit
  * (max of start + duration over all existing non-deleted lines). If that time would be in the
- * past, it is nudged to satisfy “start not in the past” validation. Does not use the UI draft.
+ * before today, it is nudged to the start of today. Does not use the UI draft.
  */
 export async function reorderFromHistoryBatch(
 	event: RequestEvent,
@@ -391,8 +392,10 @@ export async function reorderFromHistoryBatch(
 		if (end.getTime() > maxEndMs) maxEndMs = end.getTime();
 	}
 	const now = new Date();
-	const minValidStartMs = now.getTime() - 25_000;
-	const startMs = Math.max(maxEndMs, minValidStartMs);
+	const startMs = Math.max(
+		maxEndMs,
+		medOrderStartOfLocalDay(now).getTime()
+	);
 	const allocs = await loadAllocationsForLineIds([firstLine.id]);
 	const newLine: MedicationOrderLineSaveInput = {
 		itemMasterId: firstLine.itemMasterId,
@@ -408,7 +411,6 @@ export async function reorderFromHistoryBatch(
 		startAt: new Date(startMs).toISOString(),
 		testDose: firstLine.testDose,
 		substituteNotAllowed: firstLine.substituteNotAllowed,
-		lineRemarks: firstLine.lineRemarks,
 		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
 		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
 		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
@@ -544,15 +546,10 @@ export async function updateMedicationOrderBatch(
 	input: {
 		hospitalId: string;
 		batchId: number;
-		batchRemarks?: string | null;
 		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, batchId, lines } = input;
-	const batchRemarks =
-		input.batchRemarks !== undefined
-			? input.batchRemarks?.trim() || null
-			: undefined;
 	await ensureCanAccessHospital(event, hospitalId);
 	if (!Array.isArray(lines) || lines.length === 0) {
 		throw error(400, 'At least one line is required');
@@ -580,8 +577,8 @@ export async function updateMedicationOrderBatch(
 	});
 
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
@@ -617,9 +614,6 @@ export async function updateMedicationOrderBatch(
 		await tx
 			.update(table.medicationOrderBatchTable)
 			.set({
-				...(batchRemarks !== undefined
-					? { batchRemarks }
-					: {}),
 				updatedBy: userId,
 				updatedAt: new Date().toISOString()
 			})

@@ -367,7 +367,7 @@ export async function deleteItemUnitMaster(
 	await ensureDb()
 		.update(table.itemUnitMasterTable)
 		.set({
-			statusId: StatusEnum.DELETED,
+			statusId: StatusEnum.INACTIVE,
 			deletedAt: new Date().toISOString()
 		})
 		.where(eq(table.itemUnitMasterTable.id, input.id));
