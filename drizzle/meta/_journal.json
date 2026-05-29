@@ -79,7 +79,11 @@
     { "idx": 69, "version": "7", "when": 1780510600000, "tag": "0073_item_master_manufacturer_text_drop_master", "breakpoints": true },
     { "idx": 70, "version": "7", "when": 1780510700000, "tag": "0074_item_master_drop_barcode_batch_required", "breakpoints": true },
     { "idx": 71, "version": "7", "when": 1780510800000, "tag": "0075_medication_order_dispense", "breakpoints": true },
-    { "idx": 72, "version": "7", "when": 1780510900000, "tag": "0079_consultation_module", "breakpoints": true },
-    { "idx": 73, "version": "7", "when": 1780511000000, "tag": "0080_cpoe_prescription_note", "breakpoints": true }
+    { "idx": 72, "version": "7", "when": 1780510850000, "tag": "0076_pr_line_requested_quantity", "breakpoints": true },
+    { "idx": 73, "version": "7", "when": 1780510860000, "tag": "0077_inv_branch_pricing_config", "breakpoints": true },
+    { "idx": 74, "version": "7", "when": 1780510870000, "tag": "0078_inv_branch_pricing_composable", "breakpoints": true },
+    { "idx": 75, "version": "7", "when": 1780510900000, "tag": "0079_consultation_module", "breakpoints": true },
+    { "idx": 76, "version": "7", "when": 1780511000000, "tag": "0080_cpoe_prescription_note", "breakpoints": true },
+    { "idx": 77, "version": "7", "when": 1780511100000, "tag": "0081_inv_department_consumption_line_emp_sale_price", "breakpoints": true }
   ]
 }

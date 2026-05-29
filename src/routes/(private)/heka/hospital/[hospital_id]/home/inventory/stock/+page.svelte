@@ -334,7 +334,7 @@
 					rows={rowsAgg}
 					isLoading={loading}
 					showRefreshButton={false}
-					enableColumnFilters={true}
+					enableColumnFilters={false}
 				/>
 			</div>
 		{:else}
@@ -344,7 +344,7 @@
 					rows={filteredRowsLotsByExpiry}
 					isLoading={loading}
 					showRefreshButton={false}
-					enableColumnFilters={true}
+					enableColumnFilters={false}
 				/>
 			</div>
 		{/if}

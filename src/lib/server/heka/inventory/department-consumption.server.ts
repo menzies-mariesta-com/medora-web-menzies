@@ -46,6 +46,21 @@ export type ConsumptionLineInput = {
 	remarks?: string | null;
 };
 
+/** Per issue unit; coalesce matches item_batch pricing fallbacks at post time. */
+function snapshotEmpSalePriceFromBatch(batch: {
+	empSalePrice: string | null;
+	salePrice: string | null;
+	purchasePrice: string;
+}): string {
+	const emp = batch.empSalePrice?.trim();
+	if (emp) return emp;
+	const sale = batch.salePrice?.trim();
+	if (sale) return sale;
+	const purch = batch.purchasePrice?.trim();
+	if (purch) return purch;
+	return '0';
+}
+
 async function validateLineBatchesForHospital(
 	hospitalId: string,
 	lines: { itemId: number; batchId: number }[]
@@ -550,18 +565,6 @@ export async function createDepartmentConsumptionSubmitted(
 	const branchId = store.branchId;
 	if (!branchId) throw error(400, 'Store is missing branch context');
 
-	const maxLevel = await getMaxApprovalLevel(
-		input.hospitalId,
-		input.storeId,
-		'DC'
-	);
-	if (maxLevel < 1) {
-		throw error(
-			400,
-			'Configure department consumption approvers (Inventory Setup → Approval, module DC) for this store'
-		);
-	}
-
 	const consumptionNo = await allocateConsumptionNo(
 		input.hospitalId,
 		branchId
@@ -742,7 +745,42 @@ export async function approveDepartmentConsumption(
 			)
 			.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
 
+		const batchIds = [...new Set(lines.map((l) => l.batchId))];
+		const batchRows =
+			batchIds.length > 0
+				? await tx
+						.select({
+							id: table.itemBatchTable.id,
+							empSalePrice: table.itemBatchTable.empSalePrice,
+							salePrice: table.itemBatchTable.salePrice,
+							purchasePrice: table.itemBatchTable.purchasePrice
+						})
+						.from(table.itemBatchTable)
+						.where(
+							and(
+								eq(
+									table.itemBatchTable.hospitalId,
+									input.hospitalId
+								),
+								inArray(table.itemBatchTable.id, batchIds)
+							)
+						)
+				: [];
+		const batchById = new Map(batchRows.map((b) => [b.id, b]));
+
 		for (const line of lines) {
+			const batch = batchById.get(line.batchId);
+			if (!batch) {
+				throw error(400, 'Invalid batch for consumption line');
+			}
+			await tx
+				.update(table.invDepartmentConsumptionLineTable)
+				.set({
+					empSalePrice: snapshotEmpSalePriceFromBatch(batch),
+					updatedBy: userId
+				})
+				.where(eq(table.invDepartmentConsumptionLineTable.id, line.id));
+
 			const needIssue = await issueQtyStringFromPurchaseReceipt({
 				hospitalId: input.hospitalId,
 				itemId: line.itemId,

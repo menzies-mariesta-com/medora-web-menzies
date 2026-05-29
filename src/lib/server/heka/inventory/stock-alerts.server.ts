@@ -25,6 +25,7 @@ import {
 } from '$lib/server/heka/inventory/stock-alert-settings.server';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { log } from '$lib/logger';
+import { MAX_REPORT_EXPORT_ROWS } from '$lib/server/heka/inventory/reports/report-export.server';
 
 export type StockAlertsSummary = {
 	lowStockCount: number;
@@ -52,6 +53,118 @@ export type ExpiryLotRow = {
 	qty: string;
 };
 
+const EXPIRY_LOT_REPORT_DEFAULT_LIMIT = 200;
+const LOW_STOCK_REPORT_DEFAULT_LIMIT = 5000;
+
+function applyLowStockColumnFilters(
+	rows: LowStockRow[],
+	filters?: Record<string, string>
+): LowStockRow[] {
+	if (!filters) return rows;
+	const active = Object.entries(filters).filter(([, v]) => v?.trim());
+	if (active.length === 0) return rows;
+
+	return rows.filter((row) => {
+		for (const [colId, raw] of active) {
+			const filter = raw.trim().toLowerCase();
+			if (!filter) continue;
+
+			switch (colId) {
+				case 'storeId': {
+					const filterId = Number(raw.trim());
+					if (
+						!Number.isFinite(filterId) ||
+						row.storeId !== filterId
+					) {
+						return false;
+					}
+					break;
+				}
+				case 'storeName': {
+					const value = (row.storeName ?? '').toLowerCase();
+					if (value !== filter && !value.includes(filter)) return false;
+					break;
+				}
+				case 'itemName': {
+					const value = (row.itemName ?? '').toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				case 'qty': {
+					const value = String(row.qty).toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				case 'minQty': {
+					const value = String(row.minQty).toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+		return true;
+	});
+}
+
+function applyExpiryColumnFilters(
+	rows: ExpiryLotRow[],
+	filters?: Record<string, string>
+): ExpiryLotRow[] {
+	if (!filters) return rows;
+	const active = Object.entries(filters).filter(([, v]) => v?.trim());
+	if (active.length === 0) return rows;
+
+	return rows.filter((row) => {
+		for (const [colId, raw] of active) {
+			const filter = raw.trim().toLowerCase();
+			if (!filter) continue;
+
+			switch (colId) {
+				case 'storeId': {
+					const filterId = Number(raw.trim());
+					if (
+						!Number.isFinite(filterId) ||
+						row.storeId !== filterId
+					) {
+						return false;
+					}
+					break;
+				}
+				case 'storeName': {
+					const value = (row.storeName ?? '').toLowerCase();
+					if (value !== filter && !value.includes(filter)) return false;
+					break;
+				}
+				case 'itemName': {
+					const value = (row.itemName ?? '').toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				case 'batchNo': {
+					const value = (row.batchNo ?? '').toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				case 'expiryDate': {
+					const value = (row.expiryDate ?? '').toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				case 'qty': {
+					const value = String(row.qty).toLowerCase();
+					if (!value.includes(filter)) return false;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+		return true;
+	});
+}
+
 async function listLowStockDb(input: {
 	hospitalId: string;
 	storeId?: number;
@@ -59,7 +172,10 @@ async function listLowStockDb(input: {
 	storeIds?: number[];
 	limit?: number;
 }): Promise<LowStockRow[]> {
-	const limit = Math.min(500, Math.max(1, input.limit ?? 50));
+	const limit = Math.min(
+		MAX_REPORT_EXPORT_ROWS,
+		Math.max(1, input.limit ?? LOW_STOCK_REPORT_DEFAULT_LIMIT)
+	);
 
 	let cond = and(
 		eq(table.invStockTable.hospitalId, input.hospitalId),
@@ -143,20 +259,29 @@ async function listExpiryLotsDb(input: {
 	fallbackExpiringSoonDays: number;
 	limit?: number;
 }): Promise<ExpiryLotRow[]> {
-	const limit = Math.min(200, Math.max(1, input.limit ?? 50));
+	const limit = Math.min(
+		MAX_REPORT_EXPORT_ROWS,
+		Math.max(1, input.limit ?? EXPIRY_LOT_REPORT_DEFAULT_LIMIT)
+	);
 	const fallbackDays = Math.min(
 		365,
 		Math.max(1, Math.floor(input.fallbackExpiringSoonDays))
 	);
 	const today = new Date().toISOString().slice(0, 10);
 
-	let cond = and(
+	const stockLotCond = and(
 		eq(table.invStockTable.hospitalId, input.hospitalId),
 		isNull(table.invStockTable.deletedAt),
 		gt(table.invStockTable.quantity, '0'),
 		eq(table.hospitalBranchTable.hospitalId, input.hospitalId),
 		sql`${table.storeTable.statusId} <> ${StatusEnum.DELETED}`
 	);
+
+	let cond = and(
+		eq(table.itemBatchTable.hospitalId, input.hospitalId),
+		stockLotCond
+	);
+
 	if (typeof input.storeId === 'number') {
 		cond = and(cond, eq(table.invStockTable.storeId, input.storeId))!;
 	} else if (input.storeIds != null && input.storeIds.length > 0) {
@@ -169,12 +294,12 @@ async function listExpiryLotsDb(input: {
 	if (input.mode === 'expired') {
 		cond = and(
 			cond,
-			sql`${table.itemBatchTable.expiryDate} < ${today}`
+			sql`${table.itemBatchTable.expiryDate} < ${today}::date`
 		)!;
 	} else {
 		cond = and(
 			cond,
-			sql`${table.itemBatchTable.expiryDate} >= ${today}`,
+			sql`${table.itemBatchTable.expiryDate} >= ${today}::date`,
 			sql`${table.itemBatchTable.expiryDate} <= (${today}::date + COALESCE(${table.itemMasterTable.expiryAlertLeadDays}, ${fallbackDays})::integer * interval '1 day')`
 		)!;
 	}
@@ -192,9 +317,9 @@ async function listExpiryLotsDb(input: {
 			>`${table.itemBatchTable.expiryDate}::text`,
 			qty: table.invStockTable.quantity
 		})
-		.from(table.invStockTable)
+		.from(table.itemBatchTable)
 		.innerJoin(
-			table.itemBatchTable,
+			table.invStockTable,
 			eq(table.invStockTable.batchId, table.itemBatchTable.id)
 		)
 		.innerJoin(
@@ -219,10 +344,16 @@ async function listExpiryLotsDb(input: {
 
 export async function listLowStock(
 	event: RequestEvent,
-	input: { hospitalId: string; storeId?: number; limit?: number }
+	input: {
+		hospitalId: string;
+		storeId?: number;
+		columnFilters?: Record<string, string>;
+		limit?: number;
+	}
 ): Promise<LowStockRow[]> {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
-	return listLowStockDb(input);
+	const rows = await listLowStockDb(input);
+	return applyLowStockColumnFilters(rows, input.columnFilters);
 }
 
 export async function listExpiryLots(
@@ -232,26 +363,31 @@ export async function listExpiryLots(
 		storeId?: number;
 		mode: 'expired' | 'expiringSoon';
 		daysSoon?: number;
+		columnFilters?: Record<string, string>;
 		limit?: number;
 	}
 ): Promise<ExpiryLotRow[]> {
 	await ensureHospitalInventoryAccess(event, input.hospitalId);
 
-	const hospitalDefault = await getDefaultExpiringSoonDaysForHospital(
-		input.hospitalId
-	);
-	const fallbackDays =
-		input.daysSoon != null && Number.isFinite(input.daysSoon)
-			? Math.min(365, Math.max(1, Math.floor(input.daysSoon)))
-			: hospitalDefault;
+	let fallbackDays = 30;
+	if (input.mode === 'expiringSoon') {
+		const hospitalDefault = await getDefaultExpiringSoonDaysForHospital(
+			input.hospitalId
+		);
+		fallbackDays =
+			input.daysSoon != null && Number.isFinite(input.daysSoon)
+				? Math.min(365, Math.max(1, Math.floor(input.daysSoon)))
+				: hospitalDefault;
+	}
 
-	return listExpiryLotsDb({
+	const rows = await listExpiryLotsDb({
 		hospitalId: input.hospitalId,
 		storeId: input.storeId,
 		mode: input.mode,
 		fallbackExpiringSoonDays: fallbackDays,
 		limit: input.limit
 	});
+	return applyExpiryColumnFilters(rows, input.columnFilters);
 }
 
 async function maybeNotifyStaffInApp(params: {
