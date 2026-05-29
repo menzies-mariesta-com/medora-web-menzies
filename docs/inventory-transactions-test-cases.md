@@ -105,9 +105,10 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 | DC-1 | UI — store locked on **New** | Open **`…/inventory/department-consumption/new`**. Set **From store** in the top bar to store A; refresh if needed. | **From store** on the form shows store A’s name **readonly** (no dropdown). |
 | DC-2 | UI — no navbar store | Clear **From store** (or never select one); open **New**. | Hint explains changing **From store** in the top bar; **Submit** disabled until a store is selected. |
 | DC-3 | Submit for approval | With navbar store set, add lines and **Submit for approval** on **New**. | Record created **pending approval** with **`consumption_no`**; **Approve** / **Reject** are separate (approvers only when pending). |
-| DC-4 | UI — batch selection table | In **New**, add/edit a line: pick an item that has multiple batches in stock. | Modal shows **batch rows** (Batch, Expiry, Stock, optional Sale price) and per-row qty inputs; no batch dropdown. |
+| DC-4 | UI — batch selection table | In **New**, add/edit a line: pick an item that has multiple batches in stock. | Modal shows **batch rows** (Batch, Expiry, Stock, **EMP sale price** per issue unit) and per-row qty inputs; no batch dropdown. |
 | DC-5 | UI — multi-batch quantities | Enter qty in purchase unit across 2+ batches and save the line; submit the document. | POST payload contains **multiple DC lines** (one per batch with qty) for the same item; server accepts if stock is sufficient. |
 | DC-6 | UI — qty exceeds stock (conversion-aware) | Enter a purchase-unit qty that (after conversion) exceeds available stock for a batch row. | Save / submit is blocked with a user-facing error; the offending row is visually highlighted. |
+| DC-7 | EMP price snapshot on post | Apply **`drizzle/0076_inv_department_consumption_line_emp_sale_price.sql`**. GRN stock with distinct sale vs EMP prices; create DC, approve through all levels until **Posted**. | Detail lines show **EMP sale price** (per issue unit) matching `item_batch.emp_sale_price` at post time; `inv_department_consumption_line.emp_sale_price` populated in DB. Pending docs show `—` until posted. |
 
 ---
 
@@ -128,6 +129,19 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 | --- | --- | --- |
 | NAV-1 | Module visibility | Users with Inventory module see subnav: PR, PO, GRN, Stock, Department indent, Department issue, Receipt from store, Department consumption. |
 | NAV-2 | Paraglide | New UI strings resolve from `messages/en.json` (no hard-coded user-visible English in new components). |
+
+---
+
+## 8. Report exports (CSV / Excel / PDF / Print)
+
+**Movement log**, **Low stock**, and **Expired / expiring** export from the **MariTable toolbar** (client-side fetch of JSON, then CSV / Excel / PDF / Print). Column header filters reload data from the API (`filter_<columnId>` query params).
+
+| ID | Case | Steps | Expected |
+| --- | --- | --- | --- |
+| REP-1 | Movement date range | Open **Movement log**; set date from/to. | Table reloads automatically with movements in that date range. |
+| REP-2 | Report column filter | On movement, low stock, or expired report; use a column header filter. | Table reloads from API (backend search). |
+| REP-3 | Report in-table export | With filters applied, use **CSV / Excel / PDF / Print** in the MariTable toolbar. | Export re-fetches JSON with current filters (up to 10,000 rows). |
+| REP-4 | Export row cap | Export with filters that would exceed 10,000 rows (if test data allows). | API returns at most 10,000 rows; export matches. |
 
 ---
 

@@ -6,6 +6,8 @@ export type ConsumptionBatchAllocationDraft = {
 	/** `inv_stock.quantity` in issue/stock unit */
 	stockIssueQty: string;
 	salePrice: string | null;
+	/** From stock lots when drafting; DC UI uses this for the price column. */
+	empSalePrice?: string | null;
 	issueUnitName: string | null;
 	/** User-entered qty in purchase unit for this batch */
 	qtyPurchase: string;
@@ -50,4 +52,6 @@ export type DepartmentConsumptionDetailLine = {
 	expiryDate?: string | null;
 	itemUnitMasterId?: number | null;
 	itemUnitMasterConversion?: string | null;
+	/** Per issue unit; set when consumption is posted. */
+	empSalePrice?: string | null;
 };

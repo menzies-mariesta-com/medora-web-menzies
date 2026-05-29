@@ -1302,7 +1302,7 @@
 							showRowActions={true}
 							actionsVariant="none"
 							showRefreshButton={false}
-							enableColumnFilters={true}
+							enableColumnFilters={false}
 						>
 							{#snippet rowActions(row)}
 								<div class="flex flex-col items-center gap-1">

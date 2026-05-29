@@ -17,8 +17,17 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import MariTableExportToolbar from '$lib/component/own/library/mari/table/MariTableExportToolbar.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import type { MariTableExportConfig } from '$lib/model/type/mari-table-export.type';
 	import { m } from '$lib/paraglide/messages';
+	import {
+		fetchMariTableMasterFilterOptions,
+		type MariSelectFilterOption,
+		type MariTableFilterMasterKey
+	} from '$lib/tool/mari/mari-table-master-filter-options.util.svelte.ts';
+
+	export type { MariTableFilterMasterKey };
 
 	export type MariTableColumn<T = unknown> = {
 		/**
@@ -65,18 +74,29 @@
 		/**
 		 * Type of header filter control to render.
 		 * - "text" (default): simple text input
-		 * - "select": dropdown select (options provided via filterOptions or filterOptionsGetter)
+		 * - "select": dropdown select (options from filterMasterKey, filterOptions, or filterOptionsGetter)
 		 */
 		filterType?: 'text' | 'select';
+		/**
+		 * Load select options from master data, not from the current table rows.
+		 * Keys: `store`, `supplier`, `severity`, `itemCategory`, `unitType`, `visitType`.
+		 * Requires `masterFilterHospitalId` on MariTable (except `severity`).
+		 */
+		filterMasterKey?: MariTableFilterMasterKey;
 		/**
 		 * Static options for select-style filters.
 		 */
 		filterOptions?: { value: string; label: string }[];
 		/**
-		 * Dynamic options for select-style filters. Called on each render so it can
-		 * depend on reactive data in the parent.
+		 * Dynamic options for select-style filters. Prefer `filterMasterKey` when
+		 * options should come from master data rather than the loaded table rows.
 		 */
 		filterOptionsGetter?: () => { value: string; label: string }[];
+		/**
+		 * Label for the empty select option (no filter). Defaults to
+		 * “All {header}” via i18n when omitted.
+		 */
+		filterEmptyLabel?: string;
 		/**
 		 * Optional default filter value for this column.
 		 * Applied once when no value has been set yet.
@@ -154,7 +174,11 @@
 		fillParent = false,
 		rowActions,
 		crudEditDisabled,
-		crudDeleteDisabled
+		crudDeleteDisabled,
+		enableExport = false,
+		exportConfig,
+		/** Hospital scope for `filterMasterKey` store / supplier options. */
+		masterFilterHospitalId
 	} = $props<{
 		rows: unknown[];
 		columns: MariTableColumnsInput;
@@ -190,7 +214,83 @@
 		/** When true, the row’s edit control is disabled (e.g. OP billing lock). */
 		crudEditDisabled?: (row: any) => boolean;
 		crudDeleteDisabled?: (row: any) => boolean;
+		/** Show CSV / Excel / PDF / Print export buttons in the toolbar. */
+		enableExport?: boolean;
+		exportConfig?: MariTableExportConfig;
+		masterFilterHospitalId?: string;
 	}>();
+
+	let masterFilterOptions = $state<
+		Partial<Record<MariTableFilterMasterKey, MariSelectFilterOption[]>>
+	>({});
+	let masterFilterLoadId = 0;
+
+	$effect(() => {
+		const hospitalId = masterFilterHospitalId?.trim() ?? '';
+		if (!enableColumnFilters) return;
+
+		const keysNeeded = new Set<MariTableFilterMasterKey>();
+		for (const column of columns) {
+			if (column.filterMasterKey) {
+				keysNeeded.add(column.filterMasterKey);
+			}
+		}
+		if (keysNeeded.size === 0) return;
+
+		const loadId = ++masterFilterLoadId;
+		const ac = new AbortController();
+
+		(async () => {
+			const next: Partial<
+				Record<MariTableFilterMasterKey, MariSelectFilterOption[]>
+			> = { ...masterFilterOptions };
+
+			for (const key of keysNeeded) {
+				try {
+					next[key] = await fetchMariTableMasterFilterOptions(
+						key,
+						hospitalId || undefined,
+						ac.signal
+					);
+				} catch (e) {
+					if (e instanceof DOMException && e.name === 'AbortError') {
+						return;
+					}
+					next[key] = [];
+				}
+			}
+
+			if (loadId !== masterFilterLoadId) return;
+			masterFilterOptions = next;
+		})();
+
+		return () => {
+			ac.abort();
+		};
+	});
+
+	function resolveSelectFilterOptions(
+		column: MariTableColumn
+	): MariSelectFilterOption[] | undefined {
+		if (column.filterMasterKey) {
+			return masterFilterOptions[column.filterMasterKey] ?? [];
+		}
+		if (column.filterOptionsGetter) {
+			return column.filterOptionsGetter();
+		}
+		return column.filterOptions;
+	}
+
+	const exportEnabled = $derived(
+		enableExport && exportConfig != null && exportConfig.columns.length > 0
+	);
+
+	async function resolveExportRows(): Promise<Record<string, unknown>[]> {
+		if (exportConfig?.fetchExportRows) {
+			return await exportConfig.fetchExportRows();
+		}
+		return rows.map((row) => ({ ...(row as RowLike) }));
+	}
 
 	const rootClass = $derived(
 		fillParent
@@ -215,6 +315,65 @@
 		return column.defaultFilterValue;
 	}
 
+	function selectFilterEmptyLabel(column: MariTableColumn): string {
+		if (column.filterEmptyLabel?.trim()) {
+			return column.filterEmptyLabel.trim();
+		}
+
+		const id = column.id.toLowerCase();
+
+		if (
+			id === 'status' ||
+			id === 'statusid' ||
+			id === 'statustaggingid' ||
+			id === 'visitstatus'
+		) {
+			return id === 'visitstatus'
+				? m.mari_table_filter_all_visit_statuses()
+				: m.inv_di_status_filter_all();
+		}
+
+		if (id.includes('supplier')) {
+			return m.mari_table_filter_all_suppliers();
+		}
+
+		if (id.includes('category') || column.filterMasterKey === 'itemCategory') {
+			return m.service_item_all_categories();
+		}
+
+		if (id === 'storeid' || id === 'store') {
+			return m.inv_report_filter_store_all();
+		}
+
+		if (id === 'kind') {
+			return m.inv_report_filter_kind_all();
+		}
+
+		if (id === 'severity') {
+			return m.mari_table_filter_all_severities();
+		}
+
+		if (id.includes('generic')) {
+			return m.med_order_int_all_generics();
+		}
+
+		if (id.includes('unittype')) {
+			return m.mari_table_filter_all_unit_types();
+		}
+
+		if (id === 'visittype') {
+			return m.mari_table_filter_all_visit_types();
+		}
+
+		return m.mari_table_filter_all_for_column({ column: column.header });
+	}
+
+	function selectOptionsIncludeEmpty(
+		options: { value: string; label: string }[] | undefined
+	): boolean {
+		return options?.some((o) => o.value === '') ?? false;
+	}
+
 	$effect(() => {
 		if (!enableColumnFilters) return;
 
@@ -235,8 +394,7 @@
 		columnFilters = nextFilters;
 		currentPage = 1;
 
-		if (useRemoteFilters) {
-			// Dispatch once for the combined set of changes
+		if (enableColumnFilters) {
 			dispatch('filtersChange', {
 				columnId: '__init__',
 				value: '',
@@ -251,33 +409,7 @@
 		showRowActions || actionsVariant !== 'none'
 	);
 
-	const filteredRows = $derived(
-		useRemoteFilters
-			? rows
-			: rows.filter((row: unknown, index: number) => {
-					for (const column of columns) {
-						const rawFilter = columnFilters[column.id];
-						const filter = rawFilter
-							? rawFilter.trim().toLowerCase()
-							: '';
-						if (!filter) continue;
-
-						const cell = getCellValue(row as RowLike, column, index);
-						const valueStr =
-							cell == null ? '' : String(cell).toLowerCase();
-
-						// For select filters, require an exact match; for text filters, use substring match.
-						if (column.filterType === 'select') {
-							if (valueStr !== filter) {
-								return false;
-							}
-						} else if (!valueStr.includes(filter)) {
-							return false;
-						}
-					}
-					return true;
-				})
-	);
+	const filteredRows = $derived(rows);
 
 	function valueAtPath(row: RowLike, path: string): unknown {
 		const parts = path.split('.');
@@ -409,7 +541,7 @@
 		columnFilters = newFilters;
 		currentPage = 1;
 
-		if (useRemoteFilters) {
+		if (enableColumnFilters || useRemoteFilters) {
 			dispatch('filtersChange', {
 				columnId,
 				value,
@@ -491,6 +623,17 @@
 		{/if}
 
 		<div class="flex items-center gap-3">
+			{#if exportEnabled && exportConfig}
+				<MariTableExportToolbar
+					columns={exportConfig.columns}
+					title={exportConfig.title}
+					subtitle={exportConfig.subtitle}
+					filenameStem={exportConfig.filenameStem}
+					formats={exportConfig.formats}
+					disabled={isLoading || rows.length === 0}
+					getRows={resolveExportRows}
+				/>
+			{/if}
 			<div class="text-sm opacity-80">
 				{#if total > 0}
 					<span>
@@ -542,9 +685,7 @@
 							{@const isFilterable =
 								enableColumnFilters && (column.filterable ?? true)}
 							{@const filterType = column.filterType ?? 'text'}
-							{@const selectOptions = column.filterOptionsGetter
-								? column.filterOptionsGetter()
-								: column.filterOptions}
+							{@const selectOptions = resolveSelectFilterOptions(column)}
 							<th class={column.headerClass ?? column.widthClass}>
 								{#if isFilterable}
 									{#if filterType === 'select' && selectOptions}
@@ -554,7 +695,11 @@
 											onchange={(event) =>
 												handleFilterInputEvent(column.id, event)}
 										>
-											<option value="">All</option>
+											{#if !selectOptionsIncludeEmpty(selectOptions)}
+												<option value="">
+													{selectFilterEmptyLabel(column)}
+												</option>
+											{/if}
 											{#each selectOptions as opt (opt.value)}
 												<option value={opt.value}>
 													{opt.label}

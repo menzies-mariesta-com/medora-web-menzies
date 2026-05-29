@@ -581,17 +581,6 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	function getAllergySeverityFilterOptions() {
-		const names = Array.from(
-			new Set(
-				allergies
-					.map((row) => row.severity?.name)
-					.filter((name): name is string => !!name)
-			)
-		);
-		return names.map((name) => ({ label: name, value: name }));
-	}
-
 	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] =
 		[
 			{
@@ -629,7 +618,7 @@
 				widthClass: 'w-30',
 				filterable: true,
 				filterType: 'select',
-				filterOptionsGetter: getAllergySeverityFilterOptions,
+				filterMasterKey: 'severity',
 				format: (_value, row) =>
 					formatText(row.severity?.name ?? null)
 			},
@@ -1807,7 +1796,7 @@
 				moveToFormCode="patient_condition"
 				moveDirection="down"
 				showRefreshButton={true}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				emptyMessage="No chief complaint entries."
 				on:add={() => openFormEntryAdd('chief_complaint')}
 				on:refresh={reloadFormEntriesForVisit}
@@ -1832,7 +1821,7 @@
 				moveToFormCode="chief_complaint"
 				moveDirection="up"
 				showRefreshButton={true}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				emptyMessage="No patient condition entries."
 				on:add={() => openFormEntryAdd('patient_condition')}
 				on:refresh={reloadFormEntriesForVisit}
@@ -1854,7 +1843,7 @@
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage={m.observation_emr_diagnosis_empty()}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				bind:columnFilters={diagnosisColumnFilters}
 				on:add={openDiagnosisAdd}
 				on:refresh={reloadDiagnosesForVisit}
@@ -1868,6 +1857,7 @@
 				title={m.observation_emr_allergies()}
 				rows={allergies}
 				columns={allergyColumns}
+				masterFilterHospitalId={hospitalId}
 				isLoading={isLoadingGrid ||
 					isLoadingAllergies ||
 					isLoadingVisit}
@@ -1925,7 +1915,7 @@
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage="No vitals for this visit."
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				bind:columnFilters={vitalColumnFilters}
 				on:add={openVitalAdd}
 				on:refresh={reloadVitalsForVisit}
@@ -1967,7 +1957,7 @@
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage={m.observation_emr_plan_of_care_empty()}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				bind:columnFilters={planOfCareColumnFilters}
 				on:add={openPlanOfCareAdd}
 				on:refresh={reloadPlanOfCareForVisit}
@@ -1984,7 +1974,7 @@
 				crudShowView={false}
 				showRefreshButton={true}
 				emptyMessage={m.observation_emr_progress_note_empty()}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				bind:columnFilters={progressNoteColumnFilters}
 				on:add={openProgressNoteAdd}
 				on:refresh={reloadProgressNoteForVisit}
