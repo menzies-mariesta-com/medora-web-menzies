@@ -22,6 +22,7 @@
 	} from '$lib/model/type/heka/ui-rows.type';
 	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import LObservationOrderLineDeleteDialogContent from '$lib/component/own/local/private/heka/observation/LObservationOrderLineDeleteDialogContent.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -128,8 +129,18 @@
 		apiPost<any>({ mode: 'orderLine.create', payload });
 	const updateServiceOrderDetail = (payload: any) =>
 		apiPost<any>({ mode: 'orderLine.update', payload });
-	const deleteServiceOrderDetail = ({ id }: { id: number }) =>
-		apiPost<{ ok: true }>({ mode: 'orderLine.delete', id });
+	const deleteServiceOrderDetail = ({
+		id,
+		cancelRemark
+	}: {
+		id: number;
+		cancelRemark?: string;
+	}) =>
+		apiPost<{ ok: true }>({
+			mode: 'orderLine.delete',
+			id,
+			cancelRemark: cancelRemark ?? ''
+		});
 
 	const getServiceTagging = ({
 		branchId,
@@ -1020,32 +1031,34 @@
 	async function handleDeleteHistoryItem(row: HistoryItem) {
 		if (row.lockedByClosedOpBill) {
 			toastService.addToast(
-				'This line is on a closed OP bill and cannot be deleted.',
+				m.observation_emr_order_line_locked_op_bill(),
 				StatusColorEnum.WARNING
 			);
 			return;
 		}
-		const result = await dialogService.open({
-			title: 'Delete order item',
-			message:
-				'Delete this item from the order history? This cannot be undone.',
-			variant: DialogVariantEnum.CONFIRM
+		const result = await dialogService.open<{ cancelRemark?: string }>({
+			title: m.observation_emr_order_line_inactivate_title(),
+			component: LObservationOrderLineDeleteDialogContent,
+			fullScreen: false,
+			modalClassName: 'max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto'
 		});
 		if (!result.confirmed) return;
 		try {
-			await deleteServiceOrderDetail({ id: row.id });
-			// Refresh history list
+			await deleteServiceOrderDetail({
+				id: row.id,
+				cancelRemark: result.data?.cancelRemark ?? ''
+			});
 			await handleShowHistory();
 			toastSuccess(
 				toastService,
 				m.entity_order_item(),
-				m.toast_action_deleted()
+				m.toast_action_inactivated()
 			);
 		} catch (err) {
 			toastService.addToast(
 				(err instanceof Error
 					? err.message
-					: 'Delete failed') as string,
+					: m.observation_emr_inactivate_failed()) as string,
 				StatusColorEnum.ERROR
 			);
 		}

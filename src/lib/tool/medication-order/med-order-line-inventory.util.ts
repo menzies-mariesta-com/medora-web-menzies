@@ -156,6 +156,54 @@ export function syncMedOrderFefoAllocations(input: {
 	});
 }
 
+export type MedOrderDraftLineStockReservation = {
+	itemMasterId: number;
+	_batchAllocations: ConsumptionBatchAllocationDraft[];
+};
+
+/**
+ * Reduce displayed lot stock for draft lines already on the list (same item, pre-save).
+ * DB stock is deducted only on batch save; this keeps pick/validate aligned in-session.
+ */
+export function applyDraftReservationsToLots(
+	lots: ConsumptionBatchAllocationDraft[],
+	draftLines: MedOrderDraftLineStockReservation[],
+	itemId: number,
+	ium: ConsumptionDraftLineIum | null
+): ConsumptionBatchAllocationDraft[] {
+	if (!ium || lots.length === 0) return lots;
+	const pf = ium.purchaseConversionFactor;
+	const iff = ium.issueConversionFactor;
+	const reservedIssueByBatch = new Map<number, number>();
+
+	for (const line of draftLines) {
+		if (line.itemMasterId !== itemId) continue;
+		for (const a of line._batchAllocations) {
+			const qp = a.qtyPurchase.trim();
+			if (!qp || Number(qp) <= 0) continue;
+			const need = purchaseQtyToIssueQtyNumber(qp, pf, iff);
+			if (need == null || need <= 0) continue;
+			reservedIssueByBatch.set(
+				a.batchId,
+				(reservedIssueByBatch.get(a.batchId) ?? 0) + need
+			);
+		}
+	}
+
+	return lots.map((lot) => {
+		const reserved = reservedIssueByBatch.get(lot.batchId) ?? 0;
+		const avail = Math.max(0, Number(lot.stockIssueQty) - reserved);
+		return { ...lot, stockIssueQty: String(avail) };
+	});
+}
+
+/** Set line sale qty from the sum of per-batch purchase qty inputs. */
+export function syncIssueQtyFromAllocations(
+	allocations: ConsumptionBatchAllocationDraft[]
+): string {
+	return sumAllocationPurchaseQty(allocations);
+}
+
 export function sumAllocationPurchaseQty(
 	allocations: ConsumptionBatchAllocationDraft[]
 ): string {

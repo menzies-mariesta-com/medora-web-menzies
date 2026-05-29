@@ -151,7 +151,7 @@ export async function deleteExternalRefer(
 	await ensureCanAccessHospital(event, hospitalId);
 	await ensureDb()
 		.update(table.externalReferTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.externalReferTable.id, id),

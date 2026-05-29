@@ -146,7 +146,7 @@ export async function deleteUserGroup(
 
 	await ensureDb()
 		.update(table.userGroupTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.userGroupTable.id, input.id));
 }
 

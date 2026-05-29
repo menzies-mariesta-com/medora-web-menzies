@@ -15,6 +15,12 @@ function requireUser(event: RequestEvent): void {
 	if (!event.locals?.user) throw error(401, 'Unauthorized');
 }
 
+function serviceOrderDetailStatusFilter(statusId?: number) {
+	return statusId != null
+		? eq(table.serviceOrderDetailTable.statusId, statusId)
+		: eq(table.serviceOrderDetailTable.statusId, StatusEnum.ACTIVE);
+}
+
 export async function getNursingIncompleteLineCountForVisit(
 	event: RequestEvent,
 	input: { hospitalId: string; visitId: number; statusId?: number }
@@ -39,36 +45,11 @@ export async function getNursingIncompleteLineCountForVisit(
 	const orderIds = orders.map((o) => o.id);
 	if (orderIds.length === 0) return 0;
 
-	const statusFilter =
-		input.statusId != null
-			? eq(table.serviceOrderDetailTable.statusId, input.statusId)
-			: null;
-
-	const whereExpr =
-		statusFilter != null
-			? and(
-					inArray(
-						table.serviceOrderDetailTable.serviceOrderId,
-						orderIds
-					),
-					ne(
-						table.serviceOrderDetailTable.statusId,
-						StatusEnum.DELETED
-					),
-					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
-					statusFilter
-				)
-			: and(
-					inArray(
-						table.serviceOrderDetailTable.serviceOrderId,
-						orderIds
-					),
-					ne(
-						table.serviceOrderDetailTable.statusId,
-						StatusEnum.DELETED
-					),
-					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`
-				);
+	const whereExpr = and(
+		inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
+		sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
+		serviceOrderDetailStatusFilter(input.statusId)
+	);
 
 	const rows = await ensureDb()
 		.select({ count: count() })
@@ -99,12 +80,15 @@ export async function getServiceOrderDetailPaginatedForOrders(
 		inArray(
 			table.serviceOrderDetailTable.serviceOrderId,
 			params.serviceOrderIds
-		),
-		ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
+		)
 	];
 	if (params.statusId != null) {
 		baseConditions.push(
 			eq(table.serviceOrderDetailTable.statusId, params.statusId)
+		);
+	} else {
+		baseConditions.push(
+			eq(table.serviceOrderDetailTable.statusId, StatusEnum.ACTIVE)
 		);
 	}
 	const whereExpr = and(...baseConditions);
@@ -154,7 +138,7 @@ export async function markServiceOrderDetailNursingComplete(
 		.where(
 			and(
 				eq(table.serviceOrderDetailTable.id, input.id),
-				ne(table.serviceOrderDetailTable.statusId, StatusEnum.DELETED)
+				eq(table.serviceOrderDetailTable.statusId, StatusEnum.ACTIVE)
 			)
 		)
 		.returning();
@@ -197,36 +181,11 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 		return { markedCount: 0, remainingIncompleteCount: 0 };
 	}
 
-	const statusFilter =
-		input.statusId != null
-			? eq(table.serviceOrderDetailTable.statusId, input.statusId)
-			: null;
-
-	const whereExpr =
-		statusFilter != null
-			? and(
-					inArray(
-						table.serviceOrderDetailTable.serviceOrderId,
-						orderIds
-					),
-					ne(
-						table.serviceOrderDetailTable.statusId,
-						StatusEnum.DELETED
-					),
-					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
-					statusFilter
-				)
-			: and(
-					inArray(
-						table.serviceOrderDetailTable.serviceOrderId,
-						orderIds
-					),
-					ne(
-						table.serviceOrderDetailTable.statusId,
-						StatusEnum.DELETED
-					),
-					sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`
-				);
+	const whereExpr = and(
+		inArray(table.serviceOrderDetailTable.serviceOrderId, orderIds),
+		sql`${table.serviceOrderDetailTable.nursingCompleteTime} is null`,
+		serviceOrderDetailStatusFilter(input.statusId)
+	);
 
 	const candidates = await ensureDb()
 		.select({ id: table.serviceOrderDetailTable.id })

@@ -35,6 +35,7 @@ import type {
 	diagnosisTable,
 	patientFormEntryTable,
 	planOfCareTable,
+	cpoePrescriptionNoteTable,
 	progressNoteTable,
 	appointmentBlockTable,
 	subCategoryTable,
@@ -332,6 +333,15 @@ export type PlanOfCareSchemaInsert = InferInsertModel<
 	typeof planOfCareTable
 >;
 export type PlanOfCareSchemaUpdate = Partial<PlanOfCareSchemaInsert>;
+
+export type CpoePrescriptionNoteSchema = InferSelectModel<
+	typeof cpoePrescriptionNoteTable
+>;
+export type CpoePrescriptionNoteSchemaInsert = InferInsertModel<
+	typeof cpoePrescriptionNoteTable
+>;
+export type CpoePrescriptionNoteSchemaUpdate =
+	Partial<CpoePrescriptionNoteSchemaInsert>;
 
 export type ProgressNoteSchema = InferSelectModel<
 	typeof progressNoteTable

@@ -38,9 +38,25 @@ export async function getServiceItems(
 	await ensureCanAccessHospital(event, input.hospitalId);
 
 	let whereExpr = and(
-		ne(table.serviceItemTable.statusId, StatusEnum.DELETED),
 		eq(table.serviceItemTable.hospitalId, input.hospitalId)
 	);
+
+	if (input.id != null) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, input.id)
+		);
+	} else if (input.statusId != null) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, input.statusId)
+		);
+	} else {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
+		);
+	}
 
 	if (input.subCategoryId != null) {
 		whereExpr = and(
@@ -60,13 +76,6 @@ export async function getServiceItems(
 		);
 	}
 
-	if (input.id != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceItemTable.id, input.id)
-		);
-	}
-
 	const nameTerm = input.serviceName?.trim();
 	if (nameTerm) {
 		whereExpr = and(
@@ -80,13 +89,6 @@ export async function getServiceItems(
 		whereExpr = and(
 			whereExpr,
 			ilike(table.serviceItemTable.serviceCode, `%${codeTerm}%`)
-		);
-	}
-
-	if (input.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceItemTable.statusId, input.statusId)
 		);
 	}
 
@@ -114,9 +116,25 @@ export async function getServiceItemsPaginated(
 		normalizePagination(params);
 
 	let whereExpr = and(
-		ne(table.serviceItemTable.statusId, StatusEnum.DELETED),
 		eq(table.serviceItemTable.hospitalId, params.hospitalId)
 	);
+
+	if (params.id != null) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.id, params.id)
+		);
+	} else if (params.statusId != null) {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, params.statusId)
+		);
+	} else {
+		whereExpr = and(
+			whereExpr,
+			eq(table.serviceItemTable.statusId, StatusEnum.ACTIVE)
+		);
+	}
 
 	if (params.subCategoryId != null) {
 		whereExpr = and(
@@ -138,13 +156,6 @@ export async function getServiceItemsPaginated(
 		);
 	}
 
-	if (params.id != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceItemTable.id, params.id)
-		);
-	}
-
 	const nameTerm = params.serviceName?.trim();
 	if (nameTerm) {
 		whereExpr = and(
@@ -158,13 +169,6 @@ export async function getServiceItemsPaginated(
 		whereExpr = and(
 			whereExpr,
 			ilike(table.serviceItemTable.serviceCode, `%${codeTerm}%`)
-		);
-	}
-
-	if (params.statusId != null) {
-		whereExpr = and(
-			whereExpr,
-			eq(table.serviceItemTable.statusId, params.statusId)
 		);
 	}
 
@@ -248,6 +252,6 @@ export async function deleteServiceItem(
 
 	await ensureDb()
 		.update(table.serviceItemTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.serviceItemTable.id, input.id));
 }

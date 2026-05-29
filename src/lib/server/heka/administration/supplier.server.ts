@@ -44,10 +44,12 @@ export async function getSupplierPaginated(
 ): Promise<PaginatedResult<SupplierListRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
-	const parts = [
-		hospitalScope(hospitalId),
-		ne(table.supplierTable.statusId, StatusEnum.DELETED)
-	];
+	const parts = [hospitalScope(hospitalId)];
+	if (typeof params?.statusId === 'number') {
+		parts.push(eq(table.supplierTable.statusId, params.statusId));
+	} else {
+		parts.push(eq(table.supplierTable.statusId, StatusEnum.ACTIVE));
+	}
 	const search = params?.search?.trim();
 	if (search && search.length > 0) {
 		parts.push(ilike(table.supplierTable.name, `%${search}%`));
@@ -59,9 +61,6 @@ export async function getSupplierPaginated(
 	const phoneOnly = params?.phone?.trim();
 	if (phoneOnly && phoneOnly.length > 0) {
 		parts.push(ilike(table.supplierTable.phone, `%${phoneOnly}%`));
-	}
-	if (typeof params?.statusId === 'number') {
-		parts.push(eq(table.supplierTable.statusId, params.statusId));
 	}
 	const whereClause = and(...parts);
 
@@ -317,7 +316,7 @@ export async function deleteSupplier(
 
 	await ensureDb()
 		.update(table.supplierTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.supplierTable.id, input.id),
