@@ -322,17 +322,6 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	function getSeverityFilterOptions() {
-		const names = Array.from(
-			new Set(
-				patientAllergies
-					.map((row) => row.severity?.name)
-					.filter((name): name is string => !!name)
-			)
-		);
-		return names.map((name) => ({ label: name, value: name }));
-	}
-
 	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] =
 		[
 			{
@@ -370,7 +359,7 @@
 				widthClass: 'w-30',
 				filterable: true,
 				filterType: 'select',
-				filterOptionsGetter: getSeverityFilterOptions,
+				filterMasterKey: 'severity',
 				format: (_value, row) =>
 					formatText(row.severity?.name ?? null)
 			},
@@ -463,6 +452,7 @@
 						<MariTable
 							rows={patientAllergies}
 							columns={allergyColumns}
+							masterFilterHospitalId={visit?.hospitalId ?? hospitalId}
 							isLoading={isLoadingVisit || isLoadingAllergies}
 							bind:pageSize={pageSizeStr}
 							bind:currentPage

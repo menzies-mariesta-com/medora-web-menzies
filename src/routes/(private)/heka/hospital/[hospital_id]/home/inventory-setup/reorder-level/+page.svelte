@@ -345,7 +345,7 @@
 					showRefreshButton={true}
 					refreshTooltip={m.refresh_data()}
 					emptyMessage={m.service_item_no_records_found()}
-					enableColumnFilters={true}
+					enableColumnFilters={false}
 					showRowActions={true}
 					actionsHeader={m.actions()}
 					actionsVariant="none"

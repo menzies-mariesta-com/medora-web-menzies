@@ -78,6 +78,7 @@
     { "idx": 68, "version": "7", "when": 1780510500000, "tag": "0072_inv_stock_alert_email_payload_digest", "breakpoints": true },
     { "idx": 69, "version": "7", "when": 1780510600000, "tag": "0073_item_master_manufacturer_text_drop_master", "breakpoints": true },
     { "idx": 70, "version": "7", "when": 1780510700000, "tag": "0074_item_master_drop_barcode_batch_required", "breakpoints": true },
-    { "idx": 71, "version": "7", "when": 1780510800000, "tag": "0075_medication_order_dispense", "breakpoints": true }
+    { "idx": 71, "version": "7", "when": 1780510800000, "tag": "0075_medication_order_dispense", "breakpoints": true },
+    { "idx": 72, "version": "7", "when": 1780510900000, "tag": "0076_inv_department_consumption_line_emp_sale_price", "breakpoints": true }
   ]
 }

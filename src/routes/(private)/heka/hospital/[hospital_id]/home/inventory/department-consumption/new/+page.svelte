@@ -446,7 +446,7 @@
 					batchNo: batchAllocationsSummary(ln)
 				}))}
 				showRefreshButton={false}
-				enableColumnFilters={true}
+				enableColumnFilters={false}
 				showRowActions={true}
 				actionsVariant="none"
 			>

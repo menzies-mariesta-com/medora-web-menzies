@@ -272,7 +272,7 @@
 			{m.inv_page_department_consumption_title()}
 		</h1>
 	</div>
-	<div class="flex items-center gap-2">
+	<div class="flex flex-wrap items-center gap-2">
 		<DaisyUiButton
 			type="button"
 			className="d-btn d-btn-primary d-btn-sm"
