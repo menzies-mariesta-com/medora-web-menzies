@@ -7,8 +7,7 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
 		PatientVisitForEmrList,
-		VisitStatusCode,
-		VisitTypeOption
+		VisitStatusCode
 	} from '$lib/model/type/heka/emr/visit-list.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
@@ -36,7 +35,6 @@
 	);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let visitTypeOptions = $state<VisitTypeOption[]>([]);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
 	let isConfirming = $state(false);
@@ -190,11 +188,7 @@
 			widthClass: 'w-32 min-w-[8rem]',
 			filterable: true,
 			filterType: 'select',
-			filterOptionsGetter: () =>
-				visitTypeOptions.map((vt) => ({
-					value: String(vt.id),
-					label: vt.name ?? `Type ${vt.id}`
-				})),
+			filterMasterKey: 'visitType',
 			field: 'visitType.name'
 		},
 		{
@@ -298,24 +292,8 @@
 		}
 	}
 
-	async function loadVisitTypes() {
-		if (!endpointBase) return;
-		const res = await fetch(
-			`${endpointBase}?${new URLSearchParams({
-				mode: 'visitType.list'
-			}).toString()}`
-		);
-		if (!res.ok)
-			throw new Error(`Failed to load visit types (${res.status})`);
-		const all = (await res.json()) as VisitTypeOption[];
-		visitTypeOptions = all
-			.map((v) => ({ id: v.id, name: v.name ?? null }))
-			.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-	}
-
 	lifeCycleUtil.onMount(() => {
 		fetchPatients();
-		loadVisitTypes();
 	});
 
 	lifeCycleUtil.onDestroy(() => {
@@ -383,6 +361,7 @@
 		<MariTable
 			rows={visits}
 			columns={visitColumns}
+			masterFilterHospitalId={hospitalId}
 			isLoading={isLoading || isConfirming}
 			bind:pageSize={pageSizeStr}
 			bind:currentPage

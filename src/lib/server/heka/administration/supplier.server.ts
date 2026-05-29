@@ -112,6 +112,25 @@ export async function getSupplierPaginated(
 	};
 }
 
+/** All non-deleted suppliers for the hospital — for pickers / table filters (not paginated). */
+export async function listSuppliersForHospitalPicker(
+	hospitalId: string
+): Promise<{ id: number; name: string | null }[]> {
+	return ensureDb()
+		.select({
+			id: table.supplierTable.id,
+			name: table.supplierTable.name
+		})
+		.from(table.supplierTable)
+		.where(
+			and(
+				hospitalScope(hospitalId),
+				ne(table.supplierTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.orderBy(asc(table.supplierTable.name));
+}
+
 export async function searchSuppliersForHospital(
 	hospitalId: string,
 	input: { query: string; limit?: number }

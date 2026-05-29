@@ -1832,7 +1832,7 @@
 							showRowActions={true}
 							actionsVariant="none"
 							showRefreshButton={false}
-							enableColumnFilters={true}
+							enableColumnFilters={false}
 						>
 							{#snippet rowActions(row, _rowIndex)}
 								{@const line = row as GrnLineTableRow}

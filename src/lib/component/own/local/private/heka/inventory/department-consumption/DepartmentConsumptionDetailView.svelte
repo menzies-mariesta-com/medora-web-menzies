@@ -14,7 +14,10 @@
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/heka/department-consumption-detail.type';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { formatPurchaseQtyCellForDetailLine } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import {
+		formatPurchaseQtyCellForDetailLine,
+		trimInventoryNumericDisplay
+	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	const toast = new ToastService();
 
@@ -112,6 +115,18 @@
 				header: m.inv_stock_col_expiry(),
 				field: 'expiryDate',
 				format: (_v, r) => r.expiryDate ?? '—'
+			},
+			{
+				id: 'empSalePrice',
+				header: m.inv_stock_col_emp_sale_price(),
+				field: 'empSalePrice',
+				format: (_v, r) => {
+					const t =
+						r.empSalePrice != null
+							? String(r.empSalePrice).trim()
+							: '';
+					return t ? trimInventoryNumericDisplay(t, 4) : '—';
+				}
 			}
 		];
 </script>

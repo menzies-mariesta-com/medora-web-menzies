@@ -1595,7 +1595,7 @@
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
-						enableColumnFilters={true}
+					enableColumnFilters={false}
 						totalRowCount={historyRows.length}
 						fillParent={true}
 						bind:columnFilters={historyColumnFilters}

@@ -7,8 +7,7 @@
 	import { UnitMasterModalState } from '$lib/state/unit-master-modal.state.svelte';
 	import type {
 		UnitMasterListRow,
-		StatusListRow,
-		UnitTypeListRow
+		StatusListRow
 	} from '$lib/model/type/heka/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -48,7 +47,6 @@
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
 	let isLoading = $state(false);
 	let statusOptions = $state<StatusListRow[]>([]);
-	let unitTypeOptions = $state<UnitTypeListRow[]>([]);
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
@@ -63,15 +61,12 @@
 				field: 'name'
 			},
 			{
-				id: 'unitTypeName',
+				id: 'unitTypeId',
 				header: m.unit_master_unit_type(),
 				widthClass: 'w-44 min-w-[10rem]',
 				filterable: true,
 				filterType: 'select',
-				filterOptions: unitTypeOptions.map((ut) => ({
-					label: ut.name ?? String(ut.id),
-					value: String(ut.id)
-				})),
+				filterMasterKey: 'unitType',
 				format: (_v, row) => row.unitTypeName ?? '—'
 			},
 			{
@@ -117,9 +112,9 @@
 			const search = tableFilters.name?.trim();
 			if (search) parts.push(`search=${encodeURIComponent(search)}`);
 			const unitTypeId =
-				tableFilters.unitTypeName != null &&
-				tableFilters.unitTypeName !== ''
-					? Number(tableFilters.unitTypeName)
+				tableFilters.unitTypeId != null &&
+				tableFilters.unitTypeId !== ''
+					? Number(tableFilters.unitTypeId)
 					: undefined;
 			if (unitTypeId != null && Number.isFinite(unitTypeId)) {
 				parts.push(
@@ -166,19 +161,8 @@
 		statusOptions = await res.json();
 	}
 
-	async function loadUnitTypeOptions() {
-		if (!apiBase) return;
-		const res = await fetch(`${apiBase}?mode=unitTypes`, {
-			credentials: 'include',
-			cache: 'no-store'
-		});
-		if (!res.ok) return;
-		unitTypeOptions = await res.json();
-	}
-
 	lifeCycleUtil.onMount(async () => {
 		await loadStatusOptions();
-		await loadUnitTypeOptions();
 		fetchRows();
 	});
 
@@ -246,6 +230,7 @@
 				<MariTable
 					{rows}
 					{columns}
+					masterFilterHospitalId={hospitalId}
 					{isLoading}
 					bind:pageSize={pageSizeStr}
 					bind:currentPage

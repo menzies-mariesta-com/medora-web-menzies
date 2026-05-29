@@ -1294,6 +1294,11 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		batchId: integer('batch_id')
 			.notNull()
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		/** Per issue unit; snapshot from item_batch at post time. */
+		empSalePrice: decimal('emp_sale_price', {
+			precision: 14,
+			scale: 2
+		}),
 		remarks: text('remarks'),
 		...invTimestamps
 	},

@@ -159,10 +159,13 @@
 			format: (_v, r) => r.fromStoreName ?? '—'
 		},
 		{
-			id: 'to',
+			id: 'toStoreId',
 			header: m.inv_dept_indent_to(),
 			field: 'toStoreId',
 			filterable: true,
+			filterType: 'select',
+			filterMasterKey: 'store',
+			filterEmptyLabel: m.inv_report_filter_store_all(),
 			format: (_v, r) => r.toStoreName ?? '—'
 		},
 		{
@@ -188,7 +191,7 @@
 			if (selectedInventoryFromStoreId != null) {
 				ps.set('fromStoreId', String(selectedInventoryFromStoreId));
 			}
-			const toStoreIdFilter = tableFilters.to?.trim() ?? '';
+			const toStoreIdFilter = tableFilters.toStoreId?.trim() ?? '';
 			if (toStoreIdFilter !== '') {
 				ps.set('toStoreId', toStoreIdFilter);
 			}
@@ -346,6 +349,7 @@
 		<MariTable
 			columns={columns as MariTableColumn[]}
 			rows={list}
+			masterFilterHospitalId={hospitalId}
 			bind:currentPage
 			bind:pageSize={pageSizeStr}
 			bind:columnFilters={tableFilters}
