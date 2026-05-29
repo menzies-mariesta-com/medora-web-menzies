@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
 	appointmentTable,
+	cpoePrescriptionNoteTable,
 	diagnosisTable,
 	patientFormEntryTable,
 	planOfCareTable,
@@ -470,7 +471,8 @@ export const patientVisitTableRelations = relations(
 		classificationDiagnoses: many(diagnosisTable),
 		formEntries: many(patientFormEntryTable),
 		planOfCareEntries: many(planOfCareTable),
-		progressNoteEntries: many(progressNoteTable)
+		progressNoteEntries: many(progressNoteTable),
+		cpoePrescriptionNoteEntries: many(cpoePrescriptionNoteTable)
 	})
 );
 
@@ -627,6 +629,32 @@ export const progressNoteTableRelations = relations(
 		}),
 		status: one(statusTable, {
 			fields: [progressNoteTable.statusId],
+			references: [statusTable.id]
+		})
+	})
+);
+
+export const cpoePrescriptionNoteTableRelations = relations(
+	cpoePrescriptionNoteTable,
+	({ one }) => ({
+		branch: one(hospitalBranchTable, {
+			fields: [cpoePrescriptionNoteTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		patient: one(patientTable, {
+			fields: [cpoePrescriptionNoteTable.patientId],
+			references: [patientTable.id]
+		}),
+		visit: one(patientVisitTable, {
+			fields: [cpoePrescriptionNoteTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		doctor: one(staffTable, {
+			fields: [cpoePrescriptionNoteTable.doctorId],
+			references: [staffTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [cpoePrescriptionNoteTable.statusId],
 			references: [statusTable.id]
 		})
 	})

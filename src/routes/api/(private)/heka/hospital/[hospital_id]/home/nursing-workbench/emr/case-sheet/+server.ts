@@ -1,4 +1,5 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/heka/observation/observation-emr.server';
 import { getUserDisplayNameByIds } from '$lib/server/heka/user-display.server';
@@ -27,6 +28,12 @@ type OrderDetailVisitRow = ServiceOrderDetailSchema & {
 	orderNo: string | null;
 	serviceName: string | null;
 };
+
+function activeOnly<T extends { statusId?: number | null }>(
+	rows: T[]
+): T[] {
+	return rows.filter((row) => row.statusId === StatusEnum.ACTIVE);
+}
 
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
@@ -84,30 +91,44 @@ export async function GET(event: RequestEvent) {
 	]);
 
 	const hospitalIdParam = (visitRow as any).hospitalId ?? hospitalId;
-	const allergies = hospitalIdParam
+	const allergiesForHospital = hospitalIdParam
 		? (allergyAll as any[]).filter(
 				(row) => row.visit?.hospitalId === hospitalIdParam
 			)
 		: (allergyAll as any[]);
+	const allergies = activeOnly(allergiesForHospital);
+	const activeVitals = activeOnly(vitals as { statusId?: number | null }[]);
+	const activeOrderLines = activeOnly(
+		orderLines as { statusId?: number | null }[]
+	);
+	const activeVisitDiagnoses = activeOnly(
+		visitDiagnoses as { statusId?: number | null }[]
+	);
+	const activeChiefComplaintEntries = activeOnly(
+		chiefComplaintEntries as { statusId?: number | null }[]
+	);
+	const activePatientConditionEntries = activeOnly(
+		patientConditionEntries as { statusId?: number | null }[]
+	);
 
 	const userIds = [
 		...collectAuditUserIds(allergies),
-		...collectAuditUserIds(vitals as unknown[]),
-		...collectAuditUserIds(orderLines as unknown[]),
-		...collectAuditUserIds(visitDiagnoses as unknown[]),
-		...collectAuditUserIds(chiefComplaintEntries as unknown[]),
-		...collectAuditUserIds(patientConditionEntries as unknown[])
+		...collectAuditUserIds(activeVitals),
+		...collectAuditUserIds(activeOrderLines),
+		...collectAuditUserIds(activeVisitDiagnoses),
+		...collectAuditUserIds(activeChiefComplaintEntries),
+		...collectAuditUserIds(activePatientConditionEntries)
 	];
 	const userDisplayById = await getUserDisplayNameByIds(userIds);
 
 	return json({
 		visitRow,
 		allergies,
-		vitals: vitals as PatientDiagnosisSchema[],
-		orderLines: orderLines as OrderDetailVisitRow[],
-		visitDiagnoses,
-		chiefComplaintEntries,
-		patientConditionEntries,
+		vitals: activeVitals as PatientDiagnosisSchema[],
+		orderLines: activeOrderLines as OrderDetailVisitRow[],
+		visitDiagnoses: activeVisitDiagnoses,
+		chiefComplaintEntries: activeChiefComplaintEntries,
+		patientConditionEntries: activePatientConditionEntries,
 		userDisplayById
 	});
 }

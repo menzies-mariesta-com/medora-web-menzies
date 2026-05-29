@@ -1,5 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
+import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
+import * as prescriptionNote from '$lib/server/heka/consultation/cpoe-prescription-note.server';
 import * as mo from '$lib/server/heka/medication-order/medication-order-internal.server';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -74,6 +76,26 @@ export async function GET(event: RequestEvent) {
 		if (!pack) throw error(404, 'Not found');
 		return json(pack);
 	}
+	if (mode === 'prescriptionNote.list') {
+		const visitId = Number(
+			event.url.searchParams.get('visitId') ?? '0'
+		);
+		if (!Number.isFinite(visitId) || visitId <= 0) {
+			throw error(400, 'visitId is required');
+		}
+		const rows =
+			await prescriptionNote.getCpoePrescriptionNoteRowsByVisitId({
+				visitId,
+				hospitalId
+			});
+		return json(
+			rows.filter(
+				(row) =>
+					row.statusId == null ||
+					row.statusId === StatusEnum.ACTIVE
+			)
+		);
+	}
 
 	throw error(400, `Unknown mode: ${mode}`);
 }
@@ -90,21 +112,17 @@ export async function POST(event: RequestEvent) {
 		const b = body as {
 			visitId?: unknown;
 			storeId?: unknown;
-			batchRemarks?: unknown;
 			lines?: unknown;
 		};
 		const visitId = Number(b.visitId ?? 0);
 		const storeId = Number(b.storeId ?? 0);
 		const lines = b.lines;
 		if (!Array.isArray(lines)) throw error(400, 'lines is required');
-		const batchRemarks =
-			typeof b.batchRemarks === 'string' ? b.batchRemarks : null;
 		return json(
 			await mo.saveMedicationOrderBatch(event, {
 				hospitalId,
 				visitId,
 				storeId,
-				batchRemarks,
 				lines: lines as Parameters<
 					typeof mo.saveMedicationOrderBatch
 				>[1]['lines']
@@ -132,7 +150,6 @@ export async function POST(event: RequestEvent) {
 	if (mode === 'batch.update') {
 		const b = body as {
 			batchId?: unknown;
-			batchRemarks?: unknown;
 			lines?: unknown;
 		};
 		const batchId = Number(b.batchId ?? 0);
@@ -141,13 +158,10 @@ export async function POST(event: RequestEvent) {
 		}
 		if (!Array.isArray(b.lines))
 			throw error(400, 'lines is required');
-		const batchRemarks =
-			typeof b.batchRemarks === 'string' ? b.batchRemarks : undefined;
 		return json(
 			await mo.updateMedicationOrderBatch(event, {
 				hospitalId,
 				batchId,
-				batchRemarks,
 				lines: b.lines as Parameters<
 					typeof mo.updateMedicationOrderBatch
 				>[1]['lines']

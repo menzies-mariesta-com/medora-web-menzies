@@ -167,7 +167,7 @@ export async function deleteStaff(
 
 	await ensureDb()
 		.update(table.staffTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(eq(table.staffTable.id, params.id), hospitalCondition)
 		);

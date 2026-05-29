@@ -38,7 +38,6 @@ export type MedicationOrderLineSaveInput = {
 	startAt: string;
 	testDose: string | null;
 	substituteNotAllowed: boolean;
-	lineRemarks?: string | null;
 	unitSalePrice: string;
 	issueQtyPurchase: string;
 	itemUnitMasterId: number;
@@ -370,7 +369,7 @@ export async function insertMedicationOrderLineWithAllocations(
 			itemUnitMasterId: line.itemUnitMasterId,
 			issueQtyPurchase: line.issueQtyPurchase,
 			unitSalePrice: line.unitSalePrice,
-			lineRemarks: line.lineRemarks?.trim() || null,
+			lineRemarks: null,
 			createdBy: input.userId,
 			updatedBy: input.userId
 		})

@@ -110,7 +110,25 @@ export function getCurrentParentPage(): HekaPageRow | null {
 export function getSubPages(): HekaPageRow[] {
 	const parent = getCurrentParentPage();
 	if (!parent) return [];
+	return getSubPagesForParentId(parent.id);
+}
+
+/**
+ * Child pages of a fixed parent page URL (for nested layouts that must not
+ * inherit the deepest URL prefix as the tab parent).
+ */
+export function getSubPagesForPageUrl(
+	pageUrl: string | null | undefined
+): HekaPageRow[] {
+	const u = normPath(pageUrl);
+	if (!u) return [];
+	const parent = getPageData().find((p) => normPath(p.pageUrl) === u);
+	if (!parent) return [];
+	return getSubPagesForParentId(parent.id);
+}
+
+function getSubPagesForParentId(parentId: number): HekaPageRow[] {
 	return getPageData()
-		.filter((p) => p.parentId === parent.id)
+		.filter((p) => p.parentId === parentId)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));
 }

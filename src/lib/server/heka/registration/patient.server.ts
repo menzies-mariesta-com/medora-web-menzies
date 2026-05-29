@@ -152,7 +152,7 @@ export async function deletePatient(
 
 	await ensureDb()
 		.update(table.patientTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.patientTable.id, params.id),

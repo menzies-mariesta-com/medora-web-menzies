@@ -788,7 +788,7 @@
 													</DaisyUiButton>
 												</DaisyUiTooltip>
 												<DaisyUiTooltip
-													tooltipText="Delete"
+													tooltipText={m.mari_table_crud_inactivate_tooltip()}
 													className="d-tooltip-right"
 												>
 													<DaisyUiButton

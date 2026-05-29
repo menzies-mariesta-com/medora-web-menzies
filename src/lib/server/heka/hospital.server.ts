@@ -197,6 +197,6 @@ export async function deleteHospital(
 
 	await ensureDb()
 		.update(table.hospitalTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.hospitalTable.id, id));
 }

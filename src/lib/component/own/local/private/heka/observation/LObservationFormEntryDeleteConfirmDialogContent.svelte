@@ -49,7 +49,7 @@
 
 <div class="flex flex-col gap-4">
 	<p class="text-sm text-base-content/80">
-		Retype the entry description below to confirm delete.
+		{m.observation_emr_form_entry_inactivate_hint()}
 	</p>
 	<p class="rounded bg-base-200 p-2 text-sm font-medium">
 		{expectedDescription}
@@ -81,7 +81,7 @@
 			disabled={isConfirming}
 			loading={isConfirming}
 		>
-			Delete
+			{m.observation_emr_inactivate_confirm()}
 		</DaisyUiButton>
 	</div>
 </div>

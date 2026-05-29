@@ -135,6 +135,6 @@ export async function deleteCategory(
 
 	await ensureDb()
 		.update(table.categoryTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.categoryTable.id, input.id));
 }
