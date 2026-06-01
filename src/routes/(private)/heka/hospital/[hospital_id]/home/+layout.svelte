@@ -34,13 +34,13 @@
 			WebRoutesEnum.HEKA_HOME_NURSING_WORKBENCH_EMR
 		) ||
 			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.HEKA_HOME_CPOE
+				WebRoutesEnum.HEKA_HOME_CONSULTATION_EMR
+			) ||
+			pathnameForPageMatch().startsWith(
+				WebRoutesEnum.HEKA_HOME_CONSULTATION_CPOE
 			) ||
 			pathnameForPageMatch().startsWith(
 				WebRoutesEnum.HEKA_HOME_MEDICATION_ORDER
-			) ||
-			pathnameForPageMatch().startsWith(
-				WebRoutesEnum.HEKA_HOME_OBSERVATION_EMR
 			) ||
 			pathnameForPageMatch().startsWith(
 				WebRoutesEnum.HEKA_HOME_BILLING

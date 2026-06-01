@@ -367,7 +367,7 @@
 					rows={recipients}
 					columns={recipientColumns}
 					isLoading={bundleLoading}
-					enableColumnFilters={true}
+					enableColumnFilters={false}
 					showRefreshButton={true}
 					refreshTooltip={m.refresh_data()}
 					showRowActions={true}

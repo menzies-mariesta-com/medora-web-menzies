@@ -37,6 +37,8 @@ Your database already has tables from migration `0000_*.sql` (or from `db:push`)
 
    Only migrations **after** the baseline marker should run (by default, everything except the **last** journal entry is marked applied; adjust with `--pending N` if you need more than one migration to still run — see script header).
 
+   If the database already matches the full journal (e.g. you applied `0075` manually), use `pnpm db:baseline:sql -- --pending 0` so `db:migrate` becomes a no-op.
+
 ### Option B — Empty dev database
 
 Create a fresh Neon branch / database, set `DATABASE_URL`, then run `pnpm db:migrate` once on an empty database.

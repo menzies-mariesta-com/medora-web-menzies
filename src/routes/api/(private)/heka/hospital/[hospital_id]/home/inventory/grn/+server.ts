@@ -162,6 +162,11 @@ export const POST: RequestHandler = async (event) => {
 					l.freeUnitId != null && String(l.freeUnitId).trim() !== ''
 						? Number(l.freeUnitId)
 						: null,
+				freeUnitIumId:
+					l.freeUnitIumId != null &&
+					String(l.freeUnitIumId).trim() !== ''
+						? Number(l.freeUnitIumId)
+						: null,
 				discountAmount:
 					l.discountAmount != null ? String(l.discountAmount) : null,
 				discountPercent:
@@ -169,7 +174,15 @@ export const POST: RequestHandler = async (event) => {
 						? String(l.discountPercent)
 						: null,
 				taxAmount: l.taxAmount != null ? String(l.taxAmount) : null,
-				taxPercent: l.taxPercent != null ? String(l.taxPercent) : null
+				taxPercent: l.taxPercent != null ? String(l.taxPercent) : null,
+				salePriceOverride:
+					l.salePriceOverride != null
+						? String(l.salePriceOverride)
+						: null,
+				empSalePriceOverride:
+					l.empSalePriceOverride != null
+						? String(l.empSalePriceOverride)
+						: null
 			}))
 		});
 		return json(data);
@@ -196,12 +209,25 @@ export const POST: RequestHandler = async (event) => {
 				l.freeUnitId != null && String(l.freeUnitId).trim() !== ''
 					? Number(l.freeUnitId)
 					: null,
+			freeUnitIumId:
+				l.freeUnitIumId != null &&
+				String(l.freeUnitIumId).trim() !== ''
+					? Number(l.freeUnitIumId)
+					: null,
 			discountAmount:
 				l.discountAmount != null ? String(l.discountAmount) : null,
 			discountPercent:
 				l.discountPercent != null ? String(l.discountPercent) : null,
 			taxAmount: l.taxAmount != null ? String(l.taxAmount) : null,
-			taxPercent: l.taxPercent != null ? String(l.taxPercent) : null
+			taxPercent: l.taxPercent != null ? String(l.taxPercent) : null,
+			salePriceOverride:
+				l.salePriceOverride != null
+					? String(l.salePriceOverride)
+					: null,
+			empSalePriceOverride:
+				l.empSalePriceOverride != null
+					? String(l.empSalePriceOverride)
+					: null
 		}))
 	});
 	return json(data);

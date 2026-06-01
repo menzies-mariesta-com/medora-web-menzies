@@ -695,7 +695,7 @@
 	"med_order_int_no_store": "Select a store first.",
 	"med_order_int_no_item": "Select an item from search results first.",
 	"med_order_int_missing_master": "Configure frequency, dose unit, and duration unit in Medication order setup, then try again.",
-	"med_order_int_past_start": "Start time cannot be in the past.",
+	"med_order_int_past_start": "Start date cannot be before today.",
 	"med_order_int_draft_empty": "Add at least one line to the list.",
 	"med_order_int_save_failed": "Save failed. Check the server message and try again.",
 	"med_order_int_update_failed": "Update failed. Check the server message and try again.",

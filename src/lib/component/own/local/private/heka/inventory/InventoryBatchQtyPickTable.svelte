@@ -24,7 +24,8 @@
 		purchaseUnitLabel,
 		issueUnitLabel,
 		disabled = false,
-		showSalePrice = true
+		showSalePrice = true,
+		priceColumn = 'sale'
 	}: {
 		allocations: ConsumptionBatchAllocationDraft[];
 		factors: IumFactors | null;
@@ -32,6 +33,7 @@
 		issueUnitLabel: string;
 		disabled?: boolean;
 		showSalePrice?: boolean;
+		priceColumn?: 'sale' | 'emp';
 	} = $props();
 
 	function stockDisplay(
@@ -47,9 +49,12 @@
 		return iu ? `${qtyDisp} ${iu}` : qtyDisp;
 	}
 
-	function saleDisp(row: ConsumptionBatchAllocationDraft): string {
-		const t =
-			row.salePrice != null ? String(row.salePrice).trim() : '';
+	function priceDisp(row: ConsumptionBatchAllocationDraft): string {
+		const raw =
+			priceColumn === 'emp'
+				? row.empSalePrice
+				: row.salePrice;
+		const t = raw != null ? String(raw).trim() : '';
 		return t ? trimInventoryNumericDisplay(t, 4) : '—';
 	}
 
@@ -106,11 +111,14 @@
 
 		if (showSalePrice) {
 			base.push({
-				id: 'salePrice',
-				header: m.inv_stock_col_sale_price(),
+				id: priceColumn === 'emp' ? 'empSalePrice' : 'salePrice',
+				header:
+					priceColumn === 'emp'
+						? m.inv_stock_col_emp_sale_price()
+						: m.inv_stock_col_sale_price(),
 				filterable: false,
 				cellClass: 'align-middle whitespace-nowrap',
-				format: (_value, row) => saleDisp(row)
+				format: (_value, row) => priceDisp(row)
 			});
 		}
 
@@ -153,7 +161,7 @@
 		showRowActions={false}
 		actionsVariant="none"
 		showRefreshButton={false}
-		enableColumnFilters={true}
+		enableColumnFilters={false}
 		bind:columnFilters
 		emptyMessage={m.inv_dc_batch_table_empty()}
 		pageSizeOptions={[AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE]}

@@ -6,6 +6,7 @@
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import type { CaseSheetGetResponse } from '$lib/model/type/heka/case-sheet.type';
 	import type {
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
@@ -49,6 +50,7 @@
 	let patientConditionEntries = $state<
 		PatientFormEntryWithRelations[]
 	>([]);
+	let userDisplayById = $state<Record<string, string>>({});
 
 	let isLoading = $state(false);
 	let mounted = $state(false);
@@ -91,53 +93,7 @@
 
 	function formatUserName(userId: string | null | undefined): string {
 		if (!userId) return '–';
-		return userId;
-	}
-
-	function getSectionAudit(
-		rows: {
-			createdAt?: string | null;
-			updatedAt?: string | null;
-			createdBy?: string | null;
-			updatedBy?: string | null;
-		}[]
-	): {
-		enteredAt: string | null;
-		enteredBy: string | null;
-		updatedAt: string | null;
-		updatedBy: string | null;
-	} | null {
-		if (!rows.length) return null;
-		let enteredAt: string | null = rows[0]?.createdAt ?? null;
-		let enteredBy: string | null = rows[0]?.createdBy ?? null;
-		let updatedAt: string | null =
-			rows[0]?.updatedAt ?? rows[0]?.createdAt ?? null;
-		let updatedBy: string | null =
-			rows[0]?.updatedBy ?? rows[0]?.createdBy ?? null;
-		for (const row of rows) {
-			if (
-				row.createdAt &&
-				(!enteredAt || row.createdAt < enteredAt)
-			) {
-				enteredAt = row.createdAt;
-				enteredBy = row.createdBy ?? enteredBy;
-			}
-			const candidateUpdatedAt =
-				row.updatedAt ?? row.createdAt ?? null;
-			if (
-				candidateUpdatedAt &&
-				(!updatedAt || candidateUpdatedAt > updatedAt)
-			) {
-				updatedAt = candidateUpdatedAt;
-				updatedBy = row.updatedBy ?? row.createdBy ?? updatedBy;
-			}
-		}
-		return {
-			enteredAt,
-			enteredBy: enteredBy ?? null,
-			updatedAt,
-			updatedBy: updatedBy ?? null
-		};
+		return userDisplayById[userId]?.trim() || '–';
 	}
 
 	function vitalStatusLabel(row: PatientDiagnosisListRow): string {
@@ -181,6 +137,7 @@
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
+			userDisplayById = {};
 			return;
 		}
 
@@ -192,6 +149,7 @@
 		visitDiagnoses = [];
 		chiefComplaintEntries = [];
 		patientConditionEntries = [];
+		userDisplayById = {};
 		try {
 			if (!hospitalId) {
 				visitRow = null;
@@ -203,7 +161,7 @@
 			);
 			if (!res.ok)
 				throw new Error(`Failed to load case sheet (${res.status})`);
-			const data = await res.json();
+			const data = (await res.json()) as CaseSheetGetResponse;
 
 			visitRow = data.visitRow ?? null;
 			allergies = Array.isArray(data.allergies) ? data.allergies : [];
@@ -224,6 +182,7 @@
 			)
 				? data.patientConditionEntries
 				: [];
+			userDisplayById = data.userDisplayById ?? {};
 		} finally {
 			isLoading = false;
 		}
@@ -240,6 +199,7 @@
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
+			userDisplayById = {};
 			return;
 		}
 		void loadCaseSheet();

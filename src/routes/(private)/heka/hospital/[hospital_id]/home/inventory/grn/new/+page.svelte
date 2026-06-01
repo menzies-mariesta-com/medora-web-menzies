@@ -25,6 +25,10 @@
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
+	import {
+		freeUnitIdFromIum,
+		resolveFreeUnitIumId
+	} from '$lib/tool/inventory/grn-free-unit.util';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -34,6 +38,7 @@
 		trimInventoryNumericDisplay,
 		trimMetricQtyDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -115,6 +120,7 @@
 	type ReceivingStore = {
 		storeId: number;
 		storeName: string | null;
+		branchId?: string | null;
 	} | null;
 
 	type PoRowLite = {
@@ -158,9 +164,12 @@
 			discountPercent: string;
 			taxAmount: string;
 			taxPercent: string;
+			salePriceOverride: string;
+			empSalePriceOverride: string;
 		}[]
 	>([]);
 
+	let branchPricingConfig = $state<BranchPricingConfigDto | null>(null);
 	let submitting = $state(false);
 
 	type IumOpt = {
@@ -189,6 +198,8 @@
 		discountPercent: string;
 		taxAmount: string;
 		taxPercent: string;
+		salePriceOverride: string;
+		empSalePriceOverride: string;
 		iumList: IumOpt[];
 		itemUnitMasterId: number | null;
 	};
@@ -337,9 +348,54 @@
 			discountPercent: '0',
 			taxAmount: '0',
 			taxPercent: '0',
+			salePriceOverride: '',
+			empSalePriceOverride: '',
 			iumList: [],
 			itemUnitMasterId: null
 		};
+	}
+
+	async function loadBranchPricingConfigForBranch(branchId: string) {
+		if (!hospitalId || !branchId) {
+			branchPricingConfig = null;
+			return;
+		}
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-config?branchId=${encodeURIComponent(branchId)}`,
+				{ credentials: 'include', cache: 'no-store' }
+			);
+			if (!res.ok) {
+				branchPricingConfig = null;
+				return;
+			}
+			const body = (await res.json()) as {
+				config: BranchPricingConfigDto;
+			};
+			branchPricingConfig = body.config;
+		} catch {
+			branchPricingConfig = null;
+		}
+	}
+
+	async function loadBranchPricingForStoreId(storeId: number) {
+		if (!hospitalId) return;
+		try {
+			const res = await fetch(
+				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?id=${storeId}`,
+				{ credentials: 'include', cache: 'no-store' }
+			);
+			if (!res.ok) {
+				branchPricingConfig = null;
+				return;
+			}
+			const store = (await res.json()) as { branchId?: string | null };
+			const branchId = store?.branchId?.trim();
+			if (branchId) await loadBranchPricingConfigForBranch(branchId);
+			else branchPricingConfig = null;
+		} catch {
+			branchPricingConfig = null;
+		}
 	}
 
 	function purchaseUnitForDirectLine(
@@ -352,24 +408,27 @@
 	}
 
 	function ensureDirectFreeUnit(line: GrnDirectLine) {
-		const ium =
+		const receivedIum =
 			line.iumList.find((u) => u.id === line.itemUnitMasterId) ??
 			null;
-		const purchaseUnitId = ium?.purchaseUnitId ?? null;
-		const allowedIumIds = new Set(
-			(line.iumList ?? []).map((u) => String(u.id))
-		);
-		const currentIum =
-			line.freeUnitIumId != null ? String(line.freeUnitIumId) : '';
-		if (!currentIum || !allowedIumIds.has(currentIum)) {
-			line.freeUnitIumId = ium?.id ?? null;
+		const purchaseUnitId = receivedIum?.purchaseUnitId ?? null;
+		if (line.freeUnitIumId == null && line.freeUnitId == null) {
+			line.freeUnitIumId = receivedIum?.id ?? null;
+			line.freeUnitId = purchaseUnitId;
+			return;
 		}
+		line.freeUnitIumId = resolveFreeUnitIumId(
+			line.iumList,
+			line.freeUnitId,
+			line.freeUnitIumId ?? receivedIum?.id ?? null
+		);
 		const chosen =
 			line.freeUnitIumId != null
 				? (line.iumList.find((u) => u.id === line.freeUnitIumId) ??
 					null)
 				: null;
-		line.freeUnitId = chosen?.purchaseUnitId ?? purchaseUnitId;
+		line.freeUnitId =
+			freeUnitIdFromIum(chosen) ?? line.freeUnitId ?? purchaseUnitId;
 	}
 
 	function conversionLabelDirect(line: GrnDirectLine): string {
@@ -435,8 +494,12 @@
 				component: GrnDirectLineDialogContent,
 				props: {
 					draftDirectLine,
+					pricingConfig: branchPricingConfig,
 					searchItemsFn: searchGrnItems,
 					onPickItem: pickDraftDirectItem,
+					onSyncFreeUnit: () => {
+						ensureDirectFreeUnit(draftDirectLine);
+					},
 					onSaveAttempt: saveDirectDraftLine
 				}
 			});
@@ -463,8 +526,12 @@
 				component: GrnDirectLineDialogContent,
 				props: {
 					draftDirectLine,
+					pricingConfig: branchPricingConfig,
 					searchItemsFn: searchGrnItems,
 					onPickItem: pickDraftDirectItem,
+					onSyncFreeUnit: () => {
+						ensureDirectFreeUnit(draftDirectLine);
+					},
 					onSaveAttempt: saveDirectDraftLine
 				}
 			});
@@ -545,6 +612,8 @@
 			discountPercent: row.discountPercent,
 			taxAmount: row.taxAmount,
 			taxPercent: row.taxPercent,
+			salePriceOverride: row.salePriceOverride,
+			empSalePriceOverride: row.empSalePriceOverride,
 			iumList: []
 		};
 
@@ -580,9 +649,29 @@
 							? (allowedIum.find((u) => u.id === preferred) ?? null)
 							: (allowedIum[0] ?? null);
 					draftGrnFromPoLine.iumList = allowedIum;
-					draftGrnFromPoLine.freeUnitId =
-						chosen?.purchaseUnitId ?? meta.unitId ?? null;
-					draftGrnFromPoLine.freeUnitIumId = chosen?.id ?? null;
+					if (
+						draftGrnFromPoLine.freeUnitIumId == null &&
+						(draftGrnFromPoLine.freeUnitId == null ||
+							draftGrnFromPoLine.freeUnitId === '')
+					) {
+						draftGrnFromPoLine.freeUnitId =
+							chosen?.purchaseUnitId ?? meta.unitId ?? null;
+						draftGrnFromPoLine.freeUnitIumId = chosen?.id ?? null;
+					} else {
+						draftGrnFromPoLine.freeUnitIumId = resolveFreeUnitIumId(
+							allowedIum,
+							draftGrnFromPoLine.freeUnitId,
+							draftGrnFromPoLine.freeUnitIumId ?? preferred
+						);
+						const freeIum = allowedIum.find(
+							(u) => u.id === draftGrnFromPoLine!.freeUnitIumId
+						);
+						draftGrnFromPoLine.freeUnitId =
+							freeUnitIdFromIum(freeIum) ??
+							draftGrnFromPoLine.freeUnitId ??
+							meta.unitId ??
+							null;
+					}
 					draftGrnFromPoLine = { ...draftGrnFromPoLine };
 				}
 			}
@@ -597,6 +686,7 @@
 				component: GrnFromPoLineDialogContent,
 				props: {
 					draftGrnFromPoLine,
+					pricingConfig: branchPricingConfig,
 					onSaveAttempt: saveGrnFromPoLineDraft
 				}
 			});
@@ -642,10 +732,13 @@
 			purchasePrice: draftGrnFromPoLine.purchasePrice,
 			freeQty: draftGrnFromPoLine.freeQty,
 			freeUnitId: draftGrnFromPoLine.freeUnitId,
+			freeUnitIumId: draftGrnFromPoLine.freeUnitIumId,
 			discountAmount: draftGrnFromPoLine.discountAmount,
 			discountPercent: draftGrnFromPoLine.discountPercent,
 			taxAmount: draftGrnFromPoLine.taxAmount,
-			taxPercent: draftGrnFromPoLine.taxPercent
+			taxPercent: draftGrnFromPoLine.taxPercent,
+			salePriceOverride: draftGrnFromPoLine.salePriceOverride,
+			empSalePriceOverride: draftGrnFromPoLine.empSalePriceOverride
 		});
 		return true;
 	}
@@ -888,10 +981,12 @@
 				typeof (storeBody as { storeId: unknown }).storeId ===
 					'number'
 			) {
-				receivingStore = storeBody as {
-					storeId: number;
-					storeName: string | null;
-				};
+				receivingStore = storeBody as ReceivingStore;
+				if (receivingStore?.branchId) {
+					void loadBranchPricingConfigForBranch(
+						receivingStore.branchId
+					);
+				}
 			} else {
 				receivingStoreHint =
 					'Could not resolve receiving store for this PO (e.g. missing PR link for PR-backed orders).';
@@ -928,7 +1023,9 @@
 					discountAmount: '0',
 					discountPercent: '0',
 					taxAmount: '0',
-					taxPercent: '0'
+					taxPercent: '0',
+					salePriceOverride: '',
+					empSalePriceOverride: ''
 				};
 			});
 		} catch (e) {
@@ -962,10 +1059,14 @@
 				purchasePrice: trimField(f.purchasePrice) || null,
 				freeQty: trimField(f.freeQty) || null,
 				freeUnitId: f.freeUnitId ?? null,
+				freeUnitIumId: f.freeUnitIumId ?? null,
 				discountAmount: trimField(f.discountAmount) || null,
 				discountPercent: trimField(f.discountPercent) || null,
 				taxAmount: trimField(f.taxAmount) || null,
-				taxPercent: trimField(f.taxPercent) || null
+				taxPercent: trimField(f.taxPercent) || null,
+				salePriceOverride: trimField(f.salePriceOverride) || null,
+				empSalePriceOverride:
+					trimField(f.empSalePriceOverride) || null
 			}))
 			.filter((l) => Number(l.receivedQty) > 0);
 		if (lines.length === 0) {
@@ -1098,10 +1199,14 @@
 				purchasePrice: trimField(ln.purchasePrice) || null,
 				freeQty: trimField(ln.freeQty) || null,
 				freeUnitId: ln.freeUnitId ?? null,
+				freeUnitIumId: ln.freeUnitIumId ?? null,
 				discountAmount: trimField(ln.discountAmount) || null,
 				discountPercent: trimField(ln.discountPercent) || null,
 				taxAmount: trimField(ln.taxAmount) || null,
-				taxPercent: trimField(ln.taxPercent) || null
+				taxPercent: trimField(ln.taxPercent) || null,
+				salePriceOverride: trimField(ln.salePriceOverride) || null,
+				empSalePriceOverride:
+					trimField(ln.empSalePriceOverride) || null
 			});
 		}
 		if (lines.length === 0) {
@@ -1175,6 +1280,14 @@
 			void loadEligiblePos();
 		}
 		receivedByUserId = layoutSessionUser.id;
+	});
+
+	$effect(() => {
+		const storeId = selectedInventoryFromStoreId;
+		void hospitalId;
+		if (grnFormMode === 'direct' && storeId != null) {
+			void loadBranchPricingForStoreId(storeId);
+		}
 	});
 
 	function patchLineForm(
@@ -1719,7 +1832,7 @@
 							showRowActions={true}
 							actionsVariant="none"
 							showRefreshButton={false}
-							enableColumnFilters={true}
+							enableColumnFilters={false}
 						>
 							{#snippet rowActions(row, _rowIndex)}
 								{@const line = row as GrnLineTableRow}

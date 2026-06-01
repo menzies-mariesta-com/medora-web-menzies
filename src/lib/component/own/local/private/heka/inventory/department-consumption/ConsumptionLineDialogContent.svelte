@@ -98,6 +98,7 @@
 				expiryDate: string | null;
 				quantity: string;
 				salePrice?: string | null;
+				empSalePrice?: string | null;
 				issueUnitName?: string | null;
 			}[];
 			line.batchAllocations = rows
@@ -110,6 +111,11 @@
 					salePrice:
 						r.salePrice != null && String(r.salePrice).trim() !== ''
 							? String(r.salePrice)
+							: null,
+					empSalePrice:
+						r.empSalePrice != null &&
+						String(r.empSalePrice).trim() !== ''
+							? String(r.empSalePrice)
 							: null,
 					issueUnitName: r.issueUnitName ?? null,
 					qtyPurchase: ''
@@ -266,6 +272,7 @@
 			purchaseUnitLabel={chosenIum?.purchaseUnitName ?? ''}
 			issueUnitLabel={chosenIum?.issueUnitName ?? ''}
 			disabled={draftLine.itemId == null || storeId == null}
+			priceColumn="emp"
 		/>
 	</div>
 </div>

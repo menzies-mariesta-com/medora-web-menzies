@@ -128,11 +128,11 @@ export async function getStoresPaginated(
 	const { page, pageSize, limit, offset } =
 		normalizePagination(input);
 
-	const notDeleted = ne(
-		table.storeTable.statusId,
-		StatusEnum.DELETED
-	);
-	let whereExpr: SQL = notDeleted;
+	const statusFilter =
+		typeof input.statusId === 'number'
+			? eq(table.storeTable.statusId, input.statusId)
+			: eq(table.storeTable.statusId, StatusEnum.ACTIVE);
+	let whereExpr: SQL = statusFilter;
 
 	const ids = await branchIdsForHospital(input.hospitalId);
 	if (ids.length === 0) {
@@ -148,13 +148,6 @@ export async function getStoresPaginated(
 		whereExpr = and(
 			whereExpr,
 			ilike(table.storeTable.storeName, `%${nameFilter}%`)
-		)!;
-	}
-
-	if (typeof input.statusId === 'number') {
-		whereExpr = and(
-			whereExpr,
-			eq(table.storeTable.statusId, input.statusId)
 		)!;
 	}
 
@@ -214,7 +207,7 @@ export async function listStoresForHospitalAll(
 		.where(
 			and(
 				inArray(table.storeTable.branchId, ids),
-				ne(table.storeTable.statusId, StatusEnum.DELETED)
+				eq(table.storeTable.statusId, StatusEnum.ACTIVE)
 			)
 		)
 		.orderBy(table.storeTable.storeName);
@@ -434,7 +427,7 @@ export async function deleteStore(
 	await ensureDb()
 		.update(table.storeTable)
 		.set({
-			statusId: StatusEnum.DELETED,
+			statusId: StatusEnum.INACTIVE,
 			deletedAt: sql`now()`,
 			deletedBy: event.locals.user?.id ?? null
 		})

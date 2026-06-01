@@ -89,20 +89,7 @@
 			widthClass: 'w-48 min-w-[11rem]',
 			filterable: true,
 			filterType: 'select',
-			filterOptions: [
-				{
-					label: 'General Supply',
-					value: '11'
-				},
-				{
-					label: 'Pharmacy Supply',
-					value: '12'
-				},
-				{
-					label: 'Medical Supply',
-					value: '13'
-				}
-			],
+			filterMasterKey: 'itemCategory',
 			format: (_v, row) => categoryNameById.get(row.categoryId) ?? '—'
 		},
 		{
@@ -300,6 +287,7 @@
 				<MariTable
 					{rows}
 					{columns}
+					masterFilterHospitalId={hospitalId}
 					{isLoading}
 					bind:pageSize={pageSizeStr}
 					bind:currentPage

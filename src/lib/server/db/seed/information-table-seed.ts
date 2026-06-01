@@ -40,8 +40,7 @@ export async function seedInformationTables() {
 			(3, 'Appointment', 3, 1, '/heka/home/appointment', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-clock-icon lucide-clipboard-clock"><path d="M16 14v2.2l1.6 1"/><path d="M16 4h2a2 2 0 0 1 2 2v.832"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h2"/><circle cx="16" cy="16" r="6"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>'),
 			(4, 'Nursing Workbench', 4, 1, '/heka/home/nursing-workbench', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-app-window-icon lucide-app-window"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>'),
 			(5, 'Service Item', 5, 1, '/heka/home/service-item', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
-			(6, 'CPOE', 6, 1, '/heka/home/cpoe', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
-			(7, 'Observation', 7, 1, '/heka/home/observation', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
+			(6, 'Consultation', 6, 1, '/heka/home/consultation', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(8, 'Billing', 8, 1, '/heka/home/billing', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-text"><path d="M4 2h16v20l-4-2-4 2-4-2-4 2z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>'),
 			(9, 'Inventory Setup', 9, 1, '/heka/home/inventory-setup', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>'),
 			(10, 'Inventory', 10, 1, '/heka/home/inventory', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>'),
@@ -125,21 +124,17 @@ export async function seedInformationTables() {
 			(800007, 'Order', 4, 1, 8, '/heka/home/nursing-workbench/emr/order', 6),
 			(800008, 'Patient Visit History Dashboard', 4, 1, 8, '/heka/home/nursing-workbench/emr/patient-visit-history-dashboard', 7),
 
-			-- CPOE Module
-			(11, 'Order', 6, 1, null, '/heka/home/cpoe/order', 1),
-			(12, 'Prescription', 6, 1, null, '/heka/home/cpoe/prescription', 2),
-
-
-			-- Observation Module
-			(13, 'EMR', 7, 1, null, '/heka/home/observation/emr', 1),
+			-- Consultation Module
+			(13, 'EMR', 6, 1, null, '/heka/home/consultation/emr', 1),
+			(1500001, 'CPOE', 6, 1, null, '/heka/home/consultation/cpoe', 2),
+			(11, 'Order', 6, 1, 1500001, '/heka/home/consultation/cpoe/order', 1),
+			(12, 'Prescription', 6, 1, 1500001, '/heka/home/consultation/cpoe/prescription', 2),
+			(14, 'Refer', 6, 1, 1500001, '/heka/home/consultation/cpoe/refer', 3),
+			(1400001, 'Refer Doctor', 6, 1, 14, '/heka/home/consultation/cpoe/refer/doctor', 1),
+			(1400002, 'Referral History', 6, 1, 14, '/heka/home/consultation/cpoe/refer/history', 2),
 
 			-- Billing Module
 			(15, 'OP Billing', 8, 1, null, '/heka/home/billing/op-billing', 1),
-
-			-- Refer Module
-			(14, 'Refer', 6, 1, null, '/heka/home/cpoe/refer', 3),
-			(1400001, 'Refer Doctor', 6, 1, 14, '/heka/home/cpoe/refer/doctor', 1),
-			(1400002, 'Referral History', 6, 1, 14, '/heka/home/cpoe/refer/history', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/heka/home/administration/prefix-configuration', 9),
@@ -165,8 +160,9 @@ export async function seedInformationTables() {
 			(23, 'Item Unit Master', 9, 1, null, '/heka/home/inventory-setup/item-unit-master', 5),
 			(25, 'Supplier Setup', 9, 1, null, '/heka/home/inventory-setup/supplier-setup', 7),
 			(26, 'Approval Config', 9, 1, null, '/heka/home/inventory-setup/approval-config', 8),
-			(32, 'Reorder level', 9, 1, null, '/heka/home/inventory-setup/reorder-level', 9),
-			(42, 'Stock alerts', 9, 1, null, '/heka/home/inventory-setup/stock-alerts', 10),
+			(43, 'GRN pricing', 9, 1, null, '/heka/home/inventory-setup/pricing-config', 9),
+			(32, 'Reorder level', 9, 1, null, '/heka/home/inventory-setup/reorder-level', 10),
+			(42, 'Stock alerts', 9, 1, null, '/heka/home/inventory-setup/stock-alerts', 11),
 			(420001, 'Policy', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/policy', 1),
 			(420002, 'Recipients', 9, 1, 42, '/heka/home/inventory-setup/stock-alerts/recipients', 2),
 

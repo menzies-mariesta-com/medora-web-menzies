@@ -1,4 +1,11 @@
 import type { PaginatedResult } from '$lib/model/type/pagination.type';
+import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
+import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+
+export type MedicationOrderLineAllocationInput = {
+	batchId: number;
+	qtyPurchase: string;
+};
 
 export type MedicationOrderLineInput = {
 	itemMasterId: number;
@@ -14,13 +21,17 @@ export type MedicationOrderLineInput = {
 	startAt: string;
 	testDose: string | null;
 	substituteNotAllowed: boolean;
+	unitSalePrice: string;
+	issueQtyPurchase: string;
+	itemUnitMasterId: number;
+	allocations: MedicationOrderLineAllocationInput[];
 };
 
 export type MedicationOrderBatchSaveResponse = {
 	batch: {
 		id: number;
 		batchNo: string;
-		visitId: number;
+		visitId: number | null;
 		storeId: number;
 	};
 	batchNo: string;
@@ -78,3 +89,58 @@ export type MedOrderSetupEntity =
 export type MedOrderMasterListResult = PaginatedResult<
 	Record<string, unknown>
 >;
+
+export type MedicationOrderLineAllocationRow = {
+	lineId: number;
+	batchId: number;
+	qtyPurchase: string;
+	batchNo: string | null;
+	expiryDate: string | null;
+};
+
+export type MedicationOrderBatchPaymentRow = {
+	id: number;
+	batchId: number;
+	paymentMethod: string;
+	amountDue: string;
+	amountPaid: string;
+	paidAt: string;
+	receiptNo: string;
+};
+
+export type MedicationOrderBatchDetailResponse = {
+	batch: Record<string, unknown>;
+	lines: Record<string, unknown>[];
+	allocations: MedicationOrderLineAllocationRow[];
+	payment: MedicationOrderBatchPaymentRow | null;
+};
+
+export type MedicationOrderCheckoutResponse = {
+	receiptNo: string;
+	amountDue: string;
+	amountPaid: string;
+	paymentMethod: string;
+	paidAt: string;
+	batch: {
+		id: number;
+		batchNo: string;
+		extCustomerName: string | null;
+		advisingDoctor: string | null;
+		storeId: number;
+	};
+	lines: Array<{
+		itemName: string | null;
+		issueQtyPurchase: string;
+		unitSalePrice: string;
+		lineTotal: string;
+	}>;
+};
+
+/** UI draft line extensions for sale workspace */
+export type MedicationOrderDraftLineExtras = {
+	iumList: ConsumptionDraftLineIum[];
+	batchAllocations: ConsumptionBatchAllocationDraft[];
+	unitSalePrice: string;
+	issueQtyPurchase: string;
+	itemUnitMasterId: number | null;
+};

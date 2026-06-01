@@ -32,6 +32,10 @@ export async function GET(event: RequestEvent) {
 		);
 	}
 
+	if (mode === 'allForPicker') {
+		return json(await sp.listSuppliersForHospitalPicker(hospitalId));
+	}
+
 	const idStr = qsp.get('id');
 	if (idStr != null && idStr !== '') {
 		const id = Number(idStr);

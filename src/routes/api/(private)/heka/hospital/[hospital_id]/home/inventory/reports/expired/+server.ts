@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { parseMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
 import { listExpiryLots } from '$lib/server/heka/inventory/stock-alerts.server';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const storeIdStr = event.url.searchParams.get('storeId');
-	const limitStr = event.url.searchParams.get('limit');
+	const sp = event.url.searchParams;
+	const storeIdStr = sp.get('storeId');
+	const limitStr = sp.get('limit');
 	const mode =
-		event.url.searchParams.get('mode') === 'expired'
-			? 'expired'
-			: 'expiringSoon';
-	const daysSoonStr = event.url.searchParams.get('daysSoon');
+		sp.get('mode') === 'expired' ? 'expired' : 'expiringSoon';
+	const daysSoonStr = sp.get('daysSoon');
 
 	const storeId =
 		storeIdStr != null && storeIdStr !== ''
@@ -36,10 +36,12 @@ export const GET: RequestHandler = async (event) => {
 			typeof daysSoon === 'number' && Number.isFinite(daysSoon)
 				? daysSoon
 				: undefined,
+		columnFilters: parseMariTableColumnFilters(sp),
 		limit:
 			typeof limit === 'number' && Number.isFinite(limit)
 				? limit
 				: undefined
 	});
+
 	return json(rows);
 };

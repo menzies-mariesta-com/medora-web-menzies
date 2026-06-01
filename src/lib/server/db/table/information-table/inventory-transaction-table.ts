@@ -20,6 +20,7 @@ import { uuidv7 } from 'uuidv7';
 import { userTable } from '../auth-table/auth-table';
 import { unitTable } from '../master-table/master-table';
 import {
+	hospitalBranchTable,
 	hospitalTable,
 	itemMasterTable,
 	itemUnitMasterTable,
@@ -161,6 +162,83 @@ export const invStockAlertSettingTable = pgTable(
 	},
 	(t) => [
 		index('inv_stock_alert_setting_hospital_idx').on(t.hospitalId)
+	]
+);
+
+/** Per-branch GRN sale / employee sale price calculation rules. */
+export const invBranchPricingConfigTable = pgTable(
+	'inv_branch_pricing_config',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		saleManualOnGrnLine: boolean('sale_manual_on_grn_line')
+			.notNull()
+			.default(false),
+		saleIncludeDiscount: boolean('sale_include_discount')
+			.notNull()
+			.default(true),
+		saleIncludeTax: boolean('sale_include_tax').notNull().default(true),
+		saleIncludeFreeQty: boolean('sale_include_free_qty')
+			.notNull()
+			.default(false),
+		saleMarkupPercent: decimal('sale_markup_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		empManualOnGrnLine: boolean('emp_manual_on_grn_line')
+			.notNull()
+			.default(false),
+		empIncludeDiscount: boolean('emp_include_discount')
+			.notNull()
+			.default(true),
+		empIncludeTax: boolean('emp_include_tax').notNull().default(true),
+		empIncludeFreeQty: boolean('emp_include_free_qty')
+			.notNull()
+			.default(true),
+		empMarkupPercent: decimal('emp_markup_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		empUsePercentOfSale: boolean('emp_use_percent_of_sale')
+			.notNull()
+			.default(false),
+		empPercentOfSale: decimal('emp_percent_of_sale', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('100'),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		uniqueIndex('inv_branch_pricing_config_hospital_branch_uidx').on(
+			t.hospitalId,
+			t.branchId
+		),
+		index('inv_branch_pricing_config_hospital_idx').on(t.hospitalId)
 	]
 );
 
@@ -394,6 +472,11 @@ export const purchaseRequisitionLineTable = pgTable(
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
 		quantity: decimal('quantity', {
+			precision: 18,
+			scale: 0
+		}).notNull(),
+		/** Original requested qty; unchanged when approver adjusts `quantity`. */
+		requestedQuantity: decimal('requested_quantity', {
 			precision: 18,
 			scale: 0
 		}).notNull(),
@@ -1211,6 +1294,11 @@ export const invDepartmentConsumptionLineTable = pgTable(
 		batchId: integer('batch_id')
 			.notNull()
 			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		/** Per issue unit; snapshot from item_batch at post time. */
+		empSalePrice: decimal('emp_sale_price', {
+			precision: 14,
+			scale: 2
+		}),
 		remarks: text('remarks'),
 		...invTimestamps
 	},

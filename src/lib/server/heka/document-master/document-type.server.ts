@@ -129,6 +129,6 @@ export async function deleteDocumentType(
 	if (hospitalId) await ensureCanAccessHospital(event, hospitalId);
 	await ensureDb()
 		.update(table.documentTypeTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(eq(table.documentTypeTable.id, id));
 }

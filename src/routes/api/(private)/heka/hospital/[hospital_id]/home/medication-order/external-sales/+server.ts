@@ -2,6 +2,7 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import * as ex from '$lib/server/heka/medication-order/medication-order-external.server';
 import * as internal from '$lib/server/heka/medication-order/medication-order-internal.server';
+import { checkoutMedicationOrderBatchExternal } from '$lib/server/heka/medication-order/medication-order-checkout.server';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -106,8 +107,30 @@ export async function POST(event: RequestEvent) {
 			})
 		);
 	}
+	if (mode === 'batch.checkout') {
+		const b = body as {
+			batchId?: unknown;
+			paymentMethod?: unknown;
+			amountPaid?: unknown;
+		};
+		const batchId = Number(b.batchId ?? 0);
+		if (!Number.isFinite(batchId) || batchId <= 0) {
+			throw error(400, 'batchId is required');
+		}
+		return json(
+			await checkoutMedicationOrderBatchExternal(event, {
+				hospitalId,
+				batchId,
+				paymentMethod: String(b.paymentMethod ?? 'cash'),
+				amountPaid: String(b.amountPaid ?? '')
+			})
+		);
+	}
 	if (mode === 'batch.update') {
-		const b = body as { batchId?: unknown; lines?: unknown };
+		const b = body as {
+			batchId?: unknown;
+			lines?: unknown;
+		};
 		const batchId = Number(b.batchId ?? 0);
 		if (!Number.isFinite(batchId) || batchId <= 0) {
 			throw error(400, 'batchId is required');
