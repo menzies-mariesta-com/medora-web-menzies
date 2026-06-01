@@ -44,14 +44,13 @@ export enum WebRoutesEnum {
 	HEKA_HOME_NURSING_WORKBENCH_EMR_VITAL = '/heka/home/nursing-workbench/emr/vital',
 	HEKA_HOME_NURSING_WORKBENCH_EMR_DIAGNOSIS = '/heka/home/nursing-workbench/emr/diagnosis',
 
-	// CPOE module (navbar auto-hides like nursing EMR)
-	HEKA_HOME_CPOE = '/heka/home/cpoe',
-	HEKA_HOME_CPOE_ORDER = '/heka/home/cpoe/order',
-	HEKA_HOME_CPOE_REFER = '/heka/home/cpoe/refer',
-
-	// Observation module (navbar auto-hides like nursing EMR)
-	HEKA_HOME_OBSERVATION = '/heka/home/observation',
-	HEKA_HOME_OBSERVATION_EMR = '/heka/home/observation/emr',
+	// Consultation module (navbar auto-hides like nursing EMR)
+	HEKA_HOME_CONSULTATION = '/heka/home/consultation',
+	HEKA_HOME_CONSULTATION_EMR = '/heka/home/consultation/emr',
+	HEKA_HOME_CONSULTATION_CPOE = '/heka/home/consultation/cpoe',
+	HEKA_HOME_CONSULTATION_CPOE_ORDER = '/heka/home/consultation/cpoe/order',
+	HEKA_HOME_CONSULTATION_CPOE_PRESCRIPTION = '/heka/home/consultation/cpoe/prescription',
+	HEKA_HOME_CONSULTATION_CPOE_REFER = '/heka/home/consultation/cpoe/refer',
 
 	// Billing module (navbar auto-hides like nursing EMR)
 	HEKA_HOME_BILLING = '/heka/home/billing',

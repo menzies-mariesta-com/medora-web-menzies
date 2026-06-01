@@ -20,9 +20,11 @@ import { statusTable } from '../master-table/master-table';
 import {
 	hospitalTable,
 	itemMasterTable,
+	itemUnitMasterTable,
 	patientVisitTable,
 	storeTable
 } from './information-table';
+import { itemBatchTable } from './inventory-transaction-table';
 
 const medOrderTimestamps = {
 	createdAt: timestamp('created_at', {
@@ -538,6 +540,7 @@ export const medicationOrderBatchTable = pgTable(
 		extCustomerName: varchar('ext_customer_name', { length: 512 }),
 		advisingDoctor: varchar('advising_doctor', { length: 512 }),
 		batchNo: varchar('batch_no', { length: 256 }).notNull(),
+		batchRemarks: text('batch_remarks'),
 		...medOrderTimestamps
 	},
 	(t) => [
@@ -610,7 +613,84 @@ export const medicationOrderLineTable = pgTable(
 		substituteNotAllowed: boolean('substitute_not_allowed')
 			.notNull()
 			.default(false),
+		itemUnitMasterId: integer('item_unit_master_id').references(
+			() => itemUnitMasterTable.id,
+			{ onDelete: 'restrict' }
+		),
+		issueQtyPurchase: decimal('issue_qty_purchase', {
+			precision: 18,
+			scale: 6
+		}),
+		unitSalePrice: decimal('unit_sale_price', {
+			precision: 14,
+			scale: 2
+		}),
+		lineRemarks: text('line_remarks'),
 		...medOrderTimestamps
 	},
 	(t) => [index('medication_order_line_batch_id_idx').on(t.batchId)]
+);
+
+export const medicationOrderLineAllocationTable = pgTable(
+	'medication_order_line_allocation',
+	{
+		id: serial('id').primaryKey(),
+		lineId: integer('line_id')
+			.notNull()
+			.references(() => medicationOrderLineTable.id, {
+				onDelete: 'cascade'
+			}),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => itemBatchTable.id, { onDelete: 'restrict' }),
+		qtyPurchase: decimal('qty_purchase', {
+			precision: 18,
+			scale: 6
+		}).notNull(),
+		...medOrderTimestamps
+	},
+	(t) => [
+		index('medication_order_line_allocation_line_id_idx').on(t.lineId),
+		index('medication_order_line_allocation_batch_id_idx').on(t.batchId)
+	]
+);
+
+export const medicationOrderBatchPaymentTable = pgTable(
+	'medication_order_batch_payment',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => medicationOrderBatchTable.id, {
+				onDelete: 'cascade'
+			}),
+		paymentMethod: varchar('payment_method', { length: 64 })
+			.notNull()
+			.default('cash'),
+		amountDue: decimal('amount_due', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		amountPaid: decimal('amount_paid', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		paidAt: timestamp('paid_at', {
+			withTimezone: true,
+			mode: 'string'
+		}).notNull(),
+		receiptNo: varchar('receipt_no', { length: 256 }).notNull(),
+		...medOrderTimestamps
+	},
+	(t) => [
+		uniqueIndex('medication_order_batch_payment_batch_id_uidx')
+			.on(t.batchId)
+			.where(sql`${t.deletedAt} IS NULL`),
+		uniqueIndex('medication_order_batch_payment_hospital_receipt_uidx')
+			.on(t.hospitalId, t.receiptNo)
+			.where(sql`${t.deletedAt} IS NULL`)
+	]
 );

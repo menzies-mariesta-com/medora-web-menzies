@@ -43,7 +43,7 @@
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const url = new URL(
-			`/api/heka/hospital/${hid}/home/observation/emr`,
+			`/api/heka/hospital/${hid}/home/consultation/emr`,
 			location.origin
 		);
 		url.searchParams.set('mode', mode);
@@ -61,7 +61,7 @@
 		const hid = hospitalId;
 		if (!hid) throw new Error('Hospital is required');
 		const res = await fetch(
-			`/api/heka/hospital/${hid}/home/observation/emr`,
+			`/api/heka/hospital/${hid}/home/consultation/emr`,
 			{
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },

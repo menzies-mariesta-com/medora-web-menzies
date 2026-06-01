@@ -67,7 +67,13 @@ export async function DELETE(event: RequestEvent) {
 	const id = Number(event.url.searchParams.get('id') ?? '0');
 	if (!Number.isFinite(id) || id <= 0)
 		throw error(400, 'id is required');
-	await obs.deletePatientAllergies({ id, skipClinicalLock: true });
+	await obs.deletePatientAllergies({
+		id,
+		skipClinicalLock: true,
+		deactivationRemark:
+			event.url.searchParams.get('deactivationRemark')?.trim() ||
+			null
+	});
 	return json({ ok: true });
 }
 

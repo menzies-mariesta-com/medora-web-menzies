@@ -1,11 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { parseMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
 import { listLowStock } from '$lib/server/heka/inventory/stock-alerts.server';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
-	const storeIdStr = event.url.searchParams.get('storeId');
-	const limitStr = event.url.searchParams.get('limit');
+	const sp = event.url.searchParams;
+	const storeIdStr = sp.get('storeId');
+	const limitStr = sp.get('limit');
 	const storeId =
 		storeIdStr != null && storeIdStr !== ''
 			? Number(storeIdStr)
@@ -21,10 +23,12 @@ export const GET: RequestHandler = async (event) => {
 			typeof storeId === 'number' && Number.isFinite(storeId)
 				? storeId
 				: undefined,
+		columnFilters: parseMariTableColumnFilters(sp),
 		limit:
 			typeof limit === 'number' && Number.isFinite(limit)
 				? limit
 				: undefined
 	});
+
 	return json(rows);
 };

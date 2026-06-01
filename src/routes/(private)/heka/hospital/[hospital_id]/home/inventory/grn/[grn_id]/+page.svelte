@@ -40,6 +40,8 @@
 		itemName?: string | null;
 		receivedQty: string;
 		unitName?: string | null;
+		freeQty?: string | null;
+		freeUnitName?: string | null;
 		batchNo?: string | null;
 		expiryDate?: string | null;
 		purchasePrice?: string | null;
@@ -91,6 +93,21 @@
 			header: m.inv_common_unit(),
 			field: 'unitName',
 			format: (_v, row) => row.unitName ?? '—'
+		},
+		{
+			id: 'freeQty',
+			header: m.inv_grn_free_qty(),
+			field: 'freeQty',
+			format: (_v, row) => {
+				const t = row.freeQty?.trim();
+				return t && t !== '0' ? trimMetricQtyDisplay(t) : '—';
+			}
+		},
+		{
+			id: 'freeUnitName',
+			header: m.inv_grn_free_qty_unit(),
+			field: 'freeUnitName',
+			format: (_v, row) => row.freeUnitName?.trim() || '—'
 		},
 		{
 			id: 'batchNo',

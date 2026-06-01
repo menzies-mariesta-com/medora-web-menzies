@@ -12,7 +12,8 @@ const KINDS = new Set([
 	'city',
 	'postalCode',
 	'nationality',
-	'religion'
+	'religion',
+	'severity'
 ]);
 
 export async function GET(event: RequestEvent) {
@@ -43,6 +44,8 @@ export async function GET(event: RequestEvent) {
 			return json(await lists.listNationality());
 		case 'religion':
 			return json(await lists.listReligion());
+		case 'severity':
+			return json(await lists.listSeverity());
 		default:
 			throw error(400, 'Unknown kind');
 	}

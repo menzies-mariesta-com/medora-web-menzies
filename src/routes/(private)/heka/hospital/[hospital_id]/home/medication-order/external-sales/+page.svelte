@@ -12,6 +12,7 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -24,9 +25,25 @@
 	import { m } from '$lib/paraglide/messages';
 	import type {
 		MedicationOrderBatchHistoryRow,
+		MedicationOrderCheckoutResponse,
 		MedicationOrderMastersResponse,
 		MedicationOrderLineInput
 	} from '$lib/model/type/heka/medication-order.type';
+	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
+	import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
+	import {
+		defaultUnitSalePriceFromAllocations,
+		hydrateMedOrderItemMeta,
+		lineTotal,
+		loadMedOrderIumList,
+		refreshMedOrderBatchAllocations,
+		sumAllocationPurchaseQty,
+		syncMedOrderFefoAllocations,
+		validateMedOrderInventoryLine,
+		applyDraftReservationsToLots
+	} from '$lib/tool/medication-order/med-order-line-inventory.util';
+	import { isMedOrderStartBeforeToday } from '$lib/tool/medication-order/med-order-start-date.util';
 	import { tick, untrack } from 'svelte';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -59,10 +76,6 @@
 	function parseDateTimeLocalToIso(s: string): string {
 		return new Date(s).toISOString();
 	}
-
-	const minStart = $derived.by(() =>
-		toDateTimeLocalValue(new Date())
-	);
 
 	let masters = $state<MedicationOrderMastersResponse | null>(null);
 
@@ -115,6 +128,16 @@
 	let testDose = $state('');
 	let substituteNotAllowed = $state(false);
 
+	let issueQtyPurchase = $state('');
+	let unitSalePrice = $state('0');
+	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>([]);
+	let iumList = $state<ConsumptionDraftLineIum[]>([]);
+
+	let paymentMethod = $state('cash');
+	let amountPaid = $state('');
+	let batchIsPaid = $state(false);
+	let lastReceipt = $state<MedicationOrderCheckoutResponse | null>(null);
+
 	let isBusy = $state(false);
 	let editingBatchId = $state(0);
 
@@ -122,9 +145,22 @@
 		_key: string;
 		_itemName: string;
 		_freqLabel: string;
+		_batchAllocations: ConsumptionBatchAllocationDraft[];
+		_iumList: ConsumptionDraftLineIum[];
 	};
 
+	const draftTotal = $derived.by(() => {
+		let s = 0;
+		for (const ln of draftLines) {
+			s += lineTotal(ln.issueQtyPurchase, ln.unitSalePrice);
+		}
+		return s.toFixed(2);
+	});
+
 	let draftLines = $state<DraftLine[]>([]);
+	let draftCurrentPage = $state(1);
+	let draftPageSizeStr = $state('10');
+	let draftColumnFilters = $state<Record<string, string>>({});
 
 	/** — History */
 	let historyOpen = $state(false);
@@ -256,56 +292,50 @@
 		return d.itemName?.trim() || `Item #${idStr}`;
 	}
 
-	const doseUnitOptions = $derived.by(() =>
-		(masters?.doseUnits ?? []).map((u) => ({
-			value: String(u.id),
-			label: u.name?.trim() || '—'
-		}))
-	);
-	const durationUnitOptions = $derived.by(() =>
-		(masters?.durUnits ?? []).map((u) => ({
-			value: String(u.id),
-			label: `${u.name?.trim() || '—'} (${u.code})`
-		}))
-	);
-	const formOptions = $derived.by(() => [
-		{ value: '', label: m.med_order_int_not_applicable() },
-		...(masters?.forms ?? []).map((u) => ({
-			value: String(u.id),
-			label: u.name?.trim() || '—'
-		}))
-	]);
-	const routeOptions = $derived.by(() => [
-		{ value: '', label: m.med_order_int_not_applicable() },
-		...(masters?.routes ?? []).map((u) => ({
-			value: String(u.id),
-			label: u.name?.trim() || '—'
-		}))
-	]);
-	const orderTypeOptions = $derived.by(() => [
-		{ value: '', label: m.med_order_int_not_applicable() },
-		...(masters?.orderTypes ?? []).map((u) => ({
-			value: String(u.id),
-			label: u.name?.trim() || '—'
-		}))
-	]);
-	const foodRelOptions = $derived.by(() => [
-		{ value: '', label: m.med_order_int_not_applicable() },
-		...(masters?.foodRels ?? []).map((u) => ({
-			value: String(u.id),
-			label: u.name?.trim() || '—'
-		}))
-	]);
-	const frequencyOptions = $derived.by(() =>
-		(masters?.freqs ?? []).map((f) => ({
-			value: String(f.id),
-			label: f.summaryText?.trim()
-				? `${f.label?.trim() || '—'} · ${f.summaryText.trim()}`
-				: f.label?.trim() || '—'
-		}))
-	);
-
 	const dash = () => m.med_order_int_not_applicable();
+
+	const draftColumns = $derived.by((): MariTableColumn<DraftLine>[] => {
+		const ps = Number(draftPageSizeStr) || 25;
+		return [
+			{
+				id: 'idx',
+				header: m.med_order_int_draft_index(),
+				widthClass: 'w-12',
+				filterable: false,
+				format: (_v, _row, rowIndex) =>
+					String((draftCurrentPage - 1) * ps + rowIndex + 1)
+			},
+			{
+				id: 'item',
+				header: m.med_order_int_item(),
+				widthClass: 'min-w-[10rem]',
+				filterable: true,
+				format: (_v, row) => row._itemName
+			},
+			{
+				id: 'qty',
+				header: m.med_order_sale_qty(),
+				widthClass: 'w-24',
+				filterable: true,
+				format: (_v, row) => row.issueQtyPurchase
+			},
+			{
+				id: 'price',
+				header: m.med_order_unit_sale_price(),
+				widthClass: 'w-28',
+				filterable: true,
+				format: (_v, row) => row.unitSalePrice
+			},
+			{
+				id: 'total',
+				header: m.med_order_amount_due(),
+				widthClass: 'w-28',
+				filterable: false,
+				format: (_v, row) =>
+					lineTotal(row.issueQtyPurchase, row.unitSalePrice).toFixed(2)
+			}
+		];
+	});
 
 	const historyColumns = $derived.by(
 		(): MariTableColumn<MedicationOrderBatchHistoryRow>[] => [
@@ -465,15 +495,49 @@
 		return resolveStoreLabelForId(v);
 	}
 
-	function onItemSearchChange(v: string) {
+	async function hydrateInventoryForItem(itemId: number) {
+		if (!hospitalId || storeId <= 0) return;
+		try {
+			const meta = await hydrateMedOrderItemMeta(hospitalId, itemId);
+			const ium = await loadMedOrderIumList(
+				hospitalId,
+				meta.itemUnitMasterIds,
+				meta.defaultItemUnitMasterId
+			);
+			iumList = ium.iumList;
+			const lots = await refreshMedOrderBatchAllocations(
+				hospitalId,
+				storeId,
+				itemId
+			);
+			batchAllocations = applyDraftReservationsToLots(
+				lots,
+				draftLines,
+				itemId,
+				iumList[0] ?? null
+			);
+			issueQtyPurchase = '';
+			unitSalePrice =
+				defaultUnitSalePriceFromAllocations(batchAllocations);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
+			batchAllocations = [];
+			iumList = [];
+		}
+	}
+
+	async function onItemSearchChange(v: string) {
 		itemValueStr = v;
 		if (!v) {
 			selectedItem = null;
+			batchAllocations = [];
+			iumList = [];
 			return;
 		}
 		const row =
 			lastItemSearchRows.find((r) => String(r.id) === v) ?? null;
 		selectedItem = row;
+		if (row) await hydrateInventoryForItem(row.id);
 	}
 
 	function hydrateFormFromLine(line: DraftLine) {
@@ -492,25 +556,100 @@
 			row,
 			...lastItemSearchRows.filter((r) => r.id !== line.itemMasterId)
 		];
-		dose = line.dose;
-		doseUnitIdStr = String(line.doseUnitId);
-		frequencyIdStr = String(line.frequencyId);
-		durationValue = String(line.durationValue);
-		durationUnitIdStr = String(line.durationUnitId);
-		formId = line.formId != null ? String(line.formId) : '';
-		routeId = line.routeId != null ? String(line.routeId) : '';
-		orderTypeId =
-			line.orderTypeId != null ? String(line.orderTypeId) : '';
-		foodRelationId =
-			line.foodRelationId != null ? String(line.foodRelationId) : '';
-		startAtLocal = toDateTimeLocalValue(new Date(line.startAt));
-		testDose = line.testDose ?? '';
-		substituteNotAllowed = line.substituteNotAllowed;
+		issueQtyPurchase = line.issueQtyPurchase;
+		unitSalePrice = line.unitSalePrice;
+		batchAllocations = line._batchAllocations.map((a) => ({ ...a }));
+		iumList = [...line._iumList];
+		if (line.itemUnitMasterId && hospitalId) {
+			void (async () => {
+				try {
+					const meta = await hydrateMedOrderItemMeta(
+						hospitalId,
+						line.itemMasterId
+					);
+					const ium = await loadMedOrderIumList(
+						hospitalId,
+						meta.itemUnitMasterIds,
+						line.itemUnitMasterId
+					);
+					iumList = ium.iumList;
+					if (batchAllocations.length === 0 && storeId > 0) {
+						const lots = await refreshMedOrderBatchAllocations(
+							hospitalId,
+							storeId,
+							line.itemMasterId
+						);
+						batchAllocations = applyDraftReservationsToLots(
+							lots,
+							draftLines.filter((d) => d._key !== line._key),
+							line.itemMasterId,
+							iumList[0] ?? null
+						);
+						for (const a of batchAllocations) {
+							const saved = line._batchAllocations.find(
+								(x) => x.batchId === a.batchId
+							);
+							if (saved) a.qtyPurchase = saved.qtyPurchase;
+						}
+					}
+				} catch {
+					/* keep draft allocations */
+				}
+			})();
+		}
+	}
+
+	function resetLineInventoryFields() {
+		issueQtyPurchase = '';
+		unitSalePrice = '0';
+		batchAllocations = [];
+		iumList = [];
+	}
+
+	function ensureClinicalDefaults(): boolean {
+		if (!masters) return false;
+		dose = dose.trim() || '1';
+		durationValue = durationValue.trim() || '1';
+		if (masters.durUnits[0]) {
+			durationUnitIdStr = String(masters.durUnits[0].id);
+		}
+		if (masters.doseUnits[0]) {
+			doseUnitIdStr = String(masters.doseUnits[0].id);
+		}
+		if (masters.freqs[0]) {
+			frequencyIdStr = String(masters.freqs[0].id);
+		}
+		startAtLocal = toDateTimeLocalValue(new Date());
+		return (
+			!!doseUnitIdStr &&
+			!!frequencyIdStr &&
+			!!durationUnitIdStr &&
+			Number(doseUnitIdStr) > 0 &&
+			Number(frequencyIdStr) > 0 &&
+			Number(durationUnitIdStr) > 0
+		);
+	}
+
+	function resetNewLineForm() {
+		itemValueStr = '';
+		selectedItem = null;
+		formId = '';
+		routeId = '';
+		orderTypeId = '';
+		foodRelationId = '';
+		testDose = '';
+		substituteNotAllowed = false;
+		ensureClinicalDefaults();
+		resetLineInventoryFields();
 	}
 
 	function resetEditing() {
 		editingBatchId = 0;
 		draftLines = [];
+		batchIsPaid = false;
+		amountPaid = '';
+		lastReceipt = null;
+		resetNewLineForm();
 	}
 
 	function addDraft() {
@@ -538,28 +677,18 @@
 			);
 			return;
 		}
-		const doseUnitId = Number(doseUnitIdStr);
-		const frequencyId = Number(frequencyIdStr);
-		const durationUnitId = Number(durationUnitIdStr);
-		if (
-			!doseUnitIdStr ||
-			!frequencyIdStr ||
-			!durationUnitIdStr ||
-			!Number.isFinite(doseUnitId) ||
-			doseUnitId <= 0 ||
-			!Number.isFinite(frequencyId) ||
-			frequencyId <= 0 ||
-			!Number.isFinite(durationUnitId) ||
-			durationUnitId <= 0
-		) {
+		if (!ensureClinicalDefaults()) {
 			toastService.addToast(
 				m.med_order_int_missing_master(),
 				StatusColorEnum.ERROR
 			);
 			return;
 		}
+		const doseUnitId = Number(doseUnitIdStr);
+		const frequencyId = Number(frequencyIdStr);
+		const durationUnitId = Number(durationUnitIdStr);
 		const st = new Date(parseDateTimeLocalToIso(startAtLocal));
-		if (st.getTime() < Date.now() - 60_000) {
+		if (isMedOrderStartBeforeToday(st)) {
 			toastService.addToast(
 				m.med_order_int_past_start(),
 				StatusColorEnum.ERROR
@@ -567,6 +696,30 @@
 			return;
 		}
 
+		const ium = iumList[0] ?? null;
+		const lotsForValidate = applyDraftReservationsToLots(
+			batchAllocations,
+			draftLines,
+			selectedItem.id,
+			ium
+		);
+		const syncedLots = syncMedOrderFefoAllocations({
+			batchAllocations: lotsForValidate,
+			issueQtyPurchase,
+			ium
+		});
+		const invErr = validateMedOrderInventoryLine({
+			batchAllocations: syncedLots,
+			ium,
+			issueQtyPurchase,
+			unitSalePrice
+		});
+		if (invErr) {
+			toastService.addToast(invErr, StatusColorEnum.ERROR);
+			return;
+		}
+		const iumId = iumList[0]!.id;
+		const qtySum = sumAllocationPurchaseQty(syncedLots);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === frequencyId
 		);
@@ -583,7 +736,16 @@
 			foodRelationId: foodRelationId ? Number(foodRelationId) : null,
 			startAt: parseDateTimeLocalToIso(startAtLocal),
 			testDose: testDose.trim() || null,
-			substituteNotAllowed
+			substituteNotAllowed,
+			unitSalePrice: unitSalePrice.trim() || '0',
+			issueQtyPurchase: qtySum || issueQtyPurchase.trim(),
+			itemUnitMasterId: iumId,
+			allocations: syncedLots
+				.filter((a) => Number(a.qtyPurchase) > 0)
+				.map((a) => ({
+					batchId: a.batchId,
+					qtyPurchase: a.qtyPurchase
+				}))
 		};
 
 		draftLines = [
@@ -593,9 +755,27 @@
 				_key: `d-${Date.now()}-${Math.random()}`,
 				_itemName:
 					selectedItem.itemName ?? `Item #${selectedItem.id}`,
-				_freqLabel: fRow?.label ?? '—'
+				_freqLabel: fRow?.label ?? '—',
+				_batchAllocations: syncedLots.map((a) => ({ ...a })),
+				_iumList: [...iumList]
 			}
 		];
+		resetNewLineForm();
+	}
+
+	function globalDraftIndex(localRowIndex: number): number {
+		const ps = Number(draftPageSizeStr) || 25;
+		return (draftCurrentPage - 1) * ps + localRowIndex;
+	}
+
+	function moveDraftLine(globalIndex: number, delta: -1 | 1) {
+		const next = globalIndex + delta;
+		if (next < 0 || next >= draftLines.length) return;
+		const copy = [...draftLines];
+		const t = copy[globalIndex]!;
+		copy[globalIndex] = copy[next]!;
+		copy[next] = t;
+		draftLines = copy;
 	}
 
 	function removeDraft(k: string) {
@@ -629,7 +809,14 @@
 		}
 		isBusy = true;
 		const lines = draftLines.map(
-			({ _key, _itemName, _freqLabel, ...rest }) => rest
+			({
+				_key,
+				_itemName,
+				_freqLabel,
+				_batchAllocations,
+				_iumList,
+				...rest
+			}) => rest
 		);
 		try {
 			if (editingBatchId) {
@@ -648,6 +835,10 @@
 					m.med_order_int_updated(),
 					StatusColorEnum.SUCCESS
 				);
+				amountPaid = draftTotal;
+				resetNewLineForm();
+				await reloadDraftLinesFromSavedBatch(editingBatchId);
+				amountPaid = draftTotal;
 			} else {
 				const res = await fetch(apiRoot(), {
 					method: 'POST',
@@ -662,13 +853,22 @@
 					})
 				});
 				if (!res.ok) throw new Error(await res.text());
-				void (await res.json());
+				const saved = (await res.json()) as {
+					batch?: { id?: number };
+				};
+				if (saved.batch?.id) {
+					editingBatchId = saved.batch.id;
+				}
 				toastService.addToast(
 					m.med_order_int_saved(),
 					StatusColorEnum.SUCCESS
 				);
+				resetNewLineForm();
+				if (editingBatchId) {
+					await reloadDraftLinesFromSavedBatch(editingBatchId);
+				}
+				amountPaid = draftTotal;
 			}
-			resetEditing();
 		} catch (e) {
 			toastService.addErrorToast(
 				editingBatchId
@@ -679,6 +879,65 @@
 		} finally {
 			isBusy = false;
 		}
+	}
+
+	async function checkoutBatch() {
+		if (!editingBatchId || batchIsPaid) return;
+		if (!amountPaid.trim()) {
+			toastService.addToast(
+				m.med_order_amount_paid(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		isBusy = true;
+		try {
+			const res = await fetch(apiRoot(), {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'batch.checkout',
+					batchId: editingBatchId,
+					paymentMethod,
+					amountPaid: amountPaid.trim()
+				})
+			});
+			if (!res.ok) throw new Error(await res.text());
+			lastReceipt =
+				(await res.json()) as MedicationOrderCheckoutResponse;
+			batchIsPaid = true;
+			toastService.addToast(
+				m.med_order_checkout_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_checkout_failed(), e);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	function printReceipt() {
+		if (!lastReceipt) return;
+		const w = window.open('', '_blank', 'width=480,height=720');
+		if (!w) return;
+		const r = lastReceipt;
+		const rows = r.lines
+			.map(
+				(ln) =>
+					`<tr><td>${ln.itemName ?? '—'}</td><td>${ln.issueQtyPurchase}</td><td>${ln.unitSalePrice}</td><td>${ln.lineTotal}</td></tr>`
+			)
+			.join('');
+		w.document.write(`<!DOCTYPE html><html><head><title>${r.receiptNo}</title></head><body>
+<h2>${m.med_order_receipt_print()}</h2>
+<p><strong>${r.receiptNo}</strong></p>
+<p>${r.batch.extCustomerName ?? ''} · ${r.batch.advisingDoctor ?? ''}</p>
+<table border="1" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+<p>${m.med_order_amount_due()}: ${r.amountDue} · ${m.med_order_amount_paid()}: ${r.amountPaid}</p>
+</body></html>`);
+		w.document.close();
+		w.print();
 	}
 
 	async function openHistory() {
@@ -709,11 +968,30 @@
 
 	function lineToDraft(
 		ln: Record<string, unknown>,
-		itemName: string
+		itemName: string,
+		lineAllocations: {
+			lineId: number;
+			batchId: number;
+			qtyPurchase: string;
+			batchNo: string | null;
+			expiryDate: string | null;
+		}[]
 	): DraftLine {
+		const lineId = Number(ln.id);
+		const myAllocs = lineAllocations.filter((a) => a.lineId === lineId);
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === Number(ln.frequencyId)
 		);
+		const batchAllocationsDraft: ConsumptionBatchAllocationDraft[] =
+			myAllocs.map((a) => ({
+				batchId: a.batchId,
+				batchNo: a.batchNo ?? '',
+				expiryDate: a.expiryDate,
+				stockIssueQty: '0',
+				salePrice: null,
+				issueUnitName: null,
+				qtyPurchase: String(a.qtyPurchase)
+			}));
 		return {
 			_key: `e-${String(ln.id)}`,
 			_itemName: itemName,
@@ -732,7 +1010,16 @@
 				ln.foodRelationId != null ? Number(ln.foodRelationId) : null,
 			startAt: String(ln.startAt),
 			testDose: ln.testDose != null ? String(ln.testDose) : null,
-			substituteNotAllowed: Boolean(ln.substituteNotAllowed)
+			substituteNotAllowed: Boolean(ln.substituteNotAllowed),
+			unitSalePrice: String(ln.unitSalePrice ?? '0'),
+			issueQtyPurchase: String(ln.issueQtyPurchase ?? '1'),
+			itemUnitMasterId: Number(ln.itemUnitMasterId ?? 0),
+			allocations: myAllocs.map((a) => ({
+				batchId: a.batchId,
+				qtyPurchase: String(a.qtyPurchase)
+			})),
+			_batchAllocations: batchAllocationsDraft,
+			_iumList: []
 		};
 	}
 
@@ -747,6 +1034,34 @@
 		if (!res.ok) return `Item #${itemMasterId}`;
 		const d = (await res.json()) as { itemName?: string | null };
 		return d.itemName?.trim() || `Item #${itemMasterId}`;
+	}
+
+	async function reloadDraftLinesFromSavedBatch(batchId: number) {
+		if (!hospitalId) return;
+		const u = new URL(apiRoot(), window.location.origin);
+		u.searchParams.set('mode', 'batch.get');
+		u.searchParams.set('batchId', String(batchId));
+		const res = await fetch(u, { credentials: 'include' });
+		if (!res.ok) return;
+		const pack = (await res.json()) as {
+			lines: Record<string, unknown>[];
+			allocations: {
+				lineId: number;
+				batchId: number;
+				qtyPurchase: string;
+				batchNo: string | null;
+				expiryDate: string | null;
+			}[];
+		};
+		draftLines = await Promise.all(
+			pack.lines.map(async (ln) =>
+				lineToDraft(
+					ln,
+					await fetchItemDisplayName(Number(ln.itemMasterId)),
+					pack.allocations ?? []
+				)
+			)
+		);
 	}
 
 	async function loadBatchForEdit(id: number) {
@@ -770,6 +1085,14 @@
 				advisingDoctor: string | null;
 			};
 			lines: Record<string, unknown>[];
+			allocations: {
+				lineId: number;
+				batchId: number;
+				qtyPurchase: string;
+				batchNo: string | null;
+				expiryDate: string | null;
+			}[];
+			payment: { amountPaid: string } | null;
 		};
 		if (!masters) await loadMasters();
 		historyOpen = false;
@@ -778,6 +1101,8 @@
 		storeIdStr = sid;
 		customerName = pack.batch.extCustomerName ?? '';
 		advisingDoctor = pack.batch.advisingDoctor ?? '';
+		batchIsPaid = pack.payment != null;
+		amountPaid = pack.payment?.amountPaid ?? draftTotal;
 		storeLabel =
 			storeNameById[pack.batch.storeId] ??
 			(await resolveStoreLabelForId(sid));
@@ -785,14 +1110,13 @@
 			pack.lines.map(async (ln) =>
 				lineToDraft(
 					ln,
-					await fetchItemDisplayName(Number(ln.itemMasterId))
+					await fetchItemDisplayName(Number(ln.itemMasterId)),
+					pack.allocations ?? []
 				)
 			)
 		);
 		await tick();
-		if (draftLines[0]) {
-			hydrateFormFromLine(draftLines[0]);
-		}
+		resetNewLineForm();
 	}
 
 	async function reorderAsNewBatch(sourceBatchId: number) {
@@ -938,32 +1262,38 @@
 			<div
 				class="grid grid-cols-1 gap-6 border-b border-base-200 pb-5 lg:grid-cols-3 lg:items-start"
 			>
-				<div class="flex min-w-0 flex-col items-stretch gap-4">
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_ext_customer_name()}</DaisyUiLabel
-						>
-						<DaisyUiInputField
-							nameText="ext-cust"
-							bind:value={customerName}
-							inputPlaceholderText={m.med_order_ext_customer_placeholder()}
-							className="w-full"
-							minLength={0}
-							disabled={editingBatchId > 0}
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_ext_advising_doctor()}</DaisyUiLabel
-						>
-						<DaisyUiInputField
-							nameText="ext-doc"
-							bind:value={advisingDoctor}
-							inputPlaceholderText={m.med_order_ext_advising_doctor_placeholder()}
-							className="w-full"
-							minLength={0}
-							disabled={editingBatchId > 0}
-						/>
+				<div
+					class="flex min-w-0 flex-col items-stretch gap-4 lg:col-span-3"
+				>
+					<div
+						class="flex w-full flex-wrap items-end justify-between gap-4"
+					>
+						<div class="flex min-w-0 flex-1 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_ext_customer_name()}</DaisyUiLabel
+							>
+							<DaisyUiInputField
+								nameText="ext-cust"
+								bind:value={customerName}
+								inputPlaceholderText={m.med_order_ext_customer_placeholder()}
+								className="w-full"
+								minLength={0}
+								disabled={editingBatchId > 0 || batchIsPaid}
+							/>
+						</div>
+						<div class="flex min-w-0 flex-1 flex-col gap-1.5">
+							<DaisyUiLabel className="shrink-0"
+								>{m.med_order_ext_advising_doctor()}</DaisyUiLabel
+							>
+							<DaisyUiInputField
+								nameText="ext-doc"
+								bind:value={advisingDoctor}
+								inputPlaceholderText={m.med_order_ext_advising_doctor_placeholder()}
+								className="w-full"
+								minLength={0}
+								disabled={editingBatchId > 0 || batchIsPaid}
+							/>
+						</div>
 					</div>
 					<div class="flex w-full min-w-0 flex-col gap-1.5">
 						<DaisyUiLabel className="shrink-0"
@@ -979,6 +1309,7 @@
 							onChange={onStoreSearchChange}
 							inputId="ext-sales-store"
 							className="w-full"
+							disabled={batchIsPaid}
 						/>
 					</div>
 					<div class="flex w-full min-w-0 flex-col gap-1.5">
@@ -990,6 +1321,7 @@
 							options={genericOptions}
 							placeholder={m.med_order_int_all_generics()}
 							className="w-full"
+							disabled={batchIsPaid}
 						/>
 					</div>
 					<div class="flex w-full min-w-0 flex-col gap-1.5">
@@ -1004,7 +1336,7 @@
 							minSearchLength={0}
 							debounceMs={300}
 							invalidateKey={itemFilterKey}
-							disabled={storeId <= 0}
+							disabled={storeId <= 0 || batchIsPaid}
 							onChange={onItemSearchChange}
 							inputId="ext-sales-item"
 							className="w-full"
@@ -1015,174 +1347,17 @@
 							</p>
 						{/if}
 					</div>
-				</div>
-
-				<div class="flex min-w-0 flex-col items-stretch gap-4">
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_dose()}</DaisyUiLabel
-						>
-						<DaisyUiInputField
-							nameText="dose"
-							bind:value={dose}
-							inputType="text"
-							className="w-full"
-							minLength={0}
+					{#if selectedItem && storeId > 0}
+						<MedicationOrderInventoryFields
+							storeId={storeId}
+							itemLabel={selectedItem.itemName ?? ''}
+							bind:batchAllocations
+							bind:iumList
+							bind:issueQtyPurchase
+							bind:unitSalePrice
+							disabled={batchIsPaid}
 						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_dose_unit()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={doseUnitIdStr}
-							options={doseUnitOptions}
-							placeholder="—"
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_frequency()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={frequencyIdStr}
-							options={frequencyOptions}
-							placeholder={m.med_order_int_frequency_filter()}
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_duration()}</DaisyUiLabel
-						>
-						<div
-							class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start"
-						>
-							<DaisyUiInputField
-								nameText="dv"
-								bind:value={durationValue}
-								inputType="text"
-								className="w-full max-w-24 shrink-0"
-								minLength={0}
-							/>
-							<div class="min-w-0 flex-1">
-								<DaisyUISearchSelect
-									bind:value={durationUnitIdStr}
-									options={durationUnitOptions}
-									placeholder="—"
-									disabled={!masters}
-									className="w-full"
-								/>
-							</div>
-						</div>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_form()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={formId}
-							options={formOptions}
-							placeholder={m.med_order_int_not_applicable()}
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_route()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={routeId}
-							options={routeOptions}
-							placeholder={m.med_order_int_not_applicable()}
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-				</div>
-
-				<div class="flex min-w-0 flex-col items-stretch gap-4">
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_order_type()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={orderTypeId}
-							options={orderTypeOptions}
-							placeholder={m.med_order_int_not_applicable()}
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<DaisyUiLabel className="shrink-0"
-							>{m.med_order_int_food_relation()}</DaisyUiLabel
-						>
-						<DaisyUISearchSelect
-							bind:value={foodRelationId}
-							options={foodRelOptions}
-							placeholder={m.med_order_int_not_applicable()}
-							disabled={!masters}
-							className="w-full"
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_start()}</span
-						>
-						<input
-							type="datetime-local"
-							class="d-input-bordered d-input w-full min-w-0"
-							bind:value={startAtLocal}
-							min={minStart}
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col gap-1.5">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_test_dose()}</span
-						>
-						<DaisyUiInputField
-							nameText="td"
-							bind:value={testDose}
-							className="w-full"
-							minLength={0}
-						/>
-					</div>
-					<div class="flex w-full min-w-0 flex-col items-start gap-2">
-						<span class="text-sm font-medium"
-							>{m.med_order_int_substitue()}</span
-						>
-						<div
-							class="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap"
-						>
-							<label
-								class="flex cursor-pointer items-center gap-2 text-sm"
-							>
-								<input
-									type="radio"
-									checked={!substituteNotAllowed}
-									class="d-radio d-radio-sm"
-									onchange={() => (substituteNotAllowed = false)}
-								/>
-								{m.med_order_int_substitue_no()}
-							</label>
-							<label
-								class="flex cursor-pointer items-center gap-2 text-sm"
-							>
-								<input
-									type="radio"
-									checked={substituteNotAllowed}
-									class="d-radio d-radio-sm"
-									onchange={() => (substituteNotAllowed = true)}
-								/>
-								{m.med_order_int_substitue_yes()}
-							</label>
-						</div>
-					</div>
+					{/if}
 				</div>
 			</div>
 
@@ -1192,7 +1367,8 @@
 				<DaisyUiButton
 					className="d-btn d-btn-primary d-btn-sm"
 					onClick={addDraft}
-					disabled={!storeId ||
+					disabled={batchIsPaid ||
+						!storeId ||
 						(!editingBatchId &&
 							(!customerName.trim() || !advisingDoctor.trim()))}
 				>
@@ -1202,7 +1378,8 @@
 				<DaisyUiButton
 					className="d-btn d-btn-secondary d-btn-sm"
 					onClick={persistBatch}
-					disabled={!storeId ||
+					disabled={batchIsPaid ||
+						!storeId ||
 						draftLines.length === 0 ||
 						isBusy ||
 						(!editingBatchId &&
@@ -1219,48 +1396,123 @@
 	</DaisyUiCardBody>
 </DaisyUiCard>
 
+{#if editingBatchId && draftLines.length > 0}
+	<DaisyUiCard className="mt-5">
+		<DaisyUiCardBody className="gap-4">
+			<h2 class="text-base font-semibold">{m.med_order_checkout_title()}</h2>
+			{#if batchIsPaid}
+				<p class="text-sm text-success">{m.med_order_paid_locked()}</p>
+				{#if lastReceipt}
+					<DaisyUiButton
+						className="d-btn d-btn-sm"
+						onClick={printReceipt}
+					>
+						{m.med_order_receipt_print()}
+					</DaisyUiButton>
+				{/if}
+			{:else}
+				<p class="text-sm">
+					{m.med_order_amount_due()}: <strong>{draftTotal}</strong>
+				</p>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+					<div class="flex flex-col gap-1">
+						<DaisyUiLabel>{m.med_order_payment_method()}</DaisyUiLabel>
+						<select
+							class="d-select d-select-bordered w-full"
+							bind:value={paymentMethod}
+						>
+							<option value="cash">{m.med_order_payment_cash()}</option>
+							<option value="card">{m.med_order_payment_card()}</option>
+						</select>
+					</div>
+					<div class="flex flex-col gap-1 sm:col-span-2">
+						<DaisyUiLabel>{m.med_order_amount_paid()}</DaisyUiLabel>
+						<DaisyUiInputField
+							nameText="amountPaid"
+							bind:value={amountPaid}
+							inputType="text"
+							className="w-full"
+							minLength={0}
+						/>
+					</div>
+				</div>
+				<DaisyUiButton
+					className="d-btn d-btn-primary d-btn-sm"
+					onClick={checkoutBatch}
+					disabled={isBusy}
+					loading={isBusy}
+				>
+					{m.med_order_pay_now()}
+				</DaisyUiButton>
+			{/if}
+		</DaisyUiCardBody>
+	</DaisyUiCard>
+{/if}
+
 <DaisyUiCard className="mt-5">
 	<DaisyUiCardBody className="gap-2">
 		<h2 class="text-base font-semibold">
 			{m.med_order_int_draft_title()}
 		</h2>
-		{#if draftLines.length === 0}
-			<p class="text-sm text-base-content/60">
-				{m.medication_order_external_sales_empty()}
-			</p>
-		{:else}
-			<div class="overflow-x-auto">
-				<table class="table-zebra table w-full text-sm">
-					<thead>
-						<tr>
-							<th>{m.med_order_int_item()}</th>
-							<th>{m.med_order_int_dose()}</th>
-							<th>{m.med_order_int_frequency()}</th>
-							<th>{m.med_order_int_start()}</th>
-							<th class="w-20">{m.actions()}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each draftLines as ln (ln._key)}
-							<tr>
-								<td>{ln._itemName}</td>
-								<td>{ln.dose}</td>
-								<td>{ln._freqLabel}</td>
-								<td>{toDateTimeLocalValue(new Date(ln.startAt))}</td>
-								<td>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-xs"
-										onClick={() => removeDraft(ln._key)}
-									>
-										<LucideTrash2 className="text-error size-4" />
-									</DaisyUiButton>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
+		<div class="min-h-[14rem] min-w-0 {TableEnum.HEIGHT_SMALL}">
+			<MariTable
+				rows={draftLines}
+				columns={draftColumns}
+				bind:currentPage={draftCurrentPage}
+				bind:pageSize={draftPageSizeStr}
+				showRefreshButton={false}
+				emptyMessage={m.medication_order_external_sales_empty()}
+				showRowActions={true}
+				actionsHeader={m.actions()}
+				actionsVariant="none"
+				enableColumnFilters={true}
+				totalRowCount={draftLines.length}
+				fillParent={true}
+				bind:columnFilters={draftColumnFilters}
+			>
+				{#snippet rowActions(row, localIdx)}
+					<td class="w-0 text-right whitespace-nowrap">
+						<div
+							class="inline-flex max-w-full flex-nowrap items-center justify-end gap-0.5"
+						>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-xs d-btn-square"
+								title={m.med_order_int_move_up_aria()}
+								disabled={globalDraftIndex(localIdx) <= 0 ||
+									batchIsPaid}
+								onClick={() =>
+									moveDraftLine(globalDraftIndex(localIdx), -1)}
+							>
+								<LucideChevronRight
+									className="size-4 -rotate-90"
+								/>
+							</DaisyUiButton>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-xs d-btn-square"
+								title={m.med_order_int_move_down_aria()}
+								disabled={globalDraftIndex(localIdx) >=
+									draftLines.length - 1 || batchIsPaid}
+								onClick={() =>
+									moveDraftLine(globalDraftIndex(localIdx), 1)}
+							>
+								<LucideChevronRight
+									className="size-4 rotate-90"
+								/>
+							</DaisyUiButton>
+							<DaisyUiButton
+								className="d-btn-ghost d-btn-error d-btn-xs d-btn-square"
+								title={m.delete_data()}
+								disabled={batchIsPaid}
+								onClick={() =>
+									removeDraft((row as DraftLine)._key)}
+							>
+								<LucideTrash2 className="size-4" />
+							</DaisyUiButton>
+						</div>
+					</td>
+				{/snippet}
+			</MariTable>
+		</div>
 	</DaisyUiCardBody>
 </DaisyUiCard>
 
@@ -1287,7 +1539,7 @@
 						showRowActions={true}
 						actionsHeader={m.actions()}
 						actionsVariant="none"
-						enableColumnFilters={true}
+					enableColumnFilters={false}
 						totalRowCount={historyRows.length}
 						fillParent={true}
 						bind:columnFilters={historyColumnFilters}

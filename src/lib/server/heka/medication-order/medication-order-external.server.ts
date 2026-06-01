@@ -15,12 +15,20 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { isMedOrderStartBeforeToday } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import {
 	getFinancialYearIdToday,
 	updateMedicationOrderBatch,
-	deleteMedicationOrderBatch
+	deleteMedicationOrderBatch,
+	type MedicationOrderLineSaveInput
 } from './medication-order-internal.server';
+import {
+	assertBatchNotPaid,
+	validateMedicationOrderLinesForDispense,
+	insertMedicationOrderLineWithAllocations,
+	loadAllocationsForLineIds
+} from './medication-order-dispense.server';
 
 export {
 	listMastersForInternalForm,
@@ -207,7 +215,8 @@ export async function reorderFromHistoryBatchExternal(
 	const now = new Date();
 	const minValidStartMs = now.getTime() - 25_000;
 	const startMs = Math.max(maxEndMs, minValidStartMs);
-	const newLine = {
+	const allocs = await loadAllocationsForLineIds([firstLine.id]);
+	const newLine: MedicationOrderLineSaveInput = {
 		itemMasterId: firstLine.itemMasterId,
 		dose: String(firstLine.dose),
 		doseUnitId: firstLine.doseUnitId,
@@ -220,8 +229,24 @@ export async function reorderFromHistoryBatchExternal(
 		foodRelationId: firstLine.foodRelationId,
 		startAt: new Date(startMs).toISOString(),
 		testDose: firstLine.testDose,
-		substituteNotAllowed: firstLine.substituteNotAllowed
+		substituteNotAllowed: firstLine.substituteNotAllowed,
+		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
+		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
+		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
+		allocations: allocs.map((a) => ({
+			batchId: a.batchId,
+			qtyPurchase: String(a.qtyPurchase)
+		}))
 	};
+	if (
+		!newLine.itemUnitMasterId ||
+		newLine.allocations.length === 0
+	) {
+		throw error(
+			400,
+			'Source line has no stock allocations; cannot reorder'
+		);
+	}
 
 	return await saveMedicationOrderBatchExternal(event, {
 		hospitalId,
@@ -239,21 +264,7 @@ export async function saveMedicationOrderBatchExternal(
 		storeId: number;
 		extCustomerName: string;
 		advisingDoctor: string;
-		lines: Array<{
-			itemMasterId: number;
-			dose: string;
-			doseUnitId: number;
-			frequencyId: number;
-			durationValue: string;
-			durationUnitId: number;
-			formId: number | null;
-			routeId: number | null;
-			orderTypeId: number | null;
-			foodRelationId: number | null;
-			startAt: string;
-			testDose: string | null;
-			substituteNotAllowed: boolean;
-		}>;
+		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, storeId, lines } = input;
@@ -276,7 +287,6 @@ export async function saveMedicationOrderBatchExternal(
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const now = new Date();
-	const startLimit = now.toISOString();
 
 	const branches = await db
 		.select({ id: table.hospitalBranchTable.id })
@@ -295,9 +305,15 @@ export async function saveMedicationOrderBatchExternal(
 		.limit(1);
 	if (!st) throw error(400, 'Invalid store');
 
+	await validateMedicationOrderLinesForDispense({
+		hospitalId,
+		storeId,
+		lines
+	});
+
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
@@ -320,6 +336,7 @@ export async function saveMedicationOrderBatchExternal(
 				batchNo,
 				extCustomerName,
 				advisingDoctor,
+				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -327,27 +344,16 @@ export async function saveMedicationOrderBatchExternal(
 		if (!batch) throw error(500, 'Failed to create batch');
 		let lineNo = 1;
 		for (const ln of lines) {
-			if (new Date(ln.startAt) < new Date(startLimit)) {
-				throw error(400, 'Start date/time must not be in the past');
+			if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+				throw error(400, 'Start date cannot be before today');
 			}
-			await tx.insert(table.medicationOrderLineTable).values({
+			await insertMedicationOrderLineWithAllocations(tx, {
+				hospitalId,
+				storeId,
 				batchId: batch.id,
 				lineNo: lineNo++,
-				itemMasterId: ln.itemMasterId,
-				dose: ln.dose,
-				doseUnitId: ln.doseUnitId,
-				frequencyId: ln.frequencyId,
-				durationValue: ln.durationValue,
-				durationUnitId: ln.durationUnitId,
-				formId: ln.formId,
-				routeId: ln.routeId,
-				orderTypeId: ln.orderTypeId,
-				foodRelationId: ln.foodRelationId,
-				startAt: ln.startAt,
-				testDose: ln.testDose,
-				substituteNotAllowed: ln.substituteNotAllowed,
-				createdBy: userId,
-				updatedBy: userId
+				line: ln,
+				userId
 			});
 		}
 		return { batch, batchNo };
@@ -376,6 +382,7 @@ export async function updateMedicationOrderBatchExternal(
 	if (b.visitId != null) {
 		throw error(400, 'This batch is not an external sale order');
 	}
+	await assertBatchNotPaid(input.hospitalId, input.batchId);
 	return updateMedicationOrderBatch(event, input);
 }
 
@@ -398,5 +405,6 @@ export async function deleteMedicationOrderBatchExternal(
 	if (b.visitId != null) {
 		throw error(400, 'This batch is not an external sale order');
 	}
+	await assertBatchNotPaid(hospitalId, batchId);
 	return deleteMedicationOrderBatch(event, hospitalId, batchId);
 }

@@ -168,8 +168,10 @@
 
 	async function handleDeleteVital(v: PatientVitalWithVisit) {
 		const result = await dialogService.open({
-			title: 'Delete vital',
-			message: `Delete vital record from ${formatDateTime(getVitalDisplayDate(v) ?? null)}? This cannot be undone.`,
+			title: m.observation_emr_vital_inactivate_title(),
+			message: m.observation_emr_vital_inactivate_message({
+				date: formatDateTime(getVitalDisplayDate(v) ?? null)
+			}),
 			variant: DialogVariantEnum.CONFIRM
 		});
 		if (!result.confirmed) return;
@@ -184,7 +186,7 @@
 			toastSuccess(
 				toastService,
 				m.entity_patient_vital(),
-				m.toast_action_deleted()
+				m.toast_action_inactivated()
 			);
 			if (visit?.patientId && visit?.hospitalId) {
 				await fetchVitals(visit.patientId, visit.hospitalId, {
@@ -195,7 +197,7 @@
 			toastService.addToast(
 				(err instanceof Error
 					? err.message
-					: 'Delete failed') as string,
+					: m.observation_emr_inactivate_failed()) as string,
 				StatusColorEnum.ERROR
 			);
 		}

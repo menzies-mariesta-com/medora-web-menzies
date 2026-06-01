@@ -283,7 +283,7 @@ export async function deleteAppointment(
 	await ensureCanAccessHospital(event, input.hospitalId);
 	await ensureDb()
 		.update(table.appointmentTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.appointmentTable.id, input.id),
@@ -406,7 +406,7 @@ export async function deleteAppointmentBlock(
 	await ensureCanAccessHospital(event, input.hospitalId);
 	await ensureDb()
 		.update(table.appointmentBlockTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.appointmentBlockTable.id, input.id),

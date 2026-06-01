@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+	hospitalBranchTable,
 	itemMasterTable,
 	itemUnitMasterTable,
 	hospitalTable,
@@ -17,6 +18,7 @@ import {
 	invStockAlertEmailSentTable,
 	invStockAlertRecipientTable,
 	invStockAlertSettingTable,
+	invBranchPricingConfigTable,
 	invDepartmentConsumptionLineTable,
 	invDepartmentConsumptionTable,
 	invStockIssueLineTable,
@@ -88,6 +90,20 @@ export const invStockAlertSettingTableRelations = relations(
 		hospital: one(hospitalTable, {
 			fields: [invStockAlertSettingTable.hospitalId],
 			references: [hospitalTable.id]
+		})
+	})
+);
+
+export const invBranchPricingConfigTableRelations = relations(
+	invBranchPricingConfigTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invBranchPricingConfigTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [invBranchPricingConfigTable.branchId],
+			references: [hospitalBranchTable.id]
 		})
 	})
 );

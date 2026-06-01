@@ -78,23 +78,6 @@
 	let lastInitHospitalId = $state<string | null>(null);
 	let listAbort: AbortController | null = null;
 
-	const SUPPLIER_FILTER_OPTIONS = $derived.by(() => {
-		const seen = new Set<number>();
-		const out: { value: string; label: string }[] = [];
-		for (const r of list) {
-			if (typeof r.supplierId !== 'number' || r.supplierId <= 0)
-				continue;
-			if (seen.has(r.supplierId)) continue;
-			seen.add(r.supplierId);
-			out.push({
-				value: String(r.supplierId),
-				label: r.supplierName?.trim() || `Supplier ${r.supplierId}`
-			});
-		}
-		out.sort((a, b) => a.label.localeCompare(b.label));
-		return out;
-	});
-
 	const PO_STATUS_FILTER_OPTIONS = $derived([
 		{
 			label: m.inv_po_filter_status_draft(),
@@ -221,7 +204,7 @@
 			header: m.inv_po_select_supplier(),
 			field: 'supplierId',
 			filterType: 'select',
-			filterOptionsGetter: () => SUPPLIER_FILTER_OPTIONS,
+			filterMasterKey: 'supplier',
 			format: (_v, row) => row.supplierName ?? '—'
 		},
 		{
@@ -285,6 +268,7 @@
 		<MariTable
 			columns={columns as MariTableColumn[]}
 			rows={list}
+			masterFilterHospitalId={hospitalId}
 			isLoading={loading}
 			bind:currentPage
 			bind:pageSize={pageSizeStr}

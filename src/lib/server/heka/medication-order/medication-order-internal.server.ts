@@ -18,9 +18,22 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	isMedOrderStartBeforeToday,
+	medOrderStartOfLocalDay
+} from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
+import {
+	assertBatchNotPaid,
+	buildMedOrderItemSearchCategoryFilter,
+	insertMedicationOrderLineWithAllocations,
+	loadAllocationsForLineIds,
+	reverseStockForBatch,
+	validateMedicationOrderLinesForDispense,
+	type MedicationOrderLineSaveInput
+} from './medication-order-dispense.server';
 
-const PHARMACY_CATEGORY_ID = 12;
+export type { MedicationOrderLineSaveInput };
 
 export async function getFinancialYearIdToday(
 	hospitalId: string
@@ -127,18 +140,19 @@ export async function searchItemNamePrice(
 	const wh = and(
 		eq(inv.storeId, storeId),
 		eq(im.hospitalId, hospitalId),
-		eq(im.categoryId, PHARMACY_CATEGORY_ID),
+		buildMedOrderItemSearchCategoryFilter(im, gen),
 		sql`cast(${inv.quantity} as numeric) > 0`,
 		eq(im.statusId, StatusEnum.ACTIVE),
 		isNull(im.deletedAt),
-		gen != null ? eq(im.pharmacyGenericId, gen) : undefined,
 		q != null ? ilike(im.itemName, q) : undefined
 	);
 	const rows = await ensureDb()
 		.select({
 			id: im.id,
 			itemName: im.itemName,
-			displayPrice: min(ib.purchasePrice)
+			displayPrice: min(
+				sql`coalesce(${ib.salePrice}, ${ib.purchasePrice})`
+			)
 		})
 		.from(inv)
 		.innerJoin(ib, eq(inv.batchId, ib.id))
@@ -161,21 +175,7 @@ export async function saveMedicationOrderBatch(
 		hospitalId: string;
 		visitId: number;
 		storeId: number;
-		lines: Array<{
-			itemMasterId: number;
-			dose: string;
-			doseUnitId: number;
-			frequencyId: number;
-			durationValue: string;
-			durationUnitId: number;
-			formId: number | null;
-			routeId: number | null;
-			orderTypeId: number | null;
-			foodRelationId: number | null;
-			startAt: string;
-			testDose: string | null;
-			substituteNotAllowed: boolean;
-		}>;
+		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, visitId, storeId, lines } = input;
@@ -187,7 +187,6 @@ export async function saveMedicationOrderBatch(
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const now = new Date();
-	const startLimit = now.toISOString();
 
 	const [v] = await db
 		.select()
@@ -218,9 +217,15 @@ export async function saveMedicationOrderBatch(
 		.limit(1);
 	if (!st) throw error(400, 'Invalid store');
 
+	await validateMedicationOrderLinesForDispense({
+		hospitalId,
+		storeId,
+		lines
+	});
+
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
@@ -243,6 +248,7 @@ export async function saveMedicationOrderBatch(
 				batchNo,
 				extCustomerName: null,
 				advisingDoctor: null,
+				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId
 			})
@@ -250,27 +256,16 @@ export async function saveMedicationOrderBatch(
 		if (!batch) throw error(500, 'Failed to create batch');
 		let lineNo = 1;
 		for (const ln of lines) {
-			if (new Date(ln.startAt) < new Date(startLimit)) {
-				throw error(400, 'Start date/time must not be in the past');
+			if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+				throw error(400, 'Start date cannot be before today');
 			}
-			await tx.insert(table.medicationOrderLineTable).values({
+			await insertMedicationOrderLineWithAllocations(tx, {
+				hospitalId,
+				storeId,
 				batchId: batch.id,
 				lineNo: lineNo++,
-				itemMasterId: ln.itemMasterId,
-				dose: ln.dose,
-				doseUnitId: ln.doseUnitId,
-				frequencyId: ln.frequencyId,
-				durationValue: ln.durationValue,
-				durationUnitId: ln.durationUnitId,
-				formId: ln.formId,
-				routeId: ln.routeId,
-				orderTypeId: ln.orderTypeId,
-				foodRelationId: ln.foodRelationId,
-				startAt: ln.startAt,
-				testDose: ln.testDose,
-				substituteNotAllowed: ln.substituteNotAllowed,
-				createdBy: userId,
-				updatedBy: userId
+				line: ln,
+				userId
 			});
 		}
 		return { batch, batchNo };
@@ -281,7 +276,7 @@ export async function saveMedicationOrderBatch(
  * “Reorder”: create a **new** batch (new batch number) with a single line copied from the
  * **first** line of `sourceBatchId`, with `startAt` = after the latest line end on this visit
  * (max of start + duration over all existing non-deleted lines). If that time would be in the
- * past, it is nudged to satisfy “start not in the past” validation. Does not use the UI draft.
+ * before today, it is nudged to the start of today. Does not use the UI draft.
  */
 export async function reorderFromHistoryBatch(
 	event: RequestEvent,
@@ -397,9 +392,12 @@ export async function reorderFromHistoryBatch(
 		if (end.getTime() > maxEndMs) maxEndMs = end.getTime();
 	}
 	const now = new Date();
-	const minValidStartMs = now.getTime() - 25_000;
-	const startMs = Math.max(maxEndMs, minValidStartMs);
-	const newLine = {
+	const startMs = Math.max(
+		maxEndMs,
+		medOrderStartOfLocalDay(now).getTime()
+	);
+	const allocs = await loadAllocationsForLineIds([firstLine.id]);
+	const newLine: MedicationOrderLineSaveInput = {
 		itemMasterId: firstLine.itemMasterId,
 		dose: String(firstLine.dose),
 		doseUnitId: firstLine.doseUnitId,
@@ -412,8 +410,24 @@ export async function reorderFromHistoryBatch(
 		foodRelationId: firstLine.foodRelationId,
 		startAt: new Date(startMs).toISOString(),
 		testDose: firstLine.testDose,
-		substituteNotAllowed: firstLine.substituteNotAllowed
+		substituteNotAllowed: firstLine.substituteNotAllowed,
+		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
+		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
+		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
+		allocations: allocs.map((a) => ({
+			batchId: a.batchId,
+			qtyPurchase: String(a.qtyPurchase)
+		}))
 	};
+	if (
+		!newLine.itemUnitMasterId ||
+		newLine.allocations.length === 0
+	) {
+		throw error(
+			400,
+			'Source line has no stock allocations; cannot reorder'
+		);
+	}
 
 	return await saveMedicationOrderBatch(event, {
 		hospitalId,
@@ -512,7 +526,19 @@ export async function getBatchWithLines(
 			)
 		)
 		.orderBy(table.medicationOrderLineTable.lineNo);
-	return { batch, lines };
+	const lineIds = lines.map((l) => l.id);
+	const allocations = await loadAllocationsForLineIds(lineIds);
+	const [payment] = await db
+		.select()
+		.from(table.medicationOrderBatchPaymentTable)
+		.where(
+			and(
+				eq(table.medicationOrderBatchPaymentTable.batchId, batchId),
+				isNull(table.medicationOrderBatchPaymentTable.deletedAt)
+			)
+		)
+		.limit(1);
+	return { batch, lines, allocations, payment: payment ?? null };
 }
 
 export async function updateMedicationOrderBatch(
@@ -520,22 +546,7 @@ export async function updateMedicationOrderBatch(
 	input: {
 		hospitalId: string;
 		batchId: number;
-		lines: Array<{
-			id?: number;
-			itemMasterId: number;
-			dose: string;
-			doseUnitId: number;
-			frequencyId: number;
-			durationValue: string;
-			durationUnitId: number;
-			formId: number | null;
-			routeId: number | null;
-			orderTypeId: number | null;
-			foodRelationId: number | null;
-			startAt: string;
-			testDose: string | null;
-			substituteNotAllowed: boolean;
-		}>;
+		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
 	const { hospitalId, batchId, lines } = input;
@@ -557,14 +568,28 @@ export async function updateMedicationOrderBatch(
 			)
 		);
 	if (!batch) throw error(404, 'Batch not found');
+	await assertBatchNotPaid(hospitalId, batchId);
+
+	await validateMedicationOrderLinesForDispense({
+		hospitalId,
+		storeId: batch.storeId,
+		lines
+	});
 
 	for (const ln of lines) {
-		if (new Date(ln.startAt).getTime() < now.getTime() - 30_000) {
-			throw error(400, 'Start date/time must not be in the past');
+		if (isMedOrderStartBeforeToday(ln.startAt, now)) {
+			throw error(400, 'Start date cannot be before today');
 		}
 	}
 
 	await db.transaction(async (tx) => {
+		await reverseStockForBatch(tx, {
+			hospitalId,
+			storeId: batch.storeId,
+			batchId,
+			userId
+		});
+
 		await tx
 			.update(table.medicationOrderLineTable)
 			.set({ deletedAt: new Date().toISOString(), deletedBy: userId })
@@ -577,24 +602,13 @@ export async function updateMedicationOrderBatch(
 
 		let lineNo = 1;
 		for (const ln of lines) {
-			await tx.insert(table.medicationOrderLineTable).values({
+			await insertMedicationOrderLineWithAllocations(tx, {
+				hospitalId,
+				storeId: batch.storeId,
 				batchId,
 				lineNo: lineNo++,
-				itemMasterId: ln.itemMasterId,
-				dose: ln.dose,
-				doseUnitId: ln.doseUnitId,
-				frequencyId: ln.frequencyId,
-				durationValue: ln.durationValue,
-				durationUnitId: ln.durationUnitId,
-				formId: ln.formId,
-				routeId: ln.routeId,
-				orderTypeId: ln.orderTypeId,
-				foodRelationId: ln.foodRelationId,
-				startAt: ln.startAt,
-				testDose: ln.testDose,
-				substituteNotAllowed: ln.substituteNotAllowed,
-				createdBy: userId,
-				updatedBy: userId
+				line: ln,
+				userId
 			});
 		}
 		await tx
@@ -629,7 +643,14 @@ export async function deleteMedicationOrderBatch(
 			)
 		);
 	if (!b) throw error(404, 'Not found');
+	await assertBatchNotPaid(hospitalId, batchId);
 	await db.transaction(async (tx) => {
+		await reverseStockForBatch(tx, {
+			hospitalId,
+			storeId: b.storeId,
+			batchId,
+			userId
+		});
 		await tx
 			.update(table.medicationOrderLineTable)
 			.set(delLine)

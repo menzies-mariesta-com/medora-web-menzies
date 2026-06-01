@@ -67,7 +67,8 @@
 		moveToFormCode = '',
 		moveDirection = 'down',
 		crudEditDisabled,
-		crudDeleteDisabled
+		crudDeleteDisabled,
+		masterFilterHospitalId
 	} = $props<{
 		title: string;
 		rows?: unknown[];
@@ -112,6 +113,7 @@
 		columnFilters?: Record<string, string>;
 		crudEditDisabled?: (row: Row) => boolean;
 		crudDeleteDisabled?: (row: Row) => boolean;
+		masterFilterHospitalId?: string;
 	}>();
 
 	function handleAdd() {
@@ -171,6 +173,7 @@
 				fillParent={true}
 				{rows}
 				{columns}
+				{masterFilterHospitalId}
 				{isLoading}
 				{emptyMessage}
 				{showRefreshButton}

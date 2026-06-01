@@ -209,7 +209,7 @@ export async function deletePharmacyGeneric(
 
 	await ensureDb()
 		.update(table.pharmacyGenericTable)
-		.set({ statusId: StatusEnum.DELETED })
+		.set({ statusId: StatusEnum.INACTIVE })
 		.where(
 			and(
 				eq(table.pharmacyGenericTable.id, input.id),

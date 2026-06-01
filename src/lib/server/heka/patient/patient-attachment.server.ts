@@ -85,7 +85,7 @@ export async function deletePatientAttachment(
 	await ensureDb()
 		.update(table.patientAttachmentTable)
 		.set({
-			statusId: StatusEnum.DELETED,
+			statusId: StatusEnum.INACTIVE,
 			updatedBy: event.locals.user?.id ?? null
 		} as any)
 		.where(eq(table.patientAttachmentTable.id, input.id));

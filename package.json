@@ -1,7 +1,7 @@
 {
 	"name": "heka",
 	"private": true,
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"type": "module",
 	"scripts": {
 		"dev": "npm run paraglide && vite dev --host 0.0.0.0 --port 5173",
@@ -23,7 +23,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:baseline:sql": "node scripts/drizzle-baseline-print-sql.mjs",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "npm run db:push && npm run db:seed:master && npm run db:seed:auth && npm run db:seed:information && npm run db:seed:marketplace",
+		"db:seed": "npm run db:seed:master && npm run db:seed:auth && npm run db:seed:information && npm run db:seed:marketplace",
 		"db:seed:auth": "npx tsx src/lib/server/db/seed/auth-table-seed.ts",
 		"db:seed:master": "npx tsx src/lib/server/db/seed/master-table-seed.ts",
 		"db:seed:information": "npx tsx src/lib/server/db/seed/information-table-seed.ts",
@@ -91,6 +91,7 @@
 		"phse-ui": "^0.0.1",
 		"qrcode": "^1.5.4",
 		"uuidv7": "^1.1.0",
+		"xlsx": "^0.18.5",
 		"zod": "^4.3.6"
 	}
 }

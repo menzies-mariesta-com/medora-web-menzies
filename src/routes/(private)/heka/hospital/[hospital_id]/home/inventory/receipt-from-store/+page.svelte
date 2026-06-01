@@ -107,17 +107,23 @@
 			format: (_v, r) => r.issueNo ?? '—'
 		},
 		{
-			id: 'to',
+			id: 'toStoreId',
 			header: m.inv_dept_indent_to(),
 			field: 'toStoreId',
 			filterable: fromStoreId == null,
+			filterType: 'select',
+			filterMasterKey: 'store',
+			filterEmptyLabel: m.inv_report_filter_store_all(),
 			format: (_v, r) => r.toStoreName ?? '—'
 		},
 		{
-			id: 'from',
+			id: 'fromStoreId',
 			header: m.inv_dept_indent_from(),
 			field: 'fromStoreId',
 			filterable: true,
+			filterType: 'select',
+			filterMasterKey: 'store',
+			filterEmptyLabel: m.inv_report_filter_store_all(),
 			format: (_v, r) => r.fromStoreName ?? '—'
 		},
 		{
@@ -159,14 +165,14 @@
 			}
 			const issueNo = tableFilters.issueNo?.trim();
 			if (issueNo) ps.set('issueNo', issueNo);
-			const toStoreFilter = tableFilters.to?.trim() ?? '';
+			const toStoreFilter = tableFilters.toStoreId?.trim() ?? '';
 			if (fromStoreId != null) {
 				// Receipt-from-store list is scoped to the selected (receiving) store.
 				ps.set('toStoreId', String(fromStoreId));
 			} else if (toStoreFilter !== '') {
 				ps.set('toStoreId', toStoreFilter);
 			}
-			const fromStoreFilter = tableFilters.from?.trim() ?? '';
+			const fromStoreFilter = tableFilters.fromStoreId?.trim() ?? '';
 			if (fromStoreFilter !== '') {
 				ps.set('fromStoreId', fromStoreFilter);
 			}
@@ -294,6 +300,7 @@
 		<MariTable
 			columns={columns as MariTableColumn[]}
 			rows={list}
+			masterFilterHospitalId={hospitalId}
 			bind:currentPage
 			bind:pageSize={pageSizeStr}
 			bind:columnFilters={tableFilters}
