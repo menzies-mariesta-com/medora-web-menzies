@@ -48,6 +48,10 @@ export function buildPrintDocumentHtml(params: {
 	const paddingRight = setting?.paddingRight ?? 10;
 	const pageSize = setting?.pageSize ?? 'A4';
 	const orientation = setting?.pageOrientation ?? 'portrait';
+	const pageSizeCss =
+		pageSize.includes('mm') || pageSize.includes('in')
+			? pageSize
+			: `${pageSize} ${orientation}`;
 	const showHeader = setting?.showHeader ?? true;
 	const showFooter = setting?.showFooter ?? true;
 
@@ -84,7 +88,7 @@ export function buildPrintDocumentHtml(params: {
 							-webkit-print-color-adjust: exact;
 						}
 						@page {
-							size: ${pageSize} ${orientation};
+							size: ${pageSizeCss};
 							margin: ${pageMarginTop}mm ${marginRight}mm ${pageMarginBottom}mm ${marginLeft}mm;
 						}
 						.print-header {

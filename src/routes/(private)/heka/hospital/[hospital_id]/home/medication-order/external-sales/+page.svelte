@@ -23,6 +23,12 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import {
+		buildMedOrderReceiptBodyHtml,
+		type MedOrderReceiptPrintLabels
+	} from '$lib/util/op-billing-print-table.util';
 	import type {
 		MedicationOrderBatchHistoryRow,
 		MedicationOrderCheckoutResponse,
@@ -918,26 +924,37 @@
 		}
 	}
 
-	function printReceipt() {
-		if (!lastReceipt) return;
-		const w = window.open('', '_blank', 'width=480,height=720');
-		if (!w) return;
+	async function printReceipt() {
+		if (!lastReceipt || !hospitalId) return;
 		const r = lastReceipt;
-		const rows = r.lines
-			.map(
-				(ln) =>
-					`<tr><td>${ln.itemName ?? '—'}</td><td>${ln.issueQtyPurchase}</td><td>${ln.unitSalePrice}</td><td>${ln.lineTotal}</td></tr>`
-			)
-			.join('');
-		w.document.write(`<!DOCTYPE html><html><head><title>${r.receiptNo}</title></head><body>
-<h2>${m.med_order_receipt_print()}</h2>
-<p><strong>${r.receiptNo}</strong></p>
-<p>${r.batch.extCustomerName ?? ''} · ${r.batch.advisingDoctor ?? ''}</p>
-<table border="1" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
-<p>${m.med_order_amount_due()}: ${r.amountDue} · ${m.med_order_amount_paid()}: ${r.amountPaid}</p>
-</body></html>`);
-		w.document.close();
-		w.print();
+		const labels: MedOrderReceiptPrintLabels = {
+			item: 'Item',
+			qty: 'Qty',
+			price: 'Price',
+			total: 'Total',
+			amountDue: m.med_order_amount_due(),
+			amountPaid: m.med_order_amount_paid()
+		};
+		const bodyHtml = buildMedOrderReceiptBodyHtml({
+			lines: r.lines,
+			amountDue: r.amountDue,
+			amountPaid: r.amountPaid,
+			labels
+		});
+
+		await printFromDocumentMaster({
+			hospitalId,
+			documentCode: DOCUMENT_PRINT_CODE.MED_ORDER_RECEIPT,
+			document: { documentNumber: r.receiptNo },
+			extraPlaceholders: {
+				'{{print.body_html}}': bodyHtml,
+				'{{print.label_title}}': m.med_order_receipt_print(),
+				'{{document.number}}': r.receiptNo,
+				'{{print.customer}}': r.batch.extCustomerName ?? '',
+				'{{print.doctor}}': r.batch.advisingDoctor ?? ''
+			},
+			iframeId: 'med-order-receipt-print-iframe'
+		});
 	}
 
 	async function openHistory() {

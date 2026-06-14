@@ -7,7 +7,6 @@ import {
 	count,
 	eq,
 	inArray,
-	isNull,
 	ne,
 	sql,
 	gte,
@@ -16,22 +15,9 @@ import {
 	type SQL
 } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import {
-	evaluateStockAlertsForHospital,
-	scheduleStockAlertsDispatch,
-	type StockAlertsSummary
-} from '$lib/server/heka/inventory/stock-alerts.server';
 
 /** Matches `home/+layout.server.ts` “All Branches” sentinel. */
 const BRANCH_ALL_VALUE = '__all__';
-
-export type InventoryDashboardCounts = {
-	storeCount: number;
-	itemMasterCount: number;
-	stockLotCount: number;
-};
-
-export type InventoryDashboardStockAlertCounts = StockAlertsSummary;
 
 type DailyVisitCount = {
 	date: string; // YYYY-MM-DD
@@ -114,23 +100,11 @@ function branchWhere(
 export const load: PageServerLoad = async (event) => {
 	const { params, parent } = event;
 	const hospitalId = params.hospital_id;
-	const emptyInventory: InventoryDashboardCounts = {
-		storeCount: 0,
-		itemMasterCount: 0,
-		stockLotCount: 0
-	};
-	const emptyAlerts: InventoryDashboardStockAlertCounts = {
-		lowStockCount: 0,
-		expiredLotCount: 0,
-		expiringSoonLotCount: 0
-	};
 	if (!hospitalId) {
 		return {
 			stats: null,
 			visitsLast7Days: [] as DailyVisitCount[],
-			branchScopeName: null as string | null,
-			inventoryDashboard: emptyInventory,
-			inventoryStockAlerts: emptyAlerts
+			branchScopeName: null as string | null
 		};
 	}
 
@@ -162,40 +136,11 @@ export const load: PageServerLoad = async (event) => {
 		return {
 			stats: emptyStats,
 			visitsLast7Days: last7,
-			branchScopeName: null,
-			inventoryDashboard: emptyInventory,
-			inventoryStockAlerts: emptyAlerts
+			branchScopeName: null
 		};
 	}
 
 	const db = ensureDb();
-
-	const branchFilterStores =
-		branchIds.length === 1
-			? eq(table.storeTable.branchId, branchIds[0]!)
-			: inArray(table.storeTable.branchId, branchIds);
-
-	const storeWhereInventory = and(
-		eq(table.hospitalBranchTable.hospitalId, hospitalId),
-		branchFilterStores,
-		eq(table.storeTable.statusId, StatusEnum.ACTIVE)
-	);
-
-	const branchStoresPromise = db
-		.select({ id: table.storeTable.id })
-		.from(table.storeTable)
-		.innerJoin(
-			table.hospitalBranchTable,
-			eq(table.storeTable.branchId, table.hospitalBranchTable.id)
-		)
-		.where(storeWhereInventory);
-
-	const alertEvalPromise = branchStoresPromise.then((rows) =>
-		evaluateStockAlertsForHospital(event, {
-			hospitalId,
-			storeIdsInScope: rows.map((r) => r.id)
-		})
-	);
 
 	const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -235,11 +180,7 @@ export const load: PageServerLoad = async (event) => {
 		appointmentTagRows,
 		caseHistoryRow,
 		documentRow,
-		visitRows,
-		storesInventoryRow,
-		itemsInventoryRow,
-		stockInventoryRow,
-		alertEval
+		visitRows
 	] = await Promise.all([
 		db
 			.select({ n: sql<number>`count(distinct ${ds.staffId})::int` })
@@ -320,52 +261,8 @@ export const load: PageServerLoad = async (event) => {
 					gte(pv.createdAt, rangeStart.toISOString()),
 					lt(pv.createdAt, rangeEndExclusive.toISOString())
 				)
-			),
-		db
-			.select({ n: count() })
-			.from(table.storeTable)
-			.innerJoin(
-				table.hospitalBranchTable,
-				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
 			)
-			.where(storeWhereInventory),
-		db
-			.select({ n: count() })
-			.from(table.itemMasterTable)
-			.where(
-				and(
-					eq(table.itemMasterTable.hospitalId, hospitalId),
-					eq(table.itemMasterTable.statusId, StatusEnum.ACTIVE)
-				)
-			),
-		db
-			.select({ n: count() })
-			.from(table.invStockTable)
-			.innerJoin(
-				table.storeTable,
-				eq(table.invStockTable.storeId, table.storeTable.id)
-			)
-			.innerJoin(
-				table.hospitalBranchTable,
-				eq(table.storeTable.branchId, table.hospitalBranchTable.id)
-			)
-			.where(
-				and(
-					eq(table.invStockTable.hospitalId, hospitalId),
-					eq(table.hospitalBranchTable.hospitalId, hospitalId),
-					branchFilterStores,
-					isNull(table.invStockTable.deletedAt)
-				)
-			),
-		alertEvalPromise
 	]);
-
-	scheduleStockAlertsDispatch({
-		hospitalId,
-		settings: alertEval.settings,
-		baselineSoon: alertEval.baselineSoon,
-		sendEmail: true
-	});
 
 	const doctors = Number(doctorRow[0]?.n ?? 0);
 	const patients = Number(patientRow[0]?.n ?? 0);
@@ -419,17 +316,9 @@ export const load: PageServerLoad = async (event) => {
 		visitsLast7DaysTotal
 	};
 
-	const inventoryDashboard: InventoryDashboardCounts = {
-		storeCount: Number(storesInventoryRow[0]?.n ?? 0),
-		itemMasterCount: Number(itemsInventoryRow[0]?.n ?? 0),
-		stockLotCount: Number(stockInventoryRow[0]?.n ?? 0)
-	};
-
 	return {
 		stats,
 		visitsLast7Days,
-		branchScopeName,
-		inventoryDashboard,
-		inventoryStockAlerts: alertEval.summary
+		branchScopeName
 	};
 };

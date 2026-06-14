@@ -1,7 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import { getDocumentsWithRelations } from '$lib/server/heka/document-master/document.server';
-import { getDocumentSettingsPaginated } from '$lib/server/heka/document-master/document-setting.server';
+import { getDocumentSettingsForPrint } from '$lib/server/heka/document-master/document-print.server';
 import * as obs from '$lib/server/heka/observation/observation-emr.server';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -25,12 +25,7 @@ export async function GET(event: RequestEvent) {
 			? obs.getPatientVisitById({ id: visitId, hospitalId })
 			: Promise.resolve(null),
 		getDocumentsWithRelations(event),
-		// clinical-document UI needs full list; use a huge pageSize to avoid partial list
-		getDocumentSettingsPaginated(event, {
-			hospitalId,
-			page: 1,
-			pageSize: 1000
-		}).then((r) => r.data)
+		getDocumentSettingsForPrint(event, hospitalId)
 	]);
 
 	return json({ visit, documents, documentSettings });

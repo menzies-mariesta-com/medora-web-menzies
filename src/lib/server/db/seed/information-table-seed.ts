@@ -364,26 +364,98 @@ export async function seedInformationTables() {
 			(6, 'Nursing Complete (OP) Print', 2, 10, 10, 10, 10, 5, 5, 5, 5, 'A4', 'portrait', true, true,
 				'<div style="text-align:center;"><strong>{{hospital.name}}</strong><br/><span style="font-size:12px;">{{hospital.address}}</span></div>',
 				'<div style="text-align:center;font-size:10px;">Printed: {{print.date}} {{print.time}} | {{print.by}}</div>',
+				1),
+			(7, 'Visit Label', 2, 4, 4, 4, 4, 2, 2, 2, 2, '100mm 60mm', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(8, 'Appointment Slip', 2, 14, 14, 14, 14, 8, 8, 8, 8, 'A4', 'portrait', false, false,
+				'',
+				'',
+				1),
+			(9, 'Medication Order Receipt', 2, 8, 8, 8, 8, 4, 4, 4, 4, 'A5', 'portrait', false, false,
+				'',
+				'',
 				1)
-		ON CONFLICT (id) DO NOTHING;
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			document_type_id = EXCLUDED.document_type_id,
+			margin_top = EXCLUDED.margin_top,
+			margin_bottom = EXCLUDED.margin_bottom,
+			margin_left = EXCLUDED.margin_left,
+			margin_right = EXCLUDED.margin_right,
+			padding_top = EXCLUDED.padding_top,
+			padding_bottom = EXCLUDED.padding_bottom,
+			padding_left = EXCLUDED.padding_left,
+			padding_right = EXCLUDED.padding_right,
+			page_size = EXCLUDED.page_size,
+			page_orientation = EXCLUDED.page_orientation,
+			show_header = EXCLUDED.show_header,
+			show_footer = EXCLUDED.show_footer,
+			header_html = EXCLUDED.header_html,
+			footer_html = EXCLUDED.footer_html,
+			status_id = EXCLUDED.status_id;
 	`);
 	seedLogger.info('Seeded: document_setting');
 
-	// 9b. System document for nursing complete print (code used by EMR)
+	// 9b. System print documents (codes used across billing, visits, appointments, pharmacy)
 	await db.execute(sql`
 		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
-		VALUES (
-			90001,
-			2,
-			'NURSING_COMPLETE_PRINT',
-			'<p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
-			'Nursing complete (OP)',
-			6,
-			1
-		)
-		ON CONFLICT (id) DO NOTHING;
+		VALUES
+			(
+				90001,
+				2,
+				'NURSING_COMPLETE_PRINT',
+				'<p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
+				'Nursing complete (OP)',
+				6,
+				1
+			),
+			(
+				90002,
+				2,
+				'OP_BILL_PRINT',
+				'<style>.meta{margin-top:6px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 14px;font-size:10px;}.meta dt{color:#64748b;font-weight:600;}.meta dd{margin:0;font-weight:500;color:#0f172a;}.cat-block{margin-top:14px;}.cat-title{margin:0 0 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#334155;border-left:3px solid #0ea5e9;padding-left:8px;}.line-table{width:100%;border-collapse:collapse;font-size:10px;}.line-table th,.line-table td{padding:6px 8px;border:1px solid #e2e8f0;}.line-table th{background:#f8fafc;font-weight:600;color:#475569;}.line-table th.num,.line-table td.amt{text-align:right;}.subtotal-row td{background:#f1f5f9;font-weight:600;}.grand{margin-top:12px;padding-top:10px;border-top:2px solid #0f172a;display:flex;justify-content:flex-end;align-items:baseline;gap:12px;}.grand--stack{flex-direction:column;align-items:stretch;gap:4px;}.grand-row{display:flex;justify-content:flex-end;gap:12px;}.grand-amt{font-size:15px;font-weight:700;}.grand-amt--strike{text-decoration:line-through;opacity:.7;font-size:12px;}.grand-disc{color:#b91c1c;font-weight:700;}.foot{margin-top:18px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#64748b;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;}</style><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}<footer class="foot"><span>{{print.label_thank_you}}</span><span>{{print.datetime}}</span></footer>',
+				'OP Bill',
+				5,
+				1
+			),
+			(
+				90003,
+				2,
+				'VISIT_LABEL_PRINT',
+				'<style>.header{display:flex;align-items:center;gap:8px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:6px;}.logo{width:72px;height:auto;max-height:28px;object-fit:contain;}h1{margin:0;font-size:12px;font-weight:700;}.label-rows{display:flex;flex-direction:column;gap:3px;font-size:9px;}.label-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:10px;}.pair{min-width:0;display:flex;gap:4px;}.right{padding-left:6px;}.k{font-weight:600;color:#374151;}.v{font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;}.barcode-wrap{margin-top:6px;display:flex;justify-content:center;width:100%;}svg#visit-label-barcode{max-width:100%;height:auto;}.foot{margin-top:3px;font-size:7px;color:#6b7280;text-align:right;}</style><div class="header"><img class="logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div><div class="foot">{{print.datetime}}</div>',
+				'Visit label',
+				7,
+				1
+			),
+			(
+				90004,
+				2,
+				'APPOINTMENT_SLIP_PRINT',
+				'<style>.header{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:1px solid #e5e7eb;}.logo{width:140px;max-width:45%;height:auto;object-fit:contain;}.title{font-size:22px;font-weight:700;margin:0;}.sub{margin:2px 0 0;font-size:12px;color:#6b7280;}.content{margin-top:14px;}table{width:100%;border-collapse:collapse;border:1px solid #e5e7eb;}td{padding:10px 12px;border-bottom:1px solid #e5e7eb;vertical-align:top;}tr:last-child td{border-bottom:none;}td.label{width:28%;font-size:12px;font-weight:700;color:#374151;background:#f9fafb;}td.value{font-size:12px;color:#111827;}.footer{margin-top:12px;font-size:10px;color:#6b7280;text-align:right;}</style><div class="header"><img class="logo" src="{{hospital.logo}}" alt="" /><div><h1 class="title">{{print.label_title}}</h1><p class="sub">{{print.label_subtitle}}</p></div></div><div class="content"><table><tr><td class="label">{{print.label_patient}}</td><td class="value">{{appointment.patient}}</td></tr><tr><td class="label">{{print.label_doctor}}</td><td class="value">{{appointment.doctor}}</td></tr><tr><td class="label">{{print.label_date}}</td><td class="value">{{appointment.date}}</td></tr><tr><td class="label">{{print.label_start_time}}</td><td class="value">{{appointment.start_time}}</td></tr><tr><td class="label">{{print.label_end_time}}</td><td class="value">{{appointment.end_time}}</td></tr></table><div class="footer">{{print.datetime}}</div></div>',
+				'Appointment slip',
+				8,
+				1
+			),
+			(
+				90005,
+				2,
+				'MED_ORDER_RECEIPT_PRINT',
+				'<style>.receipt-table{width:100%;border-collapse:collapse;font-size:11px;}.receipt-table th,.receipt-table td{border:1px solid #d1d5db;padding:4px;text-align:left;}.receipt-table th{background:#f3f4f6;}.receipt-totals{margin-top:8px;font-size:11px;font-weight:600;}.meta{margin-bottom:8px;font-size:11px;}</style><h2>{{print.label_title}}</h2><p><strong>{{document.number}}</strong></p><p class="meta">{{print.customer}} · {{print.doctor}}</p>{{print.body_html}}',
+				'Medication receipt',
+				9,
+				1
+			)
+		ON CONFLICT (id) DO UPDATE SET
+			document_type_id = EXCLUDED.document_type_id,
+			code = EXCLUDED.code,
+			document_text = EXCLUDED.document_text,
+			document_number = EXCLUDED.document_number,
+			document_setting_id = EXCLUDED.document_setting_id,
+			status_id = EXCLUDED.status_id;
 	`);
-	seedLogger.info('Seeded: document (nursing complete print)');
+	seedLogger.info('Seeded: document (system print templates)');
 
 	// 8c. Subcategories for EMR/CPOE order “Service Type” filter testing (category_id: 1=RADIOLOGY, 2=NURSING, 5=LAB)
 	await db.execute(sql`

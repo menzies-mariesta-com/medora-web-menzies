@@ -27,6 +27,8 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 
 	/** Slot shape: date (YYYY-MM-DD), startTime/endTime (HH:mm or HH:mm:ss). */
 	type ScheduleSlot = {
@@ -456,16 +458,8 @@
 		return 'text-warning-content';
 	}
 
-	function escapeHtml(value: unknown): string {
-		return String(value ?? '')
-			.replaceAll('&', '&amp;')
-			.replaceAll('<', '&lt;')
-			.replaceAll('>', '&gt;')
-			.replaceAll('"', '&quot;')
-			.replaceAll("'", '&#39;');
-	}
-
-	function printAppointmentSlip(slot: AppointmentSlot) {
+	async function printAppointmentSlip(slot: AppointmentSlot) {
+		if (!hospitalId?.trim()) return;
 		const patientCode = slot.patientCode?.trim() ?? '';
 		const patientName = slot.patientName?.trim() ?? '';
 		const patientLabel =
@@ -473,103 +467,34 @@
 				? `${patientCode} – ${patientName}`
 				: patientName || patientCode || '';
 
-		const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Appointment Slip</title>
-    <style>
-      @page { size: A4; margin: 14mm; }
-      * { box-sizing: border-box; }
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: #111827; }
-      .header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
-      .logo { width: 140px; max-width: 45%; height: auto; object-fit: contain; }
-      .title { font-size: 22px; font-weight: 700; margin: 0; }
-      .sub { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
-      .content { margin-top: 14px; }
-      table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-      td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-      tr:last-child td { border-bottom: none; }
-      td.label { width: 28%; font-size: 12px; font-weight: 700; color: #374151; background: #f9fafb; }
-      td.value { font-size: 12px; color: #111827; }
-      .footer { margin-top: 12px; font-size: 10px; color: #6b7280; text-align: right; }
-      @media print { .no-print { display: none !important; } }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <img class="logo" src="${escapeHtml(HekaLogo)}" alt="Heka" />
-      <div>
-        <h1 class="title">Appointment Slip</h1>
-        <p class="sub">Please present this slip at the counter.</p>
-      </div>
-    </div>
-
-    <div class="content">
-      <table>
-        <tr>
-          <td class="label">Patient</td>
-          <td class="value">${escapeHtml(patientLabel)}</td>
-        </tr>
-        <tr>
-          <td class="label">Doctor</td>
-          <td class="value">${escapeHtml(selectedDoctorName)}</td>
-        </tr>
-        <tr>
-          <td class="label">Date</td>
-          <td class="value">${escapeHtml(slot.date)}</td>
-        </tr>
-        <tr>
-          <td class="label">Start time</td>
-          <td class="value">${escapeHtml(formatTimeForDisplay(toHHmm(slot.startTime)))}</td>
-        </tr>
-        <tr>
-          <td class="label">End time</td>
-          <td class="value">${escapeHtml(formatTimeForDisplay(toHHmm(slot.endTime)))}</td>
-        </tr>
-      </table>
-      <div class="footer">Printed: ${escapeHtml(new Date().toLocaleString())}</div>
-    </div>
-  </body>
-</html>`;
-
-		let iframe = document.getElementById(
-			'appointment-slip-print-iframe'
-		) as HTMLIFrameElement | null;
-
-		if (!iframe) {
-			iframe = document.createElement('iframe');
-			iframe.id = 'appointment-slip-print-iframe';
-			iframe.style.position = 'fixed';
-			iframe.style.right = '0';
-			iframe.style.bottom = '0';
-			iframe.style.width = '0';
-			iframe.style.height = '0';
-			iframe.style.border = '0';
-			iframe.style.opacity = '0';
-			iframe.style.pointerEvents = 'none';
-			document.body.appendChild(iframe);
-		}
-
-		const win = iframe.contentWindow;
-		const doc = win?.document;
-		if (!win || !doc) return;
-
-		doc.open();
-		doc.write(html);
-		doc.close();
-
-		// Give the iframe a moment to layout + load the logo before printing.
-		window.setTimeout(() => {
-			try {
-				win.focus();
-				win.print();
-			} catch {
-				// ignore
-			}
-		}, 150);
+		await printFromDocumentMaster({
+			hospitalId,
+			documentCode: DOCUMENT_PRINT_CODE.APPOINTMENT_SLIP,
+			extraPlaceholders: {
+				'{{hospital.logo}}': HekaLogo,
+				'{{appointment.patient}}': patientLabel,
+				'{{appointment.doctor}}': selectedDoctorName,
+				'{{appointment.date}}': slot.date,
+				'{{appointment.start_time}}': formatTimeForDisplay(
+					toHHmm(slot.startTime)
+				),
+				'{{appointment.end_time}}': formatTimeForDisplay(
+					toHHmm(slot.endTime)
+				),
+				'{{print.datetime}}': new Date().toLocaleString(),
+				'{{print.label_title}}': 'Appointment Slip',
+				'{{print.label_subtitle}}':
+					'Please present this slip at the counter.',
+				'{{print.label_patient}}': 'Patient',
+				'{{print.label_doctor}}': 'Doctor',
+				'{{print.label_date}}': 'Date',
+				'{{print.label_start_time}}': 'Start time',
+				'{{print.label_end_time}}': 'End time'
+			},
+			iframeId: 'appointment-slip-print-iframe'
+		});
 	}
+
 
 	/** True if (dateString, timeSlot) is in the past (slot start before now). */
 	function isCellInPast(

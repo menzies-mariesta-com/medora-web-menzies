@@ -4,6 +4,14 @@ import type {
 	DocumentSettingWithRelations
 } from '$lib/model/type/document-setting.type';
 
+function embeddedDocumentSetting(
+	doc: DocumentForPrintSetting
+): DocumentSettingRow | null {
+	const embedded = doc.documentSetting;
+	if (!embedded?.id) return null;
+	return embedded;
+}
+
 /** Picks document_setting row for a master document (same logic as clinical document print). */
 export function resolveDocumentSettingForDoc(
 	documentSettings: DocumentSettingWithRelations[],
@@ -15,7 +23,10 @@ export function resolveDocumentSettingForDoc(
 		const s = documentSettings.find(
 			(x) => x.id === doc.documentSettingId
 		);
-		return s ?? null;
+		if (s) return s;
+		const embedded = embeddedDocumentSetting(doc);
+		if (embedded?.id === doc.documentSettingId) return embedded;
+		return null;
 	}
 	if (doc.documentTypeId) {
 		const byTypeId = documentSettings.find(
@@ -37,5 +48,5 @@ export function resolveDocumentSettingForDoc(
 			return documentSettings[0];
 		}
 	}
-	return null;
+	return embeddedDocumentSetting(doc);
 }
