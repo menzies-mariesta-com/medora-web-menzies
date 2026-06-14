@@ -1,3 +1,4 @@
-/** Master `document.code` for nursing complete EMR print (seeded). */
-export const EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE =
-	'NURSING_COMPLETE_PRINT' as const;
+export {
+	DOCUMENT_PRINT_CODE,
+	EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
+} from '$lib/model/constant/document-print.constant';

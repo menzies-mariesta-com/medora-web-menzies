@@ -7,8 +7,11 @@ import {
 	markServiceOrderDetailNursingComplete,
 	markServiceOrderDetailNursingCompleteBatch
 } from '$lib/server/heka/emr/nursing-complete.server';
-import { getDocumentsWithRelations } from '$lib/server/heka/document-master/document.server';
-import { getDocumentSettingsPaginated } from '$lib/server/heka/document-master/document-setting.server';
+import {
+	getDocumentByCode,
+	getDocumentsWithRelations
+} from '$lib/server/heka/document-master/document.server';
+import { getDocumentSettingsForPrint } from '$lib/server/heka/document-master/document-print.server';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -92,20 +95,10 @@ export async function GET(event: RequestEvent) {
 		case 'documentMaster.byCode': {
 			const code = event.url.searchParams.get('code') ?? '';
 			if (!code) throw error(400, 'code is required');
-			const docs = await getDocumentsWithRelations(event);
-			const found =
-				(docs as any[]).find(
-					(d) => String(d?.code ?? '').trim() === code
-				) ?? null;
-			return json(found);
+			return json(await getDocumentByCode(event, code));
 		}
 		case 'documentSettings.list': {
-			const settings = await getDocumentSettingsPaginated(event, {
-				hospitalId,
-				page: 1,
-				pageSize: 1000
-			});
-			return json(settings.data);
+			return json(await getDocumentSettingsForPrint(event, hospitalId));
 		}
 		default:
 			throw error(400, `Unknown mode: ${mode}`);

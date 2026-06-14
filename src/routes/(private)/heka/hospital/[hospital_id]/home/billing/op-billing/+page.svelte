@@ -10,13 +10,27 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
-	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import OpBillingReadinessPanel from '$lib/component/own/local/private/heka/billing/OpBillingReadinessPanel.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
+	import type {
+		OpBillingLine,
+		OpBillingMeta,
+		OpBillingReadiness,
+		OpBillingStaffSummary,
+		OpBillingVisitLinesGetResponse,
+		OpBillingVisitSummary
+	} from '$lib/model/type/heka/op-billing.type';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 
-	const msg = m;
+	const msg = m as Record<
+		string,
+		(inputs?: Record<string, unknown>) => string
+	>;
 
 	const visitId = $derived(VisitState.visitId);
 	const hospitalId = $derived(page.params.hospital_id ?? '');
@@ -32,20 +46,7 @@
 		}
 	}
 
-	type BillingLine = {
-		id: number;
-		/** Distinguishes OP billing source rows; avoids duplicate keys with service order detail id. */
-		lineSource?: 'service_order_detail' | 'medication_order_line';
-		serviceId: number;
-		serviceName: string | null;
-		orderNo: string | null;
-		subCategoryId: number | null;
-		subCategoryName: string | null;
-		serviceAmount: string | number | null;
-		serviceTaxAmount: string | number | null;
-		discount: string | number | null;
-		serviceUnit: number | null;
-	};
+	type BillingLine = OpBillingLine;
 
 	type BillingGroup = {
 		subCategoryId: number | null;
@@ -54,37 +55,11 @@
 		subtotal: number;
 	};
 
-	type VisitSummary = {
-		id: number;
-		visitNo: string;
-		hospitalName: string | null;
-		branchName: string | null;
-		patientName: string | null;
-		patientCode: string | null;
-		visitDateIso: string | null;
-		doctorName: string | null;
-	};
+	type VisitSummary = OpBillingVisitSummary;
 
-	type StaffSummary = {
-		id?: number | string | null;
-		userId?: number | string | null;
-		title?: { name?: string | null } | null;
-		firstName?: string | null;
-		middleName?: string | null;
-		lastName?: string | null;
-	};
+	type StaffSummary = OpBillingStaffSummary;
 
-	type BillingMeta = {
-		discountTypeId?: number | null;
-		discountPercent?: number | string | null;
-		discountAmount?: number | string | null;
-		linesSubtotal?: number | string | null;
-		totalAmount?: number | string | null;
-		discountedByStaff?: StaffSummary | null;
-		discountedAt?: string | null;
-		printedByStaff?: StaffSummary | null;
-		printedAt?: string | null;
-	};
+	type BillingMeta = OpBillingMeta;
 
 	type OpBillingHistory = {
 		id: number;
@@ -118,6 +93,7 @@
 	let grandTotal = $state(0);
 	let visitSummary = $state<VisitSummary | null>(null);
 	let billingMeta = $state<BillingMeta | null>(null);
+	let billingReadiness = $state<OpBillingReadiness | null>(null);
 
 	let isDiscountModalOpen = $state(false);
 	let discountType = $state<BillingDiscountTypeEnum>(
@@ -166,6 +142,25 @@
 		return p != null && String(p).trim() !== '';
 	});
 
+	const canCloseOpBill = $derived(
+		Boolean(billingReadiness?.canCloseBill) && !visitLevelDiscountLocked
+	);
+
+	function closeBlockedTooltip(): string {
+		if (visitLevelDiscountLocked) {
+			return m.op_billing_bill_already_closed_tooltip();
+		}
+		const key = billingReadiness?.blockReasonKey ?? null;
+		switch (key) {
+			case 'nursing_incomplete':
+				return m.op_billing_bill_close_blocked_nursing();
+			case 'no_billable_lines':
+				return msg.op_billing_bill_close_blocked_no_lines();
+			default:
+				return msg.op_billing_readiness_not_ready();
+		}
+	}
+
 	function opBillingLineRowKey(line: BillingLine): string {
 		if (
 			line.lineSource === 'medication_order_line' ||
@@ -209,15 +204,6 @@
 		return Object.values(byKey).sort((a, b) =>
 			a.subCategoryName.localeCompare(b.subCategoryName)
 		);
-	}
-
-	function escapeHtml(value: unknown): string {
-		return String(value ?? '')
-			.replaceAll('&', '&amp;')
-			.replaceAll('<', '&lt;')
-			.replaceAll('>', '&gt;')
-			.replaceAll('"', '&quot;')
-			.replaceAll("'", '&#39;');
 	}
 
 	function formatPrintDate(iso: string | null | undefined): string {
@@ -267,6 +253,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			billingReadiness = null;
 			loadError = '';
 			return;
 		}
@@ -281,6 +268,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			billingReadiness = null;
 			loadError = '';
 			return;
 		}
@@ -296,22 +284,20 @@
 				grandTotal = 0;
 				visitSummary = null;
 				billingMeta = null;
+				billingReadiness = null;
 				loadError = tr(
 					msg.op_billing_load_failed,
 					'Failed to load billing lines.'
 				);
 				return;
 			}
-			const data = (await res.json()) as {
-				items?: BillingLine[];
-				visit?: VisitSummary | null;
-				billing?: BillingMeta | null;
-			};
+			const data = (await res.json()) as OpBillingVisitLinesGetResponse;
 			const lines = (data.items ?? []).map((row) => ({
 				...row
 			}));
 			visitSummary = data.visit ?? null;
 			billingMeta = data.billing ?? null;
+			billingReadiness = data.readiness ?? null;
 			const grouped = groupLines(lines);
 			groups = grouped;
 			grandTotal = grouped.reduce((sum, g) => sum + g.subtotal, 0);
@@ -344,6 +330,7 @@
 			grandTotal = 0;
 			visitSummary = null;
 			billingMeta = null;
+			billingReadiness = null;
 			loadError = tr(
 				msg.op_billing_load_failed,
 				'Failed to load billing lines.'
@@ -431,7 +418,7 @@
 	}
 
 	async function closeOpBill() {
-		if (!visitId) return;
+		if (!visitId || !canCloseOpBill) return;
 		const visitNumeric = Number(visitId);
 		if (
 			!visitNumeric ||
@@ -452,18 +439,12 @@
 					loadError =
 						serverMsg ||
 						(res.status === 400
-							? tr(
-									msg.op_billing_nothing_to_close,
-									'There are no completed services pending billing.'
-								)
+							? closeBlockedTooltip()
 							: tr(msg.op_billing_load_failed, 'Request failed.'));
 				} catch {
 					loadError =
 						res.status === 400
-							? tr(
-									msg.op_billing_nothing_to_close,
-									'There are no completed services pending billing.'
-								)
+							? closeBlockedTooltip()
 							: tr(msg.op_billing_load_failed, 'Request failed.');
 				}
 				return;
@@ -475,323 +456,88 @@
 		}
 	}
 
-	function printBill(opts: {
+	async function printBill(opts: {
 		groups: BillingGroup[];
 		visitSummary: VisitSummary;
 		grandTotal: number;
 		discountValue: number;
 		netTotal: number;
 		hasDiscount: boolean;
-	}): void {
-		if (!opts.groups.length) return;
+	}): Promise<void> {
+		if (!opts.groups.length || !hospitalId) return;
 
 		const v = opts.visitSummary;
-		const hospitalName =
-			v?.hospitalName?.trim() ||
-			tr(msg.op_billing_title, 'OP Billing');
-		const patient = v?.patientName?.trim() || '—';
-		const code = v?.patientCode?.trim() || '—';
-		const visitNo = v?.visitNo ?? '—';
-		const visitWhen = formatPrintDate(v?.visitDateIso);
-		const doctor = v?.doctorName?.trim() || '—';
-		const branch = v?.branchName?.trim() || '—';
+		const bodyHtml = buildOpBillingPrintBodyHtml({
+			groups: opts.groups.map((g) => ({
+				subCategoryName: g.subCategoryName,
+				lines: g.lines.map((line) => ({
+					serviceName: line.serviceName,
+					orderNo: line.orderNo,
+					lineTotal: lineTotal(line)
+				})),
+				subtotal: g.subtotal
+			})),
+			grandTotal: opts.grandTotal,
+			discountValue: opts.discountValue,
+			netTotal: opts.netTotal,
+			hasDiscount: opts.hasDiscount,
+			labels: {
+				service: tr(msg.op_billing_print_service, 'Service'),
+				order: tr(msg.op_billing_print_order, 'Order'),
+				amount: tr(msg.op_billing_print_amount, 'Amount'),
+				subtotal: tr(msg.op_billing_print_subtotal, 'Subtotal'),
+				grandTotal: tr(msg.op_billing_print_grand_total, 'Grand total'),
+				discount: tr(msg.op_billing_print_discount, 'Discount'),
+				netTotal: tr(msg.op_billing_print_net_total, 'Net total')
+			},
+			formatMoney: formatMoneyAmount
+		});
 
 		const printedAt = `${tr(msg.op_billing_print_generated, 'Printed')}: ${new Date().toLocaleString()}`;
 
-		const rowsHtml = opts.groups
-			.map((g) => {
-				const lineRows = g.lines
-					.map(
-						(line) => `
-          <tr>
-            <td class="svc">${escapeHtml(line.serviceName ?? 'Service')}</td>
-            <td class="ord">${escapeHtml(line.orderNo ?? '—')}</td>
-            <td class="amt">${formatMoneyAmount(lineTotal(line))}</td>
-          </tr>`
-					)
-					.join('');
-
-				return `
-        <section class="cat-block">
-          <h3 class="cat-title">${escapeHtml(g.subCategoryName)}</h3>
-          <table class="line-table">
-            <thead>
-              <tr>
-                <th>${escapeHtml(tr(msg.op_billing_print_service, 'Service'))}</th>
-                <th>${escapeHtml(tr(msg.op_billing_print_order, 'Order'))}</th>
-                <th class="num">${escapeHtml(tr(msg.op_billing_print_amount, 'Amount'))}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${lineRows}
-            </tbody>
-            <tfoot>
-              <tr class="subtotal-row">
-                <td colspan="2">${escapeHtml(tr(msg.op_billing_print_subtotal, 'Subtotal'))}</td>
-                <td class="num">${formatMoneyAmount(g.subtotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </section>`;
-			})
-			.join('');
-
-		const totalLabel = escapeHtml(
-			tr(msg.op_billing_print_grand_total, 'Grand total')
-		);
-		const discountLabel = escapeHtml(
-			tr(msg.op_billing_print_discount, 'Discount')
-		);
-		const netLabel = escapeHtml(
-			tr(msg.op_billing_print_net_total, 'Net total')
-		);
-		const effectiveGrandTotal = opts.hasDiscount
-			? opts.netTotal
-			: opts.grandTotal;
-		const grandBlockHtml = opts.hasDiscount
-			? `<div class="grand grand--stack">
-        <div class="grand-row">
-          <span>${totalLabel}</span>
-          <span class="grand-amt grand-amt--strike">${formatMoneyAmount(opts.grandTotal)}</span>
-        </div>
-        <div class="grand-row">
-          <span>${discountLabel}</span>
-          <span class="grand-disc">-${formatMoneyAmount(opts.discountValue)}</span>
-        </div>
-        <div class="grand-row grand-row--net">
-          <span>${netLabel}</span>
-          <span class="grand-amt">${formatMoneyAmount(effectiveGrandTotal)}</span>
-        </div>
-      </div>`
-			: `<div class="grand">
-        <span>${totalLabel}</span>
-        <span class="grand-amt">${formatMoneyAmount(effectiveGrandTotal)}</span>
-      </div>`;
-
-		const html = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(tr(msg.op_billing_print_document_title, 'OP bill'))}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
-    <style>
-      @page { size: A4; margin: 14mm 16mm; }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: 'Source Sans 3', system-ui, sans-serif;
-        font-size: 11px;
-        color: #1a1a1a;
-        line-height: 1.45;
-        background: #fff;
-      }
-      .sheet { max-width: 720px; margin: 0 auto; }
-      .top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        padding-bottom: 14px;
-        border-bottom: 2px solid #0f172a;
-      }
-      .brand { display: flex; gap: 12px; align-items: center; }
-      .logo { width: 72px; height: auto; object-fit: contain; }
-      .titles h1 {
-        margin: 0;
-        font-family: 'Crimson Pro', Georgia, serif;
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: #0f172a;
-      }
-      .titles .sub {
-        margin: 4px 0 0;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: #64748b;
-      }
-      .meta {
-        margin-top: 6px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 6px 14px;
-        font-size: 10px;
-      }
-      .meta dt { color: #64748b; font-weight: 600; }
-      .meta dd { margin: 0; font-weight: 500; color: #0f172a; }
-      .cat-block { margin-top: 14px; margin-bottom: 1rem; }
-      .cat-title {
-        margin: 0 0 6px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #334155;
-        border-left: 3px solid #0ea5e9;
-        padding-left: 8px;
-      }
-      .line-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 10px;
-      }
-      .line-table th {
-        text-align: left;
-        padding: 6px 8px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        font-weight: 600;
-        color: #475569;
-      }
-      .line-table th.num { text-align: right; }
-      .line-table td {
-        padding: 6px 8px;
-        border: 1px solid #e2e8f0;
-        vertical-align: top;
-      }
-      .line-table td.svc { font-weight: 500; }
-      .line-table td.ord { color: #64748b; font-size: 9px; }
-      .line-table td.amt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
-      .subtotal-row td {
-        background: #f1f5f9;
-        font-weight: 600;
-        border-top: 1px solid #cbd5e1;
-      }
-      .subtotal-row .num { text-align: right; font-variant-numeric: tabular-nums; }
-      .grand {
-        margin-top: 12px;
-        padding-top: 10px;
-        border-top: 2px solid #0f172a;
-        display: flex;
-        justify-content: flex-end;
-        align-items: baseline;
-        gap: 12px;
-      }
-      .grand--stack {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
-      }
-      .grand-row {
-        display: flex;
-        justify-content: flex-end;
-        align-items: baseline;
-        gap: 12px;
-      }
-      .grand span:first-child {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #334155;
-      }
-      .grand .grand-amt {
-        font-size: 15px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        color: #0f172a;
-      }
-      .grand-amt--strike {
-        text-decoration: line-through;
-        opacity: 0.7;
-        font-weight: 600;
-        font-size: 12px;
-      }
-      .grand-disc {
-        font-size: 12px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        color: #b91c1c;
-      }
-      .grand-row--net span:first-child { color: #0f172a; }
-      @media print {
-        .line-table th,
-        .subtotal-row td {
-          background: #fff !important;
-        }
-        .cat-title { border-left-color: #000 !important; }
-      }
-      .foot {
-        margin-top: 18px;
-        padding-top: 10px;
-        border-top: 1px solid #e2e8f0;
-        font-size: 9px;
-        color: #64748b;
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .thank { font-style: italic; color: #475569; }
-    </style>
-  </head>
-  <body>
-    <div class="sheet">
-      <header class="top">
-        <div class="brand">
-          <img class="logo" src="${escapeHtml(HekaLogo)}" alt="" />
-          <div class="titles">
-            <h1>${escapeHtml(hospitalName)}</h1>
-            <p class="sub">${escapeHtml(tr(msg.op_billing_print_statement_title, 'Statement of charges'))}</p>
-          </div>
-        </div>
-      </header>
-      <dl class="meta">
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_patient, 'Patient'))}</dt><dd>${escapeHtml(patient)}</dd></div>
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_patient_code, 'Patient code'))}</dt><dd>${escapeHtml(code)}</dd></div>
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_visit_no, 'Visit no.'))}</dt><dd>${escapeHtml(visitNo)}</dd></div>
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_date, 'Date'))}</dt><dd>${escapeHtml(visitWhen)}</dd></div>
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_doctor, 'Doctor'))}</dt><dd>${escapeHtml(doctor)}</dd></div>
-        <div><dt>${escapeHtml(tr(msg.op_billing_print_branch, 'Branch'))}</dt><dd>${escapeHtml(branch)}</dd></div>
-      </dl>
-      ${rowsHtml}
-      ${grandBlockHtml}
-      <footer class="foot">
-        <span class="thank">${escapeHtml(tr(msg.op_billing_print_thank_you, 'Thank you for choosing us.'))}</span>
-        <span>${escapeHtml(printedAt)}</span>
-      </footer>
-    </div>
-  </body>
-</html>`;
-
-		let iframe = document.getElementById(
-			'op-billing-print-iframe'
-		) as HTMLIFrameElement | null;
-
-		if (!iframe) {
-			iframe = document.createElement('iframe');
-			iframe.id = 'op-billing-print-iframe';
-			iframe.style.position = 'fixed';
-			iframe.style.right = '0';
-			iframe.style.bottom = '0';
-			iframe.style.width = '0';
-			iframe.style.height = '0';
-			iframe.style.border = '0';
-			iframe.style.opacity = '0';
-			iframe.style.pointerEvents = 'none';
-			document.body.appendChild(iframe);
-		}
-
-		const win = iframe.contentWindow;
-		const doc = win?.document;
-		if (!win || !doc) return;
-
-		doc.open();
-		doc.write(html);
-		doc.close();
-
-		window.setTimeout(() => {
-			try {
-				win.focus();
-				win.print();
-			} catch {
-				// ignore
-			}
-		}, 200);
+		await printFromDocumentMaster({
+			hospitalId,
+			documentCode: DOCUMENT_PRINT_CODE.OP_BILL,
+			extraPlaceholders: {
+				'{{patient.name}}': v?.patientName?.trim() || '—',
+				'{{patient.code}}': v?.patientCode?.trim() || '—',
+				'{{visit.no}}': v?.visitNo ?? '—',
+				'{{visit.date}}': formatPrintDate(v?.visitDateIso),
+				'{{doctor.name}}': v?.doctorName?.trim() || '—',
+				'{{visit.department}}': v?.branchName?.trim() || '—',
+				'{{hospital.name}}':
+					v?.hospitalName?.trim() ||
+					tr(msg.op_billing_title, 'OP Billing'),
+				'{{print.body_html}}': bodyHtml,
+				'{{print.datetime}}': printedAt,
+				'{{print.label_patient}}': tr(
+					msg.op_billing_print_patient,
+					'Patient'
+				),
+				'{{print.label_patient_code}}': tr(
+					msg.op_billing_print_patient_code,
+					'Patient code'
+				),
+				'{{print.label_visit_no}}': tr(
+					msg.op_billing_print_visit_no,
+					'Visit no.'
+				),
+				'{{print.label_date}}': tr(msg.op_billing_print_date, 'Date'),
+				'{{print.label_doctor}}': tr(
+					msg.op_billing_print_doctor,
+					'Doctor'
+				),
+				'{{print.label_branch}}': tr(
+					msg.op_billing_print_branch,
+					'Branch'
+				),
+				'{{print.label_thank_you}}': tr(
+					msg.op_billing_print_thank_you,
+					'Thank you for choosing us.'
+				)
+			},
+			iframeId: 'op-billing-print-iframe'
+		});
 	}
 
 	function printOpBill() {
@@ -799,7 +545,7 @@
 		if (!groups.length) return;
 		if (!visitSummary) return;
 
-		printBill({
+		void printBill({
 			groups,
 			visitSummary,
 			grandTotal,
@@ -945,7 +691,7 @@
 			};
 
 			historyError = '';
-			printBill({
+			void printBill({
 				groups: printGroups,
 				visitSummary: v,
 				grandTotal: linesSubtotal,
@@ -1007,15 +753,17 @@
 			{#if visitId}
 				<div class="flex flex-wrap items-center gap-2">
 					<DaisyUiTooltip
-						tooltipText={tr(msg.op_billing_bill_close, 'Bill close')}
+						tooltipText={canCloseOpBill
+							? tr(msg.op_billing_bill_close, 'Bill close')
+							: closeBlockedTooltip()}
 						className="d-tooltip-left"
 					>
 						<DaisyUiButton
 							className="d-btn-outline d-btn-sm"
 							disabled={isLoading ||
 								!!loadError ||
-								groups.length === 0 ||
-								!billingMeta}
+								!billingMeta ||
+								!canCloseOpBill}
 							onClick={() => void closeOpBill()}
 						>
 							{tr(msg.op_billing_bill_close, 'Bill close')}
@@ -1045,6 +793,13 @@
 				{msg.op_billing_select_visit_hint()}
 			</p>
 		{:else}
+			<OpBillingReadinessPanel
+				readiness={billingReadiness}
+				{hospitalId}
+				visitId={visitId ?? ''}
+				draftSubtotal={grandTotal}
+				isClosed={visitLevelDiscountLocked}
+			/>
 			<div class="mt-2 space-y-3">
 				{#if loadError}
 					<p class="text-sm text-error">{loadError}</p>

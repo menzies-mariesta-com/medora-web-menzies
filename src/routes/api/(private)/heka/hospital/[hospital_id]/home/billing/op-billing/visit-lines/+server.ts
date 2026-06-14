@@ -3,6 +3,11 @@ import {
 	getPendingOpBillingServiceDetailRowsForVisit,
 	type OpBillingPendingLineRow
 } from '$lib/server/heka/observation/observation-emr.server';
+import {
+	getOpBillingReadiness,
+	opBillingCloseBlockedMessage
+} from '$lib/server/heka/billing/op-billing-readiness.server';
+import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -282,6 +287,7 @@ export const GET: RequestHandler = async (event) => {
 	const { url, params, locals } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
 	const hospitalId = params.hospital_id ?? '';
+	await ensureCanAccessHospital(event, hospitalId);
 	const visitIdParam = url.searchParams.get('visitId');
 	const visitId = visitIdParam ? Number(visitIdParam) : 0;
 
@@ -291,7 +297,8 @@ export const GET: RequestHandler = async (event) => {
 				error: 'Invalid visitId',
 				items: [],
 				visit: null,
-				billing: null
+				billing: null,
+				readiness: null
 			},
 			{ status: 400 }
 		);
@@ -320,7 +327,8 @@ export const GET: RequestHandler = async (event) => {
 				error: 'Visit not found',
 				items: [],
 				visit: null,
-				billing: null
+				billing: null,
+				readiness: null
 			},
 			{ status: 404 }
 		);
@@ -331,7 +339,8 @@ export const GET: RequestHandler = async (event) => {
 				error: 'Visit mismatch',
 				items: [],
 				visit: null,
-				billing: null
+				billing: null,
+				readiness: null
 			},
 			{ status: 400 }
 		);
@@ -371,11 +380,21 @@ export const GET: RequestHandler = async (event) => {
 			: null
 	};
 
+	const readiness = await getOpBillingReadiness(event, {
+		hospitalId,
+		visitId,
+		pendingBillLineCount: sync.pendingRows.length,
+		billAlreadyClosed:
+			sync.billingRow?.printedAt != null &&
+			String(sync.billingRow.printedAt).trim() !== ''
+	});
+
 	return json(
 		{
 			items: sync.pendingRows,
 			visit,
-			billing: sync.billingRow
+			billing: sync.billingRow,
+			readiness
 		},
 		{ status: 200 }
 	);
@@ -388,6 +407,7 @@ export const POST: RequestHandler = async (event) => {
 	if (!staffId) throw error(403, 'Staff account required');
 
 	const hospitalId = params.hospital_id ?? '';
+	await ensureCanAccessHospital(event, hospitalId);
 	const body: unknown = await request.json().catch(() => ({}));
 
 	const visitId = visitIdFromJsonBody(body);
@@ -431,14 +451,27 @@ export const POST: RequestHandler = async (event) => {
 			staffId,
 			nowIso
 		});
-		if (
-			!sync.billingId ||
-			!sync.billingRow ||
-			sync.pendingRows.length === 0
-		) {
+
+		const readiness = await getOpBillingReadiness(event, {
+			hospitalId,
+			visitId,
+			pendingBillLineCount: sync.pendingRows.length,
+			billAlreadyClosed:
+				sync.billingRow?.printedAt != null &&
+				String(sync.billingRow.printedAt).trim() !== ''
+		});
+
+		if (!readiness.canCloseBill) {
 			throw error(
 				400,
-				'There are no completed services pending billing for this visit.'
+				opBillingCloseBlockedMessage(readiness.blockReasonKey)
+			);
+		}
+
+		if (!sync.billingId || !sync.billingRow) {
+			throw error(
+				400,
+				opBillingCloseBlockedMessage('no_billable_lines')
 			);
 		}
 

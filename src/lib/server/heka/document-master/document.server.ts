@@ -43,6 +43,24 @@ export async function getDocumentsWithRelations(
 	});
 }
 
+export async function getDocumentByCode(
+	event: RequestEvent,
+	code: string
+): Promise<DocumentWithRelations | null> {
+	requireUser(event);
+	const trimmed = code.trim();
+	if (!trimmed) return null;
+
+	const row = await ensureDb().query.documentTable.findFirst({
+		where: and(
+			eq(table.documentTable.code, trimmed),
+			ne(table.documentTable.statusId, StatusEnum.DELETED)
+		),
+		with: documentWithRelationsWith
+	});
+	return row ?? null;
+}
+
 export async function getDocumentsPaginatedWithRelations(
 	event: RequestEvent,
 	params?: PaginationParams & {

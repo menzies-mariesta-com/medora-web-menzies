@@ -1,8 +1,14 @@
+import type {
+	DocumentSettingRow,
+	DocumentSettingWithRelations
+} from '$lib/model/type/document-setting.type';
+
 /** Minimal document shape for `resolveDocumentSettingForDoc`. */
 export type DocumentForPrintSetting = {
 	documentSettingId?: number | null;
 	documentTypeId?: number | null;
 	documentType?: { documentType?: string | null } | null;
+	documentSetting?: DocumentSettingRow | null;
 };
 
 /** Master document row from clinical-document bootstrap API (print / preview). */
@@ -11,4 +17,9 @@ export type ClinicalDocumentRow = DocumentForPrintSetting & {
 	documentNumber?: string | null;
 	code?: string | null;
 	documentText?: string | null;
+};
+
+export type DocumentMasterPrintBootstrap = {
+	document: ClinicalDocumentRow | null;
+	documentSettings: DocumentSettingWithRelations[];
 };

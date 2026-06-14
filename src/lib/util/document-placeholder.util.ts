@@ -70,8 +70,30 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: PlaceholderGroup[] = [
 			{ key: '{{print.date}}', desc: 'Print date (today)' },
 			{ key: '{{print.time}}', desc: 'Print time (now)' },
 			{ key: '{{print.by}}', desc: 'Printed by user name' },
+			{
+				key: '{{print.body_html}}',
+				desc: 'Dynamic HTML body injected at print time (tables, totals, etc.)'
+			},
+			{
+				key: '{{print.barcode_html}}',
+				desc: 'Barcode SVG/HTML injected at print time'
+			},
+			{
+				key: '{{print.datetime}}',
+				desc: 'Print date and time (locale string)'
+			},
 			{ key: '{{page.number}}', desc: 'Current page number' },
 			{ key: '{{page.total}}', desc: 'Total pages' }
+		]
+	},
+	{
+		category: 'Appointment',
+		placeholders: [
+			{ key: '{{appointment.patient}}', desc: 'Patient label on slip' },
+			{ key: '{{appointment.doctor}}', desc: 'Doctor name' },
+			{ key: '{{appointment.date}}', desc: 'Appointment date' },
+			{ key: '{{appointment.start_time}}', desc: 'Start time' },
+			{ key: '{{appointment.end_time}}', desc: 'End time' }
 		]
 	},
 	{
@@ -146,7 +168,7 @@ export type VisitLike = {
 		| null;
 };
 
-type DocumentLike = {
+export type DocumentLike = {
 	documentNumber?: string | null;
 	code?: string | null;
 	documentType?: { documentType?: string | null } | null;
@@ -311,6 +333,16 @@ export function buildDocumentPlaceholderContext(
 		'{{print.date}}': now.toLocaleDateString(),
 		'{{print.time}}': now.toLocaleTimeString(),
 		'{{print.by}}': printBy,
+		'{{print.body_html}}': '',
+		'{{print.barcode_html}}': '',
+		'{{print.datetime}}': now.toLocaleString(),
+		'{{print.customer}}': '',
+		'{{print.doctor}}': '',
+		'{{appointment.patient}}': '',
+		'{{appointment.doctor}}': '',
+		'{{appointment.date}}': '',
+		'{{appointment.start_time}}': '',
+		'{{appointment.end_time}}': '',
 		'{{page.number}}': '',
 		'{{page.total}}': '',
 

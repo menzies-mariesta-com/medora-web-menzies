@@ -32,8 +32,44 @@ export type ServiceOrderDetailRowForVisit = {
 	createdAt?: string | Date | null;
 };
 
+export type VisitDashboardFormEntryRow = {
+	id: number;
+	description: string | null;
+};
+
+export type VisitDashboardDiagnosisRow = {
+	id: number;
+	description: string | null;
+	diagnosisTypeName: string | null;
+};
+
+export type VisitDashboardPrescriptionNoteRow = {
+	id: number;
+	note: string | null;
+	sequenceNo: number | null;
+};
+
+export type VisitDashboardMedicationLineRow = {
+	id: number;
+	itemName: string | null;
+	dose: string | null;
+	doseUnitName: string | null;
+	frequencyLabel: string | null;
+	durationValue: string | null;
+	durationUnitName: string | null;
+	foodRelationName: string | null;
+	lineRemarks: string | null;
+	batchNo: string | null;
+};
+
 export type VisitDashboardPayload = {
 	selectedVisit: PatientVisitWithRelationsLite | null;
 	patientVisits: PatientVisitWithRelationsLite[];
 	orderLines: ServiceOrderDetailRowForVisit[];
+	chiefComplaintEntries: VisitDashboardFormEntryRow[];
+	patientConditionEntries: VisitDashboardFormEntryRow[];
+	visitDiagnoses: VisitDashboardDiagnosisRow[];
+	vitalSymptoms: string[];
+	prescriptionNotes: VisitDashboardPrescriptionNoteRow[];
+	medicationLines: VisitDashboardMedicationLineRow[];
 };

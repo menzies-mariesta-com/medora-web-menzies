@@ -3,7 +3,11 @@
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import type {
 		PatientVisitWithRelationsLite,
-		VisitDashboardPayload
+		VisitDashboardDiagnosisRow,
+		VisitDashboardFormEntryRow,
+		VisitDashboardMedicationLineRow,
+		VisitDashboardPayload,
+		VisitDashboardPrescriptionNoteRow
 	} from '$lib/model/type/visit-dashboard.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import {
@@ -22,6 +26,8 @@
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import HekaLogo from '$lib/asset/image/heka_logo.webp';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
@@ -64,28 +70,24 @@
 	let visitRow = $state<PatientVisitWithRelationsLite | null>(null);
 	let tableRows = $state<VisitTableRow[]>([]);
 	let labOrderResults = $state<LabOrderRow[]>([]);
+	let chiefComplaintEntries = $state<VisitDashboardFormEntryRow[]>([]);
+	let patientConditionEntries = $state<VisitDashboardFormEntryRow[]>(
+		[]
+	);
+	let visitDiagnoses = $state<VisitDashboardDiagnosisRow[]>([]);
+	let vitalSymptoms = $state<string[]>([]);
+	let prescriptionNotes = $state<VisitDashboardPrescriptionNoteRow[]>(
+		[]
+	);
+	let medicationLines = $state<VisitDashboardMedicationLineRow[]>([]);
 	let isLoading = $state(false);
 	let loadError = $state('');
 	let lastLoadedVisitId = $state<number | null>(null);
 
-	const totalVisits = $derived(tableRows.length);
+	const hasPrescriptionData = $derived(
+		medicationLines.length > 0 || prescriptionNotes.length > 0
+	);
 
-	function formatVisitDate(
-		value: string | Date | null | undefined
-	): string {
-		if (value == null) return '—';
-		try {
-			const d = typeof value === 'string' ? new Date(value) : value;
-			if (Number.isNaN(d.getTime())) return '—';
-			return d.toLocaleDateString('en-US', {
-				month: 'short',
-				day: 'numeric',
-				year: 'numeric'
-			});
-		} catch {
-			return '—';
-		}
-	}
 
 	function truncate(text: string, max: number): string {
 		const t = text.trim();
@@ -169,6 +171,38 @@
 		return cycle[i % cycle.length];
 	}
 
+	function formatText(value: string | null | undefined): string {
+		const t = value?.trim();
+		return t ? t : '—';
+	}
+
+	function medicationLineSubtitle(
+		line: VisitDashboardMedicationLineRow
+	): string {
+		const doseParts = [
+			line.dose?.trim(),
+			line.doseUnitName?.trim()
+		].filter(Boolean);
+		const durationParts = [
+			line.durationValue?.trim(),
+			line.durationUnitName?.trim()
+		].filter(Boolean);
+		const parts = [
+			doseParts.length ? doseParts.join(' ') : '',
+			line.frequencyLabel?.trim() ?? '',
+			durationParts.length ? durationParts.join(' ') : '',
+			line.foodRelationName?.trim() ?? '',
+			line.lineRemarks?.trim() ?? ''
+		].filter(Boolean);
+		return parts.join(' · ') || '—';
+	}
+
+	function goToPrescriptionPage() {
+		if (!hospitalId || !visitId) return;
+		const path = `/heka/hospital/${hospitalId}/home/consultation/cpoe/prescription?visitId=${visitId}`;
+		routerUtil.goToRoute(path);
+	}
+
 	function labBorderClass(accent: LabOrderRow['accent']): string {
 		switch (accent) {
 			case 'primary':
@@ -209,8 +243,21 @@
 			if (!payload.selectedVisit) {
 				tableRows = [];
 				labOrderResults = [];
+				chiefComplaintEntries = [];
+				patientConditionEntries = [];
+				visitDiagnoses = [];
+				vitalSymptoms = [];
+				prescriptionNotes = [];
+				medicationLines = [];
 				return;
 			}
+
+			chiefComplaintEntries = payload.chiefComplaintEntries ?? [];
+			patientConditionEntries = payload.patientConditionEntries ?? [];
+			visitDiagnoses = payload.visitDiagnoses ?? [];
+			vitalSymptoms = payload.vitalSymptoms ?? [];
+			prescriptionNotes = payload.prescriptionNotes ?? [];
+			medicationLines = payload.medicationLines ?? [];
 
 			const patientVisits = payload.patientVisits;
 
@@ -306,15 +353,6 @@
 		routerUtil.goToRoute(path);
 	}
 
-	function escapeHtml(value: unknown): string {
-		return String(value ?? '')
-			.replaceAll('&', '&amp;')
-			.replaceAll('<', '&lt;')
-			.replaceAll('>', '&gt;')
-			.replaceAll('"', '&quot;')
-			.replaceAll("'", '&#39;');
-	}
-
 	function visitLabelBarcodeValue(row: VisitTableRow): string {
 		const no = row.visitNo.trim();
 		if (no && /^[\x20-\x7F]+$/.test(no)) return no;
@@ -322,104 +360,40 @@
 	}
 
 	async function printVisitLabel(row: VisitTableRow) {
-		const { default: JsBarcode } = await import('jsbarcode');
-
-		const title = m.visit_history_visit_label_document_title();
-		const heading = m.visit_history_visit_label_heading();
+		if (!hospitalId) return;
 		const printed = m.visit_history_visit_label_printed();
 		const printedAt = `${printed}: ${new Date().toLocaleString()}`;
+		const payload = visitLabelBarcodeValue(row);
 
-		const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(title)}</title>
-    <style>
-      @page { size: 100mm 60mm; margin: 4mm; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: #111827; font-size: 10px; }
-      .header { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 6px; }
-      .logo { width: 72px; height: auto; max-height: 28px; object-fit: contain; }
-      h1 { margin: 0; font-size: 12px; font-weight: 700; }
-      .label-rows { display: flex; flex-direction: column; gap: 3px; font-size: 9px; }
-      .label-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; align-items: start; }
-      .pair { min-width: 0; }
-      .k { font-weight: 600; color: #374151; }
-      .left, .right { display: flex; gap: 4px; min-width: 0; }
-      /* Right column should start at a fixed X (not flush-right). */
-      .right { justify-content: flex-start; padding-left: 6px; }
-      .v { font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; }
-      .right .v { text-align: left; }
-      .barcode-wrap { margin-top: 6px; display: flex; justify-content: center; width: 100%; }
-      svg#visit-label-barcode { max-width: 100%; height: auto; }
-      .foot { margin-top: 3px; font-size: 7px; color: #6b7280; text-align: right; }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <img class="logo" src="${escapeHtml(HekaLogo)}" alt="" />
-      <h1>${escapeHtml(heading)}</h1>
-    </div>
-    <div class="label-rows">
-      <div class="label-row">
-        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_patient())}</span><span class="v">${escapeHtml(row.patientDisplayName)}</span></div>
-        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_dob())}</span><span class="v">${escapeHtml(row.patientDobLabel)}</span></div>
-      </div>
-      <div class="label-row">
-        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_patient_code())}</span><span class="v">${escapeHtml(row.patientCode)}</span></div>
-        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_doctor())}</span><span class="v">${escapeHtml(row.doctorName)}</span></div>
-      </div>
-      <div class="label-row">
-        <div class="left pair"><span class="k">${escapeHtml(m.visit_history_visit_label_visit_no())}</span><span class="v">${escapeHtml(row.visitNo)}</span></div>
-        <div class="right pair"><span class="k">${escapeHtml(m.visit_history_visit_label_visit_date())}</span><span class="v">${escapeHtml(row.visitDateLabel)}</span></div>
-      </div>
-    </div>
-    <div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>
-    <div class="foot">${escapeHtml(printedAt)}</div>
-  </body>
-</html>`;
-
-		let iframe = document.getElementById(
-			'visit-label-print-iframe'
-		) as HTMLIFrameElement | null;
-
-		if (!iframe) {
-			iframe = document.createElement('iframe');
-			iframe.id = 'visit-label-print-iframe';
-			iframe.style.position = 'fixed';
-			iframe.style.right = '0';
-			iframe.style.bottom = '0';
-			iframe.style.width = '0';
-			iframe.style.height = '0';
-			iframe.style.border = '0';
-			iframe.style.opacity = '0';
-			iframe.style.pointerEvents = 'none';
-			document.body.appendChild(iframe);
-		}
-
-		const win = iframe.contentWindow;
-		const doc = win?.document;
-		if (!win || !doc) return;
-
-		doc.open();
-		doc.write(html);
-		doc.close();
-
-		const svg = doc.getElementById('visit-label-barcode');
-		if (svg) {
-			const payload = visitLabelBarcodeValue(row);
-			try {
-				JsBarcode(svg, payload, {
-					format: 'CODE128',
-					width: 1.25,
-					height: 40,
-					displayValue: true,
-					fontSize: 9,
-					margin: 2
-				});
-			} catch {
+		await printFromDocumentMaster({
+			hospitalId,
+			documentCode: DOCUMENT_PRINT_CODE.VISIT_LABEL,
+			extraPlaceholders: {
+				'{{patient.name}}': row.patientDisplayName,
+				'{{patient.code}}': row.patientCode,
+				'{{patient.dob}}': row.patientDobLabel,
+				'{{visit.no}}': row.visitNo,
+				'{{visit.date}}': row.visitDateLabel,
+				'{{doctor.name}}': row.doctorName,
+				'{{hospital.logo}}': HekaLogo,
+				'{{print.datetime}}': printedAt,
+				'{{print.label_heading}}': m.visit_history_visit_label_heading(),
+				'{{print.label_patient}}': m.visit_history_visit_label_patient(),
+				'{{print.label_dob}}': m.visit_history_visit_label_dob(),
+				'{{print.label_patient_code}}':
+					m.visit_history_visit_label_patient_code(),
+				'{{print.label_doctor}}': m.visit_history_visit_label_doctor(),
+				'{{print.label_visit_no}}': m.visit_history_visit_label_visit_no(),
+				'{{print.label_visit_date}}':
+					m.visit_history_visit_label_visit_date()
+			},
+			iframeId: 'visit-label-print-iframe',
+			onIframeReady: async (doc) => {
+				const svg = doc.getElementById('visit-label-barcode');
+				if (!svg) return;
+				const { default: JsBarcode } = await import('jsbarcode');
 				try {
-					JsBarcode(svg, `V-${row.visitId}`, {
+					JsBarcode(svg, payload, {
 						format: 'CODE128',
 						width: 1.25,
 						height: 40,
@@ -428,28 +402,18 @@
 						margin: 2
 					});
 				} catch {
-					// ignore barcode failure
+					JsBarcode(svg, `V-${row.visitId}`, {
+						format: 'CODE128',
+						width: 1.25,
+						height: 40,
+						displayValue: true,
+						fontSize: 9,
+						margin: 2
+					});
 				}
 			}
-		}
-
-		window.setTimeout(() => {
-			try {
-				win.focus();
-				win.print();
-			} catch {
-				// ignore
-			}
-		}, 200);
+		});
 	}
-
-	lifeCycleUtil.onMount(() => {
-		mounted = true;
-	});
-
-	lifeCycleUtil.onDestroy(() => {
-		mounted = false;
-	});
 
 	$effect(() => {
 		if (!mounted) return;
@@ -458,6 +422,12 @@
 			visitRow = null;
 			tableRows = [];
 			labOrderResults = [];
+			chiefComplaintEntries = [];
+			patientConditionEntries = [];
+			visitDiagnoses = [];
+			vitalSymptoms = [];
+			prescriptionNotes = [];
+			medicationLines = [];
 			loadError = '';
 			return;
 		}
@@ -525,7 +495,7 @@
 
 						{#if tableRows.length === 0}
 							<p class="text-sm text-base-content/60">
-								No visits recorded.
+								{m.nursing_case_sheet_no_entries()}
 							</p>
 						{:else}
 							<div
@@ -540,7 +510,7 @@
 									{isLoading}
 									showRefreshButton={true}
 									refreshTooltip="Refresh visits"
-									emptyMessage="No visits recorded."
+									emptyMessage={m.nursing_case_sheet_no_entries()}
 									showRowActions={true}
 									actionsHeader="Actions"
 									actionsVariant="none"
@@ -600,7 +570,7 @@
 					</div>
 				</section>
 
-				<!-- Clinical Case Sheet (placeholder / example) -->
+				<!-- Clinical Case Sheet -->
 				<section
 					class="d-card min-w-0 border border-base-300 bg-base-100 shadow-sm"
 				>
@@ -612,10 +582,10 @@
 								<p
 									class="text-xs font-semibold tracking-wide text-base-content/60 uppercase"
 								>
-									Selected visit record
+									{m.nursing_case_sheet_title()}
 								</p>
 								<h3 class="mt-1 text-lg font-bold">
-									Clinical Case Sheet: {visitRow
+									{visitRow
 										? visitRow.visitNo?.trim()
 											? visitRow.visitNo.trim()
 											: String(visitRow.id)
@@ -644,14 +614,6 @@
 							</div>
 						</div>
 
-						<div
-							class="rounded-box border border-dashed border-warning/40 bg-warning/5 p-3 text-sm text-base-content/80"
-						>
-							<strong class="text-warning">Example only</strong> — Case
-							sheet is not wired yet. Below is sample content for layout
-							preview.
-						</div>
-
 						<div class="space-y-4">
 							<div>
 								<h4
@@ -673,15 +635,65 @@
 											/>
 										</svg>
 									</span>
-									Clinical Notes
+									{m.observation_emr_diagnosis_notes()}
 								</h4>
-								<div
-									class="rounded-box bg-base-200/50 p-3 text-sm leading-relaxed"
+								{#if !visitRow?.diagnosisNotes?.trim() && chiefComplaintEntries.length === 0}
+									<p class="text-sm text-base-content/60">
+										{m.nursing_case_sheet_no_entries()}
+									</p>
+								{:else}
+									<div
+										class="space-y-3 rounded-box bg-base-200/50 p-3 text-sm leading-relaxed"
+									>
+										{#if visitRow?.diagnosisNotes?.trim()}
+											<p class="whitespace-pre-wrap">
+												{visitRow.diagnosisNotes.trim()}
+											</p>
+										{/if}
+										{#if chiefComplaintEntries.length > 0}
+											<div>
+												<p
+													class="mb-1 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+												>
+													{m.observation_emr_chief_complaint()}
+												</p>
+												<ul class="list-disc space-y-1 ps-5">
+													{#each chiefComplaintEntries as row (row.id)}
+														<li>{formatText(row.description)}</li>
+													{/each}
+												</ul>
+											</div>
+										{/if}
+									</div>
+								{/if}
+							</div>
+
+							<div>
+								<h4
+									class="mb-2 flex items-center gap-2 text-sm font-semibold"
 								>
-									Patient presents with persistent cough and mild
-									fever. History reviewed; vitals stable. Plan
-									discussed with patient. <em>(Sample text.)</em>
-								</div>
+									{m.observation_emr_diagnosis()}
+								</h4>
+								{#if visitDiagnoses.length === 0}
+									<p class="text-sm text-base-content/60">
+										{m.observation_emr_diagnosis_empty()}
+									</p>
+								{:else}
+									<ul
+										class="list-disc space-y-1 rounded-box bg-base-200/50 p-3 ps-8 text-sm"
+									>
+										{#each visitDiagnoses as row (row.id)}
+											<li>
+												{formatText(row.description)}
+												{#if row.diagnosisTypeName}
+													<span class="text-base-content/60">
+														({row.diagnosisTypeName})
+													</span>
+												{/if}
+											</li>
+										{/each}
+									</ul>
+								{/if}
 							</div>
 
 							<div>
@@ -704,64 +716,47 @@
 											/>
 										</svg>
 									</span>
-									Symptoms
+									{m.nursing_case_sheet_col_symptom()}
 								</h4>
-								<div class="flex flex-wrap gap-2">
-									<span
-										class="d-badge gap-1 d-badge-outline border-error/30 bg-error/5"
-									>
-										<span class="h-2 w-2 rounded-full bg-error"
-										></span>
-										Persistent cough
-									</span>
-									<span
-										class="d-badge gap-1 d-badge-outline border-error/30 bg-error/5"
-									>
-										<span class="h-2 w-2 rounded-full bg-error"
-										></span>
-										Fatigue
-									</span>
-								</div>
+								{#if vitalSymptoms.length === 0}
+									<p class="text-sm text-base-content/60">
+										{m.nursing_case_sheet_no_entries()}
+									</p>
+								{:else}
+									<div class="flex flex-wrap gap-2">
+										{#each vitalSymptoms as symptom (symptom)}
+											<span
+												class="d-badge gap-1 d-badge-outline border-error/30 bg-error/5"
+											>
+												<span
+													class="h-2 w-2 rounded-full bg-error"
+												></span>
+												{symptom}
+											</span>
+										{/each}
+									</div>
+								{/if}
 							</div>
 
 							<div>
 								<h4 class="mb-2 text-sm font-semibold">
-									Examination Findings
+									{m.observation_emr_patient_condition()}
 								</h4>
-								<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-									<div class="rounded-box bg-base-200/40 p-3">
-										<p
-											class="text-[10px] font-semibold tracking-wide text-base-content/70 uppercase"
-										>
-											Respiratory
-										</p>
-										<p class="mt-1 text-xs sm:text-sm">
-											Clear to auscultation bilaterally. <em
-												>(Sample.)</em
-											>
-										</p>
+								{#if patientConditionEntries.length === 0}
+									<p class="text-sm text-base-content/60">
+										{m.nursing_case_sheet_no_entries()}
+									</p>
+								{:else}
+									<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+										{#each patientConditionEntries as row (row.id)}
+											<div class="rounded-box bg-base-200/40 p-3">
+												<p class="text-xs sm:text-sm whitespace-pre-wrap">
+													{formatText(row.description)}
+												</p>
+											</div>
+										{/each}
 									</div>
-									<div class="rounded-box bg-base-200/40 p-3">
-										<p
-											class="text-[10px] font-semibold tracking-wide text-base-content/70 uppercase"
-										>
-											Cardiovascular
-										</p>
-										<p class="mt-1 text-xs sm:text-sm">
-											Regular rate and rhythm. <em>(Sample.)</em>
-										</p>
-									</div>
-									<div class="rounded-box bg-base-200/40 p-3">
-										<p
-											class="text-[10px] font-semibold tracking-wide text-base-content/70 uppercase"
-										>
-											General
-										</p>
-										<p class="mt-1 text-xs sm:text-sm">
-											Alert, no acute distress. <em>(Sample.)</em>
-										</p>
-									</div>
-								</div>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -770,7 +765,7 @@
 
 			<!-- Sidebar -->
 			<div class="flex min-w-0 flex-col gap-6 lg:col-span-4">
-				<!-- Current Prescription (example — no API yet) -->
+				<!-- Current Prescription -->
 				<section
 					class="d-card border border-base-300 bg-base-100 shadow-sm"
 				>
@@ -794,115 +789,98 @@
 									</svg>
 								</span>
 								<h3 class="text-base font-semibold">
-									Current Prescription
+									{m.consultation_cpoe_prescription_title()}
 								</h3>
 							</div>
-							<span class="d-badge d-badge-sm d-badge-success"
-								>Active plan</span
-							>
 						</div>
 
-						<div
-							class="rounded-box border border-base-200 bg-base-200/30 p-3 text-xs text-base-content/70"
-						>
-							Example medications — connect to prescription when
-							available.
-						</div>
-
-						<ul class="flex flex-col gap-3">
-							<li
-								class="flex gap-3 rounded-box border border-base-200 bg-base-100 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-										/>
-									</svg>
-								</div>
-								<div class="min-w-0">
-									<p class="font-semibold">Amoxicillin 500mg</p>
-									<p class="text-xs text-base-content/70">
-										1 capsule · 3× daily · 7 days (sample)
-									</p>
-								</div>
-							</li>
-							<li
-								class="flex gap-3 rounded-box border border-base-200 bg-base-100 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-										/>
-									</svg>
-								</div>
-								<div class="min-w-0">
-									<p class="font-semibold">Paracetamol 500mg</p>
-									<p class="text-xs text-base-content/70">
-										As needed for fever (sample)
-									</p>
-								</div>
-							</li>
-						</ul>
-
-						<div>
-							<p
-								class="mb-1 text-xs font-medium text-base-content/60"
-							>
-								Special instructions
+						{#if !hasPrescriptionData}
+							<p class="text-sm text-base-content/60">
+								{m.nursing_case_sheet_no_entries()}
 							</p>
-							<div
-								class="rounded-box border border-base-200 bg-base-200/30 p-3 text-sm text-base-content/80"
-							>
-								Take with food. Complete full course. <em
-									>(Sample.)</em
-								>
-							</div>
-						</div>
+						{:else}
+							{#if medicationLines.length > 0}
+								<ul class="flex flex-col gap-3">
+									{#each medicationLines as line (line.id)}
+										<li
+											class="flex gap-3 rounded-box border border-base-200 bg-base-100 p-3"
+										>
+											<div
+												class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-5 w-5"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+													/>
+												</svg>
+											</div>
+											<div class="min-w-0">
+												<p class="font-semibold">
+													{formatText(line.itemName)}
+												</p>
+												<p class="text-xs text-base-content/70">
+													{medicationLineSubtitle(line)}
+												</p>
+												{#if line.batchNo?.trim()}
+													<p class="text-xs text-base-content/50">
+														{line.batchNo.trim()}
+													</p>
+												{/if}
+											</div>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 
-						<button
-							type="button"
-							class="d-btn w-full gap-2 d-btn-outline"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-4 w-4"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
+							{#if prescriptionNotes.length > 0}
+								<div>
+									<p
+										class="mb-1 text-xs font-medium text-base-content/60"
+									>
+										{m.consultation_cpoe_prescription_note_label()}
+									</p>
+									<div
+										class="space-y-2 rounded-box border border-base-200 bg-base-200/30 p-3 text-sm text-base-content/80"
+									>
+										{#each prescriptionNotes as note (note.id)}
+											<p class="whitespace-pre-wrap">
+												{formatText(note.note)}
+											</p>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<DaisyUiButton
+								className="d-btn-outline w-full gap-2"
+								onClick={() => goToPrescriptionPage()}
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-								/>
-							</svg>
-							Print full prescription
-						</button>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+									/>
+								</svg>
+								{m.consultation_cpoe_prescription_title()}
+							</DaisyUiButton>
+						{/if}
 					</div>
 				</section>
 
@@ -935,7 +913,7 @@
 
 						{#if labOrderResults.length === 0}
 							<p class="text-sm text-base-content/60">
-								No order lines for this visit.
+								{m.nursing_case_sheet_no_entries()}
 							</p>
 						{:else}
 							<ul class="flex flex-col gap-2">
