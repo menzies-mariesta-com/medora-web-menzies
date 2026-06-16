@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, desc, eq, ne } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, ne, or } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -16,11 +16,31 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 
+export async function assertDocumentSettingAccessible(
+	event: RequestEvent,
+	hospitalId: string,
+	documentSettingId: number
+): Promise<void> {
+	await ensureCanAccessHospital(event, hospitalId);
+
+	const row = await ensureDb().query.documentSettingTable.findFirst({
+		where: and(
+			eq(table.documentSettingTable.id, documentSettingId),
+			ne(table.documentSettingTable.statusId, StatusEnum.DELETED)
+		)
+	});
+	if (!row) throw error(404, 'Document setting not found');
+	if (row.hospitalId != null && row.hospitalId !== hospitalId) {
+		throw error(400, 'Document setting is not available for this hospital');
+	}
+}
+
 export async function getDocumentSettingsPaginated(
 	event: RequestEvent,
 	params: PaginationParams & {
 		hospitalId: string;
 		statusId?: number | null;
+		includeGlobal?: boolean;
 	}
 ): Promise<PaginatedResult<DocumentSettingWithRelations>> {
 	await ensureCanAccessHospital(event, params.hospitalId, {
@@ -34,10 +54,12 @@ export async function getDocumentSettingsPaginated(
 		table.documentSettingTable.statusId,
 		StatusEnum.DELETED
 	);
-	const hospitalFilter = eq(
-		table.documentSettingTable.hospitalId,
-		params.hospitalId
-	);
+	const hospitalFilter = params.includeGlobal
+		? or(
+				eq(table.documentSettingTable.hospitalId, params.hospitalId),
+				isNull(table.documentSettingTable.hospitalId)
+			)
+		: eq(table.documentSettingTable.hospitalId, params.hospitalId);
 	const statusFilter =
 		params.statusId != null
 			? eq(table.documentSettingTable.statusId, params.statusId)
@@ -98,7 +120,10 @@ export async function updateDocumentSetting(
 		.where(eq(table.documentSettingTable.id, input.id))
 		.limit(1);
 	if (!row) throw error(404, 'Document setting not found');
-	await ensureCanAccessHospital(event, row.hospitalId ?? '');
+	if (row.hospitalId == null) {
+		throw error(403, 'System document settings cannot be edited');
+	}
+	await ensureCanAccessHospital(event, row.hospitalId);
 
 	const { id, ...data } = input;
 	const [updated] = await ensureDb()
@@ -120,7 +145,10 @@ export async function deleteDocumentSetting(
 		.where(eq(table.documentSettingTable.id, input.id))
 		.limit(1);
 	if (!row) throw error(404, 'Document setting not found');
-	await ensureCanAccessHospital(event, row.hospitalId ?? '');
+	if (row.hospitalId == null) {
+		throw error(403, 'System document settings cannot be deleted');
+	}
+	await ensureCanAccessHospital(event, row.hospitalId);
 
 	await ensureDb()
 		.update(table.documentSettingTable)

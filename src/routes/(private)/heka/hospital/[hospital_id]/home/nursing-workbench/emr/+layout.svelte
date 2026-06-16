@@ -64,7 +64,6 @@
 		visitId: number;
 		patientName: string;
 	}) {
-		VisitState.select(data);
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(data.visitId));
 		const base = page.url.pathname;
@@ -73,6 +72,7 @@
 				? `${base}?${search.toString()}`
 				: base;
 		routerUtil.replaceRoute(url);
+		VisitState.select(data);
 	}
 
 	function handleVisitReset() {

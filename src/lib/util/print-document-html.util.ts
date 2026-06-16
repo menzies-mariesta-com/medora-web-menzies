@@ -21,6 +21,158 @@ export type PrintDocumentLayoutInput = {
 	showFooter?: boolean | null;
 };
 
+/** Shared print utility CSS for document templates and runtime HTML builders. */
+export const PRINT_DOCUMENT_UTILITY_CSS = `
+	.meta {
+		margin-top: 6px;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 6px 14px;
+		font-size: 10px;
+	}
+	.meta dt { font-weight: 600; }
+	.meta dd { margin: 0; font-weight: 500; }
+	.cat-block { margin-top: 14px; }
+	.cat-title {
+		margin: 0 0 6px;
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		border-left: 3px solid #000;
+		padding-left: 8px;
+	}
+	.line-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+	.line-table th,
+	.line-table td { padding: 6px 8px; border: 1px solid #000; }
+	.line-table th.num,
+	.line-table td.amt { text-align: right; }
+	.subtotal-row td { font-weight: 600; }
+	.grand {
+		margin-top: 12px;
+		padding-top: 10px;
+		border-top: 2px solid #000;
+		display: flex;
+		justify-content: flex-end;
+		align-items: baseline;
+		gap: 12px;
+	}
+	.grand--stack { flex-direction: column; align-items: stretch; gap: 4px; }
+	.grand-row { display: flex; justify-content: flex-end; gap: 12px; }
+	.grand-amt { font-size: 15px; font-weight: 700; }
+	.grand-amt--strike { text-decoration: line-through; opacity: 0.7; font-size: 12px; }
+	.grand-disc { font-weight: 700; }
+	.foot,
+	.print-doc-footer,
+	.appt-foot,
+	.label-foot {
+		margin-top: 12px;
+		padding-top: 8px;
+		border-top: 1px solid #000;
+		font-size: 9px;
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+	.label-foot,
+	.appt-foot { justify-content: flex-end; border-top: none; margin-top: 4px; padding-top: 0; }
+	.print-doc-header {
+		margin-bottom: 8px;
+		padding-bottom: 6px;
+		border-bottom: 1px solid #000;
+		font-size: 11px;
+	}
+	.label-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		border-bottom: 1px solid #000;
+		padding-bottom: 6px;
+		margin-bottom: 6px;
+	}
+	.label-logo { width: 72px; height: auto; max-height: 28px; object-fit: contain; }
+	.label-header h1 { margin: 0; font-size: 12px; font-weight: 700; }
+	.label-rows { display: flex; flex-direction: column; gap: 3px; font-size: 9px; }
+	.label-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		column-gap: 10px;
+	}
+	.label-row .pair { min-width: 0; display: flex; gap: 4px; }
+	.label-row .pair.right { padding-left: 6px; }
+	.label-row .k { font-weight: 600; }
+	.label-row .v { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+	.barcode-wrap {
+		margin-top: 6px;
+		display: flex;
+		justify-content: center;
+		width: 100%;
+	}
+	svg#visit-label-barcode { max-width: 100%; height: auto; }
+	.appt-header {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding-bottom: 10px;
+		border-bottom: 1px solid #000;
+		margin-bottom: 10px;
+	}
+	.appt-header .logo { width: 140px; max-width: 45%; height: auto; object-fit: contain; }
+	.appt-header .title { font-size: 18px; font-weight: 700; margin: 0; }
+	.appt-header .sub { margin: 2px 0 0; font-size: 11px; }
+	.appt-table { width: 100%; border-collapse: collapse; }
+	.appt-table td {
+		padding: 8px 10px;
+		border: 1px solid #000;
+		vertical-align: top;
+		font-size: 11px;
+	}
+	.appt-table td.label { width: 28%; font-weight: 700; }
+	.receipt-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+	.receipt-table th,
+	.receipt-table td { border: 1px solid #000; padding: 4px; text-align: left; }
+	.receipt-totals { margin-top: 8px; font-size: 11px; font-weight: 600; }
+	.meta-line { margin-bottom: 8px; font-size: 11px; }
+	.case-sheet-doc-title {
+		margin: 0 0 10px;
+		font-size: 16px;
+		font-weight: 700;
+	}
+	.case-sheet-meta-print { margin-bottom: 12px; }
+	.case-sheet-section { margin-top: 14px; }
+	.case-sheet-section h3 {
+		margin: 0 0 8px;
+		font-size: 11px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		border-bottom: 1px solid #000;
+		padding-bottom: 4px;
+	}
+	.case-sheet-list { margin: 0; padding-left: 1.25rem; }
+	.case-sheet-list li { margin-bottom: 8px; }
+	.case-sheet-empty {
+		margin: 0;
+		font-size: 10px;
+		font-style: italic;
+	}
+	.case-sheet-audit {
+		margin: 4px 0 0;
+		font-size: 9px;
+	}
+	.case-sheet-muted { font-size: 10px; }
+	.case-sheet-table-wrap { overflow-x: auto; }
+	.case-sheet-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+	.case-sheet-table th,
+	.case-sheet-table td {
+		border: 1px solid #000;
+		padding: 4px 6px;
+		vertical-align: top;
+	}
+	.case-sheet-table th { font-weight: 600; }
+`;
+
 export function buildPrintDocumentHtml(params: {
 	documentHtml: string;
 	documentTitle: string;
@@ -54,6 +206,7 @@ export function buildPrintDocumentHtml(params: {
 			: `${pageSize} ${orientation}`;
 	const showHeader = setting?.showHeader ?? true;
 	const showFooter = setting?.showFooter ?? true;
+	const plainLayout = !showHeader && !showFooter;
 
 	const headerBlock =
 		showHeader && headerHtml
@@ -72,16 +225,33 @@ export function buildPrintDocumentHtml(params: {
 
 	const headerSpaceMm = showHeader ? 38 : 0;
 	const footerSpaceMm = showFooter ? 22 : 0;
-	const pageMarginTop = marginTop + headerSpaceMm;
-	const pageMarginBottom = marginBottom + footerSpaceMm;
+	const pageMarginTop = plainLayout
+		? marginTop
+		: marginTop + headerSpaceMm;
+	const pageMarginBottom = plainLayout
+		? marginBottom
+		: marginBottom + footerSpaceMm;
 	const headerSpacerHeight = showHeader ? 130 : 0;
 	const footerSpacerHeight = showFooter ? 70 : 0;
 
 	const isPdf = variant === 'pdfRaster';
 
-	const printMediaBlock = isPdf
-		? ''
-		: `
+	const printMediaBlock =
+		isPdf || plainLayout
+			? plainLayout && !isPdf
+				? `
+					@media print {
+						* {
+							print-color-adjust: exact;
+							-webkit-print-color-adjust: exact;
+						}
+						@page {
+							size: ${pageSizeCss};
+							margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
+						}
+					}`
+				: ''
+			: `
 					@media print {
 						* {
 							print-color-adjust: exact;
@@ -133,7 +303,7 @@ export function buildPrintDocumentHtml(params: {
 						height: ${footerSpacerHeight}px;
 					}
 					.print-header {
-						text-align: center;
+						text-align: left;
 						padding: 12px 0 10px 0;
 					}
 					.header-table {
@@ -147,7 +317,7 @@ export function buildPrintDocumentHtml(params: {
 						margin: 0;
 					}
 					.print-footer {
-						text-align: center;
+						text-align: left;
 						font-size: 10px;
 						padding: 10px 0 12px 0;
 					}
@@ -166,6 +336,7 @@ export function buildPrintDocumentHtml(params: {
 						background-color: #f5f5f5;
 						font-weight: 600;
 					}
+					${PRINT_DOCUMENT_UTILITY_CSS}
 					${printMediaBlock}
 				</style>
 			</head>

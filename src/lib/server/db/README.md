@@ -6,6 +6,8 @@
 
 Run order (see root `package.json`): **`db:seed:master`** → **`db:seed:auth`** → **`db:seed:information`** → **`db:seed:marketplace`**, or **`pnpm db:seed`** for all.
 
+Optional demo transactional data (appointments + patient visits): **`pnpm db:seed:transaction`** — requires an existing hospital with branches and at least one doctor. Set **`SEED_HOSPITAL_ID`** to target a hospital; **`SEED_TRANSACTION_ROW_COUNT`** defaults to **200** rows per entity.
+
 - **`information-table-seed.ts`**: modules, pages, **`status_tagging_type` / `status_tagging`** (inventory document statuses, including **Department indent** type **8**, ids **40–45**), and **section 7b** — idempotent DDL on **`inv_approval_level`** / **`inv_approval_log`**: module **`CHECK`** (`PR`,`PO`,`DI`,`SI`,`SR`) and **partial unique** index on active rows. Use this when you rely on **`pnpm db:seed`** without a full **`pnpm db:migrate`** so approval config matches migrations **0039–0041** (inventory tables such as `inv_approval_level` must already exist). Does **not** insert **`item_master`** rows (hospital catalog via UI); aligns with migration **`0074`** (drops **`item_master.barcode`** / **`is_batch_required`**).
 
 ## Connection pooling (performance)

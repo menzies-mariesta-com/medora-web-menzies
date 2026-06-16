@@ -53,6 +53,22 @@ export async function printFromDocumentMasterBootstrap(
 	bootstrap: DocumentMasterPrintBootstrap,
 	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentCode'>
 ): Promise<void> {
+	const html = buildPrintHtmlFromDocumentMasterBootstrap(
+		bootstrap,
+		opts,
+		'browser'
+	);
+	await printHtmlInIframe(html, {
+		iframeId: opts.iframeId ?? `document-print-${bootstrap.document?.code ?? 'doc'}`,
+		onReady: opts.onIframeReady
+	});
+}
+
+export function buildPrintHtmlFromDocumentMasterBootstrap(
+	bootstrap: DocumentMasterPrintBootstrap,
+	opts: Omit<PrintFromDocumentMasterOptions, 'hospitalId' | 'documentCode'>,
+	variant: 'browser' | 'pdfRaster' = 'browser'
+): string {
 	const masterDoc = bootstrap.document;
 	if (!masterDoc?.documentText) {
 		throw new Error('Print template not found');
@@ -88,18 +104,13 @@ export async function printFromDocumentMasterBootstrap(
 		masterDoc.documentType?.documentType ||
 		'Document';
 
-	const html = buildPrintDocumentHtml({
+	return buildPrintDocumentHtml({
 		documentHtml,
 		documentTitle,
 		headerHtml,
 		footerHtml,
 		setting,
-		variant: 'browser'
-	});
-
-	await printHtmlInIframe(html, {
-		iframeId: opts.iframeId ?? `document-print-${masterDoc.code ?? 'doc'}`,
-		onReady: opts.onIframeReady
+		variant
 	});
 }
 

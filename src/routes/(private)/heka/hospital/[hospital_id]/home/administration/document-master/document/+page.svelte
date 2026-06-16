@@ -13,7 +13,9 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import TinyMceEditor from '$lib/component/own/tinymce/TinyMceEditor.svelte';
+	import DocumentMasterHtmlPrintEditor from '$lib/component/own/local/private/heka/administration/document-master/DocumentMasterHtmlPrintEditor.svelte';
+	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
+	import type { PrintDocumentLayoutInput } from '$lib/util/print-document-html.util';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -33,7 +35,7 @@
 	let documentResult =
 		$state<PaginatedResult<DocumentWithRelations> | null>(null);
 	let documentTypes = $state<DocumentTypeRow[]>([]);
-	let documentSettings = $state<DocumentSettingRow[]>([]);
+	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let currentPage = $state(1);
 	let filterPageSize = $state(
 		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
@@ -49,11 +51,32 @@
 	let documentNumberInput = $state('');
 	let documentTextInput = $state('');
 
-	type ContentTab = 'rich' | 'html' | 'preview';
-	let contentTab = $state<ContentTab>('rich');
+	const selectedPrintLayout = $derived.by((): PrintDocumentLayoutInput | null => {
+		const id = Number(documentSettingIdInput);
+		if (!Number.isFinite(id) || id <= 0) return null;
+		const row = documentSettings.find((s) => s.id === id);
+		if (!row) return null;
+		return {
+			marginTop: row.marginTop,
+			marginBottom: row.marginBottom,
+			marginLeft: row.marginLeft,
+			marginRight: row.marginRight,
+			paddingTop: row.paddingTop,
+			paddingBottom: row.paddingBottom,
+			paddingLeft: row.paddingLeft,
+			paddingRight: row.paddingRight,
+			pageSize: row.pageSize,
+			pageOrientation: row.pageOrientation,
+			showHeader: row.showHeader,
+			showFooter: row.showFooter
+		};
+	});
+
+	function documentSettingLabel(ds: DocumentSettingWithRelations): string {
+		return ds.hospitalId == null ? `(System) ${ds.name}` : ds.name;
+	}
 
 	type DocumentTypeRow = { id: number; documentType: string | null };
-	type DocumentSettingRow = { id: number; name: string };
 	type DocumentWithRelations = {
 		id: number;
 		documentTypeId: number;
@@ -122,15 +145,14 @@
 			);
 			url.searchParams.set('page', '1');
 			url.searchParams.set('pageSize', '200');
+			url.searchParams.set('includeGlobal', 'true');
 			url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
 			if (!res.ok) throw new Error(await res.text());
-			const result = (await res.json()) as PaginatedResult<any>;
-			documentSettings = (result.data ?? []).map((r: any) => ({
-				id: Number(r.id),
-				name: String(r.name ?? '')
-			}));
+			const result =
+				(await res.json()) as PaginatedResult<DocumentSettingWithRelations>;
+			documentSettings = result.data ?? [];
 		} catch (err) {
 			console.error('Failed to load document settings', err);
 		}
@@ -164,7 +186,6 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
-		contentTab = 'rich';
 	}
 
 	function startView(item: DocumentWithRelations) {
@@ -179,19 +200,24 @@
 		documentCodeInput = item.code ?? '';
 		documentNumberInput = item.documentNumber ?? '';
 		documentTextInput = item.documentText ?? '';
-		contentTab = 'preview';
 	}
 
 	function startCreate() {
 		resetForm();
 		viewMode = 'create';
-		contentTab = 'rich';
 	}
 
 	async function handleSave() {
 		if (!documentTypeIdInput) {
 			toastService.addToast(
 				'Document type is required',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+		if (!documentSettingIdInput) {
+			toastService.addToast(
+				'Document setting is required',
 				StatusColorEnum.WARNING
 			);
 			return;
@@ -208,9 +234,7 @@
 			const baseUrl = `/api/heka/hospital/${hospitalId}/home/administration/document-master/document`;
 			const payload = {
 				documentTypeId: Number(documentTypeIdInput),
-				documentSettingId: documentSettingIdInput
-					? Number(documentSettingIdInput)
-					: null,
+				documentSettingId: Number(documentSettingIdInput),
 				code: documentCodeInput.trim() || null,
 				documentNumber: documentNumberInput.trim(),
 				documentText: documentTextInput || null
@@ -306,58 +330,6 @@
 		return stripped.substring(0, maxLength) + '...';
 	}
 
-	function formatHtmlForEditor(value: string): string {
-		const trimmed = value.trim();
-		if (!trimmed) return '';
-		try {
-			const parser = new DOMParser();
-			const parsed = parser.parseFromString(trimmed, 'text/html');
-			const formatNode = (node: Node, depth: number): string => {
-				const indent = '  '.repeat(depth);
-				if (node.nodeType === Node.TEXT_NODE) {
-					const text = node.textContent?.trim() ?? '';
-					return text ? `${indent}${text}\n` : '';
-				}
-				if (node.nodeType !== Node.ELEMENT_NODE) return '';
-				const el = node as HTMLElement;
-				const attrs = Array.from(el.attributes)
-					.map((a) => ` ${a.name}="${a.value}"`)
-					.join('');
-				const tagName = el.tagName.toLowerCase();
-				const children = Array.from(el.childNodes)
-					.map((child) => formatNode(child, depth + 1))
-					.join('');
-				if (!children.trim()) {
-					return `${indent}<${tagName}${attrs}></${tagName}>\n`;
-				}
-				return `${indent}<${tagName}${attrs}>\n${children}${indent}</${tagName}>\n`;
-			};
-
-			const bodyChildren = Array.from(parsed.body.childNodes)
-				.map((child) => formatNode(child, 0))
-				.join('')
-				.trim();
-			return bodyChildren || trimmed;
-		} catch {
-			return trimmed;
-		}
-	}
-
-	function switchToHtmlTab() {
-		contentTab = 'html';
-		documentTextInput = formatHtmlForEditor(documentTextInput);
-	}
-
-	function handleFormatHtmlClick() {
-		documentTextInput = formatHtmlForEditor(documentTextInput);
-		toastSuccess(
-			toastService,
-			m.entity_document(),
-			m.toast_action_formatted(),
-			'Indentation and line breaks were normalized so the editor is easier to read.'
-		);
-	}
-
 	let tableFilters = $state<Record<string, string>>({});
 
 	const columns: MariTableColumn<DocumentWithRelations>[] = [
@@ -447,21 +419,6 @@
 				<LucidePlus />
 			</DaisyUiButton>
 		</div>
-
-		<DaisyUiCard>
-			<DaisyUiCardBody>
-				<div class="mb-2 flex items-center justify-between">
-					<h2 class="text-base font-semibold">Document list</h2>
-					<DaisyUiButton
-						className="d-btn-primary d-btn-sm"
-						onClick={startCreate}
-					>
-						<LucidePlus className="size-5" />
-						{m.create()}
-					</DaisyUiButton>
-				</div>
-			</DaisyUiCardBody>
-		</DaisyUiCard>
 
 		<DaisyUiCard>
 			<DaisyUiCardBody>
@@ -611,7 +568,7 @@
 							forText="documentSetting"
 							className="shrink-0 sm:w-32"
 						>
-							Document Setting
+							Document Setting <span class="text-error">*</span>
 						</DaisyUiLabel>
 						<div class="flex-1">
 							<DaisyUiSelect
@@ -620,7 +577,9 @@
 								disabled={viewMode === 'view'}
 							>
 								{#each documentSettings as ds (ds.id)}
-									<option value={String(ds.id)}>{ds.name}</option>
+									<option value={String(ds.id)}
+										>{documentSettingLabel(ds)}</option
+									>
 								{/each}
 							</DaisyUiSelect>
 						</div>
@@ -655,81 +614,13 @@
 						Document Content
 					</DaisyUiLabel>
 
-					{#if viewMode === 'view'}
-						<div class="overflow-hidden rounded-lg border">
-							<div
-								class="document-preview-content min-h-[400px] bg-base-100 p-4"
-							>
-								{@html documentTextInput ||
-									'<p class="text-base-content/50">No content</p>'}
-							</div>
-						</div>
-					{:else}
-						<div class="mb-2 flex gap-2">
-							<button
-								type="button"
-								class="d-btn d-btn-xs {contentTab === 'rich'
-									? 'd-btn-primary'
-									: 'd-btn-ghost'}"
-								onclick={() => (contentTab = 'rich')}
-							>
-								Rich editor
-							</button>
-							<button
-								type="button"
-								class="d-btn d-btn-xs {contentTab === 'html'
-									? 'd-btn-primary'
-									: 'd-btn-ghost'}"
-								onclick={switchToHtmlTab}
-							>
-								HTML
-							</button>
-							<button
-								type="button"
-								class="d-btn d-btn-xs {contentTab === 'preview'
-									? 'd-btn-primary'
-									: 'd-btn-ghost'}"
-								onclick={() => (contentTab = 'preview')}
-							>
-								Preview
-							</button>
-							<button
-								type="button"
-								class="d-btn d-btn-outline d-btn-xs"
-								onclick={handleFormatHtmlClick}
-							>
-								Format HTML
-							</button>
-						</div>
-
-						<div class="overflow-hidden rounded-lg border">
-							{#if contentTab === 'rich'}
-								<TinyMceEditor
-									bind:value={documentTextInput}
-									placeholder="Start typing your document content..."
-									className="min-h-[400px] p-1"
-									conf={{
-										height: 400,
-										min_height: 380,
-										menubar: true
-									}}
-								/>
-							{:else if contentTab === 'html'}
-								<textarea
-									class="d-textarea-bordered d-textarea h-[400px] w-full font-mono text-sm"
-									bind:value={documentTextInput}
-									placeholder="Edit raw HTML here..."
-								></textarea>
-							{:else}
-								<div
-									class="document-preview-content min-h-[400px] bg-base-100 p-4"
-								>
-									{@html documentTextInput ||
-										'<p class="text-base-content/50">No content</p>'}
-								</div>
-							{/if}
-						</div>
-					{/if}
+					<DocumentMasterHtmlPrintEditor
+						bind:html={documentTextInput}
+						documentTitle={documentNumberInput || 'Document'}
+						setting={selectedPrintLayout}
+						readOnly={viewMode === 'view'}
+						placeholder="Edit document HTML with placeholders..."
+					/>
 				</div>
 
 				{#if viewMode !== 'view'}
@@ -754,23 +645,3 @@
 		</DaisyUiCard>
 	{/if}
 </div>
-
-<style>
-	:global(.document-preview-content table) {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	:global(.document-preview-content th),
-	:global(.document-preview-content td) {
-		border: 1px solid #000;
-		padding: 4px 6px;
-		vertical-align: top;
-		text-align: left;
-	}
-
-	:global(.document-preview-content thead th) {
-		background-color: #f5f5f5;
-		font-weight: 600;
-	}
-</style>

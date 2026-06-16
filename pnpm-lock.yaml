@@ -23,9 +23,6 @@ importers:
       '@tigrisdata/storage':
         specifier: ^2.12.1
         version: 2.12.1
-      '@tinymce/tinymce-svelte':
-        specifier: ^3.2.0
-        version: 3.2.0
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
@@ -1657,14 +1654,6 @@ packages:
 
   '@tigrisdata/storage@2.12.1':
     resolution: {integrity: sha512-xxkPCLz01AhzKQ2s90JOhiCFzxGRyafbB5GBojA2bTDp2LthDo4cJpbYIw5Av6fDg92HBBZMXZCx4CisaTMqGw==}
-
-  '@tinymce/tinymce-svelte@3.2.0':
-    resolution: {integrity: sha512-1NY92wXArndz4+Z9XWAHuxnS9gJsLk/EF7n+nV+fNbsHRD9pMbV+FvC+0sIlboyqsnzLyjWWeumZbl5VobYxfg==}
-    peerDependencies:
-      tinymce: ^8.0.0 || ^7.0.0 || ^6.0.0 || ^5.0.0
-    peerDependenciesMeta:
-      tinymce:
-        optional: true
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -3567,6 +3556,7 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@11.1.0:
@@ -5525,8 +5515,6 @@ snapshots:
       dotenv: 17.2.4
     transitivePeerDependencies:
       - aws-crt
-
-  '@tinymce/tinymce-svelte@3.2.0': {}
 
   '@types/chai@5.2.3':
     dependencies:

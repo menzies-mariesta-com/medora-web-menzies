@@ -12,6 +12,19 @@
 		ServiceOrderDetailListRow
 	} from '$lib/model/type/heka/ui-rows.type';
 	import { m } from '$lib/paraglide/messages';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { buildCaseSheetPrintBodyHtml } from '$lib/util/case-sheet-print-body.util';
+	import {
+		buildPrintHtmlFromDocumentMasterBootstrap,
+		fetchDocumentPrintBootstrap,
+		printFromDocumentMasterBootstrap
+	} from '$lib/util/document-master-print.util.svelte';
+	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
+	import {
+		htmlStringToPdfBlob,
+		uploadPatientAttachmentPdf
+	} from '$lib/util/html-to-pdf.util';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -53,7 +66,17 @@
 	let userDisplayById = $state<Record<string, string>>({});
 
 	let isLoading = $state(false);
+	let isPrinting = $state(false);
+	let isSaving = $state(false);
 	let mounted = $state(false);
+
+	const toastService = new ToastService();
+
+	const printByName = $derived(
+		typeof page.data?.printByName === 'string'
+			? page.data.printByName
+			: ''
+	);
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	lifeCycleUtil.onMount(() => {
@@ -205,8 +228,195 @@
 		void loadCaseSheet();
 	});
 
-	function printCaseSheet() {
-		globalThis.window?.print();
+	function printCaseSheetLabels() {
+		return {
+			chiefComplaint: m.observation_emr_chief_complaint(),
+			patientCondition: m.observation_emr_patient_condition(),
+			diagnosis: m.observation_emr_diagnosis(),
+			diagnosisEmpty: m.observation_emr_diagnosis_empty(),
+			diagnosisTypeLabel: m.observation_emr_diagnosis_type_label(),
+			allergies: m.observation_emr_allergies(),
+			allergyEmpty: m.observation_emr_allergy_empty(),
+			allergySeverity: m.nursing_case_sheet_allergy_severity(),
+			allergyReaction: m.nursing_case_sheet_allergy_reaction(),
+			vitals: m.observation_emr_vitals(),
+			orderHistory: m.observation_emr_order_history(),
+			service: m.observation_emr_service(),
+			serviceAmount: m.observation_emr_service_amount(),
+			units: m.observation_emr_units(),
+			urgent: m.observation_emr_urgent(),
+			noEntries: m.nursing_case_sheet_no_entries(),
+			yes: m.nursing_case_sheet_yes(),
+			no: m.nursing_case_sheet_no(),
+			enteredBy: 'Entered by',
+			updatedBy: 'Updated by',
+			on: 'on',
+			vitalColDate: m.nursing_case_sheet_col_date(),
+			vitalColHeight: m.nursing_case_sheet_col_height_cm(),
+			vitalColWeight: m.nursing_case_sheet_col_weight_kg(),
+			vitalColBmi: m.nursing_case_sheet_col_bmi(),
+			vitalColBp: m.nursing_case_sheet_col_bp(),
+			vitalColPulse: m.nursing_case_sheet_col_pulse(),
+			vitalColTemp: m.nursing_case_sheet_col_temp(),
+			vitalColSpo2: m.nursing_case_sheet_col_spo2(),
+			vitalColSymptom: m.nursing_case_sheet_col_symptom(),
+			orderColOrderNo: m.nursing_case_sheet_col_order_no(),
+			orderColDescription: m.nursing_case_sheet_col_description()
+		};
+	}
+
+	function buildCaseSheetPrintOpts() {
+		const bodyHtml = buildCaseSheetPrintBodyHtml({
+			labels: printCaseSheetLabels(),
+			formatters: {
+				formatText,
+				formatDateTime,
+				formatUserName,
+				formatVital,
+				formatNumberDisplay,
+				getVitalDisplayDate
+			},
+			chiefComplaintEntries,
+			patientConditionEntries,
+			visitDiagnoses,
+			allergies,
+			vitals,
+			orderLines
+		});
+
+		const printedAt = new Date().toLocaleString('en-US', {
+			dateStyle: 'short',
+			timeStyle: 'short'
+		});
+
+		return {
+			visit: visitRow,
+			printBy: printByName,
+			extraPlaceholders: {
+				'{{print.body_html}}': bodyHtml,
+				'{{print.datetime}}': printedAt,
+				'{{print.label_title}}': m.nursing_case_sheet_title(),
+				'{{print.label_visit_no}}':
+					m.visit_history_visit_label_visit_no(),
+				'{{print.label_patient}}':
+					m.visit_history_visit_label_patient(),
+				'{{print.label_patient_code}}':
+					m.visit_history_visit_label_patient_code(),
+				'{{print.label_visit_date}}':
+					m.visit_history_visit_label_visit_date(),
+				'{{print.label_doctor}}': m.visit_history_visit_label_doctor(),
+				'{{print.label_generated}}': m.nursing_case_sheet_generated()
+			},
+			iframeId: 'case-sheet-print-iframe'
+		};
+	}
+
+	async function printCaseSheet() {
+		if (!visitId || !visitRow || !hospitalId) {
+			toastService.addToast(
+				'Select a visit to print.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+
+		isPrinting = true;
+		try {
+			const bootstrap = await fetchDocumentPrintBootstrap(
+				hospitalId,
+				DOCUMENT_PRINT_CODE.CASE_SHEET
+			);
+			if (!bootstrap.document?.documentText) {
+				toastService.addToast(
+					'Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+
+			await printFromDocumentMasterBootstrap(
+				bootstrap,
+				buildCaseSheetPrintOpts()
+			);
+		} catch (err) {
+			console.error('Case sheet print failed', err);
+			toastService.addToast(
+				'Failed to prepare case sheet print. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			isPrinting = false;
+		}
+	}
+
+	async function saveCaseSheet() {
+		if (!visitId || !visitRow || !hospitalId) {
+			toastService.addToast(
+				'Select a visit to save.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+
+		const patientId = visitRow?.patient?.id;
+		if (!patientId) {
+			toastService.addToast(
+				'Patient data missing.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
+		isSaving = true;
+		try {
+			const bootstrap = await fetchDocumentPrintBootstrap(
+				hospitalId,
+				DOCUMENT_PRINT_CODE.CASE_SHEET
+			);
+			if (!bootstrap.document?.documentText) {
+				toastService.addToast(
+					'Failed to prepare case sheet. Run DB seed or configure CASE_SHEET_PRINT in Document Master.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+
+			const printOpts = buildCaseSheetPrintOpts();
+			const htmlPdf = buildPrintHtmlFromDocumentMasterBootstrap(
+				bootstrap,
+				printOpts,
+				'pdfRaster'
+			);
+			const blob = await htmlStringToPdfBlob(htmlPdf);
+			const safeBase =
+				`case-sheet-${visitRow.visitNo || visitId}-${Date.now()}`
+					.replace(/[^\w.-]+/g, '_')
+					.slice(0, 120);
+			const url = await uploadPatientAttachmentPdf(
+				blob,
+				`${safeBase}.pdf`
+			);
+			await persistEmrPrintPdf({
+				hospitalId,
+				patientId,
+				visitId,
+				documentId: bootstrap.document.id,
+				fileUrl: url,
+				attachmentDescription: `Case sheet (visit ${visitRow.visitNo ?? visitId})`
+			});
+			toastService.addToast(
+				m.nursing_case_sheet_save_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (err) {
+			console.error('Case sheet save failed', err);
+			toastService.addToast(
+				m.nursing_case_sheet_save_failed(),
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			isSaving = false;
+		}
 	}
 </script>
 
@@ -218,14 +428,27 @@
 			{m.nursing_case_sheet_title()}
 		</h1>
 		{#if visitId && visitRow}
-			<DaisyUiButton
-				type="button"
-				className="d-btn-primary d-btn-sm gap-2"
-				onClick={printCaseSheet}
-			>
-				<LucidePrinter className="size-4" />
-				{m.nursing_case_sheet_print()}
-			</DaisyUiButton>
+			<div class="flex flex-wrap gap-2">
+				<DaisyUiButton
+					type="button"
+					className="d-btn-outline d-btn-sm gap-2"
+					onClick={saveCaseSheet}
+					disabled={isSaving || isPrinting}
+					loading={isSaving}
+				>
+					{m.save()}
+				</DaisyUiButton>
+				<DaisyUiButton
+					type="button"
+					className="d-btn-primary d-btn-sm gap-2"
+					onClick={printCaseSheet}
+					disabled={isSaving || isPrinting}
+					loading={isPrinting}
+				>
+					<LucidePrinter className="size-4" />
+					{m.nursing_case_sheet_print()}
+				</DaisyUiButton>
+			</div>
 		{/if}
 	</div>
 
@@ -691,40 +914,5 @@
 		font-size: 0.78rem;
 		color: color-mix(in oklab, currentColor 48%, transparent);
 		font-family: ui-sans-serif, system-ui, sans-serif;
-	}
-
-	@media print {
-		:global(body) {
-			background: #fff !important;
-		}
-
-		.no-print {
-			display: none !important;
-		}
-
-		.case-sheet-root {
-			padding: 0 !important;
-		}
-
-		.case-sheet-document {
-			max-width: none;
-			margin: 0;
-			padding: 0;
-			border: none;
-			border-radius: 0;
-			box-shadow: none;
-			background: #fff;
-			color: #111;
-			font-size: 11pt;
-		}
-
-		.case-sheet-section {
-			break-inside: avoid;
-		}
-
-		.case-sheet-table th {
-			background: #f3f3f3 !important;
-			print-color-adjust: exact;
-		}
 	}
 </style>

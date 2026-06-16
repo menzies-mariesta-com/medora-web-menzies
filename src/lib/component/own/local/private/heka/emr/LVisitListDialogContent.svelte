@@ -15,9 +15,9 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import { TableEnum } from '$lib/model/enum/table.enum';
-	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+
+	const VISIT_LIST_DEFAULT_PAGE_SIZE = 20;
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
@@ -34,7 +34,7 @@
 		null
 	);
 	let currentPage = $state(1);
-	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let pageSizeStr = $state(`${VISIT_LIST_DEFAULT_PAGE_SIZE}`);
 	let isLoading = $state(false);
 	let tableFilters = $state<Record<string, string>>({});
 	let isConfirming = $state(false);
@@ -247,7 +247,7 @@
 	async function fetchPatients(opts?: { bustCache?: boolean }) {
 		if (!endpointBase) return;
 		isLoading = true;
-		const pageSize = Number(pageSizeStr) || 10;
+		const pageSize = Number(pageSizeStr) || VISIT_LIST_DEFAULT_PAGE_SIZE;
 		try {
 			const params = new URLSearchParams();
 			params.set('mode', 'visit.list');
@@ -341,11 +341,11 @@
 	}
 </script>
 
-<div class="flex h-full min-h-[60vh] flex-col gap-0">
+<div class="flex h-full min-h-0 flex-col gap-0 overflow-hidden">
 	<div
-		class="flex items-center justify-between border-b border-base-300 px-4 py-2"
+		class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-3"
 	>
-		<h2 class="text-lg font-semibold">Visit List</h2>
+		<h2 class="text-lg font-semibold">{m.choose_visit()}</h2>
 		<DaisyUiButton
 			className="d-btn-ghost d-btn-sm d-btn-circle"
 			onClick={cancel}
@@ -355,17 +355,17 @@
 		</DaisyUiButton>
 	</div>
 
-	<div
-		class="min-h-0 flex-1 overflow-auto px-4 py-2 {TableEnum.HEIGHT}"
-	>
+	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
 		<MariTable
 			rows={visits}
 			columns={visitColumns}
 			masterFilterHospitalId={hospitalId}
 			isLoading={isLoading || isConfirming}
 			bind:pageSize={pageSizeStr}
+			pageSizeOptions={[10, 20, 25, 50, 100]}
 			bind:currentPage
 			totalRowCount={total}
+			fillParent={true}
 			showRefreshButton={true}
 			refreshTooltip="Refresh visits"
 			emptyMessage="No visits found."
@@ -393,20 +393,5 @@
 			on:select={(event) =>
 				void selectPatient(event.detail as PatientVisitForEmrList)}
 		/>
-	</div>
-
-	<div
-		class="flex items-center justify-between border-t border-base-200 px-4 py-2"
-	>
-		<div></div>
-		<div class="flex gap-2">
-			<DaisyUiButton
-				className="d-btn-ghost d-btn-sm"
-				onClick={cancel}
-				disabled={isConfirming}
-			>
-				Cancel
-			</DaisyUiButton>
-		</div>
 	</div>
 </div>
