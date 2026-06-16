@@ -14,6 +14,7 @@ import type {
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
+import { assertDocumentSettingAccessible } from '$lib/server/heka/document-master/document-setting.server';
 
 const documentWithRelationsWith = {
 	documentType: true,
@@ -111,6 +112,25 @@ export async function getDocumentsPaginatedWithRelations(
 	};
 }
 
+async function validateDocumentSettingId(
+	event: RequestEvent,
+	hospitalId: string | undefined,
+	documentSettingId: number | null | undefined
+): Promise<number> {
+	if (documentSettingId == null || Number.isNaN(documentSettingId)) {
+		throw error(400, 'documentSettingId is required');
+	}
+	if (!hospitalId) {
+		throw error(400, 'hospitalId is required to validate document setting');
+	}
+	await assertDocumentSettingAccessible(
+		event,
+		hospitalId,
+		documentSettingId
+	);
+	return documentSettingId;
+}
+
 export async function createDocument(
 	event: RequestEvent,
 	payload: DocumentSchemaInsert & { hospitalId?: string }
@@ -119,10 +139,15 @@ export async function createDocument(
 	if (payload.hospitalId)
 		await ensureCanAccessHospital(event, payload.hospitalId);
 
-	const { hospitalId: _hospitalId, ...data } = payload;
+	const { hospitalId, ...data } = payload;
+	const documentSettingId = await validateDocumentSettingId(
+		event,
+		hospitalId,
+		data.documentSettingId
+	);
 	const [row] = await ensureDb()
 		.insert(table.documentTable)
-		.values(data)
+		.values({ ...data, documentSettingId })
 		.returning();
 	if (!row) throw error(500, 'Insert failed');
 	return row;
@@ -136,7 +161,14 @@ export async function updateDocument(
 	if (payload.hospitalId)
 		await ensureCanAccessHospital(event, payload.hospitalId);
 
-	const { id, hospitalId: _hospitalId, ...rest } = payload;
+	const { id, hospitalId, ...rest } = payload;
+	if (rest.documentSettingId !== undefined) {
+		rest.documentSettingId = await validateDocumentSettingId(
+			event,
+			hospitalId,
+			rest.documentSettingId
+		);
+	}
 	const [row] = await ensureDb()
 		.update(table.documentTable)
 		.set(rest)

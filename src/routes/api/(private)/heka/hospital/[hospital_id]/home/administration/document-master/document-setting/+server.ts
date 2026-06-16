@@ -20,11 +20,15 @@ export const GET: RequestHandler = async (event) => {
 			? Number(statusIdStr)
 			: null;
 
+	const includeGlobal =
+		event.url.searchParams.get('includeGlobal') === 'true';
+
 	const data = await getDocumentSettingsPaginated(event, {
 		hospitalId,
 		page,
 		pageSize,
-		statusId: statusId ?? undefined
+		statusId: statusId ?? undefined,
+		includeGlobal
 	});
 	return json(data);
 };

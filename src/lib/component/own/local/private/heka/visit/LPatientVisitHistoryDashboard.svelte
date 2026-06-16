@@ -83,6 +83,7 @@
 	let isLoading = $state(false);
 	let loadError = $state('');
 	let lastLoadedVisitId = $state<number | null>(null);
+	let loadSeq = 0;
 
 	const hasPrescriptionData = $derived(
 		medicationLines.length > 0 || prescriptionNotes.length > 0
@@ -230,6 +231,7 @@
 	}
 
 	async function loadDashboard(visitIdValue: number) {
+		const seq = ++loadSeq;
 		isLoading = true;
 		loadError = '';
 		try {
@@ -238,20 +240,14 @@
 			const payload = await apiFetch<VisitDashboardPayload>(
 				dashboardApiUrl(visitIdValue)
 			);
-			visitRow = payload.selectedVisit;
+			if (seq !== loadSeq || visitIdValue !== visitId) return;
 
 			if (!payload.selectedVisit) {
-				tableRows = [];
-				labOrderResults = [];
-				chiefComplaintEntries = [];
-				patientConditionEntries = [];
-				visitDiagnoses = [];
-				vitalSymptoms = [];
-				prescriptionNotes = [];
-				medicationLines = [];
+				loadError = m.observation_emr_visit_not_found();
 				return;
 			}
 
+			visitRow = payload.selectedVisit;
 			chiefComplaintEntries = payload.chiefComplaintEntries ?? [];
 			patientConditionEntries = payload.patientConditionEntries ?? [];
 			visitDiagnoses = payload.visitDiagnoses ?? [];
@@ -321,12 +317,13 @@
 				} satisfies LabOrderRow;
 			});
 		} catch (err) {
+			if (seq !== loadSeq || visitIdValue !== visitId) return;
 			loadError =
 				err instanceof Error
 					? err.message
 					: 'Failed to load dashboard.';
 		} finally {
-			isLoading = false;
+			if (seq === loadSeq) isLoading = false;
 		}
 	}
 
@@ -335,8 +332,8 @@
 		const search = new URLSearchParams(page.url.search);
 		search.set('visitId', String(row.visitId));
 		const url = search.toString() ? `${base}?${search}` : base;
-		VisitState.visitId = String(row.visitId);
 		routerUtil.replaceRoute(url);
+		VisitState.visitId = String(row.visitId);
 	}
 
 	function goToCaseSheet(row: VisitTableRow) {

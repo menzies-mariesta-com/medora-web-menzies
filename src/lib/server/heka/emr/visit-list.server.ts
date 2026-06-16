@@ -17,11 +17,15 @@ import {
 	and,
 	count,
 	eq,
+	gt,
 	ilike,
 	inArray,
+	isNotNull,
+	lt,
 	ne,
 	or,
-	sql
+	sql,
+	type SQL
 } from 'drizzle-orm';
 import type {
 	PatientVisitForEmrList,
@@ -145,6 +149,64 @@ export async function getActivePatientAllergiesPatientIdsByPatientIds(params: {
 	return Array.from(new Set(rows.map((r) => r.patientId)));
 }
 
+function vitalValueOutOfRange(
+	column: Parameters<typeof lt>[0],
+	min: number,
+	max: number
+): SQL {
+	return and(
+		isNotNull(column),
+		or(lt(column, min), gt(column, max))
+	)!;
+}
+
+function buildAbnormalVitalWhere(
+	pd: typeof table.patientDiagnosisTable
+): SQL {
+	return or(
+		vitalValueOutOfRange(
+			pd.temperature,
+			VITAL_REFERENCE_RANGES.temperature.min,
+			VITAL_REFERENCE_RANGES.temperature.max
+		),
+		vitalValueOutOfRange(
+			pd.respiration,
+			VITAL_REFERENCE_RANGES.respiration.min,
+			VITAL_REFERENCE_RANGES.respiration.max
+		),
+		vitalValueOutOfRange(
+			pd.pulse,
+			VITAL_REFERENCE_RANGES.pulse.min,
+			VITAL_REFERENCE_RANGES.pulse.max
+		),
+		vitalValueOutOfRange(
+			pd.bpSystolic,
+			VITAL_REFERENCE_RANGES.bpSystolic.min,
+			VITAL_REFERENCE_RANGES.bpSystolic.max
+		),
+		vitalValueOutOfRange(
+			pd.bpDiastolic,
+			VITAL_REFERENCE_RANGES.bpDiastolic.min,
+			VITAL_REFERENCE_RANGES.bpDiastolic.max
+		),
+		vitalValueOutOfRange(
+			pd.spO2,
+			VITAL_REFERENCE_RANGES.spO2.min,
+			VITAL_REFERENCE_RANGES.spO2.max
+		),
+		vitalValueOutOfRange(
+			pd.rbs,
+			VITAL_REFERENCE_RANGES.rbs.min,
+			VITAL_REFERENCE_RANGES.rbs.max
+		),
+		vitalValueOutOfRange(
+			pd.bmi,
+			VITAL_REFERENCE_RANGES.bmi.min,
+			VITAL_REFERENCE_RANGES.bmi.max
+		)
+	)!;
+}
+
 export async function getAbnormalVitalVisitIdsByVisitIds(params: {
 	visitIds: number[];
 }): Promise<number[]> {
@@ -154,27 +216,26 @@ export async function getAbnormalVitalVisitIdsByVisitIds(params: {
 	if (ids.length === 0) return [];
 
 	const pd = table.patientDiagnosisTable;
-	const rows = await ensureDb()
-		.select({ visitId: pd.visitId })
-		.from(pd)
-		.where(
-			and(
-				inArray(pd.visitId, ids),
-				ne(pd.statusId, StatusEnum.DELETED),
-				sql`(
-					(${pd.temperature} IS NOT NULL AND (${pd.temperature} < ${VITAL_REFERENCE_RANGES.temperature.min} OR ${pd.temperature} > ${VITAL_REFERENCE_RANGES.temperature.max}))
-					OR (${pd.respiration} IS NOT NULL AND (${pd.respiration} < ${VITAL_REFERENCE_RANGES.respiration.min} OR ${pd.respiration} > ${VITAL_REFERENCE_RANGES.respiration.max}))
-					OR (${pd.pulse} IS NOT NULL AND (${pd.pulse} < ${VITAL_REFERENCE_RANGES.pulse.min} OR ${pd.pulse} > ${VITAL_REFERENCE_RANGES.pulse.max}))
-					OR (${pd.bpSystolic} IS NOT NULL AND (${pd.bpSystolic} < ${VITAL_REFERENCE_RANGES.bpSystolic.min} OR ${pd.bpSystolic} > ${VITAL_REFERENCE_RANGES.bpSystolic.max}))
-					OR (${pd.bpDiastolic} IS NOT NULL AND (${pd.bpDiastolic} < ${VITAL_REFERENCE_RANGES.bpDiastolic.min} OR ${pd.bpDiastolic} > ${VITAL_REFERENCE_RANGES.bpDiastolic.max}))
-					OR (${pd.spO2} IS NOT NULL AND (${pd.spO2} < ${VITAL_REFERENCE_RANGES.spO2.min} OR ${pd.spO2} > ${VITAL_REFERENCE_RANGES.spO2.max}))
-					OR (${pd.rbs} IS NOT NULL AND (${pd.rbs} < ${VITAL_REFERENCE_RANGES.rbs.min} OR ${pd.rbs} > ${VITAL_REFERENCE_RANGES.rbs.max}))
-					OR (${pd.bmi} IS NOT NULL AND (${pd.bmi} < ${VITAL_REFERENCE_RANGES.bmi.min} OR ${pd.bmi} > ${VITAL_REFERENCE_RANGES.bmi.max}))
-				)`
-			)
-		);
+	try {
+		const rows = await ensureDb()
+			.select({ visitId: pd.visitId })
+			.from(pd)
+			.where(
+				and(
+					inArray(pd.visitId, ids),
+					ne(pd.statusId, StatusEnum.DELETED),
+					buildAbnormalVitalWhere(pd)
+				)
+			);
 
-	return Array.from(new Set(rows.map((r) => r.visitId)));
+		return Array.from(new Set(rows.map((r) => r.visitId)));
+	} catch (err) {
+		console.error(
+			'getAbnormalVitalVisitIdsByVisitIds failed; returning no abnormal flags',
+			err instanceof Error ? err : err
+		);
+		return [];
+	}
 }
 
 export async function markPatientVisitSeenOnDoctorSelect(

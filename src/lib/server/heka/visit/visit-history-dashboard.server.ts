@@ -140,8 +140,26 @@ async function getSelectedVisitClinicalData(
 		prescriptionNotesRaw,
 		medicationLines
 	] = await Promise.all([
-		obs.getPatientVitalsByVisitId({ visitId: input.visitId }),
-		obs.getDiagnosesByVisitId({ visitId: input.visitId }),
+		obs
+			.getPatientVitalsByVisitId({ visitId: input.visitId })
+			.catch((err) => {
+				console.error(
+					'visit dashboard: vitals load failed',
+					err instanceof Error ? err : err
+				);
+				return [] as Awaited<
+					ReturnType<typeof obs.getPatientVitalsByVisitId>
+				>;
+			}),
+		obs.getDiagnosesByVisitId({ visitId: input.visitId }).catch((err) => {
+			console.error(
+				'visit dashboard: diagnoses load failed',
+				err instanceof Error ? err : err
+			);
+			return [] as Awaited<
+				ReturnType<typeof obs.getDiagnosesByVisitId>
+			>;
+		}),
 		obs
 			.getPatientFormEntriesByVisitIdAndFormCode({
 				visitId: input.visitId,
@@ -157,8 +175,24 @@ async function getSelectedVisitClinicalData(
 		getCpoePrescriptionNoteRowsByVisitId({
 			visitId: input.visitId,
 			hospitalId: input.hospitalId
+		}).catch((err) => {
+			console.error(
+				'visit dashboard: prescription notes load failed',
+				err instanceof Error ? err : err
+			);
+			return [] as Awaited<
+				ReturnType<typeof getCpoePrescriptionNoteRowsByVisitId>
+			>;
 		}),
-		getMedicationLinesForVisit(input.visitId, input.hospitalId)
+		getMedicationLinesForVisit(input.visitId, input.hospitalId).catch(
+			(err) => {
+				console.error(
+					'visit dashboard: medication lines load failed',
+					err instanceof Error ? err : err
+				);
+				return [] as VisitDashboardMedicationLineRow[];
+			}
+		)
 	]);
 
 	const prescriptionNotes: VisitDashboardPrescriptionNoteRow[] =
@@ -222,12 +256,7 @@ export async function getVisitDashboardPayload(
 		})) as VisitDashboardPayload['selectedVisit'] | null;
 
 	if (!selectedVisit) {
-		return {
-			selectedVisit: null,
-			patientVisits: [],
-			orderLines: [],
-			...emptyClinicalPayload
-		};
+		throw error(404, 'Visit not found');
 	}
 
 	const patientId = selectedVisit.patientId ?? null;
@@ -268,7 +297,13 @@ export async function getVisitDashboardPayload(
 			},
 			orderBy: (t) => desc(t.createdAt)
 		}) as Promise<VisitDashboardPayload['patientVisits']>,
-		getOrderLinesForVisit(input.visitId),
+		getOrderLinesForVisit(input.visitId).catch((err) => {
+			console.error(
+				'visit dashboard: order lines load failed',
+				err instanceof Error ? err : err
+			);
+			return [] as ServiceOrderDetailRowForVisit[];
+		}),
 		getSelectedVisitClinicalData(input)
 	]);
 

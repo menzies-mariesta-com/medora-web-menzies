@@ -16,8 +16,14 @@
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import TinyMceEditor from '$lib/component/own/tinymce/TinyMceEditor.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
+	import {
+		appendPlaceholderToHtml,
+		formatHtmlForEditor
+	} from '$lib/util/format-html.util';
+	import { buildDocumentMasterPreviewHtml } from '$lib/util/document-master-preview.util.svelte';
+	import type { PrintDocumentLayoutInput } from '$lib/util/print-document-html.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -31,7 +37,6 @@
 		DocumentSettingWithRelations,
 		DocumentTypeRow
 	} from '$lib/model/type/document-setting.type';
-	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
@@ -118,6 +123,53 @@
 
 	let showPlaceholderPanel = $state(false);
 	let activeEditorTarget = $state<'header' | 'footer' | null>(null);
+	let layoutPreviewIframe = $state<HTMLIFrameElement | null>(null);
+	let editingIsSystem = $state(false);
+
+	const currentPrintLayout = $derived.by((): PrintDocumentLayoutInput => ({
+		marginTop,
+		marginBottom,
+		marginLeft,
+		marginRight,
+		paddingTop,
+		paddingBottom,
+		paddingLeft,
+		paddingRight,
+		pageSize: pageSizeInput,
+		pageOrientation,
+		showHeader,
+		showFooter
+	}));
+
+	const layoutPreviewHtml = $derived(
+		buildDocumentMasterPreviewHtml({
+			documentHtml:
+				'<p><em>Document body appears here when printing.</em></p>',
+			documentTitle: nameInput || 'Document setting preview',
+			headerHtml: showHeader ? headerHtml : '',
+			footerHtml: showFooter ? footerHtml : '',
+			setting: currentPrintLayout
+		})
+	);
+
+	$effect(() => {
+		const iframe = layoutPreviewIframe;
+		const content = layoutPreviewHtml;
+		if (!iframe) return;
+		const doc = iframe.contentDocument;
+		if (!doc) return;
+		doc.open();
+		doc.write(content);
+		doc.close();
+	});
+
+	function settingDisplayName(item: DocumentSettingWithRelations): string {
+		return item.hospitalId == null ? `(System) ${item.name}` : item.name;
+	}
+
+	function isSystemSetting(item: DocumentSettingWithRelations): boolean {
+		return item.hospitalId == null;
+	}
 
 	const settingList = $derived(settingResult?.data ?? []);
 	const total = $derived(settingResult?.total ?? 0);
@@ -138,6 +190,7 @@
 				documentSettingApiUrl({
 					page: currentPage,
 					pageSize,
+					includeGlobal: 'true',
 					...(parsedStatusId != null &&
 					Number.isFinite(parsedStatusId)
 						? { statusId: parsedStatusId }
@@ -188,6 +241,7 @@
 		footerHtml = '';
 		showPlaceholderPanel = false;
 		activeEditorTarget = null;
+		editingIsSystem = false;
 	}
 
 	function startCreate() {
@@ -195,8 +249,7 @@
 		viewMode = 'create';
 	}
 
-	function startEdit(item: DocumentSettingWithRelations) {
-		viewMode = 'edit';
+	function loadFormFromItem(item: DocumentSettingWithRelations) {
 		editingId = item.id;
 		nameInput = item.name ?? '';
 		documentTypeIdInput = item.documentTypeId
@@ -219,9 +272,20 @@
 		footerHtml = item.footerHtml ?? '';
 	}
 
+	function startEdit(item: DocumentSettingWithRelations) {
+		if (isSystemSetting(item)) {
+			startView(item);
+			return;
+		}
+		loadFormFromItem(item);
+		viewMode = 'edit';
+		editingIsSystem = false;
+	}
+
 	function startView(item: DocumentSettingWithRelations) {
-		startEdit(item);
+		loadFormFromItem(item);
 		viewMode = 'view';
+		editingIsSystem = isSystemSetting(item);
 	}
 
 	async function handleSave() {
@@ -333,20 +397,6 @@
 	}
 
 	function insertPlaceholder(placeholder: string) {
-		function appendPlaceholderToHtml(
-			currentHtml: string,
-			nextPlaceholder: string
-		): string {
-			const current = currentHtml ?? '';
-			const trimmed = current.trim();
-			if (!trimmed) return nextPlaceholder;
-
-			const lastChar = trimmed[trimmed.length - 1] ?? '';
-			const needsSpace = !/\s/.test(lastChar) && lastChar !== '>';
-
-			return current + (needsSpace ? ' ' : '') + nextPlaceholder;
-		}
-
 		if (activeEditorTarget === 'header') {
 			headerHtml = appendPlaceholderToHtml(headerHtml, placeholder);
 		} else if (activeEditorTarget === 'footer') {
@@ -357,6 +407,14 @@
 			`Inserted: ${placeholder}`,
 			StatusColorEnum.INFO
 		);
+	}
+
+	function formatHeaderHtml() {
+		headerHtml = formatHtmlForEditor(headerHtml);
+	}
+
+	function formatFooterHtml() {
+		footerHtml = formatHtmlForEditor(footerHtml);
 	}
 
 	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
@@ -376,7 +434,8 @@
 			id: 'name',
 			header: 'Name',
 			widthClass: 'w-48 min-w-[12rem]',
-			filterable: false
+			filterable: false,
+			format: (_value, row) => settingDisplayName(row)
 		},
 		{
 			id: 'documentType',
@@ -435,7 +494,9 @@
 				<div class="mb-4 flex items-center justify-between">
 					<h2 class="text-lg font-semibold">
 						{viewMode === 'view'
-							? 'View'
+							? editingIsSystem
+								? 'View system document setting'
+								: 'View'
 							: editingId
 								? 'Edit'
 								: 'Create'} Document Setting
@@ -678,16 +739,23 @@
 								{/if}
 							</div>
 							{#if showHeader}
-								<TinyMceEditor
-									bind:value={headerHtml}
-									className="min-h-[150px] p-1"
-									disabled={viewMode === 'view'}
-									conf={{
-										height: 150,
-										min_height: 120,
-										menubar: true
-									}}
-								/>
+								<div class="space-y-2">
+									{#if viewMode !== 'view'}
+										<button
+											type="button"
+											class="d-btn d-btn-outline d-btn-xs"
+											onclick={formatHeaderHtml}
+										>
+											Format HTML
+										</button>
+									{/if}
+									<textarea
+										class="d-textarea-bordered d-textarea min-h-[150px] w-full font-mono text-sm"
+										bind:value={headerHtml}
+										disabled={viewMode === 'view'}
+										placeholder="Header HTML with placeholders..."
+									></textarea>
+								</div>
 							{:else}
 								<div
 									class="p-4 text-center text-sm text-base-content/50 italic"
@@ -726,16 +794,23 @@
 								{/if}
 							</div>
 							{#if showFooter}
-								<TinyMceEditor
-									bind:value={footerHtml}
-									className="min-h-[150px] p-1"
-									disabled={viewMode === 'view'}
-									conf={{
-										height: 150,
-										min_height: 120,
-										menubar: true
-									}}
-								/>
+								<div class="space-y-2">
+									{#if viewMode !== 'view'}
+										<button
+											type="button"
+											class="d-btn d-btn-outline d-btn-xs"
+											onclick={formatFooterHtml}
+										>
+											Format HTML
+										</button>
+									{/if}
+									<textarea
+										class="d-textarea-bordered d-textarea min-h-[150px] w-full font-mono text-sm"
+										bind:value={footerHtml}
+										disabled={viewMode === 'view'}
+										placeholder="Footer HTML with placeholders..."
+									></textarea>
+								</div>
 							{:else}
 								<div
 									class="p-4 text-center text-sm text-base-content/50 italic"
@@ -809,6 +884,20 @@
 								</div>
 							</div>
 						{/if}
+
+						<div class="rounded-lg bg-base-200 p-4">
+							<h3 class="mb-3 font-medium">Layout preview</h3>
+							<div
+								class="overflow-hidden rounded-lg border border-base-300 bg-white"
+							>
+								<iframe
+									bind:this={layoutPreviewIframe}
+									title="Document setting layout preview"
+									class="min-h-[320px] w-full border-0 bg-white"
+									sandbox="allow-same-origin"
+								></iframe>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -882,7 +971,8 @@
 								<DaisyUiButton
 									className="d-btn-ghost d-btn-xs d-btn-accent"
 									onClick={() => startEdit(typedRow)}
-									disabled={deleteLock.pending}
+									disabled={deleteLock.pending ||
+										isSystemSetting(typedRow)}
 									loadingText=""
 								>
 									<LucidePencil className="w-3 h-3" />
@@ -892,7 +982,9 @@
 									onClick={() => handleDelete(typedRow)}
 									loading={deletingId === typedRow.id}
 									loadingText=""
-									disabled={deleteLock.pending || isLoading}
+									disabled={deleteLock.pending ||
+										isLoading ||
+										isSystemSetting(typedRow)}
 								>
 									<LucideTrash2 className="w-3 h-3" />
 								</DaisyUiButton>

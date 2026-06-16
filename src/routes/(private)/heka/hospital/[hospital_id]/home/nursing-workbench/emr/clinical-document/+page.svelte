@@ -17,14 +17,8 @@
 	} from '$lib/util/document-placeholder.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
-	import {
-		htmlStringToPdfBlob,
-		uploadPatientAttachmentPdf
-	} from '$lib/util/html-to-pdf.util';
-	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
 	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
-	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 
 	const toastService = new ToastService();
@@ -226,79 +220,11 @@
 					variant: 'browser'
 				});
 
-				const htmlPdf = buildPrintDocumentHtml({
-					documentHtml,
-					documentTitle,
-					headerHtml,
-					footerHtml,
-					setting,
-					variant: 'pdfRaster'
-				});
-
 				printWindow.document.open();
 				printWindow.document.write(htmlBrowser);
 				printWindow.document.close();
 				await new Promise((resolve) => setTimeout(resolve, 150));
 				printWindow.print();
-
-				const patientId = visit?.patient?.id;
-				if (visitId && patientId) {
-					try {
-						const blob = await htmlStringToPdfBlob(htmlPdf);
-						const safeBase =
-							`${doc.documentNumber || `doc-${doc.id}`}-${visit?.visitNo || visitId}-${Date.now()}`
-								.replace(/[^\w.-]+/g, '_')
-								.slice(0, 120);
-						const url = await uploadPatientAttachmentPdf(
-							blob,
-							`${safeBase}.pdf`
-						);
-						await persistEmrPrintPdf({
-							hospitalId,
-							patientId,
-							visitId,
-							documentId: doc.id,
-							fileUrl: url,
-							attachmentDescription: `Printed: ${documentTitle} (visit ${visit?.visitNo ?? visitId})`
-						});
-						toastService.addToast(
-							'Saved to patient documents (PDF attached).',
-							StatusColorEnum.SUCCESS
-						);
-					} catch (saveErr) {
-						console.error('Print PDF save failed', saveErr);
-						try {
-							const tagRes = await fetch(
-								`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/clinical-document`,
-								{
-									method: 'POST',
-									headers: { 'content-type': 'application/json' },
-									body: JSON.stringify({
-										mode: 'patientDocument.create',
-										payload: {
-											visitId,
-											patientId,
-											documentId: doc.id,
-											statusId: StatusEnum.ACTIVE
-										}
-									})
-								}
-							);
-							if (!tagRes.ok)
-								throw new Error(`Tag failed (${tagRes.status})`);
-							toastService.addToast(
-								'Saved to patient documents (PDF upload failed).',
-								StatusColorEnum.WARNING
-							);
-						} catch (tagErr) {
-							console.error('patient_document insert failed', tagErr);
-							toastService.addToast(
-								'Printed, but saving to patient documents failed.',
-								StatusColorEnum.ERROR
-							);
-						}
-					}
-				}
 			} catch (err) {
 				console.error('Print failed', err);
 				toastService.addToast(
@@ -318,13 +244,11 @@
 			class="print-loading-overlay"
 			role="status"
 			aria-live="polite"
-			aria-label="Preparing print and PDF save"
+			aria-label="Preparing print"
 		>
 			<div class="flex flex-col items-center gap-4">
 				<DaisyUiLoading className="d-loading-lg text-primary" />
-				<span class="text-sm font-medium"
-					>Preparing print and PDF…</span
-				>
+				<span class="text-sm font-medium">Preparing print…</span>
 			</div>
 		</div>
 	{/if}

@@ -12,29 +12,29 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
-	import { ToastService } from '$lib/service/toast.service.svelte';
 	import type {
 		ServiceItemListRow,
 		ServiceOrderDetailListRow,
 		ServiceOrderListRow
 	} from '$lib/model/type/heka/ui-rows.type';
 	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE } from '$lib/model/constant/emr-print.constant';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import {
-		buildDocumentPlaceholderContext,
-		buildVisitServiceLinesTableHtml,
-		resolveDocumentTemplate
+		buildVisitServiceLinesTableHtml
 	} from '$lib/util/document-placeholder.util';
-	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
+	import {
+		buildPrintHtmlFromDocumentMasterBootstrap,
+		fetchDocumentPrintBootstrap,
+		printFromDocumentMasterBootstrap
+	} from '$lib/util/document-master-print.util.svelte';
 	import {
 		htmlStringToPdfBlob,
 		uploadPatientAttachmentPdf
 	} from '$lib/util/html-to-pdf.util';
 	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
-	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
 
 	type NursingCompleteRow = {
@@ -86,7 +86,6 @@
 	let isPrinting = $state(false);
 	let nursingIncompleteCount = $state(0);
 	let isBatchCompleting = $state(false);
-	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let serviceItems = $state<ServiceItemListRow[]>([]);
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -320,17 +319,6 @@
 
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
-		if (!hospitalId) return;
-		fetch(
-			`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=documentSettings.list`
-		)
-			.then((r) => (r.ok ? r.json() : []))
-			.then((s) => {
-				documentSettings = Array.isArray(s) ? s : [];
-			})
-			.catch(() => {
-				documentSettings = [];
-			});
 	});
 
 	$effect(() => {
@@ -464,15 +452,11 @@
 
 		isPrinting = true;
 		try {
-			const docRes = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/nursing-workbench/emr/nursing-complete?mode=documentMaster.byCode&code=${encodeURIComponent(
-					EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE
-				)}`
+			const bootstrap = await fetchDocumentPrintBootstrap(
+				hospitalId,
+				DOCUMENT_PRINT_CODE.NURSING_COMPLETE
 			);
-			if (!docRes.ok)
-				throw new Error(`Template load failed (${docRes.status})`);
-			const masterDoc = await docRes.json();
-			if (!masterDoc) {
+			if (!bootstrap.document?.documentText) {
 				toastService.addToast(
 					'Print template not found. Run DB seed or create document code NURSING_COMPLETE_PRINT.',
 					StatusColorEnum.ERROR
@@ -500,79 +484,23 @@
 				hospitalId
 			});
 			const tableHtml = buildVisitServiceLinesTableHtml(printRows);
-			const context = buildDocumentPlaceholderContext(
-				visitFull,
-				masterDoc,
-				{
-					printBy: printByName,
-					extraPlaceholders: {
-						'{{visit.service_lines_table}}': tableHtml
-					}
-				}
-			);
-			const documentHtml = resolveDocumentTemplate(
-				masterDoc.documentText,
-				context
-			).trim();
-			const setting = resolveDocumentSettingForDoc(
-				documentSettings,
-				masterDoc
-			);
-			const headerHtml = resolveDocumentTemplate(
-				setting?.headerHtml,
-				context
-			).trim();
-			const footerHtml = resolveDocumentTemplate(
-				setting?.footerHtml,
-				context
-			).trim();
-			const documentTitle =
-				masterDoc.documentNumber ||
-				masterDoc.documentType?.documentType ||
-				'Nursing complete';
+			const printOpts = {
+				visit: visitFull,
+				printBy: printByName,
+				extraPlaceholders: {
+					'{{visit.service_lines_table}}': tableHtml
+				},
+				iframeId: 'nursing-complete-print-iframe'
+			};
 
-			const htmlBrowser = buildPrintDocumentHtml({
-				documentHtml,
-				documentTitle,
-				headerHtml,
-				footerHtml,
-				setting,
-				variant: 'browser'
-			});
-			const htmlPdf = buildPrintDocumentHtml({
-				documentHtml,
-				documentTitle,
-				headerHtml,
-				footerHtml,
-				setting,
-				variant: 'pdfRaster'
-			});
-
-			let iframe = document.getElementById(
-				'nursing-complete-print-iframe'
-			) as HTMLIFrameElement | null;
-			if (!iframe) {
-				iframe = document.createElement('iframe');
-				iframe.id = 'nursing-complete-print-iframe';
-				iframe.style.cssText =
-					'position:absolute;width:0;height:0;border:0;visibility:hidden;';
-				document.body.appendChild(iframe);
-			}
-			const printWindow = iframe.contentWindow;
-			if (!printWindow) {
-				toastService.addToast(
-					'Failed to prepare print',
-					StatusColorEnum.ERROR
-				);
-				return;
-			}
-			printWindow.document.open();
-			printWindow.document.write(htmlBrowser);
-			printWindow.document.close();
-			await new Promise((resolve) => setTimeout(resolve, 150));
-			printWindow.print();
+			await printFromDocumentMasterBootstrap(bootstrap, printOpts);
 
 			try {
+				const htmlPdf = buildPrintHtmlFromDocumentMasterBootstrap(
+					bootstrap,
+					printOpts,
+					'pdfRaster'
+				);
 				const blob = await htmlStringToPdfBlob(htmlPdf);
 				const safeBase =
 					`nursing-complete-${visit.visitNo || visitId}-${Date.now()}`
@@ -586,7 +514,7 @@
 					hospitalId,
 					patientId,
 					visitId,
-					documentId: masterDoc.id,
+					documentId: bootstrap.document!.id,
 					fileUrl: url,
 					attachmentDescription: `Nursing complete print (visit ${visit.visitNo ?? visitId})`
 				});
