@@ -11,6 +11,42 @@ export const DOCUMENT_PRINT_CODE = {
 export type DocumentPrintCode =
 	(typeof DOCUMENT_PRINT_CODE)[keyof typeof DOCUMENT_PRINT_CODE];
 
+/** Seeded blank clinical forms for pen-fill print on the EMR clinical document page. */
+export const CLINICAL_FORM_CODE = {
+	GENERAL_TREATMENT_CONSENT: 'CLINICAL_GENERAL_TREATMENT_CONSENT',
+	OPD_REGISTRATION_CONSENT: 'CLINICAL_OPD_REGISTRATION_CONSENT',
+	MINOR_GUARDIAN_CONSENT: 'CLINICAL_MINOR_GUARDIAN_CONSENT',
+	VACCINATION_CONSENT: 'CLINICAL_VACCINATION_CONSENT',
+	MEDICATION_CONSENT: 'CLINICAL_MEDICATION_CONSENT',
+	PRIVACY_ACKNOWLEDGMENT: 'CLINICAL_PRIVACY_ACKNOWLEDGMENT',
+	FINANCIAL_RESPONSIBILITY: 'CLINICAL_FINANCIAL_RESPONSIBILITY',
+	REFUSAL_OF_TREATMENT: 'CLINICAL_REFUSAL_OF_TREATMENT',
+	TRANSFER_REFERRAL_CONSENT: 'CLINICAL_TRANSFER_REFERRAL_CONSENT',
+	MEDICAL_CERTIFICATE: 'CLINICAL_MEDICAL_CERTIFICATE'
+} as const;
+
+export type ClinicalFormCode =
+	(typeof CLINICAL_FORM_CODE)[keyof typeof CLINICAL_FORM_CODE];
+
+const SYSTEM_PRINT_CODE_SET = new Set<string>(
+	Object.values(DOCUMENT_PRINT_CODE)
+);
+
+/** Document types shown on the clinical document page (excludes Help). */
+export const CLINICAL_DOCUMENT_TYPE_NAMES = [
+	'consent',
+	'instruction',
+	'form',
+	'certificate'
+] as const;
+
+export function isSystemPrintDocumentCode(
+	code: string | null | undefined
+): boolean {
+	if (!code) return false;
+	return SYSTEM_PRINT_CODE_SET.has(code);
+}
+
 /** @deprecated Use DOCUMENT_PRINT_CODE.NURSING_COMPLETE */
 export const EMR_NURSING_COMPLETE_PRINT_DOCUMENT_CODE =
 	DOCUMENT_PRINT_CODE.NURSING_COMPLETE;

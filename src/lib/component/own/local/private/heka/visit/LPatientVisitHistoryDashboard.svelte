@@ -217,11 +217,31 @@
 		}
 	}
 
+	function parseApiErrorMessage(text: string, status: number): string {
+		const trimmed = text.trim();
+		if (!trimmed) return resStatusFallback(status);
+		try {
+			const parsed = JSON.parse(trimmed) as { message?: string };
+			if (parsed.message?.trim()) return parsed.message.trim();
+		} catch {
+			// plain text body from SvelteKit error()
+		}
+		if (trimmed.length <= 200 && !trimmed.startsWith('<')) {
+			return trimmed;
+		}
+		return resStatusFallback(status);
+	}
+
+	function resStatusFallback(status: number): string {
+		if (status === 404) return m.observation_emr_visit_not_found();
+		return `Request failed (${status})`;
+	}
+
 	async function apiFetch<T>(url: string): Promise<T> {
 		const res = await fetch(url);
 		if (!res.ok) {
 			const text = await res.text().catch(() => '');
-			throw new Error(text || res.statusText);
+			throw new Error(parseApiErrorMessage(text, res.status));
 		}
 		return (await res.json()) as T;
 	}
@@ -411,6 +431,14 @@
 			}
 		});
 	}
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+	});
 
 	$effect(() => {
 		if (!mounted) return;

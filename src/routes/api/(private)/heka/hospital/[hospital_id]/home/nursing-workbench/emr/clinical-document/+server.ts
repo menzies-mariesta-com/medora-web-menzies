@@ -1,6 +1,6 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
-import { getDocumentsWithRelations } from '$lib/server/heka/document-master/document.server';
+import { getClinicalFormDocuments } from '$lib/server/heka/document-master/document.server';
 import { getDocumentSettingsForPrint } from '$lib/server/heka/document-master/document-print.server';
 import * as obs from '$lib/server/heka/observation/observation-emr.server';
 
@@ -24,7 +24,7 @@ export async function GET(event: RequestEvent) {
 		visitId && Number.isFinite(visitId)
 			? obs.getPatientVisitById({ id: visitId, hospitalId })
 			: Promise.resolve(null),
-		getDocumentsWithRelations(event),
+		getClinicalFormDocuments(event, { hospitalId }),
 		getDocumentSettingsForPrint(event, hospitalId)
 	]);
 

@@ -10,16 +10,20 @@
 	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 	import type { ClinicalDocumentRow } from '$lib/model/type/heka/document-print.type';
 	import {
-		buildDocumentPlaceholderContext,
 		buildVisitServiceLinesTableHtml,
-		resolveDocumentTemplate,
 		type VisitLike
 	} from '$lib/util/document-placeholder.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
-	import { resolveDocumentSettingForDoc } from '$lib/util/emr-print-setting.util';
+	import { buildClinicalFormPrintHtml } from '$lib/util/clinical-form-print.util.svelte';
+	import { printHtmlInIframe } from '$lib/util/document-master-print.util.svelte';
+	import { persistEmrPrintPdf } from '$lib/util/emr-print-persist.util';
+	import {
+		htmlStringToPdfBlob,
+		uploadPatientAttachmentPdf
+	} from '$lib/util/html-to-pdf.util';
 	import { fetchVisitServiceLinePrintRows } from '$lib/util/visit-service-lines-print.util';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -39,9 +43,8 @@
 	let documentSettings = $state<DocumentSettingWithRelations[]>([]);
 	let isLoading = $state(false);
 	let isPrinting = $state(false);
+	let savingDocumentId = $state<number | null>(null);
 	const printLock = createActionLock();
-	let selectedDocument = $state<ClinicalDocumentRow | null>(null);
-	let showPreview = $state(false);
 	let lastLoadedVisitId = $state<number | null>(null);
 	let serviceLinesTableHtml = $state('');
 
@@ -63,14 +66,17 @@
 		)
 	);
 	const formDocuments = $derived(
-		documents.filter(
-			(d) => d.documentType?.documentType?.toLowerCase() === 'form'
-		)
+		documents.filter((d) => {
+			const type = d.documentType?.documentType?.toLowerCase() ?? '';
+			return type === 'form' || type === 'certificate';
+		})
 	);
 
-	/** Print is ready when visit is loaded (or no visitId) and not currently printing */
-	const canPrint = $derived(
-		!isPrinting && (!visitId || visit !== null)
+	const canAct = $derived(
+		!isPrinting &&
+			savingDocumentId == null &&
+			!!visitId &&
+			visit !== null
 	);
 
 	async function fetchAllData() {
@@ -131,30 +137,18 @@
 		mounted = false;
 	});
 
-	function closePreview() {
-		showPreview = false;
-		selectedDocument = null;
-	}
-
-	function buildPlaceholderContext(doc: ClinicalDocumentRow) {
-		return buildDocumentPlaceholderContext(visit, doc, {
+	function buildPrintHtml(
+		doc: ClinicalDocumentRow,
+		variant: 'browser' | 'pdfRaster' = 'browser'
+	) {
+		return buildClinicalFormPrintHtml({
+			doc,
+			visit,
+			documentSettings,
 			printBy: printByName,
-			extraPlaceholders: {
-				'{{visit.service_lines_table}}': serviceLinesTableHtml
-			}
+			serviceLinesTableHtml,
+			variant
 		});
-	}
-
-	function applyPlaceholders(
-		template: string | null | undefined,
-		context: Record<string, string>
-	): string {
-		return resolveDocumentTemplate(template, context);
-	}
-
-	function getResolvedDocumentHtml(doc: ClinicalDocumentRow): string {
-		const context = buildPlaceholderContext(doc);
-		return applyPlaceholders(doc.documentText, context).trim();
 	}
 
 	async function printDocument(doc: ClinicalDocumentRow) {
@@ -168,63 +162,10 @@
 		await printLock.run(async () => {
 			isPrinting = true;
 			try {
-				let iframe = document.getElementById(
-					'clinical-document-print-iframe'
-				) as HTMLIFrameElement | null;
-				if (!iframe) {
-					iframe = document.createElement('iframe');
-					iframe.id = 'clinical-document-print-iframe';
-					iframe.style.cssText =
-						'position:absolute;width:0;height:0;border:0;visibility:hidden;';
-					document.body.appendChild(iframe);
-				}
-				const printWindow = iframe.contentWindow;
-				if (!printWindow) {
-					toastService.addToast(
-						'Failed to prepare print',
-						StatusColorEnum.ERROR
-					);
-					return;
-				}
-
-				const setting = resolveDocumentSettingForDoc(
-					documentSettings,
-					doc
-				);
-
-				const context = buildPlaceholderContext(doc);
-				const documentHtml = applyPlaceholders(
-					doc.documentText,
-					context
-				).trim();
-				const headerHtml = applyPlaceholders(
-					setting?.headerHtml,
-					context
-				).trim();
-				const footerHtml = applyPlaceholders(
-					setting?.footerHtml,
-					context
-				).trim();
-
-				const documentTitle =
-					doc.documentNumber ||
-					doc.documentType?.documentType ||
-					'Document';
-
-				const htmlBrowser = buildPrintDocumentHtml({
-					documentHtml,
-					documentTitle,
-					headerHtml,
-					footerHtml,
-					setting,
-					variant: 'browser'
+				const htmlBrowser = buildPrintHtml(doc, 'browser');
+				await printHtmlInIframe(htmlBrowser, {
+					iframeId: 'clinical-document-print-iframe'
 				});
-
-				printWindow.document.open();
-				printWindow.document.write(htmlBrowser);
-				printWindow.document.close();
-				await new Promise((resolve) => setTimeout(resolve, 150));
-				printWindow.print();
 			} catch (err) {
 				console.error('Print failed', err);
 				toastService.addToast(
@@ -236,7 +177,90 @@
 			}
 		});
 	}
+
+	async function saveDocument(doc: ClinicalDocumentRow) {
+		if (!visitId || !visit || !hospitalId) {
+			toastService.addToast(
+				'Select a visit to save.',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+
+		const patientId = visit.patient?.id;
+		if (!patientId) {
+			toastService.addToast(
+				'Patient data missing.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
+		savingDocumentId = doc.id;
+		try {
+			const htmlPdf = buildPrintHtml(doc, 'pdfRaster');
+			const blob = await htmlStringToPdfBlob(htmlPdf);
+			const label =
+				doc.documentNumber?.replace(/[^\w.-]+/g, '_').slice(0, 60) ||
+				`clinical-form-${doc.id}`;
+			const safeBase =
+				`${label}-${visit.visitNo || visitId}-${Date.now()}`
+					.replace(/[^\w.-]+/g, '_')
+					.slice(0, 120);
+			const url = await uploadPatientAttachmentPdf(
+				blob,
+				`${safeBase}.pdf`
+			);
+			await persistEmrPrintPdf({
+				hospitalId,
+				patientId,
+				visitId,
+				documentId: doc.id,
+				fileUrl: url,
+				attachmentDescription: `${doc.documentNumber ?? 'Clinical form'} (visit ${visit.visitNo ?? visitId})`
+			});
+			toastService.addToast(
+				m.clinical_document_save_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (err) {
+			console.error('Clinical form save failed', err);
+			toastService.addToast(
+				m.clinical_document_save_failed(),
+				StatusColorEnum.ERROR
+			);
+		} finally {
+			savingDocumentId = null;
+		}
+	}
+
+	function isSavingDoc(doc: ClinicalDocumentRow): boolean {
+		return savingDocumentId === doc.id;
+	}
 </script>
+
+{#snippet documentActions(doc: ClinicalDocumentRow, accentClass: string)}
+	<div class="flex shrink-0 items-center gap-1">
+		<DaisyUiButton
+			type="button"
+			className="d-btn-outline d-btn-xs {accentClass}"
+			onClick={() => saveDocument(doc)}
+			disabled={!canAct}
+			loading={isSavingDoc(doc)}
+		>
+			{m.save()}
+		</DaisyUiButton>
+		<button
+			type="button"
+			class="d-btn d-btn-ghost d-btn-xs {accentClass}"
+			onclick={() => printDocument(doc)}
+			title={m.nursing_case_sheet_print()}
+			disabled={!canAct}
+		>
+			<LucidePrinter className="w-4 h-4" />
+		</button>
+	</div>
+{/snippet}
 
 <div class="relative flex flex-col gap-4 p-4">
 	{#if isPrinting}
@@ -278,7 +302,6 @@
 					Loading documents…
 				</div>
 			{/if}
-			<!-- Consent Forms -->
 			<DaisyUiCard className="bg-base-100">
 				<div class="border-b border-base-300 p-4">
 					<h3 class="flex items-center gap-2 text-lg font-semibold">
@@ -303,22 +326,12 @@
 						{#each consentDocuments as doc (doc.id)}
 							<li>
 								<div
-									class="flex w-full items-center justify-between py-2"
+									class="flex w-full items-center justify-between gap-2 py-2"
 								>
-									<span class="flex-1 truncate text-sm">
+									<span class="min-w-0 flex-1 truncate text-sm">
 										{doc.documentNumber || `Consent #${doc.id}`}
 									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn text-primary d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
+									{@render documentActions(doc, 'text-primary')}
 								</div>
 							</li>
 						{/each}
@@ -326,7 +339,6 @@
 				</ul>
 			</DaisyUiCard>
 
-			<!-- Instruction Forms -->
 			<DaisyUiCard className="bg-base-100">
 				<div class="border-b border-base-300 p-4">
 					<h3 class="flex items-center gap-2 text-lg font-semibold">
@@ -351,22 +363,13 @@
 						{#each instructionDocuments as doc (doc.id)}
 							<li>
 								<div
-									class="flex w-full items-center justify-between py-2"
+									class="flex w-full items-center justify-between gap-2 py-2"
 								>
-									<span class="flex-1 truncate text-sm">
-										{doc.documentNumber || `Instruction #${doc.id}`}
+									<span class="min-w-0 flex-1 truncate text-sm">
+										{doc.documentNumber ||
+											`Instruction #${doc.id}`}
 									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn text-info d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
+									{@render documentActions(doc, 'text-info')}
 								</div>
 							</li>
 						{/each}
@@ -374,7 +377,6 @@
 				</ul>
 			</DaisyUiCard>
 
-			<!-- Forms -->
 			<DaisyUiCard className="bg-base-100">
 				<div class="border-b border-base-300 p-4">
 					<h3 class="flex items-center gap-2 text-lg font-semibold">
@@ -398,22 +400,12 @@
 						{#each formDocuments as doc (doc.id)}
 							<li>
 								<div
-									class="flex w-full items-center justify-between py-2"
+									class="flex w-full items-center justify-between gap-2 py-2"
 								>
-									<span class="flex-1 truncate text-sm">
+									<span class="min-w-0 flex-1 truncate text-sm">
 										{doc.documentNumber || `Form #${doc.id}`}
 									</span>
-									<div class="flex items-center gap-1">
-										<button
-											type="button"
-											class="d-btn text-success d-btn-ghost d-btn-xs"
-											onclick={() => printDocument(doc)}
-											title="Print"
-											disabled={!canPrint}
-										>
-											<LucidePrinter className="w-4 h-4" />
-										</button>
-									</div>
+									{@render documentActions(doc, 'text-success')}
 								</div>
 							</li>
 						{/each}
@@ -423,59 +415,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Document Preview Modal -->
-{#if showPreview && selectedDocument}
-	<div class="d-modal-open d-modal" role="dialog" aria-modal="true">
-		<div class="d-modal-box max-h-[90vh] w-[95vw] max-w-4xl">
-			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-lg font-bold">
-					{selectedDocument.documentNumber ||
-						selectedDocument.documentType?.documentType ||
-						'Document Preview'}
-				</h3>
-				<div class="flex items-center gap-2">
-					<DaisyUiButton
-						className="d-btn-primary d-btn-sm"
-						onClick={() => printDocument(selectedDocument!)}
-						disabled={!canPrint}
-						loading={printLock.pending}
-					>
-						<LucidePrinter className="w-4 h-4 mr-1" />
-						Print
-					</DaisyUiButton>
-					<button
-						type="button"
-						class="d-btn d-btn-circle d-btn-ghost d-btn-sm"
-						onclick={closePreview}
-					>
-						✕
-					</button>
-				</div>
-			</div>
-			<div
-				class="max-h-[60vh] overflow-y-auto rounded-lg border bg-base-200 p-4"
-			>
-				<div class="document-preview-content max-w-none">
-					{@html getResolvedDocumentHtml(selectedDocument) ||
-						'<p class="text-base-content/50">No content</p>'}
-				</div>
-			</div>
-			<div class="d-modal-action">
-				<DaisyUiButton className="d-btn-ghost" onClick={closePreview}
-					>Close</DaisyUiButton
-				>
-			</div>
-		</div>
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div
-			class="d-modal-backdrop"
-			role="button"
-			tabindex="0"
-			onclick={closePreview}
-		></div>
-	</div>
-{/if}
 
 <style>
 	.print-loading-overlay {
@@ -487,23 +426,5 @@
 		justify-content: center;
 		background: rgba(0, 0, 0, 0.4);
 		backdrop-filter: blur(2px);
-	}
-
-	:global(.document-preview-content table) {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	:global(.document-preview-content th),
-	:global(.document-preview-content td) {
-		border: 1px solid #000;
-		padding: 4px 6px;
-		vertical-align: top;
-		text-align: left;
-	}
-
-	:global(.document-preview-content thead th) {
-		background-color: #f5f5f5;
-		font-weight: 600;
 	}
 </style>

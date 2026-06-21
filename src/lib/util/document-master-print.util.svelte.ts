@@ -129,20 +129,31 @@ export async function printHtmlInIframe(
 	if (!iframe) {
 		iframe = document.createElement('iframe');
 		iframe.id = iframeId;
+		iframe.setAttribute('title', 'print');
 		iframe.style.cssText =
 			'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
 		document.body.appendChild(iframe);
 	}
 
+	await new Promise<void>((resolve) => {
+		let settled = false;
+		const finish = () => {
+			if (settled) return;
+			settled = true;
+			iframe!.removeEventListener('load', finish);
+			resolve();
+		};
+		iframe!.addEventListener('load', finish);
+		iframe!.removeAttribute('src');
+		iframe!.srcdoc = html;
+		window.setTimeout(finish, 300);
+	});
+
 	const win = iframe.contentWindow;
-	const doc = win?.document;
+	const doc = iframe.contentDocument;
 	if (!win || !doc) {
 		throw new Error('Failed to prepare print iframe');
 	}
-
-	doc.open();
-	doc.write(html);
-	doc.close();
 
 	if (opts?.onReady) {
 		await opts.onReady(doc, win);

@@ -234,7 +234,8 @@ export async function getVisitDashboardPayload(
 				and(
 					eq(t.id, input.visitId),
 					eq(t.hospitalId, input.hospitalId),
-					ne(t.statusId, StatusEnum.DELETED)
+					ne(t.statusId, StatusEnum.DELETED),
+					ne(t.statusId, StatusEnum.INACTIVE)
 				),
 			with: {
 				patient: { with: { title: true, gender: true } },
@@ -256,7 +257,29 @@ export async function getVisitDashboardPayload(
 		})) as VisitDashboardPayload['selectedVisit'] | null;
 
 	if (!selectedVisit) {
-		throw error(404, 'Visit not found');
+		const visitElsewhere =
+			await ensureDb().query.patientVisitTable.findFirst({
+				where: (t, { and, eq, ne }) =>
+					and(
+						eq(t.id, input.visitId),
+						ne(t.statusId, StatusEnum.DELETED)
+					),
+				columns: { id: true, hospitalId: true },
+				with: { hospital: { columns: { name: true } } }
+			});
+		if (
+			visitElsewhere &&
+			visitElsewhere.hospitalId !== input.hospitalId
+		) {
+			const otherName =
+				visitElsewhere.hospital?.name?.trim() ||
+				'another hospital';
+			throw error(
+				404,
+				`Visit not found for this hospital (visit belongs to ${otherName})`
+			);
+		}
+		throw error(404, 'Visit not found for this hospital');
 	}
 
 	const patientId = selectedVisit.patientId ?? null;
@@ -276,7 +299,8 @@ export async function getVisitDashboardPayload(
 				and(
 					eq(t.patientId, patientId),
 					eq(t.hospitalId, input.hospitalId),
-					ne(t.statusId, StatusEnum.DELETED)
+					ne(t.statusId, StatusEnum.DELETED),
+					ne(t.statusId, StatusEnum.INACTIVE)
 				),
 			with: {
 				patient: { with: { title: true, gender: true } },
