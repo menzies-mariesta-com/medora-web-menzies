@@ -389,6 +389,8 @@
 	"nursing_case_sheet_print": "Print",
 	"nursing_case_sheet_save_success": "Case sheet saved to patient attachments.",
 	"nursing_case_sheet_save_failed": "Failed to save case sheet to patient attachments.",
+	"clinical_document_save_success": "Form saved to patient attachments.",
+	"clinical_document_save_failed": "Failed to save form to patient attachments.",
 	"nursing_case_sheet_choose_visit": "Choose a visit using the 'Choose Visit' button above to view the case sheet.",
 	"nursing_case_sheet_no_entries": "No entries.",
 	"nursing_case_sheet_generated": "Generated",

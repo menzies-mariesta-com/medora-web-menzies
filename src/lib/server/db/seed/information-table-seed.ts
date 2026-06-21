@@ -2,6 +2,14 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
+import {
+	CLINICAL_FORM_SEED_ROWS,
+	buildClinicalFormDocumentText
+} from '$lib/util/clinical-form-print-body.util';
+import {
+	seedEmrDemoForAllHospitals,
+	seedEmrDemoSubCategories
+} from './emr-order-demo-seed';
 
 if (!process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set');
@@ -406,7 +414,7 @@ export async function seedInformationTables() {
 				90001,
 				2,
 				'NURSING_COMPLETE_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}<footer class="print-doc-footer">Printed: {{print.date}} {{print.time}} | {{print.by}}</footer>',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><p>Visit <strong>{{visit.no}}</strong> - {{patient.name}} ({{patient.code}})</p>{{visit.service_lines_table}}',
 				'Nursing complete (OP)',
 				5,
 				1
@@ -415,7 +423,7 @@ export async function seedInformationTables() {
 				90002,
 				2,
 				'OP_BILL_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}<footer class="foot"><span>{{print.label_thank_you}}</span><span>{{print.datetime}}</span></footer>',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
 				'OP Bill',
 				5,
 				1
@@ -424,7 +432,7 @@ export async function seedInformationTables() {
 				90003,
 				2,
 				'VISIT_LABEL_PRINT',
-				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div><div class="label-foot">{{print.datetime}}</div>',
+				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
 				'Visit label',
 				7,
 				1
@@ -433,7 +441,7 @@ export async function seedInformationTables() {
 				90004,
 				2,
 				'APPOINTMENT_SLIP_PRINT',
-				'<div class="appt-header"><img class="logo" src="{{hospital.logo}}" alt="" /><div><h1 class="title">{{print.label_title}}</h1><p class="sub">{{print.label_subtitle}}</p></div></div><table class="appt-table"><tr><td class="label">{{print.label_patient}}</td><td>{{appointment.patient}}</td></tr><tr><td class="label">{{print.label_doctor}}</td><td>{{appointment.doctor}}</td></tr><tr><td class="label">{{print.label_date}}</td><td>{{appointment.date}}</td></tr><tr><td class="label">{{print.label_start_time}}</td><td>{{appointment.start_time}}</td></tr><tr><td class="label">{{print.label_end_time}}</td><td>{{appointment.end_time}}</td></tr></table><footer class="appt-foot">{{print.datetime}}</footer>',
+				'<div class="appt-header"><img class="logo" src="{{hospital.logo}}" alt="" /><div><h1 class="title">{{print.label_title}}</h1><p class="sub">{{print.label_subtitle}}</p></div></div><table class="appt-table"><tr><td class="label">{{print.label_patient}}</td><td>{{appointment.patient}}</td></tr><tr><td class="label">{{print.label_doctor}}</td><td>{{appointment.doctor}}</td></tr><tr><td class="label">{{print.label_date}}</td><td>{{appointment.date}}</td></tr><tr><td class="label">{{print.label_start_time}}</td><td>{{appointment.start_time}}</td></tr><tr><td class="label">{{print.label_end_time}}</td><td>{{appointment.end_time}}</td></tr></table>',
 				'Appointment slip',
 				5,
 				1
@@ -451,7 +459,7 @@ export async function seedInformationTables() {
 				90006,
 				2,
 				'CASE_SHEET_PRINT',
-				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}<footer class="print-doc-footer">{{print.label_generated}}: {{print.datetime}}</footer>',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
 				'Nursing case sheet',
 				5,
 				1
@@ -466,6 +474,32 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: document (system print templates)');
 
+	// 9b. Blank clinical forms (pen-fill; EMR clinical document page)
+	const clinicalFormValues = CLINICAL_FORM_SEED_ROWS.map((row) => {
+		const documentText = buildClinicalFormDocumentText(row.code).replace(
+			/'/g,
+			"''"
+		);
+		const documentNumber = row.documentNumber.replace(/'/g, "''");
+		return `(${row.id}, ${row.documentTypeId}, '${row.code}', '${documentText}', '${documentNumber}', 5, 1)`;
+	}).join(',\n\t\t\t');
+
+	await db.execute(
+		sql.raw(`
+		INSERT INTO document (id, document_type_id, code, document_text, document_number, document_setting_id, status_id)
+		VALUES
+			${clinicalFormValues}
+		ON CONFLICT (id) DO UPDATE SET
+			document_type_id = EXCLUDED.document_type_id,
+			code = EXCLUDED.code,
+			document_text = EXCLUDED.document_text,
+			document_number = EXCLUDED.document_number,
+			document_setting_id = EXCLUDED.document_setting_id,
+			status_id = EXCLUDED.status_id;
+	`)
+	);
+	seedLogger.info('Seeded: document (clinical blank forms)');
+
 	// 8c. Subcategories for EMR/CPOE order “Service Type” filter testing (category_id: 1=RADIOLOGY, 2=NURSING, 5=LAB)
 	await db.execute(sql`
 		INSERT INTO sub_category (id, category_id, sub_category_name, status_id)
@@ -479,6 +513,8 @@ export async function seedInformationTables() {
 		'Seeded: sub_category (dev test rows for order service-type filter)'
 	);
 
+	await seedEmrDemoSubCategories(db);
+
 	// 9. Allergy
 	await db.execute(sql`
 		INSERT INTO allergy (id, name)
@@ -487,6 +523,8 @@ export async function seedInformationTables() {
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: allergy');
+
+	await seedEmrDemoForAllHospitals(db);
 }
 
 seedInformationTables()

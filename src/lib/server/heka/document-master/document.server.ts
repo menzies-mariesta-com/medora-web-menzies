@@ -7,6 +7,10 @@ import type {
 	DocumentSchemaInsert,
 	DocumentSchemaUpdate
 } from '$lib/server/db/schema-type';
+import {
+	CLINICAL_DOCUMENT_TYPE_NAMES,
+	isSystemPrintDocumentCode
+} from '$lib/model/constant/document-print.constant';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
@@ -41,6 +45,29 @@ export async function getDocumentsWithRelations(
 	return ensureDb().query.documentTable.findMany({
 		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
 		with: documentWithRelationsWith
+	});
+}
+
+/** Blank pen-fill forms for the EMR clinical document page (excludes system print templates). */
+export async function getClinicalFormDocuments(
+	event: RequestEvent,
+	opts?: { hospitalId?: string }
+): Promise<DocumentWithRelations[]> {
+	requireUser(event);
+	if (opts?.hospitalId)
+		await ensureCanAccessHospital(event, opts.hospitalId);
+
+	const clinicalTypeSet = new Set<string>(CLINICAL_DOCUMENT_TYPE_NAMES);
+	const rows = await ensureDb().query.documentTable.findMany({
+		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
+		with: documentWithRelationsWith,
+		orderBy: (t, { asc }) => [asc(t.documentNumber), asc(t.id)]
+	});
+
+	return rows.filter((row) => {
+		if (isSystemPrintDocumentCode(row.code)) return false;
+		const typeName = row.documentType?.documentType?.toLowerCase() ?? '';
+		return clinicalTypeSet.has(typeName);
 	});
 }
 

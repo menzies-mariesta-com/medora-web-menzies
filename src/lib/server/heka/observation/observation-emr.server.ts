@@ -714,9 +714,13 @@ export async function getPatientVisitById(input: {
 				ne(t.statusId, StatusEnum.DELETED)
 			),
 		with: {
-			patient: true,
+			patient: { with: { gender: true } },
 			hospital: true,
-			branch: true
+			branch: true,
+			visitType: true,
+			doctor: {
+				with: { staffDetail: true, title: true, specialization: true }
+			}
 		}
 	});
 	return (row as any) ?? null;

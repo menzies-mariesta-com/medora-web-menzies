@@ -171,6 +171,58 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 		vertical-align: top;
 	}
 	.case-sheet-table th { font-weight: 600; }
+	.clinical-form-title {
+		margin: 0 0 10px;
+		font-size: 15px;
+		font-weight: 700;
+		text-align: center;
+	}
+	.clinical-form-meta { margin-bottom: 14px; }
+	.clinical-form-body { margin-top: 10px; font-size: 11px; line-height: 1.45; }
+	.clinical-form-paragraph { margin: 0 0 10px; }
+	.clinical-form-field-label {
+		margin: 10px 0 4px;
+		font-size: 10px;
+		font-weight: 600;
+	}
+	.clinical-form-line {
+		border-bottom: 1px solid #000;
+		min-height: 18px;
+		margin-bottom: 6px;
+	}
+	.clinical-form-checkbox-row {
+		margin: 6px 0;
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+	}
+	.clinical-form-checkbox {
+		display: inline-block;
+		width: 12px;
+		height: 12px;
+		border: 1px solid #000;
+		flex-shrink: 0;
+		margin-top: 2px;
+	}
+	.clinical-form-signatures {
+		margin-top: 18px;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 16px;
+	}
+	.clinical-form-signature-label {
+		margin: 0 0 4px;
+		font-size: 10px;
+		font-weight: 600;
+	}
+	.clinical-form-signature-line {
+		border-bottom: 1px solid #000;
+		min-height: 28px;
+	}
+	.clinical-form-signature-date {
+		margin: 6px 0 0;
+		font-size: 9px;
+	}
 `;
 
 export function buildPrintDocumentHtml(params: {
@@ -205,7 +257,8 @@ export function buildPrintDocumentHtml(params: {
 			? pageSize
 			: `${pageSize} ${orientation}`;
 	const showHeader = setting?.showHeader ?? true;
-	const showFooter = setting?.showFooter ?? true;
+	/** Layout footers disabled — avoids duplicate footers and browser URL margin noise. */
+	const showFooter = false;
 	const plainLayout = !showHeader && !showFooter;
 
 	const headerBlock =
