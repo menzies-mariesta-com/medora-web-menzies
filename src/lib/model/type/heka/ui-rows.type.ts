@@ -124,6 +124,8 @@ export type ItemMasterListRow = PatientRegMasterTimestamps & {
 	remark: string | null;
 	/** Override days-before-expiry for “expiring soon” alerts; null uses hospital default. */
 	expiryAlertLeadDays: number | null;
+	/** Per-item markup % for sale-price formula (ITEM slot). */
+	itemMarkupPercent: string;
 	statusId: number;
 	/** Unit conversion ids tagged to this item (optional, only on detail fetch). */
 	itemUnitMasterIds?: number[];

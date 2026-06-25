@@ -35,7 +35,6 @@
 	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
 	import MedicationOrderVisitPrescriptionNotesCard from '$lib/component/own/local/private/heka/medication-order/MedicationOrderVisitPrescriptionNotesCard.svelte';
 	import {
-		defaultUnitSalePriceFromAllocations,
 		hydrateMedOrderItemMeta,
 		loadMedOrderIumList,
 		refreshMedOrderBatchAllocations,
@@ -565,8 +564,6 @@
 				iumList[0] ?? null
 			);
 			issueQtyPurchase = '';
-			unitSalePrice =
-				defaultUnitSalePriceFromAllocations(batchAllocations);
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
 			batchAllocations = [];
@@ -1320,7 +1317,9 @@
 					{#if selectedItem && storeId > 0}
 						<div class="lg:col-span-3">
 							<MedicationOrderInventoryFields
+								{hospitalId}
 								storeId={storeId}
+								itemId={selectedItem.id}
 								itemLabel={selectedItem.itemName ?? ''}
 								bind:batchAllocations
 								bind:iumList

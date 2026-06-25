@@ -17,8 +17,9 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
+import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { unitTable } from '../master-table/master-table';
+import { statusTable, unitTable } from '../master-table/master-table';
 import {
 	hospitalBranchTable,
 	hospitalTable,
@@ -165,60 +166,41 @@ export const invStockAlertSettingTable = pgTable(
 	]
 );
 
-/** Per-branch GRN sale / employee sale price calculation rules. */
-export const invBranchPricingConfigTable = pgTable(
-	'inv_branch_pricing_config',
+/** Reusable sale-price formula (hospital template library). */
+export const invPricingFormulaTemplateTable = pgTable(
+	'inv_pricing_formula_template',
 	{
 		id: serial('id').primaryKey(),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		branchId: uuid('branch_id')
-			.notNull()
-			.references(() => hospitalBranchTable.id, {
-				onDelete: 'cascade'
-			}),
-		saleManualOnGrnLine: boolean('sale_manual_on_grn_line')
-			.notNull()
-			.default(false),
-		saleIncludeDiscount: boolean('sale_include_discount')
-			.notNull()
-			.default(true),
-		saleIncludeTax: boolean('sale_include_tax').notNull().default(true),
-		saleIncludeFreeQty: boolean('sale_include_free_qty')
-			.notNull()
-			.default(false),
-		saleMarkupPercent: decimal('sale_markup_percent', {
+		name: varchar('name', { length: 128 }).notNull(),
+		description: text('description'),
+		formulaVersion: integer('formula_version').notNull().default(1),
+		includeDiscount: boolean('include_discount').notNull().default(true),
+		includeTax: boolean('include_tax').notNull().default(true),
+		includeFreeQty: boolean('include_free_qty').notNull().default(false),
+		/** When true, apply item master markup in the ITEM slot. */
+		includeItemMarkup: boolean('include_item_markup').notNull().default(true),
+		/** When true, apply store markup in the STORE slot. */
+		includeStoreMarkup: boolean('include_store_markup').notNull().default(true),
+		/** More Sale Less markup (MSL slot). */
+		mslMarkupPercent: decimal('msl_markup_percent', {
 			precision: 8,
 			scale: 2
 		})
 			.notNull()
 			.default('0'),
-		empManualOnGrnLine: boolean('emp_manual_on_grn_line')
+		slotOrder: jsonb('slot_order')
+			.notNull()
+			.default(['COST', 'MSL', 'ITEM', 'STORE']),
+		isSystemDefault: boolean('is_system_default')
 			.notNull()
 			.default(false),
-		empIncludeDiscount: boolean('emp_include_discount')
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
 			.notNull()
-			.default(true),
-		empIncludeTax: boolean('emp_include_tax').notNull().default(true),
-		empIncludeFreeQty: boolean('emp_include_free_qty')
-			.notNull()
-			.default(true),
-		empMarkupPercent: decimal('emp_markup_percent', {
-			precision: 8,
-			scale: 2
-		})
-			.notNull()
-			.default('0'),
-		empUsePercentOfSale: boolean('emp_use_percent_of_sale')
-			.notNull()
-			.default(false),
-		empPercentOfSale: decimal('emp_percent_of_sale', {
-			precision: 8,
-			scale: 2
-		})
-			.notNull()
-			.default('100'),
+			.default(StatusEnum.ACTIVE),
 		createdAt: timestamp('created_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -234,11 +216,67 @@ export const invBranchPricingConfigTable = pgTable(
 			.$onUpdate(() => sql`now()`)
 	},
 	(t) => [
-		uniqueIndex('inv_branch_pricing_config_hospital_branch_uidx').on(
+		uniqueIndex('inv_pricing_formula_template_hospital_name_uidx').on(
 			t.hospitalId,
-			t.branchId
+			t.name
 		),
-		index('inv_branch_pricing_config_hospital_idx').on(t.hospitalId)
+		uniqueIndex('inv_pricing_formula_template_hospital_default_uidx')
+			.on(t.hospitalId)
+			.where(sql`${t.isSystemDefault} = true`),
+		index('inv_pricing_formula_template_hospital_idx').on(t.hospitalId)
+	]
+);
+
+/** One assigned template per hospital + branch + sale module. */
+export const invModulePricingAssignmentTable = pgTable(
+	'inv_module_pricing_assignment',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		/** `MO` | `DC` | `BILLING` */
+		module: varchar('module', { length: 16 }).notNull(),
+		formulaTemplateId: integer('formula_template_id')
+			.notNull()
+			.references(() => invPricingFormulaTemplateTable.id, {
+				onDelete: 'restrict'
+			}),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow()
+			.$onUpdate(() => sql`now()`)
+	},
+	(t) => [
+		uniqueIndex('inv_module_pricing_assignment_scope_uidx').on(
+			t.hospitalId,
+			t.branchId,
+			t.module
+		),
+		index('inv_module_pricing_assignment_hospital_idx').on(
+			t.hospitalId
+		),
+		index('inv_module_pricing_assignment_template_idx').on(
+			t.formulaTemplateId
+		),
+		check(
+			'inv_module_pricing_assignment_module_chk',
+			sql`(${t.module}) IN ('MO', 'DC', 'BILLING')`
+		)
 	]
 );
 
@@ -591,8 +629,8 @@ export const purchaseOrderLineTable = pgTable(
 );
 
 /**
- * Normalized batch master (identity includes supplier + purchase price per migration SQL index).
- * Unique index `item_batch_identity_uidx` (NULLS NOT DISTINCT) is created in SQL migration.
+ * Normalized batch master (cost lot per `goods_receipt_line` when received via GRN).
+ * Unique index `item_batch_identity_uidx` includes `goods_receipt_line_id` (migration 0091).
  */
 export const itemBatchTable = pgTable(
 	'item_batch',
@@ -618,13 +656,14 @@ export const itemBatchTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
-		/** Per issue unit; includes tax; excludes free qty + discount. */
-		salePrice: decimal('sale_price', { precision: 14, scale: 2 }),
-		/** Per issue unit; all-in (tax + discount + free benefits). */
-		empSalePrice: decimal('emp_sale_price', {
-			precision: 14,
-			scale: 2
-		}),
+		goodsReceiptNoteId: uuid('goods_receipt_note_id').references(
+			(): AnyPgColumn => goodsReceiptNoteTable.id,
+			{ onDelete: 'set null' }
+		),
+		goodsReceiptLineId: integer('goods_receipt_line_id').references(
+			(): AnyPgColumn => goodsReceiptLineTable.id,
+			{ onDelete: 'set null' }
+		),
 		createdAt: timestamp('created_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -634,7 +673,9 @@ export const itemBatchTable = pgTable(
 	},
 	(t) => [
 		index('item_batch_hospital_item_idx').on(t.hospitalId, t.itemId),
-		index('item_batch_expiry_idx').on(t.expiryDate)
+		index('item_batch_expiry_idx').on(t.expiryDate),
+		index('item_batch_grn_line_idx').on(t.goodsReceiptLineId),
+		index('item_batch_grn_note_idx').on(t.goodsReceiptNoteId)
 	]
 );
 
@@ -700,6 +741,30 @@ export const goodsReceiptNoteTable = pgTable(
 			precision: 14,
 			scale: 2
 		}),
+		invoiceDiscountAmount: decimal('invoice_discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceDiscountPercent: decimal('invoice_discount_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceTaxAmount: decimal('invoice_tax_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		invoiceTaxPercent: decimal('invoice_tax_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
 		invoicePhotoUrl: text('invoice_photo_url'),
 		receivedBy: text('received_by')
 			.notNull()
@@ -790,11 +855,6 @@ export const goodsReceiptLineTable = pgTable(
 		taxPercent: decimal('tax_percent', { precision: 8, scale: 2 })
 			.notNull()
 			.default('0'),
-		salePrice: decimal('sale_price', { precision: 14, scale: 2 }),
-		empSalePrice: decimal('emp_sale_price', {
-			precision: 14,
-			scale: 2
-		}),
 		...invTimestamps
 	},
 	(t) => [index('goods_receipt_line_grn_id_idx').on(t.grnId)]

@@ -34,17 +34,13 @@ import {
 } from './inv-validate.server';
 import { addDeltaToInvStock, findOrCreateItemBatch } from './item-batch.server';
 import {
-	freeQtyToLinePurchaseUnitQty,
 	issueQtyStringFromAnyUnit,
 	issueQtyStringFromPurchaseReceipt,
 	listItemUnitMastersForItem,
 	purchaseUnitPriceToIssueUnitPriceString,
 	resolveItemUnitMasterForItemPurchaseUnit
 } from './item-unit-inventory.server';
-import {
-	computeGrnLinePrices,
-	loadBranchPricingConfigEffectiveDb
-} from './grn-pricing.server';
+import { computeLandedCostTotals } from '$lib/tool/inventory/grn-pricing.util';
 
 function parseGrnOptionalQty(s: string | null | undefined): number {
 	if (s == null || s === '') return 0;
@@ -58,6 +54,26 @@ function parseGrnMoney(s: string | null | undefined): number {
 
 function parseOptionalIumId(v: unknown): number | null {
 	return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : null;
+}
+
+type GrnInvoiceChargeInput = {
+	invoiceDiscountAmount?: string | null;
+	invoiceDiscountPercent?: string | null;
+	invoiceTaxAmount?: string | null;
+	invoiceTaxPercent?: string | null;
+};
+
+function grnInvoiceChargeDbValues(input: GrnInvoiceChargeInput) {
+	const discAmt = parseGrnMoney(input.invoiceDiscountAmount);
+	const discPct = parseGrnMoney(input.invoiceDiscountPercent);
+	const taxAmt = parseGrnMoney(input.invoiceTaxAmount);
+	const taxPct = parseGrnMoney(input.invoiceTaxPercent);
+	return {
+		invoiceDiscountAmount: discAmt.toFixed(2),
+		invoiceDiscountPercent: discPct.toFixed(2),
+		invoiceTaxAmount: taxAmt.toFixed(2),
+		invoiceTaxPercent: taxPct.toFixed(2)
+	};
 }
 
 /** Receiving store for a PO-backed GRN: the PO store (receiver). */
@@ -395,6 +411,10 @@ export async function createAndPostGoodsReceipt(
 		invoiceDate?: string | null;
 		invoiceAmount?: string | null;
 		invoicePhotoUrl?: string | null;
+		invoiceDiscountAmount?: string | null;
+		invoiceDiscountPercent?: string | null;
+		invoiceTaxAmount?: string | null;
+		invoiceTaxPercent?: string | null;
 		/** Optional override; defaults to current user. */
 		receivedBy?: string | null;
 		lines: {
@@ -412,8 +432,6 @@ export async function createAndPostGoodsReceipt(
 			discountPercent?: string | null;
 			taxAmount?: string | null;
 			taxPercent?: string | null;
-			salePriceOverride?: string | null;
-			empSalePriceOverride?: string | null;
 		}[];
 	}
 ) {
@@ -438,10 +456,6 @@ export async function createAndPostGoodsReceipt(
 	if (!store.branchId) {
 		throw error(400, 'Store is missing branch context');
 	}
-	const pricingConfig = await loadBranchPricingConfigEffectiveDb({
-		hospitalId: input.hospitalId,
-		branchId: store.branchId
-	});
 
 	const [po] = await ensureDb()
 		.select()
@@ -502,6 +516,8 @@ export async function createAndPostGoodsReceipt(
 			if (!u) throw error(400, 'Invalid receivedBy');
 		}
 
+		const invoiceCharges = grnInvoiceChargeDbValues(input);
+
 		const [grn] = await tx
 			.insert(table.goodsReceiptNoteTable)
 			.values({
@@ -512,6 +528,7 @@ export async function createAndPostGoodsReceipt(
 				invoiceNo: input.invoiceNo?.trim() || null,
 				invoiceDate: input.invoiceDate?.trim() || null,
 				invoiceAmount: input.invoiceAmount?.trim() || null,
+				...invoiceCharges,
 				invoicePhotoUrl: input.invoicePhotoUrl?.trim() || null,
 				receivedBy: receivedByUserId,
 				receivedDate: input.receivedDate,
@@ -575,16 +592,6 @@ export async function createAndPostGoodsReceipt(
 					purchaseUnitPriceStr: purchasePriceStr
 				});
 
-			const batchId = await findOrCreateItemBatch(tx, {
-				hospitalId: input.hospitalId,
-				itemId: poLine.itemId,
-				batchNo,
-				expiryDate,
-				supplierId: po.supplierId,
-				// item_batch.purchase_price stores normalized price per issue unit
-				purchasePrice: issueUnitPriceStr
-			});
-
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
 			const freeUnitIdRaw =
 				typeof ln.freeUnitId === 'number' &&
@@ -602,60 +609,18 @@ export async function createAndPostGoodsReceipt(
 				hospitalId: input.hospitalId,
 				itemId: poLine.itemId
 			});
-			const pfOrdered = Number(ium.purchaseConversionFactor);
-			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
-				throw error(500, 'Invalid ordered unit conversion factor');
-			}
-			const freePurch = freeQtyToLinePurchaseUnitQty({
-				freeQ,
-				freeUnitId,
-				linePurchaseUnitId: poLine.unitId,
-				lineIssueUnitId: ium.issueUnitId,
-				lineIum: ium,
-				pfOrdered,
-				allIums,
-				preferredIumId: freeUnitIumId
-			});
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
-			const priceBits = computeGrnLinePrices(pricingConfig, {
+			const landed = computeLandedCostTotals({
 				receivedQty: recv,
-				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
 				taxAmount: taxAmt,
-				taxPercent: taxPct,
-				salePriceOverride: ln.salePriceOverride,
-				empSalePriceOverride: ln.empSalePriceOverride
+				taxPercent: taxPct
 			});
-			const saleIssueStr =
-				Number(priceBits.salePerPurch) > 0
-					? await purchaseUnitPriceToIssueUnitPriceString({
-							hospitalId: input.hospitalId,
-							itemId: poLine.itemId,
-							purchaseUnitId: poLine.unitId,
-							purchaseUnitPriceStr: priceBits.salePerPurch
-						})
-					: '0.0000';
-			const empIssueStr =
-				Number(priceBits.empPerPurch) > 0
-					? await purchaseUnitPriceToIssueUnitPriceString({
-							hospitalId: input.hospitalId,
-							itemId: poLine.itemId,
-							purchaseUnitId: poLine.unitId,
-							purchaseUnitPriceStr: priceBits.empPerPurch
-						})
-					: '0.0000';
-			await tx
-				.update(table.itemBatchTable)
-				.set({
-					salePrice: saleIssueStr,
-					empSalePrice: empIssueStr
-				})
-				.where(eq(table.itemBatchTable.id, batchId));
 
 			const [grnLine] = await tx
 				.insert(table.goodsReceiptLineTable)
@@ -666,22 +631,36 @@ export async function createAndPostGoodsReceipt(
 					receivedQty: ln.receivedQty,
 					batchNo,
 					expiryDate,
-					batchId,
+					batchId: null,
 					purchasePrice: purchasePriceStr,
 					unitId: poLine.unitId,
 					freeQty: String(freeQ),
 					freeUnitId,
-					discountAmount: priceBits.discountTotal,
+					discountAmount: landed.discountTotal.toFixed(2),
 					discountPercent: Number(discPct).toFixed(2),
-					taxAmount: priceBits.taxTotal,
+					taxAmount: landed.taxTotal.toFixed(2),
 					taxPercent: Number(taxPct).toFixed(2),
-					salePrice: priceBits.salePerPurch,
-					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
 					updatedBy: userId
 				})
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
+
+			const batchId = await findOrCreateItemBatch(tx, {
+				hospitalId: input.hospitalId,
+				itemId: poLine.itemId,
+				batchNo,
+				expiryDate,
+				supplierId: po.supplierId,
+				purchasePrice: issueUnitPriceStr,
+				goodsReceiptNoteId: grn.id,
+				goodsReceiptLineId: grnLine.id
+			});
+
+			await tx
+				.update(table.goodsReceiptLineTable)
+				.set({ batchId })
+				.where(eq(table.goodsReceiptLineTable.id, grnLine.id));
 
 			const issueDeltaReceived =
 				await issueQtyStringFromPurchaseReceipt({
@@ -773,6 +752,10 @@ export async function createAndPostDirectGoodsReceipt(
 		invoiceDate?: string | null;
 		invoiceAmount?: string | null;
 		invoicePhotoUrl?: string | null;
+		invoiceDiscountAmount?: string | null;
+		invoiceDiscountPercent?: string | null;
+		invoiceTaxAmount?: string | null;
+		invoiceTaxPercent?: string | null;
 		/** Optional override; defaults to current user. */
 		receivedBy?: string | null;
 		lines: {
@@ -790,8 +773,6 @@ export async function createAndPostDirectGoodsReceipt(
 			discountPercent?: string | null;
 			taxAmount?: string | null;
 			taxPercent?: string | null;
-			salePriceOverride?: string | null;
-			empSalePriceOverride?: string | null;
 		}[];
 	}
 ) {
@@ -816,10 +797,6 @@ export async function createAndPostDirectGoodsReceipt(
 	if (!store.branchId) {
 		throw error(400, 'Store is missing branch context');
 	}
-	const pricingConfig = await loadBranchPricingConfigEffectiveDb({
-		hospitalId: input.hospitalId,
-		branchId: store.branchId
-	});
 
 	const grnId = await ensureDb().transaction(async (tx) => {
 		const receivedByUserId = input.receivedBy?.trim()
@@ -834,6 +811,8 @@ export async function createAndPostDirectGoodsReceipt(
 			if (!u) throw error(400, 'Invalid receivedBy');
 		}
 
+		const invoiceCharges = grnInvoiceChargeDbValues(input);
+
 		const [grn] = await tx
 			.insert(table.goodsReceiptNoteTable)
 			.values({
@@ -844,6 +823,7 @@ export async function createAndPostDirectGoodsReceipt(
 				invoiceNo: input.invoiceNo?.trim() || null,
 				invoiceDate: input.invoiceDate?.trim() || null,
 				invoiceAmount: input.invoiceAmount?.trim() || null,
+				...invoiceCharges,
 				invoicePhotoUrl: input.invoicePhotoUrl?.trim() || null,
 				receivedBy: receivedByUserId,
 				receivedDate: input.receivedDate,
@@ -889,14 +869,6 @@ export async function createAndPostDirectGoodsReceipt(
 					purchaseUnitId: ln.unitId,
 					purchaseUnitPriceStr: purchasePriceStr
 				});
-			const batchId = await findOrCreateItemBatch(tx, {
-				hospitalId: input.hospitalId,
-				itemId: ln.itemId,
-				batchNo,
-				expiryDate,
-				supplierId: input.supplierId,
-				purchasePrice: issueUnitPriceStr
-			});
 
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
 			const freeUnitIdRaw =
@@ -915,60 +887,18 @@ export async function createAndPostDirectGoodsReceipt(
 				hospitalId: input.hospitalId,
 				itemId: ln.itemId
 			});
-			const pfOrdered = Number(ium.purchaseConversionFactor);
-			if (!Number.isFinite(pfOrdered) || pfOrdered <= 0) {
-				throw error(500, 'Invalid ordered unit conversion factor');
-			}
-			const freePurch = freeQtyToLinePurchaseUnitQty({
-				freeQ,
-				freeUnitId,
-				linePurchaseUnitId: ln.unitId,
-				lineIssueUnitId: ium.issueUnitId,
-				lineIum: ium,
-				pfOrdered,
-				allIums,
-				preferredIumId: freeUnitIumId
-			});
 			const discAmt = parseGrnMoney(ln.discountAmount);
 			const discPct = parseGrnMoney(ln.discountPercent);
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
-			const priceBits = computeGrnLinePrices(pricingConfig, {
+			const landed = computeLandedCostTotals({
 				receivedQty: recv,
-				freeQty: freePurch,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
 				taxAmount: taxAmt,
-				taxPercent: taxPct,
-				salePriceOverride: ln.salePriceOverride,
-				empSalePriceOverride: ln.empSalePriceOverride
+				taxPercent: taxPct
 			});
-			const saleIssueStr =
-				Number(priceBits.salePerPurch) > 0
-					? await purchaseUnitPriceToIssueUnitPriceString({
-							hospitalId: input.hospitalId,
-							itemId: ln.itemId,
-							purchaseUnitId: ln.unitId,
-							purchaseUnitPriceStr: priceBits.salePerPurch
-						})
-					: '0.0000';
-			const empIssueStr =
-				Number(priceBits.empPerPurch) > 0
-					? await purchaseUnitPriceToIssueUnitPriceString({
-							hospitalId: input.hospitalId,
-							itemId: ln.itemId,
-							purchaseUnitId: ln.unitId,
-							purchaseUnitPriceStr: priceBits.empPerPurch
-						})
-					: '0.0000';
-			await tx
-				.update(table.itemBatchTable)
-				.set({
-					salePrice: saleIssueStr,
-					empSalePrice: empIssueStr
-				})
-				.where(eq(table.itemBatchTable.id, batchId));
 
 			const [grnLine] = await tx
 				.insert(table.goodsReceiptLineTable)
@@ -979,22 +909,36 @@ export async function createAndPostDirectGoodsReceipt(
 					receivedQty: ln.receivedQty,
 					batchNo,
 					expiryDate,
-					batchId,
+					batchId: null,
 					purchasePrice: purchasePriceStr,
 					unitId: ln.unitId,
 					freeQty: String(freeQ),
 					freeUnitId,
-					discountAmount: priceBits.discountTotal,
+					discountAmount: landed.discountTotal.toFixed(2),
 					discountPercent: Number(discPct).toFixed(2),
-					taxAmount: priceBits.taxTotal,
+					taxAmount: landed.taxTotal.toFixed(2),
 					taxPercent: Number(taxPct).toFixed(2),
-					salePrice: priceBits.salePerPurch,
-					empSalePrice: priceBits.empPerPurch,
 					createdBy: userId,
 					updatedBy: userId
 				})
 				.returning({ id: table.goodsReceiptLineTable.id });
 			if (!grnLine) throw error(500, 'GRN line failed');
+
+			const batchId = await findOrCreateItemBatch(tx, {
+				hospitalId: input.hospitalId,
+				itemId: ln.itemId,
+				batchNo,
+				expiryDate,
+				supplierId: input.supplierId,
+				purchasePrice: issueUnitPriceStr,
+				goodsReceiptNoteId: grn.id,
+				goodsReceiptLineId: grnLine.id
+			});
+
+			await tx
+				.update(table.goodsReceiptLineTable)
+				.set({ batchId })
+				.where(eq(table.goodsReceiptLineTable.id, grnLine.id));
 
 			const issueDeltaReceived =
 				await issueQtyStringFromPurchaseReceipt({

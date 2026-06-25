@@ -18,9 +18,10 @@ import {
 	invStockAlertEmailSentTable,
 	invStockAlertRecipientTable,
 	invStockAlertSettingTable,
-	invBranchPricingConfigTable,
 	invDepartmentConsumptionLineTable,
 	invDepartmentConsumptionTable,
+	invModulePricingAssignmentTable,
+	invPricingFormulaTemplateTable,
 	invStockIssueLineTable,
 	invStockIssueTable,
 	invStockTable,
@@ -94,16 +95,31 @@ export const invStockAlertSettingTableRelations = relations(
 	})
 );
 
-export const invBranchPricingConfigTableRelations = relations(
-	invBranchPricingConfigTable,
+export const invPricingFormulaTemplateTableRelations = relations(
+	invPricingFormulaTemplateTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [invPricingFormulaTemplateTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		assignments: many(invModulePricingAssignmentTable)
+	})
+);
+
+export const invModulePricingAssignmentTableRelations = relations(
+	invModulePricingAssignmentTable,
 	({ one }) => ({
 		hospital: one(hospitalTable, {
-			fields: [invBranchPricingConfigTable.hospitalId],
+			fields: [invModulePricingAssignmentTable.hospitalId],
 			references: [hospitalTable.id]
 		}),
 		branch: one(hospitalBranchTable, {
-			fields: [invBranchPricingConfigTable.branchId],
+			fields: [invModulePricingAssignmentTable.branchId],
 			references: [hospitalBranchTable.id]
+		}),
+		template: one(invPricingFormulaTemplateTable, {
+			fields: [invModulePricingAssignmentTable.formulaTemplateId],
+			references: [invPricingFormulaTemplateTable.id]
 		})
 	})
 );
@@ -216,6 +232,14 @@ export const itemBatchTableRelations = relations(
 		item: one(itemMasterTable, {
 			fields: [itemBatchTable.itemId],
 			references: [itemMasterTable.id]
+		}),
+		goodsReceiptNote: one(goodsReceiptNoteTable, {
+			fields: [itemBatchTable.goodsReceiptNoteId],
+			references: [goodsReceiptNoteTable.id]
+		}),
+		goodsReceiptLine: one(goodsReceiptLineTable, {
+			fields: [itemBatchTable.goodsReceiptLineId],
+			references: [goodsReceiptLineTable.id]
 		}),
 		stocks: many(invStockTable)
 	})

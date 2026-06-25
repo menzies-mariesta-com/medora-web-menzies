@@ -5,7 +5,6 @@
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import GrnLineReceiptFields from './GrnLineReceiptFields.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 
 	type SearchOpt = { label: string; value: string };
@@ -17,14 +16,12 @@
 		searchItemsFn,
 		onPickItem,
 		onSyncFreeUnit,
-		pricingConfig = null,
 		onSaveAttempt
 	}: DialogSlotProps & {
 		draftDirectLine: any;
 		searchItemsFn: (q: string) => Promise<SearchOpt[]>;
 		onPickItem: (itemId: number) => void | Promise<void>;
 		onSyncFreeUnit?: () => void;
-		pricingConfig?: BranchPricingConfigDto | null;
 		onSaveAttempt: () => boolean;
 	} = $props();
 
@@ -82,7 +79,6 @@
 	<div class="sm:col-span-2">
 		<GrnLineReceiptFields
 			draft={draftDirectLine}
-			{pricingConfig}
 			disableUnlessItem={true}
 			open={true}
 		/>

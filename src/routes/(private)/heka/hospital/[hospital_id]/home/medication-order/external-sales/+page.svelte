@@ -39,7 +39,6 @@
 	import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
 	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
 	import {
-		defaultUnitSalePriceFromAllocations,
 		hydrateMedOrderItemMeta,
 		lineTotal,
 		loadMedOrderIumList,
@@ -523,8 +522,6 @@
 				iumList[0] ?? null
 			);
 			issueQtyPurchase = '';
-			unitSalePrice =
-				defaultUnitSalePriceFromAllocations(batchAllocations);
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
 			batchAllocations = [];
@@ -1366,7 +1363,9 @@
 					</div>
 					{#if selectedItem && storeId > 0}
 						<MedicationOrderInventoryFields
+							{hospitalId}
 							storeId={storeId}
+							itemId={selectedItem.id}
 							itemLabel={selectedItem.itemName ?? ''}
 							bind:batchAllocations
 							bind:iumList

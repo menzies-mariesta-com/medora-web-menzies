@@ -1,5 +1,7 @@
 import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
 import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+import type { InventoryStockLotDto } from '$lib/model/type/heka/inventory-stock-lot.type';
+import { mapStockLotToBatchAllocationDraft } from '$lib/tool/inventory/map-stock-lot-to-batch-draft.util';
 import {
 	issueQtyToPurchaseQtyNumber,
 	purchaseQtyToIssueQtyNumber
@@ -71,27 +73,10 @@ export async function refreshMedOrderBatchAllocations(
 		{ credentials: 'include' }
 	);
 	if (!res.ok) throw new Error(String(res.status));
-	const rows = (await res.json()) as {
-		batchId: number;
-		batchNo: string | null;
-		expiryDate: string | null;
-		quantity: string;
-		salePrice?: string | null;
-	}[];
+	const rows = (await res.json()) as InventoryStockLotDto[];
 	return rows
 		.filter((r) => Number(r.quantity) > 1e-9)
-		.map((r) => ({
-			batchId: r.batchId,
-			batchNo: String(r.batchNo ?? ''),
-			expiryDate: r.expiryDate ?? null,
-			stockIssueQty: String(r.quantity ?? '0'),
-			salePrice:
-				r.salePrice != null && String(r.salePrice).trim() !== ''
-					? String(r.salePrice)
-					: null,
-			issueUnitName: null,
-			qtyPurchase: ''
-		}));
+		.map((r) => mapStockLotToBatchAllocationDraft(r));
 }
 
 type IumFactors = {
@@ -213,23 +198,6 @@ export function sumAllocationPurchaseQty(
 		if (Number.isFinite(q) && q > 0) sum += q;
 	}
 	return sum > 0 ? String(sum) : '';
-}
-
-export function defaultUnitSalePriceFromAllocations(
-	allocations: ConsumptionBatchAllocationDraft[]
-): string {
-	for (const a of allocations) {
-		const q = Number(a.qtyPurchase);
-		if (q > 0 && a.salePrice != null && String(a.salePrice).trim()) {
-			return String(a.salePrice).trim();
-		}
-	}
-	for (const a of allocations) {
-		if (a.salePrice != null && String(a.salePrice).trim()) {
-			return String(a.salePrice).trim();
-		}
-	}
-	return '0';
 }
 
 export function validateMedOrderInventoryLine(input: {
