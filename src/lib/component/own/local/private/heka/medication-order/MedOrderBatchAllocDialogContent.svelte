@@ -130,6 +130,7 @@
 			purchaseUnitLabel={ium?.purchaseUnitName ?? ''}
 			issueUnitLabel={ium?.issueUnitName ?? ''}
 			{disabled}
+			showSalePrice={false}
 		/>
 	{:else}
 		<p class="text-sm opacity-60">{m.med_order_inventory_invalid()}</p>

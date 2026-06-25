@@ -26,6 +26,8 @@ export type BranchPricingConfigDto = {
 export type GrnLinePriceInput = {
 	receivedQty: number;
 	freeQty: number;
+	/** Free qty in line purchase unit; defaults to `freeQty` when omitted. */
+	freeQtyPurchaseUnit?: number;
 	purchaseUnitPrice: number;
 	discountAmount: number;
 	discountPercent: number;

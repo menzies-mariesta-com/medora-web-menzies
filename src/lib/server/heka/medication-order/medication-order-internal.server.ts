@@ -150,9 +150,7 @@ export async function searchItemNamePrice(
 		.select({
 			id: im.id,
 			itemName: im.itemName,
-			displayPrice: min(
-				sql`coalesce(${ib.salePrice}, ${ib.purchasePrice})`
-			)
+			displayPrice: min(sql`coalesce(${ib.purchasePrice}, 0)`)
 		})
 		.from(inv)
 		.innerJoin(ib, eq(inv.batchId, ib.id))

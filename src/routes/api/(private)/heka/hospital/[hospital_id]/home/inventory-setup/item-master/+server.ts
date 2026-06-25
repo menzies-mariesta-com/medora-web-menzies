@@ -32,6 +32,15 @@ function readDefaultItemUnitMasterId(
 	return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function readItemMarkupPercent(
+	body: Record<string, unknown>
+): string | undefined {
+	if (!('itemMarkupPercent' in body)) return undefined;
+	const v = body.itemMarkupPercent;
+	if (v === null || v === '') return '0';
+	return String(v);
+}
+
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
@@ -144,6 +153,7 @@ export async function POST(event: RequestEvent) {
 			? pharmacyGenericId
 			: null,
 		manufacturerName,
+		itemMarkupPercent: readItemMarkupPercent(body) ?? '0',
 		...(expiryLeadCreate !== undefined
 			? { expiryAlertLeadDays: expiryLeadCreate }
 			: {}),
@@ -200,6 +210,7 @@ export async function PUT(event: RequestEvent) {
 		'expiryAlertLeadDays' in body
 			? readExpiryAlertLeadDays(body)
 			: undefined;
+	const itemMarkupPercent = readItemMarkupPercent(body);
 
 	return json(
 		await im
@@ -243,6 +254,9 @@ export async function PUT(event: RequestEvent) {
 						: Number(body.statusId),
 				...(expiryLead !== undefined
 					? { expiryAlertLeadDays: expiryLead }
+					: {}),
+				...(itemMarkupPercent !== undefined
+					? { itemMarkupPercent }
 					: {})
 			})
 			.then(async (updated) => {

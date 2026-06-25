@@ -3,6 +3,7 @@ import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
+import { freeQtyToPurchaseUnitQty } from '$lib/tool/inventory/grn-free-qty-purchase.util';
 
 /**
  * Convert a purchase quantity (in purchase units) to issue (stock) quantity
@@ -364,7 +365,7 @@ export function issueQtyStringFromAnyUnit(params: {
 	);
 }
 
-/** Convert free qty to the GRN line purchase-unit qty (for pricing). */
+/** Convert free qty to the GRN line purchase-unit qty (for pricing / stock). */
 export function freeQtyToLinePurchaseUnitQty(p: {
 	freeQ: number;
 	freeUnitId: number;
@@ -380,53 +381,19 @@ export function freeQtyToLinePurchaseUnitQty(p: {
 }): number {
 	if (p.freeQ <= 0) return 0;
 
-	if (p.preferredIumId != null) {
-		const picked = p.allIums.find((x) => x.id === p.preferredIumId);
-		if (picked) {
-			if (p.freeUnitId === picked.purchaseUnitId) {
-				const pfFree = Number(picked.purchaseConversionFactor);
-				if (!Number.isFinite(pfFree) || pfFree <= 0) {
-					throw error(500, 'Invalid free unit conversion factor');
-				}
-				return (p.freeQ * pfFree) / p.pfOrdered;
-			}
-			if (p.freeUnitId === picked.issueUnitId) {
-				const itfFree = Number(picked.issueConversionFactor);
-				if (!Number.isFinite(itfFree) || itfFree <= 0) {
-					throw error(500, 'Invalid free unit conversion factor');
-				}
-				return (p.freeQ * itfFree) / p.pfOrdered;
-			}
-		}
-	}
+	const converted = freeQtyToPurchaseUnitQty({
+		freeQ: p.freeQ,
+		freeUnitId: p.freeUnitId,
+		linePurchaseUnitId: p.linePurchaseUnitId,
+		lineIssueUnitId: p.lineIssueUnitId,
+		linePurchaseConversionFactor: p.lineIum.purchaseConversionFactor,
+		lineIssueConversionFactor: p.lineIum.issueConversionFactor,
+		allIums: p.allIums,
+		preferredIumId: p.preferredIumId
+	});
 
-	const asPurch = p.allIums.find((x) => x.purchaseUnitId === p.freeUnitId);
-	if (asPurch) {
-		const pfFree = Number(asPurch.purchaseConversionFactor);
-		if (!Number.isFinite(pfFree) || pfFree <= 0) {
-			throw error(500, 'Invalid free unit conversion factor');
-		}
-		return (p.freeQ * pfFree) / p.pfOrdered;
+	if (converted <= 0 && p.freeUnitId !== p.linePurchaseUnitId) {
+		throw error(400, 'Invalid free unit for this item');
 	}
-	if (p.freeUnitId === p.linePurchaseUnitId) {
-		return p.freeQ;
-	}
-	const asIssue = p.allIums.find((x) => x.issueUnitId === p.freeUnitId);
-	if (asIssue) {
-		const itfFree = Number(asIssue.issueConversionFactor);
-		if (!Number.isFinite(itfFree) || itfFree <= 0) {
-			throw error(500, 'Invalid free unit conversion factor');
-		}
-		return (p.freeQ * itfFree) / p.pfOrdered;
-	}
-	if (p.freeUnitId === p.lineIssueUnitId) {
-		return Number(
-			issueQtyToPurchaseQtyString(
-				String(p.freeQ),
-				p.lineIum.purchaseConversionFactor,
-				p.lineIum.issueConversionFactor
-			)
-		);
-	}
-	throw error(400, 'Invalid free unit for this item');
+	return converted;
 }

@@ -114,6 +114,26 @@ export const POST: RequestHandler = async (event) => {
 		String(body.invoicePhotoUrl).trim() !== ''
 			? String(body.invoicePhotoUrl).trim()
 			: null;
+	const invoiceDiscountAmount =
+		body.invoiceDiscountAmount != null &&
+		String(body.invoiceDiscountAmount).trim() !== ''
+			? String(body.invoiceDiscountAmount).trim()
+			: null;
+	const invoiceDiscountPercent =
+		body.invoiceDiscountPercent != null &&
+		String(body.invoiceDiscountPercent).trim() !== ''
+			? String(body.invoiceDiscountPercent).trim()
+			: null;
+	const invoiceTaxAmount =
+		body.invoiceTaxAmount != null &&
+		String(body.invoiceTaxAmount).trim() !== ''
+			? String(body.invoiceTaxAmount).trim()
+			: null;
+	const invoiceTaxPercent =
+		body.invoiceTaxPercent != null &&
+		String(body.invoiceTaxPercent).trim() !== ''
+			? String(body.invoiceTaxPercent).trim()
+			: null;
 	const receivedBy =
 		body.receivedBy != null && String(body.receivedBy).trim() !== ''
 			? String(body.receivedBy).trim()
@@ -136,6 +156,19 @@ export const POST: RequestHandler = async (event) => {
 			);
 		}
 	}
+	for (const [label, raw] of [
+		['invoiceDiscountAmount', invoiceDiscountAmount],
+		['invoiceDiscountPercent', invoiceDiscountPercent],
+		['invoiceTaxAmount', invoiceTaxAmount],
+		['invoiceTaxPercent', invoiceTaxPercent]
+	] as const) {
+		if (raw != null) {
+			const n = Number(raw);
+			if (!Number.isFinite(n) || n < 0) {
+				return json({ error: `Invalid ${label}` }, { status: 400 });
+			}
+		}
+	}
 
 	if (body.mode === 'direct' || body.source === 'direct') {
 		const data = await createAndPostDirectGoodsReceipt(event, {
@@ -146,6 +179,10 @@ export const POST: RequestHandler = async (event) => {
 			invoiceNo,
 			invoiceDate,
 			invoiceAmount,
+			invoiceDiscountAmount,
+			invoiceDiscountPercent,
+			invoiceTaxAmount,
+			invoiceTaxPercent,
 			invoicePhotoUrl,
 			receivedBy,
 			lines: lines.map((l) => ({
@@ -174,15 +211,7 @@ export const POST: RequestHandler = async (event) => {
 						? String(l.discountPercent)
 						: null,
 				taxAmount: l.taxAmount != null ? String(l.taxAmount) : null,
-				taxPercent: l.taxPercent != null ? String(l.taxPercent) : null,
-				salePriceOverride:
-					l.salePriceOverride != null
-						? String(l.salePriceOverride)
-						: null,
-				empSalePriceOverride:
-					l.empSalePriceOverride != null
-						? String(l.empSalePriceOverride)
-						: null
+				taxPercent: l.taxPercent != null ? String(l.taxPercent) : null
 			}))
 		});
 		return json(data);
@@ -195,6 +224,10 @@ export const POST: RequestHandler = async (event) => {
 		invoiceNo,
 		invoiceDate,
 		invoiceAmount,
+		invoiceDiscountAmount,
+		invoiceDiscountPercent,
+		invoiceTaxAmount,
+		invoiceTaxPercent,
 		invoicePhotoUrl,
 		receivedBy,
 		lines: lines.map((l) => ({
@@ -219,15 +252,7 @@ export const POST: RequestHandler = async (event) => {
 			discountPercent:
 				l.discountPercent != null ? String(l.discountPercent) : null,
 			taxAmount: l.taxAmount != null ? String(l.taxAmount) : null,
-			taxPercent: l.taxPercent != null ? String(l.taxPercent) : null,
-			salePriceOverride:
-				l.salePriceOverride != null
-					? String(l.salePriceOverride)
-					: null,
-			empSalePriceOverride:
-				l.empSalePriceOverride != null
-					? String(l.empSalePriceOverride)
-					: null
+			taxPercent: l.taxPercent != null ? String(l.taxPercent) : null
 		}))
 	});
 	return json(data);

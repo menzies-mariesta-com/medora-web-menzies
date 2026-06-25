@@ -46,10 +46,10 @@
 		batchNo: string;
 		expiryDate: string | null;
 		purchasePrice: string;
-		salePrice: string;
-		empSalePrice: string;
 		quantity: string;
 		issueUnitName?: string | null;
+		grnReceivedDate?: string | null;
+		grnInvoiceNo?: string | null;
 	};
 
 	let view = $state<'aggregated' | 'lots'>('aggregated');
@@ -121,10 +121,10 @@
 					batchNo: String(r.batchNo ?? ''),
 					expiryDate: (r.expiryDate as string) ?? null,
 					purchasePrice: String(r.purchasePrice ?? ''),
-					salePrice: String(r.salePrice ?? ''),
-					empSalePrice: String(r.empSalePrice ?? ''),
 					quantity: String(r.quantity ?? '0'),
-					issueUnitName: (r.issueUnitName as string) ?? null
+					issueUnitName: (r.issueUnitName as string) ?? null,
+					grnReceivedDate: (r.grnReceivedDate as string) ?? null,
+					grnInvoiceNo: (r.grnInvoiceNo as string) ?? null
 				}));
 			} else {
 				rowsAgg = (await res.json()) as AggRow[];
@@ -202,6 +202,18 @@
 			format: (v) => v ?? '—'
 		},
 		{
+			id: 'grnReceivedDate',
+			header: m.inv_stock_col_grn_receipt(),
+			field: 'grnReceivedDate',
+			filterable: true,
+			format: (_v, row) => {
+				const date = row.grnReceivedDate?.trim() ?? '';
+				const inv = row.grnInvoiceNo?.trim() ?? '';
+				if (date && inv) return `${date} · ${inv}`;
+				return date || inv || '—';
+			}
+		},
+		{
 			id: 'purchasePrice',
 			header: m.inv_stock_col_price(),
 			field: 'purchasePrice',
@@ -210,30 +222,6 @@
 				const t =
 					row.purchasePrice != null
 						? String(row.purchasePrice).trim()
-						: '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
-			}
-		},
-		{
-			id: 'salePrice',
-			header: m.inv_stock_col_sale_price(),
-			field: 'salePrice',
-			filterable: false,
-			format: (_v, row) => {
-				const t =
-					row.salePrice != null ? String(row.salePrice).trim() : '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
-			}
-		},
-		{
-			id: 'empSalePrice',
-			header: m.inv_stock_col_emp_sale_price(),
-			field: 'empSalePrice',
-			filterable: false,
-			format: (_v, row) => {
-				const t =
-					row.empSalePrice != null
-						? String(row.empSalePrice).trim()
 						: '';
 				return t ? trimInventoryNumericDisplay(t, 4) : '—';
 			}

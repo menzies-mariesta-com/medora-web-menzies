@@ -5,6 +5,7 @@ import { ensureDb } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
 import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { addDeltaToInvStock } from '$lib/server/heka/inventory/item-batch.server';
+import { computeSalePriceAtTransactionDb } from '$lib/server/heka/inventory/sale-price.server';
 import {
 	issueQtyStringFromPurchaseReceipt,
 	purchaseQtyToIssueQtyString
@@ -348,6 +349,21 @@ export async function insertMedicationOrderLineWithAllocations(
 	}
 ): Promise<number> {
 	const { line } = input;
+	const primaryAlloc =
+		line.allocations.find((a) => Number(a.qtyPurchase) > 0) ??
+		line.allocations[0];
+	let unitSalePrice = line.unitSalePrice;
+	if (primaryAlloc) {
+		const computed = await computeSalePriceAtTransactionDb({
+			hospitalId: input.hospitalId,
+			batchId: primaryAlloc.batchId,
+			itemId: line.itemMasterId,
+			storeId: input.storeId,
+			module: 'MO'
+		});
+		unitSalePrice = computed.unitSalePricePurchase;
+	}
+
 	const [inserted] = await tx
 		.insert(schema.medicationOrderLineTable)
 		.values({
@@ -368,7 +384,7 @@ export async function insertMedicationOrderLineWithAllocations(
 			substituteNotAllowed: line.substituteNotAllowed,
 			itemUnitMasterId: line.itemUnitMasterId,
 			issueQtyPurchase: line.issueQtyPurchase,
-			unitSalePrice: line.unitSalePrice,
+			unitSalePrice,
 			lineRemarks: null,
 			createdBy: input.userId,
 			updatedBy: input.userId

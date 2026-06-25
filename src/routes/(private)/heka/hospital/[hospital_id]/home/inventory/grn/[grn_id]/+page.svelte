@@ -57,6 +57,10 @@
 		invoiceNo?: string | null;
 		invoiceDate?: string | null;
 		invoiceAmount?: string | null;
+		invoiceDiscountAmount?: string | null;
+		invoiceDiscountPercent?: string | null;
+		invoiceTaxAmount?: string | null;
+		invoiceTaxPercent?: string | null;
 		invoicePhotoUrl?: string | null;
 		createdAt?: string | null;
 		updatedAt?: string | null;
@@ -71,6 +75,26 @@
 	let detailLoading = $state(true);
 
 	let abort: AbortController | null = null;
+
+	function formatInvoiceCharge(
+		amount: string | null | undefined,
+		percent: string | null | undefined
+	): string {
+		const amt = amount?.trim() ?? '';
+		const pct = percent?.trim() ?? '';
+		const amtN = amt ? Number(amt) : 0;
+		const pctN = pct ? Number(pct) : 0;
+		if (Number.isFinite(amtN) && amtN > 0) {
+			return new Intl.NumberFormat(undefined, {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 2
+			}).format(amtN);
+		}
+		if (Number.isFinite(pctN) && pctN > 0) {
+			return `${pctN}%`;
+		}
+		return '—';
+	}
 
 	const lineColumns: MariTableColumn<GrnDetailLine>[] = [
 		{
@@ -263,6 +287,28 @@
 				{:else}
 					—
 				{/if}
+			</div>
+		</div>
+		<div>
+			<div class="text-sm text-base-content/60">
+				{m.inv_grn_invoice_discount_percent()}
+			</div>
+			<div class="font-medium">
+				{formatInvoiceCharge(
+					detail?.invoiceDiscountAmount,
+					detail?.invoiceDiscountPercent
+				)}
+			</div>
+		</div>
+		<div>
+			<div class="text-sm text-base-content/60">
+				{m.inv_grn_invoice_tax_percent()}
+			</div>
+			<div class="font-medium">
+				{formatInvoiceCharge(
+					detail?.invoiceTaxAmount,
+					detail?.invoiceTaxPercent
+				)}
 			</div>
 		</div>
 	</div>

@@ -1,9 +1,14 @@
 import type {
 	BranchPricingConfigDto,
 	GrnLinePriceInput,
-	GrnLinePriceResult,
 	GrnPriceRuleFlags
 } from '$lib/model/type/heka/grn-pricing-config.type';
+import {
+	freeQtyToPurchaseUnitQty,
+	purchaseUnitDenominatorQty
+} from '$lib/tool/inventory/grn-free-qty-purchase.util';
+
+export { freeQtyToPurchaseUnitQty };
 
 export const DEFAULT_BRANCH_PRICING_CONFIG: Omit<
 	BranchPricingConfigDto,
@@ -31,6 +36,194 @@ export type LandedCostTotals = {
 	discountTotal: number;
 	taxTotal: number;
 };
+
+/** Resolves a charge total: fixed amount wins over percent on `base`. */
+export function resolveChargeTotal(
+	base: number,
+	amount: number,
+	percent: number
+): number {
+	if (!Number.isFinite(base) || base <= 0) return 0;
+	if (amount > 0) return amount;
+	if (percent > 0) return base * (percent / 100);
+	return 0;
+}
+
+/** Allocates `total` across `shares` proportionally (equal split when all shares are zero). */
+export function allocateProportionalShare(
+	total: number,
+	shares: number[],
+	index: number
+): number {
+	if (!Number.isFinite(total) || total <= 0) return 0;
+	const safeShares = shares.map((s) => Math.max(0, s));
+	const sum = safeShares.reduce((a, b) => a + b, 0);
+	if (sum <= 0) {
+		return shares.length > 0 ? total / shares.length : 0;
+	}
+	return total * (safeShares[index] / sum);
+}
+
+export type GrnInvoiceCostInput = {
+	discountAmount: number;
+	discountPercent: number;
+	taxAmount: number;
+	taxPercent: number;
+};
+
+/**
+ * Landed line totals for a GRN: line discount/tax, then invoice discount/tax
+ * prorated by each line's share of the GRN subtotal (after line discounts).
+ */
+export function computeGrnLandedLineTotals(input: {
+	lines: Array<
+		Pick<
+			GrnLinePriceInput,
+			| 'receivedQty'
+			| 'purchaseUnitPrice'
+			| 'discountAmount'
+			| 'discountPercent'
+			| 'taxAmount'
+			| 'taxPercent'
+		>
+	>;
+	invoice: GrnInvoiceCostInput;
+	includeDiscount: boolean;
+	includeTax: boolean;
+}): number[] {
+	const { lines, invoice, includeDiscount, includeTax } = input;
+	if (lines.length === 0) return [];
+
+	const subs = lines.map((l) => {
+		const r = l.receivedQty;
+		if (!Number.isFinite(r) || r <= 0) return 0;
+		return r * l.purchaseUnitPrice;
+	});
+
+	const lineDiscs = lines.map((l, i) =>
+		includeDiscount
+			? resolveChargeTotal(subs[i], l.discountAmount, l.discountPercent)
+			: 0
+	);
+
+	const afterLineDisc = subs.map((s, i) => Math.max(0, s - lineDiscs[i]));
+	const grnAfterLineDiscSum = afterLineDisc.reduce((a, b) => a + b, 0);
+
+	const invoiceDiscTotal = includeDiscount
+		? resolveChargeTotal(
+				grnAfterLineDiscSum,
+				invoice.discountAmount,
+				invoice.discountPercent
+			)
+		: 0;
+
+	const allocatedInvoiceDisc = afterLineDisc.map((_, i) =>
+		allocateProportionalShare(invoiceDiscTotal, afterLineDisc, i)
+	);
+
+	const afterAllDisc = afterLineDisc.map((v, i) =>
+		Math.max(0, v - allocatedInvoiceDisc[i])
+	);
+
+	const lineTaxes = lines.map((l, i) => {
+		if (!includeTax) return 0;
+		const taxBase = includeDiscount ? afterAllDisc[i] : subs[i];
+		return resolveChargeTotal(taxBase, l.taxAmount, l.taxPercent);
+	});
+
+	const invoiceTaxBase = includeDiscount
+		? afterAllDisc.reduce((a, b) => a + b, 0)
+		: subs.reduce((a, b) => a + b, 0);
+
+	const invoiceTaxTotal = includeTax
+		? resolveChargeTotal(
+				invoiceTaxBase,
+				invoice.taxAmount,
+				invoice.taxPercent
+			)
+		: 0;
+
+	const taxAllocShares = includeDiscount ? afterAllDisc : subs;
+	const allocatedInvoiceTax = taxAllocShares.map((_, i) =>
+		allocateProportionalShare(invoiceTaxTotal, taxAllocShares, i)
+	);
+
+	return lines.map((_, i) => {
+		let total = includeDiscount ? afterAllDisc[i] : subs[i];
+		if (includeTax) {
+			total += lineTaxes[i] + allocatedInvoiceTax[i];
+		}
+		return total;
+	});
+}
+
+function resolvedFreeQtyPurchaseUnit(
+	line: Pick<GrnLinePriceInput, 'freeQty' | 'freeQtyPurchaseUnit'>
+): number {
+	if (line.freeQtyPurchaseUnit != null) {
+		const n = Number(line.freeQtyPurchaseUnit);
+		return Number.isFinite(n) && n > 0 ? n : 0;
+	}
+	const n = Number(line.freeQty);
+	return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function costDenominatorPurchaseQty(
+	flags: GrnPriceRuleFlags,
+	line: Pick<
+		GrnLinePriceInput,
+		'receivedQty' | 'freeQty' | 'freeQtyPurchaseUnit'
+	>
+): number {
+	return purchaseUnitDenominatorQty({
+		receivedQty: line.receivedQty,
+		freeQtyPurchaseUnit: resolvedFreeQtyPurchaseUnit(line),
+		includeFreeQtyInDenominator: flags.includeFreeQtyInDenominator
+	});
+}
+
+/**
+ * Per purchase-unit cost for one GRN line, including prorated invoice discount/tax.
+ */
+export function computeGrnCostPerUnit(
+	flags: GrnPriceRuleFlags,
+	context: {
+		lines: Array<
+			Pick<
+				GrnLinePriceInput,
+				| 'receivedQty'
+				| 'freeQty'
+				| 'freeQtyPurchaseUnit'
+				| 'purchaseUnitPrice'
+				| 'discountAmount'
+				| 'discountPercent'
+				| 'taxAmount'
+				| 'taxPercent'
+			>
+		>;
+		invoice: GrnInvoiceCostInput;
+		targetLineIndex: number;
+	}
+): number {
+	const idx = context.targetLineIndex;
+	const line = context.lines[idx];
+	if (!line) return 0;
+
+	const r = line.receivedQty;
+	if (!Number.isFinite(r) || r <= 0) return 0;
+
+	const landedTotals = computeGrnLandedLineTotals({
+		lines: context.lines,
+		invoice: context.invoice,
+		includeDiscount: flags.includeDiscount,
+		includeTax: flags.includeTax
+	});
+
+	const lineTotal = landedTotals[idx] ?? 0;
+	const denom = costDenominatorPurchaseQty(flags, line);
+	const perUnit = denom > 0 ? lineTotal / denom : 0;
+	return perUnit * markupFactor(flags.markupPercent);
+}
 
 /** Line-level discount/tax totals (independent of per-unit flags). */
 export function computeLandedCostTotals(p: {
@@ -75,38 +268,6 @@ export function computeLandedCostTotals(p: {
 	};
 }
 
-export type GrnPricingValidationError = {
-	field: 'salePriceOverride' | 'empSalePriceOverride';
-	message: string;
-};
-
-function parseOverridePrice(
-	raw: string | null | undefined,
-	field: GrnPricingValidationError['field'],
-	label: string
-): { ok: true; value: number } | { ok: false; error: GrnPricingValidationError } {
-	if (raw == null || String(raw).trim() === '') {
-		return {
-			ok: false,
-			error: {
-				field,
-				message: `${label} is required for manual pricing`
-			}
-		};
-	}
-	const n = Number(raw);
-	if (!Number.isFinite(n) || n <= 0) {
-		return {
-			ok: false,
-			error: {
-				field,
-				message: `${label} must be greater than zero`
-			}
-		};
-	}
-	return { ok: true, value: n };
-}
-
 function markupFactor(markupPercent: string): number {
 	const markupPct = Number(markupPercent);
 	return Number.isFinite(markupPct) && markupPct > 0
@@ -124,6 +285,7 @@ export function computeCostPerUnit(
 		GrnLinePriceInput,
 		| 'receivedQty'
 		| 'freeQty'
+		| 'freeQtyPurchaseUnit'
 		| 'purchaseUnitPrice'
 		| 'discountAmount'
 		| 'discountPercent'
@@ -132,7 +294,6 @@ export function computeCostPerUnit(
 	>
 ): number {
 	const r = line.receivedQty;
-	const f = line.freeQty;
 	if (!Number.isFinite(r) || r <= 0) return 0;
 
 	const landed = computeLandedCostTotals({
@@ -154,110 +315,7 @@ export function computeCostPerUnit(
 			: landed.subPlusTax;
 	}
 
-	const denom =
-		flags.includeFreeQtyInDenominator && f > 0 ? r + f : r;
+	const denom = costDenominatorPurchaseQty(flags, line);
 	const perUnit = denom > 0 ? lineTotal / denom : 0;
 	return perUnit * markupFactor(flags.markupPercent);
-}
-
-/**
- * Computes per purchase-unit sale and employee sale prices for a GRN line.
- */
-export function computeGrnLinePrices(
-	config: Pick<
-		BranchPricingConfigDto,
-		| 'saleManualOnGrnLine'
-		| 'saleIncludeDiscount'
-		| 'saleIncludeTax'
-		| 'saleIncludeFreeQty'
-		| 'saleMarkupPercent'
-		| 'empManualOnGrnLine'
-		| 'empIncludeDiscount'
-		| 'empIncludeTax'
-		| 'empIncludeFreeQty'
-		| 'empMarkupPercent'
-		| 'empUsePercentOfSale'
-		| 'empPercentOfSale'
-	>,
-	line: GrnLinePriceInput
-):
-	| { ok: true; result: GrnLinePriceResult }
-	| { ok: false; error: GrnPricingValidationError } {
-	const r = line.receivedQty;
-	if (!Number.isFinite(r) || r <= 0) {
-		return {
-			ok: true,
-			result: {
-				salePerPurch: '0',
-				empPerPurch: '0',
-				discountTotal: '0',
-				taxTotal: '0'
-			}
-		};
-	}
-
-	const landed = computeLandedCostTotals({
-		receivedQty: r,
-		purchaseUnitPrice: line.purchaseUnitPrice,
-		discountAmount: line.discountAmount,
-		discountPercent: line.discountPercent,
-		taxAmount: line.taxAmount,
-		taxPercent: line.taxPercent
-	});
-
-	let sale: number;
-	if (config.saleManualOnGrnLine) {
-		const parsed = parseOverridePrice(
-			line.salePriceOverride,
-			'salePriceOverride',
-			'Sale price override'
-		);
-		if (!parsed.ok) return parsed;
-		sale = parsed.value;
-	} else {
-		sale = computeCostPerUnit(
-			{
-				includeDiscount: config.saleIncludeDiscount,
-				includeTax: config.saleIncludeTax,
-				includeFreeQtyInDenominator: config.saleIncludeFreeQty,
-				markupPercent: config.saleMarkupPercent
-			},
-			line
-		);
-	}
-
-	let emp: number;
-	if (config.empManualOnGrnLine) {
-		const parsed = parseOverridePrice(
-			line.empSalePriceOverride,
-			'empSalePriceOverride',
-			'Employee sale price override'
-		);
-		if (!parsed.ok) return parsed;
-		emp = parsed.value;
-	} else if (config.empUsePercentOfSale) {
-		const pct = Number(config.empPercentOfSale);
-		emp =
-			Number.isFinite(pct) && pct > 0 ? sale * (pct / 100) : sale;
-	} else {
-		emp = computeCostPerUnit(
-			{
-				includeDiscount: config.empIncludeDiscount,
-				includeTax: config.empIncludeTax,
-				includeFreeQtyInDenominator: config.empIncludeFreeQty,
-				markupPercent: config.empMarkupPercent
-			},
-			line
-		);
-	}
-
-	return {
-		ok: true,
-		result: {
-			salePerPurch: sale.toFixed(2),
-			empPerPurch: emp.toFixed(2),
-			discountTotal: landed.discountTotal.toFixed(2),
-			taxTotal: landed.taxTotal.toFixed(2)
-		}
-	};
 }

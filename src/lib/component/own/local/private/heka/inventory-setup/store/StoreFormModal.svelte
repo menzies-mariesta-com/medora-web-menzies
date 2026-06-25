@@ -34,6 +34,7 @@
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 	let isPurchaseRequisitable = $state(false);
+	let storeMarkupPercentStr = $state('0');
 
 	const normalizedUserGroupFilter = $derived(
 		userGroupFilter.trim().toLowerCase()
@@ -67,6 +68,7 @@
 		remark: string | null;
 		statusId: number;
 		isPurchaseRequisitable?: boolean;
+		storeMarkupPercent?: string | null;
 		userGroups?: { id: number; name: string | null }[];
 	};
 
@@ -145,6 +147,10 @@
 					storeName = s.storeName ?? '';
 					remark = s.remark ?? '';
 					isPurchaseRequisitable = s.isPurchaseRequisitable === true;
+					storeMarkupPercentStr =
+						s.storeMarkupPercent != null
+							? String(s.storeMarkupPercent)
+							: '0';
 					formActive =
 						(s.statusId ?? StatusEnum.ACTIVE) === StatusEnum.ACTIVE;
 					selectedUserGroupIds = (s.userGroups ?? []).map(
@@ -153,6 +159,7 @@
 				}
 			} else {
 				isPurchaseRequisitable = false;
+				storeMarkupPercentStr = '0';
 				if (branches.length > 0) {
 					branchId = branches[0].id;
 				}
@@ -174,6 +181,16 @@
 			return;
 		}
 
+		const markupTrim = storeMarkupPercentStr.trim();
+		const markupN = Number(markupTrim === '' ? '0' : markupTrim);
+		if (!Number.isFinite(markupN) || markupN < 0 || markupN > 999) {
+			toastService.addToast(
+				m.inv_store_markup_percent_invalid(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
@@ -185,6 +202,7 @@
 				storeName: storeName.trim(),
 				remark: remark.trim() || null,
 				isPurchaseRequisitable,
+				storeMarkupPercent: markupN.toFixed(2),
 				userGroupIds: selectedUserGroupIds,
 				statusId
 			};
@@ -305,6 +323,25 @@
 						/>
 						<span class="text-sm opacity-80">{m.active_label()}</span>
 					</label>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel forText="store-markup" className="shrink-0 pt-2 sm:w-40"
+					>{m.inv_store_markup_percent()}</DaisyUiLabel
+				>
+				<div class="max-w-md flex-1">
+					<DaisyUiInputField
+						id="store-markup"
+						bind:value={storeMarkupPercentStr}
+						inputType="text"
+						inputPlaceholderText="0"
+						inputTitle={m.inv_store_markup_percent_invalid()}
+					/>
+					<p class="mt-1 text-xs text-base-content/60">
+						{m.inv_store_markup_percent_hint()}
+					</p>
 				</div>
 			</div>
 			<div

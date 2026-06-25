@@ -3,18 +3,15 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import GrnLineReceiptFields from './GrnLineReceiptFields.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 
 	let {
 		confirm,
 		cancel,
 		draftGrnFromPoLine,
-		pricingConfig = null,
 		onSaveAttempt
 	}: DialogSlotProps & {
 		draftGrnFromPoLine: any;
-		pricingConfig?: BranchPricingConfigDto | null;
 		onSaveAttempt: () => boolean;
 	} = $props();
 
@@ -35,7 +32,6 @@
 	<div class="mt-4">
 		<GrnLineReceiptFields
 			draft={draftGrnFromPoLine}
-			{pricingConfig}
 			disableUnlessItem={false}
 			open={true}
 		/>

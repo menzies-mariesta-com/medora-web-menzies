@@ -77,6 +77,7 @@
 	let manufacturerNameStr = $state('');
 	/** Empty string = use hospital default (stored as null). */
 	let expiryAlertLeadDaysStr = $state('');
+	let itemMarkupPercentStr = $state('0');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
@@ -257,10 +258,15 @@
 						row.expiryAlertLeadDays != null
 							? String(row.expiryAlertLeadDays)
 							: '';
+					itemMarkupPercentStr =
+						row.itemMarkupPercent != null
+							? String(row.itemMarkupPercent)
+							: '0';
 				}
 			} else if (cats.length > 0) {
 				categoryIdStr = String(cats[0].id);
 				expiryAlertLeadDaysStr = '';
+				itemMarkupPercentStr = '0';
 			}
 		} finally {
 			isLoading = false;
@@ -317,6 +323,16 @@
 			expiryAlertLeadDays = d;
 		}
 
+		const markupTrim = itemMarkupPercentStr.trim();
+		const markupN = Number(markupTrim === '' ? '0' : markupTrim);
+		if (!Number.isFinite(markupN) || markupN < 0 || markupN > 999) {
+			toastService.addToast(
+				m.item_master_item_markup_percent_invalid(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+
 		const statusId = formActive
 			? StatusEnum.ACTIVE
 			: StatusEnum.INACTIVE;
@@ -360,6 +376,7 @@
 				description: description.trim() || null,
 				remark: remark.trim() || null,
 				expiryAlertLeadDays,
+				itemMarkupPercent: markupN.toFixed(2),
 				statusId
 			};
 			if (itemUnitMasterIds.length > 0) {
@@ -546,6 +563,25 @@
 					/>
 					<p class="mt-1 text-xs text-base-content/60">
 						{m.item_master_expiry_alert_lead_days_hint()}
+					</p>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+			>
+				<DaisyUiLabel forText="im-item-markup" className="shrink-0 pt-2 sm:w-40"
+					>{m.item_master_item_markup_percent()}</DaisyUiLabel
+				>
+				<div class="max-w-lg flex-1">
+					<DaisyUiInputField
+						id="im-item-markup"
+						bind:value={itemMarkupPercentStr}
+						inputType="text"
+						inputPlaceholderText="0"
+						inputTitle={m.item_master_item_markup_percent_invalid()}
+					/>
+					<p class="mt-1 text-xs text-base-content/60">
+						{m.item_master_item_markup_percent_hint()}
 					</p>
 				</div>
 			</div>

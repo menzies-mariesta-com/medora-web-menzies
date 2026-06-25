@@ -34,13 +34,22 @@ export const GET: RequestHandler = async (event) => {
 		});
 		return json(
 			rows.map(
-				({ stock, batch, itemName, storeName, issueUnitName }) => ({
+				({
+					stock,
+					batch,
+					itemName,
+					storeName,
+					issueUnitName,
+					grnReceivedDate,
+					grnInvoiceNo
+				}) => ({
 					...stock,
 					batchNo: batch.batchNo,
 					expiryDate: batch.expiryDate,
 					purchasePrice: batch.purchasePrice,
-					salePrice: batch.salePrice,
-					empSalePrice: batch.empSalePrice,
+					goodsReceiptLineId: batch.goodsReceiptLineId,
+					grnReceivedDate: grnReceivedDate ?? null,
+					grnInvoiceNo: grnInvoiceNo ?? null,
 					itemName,
 					storeName,
 					issueUnitName: issueUnitName ?? null

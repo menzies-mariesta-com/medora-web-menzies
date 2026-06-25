@@ -161,12 +161,28 @@ export async function listStockLots(
 			stock: table.invStockTable,
 			batch: table.itemBatchTable,
 			itemName: table.itemMasterTable.itemName,
-			storeName: table.storeTable.storeName
+			storeName: table.storeTable.storeName,
+			grnReceivedDate: table.goodsReceiptNoteTable.receivedDate,
+			grnInvoiceNo: table.goodsReceiptNoteTable.invoiceNo
 		})
 		.from(table.invStockTable)
 		.innerJoin(
 			table.itemBatchTable,
 			eq(table.invStockTable.batchId, table.itemBatchTable.id)
+		)
+		.leftJoin(
+			table.goodsReceiptLineTable,
+			eq(
+				table.itemBatchTable.goodsReceiptLineId,
+				table.goodsReceiptLineTable.id
+			)
+		)
+		.leftJoin(
+			table.goodsReceiptNoteTable,
+			eq(
+				table.goodsReceiptLineTable.grnId,
+				table.goodsReceiptNoteTable.id
+			)
 		)
 		.innerJoin(
 			table.storeTable,
