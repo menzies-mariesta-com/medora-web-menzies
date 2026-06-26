@@ -246,7 +246,7 @@ type SalePriceFormulaInput = {
   itemId: number;
   batchId: number;
   // From goods_receipt_line (via item_batch.goods_receipt_line_id)
-  receivedQty: number;
+  purchasedQty: number;
   freeQty: number;
   purchaseUnitPrice: number;
   discountAmount: number;

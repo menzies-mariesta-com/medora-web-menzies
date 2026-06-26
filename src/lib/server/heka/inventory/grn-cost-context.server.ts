@@ -14,7 +14,7 @@ type GrnLineRow = {
 	itemId: number;
 	unitId: number;
 	freeUnitId: number | null;
-	receivedQty: string;
+	purchasedQty: string;
 	freeQty: string;
 	purchasePrice: string | null;
 	discountAmount: string;
@@ -28,7 +28,7 @@ async function toGrnLineCostInput(
 	row: GrnLineRow,
 	iumCache: Map<number, Awaited<ReturnType<typeof listItemUnitMastersForItem>>>
 ) {
-	const receivedQty = Number(row.receivedQty);
+	const purchasedQty = Number(row.purchasedQty);
 	const freeQty = Number(row.freeQty);
 	const linePurchaseUnitId = row.unitId;
 	const freeUnitId = row.freeUnitId ?? linePurchaseUnitId;
@@ -67,7 +67,7 @@ async function toGrnLineCostInput(
 	}
 
 	return {
-		receivedQty,
+		purchasedQty,
 		freeQty,
 		freeQtyPurchaseUnit,
 		purchaseUnitPrice: Number(row.purchasePrice ?? 0),
@@ -114,7 +114,7 @@ export async function loadGrnCostContextForLine(input: {
 			itemId: table.goodsReceiptLineTable.itemId,
 			unitId: table.goodsReceiptLineTable.unitId,
 			freeUnitId: table.goodsReceiptLineTable.freeUnitId,
-			receivedQty: table.goodsReceiptLineTable.receivedQty,
+			purchasedQty: table.goodsReceiptLineTable.purchasedQty,
 			freeQty: table.goodsReceiptLineTable.freeQty,
 			purchasePrice: table.goodsReceiptLineTable.purchasePrice,
 			discountAmount: table.goodsReceiptLineTable.discountAmount,

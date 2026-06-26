@@ -4,6 +4,7 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import { freeQtyToPurchaseUnitQty } from '$lib/tool/inventory/grn-free-qty-purchase.util';
+import { purchaseUnitPriceToIssueUnitPriceString as purchaseUnitPriceToIssueUnitPriceStringFromFactors } from '$lib/tool/inventory/purchase-issue-price-convert.util';
 
 /**
  * Convert a purchase quantity (in purchase units) to issue (stock) quantity
@@ -241,21 +242,15 @@ export async function purchaseUnitPriceToIssueUnitPriceString(input: {
 		itemId: input.itemId,
 		purchaseUnitId: input.purchaseUnitId
 	});
-	const pf = Number(ium.purchaseConversionFactor);
-	const itf = Number(ium.issueConversionFactor);
-	if (
-		!Number.isFinite(pf) ||
-		!Number.isFinite(itf) ||
-		pf <= 0 ||
-		itf <= 0
-	) {
-		throw error(500, 'Invalid unit conversion factors');
-	}
-	const issueUnitPrice = (price * itf) / pf;
-	if (!Number.isFinite(issueUnitPrice)) {
+	const converted = purchaseUnitPriceToIssueUnitPriceStringFromFactors(
+		price,
+		ium.purchaseConversionFactor,
+		ium.issueConversionFactor
+	);
+	if (converted == null) {
 		throw error(500, 'Unit price conversion failed');
 	}
-	return issueUnitPrice.toFixed(2);
+	return converted;
 }
 
 const INTEGER_ISSUE_QTY_EPS = 1e-9;

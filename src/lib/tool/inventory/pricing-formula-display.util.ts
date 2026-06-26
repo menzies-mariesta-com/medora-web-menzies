@@ -14,8 +14,8 @@ export type PricingFormulaDisplayLabels = {
 	minusInvoiceDiscount: string;
 	plusLineTax: string;
 	plusInvoiceTax: string;
-	denomReceived: string;
-	denomReceivedPlusFree: string;
+	denomPurchased: string;
+	denomPurchasedPlusFree: string;
 	costEquals: string;
 	priceEquals: string;
 	timesMsl: (percent: string) => string;
@@ -51,8 +51,8 @@ export function buildPricingFormulaDisplay(
 	numerator += ')';
 
 	const denominator = input.includeFreeQty
-		? labels.denomReceivedPlusFree
-		: labels.denomReceived;
+		? labels.denomPurchasedPlusFree
+		: labels.denomPurchased;
 
 	const costLine = `${labels.costEquals} ${numerator} / ${denominator}`;
 

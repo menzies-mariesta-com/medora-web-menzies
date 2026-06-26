@@ -201,7 +201,7 @@ export async function listInventoryMovement(
 				itemName: table.itemMasterTable.itemName,
 				batchId: table.goodsReceiptLineTable.batchId,
 				batchNo: table.itemBatchTable.batchNo,
-				qty: table.goodsReceiptLineTable.receivedQty,
+				qty: table.goodsReceiptLineTable.purchasedQty,
 				createdAt: table.goodsReceiptNoteTable.createdAt
 			})
 			.from(table.goodsReceiptLineTable)

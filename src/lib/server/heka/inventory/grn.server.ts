@@ -37,7 +37,6 @@ import {
 	issueQtyStringFromAnyUnit,
 	issueQtyStringFromPurchaseReceipt,
 	listItemUnitMastersForItem,
-	purchaseUnitPriceToIssueUnitPriceString,
 	resolveItemUnitMasterForItemPurchaseUnit
 } from './item-unit-inventory.server';
 import { computeLandedCostTotals } from '$lib/tool/inventory/grn-pricing.util';
@@ -419,7 +418,7 @@ export async function createAndPostGoodsReceipt(
 		receivedBy?: string | null;
 		lines: {
 			poLineId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			batchNo?: string | null;
 			expiryDate?: string | null;
 			/** Unit purchase price at receipt (batch/expiry required for all items). */
@@ -552,13 +551,13 @@ export async function createAndPostGoodsReceipt(
 				)
 				.limit(1);
 			if (!poLine) throw error(400, `Invalid PO line ${ln.poLineId}`);
-			const recv = parsePositiveIntQty(ln.receivedQty, 'receivedQty');
+			const recv = parsePositiveIntQty(ln.purchasedQty, 'purchasedQty');
 			const prev = Number(poLine.qtyReceivedCumulative);
 			const ordered = Number(poLine.quantity);
 			if (prev + recv > ordered + 1e-9) {
 				throw error(
 					400,
-					'Received quantity exceeds ordered quantity'
+					'Purchased quantity exceeds ordered quantity'
 				);
 			}
 
@@ -584,14 +583,6 @@ export async function createAndPostGoodsReceipt(
 			expiryDate = ln.expiryDate;
 			purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 
-			const issueUnitPriceStr =
-				await purchaseUnitPriceToIssueUnitPriceString({
-					hospitalId: input.hospitalId,
-					itemId: poLine.itemId,
-					purchaseUnitId: poLine.unitId,
-					purchaseUnitPriceStr: purchasePriceStr
-				});
-
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
 			const freeUnitIdRaw =
 				typeof ln.freeUnitId === 'number' &&
@@ -614,7 +605,7 @@ export async function createAndPostGoodsReceipt(
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const landed = computeLandedCostTotals({
-				receivedQty: recv,
+				purchasedQty: recv,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -628,7 +619,7 @@ export async function createAndPostGoodsReceipt(
 					grnId: grn.id,
 					poLineId: ln.poLineId,
 					itemId: poLine.itemId,
-					receivedQty: ln.receivedQty,
+					purchasedQty: ln.purchasedQty,
 					batchNo,
 					expiryDate,
 					batchId: null,
@@ -652,7 +643,6 @@ export async function createAndPostGoodsReceipt(
 				batchNo,
 				expiryDate,
 				supplierId: po.supplierId,
-				purchasePrice: issueUnitPriceStr,
 				goodsReceiptNoteId: grn.id,
 				goodsReceiptLineId: grnLine.id
 			});
@@ -667,7 +657,7 @@ export async function createAndPostGoodsReceipt(
 					hospitalId: input.hospitalId,
 					itemId: poLine.itemId,
 					purchaseUnitId: poLine.unitId,
-					purchaseQtyStr: ln.receivedQty
+					purchaseQtyStr: ln.purchasedQty
 				});
 			const issueDeltaFree = issueQtyStringFromAnyUnit({
 				qty: freeQ,
@@ -760,7 +750,7 @@ export async function createAndPostDirectGoodsReceipt(
 		receivedBy?: string | null;
 		lines: {
 			itemId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			unitId: number;
 			batchNo?: string | null;
 			expiryDate?: string | null;
@@ -835,9 +825,9 @@ export async function createAndPostDirectGoodsReceipt(
 		if (!grn) throw error(500, 'GRN insert failed');
 
 		for (const ln of input.lines) {
-			const recv = Number(ln.receivedQty);
+			const recv = Number(ln.purchasedQty);
 			if (!Number.isFinite(recv) || recv <= 0) {
-				throw error(400, 'Invalid received quantity');
+				throw error(400, 'Invalid purchased quantity');
 			}
 			const [im] = await tx
 				.select({ id: table.itemMasterTable.id })
@@ -862,14 +852,6 @@ export async function createAndPostDirectGoodsReceipt(
 			expiryDate = ln.expiryDate;
 			purchasePriceStr = parseMoney2dp(pp, 'purchasePrice');
 
-			const issueUnitPriceStr =
-				await purchaseUnitPriceToIssueUnitPriceString({
-					hospitalId: input.hospitalId,
-					itemId: ln.itemId,
-					purchaseUnitId: ln.unitId,
-					purchaseUnitPriceStr: purchasePriceStr
-				});
-
 			const freeQ = parseGrnOptionalQty(ln.freeQty);
 			const freeUnitIdRaw =
 				typeof ln.freeUnitId === 'number' &&
@@ -892,7 +874,7 @@ export async function createAndPostDirectGoodsReceipt(
 			const taxAmt = parseGrnMoney(ln.taxAmount);
 			const taxPct = parseGrnMoney(ln.taxPercent);
 			const landed = computeLandedCostTotals({
-				receivedQty: recv,
+				purchasedQty: recv,
 				purchaseUnitPrice: Number(purchasePriceStr),
 				discountAmount: discAmt,
 				discountPercent: discPct,
@@ -906,7 +888,7 @@ export async function createAndPostDirectGoodsReceipt(
 					grnId: grn.id,
 					poLineId: null,
 					itemId: ln.itemId,
-					receivedQty: ln.receivedQty,
+					purchasedQty: ln.purchasedQty,
 					batchNo,
 					expiryDate,
 					batchId: null,
@@ -930,7 +912,6 @@ export async function createAndPostDirectGoodsReceipt(
 				batchNo,
 				expiryDate,
 				supplierId: input.supplierId,
-				purchasePrice: issueUnitPriceStr,
 				goodsReceiptNoteId: grn.id,
 				goodsReceiptLineId: grnLine.id
 			});
@@ -945,7 +926,7 @@ export async function createAndPostDirectGoodsReceipt(
 					hospitalId: input.hospitalId,
 					itemId: ln.itemId,
 					purchaseUnitId: ln.unitId,
-					purchaseQtyStr: ln.receivedQty
+					purchaseQtyStr: ln.purchasedQty
 				});
 			const issueDeltaFree = issueQtyStringFromAnyUnit({
 				qty: freeQ,
@@ -1071,7 +1052,7 @@ export async function transferGrnToRequestingStore(
 			hospitalId: input.hospitalId,
 			itemId: line.itemId,
 			purchaseUnitId: line.unitId,
-			purchaseQtyStr: String(line.receivedQty)
+			purchaseQtyStr: String(line.purchasedQty)
 		});
 		const recvIssue = parsePositiveIntQty(qtyReceived, 'issueQty');
 		if (recvIssue <= 0) continue;

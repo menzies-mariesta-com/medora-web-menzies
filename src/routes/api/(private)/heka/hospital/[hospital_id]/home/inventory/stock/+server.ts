@@ -40,13 +40,16 @@ export const GET: RequestHandler = async (event) => {
 					itemName,
 					storeName,
 					issueUnitName,
+					purchaseUnitName,
+					estimatedPurchasePrice,
 					grnReceivedDate,
 					grnInvoiceNo
 				}) => ({
 					...stock,
 					batchNo: batch.batchNo,
 					expiryDate: batch.expiryDate,
-					purchasePrice: batch.purchasePrice,
+					estimatedPurchasePrice,
+					purchaseUnitName: purchaseUnitName ?? null,
 					goodsReceiptLineId: batch.goodsReceiptLineId,
 					grnReceivedDate: grnReceivedDate ?? null,
 					grnInvoiceNo: grnInvoiceNo ?? null,

@@ -38,7 +38,7 @@
 	type GrnDetailLine = {
 		id: number;
 		itemName?: string | null;
-		receivedQty: string;
+		purchasedQty: string;
 		unitName?: string | null;
 		freeQty?: string | null;
 		freeUnitName?: string | null;
@@ -104,11 +104,11 @@
 			format: (_v, row) => row.itemName ?? '—'
 		},
 		{
-			id: 'receivedQty',
-			header: m.inv_common_quantity(),
-			field: 'receivedQty',
+			id: 'purchasedQty',
+			header: m.inv_grn_line_purchased_qty(),
+			field: 'purchasedQty',
 			format: (_v, row) => {
-				const t = row.receivedQty?.trim();
+				const t = row.purchasedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
 			}
 		},

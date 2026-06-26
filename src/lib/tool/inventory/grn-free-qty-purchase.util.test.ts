@@ -46,7 +46,7 @@ describe('purchaseUnitDenominatorQty', () => {
 	it('adds converted free qty when flag is on', () => {
 		expect(
 			purchaseUnitDenominatorQty({
-				receivedQty: 10,
+				purchasedQty: 10,
 				freeQtyPurchaseUnit: 5,
 				includeFreeQtyInDenominator: true
 			})

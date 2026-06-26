@@ -79,7 +79,7 @@ export function computeGrnLandedLineTotals(input: {
 	lines: Array<
 		Pick<
 			GrnLinePriceInput,
-			| 'receivedQty'
+			| 'purchasedQty'
 			| 'purchaseUnitPrice'
 			| 'discountAmount'
 			| 'discountPercent'
@@ -95,7 +95,7 @@ export function computeGrnLandedLineTotals(input: {
 	if (lines.length === 0) return [];
 
 	const subs = lines.map((l) => {
-		const r = l.receivedQty;
+		const r = l.purchasedQty;
 		if (!Number.isFinite(r) || r <= 0) return 0;
 		return r * l.purchaseUnitPrice;
 	});
@@ -172,11 +172,11 @@ function costDenominatorPurchaseQty(
 	flags: GrnPriceRuleFlags,
 	line: Pick<
 		GrnLinePriceInput,
-		'receivedQty' | 'freeQty' | 'freeQtyPurchaseUnit'
+		'purchasedQty' | 'freeQty' | 'freeQtyPurchaseUnit'
 	>
 ): number {
 	return purchaseUnitDenominatorQty({
-		receivedQty: line.receivedQty,
+		purchasedQty: line.purchasedQty,
 		freeQtyPurchaseUnit: resolvedFreeQtyPurchaseUnit(line),
 		includeFreeQtyInDenominator: flags.includeFreeQtyInDenominator
 	});
@@ -191,7 +191,7 @@ export function computeGrnCostPerUnit(
 		lines: Array<
 			Pick<
 				GrnLinePriceInput,
-				| 'receivedQty'
+				| 'purchasedQty'
 				| 'freeQty'
 				| 'freeQtyPurchaseUnit'
 				| 'purchaseUnitPrice'
@@ -209,7 +209,7 @@ export function computeGrnCostPerUnit(
 	const line = context.lines[idx];
 	if (!line) return 0;
 
-	const r = line.receivedQty;
+	const r = line.purchasedQty;
 	if (!Number.isFinite(r) || r <= 0) return 0;
 
 	const landedTotals = computeGrnLandedLineTotals({
@@ -227,14 +227,14 @@ export function computeGrnCostPerUnit(
 
 /** Line-level discount/tax totals (independent of per-unit flags). */
 export function computeLandedCostTotals(p: {
-	receivedQty: number;
+	purchasedQty: number;
 	purchaseUnitPrice: number;
 	discountAmount: number;
 	discountPercent: number;
 	taxAmount: number;
 	taxPercent: number;
 }): LandedCostTotals {
-	const r = p.receivedQty;
+	const r = p.purchasedQty;
 	if (!Number.isFinite(r) || r <= 0) {
 		return {
 			sub: 0,
@@ -283,7 +283,7 @@ export function computeCostPerUnit(
 	flags: GrnPriceRuleFlags,
 	line: Pick<
 		GrnLinePriceInput,
-		| 'receivedQty'
+		| 'purchasedQty'
 		| 'freeQty'
 		| 'freeQtyPurchaseUnit'
 		| 'purchaseUnitPrice'
@@ -293,11 +293,11 @@ export function computeCostPerUnit(
 		| 'taxPercent'
 	>
 ): number {
-	const r = line.receivedQty;
+	const r = line.purchasedQty;
 	if (!Number.isFinite(r) || r <= 0) return 0;
 
 	const landed = computeLandedCostTotals({
-		receivedQty: r,
+		purchasedQty: r,
 		purchaseUnitPrice: line.purchaseUnitPrice,
 		discountAmount: line.discountAmount,
 		discountPercent: line.discountPercent,

@@ -94,7 +94,7 @@ export async function searchStores(
 		.limit(100);
 }
 
-/** Item name + min batch purchase price (display) for pharmacy items in stock at store. */
+/** Item name + min issue-unit cost (from GRN line) for pharmacy items in stock at store. */
 export async function searchItemNamePrice(
 	event: RequestEvent,
 	input: {
@@ -137,6 +137,9 @@ export async function searchItemNamePrice(
 	const im = table.itemMasterTable;
 	const inv = table.invStockTable;
 	const ib = table.itemBatchTable;
+	const grl = table.goodsReceiptLineTable;
+	const iumLink = table.itemMasterItemUnitMasterTable;
+	const ium = table.itemUnitMasterTable;
 	const wh = and(
 		eq(inv.storeId, storeId),
 		eq(im.hospitalId, hospitalId),
@@ -150,11 +153,39 @@ export async function searchItemNamePrice(
 		.select({
 			id: im.id,
 			itemName: im.itemName,
-			displayPrice: min(sql`coalesce(${ib.purchasePrice}, 0)`)
+			displayPrice: min(sql`
+				CASE
+					WHEN ${grl.purchasePrice} IS NOT NULL
+						AND (${ium.purchaseConversionFactor})::numeric > 0
+					THEN (
+						(${grl.purchasePrice})::numeric
+						* (${ium.issueConversionFactor})::numeric
+						/ (${ium.purchaseConversionFactor})::numeric
+					)
+					ELSE 0
+				END
+			`)
 		})
 		.from(inv)
 		.innerJoin(ib, eq(inv.batchId, ib.id))
 		.innerJoin(im, eq(inv.itemId, im.id))
+		.leftJoin(grl, eq(ib.goodsReceiptLineId, grl.id))
+		.leftJoin(
+			iumLink,
+			and(
+				eq(iumLink.itemMasterId, im.id),
+				eq(iumLink.hospitalId, hospitalId),
+				isNull(iumLink.deletedAt)
+			)
+		)
+		.leftJoin(
+			ium,
+			and(
+				eq(iumLink.itemUnitMasterId, ium.id),
+				eq(ium.purchaseUnitId, grl.unitId),
+				isNull(ium.deletedAt)
+			)
+		)
 		.where(wh)
 		.groupBy(im.id, im.itemName)
 		.orderBy(im.itemName)

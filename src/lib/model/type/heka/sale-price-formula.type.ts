@@ -5,7 +5,7 @@ import type {
 } from '$lib/model/type/heka/pricing-formula-template.type';
 
 export type GrnLineCostInput = {
-	receivedQty: number;
+	purchasedQty: number;
 	/** Raw `free_qty` on the GRN line (in `free_unit_id`). */
 	freeQty: number;
 	/** Free qty converted to line purchase unit (pricing denominator). */

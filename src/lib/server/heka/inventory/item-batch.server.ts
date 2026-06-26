@@ -6,18 +6,35 @@ import { parseIntStrict } from './inv-validate.server';
 
 type Db = NeonDatabase<typeof schema>;
 
-const physicalIdentityCond = (
-	input: {
-		hospitalId: string;
-		itemId: number;
-		batchNo: string;
-		expiryDate: string | null;
-		supplierId: number | null;
-		purchasePrice: string;
-	},
-	/** When set, identity is per GRN line (cost lot). */
-	goodsReceiptLineId: number | null
-) =>
+/** GRN-linked cost lot: batch + expiry + source GRN line. */
+const grnLineBatchIdentityCond = (input: {
+	hospitalId: string;
+	itemId: number;
+	batchNo: string;
+	expiryDate: string | null;
+	goodsReceiptLineId: number;
+}) =>
+	and(
+		eq(schema.itemBatchTable.hospitalId, input.hospitalId),
+		eq(schema.itemBatchTable.itemId, input.itemId),
+		eq(schema.itemBatchTable.batchNo, input.batchNo),
+		input.expiryDate == null
+			? isNull(schema.itemBatchTable.expiryDate)
+			: eq(schema.itemBatchTable.expiryDate, input.expiryDate),
+		eq(
+			schema.itemBatchTable.goodsReceiptLineId,
+			input.goodsReceiptLineId
+		)
+	);
+
+/** Pre-provenance batches only (no goods_receipt_line_id). */
+const legacyBatchIdentityCond = (input: {
+	hospitalId: string;
+	itemId: number;
+	batchNo: string;
+	expiryDate: string | null;
+	supplierId: number | null;
+}) =>
 	and(
 		eq(schema.itemBatchTable.hospitalId, input.hospitalId),
 		eq(schema.itemBatchTable.itemId, input.itemId),
@@ -28,18 +45,13 @@ const physicalIdentityCond = (
 		input.supplierId == null
 			? isNull(schema.itemBatchTable.supplierId)
 			: eq(schema.itemBatchTable.supplierId, input.supplierId),
-		eq(schema.itemBatchTable.purchasePrice, input.purchasePrice),
-		goodsReceiptLineId == null
-			? isNull(schema.itemBatchTable.goodsReceiptLineId)
-			: eq(
-					schema.itemBatchTable.goodsReceiptLineId,
-					goodsReceiptLineId
-				)
+		isNull(schema.itemBatchTable.goodsReceiptLineId)
 	);
 
 /**
  * Resolves or creates `item_batch` for GRN posting.
- * When `goodsReceiptLineId` is set: one batch per GRN line (cost lot), never merged across receipts.
+ * Identity when `goodsReceiptLineId` is set: hospital + item + batch_no + expiry + GRN line.
+ * Purchase price is stored on `goods_receipt_line` only.
  */
 export async function findOrCreateItemBatch(
 	tx: Db,
@@ -49,8 +61,6 @@ export async function findOrCreateItemBatch(
 		batchNo: string;
 		expiryDate: string | null;
 		supplierId: number | null;
-		/** Normalized unit price per issue/stock unit (stored in `item_batch.purchase_price`). */
-		purchasePrice: string;
 		goodsReceiptNoteId?: string | null;
 		goodsReceiptLineId?: number | null;
 	}
@@ -64,23 +74,55 @@ export async function findOrCreateItemBatch(
 			.where(eq(schema.itemBatchTable.goodsReceiptLineId, grnLineId))
 			.limit(1);
 		if (byLine) return byLine.id;
+
+		const grnIdentity = {
+			hospitalId: input.hospitalId,
+			itemId: input.itemId,
+			batchNo: input.batchNo,
+			expiryDate: input.expiryDate,
+			goodsReceiptLineId: grnLineId
+		};
+
+		const [existingGrn] = await tx
+			.select({ id: schema.itemBatchTable.id })
+			.from(schema.itemBatchTable)
+			.where(grnLineBatchIdentityCond(grnIdentity))
+			.limit(1);
+		if (existingGrn) return existingGrn.id;
+
+		await tx.insert(schema.itemBatchTable).values({
+			hospitalId: input.hospitalId,
+			itemId: input.itemId,
+			batchNo: input.batchNo,
+			expiryDate: input.expiryDate,
+			supplierId: input.supplierId,
+			goodsReceiptNoteId: input.goodsReceiptNoteId ?? null,
+			goodsReceiptLineId: grnLineId
+		});
+
+		const [againGrn] = await tx
+			.select({ id: schema.itemBatchTable.id })
+			.from(schema.itemBatchTable)
+			.where(grnLineBatchIdentityCond(grnIdentity))
+			.limit(1);
+		if (!againGrn) error(500, 'item_batch insert race');
+		return againGrn.id;
 	}
 
-	const identity = {
+	const legacyIdentity = {
 		hospitalId: input.hospitalId,
 		itemId: input.itemId,
 		batchNo: input.batchNo,
 		expiryDate: input.expiryDate,
-		supplierId: input.supplierId,
-		purchasePrice: input.purchasePrice
+		supplierId: input.supplierId
 	};
 
-	const [existing] = await tx
+	const [existingLegacy] = await tx
 		.select({ id: schema.itemBatchTable.id })
 		.from(schema.itemBatchTable)
-		.where(physicalIdentityCond(identity, grnLineId))
+		.where(legacyBatchIdentityCond(legacyIdentity))
 		.limit(1);
-	if (existing) return existing.id;
+	if (existingLegacy) return existingLegacy.id;
 
 	await tx.insert(schema.itemBatchTable).values({
 		hospitalId: input.hospitalId,
@@ -88,18 +130,17 @@ export async function findOrCreateItemBatch(
 		batchNo: input.batchNo,
 		expiryDate: input.expiryDate,
 		supplierId: input.supplierId,
-		purchasePrice: input.purchasePrice,
 		goodsReceiptNoteId: input.goodsReceiptNoteId ?? null,
-		goodsReceiptLineId: grnLineId
+		goodsReceiptLineId: null
 	});
 
-	const [again] = await tx
+	const [againLegacy] = await tx
 		.select({ id: schema.itemBatchTable.id })
 		.from(schema.itemBatchTable)
-		.where(physicalIdentityCond(identity, grnLineId))
+		.where(legacyBatchIdentityCond(legacyIdentity))
 		.limit(1);
-	if (!again) error(500, 'item_batch insert race');
-	return again.id;
+	if (!againLegacy) error(500, 'item_batch insert race');
+	return againLegacy.id;
 }
 
 /** @deprecated Batches are created with GRN provenance on insert; kept for legacy backfills. */

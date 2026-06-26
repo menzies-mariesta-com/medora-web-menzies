@@ -13,7 +13,7 @@ This document walks through how a **Goods Receipt Note (GRN)** becomes a **sale 
 │ AT GRN POST (receipt)                                                   │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ goods_receipt_note  →  goods_receipt_line(s)  →  item_batch (cost lot)  │
-│   • invoice disc/tax      • received_qty, free_qty, unit, price         │
+│   • invoice disc/tax      • purchased_qty, free_qty, unit, price         │
 │                           • line disc/tax                               │
 │                           • NO sale_price saved                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -55,7 +55,7 @@ This document walks through how a **Goods Receipt Note (GRN)** becomes a **sale 
 
 | Field                                  | Role in pricing                                               |
 | -------------------------------------- | ------------------------------------------------------------- |
-| `received_qty`                         | Paid quantity (line **purchase unit**)                        |
+| `purchased_qty`                         | Paid quantity (line **purchase unit**)                        |
 | `free_qty`                             | Bonus quantity (in `free_unit_id`, may differ from line unit) |
 | `unit_id`                              | Line purchase unit                                            |
 | `free_unit_id`                         | Unit of free qty (defaults to line unit if same)              |
@@ -97,7 +97,7 @@ Each template defines **how cost is built** and **which markups apply**.
 | ----------------- | ----------- | -------------------------------------------------------- |
 | `includeDiscount` | Yes         | Numerator uses amount **after** line + invoice discounts |
 | `includeTax`      | Yes         | Numerator adds line + invoice tax                        |
-| `includeFreeQty`  | Yes         | Denominator = `received_qty + free_qty (purchase unit)`  |
+| `includeFreeQty`  | Yes         | Denominator = `purchased_qty + free_qty (purchase unit)`  |
 
 
 ### Markup slots (applied in `slotOrder`, default `COST → MSL → ITEM → STORE`)
@@ -115,7 +115,7 @@ Each template defines **how cost is built** and **which markups apply**.
 
 ```text
 cost = (line subtotal [− line discount] [− invoice discount] [+ line tax] [+ invoice tax])
-       / [received qty]  OR  [received qty + free qty]
+       / [purchased qty]  OR  [purchased qty + free qty]
 
 price = cost × (1 + MSL%) [× (1 + item%)] [× (1 + store%)]
 ```
@@ -131,7 +131,7 @@ For one GRN line at sale time:
 ### Step A — Line subtotal
 
 ```text
-line_subtotal = received_qty × purchase_unit_price
+line_subtotal = purchased_qty × purchase_unit_price
 ```
 
 ### Step B — Line discount (if `includeDiscount`)
@@ -181,8 +181,8 @@ landed_line_total = after_all_discount + line_tax + invoice_tax_share
 ```text
 free_qty_purchase = convert(free_qty, free_unit_id → line purchase unit)
 
-denominator = received_qty                          if includeFreeQty = false
-            = received_qty + free_qty_purchase      if includeFreeQty = true
+denominator = purchased_qty                          if includeFreeQty = false
+            = purchased_qty + free_qty_purchase      if includeFreeQty = true
 ```
 
 ### Step G — Cost per purchase unit
@@ -217,7 +217,7 @@ Example: 1 box = 100 tablets → issue price per tablet = purchase price per box
 
 | Field          | Value     |
 | -------------- | --------- |
-| received_qty   | 10 boxes  |
+| purchased_qty   | 10 boxes  |
 | purchase_price | 100 / box |
 | free_qty       | 0         |
 
@@ -242,7 +242,7 @@ Example: 1 box = 100 tablets → issue price per tablet = purchase price per box
 
 | Field           | Value      |
 | --------------- | ---------- |
-| received_qty    | 10         |
+| purchased_qty    | 10         |
 | purchase_price  | 100        |
 | discount_amount | 50 (fixed) |
 | tax_percent     | 10%        |
@@ -272,7 +272,7 @@ This matches `computeLandedCostTotals` in tests.
 
 | Field            | Value |
 | ---------------- | ----- |
-| received_qty     | 10    |
+| purchased_qty     | 10    |
 | purchase_price   | 100   |
 | discount_amount  | 0     |
 | discount_percent | 5%    |
@@ -297,7 +297,7 @@ Same rule applies to **tax** and **invoice** charges.
 
 | Field          | Value                       |
 | -------------- | --------------------------- |
-| received_qty   | 10 boxes                    |
+| purchased_qty   | 10 boxes                    |
 | free_qty       | 2 boxes (`free_unit` = box) |
 | purchase_price | 100                         |
 | tax_percent    | 10%                         |
@@ -324,7 +324,7 @@ Same rule applies to **tax** and **invoice** charges.
 
 | Field          | Value               |
 | -------------- | ------------------- |
-| received_qty   | 10 boxes            |
+| purchased_qty   | 10 boxes            |
 | free_qty       | 500 tablets         |
 | free_unit_id   | tablet (issue unit) |
 | purchase_price | 100 / box           |
@@ -353,7 +353,7 @@ Conversion uses the same logic as GRN stock posting (`freeQtyToPurchaseUnitQty`)
 **GRN note — 2 lines + invoice charges**
 
 
-| Line | received_qty | purchase_price | line disc | line tax |
+| Line | purchased_qty | purchase_price | line disc | line tax |
 | ---- | ------------ | -------------- | --------- | -------- |
 | 1    | 10           | 100            | 0         | 0        |
 | 2    | 5            | 20             | 0         | 0        |
@@ -399,7 +399,7 @@ Single line (from sale-price calculator test):
 
 | Field                   | Value          |
 | ----------------------- | -------------- |
-| received_qty            | 100            |
+| purchased_qty            | 100            |
 | free_qty                | 10 (same unit) |
 | purchase_price          | 50             |
 | line discount_percent   | 10%            |

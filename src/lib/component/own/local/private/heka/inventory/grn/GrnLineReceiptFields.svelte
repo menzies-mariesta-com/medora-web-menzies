@@ -16,7 +16,7 @@
 	} = $props();
 
 	const GRN_NUMERIC_FIELD_KEYS = [
-		'receivedQty',
+		'purchasedQty',
 		'purchasePrice',
 		'freeQty',
 		'discountPercent',
@@ -80,21 +80,21 @@
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80"
-			>{m.inv_grn_line_received_qty()}</DaisyUiLabel
+			>{m.inv_grn_line_purchased_qty()}</DaisyUiLabel
 		>
 		<input
 			type="number"
 			class="d-input-bordered d-input w-full"
-			value={draft.receivedQty == null || draft.receivedQty === ''
+			value={draft.purchasedQty == null || draft.purchasedQty === ''
 				? ''
-				: String(draft.receivedQty)}
+				: String(draft.purchasedQty)}
 			oninput={(e) => {
-				draft.receivedQty = e.currentTarget.value;
+				draft.purchasedQty = e.currentTarget.value;
 			}}
 			step="1"
 			min="0"
 			disabled={itemLocked}
-			aria-label={m.inv_grn_line_received_qty()}
+			aria-label={m.inv_grn_line_purchased_qty()}
 		/>
 	</div>
 	<div>

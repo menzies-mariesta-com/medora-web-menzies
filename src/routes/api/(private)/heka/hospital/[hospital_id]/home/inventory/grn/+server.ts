@@ -188,7 +188,7 @@ export const POST: RequestHandler = async (event) => {
 			lines: lines.map((l) => ({
 				itemId: Number(l.itemId ?? 0),
 				unitId: Number(l.unitId ?? 0),
-				receivedQty: String(l.receivedQty ?? '0'),
+				purchasedQty: String(l.purchasedQty ?? '0'),
 				batchNo: l.batchNo != null ? String(l.batchNo) : null,
 				expiryDate:
 					l.expiryDate != null ? String(l.expiryDate) : null,
@@ -232,7 +232,7 @@ export const POST: RequestHandler = async (event) => {
 		receivedBy,
 		lines: lines.map((l) => ({
 			poLineId: Number(l.poLineId ?? 0),
-			receivedQty: String(l.receivedQty ?? '0'),
+			purchasedQty: String(l.purchasedQty ?? '0'),
 			batchNo: l.batchNo != null ? String(l.batchNo) : null,
 			expiryDate: l.expiryDate != null ? String(l.expiryDate) : null,
 			purchasePrice:

@@ -7,8 +7,8 @@ const labels = {
 	minusInvoiceDiscount: '− invoice discount',
 	plusLineTax: '+ line tax',
 	plusInvoiceTax: '+ invoice tax',
-	denomReceived: 'received qty',
-	denomReceivedPlusFree: 'received qty + free qty',
+	denomPurchased: 'purchased qty',
+	denomPurchasedPlusFree: 'purchased qty + free qty',
 	costEquals: 'cost =',
 	priceEquals: 'price =',
 	timesMsl: (p: string) => `× (1 + MSL ${p}%)`,
@@ -51,7 +51,7 @@ describe('buildPricingFormulaDisplay', () => {
 			},
 			labels
 		);
-		expect(r.costLine).toBe('cost = (subtotal) / received qty');
+		expect(r.costLine).toBe('cost = (subtotal) / purchased qty');
 		expect(r.priceLine).toBe('price = cost × (1 + MSL 0%)');
 	});
 });

@@ -3,33 +3,29 @@
 	import { m } from '$lib/paraglide/messages';
 
 	let {
-		draft
-	}: {
-		draft: {
-			invoiceDiscountAmount: string;
-			invoiceDiscountPercent: string;
-			invoiceTaxAmount: string;
-			invoiceTaxPercent: string;
-		};
+		invoiceDiscountAmount = $bindable('0'),
+		invoiceDiscountPercent = $bindable('0'),
+		invoiceTaxAmount = $bindable('0'),
+		invoiceTaxPercent = $bindable('0')
 	} = $props();
 
 	let discountMode = $state<'percent' | 'amount'>(
-		Number(draft.invoiceDiscountAmount) > 0 ? 'amount' : 'percent'
+		Number(invoiceDiscountAmount) > 0 ? 'amount' : 'percent'
 	);
 	let taxMode = $state<'percent' | 'amount'>(
-		Number(draft.invoiceTaxAmount) > 0 ? 'amount' : 'percent'
+		Number(invoiceTaxAmount) > 0 ? 'amount' : 'percent'
 	);
 
 	function setDiscountMode(next: 'percent' | 'amount') {
 		discountMode = next;
-		if (next === 'percent') draft.invoiceDiscountAmount = '0';
-		else draft.invoiceDiscountPercent = '0';
+		if (next === 'percent') invoiceDiscountAmount = '0';
+		else invoiceDiscountPercent = '0';
 	}
 
 	function setTaxMode(next: 'percent' | 'amount') {
 		taxMode = next;
-		if (next === 'percent') draft.invoiceTaxAmount = '0';
-		else draft.invoiceTaxPercent = '0';
+		if (next === 'percent') invoiceTaxAmount = '0';
+		else invoiceTaxPercent = '0';
 	}
 </script>
 
@@ -45,12 +41,12 @@
 					<input
 						type="number"
 						class="d-input-bordered d-input w-full"
-						value={draft.invoiceDiscountAmount === '' ||
-						draft.invoiceDiscountAmount === '0'
+						value={invoiceDiscountAmount === '' ||
+						invoiceDiscountAmount === '0'
 							? ''
-							: String(draft.invoiceDiscountAmount)}
+							: String(invoiceDiscountAmount)}
 						oninput={(e) => {
-							draft.invoiceDiscountAmount = e.currentTarget.value;
+							invoiceDiscountAmount = e.currentTarget.value;
 						}}
 						step="0.01"
 						min="0"
@@ -60,12 +56,12 @@
 					<input
 						type="number"
 						class="d-input-bordered d-input w-full"
-						value={draft.invoiceDiscountPercent === '' ||
-						draft.invoiceDiscountPercent === '0'
+						value={invoiceDiscountPercent === '' ||
+						invoiceDiscountPercent === '0'
 							? ''
-							: String(draft.invoiceDiscountPercent)}
+							: String(invoiceDiscountPercent)}
 						oninput={(e) => {
-							draft.invoiceDiscountPercent = e.currentTarget.value;
+							invoiceDiscountPercent = e.currentTarget.value;
 						}}
 						step="0.01"
 						min="0"
@@ -101,12 +97,11 @@
 					<input
 						type="number"
 						class="d-input-bordered d-input w-full"
-						value={draft.invoiceTaxAmount === '' ||
-						draft.invoiceTaxAmount === '0'
+						value={invoiceTaxAmount === '' || invoiceTaxAmount === '0'
 							? ''
-							: String(draft.invoiceTaxAmount)}
+							: String(invoiceTaxAmount)}
 						oninput={(e) => {
-							draft.invoiceTaxAmount = e.currentTarget.value;
+							invoiceTaxAmount = e.currentTarget.value;
 						}}
 						step="0.01"
 						min="0"
@@ -116,12 +111,11 @@
 					<input
 						type="number"
 						class="d-input-bordered d-input w-full"
-						value={draft.invoiceTaxPercent === '' ||
-						draft.invoiceTaxPercent === '0'
+						value={invoiceTaxPercent === '' || invoiceTaxPercent === '0'
 							? ''
-							: String(draft.invoiceTaxPercent)}
+							: String(invoiceTaxPercent)}
 						oninput={(e) => {
-							draft.invoiceTaxPercent = e.currentTarget.value;
+							invoiceTaxPercent = e.currentTarget.value;
 						}}
 						step="0.01"
 						min="0"
