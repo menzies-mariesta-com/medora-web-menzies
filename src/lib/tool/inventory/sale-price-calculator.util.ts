@@ -8,7 +8,8 @@ import type {
 import {
 	DEFAULT_PRICING_FORMULA_SLOT_ORDER,
 	type CostBasisFlags,
-	type PricingFormulaSlot
+	type PricingFormulaSlot,
+	type PricingFormulaTemplateDto
 } from '$lib/model/type/heka/pricing-formula-template.type';
 import { computeGrnCostPerUnit, computeCostPerUnit } from '$lib/tool/inventory/grn-pricing.util';
 
@@ -49,6 +50,28 @@ function costPerPurchaseUnit(
 	}
 
 	return computeCostPerUnit(ruleFlags, line);
+}
+
+/**
+ * Landed cost per purchase unit from template cost flags only (no MSL / item / store markups).
+ */
+export function computeFormulaCostPerPurchaseUnit(
+	template: Pick<
+		PricingFormulaTemplateDto,
+		'includeDiscount' | 'includeTax' | 'includeFreeQty'
+	>,
+	grnLine: GrnLineCostInput,
+	grnCostContext?: GrnCostContext
+): number {
+	return costPerPurchaseUnit(
+		{
+			includeDiscount: template.includeDiscount,
+			includeTax: template.includeTax,
+			includeFreeQtyInDenominator: template.includeFreeQty
+		},
+		grnLine,
+		grnCostContext
+	);
 }
 
 function applySlotOrder(

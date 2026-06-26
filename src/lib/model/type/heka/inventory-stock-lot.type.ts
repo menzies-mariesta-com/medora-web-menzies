@@ -7,7 +7,9 @@ export type InventoryStockLotDto = {
 	quantity: string;
 	batchNo: string | null;
 	expiryDate: string | null;
-	purchasePrice: string | null;
+	/** Landed cost per purchase unit (formula cost step, no markups). */
+	estimatedPurchasePrice: string | null;
+	purchaseUnitName?: string | null;
 	itemName?: string | null;
 	storeName?: string | null;
 	issueUnitName?: string | null;

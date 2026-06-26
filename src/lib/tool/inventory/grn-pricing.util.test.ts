@@ -8,7 +8,7 @@ import {
 } from '$lib/tool/inventory/grn-pricing.util';
 
 const baseLine = {
-	receivedQty: 10,
+	purchasedQty: 10,
 	freeQty: 2,
 	freeQtyPurchaseUnit: 2,
 	purchaseUnitPrice: 100,
@@ -21,7 +21,7 @@ const baseLine = {
 describe('computeLandedCostTotals', () => {
 	it('applies discount then tax on subtotal', () => {
 		const r = computeLandedCostTotals({
-			receivedQty: 10,
+			purchasedQty: 10,
 			purchaseUnitPrice: 100,
 			discountAmount: 50,
 			discountPercent: 0,
@@ -35,7 +35,7 @@ describe('computeLandedCostTotals', () => {
 });
 
 describe('computeCostPerUnit', () => {
-	it('legacy sale-like: discount+tax per received qty', () => {
+	it('legacy sale-like: discount+tax per purchased qty', () => {
 		const perUnit = computeCostPerUnit(
 			{
 				includeDiscount: true,
@@ -48,7 +48,7 @@ describe('computeCostPerUnit', () => {
 		expect(perUnit).toBe(110);
 	});
 
-	it('spreads cost over received+free when flagged', () => {
+	it('spreads cost over purchased+free when flagged', () => {
 		const perUnit = computeCostPerUnit(
 			{
 				includeDiscount: true,
@@ -113,7 +113,7 @@ describe('computeGrnLandedLineTotals', () => {
 		const totals = computeGrnLandedLineTotals({
 			lines: [
 				{
-					receivedQty: 100,
+					purchasedQty: 100,
 					purchaseUnitPrice: 50,
 					discountAmount: 0,
 					discountPercent: 10,
@@ -139,7 +139,7 @@ describe('computeGrnLandedLineTotals', () => {
 		const totals = computeGrnLandedLineTotals({
 			lines: [
 				{
-					receivedQty: 10,
+					purchasedQty: 10,
 					purchaseUnitPrice: 100,
 					discountAmount: 0,
 					discountPercent: 0,
@@ -147,7 +147,7 @@ describe('computeGrnLandedLineTotals', () => {
 					taxPercent: 0
 				},
 				{
-					receivedQty: 5,
+					purchasedQty: 5,
 					purchaseUnitPrice: 20,
 					discountAmount: 0,
 					discountPercent: 0,

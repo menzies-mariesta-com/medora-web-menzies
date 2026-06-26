@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { PricingFormulaTemplateDto } from '$lib/model/type/heka/pricing-formula-template.type';
 import {
 	applyFormulaSlot,
+	computeFormulaCostPerPurchaseUnit,
 	computeSalePriceFromFormula
 } from '$lib/tool/inventory/sale-price-calculator.util';
 
 const baseLine = {
-	receivedQty: 10,
+	purchasedQty: 10,
 	freeQty: 0,
 	freeQtyPurchaseUnit: 0,
 	purchaseUnitPrice: 100,
@@ -96,7 +97,7 @@ describe('computeSalePriceFromFormula', () => {
 
 	it('includes prorated invoice discount and tax in cost', () => {
 		const grnLine = {
-			receivedQty: 100,
+			purchasedQty: 100,
 			freeQty: 10,
 			freeQtyPurchaseUnit: 10,
 			purchaseUnitPrice: 50,
@@ -131,5 +132,33 @@ describe('computeSalePriceFromFormula', () => {
 		});
 		// landed 4816 / 110 = 43.7818...
 		expect(Number(r.unitPricePurchase)).toBeCloseTo(43.78, 1);
+	});
+
+	it('computeFormulaCostPerPurchaseUnit matches sale price when markups are zero', () => {
+		const grnLine = {
+			purchasedQty: 100,
+			freeQty: 10,
+			freeQtyPurchaseUnit: 10,
+			purchaseUnitPrice: 50,
+			discountAmount: 0,
+			discountPercent: 10,
+			taxAmount: 0,
+			taxPercent: 7
+		};
+		const cost = computeFormulaCostPerPurchaseUnit(
+			template({ includeFreeQty: true }),
+			grnLine,
+			{
+				lines: [grnLine],
+				invoice: {
+					discountAmount: 200,
+					discountPercent: 0,
+					taxAmount: 0,
+					taxPercent: 5
+				},
+				targetLineIndex: 0
+			}
+		);
+		expect(cost).toBeCloseTo(43.78, 1);
 	});
 });

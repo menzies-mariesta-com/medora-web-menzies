@@ -22,9 +22,9 @@
 				m.inv_pricing_config_formula_minus_invoice_discount(),
 			plusLineTax: m.inv_pricing_config_formula_plus_line_tax(),
 			plusInvoiceTax: m.inv_pricing_config_formula_plus_invoice_tax(),
-			denomReceived: m.inv_pricing_config_formula_denom_received(),
-			denomReceivedPlusFree:
-				m.inv_pricing_config_formula_denom_received_plus_free(),
+			denomPurchased: m.inv_pricing_config_formula_denom_purchased(),
+			denomPurchasedPlusFree:
+				m.inv_pricing_config_formula_denom_purchased_plus_free(),
 			costEquals: m.inv_pricing_template_formula_cost_equals(),
 			priceEquals: m.inv_pricing_template_formula_price_equals(),
 			timesMsl: (percent) =>

@@ -106,7 +106,7 @@
 	type GrnLineTableRow = {
 		id: number;
 		poLineId: number;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -162,12 +162,6 @@
 	let invoiceTaxPercent = $state('0');
 	let invoicePhotoUrl = $state<string | null>(null);
 	let receivedByUserId = $state<string | null>(null);
-	const invoiceChargeDraft = $derived({
-		invoiceDiscountAmount,
-		invoiceDiscountPercent,
-		invoiceTaxAmount,
-		invoiceTaxPercent
-	});
 
 	function resetInvoiceCharges() {
 		invoiceDiscountAmount = '0';
@@ -180,7 +174,7 @@
 	let lineForms = $state<
 		{
 			poLineId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			batchNo: string;
 			expiryDate: string;
 			purchasePrice: string;
@@ -211,7 +205,7 @@
 		hits: { id: number; name: string | null }[];
 		itemId: number | null;
 		itemLabel: string;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -327,7 +321,7 @@
 	let grnFromPoLineDialogActive = $state(false);
 	let draftGrnFromPoLine = $state<{
 		poLineId: number;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -359,7 +353,7 @@
 			hits: [],
 			itemId: null,
 			itemLabel: '',
-			receivedQty: '1',
+			purchasedQty: '1',
 			batchNo: '',
 			expiryDate: '',
 			purchasePrice: '0',
@@ -429,11 +423,11 @@
 			format: (_v, row) => conversionLabelDirect(row)
 		},
 		{
-			id: 'receivedQty',
-			header: m.inv_grn_line_received_qty(),
-			field: 'receivedQty',
+			id: 'purchasedQty',
+			header: m.inv_grn_line_purchased_qty(),
+			field: 'purchasedQty',
 			format: (_v, row) => {
-				const t = row.receivedQty?.trim();
+				const t = row.purchasedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
 			}
 		},
@@ -532,12 +526,12 @@
 			return false;
 		}
 		ensureDirectFreeUnit(draftDirectLine);
-		const rq = trimField(draftDirectLine.receivedQty);
+		const rq = trimField(draftDirectLine.purchasedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 			toastService.addToast(
 				'Could not save line',
 				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
+				'Invalid purchased quantity.'
 			);
 			return false;
 		}
@@ -556,7 +550,7 @@
 			);
 			return false;
 		}
-		const saved = { ...draftDirectLine, receivedQty: rq };
+		const saved = { ...draftDirectLine, purchasedQty: rq };
 		if (editingDirectKey) {
 			directLines = directLines.map((l) =>
 				l.key === editingDirectKey ? saved : l
@@ -576,7 +570,7 @@
 		if (!row) return;
 		draftGrnFromPoLine = {
 			poLineId: row.poLineId,
-			receivedQty: row.receivedQty,
+			purchasedQty: row.purchasedQty,
 			batchNo: row.batchNo,
 			expiryDate: row.expiryDate,
 			purchasePrice: row.purchasePrice,
@@ -673,12 +667,12 @@
 		const meta = poLines.find(
 			(l) => l.id === draftGrnFromPoLine!.poLineId
 		);
-		const rq = trimField(draftGrnFromPoLine.receivedQty);
+		const rq = trimField(draftGrnFromPoLine.purchasedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 			toastService.addToast(
 				'Could not save line',
 				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
+				'Invalid purchased quantity.'
 			);
 			return false;
 		}
@@ -698,7 +692,7 @@
 			return false;
 		}
 		patchLineForm(draftGrnFromPoLine.poLineId, {
-			receivedQty: rq,
+			purchasedQty: rq,
 			batchNo: draftGrnFromPoLine.batchNo,
 			expiryDate: draftGrnFromPoLine.expiryDate,
 			purchasePrice: draftGrnFromPoLine.purchasePrice,
@@ -978,7 +972,7 @@
 				const rem = Math.max(0, ordered - got);
 				return {
 					poLineId: ln.id,
-					receivedQty: rem > 0 ? String(rem) : '0',
+					purchasedQty: rem > 0 ? String(rem) : '0',
 					batchNo: '',
 					expiryDate: '',
 					purchasePrice: ln.unitPrice ?? '',
@@ -1016,7 +1010,7 @@
 		const lines = lineForms
 			.map((f) => ({
 				poLineId: f.poLineId,
-				receivedQty: trimField(f.receivedQty),
+				purchasedQty: trimField(f.purchasedQty),
 				batchNo: trimField(f.batchNo) || null,
 				expiryDate: trimField(f.expiryDate) || null,
 				purchasePrice: trimField(f.purchasePrice) || null,
@@ -1028,12 +1022,12 @@
 				taxAmount: trimField(f.taxAmount) || null,
 				taxPercent: trimField(f.taxPercent) || null
 			}))
-			.filter((l) => Number(l.receivedQty) > 0);
+			.filter((l) => Number(l.purchasedQty) > 0);
 		if (lines.length === 0) {
 			toastService.addToast(
 				'Could not post GRN',
 				StatusColorEnum.ERROR,
-				'Enter received quantity on at least one line.'
+				'Enter purchased quantity on at least one line.'
 			);
 			return;
 		}
@@ -1115,7 +1109,7 @@
 		const lines: {
 			itemId: number;
 			unitId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			batchNo: string | null;
 			expiryDate: string | null;
 			purchasePrice: string | null;
@@ -1136,7 +1130,7 @@
 				);
 				return;
 			}
-			const rq = trimField(ln.receivedQty);
+			const rq = trimField(ln.purchasedQty);
 			if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 				toastService.addToast(
 					'Could not post GRN',
@@ -1160,7 +1154,7 @@
 			lines.push({
 				itemId: ln.itemId,
 				unitId,
-				receivedQty: rq,
+				purchasedQty: rq,
 				batchNo: trimField(ln.batchNo) || null,
 				expiryDate: trimField(ln.expiryDate) || null,
 				purchasePrice: trimField(ln.purchasePrice) || null,
@@ -1268,7 +1262,7 @@
 			return {
 				id: f.poLineId,
 				poLineId: f.poLineId,
-				receivedQty: f.receivedQty,
+				purchasedQty: f.purchasedQty,
 				batchNo: f.batchNo,
 				expiryDate: f.expiryDate,
 				purchasePrice: f.purchasePrice,
@@ -1303,11 +1297,11 @@
 				format: (_v, row) => row.itemUnitMasterConversion ?? '—'
 			},
 			{
-				id: 'receivedQty',
-				header: m.inv_grn_line_received_qty(),
-				field: 'receivedQty',
+				id: 'purchasedQty',
+				header: m.inv_grn_line_purchased_qty(),
+				field: 'purchasedQty',
 				format: (_v, row) => {
-					const t = row.receivedQty?.trim();
+					const t = row.purchasedQty?.trim();
 					return t ? trimMetricQtyDisplay(t) : '—';
 				}
 			},
@@ -1389,7 +1383,12 @@
 						/>
 					</GrnFormFieldRow>
 
-					<GrnInvoiceChargeFields draft={invoiceChargeDraft} />
+					<GrnInvoiceChargeFields
+						bind:invoiceDiscountAmount
+						bind:invoiceDiscountPercent
+						bind:invoiceTaxAmount
+						bind:invoiceTaxPercent
+					/>
 
 					<GrnFormFieldRow
 						label={m.inv_grn_invoice_file()}

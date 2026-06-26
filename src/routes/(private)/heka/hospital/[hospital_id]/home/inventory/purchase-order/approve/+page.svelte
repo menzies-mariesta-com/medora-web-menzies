@@ -405,7 +405,7 @@
 			},
 			{
 				id: 'qtyReceivedCumulative',
-				header: `${m.inv_grn_line_received_qty()} Σ`,
+				header: `${m.inv_grn_line_purchased_qty()} Σ`,
 				field: 'qtyReceivedCumulative',
 				format: (_v, row) =>
 					formatPurchaseQtyCellWithIssueEquivalent(

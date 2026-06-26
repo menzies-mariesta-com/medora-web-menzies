@@ -630,7 +630,10 @@ export const purchaseOrderLineTable = pgTable(
 
 /**
  * Normalized batch master (cost lot per `goods_receipt_line` when received via GRN).
- * Unique index `item_batch_identity_uidx` includes `goods_receipt_line_id` (migration 0091).
+ * GRN-linked identity: `item_batch_identity_grn_uidx` on
+ * `(hospital_id, item_id, batch_no, expiry_date, goods_receipt_line_id)` (migration 0092).
+ * Legacy rows use `item_batch_identity_legacy_uidx` (supplier only; migration 0093).
+ * Unit prices are read from `goods_receipt_line.purchase_price` at display/sale time.
  */
 export const itemBatchTable = pgTable(
 	'item_batch',
@@ -650,12 +653,6 @@ export const itemBatchTable = pgTable(
 				onDelete: 'set null'
 			}
 		),
-		purchasePrice: decimal('purchase_price', {
-			precision: 14,
-			scale: 2
-		})
-			.notNull()
-			.default('0'),
 		goodsReceiptNoteId: uuid('goods_receipt_note_id').references(
 			(): AnyPgColumn => goodsReceiptNoteTable.id,
 			{ onDelete: 'set null' }
@@ -811,7 +808,7 @@ export const goodsReceiptLineTable = pgTable(
 		itemId: integer('item_id')
 			.notNull()
 			.references(() => itemMasterTable.id, { onDelete: 'restrict' }),
-		receivedQty: decimal('received_qty', {
+		purchasedQty: decimal('purchased_qty', {
 			precision: 18,
 			scale: 0
 		}).notNull(),

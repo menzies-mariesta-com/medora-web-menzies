@@ -88,11 +88,11 @@ export function freeQtyToPurchaseUnitQty(input: {
 
 /** Purchase-unit qty for cost denominator: received + converted free (when flagged). */
 export function purchaseUnitDenominatorQty(input: {
-	receivedQty: number;
+	purchasedQty: number;
 	freeQtyPurchaseUnit: number;
 	includeFreeQtyInDenominator: boolean;
 }): number {
-	const r = input.receivedQty;
+	const r = input.purchasedQty;
 	if (!Number.isFinite(r) || r <= 0) return 0;
 	if (!input.includeFreeQtyInDenominator) return r;
 	const f = input.freeQtyPurchaseUnit;

@@ -11,7 +11,8 @@ describe('mapStockLotToBatchAllocationDraft', () => {
 			quantity: '5',
 			batchNo: 'BATCH-A',
 			expiryDate: '2027-01-01',
-			purchasePrice: '12.50',
+			estimatedPurchasePrice: '43.78',
+			purchaseUnitName: 'box',
 			issueUnitName: 'tab',
 			grnReceivedDate: '2026-06-01',
 			grnInvoiceNo: 'INV-99'

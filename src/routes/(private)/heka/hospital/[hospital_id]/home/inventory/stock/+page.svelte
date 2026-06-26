@@ -45,7 +45,8 @@
 		storeName: string | null;
 		batchNo: string;
 		expiryDate: string | null;
-		purchasePrice: string;
+		estimatedPurchasePrice: string;
+		purchaseUnitName: string | null;
 		quantity: string;
 		issueUnitName?: string | null;
 		grnReceivedDate?: string | null;
@@ -120,7 +121,8 @@
 					storeName: (r.storeName as string) ?? null,
 					batchNo: String(r.batchNo ?? ''),
 					expiryDate: (r.expiryDate as string) ?? null,
-					purchasePrice: String(r.purchasePrice ?? ''),
+					estimatedPurchasePrice: String(r.estimatedPurchasePrice ?? ''),
+					purchaseUnitName: (r.purchaseUnitName as string) ?? null,
 					quantity: String(r.quantity ?? '0'),
 					issueUnitName: (r.issueUnitName as string) ?? null,
 					grnReceivedDate: (r.grnReceivedDate as string) ?? null,
@@ -214,16 +216,19 @@
 			}
 		},
 		{
-			id: 'purchasePrice',
-			header: m.inv_stock_col_price(),
-			field: 'purchasePrice',
+			id: 'estimatedPurchasePrice',
+			header: m.inv_stock_col_estimated_purchase_price(),
+			field: 'estimatedPurchasePrice',
 			filterable: false,
 			format: (_v, row) => {
 				const t =
-					row.purchasePrice != null
-						? String(row.purchasePrice).trim()
+					row.estimatedPurchasePrice != null
+						? String(row.estimatedPurchasePrice).trim()
 						: '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+				if (!t) return '—';
+				const pu = (row.purchaseUnitName ?? '').trim();
+				const disp = trimInventoryNumericDisplay(t, 4);
+				return pu ? `${disp} / ${pu}` : disp;
 			}
 		},
 		{
