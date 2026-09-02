@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import PricingAssignmentViewDialog from '$lib/component/own/local/private/heka/inventory-setup/pricing/PricingAssignmentViewDialog.svelte';
 	import PricingFormulaDisplay from '$lib/component/own/local/private/heka/inventory-setup/pricing/PricingFormulaDisplay.svelte';
@@ -82,18 +82,10 @@
 			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-formula-templates`
 			: ''
 	);
-	const templatesPageUrl = $derived(
-		hospitalId
-			? hekaHospitalPageUrl(
-					hospitalId,
-					'home/inventory-setup/pricing-formula-templates'
-				)
-			: '#'
-	);
 
 	let branches = $state<{ id: string; name: string }[]>([]);
 	let branchId = $state('');
-	let activeModule = $state<InvPricingModuleCode>('MO');
+	let activeModule = $state<InvPricingModuleCode>('IS');
 	let templates = $state<PricingFormulaTemplateListRow[]>([]);
 	let assignment = $state<ModulePricingAssignmentDto | null>(null);
 	let selectedTemplate = $state<PricingFormulaTemplateDto | null>(null);
@@ -108,6 +100,7 @@
 	let overviewTableFilters = $state<Record<string, string>>({});
 
 	let assignmentSectionEl = $state<HTMLElement | null>(null);
+	let showAssignmentPanel = $state(false);
 
 	const branchOptions = $derived(
 		branches.map((b) => ({ label: b.name, value: b.id }))
@@ -118,9 +111,9 @@
 	);
 
 	function moduleLabel(mod: InvPricingModuleCode): string {
-		if (mod === 'MO') return m.inv_pricing_assignment_module_mo();
-		if (mod === 'DC') return m.inv_pricing_assignment_module_dc();
-		return m.inv_pricing_assignment_module_billing();
+		if (mod === 'IS') return m.inv_pricing_assignment_module_is();
+		if (mod === 'ES') return m.inv_pricing_assignment_module_es();
+		return m.inv_pricing_assignment_module_dc();
 	}
 
 	const overviewColumns = $derived.by((): MariTableColumn<ModulePricingAssignmentOverviewRow>[] => [
@@ -339,6 +332,7 @@
 	function configureFromOverview(row: ModulePricingAssignmentOverviewRow) {
 		branchId = row.branchId;
 		activeModule = row.module;
+		showAssignmentPanel = true;
 		assignmentSectionEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
@@ -393,81 +387,28 @@
 			saving = false;
 		}
 	}
-
-	const editTemplateUrl = $derived(
-		selectedTemplate && hospitalId
-			? `${templatesPageUrl}?edit=${selectedTemplate.id}`
-			: templatesPageUrl
-	);
 </script>
 
 <div class="flex flex-col gap-4 p-4">
-	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div>
-			<h1 class="text-xl font-semibold">{m.inv_pricing_config_title()}</h1>
-			<p class="text-sm opacity-70">{m.inv_pricing_config_subtitle()}</p>
-			{#if currentHospitalName}
-				<p class="mt-1 text-sm opacity-70">
-					{m.inv_pricing_assignment_filter_hospital()}: {currentHospitalName}
-				</p>
-			{/if}
-		</div>
-		<a href={templatesPageUrl} class="d-btn d-btn-ghost d-btn-sm">
-			{m.inv_pricing_assignment_manage_templates()}
-		</a>
+	<div>
+		<h1 class="text-xl font-semibold">{m.inv_pricing_config_title()}</h1>
+		{#if currentHospitalName}
+			<p class="mt-1 text-sm opacity-70">
+				{m.inv_pricing_assignment_filter_hospital()}: {currentHospitalName}
+			</p>
+		{/if}
 	</div>
 
-	<DaisyUiCard>
-		<DaisyUiCardBody className="flex flex-col gap-3">
-			<div>
-				<h2 class="text-lg font-medium">
-					{m.inv_pricing_assignment_overview_title()}
-				</h2>
-				<p class="text-sm opacity-70">
-					{m.inv_pricing_assignment_overview_subtitle()}
-				</p>
-			</div>
-			<div class={TableEnum.HEIGHT}>
-				<MariTable
-					rows={filteredOverviewRows}
-					columns={overviewColumns}
-					isLoading={overviewLoading}
-					bind:pageSize={overviewPageSizeStr}
-					bind:currentPage={overviewPage}
-					bind:columnFilters={overviewTableFilters}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="—"
-					showRowActions={true}
-					actionsVariant="crud"
-					enableColumnFilters={true}
-					useRemoteFilters={false}
-					crudDeleteDisabled={() => true}
-					rowClassGetter={(row) =>
-						(row as ModulePricingAssignmentOverviewRow).formulaTemplateId ==
-						null
-							? 'bg-warning/10'
-							: ''}
-					on:refresh={() => loadOverview()}
-					on:view={(e) => void openOverviewView(e.detail)}
-					on:edit={(e) => configureFromOverview(e.detail)}
-					on:filtersChange={(e) => {
-						overviewTableFilters = e.detail.filters;
-						overviewPage = 1;
-					}}
-				/>
-			</div>
-		</DaisyUiCardBody>
-	</DaisyUiCard>
-
-	<div bind:this={assignmentSectionEl}>
-	<DaisyUiCard>
-		<DaisyUiCardBody className="flex flex-col gap-4">
-			<h2 class="text-lg font-medium">{m.inv_pricing_assignment_title()}</h2>
-
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
+	<div
+		bind:this={assignmentSectionEl}
+		class:hidden={!showAssignmentPanel}
+		class="flex flex-col gap-4"
+	>
+		<DaisyUiCard>
+			<DaisyUiCardBody className="flex flex-col gap-4">
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
 				<DaisyUiLabel className="shrink-0 sm:w-40"
 					>{m.inv_pricing_config_branch()}</DaisyUiLabel
 				>
@@ -511,7 +452,9 @@
 					{m.inv_pricing_config_select_branch()}
 				</p>
 			{:else if assignmentLoading}
-				<p class="text-sm opacity-70">{m.loading()}</p>
+				<div class="flex justify-center py-10">
+					<DaisyUiLoading className="d-loading-lg text-primary" />
+				</div>
 			{:else}
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
@@ -553,12 +496,6 @@
 								mslMarkupPercent: selectedTemplate.mslMarkupPercent
 							}}
 						/>
-						<a
-							href={editTemplateUrl}
-							class="mt-3 inline-block text-primary text-xs underline"
-						>
-							{m.inv_pricing_assignment_edit_template()}
-						</a>
 					</div>
 				{/if}
 
@@ -576,4 +513,39 @@
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 	</div>
+
+	<DaisyUiCard>
+		<DaisyUiCardBody className="flex flex-col gap-3">
+			<div class={TableEnum.HEIGHT}>
+				<MariTable
+					rows={filteredOverviewRows}
+					columns={overviewColumns}
+					isLoading={overviewLoading}
+					bind:pageSize={overviewPageSizeStr}
+					bind:currentPage={overviewPage}
+					bind:columnFilters={overviewTableFilters}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage="—"
+					showRowActions={true}
+					actionsVariant="crud"
+					enableColumnFilters={true}
+					useRemoteFilters={false}
+					crudDeleteDisabled={() => true}
+					rowClassGetter={(row) =>
+						(row as ModulePricingAssignmentOverviewRow).formulaTemplateId ==
+						null
+							? 'bg-warning/10'
+							: ''}
+					on:refresh={() => loadOverview()}
+					on:view={(e) => void openOverviewView(e.detail)}
+					on:edit={(e) => configureFromOverview(e.detail)}
+					on:filtersChange={(e) => {
+						overviewTableFilters = e.detail.filters;
+						overviewPage = 1;
+					}}
+				/>
+			</div>
+		</DaisyUiCardBody>
+	</DaisyUiCard>
 </div>

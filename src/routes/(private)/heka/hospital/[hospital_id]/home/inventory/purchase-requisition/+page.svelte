@@ -403,7 +403,7 @@
 				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-right"
+						className="d-tooltip-ghost d-tooltip-top"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -420,7 +420,7 @@
 							tooltipText={editDisabled
 								? 'Edit not available (only the creator can edit)'
 								: m.inv_pr_edit()}
-							className={`d-tooltip-right ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
+							className={`d-tooltip-top ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
 								className={`d-btn-sm d-btn-ghost d-btn-square ${editDisabled ? '' : 'text-accent'}`}
@@ -439,7 +439,7 @@
 							tooltipText={approveDisabled
 								? 'Approval not available (no permission for this level)'
 								: m.inv_nav_pr_approval()}
-							className={`d-tooltip-right ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
+							className={`d-tooltip-top ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
 								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}
@@ -457,7 +457,7 @@
 						tooltipText={cancelDisabled
 							? 'Cancel not available (not allowed or already linked to PO)'
 							: m.inv_pr_cancel()}
-						className={`d-tooltip-right ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
+						className={`d-tooltip-top ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
 					>
 						<DaisyUiButton
 							className={`d-btn-sm d-btn-ghost d-btn-square ${cancelDisabled ? '' : 'text-error'}`}

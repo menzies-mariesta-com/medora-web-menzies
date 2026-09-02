@@ -240,7 +240,7 @@ export const invModulePricingAssignmentTable = pgTable(
 			.references(() => hospitalBranchTable.id, {
 				onDelete: 'cascade'
 			}),
-		/** `MO` | `DC` | `BILLING` */
+		/** `IS` | `ES` | `DC` */
 		module: varchar('module', { length: 16 }).notNull(),
 		formulaTemplateId: integer('formula_template_id')
 			.notNull()
@@ -275,7 +275,7 @@ export const invModulePricingAssignmentTable = pgTable(
 		),
 		check(
 			'inv_module_pricing_assignment_module_chk',
-			sql`(${t.module}) IN ('MO', 'DC', 'BILLING')`
+			sql`(${t.module}) IN ('IS', 'ES', 'DC')`
 		)
 	]
 );

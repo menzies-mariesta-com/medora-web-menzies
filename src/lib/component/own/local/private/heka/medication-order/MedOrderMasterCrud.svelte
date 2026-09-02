@@ -57,15 +57,8 @@
 	const statusDefaultFilterValue = String(StatusEnum.ACTIVE);
 
 	const tableColumns = $derived.by((): MariTableColumn<unknown>[] => {
-		const idCol: MariTableColumn<unknown> = {
-			id: 'id',
-			header: m.id(),
-			widthClass: 'w-20 min-w-[5rem] whitespace-nowrap',
-			filterable: true
-		};
 		if (variant === 'duration') {
 			return [
-				idCol,
 				{
 					id: 'statusId',
 					header: m.active_label(),
@@ -101,7 +94,6 @@
 		}
 		if (variant === 'frequency') {
 			return [
-				idCol,
 				{
 					id: 'statusId',
 					header: m.active_label(),
@@ -150,7 +142,6 @@
 			];
 		}
 		return [
-			idCol,
 			{
 				id: 'statusId',
 				header: m.active_label(),

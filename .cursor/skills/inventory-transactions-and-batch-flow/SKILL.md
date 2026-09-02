@@ -79,7 +79,7 @@ Use this pattern in **any stock-issuing UI** (Department consumption, Department
 - **Formula**: `inv_pricing_formula_template` + `inv_module_pricing_assignment` per branch + module (`MO`, `DC`, `BILLING`). Slot order v1: `COST → MSL → ITEM → STORE`.
 - **Compute at post/dispense**: [`sale-price.server.ts`](../../../src/lib/server/heka/inventory/sale-price.server.ts) + [`sale-price-calculator.util.ts`](../../../src/lib/tool/inventory/sale-price-calculator.util.ts). Batch must have `goods_receipt_line_id` provenance.
 - **GRN post order**: insert `goods_receipt_line` (nullable `batch_id`) → `findOrCreateItemBatch(..., goodsReceiptLineId)` → update line `batch_id`.
-- **Snapshots**: MO `unit_sale_price` (purchase unit), DC `emp_sale_price` (issue unit), OP billing uses `module: 'BILLING'` at sync time.
+- **Snapshots**: Internal/external sales snapshot `unit_sale_price` in the assignment’s **price unit** (`PURCHASE` or `ISSUE` on `inv_module_pricing_assignment`); DC `emp_sale_price` is always per issue unit; OP billing uses **IS** assignment unit at sync time.
 
 #### Hydration (client)
 

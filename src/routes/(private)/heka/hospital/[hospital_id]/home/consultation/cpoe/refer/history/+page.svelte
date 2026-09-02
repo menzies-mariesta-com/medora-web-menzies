@@ -7,7 +7,11 @@
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
+	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
+	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LReferFeedbackDialogContent from '$lib/component/own/local/private/heka/cpoe/refer/LReferFeedbackDialogContent.svelte';
@@ -489,39 +493,50 @@
 				{#snippet rowActions(row, rowIndex)}
 					{@const typedRow = row as ReferHistoryWithRelations}
 					{#if isRecipientDoctor(typedRow) && isPendingReferRow(typedRow)}
-						<div class="flex flex-wrap items-center gap-1">
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-success"
+						<MariTableRowActionGroup>
+							<MariTableIconAction
+								tooltipText="Accept"
+								color="primary"
 								disabled={acceptingRowId === typedRow.id ||
 									cancellingRowId === typedRow.id}
 								onClick={() => {
 									void handleAcceptRow(typedRow);
 								}}
 							>
-								Accept
-							</DaisyUiButton>
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-error"
+								{#snippet icon()}
+									<LucideCircleCheck className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText="Reject"
+								color="error"
 								disabled={cancellingRowId === typedRow.id ||
 									acceptingRowId === typedRow.id}
 								onClick={() => {
 									void handleRejectRow(typedRow);
 								}}
 							>
-								Reject
-							</DaisyUiButton>
-						</div>
+								{#snippet icon()}
+									<LucideCircleX className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+						</MariTableRowActionGroup>
 					{:else}
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={cancellingRowId === typedRow.id ||
-								!isPendingReferRow(typedRow)}
-							onClick={() => {
-								void handleCancelRow(typedRow);
-							}}
-						>
-							Cancel
-						</DaisyUiButton>
+						<MariTableRowActionGroup>
+							<MariTableIconAction
+								tooltipText="Cancel"
+								color="warning"
+								disabled={cancellingRowId === typedRow.id ||
+									!isPendingReferRow(typedRow)}
+								onClick={() => {
+									void handleCancelRow(typedRow);
+								}}
+							>
+								{#snippet icon()}
+									<LucideBan className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+						</MariTableRowActionGroup>
 					{/if}
 				{/snippet}
 			</MariTable>

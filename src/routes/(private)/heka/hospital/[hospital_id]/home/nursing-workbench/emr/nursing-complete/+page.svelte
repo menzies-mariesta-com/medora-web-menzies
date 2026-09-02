@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import DaisyUiAlert from '$lib/component/daisyui/alert/DaisyUiAlert.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -745,21 +746,21 @@
 							>
 								{#snippet rowActions(row, rowIndex)}
 									{@const typedRow = row as NursingCompleteRow}
-									<td class="w-36 min-w-[9rem]">
-										{#if typedRow.nursingCompleteTime}
-											<span class="d-badge d-badge-sm d-badge-success"
-												>Completed</span
-											>
-										{:else}
-											<DaisyUiButton
-												className="d-btn-primary d-btn-xs"
-												onClick={() => handleComplete(typedRow)}
-											>
-												<LucideCircleCheck className="size-3.5" />
-												Complete
-											</DaisyUiButton>
-										{/if}
-									</td>
+									{#if typedRow.nursingCompleteTime}
+										<span class="d-badge d-badge-sm d-badge-success"
+											>Completed</span
+										>
+									{:else}
+										<MariTableIconAction
+											tooltipText="Complete"
+											color="primary"
+											onClick={() => handleComplete(typedRow)}
+										>
+											{#snippet icon()}
+												<LucideCircleCheck className="size-4" />
+											{/snippet}
+										</MariTableIconAction>
+									{/if}
 								{/snippet}
 							</MariTable>
 						</div>

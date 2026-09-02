@@ -6,8 +6,7 @@
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -242,20 +241,10 @@
 			actionsVariant="none"
 		>
 			{#snippet rowActions(row, rowIndex)}
-				<div class="flex items-center gap-2">
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm"
-						onClick={() => startEdit(row)}
-					>
-						<LucidePencil className="size-4" />
-					</DaisyUiButton>
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm d-btn-error"
-						onClick={() => handleDelete(row)}
-					>
-						<LucideTrash2 className="size-4" />
-					</DaisyUiButton>
-				</div>
+				<MariTableEditDeleteActions
+					onEdit={() => startEdit(row)}
+					onDelete={() => handleDelete(row)}
+				/>
 			{/snippet}
 		</MariTable>
 	</div>

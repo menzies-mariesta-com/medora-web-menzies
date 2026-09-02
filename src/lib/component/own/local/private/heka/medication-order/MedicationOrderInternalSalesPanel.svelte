@@ -8,16 +8,15 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
-	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import { TableEnum } from '$lib/model/enum/table.enum';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -26,19 +25,20 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type {
-		MedicationOrderBatchHistoryRow,
+		ItemNamePriceRow,
 		MedicationOrderMastersResponse,
 		MedicationOrderLineInput
 	} from '$lib/model/type/heka/medication-order.type';
 	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
 	import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
+	import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/heka/inv-pricing-module.type';
 	import MedicationOrderInventoryFields from '$lib/component/own/local/private/heka/medication-order/MedicationOrderInventoryFields.svelte';
 	import MedicationOrderVisitPrescriptionNotesCard from '$lib/component/own/local/private/heka/medication-order/MedicationOrderVisitPrescriptionNotesCard.svelte';
+	import MedicationOrderHistoryDialogContent from '$lib/component/own/local/private/heka/medication-order/MedicationOrderHistoryDialogContent.svelte';
 	import {
 		hydrateMedOrderItemMeta,
 		loadMedOrderIumList,
 		refreshMedOrderBatchAllocations,
-		sumAllocationPurchaseQty,
 		syncMedOrderFefoAllocations,
 		validateMedOrderInventoryLine,
 		applyDraftReservationsToLots
@@ -47,6 +47,12 @@
 		isMedOrderStartBeforeToday,
 		medOrderMinStartDateTimeLocal
 	} from '$lib/tool/medication-order/med-order-start-date.util';
+	import {
+		medOrderOutUnitName,
+		resolveMedOrderIumForOutUnit
+	} from '$lib/tool/inventory/med-order-out-qty.util';
+	import { formatMedOrderPrescriptionDetail } from '$lib/tool/medication-order/format-med-order-prescription-detail.util';
+	import { formatMedOrderItemSearchLabel } from '$lib/tool/medication-order/format-med-order-item-search-label.util';
 	import { untrack, tick } from 'svelte';
 	import { applyStaggeredStartDates } from '$lib/util/med-order-stagger.util';
 
@@ -99,18 +105,8 @@
 	let pharmacyGenericId = $state('');
 
 	let itemValueStr = $state('');
-	let lastItemSearchRows = $state<
-		{
-			id: number;
-			itemName: string | null;
-			displayPrice: string | null;
-		}[]
-	>([]);
-	let selectedItem = $state<{
-		id: number;
-		itemName: string | null;
-		displayPrice: string | null;
-	} | null>(null);
+	let lastItemSearchRows = $state<ItemNamePriceRow[]>([]);
+	let selectedItem = $state<ItemNamePriceRow | null>(null);
 
 	const itemFilterKey = $derived(
 		`${storeIdStr}|${pharmacyGenericId}`
@@ -133,7 +129,9 @@
 	let testDose = $state('');
 	let substituteNotAllowed = $state(false);
 
-	let issueQtyPurchase = $state('');
+	let qtyOut = $state('');
+	let outUnitIdStr = $state('');
+	let itemUnitMasterIdStr = $state('');
 	let unitSalePrice = $state('0');
 	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>([]);
 	let iumList = $state<ConsumptionDraftLineIum[]>([]);
@@ -151,17 +149,12 @@
 
 	let draftLines = $state<DraftLine[]>([]);
 
-	/** — History */
-	let historyOpen = $state(false);
-	let historyRows = $state<MedicationOrderBatchHistoryRow[]>([]);
+	/** Store labels for edit / display (history dialog loads its own copy). */
 	let storeNameById = $state<Record<number, string>>({});
 
-	let historyCurrentPage = $state(1);
-	let historyPageSizeStr = $state('10');
 	let draftCurrentPage = $state(1);
 	let draftPageSizeStr = $state('25');
 	let draftColumnFilters = $state<Record<string, string>>({});
-	let historyColumnFilters = $state<Record<string, string>>({});
 
 	let prevItemFilterKey = $state<string | null>(null);
 
@@ -262,11 +255,11 @@
 			lastItemSearchRows = [];
 			return [];
 		}
-		const rows = (await res.json()) as typeof lastItemSearchRows;
+		const rows = (await res.json()) as ItemNamePriceRow[];
 		lastItemSearchRows = rows;
 		return rows.map((it) => ({
 			value: String(it.id),
-			label: `${it.itemName?.trim() || '—'}${it.displayPrice != null ? ` · ${it.displayPrice}` : ''}`
+			label: formatMedOrderItemSearchLabel(it)
 		}));
 	}
 
@@ -274,8 +267,12 @@
 		idStr: string
 	): Promise<string> {
 		if (!idStr) return '';
+		const fromSearch = lastItemSearchRows.find(
+			(r) => String(r.id) === idStr
+		);
+		if (fromSearch) return formatMedOrderItemSearchLabel(fromSearch);
 		if (selectedItem && String(selectedItem.id) === idStr) {
-			return `${selectedItem.itemName?.trim() || '—'}${selectedItem.displayPrice != null ? ` · ${selectedItem.displayPrice}` : ''}`;
+			return formatMedOrderItemSearchLabel(selectedItem);
 		}
 		if (!hospitalId) return `Item #${idStr}`;
 		const res = await fetch(
@@ -336,131 +333,12 @@
 		}))
 	);
 
-	const dash = () => m.med_order_int_not_applicable();
-
-	const historyColumns = $derived.by(
-		(): MariTableColumn<MedicationOrderBatchHistoryRow>[] => [
-			{
-				id: 'id',
-				header: m.med_order_int_hist_id(),
-				widthClass: 'min-w-[4rem]',
-				filterable: true,
-				field: 'id',
-				format: (v) => String(v ?? dash())
-			},
-			{
-				id: 'hospitalId',
-				header: m.med_order_int_hist_hospital_id(),
-				widthClass: 'min-w-[12rem] max-w-[14rem] font-mono text-xs',
-				filterable: true,
-				field: 'hospitalId',
-				format: (v) => (typeof v === 'string' && v ? v : dash())
-			},
-			{
-				id: 'visitId',
-				header: m.med_order_int_hist_visit_id(),
-				widthClass: 'min-w-[5rem]',
-				filterable: true,
-				field: 'visitId',
-				format: (v) => (v != null && v !== '' ? String(v) : dash())
-			},
-			{
-				id: 'batchNo',
-				header: m.med_order_int_batch(),
-				widthClass: 'min-w-[8rem]',
-				filterable: true,
-				field: 'batchNo'
-			},
-			{
-				id: 'store',
-				header: m.med_order_int_store(),
-				widthClass: 'min-w-[10rem]',
-				filterable: true,
-				format: (_v, row) =>
-					storeNameById[row.storeId] ?? String(row.storeId)
-			},
-			{
-				id: 'extCustomerName',
-				header: m.med_order_int_hist_ext_customer(),
-				widthClass: 'min-w-[8rem]',
-				filterable: true,
-				field: 'extCustomerName',
-				format: (v) =>
-					v != null && String(v).trim() ? String(v) : dash()
-			},
-			{
-				id: 'advisingDoctor',
-				header: m.med_order_int_hist_advising_doctor(),
-				widthClass: 'min-w-[8rem]',
-				filterable: true,
-				field: 'advisingDoctor',
-				format: (v) =>
-					v != null && String(v).trim() ? String(v) : dash()
-			},
-			{
-				id: 'lineCount',
-				header: m.med_order_int_hist_lines(),
-				widthClass: 'min-w-[4rem]',
-				filterable: true,
-				field: 'lineCount',
-				format: (v) => String(v ?? dash())
-			},
-			{
-				id: 'createdAt',
-				header: m.created_at(),
-				widthClass: 'min-w-[11rem]',
-				filterable: false,
-				format: (_v, row) =>
-					toDateTimeLocalValue(new Date(row.createdAt))
-			},
-			{
-				id: 'updatedAt',
-				header: m.updated_at(),
-				widthClass: 'min-w-[11rem]',
-				filterable: false,
-				format: (_v, row) =>
-					toDateTimeLocalValue(new Date(row.updatedAt))
-			},
-			{
-				id: 'createdByName',
-				header: m.med_order_int_hist_created_by(),
-				widthClass: 'min-w-[9rem]',
-				filterable: true,
-				field: 'createdByName',
-				format: (v) =>
-					v != null && String(v).trim() ? String(v) : dash()
-			},
-			{
-				id: 'createdBy',
-				header: m.med_order_int_hist_created_by_id(),
-				widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
-				filterable: true,
-				field: 'createdBy',
-				format: (v) => (v != null && String(v) ? String(v) : dash())
-			},
-			{
-				id: 'updatedByName',
-				header: m.med_order_int_hist_updated_by(),
-				widthClass: 'min-w-[9rem]',
-				filterable: true,
-				field: 'updatedByName',
-				format: (v) =>
-					v != null && String(v).trim() ? String(v) : dash()
-			},
-			{
-				id: 'updatedBy',
-				header: m.med_order_int_hist_updated_by_id(),
-				widthClass: 'min-w-[10rem] max-w-[12rem] font-mono text-xs',
-				filterable: true,
-				field: 'updatedBy',
-				format: (v) => (v != null && String(v) ? String(v) : dash())
-			}
-		]
-	);
 
 	const draftColumns = $derived.by(
 		(): MariTableColumn<DraftLine>[] => {
 			const ps = Number(draftPageSizeStr) || 25;
+			const medMasters = masters;
+			const store = storeLabel.trim() || (storeId > 0 ? `#${storeId}` : '—');
 			return [
 				{
 					id: 'idx',
@@ -478,26 +356,52 @@
 					format: (_v, row) => row._itemName
 				},
 				{
-					id: 'dose',
-					header: m.med_order_int_dose(),
+					id: 'prescription',
+					header: m.med_order_int_prescription_detail(),
+					widthClass: 'min-w-[18rem]',
+					filterable: true,
+					format: (_v, row) =>
+						formatMedOrderPrescriptionDetail(
+							{
+								dose: row.dose,
+								doseUnitId: row.doseUnitId,
+								frequencyId: row.frequencyId,
+								durationValue: row.durationValue,
+								durationUnitId: row.durationUnitId,
+								routeId: row.routeId,
+								orderTypeId: row.orderTypeId,
+								foodRelationId: row.foodRelationId,
+								startAt: row.startAt,
+								testDose: row.testDose
+							},
+							medMasters
+						)
+				},
+				{
+					id: 'qtyOut',
+					header: m.med_order_int_total_qty(),
 					widthClass: 'w-24',
 					filterable: true,
-					format: (_v, row) => row.dose
+					format: (_v, row) => row.qtyOut?.trim() || '—'
 				},
 				{
-					id: 'freq',
-					header: m.med_order_int_frequency(),
+					id: 'qtyUnit',
+					header: m.med_order_int_qty_unit(),
+					widthClass: 'min-w-[6rem]',
+					filterable: true,
+					format: (_v, row) =>
+						medOrderOutUnitName(
+							row._iumList,
+							row.outUnitId,
+							row.itemUnitMasterId
+						) || '—'
+				},
+				{
+					id: 'store',
+					header: m.med_order_int_store(),
 					widthClass: 'min-w-[8rem]',
 					filterable: true,
-					format: (_v, row) => row._freqLabel
-				},
-				{
-					id: 'start',
-					header: m.med_order_int_start(),
-					widthClass: 'min-w-[10rem]',
-					filterable: false,
-					format: (_v, row) =>
-						toDateTimeLocalValue(new Date(row.startAt))
+					format: () => store
 				}
 			];
 		}
@@ -552,6 +456,10 @@
 				meta.defaultItemUnitMasterId
 			);
 			iumList = ium.iumList;
+			itemUnitMasterIdStr =
+				ium.itemUnitMasterId != null
+					? String(ium.itemUnitMasterId)
+					: '';
 			const lots = await refreshMedOrderBatchAllocations(
 				hospitalId,
 				storeId,
@@ -561,9 +469,14 @@
 				lots,
 				draftLines,
 				itemId,
-				iumList[0] ?? null
+				resolveMedOrderIumForOutUnit(
+					iumList,
+					Number(outUnitIdStr) || 0,
+					Number(itemUnitMasterIdStr) || null
+				)
 			);
-			issueQtyPurchase = '';
+			qtyOut = '';
+			outUnitIdStr = '';
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_inventory_invalid(), e);
 			batchAllocations = [];
@@ -586,7 +499,9 @@
 	}
 
 	function resetLineInventoryFields() {
-		issueQtyPurchase = '';
+		qtyOut = '';
+		outUnitIdStr = '';
+		itemUnitMasterIdStr = '';
 		unitSalePrice = '0';
 		batchAllocations = [];
 		iumList = [];
@@ -673,7 +588,19 @@
 			return;
 		}
 
-		const ium = iumList[0] ?? null;
+		const outUnitId = Number(outUnitIdStr) || 0;
+		const ium = resolveMedOrderIumForOutUnit(
+			iumList,
+			outUnitId,
+			Number(itemUnitMasterIdStr) || null
+		);
+		if (!ium) {
+			toastService.addToast(
+				m.med_order_inventory_invalid(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		const lotsForValidate = applyDraftReservationsToLots(
 			batchAllocations,
 			draftLines,
@@ -682,21 +609,22 @@
 		);
 		const syncedLots = syncMedOrderFefoAllocations({
 			batchAllocations: lotsForValidate,
-			issueQtyPurchase,
+			qtyOut,
+			outUnitId,
 			ium
 		});
 		const invErr = validateMedOrderInventoryLine({
 			batchAllocations: syncedLots,
 			ium,
-			issueQtyPurchase,
+			qtyOut,
+			outUnitId,
 			unitSalePrice
 		});
 		if (invErr) {
 			toastService.addToast(invErr, StatusColorEnum.ERROR);
 			return;
 		}
-		const iumId = iumList[0]!.id;
-		const qtySum = sumAllocationPurchaseQty(syncedLots);
+		const iumId = ium.id;
 		const fRow = (masters?.freqs ?? []).find(
 			(x) => x.id === frequencyId
 		);
@@ -715,7 +643,8 @@
 			testDose: testDose.trim() || null,
 			substituteNotAllowed,
 			unitSalePrice: unitSalePrice.trim() || '0',
-			issueQtyPurchase: qtySum || issueQtyPurchase.trim(),
+			qtyOut: qtyOut.trim(),
+			outUnitId,
 			itemUnitMasterId: iumId,
 			allocations: syncedLots
 				.filter((a) => Number(a.qtyPurchase) > 0)
@@ -783,12 +712,16 @@
 		selectedItem = {
 			id: line.itemMasterId,
 			itemName: line._itemName,
-			displayPrice: null
+			displayPrice: null,
+			stockIssueQty: null,
+			issueUnitName: null
 		};
-		const row = {
+		const row: ItemNamePriceRow = {
 			id: line.itemMasterId,
 			itemName: line._itemName,
-			displayPrice: null as string | null
+			displayPrice: null,
+			stockIssueQty: null,
+			issueUnitName: null
 		};
 		lastItemSearchRows = [
 			row,
@@ -808,7 +741,12 @@
 		startAtLocal = toDateTimeLocalValue(new Date(line.startAt));
 		testDose = line.testDose ?? '';
 		substituteNotAllowed = line.substituteNotAllowed;
-		issueQtyPurchase = line.issueQtyPurchase;
+		qtyOut = line.qtyOut;
+		outUnitIdStr = String(line.outUnitId);
+		itemUnitMasterIdStr =
+			line.itemUnitMasterId != null
+				? String(line.itemUnitMasterId)
+				: '';
 		unitSalePrice = line.unitSalePrice;
 		batchAllocations = line._batchAllocations.map((a) => ({ ...a }));
 		iumList = [...line._iumList];
@@ -825,6 +763,12 @@
 						line.itemUnitMasterId
 					);
 					iumList = ium.iumList;
+					itemUnitMasterIdStr =
+						line.itemUnitMasterId != null
+							? String(line.itemUnitMasterId)
+							: ium.itemUnitMasterId != null
+								? String(ium.itemUnitMasterId)
+								: '';
 					if (batchAllocations.length === 0 && storeId > 0) {
 						batchAllocations =
 							await refreshMedOrderBatchAllocations(
@@ -936,30 +880,19 @@
 			);
 			return;
 		}
-		historyOpen = true;
-		historyCurrentPage = 1;
-		const u = new URL(apiRoot(), window.location.origin);
-		u.searchParams.set('mode', 'batch.list');
-		u.searchParams.set('visitId', String(visitIdNum));
-		const res = await fetch(u, { credentials: 'include' });
-		if (!res.ok) {
-			historyRows = [];
-			return;
-		}
-		historyRows =
-			(await res.json()) as MedicationOrderBatchHistoryRow[];
-		const r = await fetch(`${apiRoot()}?mode=stores.search`, {
-			credentials: 'include'
+		await dialogService.open({
+			title: m.med_order_int_history(),
+			component: MedicationOrderHistoryDialogContent,
+			fullScreen: true,
+			props: {
+				apiRoot: apiRoot(),
+				visitId: visitIdNum,
+				enableColumnFilters: true,
+				onEdit: loadBatchForEdit,
+				onReorder: reorderBatchById,
+				onDelete: deleteBatchById
+			}
 		});
-		if (r.ok) {
-			const stores = (await r.json()) as {
-				id: number;
-				storeName: string | null;
-			}[];
-			const mp: Record<number, string> = {};
-			for (const s of stores) mp[s.id] = s.storeName ?? `#${s.id}`;
-			storeNameById = mp;
-		}
 	}
 
 	function lineToDraft(
@@ -1008,7 +941,8 @@
 			testDose: ln.testDose != null ? String(ln.testDose) : null,
 			substituteNotAllowed: Boolean(ln.substituteNotAllowed),
 			unitSalePrice: String(ln.unitSalePrice ?? '0'),
-			issueQtyPurchase: String(ln.issueQtyPurchase ?? '1'),
+			qtyOut: String(ln.qtyOut ?? '1'),
+			outUnitId: Number(ln.outUnitId ?? 0),
 			itemUnitMasterId: Number(ln.itemUnitMasterId ?? 0),
 			allocations: myAllocs.map((a) => ({
 				batchId: a.batchId,
@@ -1032,7 +966,29 @@
 		return d.itemName?.trim() || `Item #${itemMasterId}`;
 	}
 
+	async function enrichInternalDraftLine(draft: DraftLine): Promise<DraftLine> {
+		if (!hospitalId || !draft.itemUnitMasterId) return draft;
+		try {
+			const meta = await hydrateMedOrderItemMeta(
+				hospitalId,
+				draft.itemMasterId
+			);
+			const ium = await loadMedOrderIumList(
+				hospitalId,
+				meta.itemUnitMasterIds,
+				draft.itemUnitMasterId
+			);
+			return {
+				...draft,
+				_iumList: ium.iumList
+			};
+		} catch {
+			return draft;
+		}
+	}
+
 	async function loadBatchForEdit(id: number) {
+		dialogService.cancel();
 		const u = new URL(apiRoot(), window.location.origin);
 		u.searchParams.set('mode', 'batch.get');
 		u.searchParams.set('batchId', String(id));
@@ -1060,19 +1016,22 @@
 			}[];
 		};
 		if (!masters) await loadMasters();
-		historyOpen = false;
 		editingBatchId = id;
 		storeIdStr = String(pack.batch.storeId);
 		storeLabel =
 			storeNameById[pack.batch.storeId] ?? `#${pack.batch.storeId}`;
 		draftLines = await Promise.all(
-			pack.lines.map(async (ln) =>
-				lineToDraft(
-					ln,
-					await fetchItemDisplayName(Number(ln.itemMasterId)),
-					pack.allocations ?? []
+			(
+				await Promise.all(
+					pack.lines.map(async (ln) =>
+						lineToDraft(
+							ln,
+							await fetchItemDisplayName(Number(ln.itemMasterId)),
+							pack.allocations ?? []
+						)
+					)
 				)
-			)
+			).map((draft) => enrichInternalDraftLine(draft))
 		);
 		await tick();
 		if (draftLines[0]) {
@@ -1081,21 +1040,16 @@
 	}
 
 	/** New batch + new batch number: copy this batch’s first line; start is after the latest line end for the visit. */
-	async function reorderAsNewBatch(sourceBatchId: number) {
+	async function reorderBatchById(
+		sourceBatchId: number
+	): Promise<boolean> {
 		if (!visitIdNum) {
 			toastService.addToast(
 				m.med_order_int_no_visit(),
 				StatusColorEnum.ERROR
 			);
-			return;
+			return false;
 		}
-		const c = await dialogService.open({
-			title: m.med_order_int_reorder_append_title(),
-			message: m.med_order_int_reorder_append_confirm(),
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!c.confirmed) return;
-		isBusy = true;
 		try {
 			const res = await fetch(apiRoot(), {
 				method: 'POST',
@@ -1113,22 +1067,14 @@
 				m.med_order_int_reorder_line_appended(),
 				StatusColorEnum.SUCCESS
 			);
-			await openHistory();
+			return true;
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_int_save_failed(), e);
-		} finally {
-			isBusy = false;
+			return false;
 		}
 	}
 
-	async function deleteHistoryBatch(id: number) {
-		const c = await dialogService.open({
-			title: m.med_order_int_delete_title(),
-			message: m.med_order_int_delete_confirm(),
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!c.confirmed) return;
-		isBusy = true;
+	async function deleteBatchById(id: number): Promise<boolean> {
 		try {
 			const res = await fetch(apiRoot(), {
 				method: 'POST',
@@ -1144,15 +1090,13 @@
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			historyRows = historyRows.filter((b) => b.id !== id);
 			if (editingBatchId === id) {
-				historyOpen = false;
 				resetEditing();
 			}
+			return true;
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_int_delete_failed(), e);
-		} finally {
-			isBusy = false;
+			return false;
 		}
 	}
 
@@ -1180,7 +1124,6 @@
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
 			);
-			historyOpen = false;
 			resetEditing();
 		} catch (e) {
 			toastService.addErrorToast(m.med_order_int_delete_failed(), e);
@@ -1240,9 +1183,9 @@
 		</DaisyUiCardBody>
 	</DaisyUiCard>
 {:else}
-	<div class="flex flex-col gap-5">
+	<div class="flex min-w-0 flex-col gap-5 overflow-x-hidden">
 		<div
-			class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[30%_70%] lg:gap-5"
+			class="grid min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,30%)_minmax(0,70%)] lg:gap-5"
 		>
 			<div class="flex min-h-0 min-w-0">
 				<MedicationOrderVisitPrescriptionNotesCard
@@ -1258,10 +1201,10 @@
 							{m.medication_order_internal_sales_title()}
 						</DaisyUiCardBodyTitle>
 						<div
-							class="mx-auto flex w-full max-w-7xl flex-col gap-5 sm:gap-6"
+							class="flex w-full min-w-0 flex-col gap-5 sm:gap-6"
 						>
 				<div
-					class="grid grid-cols-1 gap-6 border-b border-base-200 pb-5 lg:grid-cols-3 lg:items-start"
+					class="grid min-w-0 grid-cols-1 gap-6 border-b border-base-200 pb-5 lg:grid-cols-3 lg:items-start"
 				>
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
@@ -1308,26 +1251,7 @@
 								inputId="int-sales-item"
 								className="w-full"
 							/>
-							{#if selectedItem?.displayPrice != null}
-								<p class="text-xs text-base-content/70">
-									{m.med_order_int_price()}: {selectedItem.displayPrice}
-								</p>
-							{/if}
 						</div>
-					{#if selectedItem && storeId > 0}
-						<div class="lg:col-span-3">
-							<MedicationOrderInventoryFields
-								{hospitalId}
-								storeId={storeId}
-								itemId={selectedItem.id}
-								itemLabel={selectedItem.itemName ?? ''}
-								bind:batchAllocations
-								bind:iumList
-								bind:issueQtyPurchase
-								bind:unitSalePrice
-							/>
-						</div>
-					{/if}
 					</div>
 
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
@@ -1501,6 +1425,25 @@
 					</div>
 				</div>
 
+				{#if selectedItem && storeId > 0}
+					<div class="min-w-0">
+						<MedicationOrderInventoryFields
+							{hospitalId}
+							storeId={storeId}
+							itemId={selectedItem.id}
+							itemLabel={selectedItem.itemName ?? ''}
+							pricingModule={INTERNAL_SALES_PRICING_MODULE}
+							outUnitMode="selectable"
+							bind:batchAllocations
+							bind:iumList
+							bind:itemUnitMasterIdStr
+							bind:qtyOut
+							bind:outUnitIdStr
+							bind:unitSalePrice
+						/>
+					</div>
+				{/if}
+
 				<div
 					class="flex flex-wrap gap-2 border-t border-base-300 pt-4 sm:pt-5"
 				>
@@ -1530,12 +1473,12 @@
 			</div>
 		</div>
 
-		<DaisyUiCard>
-			<DaisyUiCardBody className="gap-2">
+		<DaisyUiCard className="min-w-0">
+			<DaisyUiCardBody className="min-w-0 gap-2">
 			<h2 class="text-base font-semibold">
 				{m.med_order_int_draft_title()}
 			</h2>
-			<div class="min-h-[14rem] min-w-0 {TableEnum.HEIGHT_SMALL}">
+			<div class="flex min-h-[14rem] min-w-0 flex-col">
 				<MariTable
 					rows={draftLines}
 					columns={draftColumns}
@@ -1552,132 +1495,44 @@
 					bind:columnFilters={draftColumnFilters}
 				>
 					{#snippet rowActions(row, localIdx)}
-						<td class="w-0 text-right whitespace-nowrap">
-							<div
-								class="inline-flex max-w-full flex-nowrap items-center justify-end gap-0.5"
+						<MariTableRowActionGroup>
+							<MariTableIconAction
+								tooltipText={m.med_order_int_tooltip_move_up()}
+								color="info"
+								disabled={globalDraftIndex(localIdx) <= 0}
+								onClick={() =>
+									moveDraftLine(globalDraftIndex(localIdx), -1)}
 							>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-xs d-btn-square"
-									title={m.med_order_int_move_up_aria()}
-									disabled={globalDraftIndex(localIdx) <= 0}
-									onClick={() =>
-										moveDraftLine(globalDraftIndex(localIdx), -1)}
-								>
+								{#snippet icon()}
 									<LucideChevronRight className="size-4 -rotate-90" />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-xs d-btn-square"
-									title={m.med_order_int_move_down_aria()}
-									disabled={globalDraftIndex(localIdx) >=
-										draftLines.length - 1}
-									onClick={() =>
-										moveDraftLine(globalDraftIndex(localIdx), 1)}
-								>
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText={m.med_order_int_tooltip_move_down()}
+								color="info"
+								disabled={globalDraftIndex(localIdx) >=
+									draftLines.length - 1}
+								onClick={() =>
+									moveDraftLine(globalDraftIndex(localIdx), 1)}
+							>
+								{#snippet icon()}
 									<LucideChevronRight className="size-4 rotate-90" />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-xs d-btn-square"
-									title={m.delete_data()}
-									onClick={() => removeDraft((row as DraftLine)._key)}
-								>
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText={m.med_order_int_tooltip_delete()}
+								color="error"
+								onClick={() => removeDraft((row as DraftLine)._key)}
+							>
+								{#snippet icon()}
 									<LucideTrash2 className="size-4" />
-								</DaisyUiButton>
-							</div>
-						</td>
+								{/snippet}
+							</MariTableIconAction>
+						</MariTableRowActionGroup>
 					{/snippet}
 				</MariTable>
 			</div>
 			</DaisyUiCardBody>
 		</DaisyUiCard>
 	</div>
-{/if}
-
-{#if historyOpen}
-	<dialog class="d-modal-open d-modal" open>
-		<div
-			class="d-modal-box flex max-h-[90vh] min-h-0 max-w-[min(96rem,98vw)] flex-col overflow-y-auto"
-		>
-			<h3 class="d-modal-title text-lg font-semibold">
-				{m.med_order_int_history()}
-			</h3>
-			<div class="flex min-h-0 min-w-0 flex-1 flex-col py-2">
-				<div
-					class="min-h-[12rem] w-full min-w-0 {TableEnum.HEIGHT_SMALL}"
-				>
-					<MariTable
-						rows={historyRows}
-						columns={historyColumns}
-						bind:currentPage={historyCurrentPage}
-						bind:pageSize={historyPageSizeStr}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage={m.med_order_int_no_batches()}
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						totalRowCount={historyRows.length}
-						fillParent={true}
-						bind:columnFilters={historyColumnFilters}
-						on:refresh={openHistory}
-					>
-						{#snippet rowActions(row, _localIdx)}
-							<td class="text-right">
-								<div
-									class="inline-flex max-w-full flex-nowrap items-center justify-end gap-1"
-								>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										title={m.edit_data()}
-										disabled={isBusy}
-										onClick={() =>
-											loadBatchForEdit(
-												(row as MedicationOrderBatchHistoryRow).id
-											)}
-									>
-										<LucidePencil className="size-4" />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										title={m.med_order_int_reorder_stagger_aria()}
-										disabled={isBusy}
-										onClick={() =>
-											void reorderAsNewBatch(
-												(row as MedicationOrderBatchHistoryRow).id
-											)}
-									>
-										<LucideShoppingBasket className="size-4" />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										title={m.delete_data()}
-										disabled={isBusy}
-										onClick={() =>
-											deleteHistoryBatch(
-												(row as MedicationOrderBatchHistoryRow).id
-											)}
-									>
-										<LucideTrash2 className="size-4" />
-									</DaisyUiButton>
-								</div>
-							</td>
-						{/snippet}
-					</MariTable>
-				</div>
-			</div>
-			<div class="d-modal-action">
-				<button
-					type="button"
-					class="d-btn"
-					onclick={() => (historyOpen = false)}>{m.ok()}</button
-				>
-			</div>
-		</div>
-		<button
-			type="button"
-			class="d-modal-backdrop"
-			aria-label={m.med_order_dialog_close_aria()}
-			onclick={() => (historyOpen = false)}
-		></button>
-	</dialog>
 {/if}

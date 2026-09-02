@@ -14,8 +14,7 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import NewHospitalModal from '$lib/component/own/snippet/modal/NewHospitalModal.svelte';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
@@ -323,18 +322,10 @@
 									{m.enter()}
 								</DaisyUiButton>
 								{#if canManageHospitals}
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEditHospitalModal(row)}
-									>
-										<LucidePencil />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(row)}
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
+									<MariTableEditDeleteActions
+										onEdit={() => openEditHospitalModal(row)}
+										onDelete={() => handleDelete(row)}
+									/>
 								{/if}
 							</div>
 						{/snippet}

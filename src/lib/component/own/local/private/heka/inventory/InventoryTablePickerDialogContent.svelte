@@ -66,7 +66,7 @@
 			{#snippet rowActions(row, _index)}
 				<DaisyUiTooltip
 					tooltipText={m.inv_common_btn_select()}
-					className="d-tooltip-primary d-tooltip-right"
+					className="d-tooltip-primary d-tooltip-top"
 				>
 					<DaisyUiButton
 						type="button"

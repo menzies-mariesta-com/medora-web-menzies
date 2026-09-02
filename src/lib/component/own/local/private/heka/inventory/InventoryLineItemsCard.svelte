@@ -9,6 +9,8 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MariTable from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
@@ -147,49 +149,39 @@
 			enableColumnFilters={useColumnFilters}
 		>
 			{#snippet rowActions(row)}
-				<div class="flex items-center justify-center gap-1">
+				<MariTableRowActionGroup>
 					{#if showCloseLine && onCloseLine && (isCloseableFn ? isCloseableFn(row) : true)}
-						<DaisyUiTooltip
+						<MariTableIconAction
 							tooltipText={m.inv_line_items_tooltip_close_line()}
-							className="d-tooltip-warning d-tooltip-right"
+							color="warning"
+							onClick={() => onCloseLine?.(row)}
 						>
-							<DaisyUiButton
-								type="button"
-								className="d-btn-sm d-btn-ghost d-btn-warning"
-								onClick={() => onCloseLine?.(row)}
-							>
+							{#snippet icon()}
 								<LucideX className="size-5" />
-							</DaisyUiButton>
-						</DaisyUiTooltip>
+							{/snippet}
+						</MariTableIconAction>
 					{/if}
-					<DaisyUiTooltip
+					<MariTableIconAction
 						tooltipText={m.inv_line_items_tooltip_edit()}
-						className="d-tooltip-accent d-tooltip-right"
+						color="accent"
+						disabled={viewOnly}
+						onClick={() => onEditLine(row)}
 					>
-						<DaisyUiButton
-							type="button"
-							className="d-btn-sm d-btn-ghost d-btn-accent"
-							disabled={viewOnly}
-							onClick={() => onEditLine(row)}
-						>
+						{#snippet icon()}
 							<LucidePencil className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
+						{/snippet}
+					</MariTableIconAction>
+					<MariTableIconAction
 						tooltipText={m.inv_line_items_tooltip_delete()}
-						className="d-tooltip-error d-tooltip-right"
+						color="error"
+						disabled={viewOnly}
+						onClick={() => onDeleteLine((row as { key: string }).key)}
 					>
-						<DaisyUiButton
-							type="button"
-							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={viewOnly}
-							onClick={() =>
-								onDeleteLine((row as { key: string }).key)}
-						>
+						{#snippet icon()}
 							<LucideTrash2 className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-				</div>
+						{/snippet}
+					</MariTableIconAction>
+				</MariTableRowActionGroup>
 			{/snippet}
 		</MariTable>
 	</div>

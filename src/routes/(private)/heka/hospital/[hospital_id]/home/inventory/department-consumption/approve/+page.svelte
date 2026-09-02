@@ -185,7 +185,7 @@
 		<div class="mb-4 flex items-center gap-2">
 			<DaisyUiTooltip
 				tooltipText={m.inv_common_back_to_list()}
-				className="d-tooltip-ghost d-tooltip-right"
+				className="d-tooltip-ghost d-tooltip-top"
 			>
 				<DaisyUiButton
 					type="button"
@@ -234,7 +234,7 @@
 					<div class="flex flex-col items-center gap-1">
 						<DaisyUiTooltip
 							tooltipText={m.inv_common_view()}
-							className="d-tooltip-ghost d-tooltip-right"
+							className="d-tooltip-ghost d-tooltip-top"
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square"
@@ -248,7 +248,7 @@
 						{#if r.canApprove === true}
 							<DaisyUiTooltip
 								tooltipText={m.inv_dc_approve()}
-								className="d-tooltip-accent d-tooltip-right"
+								className="d-tooltip-accent d-tooltip-top"
 							>
 								<DaisyUiButton
 									className="d-btn-sm d-btn-ghost d-btn-square text-accent"
@@ -265,7 +265,7 @@
 							</DaisyUiTooltip>
 							<DaisyUiTooltip
 								tooltipText={m.inv_dc_reject()}
-								className="d-tooltip-error d-tooltip-right"
+								className="d-tooltip-error d-tooltip-top"
 							>
 								<DaisyUiButton
 									className="d-btn-sm d-btn-ghost d-btn-square text-error"

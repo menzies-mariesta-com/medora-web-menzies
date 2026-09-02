@@ -6,11 +6,9 @@
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
 	import MariTable, {
 		type MariTableColumn
@@ -958,38 +956,20 @@
 				>
 					{#snippet rowActions(row, rowIndex)}
 						{@const typedRow = row as DocumentSettingWithRelations}
-						<td class="w-32 shrink-0 text-right">
-							<div class="flex justify-end gap-1">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-xs"
-									onClick={() => startView(typedRow)}
-									disabled={deleteLock.pending}
-									loadingText=""
-								>
-									<LucideEye className="w-3 h-3" />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-xs d-btn-accent"
-									onClick={() => startEdit(typedRow)}
-									disabled={deleteLock.pending ||
-										isSystemSetting(typedRow)}
-									loadingText=""
-								>
-									<LucidePencil className="w-3 h-3" />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-xs d-btn-error"
-									onClick={() => handleDelete(typedRow)}
-									loading={deletingId === typedRow.id}
-									loadingText=""
-									disabled={deleteLock.pending ||
-										isLoading ||
-										isSystemSetting(typedRow)}
-								>
-									<LucideTrash2 className="w-3 h-3" />
-								</DaisyUiButton>
-							</div>
-						</td>
+						<MariTableViewEditDeleteActions
+							onView={() => startView(typedRow)}
+							onEdit={() => startEdit(typedRow)}
+							onDelete={() => handleDelete(typedRow)}
+							viewDisabled={deleteLock.pending}
+							editDisabled={deleteLock.pending || isSystemSetting(typedRow)}
+							deleteDisabled={deleteLock.pending ||
+								isLoading ||
+								isSystemSetting(typedRow)}
+							deleteLoading={deletingId === typedRow.id}
+							viewTooltip={m.view_data()}
+							editTooltip={m.edit_data()}
+							deleteTooltip={m.delete_data()}
+						/>
 					{/snippet}
 				</MariTable>
 			</div>

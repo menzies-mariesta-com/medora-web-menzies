@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { hekaHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
@@ -108,8 +107,17 @@
 			id: 'formula',
 			header: m.inv_pricing_template_formula(),
 			widthClass: 'min-w-[20rem]',
+			cellClass: 'whitespace-normal align-middle',
 			filterable: true,
-			format: (_v, row) => formulaSummary(row)
+			format: (_v, row) => formulaSummary(row),
+			cellComponentGetter: (row) => ({
+				component: PricingFormulaDisplay,
+				props: {
+					input: templateFormulaInput(row),
+					variant: 'block',
+					className: 'text-xs'
+				}
+			})
 		},
 		{
 			id: 'mslMarkupPercent',
@@ -314,36 +322,22 @@
 			);
 		}
 	}
-
-	const pricingConfigUrl = $derived(
-		hospitalId
-			? hekaHospitalPageUrl(hospitalId, 'home/inventory-setup/pricing-config')
-			: '#'
-	);
 </script>
 
 <div class="flex flex-col gap-4 p-4">
 	<div class="flex flex-wrap items-start justify-between gap-3">
-		<div>
-			<h1 class="text-xl font-semibold">{m.inv_pricing_template_title()}</h1>
-			<p class="text-sm opacity-70">{m.inv_pricing_template_subtitle()}</p>
-		</div>
-		<div class="flex flex-wrap gap-2">
-			<a href={pricingConfigUrl} class="d-btn d-btn-ghost d-btn-sm">
-				{m.inv_pricing_assignment_title()}
-			</a>
-			<DaisyUiButton
-				type="button"
-				className="d-btn-primary d-btn-sm"
-				onClick={() => {
-					resetForm();
-					showForm = true;
-				}}
-			>
-				<LucidePlus className="size-4" />
-				{m.inv_pricing_template_create()}
-			</DaisyUiButton>
-		</div>
+		<h1 class="text-xl font-semibold">{m.inv_pricing_template_title()}</h1>
+		<DaisyUiButton
+			type="button"
+			className="d-btn-primary d-btn-sm"
+			onClick={() => {
+				resetForm();
+				showForm = true;
+			}}
+		>
+			<LucidePlus className="size-4" />
+			{m.inv_pricing_template_create()}
+		</DaisyUiButton>
 	</div>
 
 	{#if showForm}

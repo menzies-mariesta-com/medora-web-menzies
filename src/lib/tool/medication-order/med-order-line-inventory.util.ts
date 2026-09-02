@@ -6,6 +6,11 @@ import {
 	issueQtyToPurchaseQtyNumber,
 	purchaseQtyToIssueQtyNumber
 } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
+import {
+	medOrderLineTotal,
+	outQtyToPurchaseQtyString,
+	purchaseQtyToOutQtyString
+} from '$lib/tool/inventory/med-order-out-qty.util';
 
 export async function hydrateMedOrderItemMeta(
 	hospitalId: string,
@@ -54,7 +59,13 @@ export async function loadMedOrderIumList(
 			: undefined;
 	if (!chosen && allowedRows.length > 0) chosen = allowedRows[0];
 	return {
-		iumList: chosen ? [chosen] : [],
+		iumList:
+			chosen != null
+				? [
+						chosen,
+						...allowedRows.filter((u) => u.id !== chosen.id)
+					]
+				: allowedRows,
 		itemUnitMasterId: chosen?.id ?? null
 	};
 }
@@ -127,15 +138,25 @@ export function allocateFefoPurchaseQty(
 	});
 }
 
-/** Apply FEFO when line purchase qty is set (sale qty field). */
+/** Apply FEFO when line sale qty (`qtyOut` in `outUnitId`) is set. */
 export function syncMedOrderFefoAllocations(input: {
 	batchAllocations: ConsumptionBatchAllocationDraft[];
-	issueQtyPurchase: string;
+	qtyOut: string;
+	outUnitId: number;
 	ium: ConsumptionDraftLineIum | null;
 }): ConsumptionBatchAllocationDraft[] {
-	const { batchAllocations, issueQtyPurchase, ium } = input;
-	if (!ium || batchAllocations.length === 0) return batchAllocations;
-	return allocateFefoPurchaseQty(batchAllocations, issueQtyPurchase, {
+	const { batchAllocations, qtyOut, outUnitId, ium } = input;
+	if (!ium || batchAllocations.length === 0 || outUnitId <= 0) {
+		return batchAllocations;
+	}
+	const purchaseQty = outQtyToPurchaseQtyString(qtyOut, outUnitId, {
+		purchaseUnitId: ium.purchaseUnitId,
+		issueUnitId: ium.issueUnitId,
+		purchaseConversionFactor: ium.purchaseConversionFactor,
+		issueConversionFactor: ium.issueConversionFactor
+	});
+	if (!purchaseQty) return batchAllocations;
+	return allocateFefoPurchaseQty(batchAllocations, purchaseQty, {
 		purchaseConversionFactor: ium.purchaseConversionFactor,
 		issueConversionFactor: ium.issueConversionFactor
 	});
@@ -182,10 +203,33 @@ export function applyDraftReservationsToLots(
 	});
 }
 
-/** Set line sale qty from the sum of per-batch purchase qty inputs. */
-export function syncIssueQtyFromAllocations(
-	allocations: ConsumptionBatchAllocationDraft[]
+/** Set line sale qty from batch allocations in the chosen out unit. */
+export function syncQtyOutFromAllocations(
+	allocations: ConsumptionBatchAllocationDraft[],
+	outUnitId: number,
+	ium: ConsumptionDraftLineIum | null
 ): string {
+	const purchaseTotal = sumAllocationPurchaseQty(allocations);
+	if (!purchaseTotal || !ium || outUnitId <= 0) return '';
+	return (
+		purchaseQtyToOutQtyString(purchaseTotal, outUnitId, {
+			purchaseUnitId: ium.purchaseUnitId,
+			issueUnitId: ium.issueUnitId,
+			purchaseConversionFactor: ium.purchaseConversionFactor,
+			issueConversionFactor: ium.issueConversionFactor
+		}) || ''
+	);
+}
+
+/** @deprecated Use {@link syncQtyOutFromAllocations}. */
+export function syncIssueQtyFromAllocations(
+	allocations: ConsumptionBatchAllocationDraft[],
+	outUnitId?: number,
+	ium?: ConsumptionDraftLineIum | null
+): string {
+	if (outUnitId != null && outUnitId > 0 && ium) {
+		return syncQtyOutFromAllocations(allocations, outUnitId, ium);
+	}
 	return sumAllocationPurchaseQty(allocations);
 }
 
@@ -203,20 +247,42 @@ export function sumAllocationPurchaseQty(
 export function validateMedOrderInventoryLine(input: {
 	batchAllocations: ConsumptionBatchAllocationDraft[];
 	ium: ConsumptionDraftLineIum | null;
-	issueQtyPurchase: string;
+	qtyOut: string;
+	outUnitId: number;
 	unitSalePrice: string;
 }): string | null {
-	const { batchAllocations, ium, issueQtyPurchase, unitSalePrice } =
+	const { batchAllocations, ium, qtyOut, outUnitId, unitSalePrice } =
 		input;
 	if (!ium) return 'Item unit is required';
+	if (outUnitId <= 0) return 'Sale unit is required';
+	if (
+		outUnitId !== ium.purchaseUnitId &&
+		outUnitId !== ium.issueUnitId
+	) {
+		return 'Sale unit must match item unit master';
+	}
 	const withQty = batchAllocations.filter(
 		(a) => Number(a.qtyPurchase) > 0
 	);
 	if (withQty.length === 0) {
 		return 'Enter quantity for at least one batch';
 	}
-	const sum = sumAllocationPurchaseQty(batchAllocations);
-	if (!sum || sum !== issueQtyPurchase.trim()) {
+	const sumPurchase = sumAllocationPurchaseQty(batchAllocations);
+	const expectedPurchase = outQtyToPurchaseQtyString(
+		qtyOut.trim(),
+		outUnitId,
+		{
+			purchaseUnitId: ium.purchaseUnitId,
+			issueUnitId: ium.issueUnitId,
+			purchaseConversionFactor: ium.purchaseConversionFactor,
+			issueConversionFactor: ium.issueConversionFactor
+		}
+	);
+	if (
+		!expectedPurchase ||
+		!sumPurchase ||
+		expectedPurchase.trim() !== sumPurchase.trim()
+	) {
 		return 'Line quantity must match batch allocations';
 	}
 	const factors = {
@@ -240,12 +306,6 @@ export function validateMedOrderInventoryLine(input: {
 	return null;
 }
 
-export function lineTotal(
-	issueQtyPurchase: string,
-	unitSalePrice: string
-): number {
-	const q = Number(issueQtyPurchase);
-	const p = Number(unitSalePrice);
-	if (!Number.isFinite(q) || !Number.isFinite(p)) return 0;
-	return Math.round(q * p * 100) / 100;
+export function lineTotal(qtyOut: string, unitSalePrice: string): number {
+	return medOrderLineTotal(qtyOut, unitSalePrice);
 }

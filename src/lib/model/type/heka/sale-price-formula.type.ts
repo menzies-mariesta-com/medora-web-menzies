@@ -53,7 +53,7 @@ export type SalePriceFormulaResult = {
 export type SalePriceFormulaIssueResult = {
 	unitSalePriceIssue: string;
 	unitEmpSalePriceIssue: string;
-	/** Per purchase unit (MO line totals use purchase qty). */
+	/** Per purchase unit (medication order line totals use purchase qty). */
 	unitSalePricePurchase: string;
 	unitEmpSalePricePurchase: string;
 };

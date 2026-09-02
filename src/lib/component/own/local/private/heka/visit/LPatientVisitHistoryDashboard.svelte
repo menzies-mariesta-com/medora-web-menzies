@@ -550,7 +550,7 @@
 										<div class="flex items-center gap-1">
 											<DaisyUiTooltip
 												tooltipText="Open case sheet"
-												className="d-tooltip-right"
+												className="d-tooltip-top"
 											>
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm d-btn-square"
@@ -575,7 +575,7 @@
 											</DaisyUiTooltip>
 											<DaisyUiTooltip
 												tooltipText={m.visit_history_print_visit_label()}
-												className="d-tooltip-right"
+												className="d-tooltip-top"
 											>
 												<DaisyUiButton
 													className="d-btn-ghost d-btn-sm d-btn-square"

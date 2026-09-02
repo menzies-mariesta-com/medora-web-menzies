@@ -64,6 +64,8 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.util';
 import { formatMoneyAmount } from '$lib/util/number-display.util';
 import { computeSalePriceAtTransactionDb } from '$lib/server/heka/inventory/sale-price.server';
+import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/heka/inv-pricing-module.type';
+import { unitSalePriceForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
 
 export type DiagnosisWithType = DiagnosisSchema & {
 	diagnosisType: DiagnosisTypeSchema | null;
@@ -1437,7 +1439,9 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			storeId: mob.storeId,
 			batchNo: mob.batchNo,
 			unitSalePrice: mol.unitSalePrice,
-			issueQtyPurchase: mol.issueQtyPurchase
+			qtyOut: mol.qtyOut,
+			outUnitId: mol.outUnitId,
+			itemUnitMasterId: mol.itemUnitMasterId
 		})
 		.from(mol)
 		.innerJoin(mob, eq(mol.batchId, mob.id))
@@ -1497,31 +1501,44 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	for (const r of rawLines) {
 		if (onClosed.has(r.id)) continue;
 
+		const outUnitId = Number(r.outUnitId ?? 0);
 		let unitPrice: string | null =
 			r.unitSalePrice != null ? String(r.unitSalePrice) : null;
 
 		const batchId = batchIdByLine.get(r.id);
-		if (batchId != null) {
+		if (batchId != null && outUnitId > 0 && r.itemUnitMasterId != null) {
 			try {
 				const computed = await computeSalePriceAtTransactionDb({
 					hospitalId,
 					batchId,
 					itemId: r.itemMasterId,
 					storeId: r.storeId,
-					module: 'BILLING'
+					module: INTERNAL_SALES_PRICING_MODULE
 				});
-				unitPrice = computed.unitSalePricePurchase;
+				const [ium] = await ensureDb()
+					.select({
+						purchaseUnitId: table.itemUnitMasterTable.purchaseUnitId,
+						issueUnitId: table.itemUnitMasterTable.issueUnitId
+					})
+					.from(table.itemUnitMasterTable)
+					.where(eq(table.itemUnitMasterTable.id, r.itemUnitMasterId))
+					.limit(1);
+				if (ium) {
+					unitPrice = unitSalePriceForOutUnit(computed, outUnitId, ium);
+				}
 			} catch {
-				// Fall back to MO snapshot when BILLING formula cannot resolve.
+				// Fall back to dispense snapshot when internal-sales formula cannot resolve.
 			}
 		}
 
-		const serviceUnit =
-			r.issueQtyPurchase != null &&
-			Number.isFinite(Number(r.issueQtyPurchase)) &&
-			Number(r.issueQtyPurchase) > 0
-				? Number(r.issueQtyPurchase)
-				: 1;
+		let serviceUnit = 1;
+		if (
+			r.qtyOut != null &&
+			Number.isFinite(Number(r.qtyOut)) &&
+			Number(r.qtyOut) > 0
+		) {
+			serviceUnit = Number(r.qtyOut);
+		}
 		out.push({
 			lineSource: 'medication_order_line',
 			id: r.id,

@@ -10,6 +10,17 @@ import {
 
 export { freeQtyToPurchaseUnitQty };
 
+/**
+ * Full landed GRN cost for stock display — line + invoice discount/tax,
+ * free qty in denominator. Not tied to sale pricing templates.
+ */
+export const ESTIMATED_PURCHASE_LANDED_COST_FLAGS: GrnPriceRuleFlags = {
+	includeDiscount: true,
+	includeTax: true,
+	includeFreeQtyInDenominator: true,
+	markupPercent: '0'
+};
+
 export const DEFAULT_BRANCH_PRICING_CONFIG: Omit<
 	BranchPricingConfigDto,
 	'hospitalId' | 'branchId'
