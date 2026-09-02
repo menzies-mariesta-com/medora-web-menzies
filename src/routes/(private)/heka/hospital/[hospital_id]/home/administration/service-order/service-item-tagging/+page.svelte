@@ -21,9 +21,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -1020,29 +1019,12 @@
 						>
 							{#snippet rowActions(row, rowIndex)}
 								{@const taggingRow = row as ServiceTaggingListRow}
-								<div class="flex items-center gap-2">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm d-btn-accent"
-										onClick={() => startEdit(taggingRow)}
-										disabled={isLoading ||
-											isSaving ||
-											deleteLock.pending}
-										loadingText=""
-									>
-										<LucidePencil className="size-4" />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm d-btn-error"
-										onClick={() => handleDelete(taggingRow)}
-										loading={deletingId === taggingRow.id}
-										loadingText=""
-										disabled={isLoading ||
-											isSaving ||
-											deleteLock.pending}
-									>
-										<LucideTrash2 className="size-4" />
-									</DaisyUiButton>
-								</div>
+								<MariTableEditDeleteActions
+									onEdit={() => startEdit(taggingRow)}
+									onDelete={() => handleDelete(taggingRow)}
+									disabled={isLoading || isSaving || deleteLock.pending}
+									deleteLoading={deletingId === taggingRow.id}
+								/>
 							{/snippet}
 						</MariTable>
 					</div>

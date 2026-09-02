@@ -9,13 +9,14 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import {
 		sumAllocationPurchaseQty,
-		syncMedOrderFefoAllocations
+		syncMedOrderFefoAllocations,
+		syncQtyOutFromAllocations
 	} from '$lib/tool/medication-order/med-order-line-inventory.util';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 
 	export type MedOrderBatchAllocDialogResult = {
 		batchAllocations: ConsumptionBatchAllocationDraft[];
-		issueQtyPurchase: string;
+		qtyOut: string;
 	};
 
 	let {
@@ -23,13 +24,15 @@
 		cancel,
 		itemLabel,
 		initialAllocations,
-		initialIssueQtyPurchase,
+		initialQtyOut,
+		outUnitId,
 		ium,
 		disabled = false
 	}: DialogSlotProps & {
 		itemLabel: string;
 		initialAllocations: ConsumptionBatchAllocationDraft[];
-		initialIssueQtyPurchase: string;
+		initialQtyOut: string;
+		outUnitId: number;
 		ium: ConsumptionDraftLineIum | null;
 		disabled?: boolean;
 	} = $props();
@@ -50,15 +53,18 @@
 	);
 
 	$effect(() => {
-		const qty = initialIssueQtyPurchase.trim();
-		if (!qty || !ium || batchAllocations.length === 0) return;
+		const qty = initialQtyOut.trim();
+		if (!qty || !ium || batchAllocations.length === 0 || outUnitId <= 0) {
+			return;
+		}
 		const hasAny = batchAllocations.some(
 			(a) => Number(a.qtyPurchase) > 0
 		);
 		if (hasAny) return;
 		batchAllocations = syncMedOrderFefoAllocations({
 			batchAllocations,
-			issueQtyPurchase: qty,
+			qtyOut: qty,
+			outUnitId,
 			ium
 		});
 	});
@@ -108,9 +114,11 @@
 		try {
 			const merged = batchAllocations.map((a) => ({ ...a }));
 			const total = sumAllocationPurchaseQty(merged);
+			const qtyOut =
+				syncQtyOutFromAllocations(merged, outUnitId, ium) || total;
 			confirm({
 				batchAllocations: merged,
-				issueQtyPurchase: total
+				qtyOut
 			} satisfies MedOrderBatchAllocDialogResult);
 		} finally {
 			saving = false;

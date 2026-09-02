@@ -10,6 +10,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { UserListRow } from '$lib/model/type/heka/ui-rows.type';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
@@ -261,34 +263,38 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const ownerRow = row as UserListRow}
-							<td class="text-right">
-								<div class="flex justify-end gap-2">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEditOwnerModal(ownerRow)}
-										loading={editingOwnerId === ownerRow.id}
-										disabled={createLock.pending ||
-											deleteLock.pending ||
-											(editLock.pending &&
-												editingOwnerId !== ownerRow.id)}
-										loadingText=""
-									>
-										<LucidePencil />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(ownerRow)}
-										loading={deletingOwnerId === ownerRow.id}
-										disabled={createLock.pending ||
-											editLock.pending ||
-											(deleteLock.pending &&
-												deletingOwnerId !== ownerRow.id)}
-										loadingText=""
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
-								</div>
-							</td>
+							<MariTableRowActionGroup>
+								<MariTableIconAction
+									tooltipText={m.mari_table_tooltip_edit()}
+									color="accent"
+									loading={editingOwnerId === ownerRow.id}
+									disabled={createLock.pending ||
+										deleteLock.pending ||
+										(editLock.pending &&
+											editingOwnerId !== ownerRow.id)}
+									loadingText=""
+									onClick={() => openEditOwnerModal(ownerRow)}
+								>
+									{#snippet icon()}
+										<LucidePencil className="size-4" />
+									{/snippet}
+								</MariTableIconAction>
+								<MariTableIconAction
+									tooltipText={m.mari_table_tooltip_delete()}
+									color="error"
+									loading={deletingOwnerId === ownerRow.id}
+									disabled={createLock.pending ||
+										editLock.pending ||
+										(deleteLock.pending &&
+											deletingOwnerId !== ownerRow.id)}
+									loadingText=""
+									onClick={() => handleDelete(ownerRow)}
+								>
+									{#snippet icon()}
+										<LucideTrash2 className="size-4" />
+									{/snippet}
+								</MariTableIconAction>
+							</MariTableRowActionGroup>
 						{/snippet}
 					</MariTable>
 				</div>

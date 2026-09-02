@@ -7,6 +7,8 @@
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideMoveUp from '$lib/component/own/library/lucide/LucideMoveUp.svelte';
 	import LucideMoveDown from '$lib/component/own/library/lucide/LucideMoveDown.svelte';
@@ -434,14 +436,17 @@
 			actionsVariant="none"
 		>
 			{#snippet rowActions(row)}
-				<div class="flex items-center gap-2">
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm"
+				<MariTableRowActionGroup>
+					<MariTableIconAction
+						tooltipText={m.mari_table_tooltip_edit()}
+						color="accent"
 						onClick={() => startEdit(row.purpose)}
 					>
-						<LucidePencil className="size-4" />
-					</DaisyUiButton>
-				</div>
+						{#snippet icon()}
+							<LucidePencil className="size-4" />
+						{/snippet}
+					</MariTableIconAction>
+				</MariTableRowActionGroup>
 			{/snippet}
 		</MariTable>
 	</div>

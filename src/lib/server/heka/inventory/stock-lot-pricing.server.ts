@@ -1,53 +1,32 @@
-import type { InvPricingModuleCode } from '$lib/model/type/heka/inv-pricing-module.type';
 import type { InventoryStockLotDto } from '$lib/model/type/heka/inventory-stock-lot.type';
 import type { GrnCostContext } from '$lib/model/type/heka/sale-price-formula.type';
-import type { PricingFormulaTemplateDto } from '$lib/model/type/heka/pricing-formula-template.type';
-import { computeFormulaCostPerPurchaseUnit } from '$lib/tool/inventory/sale-price-calculator.util';
+import { computeEstimatedPurchasePricePerIssueUnit } from '$lib/tool/inventory/estimated-purchase-price.util';
 import { loadGrnCostContextForLine } from './grn-cost-context.server';
-import { resolveTemplateForSaleDb } from './sale-price.server';
+import { resolveItemUnitMasterForItemPurchaseUnit } from './item-unit-inventory.server';
 
 type StockLotEstimatedCostInput = {
-	branchId: string;
 	goodsReceiptLineId: number | null;
-	purchaseUnitName: string | null;
+	itemId: number;
+	purchaseUnitId: number | null;
 };
 
-const DEFAULT_STOCK_LOT_PRICING_MODULE: InvPricingModuleCode = 'MO';
-
-/** Formula landed cost per purchase unit (no markups) for stock lot display. */
+/** Landed GRN cost per issue unit for stock lot display (no sale pricing template). */
 export async function enrichStockLotEstimatedCost(
 	hospitalId: string,
-	rows: StockLotEstimatedCostInput[],
-	module: InvPricingModuleCode = DEFAULT_STOCK_LOT_PRICING_MODULE
-): Promise<
-	Pick<
-		InventoryStockLotDto,
-		'estimatedPurchasePrice' | 'purchaseUnitName'
-	>[]
-> {
-	const templateCache = new Map<string, PricingFormulaTemplateDto>();
+	rows: StockLotEstimatedCostInput[]
+): Promise<Pick<InventoryStockLotDto, 'estimatedPurchasePrice'>[]> {
 	const contextCache = new Map<number, GrnCostContext>();
+	const iumCache = new Map<
+		string,
+		Awaited<ReturnType<typeof resolveItemUnitMasterForItemPurchaseUnit>>
+	>();
 
 	return Promise.all(
 		rows.map(async (row) => {
-			const purchaseUnitName = row.purchaseUnitName;
 			const grnLineId = row.goodsReceiptLineId;
-			if (grnLineId == null) {
-				return { estimatedPurchasePrice: null, purchaseUnitName };
-			}
-
-			let template = templateCache.get(row.branchId);
-			if (!template) {
-				try {
-					template = await resolveTemplateForSaleDb({
-						hospitalId,
-						branchId: row.branchId,
-						module
-					});
-					templateCache.set(row.branchId, template);
-				} catch {
-					return { estimatedPurchasePrice: null, purchaseUnitName };
-				}
+			const purchaseUnitId = row.purchaseUnitId;
+			if (grnLineId == null || purchaseUnitId == null) {
+				return { estimatedPurchasePrice: null };
 			}
 
 			let grnCostContext = contextCache.get(grnLineId);
@@ -59,29 +38,35 @@ export async function enrichStockLotEstimatedCost(
 					});
 					contextCache.set(grnLineId, grnCostContext);
 				} catch {
-					return { estimatedPurchasePrice: null, purchaseUnitName };
+					return { estimatedPurchasePrice: null };
 				}
 			}
 
-			const grnLine =
-				grnCostContext.lines[grnCostContext.targetLineIndex];
-			if (!grnLine) {
-				return { estimatedPurchasePrice: null, purchaseUnitName };
+			const iumKey = `${row.itemId}:${purchaseUnitId}`;
+			let iumRow = iumCache.get(iumKey);
+			if (!iumRow) {
+				try {
+					iumRow = await resolveItemUnitMasterForItemPurchaseUnit({
+						hospitalId,
+						itemId: row.itemId,
+						purchaseUnitId
+					});
+					iumCache.set(iumKey, iumRow);
+				} catch {
+					return { estimatedPurchasePrice: null };
+				}
 			}
 
-			const cost = computeFormulaCostPerPurchaseUnit(
-				template,
-				grnLine,
-				grnCostContext
+			const costIssue = computeEstimatedPurchasePricePerIssueUnit(
+				grnCostContext,
+				iumRow.ium.purchaseConversionFactor,
+				iumRow.ium.issueConversionFactor
 			);
-			if (!Number.isFinite(cost) || cost <= 0) {
-				return { estimatedPurchasePrice: null, purchaseUnitName };
+			if (costIssue == null) {
+				return { estimatedPurchasePrice: null };
 			}
 
-			return {
-				estimatedPurchasePrice: cost.toFixed(2),
-				purchaseUnitName
-			};
+			return { estimatedPurchasePrice: costIssue.toFixed(2) };
 		})
 	);
 }

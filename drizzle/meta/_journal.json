@@ -92,6 +92,9 @@
     { "idx": 82, "version": "7", "when": 1780511600000, "tag": "0086_drop_grn_sale_price_columns", "breakpoints": true },
     { "idx": 83, "version": "7", "when": 1780511700000, "tag": "0087_pricing_formula_template_module", "breakpoints": true },
     { "idx": 84, "version": "7", "when": 1780511800000, "tag": "0088_pricing_formula_template_drop_module", "breakpoints": true },
-    { "idx": 85, "version": "7", "when": 1780511900000, "tag": "0089_pricing_formula_template_markup_flags", "breakpoints": true }
+    { "idx": 85, "version": "7", "when": 1780511900000, "tag": "0089_pricing_formula_template_markup_flags", "breakpoints": true },
+    { "idx": 86, "version": "7", "when": 1780512000000, "tag": "0095_pricing_module_is_es_dc", "breakpoints": true },
+    { "idx": 87, "version": "7", "when": 1780512100000, "tag": "0096_pricing_assignment_price_unit", "breakpoints": true },
+    { "idx": 88, "version": "7", "when": 1780512200000, "tag": "0097_medication_order_qty_out", "breakpoints": true }
   ]
 }

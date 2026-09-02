@@ -48,7 +48,7 @@ describe('applyFormulaSlot', () => {
 describe('computeSalePriceFromFormula', () => {
 	it('applies MSL, item, and store markups in order', () => {
 		const r = computeSalePriceFromFormula({
-			module: 'MO',
+			module: 'IS',
 			branchId: 'b1',
 			storeId: 1,
 			itemId: 1,
@@ -78,7 +78,7 @@ describe('computeSalePriceFromFormula', () => {
 
 	it('skips item and store markup when template flags are off', () => {
 		const r = computeSalePriceFromFormula({
-			module: 'MO',
+			module: 'IS',
 			branchId: 'b1',
 			storeId: 1,
 			itemId: 1,
@@ -107,7 +107,7 @@ describe('computeSalePriceFromFormula', () => {
 			taxPercent: 7
 		};
 		const r = computeSalePriceFromFormula({
-			module: 'MO',
+			module: 'IS',
 			branchId: 'b1',
 			storeId: 1,
 			itemId: 1,

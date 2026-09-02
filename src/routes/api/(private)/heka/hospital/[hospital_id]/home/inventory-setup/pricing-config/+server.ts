@@ -10,6 +10,9 @@ import {
 	upsertModulePricingAssignment
 } from '$lib/server/heka/inventory/pricing-formula-assignment.server';
 import { getPricingFormulaTemplate } from '$lib/server/heka/inventory/pricing-formula-template.server';
+import { ensureDb } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { previewSalePrice } from '$lib/server/heka/inventory/sale-price.server';
 
 function parseModule(raw: string | null): InvPricingModuleCode {
@@ -19,7 +22,7 @@ function parseModule(raw: string | null): InvPricingModuleCode {
 	) {
 		return raw as InvPricingModuleCode;
 	}
-	throw error(400, 'module required (MO, DC, or BILLING)');
+	throw error(400, 'module required (IS, ES, or DC)');
 }
 
 function parseOptionalModule(
@@ -27,6 +30,19 @@ function parseOptionalModule(
 ): InvPricingModuleCode | undefined {
 	if (!raw?.trim()) return undefined;
 	return parseModule(raw.trim());
+}
+
+async function resolveBranchIdFromStore(
+	hospitalId: string,
+	storeId: number
+): Promise<string> {
+	const [store] = await ensureDb()
+		.select({ branchId: table.storeTable.branchId })
+		.from(table.storeTable)
+		.where(eq(table.storeTable.id, storeId))
+		.limit(1);
+	if (!store?.branchId) throw error(400, 'Store not found');
+	return store.branchId;
 }
 
 export const GET: RequestHandler = async (event) => {
@@ -46,12 +62,21 @@ export const GET: RequestHandler = async (event) => {
 		return json({ data: rows });
 	}
 
-	const branchId = event.url.searchParams.get('branchId')?.trim();
-	if (!branchId) throw error(400, 'branchId required');
+	const branchIdParam = event.url.searchParams.get('branchId')?.trim();
+	const storeIdRaw = event.url.searchParams.get('storeId');
+	const storeId =
+		storeIdRaw != null && storeIdRaw !== '' ? Number(storeIdRaw) : NaN;
+	let branchId = branchIdParam;
+	if (!branchId) {
+		if (!Number.isFinite(storeId)) {
+			throw error(400, 'branchId or storeId required');
+		}
+		branchId = await resolveBranchIdFromStore(hospitalId, storeId);
+	}
 
 	const module = event.url.searchParams.get('module');
 	if (!module?.trim()) {
-		throw error(400, 'module required (MO, DC, or BILLING)');
+		throw error(400, 'module required (IS, ES, or DC)');
 	}
 
 	const mod = parseModule(module);

@@ -446,7 +446,7 @@
 		<div class="mb-4 flex items-center gap-2">
 			<DaisyUiTooltip
 				tooltipText={m.inv_common_back_to_list()}
-				className="d-tooltip-ghost d-tooltip-right"
+				className="d-tooltip-ghost d-tooltip-top"
 			>
 				<DaisyUiButton
 					type="button"
@@ -604,7 +604,7 @@
 							{#if poAllowsLineClose && isLineClosable(row)}
 								<DaisyUiTooltip
 									tooltipText={m.inv_po_close_line()}
-									className="d-tooltip-warning d-tooltip-right"
+									className="d-tooltip-warning d-tooltip-top"
 								>
 									<DaisyUiButton
 										className="d-btn-sm d-btn-ghost d-btn-warning"

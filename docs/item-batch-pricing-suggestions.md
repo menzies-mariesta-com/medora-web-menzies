@@ -25,10 +25,10 @@ Use **`goods_receipt_line_id`**, not `goods_receipt_note_id`, for identity — o
 
 | Field | Source |
 |-------|--------|
-| `estimatedPurchasePrice` | Formula **cost** step per purchase unit (line + invoice disc/tax, free qty in denominator per template flags; **no** MSL/item/store markups). Uses MO module template for the store's branch. |
+| `estimatedPurchasePrice` | Landed GRN cost per **issue (stock) unit** — line + invoice discount/tax, free qty in denominator; **no** pricing template or sale markups. |
 | `purchaseUnitName` | Unit name from GRN line `unit_id` |
 
-Implementation: `stock-lot-pricing.server.ts` → `computeFormulaCostPerPurchaseUnit`.
+Implementation: `estimated-purchase-price.util.ts` → `computeEstimatedPurchasePricePerIssueUnit`.
 
 ### Legacy audit (still recommended)
 

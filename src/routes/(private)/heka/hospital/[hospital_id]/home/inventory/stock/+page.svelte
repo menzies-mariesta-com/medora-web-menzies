@@ -46,7 +46,6 @@
 		batchNo: string;
 		expiryDate: string | null;
 		estimatedPurchasePrice: string;
-		purchaseUnitName: string | null;
 		quantity: string;
 		issueUnitName?: string | null;
 		grnReceivedDate?: string | null;
@@ -122,7 +121,6 @@
 					batchNo: String(r.batchNo ?? ''),
 					expiryDate: (r.expiryDate as string) ?? null,
 					estimatedPurchasePrice: String(r.estimatedPurchasePrice ?? ''),
-					purchaseUnitName: (r.purchaseUnitName as string) ?? null,
 					quantity: String(r.quantity ?? '0'),
 					issueUnitName: (r.issueUnitName as string) ?? null,
 					grnReceivedDate: (r.grnReceivedDate as string) ?? null,
@@ -226,9 +224,9 @@
 						? String(row.estimatedPurchasePrice).trim()
 						: '';
 				if (!t) return '—';
-				const pu = (row.purchaseUnitName ?? '').trim();
+				const iu = (row.issueUnitName ?? '').trim();
 				const disp = trimInventoryNumericDisplay(t, 4);
-				return pu ? `${disp} / ${pu}` : disp;
+				return iu ? `${disp} / ${iu}` : disp;
 			}
 		},
 		{

@@ -381,7 +381,7 @@
 							<div class="flex justify-end gap-1">
 								<DaisyUiTooltip
 									tooltipText={m.inv_line_items_tooltip_edit()}
-									className="d-tooltip-ghost d-tooltip-right"
+									className="d-tooltip-ghost d-tooltip-top"
 								>
 									<DaisyUiButton
 										type="button"
@@ -394,7 +394,7 @@
 								</DaisyUiTooltip>
 								<DaisyUiTooltip
 									tooltipText={m.inv_line_items_tooltip_delete()}
-									className="d-tooltip-error d-tooltip-right"
+									className="d-tooltip-error d-tooltip-top"
 								>
 									<DaisyUiButton
 										type="button"

@@ -1346,7 +1346,7 @@
 				<div class="mb-4 flex items-center gap-2">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_back_to_list()}
-						className="d-tooltip-ghost d-tooltip-right"
+						className="d-tooltip-ghost d-tooltip-top"
 					>
 						<DaisyUiButton
 							type="button"
@@ -1416,7 +1416,7 @@
 									>
 									<DaisyUiTooltip
 										tooltipText={m.inv_common_remove_line()}
-										className="d-tooltip-error d-tooltip-right"
+										className="d-tooltip-error d-tooltip-top"
 									>
 										<DaisyUiButton
 											type="button"
@@ -1719,7 +1719,7 @@
 								<div class="flex flex-col items-center gap-1">
 									<DaisyUiTooltip
 										tooltipText={m.inv_line_items_tooltip_edit()}
-										className="d-tooltip-accent d-tooltip-right"
+										className="d-tooltip-accent d-tooltip-top"
 									>
 										<DaisyUiButton
 											type="button"
@@ -1732,7 +1732,7 @@
 									</DaisyUiTooltip>
 									<DaisyUiTooltip
 										tooltipText={m.inv_common_remove_line()}
-										className="d-tooltip-error d-tooltip-right"
+										className="d-tooltip-error d-tooltip-top"
 									>
 										<DaisyUiButton
 											type="button"

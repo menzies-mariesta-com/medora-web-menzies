@@ -17,6 +17,9 @@
 	import MariTable, {
 		type MariTableColumnsInput
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	/** Event payloads; matches MariTable’s untyped row wire-up. */
 	type Row = any;
@@ -208,58 +211,67 @@
 			>
 				{#snippet rowActions(row)}
 					{#if enableMoveAction}
-						<div class="flex items-center gap-2">
+						<MariTableRowActionGroup>
 							{#if crudShowView}
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
+								<MariTableIconAction
+									tooltipText={m.mari_table_tooltip_view()}
+									color="ghost"
 									onClick={() => dispatch('view', row)}
 								>
-									<LucideEye className="size-4" />
-								</DaisyUiButton>
+									{#snippet icon()}
+										<LucideEye className="size-4" />
+									{/snippet}
+								</MariTableIconAction>
 							{/if}
-
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-success"
+							<MariTableIconAction
+								tooltipText={m.mari_table_tooltip_edit()}
+								color="accent"
+								disabled={crudEditDisabled?.(row) ?? false}
 								onClick={() => dispatch('edit', row)}
 							>
-								<LucidePencil className="size-4" />
-							</DaisyUiButton>
-
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-error d-btn-sm"
+								{#snippet icon()}
+									<LucidePencil className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText={m.mari_table_crud_inactivate_tooltip()}
+								color="error"
+								disabled={crudDeleteDisabled?.(row) ?? false}
 								onClick={() => dispatch('delete', row)}
 							>
-								<LucideTrash2 className="size-4" />
-							</DaisyUiButton>
-
-							<DaisyUiTooltip
+								{#snippet icon()}
+									<LucideTrash2 className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
 								tooltipText={`move to ${moveToLabel || ''}`.trim()}
-								className="d-tooltip-bottom"
+								color="info"
+								disabled={!moveToFormCode}
+								onClick={() =>
+									dispatch('move', {
+										row,
+										toFormCode: moveToFormCode
+									})}
 							>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									disabled={!moveToFormCode}
-									onClick={() =>
-										dispatch('move', {
-											row,
-											toFormCode: moveToFormCode
-										})}
-								>
+								{#snippet icon()}
 									{#if moveDirection === 'up'}
 										<LucideChevronLeft className="size-4" />
 									{:else}
 										<LucideChevronRight className="size-4" />
 									{/if}
-								</DaisyUiButton>
-							</DaisyUiTooltip>
-						</div>
+								{/snippet}
+							</MariTableIconAction>
+						</MariTableRowActionGroup>
 					{:else if showRowActions && rowActionsVariant === 'view'}
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm"
+						<MariTableIconAction
+							tooltipText={m.mari_table_tooltip_view()}
+							color="ghost"
 							onClick={() => dispatch('view', row)}
 						>
-							<LucideEye className="size-4" />
-						</DaisyUiButton>
+							{#snippet icon()}
+								<LucideEye className="size-4" />
+							{/snippet}
+						</MariTableIconAction>
 					{/if}
 				{/snippet}
 			</MariTable>

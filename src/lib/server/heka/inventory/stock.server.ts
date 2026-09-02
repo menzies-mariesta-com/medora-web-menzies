@@ -10,7 +10,7 @@ import {
 } from './inventory-scope.server';
 import { enrichStockLotEstimatedCost } from './stock-lot-pricing.server';
 
-async function defaultIssueUnitNameByItemIds(
+export async function defaultIssueUnitNameByItemIds(
 	hospitalId: string,
 	itemIds: number[]
 ): Promise<Map<number, string | null>> {
@@ -169,7 +169,8 @@ export async function listStockLots(
 			branchId: table.storeTable.branchId,
 			grnReceivedDate: table.goodsReceiptNoteTable.receivedDate,
 			grnInvoiceNo: table.goodsReceiptNoteTable.invoiceNo,
-			purchaseUnitName: purchaseUnit.name
+			purchaseUnitName: purchaseUnit.name,
+			purchaseUnitId: table.goodsReceiptLineTable.unitId
 		})
 		.from(table.invStockTable)
 		.innerJoin(
@@ -217,9 +218,9 @@ export async function listStockLots(
 	const pricing = await enrichStockLotEstimatedCost(
 		input.hospitalId,
 		lotRows.map((r) => ({
-			branchId: r.branchId,
 			goodsReceiptLineId: r.batch.goodsReceiptLineId,
-			purchaseUnitName: r.purchaseUnitName
+			itemId: r.stock.itemId,
+			purchaseUnitId: r.purchaseUnitId
 		}))
 	);
 	return lotRows.map((r, i) => ({

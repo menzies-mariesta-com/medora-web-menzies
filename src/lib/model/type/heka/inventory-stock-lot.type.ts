@@ -7,7 +7,7 @@ export type InventoryStockLotDto = {
 	quantity: string;
 	batchNo: string | null;
 	expiryDate: string | null;
-	/** Landed cost per purchase unit (formula cost step, no markups). */
+	/** Landed GRN cost per issue (stock) unit — no sale pricing template. */
 	estimatedPurchasePrice: string | null;
 	purchaseUnitName?: string | null;
 	itemName?: string | null;
