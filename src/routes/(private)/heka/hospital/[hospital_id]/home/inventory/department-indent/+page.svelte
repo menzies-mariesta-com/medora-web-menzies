@@ -369,7 +369,7 @@
 				<div class="flex flex-row items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-top"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -382,7 +382,7 @@
 					{#if r.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING}
 						<DaisyUiTooltip
 							tooltipText={m.inv_btn_approve()}
-							className="d-tooltip-accent d-tooltip-top"
+							className="d-tooltip-accent"
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-accent"
@@ -395,7 +395,7 @@
 						</DaisyUiTooltip>
 						<DaisyUiTooltip
 							tooltipText={m.inv_btn_reject()}
-							className="d-tooltip-error d-tooltip-top"
+							className="d-tooltip-error"
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-error"
@@ -409,7 +409,7 @@
 					{/if}
 					<DaisyUiTooltip
 						tooltipText={m.inv_di_cancel()}
-						className="d-tooltip-error d-tooltip-top"
+						className="d-tooltip-error"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square text-error"

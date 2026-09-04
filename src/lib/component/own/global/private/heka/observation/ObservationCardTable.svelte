@@ -142,7 +142,7 @@
 			{#if addButtonVariant === 'add'}
 				<DaisyUiTooltip
 					tooltipText="Add"
-					className="d-tooltip-bottom"
+					className=""
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-xs d-btn-square"
@@ -154,7 +154,7 @@
 			{:else if addButtonVariant === 'redirect'}
 				<DaisyUiTooltip
 					tooltipText={redirectButtonText || title}
-					className="d-tooltip-bottom"
+					className=""
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-xs d-btn-square"

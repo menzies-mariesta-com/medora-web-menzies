@@ -32,9 +32,7 @@
 		icon: Snippet;
 	} = $props();
 
-	const tooltipClass = $derived(
-		`d-tooltip-${color} d-tooltip-top`.trim()
-	);
+	const tooltipClass = $derived(`d-tooltip-${color}`);
 
 	const buttonClass = $derived.by(() => {
 		const parts = ['d-btn-sm', 'd-btn-square', 'd-btn-ghost'];

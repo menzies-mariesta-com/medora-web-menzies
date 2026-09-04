@@ -308,7 +308,7 @@
 				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-top"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -322,7 +322,7 @@
 					{#if canPrint}
 						<DaisyUiTooltip
 							tooltipText="Print"
-							className="d-tooltip-ghost d-tooltip-top"
+							className="d-tooltip-ghost"
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square"
@@ -344,7 +344,7 @@
 							tooltipText={approveDisabled
 								? 'Approval not available (no permission for this level)'
 								: m.inv_nav_po_approval()}
-							className={`d-tooltip-top ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
+							className={` ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
 								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}

@@ -729,7 +729,7 @@
 	<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
 		<DaisyUiTooltip
 			tooltipText={tr(undefined, 'History')}
-			className="d-tooltip-left"
+			className=""
 		>
 			<DaisyUiButton
 				className="d-btn-outline d-btn-sm"
@@ -756,7 +756,7 @@
 						tooltipText={canCloseOpBill
 							? tr(msg.op_billing_bill_close, 'Bill close')
 							: closeBlockedTooltip()}
-						className="d-tooltip-left"
+						className=""
 					>
 						<DaisyUiButton
 							className="d-btn-outline d-btn-sm"
@@ -772,7 +772,7 @@
 
 					<DaisyUiTooltip
 						tooltipText={msg.op_billing_print_bill()}
-						className="d-tooltip-left"
+						className=""
 					>
 						<DaisyUiButton
 							className="d-btn-outline d-btn-sm gap-2"
@@ -847,7 +847,7 @@
 									msg.op_billing_discount_open,
 									'Discount'
 								)}
-								className="d-tooltip-left"
+								className=""
 							>
 								<DaisyUiButton
 									className="d-btn-primary d-btn-sm d-btn-circle"

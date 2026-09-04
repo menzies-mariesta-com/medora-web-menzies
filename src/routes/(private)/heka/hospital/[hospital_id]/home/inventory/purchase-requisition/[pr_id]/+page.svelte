@@ -455,7 +455,7 @@
 			<div class="flex items-center gap-2">
 				<DaisyUiTooltip
 					tooltipText={m.inv_common_back_to_list()}
-					className="d-tooltip-ghost d-tooltip-top"
+					className="d-tooltip-ghost"
 				>
 					<DaisyUiButton
 						type="button"

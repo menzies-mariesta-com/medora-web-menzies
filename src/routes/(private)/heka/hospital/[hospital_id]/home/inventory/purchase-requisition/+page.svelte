@@ -338,7 +338,7 @@
 <div class="mb-4 flex items-center justify-between">
 	<h1 class="text-lg font-semibold">{m.inv_page_pr_title()}</h1>
 	<DaisyUiTooltip
-		className="d-tooltip-left"
+		className=""
 		tooltipText={prCreateAllowed
 			? ''
 			: m.inv_pr_create_disabled_store_not_requisitable()}
@@ -403,7 +403,7 @@
 				<div class="flex items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-top"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -420,7 +420,7 @@
 							tooltipText={editDisabled
 								? 'Edit not available (only the creator can edit)'
 								: m.inv_pr_edit()}
-							className={`d-tooltip-top ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
+							className={` ${editDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
 								className={`d-btn-sm d-btn-ghost d-btn-square ${editDisabled ? '' : 'text-accent'}`}
@@ -439,7 +439,7 @@
 							tooltipText={approveDisabled
 								? 'Approval not available (no permission for this level)'
 								: m.inv_nav_pr_approval()}
-							className={`d-tooltip-top ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
+							className={` ${approveDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-accent'}`}
 						>
 							<DaisyUiButton
 								className={`d-btn-sm d-btn-ghost d-btn-square ${approveDisabled ? '' : 'text-accent'}`}
@@ -457,7 +457,7 @@
 						tooltipText={cancelDisabled
 							? 'Cancel not available (not allowed or already linked to PO)'
 							: m.inv_pr_cancel()}
-						className={`d-tooltip-top ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
+						className={` ${cancelDisabled ? 'd-tooltip-ghost cursor-not-allowed' : 'd-tooltip-error'}`}
 					>
 						<DaisyUiButton
 							className={`d-btn-sm d-btn-ghost d-btn-square ${cancelDisabled ? '' : 'text-error'}`}
