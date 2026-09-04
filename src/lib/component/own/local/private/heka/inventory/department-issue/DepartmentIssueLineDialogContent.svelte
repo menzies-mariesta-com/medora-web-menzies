@@ -12,6 +12,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
+	import { mapStockLotToBatchAllocationDraft } from '$lib/tool/inventory/map-stock-lot-to-batch-draft.util';
+	import type { InventoryStockLotDto } from '$lib/model/type/heka/inventory-stock-lot.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
 
 	type DeptIssueDraftLine = {
@@ -131,28 +133,10 @@
 				{ method: 'GET' }
 			);
 			if (!res.ok) throw new Error(String(res.status));
-			const rows = (await res.json()) as {
-				batchId: number;
-				batchNo: string | null;
-				expiryDate: string | null;
-				quantity: string;
-				salePrice?: string | null;
-				issueUnitName?: string | null;
-			}[];
+			const rows = (await res.json()) as InventoryStockLotDto[];
 			batchAllocations = rows
 				.filter((r) => Number(r.quantity) > 1e-9)
-				.map((r) => ({
-					batchId: r.batchId,
-					batchNo: String(r.batchNo ?? ''),
-					expiryDate: r.expiryDate ?? null,
-					stockIssueQty: String(r.quantity ?? '0'),
-					salePrice:
-						r.salePrice != null && String(r.salePrice).trim() !== ''
-							? String(r.salePrice)
-							: null,
-					issueUnitName: r.issueUnitName ?? null,
-					qtyPurchase: ''
-				}));
+				.map((r) => mapStockLotToBatchAllocationDraft(r));
 		} catch (e) {
 			toast.addToast(
 				m.inv_dc_batch(),
@@ -348,6 +332,7 @@
 			purchaseUnitLabel={purchaseUnitLabel || '—'}
 			issueUnitLabel={issueUnitLabel || ''}
 			disabled={draftLine.itemId == null || storeId == null}
+			showSalePrice={false}
 		/>
 	</div>
 </div>

@@ -63,6 +63,9 @@ import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server'
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.util';
 import { formatMoneyAmount } from '$lib/util/number-display.util';
+import { computeSalePriceAtTransactionDb } from '$lib/server/heka/inventory/sale-price.server';
+import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/heka/inv-pricing-module.type';
+import { unitSalePriceForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
 
 export type DiagnosisWithType = DiagnosisSchema & {
 	diagnosisType: DiagnosisTypeSchema | null;
@@ -1420,13 +1423,13 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 	const mob = table.medicationOrderBatchTable;
 	const mol = table.medicationOrderLineTable;
 	const im = table.itemMasterTable;
-	const inv = table.invStockTable;
-	const ib = table.itemBatchTable;
 
 	const onClosed =
 		await getMedicationOrderLineIdsOnClosedOpBillsForVisit({
 			visitId
 		});
+
+	const molAlloc = table.medicationOrderLineAllocationTable;
 
 	const rawLines = await ensureDb()
 		.select({
@@ -1436,7 +1439,9 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			storeId: mob.storeId,
 			batchNo: mob.batchNo,
 			unitSalePrice: mol.unitSalePrice,
-			issueQtyPurchase: mol.issueQtyPurchase
+			qtyOut: mol.qtyOut,
+			outUnitId: mol.outUnitId,
+			itemUnitMasterId: mol.itemUnitMasterId
 		})
 		.from(mol)
 		.innerJoin(mob, eq(mol.batchId, mob.id))
@@ -1466,65 +1471,74 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 		.limit(1);
 	if (sc?.name) subCategoryName = sc.name;
 
-	const pairSet = new Set<string>();
-	for (const r of rawLines) {
-		if (r.unitSalePrice == null) {
-			pairSet.add(`${r.storeId}:${r.itemMasterId}`);
-		}
-	}
-	const orPairs = [...pairSet]
-		.map((k) => {
-			const [s, i] = k.split(':').map((x) => Number(x)) as [
-				number,
-				number
-			];
-			return and(eq(inv.storeId, s), eq(inv.itemId, i))!;
-		})
-		.filter(Boolean);
+	const lineIds = rawLines.map((r) => r.id);
+	const allocRows =
+		lineIds.length === 0
+			? []
+			: await ensureDb()
+					.select({
+						lineId: molAlloc.lineId,
+						batchId: molAlloc.batchId,
+						qtyPurchase: molAlloc.qtyPurchase
+					})
+					.from(molAlloc)
+					.where(
+						and(
+							inArray(molAlloc.lineId, lineIds),
+							isNull(molAlloc.deletedAt)
+						)
+					);
 
-	const priceByPair = new Map<string, string | null>();
-	if (orPairs.length > 0) {
-		const storeItemOr =
-			orPairs.length === 1 ? orPairs[0]! : or(...orPairs);
-		const priceRows = await ensureDb()
-			.select({
-				storeId: inv.storeId,
-				itemId: inv.itemId,
-				minP: min(ib.purchasePrice)
-			})
-			.from(inv)
-			.innerJoin(ib, eq(inv.batchId, ib.id))
-			.where(
-				and(
-					eq(inv.hospitalId, hospitalId),
-					sql`cast(${inv.quantity} as numeric) > 0`,
-					storeItemOr
-				)
-			)
-			.groupBy(inv.storeId, inv.itemId);
-		for (const pr of priceRows) {
-			priceByPair.set(
-				`${pr.storeId}:${pr.itemId}`,
-				pr.minP != null ? String(pr.minP) : null
-			);
-		}
+	const batchIdByLine = new Map<number, number>();
+	for (const lineId of lineIds) {
+		const rows = allocRows.filter((a) => a.lineId === lineId);
+		const withQty = rows.find((a) => Number(a.qtyPurchase) > 0);
+		const batchId = withQty?.batchId ?? rows[0]?.batchId;
+		if (batchId != null) batchIdByLine.set(lineId, batchId);
 	}
 
 	const out: OpBillingPendingMedicationLineRow[] = [];
 	for (const r of rawLines) {
 		if (onClosed.has(r.id)) continue;
-		const k = `${r.storeId}:${r.itemMasterId}`;
-		const fallbackPrice = priceByPair.get(k) ?? '0';
-		const unitPrice =
-			r.unitSalePrice != null
-				? String(r.unitSalePrice)
-				: fallbackPrice;
-		const serviceUnit =
-			r.issueQtyPurchase != null &&
-			Number.isFinite(Number(r.issueQtyPurchase)) &&
-			Number(r.issueQtyPurchase) > 0
-				? Number(r.issueQtyPurchase)
-				: 1;
+
+		const outUnitId = Number(r.outUnitId ?? 0);
+		let unitPrice: string | null =
+			r.unitSalePrice != null ? String(r.unitSalePrice) : null;
+
+		const batchId = batchIdByLine.get(r.id);
+		if (batchId != null && outUnitId > 0 && r.itemUnitMasterId != null) {
+			try {
+				const computed = await computeSalePriceAtTransactionDb({
+					hospitalId,
+					batchId,
+					itemId: r.itemMasterId,
+					storeId: r.storeId,
+					module: INTERNAL_SALES_PRICING_MODULE
+				});
+				const [ium] = await ensureDb()
+					.select({
+						purchaseUnitId: table.itemUnitMasterTable.purchaseUnitId,
+						issueUnitId: table.itemUnitMasterTable.issueUnitId
+					})
+					.from(table.itemUnitMasterTable)
+					.where(eq(table.itemUnitMasterTable.id, r.itemUnitMasterId))
+					.limit(1);
+				if (ium) {
+					unitPrice = unitSalePriceForOutUnit(computed, outUnitId, ium);
+				}
+			} catch {
+				// Fall back to dispense snapshot when internal-sales formula cannot resolve.
+			}
+		}
+
+		let serviceUnit = 1;
+		if (
+			r.qtyOut != null &&
+			Number.isFinite(Number(r.qtyOut)) &&
+			Number(r.qtyOut) > 0
+		) {
+			serviceUnit = Number(r.qtyOut);
+		}
 		out.push({
 			lineSource: 'medication_order_line',
 			id: r.id,
@@ -1535,7 +1549,7 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			subCategoryName,
 			orderNo: r.batchNo?.trim() || null,
 			discount: null,
-			serviceAmount: unitPrice,
+			serviceAmount: unitPrice ?? '0',
 			serviceTaxAmount: '0',
 			serviceUnit
 		});

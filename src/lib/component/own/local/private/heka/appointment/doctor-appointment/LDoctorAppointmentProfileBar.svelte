@@ -116,7 +116,7 @@
 			{#if selectedDoctorId || selectedBranchId}
 				<DaisyUiTooltip
 					tooltipText="Reset Doctor"
-					className="d-tooltip-left"
+					className=""
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-xs d-btn-circle"

@@ -1,4 +1,5 @@
 import { type RequestEvent } from '@sveltejs/kit';
+import { alias } from 'drizzle-orm/pg-core';
 import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -7,8 +8,9 @@ import {
 	assertStoreInHospital,
 	ensureHospitalInventoryAccess
 } from './inventory-scope.server';
+import { enrichStockLotEstimatedCost } from './stock-lot-pricing.server';
 
-async function defaultIssueUnitNameByItemIds(
+export async function defaultIssueUnitNameByItemIds(
 	hospitalId: string,
 	itemIds: number[]
 ): Promise<Map<number, string | null>> {
@@ -156,17 +158,42 @@ export async function listStockLots(
 		cond = and(cond, eq(table.invStockTable.itemId, input.itemId))!;
 	}
 
+	const purchaseUnit = alias(table.unitTable, 'purchase_unit');
+
 	const lotRows = await ensureDb()
 		.select({
 			stock: table.invStockTable,
 			batch: table.itemBatchTable,
 			itemName: table.itemMasterTable.itemName,
-			storeName: table.storeTable.storeName
+			storeName: table.storeTable.storeName,
+			branchId: table.storeTable.branchId,
+			grnReceivedDate: table.goodsReceiptNoteTable.receivedDate,
+			grnInvoiceNo: table.goodsReceiptNoteTable.invoiceNo,
+			purchaseUnitName: purchaseUnit.name,
+			purchaseUnitId: table.goodsReceiptLineTable.unitId
 		})
 		.from(table.invStockTable)
 		.innerJoin(
 			table.itemBatchTable,
 			eq(table.invStockTable.batchId, table.itemBatchTable.id)
+		)
+		.leftJoin(
+			table.goodsReceiptLineTable,
+			eq(
+				table.itemBatchTable.goodsReceiptLineId,
+				table.goodsReceiptLineTable.id
+			)
+		)
+		.leftJoin(
+			table.goodsReceiptNoteTable,
+			eq(
+				table.goodsReceiptLineTable.grnId,
+				table.goodsReceiptNoteTable.id
+			)
+		)
+		.leftJoin(
+			purchaseUnit,
+			eq(table.goodsReceiptLineTable.unitId, purchaseUnit.id)
 		)
 		.innerJoin(
 			table.storeTable,
@@ -188,8 +215,17 @@ export async function listStockLots(
 	const uom = await defaultIssueUnitNameByItemIds(input.hospitalId, [
 		...new Set(lotRows.map((r) => r.stock.itemId))
 	]);
-	return lotRows.map((r) => ({
+	const pricing = await enrichStockLotEstimatedCost(
+		input.hospitalId,
+		lotRows.map((r) => ({
+			goodsReceiptLineId: r.batch.goodsReceiptLineId,
+			itemId: r.stock.itemId,
+			purchaseUnitId: r.purchaseUnitId
+		}))
+	);
+	return lotRows.map((r, i) => ({
 		...r,
-		issueUnitName: uom.get(r.stock.itemId) ?? null
+		issueUnitName: uom.get(r.stock.itemId) ?? null,
+		...pricing[i]
 	}));
 }

@@ -417,7 +417,7 @@
 			{/if}
 			<DaisyUiTooltip
 				tooltipText="Notification"
-				className="d-tooltip-left"
+				className=""
 			>
 				<HekaNotifications
 					{hospitalId}
@@ -426,7 +426,7 @@
 			</DaisyUiTooltip>
 			<DaisyUiTooltip
 				tooltipText="Account"
-				className="d-tooltip-left"
+				className=""
 			>
 				<DaisyUiButton
 					className={staffDisplayName?.trim()
@@ -482,7 +482,7 @@
 	{#if isNavbarVisible}
 		<DaisyUiTooltip
 			tooltipText="close top panel"
-			className="d-tooltip-primary d-tooltip-right"
+			className="d-tooltip-primary"
 		>
 			<DaisyUiButton
 				className="d-btn-primary"
@@ -494,7 +494,7 @@
 	{:else}
 		<DaisyUiTooltip
 			tooltipText="open top panel"
-			className="d-tooltip-primary d-tooltip-right"
+			className="d-tooltip-primary"
 		>
 			<DaisyUiButton
 				className="d-btn-primary"
@@ -544,7 +544,7 @@
 	<div>
 		<DaisyUiTooltip
 			tooltipText="Home"
-			className="d-tooltip-secondary d-tooltip-left"
+			className="d-tooltip-secondary"
 		>
 			<DaisyUiButton
 				className="d-btn-secondary d-btn-square"
@@ -562,7 +562,7 @@
 	<div>
 		<DaisyUiTooltip
 			tooltipText="Search (Ctrl+K)"
-			className="d-tooltip-secondary d-tooltip-left"
+			className="d-tooltip-secondary"
 		>
 			<DaisyUiButton
 				className="d-btn-secondary d-btn-square"

@@ -107,7 +107,7 @@ export function buildOpBillingPrintBodyHtml(opts: {
 
 export type MedOrderReceiptPrintLine = {
 	itemName?: string | null;
-	issueQtyPurchase: string | number;
+	qtyOut: string | number;
 	unitSalePrice: string | number;
 	lineTotal: string | number;
 };
@@ -130,7 +130,7 @@ export function buildMedOrderReceiptBodyHtml(opts: {
 	const rows = opts.lines
 		.map(
 			(ln) =>
-				`<tr><td>${escapeHtml(String(ln.itemName ?? '—'))}</td><td>${escapeHtml(String(ln.issueQtyPurchase))}</td><td>${escapeHtml(String(ln.unitSalePrice))}</td><td>${escapeHtml(String(ln.lineTotal))}</td></tr>`
+				`<tr><td>${escapeHtml(String(ln.itemName ?? '—'))}</td><td>${escapeHtml(String(ln.qtyOut))}</td><td>${escapeHtml(String(ln.unitSalePrice))}</td><td>${escapeHtml(String(ln.lineTotal))}</td></tr>`
 		)
 		.join('');
 

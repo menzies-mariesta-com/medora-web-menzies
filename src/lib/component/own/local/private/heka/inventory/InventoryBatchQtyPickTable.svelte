@@ -83,6 +83,21 @@
 
 	let columnFilters = $state<Record<string, string>>({});
 
+	const showGrnReceipt = $derived(
+		allocations.some(
+			(a) =>
+				(a.grnReceivedDate?.trim() ?? '') !== '' ||
+				(a.grnInvoiceNo?.trim() ?? '') !== ''
+		)
+	);
+
+	function grnReceiptLabel(row: ConsumptionBatchAllocationDraft): string {
+		const date = row.grnReceivedDate?.trim() ?? '';
+		const inv = row.grnInvoiceNo?.trim() ?? '';
+		if (date && inv) return `${date} · ${inv}`;
+		return date || inv || '—';
+	}
+
 	const columns = $derived.by(() => {
 		const base: MariTableColumn<ConsumptionBatchAllocationDraft>[] = [
 			{
@@ -99,15 +114,27 @@
 				filterable: false,
 				cellClass: 'align-middle whitespace-nowrap',
 				format: (_value, row) => row.expiryDate ?? '—'
-			},
-			{
-				id: 'stockIssueQty',
-				header: m.inv_dc_batch_table_stock(),
-				filterable: false,
-				cellClass: 'align-middle whitespace-nowrap',
-				format: (_value, row) => stockDisplay(row)
 			}
 		];
+
+		if (showGrnReceipt) {
+			base.push({
+				id: 'grnReceivedDate',
+				header: m.inv_stock_col_grn_receipt(),
+				filterable: true,
+				filterType: 'text',
+				cellClass: 'align-middle whitespace-nowrap text-xs',
+				format: (_value, row) => grnReceiptLabel(row)
+			});
+		}
+
+		base.push({
+			id: 'stockIssueQty',
+			header: m.inv_dc_batch_table_stock(),
+			filterable: false,
+			cellClass: 'align-middle whitespace-nowrap',
+			format: (_value, row) => stockDisplay(row)
+		});
 
 		if (showSalePrice) {
 			base.push({

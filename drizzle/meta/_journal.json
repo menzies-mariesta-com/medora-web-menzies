@@ -84,6 +84,17 @@
     { "idx": 74, "version": "7", "when": 1780510870000, "tag": "0078_inv_branch_pricing_composable", "breakpoints": true },
     { "idx": 75, "version": "7", "when": 1780510900000, "tag": "0079_consultation_module", "breakpoints": true },
     { "idx": 76, "version": "7", "when": 1780511000000, "tag": "0080_cpoe_prescription_note", "breakpoints": true },
-    { "idx": 77, "version": "7", "when": 1780511100000, "tag": "0081_inv_department_consumption_line_emp_sale_price", "breakpoints": true }
+    { "idx": 77, "version": "7", "when": 1780511100000, "tag": "0081_inv_department_consumption_line_emp_sale_price", "breakpoints": true },
+    { "idx": 78, "version": "7", "when": 1780511200000, "tag": "0082_item_batch_grn_provenance", "breakpoints": true },
+    { "idx": 79, "version": "7", "when": 1780511300000, "tag": "0083_item_master_markup", "breakpoints": true },
+    { "idx": 80, "version": "7", "when": 1780511400000, "tag": "0084_store_markup", "breakpoints": true },
+    { "idx": 81, "version": "7", "when": 1780511500000, "tag": "0085_inv_pricing_formula_template", "breakpoints": true },
+    { "idx": 82, "version": "7", "when": 1780511600000, "tag": "0086_drop_grn_sale_price_columns", "breakpoints": true },
+    { "idx": 83, "version": "7", "when": 1780511700000, "tag": "0087_pricing_formula_template_module", "breakpoints": true },
+    { "idx": 84, "version": "7", "when": 1780511800000, "tag": "0088_pricing_formula_template_drop_module", "breakpoints": true },
+    { "idx": 85, "version": "7", "when": 1780511900000, "tag": "0089_pricing_formula_template_markup_flags", "breakpoints": true },
+    { "idx": 86, "version": "7", "when": 1780512000000, "tag": "0095_pricing_module_is_es_dc", "breakpoints": true },
+    { "idx": 87, "version": "7", "when": 1780512100000, "tag": "0096_pricing_assignment_price_unit", "breakpoints": true },
+    { "idx": 88, "version": "7", "when": 1780512200000, "tag": "0097_medication_order_qty_out", "breakpoints": true }
   ]
 }

@@ -6,11 +6,12 @@
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
 	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
 	import GrnFromPoLineDialogContent from '$lib/component/own/local/private/heka/inventory/grn/GrnFromPoLineDialogContent.svelte';
 	import GrnDirectLineDialogContent from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLineDialogContent.svelte';
 	import GrnDirectLinesCard from '$lib/component/own/local/private/heka/inventory/grn/GrnDirectLinesCard.svelte';
+	import GrnInvoiceChargeFields from '$lib/component/own/local/private/heka/inventory/grn/GrnInvoiceChargeFields.svelte';
+	import GrnFormFieldRow from '$lib/component/own/local/private/heka/inventory/grn/GrnFormFieldRow.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/heka/inventory/InventoryTablePickerDialogContent.svelte';
 	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
@@ -38,7 +39,6 @@
 		trimInventoryNumericDisplay,
 		trimMetricQtyDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -87,6 +87,16 @@
 
 	const toastService = new ToastService();
 
+	const grnSectionPanel =
+		'h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm';
+	const grnSectionTitle =
+		'mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase';
+	const grnFieldsStack = 'flex min-w-0 flex-col gap-4';
+	const grnHeaderGridDirect =
+		'mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch';
+	const grnHeaderGridFromPo =
+		'mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch';
+
 	/** Bound line/header fields may be null at runtime (e.g. cleared date input). */
 	function trimField(v: unknown): string {
 		if (v == null) return '';
@@ -96,7 +106,7 @@
 	type GrnLineTableRow = {
 		id: number;
 		poLineId: number;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -146,14 +156,25 @@
 	let invoiceNo = $state('');
 	let invoiceDate = $state('');
 	let invoiceAmount = $state('');
+	let invoiceDiscountAmount = $state('0');
+	let invoiceDiscountPercent = $state('0');
+	let invoiceTaxAmount = $state('0');
+	let invoiceTaxPercent = $state('0');
 	let invoicePhotoUrl = $state<string | null>(null);
 	let receivedByUserId = $state<string | null>(null);
+
+	function resetInvoiceCharges() {
+		invoiceDiscountAmount = '0';
+		invoiceDiscountPercent = '0';
+		invoiceTaxAmount = '0';
+		invoiceTaxPercent = '0';
+	}
 	let invoicePhotoUploading = $state(false);
 	let poLines = $state<PoLine[]>([]);
 	let lineForms = $state<
 		{
 			poLineId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			batchNo: string;
 			expiryDate: string;
 			purchasePrice: string;
@@ -164,12 +185,9 @@
 			discountPercent: string;
 			taxAmount: string;
 			taxPercent: string;
-			salePriceOverride: string;
-			empSalePriceOverride: string;
 		}[]
 	>([]);
 
-	let branchPricingConfig = $state<BranchPricingConfigDto | null>(null);
 	let submitting = $state(false);
 
 	type IumOpt = {
@@ -187,7 +205,7 @@
 		hits: { id: number; name: string | null }[];
 		itemId: number | null;
 		itemLabel: string;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -198,8 +216,6 @@
 		discountPercent: string;
 		taxAmount: string;
 		taxPercent: string;
-		salePriceOverride: string;
-		empSalePriceOverride: string;
 		iumList: IumOpt[];
 		itemUnitMasterId: number | null;
 	};
@@ -305,7 +321,7 @@
 	let grnFromPoLineDialogActive = $state(false);
 	let draftGrnFromPoLine = $state<{
 		poLineId: number;
-		receivedQty: string;
+		purchasedQty: string;
 		batchNo: string;
 		expiryDate: string;
 		purchasePrice: string;
@@ -337,7 +353,7 @@
 			hits: [],
 			itemId: null,
 			itemLabel: '',
-			receivedQty: '1',
+			purchasedQty: '1',
 			batchNo: '',
 			expiryDate: '',
 			purchasePrice: '0',
@@ -348,54 +364,9 @@
 			discountPercent: '0',
 			taxAmount: '0',
 			taxPercent: '0',
-			salePriceOverride: '',
-			empSalePriceOverride: '',
 			iumList: [],
 			itemUnitMasterId: null
 		};
-	}
-
-	async function loadBranchPricingConfigForBranch(branchId: string) {
-		if (!hospitalId || !branchId) {
-			branchPricingConfig = null;
-			return;
-		}
-		try {
-			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-config?branchId=${encodeURIComponent(branchId)}`,
-				{ credentials: 'include', cache: 'no-store' }
-			);
-			if (!res.ok) {
-				branchPricingConfig = null;
-				return;
-			}
-			const body = (await res.json()) as {
-				config: BranchPricingConfigDto;
-			};
-			branchPricingConfig = body.config;
-		} catch {
-			branchPricingConfig = null;
-		}
-	}
-
-	async function loadBranchPricingForStoreId(storeId: number) {
-		if (!hospitalId) return;
-		try {
-			const res = await fetch(
-				`/api/heka/hospital/${hospitalId}/home/inventory-setup/stores?id=${storeId}`,
-				{ credentials: 'include', cache: 'no-store' }
-			);
-			if (!res.ok) {
-				branchPricingConfig = null;
-				return;
-			}
-			const store = (await res.json()) as { branchId?: string | null };
-			const branchId = store?.branchId?.trim();
-			if (branchId) await loadBranchPricingConfigForBranch(branchId);
-			else branchPricingConfig = null;
-		} catch {
-			branchPricingConfig = null;
-		}
 	}
 
 	function purchaseUnitForDirectLine(
@@ -452,11 +423,11 @@
 			format: (_v, row) => conversionLabelDirect(row)
 		},
 		{
-			id: 'receivedQty',
-			header: m.inv_grn_line_received_qty(),
-			field: 'receivedQty',
+			id: 'purchasedQty',
+			header: m.inv_grn_line_purchased_qty(),
+			field: 'purchasedQty',
 			format: (_v, row) => {
-				const t = row.receivedQty?.trim();
+				const t = row.purchasedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
 			}
 		},
@@ -494,7 +465,6 @@
 				component: GrnDirectLineDialogContent,
 				props: {
 					draftDirectLine,
-					pricingConfig: branchPricingConfig,
 					searchItemsFn: searchGrnItems,
 					onPickItem: pickDraftDirectItem,
 					onSyncFreeUnit: () => {
@@ -526,7 +496,6 @@
 				component: GrnDirectLineDialogContent,
 				props: {
 					draftDirectLine,
-					pricingConfig: branchPricingConfig,
 					searchItemsFn: searchGrnItems,
 					onPickItem: pickDraftDirectItem,
 					onSyncFreeUnit: () => {
@@ -557,12 +526,12 @@
 			return false;
 		}
 		ensureDirectFreeUnit(draftDirectLine);
-		const rq = trimField(draftDirectLine.receivedQty);
+		const rq = trimField(draftDirectLine.purchasedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 			toastService.addToast(
 				'Could not save line',
 				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
+				'Invalid purchased quantity.'
 			);
 			return false;
 		}
@@ -581,7 +550,7 @@
 			);
 			return false;
 		}
-		const saved = { ...draftDirectLine, receivedQty: rq };
+		const saved = { ...draftDirectLine, purchasedQty: rq };
 		if (editingDirectKey) {
 			directLines = directLines.map((l) =>
 				l.key === editingDirectKey ? saved : l
@@ -601,7 +570,7 @@
 		if (!row) return;
 		draftGrnFromPoLine = {
 			poLineId: row.poLineId,
-			receivedQty: row.receivedQty,
+			purchasedQty: row.purchasedQty,
 			batchNo: row.batchNo,
 			expiryDate: row.expiryDate,
 			purchasePrice: row.purchasePrice,
@@ -612,8 +581,6 @@
 			discountPercent: row.discountPercent,
 			taxAmount: row.taxAmount,
 			taxPercent: row.taxPercent,
-			salePriceOverride: row.salePriceOverride,
-			empSalePriceOverride: row.empSalePriceOverride,
 			iumList: []
 		};
 
@@ -686,7 +653,6 @@
 				component: GrnFromPoLineDialogContent,
 				props: {
 					draftGrnFromPoLine,
-					pricingConfig: branchPricingConfig,
 					onSaveAttempt: saveGrnFromPoLineDraft
 				}
 			});
@@ -701,12 +667,12 @@
 		const meta = poLines.find(
 			(l) => l.id === draftGrnFromPoLine!.poLineId
 		);
-		const rq = trimField(draftGrnFromPoLine.receivedQty);
+		const rq = trimField(draftGrnFromPoLine.purchasedQty);
 		if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 			toastService.addToast(
 				'Could not save line',
 				StatusColorEnum.ERROR,
-				'Invalid received quantity.'
+				'Invalid purchased quantity.'
 			);
 			return false;
 		}
@@ -726,7 +692,7 @@
 			return false;
 		}
 		patchLineForm(draftGrnFromPoLine.poLineId, {
-			receivedQty: rq,
+			purchasedQty: rq,
 			batchNo: draftGrnFromPoLine.batchNo,
 			expiryDate: draftGrnFromPoLine.expiryDate,
 			purchasePrice: draftGrnFromPoLine.purchasePrice,
@@ -736,9 +702,7 @@
 			discountAmount: draftGrnFromPoLine.discountAmount,
 			discountPercent: draftGrnFromPoLine.discountPercent,
 			taxAmount: draftGrnFromPoLine.taxAmount,
-			taxPercent: draftGrnFromPoLine.taxPercent,
-			salePriceOverride: draftGrnFromPoLine.salePriceOverride,
-			empSalePriceOverride: draftGrnFromPoLine.empSalePriceOverride
+			taxPercent: draftGrnFromPoLine.taxPercent
 		});
 		return true;
 	}
@@ -982,11 +946,6 @@
 					'number'
 			) {
 				receivingStore = storeBody as ReceivingStore;
-				if (receivingStore?.branchId) {
-					void loadBranchPricingConfigForBranch(
-						receivingStore.branchId
-					);
-				}
 			} else {
 				receivingStoreHint =
 					'Could not resolve receiving store for this PO (e.g. missing PR link for PR-backed orders).';
@@ -1013,7 +972,7 @@
 				const rem = Math.max(0, ordered - got);
 				return {
 					poLineId: ln.id,
-					receivedQty: rem > 0 ? String(rem) : '0',
+					purchasedQty: rem > 0 ? String(rem) : '0',
 					batchNo: '',
 					expiryDate: '',
 					purchasePrice: ln.unitPrice ?? '',
@@ -1023,9 +982,7 @@
 					discountAmount: '0',
 					discountPercent: '0',
 					taxAmount: '0',
-					taxPercent: '0',
-					salePriceOverride: '',
-					empSalePriceOverride: ''
+					taxPercent: '0'
 				};
 			});
 		} catch (e) {
@@ -1053,7 +1010,7 @@
 		const lines = lineForms
 			.map((f) => ({
 				poLineId: f.poLineId,
-				receivedQty: trimField(f.receivedQty),
+				purchasedQty: trimField(f.purchasedQty),
 				batchNo: trimField(f.batchNo) || null,
 				expiryDate: trimField(f.expiryDate) || null,
 				purchasePrice: trimField(f.purchasePrice) || null,
@@ -1063,17 +1020,14 @@
 				discountAmount: trimField(f.discountAmount) || null,
 				discountPercent: trimField(f.discountPercent) || null,
 				taxAmount: trimField(f.taxAmount) || null,
-				taxPercent: trimField(f.taxPercent) || null,
-				salePriceOverride: trimField(f.salePriceOverride) || null,
-				empSalePriceOverride:
-					trimField(f.empSalePriceOverride) || null
+				taxPercent: trimField(f.taxPercent) || null
 			}))
-			.filter((l) => Number(l.receivedQty) > 0);
+			.filter((l) => Number(l.purchasedQty) > 0);
 		if (lines.length === 0) {
 			toastService.addToast(
 				'Could not post GRN',
 				StatusColorEnum.ERROR,
-				'Enter received quantity on at least one line.'
+				'Enter purchased quantity on at least one line.'
 			);
 			return;
 		}
@@ -1103,6 +1057,12 @@
 						invoiceNo: trimField(invoiceNo) || null,
 						invoiceDate: trimField(invoiceDate) || null,
 						invoiceAmount: trimField(invoiceAmount) || null,
+						invoiceDiscountAmount:
+							trimField(invoiceDiscountAmount) || null,
+						invoiceDiscountPercent:
+							trimField(invoiceDiscountPercent) || null,
+						invoiceTaxAmount: trimField(invoiceTaxAmount) || null,
+						invoiceTaxPercent: trimField(invoiceTaxPercent) || null,
 						invoicePhotoUrl: invoicePhotoUrl?.trim() || null,
 						receivedBy: receivedByUserId ?? null,
 						lines
@@ -1125,6 +1085,7 @@
 			invoiceNo = '';
 			invoiceDate = '';
 			invoiceAmount = '';
+			resetInvoiceCharges();
 			invoicePhotoUrl = null;
 			receivedByUserId = layoutSessionUser.id;
 			await goBackToGrnList();
@@ -1148,7 +1109,7 @@
 		const lines: {
 			itemId: number;
 			unitId: number;
-			receivedQty: string;
+			purchasedQty: string;
 			batchNo: string | null;
 			expiryDate: string | null;
 			purchasePrice: string | null;
@@ -1169,7 +1130,7 @@
 				);
 				return;
 			}
-			const rq = trimField(ln.receivedQty);
+			const rq = trimField(ln.purchasedQty);
 			if (!Number.isFinite(Number(rq)) || Number(rq) <= 0) {
 				toastService.addToast(
 					'Could not post GRN',
@@ -1193,7 +1154,7 @@
 			lines.push({
 				itemId: ln.itemId,
 				unitId,
-				receivedQty: rq,
+				purchasedQty: rq,
 				batchNo: trimField(ln.batchNo) || null,
 				expiryDate: trimField(ln.expiryDate) || null,
 				purchasePrice: trimField(ln.purchasePrice) || null,
@@ -1203,10 +1164,7 @@
 				discountAmount: trimField(ln.discountAmount) || null,
 				discountPercent: trimField(ln.discountPercent) || null,
 				taxAmount: trimField(ln.taxAmount) || null,
-				taxPercent: trimField(ln.taxPercent) || null,
-				salePriceOverride: trimField(ln.salePriceOverride) || null,
-				empSalePriceOverride:
-					trimField(ln.empSalePriceOverride) || null
+				taxPercent: trimField(ln.taxPercent) || null
 			});
 		}
 		if (lines.length === 0) {
@@ -1232,6 +1190,12 @@
 						invoiceNo: trimField(invoiceNo) || null,
 						invoiceDate: trimField(invoiceDate) || null,
 						invoiceAmount: trimField(invoiceAmount) || null,
+						invoiceDiscountAmount:
+							trimField(invoiceDiscountAmount) || null,
+						invoiceDiscountPercent:
+							trimField(invoiceDiscountPercent) || null,
+						invoiceTaxAmount: trimField(invoiceTaxAmount) || null,
+						invoiceTaxPercent: trimField(invoiceTaxPercent) || null,
 						invoicePhotoUrl: invoicePhotoUrl?.trim() || null,
 						receivedBy: receivedByUserId ?? null,
 						lines
@@ -1253,6 +1217,7 @@
 			invoiceNo = '';
 			invoiceDate = '';
 			invoiceAmount = '';
+			resetInvoiceCharges();
 			invoicePhotoUrl = null;
 			receivedByUserId = layoutSessionUser.id;
 			await goBackToGrnList();
@@ -1282,14 +1247,6 @@
 		receivedByUserId = layoutSessionUser.id;
 	});
 
-	$effect(() => {
-		const storeId = selectedInventoryFromStoreId;
-		void hospitalId;
-		if (grnFormMode === 'direct' && storeId != null) {
-			void loadBranchPricingForStoreId(storeId);
-		}
-	});
-
 	function patchLineForm(
 		poLineId: number,
 		patch: Partial<(typeof lineForms)[number]>
@@ -1305,7 +1262,7 @@
 			return {
 				id: f.poLineId,
 				poLineId: f.poLineId,
-				receivedQty: f.receivedQty,
+				purchasedQty: f.purchasedQty,
 				batchNo: f.batchNo,
 				expiryDate: f.expiryDate,
 				purchasePrice: f.purchasePrice,
@@ -1340,11 +1297,11 @@
 				format: (_v, row) => row.itemUnitMasterConversion ?? '—'
 			},
 			{
-				id: 'receivedQty',
-				header: m.inv_grn_line_received_qty(),
-				field: 'receivedQty',
+				id: 'purchasedQty',
+				header: m.inv_grn_line_purchased_qty(),
+				field: 'purchasedQty',
 				format: (_v, row) => {
-					const t = row.receivedQty?.trim();
+					const t = row.purchasedQty?.trim();
 					return t ? trimMetricQtyDisplay(t) : '—';
 				}
 			},
@@ -1389,7 +1346,7 @@
 				<div class="mb-4 flex items-center gap-2">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_back_to_list()}
-						className="d-tooltip-ghost d-tooltip-right"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							type="button"
@@ -1407,114 +1364,85 @@
 				</div>
 			</fieldset>
 
-			{#snippet invoiceReceivingGrid(
-				innerGridClass: string,
-				fileColSpanClass: string
-			)}
-				<div class="grid min-w-0 gap-x-6 gap-y-4 {innerGridClass}">
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel className="shrink-0 sm:w-36"
-							>{m.inv_grn_invoice_no()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField
-								inputType="text"
-								bind:value={invoiceNo}
-							/>
-						</div>
-					</div>
+			{#snippet invoiceReceivingFields()}
+				<div class={grnFieldsStack}>
+					<GrnFormFieldRow label={m.inv_grn_invoice_no()}>
+						<DaisyUiInputField inputType="text" bind:value={invoiceNo} />
+					</GrnFormFieldRow>
 
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-					>
-						<DaisyUiLabel className="shrink-0 sm:w-36"
-							>{m.inv_grn_invoice_date()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
-							<DaisyUiInputField
-								inputType="date"
-								bind:value={invoiceDate}
-							/>
-						</div>
-					</div>
+					<GrnFormFieldRow label={m.inv_grn_invoice_date()}>
+						<DaisyUiInputField inputType="date" bind:value={invoiceDate} />
+					</GrnFormFieldRow>
 
-					<div
-						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					<GrnFormFieldRow label={m.inv_grn_invoice_amount()}>
+						<DaisyUiInputField
+							inputType="number"
+							step="0.01"
+							inputPlaceholderText="0.00"
+							bind:value={invoiceAmount}
+						/>
+					</GrnFormFieldRow>
+
+					<GrnInvoiceChargeFields
+						bind:invoiceDiscountAmount
+						bind:invoiceDiscountPercent
+						bind:invoiceTaxAmount
+						bind:invoiceTaxPercent
+					/>
+
+					<GrnFormFieldRow
+						label={m.inv_grn_invoice_file()}
+						alignStart={true}
 					>
-						<DaisyUiLabel className="shrink-0 sm:w-36"
-							>{m.inv_grn_invoice_amount()}</DaisyUiLabel
-						>
-						<div class="min-w-0 flex-1">
+						<div>
 							<input
-								type="number"
-								step="0.01"
-								inputmode="decimal"
-								class="d-input-bordered d-input w-full"
-								placeholder="0.00"
-								bind:value={invoiceAmount}
+								type="file"
+								class="d-file-input-bordered d-file-input w-full"
+								accept="image/*,application/pdf"
+								disabled={invoicePhotoUploading}
+								onchange={(e) => {
+									const input = e.currentTarget as HTMLInputElement;
+									const file = input.files?.[0] ?? null;
+									if (!file) return;
+									void uploadInvoicePhoto(file);
+									input.value = '';
+								}}
 							/>
-						</div>
-					</div>
 
-					<div class={fileColSpanClass}>
-						<div
-							class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3"
-						>
-							<DaisyUiLabel className="shrink-0 sm:w-36 sm:pt-2"
-								>{m.inv_grn_invoice_file()}</DaisyUiLabel
-							>
-							<div class="min-w-0 flex-1">
-								<input
-									type="file"
-									class="d-file-input-bordered d-file-input w-full"
-									accept="image/*,application/pdf"
-									disabled={invoicePhotoUploading}
-									onchange={(e) => {
-										const input = e.currentTarget as HTMLInputElement;
-										const file = input.files?.[0] ?? null;
-										if (!file) return;
-										void uploadInvoicePhoto(file);
-										input.value = '';
-									}}
-								/>
+							{#if invoicePhotoUrl}
+								<div class="mt-2 flex flex-wrap items-center gap-3">
+									<span class="text-sm text-base-content/70"
+										>{m.inv_grn_invoice_uploaded()}</span
+									>
+									<DaisyUiTooltip
+										tooltipText={m.inv_common_remove_line()}
+										className="d-tooltip-error"
+									>
+										<DaisyUiButton
+											type="button"
+											className="d-btn-sm d-btn-ghost d-btn-square text-error"
+											onClick={() => {
+												invoicePhotoUrl = null;
+											}}
+										>
+											<LucideTrash2 className="size-4" />
+										</DaisyUiButton>
+									</DaisyUiTooltip>
+								</div>
 
-								{#if invoicePhotoUrl}
-									<div class="mt-2 flex flex-wrap items-center gap-3">
-										<span class="text-sm text-base-content/70"
-											>{m.inv_grn_invoice_uploaded()}</span
-										>
-										<DaisyUiTooltip
-											tooltipText={m.inv_common_remove_line()}
-											className="d-tooltip-error d-tooltip-right"
-										>
-											<DaisyUiButton
-												type="button"
-												className="d-btn-sm d-btn-ghost d-btn-square text-error"
-												onClick={() => {
-													invoicePhotoUrl = null;
-												}}
-											>
-												<LucideTrash2 className="size-4" />
-											</DaisyUiButton>
-										</DaisyUiTooltip>
+								{#if isInvoicePhotoPreviewable}
+									<div class="mt-2">
+										<img
+											src={invoicePhotoUrl}
+											alt=""
+											class="max-h-24 rounded-box border border-base-200"
+											loading="lazy"
+										/>
 									</div>
-
-									{#if isInvoicePhotoPreviewable}
-										<div class="mt-2">
-											<img
-												src={invoicePhotoUrl}
-												alt=""
-												class="max-h-24 rounded-box border border-base-200"
-												loading="lazy"
-											/>
-										</div>
-									{/if}
 								{/if}
-							</div>
+							{/if}
 						</div>
-					</div>
+					</GrnFormFieldRow>
 				</div>
 			{/snippet}
 
@@ -1536,43 +1464,25 @@
 			{/snippet}
 
 			{#if grnFormMode === 'fromPo'}
-				<div
-					class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8"
-				>
-					<div class="lg:col-span-7 xl:col-span-6">
-						<div
-							class="rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
-						>
-							<p
-								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-							>
+				<div class={grnHeaderGridFromPo}>
+					<div class="min-w-0">
+						<div class={grnSectionPanel}>
+							<p class={grnSectionTitle}>
 								{m.inv_grn_section_supplier_invoice()}
 							</p>
-							{@render invoiceReceivingGrid(
-								'grid-cols-1 md:grid-cols-2',
-								'md:col-span-2'
-							)}
+							{@render invoiceReceivingFields()}
 						</div>
 					</div>
 
-					<div class="lg:col-span-5 xl:col-span-6">
-						<div
-							class="rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
-						>
-							<p
-								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-							>
+					<div class="min-w-0">
+						<div class={grnSectionPanel}>
+							<p class={grnSectionTitle}>
 								{m.inv_grn_section_receipt()}
 							</p>
-							<fieldset class="m-0 flex flex-col gap-4 border-0 p-0">
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36"
-										>{m.inv_grn_select_po()}</DaisyUiLabel
-									>
+							<div class={grnFieldsStack}>
+								<GrnFormFieldRow label={m.inv_grn_select_po()}>
 									<div
-										class="flex min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
+										class="flex min-w-0 flex-wrap items-stretch gap-2 sm:flex-nowrap"
 									>
 										<input
 											type="text"
@@ -1592,57 +1502,48 @@
 											{m.inv_common_btn_select()}
 										</DaisyUiButton>
 									</div>
-								</div>
+								</GrnFormFieldRow>
 
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36"
-										>{m.inv_grn_received_date()}</DaisyUiLabel
-									>
-									<div class="min-w-0 flex-1">
-										<DaisyUiInputField
-											inputType="date"
-											bind:value={receivedDate}
-										/>
-									</div>
-								</div>
+								<GrnFormFieldRow label={m.inv_grn_received_date()}>
+									<DaisyUiInputField
+										inputType="date"
+										bind:value={receivedDate}
+									/>
+								</GrnFormFieldRow>
 
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36"
-										>{m.inv_common_received_by()}</DaisyUiLabel
-									>
-									<div class="min-w-0 flex-1">
-										<DaisyUISearchSelect
-											value={receivedByUserId ?? ''}
-											searchFn={searchReceivedByUsers}
-											getLabelForValue={getReceivedByLabelForValue}
-											invalidateKey={hospitalId}
-											onChange={(v: string) => {
-												receivedByUserId = v.trim() ? v.trim() : null;
-											}}
-											placeholder={m.inv_grn_received_by_placeholder()}
-											className="w-full"
-										/>
-									</div>
-								</div>
+								<GrnFormFieldRow label={m.inv_common_received_by()}>
+									<DaisyUISearchSelect
+										value={receivedByUserId ?? ''}
+										searchFn={searchReceivedByUsers}
+										getLabelForValue={getReceivedByLabelForValue}
+										invalidateKey={hospitalId}
+										onChange={(v: string) => {
+											receivedByUserId = v.trim() ? v.trim() : null;
+										}}
+										placeholder={m.inv_grn_received_by_placeholder()}
+										className="w-full"
+									/>
+								</GrnFormFieldRow>
 
-								<div class="rounded-lg bg-base-200/80 p-4">
+								<GrnFormFieldRow label={m.inv_grn_receiving_store()}>
 									{#if receivingStore}
-										<p class="text-sm">
-											<span class="mb-1 inline-block opacity-70"
-												>{m.inv_grn_receiving_store()}:</span
-											><br />
-											<strong class="text-lg"
-												>{receivingStore.storeName ?? '—'}</strong
-											>
-										</p>
+										<input
+											type="text"
+											readonly
+											disabled
+											class="d-input-bordered d-input w-full text-sm"
+											value={receivingStore.storeName ?? '—'}
+											aria-label={m.inv_grn_receiving_store()}
+										/>
 									{:else if selectedPoId}
-										<p class="text-sm font-medium text-warning">
-											{m.inv_grn_receiving_store()}: —
-										</p>
+										<input
+											type="text"
+											readonly
+											disabled
+											class="d-input-bordered d-input w-full text-sm"
+											value="—"
+											aria-label={m.inv_grn_receiving_store()}
+										/>
 										{#if receivingStoreHint}
 											<div
 												class="mt-2 d-alert text-sm d-alert-warning"
@@ -1652,12 +1553,17 @@
 											</div>
 										{/if}
 									{:else}
-										<p class="py-2 text-center text-sm opacity-50">
-											—
-										</p>
+										<input
+											type="text"
+											readonly
+											disabled
+											class="d-input-bordered d-input w-full text-sm opacity-60"
+											value="—"
+											aria-label={m.inv_grn_receiving_store()}
+										/>
 									{/if}
-								</div>
-							</fieldset>
+								</GrnFormFieldRow>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1678,44 +1584,32 @@
 						</DaisyUiButton>
 					</DaisyUiTooltip>
 				{/snippet}
-				<div
-					class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8"
-				>
-					<div class="lg:col-span-5 xl:col-span-4">
-						<div
-							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
-						>
-							<p
-								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-							>
+				<div class={grnHeaderGridDirect}>
+					<div class="min-w-0">
+						<div class={grnSectionPanel}>
+							<p class={grnSectionTitle}>
 								{m.inv_grn_section_supplier_invoice()}
 							</p>
-							{@render invoiceReceivingGrid('grid-cols-1', '')}
+							{@render invoiceReceivingFields()}
 						</div>
 					</div>
 
-					<div class="lg:col-span-4 xl:col-span-5">
-						<div
-							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
-						>
-							<p
-								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-							>
+					<div class="min-w-0">
+						<div class={grnSectionPanel}>
+							<p class={grnSectionTitle}>
 								{m.inv_grn_section_receipt()}
 							</p>
-							<div class="flex flex-col gap-4">
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36">
-										{m.inv_grn_receiving_store()}
-									</DaisyUiLabel>
-									<div
-										class="min-w-0 flex-1 rounded-lg border border-base-200 bg-base-200/40 px-3 py-2 text-sm"
-									>
-										<p class="font-medium">
-											{navReceivingStoreLabel}
-										</p>
+							<div class={grnFieldsStack}>
+								<GrnFormFieldRow label={m.inv_grn_receiving_store()}>
+									<div>
+										<input
+											type="text"
+											readonly
+											disabled
+											class="d-input-bordered d-input w-full text-sm"
+											value={navReceivingStoreLabel}
+											aria-label={m.inv_grn_receiving_store()}
+										/>
 										{#if selectedInventoryFromStoreId == null}
 											<div
 												class="mt-2 d-alert text-sm d-alert-warning"
@@ -1725,78 +1619,64 @@
 											</div>
 										{/if}
 									</div>
-								</div>
+								</GrnFormFieldRow>
 
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36">
-										{m.inv_grn_received_date()}
-									</DaisyUiLabel>
-									<div class="min-w-0 flex-1">
-										<DaisyUiInputField
-											inputType="date"
-											bind:value={receivedDate}
-										/>
-									</div>
-								</div>
+								<GrnFormFieldRow label={m.inv_grn_received_date()}>
+									<DaisyUiInputField
+										inputType="date"
+										bind:value={receivedDate}
+									/>
+								</GrnFormFieldRow>
 
-								<div
-									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-								>
-									<DaisyUiLabel className="shrink-0 sm:w-36"
-										>{m.inv_common_received_by()}</DaisyUiLabel
-									>
-									<div class="min-w-0 flex-1">
-										<DaisyUISearchSelect
-											value={receivedByUserId ?? ''}
-											searchFn={searchReceivedByUsers}
-											getLabelForValue={getReceivedByLabelForValue}
-											invalidateKey={hospitalId}
-											onChange={(v: string) => {
-												receivedByUserId = v.trim() ? v.trim() : null;
-											}}
-											placeholder={m.inv_grn_received_by_placeholder()}
-											className="w-full"
-										/>
-									</div>
-								</div>
+								<GrnFormFieldRow label={m.inv_common_received_by()}>
+									<DaisyUISearchSelect
+										value={receivedByUserId ?? ''}
+										searchFn={searchReceivedByUsers}
+										getLabelForValue={getReceivedByLabelForValue}
+										invalidateKey={hospitalId}
+										onChange={(v: string) => {
+											receivedByUserId = v.trim() ? v.trim() : null;
+										}}
+										placeholder={m.inv_grn_received_by_placeholder()}
+										className="w-full"
+									/>
+								</GrnFormFieldRow>
 							</div>
 						</div>
 					</div>
 
-					<div class="lg:col-span-3 xl:col-span-3">
-						<div
-							class="h-full rounded-box border border-base-200 bg-base-200/25 p-5 shadow-sm"
-						>
-							<p
-								class="mb-4 text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-							>
+					<div class="min-w-0">
+						<div class={grnSectionPanel}>
+							<p class={grnSectionTitle}>
 								{m.inv_po_supplier_search()}
 							</p>
-							<DaisyUISearchSelect
-								value={directSupplierId != null
-									? String(directSupplierId)
-									: ''}
-								searchFn={async (q: string) => {
-									const qEnc = encodeURIComponent(q.trim());
-									const res = await fetch(
-										`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
-									);
-									const j = await res.json();
-									return (j ?? []).map(
-										(s: { id: number; name: string | null }) => ({
-											label: s.name ?? '—',
-											value: String(s.id)
-										})
-									);
-								}}
-								onChange={(v: string) => {
-									directSupplierId = v ? Number(v) : null;
-								}}
-								placeholder="Search supplier…"
-								className="w-full"
-							/>
+							<div class={grnFieldsStack}>
+								<GrnFormFieldRow label={m.inv_po_select_supplier()}>
+									<DaisyUISearchSelect
+										value={directSupplierId != null
+											? String(directSupplierId)
+											: ''}
+										searchFn={async (q: string) => {
+											const qEnc = encodeURIComponent(q.trim());
+											const res = await fetch(
+												`/api/heka/hospital/${hospitalId}/home/inventory-setup/supplier-setup?mode=search&q=${qEnc}&limit=30`
+											);
+											const j = await res.json();
+											return (j ?? []).map(
+												(s: { id: number; name: string | null }) => ({
+													label: s.name ?? '—',
+													value: String(s.id)
+												})
+											);
+										}}
+										onChange={(v: string) => {
+											directSupplierId = v ? Number(v) : null;
+										}}
+										placeholder={m.inv_po_supplier_search()}
+										className="w-full"
+									/>
+								</GrnFormFieldRow>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1839,7 +1719,7 @@
 								<div class="flex flex-col items-center gap-1">
 									<DaisyUiTooltip
 										tooltipText={m.inv_line_items_tooltip_edit()}
-										className="d-tooltip-accent d-tooltip-right"
+										className="d-tooltip-accent"
 									>
 										<DaisyUiButton
 											type="button"
@@ -1852,7 +1732,7 @@
 									</DaisyUiTooltip>
 									<DaisyUiTooltip
 										tooltipText={m.inv_common_remove_line()}
-										className="d-tooltip-error d-tooltip-right"
+										className="d-tooltip-error"
 									>
 										<DaisyUiButton
 											type="button"

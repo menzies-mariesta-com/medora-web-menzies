@@ -2,7 +2,9 @@
 	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
@@ -151,17 +153,16 @@
 						enableColumnFilters={false}
 					>
 						{#snippet rowActions(row, rowIndex)}
-							<td class="w-24 shrink-0 text-right">
-								<div class="flex justify-end gap-1">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										disabled={Boolean(row.lockedByClosedOpBill)}
-										onClick={() => onDelete(row)}
-									>
-										<LucideTrash2 className="size-4" />
-									</DaisyUiButton>
-								</div>
-							</td>
+							<MariTableIconAction
+								tooltipText={m.mari_table_tooltip_delete()}
+								color="error"
+								disabled={Boolean(row.lockedByClosedOpBill)}
+								onClick={() => onDelete(row)}
+							>
+								{#snippet icon()}
+									<LucideTrash2 className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
 						{/snippet}
 					</MariTable>
 				</div>

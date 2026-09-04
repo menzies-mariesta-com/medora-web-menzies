@@ -83,6 +83,10 @@ export const POST: RequestHandler = async (event) => {
 		isPurchaseRequisitable:
 			body.isPurchaseRequisitable === true ||
 			body.isPurchaseRequisitable === 'true',
+		storeMarkupPercent:
+			body.storeMarkupPercent != null && body.storeMarkupPercent !== ''
+				? String(body.storeMarkupPercent)
+				: '0',
 		userGroupIds: parseUserGroupIds(body.userGroupIds) ?? [],
 		statusId:
 			body.statusId != null && body.statusId !== ''
@@ -113,6 +117,13 @@ export const PUT: RequestHandler = async (event) => {
 				? undefined
 				: body.isPurchaseRequisitable === true ||
 					body.isPurchaseRequisitable === 'true',
+		storeMarkupPercent:
+			body.storeMarkupPercent === undefined
+				? undefined
+				: body.storeMarkupPercent != null &&
+					  body.storeMarkupPercent !== ''
+					? String(body.storeMarkupPercent)
+					: '0',
 		userGroupIds: parseUserGroupIds(body.userGroupIds),
 		statusId:
 			body.statusId !== undefined

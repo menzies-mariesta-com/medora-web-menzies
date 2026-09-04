@@ -45,11 +45,11 @@
 		storeName: string | null;
 		batchNo: string;
 		expiryDate: string | null;
-		purchasePrice: string;
-		salePrice: string;
-		empSalePrice: string;
+		estimatedPurchasePrice: string;
 		quantity: string;
 		issueUnitName?: string | null;
+		grnReceivedDate?: string | null;
+		grnInvoiceNo?: string | null;
 	};
 
 	let view = $state<'aggregated' | 'lots'>('aggregated');
@@ -120,11 +120,11 @@
 					storeName: (r.storeName as string) ?? null,
 					batchNo: String(r.batchNo ?? ''),
 					expiryDate: (r.expiryDate as string) ?? null,
-					purchasePrice: String(r.purchasePrice ?? ''),
-					salePrice: String(r.salePrice ?? ''),
-					empSalePrice: String(r.empSalePrice ?? ''),
+					estimatedPurchasePrice: String(r.estimatedPurchasePrice ?? ''),
 					quantity: String(r.quantity ?? '0'),
-					issueUnitName: (r.issueUnitName as string) ?? null
+					issueUnitName: (r.issueUnitName as string) ?? null,
+					grnReceivedDate: (r.grnReceivedDate as string) ?? null,
+					grnInvoiceNo: (r.grnInvoiceNo as string) ?? null
 				}));
 			} else {
 				rowsAgg = (await res.json()) as AggRow[];
@@ -202,40 +202,31 @@
 			format: (v) => v ?? '—'
 		},
 		{
-			id: 'purchasePrice',
-			header: m.inv_stock_col_price(),
-			field: 'purchasePrice',
-			filterable: false,
+			id: 'grnReceivedDate',
+			header: m.inv_stock_col_grn_receipt(),
+			field: 'grnReceivedDate',
+			filterable: true,
 			format: (_v, row) => {
-				const t =
-					row.purchasePrice != null
-						? String(row.purchasePrice).trim()
-						: '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+				const date = row.grnReceivedDate?.trim() ?? '';
+				const inv = row.grnInvoiceNo?.trim() ?? '';
+				if (date && inv) return `${date} · ${inv}`;
+				return date || inv || '—';
 			}
 		},
 		{
-			id: 'salePrice',
-			header: m.inv_stock_col_sale_price(),
-			field: 'salePrice',
+			id: 'estimatedPurchasePrice',
+			header: m.inv_stock_col_estimated_purchase_price(),
+			field: 'estimatedPurchasePrice',
 			filterable: false,
 			format: (_v, row) => {
 				const t =
-					row.salePrice != null ? String(row.salePrice).trim() : '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
-			}
-		},
-		{
-			id: 'empSalePrice',
-			header: m.inv_stock_col_emp_sale_price(),
-			field: 'empSalePrice',
-			filterable: false,
-			format: (_v, row) => {
-				const t =
-					row.empSalePrice != null
-						? String(row.empSalePrice).trim()
+					row.estimatedPurchasePrice != null
+						? String(row.estimatedPurchasePrice).trim()
 						: '';
-				return t ? trimInventoryNumericDisplay(t, 4) : '—';
+				if (!t) return '—';
+				const iu = (row.issueUnitName ?? '').trim();
+				const disp = trimInventoryNumericDisplay(t, 4);
+				return iu ? `${disp} / ${iu}` : disp;
 			}
 		},
 		{

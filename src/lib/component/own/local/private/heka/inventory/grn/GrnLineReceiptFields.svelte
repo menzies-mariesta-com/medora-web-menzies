@@ -1,34 +1,28 @@
 <script lang="ts">
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
-	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-	import { computeGrnLinePricesPreview } from '$lib/tool/inventory/grn-pricing-preview.util';
 
 	let {
 		draft,
 		disableUnlessItem = false,
-		pricingConfig = null,
 		/** When false (default), parents should toggle true when the modal opens so values normalize once. */
 		open = false
 	}: {
 		draft: any;
 		disableUnlessItem?: boolean;
-		pricingConfig?: BranchPricingConfigDto | null;
 		open?: boolean;
 	} = $props();
 
 	const GRN_NUMERIC_FIELD_KEYS = [
-		'receivedQty',
+		'purchasedQty',
 		'purchasePrice',
 		'freeQty',
 		'discountPercent',
 		'discountAmount',
 		'taxPercent',
-		'taxAmount',
-		'salePriceOverride',
-		'empSalePriceOverride'
+		'taxAmount'
 	] as const;
 
 	let prevOpen = false;
@@ -53,38 +47,6 @@
 		disableUnlessItem && draft?.itemId == null
 	);
 
-	const saleManual = $derived(
-		pricingConfig?.saleManualOnGrnLine === true
-	);
-	const empManual = $derived(
-		pricingConfig?.empManualOnGrnLine === true
-	);
-	const showAutoPreview = $derived(
-		pricingConfig != null && !saleManual && !empManual
-	);
-
-	const pricePreview = $derived.by(() => {
-		if (!pricingConfig || !draft) return null;
-		const recv = Number(draft.receivedQty);
-		const purch = Number(draft.purchasePrice);
-		if (!Number.isFinite(recv) || recv <= 0 || !Number.isFinite(purch)) {
-			return null;
-		}
-		const freeQ = Number(draft.freeQty);
-		return computeGrnLinePricesPreview(pricingConfig, {
-			receivedQty: recv,
-			freeQty: Number.isFinite(freeQ) && freeQ > 0 ? freeQ : 0,
-			purchaseUnitPrice: purch,
-			discountAmount: Number(draft.discountAmount) || 0,
-			discountPercent: Number(draft.discountPercent) || 0,
-			taxAmount: Number(draft.taxAmount) || 0,
-			taxPercent: Number(draft.taxPercent) || 0,
-			salePriceOverride: draft.salePriceOverride,
-			empSalePriceOverride: draft.empSalePriceOverride
-		});
-	});
-
-	// Free unit picker should show *item unit master rows* (conversionDisplay), like PR.
 	const freeUnitMasterOptions = $derived.by(() => {
 		const list = (draft?.iumList ?? []) as Array<{
 			id?: number | null;
@@ -118,21 +80,21 @@
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div>
 		<DaisyUiLabel className="text-xs opacity-80"
-			>{m.inv_grn_line_received_qty()}</DaisyUiLabel
+			>{m.inv_grn_line_purchased_qty()}</DaisyUiLabel
 		>
 		<input
 			type="number"
 			class="d-input-bordered d-input w-full"
-			value={draft.receivedQty == null || draft.receivedQty === ''
+			value={draft.purchasedQty == null || draft.purchasedQty === ''
 				? ''
-				: String(draft.receivedQty)}
+				: String(draft.purchasedQty)}
 			oninput={(e) => {
-				draft.receivedQty = e.currentTarget.value;
+				draft.purchasedQty = e.currentTarget.value;
 			}}
 			step="1"
 			min="0"
 			disabled={itemLocked}
-			aria-label={m.inv_grn_line_received_qty()}
+			aria-label={m.inv_grn_line_purchased_qty()}
 		/>
 	</div>
 	<div>
@@ -345,64 +307,4 @@
 			</label>
 		</div>
 	</div>
-	{#if saleManual || empManual}
-		<div class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-			{#if saleManual}
-				<div>
-					<DaisyUiLabel className="text-xs opacity-80"
-						>{m.inv_grn_sale_price()}</DaisyUiLabel
-					>
-					<input
-						type="number"
-						class="d-input-bordered d-input w-full"
-						value={draft.salePriceOverride == null ||
-						draft.salePriceOverride === ''
-							? ''
-							: String(draft.salePriceOverride)}
-						oninput={(e) => {
-							draft.salePriceOverride = e.currentTarget.value;
-						}}
-						step="0.01"
-						min="0"
-						disabled={itemLocked}
-						aria-label={m.inv_grn_sale_price()}
-					/>
-				</div>
-			{/if}
-			{#if empManual}
-				<div>
-					<DaisyUiLabel className="text-xs opacity-80"
-						>{m.inv_grn_emp_sale_price()}</DaisyUiLabel
-					>
-					<input
-						type="number"
-						class="d-input-bordered d-input w-full"
-						value={draft.empSalePriceOverride == null ||
-						draft.empSalePriceOverride === ''
-							? ''
-							: String(draft.empSalePriceOverride)}
-						oninput={(e) => {
-							draft.empSalePriceOverride = e.currentTarget.value;
-						}}
-						step="0.01"
-						min="0"
-						disabled={itemLocked}
-						aria-label={m.inv_grn_emp_sale_price()}
-					/>
-				</div>
-			{/if}
-		</div>
-	{:else if showAutoPreview && pricePreview}
-		<div class="sm:col-span-2 rounded-lg border border-base-300 p-3 text-sm">
-			<p class="text-xs font-semibold opacity-80">
-				{m.inv_grn_price_preview()}
-			</p>
-			<p class="mt-1">
-				{m.inv_grn_sale_price()}: {pricePreview.salePerPurch}
-			</p>
-			<p>
-				{m.inv_grn_emp_sale_price()}: {pricePreview.empPerPurch}
-			</p>
-		</div>
-	{/if}
 </div>

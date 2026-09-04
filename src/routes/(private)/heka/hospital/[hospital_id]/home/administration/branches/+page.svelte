@@ -14,6 +14,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -282,28 +284,32 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const branch = row as StaffRegHospitalBranchRow}
-							<td class="text-right">
-								<div class="flex justify-end gap-2">
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-sm"
-										onClick={() => openEdit(branch)}
-										loading={editingBranchId === branch.id}
-										disabled={deletingBranchId === branch.id}
-										loadingText=""
-									>
-										<LucidePencil />
-									</DaisyUiButton>
-									<DaisyUiButton
-										className="d-btn-ghost d-btn-error d-btn-sm"
-										onClick={() => handleDelete(branch)}
-										loading={deletingBranchId === branch.id}
-										disabled={deletingBranchId === branch.id}
-										loadingText=""
-									>
-										<LucideTrash2 />
-									</DaisyUiButton>
-								</div>
-							</td>
+							<MariTableRowActionGroup>
+								<MariTableIconAction
+									tooltipText={m.mari_table_tooltip_edit()}
+									color="accent"
+									loading={editingBranchId === branch.id}
+									disabled={deletingBranchId === branch.id}
+									loadingText=""
+									onClick={() => openEdit(branch)}
+								>
+									{#snippet icon()}
+										<LucidePencil className="size-4" />
+									{/snippet}
+								</MariTableIconAction>
+								<MariTableIconAction
+									tooltipText={m.mari_table_tooltip_delete()}
+									color="error"
+									loading={deletingBranchId === branch.id}
+									disabled={deletingBranchId === branch.id}
+									loadingText=""
+									onClick={() => handleDelete(branch)}
+								>
+									{#snippet icon()}
+										<LucideTrash2 className="size-4" />
+									{/snippet}
+								</MariTableIconAction>
+							</MariTableRowActionGroup>
 						{/snippet}
 					</MariTable>
 				</div>

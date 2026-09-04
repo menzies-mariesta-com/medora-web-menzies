@@ -862,7 +862,7 @@
 		<div class="mb-5 flex flex-wrap items-center gap-2">
 			<DaisyUiTooltip
 				tooltipText={m.inv_common_back_to_list()}
-				className="d-tooltip-ghost d-tooltip-right"
+				className="d-tooltip-ghost"
 			>
 				<DaisyUiButton
 					type="button"
@@ -1164,7 +1164,7 @@
 							{@const ln = indentCreateLines[index]}
 							<DaisyUiTooltip
 								tooltipText={m.inv_line_items_tooltip_edit()}
-								className="d-tooltip-accent d-tooltip-left"
+								className="d-tooltip-accent"
 							>
 								<DaisyUiButton
 									type="button"

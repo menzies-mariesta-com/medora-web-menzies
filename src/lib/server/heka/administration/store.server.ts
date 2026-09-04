@@ -25,6 +25,17 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hospital.server';
 
+function parseStoreMarkupPercent(
+	raw: string | number | null | undefined
+): string {
+	if (raw == null || raw === '') return '0.00';
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n < 0 || n > 999) {
+		throw error(400, 'Store markup must be between 0 and 999');
+	}
+	return n.toFixed(2);
+}
+
 export type StoreUserGroupRef = { id: number; name: string | null };
 export type StoreWithUserGroups = StoreSchema & {
 	userGroups: StoreUserGroupRef[];
@@ -248,6 +259,7 @@ export type CreateStoreInput = {
 	storeName: string | null;
 	remark: string | null;
 	isPurchaseRequisitable: boolean;
+	storeMarkupPercent?: string | number | null;
 	statusId?: number;
 	userGroupIds?: number[];
 };
@@ -278,6 +290,9 @@ export async function createStore(
 				storeName: input.storeName,
 				remark: input.remark,
 				isPurchaseRequisitable: input.isPurchaseRequisitable,
+				storeMarkupPercent: parseStoreMarkupPercent(
+					input.storeMarkupPercent
+				),
 				statusId: input.statusId ?? StatusEnum.ACTIVE
 			})
 			.returning();
@@ -311,6 +326,7 @@ export type UpdateStoreInput = {
 	storeName?: string | null;
 	remark?: string | null;
 	isPurchaseRequisitable?: boolean;
+	storeMarkupPercent?: string | number | null;
 	statusId?: number;
 	/** Pass an array (possibly empty) to replace links; undefined leaves links unchanged. */
 	userGroupIds?: number[];
@@ -359,6 +375,11 @@ export async function updateStore(
 	if (input.remark !== undefined) setObj.remark = input.remark;
 	if (input.isPurchaseRequisitable !== undefined) {
 		setObj.isPurchaseRequisitable = input.isPurchaseRequisitable;
+	}
+	if (input.storeMarkupPercent !== undefined) {
+		setObj.storeMarkupPercent = parseStoreMarkupPercent(
+			input.storeMarkupPercent
+		);
 	}
 	if (input.statusId !== undefined) setObj.statusId = input.statusId;
 

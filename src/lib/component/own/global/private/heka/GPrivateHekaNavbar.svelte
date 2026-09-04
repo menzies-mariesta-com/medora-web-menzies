@@ -16,13 +16,13 @@
 	<DaisyUiNavbarEnd className="gap-3">
 		<DaisyUiTooltip
 			tooltipText="Notification"
-			className="d-tooltip-left"
+			className=""
 		>
 			<DaisyUiButton className="d-btn-circle">
 				<LucideBell />
 			</DaisyUiButton>
 		</DaisyUiTooltip>
-		<DaisyUiTooltip tooltipText="Account" className="d-tooltip-left">
+		<DaisyUiTooltip tooltipText="Account" className="">
 			<DaisyUiButton className="d-btn-circle">
 				<LucideUser />
 			</DaisyUiButton>
