@@ -35,7 +35,7 @@
 			className="flex items-center justify-between"
 		>
 			<span class="text-sm font-semibold">{title}</span>
-			<DaisyUiTooltip tooltipText="Add" className="d-tooltip-bottom">
+			<DaisyUiTooltip tooltipText="Add" className="">
 				<DaisyUiButton
 					className="d-btn-ghost d-btn-xs d-btn-square"
 					onClick={onAdd}

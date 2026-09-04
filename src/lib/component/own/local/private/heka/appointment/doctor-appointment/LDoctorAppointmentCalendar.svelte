@@ -825,7 +825,7 @@
 			<div>
 				<DaisyUiTooltip
 					tooltipText="Block time (no appointments in blocked range)"
-					className="d-tooltip-bottom d-tooltip-error"
+					className=" d-tooltip-error"
 				>
 					<DaisyUiButton
 						className="d-btn-error d-btn-square"
@@ -839,7 +839,7 @@
 			<div>
 				<DaisyUiTooltip
 					tooltipText="Refresh appointments from server"
-					className="d-tooltip-left d-tooltip-info"
+					className=" d-tooltip-info"
 				>
 					<DaisyUiButton
 						className="d-btn-info d-btn-square"
@@ -859,7 +859,7 @@
 
 				<DaisyUiTooltip
 					tooltipText="create appointment (pick date & time)"
-					className="d-tooltip-left d-tooltip-primary"
+					className=" d-tooltip-primary"
 				>
 					<DaisyUiButton
 						className="d-btn-primary d-btn-square"
@@ -872,7 +872,7 @@
 
 				<DaisyUiTooltip
 					tooltipText="edit selected (click an appointment or blocked slot first)"
-					className="d-tooltip-left d-tooltip-accent"
+					className=" d-tooltip-accent"
 				>
 					<DaisyUiButton
 						className="d-btn-accent d-btn-square"
@@ -891,7 +891,7 @@
 
 				<DaisyUiTooltip
 					tooltipText="delete selected appointment or remove selected block"
-					className="d-tooltip-left d-tooltip-error"
+					className=" d-tooltip-error"
 				>
 					<DaisyUiButton
 						className="d-btn-error d-btn-square"
@@ -1000,7 +1000,7 @@
 											{#if showPrintSlip && cellAptSlot}
 												<DaisyUiTooltip
 													tooltipText="Print appointment slip"
-													className="d-tooltip-bottom"
+													className=""
 												>
 													<button
 														type="button"

@@ -55,7 +55,7 @@
 <DaisyUiFab>
 	<DaisyUiTooltip
 		tooltipText={m.quick_tool()}
-		className="d-tooltip-left d-tooltip-secondary"
+		className=" d-tooltip-secondary"
 	>
 		<DaisyUiButton
 			className="d-btn-circle d-btn-lg d-btn-secondary"
@@ -67,7 +67,7 @@
 
 	<DaisyUiTooltip
 		tooltipText={m.support()}
-		className="d-tooltip-left "
+		className=" "
 	>
 		<DaisyUiButton
 			className="d-btn-circle d-btn-lg"
@@ -77,7 +77,7 @@
 		</DaisyUiButton>
 	</DaisyUiTooltip>
 
-	<DaisyUiTooltip tooltipText={m.theme()} className="d-tooltip-left ">
+	<DaisyUiTooltip tooltipText={m.theme()} className=" ">
 		<DaisyUiButton
 			onClick={openThemeSettings}
 			className="d-btn-circle d-btn-lg"
@@ -88,7 +88,7 @@
 
 	<DaisyUiTooltip
 		tooltipText={m.languages()}
-		className="d-tooltip-left "
+		className=" "
 	>
 		<DaisyUiButton
 			onClick={openLanguageDialog}

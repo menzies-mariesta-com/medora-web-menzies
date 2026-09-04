@@ -406,7 +406,7 @@
 				<div class="flex flex-col items-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-top"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -419,7 +419,7 @@
 					{#if canTransferGrnToRequestingStore(r)}
 						<DaisyUiTooltip
 							tooltipText={m.inv_grn_transfer_to_requesting()}
-							className="d-tooltip-primary d-tooltip-top"
+							className="d-tooltip-primary"
 						>
 							<DaisyUiButton
 								className="d-btn-sm d-btn-ghost d-btn-square text-primary"

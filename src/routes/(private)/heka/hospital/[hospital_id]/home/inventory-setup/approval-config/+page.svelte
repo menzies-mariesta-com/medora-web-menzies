@@ -373,7 +373,7 @@
 				>
 					<DaisyUiTooltip
 						tooltipText={m.inv_line_items_tooltip_edit()}
-						className="d-tooltip-accent d-tooltip-top"
+						className="d-tooltip-accent"
 					>
 						<DaisyUiButton
 							type="button"
@@ -385,7 +385,7 @@
 					</DaisyUiTooltip>
 					<DaisyUiTooltip
 						tooltipText={m.inv_line_items_tooltip_delete()}
-						className="d-tooltip-error d-tooltip-top"
+						className="d-tooltip-error"
 					>
 						<DaisyUiButton
 							type="button"

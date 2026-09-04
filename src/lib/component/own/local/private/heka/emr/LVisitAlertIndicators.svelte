@@ -14,7 +14,7 @@
 		{#if hasVitalAlert}
 			<DaisyUiTooltip
 				tooltipText="Abnormal vital signs"
-				className="d-tooltip-left"
+				className=""
 			>
 				<LucideTriangleAlert className="size-8 text-warning" />
 			</DaisyUiTooltip>
@@ -22,7 +22,7 @@
 		{#if hasAllergyAlert}
 			<DaisyUiTooltip
 				tooltipText="Allergy alert"
-				className="d-tooltip-left"
+				className=""
 			>
 				<SvgRepoAllergyAlert className="size-8 text-error" />
 			</DaisyUiTooltip>

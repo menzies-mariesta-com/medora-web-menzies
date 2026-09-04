@@ -35,7 +35,7 @@
 		{#if hasVisit}
 			<DaisyUiTooltip
 				tooltipText="Reset selected visit"
-				className="d-tooltip-bottom"
+				className=""
 			>
 				<DaisyUiButton
 					className="d-btn-ghost d-btn-sm d-btn-circle"
