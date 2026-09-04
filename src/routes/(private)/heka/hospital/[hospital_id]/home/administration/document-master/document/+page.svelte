@@ -456,7 +456,7 @@
 								<div class="flex justify-end gap-1">
 									<DaisyUiTooltip
 										tooltipText={m.view_data()}
-										className="d-tooltip-ghost d-tooltip-top"
+										className="d-tooltip-ghost"
 									>
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm"
@@ -467,7 +467,7 @@
 									</DaisyUiTooltip>
 									<DaisyUiTooltip
 										tooltipText={m.edit_data()}
-										className="d-tooltip-accent d-tooltip-top"
+										className="d-tooltip-accent"
 									>
 										<DaisyUiButton
 											className="d-btn-sm d-btn-ghost d-btn-accent"
@@ -478,7 +478,7 @@
 									</DaisyUiTooltip>
 									<DaisyUiTooltip
 										tooltipText={m.delete_data()}
-										className="d-tooltip-error d-tooltip-top"
+										className="d-tooltip-error"
 									>
 										<DaisyUiButton
 											className="d-btn-ghost d-btn-sm d-btn-error"

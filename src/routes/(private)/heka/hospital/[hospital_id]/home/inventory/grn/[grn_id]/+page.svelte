@@ -38,7 +38,7 @@
 	type GrnDetailLine = {
 		id: number;
 		itemName?: string | null;
-		receivedQty: string;
+		purchasedQty: string;
 		unitName?: string | null;
 		freeQty?: string | null;
 		freeUnitName?: string | null;
@@ -57,6 +57,10 @@
 		invoiceNo?: string | null;
 		invoiceDate?: string | null;
 		invoiceAmount?: string | null;
+		invoiceDiscountAmount?: string | null;
+		invoiceDiscountPercent?: string | null;
+		invoiceTaxAmount?: string | null;
+		invoiceTaxPercent?: string | null;
 		invoicePhotoUrl?: string | null;
 		createdAt?: string | null;
 		updatedAt?: string | null;
@@ -72,6 +76,26 @@
 
 	let abort: AbortController | null = null;
 
+	function formatInvoiceCharge(
+		amount: string | null | undefined,
+		percent: string | null | undefined
+	): string {
+		const amt = amount?.trim() ?? '';
+		const pct = percent?.trim() ?? '';
+		const amtN = amt ? Number(amt) : 0;
+		const pctN = pct ? Number(pct) : 0;
+		if (Number.isFinite(amtN) && amtN > 0) {
+			return new Intl.NumberFormat(undefined, {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 2
+			}).format(amtN);
+		}
+		if (Number.isFinite(pctN) && pctN > 0) {
+			return `${pctN}%`;
+		}
+		return '—';
+	}
+
 	const lineColumns: MariTableColumn<GrnDetailLine>[] = [
 		{
 			id: 'itemName',
@@ -80,11 +104,11 @@
 			format: (_v, row) => row.itemName ?? '—'
 		},
 		{
-			id: 'receivedQty',
-			header: m.inv_common_quantity(),
-			field: 'receivedQty',
+			id: 'purchasedQty',
+			header: m.inv_grn_line_purchased_qty(),
+			field: 'purchasedQty',
 			format: (_v, row) => {
-				const t = row.receivedQty?.trim();
+				const t = row.purchasedQty?.trim();
 				return t ? trimMetricQtyDisplay(t) : '—';
 			}
 		},
@@ -175,7 +199,7 @@
 	<div class="flex items-center gap-2">
 		<DaisyUiTooltip
 			tooltipText={m.inv_common_back_to_list()}
-			className="d-tooltip-ghost d-tooltip-right"
+			className="d-tooltip-ghost"
 		>
 			<DaisyUiButton
 				type="button"
@@ -263,6 +287,28 @@
 				{:else}
 					—
 				{/if}
+			</div>
+		</div>
+		<div>
+			<div class="text-sm text-base-content/60">
+				{m.inv_grn_invoice_discount_percent()}
+			</div>
+			<div class="font-medium">
+				{formatInvoiceCharge(
+					detail?.invoiceDiscountAmount,
+					detail?.invoiceDiscountPercent
+				)}
+			</div>
+		</div>
+		<div>
+			<div class="text-sm text-base-content/60">
+				{m.inv_grn_invoice_tax_percent()}
+			</div>
+			<div class="font-medium">
+				{formatInvoiceCharge(
+					detail?.invoiceTaxAmount,
+					detail?.invoiceTaxPercent
+				)}
 			</div>
 		</div>
 	</div>

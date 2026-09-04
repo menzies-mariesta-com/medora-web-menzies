@@ -10,8 +10,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
@@ -1338,24 +1337,12 @@
 										useRemoteFilters={true}
 									>
 										{#snippet rowActions(row, rowIndex)}
-											<td class="w-28 shrink-0 text-right">
-												<div class="flex justify-end gap-1">
-													<DaisyUiButton
-														className="d-btn-ghost d-btn-sm"
-														onClick={() =>
-															startEditDetail(row as PendingItem)}
-													>
-														<LucidePencil className="size-4" />
-													</DaisyUiButton>
-													<DaisyUiButton
-														className="d-btn-ghost d-btn-error d-btn-sm"
-														onClick={() =>
-															handleDeleteDetail(row as PendingItem)}
-													>
-														<LucideTrash2 className="size-4" />
-													</DaisyUiButton>
-												</div>
-											</td>
+											<MariTableEditDeleteActions
+												onEdit={() =>
+													startEditDetail(row as PendingItem)}
+												onDelete={() =>
+													handleDeleteDetail(row as PendingItem)}
+											/>
 										{/snippet}
 									</MariTable>
 								</div>

@@ -33,6 +33,7 @@ import {
 	ensureHospitalInventoryAccess,
 	getStaffIdForUser
 } from './inventory-scope.server';
+import { computeSalePriceAtTransactionDb } from './sale-price.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
 import { addDeltaToInvStock } from './item-batch.server';
 import { issueQtyStringFromPurchaseReceipt } from './item-unit-inventory.server';
@@ -45,21 +46,6 @@ export type ConsumptionLineInput = {
 	batchId: number;
 	remarks?: string | null;
 };
-
-/** Per issue unit; coalesce matches item_batch pricing fallbacks at post time. */
-function snapshotEmpSalePriceFromBatch(batch: {
-	empSalePrice: string | null;
-	salePrice: string | null;
-	purchasePrice: string;
-}): string {
-	const emp = batch.empSalePrice?.trim();
-	if (emp) return emp;
-	const sale = batch.salePrice?.trim();
-	if (sale) return sale;
-	const purch = batch.purchasePrice?.trim();
-	if (purch) return purch;
-	return '0';
-}
 
 async function validateLineBatchesForHospital(
 	hospitalId: string,
@@ -745,38 +731,18 @@ export async function approveDepartmentConsumption(
 			)
 			.orderBy(asc(table.invDepartmentConsumptionLineTable.id));
 
-		const batchIds = [...new Set(lines.map((l) => l.batchId))];
-		const batchRows =
-			batchIds.length > 0
-				? await tx
-						.select({
-							id: table.itemBatchTable.id,
-							empSalePrice: table.itemBatchTable.empSalePrice,
-							salePrice: table.itemBatchTable.salePrice,
-							purchasePrice: table.itemBatchTable.purchasePrice
-						})
-						.from(table.itemBatchTable)
-						.where(
-							and(
-								eq(
-									table.itemBatchTable.hospitalId,
-									input.hospitalId
-								),
-								inArray(table.itemBatchTable.id, batchIds)
-							)
-						)
-				: [];
-		const batchById = new Map(batchRows.map((b) => [b.id, b]));
-
 		for (const line of lines) {
-			const batch = batchById.get(line.batchId);
-			if (!batch) {
-				throw error(400, 'Invalid batch for consumption line');
-			}
+			const prices = await computeSalePriceAtTransactionDb({
+				hospitalId: input.hospitalId,
+				batchId: line.batchId,
+				itemId: line.itemId,
+				storeId: doc.storeId,
+				module: 'DC'
+			});
 			await tx
 				.update(table.invDepartmentConsumptionLineTable)
 				.set({
-					empSalePrice: snapshotEmpSalePriceFromBatch(batch),
+					empSalePrice: prices.unitEmpSalePriceIssue,
 					updatedBy: userId
 				})
 				.where(eq(table.invDepartmentConsumptionLineTable.id, line.id));

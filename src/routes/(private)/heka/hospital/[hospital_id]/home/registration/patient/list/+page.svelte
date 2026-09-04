@@ -391,7 +391,7 @@
 			>
 				<DaisyUiTooltip
 					tooltipText="view data"
-					className="d-tooltip-ghost d-tooltip-right"
+					className="d-tooltip-ghost"
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm"
@@ -403,7 +403,7 @@
 				</DaisyUiTooltip>
 				<DaisyUiTooltip
 					tooltipText="edit data"
-					className="d-tooltip-accent d-tooltip-right"
+					className="d-tooltip-accent"
 				>
 					<DaisyUiButton
 						className="d-btn-sm d-btn-ghost d-btn-accent"
@@ -416,7 +416,7 @@
 				{#if selectForEmr}
 					<DaisyUiTooltip
 						tooltipText="select for EMR"
-						className="d-tooltip-info d-tooltip-right"
+						className="d-tooltip-info"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-info"
@@ -429,7 +429,7 @@
 				{/if}
 				<DaisyUiTooltip
 					tooltipText="patient card / print"
-					className="d-tooltip-info d-tooltip-right"
+					className="d-tooltip-info"
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm"
@@ -441,7 +441,7 @@
 				</DaisyUiTooltip>
 				<DaisyUiTooltip
 					tooltipText="delete data"
-					className="d-tooltip-error d-tooltip-right"
+					className="d-tooltip-error"
 				>
 					<DaisyUiButton
 						className="d-btn-ghost d-btn-sm d-btn-error"

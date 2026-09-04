@@ -1271,6 +1271,13 @@ export const itemMasterTable = pgTable(
 		remark: text('remark'),
 		/** Optional override for expiring-soon alerts (days before expiry); null uses hospital default. */
 		expiryAlertLeadDays: integer('expiry_alert_lead_days'),
+		/** Per-item markup applied in the ITEM formula slot at sale time. */
+		itemMarkupPercent: decimal('item_markup_percent', {
+			precision: 8,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1644,6 +1651,13 @@ export const storeTable = pgTable('store', {
 		.default(false),
 	storeName: varchar('store_name', { length: 512 }),
 	remark: text('remark'),
+	/** Per-store markup applied in the STORE formula slot at sale time. */
+	storeMarkupPercent: decimal('store_markup_percent', {
+		precision: 8,
+		scale: 2
+	})
+		.notNull()
+		.default('0'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()

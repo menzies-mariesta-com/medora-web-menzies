@@ -14,8 +14,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import MariTable, {
 		type MariTableColumn
@@ -245,22 +244,10 @@
 					}}
 				>
 					{#snippet rowActions(row, _rowIndex)}
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() => handleDelete(row)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
+						<MariTableEditDeleteActions
+							onEdit={() => openEdit(row)}
+							onDelete={() => handleDelete(row)}
+						/>
 					{/snippet}
 				</MariTable>
 			</div>

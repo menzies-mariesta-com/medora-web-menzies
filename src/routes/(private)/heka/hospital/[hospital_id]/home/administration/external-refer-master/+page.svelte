@@ -9,13 +9,9 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import LExternalReferMasterModal from '$lib/component/own/local/private/heka/administration/external-refer-master/LExternalReferMasterModal.svelte';
@@ -24,6 +20,7 @@
 	import MariTable, {
 		type MariTableColumn
 	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -309,45 +306,14 @@
 		}}
 		on:pageChange={() => fetchRefer()}
 	>
-		{#snippet rowActions(row, rowIndex)}
-			<td class="sticky left-0 z-2 w-16 min-w-[4rem] bg-base-100">
-				<div class="flex flex-col items-center gap-1">
-					<DaisyUiTooltip
-						tooltipText={m.view_data()}
-						className="d-tooltip-ghost d-tooltip-right"
-					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm"
-							onClick={() => viewData(row.id)}
-						>
-							<LucideEye className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText={m.edit_data()}
-						className="d-tooltip-accent d-tooltip-right"
-					>
-						<DaisyUiButton
-							className="d-btn-sm d-btn-ghost d-btn-accent"
-							onClick={() => editData(row.id)}
-						>
-							<LucidePencil className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-					<DaisyUiTooltip
-						tooltipText={m.delete_data()}
-						className="d-tooltip-error d-tooltip-right"
-					>
-						<DaisyUiButton
-							className="d-btn-ghost d-btn-sm d-btn-error"
-							disabled={isLoading}
-							onClick={() => handleDelete(row.id)}
-						>
-							<LucideTrash2 className="size-5" />
-						</DaisyUiButton>
-					</DaisyUiTooltip>
-				</div>
-			</td>
+		{#snippet rowActions(row, _rowIndex)}
+			<MariTableViewEditDeleteActions
+				onView={() => viewData(row.id)}
+				onEdit={() => editData(row.id)}
+				onDelete={() => handleDelete(row.id)}
+				disabled={isLoading}
+				deleteDisabled={isLoading}
+			/>
 		{/snippet}
 	</MariTable>
 </div>

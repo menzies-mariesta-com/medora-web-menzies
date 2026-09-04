@@ -16,7 +16,7 @@ import {
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
-import { statusTable } from '../master-table/master-table';
+import { statusTable, unitTable } from '../master-table/master-table';
 import {
 	hospitalTable,
 	itemMasterTable,
@@ -617,9 +617,14 @@ export const medicationOrderLineTable = pgTable(
 			() => itemUnitMasterTable.id,
 			{ onDelete: 'restrict' }
 		),
-		issueQtyPurchase: decimal('issue_qty_purchase', {
+		/** Sale quantity in {@link outUnitId}. */
+		qtyOut: decimal('qty_out', {
 			precision: 18,
 			scale: 6
+		}),
+		/** Unit for {@link qtyOut} and {@link unitSalePrice} (purchase or issue unit from IUM). */
+		outUnitId: integer('out_unit_id').references(() => unitTable.id, {
+			onDelete: 'restrict'
 		}),
 		unitSalePrice: decimal('unit_sale_price', {
 			precision: 14,

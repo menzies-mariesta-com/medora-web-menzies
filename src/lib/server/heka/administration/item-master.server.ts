@@ -62,6 +62,18 @@ function trimEmptyToNull(value: string | null | undefined): string | null {
 	return t ? t : null;
 }
 
+/** Parses optional markup percent (0–999); defaults to `0.00`. */
+export function parseItemMarkupPercent(
+	raw: string | number | null | undefined
+): string {
+	if (raw == null || raw === '') return '0.00';
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n < 0 || n > 999) {
+		throw new Error('Item markup must be between 0 and 999.');
+	}
+	return n.toFixed(2);
+}
+
 function hospitalItemScope(hospitalId: string) {
 	return eq(table.itemMasterTable.hospitalId, hospitalId);
 }
@@ -633,6 +645,9 @@ export async function createItemMaster(
 
 	const { pharmacyGenericId: _p, ...restPayload } = payload;
 	const manufacturerName = trimEmptyToNull(restPayload.manufacturerName);
+	const itemMarkupPercent = parseItemMarkupPercent(
+		restPayload.itemMarkupPercent
+	);
 
 	const [row] = await ensureDb()
 		.insert(table.itemMasterTable)
@@ -640,7 +655,8 @@ export async function createItemMaster(
 			...restPayload,
 			hospitalId,
 			pharmacyGenericId,
-			manufacturerName
+			manufacturerName,
+			itemMarkupPercent
 		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
@@ -690,6 +706,11 @@ export async function updateItemMaster(
 	const setPayload: ItemMasterSchemaUpdate = { ...rest };
 	if (rest.manufacturerName !== undefined) {
 		setPayload.manufacturerName = trimEmptyToNull(rest.manufacturerName);
+	}
+	if (rest.itemMarkupPercent !== undefined) {
+		setPayload.itemMarkupPercent = parseItemMarkupPercent(
+			rest.itemMarkupPercent
+		);
 	}
 	setPayload.pharmacyGenericId = finalPharmacyGenericId;
 

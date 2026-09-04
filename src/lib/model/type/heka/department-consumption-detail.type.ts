@@ -11,6 +11,10 @@ export type ConsumptionBatchAllocationDraft = {
 	issueUnitName: string | null;
 	/** User-entered qty in purchase unit for this batch */
 	qtyPurchase: string;
+	/** GRN receipt date for this cost lot (when batch has GRN provenance). */
+	grnReceivedDate?: string | null;
+	/** Supplier invoice no. on the source GRN (disambiguates duplicate batch nos). */
+	grnInvoiceNo?: string | null;
 };
 
 /** Item unit master row shape from item-master API (subset used on draft lines). */

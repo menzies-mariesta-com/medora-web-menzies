@@ -22,7 +22,8 @@ export type MedicationOrderLineInput = {
 	testDose: string | null;
 	substituteNotAllowed: boolean;
 	unitSalePrice: string;
-	issueQtyPurchase: string;
+	qtyOut: string;
+	outUnitId: number;
 	itemUnitMasterId: number;
 	allocations: MedicationOrderLineAllocationInput[];
 };
@@ -58,6 +59,7 @@ export type MedicationOrderBatchHistoryRow = {
 	id: number;
 	hospitalId: string;
 	visitId: number | null;
+	visitNo: string | null;
 	storeId: number;
 	extCustomerName: string | null;
 	advisingDoctor: string | null;
@@ -75,6 +77,9 @@ export type ItemNamePriceRow = {
 	id: number;
 	itemName: string | null;
 	displayPrice: string | null;
+	/** On-hand at store in issue (stock) unit. */
+	stockIssueQty: string | null;
+	issueUnitName: string | null;
 };
 
 export type MedOrderSetupEntity =
@@ -130,7 +135,7 @@ export type MedicationOrderCheckoutResponse = {
 	};
 	lines: Array<{
 		itemName: string | null;
-		issueQtyPurchase: string;
+		qtyOut: string;
 		unitSalePrice: string;
 		lineTotal: string;
 	}>;
@@ -141,6 +146,7 @@ export type MedicationOrderDraftLineExtras = {
 	iumList: ConsumptionDraftLineIum[];
 	batchAllocations: ConsumptionBatchAllocationDraft[];
 	unitSalePrice: string;
-	issueQtyPurchase: string;
+	qtyOut: string;
+	outUnitId: number | null;
 	itemUnitMasterId: number | null;
 };

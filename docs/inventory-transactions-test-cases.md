@@ -69,7 +69,7 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |
 | GRN-1 | Against approved / sent PO | Post GRN only when PO status allows receiving. | Otherwise rejected. |
-| GRN-2 | Receipt cap | `received_qty` over PO line open qty. | Rejected in same transaction. |
+| GRN-2 | Receipt cap | `purchased_qty` over PO line open qty. | Rejected in same transaction. |
 | GRN-3 | Batch master + stock | Post lines with `batch_no`, `expiry_date`, and `purchase_price` (required for every item). | `item_batch` row (unique on hospital, item, batch_no, expiry, supplier_id, purchase_price per **`item_batch_identity_uidx`** after **0073**); `goods_receipt_line.batch_id` + `purchase_price`; `inv_stock` incremented for `(store_id, batch_id)`. |
 | GRN-3b | Batch identity split | Same `batch_no` + expiry but different `purchase_price` or resolved **supplier_id** so the composite unique key differs. | Distinct `item_batch` rows (split costing). |
 | IM-1 | GRN batch fields | Post GRN line without `batch_no`, `expiry_date`, or `purchase_price`. | Rejected for that line (400). |

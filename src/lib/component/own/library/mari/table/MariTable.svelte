@@ -18,6 +18,8 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import MariTableExportToolbar from '$lib/component/own/library/mari/table/MariTableExportToolbar.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import type { MariTableExportConfig } from '$lib/model/type/mari-table-export.type';
 	import { m } from '$lib/paraglide/messages';
@@ -26,6 +28,7 @@
 		type MariSelectFilterOption,
 		type MariTableFilterMasterKey
 	} from '$lib/tool/mari/mari-table-master-filter-options.util.svelte.ts';
+	import { normalizeMariTableColumns } from '$lib/tool/mari/mari-table-columns.util';
 
 	export type { MariTableFilterMasterKey };
 
@@ -230,7 +233,7 @@
 		if (!enableColumnFilters) return;
 
 		const keysNeeded = new Set<MariTableFilterMasterKey>();
-		for (const column of columns) {
+		for (const column of displayColumns) {
 			if (column.filterMasterKey) {
 				keysNeeded.add(column.filterMasterKey);
 			}
@@ -380,7 +383,7 @@
 		const nextFilters = { ...columnFilters };
 		let changed = false;
 
-		for (const column of columns) {
+		for (const column of displayColumns) {
 			if (!(column.filterable ?? true)) continue;
 			if (Object.hasOwn(nextFilters, column.id)) continue;
 			const defaultValue = getDefaultFilterValue(column);
@@ -404,6 +407,13 @@
 	});
 
 	const pageSizeNum = $derived(Number(pageSize) || 10);
+
+	const displayColumns = $derived(
+		normalizeMariTableColumns(columns, {
+			currentPage,
+			pageSize: pageSizeNum
+		})
+	);
 
 	const hasActionsColumn = $derived(
 		showRowActions || actionsVariant !== 'none'
@@ -681,7 +691,7 @@
 								{actionsHeader}
 							</th>
 						{/if}
-						{#each columns as column (column.id)}
+						{#each displayColumns as column (column.id)}
 							{@const isFilterable =
 								enableColumnFilters && (column.filterable ?? true)}
 							{@const filterType = column.filterType ?? 'text'}
@@ -727,7 +737,7 @@
 					{#if pagedRows.length === 0}
 						<tr>
 							<td
-								colspan={columns.length + (hasActionsColumn ? 1 : 0)}
+								colspan={displayColumns.length + (hasActionsColumn ? 1 : 0)}
 								class="py-6 text-center opacity-70"
 							>
 								{#if isLoading}
@@ -752,7 +762,7 @@
 							>
 								{#if hasActionsColumn}
 									<td
-										class="px-1 whitespace-nowrap"
+										class="relative z-0 overflow-visible px-1 whitespace-nowrap"
 										style="width: 1%;"
 										onclick={(e) => e.stopPropagation()}
 									>
@@ -761,64 +771,56 @@
 												crudEditDisabled?.(row) ?? false}
 											{@const deleteLocked =
 												crudDeleteDisabled?.(row) ?? false}
-											<div class="flex items-center gap-2">
+											<MariTableRowActionGroup>
 												{#if crudShowView}
-													<DaisyUiTooltip
-														tooltipText="View"
-														className="d-tooltip-right"
+													<MariTableIconAction
+														tooltipText={m.mari_table_tooltip_view()}
+														color="ghost"
+														onClick={() => dispatch('view', row)}
 													>
-														<DaisyUiButton
-															className="d-btn-ghost d-btn-sm d-btn-square"
-															onClick={() => dispatch('view', row)}
-														>
+														{#snippet icon()}
 															<LucideEye className="size-4" />
-														</DaisyUiButton>
-													</DaisyUiTooltip>
+														{/snippet}
+													</MariTableIconAction>
 												{/if}
-												<DaisyUiTooltip
-													tooltipText="Edit"
-													className="d-tooltip-right"
+												<MariTableIconAction
+													tooltipText={m.mari_table_tooltip_edit()}
+													color="accent"
+													disabled={editLocked}
+													onClick={() => dispatch('edit', row)}
 												>
-													<DaisyUiButton
-														className="d-btn-ghost d-btn-sm d-btn-square d-btn-success"
-														disabled={editLocked}
-														onClick={() => dispatch('edit', row)}
-													>
+													{#snippet icon()}
 														<LucidePencil className="size-4" />
-													</DaisyUiButton>
-												</DaisyUiTooltip>
-												<DaisyUiTooltip
+													{/snippet}
+												</MariTableIconAction>
+												<MariTableIconAction
 													tooltipText={m.mari_table_crud_inactivate_tooltip()}
-													className="d-tooltip-right"
+													color="error"
+													disabled={deleteLocked}
+													onClick={() => dispatch('delete', row)}
 												>
-													<DaisyUiButton
-														className="d-btn-ghost d-btn-error d-btn-sm d-btn-square"
-														disabled={deleteLocked}
-														onClick={() => dispatch('delete', row)}
-													>
+													{#snippet icon()}
 														<LucideTrash2 className="size-4" />
-													</DaisyUiButton>
-												</DaisyUiTooltip>
-											</div>
+													{/snippet}
+												</MariTableIconAction>
+											</MariTableRowActionGroup>
 										{:else if actionsVariant === 'select'}
-											<DaisyUiTooltip
-												tooltipText="Select"
-												className="d-tooltip-right"
+											<MariTableIconAction
+												tooltipText={m.mari_table_tooltip_select()}
+												color="primary"
+												onClick={() => dispatch('select', row)}
 											>
-												<DaisyUiButton
-													className="d-btn-primary d-btn-sm d-btn-square"
-													onClick={() => dispatch('select', row)}
-												>
+												{#snippet icon()}
 													<LucideCircleCheck className="size-4" />
-												</DaisyUiButton>
-											</DaisyUiTooltip>
+												{/snippet}
+											</MariTableIconAction>
 										{:else}
 											{@render rowActions?.(row, index)}
 										{/if}
 									</td>
 								{/if}
 
-								{#each columns as column (column.id)}
+								{#each displayColumns as column (column.id)}
 									{@const cellComponent = column.cellComponentGetter
 										? column.cellComponentGetter(row, index)
 										: null}

@@ -15,8 +15,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import MariTable, {
@@ -293,23 +292,10 @@
 					}}
 				>
 					{#snippet rowActions(row, rowIndex)}
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row as SubCategoryListRow)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() =>
-										handleDelete(row as SubCategoryListRow)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
+						<MariTableEditDeleteActions
+							onEdit={() => openEdit(row as SubCategoryListRow)}
+							onDelete={() => handleDelete(row as SubCategoryListRow)}
+						/>
 					{/snippet}
 				</MariTable>
 			</div>

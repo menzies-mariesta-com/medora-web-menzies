@@ -5,12 +5,20 @@ import { ensureDb } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
 import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
 import { addDeltaToInvStock } from '$lib/server/heka/inventory/item-batch.server';
+import { computeSalePriceAtTransactionDb } from '$lib/server/heka/inventory/sale-price.server';
+import type { InvPricingModuleCode } from '$lib/model/type/heka/inv-pricing-module.type';
 import {
 	issueQtyStringFromPurchaseReceipt,
 	purchaseQtyToIssueQtyString
 } from '$lib/server/heka/inventory/item-unit-inventory.server';
 import { parsePositiveIntQty } from '$lib/server/heka/inventory/inv-validate.server';
 import { resolveItemUnitMastersByItemAndPurchaseUnit } from '$lib/server/heka/administration/item-master.server';
+import {
+	medOrderLineTotal,
+	outQtyToPurchaseQtyString,
+	unitSalePriceForOutUnit,
+	type MedOrderIumUnitIds
+} from '$lib/tool/inventory/med-order-out-qty.util';
 
 type Db = NeonDatabase<typeof schema>;
 
@@ -39,29 +47,28 @@ export type MedicationOrderLineSaveInput = {
 	testDose: string | null;
 	substituteNotAllowed: boolean;
 	unitSalePrice: string;
-	issueQtyPurchase: string;
+	qtyOut: string;
+	outUnitId: number;
 	itemUnitMasterId: number;
 	allocations: MedicationOrderLineAllocationInput[];
 };
 
 export function computeLineTotal(input: {
-	issueQtyPurchase: string;
+	qtyOut: string;
 	unitSalePrice: string;
 }): number {
-	const q = Number(input.issueQtyPurchase);
-	const p = Number(input.unitSalePrice);
-	if (!Number.isFinite(q) || !Number.isFinite(p) || q < 0 || p < 0) {
-		return 0;
-	}
-	return Math.round(q * p * 100) / 100;
+	return medOrderLineTotal(input.qtyOut, input.unitSalePrice);
 }
 
-export function computeBatchTotalFromLines(
+export async function computeBatchTotalFromLines(
 	lines: MedicationOrderLineSaveInput[]
-): string {
+): Promise<string> {
 	let sum = 0;
 	for (const ln of lines) {
-		sum += computeLineTotal(ln);
+		sum += computeLineTotal({
+			qtyOut: ln.qtyOut,
+			unitSalePrice: ln.unitSalePrice
+		});
 	}
 	return sum.toFixed(2);
 }
@@ -69,14 +76,11 @@ export function computeBatchTotalFromLines(
 async function getIumFactors(
 	hospitalId: string,
 	itemUnitMasterId: number
-): Promise<{
-	purchaseUnitId: number;
-	purchaseConversionFactor: string;
-	issueConversionFactor: string;
-}> {
+): Promise<MedOrderIumUnitIds> {
 	const rows = await ensureDb()
 		.select({
 			purchaseUnitId: schema.itemUnitMasterTable.purchaseUnitId,
+			issueUnitId: schema.itemUnitMasterTable.issueUnitId,
 			purchaseConversionFactor:
 				schema.itemUnitMasterTable.purchaseConversionFactor,
 			issueConversionFactor:
@@ -95,6 +99,7 @@ async function getIumFactors(
 	if (!row) throw error(400, 'Invalid item unit master');
 	return {
 		purchaseUnitId: row.purchaseUnitId,
+		issueUnitId: row.issueUnitId,
 		purchaseConversionFactor: String(row.purchaseConversionFactor),
 		issueConversionFactor: String(row.issueConversionFactor)
 	};
@@ -133,6 +138,15 @@ export async function validateMedicationOrderLinesForDispense(input: {
 			!iumMap.has(`${ln.itemMasterId}:${ium.purchaseUnitId}`)
 		) {
 			throw error(400, 'Item unit master does not match item');
+		}
+
+		if (
+			!Number.isFinite(ln.outUnitId) ||
+			ln.outUnitId <= 0 ||
+			(ln.outUnitId !== ium.purchaseUnitId &&
+				ln.outUnitId !== ium.issueUnitId)
+		) {
+			throw error(400, 'Invalid out unit on a line');
 		}
 
 		let sumPurchase = 0;
@@ -186,21 +200,33 @@ export async function validateMedicationOrderLinesForDispense(input: {
 			}
 		}
 
+		const linePurchaseQty = outQtyToPurchaseQtyString(
+			ln.qtyOut,
+			ln.outUnitId,
+			ium
+		);
+		if (
+			!linePurchaseQty ||
+			Math.abs(sumPurchase - Number(linePurchaseQty)) > 1e-6
+		) {
+			throw error(
+				400,
+				'Line quantity must match the sum of batch allocations'
+			);
+		}
+
 		const issueFromAllocs = purchaseQtyToIssueQtyString(
 			String(sumPurchase),
 			ium.purchaseConversionFactor,
 			ium.issueConversionFactor
 		);
 		const lineIssue = purchaseQtyToIssueQtyString(
-			ln.issueQtyPurchase,
+			linePurchaseQty,
 			ium.purchaseConversionFactor,
 			ium.issueConversionFactor
 		);
 		if (issueFromAllocs !== lineIssue) {
-			throw error(
-				400,
-				'Line quantity must match the sum of batch allocations'
-			);
+			throw error(400, 'Invalid quantity conversion for line');
 		}
 
 		const price = Number(ln.unitSalePrice);
@@ -345,9 +371,30 @@ export async function insertMedicationOrderLineWithAllocations(
 		lineNo: number;
 		line: MedicationOrderLineSaveInput;
 		userId: string | null;
+		pricingModule: InvPricingModuleCode;
 	}
 ): Promise<number> {
 	const { line } = input;
+	const primaryAlloc =
+		line.allocations.find((a) => Number(a.qtyPurchase) > 0) ??
+		line.allocations[0];
+	let unitSalePrice = line.unitSalePrice;
+	const ium = await getIumFactors(input.hospitalId, line.itemUnitMasterId);
+	if (primaryAlloc) {
+		const computed = await computeSalePriceAtTransactionDb({
+			hospitalId: input.hospitalId,
+			batchId: primaryAlloc.batchId,
+			itemId: line.itemMasterId,
+			storeId: input.storeId,
+			module: input.pricingModule
+		});
+		unitSalePrice = unitSalePriceForOutUnit(
+			computed,
+			line.outUnitId,
+			ium
+		);
+	}
+
 	const [inserted] = await tx
 		.insert(schema.medicationOrderLineTable)
 		.values({
@@ -367,8 +414,9 @@ export async function insertMedicationOrderLineWithAllocations(
 			testDose: line.testDose,
 			substituteNotAllowed: line.substituteNotAllowed,
 			itemUnitMasterId: line.itemUnitMasterId,
-			issueQtyPurchase: line.issueQtyPurchase,
-			unitSalePrice: line.unitSalePrice,
+			qtyOut: line.qtyOut,
+			outUnitId: line.outUnitId,
+			unitSalePrice,
 			lineRemarks: null,
 			createdBy: input.userId,
 			updatedBy: input.userId

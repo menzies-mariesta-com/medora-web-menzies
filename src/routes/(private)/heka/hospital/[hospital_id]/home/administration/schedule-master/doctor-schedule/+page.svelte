@@ -732,7 +732,7 @@
 														<td>
 															<DaisyUiTooltip
 																tooltipText="edit data"
-																className="d-tooltip-left d-tooltip-accent"
+																className=" d-tooltip-accent"
 															>
 																<DaisyUiButton
 																	className=" d-btn-ghost d-btn-sm d-btn-accent"
@@ -744,7 +744,7 @@
 															</DaisyUiTooltip>
 															<DaisyUiTooltip
 																tooltipText="inactivate schedule"
-																className="d-tooltip-left d-tooltip-error"
+																className=" d-tooltip-error"
 															>
 																<DaisyUiButton
 																	className="d-btn-ghost d-btn-sm d-btn-error"

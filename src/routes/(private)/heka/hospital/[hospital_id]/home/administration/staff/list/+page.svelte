@@ -12,13 +12,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
 	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/own/local/private/heka/administration/staff/list/LStaffListViewEditModal.svelte';
@@ -402,58 +396,24 @@
 	>
 		{#snippet rowActions(row, rowIndex)}
 			{@const staffRow = row as StaffWithRelations}
-			<div
-				class="flex flex-row flex-wrap items-center justify-center gap-1"
-			>
-				<DaisyUiTooltip
-					tooltipText={m.view_data()}
-					className="d-tooltip-ghost d-tooltip-right"
-				>
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm"
-						onClick={() => viewData(staffRow.id)}
-						loading={viewingStaffId === staffRow.id}
-						disabled={isLoading ||
-							editingStaffId === staffRow.id ||
-							deletingStaffId === staffRow.id}
-						loadingText=""
-					>
-						<LucideEye className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
-				<DaisyUiTooltip
-					tooltipText={m.edit_data()}
-					className="d-tooltip-accent d-tooltip-right"
-				>
-					<DaisyUiButton
-						className="d-btn-sm d-btn-ghost d-btn-accent"
-						onClick={() => editData(staffRow.id)}
-						loading={editingStaffId === staffRow.id}
-						disabled={isLoading ||
-							viewingStaffId === staffRow.id ||
-							deletingStaffId === staffRow.id}
-						loadingText=""
-					>
-						<LucidePencil className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
-				<DaisyUiTooltip
-					tooltipText={m.delete_data()}
-					className="d-tooltip-error d-tooltip-right"
-				>
-					<DaisyUiButton
-						className="d-btn-ghost d-btn-sm d-btn-error"
-						onClick={() => handleDelete(staffRow.id)}
-						loading={deletingStaffId === staffRow.id}
-						disabled={isLoading ||
-							viewingStaffId === staffRow.id ||
-							editingStaffId === staffRow.id}
-						loadingText=""
-					>
-						<LucideTrash2 className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
-			</div>
+			<MariTableViewEditDeleteActions
+				onView={() => viewData(staffRow.id)}
+				onEdit={() => editData(staffRow.id)}
+				onDelete={() => handleDelete(staffRow.id)}
+				viewLoading={viewingStaffId === staffRow.id}
+				editLoading={editingStaffId === staffRow.id}
+				deleteLoading={deletingStaffId === staffRow.id}
+				disabled={isLoading}
+				viewDisabled={editingStaffId === staffRow.id ||
+					deletingStaffId === staffRow.id}
+				editDisabled={viewingStaffId === staffRow.id ||
+					deletingStaffId === staffRow.id}
+				deleteDisabled={viewingStaffId === staffRow.id ||
+					editingStaffId === staffRow.id}
+				viewTooltip={m.view_data()}
+				editTooltip={m.edit_data()}
+				deleteTooltip={m.delete_data()}
+			/>
 		{/snippet}
 	</MariTable>
 </div>

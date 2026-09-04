@@ -345,7 +345,7 @@
 				<div class="flex flex-row items-center justify-center gap-1">
 					<DaisyUiTooltip
 						tooltipText={m.inv_common_view()}
-						className="d-tooltip-ghost d-tooltip-right"
+						className="d-tooltip-ghost"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square"
@@ -357,7 +357,7 @@
 					</DaisyUiTooltip>
 					<DaisyUiTooltip
 						tooltipText={m.inv_dept_indent_receive()}
-						className="d-tooltip-accent d-tooltip-right"
+						className="d-tooltip-accent"
 					>
 						<DaisyUiButton
 							type="button"
@@ -373,7 +373,7 @@
 					</DaisyUiTooltip>
 					<DaisyUiTooltip
 						tooltipText={m.inv_di_cancel()}
-						className="d-tooltip-error d-tooltip-right"
+						className="d-tooltip-error"
 					>
 						<DaisyUiButton
 							className="d-btn-sm d-btn-ghost d-btn-square text-error"

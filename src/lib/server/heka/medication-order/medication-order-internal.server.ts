@@ -7,7 +7,6 @@ import {
 	ilike,
 	inArray,
 	isNull,
-	min,
 	or,
 	sql
 } from 'drizzle-orm';
@@ -18,11 +17,13 @@ import { ensureCanAccessHospital } from '$lib/server/heka/ensure-can-access-hosp
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/heka/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/heka/inv-pricing-module.type';
 import {
 	isMedOrderStartBeforeToday,
 	medOrderStartOfLocalDay
 } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
+import { defaultIssueUnitNameByItemIds } from '$lib/server/heka/inventory/stock.server';
 import {
 	assertBatchNotPaid,
 	buildMedOrderItemSearchCategoryFilter,
@@ -94,7 +95,7 @@ export async function searchStores(
 		.limit(100);
 }
 
-/** Item name + min batch purchase price (display) for pharmacy items in stock at store. */
+/** Item names for pharmacy items in stock at store (sale price comes from formula preview on the line). */
 export async function searchItemNamePrice(
 	event: RequestEvent,
 	input: {
@@ -150,9 +151,7 @@ export async function searchItemNamePrice(
 		.select({
 			id: im.id,
 			itemName: im.itemName,
-			displayPrice: min(
-				sql`coalesce(${ib.salePrice}, ${ib.purchasePrice})`
-			)
+			stockIssueQty: sql<string>`coalesce(sum(${inv.quantity}::numeric), 0)::text`
 		})
 		.from(inv)
 		.innerJoin(ib, eq(inv.batchId, ib.id))
@@ -161,11 +160,16 @@ export async function searchItemNamePrice(
 		.groupBy(im.id, im.itemName)
 		.orderBy(im.itemName)
 		.limit(limit);
+	const issueUnitByItem = await defaultIssueUnitNameByItemIds(
+		hospitalId,
+		rows.map((r) => r.id)
+	);
 	return rows.map((r) => ({
 		id: r.id,
 		itemName: r.itemName,
-		displayPrice:
-			r.displayPrice != null ? String(r.displayPrice) : null
+		displayPrice: null,
+		stockIssueQty: r.stockIssueQty,
+		issueUnitName: issueUnitByItem.get(r.id) ?? null
 	}));
 }
 
@@ -265,7 +269,8 @@ export async function saveMedicationOrderBatch(
 				batchId: batch.id,
 				lineNo: lineNo++,
 				line: ln,
-				userId
+				userId,
+				pricingModule: INTERNAL_SALES_PRICING_MODULE
 			});
 		}
 		return { batch, batchNo };
@@ -412,7 +417,8 @@ export async function reorderFromHistoryBatch(
 		testDose: firstLine.testDose,
 		substituteNotAllowed: firstLine.substituteNotAllowed,
 		unitSalePrice: String(firstLine.unitSalePrice ?? '0'),
-		issueQtyPurchase: String(firstLine.issueQtyPurchase ?? '1'),
+		qtyOut: String(firstLine.qtyOut ?? '1'),
+		outUnitId: Number(firstLine.outUnitId ?? 0),
 		itemUnitMasterId: Number(firstLine.itemUnitMasterId ?? 0),
 		allocations: allocs.map((a) => ({
 			batchId: a.batchId,
@@ -450,6 +456,7 @@ export async function listBatchesByVisit(
 	const b = table.medicationOrderBatchTable;
 	const uCreat = alias(table.userTable, 'mob_created_by');
 	const uUpd = alias(table.userTable, 'mob_updated_by');
+	const pv = table.patientVisitTable;
 	const lineCounts = db
 		.select({
 			batchId: table.medicationOrderLineTable.batchId,
@@ -465,6 +472,7 @@ export async function listBatchesByVisit(
 			id: b.id,
 			hospitalId: b.hospitalId,
 			visitId: b.visitId,
+			visitNo: pv.visitNo,
 			storeId: b.storeId,
 			extCustomerName: b.extCustomerName,
 			advisingDoctor: b.advisingDoctor,
@@ -485,6 +493,7 @@ export async function listBatchesByVisit(
 				)
 		})
 		.from(b)
+		.leftJoin(pv, eq(b.visitId, pv.id))
 		.leftJoin(uCreat, eq(b.createdBy, uCreat.id))
 		.leftJoin(uUpd, eq(b.updatedBy, uUpd.id))
 		.leftJoin(lineCounts, eq(b.id, lineCounts.batchId))
@@ -608,7 +617,8 @@ export async function updateMedicationOrderBatch(
 				batchId,
 				lineNo: lineNo++,
 				line: ln,
-				userId
+				userId,
+				pricingModule: INTERNAL_SALES_PRICING_MODULE
 			});
 		}
 		await tx

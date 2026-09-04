@@ -3,25 +3,52 @@
 	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
 	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
 	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
 	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
 	import DaisyUISearchSelect from '$lib/component/daisyui/search-select/DaisyUISearchSelect.svelte';
+	import PricingAssignmentViewDialog from '$lib/component/own/local/private/heka/inventory-setup/pricing/PricingAssignmentViewDialog.svelte';
+	import PricingFormulaDisplay from '$lib/component/own/local/private/heka/inventory-setup/pricing/PricingFormulaDisplay.svelte';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import type { BranchPricingConfigDto } from '$lib/model/type/heka/grn-pricing-config.type';
+	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import {
+		INV_PRICING_MODULE_CODES,
+		type InvPricingModuleCode
+	} from '$lib/model/type/heka/inv-pricing-module.type';
+	import type {
+		ModulePricingAssignmentDto,
+		ModulePricingAssignmentOverviewRow,
+		PricingFormulaTemplateDto,
+		PricingFormulaTemplateListRow
+	} from '$lib/model/type/heka/pricing-formula-template.type';
+	import { applyMariTableClientFilters } from '$lib/tool/mari/mari-table-client-filter.util';
 	import { m } from '$lib/paraglide/messages';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
 	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
 
 	const BRANCH_ALL = '__all__';
 
 	const hospitalId = $derived(
-		typeof page.params.hospital_id === 'string'
-			? page.params.hospital_id
+		typeof page.params.hospital_id === 'string' ? page.params.hospital_id : ''
+	);
+
+	const currentHospitalName = $derived(
+		typeof (page.data as { currentHospitalName?: string | null })
+			?.currentHospitalName === 'string'
+			? ((page.data as { currentHospitalName?: string | null })
+					.currentHospitalName ?? '')
 			: ''
 	);
 
-	/** From hospital home layout (navbar branch selector). */
 	const navbarSelectedBranchId = $derived(
 		typeof page.data?.selectedBranchId === 'string'
 			? page.data.selectedBranchId
@@ -29,7 +56,6 @@
 	);
 
 	const isAllBranchMode = $derived(navbarSelectedBranchId === BRANCH_ALL);
-
 	const branchSelectDisabled = $derived(!isAllBranchMode);
 
 	const lockedBranchLabel = $derived.by(() => {
@@ -40,446 +66,486 @@
 				name: string | null;
 			}[]
 		).filter((b) => b.id !== BRANCH_ALL);
-		const fromNav = navBranches.find(
-			(b) => b.id === navbarSelectedBranchId
-		);
+		const fromNav = navBranches.find((b) => b.id === navbarSelectedBranchId);
 		if (fromNav?.name?.trim()) return fromNav.name.trim();
-		const fromList = branches.find(
-			(b) => b.id === navbarSelectedBranchId
-		);
+		const fromList = branches.find((b) => b.id === navbarSelectedBranchId);
 		return fromList?.name ?? navbarSelectedBranchId;
 	});
 
+	const configApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-config`
+			: ''
+	);
+	const templatesApi = $derived(
+		hospitalId
+			? `/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-formula-templates`
+			: ''
+	);
+
 	let branches = $state<{ id: string; name: string }[]>([]);
 	let branchId = $state('');
-	let loading = $state(false);
-	let loadError = $state<string | null>(null);
+	let activeModule = $state<InvPricingModuleCode>('IS');
+	let templates = $state<PricingFormulaTemplateListRow[]>([]);
+	let assignment = $state<ModulePricingAssignmentDto | null>(null);
+	let selectedTemplate = $state<PricingFormulaTemplateDto | null>(null);
+	let templateIdStr = $state('');
+	let assignmentLoading = $state(false);
 	let saving = $state(false);
 
-	let saleManualOnGrnLine = $state(false);
-	let saleIncludeDiscount = $state(true);
-	let saleIncludeTax = $state(true);
-	let saleIncludeFreeQty = $state(false);
-	let saleMarkupPercentStr = $state('0');
+	let allOverviewRows = $state<ModulePricingAssignmentOverviewRow[]>([]);
+	let overviewLoading = $state(false);
+	let overviewPage = $state(1);
+	let overviewPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let overviewTableFilters = $state<Record<string, string>>({});
 
-	let empManualOnGrnLine = $state(false);
-	let empIncludeDiscount = $state(true);
-	let empIncludeTax = $state(true);
-	let empIncludeFreeQty = $state(true);
-	let empMarkupPercentStr = $state('0');
-	let empUsePercentOfSale = $state(false);
-	let empPercentOfSaleStr = $state('100');
+	let assignmentSectionEl = $state<HTMLElement | null>(null);
+	let showAssignmentPanel = $state(false);
 
 	const branchOptions = $derived(
 		branches.map((b) => ({ label: b.name, value: b.id }))
 	);
 
-	const saleFormulaHelp = $derived.by(() => {
-		if (saleManualOnGrnLine) return m.inv_pricing_config_sale_help_manual();
-		const parts: string[] = [m.inv_pricing_config_formula_base_subtotal()];
-		if (saleIncludeDiscount) parts.push(m.inv_pricing_config_formula_minus_discount());
-		if (saleIncludeTax) parts.push(m.inv_pricing_config_formula_plus_tax());
-		const denom = saleIncludeFreeQty
-			? m.inv_pricing_config_formula_denom_received_plus_free()
-			: m.inv_pricing_config_formula_denom_received();
-		return `${parts.join(' ')} ÷ ${denom}${Number(saleMarkupPercentStr) > 0 ? ` × (1 + ${saleMarkupPercentStr}%)` : ''}`;
-	});
+	const overviewBranchFilter = $derived(
+		isAllBranchMode ? '' : (navbarSelectedBranchId ?? '')
+	);
 
-	const empFormulaHelp = $derived.by(() => {
-		if (empManualOnGrnLine) return m.inv_pricing_config_emp_help_manual();
-		if (empUsePercentOfSale) {
-			return m.inv_pricing_config_emp_help_percent({
-				percent: empPercentOfSaleStr
-			});
+	function moduleLabel(mod: InvPricingModuleCode): string {
+		if (mod === 'IS') return m.inv_pricing_assignment_module_is();
+		if (mod === 'ES') return m.inv_pricing_assignment_module_es();
+		return m.inv_pricing_assignment_module_dc();
+	}
+
+	const overviewColumns = $derived.by((): MariTableColumn<ModulePricingAssignmentOverviewRow>[] => [
+		{
+			id: 'branchId',
+			header: m.inv_pricing_config_branch(),
+			field: 'branchId',
+			widthClass: 'w-44 min-w-[10rem]',
+			filterable: isAllBranchMode,
+			filterType: 'select',
+			filterOptions: branchOptions.map((b) => ({
+				label: b.label,
+				value: b.value
+			})),
+			format: (_v, row) => row.branchName
+		},
+		{
+			id: 'module',
+			header: m.inv_pricing_assignment_module(),
+			field: 'module',
+			widthClass: 'w-40 min-w-[9rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: INV_PRICING_MODULE_CODES.map((mod) => ({
+				label: moduleLabel(mod),
+				value: mod
+			})),
+			format: (_v, row) => moduleLabel(row.module)
+		},
+		{
+			id: 'formulaTemplateName',
+			header: m.inv_pricing_assignment_template(),
+			field: 'formulaTemplateName',
+			widthClass: 'min-w-[14rem]',
+			filterable: true,
+			format: (_v, row) =>
+				row.formulaTemplateName ??
+				m.inv_pricing_assignment_overview_unassigned()
+		},
+		{
+			id: 'assigned',
+			header: m.status(),
+			field: 'assigned',
+			widthClass: 'w-32',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: [
+				{ label: m.active_label(), value: 'assigned' },
+				{ label: m.inv_pricing_assignment_overview_unassigned(), value: 'unassigned' }
+			],
+			format: (_v, row) =>
+				row.formulaTemplateId != null
+					? m.active_label()
+					: m.inv_pricing_assignment_overview_unassigned()
 		}
-		const parts: string[] = [m.inv_pricing_config_formula_base_subtotal()];
-		if (empIncludeDiscount) parts.push(m.inv_pricing_config_formula_minus_discount());
-		if (empIncludeTax) parts.push(m.inv_pricing_config_formula_plus_tax());
-		const denom = empIncludeFreeQty
-			? m.inv_pricing_config_formula_denom_received_plus_free()
-			: m.inv_pricing_config_formula_denom_received();
-		return `${parts.join(' ')} ÷ ${denom}${Number(empMarkupPercentStr) > 0 ? ` × (1 + ${empMarkupPercentStr}%)` : ''}`;
-	});
+	]);
 
-	function apiBase() {
-		return `/api/heka/hospital/${hospitalId}/home/inventory-setup/pricing-config`;
-	}
+	const overviewRowsForTable = $derived(
+		allOverviewRows.map((row) => ({
+			...row,
+			assigned: row.formulaTemplateId != null ? 'assigned' : 'unassigned',
+			formulaTemplateName: row.formulaTemplateName ?? ''
+		}))
+	);
 
-	function syncForm(c: BranchPricingConfigDto) {
-		saleManualOnGrnLine = c.saleManualOnGrnLine;
-		saleIncludeDiscount = c.saleIncludeDiscount;
-		saleIncludeTax = c.saleIncludeTax;
-		saleIncludeFreeQty = c.saleIncludeFreeQty;
-		saleMarkupPercentStr = c.saleMarkupPercent;
-		empManualOnGrnLine = c.empManualOnGrnLine;
-		empIncludeDiscount = c.empIncludeDiscount;
-		empIncludeTax = c.empIncludeTax;
-		empIncludeFreeQty = c.empIncludeFreeQty;
-		empMarkupPercentStr = c.empMarkupPercent;
-		empUsePercentOfSale = c.empUsePercentOfSale;
-		empPercentOfSaleStr = c.empPercentOfSale;
-	}
+	const filteredOverviewRows = $derived(
+		applyMariTableClientFilters(
+			overviewRowsForTable as (ModulePricingAssignmentOverviewRow & {
+				assigned: string;
+			})[],
+			overviewTableFilters,
+			overviewColumns
+		)
+	);
 
-	async function loadBranches() {
-		if (!hospitalId) return;
+	const templateOptions = $derived(
+		templates
+			.filter((t) => t.statusId === StatusEnum.ACTIVE)
+			.map((t) => ({
+				label: `${t.name} (MSL ${t.mslMarkupPercent}%)`,
+				value: String(t.id)
+			}))
+	);
+
+	async function fetchBranches(hid: string) {
 		const res = await fetch(
-			`/api/heka/hospital/${hospitalId}/home/administration/branches?mode=all`,
-			{ credentials: 'include', cache: 'no-store' }
+			`/api/heka/hospital/${hid}/home/administration/branches?mode=all`,
+			{ credentials: 'include' }
 		);
-		if (!res.ok) {
-			const t = await res.text().catch(() => '');
-			throw new Error(t || `Load branches failed (${res.status})`);
-		}
+		if (!res.ok) throw new Error(`Branches (${res.status})`);
 		const rows = (await res.json()) as {
 			id: string;
-			branchName?: string | null;
 			name?: string | null;
+			code?: string | null;
 		}[];
-		branches = rows.map((r) => ({
-			id: r.id,
-			name: String(r.branchName ?? r.name ?? r.id).trim() || r.id
+		branches = rows.map((b) => ({
+			id: b.id,
+			name: b.name ?? b.code ?? b.id
 		}));
 	}
 
-	async function loadConfig() {
-		if (!hospitalId || !branchId) return;
-		loading = true;
-		loadError = null;
+	async function loadTemplates() {
+		if (!templatesApi) return;
+		const res = await fetch(templatesApi, { credentials: 'include' });
+		if (!res.ok) throw new Error(`Templates (${res.status})`);
+		const json = (await res.json()) as { data: PricingFormulaTemplateListRow[] };
+		templates = json.data ?? [];
+	}
+
+	async function loadAssignment() {
+		if (!configApi || !branchId) return;
+		assignmentLoading = true;
 		try {
 			const res = await fetch(
-				`${apiBase()}?branchId=${encodeURIComponent(branchId)}`,
-				{ credentials: 'include', cache: 'no-store' }
+				`${configApi}?branchId=${encodeURIComponent(branchId)}&module=${activeModule}`,
+				{ credentials: 'include' }
 			);
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Load failed (${res.status})`);
-			}
-			const b = (await res.json()) as { config: BranchPricingConfigDto };
-			syncForm(b.config);
-		} catch (e) {
-			loadError = e instanceof Error ? e.message : 'Load failed';
+			if (!res.ok) throw new Error(`Config (${res.status})`);
+			const json = (await res.json()) as {
+				assignment: ModulePricingAssignmentDto | null;
+				template: PricingFormulaTemplateDto | null;
+			};
+			assignment = json.assignment;
+			selectedTemplate = json.template;
+			templateIdStr =
+				json.assignment != null
+					? String(json.assignment.formulaTemplateId)
+					: '';
+		} catch (err) {
+			toastService.addToast(
+				err instanceof Error ? err.message : m.loading(),
+				StatusColorEnum.ERROR
+			);
 		} finally {
-			loading = false;
+			assignmentLoading = false;
 		}
 	}
 
-	async function saveConfig() {
-		if (!hospitalId || !branchId || saving) return;
-		const saleMarkup = Number(saleMarkupPercentStr);
-		const empMarkup = Number(empMarkupPercentStr);
-		const empPct = Number(empPercentOfSaleStr);
-		if (!Number.isFinite(saleMarkup) || saleMarkup < 0 || saleMarkup > 999) {
+	async function loadOverview() {
+		if (!configApi || !hospitalId) return;
+		overviewLoading = true;
+		try {
+			const params = new URLSearchParams({ mode: 'overview' });
+			if (overviewBranchFilter) {
+				params.set('branchId', overviewBranchFilter);
+			}
+			const res = await fetch(`${configApi}?${params}`, {
+				credentials: 'include'
+			});
+			if (!res.ok) throw new Error(`Overview (${res.status})`);
+			const json = (await res.json()) as {
+				data: ModulePricingAssignmentOverviewRow[];
+			};
+			allOverviewRows = json.data ?? [];
+		} catch (err) {
 			toastService.addToast(
-				m.inv_pricing_config_invalid_markup(),
+				err instanceof Error ? err.message : m.loading(),
 				StatusColorEnum.ERROR
 			);
-			return;
+		} finally {
+			overviewLoading = false;
 		}
-		if (!Number.isFinite(empMarkup) || empMarkup < 0 || empMarkup > 999) {
+	}
+
+	lifeCycleUtil.onMount(async () => {
+		if (!hospitalId) return;
+		try {
+			await fetchBranches(hospitalId);
+			await loadTemplates();
+			syncBranchFromNav();
+			await loadOverview();
+		} catch (err) {
 			toastService.addToast(
-				m.inv_pricing_config_invalid_markup(),
+				err instanceof Error ? err.message : m.loading(),
 				StatusColorEnum.ERROR
 			);
-			return;
 		}
-		if (!Number.isFinite(empPct) || empPct <= 0 || empPct > 999) {
+	});
+
+	function syncBranchFromNav() {
+		if (navbarSelectedBranchId && navbarSelectedBranchId !== BRANCH_ALL) {
+			branchId = navbarSelectedBranchId;
+		} else if (branches.length > 0 && !branchId) {
+			branchId = branches[0].id;
+		}
+	}
+
+	$effect(() => {
+		const navBranch = navbarSelectedBranchId;
+		void branches.length;
+		if (!navBranch) return;
+		if (navBranch !== BRANCH_ALL) {
+			branchId = navBranch;
+		} else if (!branchId && branches.length > 0) {
+			branchId = branches[0].id;
+		}
+	});
+
+	$effect(() => {
+		const navBranch = navbarSelectedBranchId;
+		void navBranch;
+		if (hospitalId && configApi) {
+			void loadOverview();
+		}
+	});
+
+	$effect(() => {
+		const bid = branchId;
+		const mod = activeModule;
+		if (bid && configApi) {
+			void loadAssignment();
+		}
+		void mod;
+	});
+
+	function configureFromOverview(row: ModulePricingAssignmentOverviewRow) {
+		branchId = row.branchId;
+		activeModule = row.module;
+		showAssignmentPanel = true;
+		assignmentSectionEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
+	async function openOverviewView(row: ModulePricingAssignmentOverviewRow) {
+		await dialogService.open({
+			title: `${row.branchName} · ${moduleLabel(row.module)}`,
+			component: PricingAssignmentViewDialog,
+			props: { row, moduleLabel },
+			variant: DialogVariantEnum.ALERT
+		});
+	}
+
+	async function saveAssignment() {
+		if (!configApi || !branchId || saving) return;
+		const tid = Number(templateIdStr);
+		if (!Number.isFinite(tid) || tid <= 0) {
 			toastService.addToast(
-				m.inv_pricing_config_invalid_emp_percent(),
+				m.inv_pricing_assignment_template_placeholder(),
 				StatusColorEnum.ERROR
 			);
 			return;
 		}
 		saving = true;
 		try {
-			const res = await fetch(apiBase(), {
+			const res = await fetch(configApi, {
 				method: 'PUT',
-				credentials: 'include',
 				headers: { 'content-type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({
 					branchId,
-					saleManualOnGrnLine,
-					saleIncludeDiscount,
-					saleIncludeTax,
-					saleIncludeFreeQty,
-					saleMarkupPercent: saleMarkup.toFixed(2),
-					empManualOnGrnLine,
-					empIncludeDiscount,
-					empIncludeTax,
-					empIncludeFreeQty,
-					empMarkupPercent: empMarkup.toFixed(2),
-					empUsePercentOfSale,
-					empPercentOfSale: empPct.toFixed(2)
+					module: activeModule,
+					formulaTemplateId: tid
 				})
 			});
 			if (!res.ok) {
 				const t = await res.text().catch(() => '');
 				throw new Error(t || `Save failed (${res.status})`);
 			}
-			const b = (await res.json()) as { config: BranchPricingConfigDto };
-			syncForm(b.config);
 			toastService.addToast(
-				m.inv_pricing_config_saved(),
+				m.inv_pricing_assignment_saved(),
 				StatusColorEnum.SUCCESS
 			);
-		} catch (e) {
+			await loadAssignment();
+			await loadTemplates();
+			await loadOverview();
+		} catch (err) {
 			toastService.addToast(
-				e instanceof Error ? e.message : 'Save failed',
+				err instanceof Error ? err.message : m.delete_failed(),
 				StatusColorEnum.ERROR
 			);
 		} finally {
 			saving = false;
 		}
 	}
-
-	$effect(() => {
-		void hospitalId;
-		void (async () => {
-			try {
-				await loadBranches();
-			} catch (e) {
-				loadError =
-					e instanceof Error ? e.message : 'Load branches failed';
-			}
-		})();
-	});
-
-	$effect(() => {
-		void hospitalId;
-		void branchId;
-		if (branchId) void loadConfig();
-	});
-
-	/** When nav is a specific branch, lock config to that branch. */
-	$effect(() => {
-		if (
-			!isAllBranchMode &&
-			navbarSelectedBranchId &&
-			navbarSelectedBranchId !== BRANCH_ALL
-		) {
-			branchId = navbarSelectedBranchId;
-		}
-	});
 </script>
 
-<div class="space-y-6">
-	<div class="space-y-1">
-		<h1 class="text-lg font-semibold">{m.inv_pricing_config_title()}</h1>
-		<p class="text-sm opacity-70">{m.inv_pricing_config_subtitle()}</p>
+<div class="flex flex-col gap-4 p-4">
+	<div>
+		<h1 class="text-xl font-semibold">{m.inv_pricing_config_title()}</h1>
+		{#if currentHospitalName}
+			<p class="mt-1 text-sm opacity-70">
+				{m.inv_pricing_assignment_filter_hospital()}: {currentHospitalName}
+			</p>
+		{/if}
 	</div>
 
-	{#if loadError}
-		<div class="d-alert d-alert-error">
-			<span>{loadError}</span>
-		</div>
-	{/if}
-
-	<DaisyUiCard>
-		<DaisyUiCardBody className="space-y-4">
-			<div class="max-w-md space-y-1">
-				<DaisyUiLabel className="font-semibold">
-					{m.inv_pricing_config_branch()}
-				</DaisyUiLabel>
-				<DaisyUISearchSelect
-					options={branchOptions}
-					bind:value={branchId}
-					placeholder={m.inv_pricing_config_branch_placeholder()}
-					disabled={loading || saving || branchSelectDisabled}
-				/>
-				{#if branchSelectDisabled && lockedBranchLabel}
-					<p class="text-xs opacity-70">
-						{m.inv_pricing_config_branch_locked_hint({
-							branch: lockedBranchLabel
-						})}
-					</p>
-				{/if}
-			</div>
-		</DaisyUiCardBody>
-	</DaisyUiCard>
-
-	{#if branchId}
+	<div
+		bind:this={assignmentSectionEl}
+		class:hidden={!showAssignmentPanel}
+		class="flex flex-col gap-4"
+	>
 		<DaisyUiCard>
-			<DaisyUiCardBody className="space-y-6">
+			<DaisyUiCardBody className="flex flex-col gap-4">
 				<div
-					class="grid grid-cols-1 gap-6 lg:grid-cols-2"
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<div class="min-w-0 space-y-4">
-						<div class="space-y-1">
-							<h2 class="text-base font-semibold">
-								{m.inv_pricing_config_section_sale()}
-							</h2>
-							<p class="text-xs opacity-70">{saleFormulaHelp}</p>
-						</div>
-						<div class="flex flex-col gap-3">
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							class="d-checkbox d-checkbox-sm"
-							bind:checked={saleManualOnGrnLine}
-							disabled={loading || saving}
+				<DaisyUiLabel className="shrink-0 sm:w-40"
+					>{m.inv_pricing_config_branch()}</DaisyUiLabel
+				>
+				<div class="max-w-md flex-1">
+					{#if branchSelectDisabled && lockedBranchLabel}
+						<p class="text-sm">{lockedBranchLabel}</p>
+						<p class="text-xs opacity-60">
+							{m.inv_pricing_config_branch_locked_hint({
+								branch: lockedBranchLabel
+							})}
+						</p>
+					{:else}
+						<DaisyUISearchSelect
+							bind:value={branchId}
+							options={branchOptions}
+							placeholder={m.inv_pricing_config_branch_placeholder()}
+							disabled={branchSelectDisabled}
 						/>
-						<span class="text-sm"
-							>{m.inv_pricing_config_manual_on_grn()}</span
-						>
-					</label>
-					{#if !saleManualOnGrnLine}
-						<label class="flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								class="d-checkbox d-checkbox-sm"
-								bind:checked={saleIncludeDiscount}
-								disabled={loading || saving}
-							/>
-							<span class="text-sm"
-								>{m.inv_pricing_config_include_discount()}</span
-							>
-						</label>
-						<label class="flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								class="d-checkbox d-checkbox-sm"
-								bind:checked={saleIncludeTax}
-								disabled={loading || saving}
-							/>
-							<span class="text-sm"
-								>{m.inv_pricing_config_include_tax()}</span
-							>
-						</label>
-						<label class="flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								class="d-checkbox d-checkbox-sm"
-								bind:checked={saleIncludeFreeQty}
-								disabled={loading || saving}
-							/>
-							<span class="text-sm"
-								>{m.inv_pricing_config_include_free_qty()}</span
-							>
-						</label>
-						<div class="max-w-xs space-y-1">
-							<DaisyUiLabel className="font-semibold">
-								{m.inv_pricing_config_sale_markup()}
-							</DaisyUiLabel>
-							<DaisyUiInputField
-								bind:value={saleMarkupPercentStr}
-								inputType="number"
-								inputPlaceholderText="0"
-								disabled={loading || saving}
-							/>
-						</div>
 					{/if}
-						</div>
-					</div>
+				</div>
+			</div>
 
-					<div class="min-w-0 space-y-4">
-						<div class="space-y-1">
-							<h2 class="text-base font-semibold">
-								{m.inv_pricing_config_section_emp()}
-							</h2>
-							<p class="text-xs opacity-70">{empFormulaHelp}</p>
-						</div>
-						<div class="flex flex-col gap-3">
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							class="d-checkbox d-checkbox-sm"
-							bind:checked={empManualOnGrnLine}
-							disabled={loading || saving}
+			<div class="flex flex-wrap gap-2">
+				{#each INV_PRICING_MODULE_CODES as mod (mod)}
+					<button
+						type="button"
+						class="d-btn d-btn-sm {activeModule === mod
+							? 'd-btn-primary'
+							: 'd-btn-ghost'}"
+						onclick={() => {
+							activeModule = mod;
+						}}
+					>
+						{moduleLabel(mod)}
+					</button>
+				{/each}
+			</div>
+
+			{#if !branchId}
+				<p class="text-sm text-warning">
+					{m.inv_pricing_config_select_branch()}
+				</p>
+			{:else if assignmentLoading}
+				<div class="flex justify-center py-10">
+					<DaisyUiLoading className="d-loading-lg text-primary" />
+				</div>
+			{:else}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<DaisyUiLabel className="shrink-0 sm:w-40"
+						>{m.inv_pricing_assignment_template()}</DaisyUiLabel
+					>
+					<div class="max-w-lg flex-1">
+						<DaisyUISearchSelect
+							bind:value={templateIdStr}
+							options={templateOptions}
+							placeholder={m.inv_pricing_assignment_template_placeholder()}
 						/>
-						<span class="text-sm"
-							>{m.inv_pricing_config_manual_on_grn()}</span
-						>
-					</label>
-					{#if !empManualOnGrnLine}
-						<label class="flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								class="d-checkbox d-checkbox-sm"
-								bind:checked={empUsePercentOfSale}
-								disabled={loading || saving}
-							/>
-							<span class="text-sm"
-								>{m.inv_pricing_config_emp_use_percent_of_sale()}</span
-							>
-						</label>
-						{#if empUsePercentOfSale}
-							<div class="max-w-xs space-y-1">
-								<DaisyUiLabel className="font-semibold">
-									{m.inv_pricing_config_emp_percent()}
-								</DaisyUiLabel>
-								<DaisyUiInputField
-									bind:value={empPercentOfSaleStr}
-									inputType="number"
-									inputPlaceholderText="100"
-									disabled={loading || saving}
-								/>
-							</div>
-						{:else}
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="checkbox"
-									class="d-checkbox d-checkbox-sm"
-									bind:checked={empIncludeDiscount}
-									disabled={loading || saving}
-								/>
-								<span class="text-sm"
-									>{m.inv_pricing_config_include_discount()}</span
-								>
-							</label>
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="checkbox"
-									class="d-checkbox d-checkbox-sm"
-									bind:checked={empIncludeTax}
-									disabled={loading || saving}
-								/>
-								<span class="text-sm"
-									>{m.inv_pricing_config_include_tax()}</span
-								>
-							</label>
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="checkbox"
-									class="d-checkbox d-checkbox-sm"
-									bind:checked={empIncludeFreeQty}
-									disabled={loading || saving}
-								/>
-								<span class="text-sm"
-									>{m.inv_pricing_config_include_free_qty()}</span
-								>
-							</label>
-							<div class="max-w-xs space-y-1">
-								<DaisyUiLabel className="font-semibold">
-									{m.inv_pricing_config_emp_markup()}
-								</DaisyUiLabel>
-								<DaisyUiInputField
-									bind:value={empMarkupPercentStr}
-									inputType="number"
-									inputPlaceholderText="0"
-									disabled={loading || saving}
-								/>
-							</div>
-						{/if}
-					{/if}
-						</div>
 					</div>
 				</div>
+
+				{#if templateOptions.length === 0}
+					<p class="text-sm text-warning">
+						{m.inv_pricing_assignment_unassigned_warning()}
+					</p>
+				{/if}
+
+				{#if !assignment}
+					<p class="text-sm text-warning">
+						{m.inv_pricing_assignment_unassigned_warning()}
+					</p>
+				{/if}
+
+				{#if selectedTemplate}
+					<div class="rounded-md border border-base-300 p-3 text-sm">
+						<p class="mb-2 font-medium">{m.inv_pricing_template_formula()}</p>
+						<PricingFormulaDisplay
+							input={{
+								includeDiscount: selectedTemplate.includeDiscount,
+								includeTax: selectedTemplate.includeTax,
+								includeFreeQty: selectedTemplate.includeFreeQty,
+								includeItemMarkup: selectedTemplate.includeItemMarkup,
+								includeStoreMarkup: selectedTemplate.includeStoreMarkup,
+								mslMarkupPercent: selectedTemplate.mslMarkupPercent
+							}}
+						/>
+					</div>
+				{/if}
 
 				<div class="flex justify-end">
 					<DaisyUiButton
 						type="button"
-						className="d-btn-primary d-btn-sm"
-						disabled={loading || saving}
+						className="d-btn-primary"
 						loading={saving}
-						onClick={() => void saveConfig()}
+						onClick={() => saveAssignment()}
 					>
 						{m.inv_pricing_config_save()}
 					</DaisyUiButton>
 				</div>
-			</DaisyUiCardBody>
-		</DaisyUiCard>
-	{:else}
-		<p class="text-sm opacity-70">
-			{m.inv_pricing_config_select_branch()}
-		</p>
-	{/if}
+			{/if}
+		</DaisyUiCardBody>
+	</DaisyUiCard>
+	</div>
+
+	<DaisyUiCard>
+		<DaisyUiCardBody className="flex flex-col gap-3">
+			<div class={TableEnum.HEIGHT}>
+				<MariTable
+					rows={filteredOverviewRows}
+					columns={overviewColumns}
+					isLoading={overviewLoading}
+					bind:pageSize={overviewPageSizeStr}
+					bind:currentPage={overviewPage}
+					bind:columnFilters={overviewTableFilters}
+					showRefreshButton={true}
+					refreshTooltip={m.refresh_data()}
+					emptyMessage="—"
+					showRowActions={true}
+					actionsVariant="crud"
+					enableColumnFilters={true}
+					useRemoteFilters={false}
+					crudDeleteDisabled={() => true}
+					rowClassGetter={(row) =>
+						(row as ModulePricingAssignmentOverviewRow).formulaTemplateId ==
+						null
+							? 'bg-warning/10'
+							: ''}
+					on:refresh={() => loadOverview()}
+					on:view={(e) => void openOverviewView(e.detail)}
+					on:edit={(e) => configureFromOverview(e.detail)}
+					on:filtersChange={(e) => {
+						overviewTableFilters = e.detail.filters;
+						overviewPage = 1;
+					}}
+				/>
+			</div>
+		</DaisyUiCardBody>
+	</DaisyUiCard>
 </div>

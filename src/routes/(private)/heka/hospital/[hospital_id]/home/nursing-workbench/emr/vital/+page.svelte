@@ -16,8 +16,7 @@
 	import type { PatientDiagnosisListRow } from '$lib/model/type/heka/ui-rows.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
@@ -550,26 +549,12 @@
 							}}
 						>
 							{#snippet rowActions(row, rowIndex)}
-								<td class="w-24 shrink-0 text-right">
-									<div class="flex justify-end gap-1">
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-sm"
-											onClick={() =>
-												openEditDialog(row as PatientVitalWithVisit)}
-										>
-											<LucidePencil className="size-4" />
-										</DaisyUiButton>
-										<DaisyUiButton
-											className="d-btn-ghost d-btn-error d-btn-sm"
-											onClick={() =>
-												handleDeleteVital(
-													row as PatientVitalWithVisit
-												)}
-										>
-											<LucideTrash2 className="size-4" />
-										</DaisyUiButton>
-									</div>
-								</td>
+								<MariTableEditDeleteActions
+									onEdit={() =>
+										openEditDialog(row as PatientVitalWithVisit)}
+									onDelete={() =>
+										handleDeleteVital(row as PatientVitalWithVisit)}
+								/>
 							{/snippet}
 						</MariTable>
 					</div>

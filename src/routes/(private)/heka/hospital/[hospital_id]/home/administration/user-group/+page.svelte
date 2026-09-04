@@ -15,6 +15,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideList from '$lib/component/own/library/lucide/LucideList.svelte';
@@ -261,30 +263,35 @@
 					}}
 				>
 					{#snippet rowActions(row, rowIndex)}
-						<td class="text-right">
-							<div class="flex justify-end gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openPagesModal(row)}
-									title="Manage which pages this group can access"
-								>
-									<LucideList />
-									{m.pages()}
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-sm"
-									onClick={() => openEdit(row)}
-								>
-									<LucidePencil />
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost d-btn-error d-btn-sm"
-									onClick={() => handleDelete(row)}
-								>
-									<LucideTrash2 />
-								</DaisyUiButton>
-							</div>
-						</td>
+						<MariTableRowActionGroup>
+							<MariTableIconAction
+								tooltipText="Manage which pages this group can access"
+								color="info"
+								onClick={() => openPagesModal(row)}
+							>
+								{#snippet icon()}
+									<LucideList className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText={m.mari_table_tooltip_edit()}
+								color="accent"
+								onClick={() => openEdit(row)}
+							>
+								{#snippet icon()}
+									<LucidePencil className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+							<MariTableIconAction
+								tooltipText={m.mari_table_tooltip_delete()}
+								color="error"
+								onClick={() => handleDelete(row)}
+							>
+								{#snippet icon()}
+									<LucideTrash2 className="size-4" />
+								{/snippet}
+							</MariTableIconAction>
+						</MariTableRowActionGroup>
 					{/snippet}
 				</MariTable>
 			</div>

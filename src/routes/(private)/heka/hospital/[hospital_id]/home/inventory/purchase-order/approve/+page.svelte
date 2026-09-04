@@ -405,7 +405,7 @@
 			},
 			{
 				id: 'qtyReceivedCumulative',
-				header: `${m.inv_grn_line_received_qty()} Σ`,
+				header: `${m.inv_grn_line_purchased_qty()} Σ`,
 				field: 'qtyReceivedCumulative',
 				format: (_v, row) =>
 					formatPurchaseQtyCellWithIssueEquivalent(
@@ -446,7 +446,7 @@
 		<div class="mb-4 flex items-center gap-2">
 			<DaisyUiTooltip
 				tooltipText={m.inv_common_back_to_list()}
-				className="d-tooltip-ghost d-tooltip-right"
+				className="d-tooltip-ghost"
 			>
 				<DaisyUiButton
 					type="button"
@@ -604,7 +604,7 @@
 							{#if poAllowsLineClose && isLineClosable(row)}
 								<DaisyUiTooltip
 									tooltipText={m.inv_po_close_line()}
-									className="d-tooltip-warning d-tooltip-right"
+									className="d-tooltip-warning"
 								>
 									<DaisyUiButton
 										className="d-btn-sm d-btn-ghost d-btn-warning"

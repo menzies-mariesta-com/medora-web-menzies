@@ -27,7 +27,7 @@ export type MedicationOrderCheckoutResult = {
 	};
 	lines: Array<{
 		itemName: string | null;
-		issueQtyPurchase: string;
+		qtyOut: string;
 		unitSalePrice: string;
 		lineTotal: string;
 	}>;
@@ -122,12 +122,13 @@ export async function checkoutMedicationOrderBatchExternal(
 		testDose: r.line.testDose,
 		substituteNotAllowed: r.line.substituteNotAllowed,
 		unitSalePrice: String(r.line.unitSalePrice ?? '0'),
-		issueQtyPurchase: String(r.line.issueQtyPurchase ?? '0'),
+		qtyOut: String(r.line.qtyOut ?? '0'),
+		outUnitId: Number(r.line.outUnitId ?? 0),
 		itemUnitMasterId: Number(r.line.itemUnitMasterId ?? 0),
 		allocations: []
 	}));
 
-	const amountDue = computeBatchTotalFromLines(saveLines);
+	const amountDue = await computeBatchTotalFromLines(saveLines);
 	const paidN = Math.round(Number(amountPaid) * 100) / 100;
 	const dueN = Math.round(Number(amountDue) * 100) / 100;
 	if (paidN + 1e-9 < dueN) {
@@ -159,14 +160,14 @@ export async function checkoutMedicationOrderBatchExternal(
 	});
 
 	const outLines = lines.map((r) => {
-		const issueQtyPurchase = String(r.line.issueQtyPurchase ?? '0');
+		const qtyOut = String(r.line.qtyOut ?? '0');
 		const unitSalePrice = String(r.line.unitSalePrice ?? '0');
 		return {
 			itemName: r.itemName,
-			issueQtyPurchase,
+			qtyOut,
 			unitSalePrice,
 			lineTotal: computeLineTotal({
-				issueQtyPurchase,
+				qtyOut,
 				unitSalePrice
 			}).toFixed(2)
 		};

@@ -57,11 +57,11 @@
 	<DaisyUiNavbarEnd className="gap-3">
 		<DaisyUiTooltip
 			tooltipText="Notification"
-			className="d-tooltip-left"
+			className=""
 		>
 			<HekaNotifications />
 		</DaisyUiTooltip>
-		<DaisyUiTooltip tooltipText="Account" className="d-tooltip-left">
+		<DaisyUiTooltip tooltipText="Account" className="">
 			<DaisyUiButton
 				className="d-btn-circle overflow-hidden p-0"
 				onClick={openAccountModal}

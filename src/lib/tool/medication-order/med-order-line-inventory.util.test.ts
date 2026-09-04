@@ -29,6 +29,8 @@ function lot(
 describe('applyDraftReservationsToLots', () => {
 	const ium = {
 		id: 1,
+		purchaseUnitId: 10,
+		issueUnitId: 20,
 		purchaseUnitName: 'box',
 		issueUnitName: 'tab',
 		purchaseConversionFactor: '1',
