@@ -24,7 +24,7 @@ export async function sendEmailServer(payload: {
 	try {
 		const transporter = createTransporter();
 		await transporter.sendMail({
-			from: `"Heka System" <${env.SMTP_USER}>`,
+			from: `"Menzies Medora" <${env.SMTP_USER}>`,
 			to: payload.to,
 			subject: payload.subject,
 			text: payload.message,

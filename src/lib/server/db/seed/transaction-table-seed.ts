@@ -12,7 +12,7 @@ const client = neon(process.env.DATABASE_URL);
 const db = drizzle(client);
 
 /** Marker on seeded transactional rows for idempotent cleanup. */
-const SEED_MARKER = '[heka-seed]';
+const SEED_MARKER = '[medora-seed]';
 
 /** Default rows per entity (appointments + patient visits). Override with SEED_TRANSACTION_ROW_COUNT. */
 const ROW_COUNT = Math.max(

@@ -2,99 +2,642 @@
   "version": "7",
   "dialect": "postgresql",
   "entries": [
-    { "idx": 0, "version": "7", "when": 1742238385000, "tag": "0000_add_vital_date_time", "breakpoints": true },
-    { "idx": 1, "version": "7", "when": 1742238500000, "tag": "0001_junction_tables_user_tracking", "breakpoints": true },
-    { "idx": 2, "version": "7", "when": 1772512125499, "tag": "0002_unique_constraints_junction_tables", "breakpoints": true },
-    { "idx": 3, "version": "7", "when": 1772513000000, "tag": "0003_staff_join_resign_date", "breakpoints": true },
-    { "idx": 4, "version": "7", "when": 1773847000000, "tag": "0004_support_ticket", "breakpoints": true },
-    { "idx": 5, "version": "7", "when": 1773900000000, "tag": "0005_patient_visit_clinical_text", "breakpoints": true },
-    { "idx": 6, "version": "7", "when": 1774000000000, "tag": "0006_patient_document_attachment", "breakpoints": true },
-    { "idx": 7, "version": "7", "when": 1772600000000, "tag": "0007_refer_accept_at", "breakpoints": true },
-    { "idx": 8, "version": "7", "when": 1774321000000, "tag": "0010_form_name_master", "breakpoints": true },
-    { "idx": 9, "version": "7", "when": 1774323000000, "tag": "0011_patient_form_entry", "breakpoints": true },
-    { "idx": 10, "version": "7", "when": 1775000000000, "tag": "0013_op_billing", "breakpoints": true },
-    { "idx": 11, "version": "7", "when": 1775050000000, "tag": "0014_prefix_format_and_counter", "breakpoints": true },
-    { "idx": 12, "version": "7", "when": 1775100000000, "tag": "0015_prefix_format_counter_scope_flags", "breakpoints": true },
-    { "idx": 13, "version": "7", "when": 1775150000000, "tag": "0014_billing_discount_type_master", "breakpoints": true },
-    { "idx": 14, "version": "7", "when": 1775200000000, "tag": "0016_prefix_format_scope_flags_digits", "breakpoints": true },
-    { "idx": 15, "version": "7", "when": 1775250000000, "tag": "0017_patient_diagnosis_bmi", "breakpoints": true },
-    { "idx": 16, "version": "7", "when": 1775300000000, "tag": "0018_patient_visit_clinical_signed_at", "breakpoints": true },
-    { "idx": 17, "version": "7", "when": 1775400000000, "tag": "0019_store_user_group_or_department", "breakpoints": true },
-    { "idx": 18, "version": "7", "when": 1775500000000, "tag": "0020_item_master", "breakpoints": true },
-    { "idx": 19, "version": "7", "when": 1775600000000, "tag": "0021_item_master_barcode", "breakpoints": true },
-    { "idx": 20, "version": "7", "when": 1775700000000, "tag": "0022_unit_inventory_unit_types", "breakpoints": true },
-    { "idx": 21, "version": "7", "when": 1775800000000, "tag": "0023_prefix_format_counter_include_visit", "breakpoints": true },
-    { "idx": 22, "version": "7", "when": 1775900000000, "tag": "0024_pharmacy_generic_item_master_hospital", "breakpoints": true },
-    { "idx": 23, "version": "7", "when": 1776000000000, "tag": "0025_inventory_setup_pages_item_unit_master", "breakpoints": true },
-    { "idx": 24, "version": "7", "when": 1776100000000, "tag": "0026_inventory_setup_top_level_module", "breakpoints": true },
-    { "idx": 25, "version": "7", "when": 1776200000000, "tag": "0027_item_unit_master_unit_conversion_only", "breakpoints": true },
-    { "idx": 26, "version": "7", "when": 1776300000000, "tag": "0028_item_master_tag_multiple_item_unit_master", "breakpoints": true },
-    { "idx": 27, "version": "7", "when": 1776400000000, "tag": "0029_drop_item_master_unit_id", "breakpoints": true },
-    { "idx": 28, "version": "7", "when": 1776500000000, "tag": "0030_manufacturer_supplier_item_master", "breakpoints": true },
-    { "idx": 29, "version": "7", "when": 1776600000000, "tag": "0031_item_master_item_unit_default_yes_no", "breakpoints": true },
-
-    { "idx": 30, "version": "7", "when": 1776700000000, "tag": "0032_inventory_transactions", "breakpoints": true },
-    { "idx": 31, "version": "7", "when": 1776800000000, "tag": "0033_item_batch_normalized_stock", "breakpoints": true },
-    { "idx": 32, "version": "7", "when": 1776900000000, "tag": "0034_purchase_requisition_pr_no", "breakpoints": true },
-    { "idx": 33, "version": "7", "when": 1777000000000, "tag": "0035_inventory_document_audit", "breakpoints": true },
-    { "idx": 34, "version": "7", "when": 1777100000000, "tag": "0036_purchase_order_po_no", "breakpoints": true },
-    { "idx": 35, "version": "7", "when": 1777200000000, "tag": "0037_inventory_po_grn_destock_units", "breakpoints": true },
-
-    { "idx": 36, "version": "7", "when": 1776700000000, "tag": "0032_remove_observation_patient_visit_history_page", "breakpoints": true },
-    { "idx": 37, "version": "7", "when": 1776800000000, "tag": "0033_plan_of_care_table", "breakpoints": true },
-    { "idx": 38, "version": "7", "when": 1776900000000, "tag": "0034_progress_note_table", "breakpoints": true },
-
-    { "idx": 39, "version": "7", "when": 1777300000000, "tag": "0038_medication_order", "breakpoints": true },
-    { "idx": 40, "version": "7", "when": 1777400000000, "tag": "0039_medication_order_batch_external", "breakpoints": true },
-    { "idx": 41, "version": "7", "when": 1777500000000, "tag": "0045_med_order_route_presets_inactive", "breakpoints": true },
-    { "idx": 42, "version": "7", "when": 1777600000000, "tag": "0046_med_order_route_drop_hospital_id", "breakpoints": true },
-    { "idx": 43, "version": "7", "when": 1777700000000, "tag": "0047_med_order_form_order_dose_food_duration_global_inactive", "breakpoints": true },
-    { "idx": 44, "version": "7", "when": 1777800000000, "tag": "0048_op_billing_line_medication_order_line", "breakpoints": true },
-
-    { "idx": 44, "version": "7", "when": 1778900000000, "tag": "0048_pr_inter_store_drop_central", "breakpoints": true },
-    { "idx": 45, "version": "7", "when": 1779000000000, "tag": "0049_store_type_hospital_config_grn_pricing_dept_indent", "breakpoints": true },
-    { "idx": 46, "version": "7", "when": 1779100000000, "tag": "0050_inv_approval_modules_si_sr", "breakpoints": true },
-    { "idx": 47, "version": "7", "when": 1779200000000, "tag": "0051_inv_approval_level_active_unique", "breakpoints": true },
-    { "idx": 48, "version": "7", "when": 1779300000000, "tag": "0052_remove_store_type_and_cps", "breakpoints": true },
-    { "idx": 49, "version": "7", "when": 1779400000000, "tag": "0053_inv_approval_module_grn", "breakpoints": true },
-    { "idx": 50, "version": "7", "when": 1779400001000, "tag": "0054_remove_pr_from_to_distinct_chk", "breakpoints": true },
-    { "idx": 51, "version": "7", "when": 1779500000000, "tag": "0055_grn_invoice_fields", "breakpoints": true },
-    { "idx": 52, "version": "7", "when": 1779600000000, "tag": "0056_inv_department_indent_cancel_fields", "breakpoints": true },
-    { "idx": 53, "version": "7", "when": 1779700000000, "tag": "0057_inv_department_indent_issue_doc_type_issue_no", "breakpoints": true },
-    { "idx": 54, "version": "7", "when": 1779800000000, "tag": "0058_department_issue_tables_and_status", "breakpoints": true },
-    { "idx": 55, "version": "7", "when": 1779900000000, "tag": "0059_drop_di_doc_type_issue_no", "breakpoints": true },
-    { "idx": 56, "version": "7", "when": 1780000000000, "tag": "0060_inv_department_consumption", "breakpoints": true },
-    { "idx": 57, "version": "7", "when": 1780100000000, "tag": "0061_drop_si_sr_approval_modules", "breakpoints": true },
-    { "idx": 58, "version": "7", "when": 1780200000000, "tag": "0062_remove_store_transfer_and_stock_issue_pages", "breakpoints": true },
-    { "idx": 59, "version": "7", "when": 1780300000000, "tag": "0063_inv_approval_modules_diss_rfs", "breakpoints": true },
-    { "idx": 60, "version": "7", "when": 1780400000000, "tag": "0064_store_user_groups_multi", "breakpoints": true },
-    { "idx": 61, "version": "7", "when": 1780500000000, "tag": "0065_grn_free_unit_id", "breakpoints": true },
-    { "idx": 62, "version": "7", "when": 1780505000000, "tag": "0066_inventory_int_qty_price_2dp", "breakpoints": true },
-    { "idx": 63, "version": "7", "when": 1780510000000, "tag": "0067_inv_item_reorder_level", "breakpoints": true },
-    { "idx": 64, "version": "7", "when": 1780510100000, "tag": "0068_inv_item_reorder_level_item_unit_master", "breakpoints": true },
-    { "idx": 65, "version": "7", "when": 1780510200000, "tag": "0069_stock_alert_settings", "breakpoints": true },
-    { "idx": 66, "version": "7", "when": 1780510300000, "tag": "0070_stock_alert_recipient_store", "breakpoints": true },
-    { "idx": 67, "version": "7", "when": 1780510400000, "tag": "0071_stock_alert_nav_children", "breakpoints": true },
-    { "idx": 68, "version": "7", "when": 1780510500000, "tag": "0072_inv_stock_alert_email_payload_digest", "breakpoints": true },
-    { "idx": 69, "version": "7", "when": 1780510600000, "tag": "0073_item_master_manufacturer_text_drop_master", "breakpoints": true },
-    { "idx": 70, "version": "7", "when": 1780510700000, "tag": "0074_item_master_drop_barcode_batch_required", "breakpoints": true },
-    { "idx": 71, "version": "7", "when": 1780510800000, "tag": "0075_medication_order_dispense", "breakpoints": true },
-    { "idx": 72, "version": "7", "when": 1780510850000, "tag": "0076_pr_line_requested_quantity", "breakpoints": true },
-    { "idx": 73, "version": "7", "when": 1780510860000, "tag": "0077_inv_branch_pricing_config", "breakpoints": true },
-    { "idx": 74, "version": "7", "when": 1780510870000, "tag": "0078_inv_branch_pricing_composable", "breakpoints": true },
-    { "idx": 75, "version": "7", "when": 1780510900000, "tag": "0079_consultation_module", "breakpoints": true },
-    { "idx": 76, "version": "7", "when": 1780511000000, "tag": "0080_cpoe_prescription_note", "breakpoints": true },
-    { "idx": 77, "version": "7", "when": 1780511100000, "tag": "0081_inv_department_consumption_line_emp_sale_price", "breakpoints": true },
-    { "idx": 78, "version": "7", "when": 1780511200000, "tag": "0082_item_batch_grn_provenance", "breakpoints": true },
-    { "idx": 79, "version": "7", "when": 1780511300000, "tag": "0083_item_master_markup", "breakpoints": true },
-    { "idx": 80, "version": "7", "when": 1780511400000, "tag": "0084_store_markup", "breakpoints": true },
-    { "idx": 81, "version": "7", "when": 1780511500000, "tag": "0085_inv_pricing_formula_template", "breakpoints": true },
-    { "idx": 82, "version": "7", "when": 1780511600000, "tag": "0086_drop_grn_sale_price_columns", "breakpoints": true },
-    { "idx": 83, "version": "7", "when": 1780511700000, "tag": "0087_pricing_formula_template_module", "breakpoints": true },
-    { "idx": 84, "version": "7", "when": 1780511800000, "tag": "0088_pricing_formula_template_drop_module", "breakpoints": true },
-    { "idx": 85, "version": "7", "when": 1780511900000, "tag": "0089_pricing_formula_template_markup_flags", "breakpoints": true },
-    { "idx": 86, "version": "7", "when": 1780512000000, "tag": "0095_pricing_module_is_es_dc", "breakpoints": true },
-    { "idx": 87, "version": "7", "when": 1780512100000, "tag": "0096_pricing_assignment_price_unit", "breakpoints": true },
-    { "idx": 88, "version": "7", "when": 1780512200000, "tag": "0097_medication_order_qty_out", "breakpoints": true }
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1742238385000,
+      "tag": "0000_add_vital_date_time",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1742238500000,
+      "tag": "0001_junction_tables_user_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772512125499,
+      "tag": "0002_unique_constraints_junction_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772513000000,
+      "tag": "0003_staff_join_resign_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773847000000,
+      "tag": "0004_support_ticket",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773900000000,
+      "tag": "0005_patient_visit_clinical_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774000000000,
+      "tag": "0006_patient_document_attachment",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772600000000,
+      "tag": "0007_refer_accept_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774321000000,
+      "tag": "0010_form_name_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774323000000,
+      "tag": "0011_patient_form_entry",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775000000000,
+      "tag": "0013_op_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775050000000,
+      "tag": "0014_prefix_format_and_counter",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775100000000,
+      "tag": "0015_prefix_format_counter_scope_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775150000000,
+      "tag": "0014_billing_discount_type_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775200000000,
+      "tag": "0016_prefix_format_scope_flags_digits",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775250000000,
+      "tag": "0017_patient_diagnosis_bmi",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775300000000,
+      "tag": "0018_patient_visit_clinical_signed_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775400000000,
+      "tag": "0019_store_user_group_or_department",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775500000000,
+      "tag": "0020_item_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0021_item_master_barcode",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775700000000,
+      "tag": "0022_unit_inventory_unit_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775800000000,
+      "tag": "0023_prefix_format_counter_include_visit",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1775900000000,
+      "tag": "0024_pharmacy_generic_item_master_hospital",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0025_inventory_setup_pages_item_unit_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0026_inventory_setup_top_level_module",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776200000000,
+      "tag": "0027_item_unit_master_unit_conversion_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776300000000,
+      "tag": "0028_item_master_tag_multiple_item_unit_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776400000000,
+      "tag": "0029_drop_item_master_unit_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1776500000000,
+      "tag": "0030_manufacturer_supplier_item_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1776600000000,
+      "tag": "0031_item_master_item_unit_default_yes_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1776700000000,
+      "tag": "0032_inventory_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1776800000000,
+      "tag": "0033_item_batch_normalized_stock",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1776900000000,
+      "tag": "0034_purchase_requisition_pr_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1777000000000,
+      "tag": "0035_inventory_document_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1777100000000,
+      "tag": "0036_purchase_order_po_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1777200000000,
+      "tag": "0037_inventory_po_grn_destock_units",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1776700000000,
+      "tag": "0032_remove_observation_patient_visit_history_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1776800000000,
+      "tag": "0033_plan_of_care_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1776900000000,
+      "tag": "0034_progress_note_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1777300000000,
+      "tag": "0038_medication_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1777400000000,
+      "tag": "0039_medication_order_batch_external",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0045_med_order_route_presets_inactive",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0046_med_order_route_drop_hospital_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1777700000000,
+      "tag": "0047_med_order_form_order_dose_food_duration_global_inactive",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1777800000000,
+      "tag": "0048_op_billing_line_medication_order_line",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0048_pr_inter_store_drop_central",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0049_store_type_hospital_config_grn_pricing_dept_indent",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0050_inv_approval_modules_si_sr",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0051_inv_approval_level_active_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0052_remove_store_type_and_cps",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0053_inv_approval_module_grn",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1779400001000,
+      "tag": "0054_remove_pr_from_to_distinct_chk",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0055_grn_invoice_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0056_inv_department_indent_cancel_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0057_inv_department_indent_issue_doc_type_issue_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0058_department_issue_tables_and_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0059_drop_di_doc_type_issue_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0060_inv_department_consumption",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0061_drop_si_sr_approval_modules",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0062_remove_store_transfer_and_stock_issue_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1780300000000,
+      "tag": "0063_inv_approval_modules_diss_rfs",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1780400000000,
+      "tag": "0064_store_user_groups_multi",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0065_grn_free_unit_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1780505000000,
+      "tag": "0066_inventory_int_qty_price_2dp",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1780510000000,
+      "tag": "0067_inv_item_reorder_level",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1780510100000,
+      "tag": "0068_inv_item_reorder_level_item_unit_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1780510200000,
+      "tag": "0069_stock_alert_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1780510300000,
+      "tag": "0070_stock_alert_recipient_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1780510400000,
+      "tag": "0071_stock_alert_nav_children",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1780510500000,
+      "tag": "0072_inv_stock_alert_email_payload_digest",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1780510600000,
+      "tag": "0073_item_master_manufacturer_text_drop_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1780510700000,
+      "tag": "0074_item_master_drop_barcode_batch_required",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1780510800000,
+      "tag": "0075_medication_order_dispense",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1780510850000,
+      "tag": "0076_pr_line_requested_quantity",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1780510860000,
+      "tag": "0077_inv_branch_pricing_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1780510870000,
+      "tag": "0078_inv_branch_pricing_composable",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1780510900000,
+      "tag": "0079_consultation_module",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1780511000000,
+      "tag": "0080_cpoe_prescription_note",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1780511100000,
+      "tag": "0081_inv_department_consumption_line_emp_sale_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1780511200000,
+      "tag": "0082_item_batch_grn_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1780511300000,
+      "tag": "0083_item_master_markup",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1780511400000,
+      "tag": "0084_store_markup",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1780511500000,
+      "tag": "0085_inv_pricing_formula_template",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1780511600000,
+      "tag": "0086_drop_grn_sale_price_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1780511700000,
+      "tag": "0087_pricing_formula_template_module",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1780511800000,
+      "tag": "0088_pricing_formula_template_drop_module",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1780511900000,
+      "tag": "0089_pricing_formula_template_markup_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1780512000000,
+      "tag": "0095_pricing_module_is_es_dc",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1780512100000,
+      "tag": "0096_pricing_assignment_price_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1780512200000,
+      "tag": "0097_medication_order_qty_out",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1780512210000,
+      "tag": "0098_heka_to_medora_urls",
+      "breakpoints": true
+    }
   ]
 }

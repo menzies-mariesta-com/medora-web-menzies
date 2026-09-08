@@ -35,7 +35,7 @@
 		showOutsideDays?: boolean;
 		/** Show ISO week numbers */
 		showWeekNumbers?: boolean;
-		/** Extra classes applied in addition to `d-cally` */
+		/** Extra classes applied in addition to `cally` */
 		className?: string;
 		/** Optional callback fired when range changes */
 		onChange?: (payload: {
@@ -144,7 +144,7 @@
 {#if callyLoaded}
 	<calendar-range
 		bind:this={calendarEl}
-		class="d-cally {className}"
+		class="cally {className}"
 		value={internalValue}
 		{min}
 		{max}
@@ -180,7 +180,7 @@
 {:else}
 	<!-- Placeholder while Cally loads (client-side only) -->
 	<div
-		class="d-cally {className} flex items-center justify-center p-8"
+		class="cally {className} flex items-center justify-center p-8"
 	>
 		<span class="loading loading-spinner loading-lg"></span>
 	</div>

@@ -28,7 +28,7 @@ export async function fetchStoreMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/stores?mode=allForPicker`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/stores?mode=allForPicker`,
 		{ signal }
 	);
 	const rows = await parseJson<
@@ -48,7 +48,7 @@ export async function fetchSupplierMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/supplier-setup?mode=allForPicker`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/supplier-setup?mode=allForPicker`,
 		{ signal }
 	);
 	const rows = await parseJson<{ id: number; name: string | null }[]>(res);
@@ -64,7 +64,7 @@ export async function fetchSupplierMasterFilterOptions(
 export async function fetchSeverityMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
-	const res = await fetch('/api/heka/master/lookup?kind=severity', {
+	const res = await fetch('/api/medora/master/lookup?kind=severity', {
 		signal
 	});
 	const rows = await parseJson<{ id: number; name: string | null }[]>(res);
@@ -82,7 +82,7 @@ export async function fetchItemCategoryMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/item-master?mode=categories`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/item-master?mode=categories`,
 		{ signal }
 	);
 	const rows = await parseJson<
@@ -102,7 +102,7 @@ export async function fetchUnitTypeMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/unit-master?mode=unitTypes`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/unit-master?mode=unitTypes`,
 		{ signal }
 	);
 	const rows = await parseJson<{ id: number; name: string | null }[]>(res);
@@ -120,7 +120,7 @@ export async function fetchVisitTypeMasterFilterOptions(
 	signal?: AbortSignal
 ): Promise<MariSelectFilterOption[]> {
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/emr/visit-list?${new URLSearchParams({ mode: 'visitType.list' })}`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/emr/visit-list?${new URLSearchParams({ mode: 'visitType.list' })}`,
 		{ signal }
 	);
 	const rows = await parseJson<{ id: number; name: string | null }[]>(res);

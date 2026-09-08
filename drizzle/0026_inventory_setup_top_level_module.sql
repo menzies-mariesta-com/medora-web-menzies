@@ -5,7 +5,7 @@ VALUES (
 	'Inventory Setup',
 	9,
 	1,
-	'/heka/home/inventory-setup',
+	'/medora/home/inventory-setup',
 	'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M2 6h20v12H2z"/><path d="M16 10V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4"/></svg>',
 	now(),
 	now()
@@ -21,7 +21,7 @@ ON CONFLICT ("id") DO UPDATE SET
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = NULL,
-	"page_url" = '/heka/home/inventory-setup',
+	"page_url" = '/medora/home/inventory-setup',
 	"sequence_no" = 1,
 	"updated_at" = now()
 WHERE "id" = 22;
@@ -29,7 +29,7 @@ WHERE "id" = 22;
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = 22,
-	"page_url" = '/heka/home/inventory-setup/stores',
+	"page_url" = '/medora/home/inventory-setup/stores',
 	"sequence_no" = 1,
 	"updated_at" = now()
 WHERE "id" = 19;
@@ -37,7 +37,7 @@ WHERE "id" = 19;
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = 22,
-	"page_url" = '/heka/home/inventory-setup/item-master',
+	"page_url" = '/medora/home/inventory-setup/item-master',
 	"sequence_no" = 2,
 	"updated_at" = now()
 WHERE "id" = 20;
@@ -45,7 +45,7 @@ WHERE "id" = 20;
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = 22,
-	"page_url" = '/heka/home/inventory-setup/pharmacy-generic',
+	"page_url" = '/medora/home/inventory-setup/pharmacy-generic',
 	"sequence_no" = 3,
 	"updated_at" = now()
 WHERE "id" = 21;
@@ -53,7 +53,7 @@ WHERE "id" = 21;
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = 22,
-	"page_url" = '/heka/home/inventory-setup/unit-master',
+	"page_url" = '/medora/home/inventory-setup/unit-master',
 	"sequence_no" = 4,
 	"updated_at" = now()
 WHERE "id" = 23;
@@ -61,7 +61,7 @@ WHERE "id" = 23;
 UPDATE "page" SET
 	"module_id" = 9,
 	"parent_id" = 22,
-	"page_url" = '/heka/home/inventory-setup/item-unit-master',
+	"page_url" = '/medora/home/inventory-setup/item-unit-master',
 	"sequence_no" = 5,
 	"updated_at" = now()
 WHERE "id" = 24;

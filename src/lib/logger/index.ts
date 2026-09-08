@@ -268,7 +268,7 @@ export class Logger {
 	}
 }
 
-const rootLogger = new Logger('heka');
+const rootLogger = new Logger('medora');
 
 export const log = rootLogger;
 export const dbLogger = rootLogger.child('db');

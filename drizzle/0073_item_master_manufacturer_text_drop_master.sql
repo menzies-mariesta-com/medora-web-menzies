@@ -4,10 +4,10 @@
 
 --> statement-breakpoint
 DELETE FROM user_group_page WHERE page_id IN (
-	SELECT id FROM page WHERE page_url = '/heka/home/inventory-setup/manufacture-setup'
+	SELECT id FROM page WHERE page_url = '/medora/home/inventory-setup/manufacture-setup'
 );
 --> statement-breakpoint
-DELETE FROM page WHERE page_url = '/heka/home/inventory-setup/manufacture-setup';
+DELETE FROM page WHERE page_url = '/medora/home/inventory-setup/manufacture-setup';
 --> statement-breakpoint
 ALTER TABLE item_master ADD COLUMN IF NOT EXISTS manufacturer_name varchar(512);
 --> statement-breakpoint

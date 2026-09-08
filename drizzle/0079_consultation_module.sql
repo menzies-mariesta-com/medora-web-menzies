@@ -1,7 +1,7 @@
 -- Consolidate CPOE + Observation into Consultation module (module id 6).
 UPDATE "module" SET
 	"name" = 'Consultation',
-	"module_url" = '/heka/home/consultation',
+	"module_url" = '/medora/home/consultation',
 	"updated_at" = now()
 WHERE "id" = 6;
 --> statement-breakpoint
@@ -17,7 +17,7 @@ VALUES (
 	6,
 	1,
 	NULL,
-	'/heka/home/consultation/cpoe',
+	'/medora/home/consultation/cpoe',
 	2,
 	now(),
 	now()
@@ -35,7 +35,7 @@ UPDATE "page" SET
 	"name" = 'EMR',
 	"module_id" = 6,
 	"parent_id" = NULL,
-	"page_url" = '/heka/home/consultation/emr',
+	"page_url" = '/medora/home/consultation/emr',
 	"sequence_no" = 1,
 	"updated_at" = now()
 WHERE "id" = 13;
@@ -43,7 +43,7 @@ WHERE "id" = 13;
 UPDATE "page" SET
 	"module_id" = 6,
 	"parent_id" = 1500001,
-	"page_url" = '/heka/home/consultation/cpoe/order',
+	"page_url" = '/medora/home/consultation/cpoe/order',
 	"sequence_no" = 1,
 	"updated_at" = now()
 WHERE "id" = 11;
@@ -51,7 +51,7 @@ WHERE "id" = 11;
 UPDATE "page" SET
 	"module_id" = 6,
 	"parent_id" = 1500001,
-	"page_url" = '/heka/home/consultation/cpoe/prescription',
+	"page_url" = '/medora/home/consultation/cpoe/prescription',
 	"sequence_no" = 2,
 	"updated_at" = now()
 WHERE "id" = 12;
@@ -59,17 +59,17 @@ WHERE "id" = 12;
 UPDATE "page" SET
 	"module_id" = 6,
 	"parent_id" = 1500001,
-	"page_url" = '/heka/home/consultation/cpoe/refer',
+	"page_url" = '/medora/home/consultation/cpoe/refer',
 	"sequence_no" = 3,
 	"updated_at" = now()
 WHERE "id" = 14;
 --> statement-breakpoint
 UPDATE "page" SET
-	"page_url" = '/heka/home/consultation/cpoe/refer/doctor',
+	"page_url" = '/medora/home/consultation/cpoe/refer/doctor',
 	"updated_at" = now()
 WHERE "id" = 1400001;
 --> statement-breakpoint
 UPDATE "page" SET
-	"page_url" = '/heka/home/consultation/cpoe/refer/history',
+	"page_url" = '/medora/home/consultation/cpoe/refer/history',
 	"updated_at" = now()
 WHERE "id" = 1400002;

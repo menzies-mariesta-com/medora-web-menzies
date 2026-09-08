@@ -1,7 +1,7 @@
 import type {
 	CategoryListRow,
 	SubCategoryListRow
-} from '$lib/model/type/heka/ui-rows.type';
+} from '$lib/model/type/medora/ui-rows.type';
 
 /** Set before opening Create/Edit sub-category modal. */
 export const SubCategoryModalState = $state<{

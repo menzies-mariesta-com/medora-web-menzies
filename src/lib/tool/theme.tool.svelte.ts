@@ -1,63 +1,31 @@
-import { browser } from '$app/environment';
-import { LocalStorageEnum } from '$lib/model/enum/local-storage.enum';
-import { ThemeEnum } from '$lib/model/enum/theme.enum';
-import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
+import {
+	WashModeEnum,
+	WashPigmentEnum
+} from '$lib/model/enum/wash-theme.enum';
+import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
+import type { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 
+/**
+ * @deprecated Use {@link WashThemeTool}. Kept as a thin adapter for legacy callers.
+ */
 export class ThemeTool {
-	constructor(private localStorageUtil: LocalStorageUtil) {}
+	private wash = new WashThemeTool();
 
-	/**
-	 * Check if theme is stored
-	 */
+	constructor(_localStorageUtil?: LocalStorageUtil) {}
+
 	checkThemeExists(): boolean {
-		return this.localStorageUtil.hasItem(LocalStorageEnum.THEME);
+		return true;
 	}
 
-	/**
-	 * Get the current theme
-	 */
-	getTheme(): ThemeEnum {
-		const value = this.localStorageUtil.getItem<string>(
-			LocalStorageEnum.THEME
-		);
-		if (
-			value &&
-			Object.values(ThemeEnum).includes(value as ThemeEnum)
-		) {
-			this.updateHtmlTheme(value);
-			return value as ThemeEnum;
-		}
-
-		// Fallback to default theme
-		const defaultTheme = Object.values(ThemeEnum)[0] as ThemeEnum;
-		if (browser) this.setTheme(defaultTheme);
-		return defaultTheme;
+	getTheme(): WashPigmentEnum {
+		return this.wash.getPigment();
 	}
 
-	/**
-	 * Set / Save theme and update <html> attribute
-	 */
-	setTheme(theme: ThemeEnum): void {
-		this.localStorageUtil.setItem(LocalStorageEnum.THEME, theme);
-		this.updateHtmlTheme(theme);
+	setTheme(theme: WashPigmentEnum): void {
+		this.wash.setPigment(theme);
 	}
 
-	/**
-	 * Delete theme and reset <html> attribute
-	 */
 	deleteTheme(): void {
-		if (this.checkThemeExists()) {
-			this.localStorageUtil.removeItem(LocalStorageEnum.THEME);
-		}
-		// Reset to LIGHT as safe default
-		this.updateHtmlTheme(ThemeEnum.LIGHT);
-	}
-
-	/**
-	 * Update the <html> data-theme attribute
-	 */
-	private updateHtmlTheme(theme: ThemeEnum | string): void {
-		if (!browser) return;
-		document.documentElement.setAttribute('data-theme', theme);
+		this.wash.apply(WashPigmentEnum.MINERAL, WashModeEnum.LIGHT);
 	}
 }

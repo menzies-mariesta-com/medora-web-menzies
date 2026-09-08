@@ -1,37 +1,8 @@
-export enum ThemeEnum {
-	LIGHT = 'light',
-	DARK = 'dark',
-	CUPCAKE = 'cupcake',
-	BUMBLEBEE = 'bumblebee',
-	EMERALD = 'emerald',
-	CORPORATE = 'corporate',
-	SYNTHWAVE = 'synthwave',
-	RETRO = 'retro',
-	CYBERPUNK = 'cyberpunk',
-	VALENTINE = 'valentine',
-	HALLOWEEN = 'halloween',
-	GARDEN = 'garden',
-	FOREST = 'forest',
-	AQUA = 'aqua',
-	LOFI = 'lofi',
-	PASTEL = 'pastel',
-	FANTASY = 'fantasy',
-	WIREFRAME = 'wireframe',
-	BLACK = 'black',
-	LUXURY = 'luxury',
-	DRACULA = 'dracula',
-	CMYK = 'cmyk',
-	AUTUMN = 'autumn',
-	BUSINESS = 'business',
-	ACID = 'acid',
-	LEMONADE = 'lemonade',
-	NIGHT = 'night',
-	COFFEE = 'coffee',
-	WINTER = 'winter',
-	DIM = 'dim',
-	NORD = 'nord',
-	SUNSET = 'sunset',
-	CARAMELLATE = 'caramellate',
-	ABYSS = 'abyss',
-	SILK = 'silk'
-}
+/**
+ * @deprecated Daisy theme list is retired. Use WashThemeState / WashThemeTool.
+ * Kept as a thin alias so accidental imports do not reintroduce Daisy themes.
+ */
+export {
+	WashPigmentEnum as ThemeEnum,
+	WashModeEnum
+} from '$lib/model/enum/wash-theme.enum';

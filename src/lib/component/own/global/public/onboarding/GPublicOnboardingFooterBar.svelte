@@ -1,69 +1,44 @@
 <script lang="ts">
-	import DaisyUiFooterAside from '$lib/component/daisyui/footer/aside/DaisyUiFooterAside.svelte';
-	import DaisyUiFooter from '$lib/component/daisyui/footer/DaisyUiFooter.svelte';
-	import DaisyUiLink from '$lib/component/daisyui/link/DaisyUiLink.svelte';
+	import WashFooterAside from '$lib/component/wash/footer/aside/WashFooterAside.svelte';
+	import WashFooter from '$lib/component/wash/footer/WashFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 </script>
 
 <!-- First Footer -->
-<DaisyUiFooter
-	className="sm:d-footer-horizontal bg-base-200 text-base-content p-10"
+<WashFooter
+	className="sm:footer-horizontal bg-base-200 text-base-content p-10"
 >
 	<nav>
-		<h6 class="d-footer-title">{m.services()}</h6>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.branding()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.design()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.marketing()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.advertisement()}</DaisyUiLink
-		>
+		<h6 class="footer-title">{m.services()}</h6>
+		<a class="link-hover" href="#">{m.branding()}</a>
+		<a class="link-hover" href="#">{m.design()}</a>
+		<a class="link-hover" href="#">{m.marketing()}</a>
+		<a class="link-hover" href="#">{m.advertisement()}</a>
 	</nav>
 
 	<nav>
-		<h6 class="d-footer-title">{m.services()}</h6>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.branding()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.design()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.marketing()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.advertisement()}</DaisyUiLink
-		>
+		<h6 class="footer-title">{m.services()}</h6>
+		<a class="link-hover" href="#">{m.branding()}</a>
+		<a class="link-hover" href="#">{m.design()}</a>
+		<a class="link-hover" href="#">{m.marketing()}</a>
+		<a class="link-hover" href="#">{m.advertisement()}</a>
 	</nav>
 	<nav>
-		<h6 class="d-footer-title">{m.services()}</h6>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.branding()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.design()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.marketing()}</DaisyUiLink
-		>
-		<DaisyUiLink className="d-link-hover" href="#"
-			>{m.advertisement()}</DaisyUiLink
-		>
+		<h6 class="footer-title">{m.services()}</h6>
+		<a class="link-hover" href="#">{m.branding()}</a>
+		<a class="link-hover" href="#">{m.design()}</a>
+		<a class="link-hover" href="#">{m.marketing()}</a>
+		<a class="link-hover" href="#">{m.advertisement()}</a>
 	</nav>
-</DaisyUiFooter>
+</WashFooter>
 
 <!-- Second Footer -->
-<DaisyUiFooter
+<WashFooter
 	className="bg-base-200 text-base-content border-base-300 border-t px-10 py-4"
 >
-	<DaisyUiFooterAside className="grid-flow-col items-center">
+	<WashFooterAside className="grid-flow-col items-center">
 		<svg
 			width="24"
 			height="24"
@@ -82,7 +57,7 @@
 			<br />
 			Providing reliable tech since 1992
 		</p>
-	</DaisyUiFooterAside>
+	</WashFooterAside>
 
 	<nav class="md:place-self-center md:justify-self-end">
 		<div class="grid grid-flow-col gap-4">
@@ -90,7 +65,7 @@
 				href="https://twitter.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="d-link-hover"
+				class="link-hover"
 				aria-label={msg.onboarding_footer_social_twitter_aria()}
 			>
 				<svg
@@ -110,7 +85,7 @@
 				href="https://www.youtube.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="d-link-hover"
+				class="link-hover"
 				aria-label={msg.onboarding_footer_social_youtube_aria()}
 			>
 				<svg
@@ -130,7 +105,7 @@
 				href="https://www.facebook.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="d-link-hover"
+				class="link-hover"
 				aria-label={msg.onboarding_footer_social_facebook_aria()}
 			>
 				<svg
@@ -148,4 +123,4 @@
 			</a>
 		</div>
 	</nav>
-</DaisyUiFooter>
+</WashFooter>

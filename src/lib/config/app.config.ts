@@ -5,6 +5,6 @@ export class AppConfig {
 	// app name => mari.software
 	getAppName(): string {
 		// Use PUBLIC_APP_NAME from env if available, otherwise default to 'mari.software'
-		return env.PUBLIC_APP_NAME || 'heka';
+		return env.PUBLIC_APP_NAME || 'medora-web-menzies';
 	}
 }

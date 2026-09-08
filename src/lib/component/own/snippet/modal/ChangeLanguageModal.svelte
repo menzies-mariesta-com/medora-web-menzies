@@ -1,6 +1,6 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LanguageEnum } from '$lib/model/enum/language.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -35,16 +35,16 @@
 		class="flex items-center justify-between border-b border-base-300 pb-4"
 	>
 		<h2 class="text-lg font-semibold">{m.change_language()}</h2>
-		<DaisyUiButton
-			className="d-btn-ghost d-btn-sm d-btn-circle"
+		<WashButton
+			className="btn-ghost btn-sm btn-circle"
 			onClick={() => cancel()}
 			disabled={isConfirming}
 		>
 			<LucideX className="size-5" />
-		</DaisyUiButton>
+		</WashButton>
 	</div>
 	<div class="mt-4 flex flex-col gap-4">
-		<DaisyUiSelect
+		<WashSelect
 			optionHeader={m.select_language()}
 			className="w-full"
 			bind:value={currentLanguage}
@@ -56,24 +56,24 @@
 					<option value={lang}>{lang}</option>
 				{/if}
 			{/each}
-		</DaisyUiSelect>
+		</WashSelect>
 
-		<div class="d-modal-action mt-2">
-			<DaisyUiButton
-				className="d-btn"
+		<div class="modal-action mt-2">
+			<WashButton
+				className="btn"
 				onClick={() => cancel()}
 				disabled={isConfirming}
 			>
 				{m.cancel()}
-			</DaisyUiButton>
-			<DaisyUiButton
+			</WashButton>
+			<WashButton
 				onClick={() => handleConfirm()}
-				className="d-btn d-btn-primary"
+				className="btn btn-primary"
 				disabled={isConfirming}
 				loading={isConfirming}
 			>
 				{m.ok()}
-			</DaisyUiButton>
+			</WashButton>
 		</div>
 	</div>
 </div>

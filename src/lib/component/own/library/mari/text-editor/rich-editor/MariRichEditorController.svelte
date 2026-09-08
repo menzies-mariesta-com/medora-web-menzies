@@ -1,7 +1,5 @@
 <script lang="ts">
-	import DaisyUiJoin from '$lib/component/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiJoinItem from '$lib/component/daisyui/join/item/DaisyUiJoinItem.svelte';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideAlignCenter from '$lib/component/own/library/lucide/LucideAlignCenter.svelte';
 	import LucideBold from '$lib/component/own/library/lucide/LucideBold.svelte';
 	import LucideImage from '$lib/component/own/library/lucide/LucideImage.svelte';
@@ -171,7 +169,7 @@
 >
 	<!-- Font family selector -->
 	<select
-		class="d-select-bordered d-select h-7 min-h-0 w-32 d-select-xs text-xs"
+		class="select-bordered select h-7 min-h-0 w-32 select-xs text-xs"
 		value={fontFamily}
 		onchange={handleFontFamilyChange}
 	>
@@ -184,7 +182,7 @@
 	<div class="relative">
 		<button
 			type="button"
-			class="d-btn flex items-center gap-1 border border-base-300 px-2 d-btn-ghost d-btn-xs"
+			class="btn flex items-center gap-1 border border-base-300 px-2 btn-ghost btn-xs"
 			onclick={() => {
 				showHeadingDropdown = !showHeadingDropdown;
 				showColorDropdown = false;
@@ -351,110 +349,98 @@
 	<div class="h-5 w-px bg-base-300"></div>
 
 	<!-- Text formatting -->
-	<DaisyUiJoin>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.bold
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+	<div class="join flex">
+		<div class="btn join-item btn-xs h-7 {activeStates.bold
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('bold')}
 			>
-				<DaisyUiTooltip tooltipText="Bold (Ctrl+B)"
-					><LucideBold className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Bold (Ctrl+B)"
+					><LucideBold className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.italic
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.italic
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('italic')}
 			>
-				<DaisyUiTooltip tooltipText="Italic (Ctrl+I)"
-					><LucideItalic className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Italic (Ctrl+I)"
+					><LucideItalic className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.underline
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.underline
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('underline')}
 			>
-				<DaisyUiTooltip tooltipText="Underline (Ctrl+U)"
-					><LucideUnderline className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Underline (Ctrl+U)"
+					><LucideUnderline className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.strikeThrough
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.strikeThrough
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('strikeThrough')}
 			>
-				<DaisyUiTooltip tooltipText="Strikethrough"
-					><LucideStrikeThrough className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Strikethrough"
+					><LucideStrikeThrough className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+		</div>
+	</div>
 
 	<!-- Sub/Superscript -->
-	<DaisyUiJoin>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.subscript
-				? 'd-btn-active d-btn-primary'
-				: ''} {activeStates.superscript ? 'opacity-50' : ''}"
-		>
+	<div class="join flex">
+		<div class="btn join-item btn-xs h-7 {activeStates.subscript
+				? 'btn-active btn-primary'
+				: ''} {activeStates.superscript ? 'opacity-50' : ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('subscript')}
 				disabled={activeStates.superscript}
 			>
-				<DaisyUiTooltip tooltipText="Subscript"
-					><LucideSubscript className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Subscript"
+					><LucideSubscript className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.superscript
-				? 'd-btn-active d-btn-primary'
-				: ''} {activeStates.subscript ? 'opacity-50' : ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.superscript
+				? 'btn-active btn-primary'
+				: ''} {activeStates.subscript ? 'opacity-50' : ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('superscript')}
 				disabled={activeStates.subscript}
 			>
-				<DaisyUiTooltip tooltipText="Superscript"
-					><LucideSuperscript className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Superscript"
+					><LucideSuperscript className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+		</div>
+	</div>
 
 	<div class="h-5 w-px bg-base-300"></div>
 
 	<!-- Colors -->
 	<div class="flex items-center gap-1">
-		<DaisyUiTooltip tooltipText="Text Color">
+		<WashTooltip tooltipText="Text Color">
 			<label class="relative cursor-pointer">
 				<span
 					class="flex h-7 w-7 items-center justify-center rounded border border-base-300 bg-base-100 text-xs font-bold"
@@ -467,8 +453,8 @@
 					oninput={handleTextColorChange}
 				/>
 			</label>
-		</DaisyUiTooltip>
-		<DaisyUiTooltip tooltipText="Background Color">
+		</WashTooltip>
+		<WashTooltip tooltipText="Background Color">
 			<label class="relative cursor-pointer">
 				<span
 					class="flex h-7 w-7 items-center justify-center rounded border border-base-300 text-xs"
@@ -494,118 +480,106 @@
 					oninput={handleBgColorChange}
 				/>
 			</label>
-		</DaisyUiTooltip>
+		</WashTooltip>
 	</div>
 
 	<div class="h-5 w-px bg-base-300"></div>
 
 	<!-- Alignment -->
-	<DaisyUiJoin>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.justifyLeft
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+	<div class="join flex">
+		<div class="btn join-item btn-xs h-7 {activeStates.justifyLeft
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('justifyLeft')}
 			>
-				<DaisyUiTooltip tooltipText="Align Left"
-					><LucideTextAlignStart className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Align Left"
+					><LucideTextAlignStart className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.justifyCenter
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.justifyCenter
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('justifyCenter')}
 			>
-				<DaisyUiTooltip tooltipText="Align Center"
-					><LucideAlignCenter className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Align Center"
+					><LucideAlignCenter className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.justifyRight
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.justifyRight
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('justifyRight')}
 			>
-				<DaisyUiTooltip tooltipText="Align Right"
-					><LucideTextAlignEnd className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Align Right"
+					><LucideTextAlignEnd className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.justifyFull
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.justifyFull
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('justifyFull')}
 			>
-				<DaisyUiTooltip tooltipText="Justify"
+				<WashTooltip tooltipText="Justify"
 					><LucideTextAlignJustify
 						className="size-4"
-					/></DaisyUiTooltip
+					/></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+		</div>
+	</div>
 
 	<div class="h-5 w-px bg-base-300"></div>
 
 	<!-- Lists & Indent -->
-	<DaisyUiJoin>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.insertOrderedList
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+	<div class="join flex">
+		<div class="btn join-item btn-xs h-7 {activeStates.insertOrderedList
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('insertOrderedList')}
 			>
-				<DaisyUiTooltip tooltipText="Numbered List"
-					><LucideListOrdered className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Numbered List"
+					><LucideListOrdered className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem
-			className="d-btn-xs h-7 {activeStates.insertUnorderedList
-				? 'd-btn-active d-btn-primary'
-				: ''}"
-		>
+		</div>
+		<div class="btn join-item btn-xs h-7 {activeStates.insertUnorderedList
+				? 'btn-active btn-primary'
+				: ''}">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('insertUnorderedList')}
 			>
-				<DaisyUiTooltip tooltipText="Bulleted List"
-					><LucideList className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Bulleted List"
+					><LucideList className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('outdent')}
 			>
-				<DaisyUiTooltip tooltipText="Decrease Indent">
+				<WashTooltip tooltipText="Decrease Indent">
 					<svg
 						class="size-4"
 						fill="none"
@@ -618,16 +592,16 @@
 							d="M11 19l-7-7 7-7m8 14V5"
 						/></svg
 					>
-				</DaisyUiTooltip>
+				</WashTooltip>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('indent')}
 			>
-				<DaisyUiTooltip tooltipText="Increase Indent">
+				<WashTooltip tooltipText="Increase Indent">
 					<svg
 						class="size-4"
 						fill="none"
@@ -640,33 +614,33 @@
 							d="M13 5l7 7-7 7M5 5v14"
 						/></svg
 					>
-				</DaisyUiTooltip>
+				</WashTooltip>
 			</button>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+		</div>
+	</div>
 
 	<div class="h-5 w-px bg-base-300"></div>
 
 	<!-- Insert tools -->
-	<DaisyUiJoin>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+	<div class="join flex">
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('link')}
 			>
-				<DaisyUiTooltip tooltipText="Insert Link"
-					><LucideLink className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Insert Link"
+					><LucideLink className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('unlink')}
 			>
-				<DaisyUiTooltip tooltipText="Remove Link">
+				<WashTooltip tooltipText="Remove Link">
 					<svg
 						class="size-4"
 						fill="none"
@@ -684,38 +658,38 @@
 							d="M6 18L18 6"
 						/></svg
 					>
-				</DaisyUiTooltip>
+				</WashTooltip>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('image')}
 			>
-				<DaisyUiTooltip tooltipText="Insert Image"
-					><LucideImage className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Insert Image"
+					><LucideImage className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('table')}
 			>
-				<DaisyUiTooltip tooltipText="Insert Table"
-					><LucideTable2 className="size-4" /></DaisyUiTooltip
+				<WashTooltip tooltipText="Insert Table"
+					><LucideTable2 className="size-4" /></WashTooltip
 				>
 			</button>
-		</DaisyUiJoinItem>
-		<DaisyUiJoinItem className="d-btn-xs h-7">
+		</div>
+		<div class="btn join-item btn-xs h-7">
 			<button
 				type="button"
 				onmousedown={(e) => e.preventDefault()}
 				onclick={() => execute('horizontalRule')}
 			>
-				<DaisyUiTooltip tooltipText="Horizontal Line">
+				<WashTooltip tooltipText="Horizontal Line">
 					<svg
 						class="size-4"
 						fill="none"
@@ -728,19 +702,19 @@
 							d="M5 12h14"
 						/></svg
 					>
-				</DaisyUiTooltip>
+				</WashTooltip>
 			</button>
-		</DaisyUiJoinItem>
-	</DaisyUiJoin>
+		</div>
+	</div>
 
 	<!-- Clear formatting -->
 	<button
 		type="button"
-		class="d-btn h-7 d-btn-ghost d-btn-xs"
+		class="btn h-7 btn-ghost btn-xs"
 		onmousedown={(e) => e.preventDefault()}
 		onclick={() => execute('removeFormat')}
 	>
-		<DaisyUiTooltip tooltipText="Clear Formatting">
+		<WashTooltip tooltipText="Clear Formatting">
 			<svg
 				class="size-4"
 				fill="none"
@@ -753,62 +727,62 @@
 					d="M12 14l2 2m0 0l2 2m-2-2l-2 2m2-2l2-2M3 12l6.414-6.414a2 2 0 012.828 0L21 14.343"
 				/></svg
 			>
-		</DaisyUiTooltip>
+		</WashTooltip>
 	</button>
 
 	<!-- Table tools (when in table) -->
 	{#if isInTable}
 		<div class="h-5 w-px bg-base-300"></div>
-		<DaisyUiJoin>
-			<DaisyUiJoinItem className="d-btn-xs h-7">
+		<div class="join flex">
+			<div class="btn join-item btn-xs h-7">
 				<button
 					type="button"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => execute('tableAddRowBelow')}
 				>
-					<DaisyUiTooltip tooltipText="Add Row"
+					<WashTooltip tooltipText="Add Row"
 						><span class="text-[10px] font-semibold">+Row</span
-						></DaisyUiTooltip
+						></WashTooltip
 					>
 				</button>
-			</DaisyUiJoinItem>
-			<DaisyUiJoinItem className="d-btn-xs h-7">
+			</div>
+			<div class="btn join-item btn-xs h-7">
 				<button
 					type="button"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => execute('tableRemoveRow')}
 				>
-					<DaisyUiTooltip tooltipText="Delete Row"
+					<WashTooltip tooltipText="Delete Row"
 						><span class="text-[10px] font-semibold">−Row</span
-						></DaisyUiTooltip
+						></WashTooltip
 					>
 				</button>
-			</DaisyUiJoinItem>
-			<DaisyUiJoinItem className="d-btn-xs h-7">
+			</div>
+			<div class="btn join-item btn-xs h-7">
 				<button
 					type="button"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => execute('tableAddColRight')}
 				>
-					<DaisyUiTooltip tooltipText="Add Column"
+					<WashTooltip tooltipText="Add Column"
 						><span class="text-[10px] font-semibold">+Col</span
-						></DaisyUiTooltip
+						></WashTooltip
 					>
 				</button>
-			</DaisyUiJoinItem>
-			<DaisyUiJoinItem className="d-btn-xs h-7">
+			</div>
+			<div class="btn join-item btn-xs h-7">
 				<button
 					type="button"
 					onmousedown={(e) => e.preventDefault()}
 					onclick={() => execute('tableRemoveCol')}
 				>
-					<DaisyUiTooltip tooltipText="Delete Column"
+					<WashTooltip tooltipText="Delete Column"
 						><span class="text-[10px] font-semibold">−Col</span
-						></DaisyUiTooltip
+						></WashTooltip
 					>
 				</button>
-			</DaisyUiJoinItem>
-		</DaisyUiJoin>
+			</div>
+		</div>
 	{/if}
 </div>
 

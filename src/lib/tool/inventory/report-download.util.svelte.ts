@@ -1,4 +1,4 @@
-import type { InventoryReportFormat } from '$lib/model/type/heka/inventory-report.type';
+import type { InventoryReportFormat } from '$lib/model/type/medora/inventory-report.type';
 
 export function downloadBlob(filename: string, blob: Blob): void {
 	const url = URL.createObjectURL(blob);

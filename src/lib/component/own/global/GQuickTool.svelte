@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiFab from '$lib/component/daisyui/fab/DaisyUiFab.svelte';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashFab from '$lib/component/wash/fab/WashFab.svelte';
+	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideHand from '../library/lucide/LucideHand.svelte';
 	import LucideLanguages from '../library/lucide/LucideLanguages.svelte';
 	import LucideMessageCircleQuestionMark from '../library/lucide/LucideMessageCircleQuestionMark.svelte';
@@ -10,19 +10,18 @@
 	import ChangeLanguageModal from '$lib/component/own/snippet/modal/ChangeLanguageModal.svelte';
 	import { LanguageEnum } from '$lib/model/enum/language.enum';
 	import { LanguageTool } from '$lib/tool/language.tool.svelte';
-	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
-	import type { ThemeEnum } from '$lib/model/enum/theme.enum';
-	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
 	import SupportTicketDialogContent from '../snippet/modal/SupportTicketDialogContent.svelte';
-	import type { FontEnum } from '$lib/model/enum/font.enum';
-	import { FontTool } from '$lib/tool/font.tool.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import type {
+		WashModeEnum,
+		WashPigmentEnum
+	} from '$lib/model/enum/wash-theme.enum';
+	import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
+	import { WashThemeState } from '$lib/state/wash-theme.state.svelte';
 
 	const languageTool = new LanguageTool();
-	const localStorageUtil = new LocalStorageUtil();
-	const themeTool = new ThemeTool(localStorageUtil);
-	const fontTool = new FontTool(localStorageUtil);
+	const washThemeTool = new WashThemeTool();
 
 	function openLanguageDialog() {
 		dialogService.open({
@@ -37,9 +36,15 @@
 	function openThemeSettings() {
 		dialogService.open({
 			component: ChangeAppearanceModal,
-			onConfirm: (data?: { theme: ThemeEnum; font: FontEnum }) => {
-				if (data?.theme) themeTool.setTheme(data.theme);
-				if (data?.font) fontTool.setFont(data.font);
+			onConfirm: (data?: {
+				pigment: WashPigmentEnum;
+				mode: WashModeEnum;
+			}) => {
+				if (data?.pigment && data?.mode) {
+					washThemeTool.apply(data.pigment, data.mode);
+					WashThemeState.pigment = data.pigment;
+					WashThemeState.mode = data.mode;
+				}
 			}
 		});
 	}
@@ -52,49 +57,43 @@
 	}
 </script>
 
-<DaisyUiFab>
-	<DaisyUiTooltip
+<WashFab>
+	<WashTooltip
 		tooltipText={m.quick_tool()}
-		className=" d-tooltip-secondary"
+		className=" tooltip-secondary"
 	>
-		<DaisyUiButton
-			className="d-btn-circle d-btn-lg d-btn-secondary"
+		<WashButton
+			className="btn-circle btn-lg btn-secondary"
 			onClick={() => {}}
 		>
 			<LucideHand />
-		</DaisyUiButton>
-	</DaisyUiTooltip>
+		</WashButton>
+	</WashTooltip>
 
-	<DaisyUiTooltip
-		tooltipText={m.support()}
-		className=" "
-	>
-		<DaisyUiButton
-			className="d-btn-circle d-btn-lg"
+	<WashTooltip tooltipText={m.support()} className=" ">
+		<WashButton
+			className="btn-circle btn-lg"
 			onClick={openSupportDialog}
 		>
 			<LucideMessageCircleQuestionMark />
-		</DaisyUiButton>
-	</DaisyUiTooltip>
+		</WashButton>
+	</WashTooltip>
 
-	<DaisyUiTooltip tooltipText={m.theme()} className=" ">
-		<DaisyUiButton
+	<WashTooltip tooltipText={m.theme()} className=" ">
+		<WashButton
 			onClick={openThemeSettings}
-			className="d-btn-circle d-btn-lg"
+			className="btn-circle btn-lg"
 		>
 			<LucidePalette />
-		</DaisyUiButton>
-	</DaisyUiTooltip>
+		</WashButton>
+	</WashTooltip>
 
-	<DaisyUiTooltip
-		tooltipText={m.languages()}
-		className=" "
-	>
-		<DaisyUiButton
+	<WashTooltip tooltipText={m.languages()} className=" ">
+		<WashButton
 			onClick={openLanguageDialog}
-			className="d-btn-circle d-btn-lg"
+			className="btn-circle btn-lg"
 		>
 			<LucideLanguages />
-		</DaisyUiButton>
-	</DaisyUiTooltip>
-</DaisyUiFab>
+		</WashButton>
+	</WashTooltip>
+</WashFab>

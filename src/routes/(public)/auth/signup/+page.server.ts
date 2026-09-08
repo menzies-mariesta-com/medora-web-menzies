@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import * as lists from '$lib/server/heka/master/lookup-lists.server';
+import * as lists from '$lib/server/medora/master/lookup-lists.server';
 
 export const load: PageServerLoad = async () => {
 	const [countries, genders] = await Promise.all([
