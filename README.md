@@ -43,6 +43,8 @@ You can preview the production build with `pnpm run preview`.
 
 This project uses [`@sveltejs/adapter-netlify`](https://svelte.dev/docs/kit/adapter-netlify) and `netlify.toml`.
 
+Netlify installs with **`npm ci`** (not pnpm) so the build is not blocked by pnpm lockfile/`patchedDependencies` mismatches. Keep `package-lock.json` committed and in sync when dependencies change.
+
 1. Log in: `npx netlify login`
 2. Link or create a site: `npx netlify init` (or connect the GitHub repo in the Netlify UI)
 3. In **Site settings → Environment variables**, set at least:
