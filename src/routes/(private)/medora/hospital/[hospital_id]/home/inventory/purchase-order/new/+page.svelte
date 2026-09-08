@@ -16,10 +16,10 @@
 	import PoManualLineDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLineDialogContent.svelte';
 	import PoManualLinesCard from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLinesCard.svelte';
 	import PoPrLineEditDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-order/PoPrLineEditDialogContent.svelte';
-	import MariTable, {
-		type MariTableColumn,
-		type MariTableColumnsInput
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn,
+		type MenziesTableColumnsInput
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
@@ -219,7 +219,7 @@
 		return ium?.conversionDisplay ?? '—';
 	}
 
-	const manualLineTableColumns: MariTableColumn<ManualLineForm>[] = [
+	const manualLineTableColumns: MenziesTableColumn<ManualLineForm>[] = [
 		{
 			id: 'itemLabel',
 			header: m.inv_common_item(),
@@ -602,7 +602,7 @@
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_po_select_pr(),
-					columns: prPickerColumns as MariTableColumnsInput,
+					columns: prPickerColumns as MenziesTableColumnsInput,
 					rows: approvedPrList,
 					pageSize: '150'
 				}
@@ -632,7 +632,7 @@
 		return lines.join('\n') || '—';
 	}
 
-	const prPickerColumns = $derived.by((): MariTableColumn[] => [
+	const prPickerColumns = $derived.by((): MenziesTableColumn[] => [
 		{
 			id: 'prNo',
 			header: m.inv_pr_no(),
@@ -975,7 +975,7 @@
 	});
 
 	const poCreateLineColumns = $derived.by(
-		(): MariTableColumn<PoCreateLineTableRow>[] => {
+		(): MenziesTableColumn<PoCreateLineTableRow>[] => {
 			const cat = poCreateIumCatalog;
 			return [
 				{
@@ -1286,7 +1286,7 @@
 				</h3>
 				{#if prDetailForCreate && poLineDraft.length > 0}
 					<div class="h-[420px] min-h-0 w-full">
-						<MariTable
+						<MenziesTable
 							columns={poCreateLineColumns}
 							rows={poCreateLineRows}
 							isLoading={false}
@@ -1324,7 +1324,7 @@
 									</WashTooltip>
 								</div>
 							{/snippet}
-						</MariTable>
+						</MenziesTable>
 					</div>
 				{:else if prDetailForCreate && selectedPrId && poLineDraft.length === 0}
 					<div

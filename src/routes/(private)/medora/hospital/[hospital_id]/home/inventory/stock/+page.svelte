@@ -3,9 +3,9 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import {
@@ -142,7 +142,7 @@
 		void load();
 	});
 
-	const aggColumns: MariTableColumn<AggRow>[] = [
+	const aggColumns: MenziesTableColumn<AggRow>[] = [
 		{
 			id: 'storeName',
 			header: m.inv_common_store(),
@@ -173,7 +173,7 @@
 		}
 	];
 
-	const lotColumns: MariTableColumn<LotRow>[] = [
+	const lotColumns: MenziesTableColumn<LotRow>[] = [
 		{
 			id: 'storeName',
 			header: m.inv_common_store(),
@@ -320,7 +320,7 @@
 	<WashCardBody className="p-0">
 		{#if view === 'aggregated'}
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					columns={aggColumns}
 					rows={rowsAgg}
 					isLoading={loading}
@@ -330,7 +330,7 @@
 			</div>
 		{:else}
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					columns={lotColumns}
 					rows={filteredRowsLotsByExpiry}
 					isLoading={loading}

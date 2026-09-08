@@ -2,10 +2,10 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import MariTable, {
-		type MariTableColumn,
-		type MariTableColumnsInput
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn,
+		type MenziesTableColumnsInput
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { InvDepartmentIndentStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -231,7 +231,7 @@
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_dept_issue_select_indent(),
-					columns: indentPickerColumns as MariTableColumnsInput,
+					columns: indentPickerColumns as MenziesTableColumnsInput,
 					rows: pendingIndents,
 					pageSize: String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 				}
@@ -280,7 +280,7 @@
 		return lines.join('\n') || '—';
 	}
 
-	const indentPickerColumns = $derived.by((): MariTableColumn[] => [
+	const indentPickerColumns = $derived.by((): MenziesTableColumn[] => [
 		{
 			id: 'indentNo',
 			header: m.inv_dept_indent_no(),
@@ -703,7 +703,7 @@
 	}
 
 	const lineColumns = $derived.by(
-		(): MariTableColumn<IssueDraftLine>[] => [
+		(): MenziesTableColumn<IssueDraftLine>[] => [
 			{
 				id: 'itemLabel',
 				header: m.inv_common_item(),
@@ -1096,7 +1096,7 @@
 					{:else if !indentPreviewLines || indentPreviewLines.length === 0}
 						<div class="text-xs text-base-content/70">—</div>
 					{:else}
-						<MariTable
+						<MenziesTable
 							rows={indentPreviewLines}
 							columns={[
 								{
@@ -1123,7 +1123,7 @@
 									format: (_v, r: DepartmentIndentDetailLine) =>
 										r.unitName ?? '—'
 								}
-							] as MariTableColumn[]}
+							] as MenziesTableColumn[]}
 							showRowActions={false}
 							actionsVariant="none"
 							showRefreshButton={false}
@@ -1140,9 +1140,9 @@
 					<p class="mb-3 text-xs opacity-70">
 						{m.inv_dc_modal_batch_help()}
 					</p>
-					<MariTable
+					<MenziesTable
 						rows={indentCreateLines}
-						columns={lineColumns as MariTableColumn[]}
+						columns={lineColumns as MenziesTableColumn[]}
 						showRefreshButton={false}
 						enableColumnFilters={false}
 						showRowActions={true}
@@ -1166,7 +1166,7 @@
 								</WashButton>
 							</WashTooltip>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			{/if}
 		{/if}

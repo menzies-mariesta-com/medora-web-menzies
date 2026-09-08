@@ -7,9 +7,9 @@
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -89,7 +89,7 @@
 		}
 	}
 
-	const lineColumns: MariTableColumn<DepartmentIndentDetailLine>[] = [
+	const lineColumns: MenziesTableColumn<DepartmentIndentDetailLine>[] = [
 		{
 			id: 'item',
 			header: m.inv_common_item(),
@@ -120,7 +120,7 @@
 		}
 	];
 
-	const allocColumns: MariTableColumn<DepartmentIndentAllocationRow>[] =
+	const allocColumns: MenziesTableColumn<DepartmentIndentAllocationRow>[] =
 		[
 			{
 				id: 'item',
@@ -392,8 +392,8 @@
 
 <h2 class="mb-2 font-semibold">{m.inv_di_detail_lines()}</h2>
 <div class={TableEnum.HEIGHT}>
-	<MariTable
-		columns={lineColumns as MariTableColumn[]}
+	<MenziesTable
+		columns={lineColumns as MenziesTableColumn[]}
 		rows={detail?.lines ?? []}
 		isLoading={detailLoading}
 		showRowActions={false}
@@ -407,8 +407,8 @@
 		{m.inv_di_detail_allocations()}
 	</h2>
 	<div class={TableEnum.HEIGHT}>
-		<MariTable
-			columns={allocColumns as MariTableColumn[]}
+		<MenziesTable
+			columns={allocColumns as MenziesTableColumn[]}
 			rows={detail.allocations}
 			isLoading={false}
 			showRowActions={false}

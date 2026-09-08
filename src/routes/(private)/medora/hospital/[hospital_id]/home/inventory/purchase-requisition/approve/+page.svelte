@@ -9,9 +9,9 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import InventoryTableTextCell from '$lib/component/own/local/private/medora/inventory/InventoryTableTextCell.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -305,11 +305,11 @@
 		void load();
 	});
 
-	const lineColumns = $derived.by((): MariTableColumn<PrLine>[] => {
+	const lineColumns = $derived.by((): MenziesTableColumn<PrLine>[] => {
 		const cat = iumCatalogById;
 		const pending =
 			detail?.statusTaggingId === InvPrStatusTaggingEnum.PENDING;
-		const requestedCol: MariTableColumn<PrLine> = {
+		const requestedCol: MenziesTableColumn<PrLine> = {
 			id: 'requestedQty',
 			header: m.inv_pr_line_requested_qty(),
 			field: 'requestedQuantity',
@@ -324,7 +324,7 @@
 					cat
 				)
 		};
-		const pendingPrCol: MariTableColumn<PrLine> = {
+		const pendingPrCol: MenziesTableColumn<PrLine> = {
 			id: 'pendingPrPurchaseQty',
 			header: m.inv_pr_line_metric_pending_pr_qty(),
 			field: 'pendingPrPurchaseQty',
@@ -342,7 +342,7 @@
 				);
 			}
 		};
-		const pendingPoCol: MariTableColumn<PrLine> = {
+		const pendingPoCol: MenziesTableColumn<PrLine> = {
 			id: 'pendingPoPurchaseQty',
 			header: m.inv_po_line_metric_pending_po_qty(),
 			field: 'pendingPoPurchaseQty',
@@ -360,7 +360,7 @@
 				);
 			}
 		};
-		const approvedCol: MariTableColumn<PrLine> = pending
+		const approvedCol: MenziesTableColumn<PrLine> = pending
 			? {
 					id: 'approvedQty',
 					header: m.inv_pr_approve_approved_qty(),
@@ -551,7 +551,7 @@
 				</h2>
 			</div>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					columns={lineColumns}
 					rows={detail.lines}
 					isLoading={loading}
@@ -578,7 +578,7 @@
 							{/if}
 						</div>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		{/if}
 	</WashCardBody>

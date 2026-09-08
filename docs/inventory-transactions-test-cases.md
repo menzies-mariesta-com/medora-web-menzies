@@ -134,13 +134,13 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 
 ## 8. Report exports (CSV / Excel / PDF / Print)
 
-**Movement log**, **Low stock**, and **Expired / expiring** export from the **MariTable toolbar** (client-side fetch of JSON, then CSV / Excel / PDF / Print). Column header filters reload data from the API (`filter_<columnId>` query params).
+**Movement log**, **Low stock**, and **Expired / expiring** export from the **MenziesTable toolbar** (client-side fetch of JSON, then CSV / Excel / PDF / Print). Column header filters reload data from the API (`filter_<columnId>` query params).
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |
 | REP-1 | Movement date range | Open **Movement log**; set date from/to. | Table reloads automatically with movements in that date range. |
 | REP-2 | Report column filter | On movement, low stock, or expired report; use a column header filter. | Table reloads from API (backend search). |
-| REP-3 | Report in-table export | With filters applied, use **CSV / Excel / PDF / Print** in the MariTable toolbar. | Export re-fetches JSON with current filters (up to 10,000 rows). |
+| REP-3 | Report in-table export | With filters applied, use **CSV / Excel / PDF / Print** in the MenziesTable toolbar. | Export re-fetches JSON with current filters (up to 10,000 rows). |
 | REP-4 | Export row cap | Export with filters that would exceed 10,000 rows (if test data allows). | API returns at most 10,000 rows; export matches. |
 
 ---

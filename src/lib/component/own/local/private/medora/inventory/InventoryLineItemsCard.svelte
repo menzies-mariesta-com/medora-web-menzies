@@ -8,9 +8,9 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTable from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
@@ -25,7 +25,7 @@
 		/** Optional extra controls rendered at the far right of the header row. */
 		toolbarRight?: Snippet<[]>;
 		lineItemFilter?: string;
-		/** If true, hides the external quick-filter input and enables MariTable header column filters. */
+		/** If true, hides the external quick-filter input and enables MenziesTable header column filters. */
 		useColumnFilters?: boolean;
 		/** Hides the external quick-filter input without enabling column filters. */
 		hideQuickFilter?: boolean;
@@ -139,7 +139,7 @@
 	{/if}
 
 	<div class="h-[420px] min-h-0">
-		<MariTable
+		<MenziesTable
 			columns={columns as any[]}
 			rows={rows as any[]}
 			isLoading={false}
@@ -149,9 +149,9 @@
 			enableColumnFilters={useColumnFilters}
 		>
 			{#snippet rowActions(row)}
-				<MariTableRowActionGroup>
+				<MenziesTableRowActionGroup>
 					{#if showCloseLine && onCloseLine && (isCloseableFn ? isCloseableFn(row) : true)}
-						<MariTableIconAction
+						<MenziesTableIconAction
 							tooltipText={m.inv_line_items_tooltip_close_line()}
 							color="warning"
 							onClick={() => onCloseLine?.(row)}
@@ -159,9 +159,9 @@
 							{#snippet icon()}
 								<LucideX className="size-5" />
 							{/snippet}
-						</MariTableIconAction>
+						</MenziesTableIconAction>
 					{/if}
-					<MariTableIconAction
+					<MenziesTableIconAction
 						tooltipText={m.inv_line_items_tooltip_edit()}
 						color="accent"
 						disabled={viewOnly}
@@ -170,8 +170,8 @@
 						{#snippet icon()}
 							<LucidePencil className="size-5" />
 						{/snippet}
-					</MariTableIconAction>
-					<MariTableIconAction
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
 						tooltipText={m.inv_line_items_tooltip_delete()}
 						color="error"
 						disabled={viewOnly}
@@ -180,10 +180,10 @@
 						{#snippet icon()}
 							<LucideTrash2 className="size-5" />
 						{/snippet}
-					</MariTableIconAction>
-				</MariTableRowActionGroup>
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 
 	<div

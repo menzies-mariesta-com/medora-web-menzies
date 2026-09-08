@@ -9,9 +9,9 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
@@ -24,7 +24,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -85,7 +85,7 @@
 
 	let tableColumnFilters = $state<Record<string, string>>({});
 
-	const serviceItemColumns: MariTableColumn<ServiceItemListRow>[] = [
+	const serviceItemColumns: MenziesTableColumn<ServiceItemListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -745,7 +745,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={serviceItems}
 					columns={serviceItemColumns}
 					{isLoading}
@@ -769,14 +769,14 @@
 				>
 					{#snippet rowActions(row, rowIndex)}
 						{@const serviceRow = row as ServiceItemListRow}
-						<MariTableEditDeleteActions
+						<MenziesTableEditDeleteActions
 							onEdit={() => startEdit(serviceRow)}
 							onDelete={() => handleDelete(serviceRow)}
 							disabled={isLoading || isSaving || deleteLock.pending}
 							deleteLoading={deletingId === serviceRow.id}
 						/>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

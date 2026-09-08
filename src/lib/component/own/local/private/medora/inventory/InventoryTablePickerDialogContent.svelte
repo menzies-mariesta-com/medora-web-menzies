@@ -2,9 +2,9 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
-	import MariTable, {
-		type MariTableColumnsInput
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumnsInput
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -21,7 +21,7 @@
 		DialogSlotProps & {
 			title: string;
 			isLoading?: boolean;
-			columns: MariTableColumnsInput;
+			columns: MenziesTableColumnsInput;
 			rows: unknown[];
 			pageSize?: string;
 		}
@@ -50,7 +50,7 @@
 		</WashButton>
 	</div>
 	<div class="flex min-h-0 flex-1 flex-col pt-3">
-		<MariTable
+		<MenziesTable
 			bind:currentPage={pickerPage}
 			{columns}
 			{rows}
@@ -77,6 +77,6 @@
 					</WashButton>
 				</WashTooltip>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 </div>

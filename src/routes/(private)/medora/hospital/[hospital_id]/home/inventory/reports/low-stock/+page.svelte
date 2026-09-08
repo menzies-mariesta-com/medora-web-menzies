@@ -3,15 +3,15 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import type { MariTableExportConfig } from '$lib/model/type/mari-table-export.type';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import type { MenziesTableExportConfig } from '$lib/model/type/menzies-table-export.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import type { ClientReportExportColumn } from '$lib/tool/inventory/report-export-client.util';
-	import { appendMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
+	import { appendMenziesTableColumnFilters } from '$lib/tool/menzies/menzies-table-query.util';
 	import { untrack } from 'svelte';
 
 	const hospitalId = $derived(
@@ -42,7 +42,7 @@
 	function buildApiUrl(exportLimit?: number): string {
 		const sp = new URLSearchParams();
 		sp.set('limit', String(exportLimit ?? 5000));
-		appendMariTableColumnFilters(sp, columnFilters);
+		appendMenziesTableColumnFilters(sp, columnFilters);
 		return `${apiBase}?${sp.toString()}`;
 	}
 
@@ -104,7 +104,7 @@
 		});
 	});
 
-	const columns: MariTableColumn<Row>[] = [
+	const columns: MenziesTableColumn<Row>[] = [
 		{
 			id: 'storeId',
 			header: m.inv_common_store(),
@@ -157,7 +157,7 @@
 		}
 	];
 
-	const exportConfig = $derived<MariTableExportConfig>({
+	const exportConfig = $derived<MenziesTableExportConfig>({
 		columns:
 			exportColumns as ClientReportExportColumn<Record<string, unknown>>[],
 		title: 'Low stock',
@@ -180,7 +180,7 @@
 <WashCard>
 	<WashCardBody className="p-0">
 		<div class={TableEnum.HEIGHT}>
-			<MariTable
+			<MenziesTable
 				{columns}
 				{rows}
 				masterFilterHospitalId={hospitalId}

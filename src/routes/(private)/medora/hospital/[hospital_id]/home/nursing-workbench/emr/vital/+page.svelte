@@ -15,16 +15,16 @@
 	import type { PatientDiagnosisListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
 	} from '$lib/config/vital.config';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -329,7 +329,7 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	const vitalColumns: MariTableColumn<PatientVitalWithVisit>[] = [
+	const vitalColumns: MenziesTableColumn<PatientVitalWithVisit>[] = [
 		{
 			id: 'visitNo',
 			header: 'Visit No',
@@ -497,7 +497,7 @@
 					</p>
 				{:else}
 					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-						<MariTable
+						<MenziesTable
 							rows={vitals}
 							columns={vitalColumns}
 							isLoading={isLoadingVisit || isLoadingVitals}
@@ -548,14 +548,14 @@
 							}}
 						>
 							{#snippet rowActions(row, rowIndex)}
-								<MariTableEditDeleteActions
+								<MenziesTableEditDeleteActions
 									onEdit={() =>
 										openEditDialog(row as PatientVitalWithVisit)}
 									onDelete={() =>
 										handleDeleteVital(row as PatientVitalWithVisit)}
 								/>
 							{/snippet}
-						</MariTable>
+						</MenziesTable>
 					</div>
 				{/if}
 			</WashCardBody>

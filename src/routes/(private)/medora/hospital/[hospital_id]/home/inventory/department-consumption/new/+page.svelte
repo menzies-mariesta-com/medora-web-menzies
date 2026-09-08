@@ -12,9 +12,9 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import ConsumptionLineDialogContent from '$lib/component/own/local/private/medora/inventory/department-consumption/ConsumptionLineDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import type { ConsumptionDraftLine } from '$lib/model/type/medora/department-consumption-detail.type';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/medora/department-consumption-detail.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
@@ -213,7 +213,7 @@
 		lines = lines.filter((x) => x.key !== key);
 	}
 
-	const columns: MariTableColumn<DepartmentConsumptionDetailLine>[] =
+	const columns: MenziesTableColumn<DepartmentConsumptionDetailLine>[] =
 		[
 			{
 				id: 'item',
@@ -424,8 +424,8 @@
 			</div>
 		</div>
 		<div class="h-[420px] min-h-0">
-			<MariTable
-				columns={columns as MariTableColumn[]}
+			<MenziesTable
+				columns={columns as MenziesTableColumn[]}
 				rows={lines.map((ln) => ({
 					id: 0,
 					consumptionId: '',
@@ -482,7 +482,7 @@
 						</WashTooltip>
 					</div>
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	</WashCardBody>
 </WashCard>

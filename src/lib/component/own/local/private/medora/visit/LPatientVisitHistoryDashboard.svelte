@@ -19,9 +19,9 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
@@ -123,7 +123,7 @@
 		return '';
 	}
 
-	const visitHistoryColumns: MariTableColumn<VisitTableRow>[] = [
+	const visitHistoryColumns: MenziesTableColumn<VisitTableRow>[] = [
 		{
 			id: 'visitNo',
 			header: 'Visit No',
@@ -525,7 +525,7 @@
 							<div
 								class="visit-history-table-host flex max-h-[min(55vh,32rem)] min-h-0 min-w-0 flex-1 flex-col"
 							>
-								<MariTable
+								<MenziesTable
 									rows={tableRows}
 									columns={visitHistoryColumns}
 									bind:pageSize={visitPageSizeStr}
@@ -588,7 +588,7 @@
 											</WashTooltip>
 										</div>
 									{/snippet}
-								</MariTable>
+								</MenziesTable>
 							</div>
 						{/if}
 					</div>

@@ -6,9 +6,9 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
@@ -258,7 +258,7 @@
 		});
 	}
 
-	const columns: MariTableColumn<LevelRow>[] = [
+	const columns: MenziesTableColumn<LevelRow>[] = [
 		{
 			id: 'isRequired',
 			header: 'Is Required',
@@ -357,7 +357,7 @@
 	</div>
 
 	<div class={TableEnum.HEIGHT}>
-		<MariTable
+		<MenziesTable
 			{columns}
 			rows={items}
 			{isLoading}
@@ -395,7 +395,7 @@
 					</WashTooltip>
 				</div>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 {:else}
 	<WashCard>

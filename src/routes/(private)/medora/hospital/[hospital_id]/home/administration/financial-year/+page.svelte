@@ -5,10 +5,10 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -192,7 +192,7 @@
 		});
 	}
 
-	const columns: MariTableColumn<FinancialYearListRow>[] = [
+	const columns: MenziesTableColumn<FinancialYearListRow>[] = [
 		{
 			id: 'code',
 			header: 'Code',
@@ -232,7 +232,7 @@
 	</div>
 
 	<div class={TableEnum.HEIGHT}>
-		<MariTable
+		<MenziesTable
 			{columns}
 			rows={items}
 			{isLoading}
@@ -240,12 +240,12 @@
 			actionsVariant="none"
 		>
 			{#snippet rowActions(row, rowIndex)}
-				<MariTableEditDeleteActions
+				<MenziesTableEditDeleteActions
 					onEdit={() => startEdit(row)}
 					onDelete={() => handleDelete(row)}
 				/>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 {:else}
 	<WashCard>

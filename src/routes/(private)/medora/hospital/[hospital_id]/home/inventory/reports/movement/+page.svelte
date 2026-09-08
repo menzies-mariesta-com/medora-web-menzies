@@ -3,10 +3,10 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import type { MariTableExportConfig } from '$lib/model/type/mari-table-export.type';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import type { MenziesTableExportConfig } from '$lib/model/type/menzies-table-export.type';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -15,7 +15,7 @@
 		trimMetricQtyDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import type { ClientReportExportColumn } from '$lib/tool/inventory/report-export-client.util';
-	import { appendMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
+	import { appendMenziesTableColumnFilters } from '$lib/tool/menzies/menzies-table-query.util';
 	import { untrack } from 'svelte';
 
 	const hospitalId = $derived(
@@ -67,7 +67,7 @@
 		sp.set('limit', String(exportLimit ?? 5000));
 		if (filterDateFrom.trim()) sp.set('dateFrom', filterDateFrom.trim());
 		if (filterDateTo.trim()) sp.set('dateTo', filterDateTo.trim());
-		appendMariTableColumnFilters(sp, columnFilters);
+		appendMenziesTableColumnFilters(sp, columnFilters);
 		return `${apiBase}?${sp.toString()}`;
 	}
 
@@ -149,7 +149,7 @@
 		{ value: 'dconsume', label: 'DCONSUME' }
 	];
 
-	const columns: MariTableColumn<Row>[] = [
+	const columns: MenziesTableColumn<Row>[] = [
 		{
 			id: 'kind',
 			header: m.inv_report_filter_kind(),
@@ -284,7 +284,7 @@
 		return parts.join(' · ');
 	});
 
-	const exportConfig = $derived<MariTableExportConfig>({
+	const exportConfig = $derived<MenziesTableExportConfig>({
 		columns:
 			exportColumns as ClientReportExportColumn<Record<string, unknown>>[],
 		title: m.inv_reports_movement(),
@@ -340,7 +340,7 @@
 <WashCard>
 	<WashCardBody className="p-0">
 		<div class={TableEnum.HEIGHT}>
-			<MariTable
+			<MenziesTable
 				{columns}
 				{rows}
 				masterFilterHospitalId={hospitalId}

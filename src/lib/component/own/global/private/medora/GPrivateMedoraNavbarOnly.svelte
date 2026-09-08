@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
-
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideUser from '$lib/component/own/library/lucide/LucideUser.svelte';
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
@@ -28,6 +25,7 @@
 		getStaffPhotoDisplayUrl(staffPhotoUrl)
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
+	const titleText = $derived(title?.trim() || 'Hospitals');
 
 	let accountModalOpen = $state(false);
 
@@ -40,19 +38,22 @@
 	}
 </script>
 
-<div class="{washRecipes.navbar} border-b border-base-300/80">
-	<div class="navbar-start gap-3">
+<div class="flex w-full flex-wrap items-center gap-2 border-b border-base-300/80 px-2 py-2">
+	<div class="shrink-0">
 		<MedoraBrandWordmark className="text-xl" />
 	</div>
-	<div class="navbar-center min-w-0 max-w-[min(100%,24rem)] flex-1 px-2">
-		<WashInputField
-			inputType="text"
-			value={title}
-			disabled
-			className="btn-primary w-full max-w-96 text-center"
-		/>
+	<div
+		class="flex min-w-0 flex-1 basis-[min(100%,16rem)] justify-center px-1"
+	>
+		<WashButton
+			variant="primary"
+			className="btn-outline pointer-events-none h-auto min-h-10 max-w-full whitespace-normal break-words text-center normal-case no-animation"
+			title={titleText}
+		>
+			{titleText}
+		</WashButton>
 	</div>
-	<div class="navbar-end gap-3">
+	<div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
 		<WashTooltip
 			tooltipText="Notification"
 			className=""
