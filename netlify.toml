@@ -2,16 +2,17 @@
 # https://svelte.dev/docs/kit/adapter-netlify
 
 [build]
-	# Force npm: Netlify auto-picks pnpm when pnpm-lock.yaml exists (ahead of package-lock.json).
+	# Netlify still auto-detects pnpm from pnpm-lock.yaml before this runs.
+	# We no-op that install (PNPM_FLAGS) and install with npm ourselves.
 	command = "npm ci && npm run build"
 	publish = "build"
 
 [build.environment]
 	NODE_VERSION = "22"
-	# Skip Netlify's auto install (would use pnpm). We run npm ci in the build command.
-	NETLIFY_SKIP_DEPENDENCY_INSTALLATION = "true"
-	# Private GitHub Packages (@menzies-mariesta-com/*): set NODE_AUTH_TOKEN in the Netlify UI
-	# (Site settings → Environment variables). Token is read from .npmrc.
+	# Make Netlify's automatic `pnpm install` a no-op (real install is npm ci above).
+	PNPM_FLAGS = "--version"
+	# Private GitHub Packages (@menzies-mariesta-com/*): set NODE_AUTH_TOKEN in the Netlify UI.
+	# Token is read from .npmrc during npm ci.
 
 [dev]
 	command = "npm run dev"
