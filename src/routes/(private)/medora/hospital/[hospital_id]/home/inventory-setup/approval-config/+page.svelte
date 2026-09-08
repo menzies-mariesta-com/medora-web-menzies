@@ -13,7 +13,7 @@
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -459,7 +459,7 @@
 
 								<div class="mt-2">
 									<label class="text-xs mb-1.5 opacity-70">Add Assignee</label>
-									<WashSearchSelect
+									<SearchSelect
 										placeholder="Search staff by name or code..."
 										className="input-sm w-full"
 										searchFn={async (q) => {

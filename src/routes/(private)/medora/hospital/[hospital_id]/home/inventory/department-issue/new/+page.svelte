@@ -11,7 +11,7 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
@@ -938,7 +938,7 @@
 										</div>
 										<div class="flex min-w-0 flex-col gap-2">
 											<label for="di-issue-to-store" class="text-xs">{m.inv_dept_indent_to()}</label>
-											<WashSearchSelect
+											<SearchSelect
 												inputId="di-issue-to-store"
 												value={toStoreIdStr}
 												options={toStoreOptions.map((s) => ({

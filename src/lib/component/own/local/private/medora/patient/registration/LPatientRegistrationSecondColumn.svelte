@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type {
@@ -6,6 +7,7 @@
 		PatientRegIdentityTypeRow,
 		PatientRegTitleRow
 	} from '$lib/model/type/medora/patient-reg-master.type';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		titleData,
@@ -153,24 +155,13 @@
 	>
 		<label for="phone-primary" class="shrink-0 sm:w-36 font-bold">Primary Phone</label>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedPhoneCountryId}
-					optionHeader="Select country code ..."
-					className="min-w-20 join-item"
-				>
-					{#each countryData as data (data.id)}
-						<option value={String(data.id)} class="gap-5"
-							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-						>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={selectedPhone}
-					inputType="tel"
-					className="join-item"
-				/>
-			</div>
+			<MenziesPhoneField
+				id="phone-primary"
+				bind:countryId={selectedPhoneCountryId}
+				bind:phone={selectedPhone}
+				countries={countryData}
+				optionHeader={m.select_country_code()}
+			/>
 		</div>
 	</div>
 	<div
@@ -178,24 +169,13 @@
 	>
 		<label for="phone-secondary" class="shrink-0 sm:w-36">Secondary Phone</label>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedPhoneSecondaryCountryId}
-					optionHeader="Select country code ..."
-					className="min-w-20 join-item"
-				>
-					{#each countryData as data (data.id)}
-						<option value={String(data.id)} class="gap-5"
-							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-						>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={selectedPhoneSecondary}
-					inputType="tel"
-					className="join-item"
-				/>
-			</div>
+			<MenziesPhoneField
+				id="phone-secondary"
+				bind:countryId={selectedPhoneSecondaryCountryId}
+				bind:phone={selectedPhoneSecondary}
+				countries={countryData}
+				optionHeader={m.select_country_code()}
+			/>
 		</div>
 	</div>
 	<div
@@ -306,24 +286,13 @@
 	>
 		<label for="guardian-phone" class="shrink-0 sm:w-36">Guardian Phone</label>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedGuardianPhoneCountryId}
-					optionHeader="Select country code ..."
-					className="min-w-20 join-item"
-				>
-					{#each countryData as data (data.id)}
-						<option value={String(data.id)} class="gap-5"
-							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-						>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={guardianPhone}
-					inputType="tel"
-					className="join-item"
-				/>
-			</div>
+			<MenziesPhoneField
+				id="guardian-phone"
+				bind:countryId={selectedGuardianPhoneCountryId}
+				bind:phone={guardianPhone}
+				countries={countryData}
+				optionHeader={m.select_country_code()}
+			/>
 		</div>
 	</div>
 </div>

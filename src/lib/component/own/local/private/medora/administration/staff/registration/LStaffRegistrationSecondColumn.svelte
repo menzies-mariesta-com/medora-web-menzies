@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type {
@@ -7,6 +8,7 @@
 		StaffRegStaffEmploymentTypeRow,
 		StaffRegStaffTypeRow
 	} from '$lib/model/type/medora/staff-reg-ui.type';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		countryData,
@@ -47,24 +49,13 @@
 	>
 		<label for="phone" class="shrink-0 sm:w-36">Phone</label>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedPhoneCountryId}
-					optionHeader="Select country code ..."
-					className="min-w-20 join-item"
-				>
-					{#each countryData as data (data.id)}
-						<option value={String(data.id)} class="gap-5"
-							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-						>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={selectedPhone}
-					inputType="tel"
-					className="join-item"
-				/>
-			</div>
+			<MenziesPhoneField
+				id="phone"
+				bind:countryId={selectedPhoneCountryId}
+				bind:phone={selectedPhone}
+				countries={countryData}
+				optionHeader={m.select_country_code()}
+			/>
 		</div>
 	</div>
 	<div
@@ -72,24 +63,13 @@
 	>
 		<label for="phone-secondary" class="shrink-0 sm:w-36">Phone (Secondary)</label>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedPhoneSecondaryCountryId}
-					optionHeader="Select country code ..."
-					className="min-w-20 join-item"
-				>
-					{#each countryData as data (data.id)}
-						<option value={String(data.id)} class="gap-5"
-							>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-						>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={selectedPhoneSecondary}
-					inputType="tel"
-					className="join-item"
-				/>
-			</div>
+			<MenziesPhoneField
+				id="phone-secondary"
+				bind:countryId={selectedPhoneSecondaryCountryId}
+				bind:phone={selectedPhoneSecondary}
+				countries={countryData}
+				optionHeader={m.select_country_code()}
+			/>
 		</div>
 	</div>
 	<div

@@ -5,7 +5,7 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -1208,7 +1208,7 @@
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_store()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={storeIdStr}
 								searchFn={searchStoresForSelect}
 								getLabelForValue={getStoreLabelForValue}
@@ -1222,7 +1222,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_pharmacy_generic()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={pharmacyGenericId}
 								options={genericOptions}
 								placeholder={m.med_order_int_all_generics()}
@@ -1231,7 +1231,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_item()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={itemValueStr}
 								searchFn={searchItemsFromMaster}
 								getLabelForValue={getItemLabelForValue}
@@ -1260,7 +1260,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_dose_unit()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={doseUnitIdStr}
 								options={doseUnitOptions}
 								placeholder="—"
@@ -1270,7 +1270,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_frequency()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={frequencyIdStr}
 								options={frequencyOptions}
 								placeholder={m.med_order_int_frequency_filter()}
@@ -1291,7 +1291,7 @@
 									minLength={0}
 								/>
 								<div class="min-w-0 flex-1">
-									<WashSearchSelect
+									<SearchSelect
 										bind:value={durationUnitIdStr}
 										options={durationUnitOptions}
 										placeholder="—"
@@ -1303,7 +1303,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_form()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={formId}
 								options={formOptions}
 								placeholder={m.med_order_int_not_applicable()}
@@ -1313,7 +1313,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_route()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={routeId}
 								options={routeOptions}
 								placeholder={m.med_order_int_not_applicable()}
@@ -1326,7 +1326,7 @@
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_order_type()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={orderTypeId}
 								options={orderTypeOptions}
 								placeholder={m.med_order_int_not_applicable()}
@@ -1336,7 +1336,7 @@
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<label class="shrink-0">{m.med_order_int_food_relation()}</label>
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={foodRelationId}
 								options={foodRelOptions}
 								placeholder={m.med_order_int_not_applicable()}

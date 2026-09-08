@@ -5,7 +5,7 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -799,7 +799,7 @@
 								for="tagging-form-service"
 								>Service<span class="text-error"> *</span></label
 							>
-							<WashSearchSelect
+							<SearchSelect
 								inputId="tagging-form-service"
 								bind:value={formServiceId}
 								options={serviceOptions}

@@ -6,6 +6,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { page } from '$app/state';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -525,27 +526,14 @@
 							{@const display = (code ?? '') + (phone ?? '')}
 							<span id="refer-phone">{display || '—'}</span>
 						{:else}
-							<div class="join flex">
-								<WashSelect
-									bind:value={phoneCountryId}
-									optionHeader="Select country code ..."
-									className="select min-w-20 join-item"
-								>
-									{#each countries as c (c.id)}
-										<option value={String(c.id)}
-											>{c.countryCallingCode} [{c.code?.toUpperCase() ??
-												c.id}]</option
-										>
-									{/each}
-								</WashSelect>
-								<WashInputField
-									id="refer-phone"
-									className=" join-item"
-									bind:value={phone}
-									inputType="tel"
-									inputPlaceholderText="Number"
-								/>
-							</div>
+							<MenziesPhoneField
+								id="refer-phone"
+								bind:countryId={phoneCountryId}
+								bind:phone
+								countries={countries}
+								optionHeader={m.select_country_code()}
+								placeholder="Number"
+							/>
 						{/if}
 					</div>
 				</div>

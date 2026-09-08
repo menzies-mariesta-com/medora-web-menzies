@@ -1,7 +1,7 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import MedOrderBatchAllocDialogContent, {
 		type MedOrderBatchAllocDialogResult
 	} from '$lib/component/own/local/private/medora/medication-order/MedOrderBatchAllocDialogContent.svelte';
@@ -285,7 +285,7 @@
 	{#if showOutUnitSelect}
 		<div class="flex min-w-0 flex-col gap-1.5">
 			<label>{m.med_order_out_unit()}</label>
-			<WashSearchSelect
+			<SearchSelect
 				value={outUnitIdStr}
 				searchFn={searchOutUnits}
 				getLabelForValue={getOutUnitLabelForValue}

@@ -4,6 +4,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/own/library/lucide/LucideEyeOff.svelte';
 	import AuthTemplateCard from '$lib/component/own/local/public/auth/shared/AuthTemplateCard.svelte';
@@ -220,26 +221,15 @@
 				<label class="label" for="auth-signup-phone">
 					<span class="label-text">{m.phone_number_primary()}</span>
 				</label>
-				<div class="join flex w-full">
-					<WashSelect
-						bind:value={selectedCountryId}
-						className="max-w-20 bg-base-200"
-						optionHeader={m.select_country_code()}
-					>
-						{#each countryData as c (c.id)}
-							<option value={String(c.id)} class="gap-5">
-								{c.countryCallingCode}
-							</option>
-						{/each}
-					</WashSelect>
-					<WashInputField
-						id="auth-signup-phone"
-						inputType="text"
-						inputPlaceholderText={m.phone_number_primary()}
-						nameText="phonePrimary"
-						className="w-full"
-					/>
-				</div>
+				<MenziesPhoneField
+					id="auth-signup-phone"
+					bind:countryId={selectedCountryId}
+					countries={countryData}
+					optionHeader={m.select_country_code()}
+					placeholder={m.phone_number_primary()}
+					nameText="phonePrimary"
+					selectClassName="bg-base-200"
+				/>
 			</fieldset>
 		</section>
 

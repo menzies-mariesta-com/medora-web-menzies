@@ -6,7 +6,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -236,7 +236,7 @@
 		<label for="obs-doc-pick" class="text-sm">
 			{m.observation_emr_document_master()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			className="w-full"
 			bind:value={documentIdInput}
 			searchFn={searchDocuments}
