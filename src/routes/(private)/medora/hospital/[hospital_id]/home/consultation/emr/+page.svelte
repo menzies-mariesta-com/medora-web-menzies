@@ -43,7 +43,7 @@
 		ObservationEmrPatientAllergyRow,
 		ObservationEmrPatientVisitRow
 	} from '$lib/model/type/medora/observation-emr.type';
-	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
@@ -581,7 +581,7 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] =
+	const allergyColumns: MenziesTableColumn<PatientAllergyWithRelations>[] =
 		[
 			{
 				id: 'visitNo',
@@ -662,7 +662,7 @@
 			}
 		];
 
-	const vitalColumns: MariTableColumn<PatientDiagnosisListRow>[] = [
+	const vitalColumns: MenziesTableColumn<PatientDiagnosisListRow>[] = [
 		{
 			id: 'status',
 			header: 'Status',
@@ -759,7 +759,7 @@
 		}
 	];
 
-	const orderColumns: MariTableColumn<OrderDetailVisitRow>[] = [
+	const orderColumns: MenziesTableColumn<OrderDetailVisitRow>[] = [
 		{
 			id: 'orderNo',
 			header: 'Order No',
@@ -821,7 +821,7 @@
 		}
 	];
 
-	const diagnosisColumns: MariTableColumn<DiagnosisWithType>[] = [
+	const diagnosisColumns: MenziesTableColumn<DiagnosisWithType>[] = [
 		{
 			id: 'status',
 			header: 'Status',
@@ -878,7 +878,7 @@
 		return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
 	}
 
-	const planOfCareColumns: MariTableColumn<PlanOfCareListRow>[] = [
+	const planOfCareColumns: MenziesTableColumn<PlanOfCareListRow>[] = [
 		{
 			id: 'status',
 			header: 'Status',
@@ -921,7 +921,7 @@
 		}
 	];
 
-	const progressNoteColumns: MariTableColumn<ProgressNoteListRow>[] =
+	const progressNoteColumns: MenziesTableColumn<ProgressNoteListRow>[] =
 		[
 			{
 				id: 'status',
@@ -965,7 +965,7 @@
 			}
 		];
 
-	const formEntryColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
+	const formEntryColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
 		[
 			{
 				id: 'status',
@@ -999,7 +999,7 @@
 			}
 		];
 
-	const patientConditionColumns: MariTableColumn<PatientFormEntryWithRelations>[] =
+	const patientConditionColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
 		[
 			{
 				id: 'visitNo',

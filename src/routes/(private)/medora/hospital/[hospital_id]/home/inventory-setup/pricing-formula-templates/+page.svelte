@@ -7,9 +7,9 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import PricingFormulaTemplateViewDialog from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingFormulaTemplateViewDialog.svelte';
 	import PricingFormulaDisplay from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingFormulaDisplay.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -21,7 +21,7 @@
 		PricingFormulaTemplateListRow
 	} from '$lib/model/type/medora/pricing-formula-template.type';
 	import { buildPricingFormulaDisplay } from '$lib/tool/inventory/pricing-formula-display.util';
-	import { applyMariTableClientFilters } from '$lib/tool/mari/mari-table-client-filter.util';
+	import { applyMenziesTableClientFilters } from '$lib/tool/menzies/menzies-table-client-filter.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -94,7 +94,7 @@
 		).summaryLine;
 	}
 
-	const templateColumns: MariTableColumn<PricingFormulaTemplateListRow>[] = [
+	const templateColumns: MenziesTableColumn<PricingFormulaTemplateListRow>[] = [
 		{
 			id: 'name',
 			header: m.inv_pricing_template_name(),
@@ -153,7 +153,7 @@
 	];
 
 	const filteredTemplates = $derived(
-		applyMariTableClientFilters(
+		applyMenziesTableClientFilters(
 			allTemplates as PricingFormulaTemplateListRow[],
 			tableFilters,
 			templateColumns
@@ -440,7 +440,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={filteredTemplates}
 					columns={templateColumns}
 					{isLoading}

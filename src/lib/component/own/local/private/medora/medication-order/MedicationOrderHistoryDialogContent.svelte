@@ -4,11 +4,11 @@
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type { MedicationOrderBatchHistoryRow } from '$lib/model/type/medora/medication-order.type';
 	import { medOrderBatchHistoryTableColumns } from '$lib/tool/medication-order/med-order-batch-history-table-columns.util';
@@ -47,7 +47,7 @@
 	>(null);
 
 	const historyColumns = $derived.by(
-		(): MariTableColumn<MedicationOrderBatchHistoryRow>[] =>
+		(): MenziesTableColumn<MedicationOrderBatchHistoryRow>[] =>
 			medOrderBatchHistoryTableColumns(
 				{
 					batch: m.med_order_int_batch(),
@@ -183,7 +183,7 @@
 	</div>
 
 	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
-		<MariTable
+		<MenziesTable
 			{rows}
 			columns={historyColumns}
 			bind:currentPage
@@ -202,8 +202,8 @@
 			on:refresh={() => void refresh()}
 		>
 			{#snippet rowActions(row, _localIdx)}
-				<MariTableRowActionGroup>
-					<MariTableIconAction
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_edit()}
 						color="accent"
 						disabled={busy}
@@ -215,8 +215,8 @@
 						{#snippet icon()}
 							<LucidePencil className="size-4" />
 						{/snippet}
-					</MariTableIconAction>
-					<MariTableIconAction
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_reorder()}
 						color="primary"
 						disabled={busy}
@@ -228,8 +228,8 @@
 						{#snippet icon()}
 							<LucideShoppingBasket className="size-4" />
 						{/snippet}
-					</MariTableIconAction>
-					<MariTableIconAction
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_delete()}
 						color="error"
 						disabled={busy}
@@ -241,10 +241,10 @@
 						{#snippet icon()}
 							<LucideTrash2 className="size-4" />
 						{/snippet}
-					</MariTableIconAction>
-				</MariTableRowActionGroup>
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 
 	{#if pendingConfirm}

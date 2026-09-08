@@ -2,9 +2,9 @@
 	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { AppointmentWithRelations } from '$lib/model/type/medora/appointment.type';
@@ -41,7 +41,7 @@
 		return trimmed || '–';
 	}
 
-	const columns: MariTableColumn<CancelHistoryItem>[] = [
+	const columns: MenziesTableColumn<CancelHistoryItem>[] = [
 		{
 			id: 'appointmentDate',
 			header: 'Date',
@@ -106,7 +106,7 @@
 				</p>
 			{:else}
 				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-					<MariTable
+					<MenziesTable
 						rows={items}
 						{columns}
 						{isLoading}

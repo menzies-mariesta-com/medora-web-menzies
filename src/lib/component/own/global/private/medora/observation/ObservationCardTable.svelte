@@ -14,14 +14,14 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import MariTable, {
-		type MariTableColumnsInput
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTable, {
+		type MenziesTableColumnsInput
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	/** Event payloads; matches MariTable’s untyped row wire-up. */
+	/** Event payloads; matches MenziesTable’s untyped row wire-up. */
 	type Row = any;
 
 	const dispatch = createEventDispatcher<{
@@ -75,7 +75,7 @@
 	} = $props<{
 		title: string;
 		rows?: unknown[];
-		columns?: MariTableColumnsInput;
+		columns?: MenziesTableColumnsInput;
 		emptyMessage?: string;
 		isLoading?: boolean;
 		showRefreshButton?: boolean;
@@ -89,7 +89,7 @@
 		showRowActions?: boolean;
 		/**
 		 * Controls which row action icons are shown.
-		 * - "crud": view/edit/delete buttons (MariTable default)
+		 * - "crud": view/edit/delete buttons (MenziesTable default)
 		 * - "view": eye icon only (custom slot rendering)
 		 */
 		rowActionsVariant?: 'crud' | 'view';
@@ -172,7 +172,7 @@
 				? ` ${tableWrapClassName}`
 				: ''}"
 		>
-			<MariTable
+			<MenziesTable
 				fillParent={true}
 				{rows}
 				{columns}
@@ -211,20 +211,20 @@
 			>
 				{#snippet rowActions(row)}
 					{#if enableMoveAction}
-						<MariTableRowActionGroup>
+						<MenziesTableRowActionGroup>
 							{#if crudShowView}
-								<MariTableIconAction
-									tooltipText={m.mari_table_tooltip_view()}
+								<MenziesTableIconAction
+									tooltipText={m.menzies_table_tooltip_view()}
 									color="ghost"
 									onClick={() => dispatch('view', row)}
 								>
 									{#snippet icon()}
 										<LucideEye className="size-4" />
 									{/snippet}
-								</MariTableIconAction>
+								</MenziesTableIconAction>
 							{/if}
-							<MariTableIconAction
-								tooltipText={m.mari_table_tooltip_edit()}
+							<MenziesTableIconAction
+								tooltipText={m.menzies_table_tooltip_edit()}
 								color="accent"
 								disabled={crudEditDisabled?.(row) ?? false}
 								onClick={() => dispatch('edit', row)}
@@ -232,9 +232,9 @@
 								{#snippet icon()}
 									<LucidePencil className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-							<MariTableIconAction
-								tooltipText={m.mari_table_crud_inactivate_tooltip()}
+							</MenziesTableIconAction>
+							<MenziesTableIconAction
+								tooltipText={m.menzies_table_crud_inactivate_tooltip()}
 								color="error"
 								disabled={crudDeleteDisabled?.(row) ?? false}
 								onClick={() => dispatch('delete', row)}
@@ -242,8 +242,8 @@
 								{#snippet icon()}
 									<LucideTrash2 className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-							<MariTableIconAction
+							</MenziesTableIconAction>
+							<MenziesTableIconAction
 								tooltipText={`move to ${moveToLabel || ''}`.trim()}
 								color="info"
 								disabled={!moveToFormCode}
@@ -260,21 +260,21 @@
 										<LucideChevronRight className="size-4" />
 									{/if}
 								{/snippet}
-							</MariTableIconAction>
-						</MariTableRowActionGroup>
+							</MenziesTableIconAction>
+						</MenziesTableRowActionGroup>
 					{:else if showRowActions && rowActionsVariant === 'view'}
-						<MariTableIconAction
-							tooltipText={m.mari_table_tooltip_view()}
+						<MenziesTableIconAction
+							tooltipText={m.menzies_table_tooltip_view()}
 							color="ghost"
 							onClick={() => dispatch('view', row)}
 						>
 							{#snippet icon()}
 								<LucideEye className="size-4" />
 							{/snippet}
-						</MariTableIconAction>
+						</MenziesTableIconAction>
 					{/if}
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	</WashCardBody>
 </WashCard>

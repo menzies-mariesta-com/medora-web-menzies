@@ -65,6 +65,14 @@
 		) as HTMLDivElement | null;
 		popover?.hidePopover?.();
 	}
+
+	/** One-way `value={…}` from parents (e.g. navbar locator) must still update the DOM.
+	 *  Native `bind:value` can stick on the first empty paint with `$bindable`. */
+	function handleInput(e: Event) {
+		const el = e.currentTarget as HTMLInputElement;
+		value = el.value;
+		oninput?.(e);
+	}
 </script>
 
 {#if isDateType}
@@ -108,10 +116,10 @@
 		{step}
 		title={inputTitle}
 		name={nameText}
-		bind:value
+		value={value ?? ''}
 		aria-label={ariaLabel}
 		onclick={onClick}
-		{oninput}
+		oninput={handleInput}
 		{required}
 		{checked}
 		{hidden}
@@ -131,13 +139,13 @@
 		{step}
 		title={inputTitle}
 		name={nameText}
-		bind:value
+		value={value ?? ''}
 		aria-label={ariaLabel}
 		{required}
 		{checked}
 		{hidden}
 		{disabled}
 		onclick={onClick}
-		{oninput}
+		oninput={handleInput}
 	/>
 {/if}

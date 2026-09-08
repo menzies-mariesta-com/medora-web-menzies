@@ -5,9 +5,9 @@
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -146,7 +146,7 @@
 		}
 	}
 
-	const ticketColumns: MariTableColumn<SupportTicketListRow>[] = [
+	const ticketColumns: MenziesTableColumn<SupportTicketListRow>[] = [
 		{
 			id: 'subject',
 			header: m.support_subject(),
@@ -505,7 +505,7 @@
 							<span class="loading loading-spinner loading-lg"></span>
 						</div>
 					{:else}
-						<MariTable
+						<MenziesTable
 							{rows}
 							columns={ticketColumns}
 							isLoading={isLoadingList}

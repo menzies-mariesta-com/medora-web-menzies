@@ -10,11 +10,11 @@
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -289,7 +289,7 @@
 		return d.itemName?.trim() || `Item #${idStr}`;
 	}
 
-	const draftColumns = $derived.by((): MariTableColumn<DraftLine>[] => {
+	const draftColumns = $derived.by((): MenziesTableColumn<DraftLine>[] => {
 		const ps = Number(draftPageSizeStr) || 25;
 		return [
 			{
@@ -1344,7 +1344,7 @@
 			{m.med_order_int_draft_title()}
 		</h2>
 		<div class="flex min-h-[14rem] min-w-0 flex-col">
-			<MariTable
+			<MenziesTable
 				rows={draftLines}
 				columns={draftColumns}
 				bind:currentPage={draftCurrentPage}
@@ -1360,8 +1360,8 @@
 				bind:columnFilters={draftColumnFilters}
 			>
 				{#snippet rowActions(row, localIdx)}
-					<MariTableRowActionGroup>
-						<MariTableIconAction
+					<MenziesTableRowActionGroup>
+						<MenziesTableIconAction
 							tooltipText={m.med_order_int_tooltip_move_up()}
 							color="info"
 							disabled={globalDraftIndex(localIdx) <= 0 ||
@@ -1372,8 +1372,8 @@
 							{#snippet icon()}
 								<LucideChevronRight className="size-4 -rotate-90" />
 							{/snippet}
-						</MariTableIconAction>
-						<MariTableIconAction
+						</MenziesTableIconAction>
+						<MenziesTableIconAction
 							tooltipText={m.med_order_int_tooltip_move_down()}
 							color="info"
 							disabled={globalDraftIndex(localIdx) >=
@@ -1384,8 +1384,8 @@
 							{#snippet icon()}
 								<LucideChevronRight className="size-4 rotate-90" />
 							{/snippet}
-						</MariTableIconAction>
-						<MariTableIconAction
+						</MenziesTableIconAction>
+						<MenziesTableIconAction
 							tooltipText={m.med_order_int_tooltip_delete()}
 							color="error"
 							disabled={batchIsPaid}
@@ -1394,10 +1394,10 @@
 							{#snippet icon()}
 								<LucideTrash2 className="size-4" />
 							{/snippet}
-						</MariTableIconAction>
-					</MariTableRowActionGroup>
+						</MenziesTableIconAction>
+					</MenziesTableRowActionGroup>
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	</WashCardBody>
 </WashCard>

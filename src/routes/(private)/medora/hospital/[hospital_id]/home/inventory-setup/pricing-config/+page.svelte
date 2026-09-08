@@ -6,9 +6,9 @@
 	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
 	import PricingAssignmentViewDialog from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingAssignmentViewDialog.svelte';
 	import PricingFormulaDisplay from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingFormulaDisplay.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -24,7 +24,7 @@
 		PricingFormulaTemplateDto,
 		PricingFormulaTemplateListRow
 	} from '$lib/model/type/medora/pricing-formula-template.type';
-	import { applyMariTableClientFilters } from '$lib/tool/mari/mari-table-client-filter.util';
+	import { applyMenziesTableClientFilters } from '$lib/tool/menzies/menzies-table-client-filter.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -114,7 +114,7 @@
 		return m.inv_pricing_assignment_module_dc();
 	}
 
-	const overviewColumns = $derived.by((): MariTableColumn<ModulePricingAssignmentOverviewRow>[] => [
+	const overviewColumns = $derived.by((): MenziesTableColumn<ModulePricingAssignmentOverviewRow>[] => [
 		{
 			id: 'branchId',
 			header: m.inv_pricing_config_branch(),
@@ -178,7 +178,7 @@
 	);
 
 	const filteredOverviewRows = $derived(
-		applyMariTableClientFilters(
+		applyMenziesTableClientFilters(
 			overviewRowsForTable as (ModulePricingAssignmentOverviewRow & {
 				assigned: string;
 			})[],
@@ -511,7 +511,7 @@
 	<WashCard>
 		<WashCardBody className="flex flex-col gap-3">
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={filteredOverviewRows}
 					columns={overviewColumns}
 					isLoading={overviewLoading}

@@ -10,15 +10,15 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
-	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
+	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/own/local/private/medora/administration/staff/list/LStaffListViewEditModal.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
@@ -228,7 +228,7 @@
 		fetchStaff(true);
 	}
 
-	const staffColumns: MariTableColumn<StaffWithRelations>[] = [
+	const staffColumns: MenziesTableColumn<StaffWithRelations>[] = [
 		{
 			id: 'no',
 			header: 'No.',
@@ -355,7 +355,7 @@
 </script>
 
 <div class={TableEnum.HEIGHT}>
-	<MariTable
+	<MenziesTable
 		rows={staffList}
 		columns={staffColumns}
 		{isLoading}
@@ -394,7 +394,7 @@
 	>
 		{#snippet rowActions(row, rowIndex)}
 			{@const staffRow = row as StaffWithRelations}
-			<MariTableViewEditDeleteActions
+			<MenziesTableViewEditDeleteActions
 				onView={() => viewData(staffRow.id)}
 				onEdit={() => editData(staffRow.id)}
 				onDelete={() => handleDelete(staffRow.id)}
@@ -413,7 +413,7 @@
 				deleteTooltip={m.delete_data()}
 			/>
 		{/snippet}
-	</MariTable>
+	</MenziesTable>
 </div>
 
 <!-- Full-screen view/edit staff dialog -->

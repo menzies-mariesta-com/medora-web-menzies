@@ -3,9 +3,10 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import type { Snippet } from 'svelte';
 
-	export type MariTableActionColor =
+	export type MenziesTableActionColor =
 		| 'ghost'
 		| 'primary'
+		| 'secondary'
 		| 'accent'
 		| 'success'
 		| 'warning'
@@ -23,7 +24,7 @@
 		icon
 	}: {
 		tooltipText: string;
-		color?: MariTableActionColor;
+		color?: MenziesTableActionColor;
 		onClick?: () => void;
 		disabled?: boolean;
 		loading?: boolean;
@@ -35,7 +36,8 @@
 	const tooltipClass = $derived(`tooltip-${color}`);
 
 	const buttonClass = $derived.by(() => {
-		const parts = ['btn-sm', 'btn-square', 'btn-ghost'];
+		// Menzies Design Data table: btn-ghost btn-square btn-xs + tone
+		const parts = ['btn-xs', 'btn-square', 'btn-ghost'];
 		if (color !== 'ghost') {
 			parts.push(`btn-${color}`);
 		}
@@ -46,7 +48,7 @@
 	});
 </script>
 
-<WashTooltip {tooltipText} className={tooltipClass}>
+<WashTooltip {tooltipText} className={`tooltip-right ${tooltipClass}`}>
 	<WashButton
 		className={buttonClass}
 		{disabled}

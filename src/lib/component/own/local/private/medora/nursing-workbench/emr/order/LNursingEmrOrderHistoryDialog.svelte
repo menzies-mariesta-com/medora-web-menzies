@@ -2,12 +2,12 @@
 	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { ServiceOrderDetailListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -30,7 +30,7 @@
 			onDelete: (row: HistoryItem) => void;
 		}>();
 
-	const columns: MariTableColumn<HistoryItem>[] = [
+	const columns: MenziesTableColumn<HistoryItem>[] = [
 		{
 			id: 'orderNo',
 			header: 'Order No',
@@ -139,7 +139,7 @@
 				</p>
 			{:else}
 				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-					<MariTable
+					<MenziesTable
 						rows={items}
 						{columns}
 						{isLoading}
@@ -153,8 +153,8 @@
 						enableColumnFilters={false}
 					>
 						{#snippet rowActions(row, rowIndex)}
-							<MariTableIconAction
-								tooltipText={m.mari_table_tooltip_delete()}
+							<MenziesTableIconAction
+								tooltipText={m.menzies_table_tooltip_delete()}
 								color="error"
 								disabled={Boolean(row.lockedByClosedOpBill)}
 								onClick={() => onDelete(row)}
@@ -162,9 +162,9 @@
 								{#snippet icon()}
 									<LucideTrash2 className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
+							</MenziesTableIconAction>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			{/if}
 		</div>

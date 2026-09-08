@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import type { MariTableExportFormat } from '$lib/model/type/mari-table-export.type';
+	import type { MenziesTableExportFormat } from '$lib/model/type/menzies-table-export.type';
 	import {
 		clientExportColumnsToPdfColumns,
 		downloadRowsAsCsv,
@@ -26,7 +26,7 @@
 		subtitle?: string;
 		disabled?: boolean;
 		filenameStem?: string;
-		formats?: MariTableExportFormat[];
+		formats?: MenziesTableExportFormat[];
 		getRows: () => Promise<Record<string, unknown>[]>;
 	} = $props();
 
