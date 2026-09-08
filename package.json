@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "1.3.2",
 	"type": "module",
+	"packageManager": "pnpm@11.1.0",
 	"scripts": {
 		"dev": "npm run paraglide && vite dev --host 0.0.0.0 --port 5173",
 		"build": "vite build",
@@ -97,10 +98,5 @@
 		"ws": "^8.18.0",
 		"xlsx": "^0.18.5",
 		"zod": "^4.3.6"
-	},
-	"pnpm": {
-		"patchedDependencies": {
-			"postcss-selector-parser@6.0.10": "patches/postcss-selector-parser@6.0.10.patch"
-		}
 	}
 }
