@@ -2,9 +2,9 @@
 	import { page } from '$app/state';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -49,7 +49,7 @@
 		return (await res.json()) as T;
 	}
 
-	const categoryColumns: MariTableColumn<CategoryListRow>[] = [
+	const categoryColumns: MenziesTableColumn<CategoryListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -134,7 +134,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={categories}
 					columns={categoryColumns}
 					{isLoading}

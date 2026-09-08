@@ -9,9 +9,9 @@
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -285,7 +285,7 @@
 		void loadList();
 	});
 
-	const columns: MariTableColumn<PrRow>[] = $derived([
+	const columns: MenziesTableColumn<PrRow>[] = $derived([
 		{
 			id: 'prNo',
 			header: m.inv_pr_no(),
@@ -356,8 +356,8 @@
 
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
-		<MariTable
-			columns={columns as MariTableColumn[]}
+		<MenziesTable
+			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			isLoading={loading}
 			bind:currentPage
@@ -469,6 +469,6 @@
 					</WashTooltip>
 				</div>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	{/key}
 </div>

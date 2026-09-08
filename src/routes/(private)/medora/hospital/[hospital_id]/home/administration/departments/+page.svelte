@@ -14,11 +14,11 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -48,7 +48,7 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const departmentColumns: MariTableColumn<StaffRegDepartmentRow>[] =
+	const departmentColumns: MenziesTableColumn<StaffRegDepartmentRow>[] =
 		[
 			{
 				id: 'id',
@@ -211,7 +211,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					{rows}
 					columns={departmentColumns}
 					{isLoading}
@@ -244,12 +244,12 @@
 					}}
 				>
 					{#snippet rowActions(row, _rowIndex)}
-						<MariTableEditDeleteActions
+						<MenziesTableEditDeleteActions
 							onEdit={() => openEdit(row)}
 							onDelete={() => handleDelete(row)}
 						/>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 			{#if totalPages > 1}
 				<div class="mt-4 flex justify-center gap-2">

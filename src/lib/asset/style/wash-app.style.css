@@ -35,13 +35,13 @@ details.dropdown:not([open]) > .dropdown-content {
 	min-width: 0;
 }
 
-/* MariTable actions: keep icon buttons on one row (do not collapse to 1%). */
-.mari-table-actions-col {
+/* MenziesTable actions: keep icon buttons on one row (do not collapse to 1%). */
+.menzies-table-actions-col {
 	width: 1%;
 	min-width: 11rem;
 	white-space: nowrap;
 }
-.mari-table-actions-col .mari-table-row-actions,
-.mari-table-actions-col > div {
+.menzies-table-actions-col .menzies-table-row-actions,
+.menzies-table-actions-col > div {
 	flex-wrap: nowrap;
 }

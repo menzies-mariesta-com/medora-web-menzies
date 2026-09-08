@@ -1,4 +1,4 @@
-import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 
 function valueAtPath(row: Record<string, unknown>, path: string): unknown {
 	const parts = path.split('.');
@@ -12,7 +12,7 @@ function valueAtPath(row: Record<string, unknown>, path: string): unknown {
 
 function cellDisplayValue<T extends Record<string, unknown>>(
 	row: T,
-	column: MariTableColumn<T>,
+	column: MenziesTableColumn<T>,
 	rowIndex: number
 ): string {
 	if (column.format) {
@@ -27,10 +27,10 @@ function cellDisplayValue<T extends Record<string, unknown>>(
 	return value == null ? '' : String(value);
 }
 
-/** Client-side MariTable column filters when `useRemoteFilters` is false. */
-export function applyMariTableClientFilters<
+/** Client-side MenziesTable column filters when `useRemoteFilters` is false. */
+export function applyMenziesTableClientFilters<
 	T extends Record<string, unknown>
->(rows: T[], filters: Record<string, string>, columns: MariTableColumn<T>[]): T[] {
+>(rows: T[], filters: Record<string, string>, columns: MenziesTableColumn<T>[]): T[] {
 	const hasActive = Object.values(filters).some((v) => v?.trim());
 	if (!hasActive) return rows;
 

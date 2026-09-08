@@ -10,8 +10,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { UserListRow } from '$lib/model/type/medora/ui-rows.type';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
@@ -19,9 +19,9 @@
 	import EditOwnerModal from '$lib/component/own/snippet/modal/EditOwnerModal.svelte';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -46,7 +46,7 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const ownerColumns: MariTableColumn<OwnerUserRow>[] = [
+	const ownerColumns: MenziesTableColumn<OwnerUserRow>[] = [
 		{
 			id: 'name',
 			header: m.name(),
@@ -231,7 +231,7 @@
 				</p>
 			{:else}
 				<div class={TableEnum.HEIGHT}>
-					<MariTable
+					<MenziesTable
 						rows={owners}
 						columns={ownerColumns}
 						{isLoading}
@@ -263,9 +263,9 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const ownerRow = row as UserListRow}
-							<MariTableRowActionGroup>
-								<MariTableIconAction
-									tooltipText={m.mari_table_tooltip_edit()}
+							<MenziesTableRowActionGroup>
+								<MenziesTableIconAction
+									tooltipText={m.menzies_table_tooltip_edit()}
 									color="accent"
 									loading={editingOwnerId === ownerRow.id}
 									disabled={createLock.pending ||
@@ -278,9 +278,9 @@
 									{#snippet icon()}
 										<LucidePencil className="size-4" />
 									{/snippet}
-								</MariTableIconAction>
-								<MariTableIconAction
-									tooltipText={m.mari_table_tooltip_delete()}
+								</MenziesTableIconAction>
+								<MenziesTableIconAction
+									tooltipText={m.menzies_table_tooltip_delete()}
 									color="error"
 									loading={deletingOwnerId === ownerRow.id}
 									disabled={createLock.pending ||
@@ -293,10 +293,10 @@
 									{#snippet icon()}
 										<LucideTrash2 className="size-4" />
 									{/snippet}
-								</MariTableIconAction>
-							</MariTableRowActionGroup>
+								</MenziesTableIconAction>
+							</MenziesTableRowActionGroup>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			{/if}
 		</WashCardBody>

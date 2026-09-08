@@ -80,7 +80,7 @@ Original EMR structure must remain:
 
 ---
 
-## 3. Patient List / MariTable
+## 3. Patient List / MenziesTable
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |

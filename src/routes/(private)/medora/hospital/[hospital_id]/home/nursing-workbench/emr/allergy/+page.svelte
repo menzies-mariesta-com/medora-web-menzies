@@ -13,10 +13,10 @@
 	type PatientAllergyWithRelations = any;
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -321,7 +321,7 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	const allergyColumns: MariTableColumn<PatientAllergyWithRelations>[] =
+	const allergyColumns: MenziesTableColumn<PatientAllergyWithRelations>[] =
 		[
 			{
 				id: 'visitNo',
@@ -448,7 +448,7 @@
 					</p>
 				{:else}
 					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-						<MariTable
+						<MenziesTable
 							rows={patientAllergies}
 							columns={allergyColumns}
 							masterFilterHospitalId={visit?.hospitalId ?? hospitalId}
@@ -500,14 +500,14 @@
 							}}
 						>
 							{#snippet rowActions(row, rowIndex)}
-								<MariTableEditDeleteActions
+								<MenziesTableEditDeleteActions
 									onEdit={() =>
 										openEditDialog(row as PatientAllergyWithRelations)}
 									onDelete={() =>
 										handleDelete(row as PatientAllergyWithRelations)}
 								/>
 							{/snippet}
-						</MariTable>
+						</MenziesTable>
 					</div>
 				{/if}
 			</WashCardBody>

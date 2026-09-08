@@ -6,9 +6,9 @@
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
@@ -20,7 +20,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -115,7 +115,7 @@
 		return str.length >= 10 ? str.slice(0, 10) : str;
 	}
 
-	const taggingColumns: MariTableColumn<ServiceTaggingListRow>[] = [
+	const taggingColumns: MenziesTableColumn<ServiceTaggingListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -994,7 +994,7 @@
 					</div>
 				{:else}
 					<div class={TableEnum.HEIGHT}>
-						<MariTable
+						<MenziesTable
 							rows={taggings}
 							columns={taggingColumns}
 							{isLoading}
@@ -1018,14 +1018,14 @@
 						>
 							{#snippet rowActions(row, rowIndex)}
 								{@const taggingRow = row as ServiceTaggingListRow}
-								<MariTableEditDeleteActions
+								<MenziesTableEditDeleteActions
 									onEdit={() => startEdit(taggingRow)}
 									onDelete={() => handleDelete(taggingRow)}
 									disabled={isLoading || isSaving || deleteLock.pending}
 									deleteLoading={deletingId === taggingRow.id}
 								/>
 							{/snippet}
-						</MariTable>
+						</MenziesTable>
 					</div>
 				{/if}
 			</WashCardBody>

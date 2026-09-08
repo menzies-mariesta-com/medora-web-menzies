@@ -2,13 +2,13 @@
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -348,7 +348,7 @@
 		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
 	];
 
-	const columns: MariTableColumn<NursingCompleteRow>[] = [
+	const columns: MenziesTableColumn<NursingCompleteRow>[] = [
 		{
 			id: 'orderNo',
 			header: 'Order No',
@@ -704,7 +704,7 @@
 						/>
 					{:else}
 						<div class="{TableEnum.HEIGHT} flex flex-col gap-3">
-							<MariTable
+							<MenziesTable
 								{rows}
 								{columns}
 								{isLoading}
@@ -750,7 +750,7 @@
 											>Completed</span
 										>
 									{:else}
-										<MariTableIconAction
+										<MenziesTableIconAction
 											tooltipText="Complete"
 											color="primary"
 											onClick={() => handleComplete(typedRow)}
@@ -758,10 +758,10 @@
 											{#snippet icon()}
 												<LucideCircleCheck className="size-4" />
 											{/snippet}
-										</MariTableIconAction>
+										</MenziesTableIconAction>
 									{/if}
 								{/snippet}
-							</MariTable>
+							</MenziesTable>
 						</div>
 					{/if}
 				{/if}

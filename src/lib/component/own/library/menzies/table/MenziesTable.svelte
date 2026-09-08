@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { createEventDispatcher, type Snippet } from 'svelte';
-	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 
 	import WashTable from '$lib/component/wash/table/WashTable.svelte';
 	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
@@ -15,22 +14,22 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
-	import MariTableExportToolbar from '$lib/component/own/library/mari/table/MariTableExportToolbar.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTableExportToolbar from '$lib/component/own/library/menzies/table/MenziesTableExportToolbar.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import type { MariTableExportConfig } from '$lib/model/type/mari-table-export.type';
+	import type { MenziesTableExportConfig } from '$lib/model/type/menzies-table-export.type';
 	import { m } from '$lib/paraglide/messages';
 	import {
-		fetchMariTableMasterFilterOptions,
-		type MariSelectFilterOption,
-		type MariTableFilterMasterKey
-	} from '$lib/tool/mari/mari-table-master-filter-options.util.svelte.ts';
-	import { normalizeMariTableColumns } from '$lib/tool/mari/mari-table-columns.util';
+		fetchMenziesTableMasterFilterOptions,
+		type MenziesSelectFilterOption,
+		type MenziesTableFilterMasterKey
+	} from '$lib/tool/menzies/menzies-table-master-filter-options.util.svelte.ts';
+	import { normalizeMenziesTableColumns } from '$lib/tool/menzies/menzies-table-columns.util';
 
-	export type { MariTableFilterMasterKey };
+	export type { MenziesTableFilterMasterKey };
 
-	export type MariTableColumn<T = unknown> = {
+	export type MenziesTableColumn<T = unknown> = {
 		/**
 		 * Unique id for the column, also used as fallback key for value lookup.
 		 */
@@ -81,9 +80,9 @@
 		/**
 		 * Load select options from master data, not from the current table rows.
 		 * Keys: `store`, `supplier`, `severity`, `itemCategory`, `unitType`, `visitType`.
-		 * Requires `masterFilterHospitalId` on MariTable (except `severity`).
+		 * Requires `masterFilterHospitalId` on MenziesTable (except `severity`).
 		 */
-		filterMasterKey?: MariTableFilterMasterKey;
+		filterMasterKey?: MenziesTableFilterMasterKey;
 		/**
 		 * Static options for select-style filters.
 		 */
@@ -109,20 +108,20 @@
 		format?: (value: unknown, row: T, rowIndex: number) => unknown;
 	};
 
-	export type MariTableLegendItem = {
+	export type MenziesTableLegendItem = {
 		id: string;
 		label: string;
 		colorClass: string;
 	};
 
 	/**
-	 * Column definitions are generic in `MariTableColumn<T>`, but passing
-	 * `MariTableColumn<MyRow>[]` to a prop typed as `MariTableColumn<unknown>[]`
+	 * Column definitions are generic in `MenziesTableColumn<T>`, but passing
+	 * `MenziesTableColumn<MyRow>[]` to a prop typed as `MenziesTableColumn<unknown>[]`
 	 * fails under TypeScript’s generic variance. Call sites use concrete row
 	 * types; the table only passes rows as `unknown`. `any` keeps the contract
 	 * ergonomic for all pages.
 	 */
-	export type MariTableColumnsInput = MariTableColumn<any>[];
+	export type MenziesTableColumnsInput = MenziesTableColumn<any>[];
 
 	const DEFAULT_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
 
@@ -182,7 +181,7 @@
 		masterFilterHospitalId
 	} = $props<{
 		rows: unknown[];
-		columns: MariTableColumnsInput;
+		columns: MenziesTableColumnsInput;
 		pageSizeOptions?: number[];
 		pageSize?: string;
 		currentPage?: number;
@@ -201,7 +200,7 @@
 		/** Controlled filter state from parent. */
 		columnFilters?: Record<string, string>;
 		/** Optional legend items shown above the table. */
-		legendItems?: MariTableLegendItem[];
+		legendItems?: MenziesTableLegendItem[];
 		/** Optional row class generator. Useful for status color mapping with legend. */
 		rowClassGetter?: (row: any, rowIndex: number) => string;
 		/**
@@ -217,12 +216,12 @@
 		crudDeleteDisabled?: (row: any) => boolean;
 		/** Show CSV / Excel / PDF / Print export buttons in the toolbar. */
 		enableExport?: boolean;
-		exportConfig?: MariTableExportConfig;
+		exportConfig?: MenziesTableExportConfig;
 		masterFilterHospitalId?: string;
 	}>();
 
 	let masterFilterOptions = $state<
-		Partial<Record<MariTableFilterMasterKey, MariSelectFilterOption[]>>
+		Partial<Record<MenziesTableFilterMasterKey, MenziesSelectFilterOption[]>>
 	>({});
 	let masterFilterLoadId = 0;
 
@@ -230,7 +229,7 @@
 		const hospitalId = masterFilterHospitalId?.trim() ?? '';
 		if (!enableColumnFilters) return;
 
-		const keysNeeded = new Set<MariTableFilterMasterKey>();
+		const keysNeeded = new Set<MenziesTableFilterMasterKey>();
 		for (const column of displayColumns) {
 			if (column.filterMasterKey) {
 				keysNeeded.add(column.filterMasterKey);
@@ -243,12 +242,12 @@
 
 		(async () => {
 			const next: Partial<
-				Record<MariTableFilterMasterKey, MariSelectFilterOption[]>
+				Record<MenziesTableFilterMasterKey, MenziesSelectFilterOption[]>
 			> = { ...masterFilterOptions };
 
 			for (const key of keysNeeded) {
 				try {
-					next[key] = await fetchMariTableMasterFilterOptions(
+					next[key] = await fetchMenziesTableMasterFilterOptions(
 						key,
 						hospitalId || undefined,
 						ac.signal
@@ -271,8 +270,8 @@
 	});
 
 	function resolveSelectFilterOptions(
-		column: MariTableColumn
-	): MariSelectFilterOption[] | undefined {
+		column: MenziesTableColumn
+	): MenziesSelectFilterOption[] | undefined {
 		if (column.filterMasterKey) {
 			return masterFilterOptions[column.filterMasterKey] ?? [];
 		}
@@ -312,12 +311,12 @@
 	);
 
 	function getDefaultFilterValue(
-		column: MariTableColumn
+		column: MenziesTableColumn
 	): string | undefined {
 		return column.defaultFilterValue;
 	}
 
-	function selectFilterEmptyLabel(column: MariTableColumn): string {
+	function selectFilterEmptyLabel(column: MenziesTableColumn): string {
 		if (column.filterEmptyLabel?.trim()) {
 			return column.filterEmptyLabel.trim();
 		}
@@ -331,12 +330,12 @@
 			id === 'visitstatus'
 		) {
 			return id === 'visitstatus'
-				? m.mari_table_filter_all_visit_statuses()
+				? m.menzies_table_filter_all_visit_statuses()
 				: m.inv_di_status_filter_all();
 		}
 
 		if (id.includes('supplier')) {
-			return m.mari_table_filter_all_suppliers();
+			return m.menzies_table_filter_all_suppliers();
 		}
 
 		if (id.includes('category') || column.filterMasterKey === 'itemCategory') {
@@ -352,7 +351,7 @@
 		}
 
 		if (id === 'severity') {
-			return m.mari_table_filter_all_severities();
+			return m.menzies_table_filter_all_severities();
 		}
 
 		if (id.includes('generic')) {
@@ -360,14 +359,14 @@
 		}
 
 		if (id.includes('unittype')) {
-			return m.mari_table_filter_all_unit_types();
+			return m.menzies_table_filter_all_unit_types();
 		}
 
 		if (id === 'visittype') {
-			return m.mari_table_filter_all_visit_types();
+			return m.menzies_table_filter_all_visit_types();
 		}
 
-		return m.mari_table_filter_all_for_column({ column: column.header });
+		return m.menzies_table_filter_all_for_column({ column: column.header });
 	}
 
 	function selectOptionsIncludeEmpty(
@@ -408,7 +407,7 @@
 	const pageSizeNum = $derived(Number(pageSize) || 10);
 
 	const displayColumns = $derived(
-		normalizeMariTableColumns(columns, {
+		normalizeMenziesTableColumns(columns, {
 			currentPage,
 			pageSize: pageSizeNum
 		})
@@ -457,7 +456,7 @@
 
 	function getCellValue(
 		row: RowLike,
-		column: MariTableColumn,
+		column: MenziesTableColumn,
 		index: number
 	) {
 		if (column.format) {
@@ -563,7 +562,7 @@
 <div class={rootClass}>
 	<!-- Top controls: page size, legend, export, refresh -->
 	<div
-		class="mari-table-toolbar border-base-300 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-3 py-2"
+		class="menzies-table-toolbar border-base-300 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-3 py-2"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
@@ -599,7 +598,7 @@
 
 		<div class="flex items-center gap-3">
 			{#if exportEnabled && exportConfig}
-				<MariTableExportToolbar
+				<MenziesTableExportToolbar
 					columns={exportConfig.columns}
 					title={exportConfig.title}
 					subtitle={exportConfig.subtitle}
@@ -628,18 +627,12 @@
 
 	<div class={tableSectionClass}>
 		<div class={tableScrollClass}>
-			<WashTable
-				effect="zebra"
-				className="{washRecipes.table} table-sm w-max min-w-full [&_tbody_tr]:hover:bg-primary/40"
-			>
-				<WashTableHeader>
-					<tr
-						class="mari-table-header-filters bg-base-100 sticky top-0 z-30"
-					>
+			<!-- Menzies Design Data table: washRecipes.table + sticky thead + scroll body -->
+			<WashTable className="w-max min-w-full">
+				<WashTableHeader className="bg-base-100 sticky top-0 z-10">
+					<tr>
 						{#if hasActionsColumn}
-							<th
-								class="mari-table-actions-col px-1 text-left whitespace-nowrap"
-							>
+							<th class="menzies-table-actions-col w-28 text-left whitespace-nowrap">
 								{actionsHeader}
 							</th>
 						{/if}
@@ -650,36 +643,41 @@
 							{@const selectOptions = resolveSelectFilterOptions(column)}
 							<th class={column.headerClass ?? column.widthClass}>
 								{#if isFilterable}
-									{#if filterType === 'select' && selectOptions}
-										<select
-											class="select w-full select-sm"
-											value={columnFilters[column.id] ?? ''}
-											onchange={(event) =>
-												handleFilterInputEvent(column.id, event)}
-										>
-											{#if !selectOptionsIncludeEmpty(selectOptions)}
-												<option value="">
-													{selectFilterEmptyLabel(column)}
-												</option>
-											{/if}
-											{#each selectOptions as opt (opt.value)}
-												<option value={opt.value}>
-													{opt.label}
-												</option>
-											{/each}
-										</select>
-									{:else}
-										<input
-											class="input input-sm w-full"
-											type="text"
-											placeholder={column.header}
-											value={columnFilters[column.id] ?? ''}
-											oninput={(event) =>
-												handleFilterInputEvent(column.id, event)}
-										/>
-									{/if}
+									<div class="flex flex-col gap-1 font-normal">
+										<span class="font-bold">{column.header}</span>
+										{#if filterType === 'select' && selectOptions}
+											<select
+												class="select select-xs select-bordered w-full max-w-[10rem] cursor-pointer"
+												aria-label="Filter by {column.header}"
+												value={columnFilters[column.id] ?? ''}
+												onchange={(event) =>
+													handleFilterInputEvent(column.id, event)}
+											>
+												{#if !selectOptionsIncludeEmpty(selectOptions)}
+													<option value="">
+														{selectFilterEmptyLabel(column)}
+													</option>
+												{/if}
+												{#each selectOptions as opt (opt.value)}
+													<option value={opt.value}>
+														{opt.label}
+													</option>
+												{/each}
+											</select>
+										{:else}
+											<input
+												class="input input-xs input-bordered w-full max-w-[10rem] cursor-text"
+												type="text"
+												placeholder="Filter…"
+												aria-label="Filter by {column.header}"
+												value={columnFilters[column.id] ?? ''}
+												oninput={(event) =>
+													handleFilterInputEvent(column.id, event)}
+											/>
+										{/if}
+									</div>
 								{:else}
-									{column.header}
+									<span class="font-bold">{column.header}</span>
 								{/if}
 							</th>
 						{/each}
@@ -714,7 +712,7 @@
 							>
 								{#if hasActionsColumn}
 									<td
-										class="mari-table-actions-col relative z-0 overflow-visible px-1 whitespace-nowrap"
+										class="menzies-table-actions-col relative z-0 w-28 overflow-visible px-1 whitespace-nowrap"
 										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}
@@ -722,49 +720,49 @@
 												crudEditDisabled?.(row) ?? false}
 											{@const deleteLocked =
 												crudDeleteDisabled?.(row) ?? false}
-											<MariTableRowActionGroup>
+											<MenziesTableRowActionGroup>
 												{#if crudShowView}
-													<MariTableIconAction
-														tooltipText={m.mari_table_tooltip_view()}
-														color="ghost"
+													<MenziesTableIconAction
+														tooltipText={m.menzies_table_tooltip_view()}
+														color="primary"
 														onClick={() => dispatch('view', row)}
 													>
 														{#snippet icon()}
-															<LucideEye className="size-4" />
+															<LucideEye className="size-3.5" />
 														{/snippet}
-													</MariTableIconAction>
+													</MenziesTableIconAction>
 												{/if}
-												<MariTableIconAction
-													tooltipText={m.mari_table_tooltip_edit()}
-													color="accent"
+												<MenziesTableIconAction
+													tooltipText={m.menzies_table_tooltip_edit()}
+													color="secondary"
 													disabled={editLocked}
 													onClick={() => dispatch('edit', row)}
 												>
 													{#snippet icon()}
-														<LucidePencil className="size-4" />
+														<LucidePencil className="size-3.5" />
 													{/snippet}
-												</MariTableIconAction>
-												<MariTableIconAction
-													tooltipText={m.mari_table_crud_inactivate_tooltip()}
+												</MenziesTableIconAction>
+												<MenziesTableIconAction
+													tooltipText={m.menzies_table_crud_inactivate_tooltip()}
 													color="error"
 													disabled={deleteLocked}
 													onClick={() => dispatch('delete', row)}
 												>
 													{#snippet icon()}
-														<LucideTrash2 className="size-4" />
+														<LucideTrash2 className="size-3.5" />
 													{/snippet}
-												</MariTableIconAction>
-											</MariTableRowActionGroup>
+												</MenziesTableIconAction>
+											</MenziesTableRowActionGroup>
 										{:else if actionsVariant === 'select'}
-											<MariTableIconAction
-												tooltipText={m.mari_table_tooltip_select()}
+											<MenziesTableIconAction
+												tooltipText={m.menzies_table_tooltip_select()}
 												color="primary"
 												onClick={() => dispatch('select', row)}
 											>
 												{#snippet icon()}
-													<LucideCircleCheck className="size-4" />
+													<LucideCircleCheck className="size-3.5" />
 												{/snippet}
-											</MariTableIconAction>
+											</MenziesTableIconAction>
 										{:else}
 											{@render rowActions?.(row, index)}
 										{/if}

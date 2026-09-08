@@ -8,9 +8,9 @@
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -206,7 +206,7 @@
 		}
 	}
 
-	const columns: MariTableColumn<DocumentTypeRow>[] = [
+	const columns: MenziesTableColumn<DocumentTypeRow>[] = [
 		{
 			id: 'displayNo',
 			header: 'No',
@@ -317,7 +317,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MariTable
+				<MenziesTable
 					rows={docTypeList}
 					{columns}
 					{isLoading}
@@ -374,7 +374,7 @@
 							</div>
 						</td>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

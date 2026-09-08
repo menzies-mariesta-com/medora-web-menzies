@@ -5,9 +5,9 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -96,7 +96,7 @@
 		return '—';
 	}
 
-	const lineColumns: MariTableColumn<GrnDetailLine>[] = [
+	const lineColumns: MenziesTableColumn<GrnDetailLine>[] = [
 		{
 			id: 'itemName',
 			header: m.inv_common_item(),
@@ -315,8 +315,8 @@
 </div>
 
 <div class={TableEnum.HEIGHT}>
-	<MariTable
-		columns={lineColumns as MariTableColumn[]}
+	<MenziesTable
+		columns={lineColumns as MenziesTableColumn[]}
 		rows={detail?.lines ?? []}
 		isLoading={detailLoading}
 		showRowActions={false}

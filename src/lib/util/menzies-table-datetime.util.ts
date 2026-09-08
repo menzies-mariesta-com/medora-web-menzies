@@ -1,5 +1,5 @@
-/** Display datetime in MariTable cells (matches EMR table style). */
-export function formatMariTableDateTime(
+/** Display datetime in MenziesTable cells (matches EMR table style). */
+export function formatMenziesTableDateTime(
 	value: Date | string | number | null | undefined
 ): string {
 	if (value == null || value === '') return '—';

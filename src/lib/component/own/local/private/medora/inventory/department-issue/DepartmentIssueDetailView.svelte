@@ -5,9 +5,9 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -75,8 +75,8 @@
 	}
 
 	const lineColumns = $derived.by(
-		(): MariTableColumn<DepartmentIssueDetailLine>[] => {
-			const cols: MariTableColumn<DepartmentIssueDetailLine>[] = [
+		(): MenziesTableColumn<DepartmentIssueDetailLine>[] => {
+			const cols: MenziesTableColumn<DepartmentIssueDetailLine>[] = [
 				{
 					id: 'item',
 					header: m.inv_common_item(),
@@ -255,8 +255,8 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
-					columns={lineColumns as MariTableColumn[]}
+				<MenziesTable
+					columns={lineColumns as MenziesTableColumn[]}
 					rows={detail.lines ?? []}
 					showRefreshButton={false}
 					enableColumnFilters={false}

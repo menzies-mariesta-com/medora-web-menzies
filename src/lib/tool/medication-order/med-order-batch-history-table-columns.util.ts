@@ -1,6 +1,6 @@
-import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 import type { MedicationOrderBatchHistoryRow } from '$lib/model/type/medora/medication-order.type';
-import { formatMariTableDateTime } from '$lib/util/mari-table-datetime.util';
+import { formatMenziesTableDateTime } from '$lib/util/menzies-table-datetime.util';
 
 export type MedOrderBatchHistoryColumnLabels = {
 	batch: string;
@@ -21,7 +21,7 @@ export function medOrderBatchHistoryTableColumns(
 	options: {
 		storeNameById: Record<number, string>;
 	}
-): MariTableColumn<MedicationOrderBatchHistoryRow>[] {
+): MenziesTableColumn<MedicationOrderBatchHistoryRow>[] {
 	const dash = () => labels.notApplicable;
 	const { storeNameById } = options;
 
@@ -81,7 +81,7 @@ export function medOrderBatchHistoryTableColumns(
 			widthClass: 'w-40 min-w-[10rem]',
 			cellClass: 'whitespace-nowrap',
 			filterable: false,
-			format: (_v, row) => formatMariTableDateTime(row.createdAt)
+			format: (_v, row) => formatMenziesTableDateTime(row.createdAt)
 		},
 		{
 			id: 'updatedAt',
@@ -89,7 +89,7 @@ export function medOrderBatchHistoryTableColumns(
 			widthClass: 'w-40 min-w-[10rem]',
 			cellClass: 'whitespace-nowrap',
 			filterable: false,
-			format: (_v, row) => formatMariTableDateTime(row.updatedAt)
+			format: (_v, row) => formatMenziesTableDateTime(row.updatedAt)
 		},
 		{
 			id: 'createdByName',

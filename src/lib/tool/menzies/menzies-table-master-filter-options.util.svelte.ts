@@ -1,7 +1,7 @@
-/** Select option shape for MariTable column filters. */
-export type MariSelectFilterOption = { value: string; label: string };
+/** Select option shape for MenziesTable column filters. */
+export type MenziesSelectFilterOption = { value: string; label: string };
 
-export type MariTableFilterMasterKey =
+export type MenziesTableFilterMasterKey =
 	| 'store'
 	| 'supplier'
 	| 'severity'
@@ -17,8 +17,8 @@ async function parseJson<T>(res: Response): Promise<T> {
 }
 
 function sortByLabel(
-	options: MariSelectFilterOption[]
-): MariSelectFilterOption[] {
+	options: MenziesSelectFilterOption[]
+): MenziesSelectFilterOption[] {
 	return [...options].sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -26,7 +26,7 @@ function sortByLabel(
 export async function fetchStoreMasterFilterOptions(
 	hospitalId: string,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch(
 		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/stores?mode=allForPicker`,
 		{ signal }
@@ -46,7 +46,7 @@ export async function fetchStoreMasterFilterOptions(
 export async function fetchSupplierMasterFilterOptions(
 	hospitalId: string,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch(
 		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/supplier-setup?mode=allForPicker`,
 		{ signal }
@@ -63,7 +63,7 @@ export async function fetchSupplierMasterFilterOptions(
 /** Global severity master (allergy / clinical). */
 export async function fetchSeverityMasterFilterOptions(
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch('/api/medora/master/lookup?kind=severity', {
 		signal
 	});
@@ -80,7 +80,7 @@ export async function fetchSeverityMasterFilterOptions(
 export async function fetchItemCategoryMasterFilterOptions(
 	hospitalId: string,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch(
 		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/item-master?mode=categories`,
 		{ signal }
@@ -100,7 +100,7 @@ export async function fetchItemCategoryMasterFilterOptions(
 export async function fetchUnitTypeMasterFilterOptions(
 	hospitalId: string,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch(
 		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/inventory-setup/unit-master?mode=unitTypes`,
 		{ signal }
@@ -118,7 +118,7 @@ export async function fetchUnitTypeMasterFilterOptions(
 export async function fetchVisitTypeMasterFilterOptions(
 	hospitalId: string,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	const res = await fetch(
 		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/emr/visit-list?${new URLSearchParams({ mode: 'visitType.list' })}`,
 		{ signal }
@@ -132,11 +132,11 @@ export async function fetchVisitTypeMasterFilterOptions(
 	);
 }
 
-export async function fetchMariTableMasterFilterOptions(
-	key: MariTableFilterMasterKey,
+export async function fetchMenziesTableMasterFilterOptions(
+	key: MenziesTableFilterMasterKey,
 	hospitalId: string | undefined,
 	signal?: AbortSignal
-): Promise<MariSelectFilterOption[]> {
+): Promise<MenziesSelectFilterOption[]> {
 	switch (key) {
 		case 'store':
 			if (!hospitalId?.trim()) return [];

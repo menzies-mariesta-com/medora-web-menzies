@@ -9,9 +9,9 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import DocumentMasterHtmlPrintEditor from '$lib/component/own/local/private/medora/administration/document-master/DocumentMasterHtmlPrintEditor.svelte';
 	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 	import type { PrintDocumentLayoutInput } from '$lib/util/print-document-html.util';
@@ -331,7 +331,7 @@
 
 	let tableFilters = $state<Record<string, string>>({});
 
-	const columns: MariTableColumn<DocumentWithRelations>[] = [
+	const columns: MenziesTableColumn<DocumentWithRelations>[] = [
 		{
 			id: 'displayNo',
 			header: 'No',
@@ -422,7 +422,7 @@
 		<WashCard>
 			<WashCardBody>
 				<div class="{TableEnum.HEIGHT} overflow-auto">
-					<MariTable
+					<MenziesTable
 						rows={documentList}
 						{columns}
 						{isLoading}
@@ -490,7 +490,7 @@
 								</div>
 							</td>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			</WashCardBody>
 		</WashCard>

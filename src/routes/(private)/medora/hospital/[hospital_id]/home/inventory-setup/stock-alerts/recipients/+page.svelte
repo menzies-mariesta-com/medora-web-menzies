@@ -6,9 +6,9 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import StockAlertRecipientDialogContent, {
 		type StockAlertRecipientDialogRow
 	} from '$lib/component/own/local/private/medora/inventory-setup/stock-alerts/StockAlertRecipientDialogContent.svelte';
@@ -279,7 +279,7 @@
 		);
 	}
 
-	const recipientColumns: MariTableColumn<RecipientDto>[] = [
+	const recipientColumns: MenziesTableColumn<RecipientDto>[] = [
 		{
 			id: 'store',
 			header: m.inv_stock_alert_col_store(),
@@ -363,7 +363,7 @@
 			</div>
 
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={recipients}
 					columns={recipientColumns}
 					isLoading={bundleLoading}
@@ -409,7 +409,7 @@
 							</div>
 						</td>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

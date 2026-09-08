@@ -1,5 +1,5 @@
 /** Parse `filter_<columnId>` query params from a URLSearchParams object. */
-export function parseMariTableColumnFilters(
+export function parseMenziesTableColumnFilters(
 	sp: URLSearchParams
 ): Record<string, string> {
 	const out: Record<string, string> = {};
@@ -13,8 +13,8 @@ export function parseMariTableColumnFilters(
 	return out;
 }
 
-/** Append MariTable column filters as `filter_<columnId>` query params. */
-export function appendMariTableColumnFilters(
+/** Append MenziesTable column filters as `filter_<columnId>` query params. */
+export function appendMenziesTableColumnFilters(
 	sp: URLSearchParams,
 	filters: Record<string, string>
 ): void {

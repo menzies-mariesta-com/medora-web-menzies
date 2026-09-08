@@ -15,15 +15,15 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideList from '$lib/component/own/library/lucide/LucideList.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -47,7 +47,7 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const userGroupColumns: MariTableColumn<StaffRegUserGroupRow>[] = [
+	const userGroupColumns: MenziesTableColumn<StaffRegUserGroupRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -230,7 +230,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={groups}
 					columns={userGroupColumns}
 					{isLoading}
@@ -263,8 +263,8 @@
 					}}
 				>
 					{#snippet rowActions(row, rowIndex)}
-						<MariTableRowActionGroup>
-							<MariTableIconAction
+						<MenziesTableRowActionGroup>
+							<MenziesTableIconAction
 								tooltipText="Manage which pages this group can access"
 								color="info"
 								onClick={() => openPagesModal(row)}
@@ -272,28 +272,28 @@
 								{#snippet icon()}
 									<LucideList className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-							<MariTableIconAction
-								tooltipText={m.mari_table_tooltip_edit()}
+							</MenziesTableIconAction>
+							<MenziesTableIconAction
+								tooltipText={m.menzies_table_tooltip_edit()}
 								color="accent"
 								onClick={() => openEdit(row)}
 							>
 								{#snippet icon()}
 									<LucidePencil className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-							<MariTableIconAction
-								tooltipText={m.mari_table_tooltip_delete()}
+							</MenziesTableIconAction>
+							<MenziesTableIconAction
+								tooltipText={m.menzies_table_tooltip_delete()}
 								color="error"
 								onClick={() => handleDelete(row)}
 							>
 								{#snippet icon()}
 									<LucideTrash2 className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-						</MariTableRowActionGroup>
+							</MenziesTableIconAction>
+						</MenziesTableRowActionGroup>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 			{#if totalPages > 1}
 				<div class="mt-4 flex justify-center gap-2">

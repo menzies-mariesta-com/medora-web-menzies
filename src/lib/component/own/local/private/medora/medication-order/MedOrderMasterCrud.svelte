@@ -10,9 +10,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { toastError, toastLine } from '$lib/util/toast-copy.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -43,7 +43,7 @@
 	let pageSizeStr = $state(
 		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
 	);
-	/** Per-column filter values; keys match `tableColumns` ids (server-side + MariTable) */
+	/** Per-column filter values; keys match `tableColumns` ids (server-side + MenziesTable) */
 	let tableFilters = $state<Record<string, string>>({});
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
@@ -56,7 +56,7 @@
 
 	const statusDefaultFilterValue = String(StatusEnum.ACTIVE);
 
-	const tableColumns = $derived.by((): MariTableColumn<unknown>[] => {
+	const tableColumns = $derived.by((): MenziesTableColumn<unknown>[] => {
 		if (variant === 'duration') {
 			return [
 				{
@@ -221,7 +221,7 @@
 
 	function renderActiveToggle(row: Row) {
 		const checked = isRowActive(row);
-		// MariTable column format expects string/unknown; return a small HTML snippet via svelte isn't possible.
+		// MenziesTable column format expects string/unknown; return a small HTML snippet via svelte isn't possible.
 		// We instead show Active/Inactive label here; toggle is provided via rowActions below.
 		return checked ? m.active_label() : m.inactive_label();
 	}
@@ -263,7 +263,7 @@
 <WashCard>
 	<WashCardBody className="flex flex-col gap-0 p-0">
 		<div class="{TableEnum.HEIGHT} min-h-0 overflow-hidden">
-			<MariTable
+			<MenziesTable
 				rows={list}
 				columns={tableColumns}
 				{isLoading}
@@ -311,7 +311,7 @@
 						/>
 					</label>
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	</WashCardBody>
 </WashCard>

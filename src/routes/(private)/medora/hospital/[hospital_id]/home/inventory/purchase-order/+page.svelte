@@ -8,9 +8,9 @@
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -174,7 +174,7 @@
 		void loadList();
 	});
 
-	const columns: MariTableColumn<PoRow>[] = $derived([
+	const columns: MenziesTableColumn<PoRow>[] = $derived([
 		{
 			id: 'poNo',
 			header: m.inv_po_no(),
@@ -265,8 +265,8 @@
 
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
-		<MariTable
-			columns={columns as MariTableColumn[]}
+		<MenziesTable
+			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			masterFilterHospitalId={hospitalId}
 			isLoading={loading}
@@ -359,6 +359,6 @@
 					{/if}
 				</div>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	{/key}
 </div>
