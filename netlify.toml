@@ -1,0 +1,16 @@
+# SvelteKit → Netlify Functions via @sveltejs/adapter-netlify
+# https://svelte.dev/docs/kit/adapter-netlify
+
+[build]
+	command = "pnpm run build"
+	publish = "build"
+
+[build.environment]
+	NODE_VERSION = "22"
+	# Private GitHub Packages (@menzies-mariesta-com/*): set NODE_AUTH_TOKEN in the Netlify UI
+	# (Site settings → Environment variables). Token is read from .npmrc.
+
+[dev]
+	command = "pnpm run dev"
+	targetPort = 5173
+	framework = "#custom"
