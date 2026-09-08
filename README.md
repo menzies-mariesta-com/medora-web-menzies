@@ -34,9 +34,24 @@ npm run dev -- --open
 To create a production version of your app:
 
 ```sh
-npm run build
+pnpm run build
 ```
 
-You can preview the production build with `npm run preview`.
+You can preview the production build with `pnpm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Deploying to Netlify
+
+This project uses [`@sveltejs/adapter-netlify`](https://svelte.dev/docs/kit/adapter-netlify) and `netlify.toml`.
+
+1. Log in: `npx netlify login`
+2. Link or create a site: `npx netlify init` (or connect the GitHub repo in the Netlify UI)
+3. In **Site settings → Environment variables**, set at least:
+   - `DATABASE_URL`
+   - `BETTER_AUTH_SECRET`
+   - `BETTER_AUTH_BASE_URL` / `BETTER_AUTH_URL` (your `https://….netlify.app` or custom domain)
+   - `BETTER_AUTH_TRUSTED_ORIGINS` (same origins, comma-separated)
+   - `NODE_AUTH_TOKEN` — GitHub PAT with `read:packages` (private `@menzies-mariesta-com/*`)
+   - Plus SMTP / Tigris / OpenAI vars from `.env.example` as needed
+4. Deploy: `npx netlify deploy` (draft) then `npx netlify deploy --prod`
+
+Continuous deploy: connect `menzies-mariesta-com/medora-web-menzies` in Netlify so pushes build automatically.

@@ -1,10 +1,14 @@
 import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-netlify';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter(),
+		adapter: adapter({
+			// Node serverless Functions (not Deno Edge) — required for argon2 / Node APIs
+			edge: false,
+			split: false
+		}),
 		experimental: {
 			remoteFunctions: true
 		}

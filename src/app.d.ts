@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@sveltejs/adapter-netlify" />
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
