@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PricingFormulaTemplateDto } from '$lib/model/type/heka/pricing-formula-template.type';
+import type { PricingFormulaTemplateDto } from '$lib/model/type/medora/pricing-formula-template.type';
 import {
 	applyFormulaSlot,
 	computeFormulaCostPerPurchaseUnit,

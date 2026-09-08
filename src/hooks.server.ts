@@ -5,11 +5,23 @@ import { auth } from '$lib/auth/server';
 import { ensureDb } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { getStaffByUserIdWithRelations } from '$lib/server/heka/administration/staff.server';
-import type { StaffSessionRow } from '$lib/model/type/heka/staff.type';
+import { getStaffByUserIdWithRelations } from '$lib/server/medora/administration/staff.server';
+import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
 import { RoleEnum } from '$lib/model/enum/db-link';
+import { redirect } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	const pathname = event.url.pathname;
+	if (pathname === '/heka' || pathname.startsWith('/heka/')) {
+		const rest = pathname === '/heka' ? '' : pathname.slice('/heka'.length);
+		throw redirect(302, `/medora${rest}${event.url.search}`);
+	}
+	if (pathname === '/api/heka' || pathname.startsWith('/api/heka/')) {
+		const rest =
+			pathname === '/api/heka' ? '' : pathname.slice('/api/heka'.length);
+		throw redirect(302, `/api/medora${rest}${event.url.search}`);
+	}
+
 	let session: Awaited<ReturnType<typeof auth.api.getSession>>;
 	try {
 		session = await auth.api.getSession({
@@ -63,7 +75,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const basePath =
 		(auth as { options?: { basePath?: string } }).options?.basePath ??
 		'/api/auth';
-	const pathname = event.url.pathname;
 	const authPrefix = basePath.endsWith('/')
 		? basePath
 		: `${basePath}/`;

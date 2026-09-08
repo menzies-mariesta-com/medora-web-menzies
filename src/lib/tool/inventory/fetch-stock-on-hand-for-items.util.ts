@@ -17,7 +17,7 @@ export async function fetchStockLabelsForItemsAtStore(
 	sp.set('storeId', String(storeId));
 	sp.set('itemIds', uniq.join(','));
 	const res = await fetch(
-		`/api/heka/hospital/${hospitalId}/home/inventory/stock?${sp.toString()}`
+		`/api/medora/hospital/${hospitalId}/home/inventory/stock?${sp.toString()}`
 	);
 	if (!res.ok) return out;
 	const rows = (await res.json()) as {
@@ -35,7 +35,7 @@ export async function fetchStockLabelsForItemsAtStore(
 }
 
 /**
- * Appends on-hand at **selectedStoreId** only to item search option labels (DaisyUISearchSelect).
+ * Appends on-hand at **selectedStoreId** only to item search option labels (WashSearchSelect).
  */
 export async function enrichItemSearchOptionsWithStock(
 	hospitalId: string,

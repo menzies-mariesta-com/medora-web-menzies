@@ -534,8 +534,8 @@ If no assignment exists, the hospital **system default** template is used.
 | Landed cost + denominator | `src/lib/tool/inventory/grn-pricing.util.ts`               |
 | Formula + markups         | `src/lib/tool/inventory/sale-price-calculator.util.ts`     |
 | Free qty conversion       | `src/lib/tool/inventory/grn-free-qty-purchase.util.ts`     |
-| Load GRN context at sale  | `src/lib/server/heka/inventory/grn-cost-context.server.ts` |
-| Sale-time orchestration   | `src/lib/server/heka/inventory/sale-price.server.ts`       |
+| Load GRN context at sale  | `src/lib/server/medora/inventory/grn-cost-context.server.ts` |
+| Sale-time orchestration   | `src/lib/server/medora/inventory/sale-price.server.ts`       |
 | Formula display text      | `src/lib/tool/inventory/pricing-formula-display.util.ts`   |
 | Architecture plan         | `modify_grn_priciing_plan.md`                              |
 

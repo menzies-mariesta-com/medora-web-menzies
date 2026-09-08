@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MedicationOrderMastersResponse } from '$lib/model/type/heka/medication-order.type';
+import type { MedicationOrderMastersResponse } from '$lib/model/type/medora/medication-order.type';
 import {
 	formatMedOrderPrescriptionDetail,
 	formatMedOrderStartDate

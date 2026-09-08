@@ -1,5 +1,5 @@
 /** Marker on demo patients / detectable via visit_no prefix VH- */
-export const VH_DEMO_MARKER = '[heka-vh-demo]';
+export const VH_DEMO_MARKER = '[medora-vh-demo]';
 
 export const MIN_DEMO_PATIENTS = 10;
 export const MIN_VISITS_PER_DEMO_PATIENT = 3;

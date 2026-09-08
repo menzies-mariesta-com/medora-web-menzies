@@ -1,4 +1,4 @@
-import type { PharmacyGenericListRow } from '$lib/model/type/heka/ui-rows.type';
+import type { PharmacyGenericListRow } from '$lib/model/type/medora/ui-rows.type';
 
 /** Set before opening Create/Edit Pharmacy Generic modal. */
 export const PharmacyGenericModalState = $state<{

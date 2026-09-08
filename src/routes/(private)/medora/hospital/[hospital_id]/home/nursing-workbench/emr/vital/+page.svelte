@@ -1,0 +1,564 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import WashCard from '$lib/component/wash/card/WashCard.svelte';
+	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
+	import LVitalRecordDialogContent from '$lib/component/own/local/private/medora/emr/LVitalRecordDialogContent.svelte';
+	import WashCollapseTitle from '$lib/component/wash/collapse/title/WashCollapseTitle.svelte';
+	import WashCollapseContent from '$lib/component/wash/collapse/content/WashCollapseContent.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import type { PatientDiagnosisListRow } from '$lib/model/type/medora/ui-rows.type';
+	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import {
+		vitalTextClass,
+		type VitalKey
+	} from '$lib/config/vital.config';
+	import { m } from '$lib/paraglide/messages';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import MariTable, {
+		type MariTableColumn
+	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import { TableEnum } from '$lib/model/enum/table.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+
+	type PatientVitalWithVisit = PatientDiagnosisListRow & {
+		visit?: { id: number; visitNo: string | null } | null;
+	};
+
+	const visitIdStr = $derived(
+		page.url.searchParams.get('visitId') ?? ''
+	);
+	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const hospitalId = $derived(
+		typeof page.params.hospital_id === 'string' &&
+			page.params.hospital_id
+			? page.params.hospital_id
+			: undefined
+	);
+
+	let visit = $state<{
+		patientId: string;
+		hospitalId: string;
+	} | null>(null);
+	let vitals = $state<PatientVitalWithVisit[]>([]);
+	let currentPage = $state(1);
+	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let isLoadingVisit = $state(false);
+	let isLoadingVitals = $state(false);
+	let totalVitals = $state(0);
+	let tableFilters = $state<Record<string, string>>({
+		status: String(StatusEnum.ACTIVE)
+	});
+	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
+		null;
+	let lastLoadedVisitKey = $state('');
+	let lastHandledPageSize = $state(
+		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
+	);
+	let lastVitalsFetchKey = $state('');
+	let mounted = $state(false);
+	const toastService = new ToastService();
+	const lifeCycleUtil = new LifeCycleUtil();
+
+	function apiBase(): string {
+		return hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/nursing-workbench/emr/vital`
+			: '';
+	}
+
+	async function apiGet<T>(url: string): Promise<T> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			throw new Error(text || res.statusText);
+		}
+		return (await res.json()) as T;
+	}
+
+	lifeCycleUtil.onMount(() => {
+		mounted = true;
+	});
+
+	lifeCycleUtil.onDestroy(() => {
+		mounted = false;
+		if (filterDebounceTimeout) clearTimeout(filterDebounceTimeout);
+	});
+
+	async function openRecordDialog() {
+		if (!visit?.patientId || !visit?.hospitalId || !visitId) return;
+		VitalRecordDialogState.patientId = visit.patientId;
+		VitalRecordDialogState.hospitalId = visit.hospitalId;
+		VitalRecordDialogState.visitId = visitId;
+		VitalRecordDialogState.vitalId = null;
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: 'Record new vitals',
+				component: LVitalRecordDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					VitalRecordDialogState.patientId = null;
+					VitalRecordDialogState.hospitalId = null;
+					VitalRecordDialogState.visitId = null;
+					VitalRecordDialogState.vitalId = null;
+				}
+			});
+			if (
+				result?.confirmed &&
+				result.data?.saved &&
+				visit?.patientId &&
+				visit?.hospitalId
+			) {
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
+			}
+		} finally {
+			VitalRecordDialogState.patientId = null;
+			VitalRecordDialogState.hospitalId = null;
+			VitalRecordDialogState.visitId = null;
+			VitalRecordDialogState.vitalId = null;
+		}
+	}
+
+	async function openEditDialog(v: PatientVitalWithVisit) {
+		if (!v.patientId || !v.hospitalId || !v.visitId) return;
+		VitalRecordDialogState.patientId = v.patientId;
+		VitalRecordDialogState.hospitalId = v.hospitalId;
+		VitalRecordDialogState.visitId = v.visitId;
+		VitalRecordDialogState.vitalId = v.id;
+		try {
+			const result = await dialogService.open<{ saved?: boolean }>({
+				title: 'Edit vitals',
+				component: LVitalRecordDialogContent,
+				fullScreen: false,
+				modalClassName:
+					'max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto',
+				onClose: () => {
+					VitalRecordDialogState.vitalId = null;
+				}
+			});
+			if (
+				result?.confirmed &&
+				result.data?.saved &&
+				visit?.patientId &&
+				visit?.hospitalId
+			) {
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
+			}
+		} finally {
+			VitalRecordDialogState.vitalId = null;
+		}
+	}
+
+	async function handleDeleteVital(v: PatientVitalWithVisit) {
+		const result = await dialogService.open({
+			title: m.observation_emr_vital_inactivate_title(),
+			message: m.observation_emr_vital_inactivate_message({
+				date: formatDateTime(getVitalDisplayDate(v) ?? null)
+			}),
+			variant: DialogVariantEnum.CONFIRM
+		});
+		if (!result.confirmed) return;
+		try {
+			const base = apiBase();
+			if (!base) throw new Error('Missing hospital context');
+			const res = await fetch(`${base}?id=${v.id}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok)
+				throw new Error(await res.text().catch(() => res.statusText));
+			toastSuccess(
+				toastService,
+				m.entity_patient_vital(),
+				m.toast_action_inactivated()
+			);
+			if (visit?.patientId && visit?.hospitalId) {
+				await fetchVitals(visit.patientId, visit.hospitalId, {
+					force: true
+				});
+			}
+		} catch (err) {
+			toastService.addToast(
+				(err instanceof Error
+					? err.message
+					: m.observation_emr_inactivate_failed()) as string,
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
+	async function fetchVisit(): Promise<{
+		patientId: string;
+		hospitalId: string;
+	} | null> {
+		if (!visitId || !hospitalId) return null;
+		isLoadingVisit = true;
+		try {
+			const base = apiBase();
+			if (!base) return null;
+			const res = await apiGet<{
+				data: { patientId: string; hospitalId: string } | null;
+			}>(`${base}?action=visitBasics&visitId=${visitId}`);
+			if (!res.data) {
+				visit = null;
+				return null;
+			}
+			visit = res.data;
+			return res.data;
+		} catch (_err) {
+			visit = null;
+			return null;
+		} finally {
+			isLoadingVisit = false;
+		}
+	}
+
+	async function fetchVitals(
+		patientId: string,
+		hospitalIdParam: string,
+		options?: { force?: boolean }
+	) {
+		const base = apiBase();
+		if (!base) return;
+		const pageSize = Number(pageSizeStr) || 10;
+		const requestKey = JSON.stringify({
+			patientId,
+			hospitalIdParam,
+			page: currentPage,
+			pageSize,
+			visitNo: tableFilters.visitNo?.trim() || '',
+			status: tableFilters.status ?? ''
+		});
+		if (!options?.force && requestKey === lastVitalsFetchKey) {
+			return;
+		}
+		lastVitalsFetchKey = requestKey;
+		isLoadingVitals = true;
+		try {
+			const statusIdStr = tableFilters.status?.trim() || '';
+			const visitNo = tableFilters.visitNo?.trim() || '';
+			const url = new URL(
+				base,
+				globalThis.location?.origin ?? 'http://local'
+			);
+			url.searchParams.set('patientId', patientId);
+			url.searchParams.set('page', String(currentPage));
+			url.searchParams.set('pageSize', String(pageSize));
+			if (visitNo) url.searchParams.set('visitNo', visitNo);
+			if (statusIdStr) url.searchParams.set('statusId', statusIdStr);
+
+			const result = await apiGet<{
+				data: PatientVitalWithVisit[];
+				total: number;
+			}>(url.pathname + url.search);
+			vitals = result.data;
+			totalVitals = result.total;
+		} catch (_err) {
+			vitals = [];
+			totalVitals = 0;
+		} finally {
+			isLoadingVitals = false;
+		}
+	}
+
+	$effect(() => {
+		if (!mounted) return;
+
+		if (visitId && hospitalId) {
+			const visitKey = `${visitId}:${hospitalId}`;
+			if (lastLoadedVisitKey === visitKey) {
+				return;
+			}
+			lastLoadedVisitKey = visitKey;
+			(async () => {
+				const resolvedVisit = await fetchVisit();
+				if (resolvedVisit) {
+					await fetchVitals(
+						resolvedVisit.patientId,
+						resolvedVisit.hospitalId
+					);
+				}
+			})();
+		} else {
+			lastLoadedVisitKey = '';
+			visit = null;
+			vitals = [];
+		}
+	});
+
+	function formatVital(value: string | null | undefined): string {
+		if (value == null || value === '') return '–';
+		return String(value);
+	}
+
+	function formatDateTime(value: string | null | undefined): string {
+		if (!value) return '–';
+		try {
+			return new Date(value).toLocaleString('en-US', {
+				dateStyle: 'short',
+				timeStyle: 'short'
+			});
+		} catch {
+			return '–';
+		}
+	}
+
+	/** Prefer vitalDateTime (when vital was taken) over createdAt (when record was saved). */
+	function getVitalDisplayDate(
+		v: PatientVitalWithVisit
+	): string | null | undefined {
+		return v.vitalDateTime ?? v.createdAt;
+	}
+
+	const statusFilterOptions = [
+		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
+		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
+	];
+
+	const vitalColumns: MariTableColumn<PatientVitalWithVisit>[] = [
+		{
+			id: 'visitNo',
+			header: 'Visit No',
+			widthClass: TableRowEnum.VISIT_NO_WIDTH,
+			filterable: true,
+			format: (_value, row) => row.visit?.visitNo?.trim() || '–'
+		},
+		{
+			id: 'status',
+			header: 'Status',
+			widthClass: 'w-28 min-w-[7rem]',
+			filterable: true,
+			filterType: 'select',
+			filterOptions: statusFilterOptions,
+			defaultFilterValue: String(StatusEnum.ACTIVE),
+			format: (_value, row) =>
+				row.statusId === StatusEnum.ACTIVE
+					? 'Active'
+					: row.statusId === StatusEnum.INACTIVE
+						? 'Inactive'
+						: `Status ${row.statusId ?? 'Unknown'}`
+		},
+		{
+			id: 'date',
+			header: 'Date',
+			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+			filterable: false,
+			format: (_value, row) =>
+				formatDateTime(getVitalDisplayDate(row) ?? null)
+		},
+		{
+			id: 'height',
+			header: 'Height (cm)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.height)
+		},
+		{
+			id: 'weight',
+			header: 'Weight (kg)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.weight)
+		},
+		{
+			id: 'bmi',
+			header: m.emr_vital_bmi(),
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.bmi),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bmi, 'bmi' as VitalKey)
+		},
+		{
+			id: 'bp',
+			header: 'BP (mmHg)',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+			format: (_value, row) =>
+				`${formatVital(row.bpSystolic)}/${formatVital(
+					row.bpDiastolic
+				)}`,
+			cellClassGetter: (row) =>
+				vitalTextClass(row.bpSystolic, 'bpSystolic' as VitalKey) ||
+				vitalTextClass(row.bpDiastolic, 'bpDiastolic' as VitalKey)
+		},
+		{
+			id: 'pulse',
+			header: 'P (bpm)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.pulse),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.pulse, 'pulse' as VitalKey)
+		},
+		{
+			id: 'temperature',
+			header: 'T (°C)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.temperature),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.temperature, 'temperature' as VitalKey)
+		},
+		{
+			id: 'spO2',
+			header: 'SpO₂ (%)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.spO2),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.spO2, 'spO2' as VitalKey)
+		},
+		{
+			id: 'respiration',
+			header: 'R (/min)',
+			widthClass: 'w-20 min-w-[5rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.respiration),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.respiration, 'respiration' as VitalKey)
+		},
+		{
+			id: 'rbs',
+			header: 'RBS (mg/dL)',
+			widthClass: 'w-24 min-w-[6rem]',
+			filterable: false,
+			format: (_value, row) => formatVital(row.rbs),
+			cellClassGetter: (row) =>
+				vitalTextClass(row.rbs, 'rbs' as VitalKey)
+		},
+		{
+			id: 'symptom',
+			header: 'Symptom',
+			widthClass: 'min-w-32',
+			filterable: false,
+			format: (_value, row) => formatVital(row.symptom),
+			cellClass: 'max-w-48 truncate'
+		}
+	];
+</script>
+
+<svelte:head>
+	<title>Vital</title>
+</svelte:head>
+
+<div class="flex flex-col gap-4">
+	{#if !visitId}
+		<WashAlert
+			type={StatusColorEnum.INFO}
+			message="Choose a visit using the 'Choose Visit' button above to record vitals."
+			className="z-0"
+		/>
+	{:else if !visit && !isLoadingVisit}
+		<WashAlert
+			type={StatusColorEnum.WARNING}
+			message="Visit not found."
+		/>
+	{:else}
+		<WashCard>
+			<WashCardBody className="p-3 m-0=">
+				<div
+					class="mb-2 flex flex-wrap items-center justify-between gap-3"
+				>
+					<WashCardBodyTitle className="mb-0">
+						Patient vitals (all visits)
+					</WashCardBodyTitle>
+					<WashButton
+						className="btn-primary btn-sm gap-1.5"
+						onClick={openRecordDialog}
+					>
+						<LucidePlus className="size-4 shrink-0" />
+						Record new vitals
+					</WashButton>
+				</div>
+				{#if !visit}
+					<div
+						class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
+					>
+						Loading visit…
+					</div>
+				{:else if vitals.length === 0 && !isLoadingVitals}
+					<p class="text-sm text-base-content/70">
+						No vitals recorded for this patient yet.
+					</p>
+				{:else}
+					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
+						<MariTable
+							rows={vitals}
+							columns={vitalColumns}
+							isLoading={isLoadingVisit || isLoadingVitals}
+							bind:pageSize={pageSizeStr}
+							bind:currentPage
+							totalRowCount={totalVitals}
+							showRefreshButton={true}
+							emptyMessage="No vitals."
+							showRowActions={true}
+							actionsHeader="Actions"
+							actionsVariant="none"
+							enableColumnFilters={true}
+							columnFilters={tableFilters}
+							useRemoteFilters={true}
+							on:refresh={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(visit.patientId, visit.hospitalId, {
+										force: true
+									});
+								}
+							}}
+							on:pageSizeChange={() => {
+								if (pageSizeStr === lastHandledPageSize) {
+									return;
+								}
+								lastHandledPageSize = pageSizeStr;
+								currentPage = 1;
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(visit.patientId, visit.hospitalId);
+								}
+							}}
+							on:pageChange={() => {
+								if (visit?.patientId && visit?.hospitalId) {
+									fetchVitals(visit.patientId, visit.hospitalId);
+								}
+							}}
+							on:filtersChange={(event) => {
+								if (filterDebounceTimeout) {
+									clearTimeout(filterDebounceTimeout);
+								}
+								tableFilters = event.detail.filters;
+								currentPage = 1;
+								filterDebounceTimeout = setTimeout(() => {
+									if (visit?.patientId && visit?.hospitalId) {
+										fetchVitals(visit.patientId, visit.hospitalId);
+									}
+								}, 350);
+							}}
+						>
+							{#snippet rowActions(row, rowIndex)}
+								<MariTableEditDeleteActions
+									onEdit={() =>
+										openEditDialog(row as PatientVitalWithVisit)}
+									onDelete={() =>
+										handleDeleteVital(row as PatientVitalWithVisit)}
+								/>
+							{/snippet}
+						</MariTable>
+					</div>
+				{/if}
+			</WashCardBody>
+		</WashCard>
+	{/if}
+</div>

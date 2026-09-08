@@ -4,13 +4,13 @@ import type {
 	SalePriceFormulaInput,
 	SalePriceFormulaResult,
 	SalePriceMarkupPercents
-} from '$lib/model/type/heka/sale-price-formula.type';
+} from '$lib/model/type/medora/sale-price-formula.type';
 import {
 	DEFAULT_PRICING_FORMULA_SLOT_ORDER,
 	type CostBasisFlags,
 	type PricingFormulaSlot,
 	type PricingFormulaTemplateDto
-} from '$lib/model/type/heka/pricing-formula-template.type';
+} from '$lib/model/type/medora/pricing-formula-template.type';
 import { computeGrnCostPerUnit, computeCostPerUnit } from '$lib/tool/inventory/grn-pricing.util';
 
 function parsePercent(raw: string | number | null | undefined): number {

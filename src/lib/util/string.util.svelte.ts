@@ -1,6 +1,6 @@
 import { YesNoEnum } from '$lib/model/enum/db-link';
-import type { PatientWithRelations } from '$lib/model/type/heka/patient.type';
-import type { StaffWithRelations } from '$lib/model/type/heka/staff.type';
+import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
+import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 import { DateTimeUtil } from './date-time.util.svelte';
 import { formatItemUnitConversionDisplay } from './item-unit-conversion.util.svelte';
 
@@ -18,7 +18,7 @@ type ServiceItemDisplay = {
 };
 
 export class StringUtil {
-	static readonly NO_EMAIL_SUFFIX = '@no-email.heka';
+	static readonly NO_EMAIL_SUFFIX = '@no-email.medora';
 
 	static defaultNoEmail(id: string): string {
 		return `${id}${StringUtil.NO_EMAIL_SUFFIX}`;
@@ -275,7 +275,7 @@ export class StringUtil {
 
 	/**
 	 * Parse URL string into clean path segments
-	 * /heka/home/admin?x=1#top
+	 * /medora/home/admin?x=1#top
 	 * → ['heka', 'home', 'admin']
 	 */
 	static parseUrlSegments(url: string): string[] {
@@ -291,7 +291,7 @@ export class StringUtil {
 
 	/**
 	 * Get last segment from URL
-	 * /heka/home/admin → admin
+	 * /medora/home/admin → admin
 	 */
 	static lastSegment(url: string): string {
 		const segments = this.parseUrlSegments(url);
@@ -309,7 +309,7 @@ export class StringUtil {
 
 	/**
 	 * Convert all segments → labels
-	 * /heka/home/admin → ['Heka', 'Home', 'Admin']
+	 * /medora/home/admin → ['Medora', 'Home', 'Admin']
 	 */
 	static segmentsToLabels(url: string): string[] {
 		return this.parseUrlSegments(url).map(
@@ -319,7 +319,7 @@ export class StringUtil {
 
 	/**
 	 * Convert whole path → title
-	 * /heka/home/audit-trail → "Heka Home Audit Trail"
+	 * /medora/home/audit-trail → "Medora Home Audit Trail"
 	 */
 	static urlToTitle(url: string): string {
 		return this.segmentsToLabels(url).join(' ');
@@ -327,7 +327,7 @@ export class StringUtil {
 
 	/**
 	 * Get last N segments from URL as title
-	 * /heka/home/administration/audit-trail, 2 → "Administration Audit Trail"
+	 * /medora/home/administration/audit-trail, 2 → "Administration Audit Trail"
 	 */
 	static urlToTitleLast(url: string, lastN: number): string {
 		const segments = this.parseUrlSegments(url);

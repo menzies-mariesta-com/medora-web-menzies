@@ -1,4 +1,4 @@
-import type { InvPricingModuleCode } from '$lib/model/type/heka/inv-pricing-module.type';
+import type { InvPricingModuleCode } from '$lib/model/type/medora/inv-pricing-module.type';
 
 export type SalePricePreviewResult = {
 	templateId: number;
@@ -17,7 +17,7 @@ export async function fetchSalePricePreview(input: {
 	module: InvPricingModuleCode;
 }): Promise<SalePricePreviewResult | null> {
 	const res = await fetch(
-		`/api/heka/hospital/${input.hospitalId}/home/inventory-setup/pricing-config?action=preview`,
+		`/api/medora/hospital/${input.hospitalId}/home/inventory-setup/pricing-config?action=preview`,
 		{
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },

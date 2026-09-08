@@ -1,4 +1,4 @@
-import type { MedicationOrderMastersResponse } from '$lib/model/type/heka/medication-order.type';
+import type { MedicationOrderMastersResponse } from '$lib/model/type/medora/medication-order.type';
 
 export type MedOrderPrescriptionDetailInput = {
 	dose: string;

@@ -1,14 +1,17 @@
 export type HorizontalTooltipSide = 'left' | 'right';
 
 const PLACEMENT_CLASS_RE =
-	/\bd-tooltip-(?:top|bottom|left|right)\b/g;
+	/\b(?:d-)?tooltip-(?:top|bottom|left|right)\b/g;
 
 /** Remove static DaisyUI placement classes; side is chosen at runtime. */
 export function stripTooltipPlacementClasses(className: string): string {
 	return className.replace(PLACEMENT_CLASS_RE, '').replace(/\s+/g, ' ').trim();
 }
 
-/** Pick left vs right based on which side of the viewport has more space. */
+/**
+ * Near the left of the viewport → show tip on the right.
+ * Near the right of the viewport → show tip on the left.
+ */
 export function resolveHorizontalTooltipSide(
 	el: HTMLElement
 ): HorizontalTooltipSide {

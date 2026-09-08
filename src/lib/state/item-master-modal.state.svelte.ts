@@ -1,4 +1,4 @@
-import type { ItemMasterListRow } from '$lib/model/type/heka/ui-rows.type';
+import type { ItemMasterListRow } from '$lib/model/type/medora/ui-rows.type';
 
 /** Set before opening Create/Edit Item Master modal. */
 export const ItemMasterModalState = $state<{

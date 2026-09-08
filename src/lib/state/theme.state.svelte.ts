@@ -1,3 +1,10 @@
-import { ThemeEnum } from '$lib/model/enum/theme.enum';
+import {
+	WashModeEnum,
+	WashPigmentEnum
+} from '$lib/model/enum/wash-theme.enum';
 
-export const ThemeState = $state<ThemeEnum>(ThemeEnum.LIGHT);
+/** @deprecated Prefer WashThemeState */
+export const ThemeState = $state<WashPigmentEnum>(WashPigmentEnum.MINERAL);
+
+export { WashThemeState } from './wash-theme.state.svelte';
+export { WashModeEnum, WashPigmentEnum };

@@ -1,5 +1,5 @@
 import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
-import type { ClinicalDocumentRow } from '$lib/model/type/heka/document-print.type';
+import type { ClinicalDocumentRow } from '$lib/model/type/medora/document-print.type';
 import {
 	buildDocumentPlaceholderContext,
 	resolveDocumentTemplate,

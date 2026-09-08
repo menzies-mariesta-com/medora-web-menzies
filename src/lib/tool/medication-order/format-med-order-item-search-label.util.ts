@@ -1,4 +1,4 @@
-import type { ItemNamePriceRow } from '$lib/model/type/heka/medication-order.type';
+import type { ItemNamePriceRow } from '$lib/model/type/medora/medication-order.type';
 
 function formatStockQtyDisplay(qtyStr: string | null | undefined): string | null {
 	if (qtyStr == null || qtyStr.trim() === '') return null;

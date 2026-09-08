@@ -11,7 +11,7 @@ export async function fetchVisitServiceLinePrintRows(params: {
 		visitId: String(visitId)
 	});
 	const res = await fetch(
-		`/api/heka/hospital/${encodeURIComponent(hospitalId)}/home/nursing-workbench/emr/order?${qs.toString()}`,
+		`/api/medora/hospital/${encodeURIComponent(hospitalId)}/home/nursing-workbench/emr/order?${qs.toString()}`,
 		{ credentials: 'include', cache: 'no-store' }
 	);
 	if (!res.ok) {

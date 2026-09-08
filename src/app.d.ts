@@ -8,7 +8,7 @@ declare module '*?raw' {
 	const text: string;
 	export default text;
 }
-import type { StaffSessionRow } from '$lib/model/type/heka/staff.type';
+import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
 
 declare global {
 	/** Injected at build time by Vite from package.json (`vite.config` define). */

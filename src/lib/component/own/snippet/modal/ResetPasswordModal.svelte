@@ -1,16 +1,19 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { authClient } from '$lib/auth/client';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const toastService = new ToastService();
 	const routerUtil = new RouterUtil();
+	const msg = m as Record<string, (inputs?: Record<string, string>) => string>;
 
 	let email = $state('');
 	let isLoading = $state(false);
@@ -18,10 +21,7 @@
 	async function handleConfirm() {
 		const trimmed = email.trim();
 		if (!trimmed) {
-			toastService.addToast(
-				'Please enter your email.',
-				StatusColorEnum.ERROR
-			);
+			toastService.addToast(m.please_enter_email(), StatusColorEnum.ERROR);
 			return;
 		}
 		isLoading = true;
@@ -33,17 +33,13 @@
 
 			if (error) {
 				toastService.addToast(
-					error.message ?? 'Failed to send reset link.',
+					error.message ?? m.failed_send_reset_link(),
 					StatusColorEnum.ERROR
 				);
 				return;
 			}
 
-			toastService.addToast(
-				'If an account exists for this email, a password reset link has been sent.',
-				StatusColorEnum.INFO
-			);
-
+			toastService.addToast(m.reset_email_sent(), StatusColorEnum.INFO);
 			await confirm({ email: trimmed });
 		} finally {
 			isLoading = false;
@@ -51,47 +47,52 @@
 	}
 </script>
 
-<div class="flex flex-col">
-	<div
-		class="flex items-center justify-between border-b border-base-300 pb-4"
-	>
-		<h2 class="text-lg font-semibold">Forgot password</h2>
-		<DaisyUiButton
-			className="d-btn-ghost d-btn-sm d-btn-circle"
+<div class="flex flex-col gap-4">
+	<div class="flex items-start justify-between gap-3">
+		<div>
+			<h2 class="card-title text-primary text-lg font-bold">
+				{msg.auth_forgot_title()}
+			</h2>
+			<p class="text-sm text-ink-muted">{msg.auth_forgot_subtitle()}</p>
+		</div>
+		<WashButton
+			className="btn-ghost btn-sm btn-circle"
 			onClick={() => cancel()}
 			disabled={isLoading}
 		>
 			<LucideX className="size-5" />
-		</DaisyUiButton>
+		</WashButton>
 	</div>
-	<div class="mt-4 flex flex-col gap-4">
-		<input
-			type="email"
-			class="d-input w-full"
-			placeholder="Email"
-			name="email"
+
+	<fieldset class="fieldset">
+		<label class="label" for="modal-forgot-email">
+			<span class="label-text">{m.email()}</span>
+		</label>
+		<WashInputField
+			id="modal-forgot-email"
+			inputType="email"
+			inputPlaceholderText={m.email()}
+			nameText="email"
+			className="w-full"
 			bind:value={email}
 			disabled={isLoading}
 			required
-			aria-label="Email"
+			ariaLabel={m.email()}
 		/>
+	</fieldset>
 
-		<div class="d-modal-action">
-			<DaisyUiButton
-				className="d-btn"
-				onClick={() => cancel()}
-				disabled={isLoading}
-			>
-				Cancel
-			</DaisyUiButton>
-			<DaisyUiButton
-				onClick={() => handleConfirm()}
-				className="d-btn d-btn-primary"
-				disabled={isLoading}
-				loading={isLoading}
-			>
-				Apply
-			</DaisyUiButton>
-		</div>
+	<div class="card-actions flex-col gap-2 sm:flex-row sm:justify-end">
+		<WashButton className="btn" onClick={() => cancel()} disabled={isLoading}>
+			{m.cancel()}
+		</WashButton>
+		<WashButton
+			onClick={() => handleConfirm()}
+			className="btn btn-primary"
+			disabled={isLoading}
+			loading={isLoading}
+			loadingText={m.sending()}
+		>
+			{m.send_reset_link()}
+		</WashButton>
 	</div>
 </div>

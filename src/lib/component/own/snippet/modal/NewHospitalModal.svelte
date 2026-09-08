@@ -1,11 +1,9 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiJoin from '$lib/component/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -15,8 +13,8 @@
 		PatientRegCountryRow,
 		PatientRegPostalCodeRow,
 		PatientRegStateRow
-	} from '$lib/model/type/heka/patient-reg-master.type';
-	import type { UserListRow } from '$lib/model/type/heka/ui-rows.type';
+	} from '$lib/model/type/medora/patient-reg-master.type';
+	import type { UserListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -115,20 +113,20 @@
 			postalCodesData,
 			ownersRes
 		] = await Promise.all([
-			fetch('/api/heka/master/lookup?kind=country').then((r) =>
+			fetch('/api/medora/master/lookup?kind=country').then((r) =>
 				r.json()
 			),
-			fetch('/api/heka/master/lookup?kind=state').then((r) =>
+			fetch('/api/medora/master/lookup?kind=state').then((r) =>
 				r.json()
 			),
-			fetch('/api/heka/master/lookup?kind=city').then((r) =>
+			fetch('/api/medora/master/lookup?kind=city').then((r) =>
 				r.json()
 			),
-			fetch('/api/heka/master/lookup?kind=postalCode').then((r) =>
+			fetch('/api/medora/master/lookup?kind=postalCode').then((r) =>
 				r.json()
 			),
 			fetch(
-				`/api/heka/auth/user?roleId=${RoleEnum.OWNER}&all=1`
+				`/api/medora/auth/user?roleId=${RoleEnum.OWNER}&all=1`
 			).then((r) => r.json())
 		]);
 		countries = countriesData;
@@ -140,7 +138,7 @@
 
 	async function loadHospitalForEdit(id: string) {
 		const r = await fetch(
-			`/api/heka/hospital?id=${encodeURIComponent(id)}`
+			`/api/medora/hospital?id=${encodeURIComponent(id)}`
 		);
 		const h = (await r.json()) as Record<string, unknown> | null;
 		if (!h || typeof h !== 'object') return;
@@ -265,7 +263,7 @@
 				establishedDate: establishedDate.trim() || undefined
 			};
 			if (id != null) {
-				const res = await fetch('/api/heka/hospital', {
+				const res = await fetch('/api/medora/hospital', {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ id, ...body })
@@ -280,7 +278,7 @@
 					m.toast_action_updated()
 				);
 			} else {
-				const res = await fetch('/api/heka/hospital', {
+				const res = await fetch('/api/medora/hospital', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(body)
@@ -349,7 +347,7 @@
 
 {#if isLoading}
 	<div class="flex items-center justify-center py-8">
-		<span class="d-loading d-loading-lg d-loading-spinner"></span>
+		<span class="loading loading-lg loading-spinner"></span>
 	</div>
 {:else}
 	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
@@ -358,13 +356,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-name"
-						className="shrink-0 sm:w-36 font-bold"
-						>Name <span class="text-error">*</span></DaisyUiLabel
-					>
+					<label for="hospital-name" class="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-name"
 							bind:value={name}
 							inputType="text"
@@ -376,12 +370,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-code"
-						className="shrink-0 sm:w-36">Code</DaisyUiLabel
-					>
+					<label for="hospital-code" class="shrink-0 sm:w-36">Code</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-code"
 							bind:value={code}
 							inputType="text"
@@ -392,10 +383,7 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-owner"
-						className="shrink-0 sm:w-36">Owner</DaisyUiLabel
-					>
+					<label for="hospital-owner" class="shrink-0 sm:w-36">Owner</label>
 					<div class="max-w-80 flex-1">
 						{#if isOwnerUser}
 							<p
@@ -406,44 +394,38 @@
 							</p>
 							<!-- ownerId is set to currentUserId in logic -->
 						{:else}
-							<DaisyUiSelect
+							<WashSelect
 								bind:value={ownerId}
 								optionHeader="Select owner ..."
 							>
 								{#each owners as o (o.id)}
 									<option value={o.id}>{o.name ?? o.email}</option>
 								{/each}
-							</DaisyUiSelect>
+							</WashSelect>
 						{/if}
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-country"
-						className="shrink-0 sm:w-36">Country</DaisyUiLabel
-					>
+					<label for="hospital-country" class="shrink-0 sm:w-36">Country</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
+						<WashSelect
 							bind:value={countryId}
 							optionHeader="Select a country ..."
 						>
 							{#each countries as data (data.id)}
 								<option value={String(data.id)}>{data.name}</option>
 							{/each}
-						</DaisyUiSelect>
+						</WashSelect>
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-state"
-						className="shrink-0 sm:w-36">State</DaisyUiLabel
-					>
+					<label for="hospital-state" class="shrink-0 sm:w-36">State</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
+						<WashSelect
 							bind:value={stateId}
 							optionHeader="Select a state ..."
 							disabled={!countryId}
@@ -451,18 +433,15 @@
 							{#each filteredStates as data (data.id)}
 								<option value={String(data.id)}>{data.name}</option>
 							{/each}
-						</DaisyUiSelect>
+						</WashSelect>
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-city"
-						className="shrink-0 sm:w-36">City</DaisyUiLabel
-					>
+					<label for="hospital-city" class="shrink-0 sm:w-36">City</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
+						<WashSelect
 							bind:value={cityId}
 							optionHeader="Select a city ..."
 							disabled={!stateId}
@@ -470,18 +449,15 @@
 							{#each filteredCities as data (data.id)}
 								<option value={String(data.id)}>{data.name}</option>
 							{/each}
-						</DaisyUiSelect>
+						</WashSelect>
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-postal"
-						className="shrink-0 sm:w-36">Postal Code</DaisyUiLabel
-					>
+					<label for="hospital-postal" class="shrink-0 sm:w-36">Postal Code</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiSelect
+						<WashSelect
 							bind:value={postalCodeId}
 							optionHeader="Select a postal code ..."
 							disabled={!cityId}
@@ -491,48 +467,42 @@
 									>{String(data.value)}</option
 								>
 							{/each}
-						</DaisyUiSelect>
+						</WashSelect>
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-phone"
-						className="shrink-0 sm:w-36">Phone</DaisyUiLabel
-					>
+					<label for="hospital-phone" class="shrink-0 sm:w-36">Phone</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiJoin>
-							<DaisyUiSelect
+						<div class="join flex">
+							<WashSelect
 								bind:value={phoneCountryId}
 								optionHeader="Select country code ..."
-								className="min-w-20 d-join-item"
+								className="min-w-20 join-item"
 							>
 								{#each countries as data (data.id)}
 									<option value={String(data.id)} class="gap-5"
 										>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
 									>
 								{/each}
-							</DaisyUiSelect>
-							<DaisyUiInputField
+							</WashSelect>
+							<WashInputField
 								id="hospital-phone"
 								bind:value={phone}
 								inputType="tel"
 								inputPlaceholderText="Main phone"
-								className="d-join-item"
+								className="join-item"
 							/>
-						</DaisyUiJoin>
+						</div>
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-email"
-						className="shrink-0 sm:w-36">Email</DaisyUiLabel
-					>
+					<label for="hospital-email" class="shrink-0 sm:w-36">Email</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-email"
 							bind:value={email}
 							inputType="email"
@@ -543,12 +513,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-website"
-						className="shrink-0 sm:w-36">Website</DaisyUiLabel
-					>
+					<label for="hospital-website" class="shrink-0 sm:w-36">Website</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-website"
 							bind:value={website}
 							inputType="url"
@@ -559,13 +526,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-established"
-						className="shrink-0 sm:w-36"
-						>Established date</DaisyUiLabel
-					>
+					<label for="hospital-established" class="shrink-0 sm:w-36">Established date</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-established"
 							bind:value={establishedDate}
 							inputType="date"
@@ -575,12 +538,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-logo"
-						className="shrink-0 sm:w-36">Logo URL</DaisyUiLabel
-					>
+					<label for="hospital-logo" class="shrink-0 sm:w-36">Logo URL</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiInputField
+						<WashInputField
 							id="hospital-logo"
 							bind:value={logoUrl}
 							inputType="url"
@@ -591,12 +551,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-address"
-						className="shrink-0 sm:w-36 pt-2">Address</DaisyUiLabel
-					>
+					<label for="hospital-address" class="shrink-0 sm:w-36 pt-2">Address</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiTextarea
+						<WashTextarea
 							id="hospital-address"
 							bind:value={address}
 							placeholder="Street, building, additional details"
@@ -606,13 +563,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<DaisyUiLabel
-						forText="hospital-desc"
-						className="shrink-0 sm:w-36 pt-2"
-						>Description</DaisyUiLabel
-					>
+					<label for="hospital-desc" class="shrink-0 sm:w-36 pt-2">Description</label>
 					<div class="max-w-80 flex-1">
-						<DaisyUiTextarea
+						<WashTextarea
 							id="hospital-desc"
 							bind:value={description}
 							placeholder="Short description"
@@ -622,22 +575,22 @@
 			</div>
 		</div>
 		<div
-			class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
+			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
 		>
-			<DaisyUiButton
+			<WashButton
 				type="button"
-				className="d-btn-ghost"
+				className="btn-ghost"
 				onClick={handleCancel}
 			>
 				{m.cancel()}
-			</DaisyUiButton>
-			<DaisyUiButton
+			</WashButton>
+			<WashButton
 				type="submit"
-				className="d-btn-primary"
+				className="btn-primary"
 				loading={isSubmitting}
 			>
 				{editId != null ? m.update() : m.create()}
-			</DaisyUiButton>
+			</WashButton>
 		</div>
 	</form>
 {/if}

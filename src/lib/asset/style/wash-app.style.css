@@ -1,0 +1,47 @@
+/*
+ * App-only Wash/Tailwind helpers (not shipped by menzies-design-wash-ui).
+ * Safelist horizontal tooltip placements for Tailwind content scan.
+ * WashTooltip toggles these at runtime; without a static reference they are omitted
+ * and every tip falls back to the default top placement from `.tooltip`.
+ */
+@source inline("tooltip-left tooltip-right");
+
+/*
+ * Closed <details> dropdown menus must not paint or expand scrollable overflow.
+ * Tailwind utilities like `flex` on `.dropdown-content` override the UA rule that
+ * hides non-summary children of closed <details>, which caused page-level
+ * horizontal scroll on every hospital page (module bar menus).
+ */
+details.dropdown:not([open]) > .dropdown-content {
+	display: none !important;
+}
+
+/*
+ * DaisyUI tooltip tips use absolute ::before/::after with width:max-content.
+ * Even at opacity:0 they expand ancestor scrollWidth. Suppress tip content while
+ * idle — do NOT use overflow:hidden on .tooltip (that clips left/right placement).
+ * Placement stays: near left → tooltip-right, near right → tooltip-left.
+ */
+.tooltip:not(:hover):not(:focus-within)[data-tip]::before,
+.tooltip:not(:hover):not(:focus-within)::after {
+	content: none !important;
+	display: none !important;
+}
+
+/* Module / chrome bars: never widen the app shell */
+.my-app > .navbar {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+/* MariTable actions: keep icon buttons on one row (do not collapse to 1%). */
+.mari-table-actions-col {
+	width: 1%;
+	min-width: 11rem;
+	white-space: nowrap;
+}
+.mari-table-actions-col .mari-table-row-actions,
+.mari-table-actions-col > div {
+	flex-wrap: nowrap;
+}

@@ -12,7 +12,7 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 **API base** (replace placeholders):
 
-`/api/heka/hospital/{hospital_id}/home/...`
+`/api/medora/hospital/{hospital_id}/home/...`
 
 ---
 
@@ -20,7 +20,7 @@ This document supports QA and regression for hospital-scoped inventory: **PR →
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |
-| AC-1 | Create levels and assignees | `GET`/`POST` approval-config API: `inventory-setup/approval-config` — add level 1 and 2 for store A, module `PR`, assign different staff to each level. Repeat for module `PO`. Optionally configure **`DI`**, **`DC`**, **`GRN`**, **`SI`**, **`SR`** the same way (codes: [`inv-approval.type.ts`](../src/lib/model/type/heka/inv-approval.type.ts)). | Rows in `inv_approval_level` / `inv_approval_assignee`; list API returns grouped levels with staff. |
+| AC-1 | Create levels and assignees | `GET`/`POST` approval-config API: `inventory-setup/approval-config` — add level 1 and 2 for store A, module `PR`, assign different staff to each level. Repeat for module `PO`. Optionally configure **`DI`**, **`DC`**, **`GRN`**, **`SI`**, **`SR`** the same way (codes: [`inv-approval.type.ts`](../src/lib/model/type/medora/inv-approval.type.ts)). | Rows in `inv_approval_level` / `inv_approval_assignee`; list API returns grouped levels with staff. |
 | AC-2 | Duplicate level same store+module | Attempt second **active** row with same `(hospital, store, module, level)` (or recreate after **delete** should succeed if only one row is active — partial unique on `deleted_at IS NULL`). | Rejected for duplicate **active** level; or revive path after delete per server behavior. |
 | AC-3 | Cross-hospital isolation | User with access only to hospital H1 calls API with H2 `hospital_id`. | 403 / not found per `ensureCanAccessHospital` pattern. |
 | AC-4 | No config | Submit PR for store with **no** approval levels for `PR`. | Appropriate error when workflow needs max level > 0 (or document behavior if zero levels allowed). |
@@ -147,5 +147,5 @@ Apply **`drizzle/0050_inv_department_consumption.sql`** (and seeds above for typ
 
 ## Document history
 
-- Initial version aligned with implementation under `src/lib/server/heka/inventory/` and routes `home/inventory/**`, `home/inventory-setup/approval-config`.
+- Initial version aligned with implementation under `src/lib/server/medora/inventory/` and routes `home/inventory/**`, `home/inventory-setup/approval-config`.
 - **2026-05-04**: Section **5b** (department consumption UI/API smoke cases); prerequisites / AC-1 / R-2 aligned with migration **`0050`** and `InvDepartmentConsumptionStatusTaggingEnum`.

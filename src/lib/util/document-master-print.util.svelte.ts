@@ -9,7 +9,7 @@ import { buildPrintDocumentHtml } from '$lib/util/print-document-html.util';
 import type {
 	ClinicalDocumentRow,
 	DocumentMasterPrintBootstrap
-} from '$lib/model/type/heka/document-print.type';
+} from '$lib/model/type/medora/document-print.type';
 
 export type PrintFromDocumentMasterOptions = {
 	hospitalId: string;
@@ -30,7 +30,7 @@ export async function fetchDocumentPrintBootstrap(
 	documentCode: string
 ): Promise<DocumentMasterPrintBootstrap> {
 	const res = await fetch(
-		`/api/heka/hospital/${hospitalId}/home/document-print?mode=bootstrap&code=${encodeURIComponent(documentCode)}`,
+		`/api/medora/hospital/${hospitalId}/home/document-print?mode=bootstrap&code=${encodeURIComponent(documentCode)}`,
 		{ credentials: 'include' }
 	);
 	if (!res.ok) {

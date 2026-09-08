@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { runInventoryStockAlertsCronJobs } from '$lib/server/heka/inventory/stock-alerts.server';
+import { runInventoryStockAlertsCronJobs } from '$lib/server/medora/inventory/stock-alerts.server';
 
 function extractCronSecret(request: Request): string | null {
 	const h = request.headers.get('authorization');

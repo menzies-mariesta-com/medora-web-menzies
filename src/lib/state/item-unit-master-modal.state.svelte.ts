@@ -1,4 +1,4 @@
-import type { ItemUnitMasterListRow } from '$lib/model/type/heka/ui-rows.type';
+import type { ItemUnitMasterListRow } from '$lib/model/type/medora/ui-rows.type';
 
 export const ItemUnitMasterModalState = $state<{
 	mode: 'create' | 'edit';
