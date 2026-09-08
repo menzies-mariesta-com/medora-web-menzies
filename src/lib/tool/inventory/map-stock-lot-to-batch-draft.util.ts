@@ -1,5 +1,5 @@
-import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
-import type { InventoryStockLotDto } from '$lib/model/type/heka/inventory-stock-lot.type';
+import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
+import type { InventoryStockLotDto } from '$lib/model/type/medora/inventory-stock-lot.type';
 
 /** Maps stock lots API rows to batch pick table drafts. */
 export function mapStockLotToBatchAllocationDraft(

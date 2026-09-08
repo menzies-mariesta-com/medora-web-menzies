@@ -1,6 +1,0 @@
-/*
- * Safelist horizontal tooltip placements for Tailwind/daisyUI content scan.
- * DaisyUiTooltip toggles these at runtime; without a static reference they are omitted
- * and every tip falls back to the default top placement from `.d-tooltip`.
- */
-@source inline("d-tooltip-left d-tooltip-right");

@@ -1,11 +1,11 @@
 import { page } from '$app/state';
 import type {
-	HekaPageModuleRow,
-	HekaPageRow,
+	MedoraPageModuleRow,
+	MedoraPageRow,
 	PageWithRelations
-} from '$lib/model/type/heka/page.type';
+} from '$lib/model/type/medora/page.type';
 
-export type PageTreeItem = HekaPageRow & { children: PageTreeItem[] };
+export type PageTreeItem = MedoraPageRow & { children: PageTreeItem[] };
 
 let fullPageData = $state<PageWithRelations[]>([]);
 
@@ -14,12 +14,12 @@ export function setPageData(data: PageWithRelations[]) {
 }
 
 /** Use in reactive context, e.g. $derived(getPageData()) */
-export function getPageData(): HekaPageRow[] {
+export function getPageData(): MedoraPageRow[] {
 	return fullPageData.map(({ module: _m, status: _s, ...p }) => p);
 }
 
 /** Use in reactive context, e.g. $derived(getUniqueModuleData()) */
-export function getUniqueModuleData(): HekaPageModuleRow[] {
+export function getUniqueModuleData(): MedoraPageModuleRow[] {
 	return Array.from(
 		new Map(
 			fullPageData
@@ -36,7 +36,7 @@ export function getUniqueModuleData(): HekaPageModuleRow[] {
 }
 
 function buildPageTree(
-	pages: HekaPageRow[],
+	pages: MedoraPageRow[],
 	parentId: number | null = null
 ): PageTreeItem[] {
 	return pages
@@ -60,16 +60,16 @@ function normPath(path: string | null | undefined): string {
 
 /**
  * Normalize current URL path for matching against DB pageUrl.
- * DB stores /heka/home/...; real URL is /heka/hospital/:id/home/...
+ * DB stores /medora/home/...; real URL is /medora/hospital/:id/home/...
  * So we rewrite pathname to the "logical" path for comparison.
  */
 export function pathnameForPageMatch(): string {
 	const path = normPath(page.url.pathname);
 	const match = path.match(
-		/^\/heka\/hospital\/([^/]+)\/home(\/.*)?$/
+		/^\/medora\/hospital\/([^/]+)\/home(\/.*)?$/
 	);
 	if (match) {
-		return `/heka/home${match[2] ?? ''}`;
+		return `/medora/home${match[2] ?? ''}`;
 	}
 	return path;
 }
@@ -80,11 +80,11 @@ export function pathnameForPageMatch(): string {
  * so we get Staff, not Registration. When we're on the section index (e.g. /staff), use exact match.
  * Use in reactive context, e.g. $derived(getCurrentParentPage()).
  */
-export function getCurrentParentPage(): HekaPageRow | null {
+export function getCurrentParentPage(): MedoraPageRow | null {
 	const path = normPath(pathnameForPageMatch());
 	const data = getPageData();
 	// 1. Longest strict prefix: we're under /staff/registration → parent is Staff
-	let best: HekaPageRow | null = null;
+	let best: MedoraPageRow | null = null;
 	let bestLen = -1;
 	for (const p of data) {
 		const u = normPath(p.pageUrl);
@@ -107,7 +107,7 @@ export function getCurrentParentPage(): HekaPageRow | null {
  * Ordered by sequenceNo.
  * Use in reactive context, e.g. $derived(getSubPages()).
  */
-export function getSubPages(): HekaPageRow[] {
+export function getSubPages(): MedoraPageRow[] {
 	const parent = getCurrentParentPage();
 	if (!parent) return [];
 	return getSubPagesForParentId(parent.id);
@@ -119,7 +119,7 @@ export function getSubPages(): HekaPageRow[] {
  */
 export function getSubPagesForPageUrl(
 	pageUrl: string | null | undefined
-): HekaPageRow[] {
+): MedoraPageRow[] {
 	const u = normPath(pageUrl);
 	if (!u) return [];
 	const parent = getPageData().find((p) => normPath(p.pageUrl) === u);
@@ -127,7 +127,7 @@ export function getSubPagesForPageUrl(
 	return getSubPagesForParentId(parent.id);
 }
 
-function getSubPagesForParentId(parentId: number): HekaPageRow[] {
+function getSubPagesForParentId(parentId: number): MedoraPageRow[] {
 	return getPageData()
 		.filter((p) => p.parentId === parentId)
 		.sort((a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0));

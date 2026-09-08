@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DaisyUiTabsContent from '$lib/component/daisyui/tabs/content/DaisyUiTabsContent.svelte';
-	import DaisyUiTabs from '$lib/component/daisyui/tabs/DaisyUiTabs.svelte';
-	import DaisyUiTabsTab from '$lib/component/daisyui/tabs/tab/DaisyUiTabsTab.svelte';
+	import WashTabsContent from '$lib/component/wash/tabs/content/WashTabsContent.svelte';
+	import WashTabs from '$lib/component/wash/tabs/WashTabs.svelte';
+	import WashTabsTab from '$lib/component/wash/tabs/tab/WashTabsTab.svelte';
 	import MariHtmlTextEditor from './html-editor/MariHtmlEditor.svelte';
 	import MariMarkdownEditor from './markdown-editor/MariMarkdownEditor.svelte';
 	import MariRichTextEditor from './rich-editor/MariRichEditor.svelte';
@@ -25,26 +25,26 @@
 </script>
 
 <div class="px-5 py-10">
-	<DaisyUiTabs className="d-tabs-box d-tabs-bottom">
-		<DaisyUiTabsTab groupName="hello" tabName="hello" checked
-			>Rich Editor</DaisyUiTabsTab
+	<WashTabs className="tabs-box tabs-bottom">
+		<WashTabsTab groupName="hello" tabName="hello" checked
+			>Rich Editor</WashTabsTab
 		>
-		<DaisyUiTabsContent tabName="hello">
+		<WashTabsContent tabName="hello">
 			<MariRichTextEditor />
-		</DaisyUiTabsContent>
+		</WashTabsContent>
 
-		<DaisyUiTabsTab groupName="hello" tabName="hello"
-			>Markdown</DaisyUiTabsTab
+		<WashTabsTab groupName="hello" tabName="hello"
+			>Markdown</WashTabsTab
 		>
-		<DaisyUiTabsContent tabName="hello">
+		<WashTabsContent tabName="hello">
 			<MariMarkdownEditor />
-		</DaisyUiTabsContent>
+		</WashTabsContent>
 
-		<DaisyUiTabsTab groupName="hello" tabName="hello"
-			>HTML</DaisyUiTabsTab
+		<WashTabsTab groupName="hello" tabName="hello"
+			>HTML</WashTabsTab
 		>
-		<DaisyUiTabsContent tabName="hello">
+		<WashTabsContent tabName="hello">
 			<MariHtmlTextEditor />
-		</DaisyUiTabsContent>
-	</DaisyUiTabs>
+		</WashTabsContent>
+	</WashTabs>
 </div>

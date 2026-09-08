@@ -2,7 +2,7 @@ import type {
 	BranchPricingConfigDto,
 	GrnLinePriceInput,
 	GrnPriceRuleFlags
-} from '$lib/model/type/heka/grn-pricing-config.type';
+} from '$lib/model/type/medora/grn-pricing-config.type';
 import {
 	freeQtyToPurchaseUnitQty,
 	purchaseUnitDenominatorQty

@@ -1,5 +1,5 @@
 /**
- * Stock / inventory alert emails — layout matches `reset-password.html` (Heka teal card).
+ * Stock / inventory alert emails — layout matches `reset-password.html` (Menzies Medora teal card).
  */
 import stockAlertHtml from './stock-alert.html?raw';
 
@@ -25,7 +25,7 @@ export function renderStockAlertEmail(
 ): { html: string; plainText: string } {
 	const footnote =
 		params.footnote ??
-		'You can change notification preferences in Heka under Inventory setup → Stock alerts.';
+		'You can change notification preferences in Menzies Medora under Inventory setup → Stock alerts.';
 
 	const html = stockAlertHtml
 		.replace(/\{\{metaTitle\}\}/g, escapeHtml(params.metaTitle))

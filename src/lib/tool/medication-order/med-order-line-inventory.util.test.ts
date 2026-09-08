@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
+import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
 import {
 	allocateFefoPurchaseQty,
 	applyDraftReservationsToLots

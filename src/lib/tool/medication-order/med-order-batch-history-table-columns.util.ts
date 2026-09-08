@@ -1,5 +1,5 @@
 import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
-import type { MedicationOrderBatchHistoryRow } from '$lib/model/type/heka/medication-order.type';
+import type { MedicationOrderBatchHistoryRow } from '$lib/model/type/medora/medication-order.type';
 import { formatMariTableDateTime } from '$lib/util/mari-table-datetime.util';
 
 export type MedOrderBatchHistoryColumnLabels = {

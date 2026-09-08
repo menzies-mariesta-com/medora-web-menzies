@@ -4,6 +4,9 @@ body {
 	margin: 0;
 	box-sizing: border-box;
 	height: 100%;
+	max-width: 100%;
+	overflow-x: hidden;
+	font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
 }
 
 .my-app {
@@ -12,13 +15,17 @@ body {
 	flex: 1;
 	overflow: hidden;
 
-	width: 100dvw;
+	/* Use % not 100dvw — vw units include the scrollbar gutter and cause
+	   invalid page-level horizontal scroll when a vertical scrollbar is present. */
+	width: 100%;
+	max-width: 100%;
 	height: 100dvh;
 
 	.my-main {
 		display: flex;
 		flex-direction: column;
 		flex: 1;
+		min-width: 0;
 		overflow: auto;
 	}
 }
@@ -27,100 +34,6 @@ body {
 	.my-main {
 		margin: 0 auto;
 		max-width: 1400px;
-	}
-}
-
-.my-dotted-background-teal {
-	display: flex;
-
-	min-height: 100vh;
-	width: 100%;
-
-	align-items: center;
-	justify-content: center;
-
-	/* Base background aligned with theme */
-	background-color: color-mix(
-		in srgb,
-		var(--color-base-100) 95%,
-		var(--color-primary) 5%
-	);
-
-	background-image:
-		radial-gradient(var(--color-primary) 1px, transparent 1px),
-		radial-gradient(var(--color-primary) 1px, transparent 1px);
-
-	background-size: 36px 36px;
-	background-position:
-		0 0,
-		18px 18px;
-
-	position: relative;
-	overflow: hidden;
-
-	padding: 1.25rem;
-}
-
-/* Sliding gradient layers (based on your example). */
-.my-auth-bg {
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	z-index: 0;
-
-	/* Match your example: center content with a horizontally moving gradient. */
-	opacity: 0.8;
-	left: -50%;
-	right: -50%;
-
-	will-change: transform;
-}
-
-.my-auth-bg--1 {
-	animation: my-auth-slide 3s ease-in-out infinite alternate;
-	background-image: linear-gradient(
-		-60deg,
-		var(--color-primary) 50%,
-		var(--color-secondary) 50%
-	);
-}
-
-.my-auth-bg--2 {
-	animation: my-auth-slide 4s ease-in-out infinite alternate-reverse;
-	background-image: linear-gradient(
-		-60deg,
-		var(--color-secondary) 50%,
-		var(--color-accent) 50%
-	);
-}
-
-.my-auth-bg--3 {
-	animation: my-auth-slide 5s ease-in-out infinite alternate;
-	background-image: linear-gradient(
-		-60deg,
-		var(--color-accent) 50%,
-		var(--color-primary) 50%
-	);
-}
-
-.my-dotted-background-teal .my-main {
-	position: relative;
-	z-index: 1;
-}
-
-@keyframes my-auth-slide {
-	0% {
-		transform: translateX(-25%);
-	}
-	100% {
-		transform: translateX(25%);
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.my-auth-bg {
-		/* Still animate, but extremely slow. */
-		animation-duration: 60s !important;
 	}
 }
 

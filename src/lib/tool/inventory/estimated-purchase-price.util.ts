@@ -1,4 +1,4 @@
-import type { GrnCostContext } from '$lib/model/type/heka/sale-price-formula.type';
+import type { GrnCostContext } from '$lib/model/type/medora/sale-price-formula.type';
 import {
 	computeGrnCostPerUnit,
 	ESTIMATED_PURCHASE_LANDED_COST_FLAGS

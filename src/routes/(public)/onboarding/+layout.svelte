@@ -7,7 +7,7 @@
 	let { children } = $props();
 </script>
 
-<div class="my-web">
+<div class="my-web min-h-dvh">
 	<GPublicOnboardingNavbar />
 	<div class="my-main">
 		{#key page.url.pathname}

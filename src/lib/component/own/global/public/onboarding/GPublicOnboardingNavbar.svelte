@@ -1,16 +1,12 @@
 <script lang="ts">
+	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
+
 	import { onMount } from 'svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiNavbar from '$lib/component/daisyui/navbar/DaisyUiNavbar.svelte';
-	import DaisyUiNavbarEnd from '$lib/component/daisyui/navbar/end/DaisyUiNavbarEnd.svelte';
-	import DaisyUiNavbarStart from '$lib/component/daisyui/navbar/start/DaisyUiNavbarStart.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import DaisyUiNavbarCenter from '$lib/component/daisyui/navbar/center/DaisyUiNavbarCenter.svelte';
-	import DaisyUiLink from '$lib/component/daisyui/link/DaisyUiLink.svelte';
-
 	const routerUtil = new RouterUtil();
 	let sessionData = $state<{
 		user: {
@@ -30,47 +26,44 @@
 	}
 </script>
 
-<DaisyUiNavbar>
-	<DaisyUiNavbarStart>
-		<DaisyUiButton
+<div class="{washRecipes.navbar}">
+	<div class="navbar-start">
+		<WashButton
 			onClick={() => routerUtil.goToRoute(WebRoutesEnum.DEFAULT)}
-			className="my-ft-h3 d-btn-ghost"
+			className="my-ft-h3 btn-ghost font-[family-name:var(--font-display)]"
 		>
-			{m.heka()}
-		</DaisyUiButton>
-	</DaisyUiNavbarStart>
+			{m.menzies_medora()}
+		</WashButton>
+	</div>
 
-	<DaisyUiNavbarCenter>
-		<DaisyUiLink
-			href={WebRoutesEnum.ONBOARDING_MARKETPLACE}
-			className="d-btn"
-		>
+	<div class="navbar-center">
+		<a class="btn" href={WebRoutesEnum.ONBOARDING_MARKETPLACE}>
 			{m.market_place()}
-		</DaisyUiLink>
-	</DaisyUiNavbarCenter>
+		</a>
+	</div>
 
-	<DaisyUiNavbarEnd className="gap-3">
+	<div class="navbar-end gap-3">
 		{#if sessionData}
 			<div class="my-ft-small flex items-center gap-2">
 				<span class="opacity-70">
 					{sessionData.user.name ?? sessionData.user.email}
 				</span>
 			</div>
-			<DaisyUiButton onClick={handleSignOut}
-				>{m.log_out()}</DaisyUiButton
+			<WashButton onClick={handleSignOut}
+				>{m.log_out()}</WashButton
 			>
 		{:else}
-			<DaisyUiButton
+			<WashButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.SIGNUP)}
 			>
 				{m.sign_up()}
-			</DaisyUiButton>
-			<DaisyUiButton
+			</WashButton>
+			<WashButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.LOGIN)}
-				className="d-btn-primary"
+				className="btn-primary"
 			>
 				{m.login()}
-			</DaisyUiButton>
+			</WashButton>
 		{/if}
-	</DaisyUiNavbarEnd>
-</DaisyUiNavbar>
+	</div>
+</div>

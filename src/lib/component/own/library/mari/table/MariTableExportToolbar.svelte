@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import type { MariTableExportFormat } from '$lib/model/type/mari-table-export.type';
 	import {
 		clientExportColumnsToPdfColumns,
@@ -106,43 +106,43 @@
 
 <div class="flex flex-wrap items-center gap-2">
 	{#if formatSet.has('csv')}
-		<DaisyUiButton
+		<WashButton
 			type="button"
-			className="d-btn-sm d-btn-outline"
+			className="btn-sm btn-outline"
 			disabled={disabled || exporting}
 			onClick={() => void onCsv()}
 		>
 			{m.inv_report_export_csv()}
-		</DaisyUiButton>
+		</WashButton>
 	{/if}
 	{#if formatSet.has('xlsx')}
-		<DaisyUiButton
+		<WashButton
 			type="button"
-			className="d-btn-sm d-btn-outline"
+			className="btn-sm btn-outline"
 			disabled={disabled || exporting}
 			onClick={() => void onXlsx()}
 		>
 			{m.inv_report_export_xlsx()}
-		</DaisyUiButton>
+		</WashButton>
 	{/if}
 	{#if formatSet.has('pdf')}
-		<DaisyUiButton
+		<WashButton
 			type="button"
-			className="d-btn-sm d-btn-outline"
+			className="btn-sm btn-outline"
 			disabled={disabled || exporting}
 			onClick={() => void onPdf()}
 		>
 			{m.inv_report_export_pdf()}
-		</DaisyUiButton>
+		</WashButton>
 	{/if}
 	{#if formatSet.has('print')}
-		<DaisyUiButton
+		<WashButton
 			type="button"
-			className="d-btn-sm d-btn-outline"
+			className="btn-sm btn-outline"
 			disabled={disabled || exporting}
 			onClick={() => void onPrint()}
 		>
 			{m.inv_report_export_print()}
-		</DaisyUiButton>
+		</WashButton>
 	{/if}
 </div>

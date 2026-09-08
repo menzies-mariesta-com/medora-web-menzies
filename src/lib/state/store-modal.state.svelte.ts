@@ -1,4 +1,4 @@
-import type { StoreListRow } from '$lib/model/type/heka/ui-rows.type';
+import type { StoreListRow } from '$lib/model/type/medora/ui-rows.type';
 
 /** Set before opening Create/Edit store modal (hospital-scoped). */
 export const StoreModalState = $state<{

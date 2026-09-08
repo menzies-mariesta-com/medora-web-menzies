@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { DeletePatientConfirmState } from '$lib/state/delete-patient-confirm.state.svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -24,12 +24,12 @@
 		class="flex items-center justify-between border-b border-base-300 pb-4"
 	>
 		<h2 class="text-lg font-semibold">Delete patient</h2>
-		<DaisyUiButton
-			className="d-btn-ghost d-btn-sm d-btn-circle"
+		<WashButton
+			className="btn-ghost btn-sm btn-circle"
 			onClick={() => cancel()}
 		>
 			<LucideX className="size-5" />
-		</DaisyUiButton>
+		</WashButton>
 	</div>
 	<div class="mt-4">
 		{#if pending}
@@ -38,28 +38,28 @@
 				<strong class="text-primary"> {email} </strong>
 				below.
 			</p>
-			<DaisyUiInputField
-				className="d-input-sm w-full"
+			<WashInputField
+				className="input-sm w-full"
 				inputPlaceholderText="Type the patient email"
 				bind:value={typedEmail}
 			/>
-			<div class="d-modal-action mt-4">
-				<DaisyUiButton className="d-btn" onClick={() => cancel()}>
+			<div class="modal-action mt-4">
+				<WashButton className="btn" onClick={() => cancel()}>
 					Cancel
-				</DaisyUiButton>
-				<DaisyUiButton
-					className="d-btn d-btn-error"
+				</WashButton>
+				<WashButton
+					className="btn btn-error"
 					disabled={!isMatch}
 					onClick={handleConfirm}
 				>
 					Delete
-				</DaisyUiButton>
+				</WashButton>
 			</div>
 		{:else}
 			<p class="opacity-70">No patient selected.</p>
-			<div class="d-modal-action mt-4">
-				<DaisyUiButton className="d-btn" onClick={() => cancel()}
-					>Cancel</DaisyUiButton
+			<div class="modal-action mt-4">
+				<WashButton className="btn" onClick={() => cancel()}
+					>Cancel</WashButton
 				>
 			</div>
 		{/if}

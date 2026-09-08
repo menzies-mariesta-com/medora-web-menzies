@@ -1,4 +1,4 @@
-import type { DocumentForPrintSetting } from '$lib/model/type/heka/document-print.type';
+import type { DocumentForPrintSetting } from '$lib/model/type/medora/document-print.type';
 import type {
 	DocumentSettingRow,
 	DocumentSettingWithRelations

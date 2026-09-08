@@ -2,3 +2,5 @@ allowBuilds:
   esbuild: true
   argon2: true
   core-js: true
+patchedDependencies:
+  postcss-selector-parser@6.0.10: patches/postcss-selector-parser@6.0.10.patch

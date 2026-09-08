@@ -1,6 +1,6 @@
 -- Inventory Setup navigation parent + child URLs; item purchase/issue unit conversion per hospital item
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no", "created_at", "updated_at")
-VALUES (22, 'Inventory Setup', 1, 1, NULL, '/heka/home/administration/inventory-setup', 11, now(), now())
+VALUES (22, 'Inventory Setup', 1, 1, NULL, '/medora/home/administration/inventory-setup', 11, now(), now())
 ON CONFLICT ("id") DO UPDATE SET
 	"name" = EXCLUDED."name",
 	"module_id" = EXCLUDED."module_id",
@@ -12,29 +12,29 @@ ON CONFLICT ("id") DO UPDATE SET
 --> statement-breakpoint
 UPDATE "page" SET
 	"parent_id" = 22,
-	"page_url" = '/heka/home/administration/inventory-setup/stores',
+	"page_url" = '/medora/home/administration/inventory-setup/stores',
 	"sequence_no" = 1,
 	"updated_at" = now()
 WHERE "id" = 19;
 --> statement-breakpoint
 UPDATE "page" SET
 	"parent_id" = 22,
-	"page_url" = '/heka/home/administration/inventory-setup/item-master',
+	"page_url" = '/medora/home/administration/inventory-setup/item-master',
 	"sequence_no" = 2,
 	"updated_at" = now()
 WHERE "id" = 20;
 --> statement-breakpoint
 UPDATE "page" SET
 	"parent_id" = 22,
-	"page_url" = '/heka/home/administration/inventory-setup/pharmacy-generic',
+	"page_url" = '/medora/home/administration/inventory-setup/pharmacy-generic',
 	"sequence_no" = 3,
 	"updated_at" = now()
 WHERE "id" = 21;
 --> statement-breakpoint
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no", "created_at", "updated_at")
 VALUES
-	(23, 'Unit Master', 1, 1, 22, '/heka/home/administration/inventory-setup/unit-master', 4, now(), now()),
-	(24, 'Item Unit Master', 1, 1, 22, '/heka/home/administration/inventory-setup/item-unit-master', 5, now(), now())
+	(23, 'Unit Master', 1, 1, 22, '/medora/home/administration/inventory-setup/unit-master', 4, now(), now()),
+	(24, 'Item Unit Master', 1, 1, 22, '/medora/home/administration/inventory-setup/item-unit-master', 5, now(), now())
 ON CONFLICT ("id") DO UPDATE SET
 	"name" = EXCLUDED."name",
 	"module_id" = EXCLUDED."module_id",

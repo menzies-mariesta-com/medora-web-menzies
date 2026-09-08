@@ -32,7 +32,7 @@
 		showOutsideDays?: boolean;
 		/** Show ISO week numbers */
 		showWeekNumbers?: boolean;
-		/** Extra classes applied in addition to `d-cally` */
+		/** Extra classes applied in addition to `cally` */
 		className?: string;
 		/** Optional callback fired when value changes */
 		onChange?: (value: string) => void;
@@ -273,7 +273,7 @@
 {#if callyLoaded}
 	<calendar-date
 		bind:this={calendarEl}
-		class="d-cally {className}"
+		class="cally {className}"
 		{value}
 		{min}
 		{max}
@@ -292,9 +292,9 @@
 		</span>
 
 		{#if monthsCount === 1}
-			<div slot="heading" class="d-cally-heading-controls">
+			<div slot="heading" class="cally-heading-controls">
 				<select
-					class="d-select-bordered d-select min-w-28 d-select-sm"
+					class="select-bordered select min-w-28 select-sm"
 					bind:value={yearSelectValue}
 					onchange={(e) => {
 						e.stopPropagation();
@@ -307,7 +307,7 @@
 				</select>
 
 				<select
-					class="d-select-bordered d-select min-w-28 d-select-sm"
+					class="select-bordered select min-w-28 select-sm"
 					bind:value={monthSelectValue}
 					onchange={(e) => {
 						e.stopPropagation();
@@ -340,7 +340,7 @@
 {:else}
 	<!-- Placeholder while Cally loads (client-side only) -->
 	<div
-		class="d-cally {className} flex items-center justify-center p-8"
+		class="cally {className} flex items-center justify-center p-8"
 	>
 		<span class="loading loading-spinner loading-lg"></span>
 	</div>
@@ -361,7 +361,7 @@
 		display: none;
 	}
 
-	:global(.d-cally-heading-controls) {
+	:global(.cally-heading-controls) {
 		display: flex;
 		flex-direction: row;
 		align-items: center;
@@ -370,7 +370,7 @@
 		inline-size: 100%;
 	}
 
-	:global(.d-cally-heading-controls .d-select) {
+	:global(.cally-heading-controls .select) {
 		inline-size: 100%;
 	}
 

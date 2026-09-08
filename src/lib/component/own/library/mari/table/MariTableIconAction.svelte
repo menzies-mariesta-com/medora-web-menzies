@@ -1,6 +1,6 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import type { Snippet } from 'svelte';
 
 	export type MariTableActionColor =
@@ -32,12 +32,12 @@
 		icon: Snippet;
 	} = $props();
 
-	const tooltipClass = $derived(`d-tooltip-${color}`);
+	const tooltipClass = $derived(`tooltip-${color}`);
 
 	const buttonClass = $derived.by(() => {
-		const parts = ['d-btn-sm', 'd-btn-square', 'd-btn-ghost'];
+		const parts = ['btn-sm', 'btn-square', 'btn-ghost'];
 		if (color !== 'ghost') {
-			parts.push(`d-btn-${color}`);
+			parts.push(`btn-${color}`);
 		}
 		if (className.trim()) {
 			parts.push(className.trim());
@@ -46,8 +46,8 @@
 	});
 </script>
 
-<DaisyUiTooltip {tooltipText} className={tooltipClass}>
-	<DaisyUiButton
+<WashTooltip {tooltipText} className={tooltipClass}>
+	<WashButton
 		className={buttonClass}
 		{disabled}
 		{loading}
@@ -55,5 +55,5 @@
 		onClick={onClick}
 	>
 		{@render icon()}
-	</DaisyUiButton>
-</DaisyUiTooltip>
+	</WashButton>
+</WashTooltip>

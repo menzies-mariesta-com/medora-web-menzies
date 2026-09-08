@@ -2,7 +2,7 @@ import type {
 	PrefixFieldPath,
 	PrefixFormatPart,
 	PrefixFormatSpec
-} from '$lib/model/type/heka/prefix-format.type';
+} from '$lib/model/type/medora/prefix-format.type';
 
 const KNOWN_FIELD_PATHS: readonly PrefixFieldPath[] = [
 	'financial_year.code',
