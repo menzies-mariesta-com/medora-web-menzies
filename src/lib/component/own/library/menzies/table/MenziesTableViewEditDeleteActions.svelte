@@ -2,8 +2,8 @@
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let {
@@ -17,9 +17,9 @@
 		viewLoading = false,
 		editLoading = false,
 		deleteLoading = false,
-		viewTooltip = m.mari_table_tooltip_view(),
-		editTooltip = m.mari_table_tooltip_edit(),
-		deleteTooltip = m.mari_table_tooltip_delete()
+		viewTooltip = m.menzies_table_tooltip_view(),
+		editTooltip = m.menzies_table_tooltip_edit(),
+		deleteTooltip = m.menzies_table_tooltip_delete()
 	}: {
 		onView: () => void;
 		onEdit: () => void;
@@ -37,30 +37,30 @@
 	} = $props();
 </script>
 
-<MariTableRowActionGroup>
-	<MariTableIconAction
+<MenziesTableRowActionGroup>
+	<MenziesTableIconAction
 		tooltipText={viewTooltip}
-		color="ghost"
+		color="primary"
 		disabled={disabled || viewDisabled}
 		loading={viewLoading}
 		onClick={onView}
 	>
 		{#snippet icon()}
-			<LucideEye className="size-4" />
+			<LucideEye className="size-3.5" />
 		{/snippet}
-	</MariTableIconAction>
-	<MariTableIconAction
+	</MenziesTableIconAction>
+	<MenziesTableIconAction
 		tooltipText={editTooltip}
-		color="accent"
+		color="secondary"
 		disabled={disabled || editDisabled}
 		loading={editLoading}
 		onClick={onEdit}
 	>
 		{#snippet icon()}
-			<LucidePencil className="size-4" />
+			<LucidePencil className="size-3.5" />
 		{/snippet}
-	</MariTableIconAction>
-	<MariTableIconAction
+	</MenziesTableIconAction>
+	<MenziesTableIconAction
 		tooltipText={deleteTooltip}
 		color="error"
 		disabled={disabled || deleteDisabled}
@@ -68,7 +68,7 @@
 		onClick={onDelete}
 	>
 		{#snippet icon()}
-			<LucideTrash2 className="size-4" />
+			<LucideTrash2 className="size-3.5" />
 		{/snippet}
-	</MariTableIconAction>
-</MariTableRowActionGroup>
+	</MenziesTableIconAction>
+</MenziesTableRowActionGroup>

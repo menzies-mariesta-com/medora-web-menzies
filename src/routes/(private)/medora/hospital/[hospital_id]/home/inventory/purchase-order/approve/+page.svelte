@@ -9,9 +9,9 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import InventoryTableTextCell from '$lib/component/own/local/private/medora/inventory/InventoryTableTextCell.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -315,11 +315,11 @@
 		void load();
 	});
 
-	const lineColumns = $derived.by((): MariTableColumn<PoLine>[] => {
+	const lineColumns = $derived.by((): MenziesTableColumn<PoLine>[] => {
 		const cat = iumCatalogById;
 		const pending =
 			detail?.statusTaggingId === InvPoStatusTaggingEnum.PENDING;
-		const qtyCol: MariTableColumn<PoLine> = pending
+		const qtyCol: MenziesTableColumn<PoLine> = pending
 			? {
 					id: 'quantity',
 					header: m.inv_common_quantity(),
@@ -349,7 +349,7 @@
 							cat
 						)
 				};
-		const priceCol: MariTableColumn<PoLine> = pending
+		const priceCol: MenziesTableColumn<PoLine> = pending
 			? {
 					id: 'unitPrice',
 					header: m.inv_po_line_unit_price(),
@@ -589,7 +589,7 @@
 				{m.inv_po_lines()}
 			</h2>
 			<div class={`${TableEnum.HEIGHT} mb-8 min-w-0`}>
-				<MariTable
+				<MenziesTable
 					columns={lineColumns}
 					rows={detail.lines}
 					isLoading={loading}
@@ -616,7 +616,7 @@
 							{/if}
 						</div>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		{/if}
 	</WashCardBody>

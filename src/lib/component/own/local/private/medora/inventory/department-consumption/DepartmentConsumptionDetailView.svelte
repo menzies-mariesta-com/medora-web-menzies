@@ -5,9 +5,9 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { InvDepartmentConsumptionStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import type { DepartmentConsumptionDetailLine } from '$lib/model/type/medora/department-consumption-detail.type';
@@ -83,7 +83,7 @@
 		void loadDetail();
 	});
 
-	const readColumns: MariTableColumn<DepartmentConsumptionDetailLine>[] =
+	const readColumns: MenziesTableColumn<DepartmentConsumptionDetailLine>[] =
 		[
 			{
 				id: 'item',
@@ -203,8 +203,8 @@
 				<span class="font-medium">{m.inv_dc_lines_title()}</span>
 			</div>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
-					columns={readColumns as MariTableColumn[]}
+				<MenziesTable
+					columns={readColumns as MenziesTableColumn[]}
 					rows={detail.lines ?? []}
 					showRefreshButton={false}
 					enableColumnFilters={false}

@@ -10,9 +10,9 @@
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -261,7 +261,7 @@
 		history.replaceState(history.state, '', next);
 	});
 
-	const lineColumns = $derived.by((): MariTableColumn<PoLine>[] => {
+	const lineColumns = $derived.by((): MenziesTableColumn<PoLine>[] => {
 		const cat = iumCatalogById;
 		return [
 			{
@@ -569,7 +569,7 @@
 				{m.inv_po_lines()}
 			</h2>
 			<div class={`${TableEnum.HEIGHT} no-print mb-8 min-w-0`}>
-				<MariTable
+				<MenziesTable
 					columns={lineColumns}
 					rows={detail.lines}
 					isLoading={detailLoading}
@@ -596,7 +596,7 @@
 							{/if}
 						</div>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		{/if}
 	</WashCardBody>

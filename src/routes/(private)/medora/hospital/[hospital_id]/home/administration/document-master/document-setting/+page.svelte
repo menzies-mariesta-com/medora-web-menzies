@@ -5,13 +5,13 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
+	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from '$lib/util/document-placeholder.util';
@@ -414,7 +414,7 @@
 		footerHtml = formatHtmlForEditor(footerHtml);
 	}
 
-	const columns: MariTableColumn<DocumentSettingWithRelations>[] = [
+	const columns: MenziesTableColumn<DocumentSettingWithRelations>[] = [
 		{
 			id: 'displayNo',
 			header: 'No',
@@ -916,7 +916,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MariTable
+				<MenziesTable
 					rows={settingList}
 					{columns}
 					{isLoading}
@@ -945,7 +945,7 @@
 				>
 					{#snippet rowActions(row, rowIndex)}
 						{@const typedRow = row as DocumentSettingWithRelations}
-						<MariTableViewEditDeleteActions
+						<MenziesTableViewEditDeleteActions
 							onView={() => startView(typedRow)}
 							onEdit={() => startEdit(typedRow)}
 							onDelete={() => handleDelete(typedRow)}
@@ -960,7 +960,7 @@
 							deleteTooltip={m.delete_data()}
 						/>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

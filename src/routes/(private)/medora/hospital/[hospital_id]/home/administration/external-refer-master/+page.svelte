@@ -15,10 +15,10 @@
 	import LExternalReferMasterModal from '$lib/component/own/local/private/medora/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableViewEditDeleteActions from '$lib/component/own/library/mari/table/MariTableViewEditDeleteActions.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -170,7 +170,7 @@
 
 	const REFER_COLUMN_COUNT = 14;
 
-	const referColumns: MariTableColumn<ExternalReferWithRelations>[] =
+	const referColumns: MenziesTableColumn<ExternalReferWithRelations>[] =
 		[
 			{
 				id: 'id',
@@ -282,7 +282,7 @@
 </div>
 
 <div class="{TableEnum.HEIGHT} overflow-auto">
-	<MariTable
+	<MenziesTable
 		rows={referList}
 		columns={referColumns}
 		{isLoading}
@@ -305,7 +305,7 @@
 		on:pageChange={() => fetchRefer()}
 	>
 		{#snippet rowActions(row, _rowIndex)}
-			<MariTableViewEditDeleteActions
+			<MenziesTableViewEditDeleteActions
 				onView={() => viewData(row.id)}
 				onEdit={() => editData(row.id)}
 				onDelete={() => handleDelete(row.id)}
@@ -313,7 +313,7 @@
 				deleteDisabled={isLoading}
 			/>
 		{/snippet}
-	</MariTable>
+	</MenziesTable>
 </div>
 
 {#if modalState}

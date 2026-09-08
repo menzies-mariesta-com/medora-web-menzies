@@ -78,7 +78,7 @@ export async function listMasterPaginated(
 		entity: MasterEntity;
 	} & PaginationParams & {
 			search?: string;
-			/** Per-column filter values; keys match MariTable column `id` */
+			/** Per-column filter values; keys match MenziesTable column `id` */
 			columnFilters?: Record<string, string | undefined>;
 		}
 ) {

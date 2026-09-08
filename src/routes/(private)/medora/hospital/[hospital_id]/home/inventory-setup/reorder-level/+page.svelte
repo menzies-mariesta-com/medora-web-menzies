@@ -6,9 +6,9 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import ReorderLevelFormDialogContent from '$lib/component/own/local/private/medora/inventory-setup/reorder-level/ReorderLevelFormDialogContent.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -276,7 +276,7 @@
 		loadRows();
 	});
 
-	const columns: MariTableColumn<ReorderLevelRow>[] = [
+	const columns: MenziesTableColumn<ReorderLevelRow>[] = [
 		{
 			id: 'storeName',
 			header: m.inv_common_store(),
@@ -338,7 +338,7 @@
 	<WashCard>
 		<WashCardBody className="p-0">
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					{rows}
 					{columns}
 					{isLoading}
@@ -385,7 +385,7 @@
 							</div>
 						</td>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

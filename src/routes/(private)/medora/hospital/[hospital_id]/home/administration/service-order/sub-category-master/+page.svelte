@@ -15,12 +15,12 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -205,7 +205,7 @@
 		return cat?.categoryName ?? `#${id}`;
 	}
 
-	const subCategoryColumns: MariTableColumn<SubCategoryListRow>[] = [
+	const subCategoryColumns: MenziesTableColumn<SubCategoryListRow>[] = [
 		{
 			id: 'id',
 			header: 'No.',
@@ -259,7 +259,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					rows={subCategories}
 					columns={subCategoryColumns}
 					{isLoading}
@@ -292,12 +292,12 @@
 					}}
 				>
 					{#snippet rowActions(row, rowIndex)}
-						<MariTableEditDeleteActions
+						<MenziesTableEditDeleteActions
 							onEdit={() => openEdit(row as SubCategoryListRow)}
 							onDelete={() => handleDelete(row as SubCategoryListRow)}
 						/>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 		</WashCardBody>
 	</WashCard>

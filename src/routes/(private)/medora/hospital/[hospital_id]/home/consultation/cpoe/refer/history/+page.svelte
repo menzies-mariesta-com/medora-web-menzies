@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import MariTable from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { YesNoEnum } from '$lib/model/enum/db-link';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
@@ -121,7 +121,7 @@
 		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
 	];
 
-	const columns: MariTableColumn<ReferHistoryWithRelations>[] = [
+	const columns: MenziesTableColumn<ReferHistoryWithRelations>[] = [
 		{
 			id: 'referAt',
 			header: 'Refer At',
@@ -447,7 +447,7 @@
 		<div
 			class="flex-1 overflow-x-auto overflow-y-hidden rounded-lg border border-base-200 bg-base-100 shadow-sm"
 		>
-			<MariTable
+			<MenziesTable
 				{columns}
 				{rows}
 				{totalRowCount}
@@ -470,7 +470,7 @@
 				enableColumnFilters={true}
 				on:refresh={() => loadData({ force: true })}
 				on:filtersChange={(event) => {
-					// MariTable already updates the UI via bind:columnFilters, but we
+					// MenziesTable already updates the UI via bind:columnFilters, but we
 					// still handle the remote reload here (debounced).
 					const nextFilters = event.detail.filters;
 					const nextKey = JSON.stringify(nextFilters);
@@ -493,8 +493,8 @@
 				{#snippet rowActions(row, rowIndex)}
 					{@const typedRow = row as ReferHistoryWithRelations}
 					{#if isRecipientDoctor(typedRow) && isPendingReferRow(typedRow)}
-						<MariTableRowActionGroup>
-							<MariTableIconAction
+						<MenziesTableRowActionGroup>
+							<MenziesTableIconAction
 								tooltipText="Accept"
 								color="primary"
 								disabled={acceptingRowId === typedRow.id ||
@@ -506,8 +506,8 @@
 								{#snippet icon()}
 									<LucideCircleCheck className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-							<MariTableIconAction
+							</MenziesTableIconAction>
+							<MenziesTableIconAction
 								tooltipText="Reject"
 								color="error"
 								disabled={cancellingRowId === typedRow.id ||
@@ -519,11 +519,11 @@
 								{#snippet icon()}
 									<LucideCircleX className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-						</MariTableRowActionGroup>
+							</MenziesTableIconAction>
+						</MenziesTableRowActionGroup>
 					{:else}
-						<MariTableRowActionGroup>
-							<MariTableIconAction
+						<MenziesTableRowActionGroup>
+							<MenziesTableIconAction
 								tooltipText="Cancel"
 								color="warning"
 								disabled={cancellingRowId === typedRow.id ||
@@ -535,11 +535,11 @@
 								{#snippet icon()}
 									<LucideBan className="size-4" />
 								{/snippet}
-							</MariTableIconAction>
-						</MariTableRowActionGroup>
+							</MenziesTableIconAction>
+						</MenziesTableRowActionGroup>
 					{/if}
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	{/if}
 </div>

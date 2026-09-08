@@ -14,15 +14,15 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -54,7 +54,7 @@
 
 	let tableFilters = $state<Record<string, string>>({});
 
-	const branchColumns: MariTableColumn<StaffRegHospitalBranchRow>[] =
+	const branchColumns: MenziesTableColumn<StaffRegHospitalBranchRow>[] =
 		[
 			{
 				id: 'no',
@@ -255,7 +255,7 @@
 				</p>
 			{:else}
 				<div class={TableEnum.HEIGHT}>
-					<MariTable
+					<MenziesTable
 						rows={branches}
 						columns={branchColumns}
 						{isLoading}
@@ -284,9 +284,9 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const branch = row as StaffRegHospitalBranchRow}
-							<MariTableRowActionGroup>
-								<MariTableIconAction
-									tooltipText={m.mari_table_tooltip_edit()}
+							<MenziesTableRowActionGroup>
+								<MenziesTableIconAction
+									tooltipText={m.menzies_table_tooltip_edit()}
 									color="accent"
 									loading={editingBranchId === branch.id}
 									disabled={deletingBranchId === branch.id}
@@ -296,9 +296,9 @@
 									{#snippet icon()}
 										<LucidePencil className="size-4" />
 									{/snippet}
-								</MariTableIconAction>
-								<MariTableIconAction
-									tooltipText={m.mari_table_tooltip_delete()}
+								</MenziesTableIconAction>
+								<MenziesTableIconAction
+									tooltipText={m.menzies_table_tooltip_delete()}
 									color="error"
 									loading={deletingBranchId === branch.id}
 									disabled={deletingBranchId === branch.id}
@@ -308,10 +308,10 @@
 									{#snippet icon()}
 										<LucideTrash2 className="size-4" />
 									{/snippet}
-								</MariTableIconAction>
-							</MariTableRowActionGroup>
+								</MenziesTableIconAction>
+							</MenziesTableRowActionGroup>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			{/if}
 		</WashCardBody>

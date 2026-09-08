@@ -6,14 +6,14 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
-	import MariTableIconAction from '$lib/component/own/library/mari/table/MariTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideMoveUp from '$lib/component/own/library/lucide/LucideMoveUp.svelte';
 	import LucideMoveDown from '$lib/component/own/library/lucide/LucideMoveDown.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -389,7 +389,7 @@
 		});
 	}
 
-	const columns: MariTableColumn<PurposeListRow>[] = [
+	const columns: MenziesTableColumn<PurposeListRow>[] = [
 		{
 			id: 'purpose',
 			header: m.prefix_configuration_column_purpose(),
@@ -427,7 +427,7 @@
 	</div>
 
 	<div class={TableEnum.HEIGHT}>
-		<MariTable
+		<MenziesTable
 			{columns}
 			rows={purposeListRows}
 			{isLoading}
@@ -435,19 +435,19 @@
 			actionsVariant="none"
 		>
 			{#snippet rowActions(row)}
-				<MariTableRowActionGroup>
-					<MariTableIconAction
-						tooltipText={m.mari_table_tooltip_edit()}
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
+						tooltipText={m.menzies_table_tooltip_edit()}
 						color="accent"
 						onClick={() => startEdit(row.purpose)}
 					>
 						{#snippet icon()}
 							<LucidePencil className="size-4" />
 						{/snippet}
-					</MariTableIconAction>
-				</MariTableRowActionGroup>
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	</div>
 {:else if editingPurpose}
 	<WashCard>

@@ -11,9 +11,9 @@
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		InvApprovalActionEnum,
@@ -71,7 +71,7 @@
 		return `/medora/hospital/${hospitalId}/home/inventory/department-consumption/${encodeURIComponent(id)}`;
 	}
 
-	const columns: MariTableColumn<Row>[] = $derived([
+	const columns: MenziesTableColumn<Row>[] = $derived([
 		{
 			id: 'consumptionNo',
 			header: m.inv_dc_consumption_no(),
@@ -210,8 +210,8 @@
 		</div>
 
 		<div class={TableEnum.HEIGHT}>
-			<MariTable
-				columns={columns as MariTableColumn[]}
+			<MenziesTable
+				columns={columns as MenziesTableColumn[]}
 				rows={list}
 				bind:currentPage
 				bind:pageSize={pageSizeStr}
@@ -282,7 +282,7 @@
 						{/if}
 					</div>
 				{/snippet}
-			</MariTable>
+			</MenziesTable>
 		</div>
 	</WashCardBody>
 </WashCard>

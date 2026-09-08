@@ -1,7 +1,7 @@
 <script lang="ts">
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import InventoryBatchQtyPickQtyCell from '$lib/component/own/local/private/medora/inventory/InventoryBatchQtyPickQtyCell.svelte';
 	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -98,7 +98,7 @@
 	}
 
 	const columns = $derived.by(() => {
-		const base: MariTableColumn<ConsumptionBatchAllocationDraft>[] = [
+		const base: MenziesTableColumn<ConsumptionBatchAllocationDraft>[] = [
 			{
 				id: 'batchNo',
 				header: m.inv_stock_col_batch(),
@@ -180,7 +180,7 @@
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-base-300">
-	<MariTable
+	<MenziesTable
 		rows={allocations}
 		{columns}
 		isLoading={false}

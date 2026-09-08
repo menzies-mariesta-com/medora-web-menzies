@@ -181,12 +181,12 @@ dialog.modal,
 /* Pagination & table toolbars: still clickable, normal pointer */
 .clinical-visit-locked .join,
 .clinical-visit-locked .join :is(button, a),
-.clinical-visit-locked .mari-table-toolbar,
+.clinical-visit-locked .menzies-table-toolbar,
 .clinical-visit-locked
-	.mari-table-toolbar
+	.menzies-table-toolbar
 	:is(button, select, input, a),
-.clinical-visit-locked .mari-table-header-filters,
-.clinical-visit-locked .mari-table-header-filters :is(select, input) {
+.clinical-visit-locked .menzies-table-header-filters,
+.clinical-visit-locked .menzies-table-header-filters :is(select, input) {
 	pointer-events: auto;
 	cursor: pointer;
 }

@@ -19,7 +19,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
-	import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
@@ -475,7 +475,7 @@
 	}
 
 	const lineColumns = $derived.by(
-		(): MariTableColumn<PrLineForm>[] => [
+		(): MenziesTableColumn<PrLineForm>[] => [
 			{
 				id: 'itemLabel',
 				header: m.inv_common_item(),

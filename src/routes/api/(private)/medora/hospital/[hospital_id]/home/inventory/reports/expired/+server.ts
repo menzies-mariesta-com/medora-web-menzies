@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { parseMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
+import { parseMenziesTableColumnFilters } from '$lib/tool/menzies/menzies-table-query.util';
 import { listExpiryLots } from '$lib/server/medora/inventory/stock-alerts.server';
 
 export const GET: RequestHandler = async (event) => {
@@ -36,7 +36,7 @@ export const GET: RequestHandler = async (event) => {
 			typeof daysSoon === 'number' && Number.isFinite(daysSoon)
 				? daysSoon
 				: undefined,
-		columnFilters: parseMariTableColumnFilters(sp),
+		columnFilters: parseMenziesTableColumnFilters(sp),
 		limit:
 			typeof limit === 'number' && Number.isFinite(limit)
 				? limit

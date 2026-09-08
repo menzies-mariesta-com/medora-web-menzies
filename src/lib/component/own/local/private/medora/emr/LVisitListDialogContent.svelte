@@ -12,9 +12,9 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { page } from '$app/state';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 
 	const VISIT_LIST_DEFAULT_PAGE_SIZE = 20;
@@ -96,7 +96,7 @@
 		return `${years}y`;
 	}
 
-	const visitColumns: MariTableColumn<PatientVisitForEmrList>[] = [
+	const visitColumns: MenziesTableColumn<PatientVisitForEmrList>[] = [
 		{
 			id: 'visitNo',
 			header: 'Visit No',
@@ -356,7 +356,7 @@
 	</div>
 
 	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
-		<MariTable
+		<MenziesTable
 			rows={visits}
 			columns={visitColumns}
 			masterFilterHospitalId={hospitalId}

@@ -7,9 +7,9 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -294,7 +294,7 @@
 	});
 
 	const lineColumns = $derived.by(
-		(): MariTableColumn<PrLineForm>[] => [
+		(): MenziesTableColumn<PrLineForm>[] => [
 			{
 				id: 'itemLabel',
 				header: m.inv_common_item(),

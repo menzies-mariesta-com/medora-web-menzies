@@ -3,9 +3,9 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { medoraHospitalHome } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
@@ -14,7 +14,7 @@
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import NewHospitalModal from '$lib/component/own/snippet/modal/NewHospitalModal.svelte';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
@@ -36,7 +36,7 @@
 		owner?: { id: string; name: string | null; email: string } | null;
 	};
 
-	const hospitalColumns: MariTableColumn<HospitalWithOwner>[] = [
+	const hospitalColumns: MenziesTableColumn<HospitalWithOwner>[] = [
 		{
 			id: 'name',
 			header: m.name(),
@@ -286,7 +286,7 @@
 		<WashCard>
 			<WashCardBody>
 				<div class={TableEnum.HEIGHT}>
-					<MariTable
+					<MenziesTable
 						rows={hospitals}
 						columns={hospitalColumns}
 						{isLoading}
@@ -322,14 +322,14 @@
 									{m.enter()}
 								</WashButton>
 								{#if canManageHospitals}
-									<MariTableEditDeleteActions
+									<MenziesTableEditDeleteActions
 										onEdit={() => openEditHospitalModal(row)}
 										onDelete={() => handleDelete(row)}
 									/>
 								{/if}
 							</div>
 						{/snippet}
-					</MariTable>
+					</MenziesTable>
 				</div>
 			</WashCardBody>
 		</WashCard>

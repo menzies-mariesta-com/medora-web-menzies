@@ -10,7 +10,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import type {
@@ -22,9 +22,9 @@
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LObservationOrderLineDeleteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDeleteDialogContent.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
@@ -750,7 +750,7 @@
 		);
 	}
 
-	const detailColumns: MariTableColumn<PendingItem>[] = [
+	const detailColumns: MenziesTableColumn<PendingItem>[] = [
 		{
 			id: 'serviceId',
 			header: 'No.',
@@ -821,7 +821,7 @@
 		}
 	];
 
-	const historyColumns: MariTableColumn<HistoryItem>[] = [
+	const historyColumns: MenziesTableColumn<HistoryItem>[] = [
 		{
 			id: 'status',
 			header: 'Status',
@@ -1089,7 +1089,7 @@
 							>Order</WashCardBodyTitle
 						>
 						<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-							<MariTable
+							<MenziesTable
 								rows={[]}
 								columns={detailColumns}
 								isLoading={true}
@@ -1321,7 +1321,7 @@
 								<div
 									class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
 								>
-									<MariTable
+									<MenziesTable
 										rows={pagedPendingItems}
 										columns={detailColumns}
 										isLoading={false}
@@ -1337,14 +1337,14 @@
 										useRemoteFilters={true}
 									>
 										{#snippet rowActions(row, rowIndex)}
-											<MariTableEditDeleteActions
+											<MenziesTableEditDeleteActions
 												onEdit={() =>
 													startEditDetail(row as PendingItem)}
 												onDelete={() =>
 													handleDeleteDetail(row as PendingItem)}
 											/>
 										{/snippet}
-									</MariTable>
+									</MenziesTable>
 								</div>
 							{/if}
 						</div>

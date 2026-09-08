@@ -24,10 +24,10 @@
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
-	import MariTableRowActionGroup from '$lib/component/own/library/mari/table/MariTableRowActionGroup.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -260,7 +260,7 @@
 		});
 	}
 
-	const patientColumns: MariTableColumn<PatientWithRelations>[] = [
+	const patientColumns: MenziesTableColumn<PatientWithRelations>[] = [
 		{
 			id: 'code',
 			header: 'Patient Code',
@@ -354,7 +354,7 @@
 </script>
 
 <div class={TableEnum.HEIGHT}>
-	<MariTable
+	<MenziesTable
 		rows={patientList}
 		columns={patientColumns}
 		{isLoading}
@@ -387,7 +387,7 @@
 	>
 		{#snippet rowActions(row, rowIndex)}
 			{@const patientRow = row as PatientWithRelations}
-			<MariTableRowActionGroup>
+			<MenziesTableRowActionGroup>
 				<WashTooltip
 					tooltipText="view data"
 					className="tooltip-ghost"
@@ -452,9 +452,9 @@
 						<LucideTrash2 className="size-5" />
 					</WashButton>
 				</WashTooltip>
-			</MariTableRowActionGroup>
+			</MenziesTableRowActionGroup>
 		{/snippet}
-	</MariTable>
+	</MenziesTable>
 </div>
 
 <!-- Full-screen view/edit patient dialog -->

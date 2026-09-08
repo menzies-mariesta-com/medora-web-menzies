@@ -16,11 +16,11 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MariTableEditDeleteActions from '$lib/component/own/library/mari/table/MariTableEditDeleteActions.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 
@@ -51,7 +51,7 @@
 		null;
 
 	const columns = $derived.by(
-		(): MariTableColumn<UnitMasterListRow>[] => [
+		(): MenziesTableColumn<UnitMasterListRow>[] => [
 			{
 				id: 'name',
 				header: m.unit_master_name(),
@@ -226,7 +226,7 @@
 	<WashCard>
 		<WashCardBody>
 			<div class={TableEnum.HEIGHT}>
-				<MariTable
+				<MenziesTable
 					{rows}
 					{columns}
 					masterFilterHospitalId={hospitalId}
@@ -260,12 +260,12 @@
 					}}
 				>
 					{#snippet rowActions(row, index)}
-						<MariTableEditDeleteActions
+						<MenziesTableEditDeleteActions
 							onEdit={() => openEdit(row)}
 							onDelete={() => handleDelete(row)}
 						/>
 					{/snippet}
-				</MariTable>
+				</MenziesTable>
 			</div>
 			{#if totalPages > 1}
 				<div class="mt-4 flex justify-center gap-2">

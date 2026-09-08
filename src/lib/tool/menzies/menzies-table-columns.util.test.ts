@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
-	isMariTableDatabaseIdColumn,
-	isMariTableRowNumberColumn,
-	normalizeMariTableColumns
-} from './mari-table-columns.util';
-import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+	isMenziesTableDatabaseIdColumn,
+	isMenziesTableRowNumberColumn,
+	normalizeMenziesTableColumns
+} from './menzies-table-columns.util';
+import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 
-describe('mari-table-columns.util', () => {
+describe('menzies-table-columns.util', () => {
 	it('detects row number columns', () => {
 		expect(
-			isMariTableRowNumberColumn({ id: 'no', header: 'No.' })
+			isMenziesTableRowNumberColumn({ id: 'no', header: 'No.' })
 		).toBe(true);
 		expect(
-			isMariTableRowNumberColumn({
+			isMenziesTableRowNumberColumn({
 				id: 'id',
 				header: 'No.',
 				format: (_v, _r, i) => i + 1
@@ -22,10 +22,10 @@ describe('mari-table-columns.util', () => {
 
 	it('detects database id columns', () => {
 		expect(
-			isMariTableDatabaseIdColumn({ id: 'id', header: 'ID', field: 'id' })
+			isMenziesTableDatabaseIdColumn({ id: 'id', header: 'ID', field: 'id' })
 		).toBe(true);
 		expect(
-			isMariTableDatabaseIdColumn({
+			isMenziesTableDatabaseIdColumn({
 				id: 'hospitalId',
 				header: 'Hospital',
 				field: 'hospitalId'
@@ -35,7 +35,7 @@ describe('mari-table-columns.util', () => {
 
 	it('keeps resolved-name columns', () => {
 		expect(
-			isMariTableDatabaseIdColumn({
+			isMenziesTableDatabaseIdColumn({
 				id: 'storeId',
 				header: 'Store',
 				field: 'storeId',
@@ -43,14 +43,14 @@ describe('mari-table-columns.util', () => {
 			})
 		).toBe(false);
 		expect(
-			isMariTableDatabaseIdColumn({
+			isMenziesTableDatabaseIdColumn({
 				id: 'visitNo',
 				header: 'Visit no.',
 				field: 'visitNo'
 			})
 		).toBe(false);
 		expect(
-			isMariTableDatabaseIdColumn({
+			isMenziesTableDatabaseIdColumn({
 				id: 'createdByName',
 				header: 'Created by',
 				field: 'createdByName'
@@ -59,11 +59,11 @@ describe('mari-table-columns.util', () => {
 	});
 
 	it('prepends No. and strips id columns', () => {
-		const input: MariTableColumn[] = [
+		const input: MenziesTableColumn[] = [
 			{ id: 'id', header: 'ID', field: 'id' },
 			{ id: 'name', header: 'Name', field: 'name' }
 		];
-		const out = normalizeMariTableColumns(input, {
+		const out = normalizeMenziesTableColumns(input, {
 			currentPage: 2,
 			pageSize: 10
 		});
@@ -73,11 +73,11 @@ describe('mari-table-columns.util', () => {
 	});
 
 	it('replaces visitId with visitNo when visitNo is missing', () => {
-		const input: MariTableColumn[] = [
+		const input: MenziesTableColumn[] = [
 			{ id: 'visitId', header: 'Visit ID', field: 'visitId' },
 			{ id: 'batchNo', header: 'Batch', field: 'batchNo' }
 		];
-		const out = normalizeMariTableColumns(input, {
+		const out = normalizeMenziesTableColumns(input, {
 			currentPage: 1,
 			pageSize: 25
 		});
@@ -87,7 +87,7 @@ describe('mari-table-columns.util', () => {
 	});
 
 	it('keeps createdByName when stripping createdBy', () => {
-		const input: MariTableColumn[] = [
+		const input: MenziesTableColumn[] = [
 			{
 				id: 'createdByName',
 				header: 'Created by',
@@ -99,7 +99,7 @@ describe('mari-table-columns.util', () => {
 				field: 'createdBy'
 			}
 		];
-		const out = normalizeMariTableColumns(input, {
+		const out = normalizeMenziesTableColumns(input, {
 			currentPage: 1,
 			pageSize: 25
 		});

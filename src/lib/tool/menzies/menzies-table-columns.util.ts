@@ -1,4 +1,4 @@
-import type { MariTableColumn } from '$lib/component/own/library/mari/table/MariTable.svelte';
+import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 
 const ROW_NUMBER_COLUMN_IDS = new Set([
 	'no',
@@ -19,7 +19,7 @@ const NEVER_STRIP_FIELDS = new Set([
 	'receivedByName'
 ]);
 
-/** Raw identifier fields removed from MariTable; map to human-readable column. */
+/** Raw identifier fields removed from MenziesTable; map to human-readable column. */
 const STRIP_IDENTIFIER_FIELDS = new Set([
 	'id',
 	'hospitalId',
@@ -51,7 +51,7 @@ const REPLACEMENT_FOR_STRIPPED_FIELD: Record<
 };
 
 function columnUsesField(
-	columns: MariTableColumn[],
+	columns: MenziesTableColumn[],
 	field: string
 ): boolean {
 	return columns.some((c) => (c.field ?? c.id) === field);
@@ -67,7 +67,7 @@ function headerImpliesIdentifier(header: unknown): boolean {
 	return /\bid\b/.test(h) && !h.includes('valid') && !h.includes('grid');
 }
 
-export function isMariTableRowNumberColumn(col: MariTableColumn): boolean {
+export function isMenziesTableRowNumberColumn(col: MenziesTableColumn): boolean {
 	const h = String(col.header ?? '').trim();
 	if (h === 'No.' || h === 'No' || h === '#') return true;
 	if (ROW_NUMBER_COLUMN_IDS.has(col.id)) return true;
@@ -76,8 +76,8 @@ export function isMariTableRowNumberColumn(col: MariTableColumn): boolean {
 	return false;
 }
 
-export function isMariTableDatabaseIdColumn(col: MariTableColumn): boolean {
-	if (isMariTableRowNumberColumn(col)) return false;
+export function isMenziesTableDatabaseIdColumn(col: MenziesTableColumn): boolean {
+	if (isMenziesTableRowNumberColumn(col)) return false;
 	const field = col.field ?? col.id;
 	if (NEVER_STRIP_FIELDS.has(field) || NEVER_STRIP_FIELDS.has(col.id)) {
 		return false;
@@ -90,8 +90,8 @@ export function isMariTableDatabaseIdColumn(col: MariTableColumn): boolean {
 }
 
 function replacementColumnForStripped(
-	stripped: MariTableColumn
-): MariTableColumn | null {
+	stripped: MenziesTableColumn
+): MenziesTableColumn | null {
 	const field = stripped.field ?? stripped.id;
 	const spec = REPLACEMENT_FOR_STRIPPED_FIELD[field];
 	if (!spec) return null;
@@ -109,7 +109,7 @@ function replacementColumnForStripped(
 export function mariTableRowNoColumn(options: {
 	currentPage: number;
 	pageSize: number;
-}): MariTableColumn {
+}): MenziesTableColumn {
 	const { currentPage, pageSize } = options;
 	return {
 		id: 'no',
@@ -122,9 +122,9 @@ export function mariTableRowNoColumn(options: {
 }
 
 function standardizeRowNumberColumn(
-	col: MariTableColumn,
+	col: MenziesTableColumn,
 	options: { currentPage: number; pageSize: number }
-): MariTableColumn {
+): MenziesTableColumn {
 	return {
 		...col,
 		id: 'no',
@@ -139,18 +139,18 @@ function standardizeRowNumberColumn(
 }
 
 /**
- * Ensures every MariTable has a leading "No." column, strips raw identifier columns,
+ * Ensures every MenziesTable has a leading "No." column, strips raw identifier columns,
  * and swaps visitId / createdBy / updatedBy for visitNo / names when needed.
  */
-export function normalizeMariTableColumns(
-	columns: MariTableColumn[],
+export function normalizeMenziesTableColumns(
+	columns: MenziesTableColumn[],
 	options: { currentPage: number; pageSize: number }
-): MariTableColumn[] {
-	const normalized: MariTableColumn[] = [];
+): MenziesTableColumn[] {
+	const normalized: MenziesTableColumn[] = [];
 	let hasRowNo = false;
 
 	for (const col of columns) {
-		if (isMariTableDatabaseIdColumn(col)) {
+		if (isMenziesTableDatabaseIdColumn(col)) {
 			const replacement = replacementColumnForStripped(col);
 			if (
 				replacement &&
@@ -161,7 +161,7 @@ export function normalizeMariTableColumns(
 			}
 			continue;
 		}
-		if (isMariTableRowNumberColumn(col)) {
+		if (isMenziesTableRowNumberColumn(col)) {
 			hasRowNo = true;
 			normalized.push(standardizeRowNumberColumn(col, options));
 			continue;

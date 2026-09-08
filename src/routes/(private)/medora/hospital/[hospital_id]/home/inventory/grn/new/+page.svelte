@@ -19,10 +19,10 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MariTable, {
-		type MariTableColumn,
-		type MariTableColumnsInput
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn,
+		type MenziesTableColumnsInput
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
@@ -409,7 +409,7 @@
 		return ium?.conversionDisplay ?? '—';
 	}
 
-	const directLineTableColumns: MariTableColumn<GrnDirectLine>[] = [
+	const directLineTableColumns: MenziesTableColumn<GrnDirectLine>[] = [
 		{
 			id: 'item',
 			header: m.inv_common_item(),
@@ -785,7 +785,7 @@
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_grn_select_po(),
-					columns: poPickerColumns as MariTableColumnsInput,
+					columns: poPickerColumns as MenziesTableColumnsInput,
 					rows: poList,
 					pageSize: '150'
 				}
@@ -805,7 +805,7 @@
 		return `${p.poNo ?? '—'} · ${p.supplierName ?? p.statusName ?? '—'}`;
 	});
 
-	const poPickerColumns = $derived.by((): MariTableColumn[] => [
+	const poPickerColumns = $derived.by((): MenziesTableColumn[] => [
 		{
 			id: 'poNo',
 			header: m.inv_po_no(),
@@ -1280,7 +1280,7 @@
 	);
 
 	const grnLineColumns = $derived.by(
-		(): MariTableColumn<GrnLineTableRow>[] => [
+		(): MenziesTableColumn<GrnLineTableRow>[] => [
 			{
 				id: 'item',
 				header: m.inv_common_item(),
@@ -1705,8 +1705,8 @@
 						</h3>
 					</div>
 					<div class="h-[420px] min-h-0 w-full">
-						<MariTable
-							columns={grnLineColumns as MariTableColumn[]}
+						<MenziesTable
+							columns={grnLineColumns as MenziesTableColumn[]}
 							rows={grnLineTableRows}
 							isLoading={false}
 							showRowActions={true}
@@ -1745,7 +1745,7 @@
 									</WashTooltip>
 								</div>
 							{/snippet}
-						</MariTable>
+						</MenziesTable>
 					</div>
 				</div>
 			{:else if grnFormMode === 'fromPo' && selectedPoId && lineForms.length === 0 && poLines.length > 0}

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { InventoryMovementKindFilter } from '$lib/model/type/medora/inventory-report.type';
-import { parseMariTableColumnFilters } from '$lib/tool/mari/mari-table-query.util';
+import { parseMenziesTableColumnFilters } from '$lib/tool/menzies/menzies-table-query.util';
 import { listInventoryMovement } from '$lib/server/medora/inventory/stock-reports.server';
 
 function parseKind(
@@ -32,7 +32,7 @@ export const GET: RequestHandler = async (event) => {
 			? Number(limitStr)
 			: undefined;
 
-	const columnFilters = parseMariTableColumnFilters(sp);
+	const columnFilters = parseMenziesTableColumnFilters(sp);
 	const kindFromFilter = columnFilters.kind?.trim().toUpperCase();
 	if (kindFromFilter === 'GRN' || kindFromFilter === 'DISSUE' || kindFromFilter === 'DCONSUME') {
 		delete columnFilters.kind;

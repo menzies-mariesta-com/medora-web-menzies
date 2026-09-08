@@ -7,9 +7,9 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import MariTable, {
-		type MariTableColumn
-	} from '$lib/component/own/library/mari/table/MariTable.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -236,7 +236,7 @@
 		return `/medora/hospital/${hospitalId}/home/inventory/grn/${encodeURIComponent(grnId)}`;
 	}
 
-	const columns: MariTableColumn<GrnRow>[] = $derived([
+	const columns: MenziesTableColumn<GrnRow>[] = $derived([
 		{
 			id: 'storeName',
 			header: m.inv_grn_col_store(),
@@ -362,8 +362,8 @@
 
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
-		<MariTable
-			columns={columns as MariTableColumn[]}
+		<MenziesTable
+			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			isLoading={listLoading}
 			bind:currentPage
@@ -435,6 +435,6 @@
 					{/if}
 				</div>
 			{/snippet}
-		</MariTable>
+		</MenziesTable>
 	{/key}
 </div>
