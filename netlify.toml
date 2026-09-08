@@ -7,6 +7,8 @@
 
 [build.environment]
 	NODE_VERSION = "22"
+	# Match local lockfile (pnpm 11). Netlify default pnpm 10 fails on patchedDependencies.
+	PNPM_VERSION = "11.1.0"
 	# Private GitHub Packages (@menzies-mariesta-com/*): set NODE_AUTH_TOKEN in the Netlify UI
 	# (Site settings → Environment variables). Token is read from .npmrc.
 
