@@ -1,7 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- PO manual draft shape */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
@@ -63,7 +63,7 @@
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
 		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<WashSearchSelect
+		<SearchSelect
 			value={draftManualLine?.itemId
 				? String(draftManualLine.itemId)
 				: ''}
@@ -84,7 +84,7 @@
 
 	<div>
 		<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-		<WashSearchSelect
+		<SearchSelect
 			value={draftManualLine?.itemUnitMasterId != null
 				? String(draftManualLine.itemUnitMasterId)
 				: ''}

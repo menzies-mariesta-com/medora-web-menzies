@@ -1,7 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- shared draft line shape across PR/DI/issue flows */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
@@ -205,7 +205,7 @@
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
 		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<WashSearchSelect
+		<SearchSelect
 			value={draftLine?.itemId ? String(draftLine.itemId) : ''}
 			searchFn={stockEnrichment
 				? searchItemsWithStock
@@ -233,7 +233,7 @@
 
 	<div>
 		<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-		<WashSearchSelect
+		<SearchSelect
 			value={draftLine?.itemUnitMasterId != null
 				? String(draftLine.itemUnitMasterId)
 				: ''}

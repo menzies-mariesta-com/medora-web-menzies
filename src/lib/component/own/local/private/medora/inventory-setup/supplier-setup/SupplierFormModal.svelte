@@ -5,6 +5,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import { SupplierModalState } from '$lib/state/supplier-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -380,31 +381,15 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-phone-cc" class="shrink-0 sm:w-40">{m.inventory_party_phone_country()}</label>
-			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="sup-phone-cc"
-					bind:value={selectedPhoneCountryId}
-					optionHeader={m.select_country_code()}
-				>
-					{#each countryData as c (c.id)}
-						<option value={String(c.id)}
-							>{c.name} (+{c.countryCallingCode})</option
-						>
-					{/each}
-				</WashSelect>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
 			<label for="sup-phone" class="shrink-0 sm:w-40">{m.phone()}</label>
 			<div class="max-w-lg flex-1">
-				<WashInputField
+				<MenziesPhoneField
 					id="sup-phone"
-					bind:value={phone}
-					inputType="text"
-					inputPlaceholderText={m.phone()}
+					bind:countryId={selectedPhoneCountryId}
+					bind:phone
+					countries={countryData}
+					optionHeader={m.select_country_code()}
+					placeholder={m.phone()}
 				/>
 			</div>
 		</div>
