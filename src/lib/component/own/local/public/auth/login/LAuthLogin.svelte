@@ -1,37 +1,32 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiFieldset from '$lib/component/daisyui/fieldset/DaisyUiFieldset.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiJoin from '$lib/component/daisyui/join/DaisyUiJoin.svelte';
-	import DaisyUiLink from '$lib/component/daisyui/link/DaisyUiLink.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/own/library/lucide/LucideEyeOff.svelte';
+	import AuthSplitHero from '$lib/component/own/local/public/auth/shared/AuthSplitHero.svelte';
+	import AuthTemplateCard from '$lib/component/own/local/public/auth/shared/AuthTemplateCard.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import HekaLogo from '$lib/asset/image/heka_logo.webp';
-	import DaisyUiFieldsetLegend from '$lib/component/daisyui/fieldset/legend/DaisyUiFieldsetLegend.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { toastError } from '$lib/util/toast-copy.util';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import ResetPasswordModal from '$lib/component/own/snippet/modal/ResetPasswordModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
+	const msg = m as Record<string, (inputs?: Record<string, string>) => string>;
 
 	function sanitizeRedirectTo(redirectTo: string | null) {
-		if (!redirectTo) return WebRoutesEnum.HEKA_HOSPITAL;
+		if (!redirectTo) return WebRoutesEnum.MEDORA_HOSPITAL;
 		const value = redirectTo.trim();
 		const lower = value.toLowerCase();
 
-		if (!value.startsWith('/')) return WebRoutesEnum.HEKA_HOSPITAL;
-		if (value.startsWith('//')) return WebRoutesEnum.HEKA_HOSPITAL;
+		if (!value.startsWith('/')) return WebRoutesEnum.MEDORA_HOSPITAL;
+		if (value.startsWith('//')) return WebRoutesEnum.MEDORA_HOSPITAL;
 		if (lower.startsWith('http:') || lower.startsWith('https:'))
-			return WebRoutesEnum.HEKA_HOSPITAL;
+			return WebRoutesEnum.MEDORA_HOSPITAL;
 
 		return value;
 	}
@@ -40,14 +35,9 @@
 		sanitizeRedirectTo(page.url.searchParams.get('redirectTo'))
 	);
 
-	function openResetPasswordModal() {
-		dialogService.open({
-			component: ResetPasswordModal
-		});
-	}
-
 	let isPasswordVisible = $state(false);
 	let isLoading = $state(false);
+	let rememberMe = $state(true);
 
 	function togglePasswordVisibility() {
 		isPasswordVisible = !isPasswordVisible;
@@ -68,6 +58,7 @@
 			return;
 		}
 		isLoading = true;
+		void rememberMe;
 		const { data, error } = await authClient.signIn.email({
 			email,
 			password,
@@ -76,12 +67,7 @@
 		isLoading = false;
 
 		if (error) {
-			toastError(
-				toastService,
-				m.login(),
-				m.toast_action_failed(),
-				error
-			);
+			toastError(toastService, m.login(), m.toast_action_failed(), error);
 			return;
 		}
 		if (data) {
@@ -90,81 +76,100 @@
 	}
 </script>
 
-<DaisyUiCard className="w-full max-w-md ">
-	<DaisyUiCardBody>
-		<form onsubmit={handleSubmit}>
-			<DaisyUiFieldset
-				className="bg-base-200 border-base-300 rounded-box w-full border p-6 gap-5"
-			>
-				<DaisyUiFieldsetLegend>
-					<DaisyUiLink className="" href={WebRoutesEnum.DEFAULT}>
-						<img src={HekaLogo} alt="" class="w-42" />
-					</DaisyUiLink>
-				</DaisyUiFieldsetLegend>
-
-				<!-- email -->
-				<section id="email-input">
-					<DaisyUiInputField
-						inputType="email"
-						inputPlaceholderText={m.email()}
-						nameText="email"
-						className="w-full"
-					/>
-				</section>
-
-				<!-- password -->
-				<section id="password">
-					<DaisyUiJoin className="w-full">
-						<DaisyUiInputField
-							inputType={isPasswordVisible ? 'text' : 'password'}
-							inputPlaceholderText={m.password()}
-							nameText="password"
-							className="d-join-item"
-						/>
-						<DaisyUiButton
-							className="d-join-item"
-							type="button"
-							onClick={togglePasswordVisibility}
+<AuthSplitHero
+	headline={msg.auth_welcome_back_title()}
+	body={msg.auth_welcome_back_body()}
+>
+	<form class="w-full" onsubmit={handleSubmit}>
+		<AuthTemplateCard
+			title={msg.auth_sign_in_title()}
+			description={msg.auth_sign_in_subtitle()}
+			titleTone="secondary"
+		>
+			<fieldset class="fieldset">
+				<label class="label" for="auth-login-email">
+					<span class="label-text">
+						{m.email()}<span
+							class="align-top text-sm leading-none text-error"
+							aria-hidden="true">*</span
 						>
-							{#if isPasswordVisible}
-								<LucideEye />
-							{:else}
-								<LucideEyeOff />
-							{/if}
-						</DaisyUiButton>
-					</DaisyUiJoin>
-				</section>
+					</span>
+				</label>
+				<WashInputField
+					id="auth-login-email"
+					inputType="email"
+					inputPlaceholderText={m.email()}
+					nameText="email"
+					className="w-full"
+					required
+				/>
+			</fieldset>
 
-				<!-- login button -->
-				<DaisyUiButton
+			<fieldset class="fieldset">
+				<label class="label" for="auth-login-password">
+					<span class="label-text">
+						{m.password()}<span
+							class="align-top text-sm leading-none text-error"
+							aria-hidden="true">*</span
+						>
+					</span>
+				</label>
+				<div class="join flex w-full">
+					<WashInputField
+						id="auth-login-password"
+						inputType={isPasswordVisible ? 'text' : 'password'}
+						inputPlaceholderText={m.password()}
+						nameText="password"
+						className="join-item w-full"
+						required
+					/>
+					<WashButton
+						className="join-item"
+						type="button"
+						onClick={togglePasswordVisibility}
+					>
+						{#if isPasswordVisible}
+							<LucideEye />
+						{:else}
+							<LucideEyeOff />
+						{/if}
+					</WashButton>
+				</div>
+			</fieldset>
+
+			<div class="flex items-center justify-between gap-2 text-sm">
+				<label class="label cursor-pointer gap-2 py-0" for="auth-remember">
+					<WashCheckbox
+						id="auth-remember"
+						className="checkbox-sm"
+						bind:checked={rememberMe}
+					/>
+					<span class="label-text">{msg.auth_remember_me()}</span>
+				</label>
+				<a
+					class="link link-primary cursor-pointer text-sm"
+					href={WebRoutesEnum.RESET_PASSWORD}
+				>
+					{msg.auth_forgot_password_link()}
+				</a>
+			</div>
+
+			{#snippet actions()}
+				<WashButton
 					type="submit"
-					className="d-btn-primary w-full"
+					className="btn-primary w-full"
 					loading={isLoading}
 					loadingText={m.signing_in()}
 				>
-					{m.login()}
-				</DaisyUiButton>
-
-				<!-- external links -->
-				<div class="my-ft-small flex flex-col gap-3">
-					<div id="signup">
-						{m.no_account()}
-						<DaisyUiLink
-							href={WebRoutesEnum.SIGNUP}
-							className="d-link-info">{m.signup()}</DaisyUiLink
-						>
-					</div>
-					<div id="forget-password">
-						{m.forget_password()}
-						<DaisyUiLink
-							onClick={openResetPasswordModal}
-							className="d-link-info"
-						>
-							{m.reset_password()}
-						</DaisyUiLink>
-					</div>
-				</div>
-			</DaisyUiFieldset>
-		</form>
-	</DaisyUiCardBody>
-</DaisyUiCard>
+					{msg.auth_sign_in_title()}
+				</WashButton>
+				<p class="text-center text-sm text-ink-muted">
+					{msg.auth_no_account_short()}
+					<a class="link link-secondary cursor-pointer" href={WebRoutesEnum.SIGNUP}>
+						{msg.auth_create_one()}
+					</a>
+				</p>
+			{/snippet}
+		</AuthTemplateCard>
+	</form>
+</AuthSplitHero>

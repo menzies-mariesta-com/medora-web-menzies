@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MariTable, {
 		type MariTableColumn
@@ -16,7 +14,7 @@
 	import { SupportTicketStatusEnum } from '$lib/model/enum/support-ticket-status.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import type { SupportTicketListRow } from '$lib/model/type/heka/ui-rows.type';
+	import type { SupportTicketListRow } from '$lib/model/type/medora/ui-rows.type';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -372,42 +370,42 @@
 		class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-4 py-2"
 	>
 		<h2 class="text-lg font-semibold">{m.support_it_title()}</h2>
-		<DaisyUiButton
-			className="d-btn-ghost d-btn-sm d-btn-circle"
+		<WashButton
+			className="btn-ghost btn-sm btn-circle"
 			onClick={() => cancel()}
 		>
 			<LucideX className="size-5" />
-		</DaisyUiButton>
+		</WashButton>
 	</div>
 
 	<div
 		class="flex flex-wrap gap-1 border-b border-base-200 px-4 py-2"
 	>
-		<DaisyUiButton
-			className="d-btn-sm {activeTab === 'new'
-				? 'd-btn-primary'
-				: 'd-btn-ghost'}"
+		<WashButton
+			className="btn-sm {activeTab === 'new'
+				? 'btn-primary'
+				: 'btn-ghost'}"
 			onClick={() => switchTab('new')}
 		>
 			{m.support_tab_new()}
-		</DaisyUiButton>
-		<DaisyUiButton
-			className="d-btn-sm {activeTab === 'my'
-				? 'd-btn-primary'
-				: 'd-btn-ghost'}"
+		</WashButton>
+		<WashButton
+			className="btn-sm {activeTab === 'my'
+				? 'btn-primary'
+				: 'btn-ghost'}"
 			onClick={() => switchTab('my')}
 		>
 			{m.support_tab_my_tickets()}
-		</DaisyUiButton>
+		</WashButton>
 		{#if isAdmin}
-			<DaisyUiButton
-				className="d-btn-sm {activeTab === 'all'
-					? 'd-btn-primary'
-					: 'd-btn-ghost'}"
+			<WashButton
+				className="btn-sm {activeTab === 'all'
+					? 'btn-primary'
+					: 'btn-ghost'}"
 				onClick={() => switchTab('all')}
 			>
 				{m.support_tab_all_tickets()}
-			</DaisyUiButton>
+			</WashButton>
 		{/if}
 	</div>
 
@@ -417,13 +415,10 @@
 			onsubmit={handleCreateTicket}
 		>
 			<div class="flex flex-col gap-1">
-				<DaisyUiLabel
-					forText="support-subject"
-					className="font-semibold"
-				>
+				<label for="support-subject" class="font-semibold">
 					{m.support_subject()} <span class="text-error">*</span>
-				</DaisyUiLabel>
-				<DaisyUiInputField
+				</label>
+				<WashInputField
 					id="support-subject"
 					className="w-full"
 					bind:value={newSubject}
@@ -431,49 +426,43 @@
 				/>
 			</div>
 			<div class="flex flex-col gap-1">
-				<DaisyUiLabel
-					forText="support-desc"
-					className="font-semibold"
-				>
+				<label for="support-desc" class="font-semibold">
 					{m.support_description()}
 					<span class="text-error">*</span>
-				</DaisyUiLabel>
-				<DaisyUiTextarea
+				</label>
+				<WashTextarea
 					id="support-desc"
 					className="textarea-bordered min-h-32 w-full"
 					bind:value={newDescription}
 				/>
 			</div>
 			<div class="flex max-w-xs flex-col gap-1">
-				<DaisyUiLabel
-					forText="support-priority"
-					className="font-semibold"
-				>
+				<label for="support-priority" class="font-semibold">
 					{m.support_priority()}
-				</DaisyUiLabel>
-				<DaisyUiSelect className="w-full" bind:value={newPriorityStr}>
+				</label>
+				<WashSelect className="w-full" bind:value={newPriorityStr}>
 					<option value="1">{m.support_priority_1()}</option>
 					<option value="2">{m.support_priority_2()}</option>
 					<option value="3">{m.support_priority_3()}</option>
 					<option value="4">{m.support_priority_4()}</option>
-				</DaisyUiSelect>
+				</WashSelect>
 			</div>
-			<div class="d-modal-action">
-				<DaisyUiButton
+			<div class="modal-action">
+				<WashButton
 					type="button"
-					className="d-btn"
+					className="btn"
 					onClick={() => cancel()}
 				>
 					{m.cancel()}
-				</DaisyUiButton>
-				<DaisyUiButton
+				</WashButton>
+				<WashButton
 					type="submit"
-					className="d-btn d-btn-primary"
+					className="btn btn-primary"
 					loading={isSubmittingNew}
 					loadingText={m.support_submitting()}
 				>
 					{m.support_submit_ticket()}
-				</DaisyUiButton>
+				</WashButton>
 			</div>
 		</form>
 	{:else}
@@ -483,10 +472,10 @@
 			<div class="flex min-h-0 flex-col gap-2">
 				<div class="flex flex-wrap items-end gap-2">
 					<div class="min-w-[10rem] flex-1">
-						<DaisyUiLabel className="text-sm font-semibold">
+						<label class="text-sm font-semibold">
 							{m.support_filter_status()}
-						</DaisyUiLabel>
-						<DaisyUiSelect
+						</label>
+						<WashSelect
 							optionHeader={m.support_filter_all_statuses()}
 							className="mt-1 w-full"
 							bind:value={statusFilter}
@@ -507,13 +496,13 @@
 							<option value={SupportTicketStatusEnum.CLOSED}>
 								{m.support_status_closed()}
 							</option>
-						</DaisyUiSelect>
+						</WashSelect>
 					</div>
 				</div>
 				<div class="min-h-0 flex-1 overflow-auto {TableEnum.HEIGHT}">
 					{#if isLoadingList && !listResult}
 						<div class="flex justify-center py-12">
-							<DaisyUiLoading className="d-loading-lg" />
+							<span class="loading loading-spinner loading-lg"></span>
 						</div>
 					{:else}
 						<MariTable
@@ -544,7 +533,7 @@
 			>
 				{#if isLoadingDetail}
 					<div class="flex flex-1 items-center justify-center">
-						<DaisyUiLoading className="d-loading-md" />
+						<span class="loading loading-spinner loading-md"></span>
 					</div>
 				{:else if !detail}
 					<p class="text-base-content/70">
@@ -588,18 +577,14 @@
 						{/if}
 					</dl>
 					<div class="flex flex-col gap-1">
-						<DaisyUiLabel className="font-semibold"
-							>{m.support_description()}</DaisyUiLabel
-						>
+						<label class="font-semibold">{m.support_description()}</label>
 						<p class="text-sm whitespace-pre-wrap">
 							{detail.description}
 						</p>
 					</div>
 					{#if detail.resolution && !isAdmin}
 						<div class="flex flex-col gap-1">
-							<DaisyUiLabel className="font-semibold"
-								>{m.support_resolution()}</DaisyUiLabel
-							>
+							<label class="font-semibold">{m.support_resolution()}</label>
 							<p class="text-sm whitespace-pre-wrap">
 								{detail.resolution}
 							</p>
@@ -608,13 +593,10 @@
 					{#if isAdmin}
 						<div class="divider my-1">IT</div>
 						<div class="flex flex-col gap-2">
-							<DaisyUiLabel
-								forText="admin-status"
-								className="font-semibold"
-							>
+							<label for="admin-status" class="font-semibold">
 								{m.support_status()}
-							</DaisyUiLabel>
-							<DaisyUiSelect
+							</label>
+							<WashSelect
 								className="w-full"
 								bind:value={adminStatus}
 							>
@@ -630,46 +612,43 @@
 								<option value={SupportTicketStatusEnum.CLOSED}>
 									{m.support_status_closed()}
 								</option>
-							</DaisyUiSelect>
-							<DaisyUiLabel className="font-semibold">
+							</WashSelect>
+							<label class="font-semibold">
 								{m.support_assigned_to()}
-							</DaisyUiLabel>
-							<DaisyUiInputField
+							</label>
+							<WashInputField
 								id="admin-assign"
 								className="w-full"
 								bind:value={adminAssigneeId}
 								inputPlaceholderText="user id"
 							/>
-							<DaisyUiLabel
-								forText="admin-resolution"
-								className="font-semibold"
-							>
+							<label for="admin-resolution" class="font-semibold">
 								{m.support_resolution()}
-							</DaisyUiLabel>
-							<DaisyUiTextarea
+							</label>
+							<WashTextarea
 								id="admin-resolution"
 								className="textarea-bordered min-h-24 w-full"
 								bind:value={adminResolution}
 							/>
-							<DaisyUiButton
-								className="d-btn-primary d-btn-sm w-fit"
+							<WashButton
+								className="btn-primary btn-sm w-fit"
 								disabled={isSavingAdmin}
 								onClick={() => void handleSaveAdmin()}
 							>
 								{m.support_save_changes()}
-							</DaisyUiButton>
+							</WashButton>
 						</div>
 					{/if}
 				{/if}
 			</div>
 		</div>
 		<div class="border-t border-base-200 px-4 py-2">
-			<DaisyUiButton
-				className="d-btn-ghost d-btn-sm"
+			<WashButton
+				className="btn-ghost btn-sm"
 				onClick={() => cancel()}
 			>
 				{m.cancel()}
-			</DaisyUiButton>
+			</WashButton>
 		</div>
 	{/if}
 </div>

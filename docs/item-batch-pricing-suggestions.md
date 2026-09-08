@@ -46,8 +46,8 @@ Batches without provenance cannot be sale-priced until linked.
 
 | Topic | File |
 |-------|------|
-| Batch create / identity | `src/lib/server/heka/inventory/item-batch.server.ts` |
-| Stock lot pricing | `src/lib/server/heka/inventory/stock-lot-pricing.server.ts` |
+| Batch create / identity | `src/lib/server/medora/inventory/item-batch.server.ts` |
+| Stock lot pricing | `src/lib/server/medora/inventory/stock-lot-pricing.server.ts` |
 | Price conversion util | `src/lib/tool/inventory/purchase-issue-price-convert.util.ts` |
 | Migrations | `0092`, `0093` |
 | GRN → price examples | `docs/grn-to-sale-price-examples.md` |

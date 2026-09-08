@@ -1,6 +1,6 @@
-import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/heka/department-consumption-detail.type';
-import type { ConsumptionDraftLineIum } from '$lib/model/type/heka/department-consumption-detail.type';
-import type { InventoryStockLotDto } from '$lib/model/type/heka/inventory-stock-lot.type';
+import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
+import type { ConsumptionDraftLineIum } from '$lib/model/type/medora/department-consumption-detail.type';
+import type { InventoryStockLotDto } from '$lib/model/type/medora/inventory-stock-lot.type';
 import { mapStockLotToBatchAllocationDraft } from '$lib/tool/inventory/map-stock-lot-to-batch-draft.util';
 import {
 	issueQtyToPurchaseQtyNumber,
@@ -21,7 +21,7 @@ export async function hydrateMedOrderItemMeta(
 	defaultItemUnitMasterId: number | null;
 }> {
 	const res = await fetch(
-		`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
+		`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?id=${itemId}`,
 		{ credentials: 'include' }
 	);
 	if (!res.ok) throw new Error(String(res.status));
@@ -46,7 +46,7 @@ export async function loadMedOrderIumList(
 	itemUnitMasterId: number | null;
 }> {
 	const res = await fetch(
-		`/api/heka/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
+		`/api/medora/hospital/${hospitalId}/home/inventory-setup/item-master?mode=itemUnitMasters`,
 		{ credentials: 'include' }
 	);
 	if (!res.ok) throw new Error(String(res.status));
@@ -80,7 +80,7 @@ export async function refreshMedOrderBatchAllocations(
 	ps.set('storeId', String(storeId));
 	ps.set('itemId', String(itemId));
 	const res = await fetch(
-		`/api/heka/hospital/${hospitalId}/home/inventory/stock?${ps}`,
+		`/api/medora/hospital/${hospitalId}/home/inventory/stock?${ps}`,
 		{ credentials: 'include' }
 	);
 	if (!res.ok) throw new Error(String(res.status));

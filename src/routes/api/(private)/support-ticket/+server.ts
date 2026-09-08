@@ -11,7 +11,7 @@ import {
 	getSupportTicketById,
 	getSupportTicketSession,
 	updateSupportTicket
-} from '$lib/server/heka/support-ticket.server';
+} from '$lib/server/medora/support-ticket.server';
 
 export const GET: RequestHandler = async (event) => {
 	const op = event.url.searchParams.get('op') ?? '';

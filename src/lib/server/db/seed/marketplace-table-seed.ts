@@ -39,10 +39,10 @@ export async function seedMarketplaceTables() {
 	await db.execute(sql`
 		INSERT INTO marketplace_app (id, name, code, signature, status_id)
 		VALUES
-			(1, 'Heka EMR Core', 'HEKA_EMR_CORE', 'com.heka.emr.core', 1),
-			(2, 'Heka Pharmacy', 'HEKA_PHARMACY', 'com.heka.pharmacy', 1),
-			(3, 'Heka Laboratory', 'HEKA_LAB', 'com.heka.lab', 1),
-			(4, 'Heka Billing', 'HEKA_BILLING', 'com.heka.billing', 1)
+			(1, 'Medora EMR Core', 'MEDORA_EMR_CORE', 'com.medora.emr.core', 1),
+			(2, 'Medora Pharmacy', 'MEDORA_PHARMACY', 'com.medora.pharmacy', 1),
+			(3, 'Medora Laboratory', 'MEDORA_LAB', 'com.medora.lab', 1),
+			(4, 'Medora Billing', 'MEDORA_BILLING', 'com.medora.billing', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: marketplace_app');
@@ -70,10 +70,10 @@ export async function seedMarketplaceTables() {
 	await db.execute(sql`
 		INSERT INTO marketplace_app_archive (id, version, download_url, app_id, file_extension_id, status_id)
 		VALUES
-			(1, '1.0.0', 'https://mari-software.fly.dev/downloads/heka-emr-core-1.0.0.apk', 1, 1, 1),
-			(2, '1.0.0', 'https://mari-software.fly.dev/downloads/heka-pharmacy-1.0.0.apk', 2, 1, 1),
-			(3, '1.0.0', 'https://mari-software.fly.dev/downloads/heka-lab-1.0.0.apk', 3, 1, 1),
-			(4, '1.0.0', 'https://mari-software.fly.dev/downloads/heka-billing-1.0.0.apk', 4, 1, 1)
+			(1, '1.0.0', 'https://mari-software.fly.dev/downloads/medora-emr-core-1.0.0.apk', 1, 1, 1),
+			(2, '1.0.0', 'https://mari-software.fly.dev/downloads/medora-pharmacy-1.0.0.apk', 2, 1, 1),
+			(3, '1.0.0', 'https://mari-software.fly.dev/downloads/medora-lab-1.0.0.apk', 3, 1, 1),
+			(4, '1.0.0', 'https://mari-software.fly.dev/downloads/medora-billing-1.0.0.apk', 4, 1, 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 	seedLogger.info('Seeded: marketplace_app_archive');

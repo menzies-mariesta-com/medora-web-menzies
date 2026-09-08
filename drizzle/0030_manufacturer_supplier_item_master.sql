@@ -104,6 +104,6 @@ CREATE INDEX "item_master_manufacturer_id_idx" ON "item_master" USING btree ("ma
 --> statement-breakpoint
 INSERT INTO "page" ("id", "name", "module_id", "status_id", "parent_id", "page_url", "sequence_no", "created_at", "updated_at")
 VALUES
-	(25, 'Manufacture Setup', 9, 1, 22, '/heka/home/inventory-setup/manufacture-setup', 6, now(), now()),
-	(26, 'Supplier Setup', 9, 1, 22, '/heka/home/inventory-setup/supplier-setup', 7, now(), now())
+	(25, 'Manufacture Setup', 9, 1, 22, '/medora/home/inventory-setup/manufacture-setup', 6, now(), now()),
+	(26, 'Supplier Setup', 9, 1, 22, '/medora/home/inventory-setup/supplier-setup', 7, now(), now())
 ON CONFLICT ("id") DO NOTHING;

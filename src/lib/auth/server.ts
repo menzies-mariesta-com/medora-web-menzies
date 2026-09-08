@@ -48,7 +48,7 @@ const trustedOrigins = Array.from(
 
 /** Placeholder only when env is missing (e.g. Docker build). Production must set BETTER_AUTH_SECRET. */
 const BETTER_AUTH_SECRET_PLACEHOLDER =
-	'heka-build-placeholder-better-auth-secret-min-32-chars!!';
+	'medora-build-placeholder-better-auth-secret-min-32-chars!!';
 
 function resolveBetterAuthSecret(): string {
 	const s = env.BETTER_AUTH_SECRET?.trim();

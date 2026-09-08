@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { createEventDispatcher, type Snippet } from 'svelte';
+	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 
-	import DaisyUiTable from '$lib/component/daisyui/table/DaisyUiTable.svelte';
-	import DaisyUiTableHeader from '$lib/component/daisyui/table/head/DaisyUiTableHeader.svelte';
-	import DaisyUiTableBody from '$lib/component/daisyui/table/body/DaisyUiTableBody.svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiPagination from '$lib/component/daisyui/pagination/DaisyUiPagination.svelte';
-	import DaisyUiPaginationItem from '$lib/component/daisyui/pagination/item/DaisyUiPaginationItem.svelte';
-	import DaisyUiLoading from '$lib/component/daisyui/loading/DaisyUiLoading.svelte';
-	import DaisyUiTooltip from '$lib/component/daisyui/tooltip/DaisyUiTooltip.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import WashTable from '$lib/component/wash/table/WashTable.svelte';
+	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
+	import WashTableBody from '$lib/component/wash/table/body/WashTableBody.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
@@ -295,10 +293,11 @@
 		return rows.map((row) => ({ ...(row as RowLike) }));
 	}
 
+	/** Menzies Design Data table template: bordered rounded-box ledger chrome. */
 	const rootClass = $derived(
 		fillParent
-			? 'flex min-h-0 min-w-0 flex-1 flex-col gap-0'
-			: 'flex h-full min-h-[40vh] flex-col gap-0'
+			? 'border-base-300 rounded-box flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border bg-base-100'
+			: 'border-base-300 rounded-box flex h-full min-h-[40vh] flex-col overflow-hidden border bg-base-100'
 	);
 	/** min-w-0 lets flex children shrink so wide tables scroll inside instead of expanding the card */
 	const tableScrollClass = $derived(
@@ -308,8 +307,8 @@
 	);
 	const tableSectionClass = $derived(
 		fillParent
-			? 'flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2'
-			: 'min-w-0 px-4 py-2'
+			? 'flex min-h-0 min-w-0 flex-1 flex-col'
+			: 'min-w-0 flex-1'
 	);
 
 	function getDefaultFilterValue(
@@ -562,15 +561,15 @@
 </script>
 
 <div class={rootClass}>
-	<!-- Top controls: per page, pagination, summary, refresh (does not scroll) -->
+	<!-- Top controls: page size, legend, export, refresh -->
 	<div
-		class="mari-table-toolbar flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-base-200 px-4 py-2"
+		class="mari-table-toolbar border-base-300 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-3 py-2"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2 whitespace-nowrap">
 				<span class="text-sm">per page</span>
-				<DaisyUiSelect
-					className="d-select d-select-sm w-20"
+				<WashSelect
+					className="select select-sm w-20"
 					bind:value={pageSize}
 					onChange={handlePageSizeChange}
 					disabled={isLoading}
@@ -578,42 +577,8 @@
 					{#each pageSizeOptions as size (size)}
 						<option value={String(size)}>{size}</option>
 					{/each}
-				</DaisyUiSelect>
+				</WashSelect>
 			</div>
-
-			<DaisyUiPagination>
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage - 1)}
-					className="d-btn-sm d-btn-square"
-					disabled={currentPage <= 1 || isLoading}
-				>
-					<LucideChevronLeft className="size-5" />
-				</DaisyUiPaginationItem>
-				{#each getVisiblePages() as item, i (item.type === 'page' ? `page-${item.page}` : `ellipsis-${i}`)}
-					{#if item.type === 'page'}
-						<DaisyUiPaginationItem
-							className={`d-btn-sm ${item.page === currentPage ? 'd-btn-active d-btn-primary' : ''}`}
-							onClick={() => item.page && goToPage(item.page)}
-						>
-							{item.page}
-						</DaisyUiPaginationItem>
-					{:else}
-						<DaisyUiPaginationItem
-							className="d-btn-sm d-btn-disabled"
-							disabled={true}
-						>
-							…
-						</DaisyUiPaginationItem>
-					{/if}
-				{/each}
-				<DaisyUiPaginationItem
-					onClick={() => goToPage(currentPage + 1)}
-					className="d-btn-sm d-btn-square"
-					disabled={currentPage >= totalPages || isLoading}
-				>
-					<LucideChevronRight className="size-5" />
-				</DaisyUiPaginationItem>
-			</DaisyUiPagination>
 		</div>
 
 		{#if legendItems.length > 0}
@@ -623,7 +588,7 @@
 				{#each legendItems as legend (legend.id)}
 					<div class="flex items-center gap-2">
 						<span
-							class={`border-base-500/500 h-5 w-5 rounded-md border ${legend.colorClass}`.trim()}
+							class={`border-base-300 h-5 w-5 rounded-md border ${legend.colorClass}`.trim()}
 							aria-hidden="true"
 						></span>
 						{legend.label}
@@ -644,49 +609,36 @@
 					getRows={resolveExportRows}
 				/>
 			{/if}
-			<div class="text-sm opacity-80">
-				{#if total > 0}
-					<span>
-						Showing <span class="text-success"
-							>{pageStart}–{pageEnd}</span
-						>
-						of
-						<span class="text-error"> {total}</span> items
-					</span>
-				{:else}
-					<span>Showing 0 of 0 items</span>
-				{/if}
-			</div>
 
 			{#if showRefreshButton}
-				<DaisyUiTooltip tooltipText={refreshTooltip}>
-					<DaisyUiButton
-						className="d-btn-sm d-btn-primary"
+				<WashTooltip tooltipText={refreshTooltip}>
+					<WashButton
+						className="btn-sm btn-primary"
 						onClick={handleRefresh}
 						disabled={isLoading}
 						loading={isLoading}
 						loadingText=""
 					>
 						<LucideRefreshCcw className="size-5" />
-					</DaisyUiButton>
-				</DaisyUiTooltip>
+					</WashButton>
+				</WashTooltip>
 			{/if}
 		</div>
 	</div>
 
 	<div class={tableSectionClass}>
 		<div class={tableScrollClass}>
-			<DaisyUiTable
-				className="d-table d-table-zebra d-table-sm w-max min-w-full"
+			<WashTable
+				effect="zebra"
+				className="{washRecipes.table} table-sm w-max min-w-full [&_tbody_tr]:hover:bg-primary/40"
 			>
-				<DaisyUiTableHeader>
+				<WashTableHeader>
 					<tr
-						class="mari-table-header-filters sticky top-0 z-30 bg-base-200"
+						class="mari-table-header-filters bg-base-100 sticky top-0 z-30"
 					>
 						{#if hasActionsColumn}
 							<th
-								class="px-1 text-left whitespace-nowrap"
-								style="width: 1%;"
+								class="mari-table-actions-col px-1 text-left whitespace-nowrap"
 							>
 								{actionsHeader}
 							</th>
@@ -700,7 +652,7 @@
 								{#if isFilterable}
 									{#if filterType === 'select' && selectOptions}
 										<select
-											class="d-select w-full d-select-sm"
+											class="select w-full select-sm"
 											value={columnFilters[column.id] ?? ''}
 											onchange={(event) =>
 												handleFilterInputEvent(column.id, event)}
@@ -718,7 +670,7 @@
 										</select>
 									{:else}
 										<input
-											class="d-input d-input-sm w-full"
+											class="input input-sm w-full"
 											type="text"
 											placeholder={column.header}
 											value={columnFilters[column.id] ?? ''}
@@ -732,8 +684,8 @@
 							</th>
 						{/each}
 					</tr>
-				</DaisyUiTableHeader>
-				<DaisyUiTableBody>
+				</WashTableHeader>
+				<WashTableBody>
 					{#if pagedRows.length === 0}
 						<tr>
 							<td
@@ -741,7 +693,7 @@
 								class="py-6 text-center opacity-70"
 							>
 								{#if isLoading}
-									<DaisyUiLoading className="d-loading-md" />
+									<span class="loading loading-spinner loading-md"></span>
 								{:else}
 									{emptyMessage}
 								{/if}
@@ -756,14 +708,13 @@
 								? rowClassGetter(row, index)
 								: ''}
 							<tr
-								class={`hover:bg-info/20 ${customRowClass}`.trim()}
+								class={customRowClass}
 								title={rowTooltipText || undefined}
 								onclick={() => handleRowClick(row)}
 							>
 								{#if hasActionsColumn}
 									<td
-										class="relative z-0 overflow-visible px-1 whitespace-nowrap"
-										style="width: 1%;"
+										class="mari-table-actions-col relative z-0 overflow-visible px-1 whitespace-nowrap"
 										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}
@@ -838,8 +789,58 @@
 							</tr>
 						{/each}
 					{/if}
-				</DaisyUiTableBody>
-			</DaisyUiTable>
+				</WashTableBody>
+			</WashTable>
+		</div>
+	</div>
+
+	<!-- Design Data table footer: Showing + join pagination -->
+	<div
+		class="border-base-300 bg-base-100 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2"
+	>
+		<p class="font-mono text-xs text-ink-muted">
+			{#if total > 0}
+				Showing {pageStart}-{pageEnd} of {total}
+			{:else}
+				Showing 0 of 0
+			{/if}
+		</p>
+		<div class="join">
+			<button
+				class="btn btn-sm join-item"
+				type="button"
+				onclick={() => goToPage(currentPage - 1)}
+				disabled={currentPage <= 1 || isLoading}
+				aria-label="Previous page"
+			>
+				<LucideChevronLeft className="size-4" />
+			</button>
+			{#each getVisiblePages() as item, i (item.type === 'page' ? `page-${item.page}` : `ellipsis-${i}`)}
+				{#if item.type === 'page'}
+					<button
+						class="btn join-item btn-sm {item.page === currentPage
+							? 'btn-active'
+							: ''}"
+						type="button"
+						onclick={() => item.page && goToPage(item.page)}
+					>
+						{item.page}
+					</button>
+				{:else}
+					<button class="btn join-item btn-sm btn-disabled" type="button" disabled>
+						…
+					</button>
+				{/if}
+			{/each}
+			<button
+				class="btn btn-sm join-item"
+				type="button"
+				onclick={() => goToPage(currentPage + 1)}
+				disabled={currentPage >= totalPages || isLoading}
+				aria-label="Next page"
+			>
+				<LucideChevronRight className="size-4" />
+			</button>
 		</div>
 	</div>
 </div>

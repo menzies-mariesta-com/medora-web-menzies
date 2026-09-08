@@ -1,0 +1,24 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import {
+		medoraHospitalPageUrl,
+		WebRoutesEnum
+	} from '$lib/model/enum/routes.enum';
+	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
+
+	const routerUtil = new RouterUtil();
+	const lifeCycleUtil = new LifeCycleUtil();
+	const hospitalId = $derived(page.params.hospital_id);
+
+	lifeCycleUtil.onMount(() => {
+		if (hospitalId) {
+			routerUtil.replaceRoute(
+				medoraHospitalPageUrl(
+					hospitalId,
+					WebRoutesEnum.MEDORA_HOME_BILLING_OP_BILLING
+				)
+			);
+		}
+	});
+</script>

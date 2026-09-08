@@ -1237,41 +1237,41 @@ ${content}
 
 <!-- Link Dialog -->
 {#if showLinkDialog}
-	<div class="d-modal-open d-modal">
-		<div class="d-modal-box max-w-md">
+	<div class="modal-open modal">
+		<div class="modal-box max-w-md">
 			<h3 class="mb-4 text-lg font-bold">Insert Link</h3>
 			<div class="space-y-4">
 				<div>
-					<label class="d-label" for="linkText">
-						<span class="d-label-text">Link Text</span>
+					<label class="label" for="linkText">
+						<span class="label-text">Link Text</span>
 					</label>
 					<input
 						id="linkText"
 						type="text"
-						class="d-input-bordered d-input w-full"
+						class="input-bordered input w-full"
 						placeholder="Display text (optional)"
 						bind:value={linkText}
 					/>
 				</div>
 				<div>
-					<label class="d-label" for="linkUrl">
-						<span class="d-label-text"
+					<label class="label" for="linkUrl">
+						<span class="label-text"
 							>URL <span class="text-error">*</span></span
 						>
 					</label>
 					<input
 						id="linkUrl"
 						type="url"
-						class="d-input-bordered d-input w-full"
+						class="input-bordered input w-full"
 						placeholder="https://example.com"
 						bind:value={linkUrl}
 					/>
 				</div>
 			</div>
-			<div class="d-modal-action">
+			<div class="modal-action">
 				<button
 					type="button"
-					class="d-btn d-btn-ghost"
+					class="btn btn-ghost"
 					onclick={() => {
 						showLinkDialog = false;
 						linkUrl = '';
@@ -1282,7 +1282,7 @@ ${content}
 				</button>
 				<button
 					type="button"
-					class="d-btn d-btn-primary"
+					class="btn btn-primary"
 					onclick={insertLink}
 					disabled={!linkUrl}
 				>
@@ -1291,7 +1291,7 @@ ${content}
 			</div>
 		</div>
 		<div
-			class="d-modal-backdrop"
+			class="modal-backdrop"
 			onclick={() => (showLinkDialog = false)}
 			onkeydown={(e) =>
 				e.key === 'Escape' && (showLinkDialog = false)}
@@ -1303,45 +1303,45 @@ ${content}
 
 <!-- Image Dialog -->
 {#if showImageDialog}
-	<div class="d-modal-open d-modal">
-		<div class="d-modal-box max-w-md">
+	<div class="modal-open modal">
+		<div class="modal-box max-w-md">
 			<h3 class="mb-4 text-lg font-bold">Insert Image</h3>
 			<div class="space-y-4">
 				<div>
-					<label class="d-label" for="mari-rich-insert-image-file">
-						<span class="d-label-text">Upload Image</span>
+					<label class="label" for="mari-rich-insert-image-file">
+						<span class="label-text">Upload Image</span>
 					</label>
 					<input
 						id="mari-rich-insert-image-file"
 						type="file"
 						accept="image/*"
-						class="d-file-input-bordered d-file-input w-full"
+						class="file-input-bordered file-input w-full"
 						onchange={handleImageUpload}
 					/>
 				</div>
-				<div class="d-divider">OR</div>
+				<div class="divider">OR</div>
 				<div>
-					<label class="d-label" for="imageUrl">
-						<span class="d-label-text">Image URL</span>
+					<label class="label" for="imageUrl">
+						<span class="label-text">Image URL</span>
 					</label>
 					<input
 						id="imageUrl"
 						type="url"
-						class="d-input-bordered d-input w-full"
+						class="input-bordered input w-full"
 						placeholder="https://example.com/image.jpg"
 						bind:value={imageUrl}
 					/>
 				</div>
 				<div>
-					<label class="d-label" for="imageAlt">
-						<span class="d-label-text"
+					<label class="label" for="imageAlt">
+						<span class="label-text"
 							>Alt Text (for accessibility)</span
 						>
 					</label>
 					<input
 						id="imageAlt"
 						type="text"
-						class="d-input-bordered d-input w-full"
+						class="input-bordered input w-full"
 						placeholder="Image description"
 						bind:value={imageAlt}
 					/>
@@ -1357,10 +1357,10 @@ ${content}
 					</div>
 				{/if}
 			</div>
-			<div class="d-modal-action">
+			<div class="modal-action">
 				<button
 					type="button"
-					class="d-btn d-btn-ghost"
+					class="btn btn-ghost"
 					onclick={() => {
 						showImageDialog = false;
 						imageUrl = '';
@@ -1371,7 +1371,7 @@ ${content}
 				</button>
 				<button
 					type="button"
-					class="d-btn d-btn-primary"
+					class="btn btn-primary"
 					onclick={insertImage}
 					disabled={!imageUrl}
 				>
@@ -1380,7 +1380,7 @@ ${content}
 			</div>
 		</div>
 		<div
-			class="d-modal-backdrop"
+			class="modal-backdrop"
 			onclick={() => (showImageDialog = false)}
 			onkeydown={(e) =>
 				e.key === 'Escape' && (showImageDialog = false)}

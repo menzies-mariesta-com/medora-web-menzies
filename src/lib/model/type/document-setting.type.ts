@@ -1,4 +1,4 @@
-import type { PatientRegMasterTimestamps } from './heka/patient-reg-master.type';
+import type { PatientRegMasterTimestamps } from './medora/patient-reg-master.type';
 
 export type DocumentTypeRow = PatientRegMasterTimestamps & {
 	id: number;

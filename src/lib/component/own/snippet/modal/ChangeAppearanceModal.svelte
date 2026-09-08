@@ -1,101 +1,134 @@
 <script lang="ts">
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import { FontEnum } from '$lib/model/enum/font.enum';
-	import { ThemeEnum } from '$lib/model/enum/theme.enum';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import { FontTool } from '$lib/tool/font.tool.svelte';
-	import { ThemeTool } from '$lib/tool/theme.tool.svelte';
-	import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
+	import {
+		WashModeEnum,
+		WashPigmentEnum
+	} from '$lib/model/enum/wash-theme.enum';
+	import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
+	import { WashThemeState } from '$lib/state/wash-theme.state.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
-	const localStorageUtil = new LocalStorageUtil();
-	const themeTool = new ThemeTool(localStorageUtil);
-	const fontTool = new FontTool(localStorageUtil);
+	const washThemeTool = new WashThemeTool();
+	const pigments = washThemeTool.listPigments();
 
-	let currentTheme: ThemeEnum = $state(
-		themeTool.getTheme() ?? ThemeEnum.LIGHT
+	let currentPigment: WashPigmentEnum = $state(
+		washThemeTool.getPigment()
 	);
-	let currentFont: FontEnum = $state(
-		fontTool.getFont() ?? FontEnum.ADWAITA_SANS
-	);
-
+	let currentMode: WashModeEnum = $state(washThemeTool.getMode());
 	let isConfirming = $state(false);
+
+	function preview() {
+		washThemeTool.apply(currentPigment, currentMode);
+	}
 
 	async function handleConfirm() {
 		if (isConfirming) return;
 		isConfirming = true;
 		try {
+			washThemeTool.apply(currentPigment, currentMode);
+			WashThemeState.pigment = currentPigment;
+			WashThemeState.mode = currentMode;
 			await confirm({
-				theme: currentTheme,
-				font: currentFont
+				pigment: currentPigment,
+				mode: currentMode
 			});
 		} finally {
 			isConfirming = false;
 		}
 	}
+
+	function handleCancel() {
+		washThemeTool.apply(WashThemeState.pigment, WashThemeState.mode);
+		cancel();
+	}
 </script>
 
-<div class="flex flex-col">
+<div class="flex flex-col p-1">
 	<div
 		class="flex items-center justify-between border-b border-base-300 pb-4"
 	>
-		<h2 class="text-lg font-semibold">Change appearance</h2>
-		<DaisyUiButton
-			className="d-btn-ghost d-btn-sm d-btn-circle"
-			onClick={() => cancel()}
+		<h2
+			class="text-lg font-semibold"
+			style="font-family: var(--font-display)"
+		>
+			Change appearance
+		</h2>
+		<WashButton
+			className="btn-ghost btn-sm btn-circle"
+			onClick={handleCancel}
 			disabled={isConfirming}
 		>
 			<LucideX className="size-5" />
-		</DaisyUiButton>
+		</WashButton>
 	</div>
 	<div class="mt-4 flex flex-col gap-4">
-		<DaisyUiSelect
-			optionHeader="Select Theme"
-			className="w-full"
-			bind:value={currentTheme}
+		<label class="label-ink text-sm font-medium" for="wash-pigment"
+			>Pigment</label
 		>
-			{#each Object.values(ThemeEnum) as theme}
-				{#if theme === currentTheme}
-					<option value={theme} selected>{theme}</option>
-				{:else}
-					<option value={theme}>{theme}</option>
-				{/if}
-			{/each}
-		</DaisyUiSelect>
-
-		<DaisyUiSelect
-			optionHeader="Select Font"
+		<WashSelect
+			id="wash-pigment"
+			optionHeader="Select pigment"
 			className="w-full"
-			bind:value={currentFont}
+			bind:value={currentPigment}
+			onChange={() => preview()}
 		>
-			{#each Object.values(FontEnum) as font}
-				{#if font === currentFont}
-					<option value={font} selected>{font}</option>
-				{:else}
-					<option value={font}>{font}</option>
-				{/if}
+			{#each pigments as pigment (pigment.id)}
+				<option value={pigment.id}>
+					{pigment.label} — {pigment.note}
+				</option>
 			{/each}
-		</DaisyUiSelect>
+		</WashSelect>
 
-		<div class="d-modal-action mt-2">
-			<DaisyUiButton
-				className="d-btn"
-				onClick={() => cancel()}
+		<label class="label-ink text-sm font-medium" for="wash-mode"
+			>Mode</label
+		>
+		<WashSelect
+			id="wash-mode"
+			optionHeader="Select mode"
+			className="w-full"
+			bind:value={currentMode}
+			onChange={() => preview()}
+		>
+			<option value={WashModeEnum.LIGHT}>Light</option>
+			<option value={WashModeEnum.DARK}>Dark</option>
+		</WashSelect>
+
+		<div class="flex flex-wrap gap-2 pt-1">
+			{#each pigments.slice(0, 12) as pigment (pigment.id)}
+				<button
+					type="button"
+					class="ripple size-7 cursor-pointer rounded-full border border-base-300"
+					style="background:{pigment.swatch}"
+					title={pigment.label}
+					aria-label={pigment.label}
+					onclick={() => {
+						currentPigment = pigment.id as WashPigmentEnum;
+						preview();
+					}}
+				></button>
+			{/each}
+		</div>
+
+		<div class="modal-action mt-2">
+			<WashButton
+				className="btn"
+				onClick={handleCancel}
 				disabled={isConfirming}
 			>
 				Cancel
-			</DaisyUiButton>
-			<DaisyUiButton
+			</WashButton>
+			<WashButton
 				onClick={() => handleConfirm()}
-				className="d-btn d-btn-primary"
+				className="btn btn-primary"
 				disabled={isConfirming}
 				loading={isConfirming}
 			>
 				OK
-			</DaisyUiButton>
+			</WashButton>
 		</div>
 	</div>
 </div>

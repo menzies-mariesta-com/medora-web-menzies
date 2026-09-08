@@ -1,16 +1,14 @@
 <script lang="ts">
-	import DaisyUiModal from '$lib/component/daisyui/modal/DaisyUiModal.svelte';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiFileInput from '$lib/component/daisyui/fileinput/DaisyUiFileInput.svelte';
-	import DaisyUiDivider from '$lib/component/daisyui/divider/DaisyUiDivider.svelte';
-	import DaisyUiCard from '$lib/component/daisyui/card/DaisyUiCard.svelte';
-	import DaisyUiCardBody from '$lib/component/daisyui/card/body/DaisyUiCardBody.svelte';
-	import DaisyUiCardBodyTitle from '$lib/component/daisyui/card/body/title/DaisyUiCardBodyTitle.svelte';
-	import DaisyUiCardBodyAction from '$lib/component/daisyui/card/body/action/DaisyUiCardBodyAction.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiSelect from '$lib/component/daisyui/select/DaisyUiSelect.svelte';
-	import DaisyUiTextarea from '$lib/component/daisyui/textarea/DaisyUiTextarea.svelte';
+	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashFileInput from '$lib/component/wash/fileinput/WashFileInput.svelte';
+	import WashCard from '$lib/component/wash/card/WashCard.svelte';
+	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
+	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
@@ -26,7 +24,7 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import LucideUser from '$lib/component/own/library/lucide/LucideUser.svelte';
-	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/heka/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
+	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/medora/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
@@ -65,7 +63,7 @@
 	const apiBase = $derived.by(() => {
 		const hid = hospitalId?.trim() ?? '';
 		return hid
-			? `/api/heka/hospital/${hid}/home/account-settings`
+			? `/api/medora/hospital/${hid}/home/account-settings`
 			: '';
 	});
 
@@ -159,7 +157,7 @@
 
 	async function loadGenderOptions() {
 		try {
-			const r = await fetch('/api/heka/master/lookup?kind=gender');
+			const r = await fetch('/api/medora/master/lookup?kind=gender');
 			if (!r.ok) {
 				throw new Error((await r.text()) || 'Failed to load genders');
 			}
@@ -459,7 +457,7 @@
 		});
 		if (result.confirmed) {
 			try {
-				const res = await fetch('/api/heka/staff/self', {
+				const res = await fetch('/api/medora/staff/self', {
 					method: 'PATCH',
 					headers: { 'content-type': 'application/json' },
 					credentials: 'include',
@@ -502,18 +500,18 @@
 </script>
 
 {#if open}
-	<DaisyUiModal
+	<WashModal
 		groupName="account-settings-modal"
 		open={true}
 		onClose={handleClose}
 	>
 		{#if screen === 'settings'}
-			<div class="d-modal-box w-[96vw] max-w-3xl p-0" role="document">
-				<DaisyUiCard className="rounded-box">
-					<DaisyUiCardBody>
+			<div class="modal-box w-[96vw] max-w-3xl p-0" role="document">
+				<WashCard className="rounded-box">
+					<WashCardBody>
 						<div class="flex items-center justify-between gap-3">
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm gap-2"
+							<WashButton
+								className="btn-ghost btn-sm gap-2"
 								onClick={() => {
 									resetFormToInitial();
 									backToMenu();
@@ -522,32 +520,32 @@
 							>
 								<LucideArrowLeft className="size-5" />
 								Back
-							</DaisyUiButton>
+							</WashButton>
 
 							<div class="min-w-0 flex-1">
-								<DaisyUiCardBodyTitle className="mb-0"
-									>Account settings</DaisyUiCardBodyTitle
+								<WashCardBodyTitle className="mb-0"
+									>Account settings</WashCardBodyTitle
 								>
 								<p class="mt-1 text-sm text-base-content/60">
 									Manage your profile details and access.
 								</p>
 							</div>
 
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-circle"
+							<WashButton
+								className="btn-ghost btn-sm btn-circle"
 								onClick={handleClose}
 								disabled={isBusy}
 								title="Close"
 							>
 								<LucideX className="size-5" />
-							</DaisyUiButton>
+							</WashButton>
 						</div>
 
 						<div class="mt-4 flex flex-col gap-4">
 							{#if isLoading}
 								<div class="flex items-center gap-3">
 									<span
-										class="d-loading d-loading-sm d-loading-spinner"
+										class="loading loading-sm loading-spinner"
 									></span>
 									<span class="text-sm text-base-content/70"
 										>Loading…</span
@@ -560,8 +558,8 @@
 									disabled={isBusy}
 									class="m-0 min-w-0 border-0 p-0"
 								>
-									<DaisyUiCardBodyTitle className="mb-5"
-										>Profile Details</DaisyUiCardBodyTitle
+									<WashCardBodyTitle className="mb-5"
+										>Profile Details</WashCardBodyTitle
 									>
 								</fieldset>
 
@@ -575,7 +573,7 @@
 											disabled={isBusy}
 											class="m-0 flex min-w-0 flex-col items-center gap-2 border-0 p-0"
 										>
-											<DaisyUiFileInput
+											<WashFileInput
 												accept="image/jpeg,image/png,image/webp,image/gif"
 												className="hidden"
 												bind:inputEl={photoInputEl}
@@ -601,38 +599,34 @@
 												{/if}
 											</button>
 											<div class="flex flex-col gap-2">
-												<DaisyUiButton
+												<WashButton
 													type="button"
-													className="d-btn-primary d-btn-sm"
+													className="btn-primary btn-sm"
 													onClick={() => photoInputEl?.click()}
 													disabled={photoUploading || isBusy}
 												>
 													{hasPhoto ? 'Change photo' : 'Choose photo'}
-												</DaisyUiButton>
-												<DaisyUiButton
+												</WashButton>
+												<WashButton
 													type="button"
-													className="d-btn-error d-btn-sm"
+													className="btn-error btn-sm"
 													onClick={handleRemovePhoto}
 													disabled={!hasPhoto || isBusy}
 												>
 													Remove
-												</DaisyUiButton>
-												<DaisyUiDivider
-													position="horizontal"
-													className="text-xs"
-													>More Detail</DaisyUiDivider
-												>
+												</WashButton>
+												<div class="divider divider-horizontal text-xs">More Detail</div>
 											</div>
 										</fieldset>
 										<div class="flex flex-col gap-2">
-											<DaisyUiButton
+											<WashButton
 												type="button"
-												className="d-btn-outline d-btn-sm"
+												className="btn-outline btn-sm"
 												onClick={showLicenseAndSignatureModal}
 												disabled={isBusy}
 											>
 												License &amp; Signature
-											</DaisyUiButton>
+											</WashButton>
 										</div>
 									</div>
 
@@ -646,17 +640,13 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-email"
-													className="shrink-0 sm:w-36"
-													>Email</DaisyUiLabel
-												>
+												<label for="account-email" class="shrink-0 sm:w-36">Email</label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-email"
 														value={emailDisplay}
 														inputType="email"
-														className="d-validator"
+														className="validator"
 														inputPlaceholderText="mail@site.com"
 														disabled
 													/>
@@ -665,14 +655,10 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-first-name"
-													className="shrink-0 sm:w-36"
-													>First Name <span class="text-error">*</span
-													></DaisyUiLabel
-												>
+												<label for="account-first-name" class="shrink-0 sm:w-36">First Name <span class="text-error">*</span
+													></label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-first-name"
 														bind:value={form.firstName}
 														inputType="text"
@@ -682,13 +668,9 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-middle-name"
-													className="shrink-0 sm:w-36"
-													>Middle Name</DaisyUiLabel
-												>
+												<label for="account-middle-name" class="shrink-0 sm:w-36">Middle Name</label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-middle-name"
 														bind:value={form.middleName}
 														inputType="text"
@@ -698,14 +680,10 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-last-name"
-													className="shrink-0 sm:w-36"
-													>Last Name <span class="text-error">*</span
-													></DaisyUiLabel
-												>
+												<label for="account-last-name" class="shrink-0 sm:w-36">Last Name <span class="text-error">*</span
+													></label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-last-name"
 														bind:value={form.lastName}
 														inputType="text"
@@ -715,13 +693,9 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-phone"
-													className="shrink-0 sm:w-36"
-													>Phone</DaisyUiLabel
-												>
+												<label for="account-phone" class="shrink-0 sm:w-36">Phone</label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-phone"
 														bind:value={form.phone}
 														inputType="tel"
@@ -731,13 +705,9 @@
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-gender"
-													className="shrink-0 sm:w-36"
-													>Gender</DaisyUiLabel
-												>
+												<label for="account-gender" class="shrink-0 sm:w-36">Gender</label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiSelect
+													<WashSelect
 														id="account-gender"
 														bind:value={form.genderIdStr}
 														optionHeader="Select a gender ..."
@@ -747,19 +717,15 @@
 																>{g.name ?? ''}</option
 															>
 														{/each}
-													</DaisyUiSelect>
+													</WashSelect>
 												</div>
 											</div>
 											<div
 												class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 											>
-												<DaisyUiLabel
-													forText="account-dob"
-													className="shrink-0 sm:w-36"
-													>Date of Birth</DaisyUiLabel
-												>
+												<label for="account-dob" class="shrink-0 sm:w-36">Date of Birth</label>
 												<div class="max-w-80 flex-1">
-													<DaisyUiInputField
+													<WashInputField
 														id="account-dob"
 														bind:value={form.dateOfBirth}
 														inputType="date"
@@ -779,10 +745,8 @@
 										class="mt-6 grid grid-cols-1 gap-4 md:gap-6"
 									>
 										<div class="flex flex-col gap-2">
-											<DaisyUiLabel forText="account-address"
-												>Address</DaisyUiLabel
-											>
-											<DaisyUiTextarea
+											<label for="account-address">Address</label>
+											<WashTextarea
 												id="account-address"
 												bind:value={form.address}
 												className="w-full min-h-24 resize-y"
@@ -790,12 +754,12 @@
 										</div>
 									</div>
 
-									<DaisyUiCardBodyAction
+									<WashCardBodyAction
 										className="mt-6 flex flex-wrap gap-3"
 									>
-										<DaisyUiButton
+										<WashButton
 											type="button"
-											className="d-btn-outline d-btn-wide"
+											className="btn-outline btn-wide"
 											onClick={() => {
 												resetFormToInitial();
 												backToMenu();
@@ -803,27 +767,24 @@
 											disabled={isBusy}
 										>
 											Cancel
-										</DaisyUiButton>
-										<DaisyUiButton
+										</WashButton>
+										<WashButton
 											type="submit"
-											className="d-btn-wide d-btn-primary"
+											className="btn-wide btn-primary"
 											disabled={isBusy || !isDirty}
 											loading={isSaving}
 										>
 											Save
-										</DaisyUiButton>
-									</DaisyUiCardBodyAction>
+										</WashButton>
+									</WashCardBodyAction>
 								</fieldset>
 							</form>
 
-							<DaisyUiDivider
-								position="horizontal"
-								className="text-xs">Security</DaisyUiDivider
-							>
+							<div class="divider divider-horizontal text-xs">Security</div>
 
 							<div class="mt-1">
-								<DaisyUiCardBodyTitle className="mb-2"
-									>Change password</DaisyUiCardBodyTitle
+								<WashCardBodyTitle className="mb-2"
+									>Change password</WashCardBodyTitle
 								>
 								<p class="text-sm text-base-content/60">
 									We’ll send a reset link to your email.
@@ -837,19 +798,19 @@
 											>{emailDisplay}</span
 										>
 									</p>
-									<DaisyUiButton
-										className="d-btn d-btn-outline"
+									<WashButton
+										className="btn btn-outline"
 										onClick={handleSendPasswordReset}
 										disabled={isBusy || !userEmail?.trim()}
 										loading={isSendingReset}
 									>
 										Send password reset email
-									</DaisyUiButton>
+									</WashButton>
 								</div>
 							</div>
 						</div>
-					</DaisyUiCardBody>
-				</DaisyUiCard>
+					</WashCardBody>
+				</WashCard>
 			</div>
 			<LStaffRegistrationLicenseAndSignatureModal
 				bind:open={licenseAndSignatureModalOpen}
@@ -861,64 +822,61 @@
 				viewOnly={false}
 			/>
 		{:else}
-			<div class="d-modal-box max-w-md p-0" role="document">
-				<DaisyUiCard className="rounded-box">
-					<DaisyUiCardBody>
+			<div class="modal-box max-w-md p-0" role="document">
+				<WashCard className="rounded-box">
+					<WashCardBody>
 						<div class="flex items-center justify-between gap-3">
 							<div class="min-w-0">
-								<DaisyUiCardBodyTitle className="mb-0"
-									>Account</DaisyUiCardBodyTitle
+								<WashCardBodyTitle className="mb-0"
+									>Account</WashCardBodyTitle
 								>
 								<p class="mt-1 text-sm text-base-content/60">
 									Quick actions for your account.
 								</p>
 							</div>
-							<DaisyUiButton
-								className="d-btn-ghost d-btn-sm d-btn-circle"
+							<WashButton
+								className="btn-ghost btn-sm btn-circle"
 								onClick={handleClose}
 								title="Close"
 							>
 								<LucideX className="size-5" />
-							</DaisyUiButton>
+							</WashButton>
 						</div>
 
 						<div class="mt-4 flex flex-col gap-4">
 							<div class="flex flex-col gap-2">
-								<DaisyUiButton
-									className="d-btn-ghost w-full justify-start gap-2"
+								<WashButton
+									className="btn-ghost w-full justify-start gap-2"
 									onClick={openAccountSetting}
 									disabled={isBusy}
 								>
 									<LucideUserCog className="size-5" />
 									Account settings
-								</DaisyUiButton>
-								<DaisyUiButton
-									className="d-btn-ghost w-full justify-start gap-2"
+								</WashButton>
+								<WashButton
+									className="btn-ghost w-full justify-start gap-2"
 									onClick={handleLogOut}
 									disabled={isBusy}
 								>
 									<LucideLogOut className="size-5" />
 									Log out
-								</DaisyUiButton>
+								</WashButton>
 							</div>
 
-							<DaisyUiDivider
-								position="horizontal"
-								className="text-xs">Danger zone</DaisyUiDivider
-							>
+							<div class="divider divider-horizontal text-xs">Danger zone</div>
 
-							<DaisyUiButton
-								className="d-btn-ghost w-full justify-start gap-2 text-error"
+							<WashButton
+								className="btn-ghost w-full justify-start gap-2 text-error"
 								onClick={handleDeactivate}
 								disabled={isBusy}
 							>
 								<LucideUserX className="size-5" />
 								Deactivate account
-							</DaisyUiButton>
+							</WashButton>
 						</div>
-					</DaisyUiCardBody>
-				</DaisyUiCard>
+					</WashCardBody>
+				</WashCard>
 			</div>
 		{/if}
-	</DaisyUiModal>
+	</WashModal>
 {/if}

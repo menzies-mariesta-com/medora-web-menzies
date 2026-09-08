@@ -8,6 +8,8 @@ node_modules
 .wrangler
 /.svelte-kit
 /build
+docs/.wash-crawl-results.json
+docs/.wash-crawl-urls.txt
 
 # OS
 .DS_Store

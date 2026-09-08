@@ -1,11 +1,11 @@
 /**
  * Enforces: no static vertical tooltip placement in Svelte UI.
- * Horizontal left/right placement is resolved at runtime in DaisyUiTooltip.
+ * Horizontal left/right placement is resolved at runtime in WashTooltip.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FORBIDDEN = /\bd-tooltip-(?:top|bottom)\b/;
+const FORBIDDEN = /\b(?:d-)?tooltip-(?:top|bottom)\b/;
 
 function walk(dir, out) {
 	for (const name of readdirSync(dir, { withFileTypes: true })) {
@@ -37,7 +37,7 @@ for (const f of srcFiles) {
 
 if (violations.length > 0) {
 	console.error(
-		'check:tooltip-placement failed: remove d-tooltip-top / d-tooltip-bottom from Svelte files (use DaisyUiTooltip auto placement):\n'
+		'check:tooltip-placement failed: remove tooltip-top / tooltip-bottom from Svelte files (use WashTooltip auto placement):\n'
 	);
 	for (const v of violations) console.error(`  ${v}`);
 	process.exit(1);

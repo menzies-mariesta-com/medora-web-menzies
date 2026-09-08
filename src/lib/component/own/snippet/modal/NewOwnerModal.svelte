@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
-	import DaisyUiButton from '$lib/component/daisyui/button/DaisyUiButton.svelte';
-	import DaisyUiInputField from '$lib/component/daisyui/inputfield/DaisyUiInputField.svelte';
-	import DaisyUiLabel from '$lib/component/daisyui/label/DaisyUiLabel.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { authClient } from '$lib/auth/client';
@@ -38,7 +37,7 @@
 		}
 		isSubmitting = true;
 		try {
-			const res = await fetch('/api/heka/auth/user', {
+			const res = await fetch('/api/medora/auth/user', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				credentials: 'include',
@@ -85,13 +84,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel
-				forText="owner-name"
-				className="shrink-0 sm:w-36 font-bold"
-				>Name <span class="text-error">*</span></DaisyUiLabel
-			>
+			<label for="owner-name" class="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></label>
 			<div class="max-w-80 flex-1">
-				<DaisyUiInputField
+				<WashInputField
 					id="owner-name"
 					bind:value={name}
 					inputType="text"
@@ -103,13 +98,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<DaisyUiLabel
-				forText="owner-email"
-				className="shrink-0 sm:w-36 font-bold"
-				>Email <span class="text-error">*</span></DaisyUiLabel
-			>
+			<label for="owner-email" class="shrink-0 sm:w-36 font-bold">Email <span class="text-error">*</span></label>
 			<div class="max-w-80 flex-1">
-				<DaisyUiInputField
+				<WashInputField
 					id="owner-email"
 					bind:value={email}
 					inputType="email"
@@ -124,21 +115,21 @@
 		</p>
 	</div>
 	<div
-		class="d-modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
+		class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
 	>
-		<DaisyUiButton
+		<WashButton
 			type="button"
-			className="d-btn-ghost"
+			className="btn-ghost"
 			onClick={() => cancel()}
 		>
 			Cancel
-		</DaisyUiButton>
-		<DaisyUiButton
+		</WashButton>
+		<WashButton
 			type="submit"
-			className="d-btn-primary"
+			className="btn-primary"
 			loading={isSubmitting}
 		>
 			Create
-		</DaisyUiButton>
+		</WashButton>
 	</div>
 </form>

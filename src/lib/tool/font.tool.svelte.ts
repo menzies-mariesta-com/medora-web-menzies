@@ -1,4 +1,3 @@
-import { browser } from '$app/environment';
 import type { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 import { FontEnum } from '$lib/model/enum/font.enum';
 import { LocalStorageEnum } from '$lib/model/enum/local-storage.enum';
@@ -10,52 +9,31 @@ export class FontTool {
 		return this.localStorageUtil.hasItem(LocalStorageEnum.FONT);
 	}
 
+	/**
+	 * Font picker is disabled while Wash owns typography (`--font-display` / `--font-sans`).
+	 * Kept as a no-op so callers do not fight Wash fonts via `data-font`.
+	 */
 	getFont(): FontEnum {
 		const value = this.localStorageUtil.getItem<string>(
 			LocalStorageEnum.FONT
 		);
-
 		if (
 			value &&
 			Object.values(FontEnum).includes(value as FontEnum)
 		) {
-			this.updateHtmlFont(value);
 			return value as FontEnum;
 		}
-
-		// fallback
-		const defaultFont = Object.values(FontEnum)[0] as FontEnum;
-		if (browser) this.setFont(defaultFont);
-		return defaultFont;
+		return Object.values(FontEnum)[0] as FontEnum;
 	}
 
 	setFont(font: FontEnum): void {
 		this.localStorageUtil.setItem(LocalStorageEnum.FONT, font);
-		this.updateHtmlFont(font);
+		// Intentionally do not set data-font — Wash styles own typefaces.
 	}
 
 	deleteFont(): void {
-		const defaultFont = Object.values(FontEnum)[0] as FontEnum;
-
 		if (this.checkFontExists()) {
 			this.localStorageUtil.removeItem(LocalStorageEnum.FONT);
 		}
-		this.updateHtmlFont(defaultFont);
-	}
-
-	private updateHtmlFont(font: FontEnum | string): void {
-		if (!browser) return;
-		document.documentElement.setAttribute(
-			'data-font',
-			this.fontToHtml(font)
-		);
-	}
-
-	private fontToHtml(font: FontEnum | string): string {
-		return font
-			.toLowerCase()
-			.split('_')
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join('');
 	}
 }

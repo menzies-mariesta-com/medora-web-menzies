@@ -12,7 +12,7 @@ export async function persistEmrPrintPdf(params: {
 	fileUrl: string;
 	attachmentDescription: string;
 }): Promise<void> {
-	const base = `/api/heka/hospital/${encodeURIComponent(params.hospitalId)}/home/nursing-workbench/emr`;
+	const base = `/api/medora/hospital/${encodeURIComponent(params.hospitalId)}/home/nursing-workbench/emr`;
 
 	const attachRes = await fetch(`${base}/patient-attachment`, {
 		method: 'POST',
