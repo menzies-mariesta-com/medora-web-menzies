@@ -552,7 +552,7 @@
 												className=""
 											>
 												<WashButton
-													className="btn-ghost btn-sm btn-square"
+													className="btn-xs btn-ghost btn-square"
 													onClick={() =>
 														goToCaseSheet(row as VisitTableRow)}
 												>
@@ -577,7 +577,7 @@
 												className=""
 											>
 												<WashButton
-													className="btn-ghost btn-sm btn-square"
+													className="btn-xs btn-ghost btn-square"
 													onClick={() =>
 														void printVisitLabel(
 															row as VisitTableRow

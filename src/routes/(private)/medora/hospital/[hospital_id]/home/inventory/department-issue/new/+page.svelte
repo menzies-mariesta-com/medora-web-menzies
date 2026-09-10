@@ -865,7 +865,7 @@
 			>
 				<WashButton
 					type="button"
-					className="btn-sm btn-ghost btn-square"
+					className="btn-xs btn-ghost btn-square"
 					onClick={() => void goBackToList()}
 				>
 					<LucideArrowLeft className="size-4" />
@@ -1156,13 +1156,13 @@
 							>
 								<WashButton
 									type="button"
-									className="btn-sm btn-ghost btn-square text-accent"
+									className="btn-xs btn-ghost btn-square text-accent"
 									disabled={!ln || submitting}
 									onClick={() => {
 										if (ln) void openIndentLineDialogForEdit(ln);
 									}}
 								>
-									<LucidePencil className="size-5" />
+									<LucidePencil className="size-3.5" />
 								</WashButton>
 							</WashTooltip>
 						{/snippet}

@@ -11,6 +11,7 @@
 		disabled = false,
 		editDisabled = false,
 		deleteDisabled = false,
+		editLoading = false,
 		deleteLoading = false,
 		editTooltip = m.menzies_table_tooltip_edit(),
 		deleteTooltip = m.menzies_table_tooltip_delete()
@@ -20,6 +21,7 @@
 		disabled?: boolean;
 		editDisabled?: boolean;
 		deleteDisabled?: boolean;
+		editLoading?: boolean;
 		deleteLoading?: boolean;
 		editTooltip?: string;
 		deleteTooltip?: string;
@@ -31,6 +33,8 @@
 		tooltipText={editTooltip}
 		color="secondary"
 		disabled={disabled || editDisabled}
+		loading={editLoading}
+		loadingText=""
 		onClick={onEdit}
 	>
 		{#snippet icon()}
@@ -42,6 +46,7 @@
 		color="error"
 		disabled={disabled || deleteDisabled}
 		loading={deleteLoading}
+		loadingText=""
 		onClick={onDelete}
 	>
 		{#snippet icon()}

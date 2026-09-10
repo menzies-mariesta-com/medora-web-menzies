@@ -157,7 +157,7 @@
 							onClick={() => onCloseLine?.(row)}
 						>
 							{#snippet icon()}
-								<LucideX className="size-5" />
+								<LucideX className="size-3.5" />
 							{/snippet}
 						</MenziesTableIconAction>
 					{/if}
@@ -168,7 +168,7 @@
 						onClick={() => onEditLine(row)}
 					>
 						{#snippet icon()}
-							<LucidePencil className="size-5" />
+							<LucidePencil className="size-3.5" />
 						{/snippet}
 					</MenziesTableIconAction>
 					<MenziesTableIconAction
@@ -178,7 +178,7 @@
 						onClick={() => onDeleteLine((row as { key: string }).key)}
 					>
 						{#snippet icon()}
-							<LucideTrash2 className="size-5" />
+							<LucideTrash2 className="size-3.5" />
 						{/snippet}
 					</MenziesTableIconAction>
 				</MenziesTableRowActionGroup>

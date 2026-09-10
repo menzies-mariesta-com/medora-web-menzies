@@ -18,7 +18,8 @@
 	import type { DoctorScheduleListRow } from '$lib/model/type/medora/ui-rows.type';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { page } from '$app/state';
@@ -726,31 +727,29 @@
 														<td>
 															{group.toDate ?? 'No End Date'}
 														</td>
-														<td>
-															<WashTooltip
-																tooltipText="edit data"
-																className=" tooltip-accent"
-															>
-																<WashButton
-																	className=" btn-ghost btn-sm btn-accent"
+														<td class="menzies-table-actions-col">
+															<MenziesTableRowActionGroup>
+																<MenziesTableIconAction
+																	tooltipText="edit data"
+																	color="accent"
 																	onClick={() =>
 																		handleEditGroup(group)}
 																>
-																	<LucidePencil className="size-5" />
-																</WashButton>
-															</WashTooltip>
-															<WashTooltip
-																tooltipText="inactivate schedule"
-																className=" tooltip-error"
-															>
-																<WashButton
-																	className="btn-ghost btn-sm btn-error"
+																	{#snippet icon()}
+																		<LucidePencil className="size-3.5" />
+																	{/snippet}
+																</MenziesTableIconAction>
+																<MenziesTableIconAction
+																	tooltipText="inactivate schedule"
+																	color="error"
 																	onClick={() =>
 																		handleDeleteSchedule(group)}
 																>
-																	<LucideTrash2 className="size-5=" />
-																</WashButton>
-															</WashTooltip>
+																	{#snippet icon()}
+																		<LucideTrash2 className="size-3.5" />
+																	{/snippet}
+																</MenziesTableIconAction>
+															</MenziesTableRowActionGroup>
 														</td>
 													</tr>
 												{/each}

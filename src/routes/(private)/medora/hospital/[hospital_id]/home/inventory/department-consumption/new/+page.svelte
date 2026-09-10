@@ -456,13 +456,13 @@
 						>
 							<WashButton
 								type="button"
-								className="btn-sm btn-ghost btn-square text-accent"
+								className="btn-ghost btn-sm text-accent"
 								disabled={!ln}
 								onClick={() => {
 									if (ln) void openEditLine(ln);
 								}}
 							>
-								<LucidePencil className="size-5" />
+								<LucidePencil className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 						<WashTooltip
@@ -471,13 +471,13 @@
 						>
 							<WashButton
 								type="button"
-								className="btn-sm btn-ghost btn-square text-error"
+								className="btn-ghost btn-sm text-error"
 								disabled={!ln}
 								onClick={() => {
 									if (ln) removeLine(ln.key);
 								}}
 							>
-								<LucideTrash2 className="size-5" />
+								<LucideTrash2 className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 					</div>
