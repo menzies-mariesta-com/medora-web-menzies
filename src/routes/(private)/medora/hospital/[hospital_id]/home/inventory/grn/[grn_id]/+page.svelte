@@ -17,7 +17,6 @@
 		trimInventoryNumericDisplay,
 		trimMetricQtyDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -203,10 +202,10 @@
 		>
 			<WashButton
 				type="button"
-				className="btn-sm btn-ghost btn-square"
+				className="btn-xs btn-ghost btn-square"
 				onClick={() => void goto(resolve(grnListPath as any))}
 			>
-				<LucideArrowLeft className="size-5" />
+				<LucideArrowLeft className="size-3.5" />
 			</WashButton>
 		</WashTooltip>
 		<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>

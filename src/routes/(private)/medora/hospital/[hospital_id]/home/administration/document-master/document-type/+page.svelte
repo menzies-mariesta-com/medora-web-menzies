@@ -1,16 +1,14 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -346,33 +344,13 @@
 				>
 					{#snippet rowActions(row, rowIndex)}
 						{@const typedRow = row as DocumentTypeRow}
-						<td class="w-24 shrink-0 text-right">
-							<div class="flex justify-end gap-1">
-								<WashTooltip
-									tooltipText={m.edit_data()}
-									className="tooltip-accent"
-								>
-									<WashButton
-										className="btn-sm btn-ghost btn-accent"
-										onClick={() => startEdit(typedRow)}
-									>
-										<LucidePencil className="size-4" />
-									</WashButton>
-								</WashTooltip>
-								<WashTooltip
-									tooltipText={m.delete_data()}
-									className="tooltip-error"
-								>
-									<WashButton
-										className="btn-ghost btn-sm btn-error"
-										disabled={isLoading}
-										onClick={() => handleDelete(typedRow.id)}
-									>
-										<LucideTrash2 className="size-4" />
-									</WashButton>
-								</WashTooltip>
-							</div>
-						</td>
+						<MenziesTableEditDeleteActions
+							onEdit={() => startEdit(typedRow)}
+							onDelete={() => handleDelete(typedRow.id)}
+							deleteDisabled={isLoading}
+							editTooltip={m.edit_data()}
+							deleteTooltip={m.delete_data()}
+						/>
 					{/snippet}
 				</MenziesTable>
 			</div>

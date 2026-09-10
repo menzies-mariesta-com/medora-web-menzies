@@ -175,10 +175,10 @@
 		>
 			<WashButton
 				type="button"
-				className="btn-sm btn-ghost btn-square"
+				className="btn-xs btn-ghost btn-square"
 				onClick={() => void goto(backHref)}
 			>
-				<LucideArrowLeft className="size-5" />
+				<LucideArrowLeft className="size-3.5" />
 			</WashButton>
 		</WashTooltip>
 		<h1 class="text-lg font-semibold">

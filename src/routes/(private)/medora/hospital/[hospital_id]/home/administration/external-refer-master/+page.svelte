@@ -276,7 +276,7 @@
 		className="btn-primary btn-sm"
 		onClick={openCreate}
 	>
-		<LucidePlus className="size-5" />
+		<LucidePlus className="size-4" />
 		{m.create()}
 	</WashButton>
 </div>

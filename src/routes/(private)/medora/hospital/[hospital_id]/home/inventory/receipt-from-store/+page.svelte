@@ -18,7 +18,6 @@
 	import { InvDepartmentIssueStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const dt = new DateTimeUtil();
 	const toast = new ToastService();
@@ -326,18 +325,6 @@
 					void loadList();
 				}, 350);
 			}}
-			rowTooltipGetter={(row) =>
-				StringUtil.inventoryAuditRowTooltip(
-					row as {
-						createdAt?: string | null;
-						updatedAt?: string | null;
-						createdByName?: string | null;
-						updatedByName?: string | null;
-						approvedAt?: string | null;
-						approvedByName?: string | null;
-						cancelledAt?: string | null;
-						cancelledByName?: string | null;
-					}
 				)}
 		>
 			{#snippet rowActions(row, _i)}
@@ -348,11 +335,11 @@
 						className="tooltip-ghost"
 					>
 						<WashButton
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							disabled={loading}
 							onClick={() => void goto(receiptIssueDetailHref(r.id))}
 						>
-							<LucideEye className="size-5" />
+							<LucideEye className="size-3.5" />
 						</WashButton>
 					</WashTooltip>
 					<WashTooltip
@@ -361,7 +348,7 @@
 					>
 						<WashButton
 							type="button"
-							className="btn-sm btn-ghost btn-square text-accent"
+							className="btn-xs btn-ghost btn-square text-accent"
 							disabled={actId != null ||
 								fromStoreId == null ||
 								r.canReceive !== true}
@@ -376,7 +363,7 @@
 						className="tooltip-error"
 					>
 						<WashButton
-							className="btn-sm btn-ghost btn-square text-error"
+							className="btn-xs btn-ghost btn-square text-error"
 							disabled={r.canCancel !== true}
 							onClick={() => openCancelDialog(r)}
 						>

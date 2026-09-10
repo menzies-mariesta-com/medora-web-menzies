@@ -571,7 +571,7 @@
 		>
 			<WashButton
 				type="button"
-				className="btn-sm btn-ghost btn-square"
+				className="btn-xs btn-ghost btn-square"
 				onClick={() => void goBackToList()}
 			>
 				<LucideArrowLeft className="size-4" />

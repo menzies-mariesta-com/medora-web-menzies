@@ -14,10 +14,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
-	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import MenziesTable, {
@@ -270,11 +267,6 @@
 						actionsVariant="none"
 						enableColumnFilters={true}
 						useRemoteFilters={true}
-						on:refresh={() => fetchBranches(true)}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							fetchBranches(true);
-						}}
 						on:pageChange={() => fetchBranches(true)}
 						on:filtersChange={(e) => {
 							tableFilters = e.detail.filters;
@@ -284,32 +276,15 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const branch = row as StaffRegHospitalBranchRow}
-							<MenziesTableRowActionGroup>
-								<MenziesTableIconAction
-									tooltipText={m.menzies_table_tooltip_edit()}
-									color="accent"
-									loading={editingBranchId === branch.id}
-									disabled={deletingBranchId === branch.id}
-									loadingText=""
-									onClick={() => openEdit(branch)}
-								>
-									{#snippet icon()}
-										<LucidePencil className="size-4" />
-									{/snippet}
-								</MenziesTableIconAction>
-								<MenziesTableIconAction
-									tooltipText={m.menzies_table_tooltip_delete()}
-									color="error"
-									loading={deletingBranchId === branch.id}
-									disabled={deletingBranchId === branch.id}
-									loadingText=""
-									onClick={() => handleDelete(branch)}
-								>
-									{#snippet icon()}
-										<LucideTrash2 className="size-4" />
-									{/snippet}
-								</MenziesTableIconAction>
-							</MenziesTableRowActionGroup>
+							<MenziesTableEditDeleteActions
+								onEdit={() => openEdit(branch)}
+								onDelete={() => handleDelete(branch)}
+								editLoading={editingBranchId === branch.id}
+								deleteLoading={deletingBranchId === branch.id}
+								disabled={deletingBranchId === branch.id}
+								editTooltip={m.edit_data()}
+								deleteTooltip={m.delete_data()}
+							/>
 						{/snippet}
 					</MenziesTable>
 				</div>

@@ -1,17 +1,14 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
-	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import DocumentMasterHtmlPrintEditor from '$lib/component/own/local/private/medora/administration/document-master/DocumentMasterHtmlPrintEditor.svelte';
 	import type { DocumentSettingWithRelations } from '$lib/model/type/document-setting.type';
 	import type { PrintDocumentLayoutInput } from '$lib/util/print-document-html.util';
@@ -451,44 +448,15 @@
 					>
 						{#snippet rowActions(row, rowIndex)}
 							{@const typedRow = row as DocumentWithRelations}
-							<td class="w-28 shrink-0 text-right">
-								<div class="flex justify-end gap-1">
-									<WashTooltip
-										tooltipText={m.view_data()}
-										className="tooltip-ghost"
-									>
-										<WashButton
-											className="btn-ghost btn-sm"
-											onClick={() => startView(typedRow)}
-										>
-											<LucideEye className="size-5" />
-										</WashButton>
-									</WashTooltip>
-									<WashTooltip
-										tooltipText={m.edit_data()}
-										className="tooltip-accent"
-									>
-										<WashButton
-											className="btn-sm btn-ghost btn-accent"
-											onClick={() => startEdit(typedRow)}
-										>
-											<LucidePencil className="size-5" />
-										</WashButton>
-									</WashTooltip>
-									<WashTooltip
-										tooltipText={m.delete_data()}
-										className="tooltip-error"
-									>
-										<WashButton
-											className="btn-ghost btn-sm btn-error"
-											disabled={isLoading}
-											onClick={() => handleDelete(typedRow.id)}
-										>
-											<LucideTrash2 className="size-5" />
-										</WashButton>
-									</WashTooltip>
-								</div>
-							</td>
+							<MenziesTableViewEditDeleteActions
+								onView={() => startView(typedRow)}
+								onEdit={() => startEdit(typedRow)}
+								onDelete={() => handleDelete(typedRow.id)}
+								deleteDisabled={isLoading}
+								viewTooltip={m.view_data()}
+								editTooltip={m.edit_data()}
+								deleteTooltip={m.delete_data()}
+							/>
 						{/snippet}
 					</MenziesTable>
 				</div>
@@ -511,7 +479,7 @@
 						className="btn-ghost btn-sm"
 						onClick={resetForm}
 					>
-						<LucideX className="size-5" />
+						<LucideX className="size-3.5" />
 						Back to List
 					</WashButton>
 				</div>

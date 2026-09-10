@@ -458,7 +458,7 @@
 				>
 					<WashButton
 						type="button"
-						className="btn-sm btn-ghost btn-square"
+						className="btn-xs btn-ghost btn-square"
 						disabled={detailLoading}
 						onClick={() => void goto(resolve(prListPath as any))}
 					>

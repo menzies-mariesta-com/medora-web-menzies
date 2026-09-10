@@ -1350,7 +1350,7 @@
 					>
 						<WashButton
 							type="button"
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							onClick={() => void goBackToGrnList()}
 						>
 							<LucideArrowLeft className="size-4" />
@@ -1420,7 +1420,7 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-error"
+											className="btn-xs btn-ghost btn-square text-error"
 											onClick={() => {
 												invoicePhotoUrl = null;
 											}}
@@ -1723,11 +1723,11 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-accent"
+											className="btn-xs btn-ghost btn-square text-accent"
 											onClick={() =>
 												void openGrnFromPoLineDialog(line.poLineId)}
 										>
-											<LucidePencil className="size-5" />
+											<LucidePencil className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 									<WashTooltip
@@ -1736,11 +1736,11 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-error"
+											className="btn-xs btn-ghost btn-square text-error"
 											onClick={() =>
 												removeGrnFromPoLine(line.poLineId)}
 										>
-											<LucideTrash2 className="size-5" />
+											<LucideTrash2 className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 								</div>

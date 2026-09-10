@@ -4,17 +4,15 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
-	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -365,34 +363,13 @@
 			actionsVariant="none"
 		>
 			{#snippet rowActions(row, rowIndex)}
-				<div
-					class="flex flex-col items-center gap-1"
-					data-row-index={rowIndex}
-				>
-					<WashTooltip
-						tooltipText={m.inv_line_items_tooltip_edit()}
-						className="tooltip-accent"
-					>
-						<WashButton
-							type="button"
-							className="btn-sm btn-ghost btn-accent"
-							onClick={() => startEdit(row)}
-						>
-							<LucidePencil className="size-5" />
-						</WashButton>
-					</WashTooltip>
-					<WashTooltip
-						tooltipText={m.inv_line_items_tooltip_delete()}
-						className="tooltip-error"
-					>
-						<WashButton
-							type="button"
-							className="btn-ghost btn-sm btn-error"
-							onClick={() => handleDelete(row)}
-						>
-							<LucideTrash2 className="size-5" />
-						</WashButton>
-					</WashTooltip>
+				<div data-row-index={rowIndex}>
+					<MenziesTableEditDeleteActions
+						onEdit={() => startEdit(row)}
+						onDelete={() => handleDelete(row)}
+						editTooltip={m.inv_line_items_tooltip_edit()}
+						deleteTooltip={m.inv_line_items_tooltip_delete()}
+					/>
 				</div>
 			{/snippet}
 		</MenziesTable>

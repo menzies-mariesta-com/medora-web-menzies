@@ -1,7 +1,6 @@
 import { YesNoEnum } from '$lib/model/enum/db-link';
 import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
 import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
-import { DateTimeUtil } from './date-time.util.svelte';
 import { formatItemUnitConversionDisplay } from './item-unit-conversion.util.svelte';
 
 type PhoneCountryInput =
@@ -33,65 +32,6 @@ export class StringUtil {
 	static displayEmail(value: string | null | undefined): string {
 		if (!value) return '';
 		return StringUtil.isNoEmail(value) ? '' : value;
-	}
-
-	static tableToolTip(row: any): string {
-		const dateTimeUtil = new DateTimeUtil();
-		const createdAt = dateTimeUtil.formatDateTime(row.createdAt);
-		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
-		const createdBy = row.createdByUser?.name ?? '—';
-		const updatedBy = row.updatedByUser?.name ?? '—';
-		// cancelBy: relation may be cancelByUser (refer_history, etc.) or cancelBy (service_order_detail)
-		const cancelByUserRow = row.cancelByUser ?? row.cancelBy;
-		const canceledBy =
-			cancelByUserRow?.name ??
-			(typeof row.cancelBy === 'string' && row.cancelBy.trim()
-				? row.cancelBy
-				: null) ??
-			'—';
-		const canceledAt = dateTimeUtil.formatDateTime(row.cancelAt);
-		const hasCancelInfo =
-			canceledBy !== '—' || (canceledAt ?? '') !== '—';
-
-		if (hasCancelInfo) {
-			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
-		}
-
-		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}`;
-	}
-
-	/**
-	 * Row hover text for inventory list rows (flat *ByName + timestamps).
-	 */
-	static inventoryAuditRowTooltip(row: {
-		createdAt?: string | null;
-		updatedAt?: string | null;
-		createdByName?: string | null;
-		updatedByName?: string | null;
-		approvedAt?: string | null;
-		approvedByName?: string | null;
-		cancelledAt?: string | null;
-		cancelledByName?: string | null;
-	}): string {
-		const dateTimeUtil = new DateTimeUtil();
-		const createdAt = dateTimeUtil.formatDateTime(row.createdAt);
-		const updatedAt = dateTimeUtil.formatDateTime(row.updatedAt);
-		const createdBy = row.createdByName ?? '—';
-		const updatedBy = row.updatedByName ?? '—';
-		const approvedBy = row.approvedByName ?? '—';
-		const approvedAt = dateTimeUtil.formatDateTime(row.approvedAt);
-		const canceledBy = row.cancelledByName ?? '—';
-		const canceledAt = dateTimeUtil.formatDateTime(row.cancelledAt);
-		const hasApprovalInfo =
-			approvedBy !== '—' || (approvedAt ?? '') !== '—';
-		const hasCancelInfo =
-			canceledBy !== '—' || (canceledAt ?? '') !== '—';
-
-		if (hasCancelInfo) {
-			return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}${hasApprovalInfo ? `\nApproved by: ${approvedBy}\nAt: ${approvedAt}` : ''}\nCanceled by: ${canceledBy}\nAt: ${canceledAt}`;
-		}
-
-		return `Created by: ${createdBy}\nAt: ${createdAt}\nLast Updated by: ${updatedBy}\nAt: ${updatedAt}${hasApprovalInfo ? `\nApproved by: ${approvedBy}\nAt: ${approvedAt}` : ''}`;
 	}
 
 	/**

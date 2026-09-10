@@ -164,7 +164,6 @@
 		crudShowView = true,
 		useRemoteFilters = false,
 		columnFilters = $bindable<Record<string, string>>({}),
-		rowTooltipGetter,
 		legendItems = [],
 		rowClassGetter,
 		/**
@@ -203,11 +202,6 @@
 		legendItems?: MenziesTableLegendItem[];
 		/** Optional row class generator. Useful for status color mapping with legend. */
 		rowClassGetter?: (row: any, rowIndex: number) => string;
-		/**
-		 * Optional function to provide a tooltip for each row.
-		 * Return a string to show as the native browser tooltip on row hover.
-		 */
-		rowTooltipGetter?: (row: any, rowIndex: number) => string;
 		fillParent?: boolean;
 		/** Custom actions cell when `actionsVariant` is `none` but the actions column is shown. */
 		rowActions?: Snippet<[any, number]>;
@@ -292,23 +286,23 @@
 		return rows.map((row) => ({ ...(row as RowLike) }));
 	}
 
-	/** Menzies Design Data table template: bordered rounded-box ledger chrome. */
+	/**
+	 * Menzies Design Data table template (`PlateLedgerTable`):
+	 * root = fixed/flex height + flex-col overflow-hidden;
+	 * body = min-h-0 flex-1 overflow-auto (H-scrollbar flush above footer);
+	 * footer = shrink-0.
+	 * Design demos use `heightClass` (default `h-[360px]`). App list pages wrap with
+	 * `TableEnum.HEIGHT` (`h-[calc(100vh-18rem)]`); this root uses `h-full` to fill that.
+	 * Without a height-constrained parent, pass `fillParent` or wrap with `TableEnum.HEIGHT`.
+	 */
 	const rootClass = $derived(
 		fillParent
 			? 'border-base-300 rounded-box flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border bg-base-100'
-			: 'border-base-300 rounded-box flex h-full min-h-[40vh] flex-col overflow-hidden border bg-base-100'
+			: 'border-base-300 rounded-box flex h-full min-h-0 min-w-0 flex-col overflow-hidden border bg-base-100'
 	);
 	/** min-w-0 lets flex children shrink so wide tables scroll inside instead of expanding the card */
-	const tableScrollClass = $derived(
-		fillParent
-			? 'min-h-0 min-w-0 flex-1 overflow-auto'
-			: 'max-h-[60vh] min-w-0 overflow-auto'
-	);
-	const tableSectionClass = $derived(
-		fillParent
-			? 'flex min-h-0 min-w-0 flex-1 flex-col'
-			: 'min-w-0 flex-1'
-	);
+	const tableScrollClass = 'min-h-0 min-w-0 flex-1 overflow-auto';
+	const tableSectionClass = 'flex min-h-0 min-w-0 flex-1 flex-col';
 
 	function getDefaultFilterValue(
 		column: MenziesTableColumn
@@ -618,7 +612,7 @@
 						loading={isLoading}
 						loadingText=""
 					>
-						<LucideRefreshCcw className="size-5" />
+						<LucideRefreshCcw className="size-4" />
 					</WashButton>
 				</WashTooltip>
 			{/if}
@@ -632,7 +626,7 @@
 				<WashTableHeader className="bg-base-100 sticky top-0 z-10">
 					<tr>
 						{#if hasActionsColumn}
-							<th class="menzies-table-actions-col w-28 text-left whitespace-nowrap">
+							<th class="menzies-table-actions-col text-left">
 								{actionsHeader}
 							</th>
 						{/if}
@@ -699,20 +693,16 @@
 						</tr>
 					{:else}
 						{#each pagedRows as row, index (row.id ?? index)}
-							{@const rowTooltipText = rowTooltipGetter
-								? rowTooltipGetter(row, index)
-								: ''}
 							{@const customRowClass = rowClassGetter
 								? rowClassGetter(row, index)
 								: ''}
 							<tr
 								class={customRowClass}
-								title={rowTooltipText || undefined}
 								onclick={() => handleRowClick(row)}
 							>
 								{#if hasActionsColumn}
 									<td
-										class="menzies-table-actions-col relative z-0 w-28 overflow-visible px-1 whitespace-nowrap"
+										class="menzies-table-actions-col relative z-0 overflow-visible px-1"
 										onclick={(e) => e.stopPropagation()}
 									>
 										{#if actionsVariant === 'crud'}

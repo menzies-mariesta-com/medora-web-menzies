@@ -371,9 +371,6 @@
 		actionsVariant="none"
 		enableColumnFilters={true}
 		useRemoteFilters={true}
-		rowTooltipGetter={(row) => {
-			return StringUtil.tableToolTip(row);
-		}}
 		on:refresh={() =>
 			refreshLock.run(async () => {
 				await fetchStaff(true);

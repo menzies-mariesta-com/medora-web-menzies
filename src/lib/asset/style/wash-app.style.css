@@ -35,15 +35,130 @@ details.dropdown:not([open]) > .dropdown-content {
 	min-width: 0;
 }
 
-/* MenziesTable actions: keep icon buttons on one row (do not collapse to 1%). */
+/* MenziesTable actions: hug content (do not reserve empty width).
+ * `width: 1%` + nowrap is the classic “fit column to buttons” table trick. */
 .menzies-table-actions-col {
 	width: 1%;
-	min-width: 11rem;
+	min-width: 0;
+	max-width: max-content;
 	white-space: nowrap;
+	vertical-align: middle;
 }
 .menzies-table-actions-col .menzies-table-row-actions,
 .menzies-table-actions-col > div {
+	display: inline-flex;
+	width: max-content;
+	max-width: 100%;
 	flex-wrap: nowrap;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+/*
+ * Table action tips: always to the RIGHT of the button.
+ * Do not use DaisyUI `.tooltip[data-tip]` here — its default top `inset` still
+ * wins for some tones (notably error) inside overflow table scrollers.
+ */
+.menzies-table-icon-action-tip {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	z-index: 0;
+}
+.menzies-table-icon-action-tip:hover,
+.menzies-table-icon-action-tip:focus-within {
+	z-index: 60;
+}
+.menzies-table-icon-action-tip__label {
+	position: absolute;
+	left: calc(100% + 0.4rem);
+	top: 50%;
+	translate: 0 -50%;
+	z-index: 61;
+	box-sizing: border-box;
+	width: max-content;
+	max-width: 16rem;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--radius-field, 0.25rem);
+	background: var(--menzies-tip-bg, var(--color-neutral));
+	color: var(--menzies-tip-fg, var(--color-neutral-content));
+	font-size: 0.75rem;
+	line-height: 1.25;
+	white-space: normal;
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+}
+.menzies-table-icon-action-tip:hover > .menzies-table-icon-action-tip__label,
+.menzies-table-icon-action-tip:focus-within > .menzies-table-icon-action-tip__label {
+	opacity: 1;
+	visibility: visible;
+}
+.menzies-table-icon-action-tip[data-tone='primary'] {
+	--menzies-tip-bg: var(--color-primary);
+	--menzies-tip-fg: var(--color-primary-content);
+}
+.menzies-table-icon-action-tip[data-tone='secondary'] {
+	--menzies-tip-bg: var(--color-secondary);
+	--menzies-tip-fg: var(--color-secondary-content);
+}
+.menzies-table-icon-action-tip[data-tone='accent'] {
+	--menzies-tip-bg: var(--color-accent);
+	--menzies-tip-fg: var(--color-accent-content);
+}
+.menzies-table-icon-action-tip[data-tone='info'] {
+	--menzies-tip-bg: var(--color-info);
+	--menzies-tip-fg: var(--color-info-content);
+}
+.menzies-table-icon-action-tip[data-tone='success'] {
+	--menzies-tip-bg: var(--color-success);
+	--menzies-tip-fg: var(--color-success-content);
+}
+.menzies-table-icon-action-tip[data-tone='warning'] {
+	--menzies-tip-bg: var(--color-warning);
+	--menzies-tip-fg: var(--color-warning-content);
+}
+.menzies-table-icon-action-tip[data-tone='error'] {
+	--menzies-tip-bg: var(--color-error);
+	--menzies-tip-fg: var(--color-error-content);
+}
+
+/*
+ * Menzies Design table icon actions:
+ * `btn-ghost btn-square btn-xs` (+ optional tone). Force size even when callers
+ * still pass `btn-sm` / omit `btn-square` / use larger Lucide icons.
+ * Text CTAs (e.g. Enter) stay `btn-primary` / non-ghost and are not forced square.
+ */
+.menzies-table-icon-action.btn,
+.menzies-table-row-actions .btn.btn-square,
+.menzies-table-row-actions .btn.btn-ghost,
+.menzies-table-actions-col .btn.btn-square,
+.menzies-table-actions-col .btn.btn-ghost {
+	--fontsize: 0.6875rem;
+	--btn-p: 0.5rem;
+	--size: calc(var(--size-field, 0.25rem) * 6);
+	width: var(--size);
+	height: var(--size);
+	min-height: var(--size);
+	min-width: var(--size);
+	padding-inline: 0;
+	aspect-ratio: 1 / 1;
+}
+.menzies-table-icon-action__glyph,
+.menzies-table-icon-action__glyph :is(svg),
+.menzies-table-row-actions .btn.btn-square :is(svg),
+.menzies-table-row-actions .btn.btn-ghost :is(svg),
+.menzies-table-actions-col .btn.btn-square :is(svg),
+.menzies-table-actions-col .btn.btn-ghost :is(svg) {
+	width: 0.875rem;
+	height: 0.875rem;
+	flex-shrink: 0;
+}
+.menzies-table-icon-action .loading,
+.menzies-table-row-actions .btn.btn-ghost .loading,
+.menzies-table-actions-col .btn.btn-ghost .loading {
+	width: 0.875rem;
+	height: 0.875rem;
 }
 
 /*
