@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import { CreateAppointmentDialogState } from '$lib/state/create-appointment-dialog.state.svelte';
@@ -725,7 +725,7 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<WashSearchSelect
+				<SearchSelect
 					bind:value={selectedPatientId}
 					placeholder="Select Patient"
 					className="w-full"

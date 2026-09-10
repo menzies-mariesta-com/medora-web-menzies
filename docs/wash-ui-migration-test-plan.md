@@ -107,7 +107,7 @@ Original EMR structure must remain:
 
 | ID | Case | Steps | Expected |
 | --- | --- | --- | --- |
-| DL-1 | Root dialog | Trigger any dialog (e.g. support / appearance) | Uses `.modal` / `.modal-box` (not `d-modal`); primary ring still visible |
+| DL-1 | Root dialog | Trigger any dialog (e.g. support / appearance) | Uses Menzies Design `WashDialog`: `<dialog class="modal">`, `.modal-box.border-ink-border`, `h2.card-title`, `.modal-action` (not `d-modal` / raw `modal-open`) |
 | DL-2 | Toast | Force an error toast (bad login) | Toast renders top-end; dismissible |
 | DL-3 | Loading buttons | Submit login / refresh table | Spinner uses `.loading` classes |
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { m } from '$lib/paraglide/messages';
 
@@ -132,7 +132,7 @@
 		<label for="sar-store" class="font-semibold">
 			{m.inv_stock_alert_col_store()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			inputId="sar-store"
 			bind:value={storeIdStr}
 			options={storeSelectOptions}
@@ -149,7 +149,7 @@
 		<label for="sar-staff" class="font-semibold">
 			{m.inv_stock_alert_add_staff()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			inputId="sar-staff"
 			bind:value={staffIdStr}
 			options={staffSelectOptions}

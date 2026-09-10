@@ -1,7 +1,6 @@
 <script lang="ts">
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -79,26 +78,16 @@
 </script>
 
 {#if open}
-	<WashModal
-		groupName="cancel-appointment-history-modal"
+	<WashDialog
+		id="cancel-appointment-history-modal"
 		open={true}
 		{onClose}
+		title="Cancel appointment history"
+		boxClassName="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
 	>
-		<div
-			class="modal-box h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
-			role="document"
-		>
-			<div class="mb-3 flex items-center justify-between">
-				<WashCardBodyTitle className="mb-0">
-					Cancel appointment history
-				</WashCardBodyTitle>
-				<WashButton
-					className="btn-ghost btn-sm"
-					onClick={onClose}
-				>
-					Close
-				</WashButton>
-			</div>
+			{#snippet actions()}
+				<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
+			{/snippet}
 
 			{#if items.length === 0 && !isLoading}
 				<p class="text-sm text-base-content/70">
@@ -119,6 +108,5 @@
 					/>
 				</div>
 			{/if}
-		</div>
-	</WashModal>
+	</WashDialog>
 {/if}

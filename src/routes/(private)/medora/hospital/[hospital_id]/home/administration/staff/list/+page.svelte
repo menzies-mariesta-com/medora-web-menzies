@@ -142,6 +142,8 @@
 					email: staffEmail
 				};
 				const result = await dialogService.open({
+					title: 'Delete staff',
+					tone: 'error',
 					component: DeleteStaffConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {
@@ -369,9 +371,6 @@
 		actionsVariant="none"
 		enableColumnFilters={true}
 		useRemoteFilters={true}
-		rowTooltipGetter={(row) => {
-			return StringUtil.tableToolTip(row);
-		}}
 		on:refresh={() =>
 			refreshLock.run(async () => {
 				await fetchStaff(true);

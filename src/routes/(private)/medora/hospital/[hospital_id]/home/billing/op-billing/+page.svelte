@@ -5,8 +5,7 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
@@ -943,30 +942,19 @@
 </WashCard>
 
 {#if isDiscountModalOpen}
-	<WashModal
-		groupName="op-billing-discount-modal"
+	<WashDialog
+		id="op-billing-discount-modal"
 		open={true}
 		onClose={() => (isDiscountModalOpen = false)}
+		title={tr(msg.op_billing_discount_title, 'Discount')}
+		description={tr(
+			msg.op_billing_discount_subtitle,
+			'Apply a discount to the grand total.'
+		)}
+		boxClassName="max-w-md"
+		showActions={false}
 	>
-		<WashModalBox
-			className="max-w-md"
-			onClose={() => (isDiscountModalOpen = false)}
-		>
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h2 class="text-lg font-semibold">
-						{tr(msg.op_billing_discount_title, 'Discount')}
-					</h2>
-					<p class="mt-1 text-sm text-base-content/60">
-						{tr(
-							msg.op_billing_discount_subtitle,
-							'Apply a discount to the grand total.'
-						)}
-					</p>
-				</div>
-			</div>
-
-			<div class="mt-4 space-y-3">
+			<div class="mt-1 space-y-3">
 				<label class="form-control w-full">
 					<div class="label">
 						<span class="label-text">
@@ -1087,34 +1075,25 @@
 					{tr(msg.op_billing_discount_apply, 'Apply')}
 				</WashButton>
 			</div>
-		</WashModalBox>
-	</WashModal>
+	</WashDialog>
 {/if}
 
 {#if isHistoryModalOpen}
-	<WashModal
-		groupName="op-billing-history-modal"
+	<WashDialog
+		id="op-billing-history-modal"
 		open={true}
 		onClose={() => (isHistoryModalOpen = false)}
+		title={tr(undefined, 'Bill history')}
+		description={tr(
+			undefined,
+			'Print any previous OP bill for this visit.'
+		)}
+		boxClassName="max-w-5xl"
+		showActions={false}
 	>
-		<WashModalBox
-			className="max-w-5xl"
-			onClose={() => (isHistoryModalOpen = false)}
-		>
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h2 class="text-lg font-semibold">
-						{tr(undefined, 'Bill history')}
-					</h2>
-					<p class="mt-1 text-sm text-base-content/60">
-						{tr(
-							undefined,
-							'Print any previous OP bill for this visit.'
-						)}
-					</p>
-				</div>
+			<div class="flex items-start justify-end gap-4">
 				<WashButton
-					className="btn-outline btn-sm mr-6"
+					className="btn-outline btn-sm"
 					disabled={historyLoading}
 					onClick={() => void loadHistoryBills(visitId)}
 				>
@@ -1228,6 +1207,5 @@
 					{tr(undefined, 'Close')}
 				</WashButton>
 			</div>
-		</WashModalBox>
-	</WashModal>
+	</WashDialog>
 {/if}

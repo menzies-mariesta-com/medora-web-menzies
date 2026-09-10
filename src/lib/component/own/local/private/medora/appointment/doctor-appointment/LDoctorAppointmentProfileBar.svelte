@@ -5,7 +5,7 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashFilter from '$lib/component/wash/filter/WashFilter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
@@ -107,8 +107,8 @@
 	}
 </script>
 
-<WashCard>
-	<WashCardBody className="w-full gap-5">
+<WashCard className="!overflow-visible">
+	<WashCardBody className="w-full gap-5 !overflow-visible">
 		<WashCardBodyTitle
 			className="flex items-center justify-between gap-2"
 		>
@@ -131,13 +131,13 @@
 			{/if}
 		</WashCardBodyTitle>
 
-		<WashSearchSelect
+		<SearchSelect
 			bind:value={selectedDoctorId}
 			placeholder="Select a doctor ..."
-			className="w-full"
 			searchFn={searchDoctors}
 			getLabelForValue={getDoctorLabelForValue}
 			minSearchLength={0}
+			emptyMessage="No doctors match."
 		/>
 		{#if branchOptions.length > 0}
 			<div class="flex items-center justify-between gap-3">

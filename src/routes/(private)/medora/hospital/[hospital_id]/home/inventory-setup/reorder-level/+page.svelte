@@ -360,11 +360,11 @@
 								>
 									<WashButton
 										type="button"
-										className="btn-sm btn-ghost btn-square"
+										className="btn-xs btn-ghost btn-square"
 										disabled={!!deletingById[row.id]}
 										onClick={() => void openEditDialog(row)}
 									>
-										<LucidePencil className="size-5" />
+										<LucidePencil className="size-3.5" />
 									</WashButton>
 								</WashTooltip>
 								<WashTooltip
@@ -373,13 +373,13 @@
 								>
 									<WashButton
 										type="button"
-										className="btn-sm btn-ghost btn-square text-error"
+										className="btn-xs btn-ghost btn-square text-error"
 										disabled={!!deletingById[row.id]}
 										loading={!!deletingById[row.id]}
 										loadingText=""
 										onClick={() => void deleteRow(row)}
 									>
-										<LucideTrash2 className="size-5" />
+										<LucideTrash2 className="size-3.5" />
 									</WashButton>
 								</WashTooltip>
 							</div>

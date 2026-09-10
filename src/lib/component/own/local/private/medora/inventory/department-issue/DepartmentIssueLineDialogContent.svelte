@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import InventoryBatchQtyPickTable from '$lib/component/own/local/private/medora/inventory/InventoryBatchQtyPickTable.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type {
@@ -288,7 +288,7 @@
 				aria-label={m.inv_pr_line_item_search()}
 			/>
 		{:else}
-			<WashSearchSelect
+			<SearchSelect
 				value={draftLine.itemId ? String(draftLine.itemId) : ''}
 				searchFn={searchItemsWithStock}
 				invalidateKey={`${hospitalId}:${storeId ?? ''}`}

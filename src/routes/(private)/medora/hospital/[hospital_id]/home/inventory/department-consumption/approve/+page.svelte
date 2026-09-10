@@ -188,7 +188,7 @@
 			>
 				<WashButton
 					type="button"
-					className="btn-sm btn-ghost btn-square"
+					className="btn-xs btn-ghost btn-square"
 					onClick={() => void goto(resolve(backHref as any))}
 				>
 					<LucideArrowLeft className="size-4" />
@@ -236,11 +236,11 @@
 							className="tooltip-ghost"
 						>
 							<WashButton
-								className="btn-sm btn-ghost btn-square"
+								className="btn-xs btn-ghost btn-square"
 								disabled={loading || actId != null}
 								onClick={() => void goto(detailHref(r.id))}
 							>
-								<LucideEye className="size-5" />
+								<LucideEye className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 
@@ -250,7 +250,7 @@
 								className="tooltip-accent"
 							>
 								<WashButton
-									className="btn-sm btn-ghost btn-square text-accent"
+									className="btn-xs btn-ghost btn-square text-accent"
 									disabled={actId != null}
 									loading={actId === r.id}
 									onClick={() =>
@@ -267,7 +267,7 @@
 								className="tooltip-error"
 							>
 								<WashButton
-									className="btn-sm btn-ghost btn-square text-error"
+									className="btn-xs btn-ghost btn-square text-error"
 									disabled={actId != null}
 									loading={actId === r.id}
 									onClick={() =>

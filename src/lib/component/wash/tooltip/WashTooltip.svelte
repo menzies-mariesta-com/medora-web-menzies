@@ -19,14 +19,18 @@
 	}>();
 
 	let rootEl = $state<HTMLDivElement | null>(null);
-	/** Near left of screen → 'right'; near right → 'left'. */
+	/** Near left of screen → 'right'; near right → 'left'. Never top/bottom. */
 	let side = $state<HorizontalTooltipSide>('right');
 
 	const styleClass = $derived(stripTooltipPlacementClasses(className));
 
-	/** Full class names (not `tooltip-${side}`) so Tailwind/daisyUI emit left/right CSS. */
 	const effectiveSide = $derived(
 		placement === 'auto' ? side : placement
+	);
+
+	/** Literal class string so DaisyUI left/right rules always match (not only class:). */
+	const sideClass = $derived(
+		effectiveSide === 'left' ? 'tooltip-left' : 'tooltip-right'
 	);
 
 	function updateSide() {
@@ -42,7 +46,6 @@
 		updateSide();
 	}
 
-	// Resolve as soon as the node is bound (left-edge → right tip, right-edge → left tip).
 	$effect(() => {
 		if (rootEl) updateSide();
 	});
@@ -56,15 +59,16 @@
 </script>
 
 <!--
-  Keep these class names as literal strings below — daisyUI only ships
-  tooltip-left / tooltip-right when they appear statically in source.
+  Always emit a static horizontal side class (tooltip-left | tooltip-right).
+  DaisyUI defaults bare `.tooltip` to top; without a side class tips sit above.
 -->
 <div
 	bind:this={rootEl}
-	class="tooltip relative z-0 hover:z-50 focus-within:z-50 {styleClass}"
+	class="tooltip relative z-0 hover:z-[100] focus-within:z-[100] {sideClass} {styleClass}"
 	class:tooltip-left={effectiveSide === 'left'}
 	class:tooltip-right={effectiveSide === 'right'}
 	data-tip={tooltipText}
+	data-tooltip-side={effectiveSide}
 	role="group"
 	onmouseenter={handlePointerEnter}
 	onfocusin={handleFocusIn}

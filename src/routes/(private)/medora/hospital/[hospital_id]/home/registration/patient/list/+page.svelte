@@ -1,5 +1,4 @@
 <script lang="ts">
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -8,7 +7,6 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
@@ -28,6 +26,7 @@
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -174,6 +173,8 @@
 					email: patientEmail
 				};
 				const result = await dialogService.open({
+					title: 'Delete patient',
+					tone: 'error',
 					component: DeletePatientConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {
@@ -368,9 +369,6 @@
 		actionsVariant="none"
 		enableColumnFilters={true}
 		useRemoteFilters={true}
-		rowTooltipGetter={(row) => {
-			return StringUtil.tableToolTip(row);
-		}}
 		on:refresh={handleTableRefresh}
 		on:pageSizeChange={handleTablePageSizeChange}
 		on:pageChange={handleTablePageChange}
@@ -388,70 +386,59 @@
 		{#snippet rowActions(row, rowIndex)}
 			{@const patientRow = row as PatientWithRelations}
 			<MenziesTableRowActionGroup>
-				<WashTooltip
+				<MenziesTableIconAction
 					tooltipText="view data"
-					className="tooltip-ghost"
+					color="primary"
+					disabled={rowActionDisabled(patientRow.id)}
+					onClick={() => viewData(patientRow.id)}
 				>
-					<WashButton
-						className="btn-ghost btn-sm"
-						disabled={rowActionDisabled(patientRow.id)}
-						onClick={() => viewData(patientRow.id)}
-					>
-						<LucideEye className="size-5" />
-					</WashButton>
-				</WashTooltip>
-				<WashTooltip
+					{#snippet icon()}
+						<LucideEye className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
+				<MenziesTableIconAction
 					tooltipText="edit data"
-					className="tooltip-accent"
+					color="accent"
+					disabled={rowActionDisabled(patientRow.id)}
+					onClick={() => editData(patientRow.id)}
 				>
-					<WashButton
-						className="btn-sm btn-ghost btn-accent"
-						disabled={rowActionDisabled(patientRow.id)}
-						onClick={() => editData(patientRow.id)}
-					>
-						<LucidePencil className="size-5" />
-					</WashButton>
-				</WashTooltip>
+					{#snippet icon()}
+						<LucidePencil className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
 				{#if selectForEmr}
-					<WashTooltip
+					<MenziesTableIconAction
 						tooltipText="select for EMR"
-						className="tooltip-info"
+						color="info"
+						disabled={rowActionDisabled(patientRow.id)}
+						onClick={() => handleSelectForEmr(patientRow)}
 					>
-						<WashButton
-							className="btn-sm btn-info"
-							disabled={rowActionDisabled(patientRow.id)}
-							onClick={() => handleSelectForEmr(patientRow)}
-						>
-							<LucideChevronRight className="size-5" />
-						</WashButton>
-					</WashTooltip>
+						{#snippet icon()}
+							<LucideChevronRight className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
 				{/if}
-				<WashTooltip
+				<MenziesTableIconAction
 					tooltipText="patient card / print"
-					className="tooltip-info"
+					color="info"
+					disabled={rowActionDisabled(patientRow.id)}
+					onClick={() => openPatientCard(patientRow.id)}
 				>
-					<WashButton
-						className="btn-ghost btn-sm"
-						disabled={rowActionDisabled(patientRow.id)}
-						onClick={() => openPatientCard(patientRow.id)}
-					>
-						<LucidePrinter className="size-5" />
-					</WashButton>
-				</WashTooltip>
-				<WashTooltip
+					{#snippet icon()}
+						<LucidePrinter className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
+				<MenziesTableIconAction
 					tooltipText="delete data"
-					className="tooltip-error"
+					color="error"
+					disabled={rowActionDisabled(patientRow.id)}
+					loading={deletingId === patientRow.id}
+					onClick={() => handleDelete(patientRow.id)}
 				>
-					<WashButton
-						className="btn-ghost btn-sm btn-error"
-						disabled={rowActionDisabled(patientRow.id)}
-						loading={deletingId === patientRow.id}
-						loadingText=""
-						onClick={() => handleDelete(patientRow.id)}
-					>
-						<LucideTrash2 className="size-5" />
-					</WashButton>
-				</WashTooltip>
+					{#snippet icon()}
+						<LucideTrash2 className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
 			</MenziesTableRowActionGroup>
 		{/snippet}
 	</MenziesTable>

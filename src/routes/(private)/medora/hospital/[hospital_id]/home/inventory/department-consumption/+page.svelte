@@ -24,7 +24,6 @@
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	const dt = new DateTimeUtil();
 	const toast = new ToastService();
@@ -314,18 +313,6 @@
 					350
 				);
 			}}
-			rowTooltipGetter={(row) =>
-				StringUtil.inventoryAuditRowTooltip(
-					row as {
-						createdAt?: string | null;
-						updatedAt?: string | null;
-						createdByName?: string | null;
-						updatedByName?: string | null;
-						approvedAt?: string | null;
-						approvedByName?: string | null;
-						cancelledAt?: string | null;
-						cancelledByName?: string | null;
-					}
 				)}
 		>
 			{#snippet rowActions(row, _i)}
@@ -336,11 +323,11 @@
 						className="tooltip-ghost"
 					>
 						<WashButton
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							disabled={loading || actId != null}
 							onClick={() => void goto(detailHref(r.id))}
 						>
-							<LucideEye className="size-5" />
+							<LucideEye className="size-3.5" />
 						</WashButton>
 					</WashTooltip>
 
@@ -350,13 +337,13 @@
 							className="tooltip-accent"
 						>
 							<WashButton
-								className="btn-sm btn-ghost btn-square text-accent"
+								className="btn-xs btn-ghost btn-square text-accent"
 								disabled={actId != null}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.APPROVED)}
 							>
-								<LucideCircleCheck className="size-5" />
+								<LucideCircleCheck className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 						<WashTooltip
@@ -364,13 +351,13 @@
 							className="tooltip-error"
 						>
 							<WashButton
-								className="btn-sm btn-ghost btn-square text-error"
+								className="btn-xs btn-ghost btn-square text-error"
 								disabled={actId != null}
 								loading={actId === r.id}
 								onClick={() =>
 									void approveRow(r, InvApprovalActionEnum.REJECTED)}
 							>
-								<LucideBan className="size-5" />
+								<LucideBan className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 					{/if}
@@ -380,11 +367,11 @@
 						className="tooltip-error"
 					>
 						<WashButton
-							className="btn-sm btn-ghost btn-square text-error"
+							className="btn-xs btn-ghost btn-square text-error"
 							disabled={actId != null || r.canCancel !== true}
 							onClick={() => void openCancelDialog(r)}
 						>
-							<LucideCircleX className="size-5" />
+							<LucideCircleX className="size-3.5" />
 						</WashButton>
 					</WashTooltip>
 				</div>

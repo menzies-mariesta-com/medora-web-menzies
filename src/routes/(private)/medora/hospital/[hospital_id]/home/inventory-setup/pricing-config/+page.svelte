@@ -3,7 +3,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import PricingAssignmentViewDialog from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingAssignmentViewDialog.svelte';
 	import PricingFormulaDisplay from '$lib/component/own/local/private/medora/inventory-setup/pricing/PricingFormulaDisplay.svelte';
 	import MenziesTable, {
@@ -417,7 +417,7 @@
 							})}
 						</p>
 					{:else}
-						<WashSearchSelect
+						<SearchSelect
 							bind:value={branchId}
 							options={branchOptions}
 							placeholder={m.inv_pricing_config_branch_placeholder()}
@@ -457,7 +457,7 @@
 				>
 					<label class="shrink-0 sm:w-40">{m.inv_pricing_assignment_template()}</label>
 					<div class="max-w-lg flex-1">
-						<WashSearchSelect
+						<SearchSelect
 							bind:value={templateIdStr}
 							options={templateOptions}
 							placeholder={m.inv_pricing_assignment_template_placeholder()}

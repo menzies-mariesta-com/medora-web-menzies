@@ -6,7 +6,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -474,7 +474,7 @@
 					<label for="im-pharm-gen" class="shrink-0 sm:w-40">{m.item_master_pharmacy_generic()}
 						<span class="text-error">*</span></label>
 					<div class="max-w-lg flex-1">
-						<WashSearchSelect
+						<SearchSelect
 							inputId="im-pharm-gen"
 							bind:value={pharmacyGenericIdStr}
 							placeholder={m.item_master_pharmacy_generic_placeholder()}

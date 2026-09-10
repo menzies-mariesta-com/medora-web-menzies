@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import type { ConsumptionDraftLineIum } from '$lib/model/type/medora/department-consumption-detail.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { issueQtyToPurchaseQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
@@ -223,7 +223,7 @@
 		<label for="inv-reorder-level-store" class="font-semibold">
 			{m.inv_reorder_level_store()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			inputId="inv-reorder-level-store"
 			value={storeId}
 			options={storeOptions}
@@ -244,7 +244,7 @@
 		<label for="inv-reorder-level-item" class="font-semibold">
 			{m.inv_reorder_level_item()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			inputId="inv-reorder-level-item"
 			value={itemId}
 			options={itemOptions}

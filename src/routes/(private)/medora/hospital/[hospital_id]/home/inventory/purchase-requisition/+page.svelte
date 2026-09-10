@@ -17,7 +17,6 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -383,18 +382,6 @@
 					loadList();
 				}, 350);
 			}}
-			rowTooltipGetter={(row) =>
-				StringUtil.inventoryAuditRowTooltip(
-					row as {
-						createdAt?: string | null;
-						updatedAt?: string | null;
-						createdByName?: string | null;
-						updatedByName?: string | null;
-						approvedAt?: string | null;
-						approvedByName?: string | null;
-						cancelledAt?: string | null;
-						cancelledByName?: string | null;
-					}
 				)}
 		>
 			{#snippet rowActions(row, rowIndex)}
@@ -406,11 +393,11 @@
 						className="tooltip-ghost"
 					>
 						<WashButton
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							disabled={loading}
 							onClick={() => void goto(prViewHref(r.id))}
 						>
-							<LucideEye className="size-5" />
+							<LucideEye className="size-3.5" />
 						</WashButton>
 					</WashTooltip>
 
@@ -423,11 +410,11 @@
 							className={` ${editDisabled ? 'tooltip-ghost cursor-not-allowed' : 'tooltip-accent'}`}
 						>
 							<WashButton
-								className={`btn-sm btn-ghost btn-square ${editDisabled ? '' : 'text-accent'}`}
+								className={`btn-xs btn-ghost btn-square ${editDisabled ? '' : 'text-accent'}`}
 								disabled={editDisabled}
 								onClick={() => void goto(prEditHref(r.id))}
 							>
-								<LucidePencil className="size-5" />
+								<LucidePencil className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 					{/if}
@@ -442,13 +429,13 @@
 							className={` ${approveDisabled ? 'tooltip-ghost cursor-not-allowed' : 'tooltip-accent'}`}
 						>
 							<WashButton
-								className={`btn-sm btn-ghost btn-square ${approveDisabled ? '' : 'text-accent'}`}
+								className={`btn-xs btn-ghost btn-square ${approveDisabled ? '' : 'text-accent'}`}
 								disabled={approveDisabled}
 								onClick={() => {
 									void goto(prApproveHref(r.id));
 								}}
 							>
-								<LucideCircleCheck className="size-5" />
+								<LucideCircleCheck className="size-3.5" />
 							</WashButton>
 						</WashTooltip>
 					{/if}
@@ -460,11 +447,11 @@
 						className={` ${cancelDisabled ? 'tooltip-ghost cursor-not-allowed' : 'tooltip-error'}`}
 					>
 						<WashButton
-							className={`btn-sm btn-ghost btn-square ${cancelDisabled ? '' : 'text-error'}`}
+							className={`btn-xs btn-ghost btn-square ${cancelDisabled ? '' : 'text-error'}`}
 							disabled={cancelDisabled}
 							onClick={() => openCancelDialog(r)}
 						>
-							<LucideCircleX className="size-5" />
+							<LucideCircleX className="size-3.5" />
 						</WashButton>
 					</WashTooltip>
 				</div>

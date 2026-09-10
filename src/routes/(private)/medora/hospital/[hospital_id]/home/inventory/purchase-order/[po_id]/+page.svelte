@@ -437,7 +437,7 @@
 			>
 				<WashButton
 					type="button"
-					className="btn-sm btn-ghost btn-square"
+					className="btn-xs btn-ghost btn-square"
 					onClick={() => void goto(resolve(poListPath as any))}
 				>
 					<LucideArrowLeft className="size-4" />
@@ -586,11 +586,11 @@
 									className="tooltip-warning"
 								>
 									<WashButton
-										className="btn-sm btn-ghost btn-warning"
+										className="btn-xs btn-ghost btn-square btn-warning"
 										disabled={detailLoading}
 										onClick={() => void closeLine(row.id)}
 									>
-										<LucideX className="size-5" />
+										<LucideX className="size-3.5" />
 									</WashButton>
 								</WashTooltip>
 							{/if}

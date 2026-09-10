@@ -11,7 +11,7 @@
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LDeactivationRemarkDialogContent from './LDeactivationRemarkDialogContent.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
@@ -525,7 +525,7 @@
 					</div>
 					<div class="flex max-w-80">
 						{#if allergyMode === 'existing'}
-							<WashSearchSelect
+							<SearchSelect
 								bind:value={selectedAllergyId}
 								placeholder="Select allergy"
 								className="w-full"

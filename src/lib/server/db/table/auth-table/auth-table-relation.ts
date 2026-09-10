@@ -3,6 +3,7 @@ import {
 	accountTable,
 	roleTable,
 	sessionTable,
+	twoFactorTable,
 	userTable,
 	verificationTable
 } from './auth-table';
@@ -39,7 +40,8 @@ export const userTableRollbackRelations = relations(
 		}),
 		supportTicketsUpdatedAudit: many(supportTicketTable, {
 			relationName: 'support_ticket_updated_by'
-		})
+		}),
+		twoFactor: many(twoFactorTable)
 	})
 );
 
@@ -66,6 +68,16 @@ export const accountTableRelations = relations(
 export const verificationTableRelations = relations(
 	verificationTable,
 	() => ({})
+);
+
+export const twoFactorTableRelations = relations(
+	twoFactorTable,
+	({ one }) => ({
+		user: one(userTable, {
+			fields: [twoFactorTable.userId],
+			references: [userTable.id]
+		})
+	})
 );
 
 export const roleTableRelations = relations(

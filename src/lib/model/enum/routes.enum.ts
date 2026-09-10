@@ -9,6 +9,7 @@ export enum WebRoutesEnum {
 	RESET_PASSWORD = '/auth/reset-password',
 	EMAIL_VERIFICATION = '/auth/email-verification',
 	TWO_FACTOR = '/auth/two-factor',
+	TWO_FACTOR_SETUP = '/auth/two-factor/setup',
 	PLUGIN = '/plugin',
 
 	// private - medora

@@ -245,11 +245,6 @@
 					actionsVariant="none"
 					enableColumnFilters={true}
 					useRemoteFilters={true}
-					on:refresh={() => fetchGroups()}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchGroups();
-					}}
 					on:pageChange={() => fetchGroups()}
 					on:filtersChange={(event) => {
 						if (filterDebounceTimeout) {
@@ -270,25 +265,25 @@
 								onClick={() => openPagesModal(row)}
 							>
 								{#snippet icon()}
-									<LucideList className="size-4" />
+									<LucideList className="size-3.5" />
 								{/snippet}
 							</MenziesTableIconAction>
 							<MenziesTableIconAction
-								tooltipText={m.menzies_table_tooltip_edit()}
-								color="accent"
+								tooltipText={m.edit_data()}
+								color="secondary"
 								onClick={() => openEdit(row)}
 							>
 								{#snippet icon()}
-									<LucidePencil className="size-4" />
+									<LucidePencil className="size-3.5" />
 								{/snippet}
 							</MenziesTableIconAction>
 							<MenziesTableIconAction
-								tooltipText={m.menzies_table_tooltip_delete()}
+								tooltipText={m.delete_data()}
 								color="error"
 								onClick={() => handleDelete(row)}
 							>
 								{#snippet icon()}
-									<LucideTrash2 className="size-4" />
+									<LucideTrash2 className="size-3.5" />
 								{/snippet}
 							</MenziesTableIconAction>
 						</MenziesTableRowActionGroup>

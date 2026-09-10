@@ -13,7 +13,7 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
@@ -555,7 +555,7 @@
 		<label class="text-sm">
 			{m.observation_emr_service()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			className="w-full"
 			bind:value={detailServiceIdInput}
 			searchFn={searchServices}
@@ -567,7 +567,7 @@
 		<label class="text-sm">
 			{m.observation_emr_advising_doctor()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			className="w-full"
 			bind:value={detailAdvisingDoctorIdInput}
 			searchFn={searchDoctors}

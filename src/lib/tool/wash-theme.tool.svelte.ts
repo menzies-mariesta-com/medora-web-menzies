@@ -25,19 +25,26 @@ const DEFAULT_MODE = WashModeEnum.LIGHT;
 export class WashThemeTool {
 	private wash: MedoraHandle | undefined;
 
-	/** Boot Wash (ripple/tooltips) and restore stored pigment/mode. */
+	/**
+	 * Boot Wash (ripple/tooltips) and restore stored pigment/mode.
+	 * Do not pass Mineral/Light as `default*` unless the caller truly wants
+	 * to override storage — `initWash` uses `defaultPigment ?? readStoredTheme()`,
+	 * so providing defaults overwrites the user's saved preference on every load.
+	 */
 	boot(options?: {
 		defaultPigment?: WashPigmentEnum;
 		defaultMode?: WashModeEnum;
 	}): void {
 		if (!browser) return;
-		const defaultPigment =
-			options?.defaultPigment ?? DEFAULT_PIGMENT;
-		const defaultMode = options?.defaultMode ?? DEFAULT_MODE;
 		this.wash = initWash({
-			defaultPigment,
-			defaultMode
+			...(options?.defaultPigment != null
+				? { defaultPigment: options.defaultPigment }
+				: {}),
+			...(options?.defaultMode != null
+				? { defaultMode: options.defaultMode }
+				: {})
 		});
+		// Re-read after initWash applied storage (or package defaults).
 		this.apply(this.getPigment(), this.getMode());
 	}
 
