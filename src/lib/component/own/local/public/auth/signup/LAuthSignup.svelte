@@ -131,10 +131,29 @@
 				isLoading = false;
 				return;
 			}
+
+			const { error: otpError } =
+				await authClient.emailOtp.sendVerificationOtp({
+					email,
+					type: 'email-verification'
+				});
+			if (otpError) {
+				toastService.addToast(
+					otpError.message ?? m.toast_action_failed(),
+					StatusColorEnum.ERROR
+				);
+				isLoading = false;
+				return;
+			}
 		}
 		isLoading = false;
 		if (data) {
-			await goto(WebRoutesEnum.MEDORA_HOSPITAL);
+			const next = new URL(
+				WebRoutesEnum.EMAIL_VERIFICATION,
+				window.location.origin
+			);
+			next.searchParams.set('email', email);
+			await goto(`${next.pathname}${next.search}`);
 		}
 	}
 </script>

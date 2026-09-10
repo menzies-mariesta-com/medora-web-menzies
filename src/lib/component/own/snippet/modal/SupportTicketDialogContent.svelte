@@ -4,7 +4,6 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -366,18 +365,6 @@
 </script>
 
 <div class="flex h-full min-h-[60vh] flex-col gap-0">
-	<div
-		class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-4 py-2"
-	>
-		<h2 class="text-lg font-semibold">{m.support_it_title()}</h2>
-		<WashButton
-			className="btn-ghost btn-sm btn-circle"
-			onClick={() => cancel()}
-		>
-			<LucideX className="size-5" />
-		</WashButton>
-	</div>
-
 	<div
 		class="flex flex-wrap gap-1 border-b border-base-200 px-4 py-2"
 	>

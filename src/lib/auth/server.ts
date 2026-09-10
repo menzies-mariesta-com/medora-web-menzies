@@ -1,17 +1,19 @@
-import { dev } from '$app/environment';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
+import { emailOTP, twoFactor } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { uuidv7 } from 'uuidv7';
 import {
 	accountTable,
 	sessionTable,
+	twoFactorTable,
 	userTable,
 	verificationTable
 } from '$lib/server/db/table/auth-table/auth-table';
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
+import { renderOtpVerificationEmail } from '$lib/asset/email/otp-verification';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { env } from '$env/dynamic/private';
@@ -60,6 +62,7 @@ function resolveBetterAuthSecret(): string {
 }
 
 export const auth = betterAuth({
+	appName: 'Menzies Medora',
 	secret: resolveBetterAuthSecret(),
 	baseURL,
 	trustedOrigins,
@@ -75,7 +78,8 @@ export const auth = betterAuth({
 			user: userTable,
 			session: sessionTable,
 			account: accountTable,
-			verification: verificationTable
+			verification: verificationTable,
+			twoFactor: twoFactorTable
 		}
 	}),
 	emailAndPassword: {
@@ -102,6 +106,21 @@ export const auth = betterAuth({
 		}
 	},
 	plugins: [
+		twoFactor({
+			issuer: 'Menzies Medora'
+		}),
+		emailOTP({
+			async sendVerificationOTP({ email, otp, type }) {
+				const { html, plainText, subject } =
+					renderOtpVerificationEmail({ otp, type });
+				void sendEmailServer({
+					to: email,
+					subject,
+					message: plainText,
+					html
+				});
+			}
+		}),
 		sveltekitCookies(getRequestEvent)
 		// make sure this is the last plugin in the array
 	]

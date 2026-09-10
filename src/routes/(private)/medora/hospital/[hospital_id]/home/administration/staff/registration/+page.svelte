@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
@@ -1216,7 +1217,7 @@
 							>
 								Remove
 							</WashButton>
-							<div class="divider divider-horizontal text-xs">More Detail</div>
+							<WashDivider className="text-xs">More Detail</WashDivider>
 						</div>
 					</fieldset>
 					<div class="flex flex-col gap-2">

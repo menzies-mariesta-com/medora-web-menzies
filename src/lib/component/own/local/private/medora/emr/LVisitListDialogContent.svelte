@@ -1,7 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
@@ -341,20 +340,7 @@
 	}
 </script>
 
-<div class="flex h-full min-h-0 flex-col gap-0 overflow-hidden">
-	<div
-		class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-3"
-	>
-		<h2 class="text-lg font-semibold">{m.choose_visit()}</h2>
-		<WashButton
-			className="btn-ghost btn-sm btn-circle"
-			onClick={cancel}
-			disabled={isConfirming}
-		>
-			<LucideX className="size-5" />
-		</WashButton>
-	</div>
-
+<div class="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden">
 	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
 		<MenziesTable
 			rows={visits}
@@ -393,5 +379,8 @@
 			on:select={(event) =>
 				void selectPatient(event.detail as PatientVisitForEmrList)}
 		/>
+	</div>
+	<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+		<WashButton variant="ghost" onClick={cancel}>{m.cancel()}</WashButton>
 	</div>
 </div>

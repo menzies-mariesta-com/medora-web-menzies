@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import MariRichEditorController from './MariRichEditorController.svelte';
 	import MariRichEditorPreview from './MariRichEditorPreview.svelte';
 
@@ -1237,9 +1239,17 @@ ${content}
 
 <!-- Link Dialog -->
 {#if showLinkDialog}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-md">
-			<h3 class="mb-4 text-lg font-bold">Insert Link</h3>
+	<WashDialog
+		id="mari-rich-link-dialog"
+		open={true}
+		onClose={() => {
+			showLinkDialog = false;
+			linkUrl = '';
+			linkText = '';
+		}}
+		title="Insert Link"
+		boxClassName="max-w-md"
+	>
 			<div class="space-y-4">
 				<div>
 					<label class="label" for="linkText">
@@ -1268,44 +1278,41 @@ ${content}
 					/>
 				</div>
 			</div>
-			<div class="modal-action">
-				<button
-					type="button"
-					class="btn btn-ghost"
-					onclick={() => {
+			{#snippet actions()}
+				<WashButton
+					variant="ghost"
+					onClick={() => {
 						showLinkDialog = false;
 						linkUrl = '';
 						linkText = '';
 					}}
 				>
 					Cancel
-				</button>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={insertLink}
+				</WashButton>
+				<WashButton
+					variant="primary"
+					onClick={insertLink}
 					disabled={!linkUrl}
 				>
 					Insert Link
-				</button>
-			</div>
-		</div>
-		<div
-			class="modal-backdrop"
-			onclick={() => (showLinkDialog = false)}
-			onkeydown={(e) =>
-				e.key === 'Escape' && (showLinkDialog = false)}
-			role="button"
-			tabindex="-1"
-		></div>
-	</div>
+				</WashButton>
+			{/snippet}
+	</WashDialog>
 {/if}
 
 <!-- Image Dialog -->
 {#if showImageDialog}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-md">
-			<h3 class="mb-4 text-lg font-bold">Insert Image</h3>
+	<WashDialog
+		id="mari-rich-image-dialog"
+		open={true}
+		onClose={() => {
+			showImageDialog = false;
+			imageUrl = '';
+			imageAlt = '';
+		}}
+		title="Insert Image"
+		boxClassName="max-w-md"
+	>
 			<div class="space-y-4">
 				<div>
 					<label class="label" for="mari-rich-insert-image-file">
@@ -1357,35 +1364,24 @@ ${content}
 					</div>
 				{/if}
 			</div>
-			<div class="modal-action">
-				<button
-					type="button"
-					class="btn btn-ghost"
-					onclick={() => {
+			{#snippet actions()}
+				<WashButton
+					variant="ghost"
+					onClick={() => {
 						showImageDialog = false;
 						imageUrl = '';
 						imageAlt = '';
 					}}
 				>
 					Cancel
-				</button>
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={insertImage}
+				</WashButton>
+				<WashButton
+					variant="primary"
+					onClick={insertImage}
 					disabled={!imageUrl}
 				>
 					Insert Image
-				</button>
-			</div>
-		</div>
-		<div
-			class="modal-backdrop"
-			onclick={() => (showImageDialog = false)}
-			onkeydown={(e) =>
-				e.key === 'Escape' && (showImageDialog = false)}
-			role="button"
-			tabindex="-1"
-		></div>
-	</div>
+				</WashButton>
+			{/snippet}
+	</WashDialog>
 {/if}

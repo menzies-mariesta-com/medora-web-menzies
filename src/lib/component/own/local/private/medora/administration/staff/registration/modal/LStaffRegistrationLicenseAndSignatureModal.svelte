@@ -2,8 +2,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashFileInput from '$lib/component/wash/fileinput/WashFileInput.svelte';
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -92,13 +91,12 @@
 </script>
 
 {#if open}
-	<WashModal
-		groupName="staff-registration-more-info-modal"
+	<WashDialog
+		id="staff-registration-more-info-modal"
 		{open}
 		onClose={handleClose}
+		title="License & Signature"
 	>
-		<WashModalBox onClose={handleClose}>
-			<h3 class="mb-4 text-lg font-bold">License &amp; Signature</h3>
 			<fieldset disabled={viewOnly} class="m-0 min-w-0 border-0 p-0">
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-2">
@@ -175,15 +173,14 @@
 					</div>
 				</div>
 			</fieldset>
-			<div class="modal-action mt-5">
+			{#snippet actions()}
 				<WashButton
 					type="button"
-					className="btn btn-primary"
+					variant="primary"
 					onClick={handleClose}
 				>
 					Done
 				</WashButton>
-			</div>
-		</WashModalBox>
-	</WashModal>
+			{/snippet}
+	</WashDialog>
 {/if}

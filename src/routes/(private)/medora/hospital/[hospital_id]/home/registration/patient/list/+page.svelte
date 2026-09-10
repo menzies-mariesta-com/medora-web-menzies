@@ -174,6 +174,8 @@
 					email: patientEmail
 				};
 				const result = await dialogService.open({
+					title: 'Delete patient',
+					tone: 'error',
 					component: DeletePatientConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {

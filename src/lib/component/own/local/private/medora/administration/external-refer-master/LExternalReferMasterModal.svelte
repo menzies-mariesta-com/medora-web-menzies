@@ -1,13 +1,11 @@
 <script lang="ts">
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { page } from '$app/state';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ReferTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
@@ -328,24 +326,13 @@
 	}
 </script>
 
-<WashModal
-	groupName="external-refer-master-modal"
+<WashDialog
+	id="external-refer-master-modal"
 	open={true}
 	{onClose}
+	{title}
+	showActions={false}
 >
-	<WashModalBox {onClose} showCloseButton={true}>
-		<div
-			class="flex items-center justify-between border-b border-base-300 pb-3"
-		>
-			<h2 class="text-lg font-semibold">{title}</h2>
-			<WashButton
-				className="btn-ghost btn-sm btn-circle"
-				onClick={onClose}
-			>
-				<LucideX className="size-5" />
-			</WashButton>
-		</div>
-
 		{#if !loaded}
 			<p class="py-4 text-base-content/70">Loading…</p>
 		{:else}
@@ -585,7 +572,12 @@
 						{isSubmitting ? 'Saving…' : isCreate ? 'Create' : 'Save'}
 					</WashButton>
 				</div>
+			{:else}
+				<div class="modal-action mt-4">
+					<WashButton className="btn btn-primary" onClick={onClose}
+						>Close</WashButton
+					>
+				</div>
 			{/if}
 		{/if}
-	</WashModalBox>
-</WashModal>
+</WashDialog>

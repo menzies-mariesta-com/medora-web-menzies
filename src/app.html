@@ -1,10 +1,6 @@
 <!doctype html>
 
-<html
-	lang="%paraglide.lang%"
-	data-theme="light"
-	data-font="Adwaita-sans"
->
+<html lang="%paraglide.lang%" data-theme="light">
 	<head>
 		<meta charset="utf-8" />
 
@@ -59,22 +55,6 @@
 							'data-theme',
 							theme
 						);
-					}
-				} catch (e) {}
-			})();
-
-			(function () {
-				var fonts = [
-					'adwaita-sans',
-					'adwaita-mono',
-					'roboto',
-					'comic-relief',
-					'pangolin'
-				];
-				try {
-					var font = localStorage.getItem('font');
-					if (font && themes.indexOf(font) !== -1) {
-						document.documentElement.setAttribute('data-font', font);
 					}
 				} catch (e) {}
 			})();

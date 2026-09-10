@@ -25,6 +25,7 @@
 
 	function openLanguageDialog() {
 		dialogService.open({
+			title: m.change_language(),
 			component: ChangeLanguageModal,
 			onConfirm: (data?: { language: LanguageEnum }) => {
 				if (data?.language)
@@ -35,6 +36,7 @@
 
 	function openThemeSettings() {
 		dialogService.open({
+			title: 'Change appearance',
 			component: ChangeAppearanceModal,
 			onConfirm: (data?: {
 				pigment: WashPigmentEnum;
@@ -51,6 +53,7 @@
 
 	async function openSupportDialog() {
 		await dialogService.open({
+			title: m.support_it_title(),
 			component: SupportTicketDialogContent,
 			fullScreen: true
 		});
