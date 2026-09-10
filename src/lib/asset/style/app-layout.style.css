@@ -6,7 +6,8 @@ body {
 	height: 100%;
 	max-width: 100%;
 	overflow-x: hidden;
-	font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+	/* Wash UI tokens from menzies-design-wash-ui */
+	font-family: var(--font-sans);
 }
 
 .my-app {

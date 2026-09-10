@@ -3,7 +3,6 @@
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -169,19 +168,6 @@
 </script>
 
 <div class="relative flex h-full min-h-0 flex-col gap-0 overflow-hidden">
-	<div
-		class="flex shrink-0 items-center justify-between border-b border-base-300 px-4 py-3"
-	>
-		<h2 class="text-lg font-semibold">{m.med_order_int_history()}</h2>
-		<WashButton
-			className="btn-ghost btn-sm btn-circle"
-			onClick={cancel}
-			disabled={busy}
-		>
-			<LucideX className="size-5" />
-		</WashButton>
-	</div>
-
 	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
 		<MenziesTable
 			{rows}
@@ -247,39 +233,45 @@
 		</MenziesTable>
 	</div>
 
+	<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+		<WashButton variant="ghost" onClick={cancel} disabled={busy}
+			>{m.cancel()}</WashButton
+		>
+	</div>
+
 	{#if pendingConfirm}
 		<div
 			class="absolute inset-0 z-10 flex items-center justify-center bg-base-300/60 p-4"
 			role="presentation"
 		>
 			<div
-				class="modal-box flex w-full max-w-md flex-col gap-4 p-6 shadow-lg"
+				class="modal-box flex w-full max-w-md flex-col gap-4 border border-ink-border bg-base-100 p-6 shadow-lg"
 				role="alertdialog"
 				aria-labelledby="med-order-history-confirm-title"
 				aria-describedby="med-order-history-confirm-message"
 			>
-				<h3
+				<h2
 					id="med-order-history-confirm-title"
-					class="text-lg font-semibold"
+					class="card-title font-bold text-primary"
 				>
 					{confirmTitle}
-				</h3>
+				</h2>
 				<p
 					id="med-order-history-confirm-message"
-					class="text-sm text-base-content/80"
+					class="py-2 text-sm text-ink-muted"
 				>
 					{confirmMessage}
 				</p>
-				<div class="flex flex-wrap justify-end gap-2">
+				<div class="modal-action">
 					<WashButton
-						className="btn-ghost"
+						variant="ghost"
 						disabled={isActing}
 						onClick={dismissConfirm}
 					>
 						{m.cancel()}
 					</WashButton>
 					<WashButton
-						className="btn btn-primary"
+						variant="primary"
 						disabled={isActing}
 						onClick={() => void confirmPendingAction()}
 					>

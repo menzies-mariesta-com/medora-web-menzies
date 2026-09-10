@@ -4,6 +4,7 @@
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import LPatientRegistrationFirstColumn from '$lib/component/own/local/private/medora/patient/registration/LPatientRegistrationFirstColumn.svelte';
 	import LPatientRegistrationSecondColumn from '$lib/component/own/local/private/medora/patient/registration/LPatientRegistrationSecondColumn.svelte';
 	import LPatientRegistrationThirdColumn from '$lib/component/own/local/private/medora/patient/registration/LPatientRegistrationThirdColumn.svelte';
@@ -1194,9 +1195,7 @@
 							>
 								Remove
 							</WashButton>
-							<div class="divider divider-horizontal text-xs">
-								More Detail
-							</div>
+							<WashDivider className="text-xs">More Detail</WashDivider>
 						</div>
 					</fieldset>
 					<div class="flex flex-col gap-2">

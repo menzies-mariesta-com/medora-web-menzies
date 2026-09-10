@@ -4,6 +4,7 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
+	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashFileInput from '$lib/component/wash/fileinput/WashFileInput.svelte';
@@ -363,28 +364,29 @@
 
 {#if payload}
 	<div class="flex h-full min-h-0 flex-col">
-		<div
-			class="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-200/50 px-4 py-2"
-		>
-			<WashCardBodyTitle className="text-lg m-0">
+		{#if embedded}
+			<div
+				class="flex shrink-0 items-center justify-between border-b border-base-300 bg-base-200/50 px-4 py-2"
+			>
+				<WashCardBodyTitle className="text-lg m-0">
+					{#if isStaging}
+						Attachments – New patient
+					{:else if isExistingPatient}
+						Attachments – {patientLabel || 'Patient'}
+					{:else}
+						Attachments
+					{/if}
+				</WashCardBodyTitle>
+			</div>
+		{:else}
+			<p class="shrink-0 px-4 pt-2 text-sm text-ink-muted">
 				{#if isStaging}
-					Attachments – New patient
+					New patient — files save when registration completes.
 				{:else if isExistingPatient}
-					Attachments – {patientLabel || 'Patient'}
-				{:else}
-					Attachments
+					{patientLabel || 'Patient'}
 				{/if}
-			</WashCardBodyTitle>
-			{#if !embedded}
-				<WashButton
-					type="button"
-					className="btn-ghost btn-sm btn-circle"
-					onClick={cancel}
-				>
-					<LucideX className="size-5" />
-				</WashButton>
-			{/if}
-		</div>
+			</p>
+		{/if}
 		<div class="min-h-0 flex-1 overflow-y-auto p-4">
 			{#if isStaging}
 				{#if viewOnly}
@@ -400,9 +402,7 @@
 						className="mb-4"
 					/>
 
-					<div class="divider divider-horizontal my-4 text-xs">
-						Add Files
-					</div>
+					<WashDivider className="my-4 text-xs">Add Files</WashDivider>
 					<WashCard className="w-full shadow-sm">
 						<WashCardBody className="p-4 w-full">
 							<form
@@ -460,9 +460,7 @@
 						</WashCardBody>
 					</WashCard>
 					{#if stagedAttachments.length > 0}
-						<div class="divider divider-horizontal my-4 text-xs">
-							Listed Files
-						</div>
+						<WashDivider className="my-4 text-xs">Listed Files</WashDivider>
 						<WashCard className="mb-4 shadow-sm">
 							<WashCardBody className="p-4">
 								<div class="mb-3 flex items-center gap-2">
@@ -588,9 +586,7 @@
 						className="mb-4"
 					/>
 				{:else if existingAttachments.length > 0}
-					<div class="divider divider-horizontal my-4 text-xs">
-						Existing Lists
-					</div>
+					<WashDivider className="my-4 text-xs">Existing Lists</WashDivider>
 					<WashCard className="mb-4 shadow-sm">
 						<WashCardBody className="p-4">
 							<div class="mb-3 flex items-center gap-2">
@@ -660,5 +656,10 @@
 				{/if}
 			{/if}
 		</div>
+		{#if !embedded}
+			<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+				<WashButton variant="ghost" onClick={cancel}>Close</WashButton>
+			</div>
+		{/if}
 	</div>
 {/if}

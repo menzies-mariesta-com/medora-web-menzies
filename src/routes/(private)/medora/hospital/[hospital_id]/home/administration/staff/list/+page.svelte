@@ -142,6 +142,8 @@
 					email: staffEmail
 				};
 				const result = await dialogService.open({
+					title: 'Delete staff',
+					tone: 'error',
 					component: DeleteStaffConfirmModal
 				});
 				if (result.confirmed && typeof result.data === 'string') {

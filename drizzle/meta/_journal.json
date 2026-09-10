@@ -638,6 +638,13 @@
       "when": 1780512210000,
       "tag": "0098_heka_to_medora_urls",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1780512300000,
+      "tag": "0099_auth_two_factor",
+      "breakpoints": true
     }
   ]
 }

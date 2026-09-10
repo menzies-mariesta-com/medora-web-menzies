@@ -45,3 +45,88 @@ details.dropdown:not([open]) > .dropdown-content {
 .menzies-table-actions-col > div {
 	flex-wrap: nowrap;
 }
+
+/*
+ * DaisyUI reveals `.modal-box` via `.modal[open] > .modal-box` (direct child).
+ * Keep a nested fallback for any remaining in-dialog overlays that nest a box.
+ * Reset closed-state translate/scale so open dialogs stay centered.
+ */
+dialog.modal[open] > .modal-box,
+.modal[open] > .modal-box,
+dialog.modal[open] .modal-box,
+.modal[open] .modal-box {
+	opacity: 1;
+	translate: 0;
+	scale: 1;
+}
+
+/*
+ * Fullscreen app dialogs (Choose Visit, etc.).
+ * Use unlayered !important so Wash/daisyUI `.modal-box { max-width: 32rem }`
+ * cannot shrink/offset the panel.
+ */
+dialog.modal > .modal-box.wash-dialog-box--fullscreen,
+.modal > .modal-box.wash-dialog-box--fullscreen {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: min(96vw, 100%);
+	max-width: 96vw !important;
+	height: 96dvh;
+	max-height: 96dvh !important;
+	padding: 0;
+	overflow: hidden;
+}
+
+/*
+ * daisyUI `.otp` width comes from `:has(>span:nth-child(n))`.
+ * Utility `w-full` stretches the label, scatters absolute pin cells, and leaves
+ * the focus `::after` caret as a large misplaced glow (reads as an error state).
+ */
+label.otp.w-full,
+.otp.w-full {
+	width: auto;
+	max-width: 100%;
+}
+
+/*
+ * OTP must use Wash `--font-mono` (Maple Mono from menzies-design-wash-ui).
+ * Unlayered so size/spacing wins over `@tailwindcss/forms` input defaults.
+ * `@tailwindcss/forms` leaves bare inputs at 16px while `.otp` is 1.75rem —
+ * letter-spacing then no longer matches absolute pin slots (ghosted digits).
+ */
+.otp,
+.otp > input {
+	font-family: var(--font-mono);
+	--otp-ch: 1ch;
+	--otp-gap: calc(var(--otp-ch) * 0.5);
+	--otp-w: calc(var(--otp-ch) * 2);
+	--stride: calc(var(--otp-w) + var(--otp-gap));
+}
+
+.otp > input {
+	font-size: inherit;
+	line-height: inherit;
+	letter-spacing: calc(var(--stride) - var(--otp-ch));
+	padding-inline-start: calc(var(--otp-ch) * 0.5 + var(--border, 1px));
+}
+
+/* Browser :invalid ring fights daisyUI pin chrome — validate in JS / novalidate. */
+.otp > input:invalid {
+	box-shadow: none;
+	outline: none;
+}
+
+/*
+ * daisyUI draws the typing caret as `.otp::after` (same size as a pin).
+ * With 6 digits filled that looks like a bogus 7th code box + cursor.
+ * Hide it (and the native caret) once the field matches its pattern.
+ */
+.otp:has(> input:valid)::after {
+	content: none !important;
+	display: none !important;
+}
+
+.otp > input:valid {
+	caret-color: transparent !important;
+}

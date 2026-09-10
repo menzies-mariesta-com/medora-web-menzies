@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
@@ -254,25 +253,14 @@
 	}
 </script>
 
-<WashModal
-	groupName="patient-card-print-modal"
+<WashDialog
+	id="patient-card-print-modal"
 	open={true}
 	{onClose}
+	title="Patient card"
+	boxClassName="max-w-2xl"
 >
-	<div class="modal-box max-w-2xl" role="document">
-		<div
-			class="flex items-center justify-between border-b border-base-300 px-4 py-2"
-		>
-			<h2 class="text-lg font-semibold">Patient card</h2>
-			<WashButton
-				className="btn-ghost btn-sm btn-circle"
-				onClick={onClose}
-			>
-				<LucideX className="size-5" />
-			</WashButton>
-		</div>
-
-		<div class="p-4">
+		<div class="p-1">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-10">
 					<span class="loading loading-spinner loading-lg"></span>
@@ -398,5 +386,7 @@
 				</div>
 			{/if}
 		</div>
-	</div>
-</WashModal>
+		{#snippet actions()}
+			<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
+		{/snippet}
+</WashDialog>

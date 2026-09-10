@@ -1,7 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import { authClient } from '$lib/auth/client';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -13,7 +12,6 @@
 
 	const toastService = new ToastService();
 	const routerUtil = new RouterUtil();
-	const msg = m as Record<string, (inputs?: Record<string, string>) => string>;
 
 	let email = $state('');
 	let isLoading = $state(false);
@@ -48,22 +46,6 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<div class="flex items-start justify-between gap-3">
-		<div>
-			<h2 class="card-title text-primary text-lg font-bold">
-				{msg.auth_forgot_title()}
-			</h2>
-			<p class="text-sm text-ink-muted">{msg.auth_forgot_subtitle()}</p>
-		</div>
-		<WashButton
-			className="btn-ghost btn-sm btn-circle"
-			onClick={() => cancel()}
-			disabled={isLoading}
-		>
-			<LucideX className="size-5" />
-		</WashButton>
-	</div>
-
 	<fieldset class="fieldset">
 		<label class="label" for="modal-forgot-email">
 			<span class="label-text">{m.email()}</span>
@@ -81,7 +63,7 @@
 		/>
 	</fieldset>
 
-	<div class="card-actions flex-col gap-2 sm:flex-row sm:justify-end">
+	<div class="modal-action">
 		<WashButton className="btn" onClick={() => cancel()} disabled={isLoading}>
 			{m.cancel()}
 		</WashButton>

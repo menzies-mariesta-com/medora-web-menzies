@@ -84,6 +84,33 @@ try {
 	violations.push(`${layoutCssPath}: could not read for daisyUI plugin check`);
 }
 
+const WASH_MODAL_IMPORT = /\$lib\/component\/wash\/modal\b/;
+const MODAL_OPEN_CLASS = /\bmodal-open\b/;
+
+for (const f of files) {
+	if (!/\.(svelte|ts|js)$/.test(f)) continue;
+	if (f.includes(`${join('src', 'lib', 'server')}`)) continue;
+	let text;
+	try {
+		text = readFileSync(f, 'utf8');
+	} catch {
+		continue;
+	}
+	if (WASH_MODAL_IMPORT.test(text)) {
+		violations.push(
+			`${f}: WashModal removed — use $lib/component/wash/dialog/WashDialog`
+		);
+	}
+	if (
+		MODAL_OPEN_CLASS.test(text) &&
+		!f.includes(`${join('src', 'lib', 'component', 'wash', 'dialog')}`)
+	) {
+		violations.push(
+			`${f}: raw modal-open overlay — use WashDialog (Menzies Design Dialog)`
+		);
+	}
+}
+
 try {
 	const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 	const allDeps = {
