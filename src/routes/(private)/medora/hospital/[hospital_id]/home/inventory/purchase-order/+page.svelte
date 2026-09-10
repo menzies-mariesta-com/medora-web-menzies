@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -11,9 +10,10 @@
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -293,8 +293,6 @@
 					void loadList();
 				}, 350);
 			}}
-			rowTooltipGetter={(row) =>
-				StringUtil.inventoryAuditRowTooltip(row)}
 		>
 			{#snippet rowActions(row, _rowIndex)}
 				{@const r = row as PoRow}
@@ -305,59 +303,52 @@
 					r.statusTaggingId ===
 						InvPoStatusTaggingEnum.PARTIALLY_RECEIVED ||
 					r.statusTaggingId === InvPoStatusTaggingEnum.CLOSED}
-				<div class="flex items-center justify-center gap-1">
-					<WashTooltip
+				{@const approveDisabled =
+					loading || r.canApprove !== true}
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
 						tooltipText={m.inv_common_view()}
-						className="tooltip-ghost"
+						color="primary"
+						disabled={loading}
+						onClick={() => void goto(purchaseOrderDetailHref(r.id))}
 					>
-						<WashButton
-							className="btn-sm btn-ghost btn-square"
-							disabled={loading}
-							onClick={() => void goto(purchaseOrderDetailHref(r.id))}
-						>
-							<LucideEye className="size-5" />
-						</WashButton>
-					</WashTooltip>
+						{#snippet icon()}
+							<LucideEye className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
 
 					{#if canPrint}
-						<WashTooltip
+						<MenziesTableIconAction
 							tooltipText="Print"
-							className="tooltip-ghost"
+							disabled={loading}
+							onClick={() =>
+								void goto(
+									purchaseOrderDetailHref(r.id) + '?print=1'
+								)}
 						>
-							<WashButton
-								className="btn-sm btn-ghost btn-square"
-								disabled={loading}
-								onClick={() =>
-									void goto(
-										purchaseOrderDetailHref(r.id) + '?print=1'
-									)}
-							>
-								<LucidePrinter className="size-5" />
-							</WashButton>
-						</WashTooltip>
+							{#snippet icon()}
+								<LucidePrinter className="size-3.5" />
+							{/snippet}
+						</MenziesTableIconAction>
 					{/if}
 
 					{#if r.statusTaggingId === InvPoStatusTaggingEnum.PENDING}
-						{@const approveDisabled =
-							loading || r.canApprove !== true}
-						<WashTooltip
+						<MenziesTableIconAction
 							tooltipText={approveDisabled
 								? 'Approval not available (no permission for this level)'
 								: m.inv_nav_po_approval()}
-							className={` ${approveDisabled ? 'tooltip-ghost cursor-not-allowed' : 'tooltip-accent'}`}
+							color="accent"
+							disabled={approveDisabled}
+							onClick={() => {
+								void goto(purchaseOrderApproveHref(r.id));
+							}}
 						>
-							<WashButton
-								className={`btn-sm btn-ghost btn-square ${approveDisabled ? '' : 'text-accent'}`}
-								disabled={approveDisabled}
-								onClick={() => {
-									void goto(purchaseOrderApproveHref(r.id));
-								}}
-							>
-								<LucideCircleCheck className="size-5" />
-							</WashButton>
-						</WashTooltip>
+							{#snippet icon()}
+								<LucideCircleCheck className="size-3.5" />
+							{/snippet}
+						</MenziesTableIconAction>
 					{/if}
-				</div>
+				</MenziesTableRowActionGroup>
 			{/snippet}
 		</MenziesTable>
 	{/key}

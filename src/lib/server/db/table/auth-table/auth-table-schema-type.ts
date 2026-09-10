@@ -4,6 +4,7 @@ import type {
 	sessionTable,
 	accountTable,
 	verificationTable,
+	twoFactorTable,
 	roleTable
 } from './auth-table';
 
@@ -33,6 +34,12 @@ export type VerificationSchemaInsert = InferInsertModel<
 >;
 export type VerificationSchemaUpdate =
 	Partial<VerificationSchemaInsert>;
+
+export type TwoFactorSchema = InferSelectModel<typeof twoFactorTable>;
+export type TwoFactorSchemaInsert = InferInsertModel<
+	typeof twoFactorTable
+>;
+export type TwoFactorSchemaUpdate = Partial<TwoFactorSchemaInsert>;
 
 export type RoleSchema = InferSelectModel<typeof roleTable>;
 export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
@@ -475,26 +476,14 @@
 				>
 					<label for="hospital-phone" class="shrink-0 sm:w-36">Phone</label>
 					<div class="max-w-80 flex-1">
-						<div class="join flex">
-							<WashSelect
-								bind:value={phoneCountryId}
-								optionHeader="Select country code ..."
-								className="min-w-20 join-item"
-							>
-								{#each countries as data (data.id)}
-									<option value={String(data.id)} class="gap-5"
-										>{data.countryCallingCode} [{data.code.toUpperCase()}]</option
-									>
-								{/each}
-							</WashSelect>
-							<WashInputField
-								id="hospital-phone"
-								bind:value={phone}
-								inputType="tel"
-								inputPlaceholderText="Main phone"
-								className="join-item"
-							/>
-						</div>
+						<MenziesPhoneField
+							id="hospital-phone"
+							bind:countryId={phoneCountryId}
+							bind:phone
+							countries={countries}
+							optionHeader={m.select_country_code()}
+							placeholder="Main phone"
+						/>
 					</div>
 				</div>
 				<div

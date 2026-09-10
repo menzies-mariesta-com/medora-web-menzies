@@ -499,7 +499,7 @@
 								: 'Create'} Document Setting
 					</h2>
 					<WashButton
-						className="btn-ghost btn-sm"
+						className="btn-xs btn-ghost btn-square"
 						onClick={resetForm}
 					>
 						<LucideX className="w-4 h-4" />

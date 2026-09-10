@@ -1,7 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import {
 		WashModeEnum,
@@ -47,88 +46,69 @@
 	}
 </script>
 
-<div class="flex flex-col p-1">
-	<div
-		class="flex items-center justify-between border-b border-base-300 pb-4"
+<div class="flex flex-col gap-4">
+	<label class="label-ink text-sm font-medium" for="wash-pigment"
+		>Pigment</label
 	>
-		<h2
-			class="text-lg font-semibold"
-			style="font-family: var(--font-display)"
-		>
-			Change appearance
-		</h2>
+	<WashSelect
+		id="wash-pigment"
+		optionHeader="Select pigment"
+		className="w-full"
+		bind:value={currentPigment}
+		onChange={() => preview()}
+	>
+		{#each pigments as pigment (pigment.id)}
+			<option value={pigment.id}>
+				{pigment.label} — {pigment.note}
+			</option>
+		{/each}
+	</WashSelect>
+
+	<label class="label-ink text-sm font-medium" for="wash-mode"
+		>Mode</label
+	>
+	<WashSelect
+		id="wash-mode"
+		optionHeader="Select mode"
+		className="w-full"
+		bind:value={currentMode}
+		onChange={() => preview()}
+	>
+		<option value={WashModeEnum.LIGHT}>Light</option>
+		<option value={WashModeEnum.DARK}>Dark</option>
+	</WashSelect>
+
+	<div class="flex flex-wrap gap-2 pt-1">
+		{#each pigments.slice(0, 12) as pigment (pigment.id)}
+			<button
+				type="button"
+				class="ripple size-7 cursor-pointer rounded-full border border-base-300"
+				style="background:{pigment.swatch}"
+				title={pigment.label}
+				aria-label={pigment.label}
+				onclick={() => {
+					currentPigment = pigment.id as WashPigmentEnum;
+					preview();
+				}}
+			></button>
+		{/each}
+	</div>
+
+	<div class="modal-action mt-2">
 		<WashButton
-			className="btn-ghost btn-sm btn-circle"
+			className="btn"
 			onClick={handleCancel}
 			disabled={isConfirming}
 		>
-			<LucideX className="size-5" />
+			Cancel
 		</WashButton>
-	</div>
-	<div class="mt-4 flex flex-col gap-4">
-		<label class="label-ink text-sm font-medium" for="wash-pigment"
-			>Pigment</label
+		<WashButton
+			onClick={() => handleConfirm()}
+			className="btn btn-primary"
+			disabled={isConfirming}
+			loading={isConfirming}
 		>
-		<WashSelect
-			id="wash-pigment"
-			optionHeader="Select pigment"
-			className="w-full"
-			bind:value={currentPigment}
-			onChange={() => preview()}
-		>
-			{#each pigments as pigment (pigment.id)}
-				<option value={pigment.id}>
-					{pigment.label} — {pigment.note}
-				</option>
-			{/each}
-		</WashSelect>
-
-		<label class="label-ink text-sm font-medium" for="wash-mode"
-			>Mode</label
-		>
-		<WashSelect
-			id="wash-mode"
-			optionHeader="Select mode"
-			className="w-full"
-			bind:value={currentMode}
-			onChange={() => preview()}
-		>
-			<option value={WashModeEnum.LIGHT}>Light</option>
-			<option value={WashModeEnum.DARK}>Dark</option>
-		</WashSelect>
-
-		<div class="flex flex-wrap gap-2 pt-1">
-			{#each pigments.slice(0, 12) as pigment (pigment.id)}
-				<button
-					type="button"
-					class="ripple size-7 cursor-pointer rounded-full border border-base-300"
-					style="background:{pigment.swatch}"
-					title={pigment.label}
-					aria-label={pigment.label}
-					onclick={() => {
-						currentPigment = pigment.id as WashPigmentEnum;
-						preview();
-					}}
-				></button>
-			{/each}
-		</div>
-
-		<div class="modal-action mt-2">
-			<WashButton
-				className="btn"
-				onClick={handleCancel}
-				disabled={isConfirming}
-			>
-				Cancel
-			</WashButton>
-			<WashButton
-				onClick={() => handleConfirm()}
-				className="btn btn-primary"
-				disabled={isConfirming}
-				loading={isConfirming}
-			>
-				OK
-			</WashButton>
-		</div>
+			OK
+		</WashButton>
 	</div>
 </div>

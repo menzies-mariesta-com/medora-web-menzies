@@ -1,12 +1,11 @@
 <script lang="ts">
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { page } from '$app/state';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { ReferTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
@@ -327,24 +326,13 @@
 	}
 </script>
 
-<WashModal
-	groupName="external-refer-master-modal"
+<WashDialog
+	id="external-refer-master-modal"
 	open={true}
 	{onClose}
+	{title}
+	showActions={false}
 >
-	<WashModalBox {onClose} showCloseButton={true}>
-		<div
-			class="flex items-center justify-between border-b border-base-300 pb-3"
-		>
-			<h2 class="text-lg font-semibold">{title}</h2>
-			<WashButton
-				className="btn-ghost btn-sm btn-circle"
-				onClick={onClose}
-			>
-				<LucideX className="size-5" />
-			</WashButton>
-		</div>
-
 		{#if !loaded}
 			<p class="py-4 text-base-content/70">Loading…</p>
 		{:else}
@@ -525,27 +513,14 @@
 							{@const display = (code ?? '') + (phone ?? '')}
 							<span id="refer-phone">{display || '—'}</span>
 						{:else}
-							<div class="join flex">
-								<WashSelect
-									bind:value={phoneCountryId}
-									optionHeader="Select country code ..."
-									className="select min-w-20 join-item"
-								>
-									{#each countries as c (c.id)}
-										<option value={String(c.id)}
-											>{c.countryCallingCode} [{c.code?.toUpperCase() ??
-												c.id}]</option
-										>
-									{/each}
-								</WashSelect>
-								<WashInputField
-									id="refer-phone"
-									className=" join-item"
-									bind:value={phone}
-									inputType="tel"
-									inputPlaceholderText="Number"
-								/>
-							</div>
+							<MenziesPhoneField
+								id="refer-phone"
+								bind:countryId={phoneCountryId}
+								bind:phone
+								countries={countries}
+								optionHeader={m.select_country_code()}
+								placeholder="Number"
+							/>
 						{/if}
 					</div>
 				</div>
@@ -597,7 +572,12 @@
 						{isSubmitting ? 'Saving…' : isCreate ? 'Create' : 'Save'}
 					</WashButton>
 				</div>
+			{:else}
+				<div class="modal-action mt-4">
+					<WashButton className="btn btn-primary" onClick={onClose}
+						>Close</WashButton
+					>
+				</div>
 			{/if}
 		{/if}
-	</WashModalBox>
-</WashModal>
+</WashDialog>

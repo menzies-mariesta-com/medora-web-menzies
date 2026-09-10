@@ -29,7 +29,7 @@
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
 	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import { tick } from 'svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 
@@ -574,14 +574,14 @@
 	</div>
 </div>
 
-<WashModal
-	groupName="medora-module-search"
+<WashDialog
+	id="medora-module-search"
 	className="modal-middle"
 	open={searchDialogOpen}
 	onClose={closeSearchDialog}
+	title="Search modules & pages"
+	boxClassName="flex max-h-[80vh] flex-col gap-3"
 >
-	<div class="modal-box flex max-h-[80vh] flex-col gap-3">
-		<h3 class="text-lg font-semibold">Search modules &amp; pages</h3>
 		<input
 			bind:this={searchInputEl}
 			bind:value={searchQuery}
@@ -619,5 +619,7 @@
 		{#if searchEntries.length === 0}
 			<p class="text-sm text-base-content/60">No matches.</p>
 		{/if}
-	</div>
-</WashModal>
+		{#snippet actions()}
+			<WashButton variant="ghost" onClick={closeSearchDialog}>Close</WashButton>
+		{/snippet}
+</WashDialog>

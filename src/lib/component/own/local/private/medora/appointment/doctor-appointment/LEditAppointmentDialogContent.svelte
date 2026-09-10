@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import { EditAppointmentDialogState } from '$lib/state/edit-appointment-dialog.state.svelte';
@@ -881,7 +881,7 @@
 				>
 					<label for="apt-patient" class="shrink-0 sm:w-36">Patient</label>
 					<div class="max-w-80 flex-1">
-						<WashSearchSelect
+						<SearchSelect
 							bind:value={selectedPatientId}
 							placeholder="Select patient (optional) …"
 							className="w-full"

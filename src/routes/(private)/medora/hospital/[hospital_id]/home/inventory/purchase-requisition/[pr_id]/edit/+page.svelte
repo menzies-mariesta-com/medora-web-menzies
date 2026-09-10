@@ -5,7 +5,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
@@ -733,7 +733,7 @@
 				>
 					<WashButton
 						type="button"
-						className="btn-sm btn-ghost btn-square"
+						className="btn-xs btn-ghost btn-square"
 						disabled={detailLoading}
 						onClick={() => void goto(prViewPath(editPrId))}
 					>
@@ -794,7 +794,7 @@
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
 						<label class="text-xs opacity-80">{m.inv_transfer_to_store()}</label>
-						<WashSearchSelect
+						<SearchSelect
 							value={createToStoreId != null
 								? String(createToStoreId)
 								: ''}

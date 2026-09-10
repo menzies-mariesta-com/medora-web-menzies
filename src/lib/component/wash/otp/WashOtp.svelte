@@ -1,6 +1,10 @@
 <script lang="ts">
 	/**
-	 * Wash OTP field matching Menzies Design `.otp` slots + single input.
+	 * Wash OTP field matching Menzies Design `OtpField` / daisyUI `.otp`
+	 * (Components → OTP, Templates → Auth → 2FA / OTP).
+	 *
+	 * Do not put `w-full` on `.otp` — daisyUI sizes via `:has(>span:nth-child(n))`.
+	 * Stretching the label misplaces the `::after` caret and looks like an error glow.
 	 */
 	let {
 		id,
@@ -35,7 +39,7 @@
 	}
 </script>
 
-<label class="otp w-full cursor-text {className}" for={id}>
+<label class="otp cursor-text {className}" for={id}>
 	{#each slots as i (i)}
 		<span aria-hidden="true"></span>
 	{/each}
@@ -43,6 +47,7 @@
 		{id}
 		{name}
 		type="text"
+		class="cursor-text"
 		autocomplete="one-time-code"
 		inputmode="numeric"
 		maxlength={length}

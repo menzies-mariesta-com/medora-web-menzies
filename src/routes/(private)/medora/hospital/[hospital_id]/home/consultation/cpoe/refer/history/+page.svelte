@@ -462,30 +462,6 @@
 					if (row.isUrgent === YesNoEnum.YES) return '!bg-warning/15';
 					return '!bg-neutral/0';
 				}}
-				rowTooltipGetter={(row) => StringUtil.tableToolTip(row)}
-				bind:pageSize
-				bind:currentPage
-				bind:columnFilters={tableFilters}
-				useRemoteFilters={true}
-				enableColumnFilters={true}
-				on:refresh={() => loadData({ force: true })}
-				on:filtersChange={(event) => {
-					// MenziesTable already updates the UI via bind:columnFilters, but we
-					// still handle the remote reload here (debounced).
-					const nextFilters = event.detail.filters;
-					const nextKey = JSON.stringify(nextFilters);
-					const currentKey = JSON.stringify(tableFilters);
-					if (nextKey === currentKey) return;
-
-					tableFilters = nextFilters;
-					currentPage = 1;
-
-					if (filterDebounceTimeout)
-						clearTimeout(filterDebounceTimeout);
-					filterDebounceTimeout = setTimeout(() => {
-						loadData();
-					}, 350);
-				}}
 				showRowActions={true}
 				actionsHeader="Actions"
 				actionsVariant="none"

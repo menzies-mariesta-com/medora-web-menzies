@@ -5,7 +5,7 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -1200,7 +1200,7 @@
 							>
 								<label class="flex min-w-0 flex-col gap-1 text-sm">
 									Service Name
-									<WashSearchSelect
+									<SearchSelect
 										bind:value={detailServiceIdInput}
 										placeholder="Select service"
 										searchFn={searchServices}
@@ -1217,7 +1217,7 @@
 								</label>
 								<label class="flex min-w-0 flex-col gap-1 text-sm">
 									Order by (Adv Dr.)
-									<WashSearchSelect
+									<SearchSelect
 										bind:value={detailAdvisingDoctorIdInput}
 										placeholder="Select doctor"
 										className="w-full"

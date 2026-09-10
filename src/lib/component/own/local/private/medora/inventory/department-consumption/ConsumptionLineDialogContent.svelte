@@ -1,6 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import InventoryBatchQtyPickTable from '$lib/component/own/local/private/medora/inventory/InventoryBatchQtyPickTable.svelte';
 	import type {
 		ConsumptionDraftLine,
@@ -207,7 +207,7 @@
 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div class="sm:col-span-2">
 		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<WashSearchSelect
+		<SearchSelect
 			value={draftLine.itemId ? String(draftLine.itemId) : ''}
 			searchFn={searchItemsWithStock}
 			invalidateKey={`${hospitalId}:${storeId ?? ''}`}

@@ -70,6 +70,20 @@
 			toastError(toastService, m.login(), m.toast_action_failed(), error);
 			return;
 		}
+		if (
+			data &&
+			typeof data === 'object' &&
+			'twoFactorRedirect' in data &&
+			(data as { twoFactorRedirect?: boolean }).twoFactorRedirect
+		) {
+			const next = new URL(
+				WebRoutesEnum.TWO_FACTOR,
+				window.location.origin
+			);
+			next.searchParams.set('redirectTo', redirectTarget);
+			await goto(`${next.pathname}${next.search}`);
+			return;
+		}
 		if (data) {
 			await goto(redirectTarget);
 		}

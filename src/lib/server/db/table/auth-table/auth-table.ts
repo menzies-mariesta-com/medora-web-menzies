@@ -39,6 +39,10 @@ export const userTable = pgTable('user', {
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
 	roleId: integer('role_id').references(() => roleTable.id),
+	/** better-auth twoFactor plugin */
+	twoFactorEnabled: boolean('two_factor_enabled')
+		.notNull()
+		.default(false),
 	...timestamps
 });
 
@@ -97,6 +101,19 @@ export const verificationTable = pgTable('verification', {
 	...timestamps
 });
 
+/** better-auth twoFactor plugin table */
+export const twoFactorTable = pgTable('two_factor', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => uuidv7()),
+	userId: text('user_id')
+		.notNull()
+		.references(() => userTable.id, { onDelete: 'cascade' }),
+	secret: text('secret').notNull(),
+	backupCodes: text('backup_codes').notNull(),
+	...timestamps
+});
+
 export const roleTable = pgTable('role', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
@@ -112,5 +129,6 @@ export const authSchema = {
 	session: sessionTable,
 	account: accountTable,
 	verification: verificationTable,
+	twoFactor: twoFactorTable,
 	role: roleTable
 };

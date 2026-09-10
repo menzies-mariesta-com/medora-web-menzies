@@ -1,7 +1,6 @@
 <script lang="ts">
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -117,22 +116,16 @@
 </script>
 
 {#if open}
-	<WashModal groupName="order-history-modal" open={true} {onClose}>
-		<div
-			class="modal-box h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
-			role="document"
-		>
-			<div class="mb-3 flex items-center justify-between">
-				<WashCardBodyTitle className="mb-0">
-					Order history (this visit)
-				</WashCardBodyTitle>
-				<WashButton
-					className="btn-ghost btn-sm"
-					onClick={onClose}
-				>
-					Close
-				</WashButton>
-			</div>
+	<WashDialog
+		id="order-history-modal"
+		open={true}
+		{onClose}
+		title="Order history (this visit)"
+		boxClassName="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
+	>
+			{#snippet actions()}
+				<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
+			{/snippet}
 			{#if items.length === 0 && !isLoading}
 				<p class="text-sm text-base-content/70">
 					No service items for this visit yet.
@@ -167,6 +160,5 @@
 					</MenziesTable>
 				</div>
 			{/if}
-		</div>
-	</WashModal>
+	</WashDialog>
 {/if}

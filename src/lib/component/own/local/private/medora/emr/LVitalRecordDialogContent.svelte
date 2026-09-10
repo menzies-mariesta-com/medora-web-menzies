@@ -8,6 +8,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import {
@@ -503,9 +504,7 @@
 		</div>
 	</div>
 
-	<div class="divider divider-horizontal my-2 text-xs">
-		Notes
-	</div>
+	<WashDivider className="my-2 text-xs">Notes</WashDivider>
 
 	<div
 		class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"

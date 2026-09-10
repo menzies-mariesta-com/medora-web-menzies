@@ -1,6 +1,12 @@
 <script lang="ts">
+	/**
+	 * Table row icon action — Menzies Design Data table pattern:
+	 * `btn btn-ghost btn-square btn-{tone} btn-xs` + Lucide `size-3.5`.
+	 * Tip is a real element anchored to the **right** (not DaisyUI `data-tip`,
+	 * which defaults to top and still wins for some tones e.g. error).
+	 * @see https://design-menzies.netlify.app/ — Components → Buttons / Templates → Data table
+	 */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import type { Snippet } from 'svelte';
 
 	export type MenziesTableActionColor =
@@ -33,29 +39,30 @@
 		icon: Snippet;
 	} = $props();
 
-	const tooltipClass = $derived(`tooltip-${color}`);
-
-	const buttonClass = $derived.by(() => {
-		// Menzies Design Data table: btn-ghost btn-square btn-xs + tone
-		const parts = ['btn-xs', 'btn-square', 'btn-ghost'];
-		if (color !== 'ghost') {
-			parts.push(`btn-${color}`);
-		}
-		if (className.trim()) {
-			parts.push(className.trim());
-		}
-		return parts.join(' ');
-	});
+	/** Tone sits beside ghost (Design: `btn-ghost btn-square btn-secondary btn-xs`). */
+	const toneClass = $derived(color === 'ghost' ? '' : `btn-${color}`);
+	const tipTone = $derived(color === 'ghost' ? 'neutral' : color);
 </script>
 
-<WashTooltip {tooltipText} className={`tooltip-right ${tooltipClass}`}>
+<div
+	class="menzies-table-icon-action-tip"
+	data-tone={tipTone}
+>
 	<WashButton
-		className={buttonClass}
+		variant="ghost"
+		size="xs"
+		square={true}
+		className={`menzies-table-icon-action ${toneClass} ${className}`.trim()}
 		{disabled}
 		{loading}
 		{loadingText}
 		onClick={onClick}
 	>
-		{@render icon()}
+		<span class="menzies-table-icon-action__glyph" aria-hidden="true">
+			{@render icon()}
+		</span>
 	</WashButton>
-</WashTooltip>
+	<span class="menzies-table-icon-action-tip__label" role="tooltip">
+		{tooltipText}
+	</span>
+</div>

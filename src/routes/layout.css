@@ -7,6 +7,10 @@
  * harsh black lines across the app. Register tokens so utilities resolve.
  */
 @theme inline {
+	/* Menzies Design Wash UI typefaces (from menzies-design-wash-ui/styles.css) */
+	--font-sans: "Maple Mono", ui-monospace, monospace;
+	--font-mono: "Maple Mono", ui-monospace, monospace;
+
 	--color-base-100: var(--color-base-100);
 	--color-base-200: var(--color-base-200);
 	--color-base-300: var(--color-base-300);
@@ -30,17 +34,16 @@
 	--color-ink-border: var(--color-ink-border);
 }
 
-/* GSAP modal animation wrapper — Wash unprefixed classes */
+/* GSAP modal animation wrapper — Wash unprefixed classes.
+ * Match daisyUI `.modal`: full-viewport grid, center items (Design Dialog). */
 .modal {
-	/* Use grid centering to avoid flex + viewport rounding offsets. */
 	display: grid;
-	place-items: center;
+	justify-items: center;
+	align-items: center;
 
 	position: fixed;
 	inset: 0;
 
-	/* Prefer stable viewport units when available; avoid min-width: 100vw
-	   (vw includes scrollbar gutter → horizontal overflow). */
 	width: 100%;
 	height: 100%;
 	max-width: 100%;
@@ -50,7 +53,7 @@
 	padding: 0;
 	border: 0;
 	box-sizing: border-box;
-	overflow: hidden;
+	overflow: clip;
 	background: transparent;
 }
 
@@ -75,16 +78,9 @@ dialog.modal::backdrop {
 	opacity: 1 !important;
 }
 
+/* Deprecated: WashDialog no longer uses a content wrapper; keep rule harmless. */
 .modal-content-wrapper {
-	display: grid;
-	place-items: center;
-
-	width: 100%;
-	height: 100%;
-
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
+	display: contents;
 }
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';

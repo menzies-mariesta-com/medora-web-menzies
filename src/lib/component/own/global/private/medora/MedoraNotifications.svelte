@@ -3,15 +3,13 @@
 	import { page } from '$app/state';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashIndicator from '$lib/component/wash/indicator/WashIndicator.svelte';
 	import WashIndicatorItem from '$lib/component/wash/indicator/item/WashIndicatorItem.svelte';
 
 	import LucideBell from '$lib/component/own/library/lucide/LucideBell.svelte';
-	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
@@ -266,45 +264,26 @@
 	</WashButton>
 </div>
 
-<WashModal
-	groupName="medora-notifications-modal"
+<WashDialog
+	id="medora-notifications-modal"
 	className="modal-middle"
 	open={modalOpen}
 	onClose={closeNotificationsModal}
+	title="Notifications"
+	description={`${modalItems.length} items`}
+	boxClassName="max-w-2xl"
 >
-	<WashModalBox className="max-w-2xl" showCloseButton={false}>
-		<div
-			class="flex items-center justify-between gap-3 border-b border-base-300 pb-3"
-		>
-			<div class="min-w-0 flex-1 pe-2">
-				<h3 class="text-lg leading-tight font-semibold">
-					Notifications
-				</h3>
-				<p class="mt-0.5 text-sm leading-snug text-base-content/60">
-					{modalItems.length} items
-				</p>
-			</div>
-
-			<div class="flex shrink-0 items-center gap-1 sm:gap-2">
-				<WashButton
-					className="btn-ghost btn-sm whitespace-nowrap"
-					disabled={modalLoading || unreadCount === 0}
-					onClick={handleMarkAllRead}
-				>
-					Mark all as read
-				</WashButton>
-				<WashButton
-					className="btn-ghost btn-sm btn-square shrink-0"
-					onClick={closeNotificationsModal}
-					type="button"
-				>
-					<span class="sr-only">Close notifications</span>
-					<LucideX className="size-5" />
-				</WashButton>
-			</div>
+		<div class="mb-3 flex justify-end">
+			<WashButton
+				className="btn-ghost btn-sm whitespace-nowrap"
+				disabled={modalLoading || unreadCount === 0}
+				onClick={handleMarkAllRead}
+			>
+				Mark all as read
+			</WashButton>
 		</div>
 
-		<div class="mt-4 flex flex-col gap-3">
+		<div class="flex flex-col gap-3">
 			{#if modalLoading}
 				<div class="text-sm text-base-content/60">Loading...</div>
 			{:else if modalItems.length === 0}
@@ -375,5 +354,9 @@
 				</div>
 			{/if}
 		</div>
-	</WashModalBox>
-</WashModal>
+		{#snippet actions()}
+			<WashButton variant="ghost" onClick={closeNotificationsModal}
+				>Close</WashButton
+			>
+		{/snippet}
+</WashDialog>

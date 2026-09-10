@@ -73,7 +73,7 @@
 						className="btn-primary btn-sm btn-ghost"
 						onClick={() => handleSelect(row)}
 					>
-						<LucideCircleCheck className="size-5" />
+						<LucideCircleCheck className="size-3.5" />
 					</WashButton>
 				</WashTooltip>
 			{/snippet}

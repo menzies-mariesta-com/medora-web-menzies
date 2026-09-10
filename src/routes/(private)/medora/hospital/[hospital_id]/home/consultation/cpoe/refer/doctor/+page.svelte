@@ -9,7 +9,7 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
@@ -268,7 +268,7 @@
 				Destination Doctor <span class="text-error">*</span>
 			</label>
 			<div class="min-w-0 flex-1">
-				<WashSearchSelect
+				<SearchSelect
 					bind:value={toReferDoctorId}
 					placeholder="Search or select doctor…"
 					className="w-full"

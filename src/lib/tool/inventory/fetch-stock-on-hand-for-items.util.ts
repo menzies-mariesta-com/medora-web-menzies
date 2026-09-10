@@ -35,7 +35,7 @@ export async function fetchStockLabelsForItemsAtStore(
 }
 
 /**
- * Appends on-hand at **selectedStoreId** only to item search option labels (WashSearchSelect).
+ * Appends on-hand at **selectedStoreId** only to item search option labels (SearchSelect).
  */
 export async function enrichItemSearchOptionsWithStock(
 	hospitalId: string,

@@ -21,8 +21,10 @@ export class DialogService {
 			const dialog: DialogInterface = {
 				id: Date.now(),
 				title: options.title,
+				description: options.description,
 				message: options.message,
 				variant: options.variant ?? DialogVariantEnum.ALERT,
+				tone: options.tone,
 				fullScreen: options.fullScreen,
 				modalClassName: options.modalClassName,
 				children: options.children,

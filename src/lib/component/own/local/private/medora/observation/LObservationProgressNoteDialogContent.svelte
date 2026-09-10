@@ -11,7 +11,7 @@
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
@@ -233,7 +233,7 @@
 		<label for="progress-note-doctor" class="text-sm">
 			{m.observation_emr_advising_doctor()}
 		</label>
-		<WashSearchSelect
+		<SearchSelect
 			inputId="progress-note-doctor"
 			className="w-full"
 			placement="up"

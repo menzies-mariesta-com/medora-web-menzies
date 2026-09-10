@@ -11,6 +11,8 @@ export function stripTooltipPlacementClasses(className: string): string {
 /**
  * Near the left of the viewport → show tip on the right.
  * Near the right of the viewport → show tip on the left.
+ * Never top/bottom — table overflow clips vertical tips poorly and Design
+ * table actions expect horizontal placement only.
  */
 export function resolveHorizontalTooltipSide(
 	el: HTMLElement

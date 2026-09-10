@@ -11,7 +11,7 @@
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryTablePickerDialogContent.svelte';
 	import PoManualLineDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLineDialogContent.svelte';
 	import PoManualLinesCard from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLinesCard.svelte';
@@ -1103,7 +1103,7 @@
 					>
 						<WashButton
 							type="button"
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							onClick={() => void goto(resolve(poListPath as any))}
 						>
 							<LucideArrowLeft className="size-4" />
@@ -1157,7 +1157,7 @@
 							>
 								<label class="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<WashSearchSelect
+									<SearchSelect
 										value={supplierId != null
 											? String(supplierId)
 											: ''}
@@ -1233,7 +1233,7 @@
 							>
 								<label class="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<WashSearchSelect
+									<SearchSelect
 										value={supplierId != null
 											? String(supplierId)
 											: ''}
@@ -1303,11 +1303,11 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-accent"
+											className="btn-xs btn-ghost btn-square text-accent"
 											onClick={() =>
 												void openPoPrLineDialog(row.prLineId)}
 										>
-											<LucidePencil className="size-5" />
+											<LucidePencil className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 									<WashTooltip
@@ -1316,10 +1316,10 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-error"
+											className="btn-xs btn-ghost btn-square text-error"
 											onClick={() => removePoPrLine(row.prLineId)}
 										>
-											<LucideTrash2 className="size-5" />
+											<LucideTrash2 className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 								</div>

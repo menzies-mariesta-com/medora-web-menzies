@@ -132,10 +132,16 @@
 		<span class="inline-flex items-center gap-2">
 			{#if spinner}
 				<span aria-hidden="true">
-					<span class="loading loading-spinner loading-sm"></span>
+					<span
+						class="loading loading-spinner {size === 'xs'
+							? 'loading-xs'
+							: 'loading-sm'}"
+					></span>
 				</span>
 			{/if}
-			<span>{loadingText}</span>
+			{#if loadingText}
+				<span>{loadingText}</span>
+			{/if}
 		</span>
 	{:else}
 		{@render children?.()}

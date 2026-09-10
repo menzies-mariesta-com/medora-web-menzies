@@ -14,7 +14,7 @@
 	import GrnFormFieldRow from '$lib/component/own/local/private/medora/inventory/grn/GrnFormFieldRow.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryTablePickerDialogContent.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
@@ -1350,7 +1350,7 @@
 					>
 						<WashButton
 							type="button"
-							className="btn-sm btn-ghost btn-square"
+							className="btn-xs btn-ghost btn-square"
 							onClick={() => void goBackToGrnList()}
 						>
 							<LucideArrowLeft className="size-4" />
@@ -1420,7 +1420,7 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-error"
+											className="btn-xs btn-ghost btn-square text-error"
 											onClick={() => {
 												invoicePhotoUrl = null;
 											}}
@@ -1512,7 +1512,7 @@
 								</GrnFormFieldRow>
 
 								<GrnFormFieldRow label={m.inv_common_received_by()}>
-									<WashSearchSelect
+									<SearchSelect
 										value={receivedByUserId ?? ''}
 										searchFn={searchReceivedByUsers}
 										getLabelForValue={getReceivedByLabelForValue}
@@ -1629,7 +1629,7 @@
 								</GrnFormFieldRow>
 
 								<GrnFormFieldRow label={m.inv_common_received_by()}>
-									<WashSearchSelect
+									<SearchSelect
 										value={receivedByUserId ?? ''}
 										searchFn={searchReceivedByUsers}
 										getLabelForValue={getReceivedByLabelForValue}
@@ -1652,7 +1652,7 @@
 							</p>
 							<div class={grnFieldsStack}>
 								<GrnFormFieldRow label={m.inv_po_select_supplier()}>
-									<WashSearchSelect
+									<SearchSelect
 										value={directSupplierId != null
 											? String(directSupplierId)
 											: ''}
@@ -1723,11 +1723,11 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-accent"
+											className="btn-xs btn-ghost btn-square text-accent"
 											onClick={() =>
 												void openGrnFromPoLineDialog(line.poLineId)}
 										>
-											<LucidePencil className="size-5" />
+											<LucidePencil className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 									<WashTooltip
@@ -1736,11 +1736,11 @@
 									>
 										<WashButton
 											type="button"
-											className="btn-sm btn-ghost btn-square text-error"
+											className="btn-xs btn-ghost btn-square text-error"
 											onClick={() =>
 												removeGrnFromPoLine(line.poLineId)}
 										>
-											<LucideTrash2 className="size-5" />
+											<LucideTrash2 className="size-3.5" />
 										</WashButton>
 									</WashTooltip>
 								</div>

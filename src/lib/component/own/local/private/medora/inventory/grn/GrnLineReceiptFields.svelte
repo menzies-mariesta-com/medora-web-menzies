@@ -1,5 +1,5 @@
 <script lang="ts">
-	import WashSearchSelect from '$lib/component/wash/search-select/WashSearchSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
@@ -148,7 +148,7 @@
 				disabled={itemLocked}
 				aria-label={m.inv_grn_free_qty()}
 			/>
-			<WashSearchSelect
+			<SearchSelect
 				value={draft?.freeUnitIumId != null
 					? String(draft.freeUnitIumId)
 					: ''}

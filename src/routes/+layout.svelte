@@ -2,12 +2,13 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
-	import WashModalBox from '$lib/component/wash/modal/box/WashModalBox.svelte';
-	import WashModal from '$lib/component/wash/modal/WashModal.svelte';
+	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashToast from '$lib/component/wash/toast/WashToast.svelte';
 	import { gsapAnimate } from '$lib/action/gsap.action.svelte';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import type { DialogTone } from '$lib/model/interface/dialog.interface';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogState } from '$lib/state/dialog.state.svelte';
 	import { ToastState } from '$lib/state/toast.state.svelte';
@@ -48,6 +49,28 @@
 	lifeCycleUtil.onDestroy(() => {
 		washThemeTool.destroy();
 	});
+
+	const dialogTone = $derived.by((): DialogTone => {
+		const current = DialogState.current;
+		if (!current) return 'primary';
+		if (current.tone) return current.tone;
+		return 'primary';
+	});
+
+	const dialogDescription = $derived(
+		DialogState.current?.description ??
+			(DialogState.current &&
+			!DialogState.current.component &&
+			!DialogState.current.children
+				? DialogState.current.message
+				: undefined)
+	);
+
+	const dialogOwnsActions = $derived(
+		Boolean(
+			DialogState.current?.component || DialogState.current?.children
+		)
+	);
 </script>
 
 <!-- Head -->
@@ -88,34 +111,21 @@
 	</WashToast>
 {/if}
 
-<!-- Dialog component (Learn Dialog service to use) -->
+<!-- Dialog component (Learn Dialog service to use) — Menzies Design Dialog -->
 {#if DialogState.current}
-	{#if DialogState.current.fullScreen}
-		<WashModal
-			groupName="dialog-modal"
-			open={true}
-			onClose={() => dialogService.cancel()}
-			className="!max-w-none !w-[100dvw] !h-[100dvh] !min-h-[100dvh]"
-		>
-			<div
-				class="modal-box flex h-[96dvh] min-h-[96dvh] w-[96vw] !max-w-none flex-col gap-0 overflow-hidden p-0"
-				role="document"
-			>
-				{#if DialogState.current.component}
-					{@const DialogContent = DialogState.current.component}
-					<DialogContent
-						{...DialogState.current.props}
-						confirm={(data: unknown) => dialogService.confirm(data)}
-						cancel={() => dialogService.cancel()}
-					/>
-				{:else if DialogState.current.children}
-					{@render DialogState.current.children({
-						confirm: (data: unknown) => dialogService.confirm(data),
-						cancel: () => dialogService.cancel()
-					})}
-				{/if}
-			</div>
-			<!-- Toasts inside dialog so they appear above attachment/dialog content (top layer) -->
+	<WashDialog
+		id="dialog-modal"
+		open={true}
+		onClose={() => dialogService.cancel()}
+		title={DialogState.current.title}
+		description={dialogDescription}
+		tone={dialogTone}
+		layout={DialogState.current.fullScreen ? 'fullscreen' : 'default'}
+		boxClassName={DialogState.current.modalClassName}
+		showActions={!dialogOwnsActions}
+		showDefaultClose={false}
+	>
+		{#snippet layer()}
 			{#if ToastState.length > 0}
 				<WashToast className="toast-top toast-end z-[9999]">
 					{#each ToastState as toast (toast.id)}
@@ -134,104 +144,53 @@
 					{/each}
 				</WashToast>
 			{/if}
-		</WashModal>
-	{:else}
-		<WashModal
-			groupName="dialog-modal"
-			open={true}
-			onClose={() => dialogService.cancel()}
-		>
-			{#if ToastState.length > 0}
-				<WashToast className="toast-top toast-end z-[9999]">
-					{#each ToastState as toast (toast.id)}
-						<div
-							class="w-full max-w-[min(100vw-2rem,36rem)]"
-							use:gsapAnimate={{ type: 'fadeUp', duration: 0.25 }}
-						>
-							<WashAlert
-								type={toast.type}
-								message={toast.message}
-								detail={toast.detail}
-								showToastActions
-								onDismissToast={() => dismissToast(toast.id)}
-							/>
-						</div>
-					{/each}
-				</WashToast>
+		{/snippet}
+
+		{#if DialogState.current.component}
+			{@const DialogContent = DialogState.current.component}
+			<DialogContent
+				{...DialogState.current.props}
+				confirm={(data: unknown) => dialogService.confirm(data)}
+				cancel={() => dialogService.cancel()}
+			/>
+		{:else if DialogState.current.children}
+			{@render DialogState.current.children({
+				confirm: (data: unknown) => dialogService.confirm(data),
+				cancel: () => dialogService.cancel()
+			})}
+		{/if}
+
+		{#snippet actions()}
+			{#if DialogState.current?.variant === DialogVariantEnum.CONFIRM}
+				<WashButton
+					type="button"
+					variant="ghost"
+					disabled={DialogState.current.confirmPending}
+					onClick={() => dialogService.cancel()}
+				>
+					{m.cancel()}
+				</WashButton>
+				<WashButton
+					type="button"
+					variant="primary"
+					disabled={DialogState.current.confirmPending}
+					loading={DialogState.current.confirmPending}
+					loadingText={m.loading()}
+					onClick={() => dialogService.confirm()}
+				>
+					{m.ok()}
+				</WashButton>
+			{:else}
+				<WashButton
+					type="button"
+					variant="primary"
+					onClick={() => dialogService.close()}
+				>
+					{m.ok()}
+				</WashButton>
 			{/if}
-			<WashModalBox
-				className={DialogState.current.modalClassName}
-				onClose={() => dialogService.cancel()}
-				showCloseButton={!DialogState.current.component}
-			>
-				{#if DialogState.current.component}
-					{#if DialogState.current.title}
-						<h3 class="mb-5 text-lg font-bold">
-							{DialogState.current.title}
-						</h3>
-					{/if}
-					{@const DialogContent = DialogState.current.component}
-					<DialogContent
-						{...DialogState.current.props}
-						confirm={(data: unknown) => dialogService.confirm(data)}
-						cancel={() => dialogService.cancel()}
-					/>
-				{:else if DialogState.current.children}
-					{#if DialogState.current.title}
-						<h3 class="text-lg font-bold">
-							{DialogState.current.title}
-						</h3>
-					{/if}
-					{@render DialogState.current.children({
-						confirm: (data) => dialogService.confirm(data),
-						cancel: () => dialogService.cancel()
-					})}
-				{:else}
-					{#if DialogState.current.title}
-						<h3 class="text-lg font-bold">
-							{DialogState.current.title}
-						</h3>
-					{/if}
-					<p>{DialogState.current.message}</p>
-					<div class="modal-action">
-						{#if DialogState.current.variant === DialogVariantEnum.CONFIRM}
-							<button
-								type="button"
-								class="btn"
-								disabled={DialogState.current.confirmPending}
-								onclick={() => dialogService.cancel()}
-							>
-								{m.cancel()}
-							</button>
-							<button
-								type="button"
-								class="btn btn-primary"
-								disabled={DialogState.current.confirmPending}
-								onclick={() => dialogService.confirm()}
-							>
-								{#if DialogState.current.confirmPending}
-									<span class="inline-flex items-center gap-2">
-										<span class="loading loading-spinner loading-sm"></span>
-										Loading…
-									</span>
-								{:else}
-									{m.ok()}
-								{/if}
-							</button>
-						{:else}
-							<button
-								type="button"
-								class="btn btn-primary"
-								onclick={() => dialogService.close()}
-							>
-								{m.ok()}
-							</button>
-						{/if}
-					</div>
-				{/if}
-			</WashModalBox>
-		</WashModal>
-	{/if}
+		{/snippet}
+	</WashDialog>
 {/if}
 
 <!-- Language -->
