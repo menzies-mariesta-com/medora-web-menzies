@@ -1,6 +1,6 @@
 <!doctype html>
 
-<html lang="%paraglide.lang%" data-theme="light">
+<html lang="%paraglide.lang%" data-theme="mineral">
 	<head>
 		<meta charset="utf-8" />
 
@@ -9,53 +9,37 @@
 			content="width=device-width, initial-scale=1"
 		/>
 
+		<!--
+			FOUC guard: restore Wash pigment + mode before paint.
+			Keys match @menzies-mariesta-com/menzies-design-wash-ui (THEME_STORAGE_KEY / MODE_STORAGE_KEY).
+		-->
 		<script>
 			(function () {
-				var themes = [
-					'light',
-					'dark',
-					'cupcake',
-					'bumblebee',
-					'emerald',
-					'corporate',
-					'synthwave',
-					'retro',
-					'cyberpunk',
-					'valentine',
-					'halloween',
-					'garden',
-					'forest',
-					'aqua',
-					'lofi',
-					'pastel',
-					'fantasy',
-					'wireframe',
-					'black',
-					'luxury',
-					'dracula',
-					'cmyk',
-					'autumn',
-					'business',
-					'acid',
-					'lemonade',
-					'night',
-					'coffee',
-					'winter',
-					'dim',
-					'nord',
-					'sunset',
-					'caramellate',
-					'abyss',
-					'silk'
-				];
 				try {
-					var theme = localStorage.getItem('theme');
-					if (theme && themes.indexOf(theme) !== -1) {
-						document.documentElement.setAttribute(
-							'data-theme',
-							theme
-						);
+					var THEME_KEY = 'design-web-menzies-theme';
+					var MODE_KEY = 'design-web-menzies-mode';
+					var LEGACY_THEME = 'washfield-theme';
+					var LEGACY_MODE = 'washfield-mode';
+					var pigment =
+						localStorage.getItem(THEME_KEY) ||
+						localStorage.getItem(LEGACY_THEME) ||
+						'mineral';
+					var mode =
+						localStorage.getItem(MODE_KEY) ||
+						localStorage.getItem(LEGACY_MODE) ||
+						'light';
+					if (pigment.indexOf('|') !== -1) {
+						pigment = pigment.split('|')[0] || 'mineral';
 					}
+					if (pigment.slice(-5) === '-dark') {
+						pigment = pigment.slice(0, -5);
+						mode = 'dark';
+					}
+					if (mode !== 'light' && mode !== 'dark') mode = 'light';
+					document.documentElement.setAttribute(
+						'data-theme',
+						mode === 'dark' ? pigment + '-dark' : pigment
+					);
 				} catch (e) {}
 			})();
 		</script>
