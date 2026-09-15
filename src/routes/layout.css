@@ -82,8 +82,6 @@ dialog.modal::backdrop {
 .modal-content-wrapper {
 	display: contents;
 }
-@plugin '@tailwindcss/forms';
-@plugin '@tailwindcss/typography';
 
 /* Component classes (btn, fieldset, fab, …) come from Wash styles.css — no daisyUI plugin. */
 

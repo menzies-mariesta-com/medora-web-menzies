@@ -245,3 +245,67 @@ label.otp.w-full,
 .otp > input:valid {
 	caret-color: transparent !important;
 }
+
+/*
+ * Overflow hover marquee (Design `attachOverflowMarquee`).
+ *
+ * 1) Portal ships at z-index:100 — behind Daisy `.modal` (999), FAB, etc.
+ *    Raise it so the marquee paints above elevated UI.
+ * 2) DaisyUI `.menu` uses `width: fit-content` +
+ *    `grid-auto-columns: minmax(auto, max-content)`, so option labels grow with
+ *    text, get clipped only by the panel, and never get scrollWidth > clientWidth.
+ * 3) MenziesTable uses `w-max` so cells expand to content; cap data cells so
+ *    `.truncate` hosts can actually overflow.
+ */
+.overflow-marquee-portal {
+	z-index: 2147483000 !important;
+}
+
+.dropdown-content .menu,
+.menzies-overflow-menu.menu {
+	width: 100% !important;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.dropdown-content .menu > li,
+.menzies-overflow-menu.menu > li {
+	flex-shrink: 1;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.dropdown-content .menu > li > :where(a, button, .menu-dropdown-toggle, summary),
+.menzies-overflow-menu.menu
+	> li
+	> :where(a, button, .menu-dropdown-toggle, summary) {
+	/* Prefer flex so `min-w-0 flex-1 truncate` children shrink; Daisy defaults to grid. */
+	display: flex !important;
+	grid-auto-columns: unset;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.dropdown-content .menu > li > :where(a, button) .truncate,
+.menzies-overflow-menu.menu > li > :where(a, button) .truncate {
+	min-width: 0;
+	flex: 1 1 0%;
+	max-width: 100%;
+}
+
+.menzies-table-scroll td:not(.menzies-table-actions-col) {
+	max-width: 16rem;
+}
+
+.menzies-table-scroll td:not(.menzies-table-actions-col) .truncate {
+	max-width: 100%;
+}
+
+/* SearchSelect option list — keep in-place marquee hosts shrinkable in flex rows. */
+.menzies-ss-list .overflow-marquee-host {
+	flex: 1 1 0%;
+	min-width: 0;
+	max-width: 100%;
+}
+
