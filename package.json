@@ -80,7 +80,7 @@
 		"@changesets/cli": "^2.30.0",
 		"@langchain/core": "^1.1.35",
 		"@langchain/openai": "^1.3.0",
-		"@menzies-mariesta-com/menzies-design-wash-ui": "^1.0.5",
+		"@menzies-mariesta-com/menzies-design-wash-ui": "^1.1.0",
 		"@neondatabase/serverless": "^1.0.2",
 		"@tigrisdata/storage": "^2.12.1",
 		"argon2": "^0.44.0",

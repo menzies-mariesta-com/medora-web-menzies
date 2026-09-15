@@ -26,7 +26,11 @@ export class WashThemeTool {
 	private wash: MedoraHandle | undefined;
 
 	/**
-	 * Boot Wash (ripple/tooltips) and restore stored pigment/mode.
+	 * Boot Wash effects and restore stored pigment/mode.
+	 * `initWash({ enableEffects: true })` attaches document-level ripple,
+	 * smart tooltips, and overflow hover marquee (`.truncate` /
+	 * `line-clamp-*` / `data-overflow-marquee`). Do not call
+	 * `attachOverflowMarquee()` again — it is a singleton.
 	 * Do not pass Mineral/Light as `default*` unless the caller truly wants
 	 * to override storage — `initWash` uses `defaultPigment ?? readStoredTheme()`,
 	 * so providing defaults overwrites the user's saved preference on every load.
