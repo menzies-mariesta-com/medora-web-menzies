@@ -301,7 +301,9 @@
 			: 'border-base-300 rounded-box flex h-full min-h-0 min-w-0 flex-col overflow-hidden border bg-base-100'
 	);
 	/** min-w-0 lets flex children shrink so wide tables scroll inside instead of expanding the card */
-	const tableScrollClass = 'min-h-0 min-w-0 flex-1 overflow-auto';
+	/** `menzies-table-scroll` caps data-cell width so Design overflow marquee can fire. */
+	const tableScrollClass =
+		'menzies-table-scroll min-h-0 min-w-0 flex-1 overflow-auto';
 	const tableSectionClass = 'flex min-h-0 min-w-0 flex-1 flex-col';
 
 	function getDefaultFilterValue(
@@ -770,7 +772,11 @@
 											{@const Component = cellComponent.component}
 											<Component {...cellComponent.props ?? {}} />
 										{:else}
-											{getCellValue(row, column, index)}
+											<span
+												class="block max-w-full min-w-0 truncate"
+												data-overflow-marquee
+												>{getCellValue(row, column, index)}</span
+											>
 										{/if}
 									</td>
 								{/each}

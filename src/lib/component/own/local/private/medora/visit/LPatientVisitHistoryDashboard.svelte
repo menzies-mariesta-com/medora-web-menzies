@@ -89,17 +89,11 @@
 	);
 
 
-	function truncate(text: string, max: number): string {
-		const t = text.trim();
-		if (!t) return '';
-		return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
-	}
-
 	function primaryDiagnosisLabel(
 		v: PatientVisitWithRelationsLite
 	): string {
 		const notes = v.diagnosisNotes?.trim();
-		if (notes) return truncate(notes, 42) || '—';
+		if (notes) return notes;
 		return v.visitType?.name ?? '—';
 	}
 
@@ -152,7 +146,8 @@
 			widthClass: 'min-w-[12rem] max-w-[18rem]',
 			filterable: false,
 			format: (_v, row) => row.primaryDiagnosis,
-			cellClassGetter: (row) => row.diagnosisCellClass
+			cellClassGetter: (row) =>
+				`max-w-[18rem] ${row.diagnosisCellClass}`.trim()
 		}
 	];
 

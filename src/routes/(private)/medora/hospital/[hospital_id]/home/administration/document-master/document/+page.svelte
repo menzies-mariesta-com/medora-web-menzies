@@ -316,14 +316,13 @@
 		}
 	}
 
-	function truncateText(
-		text: string | null | undefined,
-		maxLength: number = 100
+	/** Strip HTML for preview; keep full text so Design overflow marquee can reveal it. */
+	function plainDocumentText(
+		text: string | null | undefined
 	): string {
 		if (!text) return '—';
-		const stripped = text.replace(/<[^>]*>/g, '');
-		if (stripped.length <= maxLength) return stripped;
-		return stripped.substring(0, maxLength) + '...';
+		const stripped = text.replace(/<[^>]*>/g, '').trim();
+		return stripped || '—';
 	}
 
 	let tableFilters = $state<Record<string, string>>({});
@@ -392,7 +391,7 @@
 			header: 'Content Preview',
 			widthClass: 'w-64 min-w-[16rem]',
 			filterable: false,
-			format: (value) => truncateText(value as string)
+			format: (value) => plainDocumentText(value as string)
 		},
 		{
 			id: 'createdAt',
