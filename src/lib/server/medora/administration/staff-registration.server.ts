@@ -112,8 +112,13 @@ async function ensureCanRegisterStaff(
 }
 
 function toDateOnlyString(input?: string): string | undefined {
-	if (!input) return undefined;
-	return new Date(input).toISOString().split('T')[0];
+	if (!input?.trim()) return undefined;
+	const trimmed = input.trim();
+	// Prefer already-valid YYYY-MM-DD (Cally / <input type="date">).
+	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+	const parsed = new Date(trimmed);
+	if (Number.isNaN(parsed.getTime())) return undefined;
+	return parsed.toISOString().split('T')[0];
 }
 
 function generateRandomPassword(length: number = 16): string {
@@ -346,8 +351,11 @@ export async function createStaffRegistration(
 	await ensureCanRegisterStaff(event, input.hospitalId);
 	const passwordHashUtil = new PasswordHashUtil();
 
-	const trimmedEmail = input.email.trim();
+	// Match Better Auth: emails are stored lowercased.
+	const trimmedEmail = input.email.trim().toLowerCase();
 	if (!trimmedEmail) throw error(400, 'Email is required');
+	const trimmedName = input.name.trim();
+	if (!trimmedName) throw error(400, 'Name is required');
 
 	const existing = await ensureDb()
 		.select({ id: table.userTable.id })
@@ -362,144 +370,188 @@ export async function createStaffRegistration(
 		await passwordHashUtil.hash(generatedPassword);
 
 	const userId = uuidv7();
+	const staffId = uuidv7();
 
-	const created = await ensureDb().transaction(async (tx) => {
-		const [user] = await tx
-			.insert(table.userTable)
-			.values({
-				id: userId,
-				name: input.name,
-				email: trimmedEmail,
-				emailVerified: false,
-				roleId: RoleEnum.STAFF
-			})
-			.returning();
-		if (!user) throw error(400, 'Failed to create staff.');
+	let created: StaffSchema;
+	try {
+		created = await ensureDb().transaction(async (tx) => {
+			const [user] = await tx
+				.insert(table.userTable)
+				.values({
+					id: userId,
+					name: trimmedName,
+					email: trimmedEmail,
+					emailVerified: false,
+					roleId: RoleEnum.STAFF
+				})
+				.returning();
+			if (!user) throw error(400, 'Failed to create staff.');
 
-		await tx.insert(table.accountTable).values({
-			id: uuidv7(),
-			userId: user.id,
-			accountId: trimmedEmail,
-			providerId: 'credential',
-			password: hashedPassword
-		});
-
-		const staffDetailId = input.staffDetail
-			? await upsertStaffDetail(
-					tx as unknown as ReturnType<typeof ensureDb>,
-					{
-						patch: input.staffDetail
-					}
-				)
-			: undefined;
-
-		const effectiveStatusId = input.statusId ?? StatusEnum.ACTIVE;
-
-		const [staff] = await tx
-			.insert(table.staffTable)
-			.values({
+			await tx.insert(table.accountTable).values({
+				id: uuidv7(),
 				userId: user.id,
-				code: input.code || undefined,
-				firstName: input.firstName || undefined,
-				middleName: input.middleName || undefined,
-				lastName: input.lastName || undefined,
-				phonePrimary: input.phonePrimary || undefined,
-				phoneSecondary: input.phoneSecondary || undefined,
-				phonePrimaryCountryId:
-					input.phonePrimaryCountryId ?? undefined,
-				phoneSecondaryCountryId:
-					input.phoneSecondaryCountryId ?? undefined,
-				dateOfBirth: toDateOnlyString(input.dateOfBirth),
-				joinDate: toDateOnlyString(input.joinDate),
-				resignDate: toDateOnlyString(input.resignDate),
-				photoUrl: input.photoUrl ?? undefined,
-				address: input.address || undefined,
-				remark: input.remark || undefined,
-				identityNo: input.identityNo || undefined,
-				titleId: input.titleId ?? undefined,
-				genderId: input.genderId ?? undefined,
-				maritalStatusId: input.maritalStatusId ?? undefined,
-				staffEmploymentTypeId:
-					input.staffEmploymentTypeId ?? undefined,
-				staffTypeId: input.staffTypeId ?? undefined,
-				staffDetailId: staffDetailId ?? undefined,
-				countryId: input.countryId ?? undefined,
-				stateId: input.stateId ?? undefined,
-				cityId: input.cityId ?? undefined,
-				postalCodeId: input.postalCodeId ?? undefined,
-				nationalityId: input.nationalityId ?? undefined,
-				identityTypeId: input.identityTypeId ?? undefined,
-				specializationId: input.specializationId ?? undefined,
-				statusId: effectiveStatusId
-			})
-			.returning();
-		if (!staff) throw error(400, 'Failed to create staff.');
-
-		if (typeof input.departmentId === 'number') {
-			await tx.insert(table.staffDepartmentTable).values({
-				staffId: staff.id,
-				departmentId: input.departmentId
+				accountId: trimmedEmail,
+				providerId: 'credential',
+				password: hashedPassword
 			});
-		}
 
-		const uniqueUserGroupIds = [
-			...new Set(input.userGroupIds ?? [])
-		].filter((n) => Number.isFinite(n));
-		if (uniqueUserGroupIds.length > 0) {
-			const groups = await tx
-				.select({ id: table.userGroupTable.id })
-				.from(table.userGroupTable)
-				.where(
-					and(
-						eq(table.userGroupTable.hospitalId, input.hospitalId),
-						inArray(table.userGroupTable.id, uniqueUserGroupIds),
-						ne(table.userGroupTable.statusId, StatusEnum.DELETED)
+			const staffDetailId = input.staffDetail
+				? await upsertStaffDetail(
+						tx as unknown as ReturnType<typeof ensureDb>,
+						{
+							patch: input.staffDetail
+						}
 					)
-				);
-			if (groups.length > 0) {
-				await tx.insert(table.staffUserGroupTable).values(
-					groups.map((g) => ({
-						staffId: staff.id,
-						userGroupId: g.id
-					}))
-				);
-			}
-		}
+				: undefined;
 
-		await tx.insert(table.staffHospitalTable).values({
-			staffId: staff.id,
-			hospitalId: input.hospitalId
+			const effectiveStatusId = input.statusId ?? StatusEnum.ACTIVE;
+
+			const [staff] = await tx
+				.insert(table.staffTable)
+				.values({
+					id: staffId,
+					userId: user.id,
+					code: input.code || undefined,
+					firstName: input.firstName || undefined,
+					middleName: input.middleName || undefined,
+					lastName: input.lastName || undefined,
+					phonePrimary: input.phonePrimary || undefined,
+					phoneSecondary: input.phoneSecondary || undefined,
+					phonePrimaryCountryId:
+						input.phonePrimaryCountryId ?? undefined,
+					phoneSecondaryCountryId:
+						input.phoneSecondaryCountryId ?? undefined,
+					dateOfBirth: toDateOnlyString(input.dateOfBirth),
+					joinDate: toDateOnlyString(input.joinDate),
+					resignDate: toDateOnlyString(input.resignDate),
+					photoUrl: input.photoUrl ?? undefined,
+					address: input.address || undefined,
+					remark: input.remark || undefined,
+					identityNo: input.identityNo || undefined,
+					titleId: input.titleId ?? undefined,
+					genderId: input.genderId ?? undefined,
+					maritalStatusId: input.maritalStatusId ?? undefined,
+					staffEmploymentTypeId:
+						input.staffEmploymentTypeId ?? undefined,
+					staffTypeId: input.staffTypeId ?? undefined,
+					staffDetailId: staffDetailId ?? undefined,
+					countryId: input.countryId ?? undefined,
+					stateId: input.stateId ?? undefined,
+					cityId: input.cityId ?? undefined,
+					postalCodeId: input.postalCodeId ?? undefined,
+					nationalityId: input.nationalityId ?? undefined,
+					identityTypeId: input.identityTypeId ?? undefined,
+					specializationId: input.specializationId ?? undefined,
+					statusId: effectiveStatusId
+				})
+				.returning();
+			if (!staff) throw error(400, 'Failed to create staff.');
+
+			if (typeof input.departmentId === 'number') {
+				await tx.insert(table.staffDepartmentTable).values({
+					staffId: staff.id,
+					departmentId: input.departmentId
+				});
+			}
+
+			const uniqueUserGroupIds = [
+				...new Set(input.userGroupIds ?? [])
+			].filter((n) => Number.isFinite(n));
+			if (uniqueUserGroupIds.length > 0) {
+				const groups = await tx
+					.select({ id: table.userGroupTable.id })
+					.from(table.userGroupTable)
+					.where(
+						and(
+							eq(
+								table.userGroupTable.hospitalId,
+								input.hospitalId
+							),
+							inArray(
+								table.userGroupTable.id,
+								uniqueUserGroupIds
+							),
+							ne(
+								table.userGroupTable.statusId,
+								StatusEnum.DELETED
+							)
+						)
+					);
+				if (groups.length > 0) {
+					await tx.insert(table.staffUserGroupTable).values(
+						groups.map((g) => ({
+							staffId: staff.id,
+							userGroupId: g.id
+						}))
+					);
+				}
+			}
+
+			await tx.insert(table.staffHospitalTable).values({
+				staffId: staff.id,
+				hospitalId: input.hospitalId
+			});
+
+			const uniqueBranchIds = [
+				...new Set(input.branchIds ?? [])
+			].filter(Boolean);
+			if (uniqueBranchIds.length > 0) {
+				const branches = await tx
+					.select({ id: table.hospitalBranchTable.id })
+					.from(table.hospitalBranchTable)
+					.where(
+						and(
+							eq(
+								table.hospitalBranchTable.hospitalId,
+								input.hospitalId
+							),
+							inArray(
+								table.hospitalBranchTable.id,
+								uniqueBranchIds
+							),
+							eq(
+								table.hospitalBranchTable.statusId,
+								StatusEnum.ACTIVE
+							)
+						)
+					);
+				if (branches.length > 0) {
+					await tx.insert(table.staffBranchTable).values(
+						branches.map((b) => ({
+							staffId: staff.id,
+							branchId: b.id
+						}))
+					);
+				}
+			}
+
+			return staff;
 		});
-
-		const uniqueBranchIds = [
-			...new Set(input.branchIds ?? [])
-		].filter(Boolean);
-		if (uniqueBranchIds.length > 0) {
-			const branches = await tx
-				.select({ id: table.hospitalBranchTable.id })
-				.from(table.hospitalBranchTable)
-				.where(
-					and(
-						eq(
-							table.hospitalBranchTable.hospitalId,
-							input.hospitalId
-						),
-						inArray(table.hospitalBranchTable.id, uniqueBranchIds),
-						eq(table.hospitalBranchTable.statusId, StatusEnum.ACTIVE)
-					)
-				);
-			if (branches.length > 0) {
-				await tx.insert(table.staffBranchTable).values(
-					branches.map((b) => ({
-						staffId: staff.id,
-						branchId: b.id
-					}))
-				);
-			}
+	} catch (err) {
+		if (
+			err &&
+			typeof err === 'object' &&
+			'status' in err &&
+			typeof (err as { status: unknown }).status === 'number'
+		) {
+			throw err;
 		}
-
-		return staff;
-	});
+		console.error('[createStaffRegistration]', err);
+		const pgMessage =
+			err && typeof err === 'object' && 'message' in err
+				? String((err as { message: unknown }).message)
+				: '';
+		if (/unique|duplicate/i.test(pgMessage)) {
+			throw error(400, 'Staff with this email already exists');
+		}
+		if (/foreign key|violates/i.test(pgMessage)) {
+			throw error(
+				400,
+				'Invalid staff field value. Check selected dropdowns and try again.'
+			);
+		}
+		throw error(400, 'Failed to create staff.');
+	}
 
 	return { staff: created, userId, generatedPassword };
 }
@@ -531,10 +583,11 @@ export async function updateStaffRegistration(
 			const nextEmail = input.user.email?.trim();
 
 			if (nextEmail && nextEmail !== existing.user?.email) {
+				const normalizedEmail = nextEmail.toLowerCase();
 				const dup = await tx
 					.select({ id: table.userTable.id })
 					.from(table.userTable)
-					.where(eq(table.userTable.email, nextEmail))
+					.where(eq(table.userTable.email, normalizedEmail))
 					.limit(1);
 				if (dup.length > 0)
 					throw error(400, 'Staff with this email already exists');
@@ -548,7 +601,7 @@ export async function updateStaffRegistration(
 				userPatch.name = nextName;
 			}
 			if (nextEmail && nextEmail !== (existing.user?.email ?? '')) {
-				userPatch.email = nextEmail;
+				userPatch.email = nextEmail.toLowerCase();
 			}
 			if (Object.keys(userPatch).length > 0) {
 				await tx

@@ -17,8 +17,7 @@
 		getLabelForValue,
 		debounceMs = 300,
 		minSearchLength = 0,
-		invalidateKey,
-		placement = 'down'
+		invalidateKey
 	}: {
 		options?: SearchSelectOption[];
 		placeholder?: string;
@@ -32,7 +31,6 @@
 		debounceMs?: number;
 		minSearchLength?: number;
 		invalidateKey?: unknown;
-		placement?: 'down' | 'up';
 	} = $props();
 </script>
 
@@ -49,5 +47,4 @@
 	{debounceMs}
 	{minSearchLength}
 	{invalidateKey}
-	{placement}
 />

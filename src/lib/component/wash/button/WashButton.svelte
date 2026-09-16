@@ -108,7 +108,7 @@
 			soft ? 'btn-soft' : '',
 			dash ? 'btn-dash' : '',
 			wide ? 'btn-wide' : '',
-			block ? 'btn-block' : '',
+			block ? 'btn-block min-w-0' : '',
 			square ? 'btn-square' : '',
 			circle ? 'btn-circle' : '',
 			'disabled:cursor-not-allowed disabled:opacity-40',
@@ -129,9 +129,9 @@
 	{title}
 >
 	{#if loading}
-		<span class="inline-flex items-center gap-2">
+		<span class="inline-flex min-w-0 items-center gap-2">
 			{#if spinner}
-				<span aria-hidden="true">
+				<span aria-hidden="true" class="shrink-0">
 					<span
 						class="loading loading-spinner {size === 'xs'
 							? 'loading-xs'
@@ -140,7 +140,7 @@
 				</span>
 			{/if}
 			{#if loadingText}
-				<span>{loadingText}</span>
+				<span class="min-w-0 truncate">{loadingText}</span>
 			{/if}
 		</span>
 	{:else}

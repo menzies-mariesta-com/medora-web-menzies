@@ -58,6 +58,20 @@
 		isDateType ? `--cally-anchor-${id ?? popoverId}` : ''
 	);
 
+	/** Native inputs are skipped by Design overflow marquee; use title when text overflows. */
+	let overflowTitle = $state<string | undefined>(undefined);
+	let textInputEl = $state<HTMLInputElement | null>(null);
+
+	function syncOverflowTitle(el: HTMLInputElement | null) {
+		if (!el) {
+			overflowTitle = undefined;
+			return;
+		}
+		const text = (el.value ?? '').trim();
+		overflowTitle =
+			text && el.scrollWidth > el.clientWidth + 1 ? text : undefined;
+	}
+
 	function handleCallyChange(next: string) {
 		value = next;
 		const popover = document.getElementById(
@@ -71,8 +85,25 @@
 	function handleInput(e: Event) {
 		const el = e.currentTarget as HTMLInputElement;
 		value = el.value;
+		syncOverflowTitle(el);
 		oninput?.(e);
 	}
+
+	$effect(() => {
+		void value;
+		void className;
+		const el = textInputEl;
+		if (!el) return;
+		queueMicrotask(() => syncOverflowTitle(el));
+	});
+
+	$effect(() => {
+		const el = textInputEl;
+		if (!el || typeof ResizeObserver === 'undefined') return;
+		const ro = new ResizeObserver(() => syncOverflowTitle(el));
+		ro.observe(el);
+		return () => ro.disconnect();
+	});
 </script>
 
 {#if isDateType}
@@ -80,7 +111,7 @@
 		{id}
 		type="button"
 		popovertarget={popoverId}
-		class="input-bordered input text-left {className}"
+		class="input-bordered input min-w-0 truncate text-left {className}"
 		style="anchor-name:{anchorName}"
 		{disabled}
 		{hidden}
@@ -104,6 +135,7 @@
 	</div>
 {:else if rawStyle}
 	<input
+		bind:this={textInputEl}
 		{id}
 		class={className}
 		type={inputType}
@@ -114,7 +146,7 @@
 		{min}
 		{max}
 		{step}
-		title={inputTitle}
+		title={overflowTitle ?? inputTitle}
 		name={nameText}
 		value={value ?? ''}
 		aria-label={ariaLabel}
@@ -127,6 +159,7 @@
 	/>
 {:else}
 	<input
+		bind:this={textInputEl}
 		{id}
 		class="input {className}"
 		type={inputType}
@@ -137,7 +170,7 @@
 		{min}
 		{max}
 		{step}
-		title={inputTitle}
+		title={overflowTitle ?? inputTitle}
 		name={nameText}
 		value={value ?? ''}
 		aria-label={ariaLabel}
