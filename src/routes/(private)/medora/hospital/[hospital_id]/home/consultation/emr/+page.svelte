@@ -1864,7 +1864,6 @@
 				crudShowView={false}
 				showRefreshButton={true}
 				enableColumnFilters={true}
-				useRemoteFilters={true}
 				bind:columnFilters={allergyColumnFilters}
 				bind:pageSize={allergyPageSizeStr}
 				bind:currentPage={allergyCurrentPage}

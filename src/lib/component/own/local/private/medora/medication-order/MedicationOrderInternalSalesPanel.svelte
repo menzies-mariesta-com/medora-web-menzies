@@ -7,7 +7,6 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
@@ -1425,14 +1424,6 @@
 					class="flex flex-wrap gap-2 border-t border-base-300 pt-4 sm:pt-5"
 				>
 					<WashButton
-						className="btn btn-primary btn-sm"
-						onClick={addDraft}
-						disabled={!storeId}
-					>
-						<LucidePlus className="size-4" />
-						{m.med_order_int_add_to_list()}
-					</WashButton>
-					<WashButton
 						className="btn btn-secondary btn-sm"
 						onClick={persistBatch}
 						disabled={!storeId || draftLines.length === 0 || isBusy}
@@ -1450,66 +1441,63 @@
 			</div>
 		</div>
 
-		<WashCard className="min-w-0">
-			<WashCardBody className="min-w-0 gap-2">
-			<h2 class="text-base font-semibold">
-				{m.med_order_int_draft_title()}
-			</h2>
-			<div class="flex min-h-[14rem] min-w-0 flex-col">
-				<MenziesTable
-					rows={draftLines}
-					columns={draftColumns}
-					bind:currentPage={draftCurrentPage}
-					bind:pageSize={draftPageSizeStr}
-					showRefreshButton={false}
-					emptyMessage={m.medication_order_internal_sales_empty()}
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					totalRowCount={draftLines.length}
-					fillParent={true}
-					bind:columnFilters={draftColumnFilters}
-				>
-					{#snippet rowActions(row, localIdx)}
-						<MenziesTableRowActionGroup>
-							<MenziesTableIconAction
-								tooltipText={m.med_order_int_tooltip_move_up()}
-								color="info"
-								disabled={globalDraftIndex(localIdx) <= 0}
-								onClick={() =>
-									moveDraftLine(globalDraftIndex(localIdx), -1)}
-							>
-								{#snippet icon()}
-									<LucideChevronRight className="size-4 -rotate-90" />
-								{/snippet}
-							</MenziesTableIconAction>
-							<MenziesTableIconAction
-								tooltipText={m.med_order_int_tooltip_move_down()}
-								color="info"
-								disabled={globalDraftIndex(localIdx) >=
-									draftLines.length - 1}
-								onClick={() =>
-									moveDraftLine(globalDraftIndex(localIdx), 1)}
-							>
-								{#snippet icon()}
-									<LucideChevronRight className="size-4 rotate-90" />
-								{/snippet}
-							</MenziesTableIconAction>
-							<MenziesTableIconAction
-								tooltipText={m.med_order_int_tooltip_delete()}
-								color="error"
-								onClick={() => removeDraft((row as DraftLine)._key)}
-							>
-								{#snippet icon()}
-									<LucideTrash2 className="size-4" />
-								{/snippet}
-							</MenziesTableIconAction>
-						</MenziesTableRowActionGroup>
-					{/snippet}
-				</MenziesTable>
-			</div>
-			</WashCardBody>
-		</WashCard>
+		<div class="flex min-h-[14rem] min-w-0 flex-col">
+			<MenziesTable
+				title={m.med_order_int_draft_title()}
+				rows={draftLines}
+				columns={draftColumns}
+				bind:currentPage={draftCurrentPage}
+				bind:pageSize={draftPageSizeStr}
+				showRefreshButton={false}
+				emptyMessage={m.medication_order_internal_sales_empty()}
+				showRowActions={true}
+				actionsHeader={m.actions()}
+				actionsVariant="none"
+				enableColumnFilters={true}
+				totalRowCount={draftLines.length}
+				fillParent={true}
+				bind:columnFilters={draftColumnFilters}
+				showAddButton={true}
+				addLabel={m.med_order_int_add_to_list()}
+				addDisabled={!storeId}
+				onAdd={addDraft}
+			>
+				{#snippet rowActions(row, localIdx)}
+					<MenziesTableRowActionGroup>
+						<MenziesTableIconAction
+							tooltipText={m.med_order_int_tooltip_move_up()}
+							color="info"
+							disabled={globalDraftIndex(localIdx) <= 0}
+							onClick={() =>
+								moveDraftLine(globalDraftIndex(localIdx), -1)}
+						>
+							{#snippet icon()}
+								<LucideChevronRight className="size-4 -rotate-90" />
+							{/snippet}
+						</MenziesTableIconAction>
+						<MenziesTableIconAction
+							tooltipText={m.med_order_int_tooltip_move_down()}
+							color="info"
+							disabled={globalDraftIndex(localIdx) >= draftLines.length - 1}
+							onClick={() =>
+								moveDraftLine(globalDraftIndex(localIdx), 1)}
+						>
+							{#snippet icon()}
+								<LucideChevronRight className="size-4 rotate-90" />
+							{/snippet}
+						</MenziesTableIconAction>
+						<MenziesTableIconAction
+							tooltipText={m.med_order_int_tooltip_delete()}
+							color="error"
+							onClick={() => removeDraft((row as DraftLine)._key)}
+						>
+							{#snippet icon()}
+								<LucideTrash2 className="size-4" />
+							{/snippet}
+						</MenziesTableIconAction>
+					</MenziesTableRowActionGroup>
+				{/snippet}
+			</MenziesTable>
+		</div>
 	</div>
 {/if}

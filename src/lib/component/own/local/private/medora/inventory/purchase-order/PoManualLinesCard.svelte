@@ -14,6 +14,7 @@
 		/** No WashCard wrapper — table only */
 		noCard?: boolean;
 		toolbarRight?: Snippet<[]>;
+		addDisabled?: boolean;
 		onAddItem: () => void;
 		onEditLine: (row: any) => void;
 		onDeleteLine: (key: string) => void;
@@ -28,6 +29,7 @@
 		hideAddButton = false,
 		noCard = false,
 		toolbarRight,
+		addDisabled = false,
 		onAddItem,
 		onEditLine,
 		onDeleteLine
@@ -37,11 +39,11 @@
 <InventoryLineItemsCard
 	title={m.inv_po_lines()}
 	hideTitle={true}
-	addButtonIconOnly={true}
 	{hideAddButton}
 	{noCard}
 	{hideQuickFilter}
 	{toolbarRight}
+	{addDisabled}
 	{totalCount}
 	{columns}
 	{rows}

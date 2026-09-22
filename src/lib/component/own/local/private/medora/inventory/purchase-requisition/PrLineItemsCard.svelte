@@ -14,6 +14,7 @@
 	export let hideAddButton = false;
 	export let addButtonIconOnly = false;
 	export let toolbarRight: Snippet<[]> | undefined = undefined;
+	export let addDisabled = false;
 
 	export let onAddItem: () => void;
 	export let onEditLine: (row: any) => void;
@@ -32,6 +33,7 @@
 	{hideAddButton}
 	{addButtonIconOnly}
 	{toolbarRight}
+	{addDisabled}
 	totalCount={createLinesCount}
 	{columns}
 	{rows}

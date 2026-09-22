@@ -118,6 +118,15 @@
 	"support": "지원",
 	"theme": "테마",
 	"languages": "언어",
+	"change_appearance": "외관 변경",
+	"appearance_pigment": "피그먼트",
+	"appearance_select_pigment": "피그먼트 선택",
+	"appearance_mode": "모드",
+	"appearance_select_mode": "모드 선택",
+	"appearance_mode_light": "라이트",
+	"appearance_mode_dark": "다크",
+	"appearance_font_style": "글꼴 스타일",
+	"appearance_select_font_style": "글꼴 스타일 선택",
 	"change_language": "언어 변경",
 	"select_language": "언어 선택",
 	"not_found": "찾을 수 없음",
@@ -880,5 +889,9 @@
 	"auth_2fa_account_backup_regen_hint": "Enter your password. Previous backup codes will stop working.",
 	"auth_2fa_account_backup_regen_success": "New backup codes are ready. Save them somewhere safe.",
 	"auth_2fa_account_password_confirm": "Confirm",
-	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device."
+	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device.",
+	"inv_po_new_manual_menu": "Manual (no PR)",
+	"inv_grn_new_direct_menu": "Direct (no PO)",
+	"cpoe_order_add_to_list": "Add to list",
+	"cpoe_order_pending_empty": "No items added yet. Use Add in the table footer to prepare items before saving the order."
 }

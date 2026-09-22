@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -10,7 +9,6 @@
 	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LExternalReferMasterModal from '$lib/component/own/local/private/medora/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -271,18 +269,9 @@
 	}
 </script>
 
-<div class="mx-4 my-2 flex items-center justify-end">
-	<WashButton
-		className="btn-primary btn-sm"
-		onClick={openCreate}
-	>
-		<LucidePlus className="size-4" />
-		{m.create()}
-	</WashButton>
-</div>
-
 <div class="{TableEnum.HEIGHT} overflow-auto">
 	<MenziesTable
+		title={m.entity_external_referral()}
 		rows={referList}
 		columns={referColumns}
 		{isLoading}
@@ -296,7 +285,9 @@
 		actionsHeader={m.actions()}
 		actionsVariant="none"
 		enableColumnFilters={false}
-		useRemoteFilters={true}
+		showAddButton={true}
+		addLabel={m.create()}
+		onAdd={openCreate}
 		on:refresh={() => fetchRefer({ bustCache: true })}
 		on:pageSizeChange={() => {
 			currentPage = 1;

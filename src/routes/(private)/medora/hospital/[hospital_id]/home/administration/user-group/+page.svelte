@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import type { StaffRegUserGroupRow } from '$lib/model/type/medora/staff-reg-ui.type';
 	import { UserGroupModalState } from '$lib/state/user-group-modal.state.svelte';
 	import { UserGroupPagesModalState } from '$lib/state/user-group-pages-modal.state.svelte';
@@ -14,7 +12,6 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -218,45 +215,38 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.user_groups()}</h1>
-		<WashButton className="btn-primary" onClick={openCreate}>
-			<LucidePlus />
-			{m.new_user_group()}
-		</WashButton>
-	</div>
-
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={groups}
-					columns={userGroupColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage={m.no_user_groups_create()}
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:pageChange={() => fetchGroups()}
-					on:filtersChange={(event) => {
-						if (filterDebounceTimeout) {
-							clearTimeout(filterDebounceTimeout);
-						}
-						tableFilters = event.detail.filters;
-						currentPage = 1;
-						filterDebounceTimeout = setTimeout(() => {
-							fetchGroups();
-						}, 350);
-					}}
-				>
+<div class="space-y-4">
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.user_groups()}
+			rows={groups}
+			columns={userGroupColumns}
+			{isLoading}
+			bind:pageSize={pageSizeStr}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage={m.no_user_groups_create()}
+			showRowActions={true}
+			actionsHeader={m.actions()}
+			actionsVariant="none"
+			enableColumnFilters={true}
+			showAddButton={true}
+			addLabel={m.new_user_group()}
+			onAdd={openCreate}
+			on:pageChange={() => fetchGroups()}
+			on:filtersChange={(event) => {
+				if (filterDebounceTimeout) {
+					clearTimeout(filterDebounceTimeout);
+				}
+				tableFilters = event.detail.filters;
+				currentPage = 1;
+				filterDebounceTimeout = setTimeout(() => {
+					fetchGroups();
+				}, 350);
+			}}
+		>
 					{#snippet rowActions(row, rowIndex)}
 						<MenziesTableRowActionGroup>
 							<MenziesTableIconAction
@@ -288,32 +278,30 @@
 							</MenziesTableIconAction>
 						</MenziesTableRowActionGroup>
 					{/snippet}
-				</MenziesTable>
-			</div>
-			{#if totalPages > 1}
-				<div class="mt-4 flex justify-center gap-2">
-					<WashButton
-						className="btn-sm"
-						disabled={currentPage <= 1}
-						onClick={() => goToPage(currentPage - 1)}
-					>
-						{m.previous()}
-					</WashButton>
-					<span class="flex items-center px-2">
-						{m.page()}
-						{currentPage}
-						{m.of()}
-						{totalPages}
-					</span>
-					<WashButton
-						className="btn-sm"
-						disabled={currentPage >= totalPages}
-						onClick={() => goToPage(currentPage + 1)}
-					>
-						{m.next()}
-					</WashButton>
-				</div>
-			{/if}
-		</WashCardBody>
-	</WashCard>
+		</MenziesTable>
+	</div>
+	{#if totalPages > 1}
+		<div class="flex justify-center gap-2">
+			<WashButton
+				className="btn-sm"
+				disabled={currentPage <= 1}
+				onClick={() => goToPage(currentPage - 1)}
+			>
+				{m.previous()}
+			</WashButton>
+			<span class="flex items-center px-2">
+				{m.page()}
+				{currentPage}
+				{m.of()}
+				{totalPages}
+			</span>
+			<WashButton
+				className="btn-sm"
+				disabled={currentPage >= totalPages}
+				onClick={() => goToPage(currentPage + 1)}
+			>
+				{m.next()}
+			</WashButton>
+		</div>
+	{/if}
 </div>

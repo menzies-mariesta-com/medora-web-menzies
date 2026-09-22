@@ -245,24 +245,37 @@
 	});
 </script>
 
-<div class="z-50 overflow-visible">
-	<!-- indicator-item must come first (DaisyUI); overflow-visible avoids clipping the badge on btn-circle -->
-	<WashButton
-		className={`btn-circle overflow-visible ${triggerClassName}`.trim()}
-		onClick={() => void openModalAndLoad()}
-	>
-		<WashIndicator className="relative overflow-visible">
-			{#if unreadCount > 0}
-				<WashIndicatorItem
-					className="badge badge-sm badge-error border-0 text-[10px] leading-none"
-				>
-					{clampCount(unreadCount)}
-				</WashIndicatorItem>
-			{/if}
+<!--
+	DaisyUI: `.indicator` wraps the control; `.indicator-item` is a sibling before
+	the button (not nested inside btn-circle — that misplaces the badge).
+	Unread: Design `aura` (currentColor) for a soft pulse around the bell.
+-->
+<WashIndicator className="z-50 overflow-visible">
+	{#if unreadCount > 0}
+		<WashIndicatorItem
+			className="badge badge-sm badge-error border-base-100 text-[10px] font-semibold leading-none"
+		>
+			{clampCount(unreadCount)}
+		</WashIndicatorItem>
+	{/if}
+	{#if unreadCount > 0}
+		<div class="aura aura-glow duration-500 text-error">
+			<WashButton
+				className={`btn-circle ${triggerClassName}`.trim()}
+				onClick={() => void openModalAndLoad()}
+			>
+				<LucideBell className="size-6" />
+			</WashButton>
+		</div>
+	{:else}
+		<WashButton
+			className={`btn-circle ${triggerClassName}`.trim()}
+			onClick={() => void openModalAndLoad()}
+		>
 			<LucideBell className="size-6" />
-		</WashIndicator>
-	</WashButton>
-</div>
+		</WashButton>
+	{/if}
+</WashIndicator>
 
 <WashDialog
 	id="medora-notifications-modal"

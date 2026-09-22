@@ -502,7 +502,6 @@
 							showRefreshButton={true}
 							refreshTooltip={m.support_refresh_list()}
 							emptyMessage={m.support_no_tickets()}
-							useRemoteFilters={true}
 							enableColumnFilters={false}
 							on:refresh={() => fetchList({ bustCache: true })}
 							on:pageSizeChange={() => {

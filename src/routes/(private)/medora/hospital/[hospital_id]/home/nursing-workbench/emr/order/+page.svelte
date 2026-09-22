@@ -9,7 +9,6 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -34,6 +33,8 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
+
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
@@ -1083,28 +1084,21 @@
 					message="Visit not found."
 				/>
 			{:else if !visit}
-				<WashCard>
-					<WashCardBody>
-						<WashCardBodyTitle className="mb-0"
-							>Order</WashCardBodyTitle
-						>
-						<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-							<MenziesTable
-								rows={[]}
-								columns={detailColumns}
-								isLoading={true}
-								bind:pageSize={detailPageSizeStr}
-								bind:currentPage={currentDetailPage}
-								totalRowCount={0}
-								showRefreshButton={false}
-								emptyMessage="Loading…"
-								showRowActions={false}
-								enableColumnFilters={false}
-								useRemoteFilters={false}
-							/>
-						</div>
-					</WashCardBody>
-				</WashCard>
+				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
+					<MenziesTable
+						title="Order"
+						rows={[]}
+						columns={detailColumns}
+						isLoading={true}
+						bind:pageSize={detailPageSizeStr}
+						bind:currentPage={currentDetailPage}
+						totalRowCount={0}
+						showRefreshButton={false}
+						emptyMessage="Loading…"
+						showRowActions={false}
+						enableColumnFilters={false}
+					/>
+				</div>
 			{:else}
 				<WashCard>
 					<WashCardBody>
@@ -1285,12 +1279,6 @@
 									class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end"
 								>
 									<WashButton
-										className="btn-outline btn-sm px-6"
-										onClick={handleAddToList}
-									>
-										Add to list
-									</WashButton>
-									<WashButton
 										className="btn-primary btn-sm px-8"
 										onClick={handleSaveOrder}
 									>
@@ -1308,45 +1296,39 @@
 							</div>
 						</div>
 
-						<div>
-							<h2 class="mb-2 text-base font-semibold">
-								Order items (pending list)
-							</h2>
-							{#if pendingItems.length === 0}
-								<p class="text-sm text-base-content/70">
-									No items added yet. Use &quot;Add to list&quot;
-									above to prepare items before saving the order.
-								</p>
-							{:else}
-								<div
-									class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
-								>
-									<MenziesTable
-										rows={pagedPendingItems}
-										columns={detailColumns}
-										isLoading={false}
-										bind:pageSize={detailPageSizeStr}
-										bind:currentPage={currentDetailPage}
-										totalRowCount={pendingItems.length}
-										showRefreshButton={false}
-										emptyMessage="No items."
-										showRowActions={true}
-										actionsHeader="Actions"
-										actionsVariant="none"
-										enableColumnFilters={false}
-										useRemoteFilters={true}
-									>
-										{#snippet rowActions(row, rowIndex)}
-											<MenziesTableEditDeleteActions
-												onEdit={() =>
-													startEditDetail(row as PendingItem)}
-												onDelete={() =>
-													handleDeleteDetail(row as PendingItem)}
-											/>
-										{/snippet}
-									</MenziesTable>
-								</div>
-							{/if}
+						<div
+							class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
+						>
+							<MenziesTable
+								title="Order items (pending list)"
+								description={pendingItems.length === 0
+									? msg.cpoe_order_pending_empty()
+									: ''}
+								rows={pagedPendingItems}
+								columns={detailColumns}
+								isLoading={false}
+								bind:pageSize={detailPageSizeStr}
+								bind:currentPage={currentDetailPage}
+								totalRowCount={pendingItems.length}
+								showRefreshButton={false}
+								emptyMessage="No items."
+								showRowActions={true}
+								actionsHeader="Actions"
+								actionsVariant="none"
+								enableColumnFilters={false}
+								showAddButton={true}
+								addLabel={msg.cpoe_order_add_to_list()}
+								onAdd={handleAddToList}
+							>
+								{#snippet rowActions(row, rowIndex)}
+									<MenziesTableEditDeleteActions
+										onEdit={() =>
+											startEditDetail(row as PendingItem)}
+										onDelete={() =>
+											handleDeleteDetail(row as PendingItem)}
+									/>
+								{/snippet}
+							</MenziesTable>
 						</div>
 					</WashCardBody>
 				</WashCard>

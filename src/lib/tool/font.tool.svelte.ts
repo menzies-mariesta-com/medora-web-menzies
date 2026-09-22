@@ -1,18 +1,25 @@
-import type { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
-import { FontEnum } from '$lib/model/enum/font.enum';
+import { browser } from '$app/environment';
+import { FontEnum, WASH_FONT_STYLES } from '$lib/model/enum/font.enum';
 import { LocalStorageEnum } from '$lib/model/enum/local-storage.enum';
+import { LocalStorageUtil } from '$lib/util/local-storage.util.svelte';
 
+const DEFAULT_FONT = FontEnum.MAPLE_MONO;
+
+/**
+ * Applies Menzies Design font styles via `html[data-font]`.
+ * CSS remaps `--font-sans` / `--font-mono` / `--font-display` (see font.style.css).
+ */
 export class FontTool {
-	constructor(private localStorageUtil: LocalStorageUtil) {}
+	private localStorageUtil = new LocalStorageUtil();
 
 	checkFontExists(): boolean {
 		return this.localStorageUtil.hasItem(LocalStorageEnum.FONT);
 	}
 
-	/**
-	 * Font picker is disabled while Wash owns typography (`--font-display` / `--font-sans`).
-	 * Kept as a no-op so callers do not fight Wash fonts via `data-font`.
-	 */
+	listStyles() {
+		return WASH_FONT_STYLES;
+	}
+
 	getFont(): FontEnum {
 		const value = this.localStorageUtil.getItem<string>(
 			LocalStorageEnum.FONT
@@ -23,17 +30,28 @@ export class FontTool {
 		) {
 			return value as FontEnum;
 		}
-		return Object.values(FontEnum)[0] as FontEnum;
+		return DEFAULT_FONT;
+	}
+
+	boot(): void {
+		this.apply(this.getFont());
+	}
+
+	apply(font: FontEnum): void {
+		if (!browser) return;
+		document.documentElement.dataset.font = font;
+		this.localStorageUtil.setItem(LocalStorageEnum.FONT, font);
 	}
 
 	setFont(font: FontEnum): void {
-		this.localStorageUtil.setItem(LocalStorageEnum.FONT, font);
-		// Intentionally do not set data-font — Wash styles own typefaces.
+		this.apply(font);
 	}
 
 	deleteFont(): void {
+		if (!browser) return;
 		if (this.checkFontExists()) {
 			this.localStorageUtil.removeItem(LocalStorageEnum.FONT);
 		}
+		document.documentElement.removeAttribute('data-font');
 	}
 }

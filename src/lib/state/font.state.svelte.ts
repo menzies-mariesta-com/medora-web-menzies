@@ -1,3 +1,5 @@
 import { FontEnum } from '$lib/model/enum/font.enum';
 
-export const FontState = $state<FontEnum>(FontEnum.ADWAITA_SANS);
+export const FontState = $state<{ font: FontEnum }>({
+	font: FontEnum.MAPLE_MONO
+});

@@ -4,7 +4,6 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
@@ -215,29 +214,18 @@
 </script>
 
 {#if viewMode === 'list'}
-	<div class="mb-4 flex items-center justify-between">
-		<div>
-			<h1 class="text-lg font-semibold">Financial Year</h1>
-			<p class="text-sm text-base-content/70">
-				Configure financial years for this hospital.
-			</p>
-		</div>
-		<WashButton
-			className="btn-primary btn-sm"
-			onClick={startCreate}
-		>
-			<LucidePlus className="size-4" />
-			Create
-		</WashButton>
-	</div>
-
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
+			title="Financial Year"
+			description="Configure financial years for this hospital."
 			{columns}
 			rows={items}
 			{isLoading}
 			showRowActions={true}
 			actionsVariant="none"
+			showAddButton={true}
+			addLabel="Create"
+			onAdd={startCreate}
 		>
 			{#snippet rowActions(row, rowIndex)}
 				<MenziesTableEditDeleteActions

@@ -17,7 +17,6 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn,
@@ -1569,21 +1568,6 @@
 				</div>
 				{@render postGrnSubmitBar(true)}
 			{:else}
-				{#snippet directLinesToolbarRight()}
-					<WashTooltip
-						tooltipText={m.inv_line_items_add()}
-						className="tooltip-ghost"
-					>
-						<WashButton
-							type="button"
-							className="btn-primary btn-square btn-outline btn-sm"
-							title={m.inv_line_items_add()}
-							onClick={() => void openDirectLineDialogForCreate()}
-						>
-							<LucidePlus className="size-4" />
-						</WashButton>
-					</WashTooltip>
-				{/snippet}
 				<div class={grnHeaderGridDirect}>
 					<div class="min-w-0">
 						<div class={grnSectionPanel}>
@@ -1688,8 +1672,6 @@
 					rows={directLines}
 					useColumnFilters={true}
 					hideQuickFilter={true}
-					hideAddButton={true}
-					toolbarRight={directLinesToolbarRight}
 					onAddItem={() => void openDirectLineDialogForCreate()}
 					onEditLine={(line) =>
 						void openDirectLineDialogForEdit(line)}

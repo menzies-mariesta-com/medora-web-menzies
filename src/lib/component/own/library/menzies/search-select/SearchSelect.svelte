@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Menzies Design Auto Aware Dropdown 02 · Search select (Wash UI 1.1.0).
+	 * Menzies Design Auto Aware Dropdown 02 · Search select (Wash UI 1.2.0).
 	 * Viewport flip / end-align via `measureDropdownPlacement`; Medora extensions:
 	 * `{ label, value }` options, `bind:value`, optional async `searchFn`.
 	 * @see https://design-menzies.netlify.app/ (Select search)
