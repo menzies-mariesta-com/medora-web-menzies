@@ -25,7 +25,6 @@
 		debounceMs = 300,
 		minSearchLength = 0,
 		invalidateKey,
-		placement = 'down',
 		filterPlaceholder = 'Type to filter…'
 	}: {
 		options?: SearchSelectOption[];
@@ -45,7 +44,6 @@
 		debounceMs?: number;
 		minSearchLength?: number;
 		invalidateKey?: unknown;
-		placement?: 'down' | 'up';
 		filterPlaceholder?: string;
 	} = $props();
 </script>
@@ -68,6 +66,5 @@
 	{debounceMs}
 	{minSearchLength}
 	{invalidateKey}
-	{placement}
 	{filterPlaceholder}
 />

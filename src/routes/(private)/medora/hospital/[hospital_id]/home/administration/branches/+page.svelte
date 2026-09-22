@@ -1,8 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import type { StaffRegHospitalBranchRow } from '$lib/model/type/medora/staff-reg-ui.type';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
@@ -13,12 +10,12 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import MenziesTable, {
-		type MenziesTableColumn
+		type MenziesTableColumn,
+		type MenziesTableLegendItem
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -50,6 +47,11 @@
 	const total = $derived(branchResult?.total ?? 0);
 
 	let tableFilters = $state<Record<string, string>>({});
+
+	const branchLegends: MenziesTableLegendItem[] = [
+		{ id: 'active', label: 'Active', colorClass: 'bg-success' },
+		{ id: 'inactive', label: 'Inactive', colorClass: 'bg-error' }
+	];
 
 	const branchColumns: MenziesTableColumn<StaffRegHospitalBranchRow>[] =
 		[
@@ -231,64 +233,51 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.branches()}</h1>
-		<WashButton
-			className="btn-primary"
-			onClick={openCreate}
-			loading={createLock.pending}
-		>
-			<LucidePlus />
-			{m.new_branch()}
-		</WashButton>
-	</div>
-
-	<WashCard>
-		<WashCardBody>
-			{#if branches.length === 0 && !isLoading}
-				<p class="py-8 text-center text-base-content/70">
-					{m.no_branches_yet()}
-				</p>
-			{:else}
-				<div class={TableEnum.HEIGHT}>
-					<MenziesTable
-						rows={branches}
-						columns={branchColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage={m.no_branches_yet()}
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:pageChange={() => fetchBranches(true)}
-						on:filtersChange={(e) => {
-							tableFilters = e.detail.filters;
-							currentPage = 1;
-							fetchBranches(true);
-						}}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							{@const branch = row as StaffRegHospitalBranchRow}
-							<MenziesTableEditDeleteActions
-								onEdit={() => openEdit(branch)}
-								onDelete={() => handleDelete(branch)}
-								editLoading={editingBranchId === branch.id}
-								deleteLoading={deletingBranchId === branch.id}
-								disabled={deletingBranchId === branch.id}
-								editTooltip={m.edit_data()}
-								deleteTooltip={m.delete_data()}
-							/>
-						{/snippet}
-					</MenziesTable>
-				</div>
-			{/if}
-		</WashCardBody>
-	</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title={m.branches()}
+		rows={branches}
+		columns={branchColumns}
+		{isLoading}
+		bind:pageSize={pageSizeStr}
+		bind:currentPage
+		bind:columnFilters={tableFilters}
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage={m.no_branches_yet()}
+		showRowActions={true}
+		actionsHeader={m.actions()}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		showAddButton={true}
+		addLabel={m.new_branch()}
+		onAdd={openCreate}
+		addDisabled={createLock.pending}
+		legendItems={branchLegends}
+		on:refresh={() => fetchBranches(true)}
+		on:pageChange={() => fetchBranches(true)}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchBranches(true);
+		}}
+		on:filtersChange={(e) => {
+			tableFilters = e.detail.filters;
+			currentPage = 1;
+			fetchBranches(true);
+		}}
+	>
+		{#snippet rowActions(row)}
+			{@const branch = row as StaffRegHospitalBranchRow}
+			<MenziesTableEditDeleteActions
+				onEdit={() => openEdit(branch)}
+				onDelete={() => handleDelete(branch)}
+				editLoading={editingBranchId === branch.id}
+				deleteLoading={deletingBranchId === branch.id}
+				disabled={deletingBranchId === branch.id}
+				editTooltip={m.edit_data()}
+				deleteTooltip={m.delete_data()}
+			/>
+		{/snippet}
+	</MenziesTable>
 </div>

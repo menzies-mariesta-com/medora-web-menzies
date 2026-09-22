@@ -24,7 +24,6 @@
 		PricingFormulaTemplateDto,
 		PricingFormulaTemplateListRow
 	} from '$lib/model/type/medora/pricing-formula-template.type';
-	import { applyMenziesTableClientFilters } from '$lib/tool/menzies/menzies-table-client-filter.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -95,7 +94,6 @@
 	let overviewLoading = $state(false);
 	let overviewPage = $state(1);
 	let overviewPageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let overviewTableFilters = $state<Record<string, string>>({});
 
 	let assignmentSectionEl = $state<HTMLElement | null>(null);
 	let showAssignmentPanel = $state(false);
@@ -120,12 +118,7 @@
 			header: m.inv_pricing_config_branch(),
 			field: 'branchId',
 			widthClass: 'w-44 min-w-[10rem]',
-			filterable: isAllBranchMode,
-			filterType: 'select',
-			filterOptions: branchOptions.map((b) => ({
-				label: b.label,
-				value: b.value
-			})),
+			filterable: false,
 			format: (_v, row) => row.branchName
 		},
 		{
@@ -133,12 +126,7 @@
 			header: m.inv_pricing_assignment_module(),
 			field: 'module',
 			widthClass: 'w-40 min-w-[9rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: INV_PRICING_MODULE_CODES.map((mod) => ({
-				label: moduleLabel(mod),
-				value: mod
-			})),
+			filterable: false,
 			format: (_v, row) => moduleLabel(row.module)
 		},
 		{
@@ -146,7 +134,7 @@
 			header: m.inv_pricing_assignment_template(),
 			field: 'formulaTemplateName',
 			widthClass: 'min-w-[14rem]',
-			filterable: true,
+			filterable: false,
 			format: (_v, row) =>
 				row.formulaTemplateName ??
 				m.inv_pricing_assignment_overview_unassigned()
@@ -156,12 +144,7 @@
 			header: m.status(),
 			field: 'assigned',
 			widthClass: 'w-32',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: m.active_label(), value: 'assigned' },
-				{ label: m.inv_pricing_assignment_overview_unassigned(), value: 'unassigned' }
-			],
+			filterable: false,
 			format: (_v, row) =>
 				row.formulaTemplateId != null
 					? m.active_label()
@@ -175,16 +158,6 @@
 			assigned: row.formulaTemplateId != null ? 'assigned' : 'unassigned',
 			formulaTemplateName: row.formulaTemplateName ?? ''
 		}))
-	);
-
-	const filteredOverviewRows = $derived(
-		applyMenziesTableClientFilters(
-			overviewRowsForTable as (ModulePricingAssignmentOverviewRow & {
-				assigned: string;
-			})[],
-			overviewTableFilters,
-			overviewColumns
-		)
 	);
 
 	const templateOptions = $derived(
@@ -508,23 +481,19 @@
 	</WashCard>
 	</div>
 
-	<WashCard>
-		<WashCardBody className="flex flex-col gap-3">
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={filteredOverviewRows}
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			rows={overviewRowsForTable}
 					columns={overviewColumns}
 					isLoading={overviewLoading}
 					bind:pageSize={overviewPageSizeStr}
 					bind:currentPage={overviewPage}
-					bind:columnFilters={overviewTableFilters}
 					showRefreshButton={true}
 					refreshTooltip={m.refresh_data()}
 					emptyMessage="—"
 					showRowActions={true}
 					actionsVariant="crud"
-					enableColumnFilters={true}
-					useRemoteFilters={false}
+					enableColumnFilters={false}
 					crudDeleteDisabled={() => true}
 					rowClassGetter={(row) =>
 						(row as ModulePricingAssignmentOverviewRow).formulaTemplateId ==
@@ -534,12 +503,6 @@
 					on:refresh={() => loadOverview()}
 					on:view={(e) => void openOverviewView(e.detail)}
 					on:edit={(e) => configureFromOverview(e.detail)}
-					on:filtersChange={(e) => {
-						overviewTableFilters = e.detail.filters;
-						overviewPage = 1;
-					}}
-				/>
-			</div>
-		</WashCardBody>
-	</WashCard>
+		/>
+	</div>
 </div>

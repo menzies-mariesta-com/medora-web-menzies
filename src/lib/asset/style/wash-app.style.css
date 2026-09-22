@@ -4,7 +4,49 @@
  * WashTooltip toggles these at runtime; without a static reference they are omitted
  * and every tip falls back to the default top placement from `.tooltip`.
  */
-@source inline("tooltip-left tooltip-right");
+@source inline("tooltip-left tooltip-right tooltip-primary tooltip-secondary");
+
+/*
+ * Design Data table (washRecipes.table + paneCard) — safelist for Tailwind scan.
+ * Utilities also ship in menzies-design-wash-ui/styles.css.
+ */
+@source inline("table-zebra [&_tbody_tr]:hover:bg-primary/40");
+@source inline("shadow-sm transition-[box-shadow,transform,background-color,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-md focus-within:-translate-y-0.5 focus-within:border-primary/40 focus-within:bg-primary/5 focus-within:shadow-md");
+
+/*
+ * Backup hover for MenziesTable Design shell + rows.
+ * Shell: lift / border / shadow only — do NOT wash background (that tinted
+ * the whole tbody when children were transparent). Row hover stays primary/40.
+ */
+.menzies-table-shell {
+	transition:
+		box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1),
+		translate 300ms cubic-bezier(0.4, 0, 0.2, 1),
+		border-color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (hover: hover) {
+	.menzies-table-shell:hover,
+	.menzies-table-shell:focus-within {
+		translate: 0 calc(var(--spacing, 0.25rem) * -0.5);
+		border-color: color-mix(
+			in oklab,
+			var(--color-primary) 40%,
+			transparent
+		);
+		box-shadow:
+			0 4px 6px -1px color-mix(in oklab, #000 10%, transparent),
+			0 2px 4px -2px color-mix(in oklab, #000 10%, transparent);
+	}
+
+	.menzies-table-shell table.table tbody tr:hover {
+		background-color: color-mix(
+			in oklab,
+			var(--color-primary) 40%,
+			transparent
+		);
+	}
+}
 
 /*
  * Closed <details> dropdown menus must not paint or expand scrollable overflow.
@@ -34,6 +76,37 @@ details.dropdown:not([open]) > .dropdown-content {
 	max-width: 100%;
 	min-width: 0;
 }
+
+/* Module bar: keep horizontal scroll, hide the scrollbar so it doesn’t
+ * sit under the module buttons and steal hover on the way to the menu. */
+.menzies-module-bar-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.menzies-module-bar-scroll::-webkit-scrollbar {
+	display: none;
+	width: 0;
+	height: 0;
+}
+
+/* Edge fades hint that more modules are off-screen (matches navbar bg-base-200). */
+.menzies-module-bar-fade-left {
+	background: linear-gradient(
+		to right,
+		var(--color-base-200) 0%,
+		color-mix(in oklab, var(--color-base-200) 0%, transparent) 100%
+	);
+}
+
+.menzies-module-bar-fade-right {
+	background: linear-gradient(
+		to left,
+		var(--color-base-200) 0%,
+		color-mix(in oklab, var(--color-base-200) 0%, transparent) 100%
+	);
+}
+
 
 /* MenziesTable actions: hug content (do not reserve empty width).
  * `width: 1%` + nowrap is the classic “fit column to buttons” table trick. */
@@ -245,3 +318,76 @@ label.otp.w-full,
 .otp > input:valid {
 	caret-color: transparent !important;
 }
+
+/*
+ * Overflow hover marquee (Design `attachOverflowMarquee`).
+ *
+ * 1) Portal ships at z-index:100 — behind Daisy `.modal` (999), FAB, etc.
+ *    Raise it so the marquee paints above elevated UI.
+ * 2) DaisyUI `.menu` uses `width: fit-content` +
+ *    `grid-auto-columns: minmax(auto, max-content)`, so option labels grow with
+ *    text, get clipped only by the panel, and never get scrollWidth > clientWidth.
+ * 3) MenziesTable uses `w-max` so cells expand to content; cap data cells so
+ *    `.truncate` hosts can actually overflow.
+ */
+.overflow-marquee-portal {
+	z-index: 2147483000 !important;
+}
+
+.dropdown-content .menu:not(.menzies-module-dropdown-menu),
+.menzies-overflow-menu.menu {
+	width: 100% !important;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.dropdown-content .menu:not(.menzies-module-dropdown-menu) > li,
+.menzies-overflow-menu.menu > li {
+	flex-shrink: 1;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.dropdown-content
+	.menu:not(.menzies-module-dropdown-menu)
+	> li
+	> :where(a, button, .menu-dropdown-toggle, summary),
+.menzies-overflow-menu.menu
+	> li
+	> :where(a, button, .menu-dropdown-toggle, summary) {
+	/* Prefer flex so `min-w-0 flex-1 truncate` children shrink; Daisy defaults to grid. */
+	display: flex !important;
+	grid-auto-columns: unset;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.dropdown-content
+	.menu:not(.menzies-module-dropdown-menu)
+	> li
+	> :where(a, button)
+	.truncate,
+.menzies-overflow-menu.menu > li > :where(a, button) .truncate {
+	min-width: 0;
+	flex: 1 1 0%;
+	max-width: 100%;
+}
+
+.menzies-table-scroll td:not(.menzies-table-actions-col) {
+	max-width: 16rem;
+}
+
+.menzies-table-scroll td:not(.menzies-table-actions-col) .truncate {
+	max-width: 100%;
+}
+
+/* SearchSelect option list — keep in-place marquee hosts shrinkable in flex rows. */
+.menzies-ss-list .overflow-marquee-host {
+	flex: 1 1 0%;
+	min-width: 0;
+	max-width: 100%;
+}
+
+/* Design WashCalendar (1.2.0) — mirrored so month grid is not lost if Wash styles.css is overridden/cached. */
+.wash-calendar{box-sizing:border-box;width:100%;min-width:0;max-width:22rem;position:relative}.wash-calendar--sm{max-width:18rem}.dropdown-content:has(>.wash-calendar){width:max-content;min-width:16rem;max-width:min(100vw - 1rem,22rem)}.dropdown-content:has(>.wash-calendar.wash-calendar--sm){min-width:15rem;max-width:min(100vw - 1rem,18rem)}.dropdown-content:has(>.wash-calendar)>.wash-calendar{width:18rem;min-width:15rem;max-width:none}.dropdown-content:has(>.wash-calendar.wash-calendar--sm)>.wash-calendar{width:16.5rem;min-width:14.5rem}.wash-calendar__header{flex-wrap:wrap;justify-content:center;align-items:center;gap:.25rem;margin-bottom:.5rem;display:flex}.wash-calendar__caption{clip:rect(0, 0, 0, 0);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.wash-calendar__nav-dropdown{flex:0 auto;max-width:9.5rem}.wash-calendar__nav-dropdown--year{max-width:5.5rem}.wash-calendar__nav-trigger{gap:.25rem;max-width:100%;height:2rem;min-height:2rem;padding-inline:.5rem;font-weight:600;display:inline-flex}.wash-calendar--sm .wash-calendar__nav-trigger{height:1.75rem;min-height:1.75rem;padding-inline:.375rem;font-size:.75rem}.wash-calendar__nav-menu{width:max-content;min-width:7.5rem;max-width:min(100vw - 1rem,12rem);max-height:min(var(--wash-dropdown-max-h,20rem), 20rem);overscroll-behavior:contain;flex-flow:column;align-items:stretch;padding:.25rem;display:flex;overflow:hidden auto}.wash-calendar__nav-dropdown--year .wash-calendar__nav-menu{min-width:5rem;max-width:6.5rem;max-height:min(var(--wash-dropdown-max-h,15rem), 15rem)}.wash-calendar__grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:.125rem;width:100%;display:grid}.wash-calendar__weekday{text-align:center;letter-spacing:.05em;text-transform:uppercase;color:var(--color-base-content);padding:.25rem .125rem;font-size:.65rem;font-weight:600}@supports (color:color-mix(in lab, red, red)){.wash-calendar__weekday{color:color-mix(in oklab, var(--color-base-content) 60%, transparent)}}.wash-calendar__day,.wash-calendar__day-empty{box-sizing:border-box;aspect-ratio:1;width:100%;min-width:0;min-height:0}.wash-calendar__day{cursor:pointer;transition:background-color .16s var(--ease-absorb,ease), color .16s var(--ease-absorb,ease);border-radius:.5rem;flex-direction:column;justify-content:center;align-items:center;font-size:.875rem;font-weight:500;display:flex;position:relative}.wash-calendar--sm .wash-calendar__day{font-size:.75rem}.wash-calendar__day:hover:not(:disabled){background:var(--color-primary)}@supports (color:color-mix(in lab, red, red)){.wash-calendar__day:hover:not(:disabled){background:color-mix(in oklab, var(--color-primary) 40%, transparent)}}.wash-calendar__day:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}.wash-calendar__day--outside{color:var(--color-base-content)}@supports (color:color-mix(in lab, red, red)){.wash-calendar__day--outside{color:color-mix(in oklab, var(--color-base-content) 35%, transparent)}}.wash-calendar__day--today:not(.wash-calendar__day--selected){background:var(--color-primary)}@supports (color:color-mix(in lab, red, red)){.wash-calendar__day--today:not(.wash-calendar__day--selected){background:color-mix(in oklab, var(--color-primary) 15%, transparent)}}.wash-calendar__day--today:not(.wash-calendar__day--selected){box-shadow:inset 0 0 0 1px var(--color-primary)}@supports (color:color-mix(in lab, red, red)){.wash-calendar__day--today:not(.wash-calendar__day--selected){box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 40%, transparent)}}.wash-calendar__day--in-range:not(.wash-calendar__day--selected){background:var(--color-primary);border-radius:0}@supports (color:color-mix(in lab, red, red)){.wash-calendar__day--in-range:not(.wash-calendar__day--selected){background:color-mix(in oklab, var(--color-primary) 20%, transparent)}}.wash-calendar__day--selected{background:var(--color-primary);color:var(--color-primary-content)}.wash-calendar__day--selected:hover:not(:disabled){background:var(--color-primary)}.wash-calendar__day:disabled,.wash-calendar__day--disabled{cursor:not-allowed;opacity:.4}.wash-calendar__day:disabled:hover,.wash-calendar__day--disabled:hover{background:0 0}.wash-calendar__mark{background:var(--color-primary);border-radius:9999px;width:.75rem;height:.125rem;position:absolute;bottom:.125rem}.wash-calendar__day--selected .wash-calendar__mark{background:var(--color-primary-content)}

@@ -356,6 +356,7 @@
 
 <div class={TableEnum.HEIGHT}>
 	<MenziesTable
+		title="Patients"
 		rows={patientList}
 		columns={patientColumns}
 		{isLoading}
@@ -368,7 +369,6 @@
 		showRowActions={true}
 		actionsVariant="none"
 		enableColumnFilters={true}
-		useRemoteFilters={true}
 		on:refresh={handleTableRefresh}
 		on:pageSizeChange={handleTablePageSizeChange}
 		on:pageChange={handleTablePageChange}

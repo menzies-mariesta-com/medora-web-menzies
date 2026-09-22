@@ -415,19 +415,10 @@
 </script>
 
 {#if viewMode === 'list'}
-	<div class="mb-4 flex items-center justify-between">
-		<div>
-			<h1 class="text-lg font-semibold">
-				{m.prefix_configuration_page_title()}
-			</h1>
-			<p class="text-sm text-base-content/70">
-				{m.prefix_configuration_page_subtitle()}
-			</p>
-		</div>
-	</div>
-
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
+			title={m.prefix_configuration_page_title()}
+			description={m.prefix_configuration_page_subtitle()}
 			{columns}
 			rows={purposeListRows}
 			{isLoading}

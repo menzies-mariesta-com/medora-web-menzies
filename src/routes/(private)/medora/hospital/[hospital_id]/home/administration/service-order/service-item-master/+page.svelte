@@ -25,7 +25,6 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -600,16 +599,6 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.service_items_title()}</h1>
-		<WashButton
-			className="btn-outline btn-sm btn-square"
-			onClick={startCreate}
-		>
-			<LucidePlus />
-		</WashButton>
-	</div>
-
 	<WashCard>
 		<WashCardBody>
 			<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
@@ -742,42 +731,41 @@
 		</WashCardBody>
 	</WashCard>
 
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={serviceItems}
-					columns={serviceItemColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					emptyMessage={m.service_item_no_records_found()}
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					actionsHeader={m.actions()}
-					showRowActions={true}
-					actionsVariant="none"
-					on:refresh={() => fetchServiceItems(true)}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchServiceItems(true);
-					}}
-					on:pageChange={() => fetchServiceItems(true)}
-					on:filtersChange={handleTableFiltersChange}
-				>
-					{#snippet rowActions(row, rowIndex)}
-						{@const serviceRow = row as ServiceItemListRow}
-						<MenziesTableEditDeleteActions
-							onEdit={() => startEdit(serviceRow)}
-							onDelete={() => handleDelete(serviceRow)}
-							disabled={isLoading || isSaving || deleteLock.pending}
-							deleteLoading={deletingId === serviceRow.id}
-						/>
-					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.service_items_title()}
+			rows={serviceItems}
+			columns={serviceItemColumns}
+			{isLoading}
+			bind:pageSize={pageSizeStr}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			emptyMessage={m.service_item_no_records_found()}
+			enableColumnFilters={true}
+			actionsHeader={m.actions()}
+			showRowActions={true}
+			actionsVariant="none"
+			showAddButton={true}
+			addLabel={m.create()}
+			onAdd={startCreate}
+			on:refresh={() => fetchServiceItems(true)}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchServiceItems(true);
+			}}
+			on:pageChange={() => fetchServiceItems(true)}
+			on:filtersChange={handleTableFiltersChange}
+		>
+			{#snippet rowActions(row, rowIndex)}
+				{@const serviceRow = row as ServiceItemListRow}
+				<MenziesTableEditDeleteActions
+					onEdit={() => startEdit(serviceRow)}
+					onDelete={() => handleDelete(serviceRow)}
+					disabled={isLoading || isSaving || deleteLock.pending}
+					deleteLoading={deletingId === serviceRow.id}
+				/>
+			{/snippet}
+		</MenziesTable>
+	</div>
 </div>

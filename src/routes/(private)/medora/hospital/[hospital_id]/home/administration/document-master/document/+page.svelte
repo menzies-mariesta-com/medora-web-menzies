@@ -3,7 +3,6 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
@@ -316,14 +315,13 @@
 		}
 	}
 
-	function truncateText(
-		text: string | null | undefined,
-		maxLength: number = 100
+	/** Strip HTML for preview; keep full text so Design overflow marquee can reveal it. */
+	function plainDocumentText(
+		text: string | null | undefined
 	): string {
 		if (!text) return '—';
-		const stripped = text.replace(/<[^>]*>/g, '');
-		if (stripped.length <= maxLength) return stripped;
-		return stripped.substring(0, maxLength) + '...';
+		const stripped = text.replace(/<[^>]*>/g, '').trim();
+		return stripped || '—';
 	}
 
 	let tableFilters = $state<Record<string, string>>({});
@@ -392,7 +390,7 @@
 			header: 'Content Preview',
 			widthClass: 'w-64 min-w-[16rem]',
 			filterable: false,
-			format: (value) => truncateText(value as string)
+			format: (value) => plainDocumentText(value as string)
 		},
 		{
 			id: 'createdAt',
@@ -406,62 +404,51 @@
 
 <div class="space-y-6">
 	{#if viewMode === 'list'}
-		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h1 class="text-2xl font-bold">Documents</h1>
-			<WashButton
-				className="btn-outline btn-sm btn-square"
-				onClick={startCreate}
+		<div class="{TableEnum.HEIGHT} overflow-auto">
+			<MenziesTable
+				title="Documents"
+				rows={documentList}
+				{columns}
+				{isLoading}
+				bind:pageSize={filterPageSize}
+				bind:currentPage
+				totalRowCount={total}
+				showRefreshButton={true}
+				refreshTooltip={m.refresh_data()}
+				emptyMessage="No documents found"
+				showRowActions={true}
+				actionsHeader={m.actions()}
+				actionsVariant="none"
+				enableColumnFilters={true}
+				showAddButton={true}
+				addLabel={m.create()}
+				onAdd={startCreate}
+				on:refresh={() => fetchData({ bustCache: true })}
+				on:pageSizeChange={() => {
+					currentPage = 1;
+					fetchData();
+				}}
+				on:pageChange={() => fetchData()}
+				on:filtersChange={(e) => {
+					tableFilters = e.detail.filters;
+					currentPage = 1;
+					fetchData();
+				}}
 			>
-				<LucidePlus />
-			</WashButton>
+				{#snippet rowActions(row, rowIndex)}
+					{@const typedRow = row as DocumentWithRelations}
+					<MenziesTableViewEditDeleteActions
+						onView={() => startView(typedRow)}
+						onEdit={() => startEdit(typedRow)}
+						onDelete={() => handleDelete(typedRow.id)}
+						deleteDisabled={isLoading}
+						viewTooltip={m.view_data()}
+						editTooltip={m.edit_data()}
+						deleteTooltip={m.delete_data()}
+					/>
+				{/snippet}
+			</MenziesTable>
 		</div>
-
-		<WashCard>
-			<WashCardBody>
-				<div class="{TableEnum.HEIGHT} overflow-auto">
-					<MenziesTable
-						rows={documentList}
-						{columns}
-						{isLoading}
-						bind:pageSize={filterPageSize}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage="No documents found"
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:refresh={() => fetchData({ bustCache: true })}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							fetchData();
-						}}
-						on:pageChange={() => fetchData()}
-						on:filtersChange={(e) => {
-							tableFilters = e.detail.filters;
-							currentPage = 1;
-							fetchData();
-						}}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							{@const typedRow = row as DocumentWithRelations}
-							<MenziesTableViewEditDeleteActions
-								onView={() => startView(typedRow)}
-								onEdit={() => startEdit(typedRow)}
-								onDelete={() => handleDelete(typedRow.id)}
-								deleteDisabled={isLoading}
-								viewTooltip={m.view_data()}
-								editTooltip={m.edit_data()}
-								deleteTooltip={m.delete_data()}
-							/>
-						{/snippet}
-					</MenziesTable>
-				</div>
-			</WashCardBody>
-		</WashCard>
 	{:else}
 		<WashCard>
 			<WashCardBody>

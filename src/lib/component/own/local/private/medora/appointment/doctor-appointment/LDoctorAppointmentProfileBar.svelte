@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CallyDateCalendar from '$lib/component/own/library/cally/CallyDateCalendar.svelte';
+	import WashCalendar from '$lib/component/wash/calendar/WashCalendar.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -238,11 +238,14 @@
 			</WashFilter>
 		</div>
 
-		<CallyDateCalendar
+		<!-- Design WashCalendar (Svelte adapter — same props as Design studio) -->
+		<WashCalendar
+			mode="single"
 			bind:value={selectedDate}
+			showOutsideDays
+			aria-label="Appointment schedule month"
+			className="w-full !max-w-none"
 			onChange={handleCalendarChange}
-			showOutsideDays={true}
-			className="w-full rounded-box border border-base-300 bg-base-100 shadow-lg"
 		/>
 	</WashCardBody>
 </WashCard>

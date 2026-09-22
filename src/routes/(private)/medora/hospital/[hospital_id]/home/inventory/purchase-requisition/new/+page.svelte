@@ -9,7 +9,6 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import PrLineItemsCard from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -685,23 +684,6 @@
 		</WashCard>
 	</div>
 
-	{#snippet lineItemsToolbarRight()}
-		<WashTooltip
-			tooltipText={m.inv_line_items_add()}
-			className="tooltip-ghost"
-		>
-			<WashButton
-				type="button"
-				className="btn-primary btn-square btn-outline"
-				disabled={createSubmitting}
-				title={m.inv_line_items_add()}
-				onClick={() => void openLineDialogForCreate()}
-			>
-				<LucidePlus className="size-4" />
-			</WashButton>
-		</WashTooltip>
-	{/snippet}
-
 	<div
 		class="flex flex-wrap items-center justify-end gap-3 border-t border-base-200 pt-6"
 	>
@@ -721,8 +703,7 @@
 		rows={createLines}
 		useColumnFilters={true}
 		hideQuickFilter={true}
-		hideAddButton={true}
-		toolbarRight={lineItemsToolbarRight}
+		addDisabled={createSubmitting}
 		onAddItem={() => void openLineDialogForCreate()}
 		onEditLine={(line) => void openLineDialogForEdit(line)}
 		onDeleteLine={deleteLine}

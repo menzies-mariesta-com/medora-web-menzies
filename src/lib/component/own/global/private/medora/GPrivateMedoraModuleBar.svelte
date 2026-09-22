@@ -6,15 +6,13 @@
 		MedoraPageRow
 	} from '$lib/model/type/medora/page.type';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashDropdownButton from '$lib/component/wash/dropdown/button/WashDropdownButton.svelte';
-	import WashDropdownContent from '$lib/component/wash/dropdown/content/WashDropdownContent.svelte';
-	import WashDropdown from '$lib/component/wash/dropdown/WashDropdown.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePanelTopClose from '$lib/component/own/library/lucide/LucidePanelTopClose.svelte';
 	import LucideUser from '$lib/component/own/library/lucide/LucideUser.svelte';
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import LucidePanelTopOpen from '$lib/component/own/library/lucide/LucidePanelTopOpen.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import {
@@ -32,6 +30,7 @@
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import { tick } from 'svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
+	import MedoraModuleIcon from './MedoraModuleIcon.svelte';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -160,18 +159,123 @@
 
 	const currentSearch = $derived(page.url.search);
 
-	function goToPage(p: MedoraPageRow) {
-		closeSearchDialog();
+	function modulePageHref(p: MedoraPageRow): string | null {
 		const base =
 			hospitalId && p.pageUrl != null
 				? medoraHospitalPageUrl(hospitalId, p.pageUrl)
 				: p.pageUrl;
-		const url =
-			base != null && currentSearch
-				? `${base}${currentSearch}`
-				: base;
+		if (base == null) return null;
+		return currentSearch ? `${base}${currentSearch}` : base;
+	}
+
+	function goToPage(p: MedoraPageRow) {
+		closeSearchDialog();
+		const url = modulePageHref(p);
 		if (url != null) routerUtil.replaceRoute(url);
 	}
+
+	/** SPA navigate via replaceRoute; allow modified/middle clicks to use href. */
+	function goToModulePage(p: MedoraPageRow, e: MouseEvent) {
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+			return;
+		}
+		e.preventDefault();
+		hoveredModuleId = null;
+		cancelCloseModuleMenu();
+		const url = modulePageHref(p);
+		if (url != null) routerUtil.replaceRoute(url);
+	}
+
+	/** Hover menu outside the scroll strip so `overflow-x-auto` cannot clip it. */
+	let hoveredModuleId = $state<number | null>(null);
+	let moduleMenuPos = $state({ top: 0, left: 0 });
+	let moduleMenuEl = $state<HTMLElement | null>(null);
+	let moduleMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const hoveredModule = $derived(
+		hoveredModuleId == null
+			? null
+			: (orderedModuleList.find((m) => m.id === hoveredModuleId) ??
+					null)
+	);
+	const hoveredModulePages = $derived.by(() => {
+		if (hoveredModuleId == null) return [];
+		return orderedPageList.filter(
+			(p) => p.moduleId === hoveredModuleId && p.parentId == null
+		);
+	});
+
+	function cancelCloseModuleMenu() {
+		if (moduleMenuCloseTimer != null) {
+			clearTimeout(moduleMenuCloseTimer);
+			moduleMenuCloseTimer = null;
+		}
+	}
+
+	function scheduleCloseModuleMenu() {
+		cancelCloseModuleMenu();
+		moduleMenuCloseTimer = setTimeout(() => {
+			hoveredModuleId = null;
+			moduleMenuCloseTimer = null;
+		}, 140);
+	}
+
+	function clampModuleMenuLeft(preferredLeft: number) {
+		const width = moduleMenuEl?.offsetWidth ?? 0;
+		const maxLeft = Math.max(8, window.innerWidth - width - 8);
+		return Math.min(Math.max(8, preferredLeft), maxLeft);
+	}
+
+	async function openModuleMenu(moduleId: number, trigger: HTMLElement) {
+		cancelCloseModuleMenu();
+		const r = trigger.getBoundingClientRect();
+		hoveredModuleId = moduleId;
+		moduleMenuPos = { top: r.bottom, left: r.left };
+		await tick();
+		moduleMenuPos = {
+			top: r.bottom,
+			left: clampModuleMenuLeft(r.left)
+		};
+	}
+
+	function onModuleStripScroll() {
+		hoveredModuleId = null;
+		cancelCloseModuleMenu();
+		updateModuleStripOverflow();
+	}
+
+	let moduleStripEl = $state<HTMLElement | null>(null);
+	let moduleStripCanScrollLeft = $state(false);
+	let moduleStripCanScrollRight = $state(false);
+
+	function updateModuleStripOverflow() {
+		const el = moduleStripEl;
+		if (!el) {
+			moduleStripCanScrollLeft = false;
+			moduleStripCanScrollRight = false;
+			return;
+		}
+		const maxScroll = el.scrollWidth - el.clientWidth;
+		const epsilon = 2;
+		moduleStripCanScrollLeft = el.scrollLeft > epsilon;
+		moduleStripCanScrollRight = maxScroll - el.scrollLeft > epsilon;
+	}
+
+	$effect(() => {
+		// Re-measure when the module list (or layout) changes.
+		void orderedModuleList.length;
+		const el = moduleStripEl;
+		if (!el) return;
+
+		updateModuleStripOverflow();
+		const ro = new ResizeObserver(() => updateModuleStripOverflow());
+		ro.observe(el);
+		window.addEventListener('resize', updateModuleStripOverflow);
+		return () => {
+			ro.disconnect();
+			window.removeEventListener('resize', updateModuleStripOverflow);
+		};
+	});
 
 	// Ctrl+K opens search dialog.
 	$effect(() => {
@@ -194,12 +298,24 @@
 	});
 
 	// Determine which module is "active" based on the current DB page URL.
+	// Prefer longest prefix match so nested routes (e.g. …/grn/new) still
+	// highlight the parent page’s module (…/grn → Inventory).
 	const activeModuleId = $derived.by(() => {
 		if (!activeDbPageUrl) return null;
-		const activePage = orderedPageList.find(
-			(p) => p.pageUrl === activeDbPageUrl
-		);
-		return activePage?.moduleId ?? null;
+		let best: MedoraPageRow | null = null;
+		for (const p of orderedPageList) {
+			if (!p.pageUrl) continue;
+			const exact = activeDbPageUrl === p.pageUrl;
+			const nested = activeDbPageUrl.startsWith(`${p.pageUrl}/`);
+			if (!exact && !nested) continue;
+			if (
+				!best ||
+				(p.pageUrl?.length ?? 0) > (best.pageUrl?.length ?? 0)
+			) {
+				best = p;
+			}
+		}
+		return best?.moduleId ?? null;
 	});
 
 	function isPageActive(p: MedoraPageRow): boolean {
@@ -417,7 +533,7 @@
 			{/if}
 			<WashTooltip
 				tooltipText="Notification"
-				className=""
+				className="overflow-visible z-10"
 			>
 				<MedoraNotifications
 					{hospitalId}
@@ -504,43 +620,102 @@
 			</WashButton>
 		</WashTooltip>
 	{/if}
-	<div class="flex min-w-0 flex-1 flex-wrap gap-3">
-		{#each orderedModuleList as m (m.id)}
-			<div class="min-w-0">
-				<WashDropdown>
-					<WashDropdownButton
-						className={activeModuleId === m.id
-							? `btn-accent ${navBarControlBorder}`
-							: navBarControlBorder}
-					>
-						{m?.name}
-					</WashDropdownButton>
-					<WashDropdownContent
-						className="z-100 flex max-h-96 min-w-48 w-fit flex-col flex-nowrap gap-2 overflow-x-hidden overflow-y-auto bg-accent/50 p-2"
-					>
-						{#each orderedPageList.filter((p) => p.moduleId === m.id && p.parentId == null) as p (p.id)}
-							<WashButton
-								className={`w-full justify-start whitespace-nowrap text-left btn-wide  ${isPageActive(p) ? 'btn-accent' : ''}`}
-								onClick={() => {
-									const base =
-										hospitalId && p.pageUrl != null
-											? medoraHospitalPageUrl(hospitalId, p.pageUrl)
-											: p.pageUrl;
-									const url =
-										base != null && currentSearch
-											? `${base}${currentSearch}`
-											: base;
-									if (url != null) routerUtil.replaceRoute(url);
-								}}
+	<div class="relative min-w-0 flex-1">
+		{#if moduleStripCanScrollLeft}
+			<div
+				class="menzies-module-bar-fade menzies-module-bar-fade-left pointer-events-none absolute inset-y-0 left-0 z-10 w-8"
+				aria-hidden="true"
+			></div>
+		{/if}
+		{#if moduleStripCanScrollRight}
+			<div
+				class="menzies-module-bar-fade menzies-module-bar-fade-right pointer-events-none absolute inset-y-0 right-0 z-10 w-8"
+				aria-hidden="true"
+			></div>
+		{/if}
+		<div
+			bind:this={moduleStripEl}
+			data-module-bar-scroll
+			class="menzies-module-bar-scroll flex min-w-0 w-full flex-nowrap items-center gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+			onscroll={onModuleStripScroll}
+		>
+			{#each orderedModuleList as m (m.id)}
+				{@const isActiveModule = activeModuleId === m.id}
+				<div
+					class="shrink-0"
+					role="group"
+					onmouseenter={(e) =>
+						openModuleMenu(m.id, e.currentTarget)}
+					onmouseleave={scheduleCloseModuleMenu}
+				>
+					{#if isActiveModule}
+						<div class="aura aura-dual text-primary">
+							<div
+								tabindex="0"
+								role="button"
+								class="btn {navBarControlBorder} cursor-pointer gap-2"
+							>
+								<MedoraModuleIcon
+									name={m.imageUrl}
+									className="size-4 shrink-0"
+								/>
+								<span class="whitespace-nowrap">{m?.name}</span>
+							</div>
+						</div>
+					{:else}
+						<div
+							tabindex="0"
+							role="button"
+							class="btn {navBarControlBorder} cursor-pointer gap-2"
+						>
+							<MedoraModuleIcon
+								name={m.imageUrl}
+								className="size-4 shrink-0"
+							/>
+							<span class="whitespace-nowrap">{m?.name}</span>
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	</div>
+	{#if hoveredModule != null}
+		<div
+			bind:this={moduleMenuEl}
+			role="menu"
+			tabindex="-1"
+			class="fixed z-50 bg-transparent p-0 pt-1 shadow-none"
+			style:top="{moduleMenuPos.top}px"
+			style:left="{moduleMenuPos.left}px"
+			onmouseenter={cancelCloseModuleMenu}
+			onmouseleave={scheduleCloseModuleMenu}
+		>
+			<ul
+				tabindex="-1"
+				class="menzies-module-dropdown-menu menu w-max min-w-52 max-w-[calc(100vw-1rem)] rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)] max-h-[min(70vh,24rem)] overflow-y-auto"
+			>
+				{#each hoveredModulePages as p (p.id)}
+					{@const url = modulePageHref(p)}
+					{#if url != null}
+						<li class="w-full">
+							<a
+								href={resolve(url as any)}
+								class="whitespace-nowrap {isPageActive(p)
+									? 'menu-active menu-wash-active'
+									: ''}"
+								aria-current={isPageActive(p)
+									? 'page'
+									: undefined}
+								onclick={(e) => goToModulePage(p, e)}
 							>
 								{p.name}
-							</WashButton>
-						{/each}
-					</WashDropdownContent>
-				</WashDropdown>
-			</div>
-		{/each}
-	</div>
+							</a>
+						</li>
+					{/if}
+				{/each}
+			</ul>
+		</div>
+	{/if}
 	<div class="shrink-0">
 		<WashTooltip
 			tooltipText="Home"

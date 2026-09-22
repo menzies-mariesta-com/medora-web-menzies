@@ -22,13 +22,16 @@
 	import GQuickTool from '$lib/component/own/global/GQuickTool.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { FontTool } from '$lib/tool/font.tool.svelte';
 	import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
+	import { FontState } from '$lib/state/font.state.svelte';
 	import { WashThemeState } from '$lib/state/wash-theme.state.svelte';
 
 	let { children } = $props();
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const washThemeTool = new WashThemeTool();
+	const fontTool = new FontTool();
 
 	const isEmbed = $derived(
 		page.url.searchParams.get('embed') === '1'
@@ -43,8 +46,10 @@
 
 	lifeCycleUtil.onMount(() => {
 		washThemeTool.boot();
+		fontTool.boot();
 		WashThemeState.pigment = washThemeTool.getPigment();
 		WashThemeState.mode = washThemeTool.getMode();
+		FontState.font = fontTool.getFont();
 	});
 	lifeCycleUtil.onDestroy(() => {
 		washThemeTool.destroy();
