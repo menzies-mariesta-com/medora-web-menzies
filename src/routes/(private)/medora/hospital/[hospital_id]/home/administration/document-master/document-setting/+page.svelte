@@ -6,9 +6,9 @@
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import LucideCopy from '$lib/component/own/library/lucide/LucideCopy.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -473,18 +473,6 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Document settings</h1>
-		{#if viewMode === 'list'}
-			<WashButton
-				className="btn-outline btn-sm btn-square"
-				onClick={startCreate}
-			>
-				<LucidePlus />
-			</WashButton>
-		{/if}
-	</div>
-
 	{#if viewMode !== 'list'}
 		<WashCard>
 			<WashCardBody>
@@ -913,57 +901,56 @@
 		</WashCard>
 	{/if}
 
-	<WashCard>
-		<WashCardBody>
-			<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MenziesTable
-					rows={settingList}
-					{columns}
-					{isLoading}
-					bind:pageSize={filterPageSize}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip="Refresh"
-					emptyMessage="No document settings found"
-					showRowActions={true}
-					actionsHeader="Actions"
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchData({ bustCache: true })}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchData();
-					}}
-					on:pageChange={() => fetchData()}
-					on:filtersChange={(e) => {
-						tableFilters = e.detail.filters;
-						currentPage = 1;
-						fetchData();
-					}}
-				>
-					{#snippet rowActions(row, rowIndex)}
-						{@const typedRow = row as DocumentSettingWithRelations}
-						<MenziesTableViewEditDeleteActions
-							onView={() => startView(typedRow)}
-							onEdit={() => startEdit(typedRow)}
-							onDelete={() => handleDelete(typedRow)}
-							viewDisabled={deleteLock.pending}
-							editDisabled={deleteLock.pending || isSystemSetting(typedRow)}
-							deleteDisabled={deleteLock.pending ||
-								isLoading ||
-								isSystemSetting(typedRow)}
-							deleteLoading={deletingId === typedRow.id}
-							viewTooltip={m.view_data()}
-							editTooltip={m.edit_data()}
-							deleteTooltip={m.delete_data()}
-						/>
-					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+	<div class="{TableEnum.HEIGHT} overflow-auto">
+		<MenziesTable
+			title="Document settings"
+			rows={settingList}
+			{columns}
+			{isLoading}
+			bind:pageSize={filterPageSize}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			refreshTooltip="Refresh"
+			emptyMessage="No document settings found"
+			showRowActions={true}
+			actionsHeader="Actions"
+			actionsVariant="none"
+			enableColumnFilters={true}
+			showAddButton={viewMode === 'list'}
+			addLabel={m.create()}
+			onAdd={startCreate}
+			on:refresh={() => fetchData({ bustCache: true })}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchData();
+			}}
+			on:pageChange={() => fetchData()}
+			on:filtersChange={(e) => {
+				tableFilters = e.detail.filters;
+				currentPage = 1;
+				fetchData();
+			}}
+		>
+			{#snippet rowActions(row, rowIndex)}
+				{@const typedRow = row as DocumentSettingWithRelations}
+				<MenziesTableViewEditDeleteActions
+					onView={() => startView(typedRow)}
+					onEdit={() => startEdit(typedRow)}
+					onDelete={() => handleDelete(typedRow)}
+					viewDisabled={deleteLock.pending}
+					editDisabled={deleteLock.pending || isSystemSetting(typedRow)}
+					deleteDisabled={deleteLock.pending ||
+						isLoading ||
+						isSystemSetting(typedRow)}
+					deleteLoading={deletingId === typedRow.id}
+					viewTooltip={m.view_data()}
+					editTooltip={m.edit_data()}
+					deleteTooltip={m.delete_data()}
+				/>
+			{/snippet}
+		</MenziesTable>
+	</div>
 </div>
 
 <style>

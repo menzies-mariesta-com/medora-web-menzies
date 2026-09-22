@@ -1,8 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -256,62 +253,52 @@
 	});
 </script>
 
-<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-	<h1 class="text-lg font-semibold">{title}</h1>
+<div class="{TableEnum.HEIGHT} min-h-0 overflow-hidden">
+	<MenziesTable
+		{title}
+		rows={list}
+		columns={tableColumns}
+		{isLoading}
+		bind:pageSize={pageSizeStr}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage={m.med_order_list_empty()}
+		showRowActions={true}
+		actionsVariant="none"
+		actionsHeader={m.actions()}
+		enableColumnFilters={true}
+		on:refresh={load}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			load();
+		}}
+		on:pageChange={load}
+		on:filtersChange={(e) => {
+			tableFilters = e.detail.filters;
+			currentPage = 1;
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			filterDebounceTimeout = setTimeout(() => {
+				load();
+			}, 350);
+		}}
+	>
+		{#snippet rowActions(row)}
+			<label class="flex cursor-pointer items-center justify-end gap-2">
+				<input
+					type="checkbox"
+					class="toggle shrink-0 appearance-none toggle-primary toggle-sm"
+					checked={isRowActive(row as Row)}
+					on:change={(e) =>
+						setRowActive(
+							row as Row,
+							(e.currentTarget as HTMLInputElement).checked
+						)}
+				/>
+			</label>
+		{/snippet}
+	</MenziesTable>
 </div>
-
-<WashCard>
-	<WashCardBody className="flex flex-col gap-0 p-0">
-		<div class="{TableEnum.HEIGHT} min-h-0 overflow-hidden">
-			<MenziesTable
-				rows={list}
-				columns={tableColumns}
-				{isLoading}
-				bind:pageSize={pageSizeStr}
-				bind:currentPage
-				totalRowCount={total}
-				useRemoteFilters={true}
-				showRefreshButton={true}
-				refreshTooltip={m.refresh_data()}
-				emptyMessage={m.med_order_list_empty()}
-				showRowActions={true}
-				actionsVariant="none"
-				actionsHeader={m.actions()}
-				enableColumnFilters={true}
-				on:refresh={load}
-				on:pageSizeChange={() => {
-					currentPage = 1;
-					load();
-				}}
-				on:pageChange={load}
-				on:filtersChange={(e) => {
-					tableFilters = e.detail.filters;
-					currentPage = 1;
-					if (filterDebounceTimeout) {
-						clearTimeout(filterDebounceTimeout);
-					}
-					filterDebounceTimeout = setTimeout(() => {
-						load();
-					}, 350);
-				}}
-			>
-				{#snippet rowActions(row)}
-					<label
-						class="flex cursor-pointer items-center justify-end gap-2"
-					>
-						<input
-							type="checkbox"
-							class="toggle shrink-0 appearance-none toggle-primary toggle-sm"
-							checked={isRowActive(row as Row)}
-							on:change={(e) =>
-								setRowActive(
-									row as Row,
-									(e.currentTarget as HTMLInputElement).checked
-								)}
-						/>
-					</label>
-				{/snippet}
-			</MenziesTable>
-		</div>
-	</WashCardBody>
-</WashCard>

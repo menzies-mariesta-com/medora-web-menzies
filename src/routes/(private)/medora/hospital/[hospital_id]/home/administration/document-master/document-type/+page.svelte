@@ -3,7 +3,6 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
@@ -261,16 +260,6 @@
 </script>
 
 <div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">Document types</h1>
-		<WashButton
-			className="btn-outline btn-sm btn-square"
-			onClick={startCreate}
-		>
-			<LucidePlus />
-		</WashButton>
-	</div>
-
 	{#if isEditing}
 		<WashCard>
 			<WashCardBody>
@@ -312,48 +301,47 @@
 		</WashCard>
 	{/if}
 
-	<WashCard>
-		<WashCardBody>
-			<div class="{TableEnum.HEIGHT} overflow-auto">
-				<MenziesTable
-					rows={docTypeList}
-					{columns}
-					{isLoading}
-					bind:pageSize={filterPageSize}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="No document types found"
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchData({ bustCache: true })}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchData();
-					}}
-					on:pageChange={() => fetchData()}
-					on:filtersChange={(e) => {
-						tableFilters = e.detail.filters;
-						currentPage = 1;
-						fetchData();
-					}}
-				>
-					{#snippet rowActions(row, rowIndex)}
-						{@const typedRow = row as DocumentTypeRow}
-						<MenziesTableEditDeleteActions
-							onEdit={() => startEdit(typedRow)}
-							onDelete={() => handleDelete(typedRow.id)}
-							deleteDisabled={isLoading}
-							editTooltip={m.edit_data()}
-							deleteTooltip={m.delete_data()}
-						/>
-					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+	<div class="{TableEnum.HEIGHT} overflow-auto">
+		<MenziesTable
+			title="Document types"
+			rows={docTypeList}
+			{columns}
+			{isLoading}
+			bind:pageSize={filterPageSize}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage="No document types found"
+			showRowActions={true}
+			actionsHeader={m.actions()}
+			actionsVariant="none"
+			enableColumnFilters={true}
+			showAddButton={true}
+			addLabel={m.create()}
+			onAdd={startCreate}
+			on:refresh={() => fetchData({ bustCache: true })}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchData();
+			}}
+			on:pageChange={() => fetchData()}
+			on:filtersChange={(e) => {
+				tableFilters = e.detail.filters;
+				currentPage = 1;
+				fetchData();
+			}}
+		>
+			{#snippet rowActions(row, rowIndex)}
+				{@const typedRow = row as DocumentTypeRow}
+				<MenziesTableEditDeleteActions
+					onEdit={() => startEdit(typedRow)}
+					onDelete={() => handleDelete(typedRow.id)}
+					deleteDisabled={isLoading}
+					editTooltip={m.edit_data()}
+					deleteTooltip={m.delete_data()}
+				/>
+			{/snippet}
+		</MenziesTable>
+	</div>
 </div>

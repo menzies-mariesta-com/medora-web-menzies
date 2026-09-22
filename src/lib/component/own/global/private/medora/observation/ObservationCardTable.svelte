@@ -5,9 +5,7 @@
 
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -55,7 +53,6 @@
 		pageSize = $bindable('10'),
 		currentPage = $bindable(1),
 		totalRowCount,
-		useRemoteFilters = false,
 		enableColumnFilters = false,
 		crudShowView = true,
 		rowActionsVariant = 'crud',
@@ -83,7 +80,6 @@
 		pageSize?: string;
 		currentPage?: number;
 		totalRowCount?: number;
-		useRemoteFilters?: boolean;
 		enableColumnFilters?: boolean;
 		crudShowView?: boolean;
 		showRowActions?: boolean;
@@ -135,44 +131,16 @@
 	<WashCardBody
 		className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-3 p-4"
 	>
-		<WashCardBodyTitle
-			className="flex shrink-0 items-center justify-between"
-		>
-			<span class="text-sm font-semibold">{title}</span>
-			{#if addButtonVariant === 'add'}
-				<WashTooltip
-					tooltipText="Add"
-					className=""
-				>
-					<WashButton
-						className="btn-ghost btn-xs btn-square"
-						onClick={handleAdd}
-					>
-						<LucidePlus className="size-3.5" />
-					</WashButton>
-				</WashTooltip>
-			{:else if addButtonVariant === 'redirect'}
-				<WashTooltip
-					tooltipText={redirectButtonText || title}
-					className=""
-				>
-					<WashButton
-						className="btn-ghost btn-xs btn-square"
-						onClick={handleRedirect}
-						disabled={!redirectHref}
-					>
-						<LucidePlus className="size-3.5" />
-					</WashButton>
-				</WashTooltip>
-			{/if}
-		</WashCardBodyTitle>
-
 		<div
 			class="observation-table-wrap flex min-h-0 max-w-full min-w-0 flex-1 flex-col{tableWrapClassName
 				? ` ${tableWrapClassName}`
 				: ''}"
 		>
 			<MenziesTable
+				{title}
+				showAddButton={addButtonVariant === 'add'}
+				addLabel="Add"
+				onAdd={handleAdd}
 				fillParent={true}
 				{rows}
 				{columns}
@@ -192,7 +160,6 @@
 							: 'none'
 						: 'none'}
 				{enableColumnFilters}
-				{useRemoteFilters}
 				{crudShowView}
 				{pageSizeOptions}
 				{pageSize}
@@ -209,6 +176,17 @@
 					dispatch('filtersChange', event.detail)}
 				on:refresh={() => dispatch('refresh')}
 			>
+				{#snippet headerActions()}
+					{#if addButtonVariant === 'redirect'}
+						<WashButton
+							className="btn-ghost btn-xs btn-square"
+							onClick={handleRedirect}
+							disabled={!redirectHref}
+						>
+							<LucidePlus className="size-3.5" />
+						</WashButton>
+					{/if}
+				{/snippet}
 				{#snippet rowActions(row)}
 					{#if enableMoveAction}
 						<MenziesTableRowActionGroup>

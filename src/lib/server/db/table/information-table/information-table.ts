@@ -307,6 +307,7 @@ export const hospitalDepartmentTable = pgTable(
 export const moduleTable = pgTable('module', {
 	id: serial('id').primaryKey(),
 	name: varchar('name', { length: 512 }),
+	/** Lucide kebab-case icon name (Menzies Design / Wash DynamicIcon naming). */
 	imageUrl: text('image_url'),
 	moduleUrl: text('module_url'),
 	sequenceNo: integer('sequence_no'),

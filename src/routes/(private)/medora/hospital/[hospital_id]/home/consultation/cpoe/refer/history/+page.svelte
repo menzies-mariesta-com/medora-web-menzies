@@ -106,19 +106,11 @@
 	}
 
 	const rowLegends = [
-		{ id: 'active', label: 'Active', colorClass: 'bg-neutral/5' },
-		{ id: 'urgent', label: 'Urgent', colorClass: 'bg-warning/25' },
-		{
-			id: 'accepted',
-			label: 'Accepted',
-			colorClass: 'bg-success/25'
-		},
-		{
-			id: 'rejected',
-			label: 'Rejected',
-			colorClass: 'bg-orange-400/25'
-		},
-		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error/25' }
+		{ id: 'active', label: 'Active', colorClass: 'bg-base-content/40' },
+		{ id: 'urgent', label: 'Urgent', colorClass: 'bg-warning' },
+		{ id: 'accepted', label: 'Accepted', colorClass: 'bg-success' },
+		{ id: 'rejected', label: 'Rejected', colorClass: 'bg-orange-400' },
+		{ id: 'canceled', label: 'Canceled', colorClass: 'bg-error' }
 	];
 
 	const columns: MenziesTableColumn<ReferHistoryWithRelations>[] = [
@@ -433,10 +425,6 @@
 </script>
 
 <div class="flex h-full flex-col p-4">
-	<div class="mb-4 flex items-center justify-between">
-		<h2 class="text-xl font-bold">Referral History</h2>
-	</div>
-
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
@@ -444,14 +432,14 @@
 			className="z-0"
 		/>
 	{:else}
-		<div
-			class="flex-1 overflow-x-auto overflow-y-hidden rounded-lg border border-base-200 bg-base-100 shadow-sm"
-		>
+		<div class="min-h-0 flex-1">
 			<MenziesTable
+				title="Referral History"
 				{columns}
 				{rows}
 				{totalRowCount}
 				{isLoading}
+				fillParent={true}
 				legendItems={rowLegends}
 				rowClassGetter={(row) => {
 					if (row.cancelAt != null) {

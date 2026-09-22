@@ -359,7 +359,6 @@
 			actionsHeader="Actions"
 			actionsVariant="select"
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:refresh={() => fetchPatients({ bustCache: true })}
 			on:pageSizeChange={() => {
 				currentPage = 1;

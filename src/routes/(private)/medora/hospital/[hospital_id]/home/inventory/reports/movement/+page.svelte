@@ -293,8 +293,6 @@
 	});
 </script>
 
-<h1 class="mb-4 text-lg font-semibold">{m.inv_reports_movement()}</h1>
-
 <WashCard className="mb-4">
 	<WashCardBody>
 		<div class="flex flex-wrap items-end gap-4">
@@ -337,30 +335,27 @@
 	</div>
 {/if}
 
-<WashCard>
-	<WashCardBody className="p-0">
-		<div class={TableEnum.HEIGHT}>
-			<MenziesTable
-				{columns}
-				{rows}
-				masterFilterHospitalId={hospitalId}
-				isLoading={loading}
-				enableColumnFilters={true}
-				bind:columnFilters
-				showRefreshButton={true}
-				enableExport={!dateRangeInvalid}
-				{exportConfig}
-				on:refresh={() => void load()}
-				on:filtersChange={(event) => {
-					if (filterDebounceTimeout)
-						clearTimeout(filterDebounceTimeout);
-					columnFilters = event.detail.filters;
-					filterDebounceTimeout = setTimeout(
-						() => void load(),
-						350
-					);
-				}}
-			/>
-		</div>
-	</WashCardBody>
-</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title={m.inv_reports_movement()}
+		{columns}
+		{rows}
+		masterFilterHospitalId={hospitalId}
+		isLoading={loading}
+		enableColumnFilters={true}
+		bind:columnFilters
+		showRefreshButton={true}
+		enableExport={!dateRangeInvalid}
+		{exportConfig}
+		on:refresh={() => void load()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout)
+				clearTimeout(filterDebounceTimeout);
+			columnFilters = event.detail.filters;
+			filterDebounceTimeout = setTimeout(
+				() => void load(),
+				350
+			);
+		}}
+	/>
+</div>

@@ -179,7 +179,7 @@
 	});
 </script>
 
-<div class="overflow-x-auto rounded-lg border border-base-300">
+<div class="h-[420px] min-h-0 overflow-hidden rounded-lg border border-base-300">
 	<MenziesTable
 		rows={allocations}
 		{columns}

@@ -12,6 +12,7 @@
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/own/local/private/medora/administration/staff/list/LStaffListViewEditModal.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -187,6 +188,10 @@
 	const registrationPath = $derived(
 		page.url.pathname.replace(/\/list\/?$/, '') + '/registration'
 	);
+
+	function goToRegistration() {
+		goto(registrationPath);
+	}
 	const staffDialogIframeSrc = $derived(
 		staffDialog
 			? `${registrationPath}?${staffDialog.mode}=${staffDialog.staffId}&embed=1`
@@ -358,6 +363,7 @@
 
 <div class={TableEnum.HEIGHT}>
 	<MenziesTable
+		title="Staff List"
 		rows={staffList}
 		columns={staffColumns}
 		{isLoading}
@@ -370,7 +376,9 @@
 		showRowActions={true}
 		actionsVariant="none"
 		enableColumnFilters={true}
-		useRemoteFilters={true}
+		showAddButton={true}
+		addLabel={m.create()}
+		onAdd={goToRegistration}
 		on:refresh={() =>
 			refreshLock.run(async () => {
 				await fetchStaff(true);

@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -246,98 +244,134 @@
 	];
 </script>
 
-<div
-	class="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
->
-	<h1 class="w-full text-lg font-semibold sm:mr-4 sm:w-auto">
-		{m.inv_page_stock_title()}
-	</h1>
-	<div class="join">
-		<WashButton
-			type="button"
-			className="join-item btn-sm {view === 'aggregated'
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				view = 'aggregated';
-			}}
+<div class={TableEnum.HEIGHT}>
+	{#if view === 'aggregated'}
+		<MenziesTable
+			title={m.inv_page_stock_title()}
+			columns={aggColumns}
+			rows={rowsAgg}
+			isLoading={loading}
+			showRefreshButton={false}
+			enableColumnFilters={false}
 		>
-			{m.inv_stock_view_by_item()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="join-item btn-sm {view === 'lots'
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				view = 'lots';
-			}}
+			{#snippet headerActions()}
+				<div class="join">
+					<WashButton
+						type="button"
+						className="join-item btn-sm btn-primary"
+						disabled={loading}
+						onClick={() => {
+							view = 'aggregated';
+						}}
+					>
+						{m.inv_stock_view_by_item()}
+					</WashButton>
+					<WashButton
+						type="button"
+						className="join-item btn-sm btn-outline"
+						disabled={loading}
+						onClick={() => {
+							view = 'lots';
+						}}
+					>
+						{m.inv_stock_view_by_lot()}
+					</WashButton>
+				</div>
+				<div class="join">
+					<WashButton
+						type="button"
+						className="join-item btn-sm {!stockListAllStores
+							? 'btn-primary'
+							: 'btn-outline'}"
+						disabled={loading}
+						onClick={() => {
+							stockListAllStores = false;
+						}}
+					>
+						{m.inv_list_scope_selected_store()}
+					</WashButton>
+					<WashButton
+						type="button"
+						className="join-item btn-sm {stockListAllStores
+							? 'btn-primary'
+							: 'btn-outline'}"
+						disabled={loading}
+						onClick={() => {
+							stockListAllStores = true;
+						}}
+					>
+						{m.inv_list_scope_all_stores()}
+					</WashButton>
+				</div>
+			{/snippet}
+		</MenziesTable>
+	{:else}
+		<MenziesTable
+			title={m.inv_page_stock_title()}
+			columns={lotColumns}
+			rows={filteredRowsLotsByExpiry}
+			isLoading={loading}
+			showRefreshButton={false}
+			enableColumnFilters={false}
 		>
-			{m.inv_stock_view_by_lot()}
-		</WashButton>
-	</div>
-	<div class="join w-full sm:w-auto">
-		<WashButton
-			type="button"
-			className="join-item btn-sm {!stockListAllStores
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				stockListAllStores = false;
-			}}
-		>
-			{m.inv_list_scope_selected_store()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="join-item btn-sm {stockListAllStores
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				stockListAllStores = true;
-			}}
-		>
-			{m.inv_list_scope_all_stores()}
-		</WashButton>
-	</div>
-	{#if view === 'lots'}
-		<select
-			class="select-bordered select w-full select-sm sm:w-44"
-			bind:value={lotsExpiryFilter}
-		>
-			<option value="all">All expiry</option>
-			<option value="expired">Expired</option>
-			<option value="expiringSoon">Expiring soon (≤ 30 days)</option>
-		</select>
+			{#snippet headerActions()}
+				<div class="join">
+					<WashButton
+						type="button"
+						className="join-item btn-sm btn-outline"
+						disabled={loading}
+						onClick={() => {
+							view = 'aggregated';
+						}}
+					>
+						{m.inv_stock_view_by_item()}
+					</WashButton>
+					<WashButton
+						type="button"
+						className="join-item btn-sm btn-primary"
+						disabled={loading}
+						onClick={() => {
+							view = 'lots';
+						}}
+					>
+						{m.inv_stock_view_by_lot()}
+					</WashButton>
+				</div>
+				<div class="join">
+					<WashButton
+						type="button"
+						className="join-item btn-sm {!stockListAllStores
+							? 'btn-primary'
+							: 'btn-outline'}"
+						disabled={loading}
+						onClick={() => {
+							stockListAllStores = false;
+						}}
+					>
+						{m.inv_list_scope_selected_store()}
+					</WashButton>
+					<WashButton
+						type="button"
+						className="join-item btn-sm {stockListAllStores
+							? 'btn-primary'
+							: 'btn-outline'}"
+						disabled={loading}
+						onClick={() => {
+							stockListAllStores = true;
+						}}
+					>
+						{m.inv_list_scope_all_stores()}
+					</WashButton>
+				</div>
+				<select
+					class="select-bordered select select-sm w-44"
+					bind:value={lotsExpiryFilter}
+				>
+					<option value="all">All expiry</option>
+					<option value="expired">Expired</option>
+					<option value="expiringSoon">Expiring soon (≤ 30 days)</option>
+				</select>
+			{/snippet}
+		</MenziesTable>
 	{/if}
 </div>
-
-<WashCard>
-	<WashCardBody className="p-0">
-		{#if view === 'aggregated'}
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					columns={aggColumns}
-					rows={rowsAgg}
-					isLoading={loading}
-					showRefreshButton={false}
-					enableColumnFilters={false}
-				/>
-			</div>
-		{:else}
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					columns={lotColumns}
-					rows={filteredRowsLotsByExpiry}
-					isLoading={loading}
-					showRefreshButton={false}
-					enableColumnFilters={false}
-				/>
-			</div>
-		{/if}
-	</WashCardBody>
-</WashCard>

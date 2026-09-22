@@ -283,20 +283,16 @@
 	}
 </script>
 
-<div class="mb-4 flex flex-col gap-1">
-	<h1 class="text-lg font-semibold">
-		{m.inv_page_receipt_from_store_title()}
-	</h1>
-	{#if fromStoreId == null}
-		<div class="mt-2 alert text-sm alert-warning" role="status">
-			{m.inv_receipt_from_store_select_store_hint()}
-		</div>
-	{/if}
-</div>
+{#if fromStoreId == null}
+	<div class="mb-3 alert text-sm alert-warning" role="status">
+		{m.inv_receipt_from_store_select_store_hint()}
+	</div>
+{/if}
 
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_receipt_from_store_title()}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			masterFilterHospitalId={hospitalId}
@@ -309,7 +305,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -325,7 +320,6 @@
 					void loadList();
 				}, 350);
 			}}
-				)}
 		>
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}
