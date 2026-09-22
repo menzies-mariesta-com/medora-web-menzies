@@ -1,25 +1,51 @@
 <script lang="ts">
 	/**
-	 * Gallery `SearchSelect` (design-menzies Select search) — Svelte port of
-	 * `dropdown + btn + input + menu`. Medora extensions: `{ label, value }`
-	 * options, `bind:value`, and optional async `searchFn`.
+	 * Menzies Design Auto Aware Dropdown 02 · Search select (Wash UI 1.2.0).
+	 * Viewport flip / end-align via `measureDropdownPlacement`; Medora extensions:
+	 * `{ label, value }` options, `bind:value`, optional async `searchFn`.
 	 * @see https://design-menzies.netlify.app/ (Select search)
 	 */
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
+	import OverflowText from '$lib/component/own/library/menzies/overflow-marquee/OverflowText.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import { createWashId } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
+	import {
+		createWashId,
+		DROPDOWN_PANEL_Z,
+		dropdownPanelStyle,
+		dropdownPlacementClassName,
+		measureDropdownPlacement,
+		sameDropdownPlacement,
+		type DropdownPlacement
+	} from '@menzies-mariesta-com/menzies-design-wash-ui/core';
+	import { untrack } from 'svelte';
 
 	export type SearchSelectOption = {
 		label: string;
 		value: string;
 	};
 
-	/** Gallery constant `b` */
-	const PANEL_CLASS =
-		'dropdown-content z-50 mt-1 w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(70vh,20rem)] overflow-x-hidden overflow-y-auto rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]';
-	/** Gallery constant `x` */
+	/** Design SearchSelect measure opts (`panelWidth: 448`, `panelHeight: 320`). */
+	const PLACEMENT_OPTS = {
+		panelWidth: 448,
+		panelHeight: 320
+	} as const;
+
+	const DEFAULT_PLACEMENT: DropdownPlacement = {
+		end: false,
+		top: false,
+		maxHeight: 320
+	};
+
+	/**
+	 * Do not use Daisy `.menu` here — its `width: fit-content` +
+	 * `grid-auto-columns: minmax(auto, max-content)` prevents label overflow,
+	 * so Design portal marquee never fires on options.
+	 */
 	const LIST_CLASS =
-		'menu max-h-52 w-full overflow-y-auto overflow-x-hidden rounded-box p-0';
+		'menzies-ss-list flex w-full min-w-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto p-0';
+
+	const OPTION_BTN_CLASS =
+		'flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-[var(--radius-field)] px-3 py-1.5 text-start transition-colors hover:bg-base-200';
 
 	function matchesFilter(query: string, text: string): boolean {
 		return text.toLowerCase().includes(query.trim().toLowerCase());
@@ -55,7 +81,6 @@
 		debounceMs = 300,
 		minSearchLength = 0,
 		invalidateKey,
-		placement = 'down',
 		filterPlaceholder = 'Type to filter…'
 	}: {
 		options?: Array<string | SearchSelectOption>;
@@ -76,7 +101,6 @@
 		debounceMs?: number;
 		minSearchLength?: number;
 		invalidateKey?: unknown;
-		placement?: 'down' | 'up';
 		filterPlaceholder?: string;
 	} = $props();
 
@@ -87,9 +111,11 @@
 	let isLoading = $state(false);
 	let cachedLabelForValue = $state('');
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let placement = $state<DropdownPlacement>({ ...DEFAULT_PLACEMENT });
 
 	const listboxId = createWashId('search-select');
 	const filterInputId = createWashId('search-select-filter');
+	const labelTextId = createWashId('search-select-label');
 	const isAsync = $derived(!!searchFn);
 	const normalizedOptions = $derived(normalizeOptions(options));
 	const optionsList = $derived(
@@ -105,27 +131,30 @@
 	const filtered = $derived.by(() => {
 		const q = filter.trim();
 		if (!q) return optionsList;
-		return optionsList.filter((o) => matchesFilter(q, o.label));
+		return optionsList.filter(
+			(o) => matchesFilter(q, o.label) || matchesFilter(q, o.value)
+		);
 	});
 	const isOpen = $derived(open && !disabled);
 	const dropdownClass = $derived(
-		[
-			'dropdown w-full',
-			className,
-			placement === 'up' ? 'dropdown-top' : '',
-			isOpen ? 'dropdown-open' : ''
-		]
-			.filter(Boolean)
-			.join(' ')
+		dropdownPlacementClassName(
+			placement,
+			`w-full ${isOpen ? 'dropdown-open' : ''} ${className}`.trim()
+		)
 	);
 	const panelClass = $derived(
-		placement === 'up'
-			? PANEL_CLASS.replace(' mt-1 ', ' mb-1 ')
-			: PANEL_CLASS
+		[
+			'dropdown-content',
+			DROPDOWN_PANEL_Z,
+			placement.top ? 'mb-1' : 'mt-1',
+			// Match trigger width (form fields are often wider than Design’s 24–28rem demo cap).
+			'w-full min-w-full max-w-[min(100%,100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]'
+		].join(' ')
 	);
+	const panelStyle = $derived(dropdownPanelStyle(placement));
 	const triggerBtnClass = $derived(
 		[
-			'btn w-full justify-between border-ink-border font-normal cursor-pointer',
+			'btn flex w-full min-w-0 justify-between border-ink-border font-normal cursor-pointer',
 			disabled ? 'btn-disabled cursor-not-allowed' : '',
 			triggerClassName
 		]
@@ -135,6 +164,20 @@
 	const showLoadingOnly = $derived(
 		isLoading && filtered.length === 0
 	);
+
+	function updatePlacement() {
+		const el = containerEl;
+		if (!el) return;
+		const next = measureDropdownPlacement(el, {
+			...PLACEMENT_OPTS,
+			// Prefer real trigger width so end-align matches the full-width panel.
+			panelWidth: Math.max(PLACEMENT_OPTS.panelWidth, el.offsetWidth || 0)
+		});
+		const prev = untrack(() => placement);
+		if (!sameDropdownPlacement(prev, next)) {
+			placement = next;
+		}
+	}
 
 	async function runAsyncSearch(query: string) {
 		if (!searchFn) return;
@@ -199,6 +242,17 @@
 
 	$effect(() => {
 		if (!isOpen) return;
+		updatePlacement();
+		window.addEventListener('resize', updatePlacement);
+		window.addEventListener('scroll', updatePlacement, true);
+		return () => {
+			window.removeEventListener('resize', updatePlacement);
+			window.removeEventListener('scroll', updatePlacement, true);
+		};
+	});
+
+	$effect(() => {
+		if (!isOpen) return;
 		queueMicrotask(() => {
 			const el = document.getElementById(filterInputId);
 			if (el instanceof HTMLInputElement) el.focus();
@@ -248,7 +302,7 @@
 	<label class="form-control w-full">
 		{#if label}
 			<span class="label">
-				<span class="label-text">
+				<span class="label-text" id={labelTextId}>
 					{label}{#if required}<span
 							class="align-top text-sm leading-none text-error"
 							aria-hidden="true">*</span
@@ -264,17 +318,15 @@
 			aria-controls={listboxId}
 			aria-haspopup="listbox"
 			aria-required={required || undefined}
+			aria-labelledby={label ? labelTextId : undefined}
 			class={triggerBtnClass}
 			{disabled}
 			onclick={toggleDropdown}
 		>
-			<span
-				class={displayLabel
-					? 'truncate'
-					: 'truncate text-base-content/50'}
-			>
-				{displayLabel || placeholder}
-			</span>
+			<OverflowText
+				className="min-w-0 flex-1 {displayLabel ? '' : 'text-base-content/50'}"
+				text={displayLabel || placeholder}
+			/>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"
@@ -304,18 +356,33 @@
 	</label>
 
 	{#if isOpen}
-		<div class={panelClass}>
-			<WashInputField
-				id={filterInputId}
-				bind:value={filter}
-				inputType="search"
-				inputPlaceholderText={filterPlaceholder}
-				className="input-sm mb-2 w-full cursor-text border-ink-border {inputClassName}"
-				ariaLabel={label ? `Filter ${label}` : 'Filter options'}
-				minLength={0}
-				maxlength={200}
-				oninput={handleFilterInput}
-			/>
+		<div
+			class={panelClass}
+			style="max-height: {panelStyle.maxHeight}px; --wash-dropdown-max-h: {panelStyle[
+				'--wash-dropdown-max-h'
+			]}"
+		>
+			<label
+				class="input input-sm mb-2 w-full cursor-text border-ink-border"
+			>
+				<LucideSearch className="size-3.5 shrink-0 opacity-60" />
+				<input
+					id={filterInputId}
+					type="search"
+					class="grow cursor-text {inputClassName}"
+					placeholder={filterPlaceholder}
+					aria-label={label ? `Filter ${label}` : 'Filter options'}
+					aria-controls={listboxId}
+					value={filter}
+					oninput={handleFilterInput}
+					onkeydown={(event) => {
+						if (event.key === 'Escape') {
+							event.stopPropagation();
+							setOpen(false);
+						}
+					}}
+				/>
+			</label>
 			<ul
 				id={listboxId}
 				role="listbox"
@@ -333,14 +400,16 @@
 				{:else}
 					{#each filtered as option (option.value)}
 						{@const selected = option.value === value}
-						<li role="option" aria-selected={selected}>
+						<li class="min-w-0 w-full" role="option" aria-selected={selected}>
 							<button
 								type="button"
-								class="cursor-pointer {selected ? 'active' : ''}"
+								class="{OPTION_BTN_CLASS} {selected
+									? 'bg-base-200 font-medium'
+									: ''}"
 								onmousedown={(event) => event.preventDefault()}
 								onclick={() => selectOption(option)}
 							>
-								<span class="truncate">{option.label}</span>
+								<OverflowText className="min-w-0 flex-1" text={option.label} />
 								{#if selected}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -350,7 +419,7 @@
 										stroke-width="2"
 										stroke-linecap="round"
 										stroke-linejoin="round"
-										class="size-4 opacity-70"
+										class="size-4 shrink-0 opacity-70"
 										aria-hidden="true"
 									>
 										<path d="M20 6 9 17l-5-5"></path>

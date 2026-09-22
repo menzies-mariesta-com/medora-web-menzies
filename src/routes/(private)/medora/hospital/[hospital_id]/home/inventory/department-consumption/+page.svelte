@@ -4,7 +4,6 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
@@ -265,27 +264,13 @@
 	});
 </script>
 
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-	<div>
-		<h1 class="text-xl font-semibold">
-			{m.inv_page_department_consumption_title()}
-		</h1>
-	</div>
-	<div class="flex flex-wrap items-center gap-2">
-		<WashButton
-			type="button"
-			className="btn btn-primary btn-sm"
-			onClick={() => void goto(newPath)}
-		>
-			<LucidePlus className="mr-1 size-4" />
-			{m.inv_dc_new_title()}
-		</WashButton>
-	</div>
-</div>
-
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_department_consumption_title()}
+			showAddButton={true}
+			addLabel={m.inv_dc_new_title()}
+			onAdd={() => void goto(newPath)}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			bind:currentPage
@@ -297,7 +282,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -313,7 +297,6 @@
 					350
 				);
 			}}
-				)}
 		>
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}

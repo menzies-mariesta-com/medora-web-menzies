@@ -236,7 +236,6 @@
 		<SearchSelect
 			inputId="progress-note-doctor"
 			className="w-full"
-			placement="up"
 			bind:value={doctorIdInput}
 			searchFn={searchDoctors}
 			getLabelForValue={getDoctorLabelForValue}

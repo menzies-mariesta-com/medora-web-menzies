@@ -89,17 +89,11 @@
 	);
 
 
-	function truncate(text: string, max: number): string {
-		const t = text.trim();
-		if (!t) return '';
-		return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
-	}
-
 	function primaryDiagnosisLabel(
 		v: PatientVisitWithRelationsLite
 	): string {
 		const notes = v.diagnosisNotes?.trim();
-		if (notes) return truncate(notes, 42) || '—';
+		if (notes) return notes;
 		return v.visitType?.name ?? '—';
 	}
 
@@ -122,6 +116,14 @@
 			return 'bg-warning/10';
 		return '';
 	}
+
+	const visitHistoryLegend = [
+		{
+			id: 'current',
+			label: 'Current visit',
+			colorClass: 'bg-primary/5'
+		}
+	];
 
 	const visitHistoryColumns: MenziesTableColumn<VisitTableRow>[] = [
 		{
@@ -152,7 +154,8 @@
 			widthClass: 'min-w-[12rem] max-w-[18rem]',
 			filterable: false,
 			format: (_v, row) => row.primaryDiagnosis,
-			cellClassGetter: (row) => row.diagnosisCellClass
+			cellClassGetter: (row) =>
+				`max-w-[18rem] ${row.diagnosisCellClass}`.trim()
 		}
 	];
 
@@ -494,57 +497,30 @@
 						class="card-body flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-5"
 					>
 						<div
-							class="flex flex-wrap items-center justify-between gap-3"
+							class="visit-history-table-host flex max-h-[min(55vh,32rem)] min-h-0 min-w-0 flex-1 flex-col"
 						>
-							<div class="flex items-center gap-2">
-								<span class="text-primary" aria-hidden="true">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										stroke-width="2"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-										/>
-									</svg>
-								</span>
-								<h3 class="text-base font-semibold">Visit History</h3>
-							</div>
-						</div>
-
-						{#if tableRows.length === 0}
-							<p class="text-sm text-base-content/60">
-								{m.nursing_case_sheet_no_entries()}
-							</p>
-						{:else}
-							<div
-								class="visit-history-table-host flex max-h-[min(55vh,32rem)] min-h-0 min-w-0 flex-1 flex-col"
+							<MenziesTable
+								title="Visit History"
+								rows={tableRows}
+								columns={visitHistoryColumns}
+								bind:pageSize={visitPageSizeStr}
+								bind:currentPage={visitCurrentPage}
+								totalRowCount={tableRows.length}
+								{isLoading}
+								showRefreshButton={true}
+								refreshTooltip="Refresh visits"
+								emptyMessage={m.nursing_case_sheet_no_entries()}
+								showRowActions={true}
+								actionsHeader="Actions"
+								actionsVariant="none"
+								enableColumnFilters={false}
+								fillParent={true}
+								legendItems={visitHistoryLegend}
+								rowClassGetter={(row) =>
+									row.visitId === visitId ? 'bg-primary/5' : ''}
+								on:refresh={() => loadDashboard(visitId)}
+								on:rowClick={(e) => selectVisit(e.detail)}
 							>
-								<MenziesTable
-									rows={tableRows}
-									columns={visitHistoryColumns}
-									bind:pageSize={visitPageSizeStr}
-									bind:currentPage={visitCurrentPage}
-									totalRowCount={tableRows.length}
-									{isLoading}
-									showRefreshButton={true}
-									refreshTooltip="Refresh visits"
-									emptyMessage={m.nursing_case_sheet_no_entries()}
-									showRowActions={true}
-									actionsHeader="Actions"
-									actionsVariant="none"
-									enableColumnFilters={false}
-									fillParent={true}
-									rowClassGetter={(row) =>
-										row.visitId === visitId ? 'bg-primary/5' : ''}
-									on:refresh={() => loadDashboard(visitId)}
-									on:rowClick={(e) => selectVisit(e.detail)}
-								>
 									{#snippet rowActions(row, rowIndex)}
 										<div class="flex items-center gap-1">
 											<WashTooltip
@@ -588,9 +564,8 @@
 											</WashTooltip>
 										</div>
 									{/snippet}
-								</MenziesTable>
-							</div>
-						{/if}
+							</MenziesTable>
+						</div>
 					</div>
 				</section>
 

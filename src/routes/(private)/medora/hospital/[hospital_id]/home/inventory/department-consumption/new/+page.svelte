@@ -7,7 +7,6 @@
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import ConsumptionLineDialogContent from '$lib/component/own/local/private/medora/inventory/department-consumption/ConsumptionLineDialogContent.svelte';
@@ -402,26 +401,10 @@
 
 <WashCard className="mb-4">
 	<WashCardBody>
-		<div class="mb-2 flex items-center justify-between gap-2">
+		<div class="mb-2">
 			<WashCardBodyTitle
 				>{m.inv_dc_lines_title()}</WashCardBodyTitle
 			>
-			<div class="flex items-center justify-end gap-2">
-				<WashTooltip
-					tooltipText={m.inv_dc_add_line()}
-					className="tooltip-ghost"
-				>
-					<WashButton
-						type="button"
-						className="btn btn-primary btn-square btn-outline"
-						disabled={submitting || storeId == null}
-						title={m.inv_dc_add_line()}
-						onClick={() => void openCreateLine()}
-					>
-						<LucidePlus className="size-4" />
-					</WashButton>
-				</WashTooltip>
-			</div>
 		</div>
 		<div class="h-[420px] min-h-0">
 			<MenziesTable
@@ -444,6 +427,10 @@
 				enableColumnFilters={false}
 				showRowActions={true}
 				actionsVariant="none"
+				showAddButton={true}
+				addLabel={m.inv_dc_add_line()}
+				addDisabled={submitting || storeId == null}
+				onAdd={() => void openCreateLine()}
 			>
 				{#snippet rowActions(_row, index)}
 					{@const ln = lines[index]}

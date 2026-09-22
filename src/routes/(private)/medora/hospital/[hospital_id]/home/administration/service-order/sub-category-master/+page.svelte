@@ -1,8 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type {
 		CategoryListRow,
@@ -14,7 +11,6 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -244,61 +240,47 @@
 	];
 </script>
 
-<div class="space-y-6">
-	<div class="mb-2 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">{m.sub_category_master()}</h1>
-		<WashButton
-			className="btn-primary btn-sm"
-			onClick={openCreate}
-		>
-			<LucidePlus />
-			{m.create()}
-		</WashButton>
-	</div>
-
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={subCategories}
-					columns={subCategoryColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="No sub-categories. Create one."
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchSubCategories(true)}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchSubCategories(true);
-					}}
-					on:pageChange={() => fetchSubCategories(true)}
-					on:filtersChange={(event) => {
-						if (filterDebounceTimeout) {
-							clearTimeout(filterDebounceTimeout);
-						}
-						tableFilters = event.detail.filters;
-						currentPage = 1;
-						filterDebounceTimeout = setTimeout(() => {
-							fetchSubCategories(true);
-						}, 350);
-					}}
-				>
-					{#snippet rowActions(row, rowIndex)}
-						<MenziesTableEditDeleteActions
-							onEdit={() => openEdit(row as SubCategoryListRow)}
-							onDelete={() => handleDelete(row as SubCategoryListRow)}
-						/>
-					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title={m.sub_category_master()}
+		rows={subCategories}
+		columns={subCategoryColumns}
+		{isLoading}
+		bind:pageSize={pageSizeStr}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage="No sub-categories. Create one."
+		showRowActions={true}
+		actionsHeader={m.actions()}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		showAddButton={true}
+		addLabel={m.create()}
+		onAdd={openCreate}
+		on:refresh={() => fetchSubCategories(true)}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchSubCategories(true);
+		}}
+		on:pageChange={() => fetchSubCategories(true)}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
+				fetchSubCategories(true);
+			}, 350);
+		}}
+	>
+		{#snippet rowActions(row, rowIndex)}
+			<MenziesTableEditDeleteActions
+				onEdit={() => openEdit(row as SubCategoryListRow)}
+				onDelete={() => handleDelete(row as SubCategoryListRow)}
+			/>
+		{/snippet}
+	</MenziesTable>
 </div>

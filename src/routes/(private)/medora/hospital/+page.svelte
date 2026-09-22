@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -15,7 +13,6 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import NewHospitalModal from '$lib/component/own/snippet/modal/NewHospitalModal.svelte';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
@@ -252,86 +249,70 @@
 	});
 </script>
 
-<div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.choose_hospital()}</h1>
-		<div class="flex flex-wrap items-center gap-2">
-			{#if isSystemAdmin}
-				<WashButton
-					className="btn-outline"
-					onClick={() =>
-						routerUtil.goToRoute(WebRoutesEnum.MEDORA_ADMIN_OWNERS)}
-				>
-					<LucideUserCog />
-					{m.manage_owners()}
-				</WashButton>
-			{/if}
-			{#if canManageHospitals}
-				<WashButton
-					className="btn-primary"
-					onClick={openNewHospitalModal}
-				>
-					<LucidePlus />
-					{m.new_hospital()}
-				</WashButton>
-			{/if}
-		</div>
-	</div>
-
-	{#if isStaff && !data?.allowedHospitalIds?.length}
-		<p class="py-8 text-center text-base-content/70">
-			{m.no_hospital_assigned()}
-		</p>
-	{:else}
-		<WashCard>
-			<WashCardBody>
-				<div class={TableEnum.HEIGHT}>
-					<MenziesTable
-						rows={hospitals}
-						columns={hospitalColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={total}
-						showRefreshButton={true}
-						refreshTooltip={m.refresh_data()}
-						emptyMessage={m.no_hospitals_yet()}
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:refresh={() => loadHospitals(true)}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							loadHospitals(true);
-						}}
-						on:pageChange={() => loadHospitals(true)}
-						on:filtersChange={(e) => {
-							tableFilters = e.detail.filters;
-							currentPage = 1;
-							loadHospitals(true);
-						}}
+{#if isStaff && !data?.allowedHospitalIds?.length}
+	<p class="py-8 text-center text-base-content/70">
+		{m.no_hospital_assigned()}
+	</p>
+{:else}
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.choose_hospital()}
+			showAddButton={canManageHospitals}
+			addLabel={m.new_hospital()}
+			onAdd={openNewHospitalModal}
+			rows={hospitals}
+			columns={hospitalColumns}
+			{isLoading}
+			bind:pageSize={pageSizeStr}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage={m.no_hospitals_yet()}
+			showRowActions={true}
+			actionsHeader={m.actions()}
+			actionsVariant="none"
+			enableColumnFilters={true}
+			on:refresh={() => loadHospitals(true)}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				loadHospitals(true);
+			}}
+			on:pageChange={() => loadHospitals(true)}
+			on:filtersChange={(e) => {
+				tableFilters = e.detail.filters;
+				currentPage = 1;
+				loadHospitals(true);
+			}}
+		>
+			{#snippet headerActions()}
+				{#if isSystemAdmin}
+					<WashButton
+						className="btn-outline btn-sm"
+						onClick={() =>
+							routerUtil.goToRoute(WebRoutesEnum.MEDORA_ADMIN_OWNERS)}
 					>
-						{#snippet rowActions(row, rowIndex)}
-							<div class="flex justify-end gap-2">
-								<WashButton
-									className="btn-primary btn-sm"
-									onClick={() => goToHospitalHome(row.id)}
-								>
-									{m.enter()}
-								</WashButton>
-								{#if canManageHospitals}
-									<MenziesTableEditDeleteActions
-										onEdit={() => openEditHospitalModal(row)}
-										onDelete={() => handleDelete(row)}
-									/>
-								{/if}
-							</div>
-						{/snippet}
-					</MenziesTable>
+						<LucideUserCog className="size-4" />
+						{m.manage_owners()}
+					</WashButton>
+				{/if}
+			{/snippet}
+			{#snippet rowActions(row, rowIndex)}
+				<div class="flex justify-end gap-2">
+					<WashButton
+						className="btn-primary btn-sm"
+						onClick={() => goToHospitalHome(row.id)}
+					>
+						{m.enter()}
+					</WashButton>
+					{#if canManageHospitals}
+						<MenziesTableEditDeleteActions
+							onEdit={() => openEditHospitalModal(row)}
+							onDelete={() => handleDelete(row)}
+						/>
+					{/if}
 				</div>
-			</WashCardBody>
-		</WashCard>
-	{/if}
-</div>
+			{/snippet}
+		</MenziesTable>
+	</div>
+{/if}

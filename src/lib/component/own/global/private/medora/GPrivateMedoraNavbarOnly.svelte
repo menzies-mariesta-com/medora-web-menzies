@@ -56,7 +56,7 @@
 	<div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
 		<WashTooltip
 			tooltipText="Notification"
-			className=""
+			className="overflow-visible z-10"
 		>
 			<MedoraNotifications />
 		</WashTooltip>

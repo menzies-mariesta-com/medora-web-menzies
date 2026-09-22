@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CallyDateCalendar from '$lib/component/own/library/cally/CallyDateCalendar.svelte';
+	import WashCalendar from '$lib/component/wash/calendar/WashCalendar.svelte';
 
 	let {
 		id,
@@ -51,14 +51,28 @@
 
 	const popoverId = $derived(
 		isDateType
-			? `cally-popover-${id ?? crypto.randomUUID().slice(0, 8)}`
+			? `wash-cal-popover-${id ?? crypto.randomUUID().slice(0, 8)}`
 			: ''
 	);
 	const anchorName = $derived(
-		isDateType ? `--cally-anchor-${id ?? popoverId}` : ''
+		isDateType ? `--wash-cal-anchor-${id ?? popoverId}` : ''
 	);
 
-	function handleCallyChange(next: string) {
+	/** Native inputs are skipped by Design overflow marquee; use title when text overflows. */
+	let overflowTitle = $state<string | undefined>(undefined);
+	let textInputEl = $state<HTMLInputElement | null>(null);
+
+	function syncOverflowTitle(el: HTMLInputElement | null) {
+		if (!el) {
+			overflowTitle = undefined;
+			return;
+		}
+		const text = (el.value ?? '').trim();
+		overflowTitle =
+			text && el.scrollWidth > el.clientWidth + 1 ? text : undefined;
+	}
+
+	function handleCalendarChange(next: string) {
 		value = next;
 		const popover = document.getElementById(
 			popoverId
@@ -71,8 +85,25 @@
 	function handleInput(e: Event) {
 		const el = e.currentTarget as HTMLInputElement;
 		value = el.value;
+		syncOverflowTitle(el);
 		oninput?.(e);
 	}
+
+	$effect(() => {
+		void value;
+		void className;
+		const el = textInputEl;
+		if (!el) return;
+		queueMicrotask(() => syncOverflowTitle(el));
+	});
+
+	$effect(() => {
+		const el = textInputEl;
+		if (!el || typeof ResizeObserver === 'undefined') return;
+		const ro = new ResizeObserver(() => syncOverflowTitle(el));
+		ro.observe(el);
+		return () => ro.disconnect();
+	});
 </script>
 
 {#if isDateType}
@@ -80,7 +111,7 @@
 		{id}
 		type="button"
 		popovertarget={popoverId}
-		class="input-bordered input text-left {className}"
+		class="input-bordered input min-w-0 truncate text-left {className}"
 		style="anchor-name:{anchorName}"
 		{disabled}
 		{hidden}
@@ -93,17 +124,21 @@
 		class="dropdown rounded-box bg-base-100 p-3 shadow-lg"
 		style="position-anchor:{anchorName}"
 	>
-		<CallyDateCalendar
+		<WashCalendar
+			mode="single"
 			bind:value
 			{min}
 			{max}
-			showOutsideDays={true}
-			className="w-full rounded-box border border-base-300 bg-base-100"
-			onChange={handleCallyChange}
+			size="sm"
+			bordered={false}
+			showOutsideDays
+			aria-label="Pick a date"
+			onChange={handleCalendarChange}
 		/>
 	</div>
 {:else if rawStyle}
 	<input
+		bind:this={textInputEl}
 		{id}
 		class={className}
 		type={inputType}
@@ -114,7 +149,7 @@
 		{min}
 		{max}
 		{step}
-		title={inputTitle}
+		title={overflowTitle ?? inputTitle}
 		name={nameText}
 		value={value ?? ''}
 		aria-label={ariaLabel}
@@ -127,6 +162,7 @@
 	/>
 {:else}
 	<input
+		bind:this={textInputEl}
 		{id}
 		class="input {className}"
 		type={inputType}
@@ -137,7 +173,7 @@
 		{min}
 		{max}
 		{step}
-		title={inputTitle}
+		title={overflowTitle ?? inputTitle}
 		name={nameText}
 		value={value ?? ''}
 		aria-label={ariaLabel}

@@ -246,11 +246,15 @@
 			...init
 		});
 		if (!res.ok) {
-			const data = await res.json().catch(() => ({}));
-			throw new Error(
-				(data && typeof data.error === 'string' && data.error) ||
-					`Request failed (${res.status})`
-			);
+			const data = (await res.json().catch(() => ({}))) as {
+				message?: unknown;
+				error?: unknown;
+			};
+			const message =
+				(typeof data.message === 'string' && data.message) ||
+				(typeof data.error === 'string' && data.error) ||
+				`Request failed (${res.status})`;
+			throw new Error(message);
 		}
 		return (await res.json()) as T;
 	}

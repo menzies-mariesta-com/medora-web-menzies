@@ -118,6 +118,15 @@
 	"support": "サポート",
 	"theme": "テーマ",
 	"languages": "言語",
+	"change_appearance": "外観を変更",
+	"appearance_pigment": "ピグメント",
+	"appearance_select_pigment": "ピグメントを選択",
+	"appearance_mode": "モード",
+	"appearance_select_mode": "モードを選択",
+	"appearance_mode_light": "ライト",
+	"appearance_mode_dark": "ダーク",
+	"appearance_font_style": "フォントスタイル",
+	"appearance_select_font_style": "フォントスタイルを選択",
 	"change_language": "言語を変更",
 	"select_language": "言語を選択",
 	"not_found": "見つかりません",
@@ -880,5 +889,9 @@
 	"auth_2fa_account_backup_regen_hint": "Enter your password. Previous backup codes will stop working.",
 	"auth_2fa_account_backup_regen_success": "New backup codes are ready. Save them somewhere safe.",
 	"auth_2fa_account_password_confirm": "Confirm",
-	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device."
+	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device.",
+	"inv_po_new_manual_menu": "Manual (no PR)",
+	"inv_grn_new_direct_menu": "Direct (no PO)",
+	"cpoe_order_add_to_list": "Add to list",
+	"cpoe_order_pending_empty": "No items added yet. Use Add in the table footer to prepare items before saving the order."
 }

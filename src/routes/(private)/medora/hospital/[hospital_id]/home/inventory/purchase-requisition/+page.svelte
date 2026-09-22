@@ -4,7 +4,6 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -15,7 +14,6 @@
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
@@ -334,28 +332,10 @@
 	]);
 </script>
 
-<div class="mb-4 flex items-center justify-between">
-	<h1 class="text-lg font-semibold">{m.inv_page_pr_title()}</h1>
-	<WashTooltip
-		className=""
-		tooltipText={prCreateAllowed
-			? ''
-			: m.inv_pr_create_disabled_store_not_requisitable()}
-	>
-		<WashButton
-			className="btn-primary"
-			disabled={!prCreateAllowed}
-			onClick={() => void goto(resolve(prNewPath as any))}
-		>
-			<LucidePlus className="size-4" />
-			{m.inv_pr_new_title()}
-		</WashButton>
-	</WashTooltip>
-</div>
-
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_pr_title()}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			isLoading={loading}
@@ -366,7 +346,12 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
+			showAddButton={true}
+			addLabel={prCreateAllowed
+				? m.inv_pr_new_title()
+				: m.inv_pr_create_disabled_store_not_requisitable()}
+			addDisabled={!prCreateAllowed}
+			onAdd={() => void goto(resolve(prNewPath as any))}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -382,7 +367,6 @@
 					loadList();
 				}, 350);
 			}}
-				)}
 		>
 			{#snippet rowActions(row, rowIndex)}
 				{@const r = row as PrRow}

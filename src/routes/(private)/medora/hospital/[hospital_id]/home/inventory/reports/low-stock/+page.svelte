@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -165,8 +163,6 @@
 	});
 </script>
 
-<h1 class="mb-4 text-lg font-semibold">Low stock</h1>
-
 {#if errorMessage}
 	<div class="mb-3">
 		<WashAlert
@@ -177,30 +173,27 @@
 	</div>
 {/if}
 
-<WashCard>
-	<WashCardBody className="p-0">
-		<div class={TableEnum.HEIGHT}>
-			<MenziesTable
-				{columns}
-				{rows}
-				masterFilterHospitalId={hospitalId}
-				isLoading={loading}
-				enableColumnFilters={true}
-				bind:columnFilters
-				showRefreshButton={true}
-				enableExport={true}
-				{exportConfig}
-				on:refresh={() => void load()}
-				on:filtersChange={(event) => {
-					if (filterDebounceTimeout)
-						clearTimeout(filterDebounceTimeout);
-					columnFilters = event.detail.filters;
-					filterDebounceTimeout = setTimeout(
-						() => void load(),
-						350
-					);
-				}}
-			/>
-		</div>
-	</WashCardBody>
-</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title="Low stock"
+		{columns}
+		{rows}
+		masterFilterHospitalId={hospitalId}
+		isLoading={loading}
+		enableColumnFilters={true}
+		bind:columnFilters
+		showRefreshButton={true}
+		enableExport={true}
+		{exportConfig}
+		on:refresh={() => void load()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout)
+				clearTimeout(filterDebounceTimeout);
+			columnFilters = event.detail.filters;
+			filterDebounceTimeout = setTimeout(
+				() => void load(),
+				350
+			);
+		}}
+	/>
+</div>

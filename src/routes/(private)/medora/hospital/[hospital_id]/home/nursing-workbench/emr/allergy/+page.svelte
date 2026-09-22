@@ -1,15 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import LPatientAllergyDialogContent from '$lib/component/own/local/private/medora/emr/LPatientAllergyDialogContent.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	type PatientAllergyWithRelations = any;
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -419,98 +414,77 @@
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
 		/>
+	{:else if !visit}
+		<div
+			class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
+		>
+			Loading visit…
+		</div>
 	{:else}
-		<WashCard>
-			<WashCardBody className="p-3 m-0=">
-				<div
-					class="mb-2 flex flex-wrap items-center justify-between gap-3"
-				>
-					<WashCardBodyTitle className="mb-0">
-						Patient allergies (all visits)
-					</WashCardBodyTitle>
-					<WashButton
-						className="btn-primary btn-sm gap-1.5"
-						onClick={openAddDialog}
-					>
-						<LucidePlus className="size-4 shrink-0" />
-						Add allergy
-					</WashButton>
-				</div>
-				{#if !visit}
-					<div
-						class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
-					>
-						Loading visit…
-					</div>
-				{:else if patientAllergies.length === 0 && !isLoadingAllergies}
-					<p class="text-sm text-base-content/70">
-						No allergies recorded for this patient yet.
-					</p>
-				{:else}
-					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-						<MenziesTable
-							rows={patientAllergies}
-							columns={allergyColumns}
-							masterFilterHospitalId={visit?.hospitalId ?? hospitalId}
-							isLoading={isLoadingVisit || isLoadingAllergies}
-							bind:pageSize={pageSizeStr}
-							bind:currentPage
-							totalRowCount={totalAllergies}
-							showRefreshButton={true}
-							emptyMessage="No allergies."
-							showRowActions={true}
-							actionsHeader="Actions"
-							actionsVariant="none"
-							enableColumnFilters={true}
-							columnFilters={tableFilters}
-							useRemoteFilters={true}
-							on:refresh={() => {
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(visit.patientId, visit.hospitalId, {
-										force: true
-									});
-								}
-							}}
-							on:pageSizeChange={() => {
-								if (pageSizeStr === lastHandledPageSize) {
-									return;
-								}
-								lastHandledPageSize = pageSizeStr;
-								currentPage = 1;
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(visit.patientId, visit.hospitalId);
-								}
-							}}
-							on:pageChange={() => {
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchAllergies(visit.patientId, visit.hospitalId);
-								}
-							}}
-							on:filtersChange={(event) => {
-								if (filterDebounceTimeout) {
-									clearTimeout(filterDebounceTimeout);
-								}
-								tableFilters = event.detail.filters;
-								currentPage = 1;
-								filterDebounceTimeout = setTimeout(() => {
-									if (visit?.patientId && visit?.hospitalId) {
-										fetchAllergies(visit.patientId, visit.hospitalId);
-									}
-								}, 350);
-							}}
-						>
-							{#snippet rowActions(row, rowIndex)}
-								<MenziesTableEditDeleteActions
-									onEdit={() =>
-										openEditDialog(row as PatientAllergyWithRelations)}
-									onDelete={() =>
-										handleDelete(row as PatientAllergyWithRelations)}
-								/>
-							{/snippet}
-						</MenziesTable>
-					</div>
-				{/if}
-			</WashCardBody>
-		</WashCard>
+		<div class={TableEnum.HEIGHT}>
+			<MenziesTable
+				title="Patient allergies (all visits)"
+				showAddButton={true}
+				addLabel="Add allergy"
+				onAdd={openAddDialog}
+				rows={patientAllergies}
+				columns={allergyColumns}
+				masterFilterHospitalId={visit.hospitalId ?? hospitalId}
+				isLoading={isLoadingVisit || isLoadingAllergies}
+				bind:pageSize={pageSizeStr}
+				bind:currentPage
+				totalRowCount={totalAllergies}
+				showRefreshButton={true}
+				emptyMessage="No allergies recorded for this patient yet."
+				showRowActions={true}
+				actionsHeader="Actions"
+				actionsVariant="none"
+				enableColumnFilters={true}
+				columnFilters={tableFilters}
+				on:refresh={() => {
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchAllergies(visit.patientId, visit.hospitalId, {
+							force: true
+						});
+					}
+				}}
+				on:pageSizeChange={() => {
+					if (pageSizeStr === lastHandledPageSize) {
+						return;
+					}
+					lastHandledPageSize = pageSizeStr;
+					currentPage = 1;
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchAllergies(visit.patientId, visit.hospitalId);
+					}
+				}}
+				on:pageChange={() => {
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchAllergies(visit.patientId, visit.hospitalId);
+					}
+				}}
+				on:filtersChange={(event) => {
+					if (filterDebounceTimeout) {
+						clearTimeout(filterDebounceTimeout);
+					}
+					tableFilters = event.detail.filters;
+					currentPage = 1;
+					filterDebounceTimeout = setTimeout(() => {
+						if (visit?.patientId && visit?.hospitalId) {
+							fetchAllergies(visit.patientId, visit.hospitalId);
+						}
+					}, 350);
+				}}
+			>
+				{#snippet rowActions(row, rowIndex)}
+					<MenziesTableEditDeleteActions
+						onEdit={() =>
+							openEditDialog(row as PatientAllergyWithRelations)}
+						onDelete={() =>
+							handleDelete(row as PatientAllergyWithRelations)}
+					/>
+				{/snippet}
+			</MenziesTable>
+		</div>
 	{/if}
 </div>

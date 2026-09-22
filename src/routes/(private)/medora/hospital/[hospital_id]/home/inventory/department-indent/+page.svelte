@@ -4,7 +4,6 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
@@ -306,22 +305,13 @@
 	}
 </script>
 
-<div class="mb-4 flex items-center justify-between">
-	<h1 class="text-lg font-semibold">
-		{m.inv_page_department_indent_title()}
-	</h1>
-	<WashButton
-		className="btn-primary"
-		onClick={() => void goto(resolve(diNewPath as any))}
-	>
-		<LucidePlus className="size-4" />
-		{m.inv_dept_indent_new()}
-	</WashButton>
-</div>
-
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_department_indent_title()}
+			showAddButton={true}
+			addLabel={m.inv_dept_indent_new()}
+			onAdd={() => void goto(resolve(diNewPath as any))}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			masterFilterHospitalId={hospitalId}
@@ -333,7 +323,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -349,7 +338,6 @@
 					void loadList();
 				}, 350);
 			}}
-				)}
 		>
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}

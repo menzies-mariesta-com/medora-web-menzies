@@ -13,15 +13,20 @@
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
 	import SupportTicketDialogContent from '../snippet/modal/SupportTicketDialogContent.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import type { FontEnum } from '$lib/model/enum/font.enum';
 	import type {
 		WashModeEnum,
 		WashPigmentEnum
 	} from '$lib/model/enum/wash-theme.enum';
+	import { FontTool } from '$lib/tool/font.tool.svelte';
 	import { WashThemeTool } from '$lib/tool/wash-theme.tool.svelte';
+	import { FontState } from '$lib/state/font.state.svelte';
 	import { WashThemeState } from '$lib/state/wash-theme.state.svelte';
 
 	const languageTool = new LanguageTool();
 	const washThemeTool = new WashThemeTool();
+	const fontTool = new FontTool();
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	function openLanguageDialog() {
 		dialogService.open({
@@ -36,16 +41,21 @@
 
 	function openThemeSettings() {
 		dialogService.open({
-			title: 'Change appearance',
+			title: msg.change_appearance(),
 			component: ChangeAppearanceModal,
 			onConfirm: (data?: {
 				pigment: WashPigmentEnum;
 				mode: WashModeEnum;
+				font: FontEnum;
 			}) => {
 				if (data?.pigment && data?.mode) {
 					washThemeTool.apply(data.pigment, data.mode);
 					WashThemeState.pigment = data.pigment;
 					WashThemeState.mode = data.mode;
+				}
+				if (data?.font) {
+					fontTool.apply(data.font);
+					FontState.font = data.font;
 				}
 			}
 		});

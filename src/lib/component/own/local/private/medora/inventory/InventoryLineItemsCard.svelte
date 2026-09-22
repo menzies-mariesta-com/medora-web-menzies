@@ -1,10 +1,7 @@
 <script lang="ts">
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
@@ -17,8 +14,9 @@
 	type Props = {
 		title: string;
 		hideTitle?: boolean;
+		/** @deprecated Add is always icon-only in the table footer. Kept for call-site compat. */
 		addButtonIconOnly?: boolean;
-		/** When true, parent renders the add control (toolbar row may still show title/filter). */
+		/** When true, omit the table footer Add control. */
 		hideAddButton?: boolean;
 		/** When true, omit WashCard wrapper (table only layout). */
 		noCard?: boolean;
@@ -39,12 +37,14 @@
 		onAddItem: () => void;
 		onEditLine: (row: any) => void;
 		onDeleteLine: (key: string) => void;
+		/** Optional disable for table footer Add. */
+		addDisabled?: boolean;
 	};
 
 	let {
 		title,
 		hideTitle = false,
-		addButtonIconOnly = false,
+		addButtonIconOnly: _addButtonIconOnly = false,
 		hideAddButton = false,
 		noCard = false,
 		toolbarRight,
@@ -60,7 +60,8 @@
 		onCloseLine = null,
 		onAddItem,
 		onEditLine,
-		onDeleteLine
+		onDeleteLine,
+		addDisabled = false
 	}: Props = $props();
 
 	const shouldHideQuickFilter = $derived(
@@ -70,7 +71,6 @@
 	const showCardToolbar = $derived(
 		!hideTitle ||
 			!shouldHideQuickFilter ||
-			(!viewOnly && !hideAddButton) ||
 			toolbarRight != null
 	);
 
@@ -81,6 +81,8 @@
 	const toolbarJustifyClass = $derived(
 		hideTitle ? 'sm:justify-end' : 'sm:justify-between'
 	);
+
+	const showTableAdd = $derived(!viewOnly && !hideAddButton);
 </script>
 
 {#snippet inner()}
@@ -105,32 +107,6 @@
 						aria-label={m.inv_line_items_filter_aria()}
 					/>
 				{/if}
-				{#if !viewOnly && !hideAddButton}
-					{#if addButtonIconOnly}
-						<WashTooltip
-							tooltipText={m.inv_line_items_add()}
-							className="tooltip-ghost"
-						>
-							<WashButton
-								className="btn-primary btn-square btn-sm"
-								type="button"
-								title={m.inv_line_items_add()}
-								onClick={() => onAddItem()}
-							>
-								<LucidePlus className="size-4" />
-							</WashButton>
-						</WashTooltip>
-					{:else}
-						<WashButton
-							className="btn-primary"
-							type="button"
-							onClick={() => onAddItem()}
-						>
-							<LucidePlus className="size-4" />
-							{m.inv_line_items_add()}
-						</WashButton>
-					{/if}
-				{/if}
 				{#if toolbarRight}
 					{@render toolbarRight()}
 				{/if}
@@ -140,6 +116,7 @@
 
 	<div class="h-[420px] min-h-0">
 		<MenziesTable
+			title={hideTitle || showCardToolbar ? '' : title}
 			columns={columns as any[]}
 			rows={rows as any[]}
 			isLoading={false}
@@ -147,6 +124,10 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={useColumnFilters}
+			showAddButton={showTableAdd}
+			addLabel={m.inv_line_items_add()}
+			addDisabled={addDisabled}
+			onAdd={onAddItem}
 		>
 			{#snippet rowActions(row)}
 				<MenziesTableRowActionGroup>
@@ -187,22 +168,20 @@
 	</div>
 
 	<div
-		class="flex flex-wrap items-center justify-between gap-3 border-t pt-4 {footerBorderClass}"
+		class="mt-2 flex items-center justify-end border-t {footerBorderClass} pt-2 text-sm"
 	>
-		<div class="text-sm opacity-80">
-			{m.inv_line_items_total_prefix()}
-			<span class="font-semibold">{totalCount}</span>
-		</div>
+		<span class="text-base-content/70"
+			>{m.inv_line_items_total_prefix()}</span
+		>
+		<span class="ml-2 font-semibold tabular-nums">{totalCount}</span>
 	</div>
 {/snippet}
 
 {#if noCard}
-	<div class="flex min-w-0 flex-col gap-4">
-		{@render inner()}
-	</div>
+	{@render inner()}
 {:else}
 	<WashCard>
-		<WashCardBody className="gap-4">
+		<WashCardBody className="gap-3">
 			{@render inner()}
 		</WashCardBody>
 	</WashCard>
