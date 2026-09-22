@@ -1,7 +1,4 @@
 <script lang="ts">
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
@@ -14,7 +11,6 @@
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import NewOwnerModal from '$lib/component/own/snippet/modal/NewOwnerModal.svelte';
 	import EditOwnerModal from '$lib/component/own/snippet/modal/EditOwnerModal.svelte';
 	import { EditOwnerModalState } from '$lib/state/edit-owner-modal.state.svelte';
@@ -209,96 +205,73 @@
 	});
 </script>
 
-<div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.owner_management()}</h1>
-		<WashButton
-			className="btn-primary"
-			onClick={openNewOwnerModal}
-			loading={createLock.pending}
-			disabled={editLock.pending || deleteLock.pending}
-		>
-			<LucidePlus />
-			{m.new_owner()}
-		</WashButton>
-	</div>
-
-	<WashCard>
-		<WashCardBody>
-			{#if owners.length === 0 && !isLoading}
-				<p class="py-8 text-center text-base-content/70">
-					{m.no_owners_yet()}
-				</p>
-			{:else}
-				<div class={TableEnum.HEIGHT}>
-					<MenziesTable
-						rows={owners}
-						columns={ownerColumns}
-						{isLoading}
-						bind:pageSize={pageSizeStr}
-						bind:currentPage
-						totalRowCount={totalOwners}
-						showRefreshButton={false}
-						emptyMessage={m.no_owners_yet()}
-						showRowActions={true}
-						actionsHeader={m.actions()}
-						actionsVariant="none"
-						enableColumnFilters={true}
-						useRemoteFilters={true}
-						on:pageSizeChange={() => {
-							currentPage = 1;
-							loadOwners();
-						}}
-						on:pageChange={() => loadOwners()}
-						on:filtersChange={(event) => {
-							if (filterDebounceTimeout) {
-								clearTimeout(filterDebounceTimeout);
-							}
-							tableFilters = event.detail.filters;
-							currentPage = 1;
-							filterDebounceTimeout = setTimeout(() => {
-								loadOwners();
-							}, 350);
-						}}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							{@const ownerRow = row as UserListRow}
-							<MenziesTableRowActionGroup>
-								<MenziesTableIconAction
-									tooltipText={m.menzies_table_tooltip_edit()}
-									color="accent"
-									loading={editingOwnerId === ownerRow.id}
-									disabled={createLock.pending ||
-										deleteLock.pending ||
-										(editLock.pending &&
-											editingOwnerId !== ownerRow.id)}
-									loadingText=""
-									onClick={() => openEditOwnerModal(ownerRow)}
-								>
-									{#snippet icon()}
-										<LucidePencil className="size-4" />
-									{/snippet}
-								</MenziesTableIconAction>
-								<MenziesTableIconAction
-									tooltipText={m.menzies_table_tooltip_delete()}
-									color="error"
-									loading={deletingOwnerId === ownerRow.id}
-									disabled={createLock.pending ||
-										editLock.pending ||
-										(deleteLock.pending &&
-											deletingOwnerId !== ownerRow.id)}
-									loadingText=""
-									onClick={() => handleDelete(ownerRow)}
-								>
-									{#snippet icon()}
-										<LucideTrash2 className="size-4" />
-									{/snippet}
-								</MenziesTableIconAction>
-							</MenziesTableRowActionGroup>
-						{/snippet}
-					</MenziesTable>
-				</div>
-			{/if}
-		</WashCardBody>
-	</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title={m.owner_management()}
+		showAddButton={true}
+		addLabel={m.new_owner()}
+		addDisabled={createLock.pending || editLock.pending || deleteLock.pending}
+		onAdd={openNewOwnerModal}
+		rows={owners}
+		columns={ownerColumns}
+		{isLoading}
+		bind:pageSize={pageSizeStr}
+		bind:currentPage
+		totalRowCount={totalOwners}
+		showRefreshButton={false}
+		emptyMessage={m.no_owners_yet()}
+		showRowActions={true}
+		actionsHeader={m.actions()}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			loadOwners();
+		}}
+		on:pageChange={() => loadOwners()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
+				loadOwners();
+			}, 350);
+		}}
+	>
+		{#snippet rowActions(row, rowIndex)}
+			{@const ownerRow = row as UserListRow}
+			<MenziesTableRowActionGroup>
+				<MenziesTableIconAction
+					tooltipText={m.menzies_table_tooltip_edit()}
+					color="accent"
+					loading={editingOwnerId === ownerRow.id}
+					disabled={createLock.pending ||
+						deleteLock.pending ||
+						(editLock.pending && editingOwnerId !== ownerRow.id)}
+					loadingText=""
+					onClick={() => openEditOwnerModal(ownerRow)}
+				>
+					{#snippet icon()}
+						<LucidePencil className="size-4" />
+					{/snippet}
+				</MenziesTableIconAction>
+				<MenziesTableIconAction
+					tooltipText={m.menzies_table_tooltip_delete()}
+					color="error"
+					loading={deletingOwnerId === ownerRow.id}
+					disabled={createLock.pending ||
+						editLock.pending ||
+						(deleteLock.pending && deletingOwnerId !== ownerRow.id)}
+					loadingText=""
+					onClick={() => handleDelete(ownerRow)}
+				>
+					{#snippet icon()}
+						<LucideTrash2 className="size-4" />
+					{/snippet}
+				</MenziesTableIconAction>
+			</MenziesTableRowActionGroup>
+		{/snippet}
+	</MenziesTable>
 </div>

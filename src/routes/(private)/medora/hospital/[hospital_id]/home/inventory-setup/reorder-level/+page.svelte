@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -305,41 +303,21 @@
 </script>
 
 <div class="space-y-4">
-	<div
-		class="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
-	>
-		<div class="space-y-1">
-			<h1 class="text-lg font-semibold">
-				{m.inv_reorder_level_title()}
-			</h1>
-			<p class="text-sm opacity-70">
-				{m.inv_reorder_level_subtitle()}
-			</p>
-		</div>
-
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-			<WashButton
-				type="button"
-				className="btn-sm btn-primary"
-				disabled={isLoading}
-				onClick={() => void openCreateDialog()}
-			>
-				{m.inv_reorder_level_add()}
-			</WashButton>
-		</div>
-	</div>
-
 	{#if loadError}
 		<div class="alert alert-error">
 			<span>{loadError}</span>
 		</div>
 	{/if}
 
-	<WashCard>
-		<WashCardBody className="p-0">
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					{rows}
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.inv_reorder_level_title()}
+			description={m.inv_reorder_level_subtitle()}
+			showAddButton={true}
+			addLabel={m.inv_reorder_level_add()}
+			addDisabled={isLoading}
+			onAdd={() => void openCreateDialog()}
+			{rows}
 					{columns}
 					{isLoading}
 					showRefreshButton={true}
@@ -385,8 +363,6 @@
 							</div>
 						</td>
 					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+		</MenziesTable>
+	</div>
 </div>

@@ -3,7 +3,6 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import MenziesTable, {
@@ -646,127 +645,101 @@
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
 		/>
+	{:else if !visit}
+		<WashAlert
+			type={StatusColorEnum.WARNING}
+			message="Visit not found."
+		/>
 	{:else}
-		<WashCard>
-			<div class="p-3">
-				{#if !visit}
-					<WashAlert
-						type={StatusColorEnum.WARNING}
-						message="Visit not found."
-					/>
-				{:else}
-					<div
-						class="mb-3 flex flex-wrap items-center justify-between gap-3"
-					>
-						<div>
-							<h2 class="text-lg font-semibold">Nursing Complete</h2>
-							<p class="text-sm text-base-content/70">
-								Service items and charges for this visit
-								{visit.visitNo ? `(Visit: ${visit.visitNo})` : ''}
-							</p>
-						</div>
-						<div class="flex flex-wrap items-center gap-2 text-sm">
-							<span class="rounded bg-base-200 px-2 py-1"
-								>Subtotal: {formatMoneyAmount(subtotal)}</span
-							>
-							<span class="rounded bg-base-200 px-2 py-1"
-								>Tax: {formatMoneyAmount(totalTax)}</span
-							>
-							<span
-								class="rounded bg-primary/20 px-2 py-1 font-semibold"
-								>Grand Total: {formatMoneyAmount(grandTotal)}</span
-							>
+		<div class={TableEnum.HEIGHT}>
+			<MenziesTable
+				title="Nursing Complete"
+				description={`Service items and charges for this visit${visit.visitNo ? ` (Visit: ${visit.visitNo})` : ''}`}
+				{rows}
+				{columns}
+				{isLoading}
+				bind:pageSize={pageSizeStr}
+				bind:currentPage
+				totalRowCount={totalRows}
+				showRefreshButton={true}
+				refreshTooltip="Refresh data"
+				emptyMessage="No service items found for this visit yet."
+				showRowActions={true}
+				actionsHeader="Actions"
+				actionsVariant="none"
+				enableColumnFilters={true}
+				columnFilters={tableFilters}
+				on:refresh={() => fetchNursingComplete({ force: true })}
+				on:pageSizeChange={() => {
+					if (!initialized) return;
+					currentPage = 1;
+					fetchNursingComplete();
+				}}
+				on:pageChange={() => {
+					if (!initialized) return;
+					fetchNursingComplete();
+				}}
+				on:filtersChange={(event) => {
+					if (filterDebounceTimeout) {
+						clearTimeout(filterDebounceTimeout);
+					}
+					tableFilters = event.detail.filters;
+					if (!initialized) return;
+					currentPage = 1;
+					filterDebounceTimeout = setTimeout(() => {
+						fetchNursingComplete();
+					}, 350);
+				}}
+			>
+				{#snippet headerActions()}
+					<div class="flex flex-wrap items-center gap-2 text-sm">
+						<span class="rounded bg-base-200 px-2 py-1"
+							>Subtotal: {formatMoneyAmount(subtotal)}</span
+						>
+						<span class="rounded bg-base-200 px-2 py-1"
+							>Tax: {formatMoneyAmount(totalTax)}</span
+						>
+						<span class="rounded bg-primary/20 px-2 py-1 font-semibold"
+							>Grand Total: {formatMoneyAmount(grandTotal)}</span
+						>
+						<WashButton
+							className="btn-outline btn-sm"
+							onClick={printNursingComplete}
+							disabled={!canPrintNursing}
+						>
+							<LucidePrinter className="mr-1 size-4" />
+							Print
+						</WashButton>
+						{#if nursingIncompleteCount > 1}
 							<WashButton
-								className="btn-outline btn-sm"
-								onClick={printNursingComplete}
-								disabled={!canPrintNursing}
+								className="btn-primary btn-sm"
+								onClick={handleCompleteNextBatch}
+								disabled={!canCompleteNextBatch}
 							>
-								<LucidePrinter className="mr-1 size-4" />
-								Print
+								<LucideCircleCheck className="mr-1 size-4" />
+								Complete next batch (up to {pageSizeNumber})
 							</WashButton>
-							{#if nursingIncompleteCount > 1}
-								<WashButton
-									className="btn-primary btn-sm"
-									onClick={handleCompleteNextBatch}
-									disabled={!canCompleteNextBatch}
-								>
-									<LucideCircleCheck className="mr-1 size-4" />
-									Complete next batch (up to {pageSizeNumber})
-								</WashButton>
-							{/if}
-						</div>
+						{/if}
 					</div>
-
-					{#if rows.length === 0 && !isLoading}
-						<WashAlert
-							type={StatusColorEnum.INFO}
-							message="No service items found for this visit yet."
-						/>
+				{/snippet}
+				{#snippet rowActions(row, rowIndex)}
+					{@const typedRow = row as NursingCompleteRow}
+					{#if typedRow.nursingCompleteTime}
+						<span class="badge badge-sm badge-success">Completed</span>
 					{:else}
-						<div class="{TableEnum.HEIGHT} flex flex-col gap-3">
-							<MenziesTable
-								{rows}
-								{columns}
-								{isLoading}
-								bind:pageSize={pageSizeStr}
-								bind:currentPage
-								totalRowCount={totalRows}
-								showRefreshButton={true}
-								refreshTooltip="Refresh data"
-								emptyMessage="No service items."
-								showRowActions={true}
-								actionsHeader="Actions"
-								actionsVariant="none"
-								enableColumnFilters={true}
-								columnFilters={tableFilters}
-								useRemoteFilters={true}
-								on:refresh={() =>
-									fetchNursingComplete({ force: true })}
-								on:pageSizeChange={() => {
-									if (!initialized) return;
-									currentPage = 1;
-									fetchNursingComplete();
-								}}
-								on:pageChange={() => {
-									if (!initialized) return;
-									fetchNursingComplete();
-								}}
-								on:filtersChange={(event) => {
-									if (filterDebounceTimeout) {
-										clearTimeout(filterDebounceTimeout);
-									}
-									tableFilters = event.detail.filters;
-									if (!initialized) return;
-									currentPage = 1;
-									filterDebounceTimeout = setTimeout(() => {
-										fetchNursingComplete();
-									}, 350);
-								}}
-							>
-								{#snippet rowActions(row, rowIndex)}
-									{@const typedRow = row as NursingCompleteRow}
-									{#if typedRow.nursingCompleteTime}
-										<span class="badge badge-sm badge-success"
-											>Completed</span
-										>
-									{:else}
-										<MenziesTableIconAction
-											tooltipText="Complete"
-											color="primary"
-											onClick={() => handleComplete(typedRow)}
-										>
-											{#snippet icon()}
-												<LucideCircleCheck className="size-4" />
-											{/snippet}
-										</MenziesTableIconAction>
-									{/if}
-								{/snippet}
-							</MenziesTable>
-						</div>
+						<MenziesTableIconAction
+							tooltipText="Complete"
+							color="primary"
+							onClick={() => handleComplete(typedRow)}
+						>
+							{#snippet icon()}
+								<LucideCircleCheck className="size-4" />
+							{/snippet}
+						</MenziesTableIconAction>
 					{/if}
-				{/if}
-			</div>
-		</WashCard>
+				{/snippet}
+			</MenziesTable>
+		</div>
 	{/if}
 </div>
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CallyDateCalendar from '$lib/component/own/library/cally/CallyDateCalendar.svelte';
+	import WashCalendar from '$lib/component/wash/calendar/WashCalendar.svelte';
 
 	let {
 		id,
@@ -51,11 +51,11 @@
 
 	const popoverId = $derived(
 		isDateType
-			? `cally-popover-${id ?? crypto.randomUUID().slice(0, 8)}`
+			? `wash-cal-popover-${id ?? crypto.randomUUID().slice(0, 8)}`
 			: ''
 	);
 	const anchorName = $derived(
-		isDateType ? `--cally-anchor-${id ?? popoverId}` : ''
+		isDateType ? `--wash-cal-anchor-${id ?? popoverId}` : ''
 	);
 
 	/** Native inputs are skipped by Design overflow marquee; use title when text overflows. */
@@ -72,7 +72,7 @@
 			text && el.scrollWidth > el.clientWidth + 1 ? text : undefined;
 	}
 
-	function handleCallyChange(next: string) {
+	function handleCalendarChange(next: string) {
 		value = next;
 		const popover = document.getElementById(
 			popoverId
@@ -124,13 +124,16 @@
 		class="dropdown rounded-box bg-base-100 p-3 shadow-lg"
 		style="position-anchor:{anchorName}"
 	>
-		<CallyDateCalendar
+		<WashCalendar
+			mode="single"
 			bind:value
 			{min}
 			{max}
-			showOutsideDays={true}
-			className="w-full rounded-box border border-base-300 bg-base-100"
-			onChange={handleCallyChange}
+			size="sm"
+			bordered={false}
+			showOutsideDays
+			aria-label="Pick a date"
+			onChange={handleCalendarChange}
 		/>
 	</div>
 {:else if rawStyle}

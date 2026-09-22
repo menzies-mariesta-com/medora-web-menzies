@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import type { StatusListRow } from '$lib/model/type/medora/ui-rows.type';
 	import type { StaffRegDepartmentRow } from '$lib/model/type/medora/staff-reg-ui.type';
 	import { DepartmentModalState } from '$lib/state/department-modal.state.svelte';
@@ -13,7 +11,6 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import MenziesTable, {
@@ -199,82 +196,73 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="text-2xl font-bold">{m.departments()}</h1>
-		<WashButton className="btn-primary" onClick={openCreate}>
-			<LucidePlus />
-			{m.new_department()}
-		</WashButton>
+<div class="space-y-4">
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.departments()}
+			{rows}
+			columns={departmentColumns}
+			{isLoading}
+			bind:pageSize={pageSizeStr}
+			bind:currentPage
+			totalRowCount={total}
+			showRefreshButton={true}
+			refreshTooltip={m.refresh_data()}
+			emptyMessage={m.no_departments_create()}
+			showRowActions={true}
+			actionsHeader={m.actions()}
+			actionsVariant="none"
+			enableColumnFilters={true}
+			showAddButton={true}
+			addLabel={m.new_department()}
+			onAdd={openCreate}
+			on:refresh={() => fetchRows()}
+			on:pageSizeChange={() => {
+				currentPage = 1;
+				fetchRows();
+			}}
+			on:pageChange={() => fetchRows()}
+			on:filtersChange={(event) => {
+				if (filterDebounceTimeout) {
+					clearTimeout(filterDebounceTimeout);
+				}
+				tableFilters = event.detail.filters;
+				currentPage = 1;
+				filterDebounceTimeout = setTimeout(() => {
+					fetchRows();
+				}, 350);
+			}}
+		>
+			{#snippet rowActions(row, _rowIndex)}
+				<MenziesTableEditDeleteActions
+					onEdit={() => openEdit(row)}
+					onDelete={() => handleDelete(row)}
+				/>
+			{/snippet}
+		</MenziesTable>
 	</div>
-
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					{rows}
-					columns={departmentColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage={m.no_departments_create()}
-					showRowActions={true}
-					actionsHeader={m.actions()}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchRows()}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchRows();
-					}}
-					on:pageChange={() => fetchRows()}
-					on:filtersChange={(event) => {
-						if (filterDebounceTimeout) {
-							clearTimeout(filterDebounceTimeout);
-						}
-						tableFilters = event.detail.filters;
-						currentPage = 1;
-						filterDebounceTimeout = setTimeout(() => {
-							fetchRows();
-						}, 350);
-					}}
-				>
-					{#snippet rowActions(row, _rowIndex)}
-						<MenziesTableEditDeleteActions
-							onEdit={() => openEdit(row)}
-							onDelete={() => handleDelete(row)}
-						/>
-					{/snippet}
-				</MenziesTable>
-			</div>
-			{#if totalPages > 1}
-				<div class="mt-4 flex justify-center gap-2">
-					<WashButton
-						className="btn-sm"
-						disabled={currentPage <= 1}
-						onClick={() => goToPage(currentPage - 1)}
-					>
-						{m.previous()}
-					</WashButton>
-					<span class="flex items-center px-2">
-						{m.page()}
-						{currentPage}
-						{m.of()}
-						{totalPages}
-					</span>
-					<WashButton
-						className="btn-sm"
-						disabled={currentPage >= totalPages}
-						onClick={() => goToPage(currentPage + 1)}
-					>
-						{m.next()}
-					</WashButton>
-				</div>
-			{/if}
-		</WashCardBody>
-	</WashCard>
+	{#if totalPages > 1}
+		<div class="flex justify-center gap-2">
+			<WashButton
+				className="btn-sm"
+				disabled={currentPage <= 1}
+				onClick={() => goToPage(currentPage - 1)}
+			>
+				{m.previous()}
+			</WashButton>
+			<span class="flex items-center px-2">
+				{m.page()}
+				{currentPage}
+				{m.of()}
+				{totalPages}
+			</span>
+			<WashButton
+				className="btn-sm"
+				disabled={currentPage >= totalPages}
+				onClick={() => goToPage(currentPage + 1)}
+			>
+				{m.next()}
+			</WashButton>
+		</div>
+	{/if}
 </div>

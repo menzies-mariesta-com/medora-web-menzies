@@ -10,7 +10,6 @@
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -21,7 +20,6 @@
 		PricingFormulaTemplateListRow
 	} from '$lib/model/type/medora/pricing-formula-template.type';
 	import { buildPricingFormulaDisplay } from '$lib/tool/inventory/pricing-formula-display.util';
-	import { applyMenziesTableClientFilters } from '$lib/tool/menzies/menzies-table-client-filter.util';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -47,7 +45,6 @@
 	let editingId = $state<number | null>(null);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
-	let tableFilters = $state<Record<string, string>>({});
 
 	let name = $state('');
 	let description = $state('');
@@ -100,14 +97,14 @@
 			header: m.inv_pricing_template_name(),
 			field: 'name',
 			widthClass: 'w-48 min-w-[12rem]',
-			filterable: true
+			filterable: false
 		},
 		{
 			id: 'formula',
 			header: m.inv_pricing_template_formula(),
 			widthClass: 'min-w-[20rem]',
 			cellClass: 'whitespace-normal align-middle',
-			filterable: true,
+			filterable: false,
 			format: (_v, row) => formulaSummary(row),
 			cellComponentGetter: (row) => ({
 				component: PricingFormulaDisplay,
@@ -123,7 +120,7 @@
 			header: m.inv_pricing_config_msl_markup(),
 			field: 'mslMarkupPercent',
 			widthClass: 'w-28',
-			filterable: true,
+			filterable: false,
 			format: (_v, row) => `${row.mslMarkupPercent}%`
 		},
 		{
@@ -138,27 +135,13 @@
 			header: m.status(),
 			field: 'statusId',
 			widthClass: 'w-32',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: m.active_label(), value: String(StatusEnum.ACTIVE) },
-				{ label: m.inactive_label(), value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
+			filterable: false,
 			format: (_v, row) =>
 				row.statusId === StatusEnum.ACTIVE
 					? m.active_label()
 					: m.inactive_label()
 		}
 	];
-
-	const filteredTemplates = $derived(
-		applyMenziesTableClientFilters(
-			allTemplates as PricingFormulaTemplateListRow[],
-			tableFilters,
-			templateColumns
-		)
-	);
 
 	const formFormulaInput = $derived({
 		includeDiscount,
@@ -324,21 +307,6 @@
 </script>
 
 <div class="flex flex-col gap-4 p-4">
-	<div class="flex flex-wrap items-start justify-between gap-3">
-		<h1 class="text-xl font-semibold">{m.inv_pricing_template_title()}</h1>
-		<WashButton
-			type="button"
-			className="btn-primary btn-sm"
-			onClick={() => {
-				resetForm();
-				showForm = true;
-			}}
-		>
-			<LucidePlus className="size-4" />
-			{m.inv_pricing_template_create()}
-		</WashButton>
-	</div>
-
 	{#if showForm}
 		<WashCard>
 			<WashCardBody>
@@ -437,35 +405,32 @@
 		</WashCard>
 	{/if}
 
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={filteredTemplates}
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.inv_pricing_template_title()}
+			showAddButton={true}
+			addLabel={m.inv_pricing_template_create()}
+			onAdd={() => {
+				resetForm();
+				showForm = true;
+			}}
+			rows={allTemplates}
 					columns={templateColumns}
 					{isLoading}
 					bind:pageSize={pageSizeStr}
 					bind:currentPage
-					bind:columnFilters={tableFilters}
 					showRefreshButton={true}
 					refreshTooltip={m.refresh_data()}
 					emptyMessage="—"
 					showRowActions={true}
 					actionsVariant="crud"
-					enableColumnFilters={true}
-					useRemoteFilters={false}
+					enableColumnFilters={false}
 					crudDeleteDisabled={(row) =>
 						(row as PricingFormulaTemplateListRow).isSystemDefault}
 					on:refresh={() => loadTemplates()}
 					on:view={(e) => void openView(e.detail)}
 					on:edit={(e) => loadTemplateIntoForm(e.detail)}
 					on:delete={(e) => void handleDelete(e.detail)}
-					on:filtersChange={(e) => {
-						tableFilters = e.detail.filters;
-						currentPage = 1;
-					}}
-				/>
-			</div>
-		</WashCardBody>
-	</WashCard>
+		/>
+	</div>
 </div>

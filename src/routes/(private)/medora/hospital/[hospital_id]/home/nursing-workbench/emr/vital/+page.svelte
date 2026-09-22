@@ -1,17 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { VitalRecordDialogState } from '$lib/state/vital-record-dialog.state.svelte';
 	import LVitalRecordDialogContent from '$lib/component/own/local/private/medora/emr/LVitalRecordDialogContent.svelte';
-	import WashCollapseTitle from '$lib/component/wash/collapse/title/WashCollapseTitle.svelte';
-	import WashCollapseContent from '$lib/component/wash/collapse/content/WashCollapseContent.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import type { PatientDiagnosisListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -468,97 +461,75 @@
 			type={StatusColorEnum.WARNING}
 			message="Visit not found."
 		/>
+	{:else if !visit}
+		<div
+			class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
+		>
+			Loading visit…
+		</div>
 	{:else}
-		<WashCard>
-			<WashCardBody className="p-3 m-0=">
-				<div
-					class="mb-2 flex flex-wrap items-center justify-between gap-3"
-				>
-					<WashCardBodyTitle className="mb-0">
-						Patient vitals (all visits)
-					</WashCardBodyTitle>
-					<WashButton
-						className="btn-primary btn-sm gap-1.5"
-						onClick={openRecordDialog}
-					>
-						<LucidePlus className="size-4 shrink-0" />
-						Record new vitals
-					</WashButton>
-				</div>
-				{#if !visit}
-					<div
-						class="flex min-h-32 items-center justify-center text-sm text-base-content/70"
-					>
-						Loading visit…
-					</div>
-				{:else if vitals.length === 0 && !isLoadingVitals}
-					<p class="text-sm text-base-content/70">
-						No vitals recorded for this patient yet.
-					</p>
-				{:else}
-					<div class="flex flex-col gap-3 {TableEnum.HEIGHT}">
-						<MenziesTable
-							rows={vitals}
-							columns={vitalColumns}
-							isLoading={isLoadingVisit || isLoadingVitals}
-							bind:pageSize={pageSizeStr}
-							bind:currentPage
-							totalRowCount={totalVitals}
-							showRefreshButton={true}
-							emptyMessage="No vitals."
-							showRowActions={true}
-							actionsHeader="Actions"
-							actionsVariant="none"
-							enableColumnFilters={true}
-							columnFilters={tableFilters}
-							useRemoteFilters={true}
-							on:refresh={() => {
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchVitals(visit.patientId, visit.hospitalId, {
-										force: true
-									});
-								}
-							}}
-							on:pageSizeChange={() => {
-								if (pageSizeStr === lastHandledPageSize) {
-									return;
-								}
-								lastHandledPageSize = pageSizeStr;
-								currentPage = 1;
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchVitals(visit.patientId, visit.hospitalId);
-								}
-							}}
-							on:pageChange={() => {
-								if (visit?.patientId && visit?.hospitalId) {
-									fetchVitals(visit.patientId, visit.hospitalId);
-								}
-							}}
-							on:filtersChange={(event) => {
-								if (filterDebounceTimeout) {
-									clearTimeout(filterDebounceTimeout);
-								}
-								tableFilters = event.detail.filters;
-								currentPage = 1;
-								filterDebounceTimeout = setTimeout(() => {
-									if (visit?.patientId && visit?.hospitalId) {
-										fetchVitals(visit.patientId, visit.hospitalId);
-									}
-								}, 350);
-							}}
-						>
-							{#snippet rowActions(row, rowIndex)}
-								<MenziesTableEditDeleteActions
-									onEdit={() =>
-										openEditDialog(row as PatientVitalWithVisit)}
-									onDelete={() =>
-										handleDeleteVital(row as PatientVitalWithVisit)}
-								/>
-							{/snippet}
-						</MenziesTable>
-					</div>
-				{/if}
-			</WashCardBody>
-		</WashCard>
+		<div class={TableEnum.HEIGHT}>
+			<MenziesTable
+				title="Patient vitals (all visits)"
+				showAddButton={true}
+				addLabel="Record new vitals"
+				onAdd={openRecordDialog}
+				rows={vitals}
+				columns={vitalColumns}
+				isLoading={isLoadingVisit || isLoadingVitals}
+				bind:pageSize={pageSizeStr}
+				bind:currentPage
+				totalRowCount={totalVitals}
+				showRefreshButton={true}
+				emptyMessage="No vitals recorded for this patient yet."
+				showRowActions={true}
+				actionsHeader="Actions"
+				actionsVariant="none"
+				enableColumnFilters={true}
+				columnFilters={tableFilters}
+				on:refresh={() => {
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchVitals(visit.patientId, visit.hospitalId, {
+							force: true
+						});
+					}
+				}}
+				on:pageSizeChange={() => {
+					if (pageSizeStr === lastHandledPageSize) {
+						return;
+					}
+					lastHandledPageSize = pageSizeStr;
+					currentPage = 1;
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchVitals(visit.patientId, visit.hospitalId);
+					}
+				}}
+				on:pageChange={() => {
+					if (visit?.patientId && visit?.hospitalId) {
+						fetchVitals(visit.patientId, visit.hospitalId);
+					}
+				}}
+				on:filtersChange={(event) => {
+					if (filterDebounceTimeout) {
+						clearTimeout(filterDebounceTimeout);
+					}
+					tableFilters = event.detail.filters;
+					currentPage = 1;
+					filterDebounceTimeout = setTimeout(() => {
+						if (visit?.patientId && visit?.hospitalId) {
+							fetchVitals(visit.patientId, visit.hospitalId);
+						}
+					}, 350);
+				}}
+			>
+				{#snippet rowActions(row, rowIndex)}
+					<MenziesTableEditDeleteActions
+						onEdit={() => openEditDialog(row as PatientVitalWithVisit)}
+						onDelete={() =>
+							handleDeleteVital(row as PatientVitalWithVisit)}
+					/>
+				{/snippet}
+			</MenziesTable>
+		</div>
 	{/if}
 </div>

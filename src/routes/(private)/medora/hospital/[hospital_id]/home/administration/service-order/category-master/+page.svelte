@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -130,42 +128,36 @@
 	});
 </script>
 
-<div class="space-y-6">
-	<WashCard>
-		<WashCardBody>
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={categories}
-					columns={categoryColumns}
-					{isLoading}
-					bind:pageSize={pageSizeStr}
-					bind:currentPage
-					totalRowCount={total}
-					showRefreshButton={true}
-					refreshTooltip={m.refresh_data()}
-					emptyMessage="No categories."
-					showRowActions={false}
-					actionsVariant="none"
-					enableColumnFilters={true}
-					useRemoteFilters={true}
-					on:refresh={() => fetchCategories(true)}
-					on:pageSizeChange={() => {
-						currentPage = 1;
-						fetchCategories(true);
-					}}
-					on:pageChange={() => fetchCategories(true)}
-					on:filtersChange={(event) => {
-						if (filterDebounceTimeout) {
-							clearTimeout(filterDebounceTimeout);
-						}
-						tableFilters = event.detail.filters;
-						currentPage = 1;
-						filterDebounceTimeout = setTimeout(() => {
-							fetchCategories(true);
-						}, 350);
-					}}
-				/>
-			</div>
-		</WashCardBody>
-	</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title="Category Master"
+		rows={categories}
+		columns={categoryColumns}
+		{isLoading}
+		bind:pageSize={pageSizeStr}
+		bind:currentPage
+		totalRowCount={total}
+		showRefreshButton={true}
+		refreshTooltip={m.refresh_data()}
+		emptyMessage="No categories."
+		showRowActions={false}
+		actionsVariant="none"
+		enableColumnFilters={true}
+		on:refresh={() => fetchCategories(true)}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchCategories(true);
+		}}
+		on:pageChange={() => fetchCategories(true)}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
+				fetchCategories(true);
+			}, 350);
+		}}
+	/>
 </div>

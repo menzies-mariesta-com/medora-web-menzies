@@ -2,8 +2,6 @@
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -194,36 +192,6 @@
 	});
 </script>
 
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-	<h1 class="text-lg font-semibold">Expired / expiring lots</h1>
-	<div class="join">
-		<WashButton
-			type="button"
-			className="join-item btn-sm {mode === 'expired'
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				mode = 'expired';
-			}}
-		>
-			Expired
-		</WashButton>
-		<WashButton
-			type="button"
-			className="join-item btn-sm {mode === 'expiringSoon'
-				? 'btn-primary'
-				: 'btn-outline'}"
-			disabled={loading}
-			onClick={() => {
-				mode = 'expiringSoon';
-			}}
-		>
-			Expiring soon ({daysSoon} days)
-		</WashButton>
-	</div>
-</div>
-
 {#if errorMessage}
 	<div class="mb-3">
 		<WashAlert
@@ -234,30 +202,56 @@
 	</div>
 {/if}
 
-<WashCard>
-	<WashCardBody className="p-0">
-		<div class={TableEnum.HEIGHT}>
-			<MenziesTable
-				{columns}
-				{rows}
-				masterFilterHospitalId={hospitalId}
-				isLoading={loading}
-				enableColumnFilters={true}
-				bind:columnFilters
-				showRefreshButton={true}
-				enableExport={true}
-				{exportConfig}
-				on:refresh={() => void load()}
-				on:filtersChange={(event) => {
-					if (filterDebounceTimeout)
-						clearTimeout(filterDebounceTimeout);
-					columnFilters = event.detail.filters;
-					filterDebounceTimeout = setTimeout(
-						() => void load(),
-						350
-					);
-				}}
-			/>
-		</div>
-	</WashCardBody>
-</WashCard>
+<div class={TableEnum.HEIGHT}>
+	<MenziesTable
+		title="Expired / expiring lots"
+		{columns}
+		{rows}
+		masterFilterHospitalId={hospitalId}
+		isLoading={loading}
+		enableColumnFilters={true}
+		bind:columnFilters
+		showRefreshButton={true}
+		enableExport={true}
+		{exportConfig}
+		on:refresh={() => void load()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout)
+				clearTimeout(filterDebounceTimeout);
+			columnFilters = event.detail.filters;
+			filterDebounceTimeout = setTimeout(
+				() => void load(),
+				350
+			);
+		}}
+	>
+		{#snippet headerActions()}
+			<div class="join">
+				<WashButton
+					type="button"
+					className="join-item btn-sm {mode === 'expired'
+						? 'btn-primary'
+						: 'btn-outline'}"
+					disabled={loading}
+					onClick={() => {
+						mode = 'expired';
+					}}
+				>
+					Expired
+				</WashButton>
+				<WashButton
+					type="button"
+					className="join-item btn-sm {mode === 'expiringSoon'
+						? 'btn-primary'
+						: 'btn-outline'}"
+					disabled={loading}
+					onClick={() => {
+						mode = 'expiringSoon';
+					}}
+				>
+					Expiring soon ({daysSoon} days)
+				</WashButton>
+			</div>
+		{/snippet}
+	</MenziesTable>
+</div>

@@ -3,7 +3,6 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -286,82 +285,62 @@
 </script>
 
 {#if viewMode === 'list'}
-	<div
-		class="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center"
-	>
-		<div>
-			<h1 class="text-lg font-semibold">
-				{m.inv_page_approval_config_title()}
-			</h1>
-			<p class="text-sm text-base-content/70">
-				{m.inv_approval_config_intro()}
-			</p>
-			<p class="mt-1 text-sm font-medium text-base-content/80">
-				{invApprovalModuleLabel(module)}
-			</p>
-		</div>
-		<div class="flex items-center gap-3">
-			<label class="form-control w-full max-w-xs">
-				<div class="label">
-					<span class="label-text">{m.inv_common_store()}</span>
-				</div>
-				<WashSelect className="select-sm" bind:value={storeId}>
-					{#each stores as s (s.id)}
-						<option value={s.id}>{s.storeName ?? s.id}</option>
-					{/each}
-				</WashSelect>
-			</label>
-			<label class="form-control w-full max-w-sm min-w-48">
-				<div class="label">
-					<span class="label-text"
-						>{m.inv_approval_config_module_label()}</span
-					>
-				</div>
-				<WashSelect className="select-sm" bind:value={module}>
-					<option value="PR"
-						>{m.inv_approval_config_module_pr()}</option
-					>
-					<option value="PO"
-						>{m.inv_approval_config_module_po()}</option
-					>
-					<option value="DI"
-						>{m.inv_approval_config_module_di()}</option
-					>
-					<option value="DISS"
-						>{m.inv_approval_config_module_diss()}</option
-					>
-					<option value="RFS"
-						>{m.inv_approval_config_module_rfs()}</option
-					>
-					<option value="GRN"
-						>{m.inv_approval_config_module_grn()}</option
-					>
-					<option value="DC"
-						>{m.inv_approval_config_module_dc()}</option
-					>
-				</WashSelect>
-			</label>
-			<div class="mt-7 flex items-end">
-				<WashButton
-					className="btn-primary btn-sm"
-					disabled={items.length > 0}
-					onClick={startCreate}
-				>
-					<LucidePlus className="size-4" />
-					Create
-				</WashButton>
-			</div>
-		</div>
-	</div>
-
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
+			title={m.inv_page_approval_config_title()}
+			description={`${m.inv_approval_config_intro()} ${invApprovalModuleLabel(module)}`}
+			showAddButton={true}
+			addLabel="Create"
+			addDisabled={items.length > 0}
+			onAdd={startCreate}
 			{columns}
 			rows={items}
 			{isLoading}
 			showRowActions={true}
 			actionsVariant="none"
 		>
+			{#snippet headerActions()}
+				<label class="form-control w-full max-w-xs">
+					<div class="label py-0">
+						<span class="label-text text-xs">{m.inv_common_store()}</span>
+					</div>
+					<WashSelect className="select-sm" bind:value={storeId}>
+						{#each stores as s (s.id)}
+							<option value={s.id}>{s.storeName ?? s.id}</option>
+						{/each}
+					</WashSelect>
+				</label>
+				<label class="form-control w-full max-w-sm min-w-48">
+					<div class="label py-0">
+						<span class="label-text text-xs"
+							>{m.inv_approval_config_module_label()}</span
+						>
+					</div>
+					<WashSelect className="select-sm" bind:value={module}>
+						<option value="PR"
+							>{m.inv_approval_config_module_pr()}</option
+						>
+						<option value="PO"
+							>{m.inv_approval_config_module_po()}</option
+						>
+						<option value="DI"
+							>{m.inv_approval_config_module_di()}</option
+						>
+						<option value="DISS"
+							>{m.inv_approval_config_module_diss()}</option
+						>
+						<option value="RFS"
+							>{m.inv_approval_config_module_rfs()}</option
+						>
+						<option value="GRN"
+							>{m.inv_approval_config_module_grn()}</option
+						>
+						<option value="DC"
+							>{m.inv_approval_config_module_dc()}</option
+						>
+					</WashSelect>
+				</label>
+			{/snippet}
 			{#snippet rowActions(row, rowIndex)}
 				<div data-row-index={rowIndex}>
 					<MenziesTableEditDeleteActions

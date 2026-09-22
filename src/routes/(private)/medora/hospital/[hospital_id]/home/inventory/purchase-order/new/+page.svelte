@@ -8,7 +8,6 @@
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
@@ -1079,22 +1078,6 @@
 					</WashButton>
 				</div>
 			{/snippet}
-			{#snippet manualPoLinesToolbarPlus()}
-				<WashTooltip
-					tooltipText={m.inv_line_items_add()}
-					className="tooltip-ghost"
-				>
-					<WashButton
-						type="button"
-						className="btn-primary btn-square btn-outline"
-						disabled={createSubmitting}
-						title={m.inv_line_items_add()}
-						onClick={() => void openManualLineDialogForCreate()}
-					>
-						<LucidePlus className="size-4" />
-					</WashButton>
-				</WashTooltip>
-			{/snippet}
 			<fieldset class="m-0 min-w-0 border-0 p-0">
 				<div class="mb-5 flex items-center gap-2">
 					<WashTooltip
@@ -1270,9 +1253,8 @@
 					rows={manualLines}
 					useColumnFilters={true}
 					hideQuickFilter={true}
-					hideAddButton={true}
 					noCard={true}
-					toolbarRight={manualPoLinesToolbarPlus}
+					addDisabled={createSubmitting}
 					onAddItem={() => void openManualLineDialogForCreate()}
 					onEditLine={(line) =>
 						void openManualLineDialogForEdit(line)}

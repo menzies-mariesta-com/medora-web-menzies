@@ -14,7 +14,6 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import InventoryTablePickerDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryTablePickerDialogContent.svelte';
 	import PoManualLinesCard from '$lib/component/own/local/private/medora/inventory/purchase-order/PoManualLinesCard.svelte';
@@ -885,22 +884,6 @@
 					void submitCreate();
 				}}
 			>
-				{#snippet manualLinesToolbarRight()}
-					<WashTooltip
-						tooltipText={m.inv_line_items_add()}
-						className="tooltip-ghost"
-					>
-						<WashButton
-							type="button"
-							className="btn-primary btn-square btn-outline"
-							disabled={submitting}
-							title={m.inv_line_items_add()}
-							onClick={() => void openLineDialogForCreate()}
-						>
-							<LucidePlus className="size-4" />
-						</WashButton>
-					</WashTooltip>
-				{/snippet}
 				<div
 					class="mb-6 flex flex-wrap items-center justify-end gap-3 border-b border-base-200 pb-6"
 				>
@@ -979,8 +962,7 @@
 					}))}
 					useColumnFilters={true}
 					hideQuickFilter={true}
-					hideAddButton={true}
-					toolbarRight={manualLinesToolbarRight}
+					addDisabled={submitting}
 					onAddItem={() => void openLineDialogForCreate()}
 					onEditLine={(line) => void openLineDialogForEdit(line)}
 					onDeleteLine={deleteLine}
@@ -1096,38 +1078,40 @@
 					{:else if !indentPreviewLines || indentPreviewLines.length === 0}
 						<div class="text-xs text-base-content/70">—</div>
 					{:else}
-						<MenziesTable
-							rows={indentPreviewLines}
-							columns={[
-								{
-									id: 'itemName',
-									header: m.inv_common_item(),
-									field: 'itemName',
-									filterable: false,
-									format: (_v, r: DepartmentIndentDetailLine) =>
-										r.itemName ?? '—'
-								},
-								{
-									id: 'quantity',
-									header: m.inv_common_quantity(),
-									field: 'quantity',
-									filterable: false,
-									format: (_v, r: DepartmentIndentDetailLine) =>
-										r.quantity
-								},
-								{
-									id: 'unitName',
-									header: m.inv_common_unit(),
-									field: 'unitName',
-									filterable: false,
-									format: (_v, r: DepartmentIndentDetailLine) =>
-										r.unitName ?? '—'
-								}
-							] as MenziesTableColumn[]}
-							showRowActions={false}
-							actionsVariant="none"
-							showRefreshButton={false}
-						/>
+						<div class="h-[420px] min-h-0">
+							<MenziesTable
+								rows={indentPreviewLines}
+								columns={[
+									{
+										id: 'itemName',
+										header: m.inv_common_item(),
+										field: 'itemName',
+										filterable: false,
+										format: (_v, r: DepartmentIndentDetailLine) =>
+											r.itemName ?? '—'
+									},
+									{
+										id: 'quantity',
+										header: m.inv_common_quantity(),
+										field: 'quantity',
+										filterable: false,
+										format: (_v, r: DepartmentIndentDetailLine) =>
+											r.quantity
+									},
+									{
+										id: 'unitName',
+										header: m.inv_common_unit(),
+										field: 'unitName',
+										filterable: false,
+										format: (_v, r: DepartmentIndentDetailLine) =>
+											r.unitName ?? '—'
+									}
+								] as MenziesTableColumn[]}
+								showRowActions={false}
+								actionsVariant="none"
+								showRefreshButton={false}
+							/>
+						</div>
 					{/if}
 				</div>
 
@@ -1140,33 +1124,35 @@
 					<p class="mb-3 text-xs opacity-70">
 						{m.inv_dc_modal_batch_help()}
 					</p>
-					<MenziesTable
-						rows={indentCreateLines}
-						columns={lineColumns as MenziesTableColumn[]}
-						showRefreshButton={false}
-						enableColumnFilters={false}
-						showRowActions={true}
-						actionsVariant="none"
-					>
-						{#snippet rowActions(_row, index)}
-							{@const ln = indentCreateLines[index]}
-							<WashTooltip
-								tooltipText={m.inv_line_items_tooltip_edit()}
-								className="tooltip-accent"
-							>
-								<WashButton
-									type="button"
-									className="btn-xs btn-ghost btn-square text-accent"
-									disabled={!ln || submitting}
-									onClick={() => {
-										if (ln) void openIndentLineDialogForEdit(ln);
-									}}
+					<div class="h-[420px] min-h-0">
+						<MenziesTable
+							rows={indentCreateLines}
+							columns={lineColumns as MenziesTableColumn[]}
+							showRefreshButton={false}
+							enableColumnFilters={false}
+							showRowActions={true}
+							actionsVariant="none"
+						>
+							{#snippet rowActions(_row, index)}
+								{@const ln = indentCreateLines[index]}
+								<WashTooltip
+									tooltipText={m.inv_line_items_tooltip_edit()}
+									className="tooltip-accent"
 								>
-									<LucidePencil className="size-3.5" />
-								</WashButton>
-							</WashTooltip>
-						{/snippet}
-					</MenziesTable>
+									<WashButton
+										type="button"
+										className="btn-xs btn-ghost btn-square text-accent"
+										disabled={!ln || submitting}
+										onClick={() => {
+											if (ln) void openIndentLineDialogForEdit(ln);
+										}}
+									>
+										<LucidePencil className="size-3.5" />
+									</WashButton>
+								</WashTooltip>
+							{/snippet}
+						</MenziesTable>
+					</div>
 				</div>
 			{/if}
 		{/if}

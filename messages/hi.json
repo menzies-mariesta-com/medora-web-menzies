@@ -118,6 +118,15 @@
 	"support": "सहायता",
 	"theme": "थीम",
 	"languages": "भाषाएँ",
+	"change_appearance": "रूप बदलें",
+	"appearance_pigment": "पिगमेंट",
+	"appearance_select_pigment": "पिगमेंट चुनें",
+	"appearance_mode": "मोड",
+	"appearance_select_mode": "मोड चुनें",
+	"appearance_mode_light": "लाइट",
+	"appearance_mode_dark": "डार्क",
+	"appearance_font_style": "फ़ॉन्ट शैली",
+	"appearance_select_font_style": "फ़ॉन्ट शैली चुनें",
 	"change_language": "भाषा बदलें",
 	"select_language": "भाषा चुनें",
 	"not_found": "नहीं मिला",
@@ -880,5 +889,9 @@
 	"auth_2fa_account_backup_regen_hint": "Enter your password. Previous backup codes will stop working.",
 	"auth_2fa_account_backup_regen_success": "New backup codes are ready. Save them somewhere safe.",
 	"auth_2fa_account_password_confirm": "Confirm",
-	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device."
+	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device.",
+	"inv_po_new_manual_menu": "Manual (no PR)",
+	"inv_grn_new_direct_menu": "Direct (no PO)",
+	"cpoe_order_add_to_list": "Add to list",
+	"cpoe_order_pending_empty": "No items added yet. Use Add in the table footer to prepare items before saving the order."
 }
