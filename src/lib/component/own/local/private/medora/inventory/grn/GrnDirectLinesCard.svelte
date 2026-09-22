@@ -12,6 +12,7 @@
 		hideQuickFilter?: boolean;
 		hideAddButton?: boolean;
 		toolbarRight?: Snippet<[]>;
+		addDisabled?: boolean;
 		onAddItem: () => void;
 		onEditLine: (row: any) => void;
 		onDeleteLine: (key: string) => void;
@@ -25,6 +26,7 @@
 		hideQuickFilter = false,
 		hideAddButton = false,
 		toolbarRight,
+		addDisabled = false,
 		onAddItem,
 		onEditLine,
 		onDeleteLine
@@ -40,6 +42,7 @@
 	{hideQuickFilter}
 	{hideAddButton}
 	{toolbarRight}
+	{addDisabled}
 	viewOnly={false}
 	{onAddItem}
 	{onEditLine}

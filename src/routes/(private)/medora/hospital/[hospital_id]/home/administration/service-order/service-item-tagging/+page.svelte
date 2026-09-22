@@ -21,7 +21,6 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MenziesTableEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableEditDeleteActions.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -744,16 +743,6 @@
 			</WashCardBody>
 		</WashCard>
 	{:else}
-		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h1 class="text-2xl font-bold">Service Item Tagging</h1>
-			<WashButton
-				className="btn-outline btn-sm btn-square"
-				onClick={startCreate}
-			>
-				<LucidePlus />
-			</WashButton>
-		</div>
-
 		<WashCard>
 			<WashCardBody>
 				<form class="flex flex-col gap-4" onsubmit={handleSubmit}>
@@ -892,18 +881,19 @@
 			</WashCardBody>
 		</WashCard>
 
-		<WashCard>
-			<WashCardBody>
-				<div class="mb-4 flex items-center justify-between gap-4">
-					<label class="flex cursor-pointer items-center gap-3">
-						<input
-							type="checkbox"
-							class="toggle toggle-primary toggle-sm"
-							bind:checked={isComparativeMode}
-						/>
-						<span class="text-sm font-medium">Comparative Mode</span>
-					</label>
-					{#if isComparativeMode}
+		<div class="space-y-4">
+			{#if isComparativeMode}
+				<div class="flex items-center justify-between gap-4">
+					<h2 class="text-base font-bold">Service Item Tagging</h2>
+					<div class="flex items-center gap-3">
+						<label class="flex cursor-pointer items-center gap-3">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary toggle-sm"
+								bind:checked={isComparativeMode}
+							/>
+							<span class="text-sm font-medium">Comparative Mode</span>
+						</label>
 						<WashButton
 							className="btn-ghost btn-sm"
 							onClick={() => fetchComparativeTaggings()}
@@ -911,10 +901,11 @@
 						>
 							Refresh
 						</WashButton>
-					{/if}
+					</div>
 				</div>
+			{/if}
 
-				{#if isComparativeMode}
+			{#if isComparativeMode}
 					<div class={TableEnum.HEIGHT}>
 						{#if isComparativeLoading}
 							<div
@@ -992,43 +983,55 @@
 							</div>
 						{/if}
 					</div>
-				{:else}
-					<div class={TableEnum.HEIGHT}>
-						<MenziesTable
-							rows={taggings}
-							columns={taggingColumns}
-							{isLoading}
-							bind:pageSize={pageSizeStr}
-							bind:currentPage
-							totalRowCount={total}
-							showRefreshButton={true}
-							emptyMessage="No records found"
-							enableColumnFilters={true}
-							useRemoteFilters={true}
-							actionsHeader={m.actions()}
-							showRowActions={true}
-							actionsVariant="none"
-							on:refresh={() => fetchTaggings(true)}
-							on:pageSizeChange={() => {
-								currentPage = 1;
-								fetchTaggings(true);
-							}}
-							on:pageChange={() => fetchTaggings(true)}
-							on:filtersChange={handleTableFiltersChange}
-						>
-							{#snippet rowActions(row, rowIndex)}
-								{@const taggingRow = row as ServiceTaggingListRow}
-								<MenziesTableEditDeleteActions
-									onEdit={() => startEdit(taggingRow)}
-									onDelete={() => handleDelete(taggingRow)}
-									disabled={isLoading || isSaving || deleteLock.pending}
-									deleteLoading={deletingId === taggingRow.id}
+			{:else}
+				<div class={TableEnum.HEIGHT}>
+					<MenziesTable
+						title="Service Item Tagging"
+						rows={taggings}
+						columns={taggingColumns}
+						{isLoading}
+						bind:pageSize={pageSizeStr}
+						bind:currentPage
+						totalRowCount={total}
+						showRefreshButton={true}
+						emptyMessage="No records found"
+						enableColumnFilters={true}
+						actionsHeader={m.actions()}
+						showRowActions={true}
+						actionsVariant="none"
+						showAddButton={true}
+						addLabel={m.create()}
+						onAdd={startCreate}
+						on:refresh={() => fetchTaggings(true)}
+						on:pageSizeChange={() => {
+							currentPage = 1;
+							fetchTaggings(true);
+						}}
+						on:pageChange={() => fetchTaggings(true)}
+						on:filtersChange={handleTableFiltersChange}
+					>
+						{#snippet headerActions()}
+							<label class="flex cursor-pointer items-center gap-3">
+								<input
+									type="checkbox"
+									class="toggle toggle-primary toggle-sm"
+									bind:checked={isComparativeMode}
 								/>
-							{/snippet}
-						</MenziesTable>
-					</div>
-				{/if}
-			</WashCardBody>
-		</WashCard>
+								<span class="text-sm font-medium">Comparative Mode</span>
+							</label>
+						{/snippet}
+						{#snippet rowActions(row, rowIndex)}
+							{@const taggingRow = row as ServiceTaggingListRow}
+							<MenziesTableEditDeleteActions
+								onEdit={() => startEdit(taggingRow)}
+								onDelete={() => handleDelete(taggingRow)}
+								disabled={isLoading || isSaving || deleteLock.pending}
+								deleteLoading={deletingId === taggingRow.id}
+							/>
+						{/snippet}
+					</MenziesTable>
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>

@@ -1,10 +1,85 @@
 /*
- * Typography scale helpers only.
- * Typefaces come from Menzies Design Wash UI (`styles.css`):
- *   --font-sans / --font-mono → Maple Mono
- *   --font-display → Fraunces
- * Do not @font-face or override --font-* here.
+ * Menzies Design typefaces (@see design-menzies.netlify.app → Assets → Fonts).
+ * Fraunces + Maple Mono: @font-face in Wash UI `styles.css`.
+ * Adwaita Sans / Mono: local Design catalog woff2 (below).
+ * Runtime switch: `html[data-font]` via FontTool.
  */
+
+@font-face {
+	font-family: 'Adwaita Sans';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	src: url('../font/adwaita-sans/adwaita-sans-latin-400-normal.woff2')
+		format('woff2');
+}
+@font-face {
+	font-family: 'Adwaita Sans';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 500;
+	src: url('../font/adwaita-sans/adwaita-sans-latin-500-normal.woff2')
+		format('woff2');
+}
+@font-face {
+	font-family: 'Adwaita Sans';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 600;
+	src: url('../font/adwaita-sans/adwaita-sans-latin-600-normal.woff2')
+		format('woff2');
+}
+@font-face {
+	font-family: 'Adwaita Sans';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 700;
+	src: url('../font/adwaita-sans/adwaita-sans-latin-700-normal.woff2')
+		format('woff2');
+}
+@font-face {
+	font-family: 'Adwaita Mono';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 400;
+	src: url('../font/adwaita-mono/adwaita-mono-latin-400-normal.woff2')
+		format('woff2');
+}
+@font-face {
+	font-family: 'Adwaita Mono';
+	font-style: normal;
+	font-display: swap;
+	font-weight: 700;
+	src: url('../font/adwaita-mono/adwaita-mono-latin-700-normal.woff2')
+		format('woff2');
+}
+
+/* Design default — Studio Wash (Maple body + Fraunces display). */
+html[data-font='maple-mono'] {
+	--font-sans: 'Maple Mono', ui-monospace, monospace;
+	--font-mono: 'Maple Mono', ui-monospace, monospace;
+	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+html[data-font='fraunces'] {
+	--font-sans: 'Fraunces', ui-serif, Georgia, serif;
+	--font-mono: 'Maple Mono', ui-monospace, monospace;
+	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+html[data-font='adwaita-sans'] {
+	--font-sans: 'Adwaita Sans', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'Adwaita Mono', ui-monospace, monospace;
+	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+html[data-font='adwaita-mono'] {
+	--font-sans: 'Adwaita Mono', ui-monospace, monospace;
+	--font-mono: 'Adwaita Mono', ui-monospace, monospace;
+	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+/* Typography scale helpers (sizes only; typefaces from --font-*). */
 
 /* Display / Hero */
 .my-ft-h1-display {

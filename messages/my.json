@@ -118,6 +118,15 @@
 	"support": "ပံ့ပိုးမှု",
 	"theme": "အပြင်အဆင်",
 	"languages": "ဘာသာစကားများ",
+	"change_appearance": "အသွင်အပြင် ပြောင်းရန်",
+	"appearance_pigment": "အရောင်ခြယ်",
+	"appearance_select_pigment": "အရောင်ခြယ် ရွေးပါ",
+	"appearance_mode": "မုဒ်",
+	"appearance_select_mode": "မုဒ် ရွေးပါ",
+	"appearance_mode_light": "အလင်း",
+	"appearance_mode_dark": "အမှောင်",
+	"appearance_font_style": "ဖောင့်ပုံစံ",
+	"appearance_select_font_style": "ဖောင့်ပုံစံ ရွေးပါ",
 	"change_language": "ဘာသာစကား ပြောင်းရန်",
 	"select_language": "ဘာသာစကား ရွေးချယ်ပါ",
 	"not_found": "ရှာမတွေ့ပါ",
@@ -881,5 +890,9 @@
 	"auth_2fa_account_backup_regen_hint": "Enter your password. Previous backup codes will stop working.",
 	"auth_2fa_account_backup_regen_success": "New backup codes are ready. Save them somewhere safe.",
 	"auth_2fa_account_password_confirm": "Confirm",
-	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device."
+	"auth_2fa_account_multi_device_hint": "During setup you can scan the same QR with more than one device.",
+	"inv_po_new_manual_menu": "Manual (no PR)",
+	"inv_grn_new_direct_menu": "Direct (no PO)",
+	"cpoe_order_add_to_list": "Add to list",
+	"cpoe_order_pending_empty": "No items added yet. Use Add in the table footer to prepare items before saving the order."
 }

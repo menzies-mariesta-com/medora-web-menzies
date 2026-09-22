@@ -2,14 +2,13 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableAddMenu from '$lib/component/own/library/menzies/table/MenziesTableAddMenu.svelte';
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -18,6 +17,8 @@
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
@@ -237,26 +238,6 @@
 	]);
 </script>
 
-<div class="mb-4 flex items-center justify-between">
-	<h1 class="text-lg font-semibold">{m.inv_page_po_title()}</h1>
-	<div class="flex flex-wrap gap-2">
-		<WashButton
-			className="btn-primary"
-			onClick={() => void goto(resolve(poNewPath as any))}
-		>
-			<LucidePlus className="size-4" />
-			{m.inv_po_new_title()}
-		</WashButton>
-		<WashButton
-			className="btn-outline"
-			onClick={() =>
-				void goto(resolve(poNewPath as any) + '?mode=manual')}
-		>
-			<LucidePlus className="size-4" />
-			<span>Manual (no PR)</span>
-		</WashButton>
-	</div>
-</div>
 {#if selectedInventoryFromStoreId == null}
 	<div class="mb-3 alert text-sm alert-warning" role="status">
 		{m.inv_po_list_select_store_hint()}
@@ -266,6 +247,7 @@
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_po_title()}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			masterFilterHospitalId={hospitalId}
@@ -277,7 +259,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -294,6 +275,24 @@
 				}, 350);
 			}}
 		>
+			{#snippet addAction()}
+				<MenziesTableAddMenu
+					addLabel={m.inv_po_new_title()}
+					options={[
+						{
+							label: m.inv_po_new_title(),
+							onSelect: () => void goto(resolve(poNewPath as any))
+						},
+						{
+							label: msg.inv_po_new_manual_menu(),
+							onSelect: () =>
+								void goto(
+									resolve(poNewPath as any) + '?mode=manual'
+								)
+						}
+					]}
+				/>
+			{/snippet}
 			{#snippet rowActions(row, _rowIndex)}
 				{@const r = row as PoRow}
 				{@const canPrint =

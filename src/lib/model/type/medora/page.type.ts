@@ -4,6 +4,7 @@ import type { PatientRegMasterTimestamps } from './patient-reg-master.type';
 export type MedoraPageModuleRow = PatientRegMasterTimestamps & {
 	id: number;
 	name: string | null;
+	/** Lucide kebab-case icon name (Menzies Design / Wash `DynamicIcon` naming). */
 	imageUrl: string | null;
 	moduleUrl: string | null;
 	sequenceNo: number | null;

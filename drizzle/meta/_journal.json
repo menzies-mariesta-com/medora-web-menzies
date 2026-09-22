@@ -645,6 +645,13 @@
       "when": 1780512300000,
       "tag": "0099_auth_two_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1780512400000,
+      "tag": "0100_module_image_url_lucide_names",
+      "breakpoints": true
     }
   ]
 }

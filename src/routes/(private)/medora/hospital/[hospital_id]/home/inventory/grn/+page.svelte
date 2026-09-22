@@ -4,12 +4,12 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableAddMenu from '$lib/component/own/library/menzies/table/MenziesTableAddMenu.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -20,6 +20,7 @@
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { InvGrnStatusTaggingEnum } from '$lib/model/enum/db-link';
 
+	const msg = m as Record<string, (inputs?: object) => string>;
 	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
@@ -332,36 +333,10 @@
 	]);
 </script>
 
-<div class="mb-4 flex items-center justify-between">
-	<h1 class="text-lg font-semibold">{m.inv_page_grn_title()}</h1>
-	<div class="flex flex-wrap gap-2">
-		<WashButton
-			className="btn-primary"
-			disabled={selectedInventoryFromStoreId == null ||
-				!canPost ||
-				canPostLoading}
-			onClick={() => void goto(resolve(grnNewPath as any))}
-		>
-			<LucidePlus className="size-4" />
-			{m.inv_grn_new_title()}
-		</WashButton>
-		<WashButton
-			className="btn-outline"
-			disabled={selectedInventoryFromStoreId == null ||
-				!canPost ||
-				canPostLoading}
-			onClick={() =>
-				void goto(resolve(grnNewPath as any) + '?mode=direct')}
-		>
-			<LucidePlus className="size-4" />
-			<span>Direct (no PO)</span>
-		</WashButton>
-	</div>
-</div>
-
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_grn_title()}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			isLoading={listLoading}
@@ -372,7 +347,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -388,8 +362,28 @@
 					void loadList();
 				}, 350);
 			}}
-				)}
 		>
+			{#snippet addAction()}
+				<MenziesTableAddMenu
+					disabled={selectedInventoryFromStoreId == null ||
+						!canPost ||
+						canPostLoading}
+					addLabel={m.inv_grn_new_title()}
+					options={[
+						{
+							label: m.inv_grn_new_title(),
+							onSelect: () => void goto(resolve(grnNewPath as any))
+						},
+						{
+							label: msg.inv_grn_new_direct_menu(),
+							onSelect: () =>
+								void goto(
+									resolve(grnNewPath as any) + '?mode=direct'
+								)
+						}
+					]}
+				/>
+			{/snippet}
 			{#snippet rowActions(row, _i)}
 				{@const r = row as GrnRow}
 				<div class="flex flex-col items-center gap-1">

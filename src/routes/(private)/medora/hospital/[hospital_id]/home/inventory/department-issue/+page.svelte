@@ -5,13 +5,13 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableAddMenu from '$lib/component/own/library/menzies/table/MenziesTableAddMenu.svelte';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
@@ -313,39 +313,16 @@
 	}
 </script>
 
-<div class="mb-4 flex flex-col gap-2">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1 class="text-lg font-semibold">
-			{m.inv_page_department_issue_title()}
-		</h1>
-		<div class="flex flex-wrap gap-2">
-			<WashButton
-				className="btn-primary"
-				onClick={() => void goto(resolve(issueNewPath as any))}
-			>
-				<LucidePlus className="size-4" />
-				{m.inv_dept_issue_new_from_indent()}
-			</WashButton>
-			<WashButton
-				className="btn-outline"
-				onClick={() =>
-					void goto(resolve(issueNewPath as any) + '?mode=manual')}
-			>
-				<LucidePlus className="size-4" />
-				{m.inv_dept_issue_new_manual()}
-			</WashButton>
-		</div>
+{#if selectedInventoryFromStoreId == null}
+	<div class="mb-3 alert text-sm alert-warning" role="status">
+		{m.inv_dept_issue_select_store_hint()}
 	</div>
-	{#if selectedInventoryFromStoreId == null}
-		<div class="alert text-sm alert-warning" role="status">
-			{m.inv_dept_issue_select_store_hint()}
-		</div>
-	{/if}
-</div>
+{/if}
 
 <div class={TableEnum.HEIGHT}>
 	{#key hospitalId}
 		<MenziesTable
+			title={m.inv_page_department_issue_title()}
 			columns={columns as MenziesTableColumn[]}
 			rows={list}
 			masterFilterHospitalId={hospitalId}
@@ -358,7 +335,6 @@
 			actionsVariant="none"
 			showRefreshButton={false}
 			enableColumnFilters={true}
-			useRemoteFilters={true}
 			on:pageChange={() => loadList()}
 			on:pageSizeChange={() => {
 				currentPage = 1;
@@ -374,8 +350,26 @@
 					void loadList();
 				}, 350);
 			}}
-				)}
 		>
+			{#snippet addAction()}
+				<MenziesTableAddMenu
+					addLabel={m.inv_dept_issue_new_title()}
+					options={[
+						{
+							label: m.inv_dept_issue_new_from_indent(),
+							onSelect: () =>
+								void goto(resolve(issueNewPath as any))
+						},
+						{
+							label: m.inv_dept_issue_new_manual(),
+							onSelect: () =>
+								void goto(
+									resolve(issueNewPath as any) + '?mode=manual'
+								)
+						}
+					]}
+				/>
+			{/snippet}
 			{#snippet rowActions(row, _i)}
 				{@const r = row as Row}
 				<div class="flex flex-row items-center justify-center gap-1">

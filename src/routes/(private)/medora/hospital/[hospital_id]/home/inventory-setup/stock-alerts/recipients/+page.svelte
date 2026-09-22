@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -328,43 +326,21 @@
 </script>
 
 <div class="space-y-6">
-	<div class="space-y-1">
-		<h1 class="text-lg font-semibold">{m.inv_stock_alert_title()}</h1>
-		<p class="text-sm opacity-70">{m.inv_stock_alert_subtitle()}</p>
-	</div>
-
 	{#if bundleError}
 		<div class="alert alert-error">
 			<span>{bundleError}</span>
 		</div>
 	{/if}
 
-	<WashCard>
-		<WashCardBody className="space-y-4">
-			<div
-				class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between"
-			>
-				<div class="max-w-xl space-y-1">
-					<h2 class="text-base font-semibold">
-						{m.inv_stock_alert_section_recipients()}
-					</h2>
-					<p class="text-xs opacity-70">
-						{m.inv_stock_alert_recipients_hint()}
-					</p>
-				</div>
-				<WashButton
-					type="button"
-					className="btn-primary btn-sm shrink-0"
-					disabled={bundleLoading || savingAll}
-					onClick={() => void openRecipientCreateDialog()}
-				>
-					{m.inv_stock_alert_add()}
-				</WashButton>
-			</div>
-
-			<div class={TableEnum.HEIGHT}>
-				<MenziesTable
-					rows={recipients}
+	<div class={TableEnum.HEIGHT}>
+		<MenziesTable
+			title={m.inv_stock_alert_title()}
+			description={m.inv_stock_alert_subtitle()}
+			showAddButton={true}
+			addLabel={m.inv_stock_alert_add()}
+			addDisabled={bundleLoading || savingAll}
+			onAdd={() => void openRecipientCreateDialog()}
+			rows={recipients}
 					columns={recipientColumns}
 					isLoading={bundleLoading}
 					enableColumnFilters={false}
@@ -409,8 +385,6 @@
 							</div>
 						</td>
 					{/snippet}
-				</MenziesTable>
-			</div>
-		</WashCardBody>
-	</WashCard>
+		</MenziesTable>
+	</div>
 </div>
