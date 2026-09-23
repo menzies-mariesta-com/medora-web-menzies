@@ -692,12 +692,12 @@
 		>
 			<ul
 				tabindex="-1"
-				class="menzies-module-dropdown-menu menu w-max min-w-52 max-w-[calc(100vw-1rem)] rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)] max-h-[min(70vh,24rem)] overflow-y-auto"
+				class="menzies-module-dropdown-menu menu flex w-max min-w-52 max-w-[min(24rem,calc(100vw-1rem))] flex-col flex-nowrap overflow-x-hidden overflow-y-auto rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)] max-h-[min(70vh,24rem)]"
 			>
 				{#each hoveredModulePages as p (p.id)}
 					{@const url = modulePageHref(p)}
 					{#if url != null}
-						<li class="w-full">
+						<li class="w-full shrink-0">
 							<a
 								href={resolve(url as any)}
 								class="whitespace-nowrap {isPageActive(p)
