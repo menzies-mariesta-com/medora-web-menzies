@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { afterNavigate } from '$app/navigation';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import ObservationCardTable from '$lib/component/own/global/private/medora/observation/ObservationCardTable.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDialogContent.svelte';
@@ -31,12 +32,19 @@
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import LAdmitToIpdDialogContent from '$lib/component/own/local/private/medora/ipd/LAdmitToIpdDialogContent.svelte';
+	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
+	import {
+		VisitTypeEnum,
+		VisitStatusTaggingEnum
+	} from '$lib/model/enum/db-link';
 	import type {
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
 	} from '$lib/model/type/medora/ui-rows.type';
 	import type { PlanOfCareListRow } from '$lib/model/type/medora/plan-of-care.type';
 	import type { ProgressNoteListRow } from '$lib/model/type/medora/progress-note.type';
+	import type { ProblemListRow } from '$lib/model/type/medora/clinical.type';
 	import type {
 		ObservationEmrDiagnosisRow,
 		ObservationEmrFormEntryRow,
@@ -83,6 +91,15 @@
 	);
 
 	let visitRow = $state<PatientVisitRow | null>(null);
+
+	const canAdmitToIpd = $derived(
+		!!visitRow &&
+			!!visitId &&
+			visitRow.visitTypeId !== VisitTypeEnum.IPD &&
+			visitRow.statusTaggingId !== VisitStatusTaggingEnum.CLOSED &&
+			visitRow.statusTaggingId !== VisitStatusTaggingEnum.ADMITTED &&
+			visitRow.statusTaggingId !== VisitStatusTaggingEnum.DISCHARGED
+	);
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
 	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
@@ -93,8 +110,15 @@
 	let patientConditionEntries = $state<
 		PatientFormEntryWithRelations[]
 	>([]);
+	let hpiEntries = $state<PatientFormEntryWithRelations[]>([]);
+	let physicalExamEntries = $state<PatientFormEntryWithRelations[]>(
+		[]
+	);
+	let specialtyEntries = $state<PatientFormEntryWithRelations[]>([]);
+	let specialtyFormCode = $state('specialty_obstetrics');
 	let planOfCareRows = $state<PlanOfCareListRow[]>([]);
 	let progressNoteRows = $state<ProgressNoteListRow[]>([]);
+	let problemListRows = $state<ProblemListRow[]>([]);
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
@@ -310,6 +334,7 @@
 				patientConditionEntries = [];
 				planOfCareRows = [];
 				progressNoteRows = [];
+				problemListRows = [];
 				return;
 			}
 			visitRow = v;
@@ -323,6 +348,7 @@
 				patientConditionEntries = [];
 				planOfCareRows = [];
 				progressNoteRows = [];
+				problemListRows = [];
 				return;
 			}
 			await Promise.all([
@@ -358,13 +384,47 @@
 					);
 				})(),
 				(async () => {
+					problemListRows = await apiGet<ProblemListRow[]>(
+						'problemList.list',
+						{ patientId: String(v.patientId) }
+					);
+				})(),
+				(async () => {
 					try {
-						chiefComplaintEntries = await apiGet<
-							PatientFormEntryWithRelations[]
-						>('formEntry.list', {
-							visitId: String(visitId),
-							formCode: 'chief_complaint'
-						});
+						const [cc, hpi, exam, specialty] = await Promise.all([
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: String(visitId),
+									formCode: 'chief_complaint'
+								}
+							),
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: String(visitId),
+									formCode: 'hpi'
+								}
+							),
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: String(visitId),
+									formCode: 'physical_exam'
+								}
+							),
+							apiGet<PatientFormEntryWithRelations[]>(
+								'formEntry.list',
+								{
+									visitId: String(visitId),
+									formCode: specialtyFormCode
+								}
+							)
+						]);
+						chiefComplaintEntries = cc;
+						hpiEntries = hpi;
+						physicalExamEntries = exam;
+						specialtyEntries = specialty;
 						if (v?.patientId) {
 							patientConditionEntries = await apiGet<
 								PatientFormEntryWithRelations[]
@@ -383,6 +443,9 @@
 					} catch {
 						chiefComplaintEntries = [];
 						patientConditionEntries = [];
+						hpiEntries = [];
+						physicalExamEntries = [];
+						specialtyEntries = [];
 					}
 				})()
 			]);
@@ -480,12 +543,37 @@
 		isLoadingGrid = true;
 		try {
 			try {
-				chiefComplaintEntries = await apiGet<
-					PatientFormEntryWithRelations[]
-				>('formEntry.list', {
-					visitId: String(visitId),
-					formCode: 'chief_complaint'
-				});
+				const [cc, hpi, exam, specialty] = await Promise.all([
+					apiGet<PatientFormEntryWithRelations[]>(
+						'formEntry.list',
+						{
+							visitId: String(visitId),
+							formCode: 'chief_complaint'
+						}
+					),
+					apiGet<PatientFormEntryWithRelations[]>(
+						'formEntry.list',
+						{ visitId: String(visitId), formCode: 'hpi' }
+					),
+					apiGet<PatientFormEntryWithRelations[]>(
+						'formEntry.list',
+						{
+							visitId: String(visitId),
+							formCode: 'physical_exam'
+						}
+					),
+					apiGet<PatientFormEntryWithRelations[]>(
+						'formEntry.list',
+						{
+							visitId: String(visitId),
+							formCode: specialtyFormCode
+						}
+					)
+				]);
+				chiefComplaintEntries = cc;
+				hpiEntries = hpi;
+				physicalExamEntries = exam;
+				specialtyEntries = specialty;
 				if (visitRow?.patientId) {
 					patientConditionEntries = await apiGet<
 						PatientFormEntryWithRelations[]
@@ -504,13 +592,16 @@
 			} catch {
 				chiefComplaintEntries = [];
 				patientConditionEntries = [];
+				hpiEntries = [];
+				physicalExamEntries = [];
+				specialtyEntries = [];
 			}
 		} finally {
 			isLoadingGrid = false;
 		}
 	}
 
-	$effect(() => {
+	afterNavigate(() => {
 		if (!mounted) return;
 		if (!visitId) {
 			visitRow = null;
@@ -523,8 +614,12 @@
 			visitDiagnoses = [];
 			chiefComplaintEntries = [];
 			patientConditionEntries = [];
+			hpiEntries = [];
+			physicalExamEntries = [];
+			specialtyEntries = [];
 			planOfCareRows = [];
 			progressNoteRows = [];
+			problemListRows = [];
 			return;
 		}
 		isLoadingVisit = true;
@@ -567,6 +662,19 @@
 		} finally {
 			isSigningClinical = false;
 		}
+	}
+
+	async function handleAdmitToIpd() {
+		if (!visitId || !visitRow?.branchId) return;
+		AdmitToIpdDialogState.visitId = visitId;
+		AdmitToIpdDialogState.branchId = visitRow.branchId;
+		AdmitToIpdDialogState.admittingDoctorId =
+			visitRow.doctorId ?? null;
+		const result = await dialogService.open({
+			title: 'Admit to IPD',
+			component: LAdmitToIpdDialogContent
+		});
+		if (result.confirmed) await refreshAllForVisit();
 	}
 
 	/** Client-side vitals status filter: values match formatted cell (lowercased). */
@@ -662,102 +770,103 @@
 			}
 		];
 
-	const vitalColumns: MenziesTableColumn<PatientDiagnosisListRow>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'date',
-			header: 'Date',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) =>
-				formatDateTime(getVitalDisplayDate(row) ?? null)
-		},
-		{
-			id: 'height',
-			header: 'Height (cm)',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.height)
-		},
-		{
-			id: 'weight',
-			header: 'Weight (kg)',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.weight)
-		},
-		{
-			id: 'bmi',
-			header: m.emr_vital_bmi(),
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.bmi),
-			cellClassGetter: (row) =>
-				vitalTextClass(row.bmi, 'bmi' as VitalKey)
-		},
-		{
-			id: 'bp',
-			header: 'BP (mmHg)',
-			widthClass: 'w-24 min-w-[6rem]',
-			filterable: false,
-			format: (_value, row) =>
-				`${formatVital(row.bpSystolic)}/${formatVital(
-					row.bpDiastolic
-				)}`,
-			cellClassGetter: (row) =>
-				vitalTextClass(row.bpSystolic, 'bpSystolic' as VitalKey) ||
-				vitalTextClass(row.bpDiastolic, 'bpDiastolic' as VitalKey)
-		},
-		{
-			id: 'pulse',
-			header: 'P (bpm)',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.pulse),
-			cellClassGetter: (row) =>
-				vitalTextClass(row.pulse, 'pulse' as VitalKey)
-		},
-		{
-			id: 'temperature',
-			header: 'T (°C)',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.temperature),
-			cellClassGetter: (row) =>
-				vitalTextClass(row.temperature, 'temperature' as VitalKey)
-		},
-		{
-			id: 'spO2',
-			header: 'SpO₂ (%)',
-			widthClass: 'w-20 min-w-[5rem]',
-			filterable: false,
-			format: (_value, row) => formatVital(row.spO2),
-			cellClassGetter: (row) =>
-				vitalTextClass(row.spO2, 'spO2' as VitalKey)
-		},
-		{
-			id: 'symptom',
-			header: 'Symptom',
-			widthClass: 'min-w-32',
-			filterable: false,
-			format: (_value, row) => formatVital(row.symptom),
-			cellClass: 'max-w-48 truncate'
-		}
-	];
+	const vitalColumns: MenziesTableColumn<PatientDiagnosisListRow>[] =
+		[
+			{
+				id: 'status',
+				header: 'Status',
+				widthClass: 'w-28 min-w-[7rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: statusFilterOptions,
+				defaultFilterValue: 'active',
+				format: (_value, row) =>
+					row.statusId === StatusEnum.ACTIVE
+						? 'Active'
+						: row.statusId === StatusEnum.INACTIVE
+							? 'Inactive'
+							: `Status ${row.statusId ?? 'Unknown'}`
+			},
+			{
+				id: 'date',
+				header: 'Date',
+				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
+				filterable: false,
+				format: (_value, row) =>
+					formatDateTime(getVitalDisplayDate(row) ?? null)
+			},
+			{
+				id: 'height',
+				header: 'Height (cm)',
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.height)
+			},
+			{
+				id: 'weight',
+				header: 'Weight (kg)',
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.weight)
+			},
+			{
+				id: 'bmi',
+				header: m.emr_vital_bmi(),
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.bmi),
+				cellClassGetter: (row) =>
+					vitalTextClass(row.bmi, 'bmi' as VitalKey)
+			},
+			{
+				id: 'bp',
+				header: 'BP (mmHg)',
+				widthClass: 'w-24 min-w-[6rem]',
+				filterable: false,
+				format: (_value, row) =>
+					`${formatVital(row.bpSystolic)}/${formatVital(
+						row.bpDiastolic
+					)}`,
+				cellClassGetter: (row) =>
+					vitalTextClass(row.bpSystolic, 'bpSystolic' as VitalKey) ||
+					vitalTextClass(row.bpDiastolic, 'bpDiastolic' as VitalKey)
+			},
+			{
+				id: 'pulse',
+				header: 'P (bpm)',
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.pulse),
+				cellClassGetter: (row) =>
+					vitalTextClass(row.pulse, 'pulse' as VitalKey)
+			},
+			{
+				id: 'temperature',
+				header: 'T (°C)',
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.temperature),
+				cellClassGetter: (row) =>
+					vitalTextClass(row.temperature, 'temperature' as VitalKey)
+			},
+			{
+				id: 'spO2',
+				header: 'SpO₂ (%)',
+				widthClass: 'w-20 min-w-[5rem]',
+				filterable: false,
+				format: (_value, row) => formatVital(row.spO2),
+				cellClassGetter: (row) =>
+					vitalTextClass(row.spO2, 'spO2' as VitalKey)
+			},
+			{
+				id: 'symptom',
+				header: 'Symptom',
+				widthClass: 'min-w-32',
+				filterable: false,
+				format: (_value, row) => formatVital(row.symptom),
+				cellClass: 'max-w-48 truncate'
+			}
+		];
 
 	const orderColumns: MenziesTableColumn<OrderDetailVisitRow>[] = [
 		{
@@ -1518,9 +1627,7 @@
 		}
 	}
 
-	async function openFormEntryAdd(
-		formCode: 'chief_complaint' | 'patient_condition'
-	) {
+	async function openFormEntryAdd(formCode: string) {
 		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
 			return;
 		ObservationFormEntryDialogState.entryId = null;
@@ -1530,12 +1637,19 @@
 		ObservationFormEntryDialogState.formCode = formCode;
 		ObservationFormEntryDialogState.onSaved = () =>
 			reloadFormEntriesForVisit();
+		const titles: Record<string, string> = {
+			chief_complaint: m.observation_emr_chief_complaint(),
+			patient_condition: m.observation_emr_patient_condition(),
+			hpi: 'History of present illness',
+			physical_exam: 'Physical examination',
+			specialty_obstetrics: 'Obstetrics case sheet',
+			specialty_pediatrics: 'Pediatrics case sheet',
+			specialty_surgery: 'Surgery case sheet',
+			specialty_emergency: 'Emergency case sheet'
+		};
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
-				title:
-					formCode === 'chief_complaint'
-						? m.observation_emr_chief_complaint()
-						: m.observation_emr_patient_condition(),
+				title: titles[formCode] ?? formCode,
 				component: LObservationFormEntryDialogContent,
 				fullScreen: false,
 				modalClassName:
@@ -1725,7 +1839,9 @@
 			);
 			return;
 		}
-		const result = await dialogService.open<{ cancelRemark?: string }>({
+		const result = await dialogService.open<{
+			cancelRemark?: string;
+		}>({
 			title: m.observation_emr_order_line_inactivate_title(),
 			component: LObservationOrderLineDeleteDialogContent,
 			fullScreen: false,
@@ -1771,20 +1887,68 @@
 			className="z-0"
 		/>
 	{:else}
-		{#if !clinicalVisitReadOnly}
+		{#if !clinicalVisitReadOnly || canAdmitToIpd}
 			<div
-				class="sticky top-0 z-10 -mx-2 flex justify-end bg-base-100/90 px-2 py-2 backdrop-blur"
+				class="sticky top-0 z-10 -mx-2 flex justify-end gap-2 bg-base-100/90 px-2 py-2 backdrop-blur"
 			>
-				<WashButton
-					className="btn-primary btn-sm"
-					disabled={isSigningClinical || isLoadingVisit}
-					onClick={handleSaveAsSigned}
-				>
-					{isSigningClinical ? '…' : m.observation_save_as_signed()}
-				</WashButton>
+				{#if canAdmitToIpd}
+					<WashButton
+						className="btn-secondary btn-sm"
+						disabled={isLoadingVisit}
+						onClick={handleAdmitToIpd}
+					>
+						Admit to IPD
+					</WashButton>
+				{/if}
+				{#if !clinicalVisitReadOnly}
+					<WashButton
+						className="btn-primary btn-sm"
+						disabled={isSigningClinical || isLoadingVisit}
+						onClick={handleSaveAsSigned}
+					>
+						{isSigningClinical ? '…' : m.observation_save_as_signed()}
+					</WashButton>
+				{/if}
 			</div>
 		{/if}
 		<div class="observation-emr-grid">
+			<section
+				class="card border border-base-300 bg-base-100 shadow-sm"
+			>
+				<div class="card-body gap-3 p-4">
+					<h2 class="card-title text-base">
+						{m.mo_clinical_problem_list_title()}
+					</h2>
+					{#if isLoadingGrid || isLoadingVisit}
+						<p class="text-sm opacity-60">{m.loading()}</p>
+					{:else if problemListRows.length === 0}
+						<p class="text-sm opacity-60">
+							{m.mo_clinical_problem_list_empty()}
+						</p>
+					{:else}
+						<ul class="flex flex-col gap-2">
+							{#each problemListRows as problem (problem.id)}
+								<li
+									class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
+								>
+									<div class="font-medium">
+										{problem.code
+											? `${problem.code} — `
+											: ''}{problem.description ??
+											m.mo_clinical_problem_unspecified()}
+									</div>
+									<div class="text-xs opacity-60">
+										{problem.diagnosisType ??
+											m.mo_clinical_diagnosis_fallback()}
+										{#if problem.visitNo}
+											· {problem.visitNo}{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			</section>
 			<ObservationCardTable
 				title={m.observation_emr_chief_complaint()}
 				rows={chiefComplaintEntries}
@@ -1835,6 +1999,87 @@
 					)}
 				on:move={(e) => void handleFormEntryMove(e.detail)}
 			/>
+			<ObservationCardTable
+				title="History of present illness"
+				rows={hpiEntries}
+				columns={formEntryColumns}
+				isLoading={isLoadingGrid || isLoadingVisit}
+				crudShowView={false}
+				showRefreshButton={true}
+				enableColumnFilters={false}
+				emptyMessage="No HPI entries."
+				on:add={() => openFormEntryAdd('hpi')}
+				on:refresh={reloadFormEntriesForVisit}
+				on:edit={(e) =>
+					openFormEntryEdit(
+						e.detail as PatientFormEntryWithRelations
+					)}
+				on:delete={(e) =>
+					handleFormEntryDelete(
+						e.detail as PatientFormEntryWithRelations
+					)}
+			/>
+			<ObservationCardTable
+				title="Physical examination"
+				rows={physicalExamEntries}
+				columns={formEntryColumns}
+				isLoading={isLoadingGrid || isLoadingVisit}
+				crudShowView={false}
+				showRefreshButton={true}
+				enableColumnFilters={false}
+				emptyMessage="No physical exam entries."
+				on:add={() => openFormEntryAdd('physical_exam')}
+				on:refresh={reloadFormEntriesForVisit}
+				on:edit={(e) =>
+					openFormEntryEdit(
+						e.detail as PatientFormEntryWithRelations
+					)}
+				on:delete={(e) =>
+					handleFormEntryDelete(
+						e.detail as PatientFormEntryWithRelations
+					)}
+			/>
+			<section
+				class="card border border-base-300 bg-base-100 shadow-sm"
+			>
+				<div class="card-body gap-3 p-4">
+					<div
+						class="flex flex-wrap items-center justify-between gap-2"
+					>
+						<h2 class="card-title text-base">Specialty case sheet</h2>
+						<select
+							class="select select-bordered select-sm"
+							bind:value={specialtyFormCode}
+							onchange={() => void reloadFormEntriesForVisit()}
+						>
+							<option value="specialty_obstetrics">Obstetrics</option>
+							<option value="specialty_pediatrics">Pediatrics</option>
+							<option value="specialty_surgery">Surgery</option>
+							<option value="specialty_emergency">Emergency</option>
+						</select>
+					</div>
+					<ObservationCardTable
+						title=""
+						rows={specialtyEntries}
+						columns={formEntryColumns}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						crudShowView={false}
+						showRefreshButton={true}
+						enableColumnFilters={false}
+						emptyMessage="No specialty case sheet entries."
+						on:add={() => openFormEntryAdd(specialtyFormCode)}
+						on:refresh={reloadFormEntriesForVisit}
+						on:edit={(e) =>
+							openFormEntryEdit(
+								e.detail as PatientFormEntryWithRelations
+							)}
+						on:delete={(e) =>
+							handleFormEntryDelete(
+								e.detail as PatientFormEntryWithRelations
+							)}
+					/>
+				</div>
+			</section>
 			<ObservationCardTable
 				title={m.observation_emr_diagnosis()}
 				rows={visitDiagnoses}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type {
@@ -60,6 +61,31 @@
 		showCheckDuplicate?: boolean;
 		onCheckDuplicate?: () => void;
 	}>();
+
+	const countryOptions = $derived(
+		countryData.map((d) => ({
+			value: String(d.id),
+			label: d.name ?? String(d.id)
+		}))
+	);
+	const stateOptions = $derived(
+		filteredStateData.map((d) => ({
+			value: String(d.id),
+			label: d.name ?? String(d.id)
+		}))
+	);
+	const cityOptions = $derived(
+		filteredCityData.map((d) => ({
+			value: String(d.id),
+			label: d.name ?? String(d.id)
+		}))
+	);
+	const postalCodeOptions = $derived(
+		filteredPostalCodeData.map((d) => ({
+			value: String(d.id),
+			label: String(d.value)
+		}))
+	);
 </script>
 
 <div class="flex flex-col gap-4">
@@ -83,14 +109,13 @@
 	>
 		<label for="country" class="shrink-0 sm:w-36">Country</label>
 		<div class="max-w-80 flex-1">
-			<WashSelect
+			<SearchSelect
+				inputId="country"
 				bind:value={selectedCountryId}
-				optionHeader="Select a country ..."
-			>
-				{#each countryData as data (data.id)}
-					<option value={String(data.id)}>{data.name}</option>
-				{/each}
-			</WashSelect>
+				options={countryOptions}
+				placeholder="Select a country ..."
+				filterPlaceholder="Search country…"
+			/>
 		</div>
 	</div>
 	<div
@@ -98,15 +123,14 @@
 	>
 		<label for="state" class="shrink-0 sm:w-36">State</label>
 		<div class="max-w-80 flex-1">
-			<WashSelect
+			<SearchSelect
+				inputId="state"
 				bind:value={selectedStateId}
-				optionHeader="Select a state ..."
+				options={stateOptions}
+				placeholder="Select a state ..."
+				filterPlaceholder="Search state…"
 				disabled={!selectedCountry?.id}
-			>
-				{#each filteredStateData as data (data.id)}
-					<option value={String(data.id)}>{data.name}</option>
-				{/each}
-			</WashSelect>
+			/>
 		</div>
 	</div>
 	<div
@@ -114,15 +138,14 @@
 	>
 		<label for="city" class="shrink-0 sm:w-36">City</label>
 		<div class="max-w-80 flex-1">
-			<WashSelect
+			<SearchSelect
+				inputId="city"
 				bind:value={selectedCityId}
-				optionHeader="Select a city ..."
+				options={cityOptions}
+				placeholder="Select a city ..."
+				filterPlaceholder="Search city…"
 				disabled={!selectedState?.id}
-			>
-				{#each filteredCityData as data (data.id)}
-					<option value={String(data.id)}>{data.name}</option>
-				{/each}
-			</WashSelect>
+			/>
 		</div>
 	</div>
 	<div
@@ -130,16 +153,14 @@
 	>
 		<label for="postal-code" class="shrink-0 sm:w-36">Postal Code</label>
 		<div class="max-w-80 flex-1">
-			<WashSelect
+			<SearchSelect
+				inputId="postal-code"
 				bind:value={selectedPostalCodeId}
-				optionHeader="Select a postal code ..."
+				options={postalCodeOptions}
+				placeholder="Select a postal code ..."
+				filterPlaceholder="Search postal code…"
 				disabled={!selectedCity?.id}
-			>
-				{#each filteredPostalCodeData as data (data.id)}
-					<option value={String(data.id)}>{String(data.value)}</option
-					>
-				{/each}
-			</WashSelect>
+			/>
 		</div>
 	</div>
 	<div

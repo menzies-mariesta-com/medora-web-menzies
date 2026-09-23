@@ -4,6 +4,7 @@ export type OpBillingCloseBlockReason =
 	| 'nursing_incomplete'
 	| 'no_billable_lines'
 	| 'already_closed'
+	| 'visit_not_discharged'
 	| null;
 
 export type OpBillingReadiness = {

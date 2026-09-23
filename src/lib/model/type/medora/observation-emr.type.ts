@@ -10,6 +10,9 @@ export type ObservationEmrPatientVisitRow = {
 	hospitalId: string;
 	branchId: string;
 	clinicalSignedAt?: string | null;
+	visitTypeId?: number | null;
+	statusTaggingId?: number | null;
+	doctorId?: string | null;
 };
 
 export type ObservationEmrPatientAllergyRow = {

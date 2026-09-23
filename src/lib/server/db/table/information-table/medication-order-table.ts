@@ -22,6 +22,7 @@ import {
 	itemMasterTable,
 	itemUnitMasterTable,
 	patientVisitTable,
+	staffTable,
 	storeTable
 } from './information-table';
 import { itemBatchTable } from './inventory-transaction-table';
@@ -539,6 +540,17 @@ export const medicationOrderBatchTable = pgTable(
 		/** Walk-in / external sales: set when `visitId` is null (internal uses visit + nulls here) */
 		extCustomerName: varchar('ext_customer_name', { length: 512 }),
 		advisingDoctor: varchar('advising_doctor', { length: 512 }),
+		orderingStaffId: uuid('ordering_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		consultantCosignedAt: timestamp('consultant_cosigned_at', {
+			withTimezone: true
+		}),
+		consultantCosignedBy: uuid('consultant_cosigned_by').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
 		batchNo: varchar('batch_no', { length: 256 }).notNull(),
 		batchRemarks: text('batch_remarks'),
 		...medOrderTimestamps
@@ -655,8 +667,12 @@ export const medicationOrderLineAllocationTable = pgTable(
 		...medOrderTimestamps
 	},
 	(t) => [
-		index('medication_order_line_allocation_line_id_idx').on(t.lineId),
-		index('medication_order_line_allocation_batch_id_idx').on(t.batchId)
+		index('medication_order_line_allocation_line_id_idx').on(
+			t.lineId
+		),
+		index('medication_order_line_allocation_batch_id_idx').on(
+			t.batchId
+		)
 	]
 );
 
@@ -694,7 +710,9 @@ export const medicationOrderBatchPaymentTable = pgTable(
 		uniqueIndex('medication_order_batch_payment_batch_id_uidx')
 			.on(t.batchId)
 			.where(sql`${t.deletedAt} IS NULL`),
-		uniqueIndex('medication_order_batch_payment_hospital_receipt_uidx')
+		uniqueIndex(
+			'medication_order_batch_payment_hospital_receipt_uidx'
+		)
 			.on(t.hospitalId, t.receiptNo)
 			.where(sql`${t.deletedAt} IS NULL`)
 	]

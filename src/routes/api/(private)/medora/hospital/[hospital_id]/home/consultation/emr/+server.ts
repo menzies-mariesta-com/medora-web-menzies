@@ -2,6 +2,11 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
+import {
+	listProblemList,
+	searchDiagnosisCodes
+} from '$lib/server/medora/clinical/diagnosis-code.server';
+import { requireConsultant } from '$lib/server/medora/clinical/clinical-authority.server';
 
 function requireSessionStaffId(event: {
 	locals: { staff?: { id?: string } | null };
@@ -97,6 +102,19 @@ export const GET: RequestHandler = async (event) => {
 			if (!Number.isFinite(id) || id <= 0)
 				throw error(400, 'id is required');
 			return json(await obs.getDiagnosisById({ id }));
+		}
+		case 'diagnosisCode.search': {
+			return json(
+				await searchDiagnosisCodes({
+					search: event.url.searchParams.get('search') ?? '',
+					limit: Number(event.url.searchParams.get('limit') ?? '30')
+				})
+			);
+		}
+		case 'problemList.list': {
+			const patientId = event.url.searchParams.get('patientId') ?? '';
+			if (!patientId) throw error(400, 'patientId is required');
+			return json(await listProblemList({ hospitalId, patientId }));
 		}
 		case 'planOfCare.list': {
 			if (!Number.isFinite(visitId) || visitId <= 0)
@@ -428,6 +446,10 @@ export const POST: RequestHandler = async (event) => {
 				await obs.createProgressNote(hospitalId, {
 					visitId: visitIdCreate,
 					note: String(body['note'] ?? ''),
+					subjective: optStrOrNull(body['subjective']),
+					objective: optStrOrNull(body['objective']),
+					assessment: optStrOrNull(body['assessment']),
+					plan: optStrOrNull(body['plan']),
 					doctorId: (body['doctorId'] as string | null) ?? null,
 					statusId:
 						body['statusId'] != null && body['statusId'] !== ''
@@ -445,11 +467,27 @@ export const POST: RequestHandler = async (event) => {
 				await obs.updateProgressNote(hospitalId, {
 					id,
 					note: p['note'] as string | undefined,
+					subjective: optStrOrNull(p['subjective']),
+					objective: optStrOrNull(p['objective']),
+					assessment: optStrOrNull(p['assessment']),
+					plan: optStrOrNull(p['plan']),
 					doctorId: p['doctorId'] as string | null | undefined,
 					statusId:
 						p['statusId'] != null && p['statusId'] !== ''
 							? Number(p['statusId'])
 							: undefined
+				})
+			);
+		}
+		case 'progressNote.cosign': {
+			const id = Number(body['id'] ?? 0);
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
+			return json(
+				await obs.cosignProgressNote({
+					id,
+					hospitalId,
+					consultantId: requireConsultant(event)
 				})
 			);
 		}
