@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import WashAvatar from '$lib/component/wash/avatar/WashAvatar.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
 	import LucideEyeOff from '$lib/component/own/library/lucide/LucideEyeOff.svelte';
@@ -37,6 +37,13 @@
 	let selectedGenderId = $state('');
 	let isPasswordVisible = $state(false);
 	let isLoading = $state(false);
+
+	const countryOptions = $derived(
+		countryData.map((c) => ({
+			value: String(c.id),
+			label: `${c.name ?? ''} [ ${String(c.code).toUpperCase()} ]`.trim()
+		}))
+	);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -214,24 +221,15 @@
 				<label class="label" for="auth-signup-country">
 					<span class="label-text">{m.select_country()}</span>
 				</label>
-				<WashSelect
-					id="auth-signup-country"
+				<SearchSelect
+					inputId="auth-signup-country"
 					bind:value={selectedCountryId}
-					optionHeader={m.select_country()}
-					className="bg-base-200 w-full"
-				>
-					{#each countryData as c (c.id)}
-						<option value={String(c.id)} class="gap-5">
-							<WashAvatar
-								src={c.imageUrl ?? undefined}
-								alt={c.name ?? undefined}
-								className="w-5"
-							/>
-							{c.name}
-							[ {c.code.toUpperCase()} ]
-						</option>
-					{/each}
-				</WashSelect>
+					options={countryOptions}
+					placeholder={m.select_country()}
+					filterPlaceholder={m.select_country()}
+					className="w-full"
+					triggerClassName="bg-base-200 w-full border-ink-border"
+				/>
 			</fieldset>
 		</section>
 

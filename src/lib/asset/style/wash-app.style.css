@@ -7,6 +7,15 @@
 @source inline("tooltip-left tooltip-right tooltip-primary tooltip-secondary");
 
 /*
+ * Custom select triggers (WashSelect / SearchSelect joinItem): Daisy `.select`
+ * paints a native chevron via background-image — hide it when we draw our own.
+ */
+.wash-select--icon {
+	appearance: none;
+	background-image: none !important;
+}
+
+/*
  * Design Data table (washRecipes.table + paneCard) — safelist for Tailwind scan.
  * Utilities also ship in menzies-design-wash-ui/styles.css.
  */

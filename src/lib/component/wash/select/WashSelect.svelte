@@ -3,19 +3,37 @@
 	 * Menzies Design Wash Select (web 1.2.0).
 	 * daisyUI-styled trigger + custom listbox (not the OS native picker).
 	 * Placement flips via `measureDropdownPlacement`; menu width defaults to trigger.
+	 * Menu is portaled to the nearest `<dialog>` (or `document.body`) with fixed
+	 * positioning so scrollable modal bodies cannot clip the list.
 	 * @see https://design-menzies.netlify.app/ — Select
 	 */
 	import OverflowText from '$lib/component/own/library/menzies/overflow-marquee/OverflowText.svelte';
 	import {
 		createWashId,
-		DROPDOWN_PANEL_Z,
-		dropdownPanelStyle,
 		dropdownPlacementClassName,
 		measureDropdownPlacement,
 		sameDropdownPlacement,
 		type DropdownPlacement
 	} from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 	import { untrack } from 'svelte';
+
+	/**
+	 * Mount under nearest `<dialog>` (top layer) or `document.body` so menus escape
+	 * scroll containers (`overflow-y-auto`) that clip absolute dropdowns.
+	 */
+	function portal(node: HTMLElement, getHost: () => HTMLElement | null) {
+		const host = getHost() ?? document.body;
+		host.appendChild(node);
+		return {
+			update(nextGetHost: () => HTMLElement | null) {
+				const next = nextGetHost() ?? document.body;
+				if (node.parentElement !== next) next.appendChild(node);
+			},
+			destroy() {
+				node.remove();
+			}
+		};
+	}
 
 	export type WashSelectOption = {
 		value: string;
@@ -133,10 +151,13 @@
 	let open = $state(false);
 	let rootEl = $state<HTMLDivElement | null>(null);
 	let triggerEl = $state<HTMLButtonElement | null>(null);
+	let panelEl = $state<HTMLDivElement | null>(null);
 	let mirrorEl = $state<HTMLSelectElement | null>(null);
 	let childOptions = $state<WashSelectOption[]>([]);
 	let triggerWidthPx = $state<number | null>(null);
 	let placement = $state<DropdownPlacement>({ ...DEFAULT_PLACEMENT });
+	/** Viewport-fixed CSS for the portaled panel (string — reliable max-height). */
+	let fixedPanelStyle = $state('');
 
 	const selectId = $derived(id ?? createWashId('select'));
 	const listId = $derived(`${selectId}-list`);
@@ -179,27 +200,62 @@
 
 	const panelClass = $derived(
 		[
-			'dropdown-content',
-			DROPDOWN_PANEL_Z,
-			placement.top ? 'mb-1' : 'mt-1',
+			'fixed z-[10050] max-h-[min(17.5rem,70dvh)]',
 			menuWidth === 'auto'
 				? 'w-full max-w-[min(100vw-1rem,24rem)]'
 				: '',
-			'overflow-x-hidden overflow-y-auto rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]',
+			'overflow-x-hidden overflow-y-auto overscroll-contain rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]',
 			menuClassName
 		]
 			.filter(Boolean)
 			.join(' ')
 	);
 
-	const panelStyle = $derived.by(() => {
-		const base = dropdownPanelStyle(placement);
-		const width = resolveMenuPanelStyle(menuWidth, triggerWidthPx);
-		return width ? { ...base, ...width } : base;
-	});
+	function portalHost(): HTMLElement | null {
+		return rootEl?.closest('dialog') ?? null;
+	}
 
 	function syncChildOptions() {
 		childOptions = readOptionsFromSelect(mirrorEl);
+	}
+
+	function updateFixedPanelStyle(nextPlacement: DropdownPlacement) {
+		const el = triggerEl ?? rootEl;
+		if (!el || typeof window === 'undefined') return;
+		const rect = el.getBoundingClientRect();
+		const gap = 4;
+		const maxH = Math.max(
+			120,
+			Math.min(280, Math.round(nextPlacement.maxHeight))
+		);
+		const parts: string[] = [
+			`max-height:${maxH}px`,
+			`--wash-dropdown-max-h:${maxH}px`
+		];
+		if (nextPlacement.top) {
+			parts.push(`bottom:${window.innerHeight - rect.top + gap}px`);
+			parts.push('top:auto');
+		} else {
+			parts.push(`top:${rect.bottom + gap}px`);
+			parts.push('bottom:auto');
+		}
+		if (nextPlacement.end) {
+			parts.push(`right:${window.innerWidth - rect.right}px`);
+			parts.push('left:auto');
+		} else {
+			parts.push(`left:${rect.left}px`);
+			parts.push('right:auto');
+		}
+		const width = resolveMenuPanelStyle(menuWidth, triggerWidthPx);
+		if (width) {
+			for (const [key, val] of Object.entries(width)) {
+				const cssKey = key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+				parts.push(
+					`${cssKey}:${typeof val === 'number' ? `${val}px` : val}`
+				);
+			}
+		}
+		fixedPanelStyle = parts.join(';');
 	}
 
 	function updatePlacement() {
@@ -217,6 +273,7 @@
 		});
 		const prev = untrack(() => placement);
 		if (!sameDropdownPlacement(prev, next)) placement = next;
+		updateFixedPanelStyle(next);
 	}
 
 	function measureTriggerWidth() {
@@ -284,6 +341,7 @@
 
 	$effect(() => {
 		if (!menuOpen) return;
+		void triggerWidthPx;
 		updatePlacement();
 		window.addEventListener('resize', updatePlacement);
 		window.addEventListener('scroll', updatePlacement, true);
@@ -296,19 +354,20 @@
 	$effect(() => {
 		if (!menuOpen) return;
 		const root = rootEl;
-		if (!root) return;
+		const panel = panelEl;
 		function onPointerDown(event: PointerEvent) {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (root && !root.contains(target)) setOpen(false);
+			if (root?.contains(target) || panel?.contains(target)) return;
+			setOpen(false);
 		}
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Escape') setOpen(false);
 		}
-		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('pointerdown', onPointerDown, true);
 		document.addEventListener('keydown', onKeyDown);
 		return () => {
-			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('pointerdown', onPointerDown, true);
 			document.removeEventListener('keydown', onKeyDown);
 		};
 	});
@@ -403,7 +462,12 @@
 	{/if}
 
 	{#if menuOpen}
-		<div class={panelClass} style={panelStyle}>
+		<div
+			bind:this={panelEl}
+			use:portal={portalHost}
+			class={panelClass}
+			style={fixedPanelStyle}
+		>
 			<ul
 				id={listId}
 				role="listbox"
