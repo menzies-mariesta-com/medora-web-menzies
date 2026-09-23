@@ -1173,7 +1173,9 @@ export async function seedMasterTables() {
 		VALUES
 			(1, 'Nurse', 'NURSE', 1),
 			(2, 'Employee', 'EMPLOYEE', 1),
-			(3, 'Doctor', 'DOCTOR', 1)
+			(3, 'Doctor', 'DOCTOR', 1),
+			(4, 'Medical Officer', 'MEDICAL_OFFICER', 1),
+			(5, 'Consultant', 'CONSULTANT', 1)
 		ON CONFLICT (id) DO NOTHING;
 	`);
 
@@ -1893,8 +1895,18 @@ export async function seedMasterTables() {
 			(1, 'chief_complaint', 'Chief complaint', 'observation_emr_visit', 1),
 			(2, 'patient_condition', 'Patient condition', 'observation_emr_visit', 1),
 			(3, 'diagnosis_notes', 'Diagnosis notes', 'observation_emr_visit', 1),
-			(4, 'patient_registration', 'Patient registration', 'registration', 1)
-		ON CONFLICT (id) DO NOTHING;
+			(4, 'patient_registration', 'Patient registration', 'registration', 1),
+			(5, 'hpi', 'History of present illness', 'observation_emr_visit', 1),
+			(6, 'physical_exam', 'Physical examination', 'observation_emr_visit', 1),
+			(7, 'specialty_obstetrics', 'Obstetrics case sheet', 'specialty_case_sheet', 1),
+			(8, 'specialty_pediatrics', 'Pediatrics case sheet', 'specialty_case_sheet', 1),
+			(9, 'specialty_surgery', 'Surgery case sheet', 'specialty_case_sheet', 1),
+			(10, 'specialty_emergency', 'Emergency case sheet', 'specialty_case_sheet', 1)
+		ON CONFLICT (id) DO UPDATE SET
+			code = EXCLUDED.code,
+			name = EXCLUDED.name,
+			form_type = EXCLUDED.form_type,
+			status_id = EXCLUDED.status_id;
 	`);
 	seedLogger.info('Seeded: form_name');
 

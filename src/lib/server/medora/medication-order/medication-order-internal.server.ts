@@ -24,6 +24,7 @@ import {
 } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
 import { defaultIssueUnitNameByItemIds } from '$lib/server/medora/inventory/stock.server';
+import { assertHighRiskMedicationAuthorized } from '$lib/server/medora/clinical/clinical-authority.server';
 import {
 	assertBatchNotPaid,
 	buildMedOrderItemSearchCategoryFilter,
@@ -425,10 +426,7 @@ export async function reorderFromHistoryBatch(
 			qtyPurchase: String(a.qtyPurchase)
 		}))
 	};
-	if (
-		!newLine.itemUnitMasterId ||
-		newLine.allocations.length === 0
-	) {
+	if (!newLine.itemUnitMasterId || newLine.allocations.length === 0) {
 		throw error(
 			400,
 			'Source line has no stock allocations; cannot reorder'
@@ -578,6 +576,10 @@ export async function updateMedicationOrderBatch(
 		);
 	if (!batch) throw error(404, 'Batch not found');
 	await assertBatchNotPaid(hospitalId, batchId);
+	await assertHighRiskMedicationAuthorized({
+		batchId,
+		itemIds: lines.map((line) => line.itemMasterId)
+	});
 
 	await validateMedicationOrderLinesForDispense({
 		hospitalId,

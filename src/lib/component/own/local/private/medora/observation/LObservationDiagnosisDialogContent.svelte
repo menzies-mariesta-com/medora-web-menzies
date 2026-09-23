@@ -5,12 +5,14 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
-	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
+	import type { DiagnosisCodeOption } from '$lib/model/type/medora/clinical.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { onMount } from 'svelte';
 
 	const toastService = new ToastService();
 
@@ -36,12 +38,16 @@
 	type DiagnosisRow = {
 		id: number;
 		diagnosisTypeId: number | null;
+		diagnosisCodeId: number | null;
 		description: string | null;
 		statusId: number | null;
+		diagnosisCode?: DiagnosisCodeOption | null;
 	};
 
 	let types = $state<DiagnosisType[]>([]);
+	let diagnosisCodeOptions = $state<DiagnosisCodeOption[]>([]);
 	let selectedDiagnosisTypeIds = $state<number[]>([]);
+	let diagnosisCodeId = $state('');
 	let description = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
 	let isSubmitting = $state(false);
@@ -54,6 +60,7 @@
 
 	function resetDiagnosisForm() {
 		selectedDiagnosisTypeIds = [];
+		diagnosisCodeId = '';
 		description = '';
 		statusIdStr = String(StatusEnum.ACTIVE);
 	}
@@ -102,6 +109,46 @@
 		types = rows;
 	}
 
+	async function searchDiagnosisCodes(query: string) {
+		const rows = await apiGet<DiagnosisCodeOption[]>(
+			'diagnosisCode.search',
+			{
+				search: query,
+				limit: '30'
+			}
+		);
+		diagnosisCodeOptions = rows;
+		return rows.map((row) => ({
+			value: String(row.id),
+			label: `${row.code} — ${row.description}`
+		}));
+	}
+
+	async function getDiagnosisCodeLabel(
+		value: string
+	): Promise<string> {
+		const row = diagnosisCodeOptions.find(
+			(item) => String(item.id) === value
+		);
+		if (row) {
+			description = row.description;
+			return `${row.code} — ${row.description}`;
+		}
+		return description || value;
+	}
+
+	function handleDiagnosisCodeChange(value: string) {
+		diagnosisCodeId = value;
+		if (!value) {
+			description = '';
+			return;
+		}
+		const row = diagnosisCodeOptions.find(
+			(item) => String(item.id) === value
+		);
+		description = row?.description ?? '';
+	}
+
 	async function loadDiagnosisByIdForEdit(did: number, seq: number) {
 		const row = await apiGet<DiagnosisRow | null>('diagnosis.get', {
 			id: String(did)
@@ -117,15 +164,16 @@
 		}
 
 		selectedDiagnosisTypeIds = [Number(row.diagnosisTypeId)];
+		diagnosisCodeId = row.diagnosisCodeId
+			? String(row.diagnosisCodeId)
+			: '';
 		description = row.description ?? '';
+		if (row.diagnosisCode) diagnosisCodeOptions = [row.diagnosisCode];
 		statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
 	}
 
-	$effect(() => {
+	onMount(() => {
 		void loadDiagnosisTypes();
-	});
-
-	$effect(() => {
 		const vid = visitId;
 		const bid = branchId;
 		const pid = patientId;
@@ -151,7 +199,14 @@
 			return;
 		}
 		const statusId = Number(statusIdStr) || StatusEnum.ACTIVE;
-		const normalizedDescription = description.trim();
+		const selectedCodeId = Number(diagnosisCodeId);
+		if (!Number.isFinite(selectedCodeId) || selectedCodeId <= 0) {
+			toastService.addToast(
+				m.mo_clinical_diagnosis_code_required(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 
 		const selectedTypeIds = selectedDiagnosisTypeIds.filter(
 			(id): id is number => Number.isFinite(id) && id > 0
@@ -182,10 +237,7 @@
 					payload: {
 						id: diagnosisId,
 						diagnosisTypeId: typeId,
-						description:
-							normalizedDescription.length > 0
-								? normalizedDescription
-								: null,
+						diagnosisCodeId: selectedCodeId,
 						statusId
 					}
 				});
@@ -199,10 +251,7 @@
 							patientId: pid,
 							visitId: vid,
 							diagnosisTypeId,
-							description:
-								normalizedDescription.length > 0
-									? normalizedDescription
-									: null,
+							diagnosisCodeId: selectedCodeId,
 							statusId
 						}
 					});
@@ -238,7 +287,7 @@
 				<input
 					type="checkbox"
 					name="diagnosis-type-id-all"
-					class="checkbox shrink-0 checkbox-sm checkbox-primary"
+					class="checkbox checkbox-sm checkbox-primary shrink-0"
 					checked={allDiagnosisTypesSelected}
 					disabled={isSubmitting || isEdit}
 					onchange={() => {
@@ -258,7 +307,7 @@
 					<input
 						type="checkbox"
 						name="diagnosis-type-id"
-						class="checkbox shrink-0 checkbox-sm checkbox-primary"
+						class="checkbox checkbox-sm checkbox-primary shrink-0"
 						value={String(t.id)}
 						checked={selectedDiagnosisTypeIds.includes(Number(t.id))}
 						disabled={isSubmitting}
@@ -297,15 +346,29 @@
 	</fieldset>
 
 	<div class="flex flex-col gap-1">
-		<label for="diagnosis-description">
-			{m.observation_emr_instruction()}
+		<label for="diagnosis-code">
+			{m.mo_clinical_diagnosis_code()}
+			<span class="text-error">*</span>
 		</label>
-		<WashTextarea
-			id="diagnosis-description"
-			className="textarea-bordered min-h-24 w-full"
-			placeholder={m.observation_emr_note_placeholder()}
-			bind:value={description}
+		<SearchSelect
+			inputId="diagnosis-code"
+			bind:value={diagnosisCodeId}
+			placeholder={m.mo_clinical_diagnosis_code_search()}
+			searchFn={searchDiagnosisCodes}
+			getLabelForValue={getDiagnosisCodeLabel}
+			onChange={handleDiagnosisCodeChange}
+			minSearchLength={0}
+			disabled={isSubmitting}
 		/>
+	</div>
+
+	<div class="rounded-box border border-base-300 bg-base-200/40 p-3">
+		<div class="text-xs font-medium uppercase opacity-60">
+			{m.mo_clinical_description()}
+		</div>
+		<p class="mt-1 text-sm">
+			{description || m.mo_clinical_diagnosis_code_required()}
+		</p>
 	</div>
 
 	{#if isEdit}
