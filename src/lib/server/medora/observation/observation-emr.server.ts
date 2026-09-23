@@ -20,7 +20,7 @@ import {
 	normalizePagination,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { ensureDb } from '$lib/server/db';
+import { ensureDb, ensureDbUnaudited } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	AllergySchema,
@@ -1095,22 +1095,56 @@ export async function createAllergyMaster(
 		);
 	}
 
+	const insertValues = { name } as AllergySchemaInsert;
+
 	try {
 		const [row] = await ensureDb()
 			.insert(table.allergyTable)
-			.values({ ...payload, name })
+			.values(insertValues)
 			.returning();
 		if (!row) throw error(400, 'Failed to create allergy.');
 		return row;
 	} catch (err) {
-		// If DB has a uniqueness constraint on name (or lower(name)), report a clean 400.
-		// (Drizzle wraps pg errors; message is the most portable signal here.)
 		const msg = err instanceof Error ? err.message : String(err);
 		if (/duplicate key|unique constraint|already exists/i.test(msg)) {
 			throw error(
 				400,
 				'An allergy with this name already exists in the master list.'
 			);
+		}
+		// Stale session after DB wipe/reseed: audit user id is not in `"user"`.
+		if (
+			/foreign key constraint|allergy_created_by|allergy_updated_by|is not present in table "user"/i.test(
+				msg
+			)
+		) {
+			try {
+				const [row] = await ensureDbUnaudited()
+					.insert(table.allergyTable)
+					.values(insertValues)
+					.returning();
+				if (!row) throw error(400, 'Failed to create allergy.');
+				return row;
+			} catch (retryErr) {
+				const retryMsg =
+					retryErr instanceof Error
+						? retryErr.message
+						: String(retryErr);
+				if (
+					/duplicate key|unique constraint|already exists/i.test(
+						retryMsg
+					)
+				) {
+					throw error(
+						400,
+						'An allergy with this name already exists in the master list.'
+					);
+				}
+				throw error(
+					401,
+					'Your session is out of date (user not found). Please sign out and sign in again, then retry.'
+				);
+			}
 		}
 		throw err;
 	}
