@@ -3,9 +3,9 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { SupplierModalState } from '$lib/state/supplier-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -87,6 +87,31 @@
 		selectedCity?.id
 			? postalCodeData.filter((p) => p.cityId === selectedCity.id)
 			: []
+	);
+
+	const countryOptions = $derived(
+		countryData.map((c) => ({
+			value: String(c.id),
+			label: c.name ?? String(c.id)
+		}))
+	);
+	const stateOptions = $derived(
+		filteredStateData.map((s) => ({
+			value: String(s.id),
+			label: s.name ?? s.code ?? String(s.id)
+		}))
+	);
+	const cityOptions = $derived(
+		filteredCityData.map((c) => ({
+			value: String(c.id),
+			label: c.name ?? c.code ?? String(c.id)
+		}))
+	);
+	const postalCodeOptions = $derived(
+		filteredPostalCodeData.map((p) => ({
+			value: String(p.id),
+			label: String(p.value)
+		}))
 	);
 
 	$effect(() => {
@@ -312,15 +337,13 @@
 		>
 			<label for="sup-country" class="shrink-0 sm:w-40">{m.country()}</label>
 			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="sup-country"
+				<SearchSelect
+					inputId="sup-country"
 					bind:value={selectedCountryId}
-					optionHeader={m.select_country()}
-				>
-					{#each countryData as c (c.id)}
-						<option value={String(c.id)}>{c.name}</option>
-					{/each}
-				</WashSelect>
+					options={countryOptions}
+					placeholder={m.select_country()}
+					filterPlaceholder={m.select_country()}
+				/>
 			</div>
 		</div>
 		<div
@@ -328,18 +351,14 @@
 		>
 			<label for="sup-state" class="shrink-0 sm:w-40">{m.state()}</label>
 			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="sup-state"
+				<SearchSelect
+					inputId="sup-state"
 					bind:value={selectedStateId}
+					options={stateOptions}
+					placeholder={m.state()}
+					filterPlaceholder={m.state()}
 					disabled={!selectedCountryId}
-					optionHeader={m.state()}
-				>
-					{#each filteredStateData as s (s.id)}
-						<option value={String(s.id)}
-							>{s.name ?? s.code ?? s.id}</option
-						>
-					{/each}
-				</WashSelect>
+				/>
 			</div>
 		</div>
 		<div
@@ -347,18 +366,14 @@
 		>
 			<label for="sup-city" class="shrink-0 sm:w-40">{m.city()}</label>
 			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="sup-city"
+				<SearchSelect
+					inputId="sup-city"
 					bind:value={selectedCityId}
+					options={cityOptions}
+					placeholder={m.city()}
+					filterPlaceholder={m.city()}
 					disabled={!selectedStateId}
-					optionHeader={m.city()}
-				>
-					{#each filteredCityData as ct (ct.id)}
-						<option value={String(ct.id)}
-							>{ct.name ?? ct.code ?? ct.id}</option
-						>
-					{/each}
-				</WashSelect>
+				/>
 			</div>
 		</div>
 		<div
@@ -366,16 +381,14 @@
 		>
 			<label for="sup-postal" class="shrink-0 sm:w-40">{m.postal_code()}</label>
 			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="sup-postal"
+				<SearchSelect
+					inputId="sup-postal"
 					bind:value={selectedPostalCodeId}
+					options={postalCodeOptions}
+					placeholder={m.postal_code()}
+					filterPlaceholder={m.postal_code()}
 					disabled={!selectedCityId}
-					optionHeader={m.postal_code()}
-				>
-					{#each filteredPostalCodeData as p (p.id)}
-						<option value={String(p.id)}>{String(p.value)}</option>
-					{/each}
-				</WashSelect>
+				/>
 			</div>
 		</div>
 		<div

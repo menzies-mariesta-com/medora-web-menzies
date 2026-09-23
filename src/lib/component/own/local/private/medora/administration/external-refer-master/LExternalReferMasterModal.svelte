@@ -5,6 +5,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { page } from '$app/state';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -132,6 +133,30 @@
 		selectedCity?.id
 			? postalCodes.filter((p) => p.cityId === selectedCity.id)
 			: []
+	);
+	const countryOptions = $derived(
+		countries.map((c) => ({
+			value: String(c.id),
+			label: c.name ?? c.code ?? String(c.id)
+		}))
+	);
+	const stateOptions = $derived(
+		filteredStateData.map((s) => ({
+			value: String(s.id),
+			label: s.name ?? String(s.id)
+		}))
+	);
+	const cityOptions = $derived(
+		filteredCityData.map((c) => ({
+			value: String(c.id),
+			label: c.name ?? c.code ?? String(c.id)
+		}))
+	);
+	const postalCodeOptions = $derived(
+		filteredPostalCodeData.map((p) => ({
+			value: String(p.id),
+			label: String(p.value)
+		}))
 	);
 
 	// Track previous parent values so we only reset when *user* changes parent (not on load)
@@ -406,17 +431,13 @@
 									?.name ?? '—'}
 							</span>
 						{:else}
-							<WashSelect
-								className="select"
-								optionHeader="Select a country ..."
+							<SearchSelect
+								inputId="refer-country"
 								bind:value={countryId}
-							>
-								{#each countries as c (c.id)}
-									<option value={String(c.id)}
-										>{c.name ?? c.code ?? c.id}</option
-									>
-								{/each}
-							</WashSelect>
+								options={countryOptions}
+								placeholder="Select a country ..."
+								filterPlaceholder="Search country…"
+							/>
 						{/if}
 					</div>
 				</div>
@@ -431,18 +452,14 @@
 									'—'}
 							</span>
 						{:else}
-							<WashSelect
-								className="select"
-								optionHeader="Select a state ..."
-								disabled={!selectedCountry?.id}
+							<SearchSelect
+								inputId="refer-state"
 								bind:value={stateId}
-							>
-								{#each filteredStateData as data (data.id)}
-									<option value={String(data.id)}
-										>{data.name ?? data.id}</option
-									>
-								{/each}
-							</WashSelect>
+								options={stateOptions}
+								placeholder="Select a state ..."
+								filterPlaceholder="Search state…"
+								disabled={!selectedCountry?.id}
+							/>
 						{/if}
 					</div>
 				</div>
@@ -457,18 +474,14 @@
 									'—'}
 							</span>
 						{:else}
-							<WashSelect
-								className="select"
-								optionHeader="Select a city ..."
-								disabled={!selectedState?.id}
+							<SearchSelect
+								inputId="refer-city"
 								bind:value={cityId}
-							>
-								{#each filteredCityData as data (data.id)}
-									<option value={String(data.id)}
-										>{data.name ?? data.code ?? data.id}</option
-									>
-								{/each}
-							</WashSelect>
+								options={cityOptions}
+								placeholder="Select a city ..."
+								filterPlaceholder="Search city…"
+								disabled={!selectedState?.id}
+							/>
 						{/if}
 					</div>
 				</div>
@@ -484,18 +497,14 @@
 								)?.value ?? '—'}
 							</span>
 						{:else}
-							<WashSelect
-								className="select"
-								optionHeader="Select a postal code ..."
-								disabled={!selectedCity?.id}
+							<SearchSelect
+								inputId="refer-postalCode"
 								bind:value={postalCodeId}
-							>
-								{#each filteredPostalCodeData as data (data.id)}
-									<option value={String(data.id)}
-										>{String(data.value)}</option
-									>
-								{/each}
-							</WashSelect>
+								options={postalCodeOptions}
+								placeholder="Select a postal code ..."
+								filterPlaceholder="Search postal code…"
+								disabled={!selectedCity?.id}
+							/>
 						{/if}
 					</div>
 				</div>
