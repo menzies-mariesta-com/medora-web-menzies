@@ -16,7 +16,10 @@ export enum RoleEnum {
 export enum StaffTypeEnum {
 	NURSE = 1,
 	EMPLOYEE = 2,
-	DOCTOR = 3
+	/** Legacy doctor; treat as Consultant for clinical authority. */
+	DOCTOR = 3,
+	MEDICAL_OFFICER = 4,
+	CONSULTANT = 5
 }
 
 export enum YesNoEnum {
@@ -35,6 +38,30 @@ export enum VisitTypeEnum {
 	ED = 3,
 	DAY_CARE = 4,
 	PACKAGE = 5
+}
+
+/** `status_tagging.id` for Visit workflow (type Visit). */
+export enum VisitStatusTaggingEnum {
+	OPEN = 5,
+	VITAL = 6,
+	SEEN = 7,
+	CLOSED = 8,
+	ADMITTED = 54,
+	DISCHARGED = 55
+}
+
+/** Bed occupancy for IPD ADT (stored on `bed.status`). */
+export enum IpdBedStatusEnum {
+	FREE = 1,
+	OCCUPIED = 2,
+	BLOCKED = 3
+}
+
+/** Admission lifecycle on `ipd_admission.status`. */
+export enum IpdAdmissionStatusEnum {
+	ADMITTED = 1,
+	DISCHARGED = 2,
+	CANCELLED = 3
 }
 
 export enum UnitTypeEnum {

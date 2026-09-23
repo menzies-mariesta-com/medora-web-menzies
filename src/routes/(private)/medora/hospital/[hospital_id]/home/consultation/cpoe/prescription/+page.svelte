@@ -10,6 +10,9 @@
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -18,8 +21,15 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-	import { toastError, toastSuccess } from '$lib/util/toast-copy.util';
+	import {
+		toastError,
+		toastSuccess
+	} from '$lib/util/toast-copy.util';
 	import { m } from '$lib/paraglide/messages';
+	import type {
+		MedicationOrderMastersResponse,
+		StoreSearchRow
+	} from '$lib/model/type/medora/medication-order.type';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
@@ -33,9 +43,7 @@
 			: ''
 	);
 	const visitIdStr = $derived(VisitState.visitId);
-	const visitId = $derived(
-		visitIdStr ? Number(visitIdStr) : 0
-	);
+	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
 	const readOnly = $derived(VisitState.isClinicalVisitReadOnly);
 	const apiBase = $derived(
 		hospitalId
@@ -51,8 +59,47 @@
 	let isSubmitting = $state(false);
 	let isSavingEdit = $state(false);
 	let loadSeq = 0;
-	let mounted = $state(false);
-	let lastLoadedVisitId = $state(0);
+	let masters = $state<MedicationOrderMastersResponse | null>(null);
+	let storeId = $state('');
+	let isSavingDraft = $state(false);
+	let nextLineKey = 1;
+
+	type MedicationItem = { id: number; itemName: string };
+	type DraftLine = {
+		key: number;
+		itemMasterId: string;
+		dose: string;
+		doseUnitId: string;
+		frequencyId: string;
+		durationValue: string;
+		durationUnitId: string;
+		formId: string;
+		routeId: string;
+		orderTypeId: string;
+		foodRelationId: string;
+		startAt: string;
+		lineRemarks: string;
+	};
+
+	function blankLine(): DraftLine {
+		return {
+			key: nextLineKey++,
+			itemMasterId: '',
+			dose: '',
+			doseUnitId: '',
+			frequencyId: '',
+			durationValue: '',
+			durationUnitId: '',
+			formId: '',
+			routeId: '',
+			orderTypeId: '',
+			foodRelationId: '',
+			startAt: new Date().toISOString().slice(0, 16),
+			lineRemarks: ''
+		};
+	}
+
+	let medicationLines = $state<DraftLine[]>([blankLine()]);
 
 	const activeNotes = $derived(
 		notes.filter(
@@ -126,6 +173,102 @@
 		}
 	}
 
+	async function loadMedicationMasters() {
+		if (!apiBase) return;
+		masters = await apiGet<MedicationOrderMastersResponse>(
+			'medication.masters',
+			{}
+		);
+	}
+
+	async function searchStores(query: string) {
+		const rows = await apiGet<StoreSearchRow[]>('medication.stores', {
+			search: query
+		});
+		return rows.map((row) => ({
+			value: String(row.id),
+			label:
+				row.storeName ??
+				msg.mo_clinical_store_number({ number: row.id })
+		}));
+	}
+
+	async function searchMedicationItems(query: string) {
+		const rows = await apiGet<MedicationItem[]>('medication.items', {
+			search: query
+		});
+		return rows.map((row) => ({
+			value: String(row.id),
+			label: row.itemName
+		}));
+	}
+
+	function removeMedicationLine(key: number) {
+		if (medicationLines.length === 1) return;
+		medicationLines = medicationLines.filter(
+			(line) => line.key !== key
+		);
+	}
+
+	async function saveMedicationDraft() {
+		if (!visitId || !storeId || readOnly) return;
+		const invalid = medicationLines.some(
+			(line) =>
+				!line.itemMasterId ||
+				!line.dose.trim() ||
+				!line.doseUnitId ||
+				!line.frequencyId ||
+				!line.durationValue.trim() ||
+				!line.durationUnitId
+		);
+		if (invalid) {
+			toastService.addToast(
+				msg.mo_clinical_medication_required_error(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		isSavingDraft = true;
+		try {
+			await apiPost('medication.createDraft', {
+				visitId,
+				storeId: Number(storeId),
+				lines: medicationLines.map((line) => ({
+					itemMasterId: Number(line.itemMasterId),
+					dose: line.dose.trim(),
+					doseUnitId: Number(line.doseUnitId),
+					frequencyId: Number(line.frequencyId),
+					durationValue: line.durationValue.trim(),
+					durationUnitId: Number(line.durationUnitId),
+					formId: line.formId ? Number(line.formId) : null,
+					routeId: line.routeId ? Number(line.routeId) : null,
+					orderTypeId: line.orderTypeId
+						? Number(line.orderTypeId)
+						: null,
+					foodRelationId: line.foodRelationId
+						? Number(line.foodRelationId)
+						: null,
+					startAt: line.startAt
+						? new Date(line.startAt).toISOString()
+						: undefined,
+					lineRemarks: line.lineRemarks.trim() || null
+				}))
+			});
+			medicationLines = [blankLine()];
+			toastService.addToast(
+				msg.mo_clinical_medication_created(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (error) {
+			toastService.addErrorToast(
+				msg.mo_clinical_medication_create_failed(),
+				error
+			);
+		} finally {
+			isSavingDraft = false;
+		}
+	}
+
 	async function handleAddNote() {
 		const vid = visitId;
 		if (!vid || readOnly) return;
@@ -173,7 +316,9 @@
 		editingNoteText = '';
 	}
 
-	async function handleSaveEditNote(row: CpoePrescriptionNoteListRow) {
+	async function handleSaveEditNote(
+		row: CpoePrescriptionNoteListRow
+	) {
 		if (readOnly || !isRowActive(row)) return;
 		const trimmed = editingNoteText.trim();
 		if (!trimmed) {
@@ -210,7 +355,9 @@
 
 	async function handleDeleteNote(row: CpoePrescriptionNoteListRow) {
 		if (readOnly || !isRowActive(row)) return;
-		const result = await dialogService.open<{ deleteRemark?: string }>({
+		const result = await dialogService.open<{
+			deleteRemark?: string;
+		}>({
 			title: msg.consultation_cpoe_prescription_delete_title(),
 			component: LCpoePrescriptionNoteDeleteDialogContent,
 			fullScreen: false,
@@ -239,21 +386,11 @@
 		}
 	}
 
-	$effect(() => {
-		if (!mounted) return;
-		if (visitId !== lastLoadedVisitId) {
-			lastLoadedVisitId = visitId;
-			void loadNotes();
-		}
-	});
-
 	lifeCycleUtil.onMount(() => {
-		mounted = true;
-		if (visitId) void loadNotes();
-	});
-
-	lifeCycleUtil.onDestroy(() => {
-		mounted = false;
+		if (visitId) {
+			void loadNotes();
+			void loadMedicationMasters();
+		}
 	});
 </script>
 
@@ -261,7 +398,247 @@
 	<WashCard>
 		<WashCardBody className="gap-4">
 			<WashCardBodyTitle>
-				{msg.consultation_cpoe_prescription_title()}
+				{msg.mo_clinical_medication_draft_title()}
+			</WashCardBodyTitle>
+			{#if !visitId}
+				<WashAlert
+					type={StatusColorEnum.INFO}
+					message={m.no_visit_selected()}
+				/>
+			{:else}
+				<div class="grid gap-3 md:grid-cols-2">
+					<label class="flex flex-col gap-1 text-sm">
+						<span>
+							{msg.mo_clinical_dispensing_store()}
+							<span class="text-error">*</span>
+						</span>
+						<SearchSelect
+							bind:value={storeId}
+							placeholder={msg.mo_clinical_search_store()}
+							searchFn={searchStores}
+							minSearchLength={0}
+							disabled={readOnly || isSavingDraft}
+						/>
+					</label>
+				</div>
+
+				<div class="flex flex-col gap-3">
+					{#each medicationLines as line, index (line.key)}
+						<fieldset class="rounded-box border border-base-300 p-3">
+							<div
+								class="mb-3 flex items-center justify-between gap-2"
+							>
+								<legend class="font-medium">
+									{msg.mo_clinical_medication_number({
+										number: index + 1
+									})}
+								</legend>
+								<WashButton
+									type="button"
+									className="btn-ghost btn-xs text-error"
+									disabled={readOnly || medicationLines.length === 1}
+									onClick={() => removeMedicationLine(line.key)}
+								>
+									{msg.mo_clinical_remove()}
+								</WashButton>
+							</div>
+							<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+								<label
+									class="flex flex-col gap-1 text-sm md:col-span-2"
+								>
+									<span>
+										{msg.mo_clinical_item()}
+										<span class="text-error">*</span>
+									</span>
+									<SearchSelect
+										bind:value={line.itemMasterId}
+										placeholder={msg.mo_clinical_search_medication()}
+										searchFn={searchMedicationItems}
+										minSearchLength={0}
+										disabled={readOnly || isSavingDraft}
+									/>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>
+										{msg.mo_clinical_dose()}
+										<span class="text-error">*</span>
+									</span>
+									<WashInputField
+										bind:value={line.dose}
+										inputType="text"
+										inputPlaceholderText={msg.mo_clinical_dose_placeholder()}
+										disabled={readOnly || isSavingDraft}
+									/>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>
+										{msg.mo_clinical_dose_unit()}
+										<span class="text-error">*</span>
+									</span>
+									<WashSelect
+										bind:value={line.doseUnitId}
+										placeholder={msg.mo_clinical_choose_unit()}
+										disabled={readOnly || isSavingDraft}
+									>
+										{#each masters?.doseUnits ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? '–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>
+										{msg.mo_clinical_frequency()}
+										<span class="text-error">*</span>
+									</span>
+									<WashSelect
+										bind:value={line.frequencyId}
+										placeholder={msg.mo_clinical_choose_frequency()}
+										disabled={readOnly || isSavingDraft}
+									>
+										{#each masters?.freqs ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.label ??
+													option.summaryText ??
+													'–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>
+										{msg.mo_clinical_duration()}
+										<span class="text-error">*</span>
+									</span>
+									<WashInputField
+										bind:value={line.durationValue}
+										inputType="number"
+										inputPlaceholderText={msg.mo_clinical_duration()}
+										min="1"
+										disabled={readOnly || isSavingDraft}
+									/>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>
+										{msg.mo_clinical_duration_unit()}
+										<span class="text-error">*</span>
+									</span>
+									<WashSelect
+										bind:value={line.durationUnitId}
+										placeholder={msg.mo_clinical_choose_unit()}
+										disabled={readOnly || isSavingDraft}
+									>
+										{#each masters?.durUnits ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? option.code}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>{msg.mo_clinical_start()}</span>
+									<WashInputField
+										bind:value={line.startAt}
+										inputType="datetime-local"
+										disabled={readOnly || isSavingDraft}
+									/>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>{msg.mo_clinical_form()}</span>
+									<WashSelect
+										bind:value={line.formId}
+										placeholder={msg.mo_clinical_optional()}
+									>
+										{#each masters?.forms ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? '–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>{msg.mo_clinical_route()}</span>
+									<WashSelect
+										bind:value={line.routeId}
+										placeholder={msg.mo_clinical_optional()}
+									>
+										{#each masters?.routes ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? '–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>{msg.mo_clinical_order_type()}</span>
+									<WashSelect
+										bind:value={line.orderTypeId}
+										placeholder={msg.mo_clinical_optional()}
+									>
+										{#each masters?.orderTypes ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? '–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label class="flex flex-col gap-1 text-sm">
+									<span>{msg.mo_clinical_food_relation()}</span>
+									<WashSelect
+										bind:value={line.foodRelationId}
+										placeholder={msg.mo_clinical_optional()}
+									>
+										{#each masters?.foodRels ?? [] as option (option.id)}
+											<option value={String(option.id)}
+												>{option.name ?? '–'}</option
+											>
+										{/each}
+									</WashSelect>
+								</label>
+								<label
+									class="flex flex-col gap-1 text-sm md:col-span-2"
+								>
+									<span>{msg.mo_clinical_remarks()}</span>
+									<WashInputField
+										bind:value={line.lineRemarks}
+										inputType="text"
+										inputPlaceholderText={msg.mo_clinical_optional_instructions()}
+									/>
+								</label>
+							</div>
+						</fieldset>
+					{/each}
+				</div>
+
+				<div class="flex flex-wrap justify-end gap-2">
+					<WashButton
+						type="button"
+						className="btn-outline"
+						disabled={readOnly || isSavingDraft}
+						onClick={() =>
+							(medicationLines = [...medicationLines, blankLine()])}
+					>
+						{msg.mo_clinical_add_medication()}
+					</WashButton>
+					<WashButton
+						type="button"
+						className="btn-primary"
+						disabled={readOnly || isSavingDraft || !storeId}
+						loading={isSavingDraft}
+						onClick={saveMedicationDraft}
+					>
+						{msg.mo_clinical_save_draft()}
+					</WashButton>
+				</div>
+			{/if}
+		</WashCardBody>
+	</WashCard>
+
+	<WashCard>
+		<WashCardBody className="gap-4">
+			<WashCardBodyTitle>
+				{msg.mo_clinical_free_text_notes()}
 			</WashCardBodyTitle>
 
 			{#if !visitId}
@@ -279,7 +656,6 @@
 						className="textarea-bordered min-h-40 w-full"
 						placeholder={msg.consultation_cpoe_prescription_note_placeholder()}
 						bind:value={noteDraft}
-						disabled={readOnly || isSubmitting}
 					/>
 					<div class="flex justify-end">
 						<WashButton
@@ -357,7 +733,6 @@
 										<WashTextarea
 											className="textarea-bordered min-h-32 w-full"
 											bind:value={editingNoteText}
-											disabled={isSavingEdit}
 										/>
 										<div class="flex justify-end gap-2">
 											<WashButton
@@ -381,7 +756,9 @@
 										</div>
 									</div>
 								{:else}
-									<p class="whitespace-pre-wrap text-sm">{row.note}</p>
+									<p class="text-sm whitespace-pre-wrap">
+										{row.note}
+									</p>
 								{/if}
 							</li>
 						{/each}

@@ -15,12 +15,12 @@ import {
 	or,
 	sql
 } from 'drizzle-orm';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import { StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 import {
 	normalizePagination,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { ensureDb } from '$lib/server/db';
+import { ensureDb, ensureDbUnaudited } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
 	AllergySchema,
@@ -66,9 +66,15 @@ import { formatMoneyAmount } from '$lib/util/number-display.util';
 import { computeSalePriceAtTransactionDb } from '$lib/server/medora/inventory/sale-price.server';
 import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/medora/inv-pricing-module.type';
 import { unitSalePriceForOutUnit } from '$lib/tool/inventory/med-order-out-qty.util';
+import { getDiagnosisCode } from '$lib/server/medora/clinical/diagnosis-code.server';
 
 export type DiagnosisWithType = DiagnosisSchema & {
 	diagnosisType: DiagnosisTypeSchema | null;
+	diagnosisCode?: {
+		id: number;
+		code: string;
+		description: string;
+	} | null;
 };
 
 export async function getDiagnosisTypes(): Promise<
@@ -89,13 +95,17 @@ export async function getDiagnosisById(input: {
 			and(eq(t.id, input.id), ne(t.statusId, StatusEnum.DELETED)),
 		with: { diagnosisType: true }
 	});
-	return (row as DiagnosisWithType | null) ?? null;
+	if (!row) return null;
+	const diagnosisCode = row.diagnosisCodeId
+		? await getDiagnosisCode(row.diagnosisCodeId)
+		: null;
+	return { ...row, diagnosisCode } as DiagnosisWithType;
 }
 
 export async function getDiagnosesByVisitId(input: {
 	visitId: number;
 }): Promise<DiagnosisWithType[]> {
-	return (await ensureDb().query.diagnosisTable.findMany({
+	const rows = await ensureDb().query.diagnosisTable.findMany({
 		where: (t, { and, eq, ne }) =>
 			and(
 				eq(t.visitId, input.visitId),
@@ -103,6 +113,27 @@ export async function getDiagnosesByVisitId(input: {
 			),
 		with: { diagnosisType: true },
 		orderBy: (t, { desc }) => desc(t.createdAt)
+	});
+	const codeIds = [
+		...new Set(
+			rows
+				.map((row) => row.diagnosisCodeId)
+				.filter((id): id is number => id != null)
+		)
+	];
+	const codes = codeIds.length
+		? await ensureDb()
+				.select()
+				.from(table.diagnosisCodeTable)
+				.where(inArray(table.diagnosisCodeTable.id, codeIds))
+		: [];
+	const codeById = new Map(codes.map((code) => [code.id, code]));
+	return rows.map((row) => ({
+		...row,
+		diagnosisCode:
+			row.diagnosisCodeId != null
+				? (codeById.get(row.diagnosisCodeId) ?? null)
+				: null
 	})) as DiagnosisWithType[];
 }
 
@@ -110,9 +141,16 @@ export async function createDiagnosis(
 	payload: DiagnosisSchemaInsert
 ): Promise<DiagnosisSchema> {
 	await assertVisitNotClinicallySigned(payload.visitId);
+	const code =
+		payload.diagnosisCodeId != null
+			? await getDiagnosisCode(payload.diagnosisCodeId)
+			: null;
 	const [row] = await ensureDb()
 		.insert(table.diagnosisTable)
-		.values(payload)
+		.values({
+			...payload,
+			description: code?.description ?? payload.description
+		})
 		.returning();
 	if (!row) throw new Error('Insert failed');
 	return row;
@@ -131,9 +169,16 @@ export async function updateDiagnosis(
 		.limit(1);
 	if (!existing) throw new Error('Diagnosis not found');
 	await assertVisitNotClinicallySigned(existing.visitId);
+	const code =
+		data.diagnosisCodeId != null
+			? await getDiagnosisCode(data.diagnosisCodeId)
+			: null;
 	const [row] = await ensureDb()
 		.update(table.diagnosisTable)
-		.set(data)
+		.set({
+			...data,
+			...(code ? { description: code.description } : {})
+		})
 		.where(eq(table.diagnosisTable.id, id))
 		.returning();
 	if (!row) throw new Error('Update failed');
@@ -350,6 +395,10 @@ export async function createProgressNote(
 	payload: {
 		visitId: number;
 		note: string;
+		subjective?: string | null;
+		objective?: string | null;
+		assessment?: string | null;
+		plan?: string | null;
 		doctorId?: string | null;
 		statusId?: number;
 	}
@@ -373,6 +422,10 @@ export async function createProgressNote(
 			patientId: visit.patientId,
 			visitId: payload.visitId,
 			note,
+			subjective: payload.subjective?.trim() || null,
+			objective: payload.objective?.trim() || null,
+			assessment: payload.assessment?.trim() || null,
+			plan: payload.plan?.trim() || null,
 			doctorId:
 				payload.doctorId != null &&
 				String(payload.doctorId).trim() !== ''
@@ -391,16 +444,36 @@ export async function updateProgressNote(
 	payload: {
 		id: number;
 		note?: string;
+		subjective?: string | null;
+		objective?: string | null;
+		assessment?: string | null;
+		plan?: string | null;
 		doctorId?: string | null;
 		statusId?: number;
 	}
 ): Promise<ProgressNoteSchema> {
-	const { id, note, doctorId, statusId } = payload;
+	const {
+		id,
+		note,
+		subjective,
+		objective,
+		assessment,
+		plan,
+		doctorId,
+		statusId
+	} = payload;
 	const existing = await getProgressNoteById({ id, hospitalId });
 	if (!existing) throw new Error('Progress note not found');
 	await assertVisitNotClinicallySigned(existing.visitId);
 	const patch: ProgressNoteSchemaUpdate = {};
 	if (note !== undefined) patch.note = String(note).trim();
+	if (subjective !== undefined)
+		patch.subjective = subjective?.trim() || null;
+	if (objective !== undefined)
+		patch.objective = objective?.trim() || null;
+	if (assessment !== undefined)
+		patch.assessment = assessment?.trim() || null;
+	if (plan !== undefined) patch.plan = plan?.trim() || null;
 	if (doctorId !== undefined) {
 		patch.doctorId =
 			doctorId != null && String(doctorId).trim() !== ''
@@ -440,6 +513,28 @@ export async function deleteProgressNote(input: {
 			deleteRemark: remark
 		})
 		.where(eq(table.progressNoteTable.id, input.id));
+}
+
+export async function cosignProgressNote(input: {
+	id: number;
+	hospitalId: string;
+	consultantId: string;
+}): Promise<ProgressNoteSchema> {
+	const existing = await getProgressNoteById({
+		id: input.id,
+		hospitalId: input.hospitalId
+	});
+	if (!existing) throw error(404, 'Progress note not found');
+	const [row] = await ensureDb()
+		.update(table.progressNoteTable)
+		.set({
+			cosignedAt: new Date(),
+			cosignedBy: input.consultantId
+		})
+		.where(eq(table.progressNoteTable.id, input.id))
+		.returning();
+	if (!row) throw error(500, 'Unable to cosign progress note');
+	return row;
 }
 
 function prettifyFormCode(code: string): string {
@@ -1000,22 +1095,56 @@ export async function createAllergyMaster(
 		);
 	}
 
+	const insertValues = { name } as AllergySchemaInsert;
+
 	try {
 		const [row] = await ensureDb()
 			.insert(table.allergyTable)
-			.values({ ...payload, name })
+			.values(insertValues)
 			.returning();
 		if (!row) throw error(400, 'Failed to create allergy.');
 		return row;
 	} catch (err) {
-		// If DB has a uniqueness constraint on name (or lower(name)), report a clean 400.
-		// (Drizzle wraps pg errors; message is the most portable signal here.)
 		const msg = err instanceof Error ? err.message : String(err);
 		if (/duplicate key|unique constraint|already exists/i.test(msg)) {
 			throw error(
 				400,
 				'An allergy with this name already exists in the master list.'
 			);
+		}
+		// Stale session after DB wipe/reseed: audit user id is not in `"user"`.
+		if (
+			/foreign key constraint|allergy_created_by|allergy_updated_by|is not present in table "user"/i.test(
+				msg
+			)
+		) {
+			try {
+				const [row] = await ensureDbUnaudited()
+					.insert(table.allergyTable)
+					.values(insertValues)
+					.returning();
+				if (!row) throw error(400, 'Failed to create allergy.');
+				return row;
+			} catch (retryErr) {
+				const retryMsg =
+					retryErr instanceof Error
+						? retryErr.message
+						: String(retryErr);
+				if (
+					/duplicate key|unique constraint|already exists/i.test(
+						retryMsg
+					)
+				) {
+					throw error(
+						400,
+						'An allergy with this name already exists in the master list.'
+					);
+				}
+				throw error(
+					401,
+					'Your session is out of date (user not found). Please sign out and sign in again, then retry.'
+				);
+			}
 		}
 		throw err;
 	}
@@ -1260,66 +1389,110 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 	return out;
 }
 
-/** Service order detail IDs already captured on a closed (`printed_at`) OP bill for this visit. */
+/** Service order detail IDs already on a closed (`printed_at`) OP or IP bill for this visit. */
 export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
-	const rows = await ensureDb()
-		.select({
-			detailId: table.opBillingLineTable.serviceOrderDetailId
-		})
-		.from(table.opBillingLineTable)
-		.innerJoin(
-			table.opBillingTable,
-			eq(
-				table.opBillingLineTable.opBillingId,
-				table.opBillingTable.id
+	const [opRows, ipRows] = await Promise.all([
+		ensureDb()
+			.select({
+				detailId: table.opBillingLineTable.serviceOrderDetailId
+			})
+			.from(table.opBillingLineTable)
+			.innerJoin(
+				table.opBillingTable,
+				eq(
+					table.opBillingLineTable.opBillingId,
+					table.opBillingTable.id
+				)
 			)
-		)
-		.where(
-			and(
-				eq(table.opBillingTable.visitId, input.visitId),
-				isNotNull(table.opBillingTable.printedAt),
-				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
-				isNotNull(table.opBillingLineTable.serviceOrderDetailId)
+			.where(
+				and(
+					eq(table.opBillingTable.visitId, input.visitId),
+					isNotNull(table.opBillingTable.printedAt),
+					ne(table.opBillingTable.statusId, StatusEnum.DELETED),
+					isNotNull(table.opBillingLineTable.serviceOrderDetailId)
+				)
+			),
+		ensureDb()
+			.select({
+				detailId: table.ipBillingLineTable.serviceOrderDetailId
+			})
+			.from(table.ipBillingLineTable)
+			.innerJoin(
+				table.ipBillingTable,
+				eq(
+					table.ipBillingLineTable.ipBillingId,
+					table.ipBillingTable.id
+				)
 			)
-		);
+			.where(
+				and(
+					eq(table.ipBillingTable.visitId, input.visitId),
+					isNotNull(table.ipBillingTable.printedAt),
+					ne(table.ipBillingTable.statusId, StatusEnum.DELETED),
+					isNotNull(table.ipBillingLineTable.serviceOrderDetailId)
+				)
+			)
+	]);
 
 	const set = new Set<number>();
-	for (const r of rows) {
+	for (const r of [...opRows, ...ipRows]) {
 		const id = r.detailId;
 		if (id != null) set.add(id);
 	}
 	return set;
 }
 
-/** Medication order line IDs already on a closed (`printed_at`) OP bill for this visit. */
+/** Medication order line IDs already on a closed (`printed_at`) OP or IP bill for this visit. */
 export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
-	const rows = await ensureDb()
-		.select({
-			lineId: table.opBillingLineTable.medicationOrderLineId
-		})
-		.from(table.opBillingLineTable)
-		.innerJoin(
-			table.opBillingTable,
-			eq(
-				table.opBillingLineTable.opBillingId,
-				table.opBillingTable.id
+	const [opRows, ipRows] = await Promise.all([
+		ensureDb()
+			.select({
+				lineId: table.opBillingLineTable.medicationOrderLineId
+			})
+			.from(table.opBillingLineTable)
+			.innerJoin(
+				table.opBillingTable,
+				eq(
+					table.opBillingLineTable.opBillingId,
+					table.opBillingTable.id
+				)
 			)
-		)
-		.where(
-			and(
-				eq(table.opBillingTable.visitId, input.visitId),
-				isNotNull(table.opBillingTable.printedAt),
-				ne(table.opBillingTable.statusId, StatusEnum.DELETED),
-				isNotNull(table.opBillingLineTable.medicationOrderLineId)
+			.where(
+				and(
+					eq(table.opBillingTable.visitId, input.visitId),
+					isNotNull(table.opBillingTable.printedAt),
+					ne(table.opBillingTable.statusId, StatusEnum.DELETED),
+					isNotNull(table.opBillingLineTable.medicationOrderLineId)
+				)
+			),
+		ensureDb()
+			.select({
+				lineId: table.ipBillingLineTable.medicationOrderLineId
+			})
+			.from(table.ipBillingLineTable)
+			.innerJoin(
+				table.ipBillingTable,
+				eq(
+					table.ipBillingLineTable.ipBillingId,
+					table.ipBillingTable.id
+				)
 			)
-		);
+			.where(
+				and(
+					eq(table.ipBillingTable.visitId, input.visitId),
+					isNotNull(table.ipBillingTable.printedAt),
+					ne(table.ipBillingTable.statusId, StatusEnum.DELETED),
+					isNotNull(table.ipBillingLineTable.medicationOrderLineId)
+				)
+			)
+	]);
 
 	const set = new Set<number>();
-	for (const r of rows) {
+	for (const r of [...opRows, ...ipRows]) {
 		const id = r.lineId;
 		if (id != null) set.add(id);
 	}
@@ -1506,7 +1679,11 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 			r.unitSalePrice != null ? String(r.unitSalePrice) : null;
 
 		const batchId = batchIdByLine.get(r.id);
-		if (batchId != null && outUnitId > 0 && r.itemUnitMasterId != null) {
+		if (
+			batchId != null &&
+			outUnitId > 0 &&
+			r.itemUnitMasterId != null
+		) {
 			try {
 				const computed = await computeSalePriceAtTransactionDb({
 					hospitalId,
@@ -1524,7 +1701,11 @@ async function getPendingMedicationOrderRowsForOpBilling(input: {
 					.where(eq(table.itemUnitMasterTable.id, r.itemUnitMasterId))
 					.limit(1);
 				if (ium) {
-					unitPrice = unitSalePriceForOutUnit(computed, outUnitId, ium);
+					unitPrice = unitSalePriceForOutUnit(
+						computed,
+						outUnitId,
+						ium
+					);
 				}
 			} catch {
 				// Fall back to dispense snapshot when internal-sales formula cannot resolve.
@@ -1959,7 +2140,11 @@ export async function getDoctorStaffPaginated(input: {
 		table.staffTable.statusId,
 		StatusEnum.ACTIVE
 	);
-	const doctorCondition = eq(table.staffTable.staffTypeId, 3);
+	const doctorCondition = inArray(table.staffTable.staffTypeId, [
+		StaffTypeEnum.DOCTOR,
+		StaffTypeEnum.MEDICAL_OFFICER,
+		StaffTypeEnum.CONSULTANT
+	]);
 	const searchCondition =
 		pattern &&
 		or(
@@ -2052,10 +2237,7 @@ export async function getVisitServiceLinePrintRows(input: {
 					table.serviceOrderDetailTable.serviceOrderId,
 					orderIds
 				),
-				eq(
-					table.serviceOrderDetailTable.statusId,
-					StatusEnum.ACTIVE
-				)
+				eq(table.serviceOrderDetailTable.statusId, StatusEnum.ACTIVE)
 			)
 		)
 		.orderBy(asc(table.serviceOrderDetailTable.id));

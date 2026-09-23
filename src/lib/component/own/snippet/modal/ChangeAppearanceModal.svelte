@@ -15,10 +15,34 @@
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
+	const msg = m as Record<string, (inputs?: object) => string>;
 	const washThemeTool = new WashThemeTool();
 	const fontTool = new FontTool();
 	const pigments = washThemeTool.listPigments();
 	const fontStyles = fontTool.listStyles();
+
+	const pigmentOptions = $derived(
+		pigments.map((pigment) => ({
+			value: pigment.id,
+			label: `${pigment.label} — ${pigment.note}`
+		}))
+	);
+	const modeOptions = $derived([
+		{
+			value: WashModeEnum.LIGHT,
+			label: msg.appearance_mode_light()
+		},
+		{
+			value: WashModeEnum.DARK,
+			label: msg.appearance_mode_dark()
+		}
+	]);
+	const fontOptions = $derived(
+		fontStyles.map((style) => ({
+			value: style.id,
+			label: `${style.label} — ${style.note}`
+		}))
+	);
 
 	let currentPigment: WashPigmentEnum = $state(
 		washThemeTool.getPigment()
@@ -26,8 +50,6 @@
 	let currentMode: WashModeEnum = $state(washThemeTool.getMode());
 	let currentFont: FontEnum = $state(fontTool.getFont());
 	let isConfirming = $state(false);
-
-	const msg = m as Record<string, (inputs?: object) => string>;
 
 	function preview() {
 		washThemeTool.apply(currentPigment, currentMode);
@@ -66,48 +88,36 @@
 	>
 	<WashSelect
 		id="wash-pigment"
-		optionHeader={msg.appearance_select_pigment()}
+		placeholder={msg.appearance_select_pigment()}
 		className="w-full"
+		options={pigmentOptions}
 		bind:value={currentPigment}
 		onChange={() => preview()}
-	>
-		{#each pigments as pigment (pigment.id)}
-			<option value={pigment.id}>
-				{pigment.label} — {pigment.note}
-			</option>
-		{/each}
-	</WashSelect>
+	/>
 
 	<label class="label-ink text-sm font-medium" for="wash-mode"
 		>{msg.appearance_mode()}</label
 	>
 	<WashSelect
 		id="wash-mode"
-		optionHeader={msg.appearance_select_mode()}
+		placeholder={msg.appearance_select_mode()}
 		className="w-full"
+		options={modeOptions}
 		bind:value={currentMode}
 		onChange={() => preview()}
-	>
-		<option value={WashModeEnum.LIGHT}>{msg.appearance_mode_light()}</option>
-		<option value={WashModeEnum.DARK}>{msg.appearance_mode_dark()}</option>
-	</WashSelect>
+	/>
 
 	<label class="label-ink text-sm font-medium" for="wash-font"
 		>{msg.appearance_font_style()}</label
 	>
 	<WashSelect
 		id="wash-font"
-		optionHeader={msg.appearance_select_font_style()}
+		placeholder={msg.appearance_select_font_style()}
 		className="w-full"
+		options={fontOptions}
 		bind:value={currentFont}
 		onChange={() => preview()}
-	>
-		{#each fontStyles as style (style.id)}
-			<option value={style.id}>
-				{style.label} — {style.note}
-			</option>
-		{/each}
-	</WashSelect>
+	/>
 
 	<div class="flex flex-wrap gap-2 pt-1">
 		{#each pigments.slice(0, 12) as pigment (pigment.id)}
