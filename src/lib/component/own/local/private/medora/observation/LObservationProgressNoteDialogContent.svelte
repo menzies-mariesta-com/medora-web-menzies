@@ -35,7 +35,10 @@
 	);
 	const isEdit = $derived(progressNoteId != null);
 
-	let note = $state('');
+	let subjective = $state('');
+	let objective = $state('');
+	let assessment = $state('');
+	let plan = $state('');
 	let doctorIdInput = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
 	let isSubmitting = $state(false);
@@ -44,9 +47,23 @@
 	type NoteRow = {
 		id: number;
 		note: string | null;
+		subjective?: string | null;
+		objective?: string | null;
+		assessment?: string | null;
+		plan?: string | null;
 		doctorId: string | null;
 		statusId: number | null;
 	};
+
+	function composeNote(): string {
+		const parts = [
+			subjective.trim() ? `S: ${subjective.trim()}` : '',
+			objective.trim() ? `O: ${objective.trim()}` : '',
+			assessment.trim() ? `A: ${assessment.trim()}` : '',
+			plan.trim() ? `P: ${plan.trim()}` : ''
+		].filter(Boolean);
+		return parts.join('\n');
+	}
 
 	async function apiGet<T>(
 		mode: string,
@@ -109,9 +126,7 @@
 	async function getDoctorLabelForValue(id: string): Promise<string> {
 		const staff = await apiGet<StaffWithRelations | null>(
 			'staff.get',
-			{
-				id
-			}
+			{ id }
 		);
 		if (!staff) return '';
 		return StringUtil.doctorOptionDisplayName(staff);
@@ -130,7 +145,19 @@
 			cancel();
 			return;
 		}
-		note = row.note ?? '';
+		subjective = row.subjective ?? '';
+		objective = row.objective ?? '';
+		assessment = row.assessment ?? '';
+		plan = row.plan ?? '';
+		if (
+			!subjective &&
+			!objective &&
+			!assessment &&
+			!plan &&
+			row.note
+		) {
+			subjective = row.note;
+		}
 		doctorIdInput = row.doctorId?.trim() ? String(row.doctorId) : '';
 		statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
 	}
@@ -142,7 +169,10 @@
 		if (!vid || !pid) return;
 		const seq = ++loadSeq;
 		if (id == null) {
-			note = '';
+			subjective = '';
+			objective = '';
+			assessment = '';
+			plan = '';
 			doctorIdInput = '';
 			statusIdStr = String(StatusEnum.ACTIVE);
 			return;
@@ -161,8 +191,8 @@
 			);
 			return;
 		}
-		const trimmedNote = note.trim();
-		if (!trimmedNote) {
+		const composed = composeNote();
+		if (!composed) {
 			toastService.addToast(
 				m.observation_emr_progress_note_note_required(),
 				StatusColorEnum.ERROR
@@ -172,25 +202,24 @@
 		const statusId = Number(statusIdStr) || StatusEnum.ACTIVE;
 		isSubmitting = true;
 		try {
+			const soap = {
+				note: composed,
+				subjective: subjective.trim() || null,
+				objective: objective.trim() || null,
+				assessment: assessment.trim() || null,
+				plan: plan.trim() || null,
+				doctorId:
+					doctorIdInput.trim() !== '' ? doctorIdInput.trim() : null,
+				statusId
+			};
 			if (isEdit && progressNoteId != null) {
 				await apiPost('progressNote.update', {
-					payload: {
-						id: progressNoteId,
-						note: trimmedNote,
-						doctorId:
-							doctorIdInput.trim() !== ''
-								? doctorIdInput.trim()
-								: null,
-						statusId
-					}
+					payload: { id: progressNoteId, ...soap }
 				});
 			} else {
 				await apiPost('progressNote.create', {
 					visitId: vid,
-					note: trimmedNote,
-					doctorId:
-						doctorIdInput.trim() !== '' ? doctorIdInput.trim() : null,
-					statusId
+					...soap
 				});
 			}
 			toastSuccess(
@@ -214,21 +243,65 @@
 </script>
 
 <div
-	class="flex max-h-[min(80vh,520px)] flex-col gap-4 overflow-y-auto px-2 py-3"
+	class="flex max-h-[min(80vh,640px)] flex-col gap-4 overflow-y-auto px-2 py-3"
 >
-	<div class="flex flex-col gap-1">
-		<label for="progress-note-body" class="text-sm">
-			{m.observation_emr_progress_note_note_label()}
-		</label>
-		<div class="py-0.5">
-			<WashTextarea
-				id="progress-note-body"
-				className="textarea-bordered min-h-32 w-full"
-				placeholder={m.observation_emr_note_placeholder()}
-				bind:value={note}
-			/>
+	{#each [
+		{
+			id: 'progress-note-s',
+			label: 'Subjective (S)',
+			bindKey: 'subjective' as const
+		},
+		{
+			id: 'progress-note-o',
+			label: 'Objective (O)',
+			bindKey: 'objective' as const
+		},
+		{
+			id: 'progress-note-a',
+			label: 'Assessment (A)',
+			bindKey: 'assessment' as const
+		},
+		{
+			id: 'progress-note-p',
+			label: 'Plan (P)',
+			bindKey: 'plan' as const
+		}
+	] as field (field.id)}
+		<div class="flex flex-col gap-1">
+			<label for={field.id} class="text-sm">{field.label}</label>
+			<div class="py-0.5">
+				{#if field.bindKey === 'subjective'}
+					<WashTextarea
+						id={field.id}
+						className="textarea-bordered min-h-20 w-full"
+						placeholder={m.observation_emr_note_placeholder()}
+						bind:value={subjective}
+					/>
+				{:else if field.bindKey === 'objective'}
+					<WashTextarea
+						id={field.id}
+						className="textarea-bordered min-h-20 w-full"
+						placeholder={m.observation_emr_note_placeholder()}
+						bind:value={objective}
+					/>
+				{:else if field.bindKey === 'assessment'}
+					<WashTextarea
+						id={field.id}
+						className="textarea-bordered min-h-20 w-full"
+						placeholder={m.observation_emr_note_placeholder()}
+						bind:value={assessment}
+					/>
+				{:else}
+					<WashTextarea
+						id={field.id}
+						className="textarea-bordered min-h-20 w-full"
+						placeholder={m.observation_emr_note_placeholder()}
+						bind:value={plan}
+					/>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/each}
 	<div class="flex flex-col gap-1">
 		<label for="progress-note-doctor" class="text-sm">
 			{m.observation_emr_advising_doctor()}
