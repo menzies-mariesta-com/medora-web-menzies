@@ -279,3 +279,14 @@ export function ensureDb(): DbInstance {
 	const userId = getRequestUserId();
 	return withAudit(dbInternal, userId);
 }
+
+/**
+ * Same pool/schema as {@link ensureDb}, but without request-user audit column injection.
+ * Use for rare retries when the session user id is missing from `"user"` (e.g. after a DB wipe).
+ */
+export function ensureDbUnaudited(): DbInstance {
+	if (!url || !dbInternal) {
+		throw new Error('DATABASE_URL is not set');
+	}
+	return dbInternal;
+}
