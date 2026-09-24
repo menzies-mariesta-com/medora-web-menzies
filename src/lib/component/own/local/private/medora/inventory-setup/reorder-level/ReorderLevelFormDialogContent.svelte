@@ -214,7 +214,7 @@
 
 <div class="space-y-4">
 	{#if error}
-		<div class="alert alert-error">
+		<div class="alert alert-dash alert-error">
 			<span>{error}</span>
 		</div>
 	{/if}

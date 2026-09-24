@@ -21,6 +21,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import {
+	IpdAdmissionStatusEnum,
+	IpdAccommodationBillingMethodEnum,
+	IpdBedStatusEnum,
 	StatusEnum,
 	YesNoEnum
 } from '../../../../model/enum/db-link';
@@ -1028,6 +1031,10 @@ export const diagnosisTable = pgTable(
 		diagnosisTypeId: integer('diagnosis_type_id')
 			.notNull()
 			.references(() => diagnosisTypeTable.id),
+		diagnosisCodeId: integer('diagnosis_code_id').references(
+			() => diagnosisCodeTable.id,
+			{ onDelete: 'set null' }
+		),
 		description: text('description'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
@@ -1134,7 +1141,9 @@ export const cpoePrescriptionNoteTable = pgTable(
 	},
 	(table) => [
 		index('cpoe_prescription_note_visit_id_idx').on(table.visitId),
-		index('cpoe_prescription_note_patient_id_idx').on(table.patientId),
+		index('cpoe_prescription_note_patient_id_idx').on(
+			table.patientId
+		),
 		index('cpoe_prescription_note_branch_id_idx').on(table.branchId),
 		index('cpoe_prescription_note_status_id_idx').on(table.statusId)
 	]
@@ -1155,12 +1164,18 @@ export const progressNoteTable = pgTable(
 			.notNull()
 			.references(() => patientVisitTable.id),
 		note: text('note').notNull().default(''),
+		subjective: text('subjective'),
+		objective: text('objective'),
+		assessment: text('assessment'),
+		plan: text('plan'),
 		deleteRemark: text('delete_remark'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
 			.default(StatusEnum.ACTIVE),
 		doctorId: uuid('doctor_id').references(() => staffTable.id),
+		cosignedAt: timestamp('cosigned_at', { withTimezone: true }),
+		cosignedBy: uuid('cosigned_by').references(() => staffTable.id),
 		sequenceNo: integer('sequence_no').notNull().default(0),
 		...timestamps
 	},
@@ -1279,6 +1294,8 @@ export const itemMasterTable = pgTable(
 		})
 			.notNull()
 			.default('0'),
+		/** When true, MO-authored med orders need Consultant cosign before pharmacy dispense. */
+		isHighRisk: boolean('is_high_risk').notNull().default(false),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1762,3 +1779,810 @@ export const referHistoryTable = pgTable('refer_history', {
 	subject: text('subject'),
 	...timestamps
 });
+
+/**
+ * Care-tier / pricing category for wards (e.g. General, ICU, HDU).
+ * Holds the ward-level markup % used in daily tariff.
+ */
+export const wardCategoryTable = pgTable(
+	'ward_category',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Care-intensity markup % applied on bed base (after room markup):
+		 * daily = base × (1 + room%/100) × (1 + category%/100).
+		 */
+		wardMarkup: decimal('ward_markup', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ward_category_hospital_id_idx').on(table.hospitalId),
+		index('ward_category_status_id_idx').on(table.statusId)
+	]
+);
+
+/**
+ * Privacy / amenity category for rooms (e.g. Shared, Private, Suite).
+ * Holds the room-level markup % used in daily tariff.
+ */
+export const roomCategoryTable = pgTable(
+	'room_category',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Room markup % applied on bed base before ward-category markup:
+		 * daily = base × (1 + room%/100) × (1 + ward%/100).
+		 */
+		roomMarkup: decimal('room_markup', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('room_category_hospital_id_idx').on(table.hospitalId),
+		index('room_category_status_id_idx').on(table.statusId)
+	]
+);
+
+/** IPD ward master (Hospital → Branch → Ward → Room → Bed). */
+export const wardTable = pgTable(
+	'ward',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** Ward belongs to a branch. */
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		wardCategoryId: integer('ward_category_id')
+			.notNull()
+			.references(() => wardCategoryTable.id, {
+				onDelete: 'restrict'
+			}),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ward_hospital_id_idx').on(table.hospitalId),
+		index('ward_branch_id_idx').on(table.branchId),
+		index('ward_category_id_idx').on(table.wardCategoryId),
+		index('ward_status_id_idx').on(table.statusId)
+	]
+);
+
+/**
+ * IPD room master (belongs to ward). A room holds many beds (1:N).
+ * Markup % comes from room category.
+ */
+export const roomTable = pgTable(
+	'room',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		wardId: integer('ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'cascade' }),
+		roomCategoryId: integer('room_category_id')
+			.notNull()
+			.references(() => roomCategoryTable.id, {
+				onDelete: 'restrict'
+			}),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Derived bed count for this room (synced when beds are assigned/removed).
+		 * Not set manually — capacity = number of non-deleted beds.
+		 */
+		capacity: integer('capacity').notNull().default(0),
+		/** Optional amenity / privacy notes (e.g. Ensuite, Isolation). */
+		amenities: text('amenities'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('room_hospital_id_idx').on(table.hospitalId),
+		index('room_ward_id_idx').on(table.wardId),
+		index('room_category_id_idx').on(table.roomCategoryId),
+		index('room_status_id_idx').on(table.statusId)
+	]
+);
+
+/** IPD bed master (belongs to room; ward resolved via room). */
+export const bedTable = pgTable(
+	'bed',
+	{
+		id: serial('id').primaryKey(),
+		roomId: integer('room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'cascade' }),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/** Foundational daily bed asset cost in additive tariff. */
+		basePrice: decimal('base_price', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		/** {@link IpdBedStatusEnum} */
+		bedStatus: integer('bed_status')
+			.notNull()
+			.default(IpdBedStatusEnum.FREE),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('bed_room_id_idx').on(table.roomId),
+		index('bed_hospital_id_idx').on(table.hospitalId),
+		index('bed_bed_status_idx').on(table.bedStatus),
+		index('bed_status_id_idx').on(table.statusId)
+	]
+);
+
+/**
+ * IPD admission for a patient visit (same visit converted from OPD).
+ * At most one active (non-cancelled) admission per visit.
+ * Current location: ward + room + bed (denormalized for census; bed is source of truth).
+ */
+export const ipdAdmissionTable = pgTable(
+	'ipd_admission',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		admissionNo: varchar('admission_no', { length: 128 }),
+		wardId: integer('ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'restrict' }),
+		roomId: integer('room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
+		bedId: integer('bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		admittingDoctorId: uuid('admitting_doctor_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		admittedAt: timestamp('admitted_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		dischargedAt: timestamp('discharged_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		reasonNotes: text('reason_notes'),
+		/**
+		 * Temporary leave (OT / Recovery): bed stays OCCUPIED; not a transfer.
+		 * Null when patient is on the assigned bed.
+		 */
+		otHoldLocation: varchar('ot_hold_location', { length: 256 }),
+		otHoldAt: timestamp('ot_hold_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		/** {@link IpdAdmissionStatusEnum} */
+		admissionStatus: integer('admission_status')
+			.notNull()
+			.default(IpdAdmissionStatusEnum.ADMITTED),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ipd_admission_visit_id_idx').on(table.visitId),
+		index('ipd_admission_hospital_id_idx').on(table.hospitalId),
+		index('ipd_admission_ward_id_idx').on(table.wardId),
+		index('ipd_admission_room_id_idx').on(table.roomId),
+		index('ipd_admission_bed_id_idx').on(table.bedId),
+		index('ipd_admission_admission_status_idx').on(
+			table.admissionStatus
+		),
+		uniqueIndex('ipd_admission_visit_active_uidx')
+			.on(table.visitId)
+			// Literal `1` (= IpdAdmissionStatusEnum.ADMITTED). Do not use
+			// `${enum}` here — drizzle-kit push binds it as `$1` and Neon DDL fails.
+			.where(sql`${table.admissionStatus} = 1`)
+	]
+);
+
+/** Bed assignment / transfer history for an IPD admission. */
+export const ipdBedHistoryTable = pgTable(
+	'ipd_bed_history',
+	{
+		id: serial('id').primaryKey(),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		fromBedId: integer('from_bed_id').references(() => bedTable.id, {
+			onDelete: 'set null'
+		}),
+		toBedId: integer('to_bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		fromRoomId: integer('from_room_id').references(
+			() => roomTable.id,
+			{ onDelete: 'set null' }
+		),
+		toRoomId: integer('to_room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
+		fromWardId: integer('from_ward_id').references(
+			() => wardTable.id,
+			{ onDelete: 'set null' }
+		),
+		toWardId: integer('to_ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'restrict' }),
+		movedAt: timestamp('moved_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		movedByStaffId: uuid('moved_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		remark: text('remark'),
+		...timestamps
+	},
+	(table) => [
+		index('ipd_bed_history_admission_id_idx').on(table.admissionId),
+		index('ipd_bed_history_to_bed_id_idx').on(table.toBedId),
+		index('ipd_bed_history_to_room_id_idx').on(table.toRoomId)
+	]
+);
+
+/**
+ * Billable bed-stay segment with immutable price snapshot.
+ * Closed on transfer/discharge; new segment opens on admit/transfer.
+ */
+export const ipdBedStaySegmentTable = pgTable(
+	'ipd_bed_stay_segment',
+	{
+		id: serial('id').primaryKey(),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		wardId: integer('ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'restrict' }),
+		roomId: integer('room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
+		bedId: integer('bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		wardNameSnapshot: varchar('ward_name_snapshot', {
+			length: 512
+		}),
+		roomNameSnapshot: varchar('room_name_snapshot', {
+			length: 512
+		}),
+		bedNameSnapshot: varchar('bed_name_snapshot', { length: 512 }),
+		bedBasePriceSnapshot: decimal('bed_base_price_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		roomMarkupSnapshot: decimal('room_markup_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		wardMarkupSnapshot: decimal('ward_markup_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		dailyTariffSnapshot: decimal('daily_tariff_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		startedAt: timestamp('started_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		endedAt: timestamp('ended_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ipd_bed_stay_segment_admission_id_idx').on(
+			table.admissionId
+		),
+		index('ipd_bed_stay_segment_hospital_id_idx').on(
+			table.hospitalId
+		),
+		index('ipd_bed_stay_segment_open_idx')
+			.on(table.admissionId)
+			.where(sql`${table.endedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital policy for how stay segments convert to accommodation charges.
+ * One row per hospital (upserted on first use).
+ */
+export const ipdAccommodationBillingPolicyTable = pgTable(
+	'ipd_accommodation_billing_policy',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** {@link IpdAccommodationBillingMethodEnum} */
+		billingMethod: integer('billing_method')
+			.notNull()
+			.default(IpdAccommodationBillingMethodEnum.BLOCK_24H),
+		/** Minutes after cut-off / block end with no extra day (grace). */
+		graceMinutes: integer('grace_minutes').notNull().default(0),
+		/** Minimum billable days (e.g. 0.5); null = no floor. */
+		minimumDays: decimal('minimum_days', {
+			precision: 8,
+			scale: 4
+		}),
+		/**
+		 * Cut-off time for CALENDAR_DAY method as HH:mm (local hospital).
+		 * Default midnight = 00:00.
+		 */
+		cutoffTime: varchar('cutoff_time', { length: 8 })
+			.notNull()
+			.default('00:00'),
+		/**
+		 * Optional service item used when posting accommodation lines
+		 * into ip_billing_line.
+		 */
+		accommodationServiceItemId: integer(
+			'accommodation_service_item_id'
+		).references(() => serviceItemTable.id, {
+			onDelete: 'set null'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('ipd_accommodation_billing_policy_hospital_uidx').on(
+			table.hospitalId
+		)
+	]
+);
+
+/**
+ * IP billing header for an IPD visit (mirrors `op_billing`).
+ * Multiple drafts/closed bills per visit allowed same as OP.
+ */
+export const ipBillingTable = pgTable(
+	'ip_billing',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		admissionId: integer('admission_id').references(
+			() => ipdAdmissionTable.id,
+			{ onDelete: 'set null' }
+		),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		billNo: varchar('bill_no', { length: 128 }),
+		linesSubtotal: decimal('lines_subtotal', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountTypeId: integer('discount_type_id')
+			.notNull()
+			.references(() => billingDiscountTypeTable.id)
+			.default(BillingDiscountTypeEnum.NONE),
+		discountPercent: decimal('discount_percent', {
+			precision: 5,
+			scale: 2
+		}),
+		discountAmount: decimal('discount_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		totalAmount: decimal('total_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		discountedByStaffId: uuid('discounted_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		discountedAt: timestamp('discounted_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		printedByStaffId: uuid('printed_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		printedAt: timestamp('printed_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		remark: text('remark'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ip_billing_visit_id_idx').on(table.visitId),
+		index('ip_billing_admission_id_idx').on(table.admissionId),
+		index('ip_billing_hospital_id_idx').on(table.hospitalId),
+		index('ip_billing_branch_id_idx').on(table.branchId),
+		index('ip_billing_bill_no_idx').on(table.billNo),
+		index('ip_billing_status_id_idx').on(table.statusId)
+	]
+);
+
+export const ipBillingLineTable = pgTable(
+	'ip_billing_line',
+	{
+		id: serial('id').primaryKey(),
+		ipBillingId: integer('ip_billing_id')
+			.notNull()
+			.references(() => ipBillingTable.id, { onDelete: 'cascade' }),
+		lineIndex: integer('line_index').notNull(),
+		serviceOrderDetailId: integer(
+			'service_order_detail_id'
+		).references(() => serviceOrderDetailTable.id, {
+			onDelete: 'set null'
+		}),
+		medicationOrderLineId: integer('medication_order_line_id'),
+		serviceId: integer('service_id')
+			.notNull()
+			.references(() => serviceItemTable.id, {
+				onDelete: 'restrict'
+			}),
+		serviceNameSnapshot: varchar('service_name_snapshot', {
+			length: 512
+		}),
+		subCategoryId: integer('sub_category_id').references(
+			() => subCategoryTable.id,
+			{ onDelete: 'set null' }
+		),
+		subCategoryNameSnapshot: varchar('sub_category_name_snapshot', {
+			length: 512
+		}),
+		orderNoSnapshot: varchar('order_no_snapshot', { length: 128 }),
+		discount: decimal('discount', { precision: 14, scale: 2 }),
+		serviceAmount: decimal('service_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceTaxAmount: decimal('service_tax_amount', {
+			precision: 14,
+			scale: 2
+		}),
+		serviceUnit: integer('service_unit'),
+		lineTotal: decimal('line_total', {
+			precision: 14,
+			scale: 2
+		}).notNull(),
+		...timestamps
+	},
+	(table) => [
+		index('ip_billing_line_ip_billing_id_idx').on(table.ipBillingId),
+		index('ip_billing_line_service_id_idx').on(table.serviceId),
+		index('ip_billing_line_service_order_detail_id_idx').on(
+			table.serviceOrderDetailId
+		)
+	]
+);
+
+/** ICD / coding master for visit diagnoses. */
+export const diagnosisCodeTable = pgTable(
+	'diagnosis_code',
+	{
+		id: serial('id').primaryKey(),
+		code: varchar('code', { length: 32 }).notNull(),
+		system: varchar('system', { length: 32 })
+			.notNull()
+			.default('ICD10'),
+		description: text('description').notNull(),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('diagnosis_code_system_code_uidx').on(
+			t.system,
+			t.code
+		),
+		index('diagnosis_code_status_id_idx').on(t.statusId)
+	]
+);
+
+/** IPD clinical discharge summary (1 per visit). */
+export const dischargeSummaryTable = pgTable(
+	'discharge_summary',
+	{
+		id: serial('id').primaryKey(),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		hospitalCourse: text('hospital_course').notNull().default(''),
+		dischargeMedications: text('discharge_medications')
+			.notNull()
+			.default(''),
+		followUp: text('follow_up').notNull().default(''),
+		redFlags: text('red_flags').notNull().default(''),
+		draftedBy: uuid('drafted_by').references(() => staffTable.id),
+		signedBy: uuid('signed_by').references(() => staffTable.id),
+		signedAt: timestamp('signed_at', { withTimezone: true }),
+		cosignedAt: timestamp('cosigned_at', { withTimezone: true }),
+		cosignedBy: uuid('cosigned_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('discharge_summary_visit_uidx').on(t.visitId),
+		index('discharge_summary_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/** In-app lab result (not external LIS). */
+export const labResultTable = pgTable(
+	'lab_result',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		serviceOrderDetailId: integer(
+			'service_order_detail_id'
+		).references(() => serviceOrderDetailTable.id, {
+			onDelete: 'set null'
+		}),
+		resultText: text('result_text').notNull().default(''),
+		resultJson: text('result_json'),
+		isCritical: boolean('is_critical').notNull().default(false),
+		enteredBy: uuid('entered_by').references(() => staffTable.id),
+		endorsedAt: timestamp('endorsed_at', { withTimezone: true }),
+		endorsedBy: uuid('endorsed_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('lab_result_visit_id_idx').on(t.visitId),
+		index('lab_result_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/** In-app imaging result + attachment URL (not DICOM PACS). */
+export const imagingResultTable = pgTable(
+	'imaging_result',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		serviceOrderDetailId: integer(
+			'service_order_detail_id'
+		).references(() => serviceOrderDetailTable.id, {
+			onDelete: 'set null'
+		}),
+		findings: text('findings').notNull().default(''),
+		attachmentUrl: text('attachment_url'),
+		enteredBy: uuid('entered_by').references(() => staffTable.id),
+		endorsedAt: timestamp('endorsed_at', { withTimezone: true }),
+		endorsedBy: uuid('endorsed_by').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('imaging_result_visit_id_idx').on(t.visitId),
+		index('imaging_result_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/** Bedside clinical procedure note. */
+export const clinicalProcedureTable = pgTable(
+	'clinical_procedure',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		procedureType: varchar('procedure_type', {
+			length: 256
+		}).notNull(),
+		notes: text('notes').notNull().default(''),
+		performedAt: timestamp('performed_at', { withTimezone: true }),
+		doctorId: uuid('doctor_id').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('clinical_procedure_visit_id_idx').on(t.visitId),
+		index('clinical_procedure_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/** Operative / OT note. */
+export const operativeNoteTable = pgTable(
+	'operative_note',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id),
+		preOp: text('pre_op').notNull().default(''),
+		findings: text('findings').notNull().default(''),
+		technique: text('technique').notNull().default(''),
+		bloodLoss: varchar('blood_loss', { length: 128 }),
+		specimens: text('specimens').notNull().default(''),
+		postOp: text('post_op').notNull().default(''),
+		surgeonId: uuid('surgeon_id').references(() => staffTable.id),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('operative_note_visit_id_idx').on(t.visitId),
+		index('operative_note_hospital_id_idx').on(t.hospitalId)
+	]
+);

@@ -57,7 +57,24 @@ import type {
 	patientDocumentTable,
 	serviceOrderTable,
 	serviceOrderDetailTable,
-	referHistoryTable
+	referHistoryTable,
+	wardCategoryTable,
+	wardTable,
+	roomCategoryTable,
+	roomTable,
+	bedTable,
+	ipdAdmissionTable,
+	ipdBedHistoryTable,
+	ipdBedStaySegmentTable,
+	ipdAccommodationBillingPolicyTable,
+	ipBillingTable,
+	ipBillingLineTable,
+	diagnosisCodeTable,
+	dischargeSummaryTable,
+	labResultTable,
+	imagingResultTable,
+	clinicalProcedureTable,
+	operativeNoteTable
 } from './information-table';
 
 type OptionalAuditKeys =
@@ -513,3 +530,134 @@ export type ReferHistorySchemaInsert = InferInsertModel<
 >;
 export type ReferHistorySchemaUpdate =
 	Partial<ReferHistorySchemaInsert>;
+
+export type WardCategorySchema = InferSelectModel<
+	typeof wardCategoryTable
+>;
+export type WardCategorySchemaInsert = InferInsertModel<
+	typeof wardCategoryTable
+>;
+export type WardCategorySchemaUpdate =
+	Partial<WardCategorySchemaInsert>;
+
+export type RoomCategorySchema = InferSelectModel<
+	typeof roomCategoryTable
+>;
+export type RoomCategorySchemaInsert = InferInsertModel<
+	typeof roomCategoryTable
+>;
+export type RoomCategorySchemaUpdate =
+	Partial<RoomCategorySchemaInsert>;
+
+export type WardSchema = InferSelectModel<typeof wardTable>;
+export type WardSchemaInsert = InferInsertModel<typeof wardTable>;
+export type WardSchemaUpdate = Partial<WardSchemaInsert>;
+
+export type RoomSchema = InferSelectModel<typeof roomTable>;
+export type RoomSchemaInsert = InferInsertModel<typeof roomTable>;
+export type RoomSchemaUpdate = Partial<RoomSchemaInsert>;
+
+export type BedSchema = InferSelectModel<typeof bedTable>;
+export type BedSchemaInsert = InferInsertModel<typeof bedTable>;
+export type BedSchemaUpdate = Partial<BedSchemaInsert>;
+
+export type IpdAdmissionSchema = InferSelectModel<
+	typeof ipdAdmissionTable
+>;
+export type IpdAdmissionSchemaInsert = InferInsertModel<
+	typeof ipdAdmissionTable
+>;
+export type IpdAdmissionSchemaUpdate =
+	Partial<IpdAdmissionSchemaInsert>;
+
+export type IpdBedHistorySchema = InferSelectModel<
+	typeof ipdBedHistoryTable
+>;
+export type IpdBedHistorySchemaInsert = InferInsertModel<
+	typeof ipdBedHistoryTable
+>;
+export type IpdBedHistorySchemaUpdate =
+	Partial<IpdBedHistorySchemaInsert>;
+
+export type IpdBedStaySegmentSchema = InferSelectModel<
+	typeof ipdBedStaySegmentTable
+>;
+export type IpdBedStaySegmentSchemaInsert = InferInsertModel<
+	typeof ipdBedStaySegmentTable
+>;
+export type IpdBedStaySegmentSchemaUpdate =
+	Partial<IpdBedStaySegmentSchemaInsert>;
+
+export type IpdAccommodationBillingPolicySchema = InferSelectModel<
+	typeof ipdAccommodationBillingPolicyTable
+>;
+export type IpdAccommodationBillingPolicySchemaInsert =
+	InferInsertModel<typeof ipdAccommodationBillingPolicyTable>;
+export type IpdAccommodationBillingPolicySchemaUpdate =
+	Partial<IpdAccommodationBillingPolicySchemaInsert>;
+
+export type IpBillingSchema = InferSelectModel<typeof ipBillingTable>;
+export type IpBillingSchemaInsert = InferInsertModel<
+	typeof ipBillingTable
+>;
+export type IpBillingSchemaUpdate = Partial<IpBillingSchemaInsert>;
+
+export type IpBillingLineSchema = InferSelectModel<
+	typeof ipBillingLineTable
+>;
+export type IpBillingLineSchemaInsert = InferInsertModel<
+	typeof ipBillingLineTable
+>;
+export type IpBillingLineSchemaUpdate =
+	Partial<IpBillingLineSchemaInsert>;
+
+export type DiagnosisCodeSchema = InferSelectModel<
+	typeof diagnosisCodeTable
+>;
+export type DiagnosisCodeSchemaInsert = InferInsertModel<
+	typeof diagnosisCodeTable
+>;
+export type DiagnosisCodeSchemaUpdate =
+	Partial<DiagnosisCodeSchemaInsert>;
+
+export type DischargeSummarySchema = InferSelectModel<
+	typeof dischargeSummaryTable
+>;
+export type DischargeSummarySchemaInsert = InferInsertModel<
+	typeof dischargeSummaryTable
+>;
+export type DischargeSummarySchemaUpdate =
+	Partial<DischargeSummarySchemaInsert>;
+
+export type LabResultSchema = InferSelectModel<typeof labResultTable>;
+export type LabResultSchemaInsert = InferInsertModel<
+	typeof labResultTable
+>;
+export type LabResultSchemaUpdate = Partial<LabResultSchemaInsert>;
+
+export type ImagingResultSchema = InferSelectModel<
+	typeof imagingResultTable
+>;
+export type ImagingResultSchemaInsert = InferInsertModel<
+	typeof imagingResultTable
+>;
+export type ImagingResultSchemaUpdate =
+	Partial<ImagingResultSchemaInsert>;
+
+export type ClinicalProcedureSchema = InferSelectModel<
+	typeof clinicalProcedureTable
+>;
+export type ClinicalProcedureSchemaInsert = InferInsertModel<
+	typeof clinicalProcedureTable
+>;
+export type ClinicalProcedureSchemaUpdate =
+	Partial<ClinicalProcedureSchemaInsert>;
+
+export type OperativeNoteSchema = InferSelectModel<
+	typeof operativeNoteTable
+>;
+export type OperativeNoteSchemaInsert = InferInsertModel<
+	typeof operativeNoteTable
+>;
+export type OperativeNoteSchemaUpdate =
+	Partial<OperativeNoteSchemaInsert>;

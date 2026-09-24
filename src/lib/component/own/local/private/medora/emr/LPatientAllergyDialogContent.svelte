@@ -14,7 +14,7 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LDeactivationRemarkDialogContent from './LDeactivationRemarkDialogContent.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { toastInfo, toastSuccess } from '$lib/util/toast-copy.util';
+	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	const toastService = new ToastService();
 
@@ -381,20 +381,12 @@
 					mode: 'allergyMaster.create',
 					name
 				})) as AllergyRow;
-				// Requirement: creating a new master allergy should NOT automatically
-				// add it to the patient's allergy table. Only "Select from list" + Save
-				// should create a patient allergy row.
 				allergies = [created, ...allergies];
-				selectedAllergyId = String(created.id);
-				newAllergyName = '';
-				allergyMode = 'existing';
-				toastInfo(
-					toastService,
-					m.entity_allergy_master(),
-					m.toast_action_created(),
-					'Select it in the list and click Save to add it to the patient.'
-				);
-				return;
+				allergyId = Number(created.id);
+				if (!Number.isFinite(allergyId) || allergyId <= 0) {
+					throw new Error('Failed to create allergy master.');
+				}
+				selectedAllergyId = String(allergyId);
 			} catch (error: unknown) {
 				const message =
 					error instanceof Error

@@ -54,7 +54,18 @@ import {
 	statusTaggingTypeTable,
 	userGroupPageTable,
 	userGroupTable,
-	allergyTable
+	allergyTable,
+	wardCategoryTable,
+	wardTable,
+	roomCategoryTable,
+	roomTable,
+	bedTable,
+	ipdAdmissionTable,
+	ipdBedHistoryTable,
+	ipdBedStaySegmentTable,
+	ipdAccommodationBillingPolicyTable,
+	ipBillingTable,
+	ipBillingLineTable
 } from './information-table';
 import {
 	categoryTable,
@@ -137,7 +148,12 @@ export const hospitalTableRelations = relations(
 		itemMasters: many(itemMasterTable),
 		pharmacyGenerics: many(pharmacyGenericTable),
 		suppliers: many(supplierTable),
-		itemUnitMasters: many(itemUnitMasterTable)
+		itemUnitMasters: many(itemUnitMasterTable),
+		wards: many(wardTable),
+		wardCategories: many(wardCategoryTable),
+		roomCategories: many(roomCategoryTable),
+		rooms: many(roomTable),
+		beds: many(bedTable)
 	})
 );
 
@@ -176,6 +192,7 @@ export const hospitalBranchTableRelations = relations(
 		doctorSchedules: many(doctorScheduleTable),
 		staffBranches: many(staffBranchTable),
 		stores: many(storeTable),
+		wards: many(wardTable),
 		serviceTaggings: many(serviceTaggingTable),
 		serviceOrders: many(serviceOrderTable),
 		opBillings: many(opBillingTable),
@@ -1534,6 +1551,267 @@ export const referHistoryTableRelations = relations(
 		cancelByUser: one(userTable, {
 			fields: [referHistoryTable.cancelBy],
 			references: [userTable.id]
+		})
+	})
+);
+
+export const wardCategoryTableRelations = relations(
+	wardCategoryTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [wardCategoryTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [wardCategoryTable.statusId],
+			references: [statusTable.id]
+		}),
+		wards: many(wardTable)
+	})
+);
+
+export const wardTableRelations = relations(
+	wardTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [wardTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [wardTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		wardCategory: one(wardCategoryTable, {
+			fields: [wardTable.wardCategoryId],
+			references: [wardCategoryTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [wardTable.statusId],
+			references: [statusTable.id]
+		}),
+		rooms: many(roomTable)
+	})
+);
+
+export const roomCategoryTableRelations = relations(
+	roomCategoryTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [roomCategoryTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [roomCategoryTable.statusId],
+			references: [statusTable.id]
+		}),
+		rooms: many(roomTable)
+	})
+);
+
+export const roomTableRelations = relations(
+	roomTable,
+	({ one, many }) => ({
+		hospital: one(hospitalTable, {
+			fields: [roomTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		ward: one(wardTable, {
+			fields: [roomTable.wardId],
+			references: [wardTable.id]
+		}),
+		roomCategory: one(roomCategoryTable, {
+			fields: [roomTable.roomCategoryId],
+			references: [roomCategoryTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [roomTable.statusId],
+			references: [statusTable.id]
+		}),
+		beds: many(bedTable)
+	})
+);
+
+export const bedTableRelations = relations(bedTable, ({ one }) => ({
+	room: one(roomTable, {
+		fields: [bedTable.roomId],
+		references: [roomTable.id]
+	}),
+	hospital: one(hospitalTable, {
+		fields: [bedTable.hospitalId],
+		references: [hospitalTable.id]
+	}),
+	status: one(statusTable, {
+		fields: [bedTable.statusId],
+		references: [statusTable.id]
+	})
+}));
+
+export const ipdAdmissionTableRelations = relations(
+	ipdAdmissionTable,
+	({ one, many }) => ({
+		visit: one(patientVisitTable, {
+			fields: [ipdAdmissionTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		hospital: one(hospitalTable, {
+			fields: [ipdAdmissionTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [ipdAdmissionTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		ward: one(wardTable, {
+			fields: [ipdAdmissionTable.wardId],
+			references: [wardTable.id]
+		}),
+		room: one(roomTable, {
+			fields: [ipdAdmissionTable.roomId],
+			references: [roomTable.id]
+		}),
+		bed: one(bedTable, {
+			fields: [ipdAdmissionTable.bedId],
+			references: [bedTable.id]
+		}),
+		admittingDoctor: one(staffTable, {
+			fields: [ipdAdmissionTable.admittingDoctorId],
+			references: [staffTable.id]
+		}),
+		bedHistory: many(ipdBedHistoryTable),
+		staySegments: many(ipdBedStaySegmentTable),
+		ipBills: many(ipBillingTable)
+	})
+);
+
+export const ipdBedHistoryTableRelations = relations(
+	ipdBedHistoryTable,
+	({ one }) => ({
+		admission: one(ipdAdmissionTable, {
+			fields: [ipdBedHistoryTable.admissionId],
+			references: [ipdAdmissionTable.id]
+		}),
+		fromBed: one(bedTable, {
+			fields: [ipdBedHistoryTable.fromBedId],
+			references: [bedTable.id]
+		}),
+		toBed: one(bedTable, {
+			fields: [ipdBedHistoryTable.toBedId],
+			references: [bedTable.id]
+		}),
+		fromRoom: one(roomTable, {
+			fields: [ipdBedHistoryTable.fromRoomId],
+			references: [roomTable.id]
+		}),
+		toRoom: one(roomTable, {
+			fields: [ipdBedHistoryTable.toRoomId],
+			references: [roomTable.id]
+		}),
+		fromWard: one(wardTable, {
+			fields: [ipdBedHistoryTable.fromWardId],
+			references: [wardTable.id]
+		}),
+		toWard: one(wardTable, {
+			fields: [ipdBedHistoryTable.toWardId],
+			references: [wardTable.id]
+		}),
+		movedByStaff: one(staffTable, {
+			fields: [ipdBedHistoryTable.movedByStaffId],
+			references: [staffTable.id]
+		})
+	})
+);
+
+export const ipdBedStaySegmentTableRelations = relations(
+	ipdBedStaySegmentTable,
+	({ one }) => ({
+		admission: one(ipdAdmissionTable, {
+			fields: [ipdBedStaySegmentTable.admissionId],
+			references: [ipdAdmissionTable.id]
+		}),
+		hospital: one(hospitalTable, {
+			fields: [ipdBedStaySegmentTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		ward: one(wardTable, {
+			fields: [ipdBedStaySegmentTable.wardId],
+			references: [wardTable.id]
+		}),
+		room: one(roomTable, {
+			fields: [ipdBedStaySegmentTable.roomId],
+			references: [roomTable.id]
+		}),
+		bed: one(bedTable, {
+			fields: [ipdBedStaySegmentTable.bedId],
+			references: [bedTable.id]
+		})
+	})
+);
+
+export const ipdAccommodationBillingPolicyTableRelations = relations(
+	ipdAccommodationBillingPolicyTable,
+	({ one }) => ({
+		hospital: one(hospitalTable, {
+			fields: [ipdAccommodationBillingPolicyTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		accommodationServiceItem: one(serviceItemTable, {
+			fields: [
+				ipdAccommodationBillingPolicyTable.accommodationServiceItemId
+			],
+			references: [serviceItemTable.id]
+		})
+	})
+);
+
+export const ipBillingTableRelations = relations(
+	ipBillingTable,
+	({ one, many }) => ({
+		visit: one(patientVisitTable, {
+			fields: [ipBillingTable.visitId],
+			references: [patientVisitTable.id]
+		}),
+		admission: one(ipdAdmissionTable, {
+			fields: [ipBillingTable.admissionId],
+			references: [ipdAdmissionTable.id]
+		}),
+		hospital: one(hospitalTable, {
+			fields: [ipBillingTable.hospitalId],
+			references: [hospitalTable.id]
+		}),
+		branch: one(hospitalBranchTable, {
+			fields: [ipBillingTable.branchId],
+			references: [hospitalBranchTable.id]
+		}),
+		discountType: one(billingDiscountTypeTable, {
+			fields: [ipBillingTable.discountTypeId],
+			references: [billingDiscountTypeTable.id]
+		}),
+		status: one(statusTable, {
+			fields: [ipBillingTable.statusId],
+			references: [statusTable.id]
+		}),
+		discountedByStaff: one(staffTable, {
+			fields: [ipBillingTable.discountedByStaffId],
+			references: [staffTable.id]
+		}),
+		printedByStaff: one(staffTable, {
+			fields: [ipBillingTable.printedByStaffId],
+			references: [staffTable.id]
+		}),
+		lines: many(ipBillingLineTable)
+	})
+);
+
+export const ipBillingLineTableRelations = relations(
+	ipBillingLineTable,
+	({ one }) => ({
+		ipBilling: one(ipBillingTable, {
+			fields: [ipBillingLineTable.ipBillingId],
+			references: [ipBillingTable.id]
+		}),
+		service: one(serviceItemTable, {
+			fields: [ipBillingLineTable.serviceId],
+			references: [serviceItemTable.id]
 		})
 	})
 );

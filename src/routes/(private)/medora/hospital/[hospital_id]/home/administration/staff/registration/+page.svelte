@@ -123,6 +123,18 @@
 	const isViewMode = $derived(!!viewId);
 	const isEditMode = $derived(!!editId);
 	let staffEditId = $state<string | null>(null);
+	const hospitalDefaultCountryId = $derived(
+		page.data.currentHospitalCountryId != null
+			? String(page.data.currentHospitalCountryId)
+			: ''
+	);
+
+	function applyHospitalCountryDefaults() {
+		if (!hospitalDefaultCountryId) return;
+		selectedCountryId = hospitalDefaultCountryId;
+		selectedPhoneCountryId = hospitalDefaultCountryId;
+		selectedPhoneSecondaryCountryId = hospitalDefaultCountryId;
+	}
 
 	function showLicenseAndSignatureModal() {
 		licenseAndSignatureModalOpen = true;
@@ -213,6 +225,9 @@
 
 	lifeCycleUtil.onMount(() => {
 		fetchInitialFieldData();
+		if (!viewId && !editId) {
+			applyHospitalCountryDefaults();
+		}
 	});
 
 	// When URL has ?view= or ?edit= and dropdowns are ready, load staff into form (reacts to URL change)
@@ -1115,16 +1130,13 @@
 		selectedEmail = '';
 		selectedGenderId = '';
 		selectedMaritalStatusId = '';
-		selectedPhoneCountryId = '';
 		selectedPhone = '';
-		selectedPhoneSecondaryCountryId = '';
 		selectedPhoneSecondary = '';
 		selectedStaffEmploymentTypeId = '';
 		selectedEducation = '';
 		selectedDesignation = '';
 		selectedDepartmentId = '';
 		selectedSpecializationId = '';
-		selectedCountryId = '';
 		selectedStateId = '';
 		selectedCityId = '';
 		selectedPostalCodeId = '';
@@ -1137,6 +1149,12 @@
 		selectedAddress = '';
 		selectedRemark = '';
 		selectedUserGroups = [];
+		applyHospitalCountryDefaults();
+		if (!hospitalDefaultCountryId) {
+			selectedCountryId = '';
+			selectedPhoneCountryId = '';
+			selectedPhoneSecondaryCountryId = '';
+		}
 		selectedBranchIds = [];
 		isActive = true;
 		isSuperAdmin = false;
@@ -1248,6 +1266,7 @@
 							{titleData}
 							{genderData}
 							{maritalStatusData}
+							{nationalityData}
 							bind:selectedStaffCode
 							bind:selectedTitleId
 							bind:selectedFirstName
@@ -1256,6 +1275,7 @@
 							bind:selectedEmail
 							bind:selectedGenderId
 							bind:selectedMaritalStatusId
+							bind:selectedNationalityId
 						/>
 
 						<!-- Column 2 -->
@@ -1281,7 +1301,6 @@
 							{countryData}
 							{stateData}
 							{cityData}
-							{nationalityData}
 							{postalCodeData}
 							{departmentData}
 							{specializationData}
@@ -1300,7 +1319,6 @@
 							bind:selectedSpecializationId
 							bind:selectedIdentityTypeId
 							bind:selectedIdentityNumber
-							bind:selectedNationalityId
 						/>
 					</div>
 				</fieldset>

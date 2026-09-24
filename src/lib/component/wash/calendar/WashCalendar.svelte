@@ -165,6 +165,7 @@
 	const shellClass = $derived(
 		[
 			'wash-calendar',
+			'no-overflow-marquee',
 			compact ? 'wash-calendar--sm' : '',
 			'rounded-box border bg-base-100',
 			bordered
@@ -347,16 +348,15 @@
 	onkeydown={onKeyDown}
 >
 	<div class="wash-calendar__header">
-		<div class="tooltip tooltip-primary tooltip-bottom" data-tip="Previous month">
-			<button
-				type="button"
-				class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
-				aria-label="Previous month"
-				onclick={() => moveViewTo(toISODate(addMonths(viewMonth, -1)))}
-			>
-				<LucideChevronLeft className="size-4" />
-			</button>
-		</div>
+		<button
+			type="button"
+			class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
+			aria-label="Previous month"
+			title="Previous month"
+			onclick={() => moveViewTo(toISODate(addMonths(viewMonth, -1)))}
+		>
+			<LucideChevronLeft className="size-4" />
+		</button>
 
 		<label class="wash-calendar__caption" for="{rootId}-month">Month</label>
 		<details
@@ -506,16 +506,15 @@
 			</ul>
 		</details>
 
-		<div class="tooltip tooltip-primary tooltip-bottom" data-tip="Next month">
-			<button
-				type="button"
-				class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
-				aria-label="Next month"
-				onclick={() => moveViewTo(toISODate(addMonths(viewMonth, 1)))}
-			>
-				<LucideChevronRight className="size-4" />
-			</button>
-		</div>
+		<button
+			type="button"
+			class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
+			aria-label="Next month"
+			title="Next month"
+			onclick={() => moveViewTo(toISODate(addMonths(viewMonth, 1)))}
+		>
+			<LucideChevronRight className="size-4" />
+		</button>
 
 		<button type="button" class="btn btn-ghost btn-sm cursor-pointer" onclick={goToday}>
 			Today

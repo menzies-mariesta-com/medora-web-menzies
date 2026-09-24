@@ -1,7 +1,6 @@
 <script lang="ts">
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 
 	export type MenziesPhoneCountryOption = {
 		id: number | string;
@@ -32,6 +31,7 @@
 		label?: string;
 		disabled?: boolean;
 		required?: boolean;
+		/** Placeholder when no country code is selected. */
 		optionHeader?: string;
 		nameText?: string;
 		placeholder?: string;
@@ -42,6 +42,17 @@
 
 	const selectId = $derived(id ? `${id}-country` : undefined);
 	const inputId = $derived(id);
+
+	const countryOptions = $derived(
+		countries.map((data) => {
+			const code = String(data.code ?? data.id).toUpperCase();
+			const dial = data.countryCallingCode ?? '';
+			return {
+				value: String(data.id),
+				label: `${dial} [${code}]`
+			};
+		})
+	);
 </script>
 
 {#if label}
@@ -49,20 +60,24 @@
 		<span class="label-text">{label}</span>
 	</label>
 {/if}
-<div class="{washRecipes.join} flex w-full {className}">
-	<WashSelect
-		id={selectId}
+<!--
+	Manual join (not Daisy `.join`): SearchSelect’s root wrappers break
+	`.join > .join-item`, so we merge borders here and use joinItem so the
+	trigger is the visible control.
+-->
+<div
+	class="flex w-full min-w-0 overflow-hidden rounded-[var(--radius-field)] border border-ink-border {className}"
+>
+	<SearchSelect
+		joinItem
+		inputId={selectId}
 		bind:value={countryId}
-		{optionHeader}
+		options={countryOptions}
+		placeholder={optionHeader || 'Code…'}
+		filterPlaceholder="Search code…"
 		{disabled}
-		className="join-item w-1/2 min-w-0 {selectClassName}"
-	>
-		{#each countries as data (data.id)}
-			<option value={String(data.id)} class="gap-5">
-				{data.countryCallingCode ?? ''} [{String(data.code ?? data.id).toUpperCase()}]
-			</option>
-		{/each}
-	</WashSelect>
+		className="w-1/2 min-w-0 rounded-none border-0 border-r border-ink-border shadow-none {selectClassName}"
+	/>
 	<WashInputField
 		id={inputId}
 		bind:value={phone}
@@ -71,6 +86,6 @@
 		{required}
 		{nameText}
 		inputPlaceholderText={placeholder}
-		className="join-item w-1/2 min-w-0 {inputClassName}"
+		className="w-1/2 min-w-0 rounded-none border-0 shadow-none {inputClassName}"
 	/>
 </div>

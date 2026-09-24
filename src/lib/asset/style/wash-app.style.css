@@ -7,6 +7,15 @@
 @source inline("tooltip-left tooltip-right tooltip-primary tooltip-secondary");
 
 /*
+ * Custom select triggers (WashSelect / SearchSelect joinItem): Daisy `.select`
+ * paints a native chevron via background-image — hide it when we draw our own.
+ */
+.wash-select--icon {
+	appearance: none;
+	background-image: none !important;
+}
+
+/*
  * Design Data table (washRecipes.table + paneCard) — safelist for Tailwind scan.
  * Utilities also ship in menzies-design-wash-ui/styles.css.
  */
@@ -88,6 +97,33 @@ details.dropdown:not([open]) > .dropdown-content {
 	display: none;
 	width: 0;
 	height: 0;
+}
+
+/*
+ * Module page hover menu: Daisy `.menu` uses grid + auto-flow; with max-height
+ * it spills into horizontal columns / scroll. Force one vertical column.
+ */
+.menzies-module-dropdown-menu.menu {
+	display: flex !important;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	grid-auto-flow: unset;
+	grid-auto-columns: unset;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.menzies-module-dropdown-menu.menu > li {
+	width: 100%;
+	flex-shrink: 0;
+}
+
+.menzies-module-dropdown-menu.menu
+	> li
+	> :where(a, button, .menu-dropdown-toggle, summary) {
+	display: flex !important;
+	width: 100%;
+	min-width: 0;
 }
 
 /* Edge fades hint that more modules are off-screen (matches navbar bg-base-200). */
