@@ -969,7 +969,7 @@
 				/>
 			</form>
 		{:else if selectedInventoryFromStoreId == null}
-			<div class="alert text-sm alert-warning" role="status">
+			<div class="alert alert-dash text-sm alert-warning" role="status">
 				{m.inv_dept_issue_select_store_hint()}
 			</div>
 		{:else}
