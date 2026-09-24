@@ -1,6 +1,6 @@
 <!doctype html>
 
-<html lang="%paraglide.lang%" data-theme="mineral">
+<html lang="%paraglide.lang%" data-theme="mineral" data-font="maple-mono">
 	<head>
 		<meta charset="utf-8" />
 
@@ -40,6 +40,32 @@
 						'data-theme',
 						mode === 'dark' ? pigment + '-dark' : pigment
 					);
+				} catch (e) {}
+			})();
+		</script>
+
+		<!--
+			FOUC guard: restore selected typeface before paint.
+			Key matches LocalStorageEnum.FONT / FontTool (`font`).
+		-->
+		<script>
+			(function () {
+				try {
+					var FONT_KEY = 'font';
+					var allowed = {
+						'maple-mono': 1,
+						fraunces: 1,
+						'adwaita-sans': 1,
+						'adwaita-mono': 1
+					};
+					var font = localStorage.getItem(FONT_KEY) || 'maple-mono';
+					if (font.charAt(0) === '"') {
+						try {
+							font = JSON.parse(font);
+						} catch (e) {}
+					}
+					if (!allowed[font]) font = 'maple-mono';
+					document.documentElement.setAttribute('data-font', font);
 				} catch (e) {}
 			})();
 		</script>
