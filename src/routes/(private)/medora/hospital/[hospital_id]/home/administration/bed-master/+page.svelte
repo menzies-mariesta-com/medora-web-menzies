@@ -49,7 +49,8 @@
 	const bedStatusLabels: Record<number, string> = {
 		[IpdBedStatusEnum.FREE]: 'Free',
 		[IpdBedStatusEnum.OCCUPIED]: 'Occupied',
-		[IpdBedStatusEnum.BLOCKED]: 'Blocked'
+		[IpdBedStatusEnum.BLOCKED]: 'Blocked',
+		[IpdBedStatusEnum.CLEANING]: 'Cleaning'
 	};
 
 	const bedColumns: MenziesTableColumn<BedRow>[] = [
@@ -62,29 +63,49 @@
 		{
 			id: 'wardName',
 			header: 'Ward',
-			widthClass: 'w-52 min-w-[11rem]',
+			widthClass: 'w-44 min-w-[10rem]',
 			filterable: false,
-			field: 'wardName',
 			format: (_value, row) => row.wardName ?? row.wardCode ?? '—'
+		},
+		{
+			id: 'roomName',
+			header: 'Room',
+			widthClass: 'w-44 min-w-[10rem]',
+			filterable: false,
+			format: (_value, row) => row.roomName ?? row.roomCode ?? '—'
 		},
 		{
 			id: 'name',
 			header: m.name(),
-			widthClass: 'w-48 min-w-[10rem]',
+			widthClass: 'w-40 min-w-[9rem]',
 			filterable: true,
 			field: 'name'
 		},
 		{
 			id: 'code',
 			header: m.code(),
-			widthClass: 'w-32 min-w-[7rem]',
+			widthClass: 'w-28 min-w-[6rem]',
 			filterable: true,
 			field: 'code'
 		},
 		{
+			id: 'basePrice',
+			header: 'Base',
+			widthClass: 'w-24 min-w-[5rem]',
+			filterable: false,
+			format: (_v, row) => row.basePrice ?? '0'
+		},
+		{
+			id: 'dailyTariff',
+			header: 'Daily tariff',
+			widthClass: 'w-28 min-w-[6rem]',
+			filterable: false,
+			format: (_v, row) => row.dailyTariff ?? '—'
+		},
+		{
 			id: 'bedStatus',
 			header: 'Bed Status',
-			widthClass: 'w-40 min-w-[10rem]',
+			widthClass: 'w-36 min-w-[8rem]',
 			filterable: true,
 			filterType: 'select',
 			filterOptions: [
@@ -93,7 +114,11 @@
 					label: 'Occupied',
 					value: String(IpdBedStatusEnum.OCCUPIED)
 				},
-				{ label: 'Blocked', value: String(IpdBedStatusEnum.BLOCKED) }
+				{ label: 'Blocked', value: String(IpdBedStatusEnum.BLOCKED) },
+				{
+					label: 'Cleaning',
+					value: String(IpdBedStatusEnum.CLEANING)
+				}
 			],
 			format: (_value, row) =>
 				bedStatusLabels[row.bedStatus] ?? String(row.bedStatus)
@@ -101,7 +126,7 @@
 		{
 			id: 'status',
 			header: m.status(),
-			widthClass: 'w-36 min-w-[9rem]',
+			widthClass: 'w-32 min-w-[8rem]',
 			filterable: true,
 			filterType: 'select',
 			filterOptions: [
@@ -218,6 +243,37 @@
 			);
 		}
 	}
+
+	async function markAvailable(row: BedRow) {
+		if (!bedApi) return;
+		try {
+			const response = await fetch(bedApi, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({
+					action: 'markAvailable',
+					id: row.id
+				})
+			});
+			if (!response.ok) {
+				const text = await response.text().catch(() => '');
+				throw new Error(text || `Update failed: ${response.status}`);
+			}
+			toastService.addToast(
+				'Bed marked available',
+				StatusColorEnum.SUCCESS
+			);
+			fetchRows();
+		} catch (error) {
+			toastService.addToast(
+				error instanceof Error
+					? error.message
+					: 'Unable to mark bed available',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
 </script>
 
 <div class="space-y-4">
@@ -255,10 +311,20 @@
 			}}
 		>
 			{#snippet rowActions(row)}
-				<MenziesTableEditDeleteActions
-					onEdit={() => openEdit(row)}
-					onDelete={() => handleDelete(row)}
-				/>
+				<div class="flex items-center gap-1">
+					{#if row.bedStatus === IpdBedStatusEnum.CLEANING || row.bedStatus === IpdBedStatusEnum.BLOCKED}
+						<WashButton
+							className="btn-ghost btn-xs"
+							onClick={() => markAvailable(row)}
+						>
+							Available
+						</WashButton>
+					{/if}
+					<MenziesTableEditDeleteActions
+						onEdit={() => openEdit(row)}
+						onDelete={() => handleDelete(row)}
+					/>
+				</div>
 			{/snippet}
 		</MenziesTable>
 	</div>

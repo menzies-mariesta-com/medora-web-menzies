@@ -14,6 +14,7 @@ import type {
 	AdmitToIpdPayload,
 	DischargePayload,
 	IpdCensusRow,
+	OtHoldPayload,
 	TransferBedPayload
 } from '$lib/model/type/medora/ipd/ipd.type';
 import {
@@ -22,12 +23,14 @@ import {
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
+import { resolveBedTariffContext } from '$lib/server/medora/ipd/tariff.server';
 import {
 	and,
 	count,
 	desc,
 	eq,
 	ilike,
+	isNull,
 	ne,
 	or,
 	sql
@@ -90,6 +93,50 @@ export async function getActiveAdmissionByVisit(input: {
 	return row ?? null;
 }
 
+async function openStaySegment(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	tx: any,
+	input: {
+		admissionId: number;
+		hospitalId: string;
+		ctx: Awaited<ReturnType<typeof resolveBedTariffContext>>;
+		startedAt?: string;
+	}
+): Promise<void> {
+	await tx.insert(table.ipdBedStaySegmentTable).values({
+		admissionId: input.admissionId,
+		hospitalId: input.hospitalId,
+		wardId: input.ctx.wardId,
+		roomId: input.ctx.roomId,
+		bedId: input.ctx.bedId,
+		wardNameSnapshot: input.ctx.wardName,
+		roomNameSnapshot: input.ctx.roomName,
+		bedNameSnapshot: input.ctx.bedName,
+		bedBasePriceSnapshot: input.ctx.bedBasePrice,
+		roomMarkupSnapshot: input.ctx.roomMarkup,
+		wardMarkupSnapshot: input.ctx.wardMarkup,
+		dailyTariffSnapshot: input.ctx.dailyTariff,
+		startedAt: input.startedAt ?? new Date().toISOString()
+	});
+}
+
+async function closeOpenStaySegment(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	tx: any,
+	admissionId: number,
+	endedAt: string
+): Promise<void> {
+	await tx
+		.update(table.ipdBedStaySegmentTable)
+		.set({ endedAt })
+		.where(
+			and(
+				eq(table.ipdBedStaySegmentTable.admissionId, admissionId),
+				isNull(table.ipdBedStaySegmentTable.endedAt)
+			)
+		);
+}
+
 export async function admitVisitToIpd(
 	payload: AdmitToIpdPayload & {
 		hospitalId: string;
@@ -122,39 +169,26 @@ export async function admitVisitToIpd(
 	if (existing)
 		throw error(400, 'Visit already has an active admission');
 
-	const [ward] = await db
-		.select({
-			id: table.wardTable.id,
-			branchId: table.wardTable.branchId
-		})
-		.from(table.wardTable)
-		.where(
-			and(
-				eq(table.wardTable.id, payload.wardId),
-				eq(table.wardTable.hospitalId, payload.hospitalId),
-				eq(table.wardTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
-		.limit(1);
-	if (!ward) throw error(400, 'Ward not found');
-	if (ward.branchId !== payload.branchId) {
-		throw error(400, 'Ward does not belong to this branch');
+	const ctx = await resolveBedTariffContext({
+		hospitalId: payload.hospitalId,
+		bedId: payload.bedId
+	});
+	if (ctx.branchId !== payload.branchId) {
+		throw error(400, 'Bed does not belong to this branch');
+	}
+	if (
+		typeof payload.wardId === 'number' &&
+		payload.wardId !== ctx.wardId
+	) {
+		throw error(400, 'Bed does not belong to the selected ward');
 	}
 
 	const [bed] = await db
-		.select()
+		.select({ bedStatus: table.bedTable.bedStatus })
 		.from(table.bedTable)
-		.where(
-			and(
-				eq(table.bedTable.id, payload.bedId),
-				eq(table.bedTable.wardId, payload.wardId),
-				eq(table.bedTable.hospitalId, payload.hospitalId),
-				eq(table.bedTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
+		.where(eq(table.bedTable.id, payload.bedId))
 		.limit(1);
-	if (!bed) throw error(400, 'Bed not found in ward');
-	if (bed.bedStatus !== IpdBedStatusEnum.FREE) {
+	if (!bed || bed.bedStatus !== IpdBedStatusEnum.FREE) {
 		throw error(400, 'Bed is not free');
 	}
 
@@ -162,6 +196,8 @@ export async function admitVisitToIpd(
 		hospitalId: payload.hospitalId,
 		branchId: payload.branchId
 	});
+
+	const admittedAt = new Date().toISOString();
 
 	const result = await db.transaction(async (tx) => {
 		const [admission] = await tx
@@ -171,11 +207,13 @@ export async function admitVisitToIpd(
 				hospitalId: payload.hospitalId,
 				branchId: payload.branchId,
 				admissionNo,
-				wardId: payload.wardId,
+				wardId: ctx.wardId,
+				roomId: ctx.roomId,
 				bedId: payload.bedId,
 				admittingDoctorId:
 					payload.admittingDoctorId ?? visit.doctorId ?? null,
 				reasonNotes: payload.reasonNotes ?? null,
+				admittedAt,
 				admissionStatus: IpdAdmissionStatusEnum.ADMITTED
 			})
 			.returning();
@@ -190,10 +228,20 @@ export async function admitVisitToIpd(
 			admissionId: admission.id,
 			fromBedId: null,
 			toBedId: payload.bedId,
+			fromRoomId: null,
+			toRoomId: ctx.roomId,
 			fromWardId: null,
-			toWardId: payload.wardId,
+			toWardId: ctx.wardId,
 			movedByStaffId: payload.actorStaffId ?? null,
-			remark: 'Initial admission'
+			remark: 'Initial admission',
+			movedAt: admittedAt
+		});
+
+		await openStaySegment(tx, {
+			admissionId: admission.id,
+			hospitalId: payload.hospitalId,
+			ctx,
+			startedAt: admittedAt
 		});
 
 		await tx
@@ -233,54 +281,47 @@ export async function transferBed(
 		)
 		.limit(1);
 	if (!admission) throw error(404, 'Active admission not found');
+	if (admission.otHoldLocation) {
+		throw error(
+			400,
+			'Clear OT/Recovery hold before transferring beds'
+		);
+	}
 
+	const toCtx = await resolveBedTariffContext({
+		hospitalId: payload.hospitalId,
+		bedId: payload.toBedId
+	});
+	if (toCtx.branchId !== admission.branchId) {
+		throw error(400, 'Target bed is not in the admission branch');
+	}
 	if (
-		admission.bedId === payload.toBedId &&
-		admission.wardId === payload.toWardId
+		typeof payload.toWardId === 'number' &&
+		payload.toWardId !== toCtx.wardId
 	) {
+		throw error(400, 'Target bed does not belong to selected ward');
+	}
+	if (admission.bedId === payload.toBedId) {
 		throw error(400, 'Already on this bed');
 	}
 
-	const [toWard] = await db
-		.select({
-			id: table.wardTable.id,
-			branchId: table.wardTable.branchId
-		})
-		.from(table.wardTable)
-		.where(
-			and(
-				eq(table.wardTable.id, payload.toWardId),
-				eq(table.wardTable.hospitalId, payload.hospitalId),
-				eq(table.wardTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
-		.limit(1);
-	if (!toWard) throw error(400, 'Target ward not found');
-	if (toWard.branchId !== admission.branchId) {
-		throw error(400, 'Target ward is not in the admission branch');
-	}
-
 	const [toBed] = await db
-		.select()
+		.select({ bedStatus: table.bedTable.bedStatus })
 		.from(table.bedTable)
-		.where(
-			and(
-				eq(table.bedTable.id, payload.toBedId),
-				eq(table.bedTable.wardId, payload.toWardId),
-				eq(table.bedTable.hospitalId, payload.hospitalId),
-				eq(table.bedTable.statusId, StatusEnum.ACTIVE)
-			)
-		)
+		.where(eq(table.bedTable.id, payload.toBedId))
 		.limit(1);
-	if (!toBed) throw error(400, 'Target bed not found');
-	if (toBed.bedStatus !== IpdBedStatusEnum.FREE) {
+	if (!toBed || toBed.bedStatus !== IpdBedStatusEnum.FREE) {
 		throw error(400, 'Target bed is not free');
 	}
 
+	const movedAt = new Date().toISOString();
+
 	return db.transaction(async (tx) => {
+		await closeOpenStaySegment(tx, admission.id, movedAt);
+
 		await tx
 			.update(table.bedTable)
-			.set({ bedStatus: IpdBedStatusEnum.FREE })
+			.set({ bedStatus: IpdBedStatusEnum.CLEANING })
 			.where(eq(table.bedTable.id, admission.bedId));
 		await tx
 			.update(table.bedTable)
@@ -291,17 +332,28 @@ export async function transferBed(
 			admissionId: admission.id,
 			fromBedId: admission.bedId,
 			toBedId: payload.toBedId,
+			fromRoomId: admission.roomId,
+			toRoomId: toCtx.roomId,
 			fromWardId: admission.wardId,
-			toWardId: payload.toWardId,
+			toWardId: toCtx.wardId,
 			movedByStaffId:
 				payload.movedByStaffId ?? payload.actorStaffId ?? null,
-			remark: payload.remark ?? null
+			remark: payload.remark ?? null,
+			movedAt
+		});
+
+		await openStaySegment(tx, {
+			admissionId: admission.id,
+			hospitalId: payload.hospitalId,
+			ctx: toCtx,
+			startedAt: movedAt
 		});
 
 		const [updated] = await tx
 			.update(table.ipdAdmissionTable)
 			.set({
-				wardId: payload.toWardId,
+				wardId: toCtx.wardId,
+				roomId: toCtx.roomId,
 				bedId: payload.toBedId
 			})
 			.where(eq(table.ipdAdmissionTable.id, admission.id))
@@ -309,6 +361,39 @@ export async function transferBed(
 		if (!updated) throw new Error('Transfer update failed');
 		return updated;
 	});
+}
+
+export async function setOtHold(
+	payload: OtHoldPayload & { hospitalId: string }
+): Promise<IpdAdmissionSchema> {
+	const db = ensureDb();
+	const [admission] = await db
+		.select()
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.id, payload.admissionId),
+				eq(table.ipdAdmissionTable.hospitalId, payload.hospitalId),
+				eq(
+					table.ipdAdmissionTable.admissionStatus,
+					IpdAdmissionStatusEnum.ADMITTED
+				)
+			)
+		)
+		.limit(1);
+	if (!admission) throw error(404, 'Active admission not found');
+
+	const location = payload.otHoldLocation?.trim() || null;
+	const [updated] = await db
+		.update(table.ipdAdmissionTable)
+		.set({
+			otHoldLocation: location,
+			otHoldAt: location ? new Date().toISOString() : null
+		})
+		.where(eq(table.ipdAdmissionTable.id, admission.id))
+		.returning();
+	if (!updated) throw new Error('OT hold update failed');
+	return updated;
 }
 
 export async function dischargeAdmission(
@@ -336,17 +421,23 @@ export async function dischargeAdmission(
 		visitId: admission.visitId
 	});
 
+	const dischargedAt = new Date().toISOString();
+
 	return db.transaction(async (tx) => {
+		await closeOpenStaySegment(tx, admission.id, dischargedAt);
+
 		await tx
 			.update(table.bedTable)
-			.set({ bedStatus: IpdBedStatusEnum.FREE })
+			.set({ bedStatus: IpdBedStatusEnum.CLEANING })
 			.where(eq(table.bedTable.id, admission.bedId));
 
 		const [updated] = await tx
 			.update(table.ipdAdmissionTable)
 			.set({
 				admissionStatus: IpdAdmissionStatusEnum.DISCHARGED,
-				dischargedAt: new Date().toISOString()
+				dischargedAt,
+				otHoldLocation: null,
+				otHoldAt: null
 			})
 			.where(eq(table.ipdAdmissionTable.id, admission.id))
 			.returning();
@@ -445,13 +536,21 @@ export async function getIpdCensusPaginated(
 			branchId: table.ipdAdmissionTable.branchId,
 			wardId: table.ipdAdmissionTable.wardId,
 			wardName: table.wardTable.name,
+			roomId: table.ipdAdmissionTable.roomId,
+			roomName: table.roomTable.name,
 			bedId: table.ipdAdmissionTable.bedId,
 			bedName: table.bedTable.name,
 			admittedAt: table.ipdAdmissionTable.admittedAt,
 			doctorFirst: table.staffTable.firstName,
 			doctorMiddle: table.staffTable.middleName,
 			doctorLast: table.staffTable.lastName,
-			admissionStatus: table.ipdAdmissionTable.admissionStatus
+			admissionStatus: table.ipdAdmissionTable.admissionStatus,
+			otHoldLocation: table.ipdAdmissionTable.otHoldLocation,
+			dailyTariff: sql<string>`(
+				coalesce(${table.bedTable.basePrice}, 0)
+				* (1 + coalesce(${table.roomCategoryTable.roomMarkup}, 0) / 100.0)
+				* (1 + coalesce(${table.wardCategoryTable.wardMarkup}, 0) / 100.0)
+			)::text`
 		})
 		.from(table.ipdAdmissionTable)
 		.innerJoin(
@@ -465,6 +564,24 @@ export async function getIpdCensusPaginated(
 		.leftJoin(
 			table.wardTable,
 			eq(table.ipdAdmissionTable.wardId, table.wardTable.id)
+		)
+		.leftJoin(
+			table.wardCategoryTable,
+			eq(
+				table.wardTable.wardCategoryId,
+				table.wardCategoryTable.id
+			)
+		)
+		.leftJoin(
+			table.roomTable,
+			eq(table.ipdAdmissionTable.roomId, table.roomTable.id)
+		)
+		.leftJoin(
+			table.roomCategoryTable,
+			eq(
+				table.roomTable.roomCategoryId,
+				table.roomCategoryTable.id
+			)
 		)
 		.leftJoin(
 			table.bedTable,
@@ -514,13 +631,17 @@ export async function getIpdCensusPaginated(
 		branchId: r.branchId,
 		wardId: r.wardId,
 		wardName: r.wardName,
+		roomId: r.roomId,
+		roomName: r.roomName,
 		bedId: r.bedId,
 		bedName: r.bedName,
 		admittedAt: r.admittedAt,
 		admittingDoctorName: [r.doctorFirst, r.doctorMiddle, r.doctorLast]
 			.filter(Boolean)
 			.join(' '),
-		admissionStatus: r.admissionStatus
+		admissionStatus: r.admissionStatus,
+		otHoldLocation: r.otHoldLocation,
+		dailyTariff: r.dailyTariff
 	}));
 
 	const total = countResult[0]?.count ?? 0;

@@ -7,18 +7,22 @@
 		PatientRegCityRow,
 		PatientRegCountryRow,
 		PatientRegIdentityTypeRow,
-		PatientRegNationalityRow,
 		PatientRegPostalCodeRow,
 		PatientRegStateRow,
 		StaffRegDepartmentRow
 	} from '$lib/model/type/medora/staff-reg-ui.type';
+	import { m } from '$lib/paraglide/messages';
+	import {
+		isNrcIdentityType,
+		parseNrc
+	} from '$lib/tool/identity/myanmar-nrc.util';
+	import MenziesNrcField from '$lib/component/own/library/menzies/nrc/MenziesNrcField.svelte';
 
 	let {
 		countryData,
 		stateData,
 		cityData,
 		postalCodeData,
-		nationalityData,
 		departmentData,
 		specializationData,
 		identityTypeData,
@@ -35,13 +39,11 @@
 		selectedDepartmentId = $bindable(),
 		selectedSpecializationId = $bindable(),
 		selectedIdentityTypeId = $bindable(),
-		selectedIdentityNumber = $bindable(),
-		selectedNationalityId = $bindable()
+		selectedIdentityNumber = $bindable()
 	} = $props<{
 		countryData: PatientRegCountryRow[];
 		stateData: PatientRegStateRow[];
 		cityData: PatientRegCityRow[];
-		nationalityData: PatientRegNationalityRow[];
 		postalCodeData: PatientRegPostalCodeRow[];
 		departmentData: StaffRegDepartmentRow[];
 		specializationData: SpecializationWithRelations[];
@@ -60,38 +62,54 @@
 		selectedSpecializationId?: string;
 		selectedIdentityTypeId?: string;
 		selectedIdentityNumber?: string;
-		selectedNationalityId?: string;
 	}>();
 
 	const countryOptions = $derived(
-		countryData.map((d) => ({
+		countryData.map((d: PatientRegCountryRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const stateOptions = $derived(
-		filteredStateData.map((d) => ({
+		filteredStateData.map((d: PatientRegStateRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const cityOptions = $derived(
-		filteredCityData.map((d) => ({
+		filteredCityData.map((d: PatientRegCityRow) => ({
 			value: String(d.id),
 			label: d.name ?? String(d.id)
 		}))
 	);
 	const postalCodeOptions = $derived(
-		filteredPostalCodeData.map((d) => ({
+		filteredPostalCodeData.map((d: PatientRegPostalCodeRow) => ({
 			value: String(d.id),
 			label: String(d.value)
 		}))
 	);
 	const specializationOptions = $derived(
-		specializationData.map((d) => ({
+		specializationData.map((d: SpecializationWithRelations) => ({
 			value: String(d.id),
 			label: `${d.name} (${d.craftGroup.name})`
 		}))
+	);
+	const selectedIdentityType = $derived(
+		identityTypeData.find(
+			(t: PatientRegIdentityTypeRow) =>
+				String(t.id) === String(selectedIdentityTypeId)
+		) ?? null
+	);
+	const isNrcType = $derived(
+		isNrcIdentityType({
+			id: selectedIdentityType?.id,
+			name: selectedIdentityType?.name
+		})
+	);
+	const useStructuredNrc = $derived(
+		isNrcType &&
+			(!(selectedIdentityNumber ?? '').trim() ||
+				parseNrc(selectedIdentityNumber) != null)
 	);
 </script>
 
@@ -187,39 +205,36 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
-		<label for="identity-type" class="shrink-0 sm:w-36">Identity</label>
-		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedIdentityTypeId}
-					optionHeader="Select an identity type ..."
-					className="join-item"
-				>
-					{#each identityTypeData as data (data.id)}
-						<option value={String(data.id)}>{data.name}</option>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={selectedIdentityNumber}
-					inputType="text"
-					className="join-item"
-				/>
-			</div>
-		</div>
-	</div>
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-	>
-		<label for="nationality" class="shrink-0 sm:w-36">Nationality</label>
+		<label for="identity-type" class="shrink-0 sm:w-36">{m.identity()}</label>
 		<div class="max-w-80 flex-1">
 			<WashSelect
-				bind:value={selectedNationalityId}
-				optionHeader="Select a nationality ..."
+				id="identity-type"
+				bind:value={selectedIdentityTypeId}
+				optionHeader="Select an identity type ..."
 			>
-				{#each nationalityData as data (data.id)}
+				{#each identityTypeData as data (data.id)}
 					<option value={String(data.id)}>{data.name}</option>
 				{/each}
 			</WashSelect>
 		</div>
+	</div>
+	<!--
+		Identity no spans label + control (2 columns), but right edge matches
+		other fields: sm:w-36 + gap-3 + max-w-80.
+	-->
+	<div class="w-full min-w-0 sm:max-w-[calc(9rem+0.75rem+20rem)]">
+		{#if useStructuredNrc}
+			<MenziesNrcField
+				bind:value={selectedIdentityNumber}
+				id="staff-identity-nrc"
+			/>
+		{:else}
+			<WashInputField
+				id="staff-identity-no"
+				bind:value={selectedIdentityNumber}
+				inputType="text"
+				className="w-full"
+			/>
+		{/if}
 	</div>
 </div>

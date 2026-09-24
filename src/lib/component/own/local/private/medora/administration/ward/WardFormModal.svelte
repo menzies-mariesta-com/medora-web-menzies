@@ -7,12 +7,17 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
+	import type { WardCategoryRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { WardModalState } from '$lib/state/ward-modal.state.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 
-	type BranchOption = { id: string; name: string | null; code: string | null };
+	type BranchOption = {
+		id: string;
+		name: string | null;
+		code: string | null;
+	};
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -29,20 +34,35 @@
 			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master`
 			: ''
 	);
+	const categoryApi = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master/ward-category`
+			: ''
+	);
 
 	let formName = $state('');
 	let formCode = $state('');
 	let formBranchId = $state('');
+	let formWardCategoryId = $state('');
 	let formActive = $state(true);
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 	let branches = $state<BranchOption[]>([]);
+	let categories = $state<WardCategoryRow[]>([]);
 
 	const modalState = $derived(WardModalState);
 	const branchOptions = $derived(
 		branches.map((b) => ({
 			value: b.id,
 			label: b.name?.trim() || b.code?.trim() || b.id
+		}))
+	);
+	const categoryOptions = $derived(
+		categories.map((c) => ({
+			value: String(c.id),
+			label: c.code
+				? `${c.name} (${c.code}) — markup ${c.wardMarkup ?? '0'}%`
+				: `${c.name} — markup ${c.wardMarkup ?? '0'}%`
 		}))
 	);
 
@@ -52,18 +72,38 @@
 			`/api/medora/hospital/${hospitalId}/home/administration/branches?mode=all`,
 			{ credentials: 'include', cache: 'no-store' }
 		);
-		if (!res.ok) throw new Error(`Failed to load branches (${res.status})`);
+		if (!res.ok)
+			throw new Error(`Failed to load branches (${res.status})`);
 		return (await res.json()) as BranchOption[];
+	}
+
+	async function fetchCategories(): Promise<WardCategoryRow[]> {
+		if (!categoryApi) return [];
+		const res = await fetch(`${categoryApi}?active=1`, {
+			credentials: 'include',
+			cache: 'no-store'
+		});
+		if (!res.ok)
+			throw new Error(`Failed to load ward categories (${res.status})`);
+		return (await res.json()) as WardCategoryRow[];
 	}
 
 	lifeCycleUtil.onMount(async () => {
 		try {
-			branches = await fetchBranches();
+			const [branchList, categoryList] = await Promise.all([
+				fetchBranches(),
+				fetchCategories()
+			]);
+			branches = branchList;
+			categories = categoryList;
 			const state = WardModalState;
 			if (state.mode === 'edit' && state.editWard) {
 				formName = state.editWard.name ?? '';
 				formCode = state.editWard.code ?? '';
 				formBranchId = state.editWard.branchId ?? '';
+				formWardCategoryId = String(
+					state.editWard.wardCategoryId ?? ''
+				);
 				formActive =
 					(state.editWard.statusId ?? StatusEnum.ACTIVE) ===
 					StatusEnum.ACTIVE;
@@ -71,11 +111,13 @@
 				formName = '';
 				formCode = '';
 				formBranchId = branches[0]?.id ?? '';
+				formWardCategoryId =
+					categories[0] != null ? String(categories[0].id) : '';
 				formActive = true;
 			}
 		} catch (e) {
 			toastService.addToast(
-				e instanceof Error ? e.message : 'Unable to load branches',
+				e instanceof Error ? e.message : 'Unable to load form data',
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -100,6 +142,14 @@
 			);
 			return;
 		}
+		const wardCategoryId = Number(formWardCategoryId);
+		if (!Number.isFinite(wardCategoryId) || wardCategoryId <= 0) {
+			toastService.addToast(
+				'Ward category is required',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 
 		isSubmitting = true;
 		try {
@@ -115,6 +165,7 @@
 					name: formName.trim(),
 					code: formCode.trim() || null,
 					branchId: formBranchId,
+					wardCategoryId,
 					statusId: formActive
 						? StatusEnum.ACTIVE
 						: StatusEnum.INACTIVE
@@ -160,6 +211,22 @@
 					options={branchOptions}
 					placeholder={m.select_branch()}
 					disabled={isLoading || branches.length === 0}
+				/>
+			</div>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<label for="ward-category" class="shrink-0 sm:w-36">
+				Ward category <span class="text-error">*</span>
+			</label>
+			<div class="max-w-80 flex-1">
+				<WashSelect
+					id="ward-category"
+					bind:value={formWardCategoryId}
+					options={categoryOptions}
+					placeholder="Select ward category"
+					disabled={isLoading || categories.length === 0}
 				/>
 			</div>
 		</div>

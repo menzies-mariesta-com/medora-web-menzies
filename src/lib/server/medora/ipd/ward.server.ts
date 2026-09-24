@@ -7,6 +7,7 @@ import type {
 	WardSchemaUpdate
 } from '$lib/server/db/schema-type';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -34,12 +35,33 @@ async function assertBranchInHospital(input: {
 	}
 }
 
+async function assertCategoryInHospital(input: {
+	hospitalId: string;
+	wardCategoryId: number;
+}): Promise<void> {
+	const [cat] = await ensureDb()
+		.select({ id: table.wardCategoryTable.id })
+		.from(table.wardCategoryTable)
+		.where(
+			and(
+				eq(table.wardCategoryTable.id, input.wardCategoryId),
+				eq(table.wardCategoryTable.hospitalId, input.hospitalId),
+				ne(table.wardCategoryTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	if (!cat) {
+		throw error(400, 'Ward category not found for this hospital');
+	}
+}
+
 export async function getWardPaginated(
 	params: PaginationParams & {
 		hospitalId: string;
 		branchId?: string;
+		wardCategoryId?: number;
 	}
-): Promise<PaginatedResult<WardSchema & { branchName: string | null }>> {
+): Promise<PaginatedResult<WardRow>> {
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	const conditions = [
@@ -60,6 +82,11 @@ export async function getWardPaginated(
 	if (params.branchId) {
 		conditions.push(eq(table.wardTable.branchId, params.branchId));
 	}
+	if (typeof params.wardCategoryId === 'number') {
+		conditions.push(
+			eq(table.wardTable.wardCategoryId, params.wardCategoryId)
+		);
+	}
 	const whereClause = and(...conditions);
 	const [data, countResult] = await Promise.all([
 		ensureDb()
@@ -67,16 +94,13 @@ export async function getWardPaginated(
 				id: table.wardTable.id,
 				hospitalId: table.wardTable.hospitalId,
 				branchId: table.wardTable.branchId,
+				wardCategoryId: table.wardTable.wardCategoryId,
 				name: table.wardTable.name,
 				code: table.wardTable.code,
 				statusId: table.wardTable.statusId,
-				createdAt: table.wardTable.createdAt,
-				updatedAt: table.wardTable.updatedAt,
-				deletedAt: table.wardTable.deletedAt,
-				createdBy: table.wardTable.createdBy,
-				updatedBy: table.wardTable.updatedBy,
-				deletedBy: table.wardTable.deletedBy,
-				branchName: table.hospitalBranchTable.name
+				branchName: table.hospitalBranchTable.name,
+				wardCategoryName: table.wardCategoryTable.name,
+				wardMarkup: table.wardCategoryTable.wardMarkup
 			})
 			.from(table.wardTable)
 			.leftJoin(
@@ -84,6 +108,13 @@ export async function getWardPaginated(
 				eq(
 					table.wardTable.branchId,
 					table.hospitalBranchTable.id
+				)
+			)
+			.leftJoin(
+				table.wardCategoryTable,
+				eq(
+					table.wardTable.wardCategoryId,
+					table.wardCategoryTable.id
 				)
 			)
 			.where(whereClause)
@@ -97,7 +128,7 @@ export async function getWardPaginated(
 	]);
 	const total = countResult[0]?.count ?? 0;
 	return {
-		data: data as (WardSchema & { branchName: string | null })[],
+		data,
 		total,
 		page,
 		pageSize,
@@ -149,6 +180,10 @@ export async function createWard(
 		hospitalId: payload.hospitalId,
 		branchId: String(branchId)
 	});
+	await assertCategoryInHospital({
+		hospitalId: payload.hospitalId,
+		wardCategoryId: payload.wardCategoryId
+	});
 	const [row] = await ensureDb()
 		.insert(table.wardTable)
 		.values({
@@ -166,6 +201,7 @@ export async function updateWard(payload: {
 	name?: string | null;
 	code?: string | null;
 	branchId?: string | null;
+	wardCategoryId?: number | null;
 	statusId?: number | null;
 }): Promise<WardSchema> {
 	const { id, hospitalId, ...rest } = payload;
@@ -176,6 +212,12 @@ export async function updateWard(payload: {
 		});
 	} else if (rest.branchId !== undefined) {
 		throw error(400, 'Branch is required');
+	}
+	if (typeof rest.wardCategoryId === 'number') {
+		await assertCategoryInHospital({
+			hospitalId,
+			wardCategoryId: rest.wardCategoryId
+		});
 	}
 	const [row] = await ensureDb()
 		.update(table.wardTable)

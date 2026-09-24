@@ -118,12 +118,16 @@ export const load: LayoutServerLoad = async (event) => {
 		const hospitalId = params.hospital_id ?? '';
 		const [hospital] = hospitalId
 			? await ensureDb()
-					.select({ name: table.hospitalTable.name })
+					.select({
+						name: table.hospitalTable.name,
+						countryId: table.hospitalTable.countryId
+					})
 					.from(table.hospitalTable)
 					.where(eq(table.hospitalTable.id, hospitalId))
 					.limit(1)
 			: [];
 		const currentHospitalName = hospital?.name ?? null;
+		const currentHospitalCountryId = hospital?.countryId ?? null;
 
 		// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
 		if (
@@ -175,6 +179,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: fullPages,
 				currentHospitalName,
+				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
 				staffUserGroupsForNav: [],
@@ -214,6 +219,7 @@ export const load: LayoutServerLoad = async (event) => {
 				return {
 					pageData: [],
 					currentHospitalName,
+					currentHospitalCountryId,
 					currentUserId,
 					currentUserName,
 					staffUserGroupsForNav: [],
@@ -406,6 +412,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: filtered,
 				currentHospitalName,
+				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
 				staffUserGroupsForNav,
@@ -422,6 +429,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: fullPages,
 			currentHospitalName,
+			currentHospitalCountryId,
 			currentUserId,
 			currentUserName,
 			staffUserGroupsForNav: [],
@@ -452,6 +460,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: [],
 			currentHospitalName: null,
+			currentHospitalCountryId: null,
 			currentUserId: null,
 			currentUserName: null,
 			staffUserGroupsForNav: [],
