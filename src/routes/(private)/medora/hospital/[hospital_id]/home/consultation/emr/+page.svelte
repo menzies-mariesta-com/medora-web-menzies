@@ -1,8 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
-	import ObservationCardTable from '$lib/component/own/global/private/medora/observation/ObservationCardTable.svelte';
+	import WashCard from '$lib/component/wash/card/WashCard.svelte';
+	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
+	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
+	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
+	import MenziesTable, {
+		type MenziesTableColumn
+	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDialogContent.svelte';
 	import LObservationDiagnosisDialogContent from '$lib/component/own/local/private/medora/observation/LObservationDiagnosisDialogContent.svelte';
 	import LObservationFormEntryDialogContent from '$lib/component/own/local/private/medora/observation/LObservationFormEntryDialogContent.svelte';
@@ -19,6 +32,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { ObservationOrderLineDialogState } from '$lib/state/observation-order-line-dialog.state.svelte';
@@ -51,7 +65,6 @@
 		ObservationEmrPatientAllergyRow,
 		ObservationEmrPatientVisitRow
 	} from '$lib/model/type/medora/observation-emr.type';
-	import type { MenziesTableColumn } from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import {
 		vitalTextClass,
 		type VitalKey
@@ -63,6 +76,9 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+
+	/** Paraglide `m` typings can lag behind `messages/*.json`; messages exist at runtime. */
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	type OrderDetailVisitRow = ServiceOrderDetailListRow & {
 		orderNo: string | null;
@@ -115,7 +131,75 @@
 		[]
 	);
 	let specialtyEntries = $state<PatientFormEntryWithRelations[]>([]);
-	let specialtyFormCode = $state('specialty_obstetrics');
+	let specialtyColumnFilters = $state<Record<string, string>>({
+		specialtyType: '',
+		status: 'active'
+	});
+
+	const SPECIALTY_FORM_CODES = [
+		'specialty_obstetrics',
+		'specialty_pediatrics',
+		'specialty_surgery',
+		'specialty_emergency'
+	] as const;
+
+	const specialtyFormCodeOptions = $derived(
+		SPECIALTY_FORM_CODES.map((code) => ({
+			value: code,
+			label: specialtyFormCodeLabel(code)
+		}))
+	);
+
+	function specialtyFormCodeLabel(code: string | null | undefined): string {
+		switch (code) {
+			case 'specialty_obstetrics':
+				return msg.observation_emr_specialty_obstetrics();
+			case 'specialty_pediatrics':
+				return msg.observation_emr_specialty_pediatrics();
+			case 'specialty_surgery':
+				return msg.observation_emr_specialty_surgery();
+			case 'specialty_emergency':
+				return msg.observation_emr_specialty_emergency();
+			default:
+				return code?.trim() || '–';
+		}
+	}
+
+	async function loadAllSpecialtyEntries(
+		vid: number
+	): Promise<PatientFormEntryWithRelations[]> {
+		const batches = await Promise.all(
+			SPECIALTY_FORM_CODES.map((formCode) =>
+				apiGet<PatientFormEntryWithRelations[]>('formEntry.list', {
+					visitId: String(vid),
+					formCode
+				})
+			)
+		);
+		return batches
+			.flat()
+			.sort((a, b) => {
+				const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+				const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+				return tb - ta;
+			});
+	}
+
+	const filteredSpecialtyEntries = $derived.by(() => {
+		const typeFilter = specialtyColumnFilters.specialtyType?.trim() ?? '';
+		const statusFilter = specialtyColumnFilters.status?.trim() ?? '';
+		return specialtyEntries.filter((row) => {
+			if (typeFilter && row.formName?.code !== typeFilter) return false;
+			if (statusFilter === 'active') {
+				return row.statusId === StatusEnum.ACTIVE;
+			}
+			if (statusFilter === 'inactive') {
+				return row.statusId === StatusEnum.INACTIVE;
+			}
+			return true;
+		});
+	});
+
 	let planOfCareRows = $state<PlanOfCareListRow[]>([]);
 	let progressNoteRows = $state<ProgressNoteListRow[]>([]);
 	let problemListRows = $state<ProblemListRow[]>([]);
@@ -413,13 +497,7 @@
 									formCode: 'physical_exam'
 								}
 							),
-							apiGet<PatientFormEntryWithRelations[]>(
-								'formEntry.list',
-								{
-									visitId: String(visitId),
-									formCode: specialtyFormCode
-								}
-							)
+							loadAllSpecialtyEntries(visitId)
 						]);
 						chiefComplaintEntries = cc;
 						hpiEntries = hpi;
@@ -562,13 +640,7 @@
 							formCode: 'physical_exam'
 						}
 					),
-					apiGet<PatientFormEntryWithRelations[]>(
-						'formEntry.list',
-						{
-							visitId: String(visitId),
-							formCode: specialtyFormCode
-						}
-					)
+					loadAllSpecialtyEntries(visitId)
 				]);
 				chiefComplaintEntries = cc;
 				hpiEntries = hpi;
@@ -1108,6 +1180,27 @@
 			}
 		];
 
+	const specialtyColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
+		[
+			{
+				id: 'specialtyType',
+				header: msg.observation_emr_specialty_type(),
+				widthClass: 'min-w-[9rem]',
+				filterable: true,
+				filterType: 'select',
+				filterOptions: [
+					{ value: '', label: 'All' },
+					...SPECIALTY_FORM_CODES.map((code) => ({
+						value: code,
+						label: specialtyFormCodeLabel(code)
+					}))
+				],
+				format: (_value, row) =>
+					specialtyFormCodeLabel(row.formName?.code)
+			},
+			...formEntryColumns
+		];
+
 	const patientConditionColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
 		[
 			{
@@ -1630,11 +1723,17 @@
 	async function openFormEntryAdd(formCode: string) {
 		if (!visitRow?.patientId || !visitRow.branchId || !visitId)
 			return;
+		const isSpecialty = formCode === 'specialty';
 		ObservationFormEntryDialogState.entryId = null;
 		ObservationFormEntryDialogState.visitId = visitId;
 		ObservationFormEntryDialogState.branchId = visitRow.branchId;
 		ObservationFormEntryDialogState.patientId = visitRow.patientId;
-		ObservationFormEntryDialogState.formCode = formCode;
+		ObservationFormEntryDialogState.formCode = isSpecialty
+			? null
+			: formCode;
+		ObservationFormEntryDialogState.formCodeOptions = isSpecialty
+			? specialtyFormCodeOptions
+			: null;
 		ObservationFormEntryDialogState.onSaved = () =>
 			reloadFormEntriesForVisit();
 		const titles: Record<string, string> = {
@@ -1642,10 +1741,7 @@
 			patient_condition: m.observation_emr_patient_condition(),
 			hpi: 'History of present illness',
 			physical_exam: 'Physical examination',
-			specialty_obstetrics: 'Obstetrics case sheet',
-			specialty_pediatrics: 'Pediatrics case sheet',
-			specialty_surgery: 'Surgery case sheet',
-			specialty_emergency: 'Emergency case sheet'
+			specialty: msg.observation_emr_specialty_case_sheet()
 		};
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
@@ -1664,6 +1760,7 @@
 			ObservationFormEntryDialogState.branchId = null;
 			ObservationFormEntryDialogState.patientId = null;
 			ObservationFormEntryDialogState.formCode = null;
+			ObservationFormEntryDialogState.formCodeOptions = null;
 			ObservationFormEntryDialogState.onSaved = null;
 		}
 	}
@@ -1680,14 +1777,25 @@
 		ObservationFormEntryDialogState.branchId = visitRow.branchId;
 		ObservationFormEntryDialogState.patientId = visitRow.patientId;
 		ObservationFormEntryDialogState.formCode = code;
+		ObservationFormEntryDialogState.formCodeOptions = null;
 		ObservationFormEntryDialogState.onSaved = () =>
 			reloadFormEntriesForVisit();
+		const specialtyTitle = specialtyFormCodeLabel(code);
+		const title =
+			code === 'chief_complaint'
+				? m.observation_emr_chief_complaint()
+				: code === 'patient_condition'
+					? m.observation_emr_patient_condition()
+					: code === 'hpi'
+						? 'History of present illness'
+						: code === 'physical_exam'
+							? 'Physical examination'
+							: code.startsWith('specialty_')
+								? specialtyTitle
+								: code;
 		try {
 			const result = await dialogService.open<{ saved?: boolean }>({
-				title:
-					code === 'chief_complaint'
-						? m.observation_emr_chief_complaint()
-						: m.observation_emr_patient_condition(),
+				title,
 				component: LObservationFormEntryDialogContent,
 				fullScreen: false,
 				modalClassName:
@@ -1699,6 +1807,7 @@
 		} finally {
 			ObservationFormEntryDialogState.entryId = null;
 			ObservationFormEntryDialogState.formCode = null;
+			ObservationFormEntryDialogState.formCodeOptions = null;
 			ObservationFormEntryDialogState.onSaved = null;
 		}
 	}
@@ -1873,7 +1982,7 @@
 	<title>Observation EMR</title>
 </svelte:head>
 
-<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-2">
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
@@ -1888,9 +1997,7 @@
 		/>
 	{:else}
 		{#if !clinicalVisitReadOnly || canAdmitToIpd}
-			<div
-				class="sticky top-0 z-10 -mx-2 flex justify-end gap-2 bg-base-100/90 px-2 py-2 backdrop-blur"
-			>
+			<div class="flex justify-end gap-2">
 				{#if canAdmitToIpd}
 					<WashButton
 						className="btn-secondary btn-sm"
@@ -1912,321 +2019,436 @@
 			</div>
 		{/if}
 		<div class="observation-emr-grid">
-			<section
-				class="card border border-base-300 bg-base-100 shadow-sm"
-			>
-				<div class="card-body gap-3 p-4">
-					<h2 class="card-title text-base">
-						{m.mo_clinical_problem_list_title()}
-					</h2>
-					{#if isLoadingGrid || isLoadingVisit}
-						<p class="text-sm opacity-60">{m.loading()}</p>
-					{:else if problemListRows.length === 0}
-						<p class="text-sm opacity-60">
-							{m.mo_clinical_problem_list_empty()}
-						</p>
-					{:else}
-						<ul class="flex flex-col gap-2">
-							{#each problemListRows as problem (problem.id)}
-								<li
-									class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
-								>
-									<div class="font-medium">
-										{problem.code
-											? `${problem.code} — `
-											: ''}{problem.description ??
-											m.mo_clinical_problem_unspecified()}
-									</div>
-									<div class="text-xs opacity-60">
-										{problem.diagnosisType ??
-											m.mo_clinical_diagnosis_fallback()}
-										{#if problem.visitNo}
-											· {problem.visitNo}{/if}
-									</div>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</div>
-			</section>
-			<ObservationCardTable
-				title={m.observation_emr_chief_complaint()}
-				rows={chiefComplaintEntries}
-				columns={formEntryColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				enableMoveAction={true}
-				moveToLabel={m.observation_emr_patient_condition()}
-				moveToFormCode="patient_condition"
-				moveDirection="down"
-				showRefreshButton={true}
-				enableColumnFilters={false}
-				emptyMessage="No chief complaint entries."
-				on:add={() => openFormEntryAdd('chief_complaint')}
-				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) =>
-					openFormEntryEdit(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:delete={(e) =>
-					handleFormEntryDelete(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:move={(e) => void handleFormEntryMove(e.detail)}
-			/>
-			<ObservationCardTable
-				title={m.observation_emr_patient_condition()}
-				rows={patientConditionEntries}
-				columns={patientConditionColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				enableMoveAction={true}
-				moveToLabel={m.observation_emr_chief_complaint()}
-				moveToFormCode="chief_complaint"
-				moveDirection="up"
-				showRefreshButton={true}
-				enableColumnFilters={false}
-				emptyMessage="No patient condition entries."
-				on:add={() => openFormEntryAdd('patient_condition')}
-				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) =>
-					openFormEntryEdit(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:delete={(e) =>
-					handleFormEntryDelete(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:move={(e) => void handleFormEntryMove(e.detail)}
-			/>
-			<ObservationCardTable
-				title="History of present illness"
-				rows={hpiEntries}
-				columns={formEntryColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				enableColumnFilters={false}
-				emptyMessage="No HPI entries."
-				on:add={() => openFormEntryAdd('hpi')}
-				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) =>
-					openFormEntryEdit(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:delete={(e) =>
-					handleFormEntryDelete(
-						e.detail as PatientFormEntryWithRelations
-					)}
-			/>
-			<ObservationCardTable
-				title="Physical examination"
-				rows={physicalExamEntries}
-				columns={formEntryColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				enableColumnFilters={false}
-				emptyMessage="No physical exam entries."
-				on:add={() => openFormEntryAdd('physical_exam')}
-				on:refresh={reloadFormEntriesForVisit}
-				on:edit={(e) =>
-					openFormEntryEdit(
-						e.detail as PatientFormEntryWithRelations
-					)}
-				on:delete={(e) =>
-					handleFormEntryDelete(
-						e.detail as PatientFormEntryWithRelations
-					)}
-			/>
-			<section
-				class="card border border-base-300 bg-base-100 shadow-sm"
-			>
-				<div class="card-body gap-3 p-4">
-					<div
-						class="flex flex-wrap items-center justify-between gap-2"
+			{#snippet formEntryMoveRowActions(
+				row,
+				moveToLabel,
+				moveToFormCode,
+				moveDirection
+			)}
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
+						tooltipText={m.menzies_table_tooltip_edit()}
+						color="accent"
+						onClick={() =>
+							openFormEntryEdit(row as PatientFormEntryWithRelations)}
 					>
-						<h2 class="card-title text-base">Specialty case sheet</h2>
-						<select
-							class="select select-bordered select-sm"
-							bind:value={specialtyFormCode}
-							onchange={() => void reloadFormEntriesForVisit()}
-						>
-							<option value="specialty_obstetrics">Obstetrics</option>
-							<option value="specialty_pediatrics">Pediatrics</option>
-							<option value="specialty_surgery">Surgery</option>
-							<option value="specialty_emergency">Emergency</option>
-						</select>
-					</div>
-					<ObservationCardTable
-						title=""
-						rows={specialtyEntries}
-						columns={formEntryColumns}
-						isLoading={isLoadingGrid || isLoadingVisit}
-						crudShowView={false}
-						showRefreshButton={true}
-						enableColumnFilters={false}
-						emptyMessage="No specialty case sheet entries."
-						on:add={() => openFormEntryAdd(specialtyFormCode)}
-						on:refresh={reloadFormEntriesForVisit}
-						on:edit={(e) =>
-							openFormEntryEdit(
-								e.detail as PatientFormEntryWithRelations
-							)}
-						on:delete={(e) =>
+						{#snippet icon()}
+							<LucidePencil className="size-4" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText={m.menzies_table_crud_inactivate_tooltip()}
+						color="error"
+						onClick={() =>
 							handleFormEntryDelete(
-								e.detail as PatientFormEntryWithRelations
+								row as PatientFormEntryWithRelations
 							)}
-					/>
-				</div>
+					>
+						{#snippet icon()}
+							<LucideTrash2 className="size-4" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText={`move to ${moveToLabel}`.trim()}
+						color="info"
+						onClick={() =>
+							void handleFormEntryMove({
+								row: row as PatientFormEntryWithRelations,
+								toFormCode: moveToFormCode
+							})}
+					>
+						{#snippet icon()}
+							{#if moveDirection === 'up'}
+								<LucideChevronLeft className="size-4" />
+							{:else}
+								<LucideChevronRight className="size-4" />
+							{/if}
+						{/snippet}
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
+			{/snippet}
+
+			<!-- Row 1: Immediate context -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_chief_complaint()}
+					rows={chiefComplaintEntries}
+					columns={formEntryColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={() => openFormEntryAdd('chief_complaint')}
+					showRefreshButton={true}
+					showRowActions={true}
+					actionsVariant="none"
+					crudShowView={false}
+					enableColumnFilters={false}
+					emptyMessage="No chief complaint entries."
+					on:refresh={reloadFormEntriesForVisit}
+				>
+					{#snippet rowActions(row)}
+						{@render formEntryMoveRowActions(
+							row,
+							m.observation_emr_patient_condition(),
+							'patient_condition',
+							'down'
+						)}
+					{/snippet}
+				</MenziesTable>
+			</div>
+			<section class={TableEnum.EMR_TABLES_HEIGHT}>
+				<WashCard
+					className="flex h-full min-h-0 flex-col overflow-hidden"
+				>
+					<WashCardBody
+						className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4"
+					>
+						<WashCardBodyTitle
+							className="shrink-0 text-base font-semibold"
+						>
+							{m.mo_clinical_problem_list_title()}
+						</WashCardBodyTitle>
+						{#if isLoadingGrid || isLoadingVisit}
+							<p class="text-sm opacity-60">{m.loading()}</p>
+						{:else if problemListRows.length === 0}
+							<p class="text-sm opacity-60">
+								{m.mo_clinical_problem_list_empty()}
+							</p>
+						{:else}
+							<ul
+								class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto"
+							>
+								{#each problemListRows as problem (problem.id)}
+									<li
+										class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
+									>
+										<div class="font-medium">
+											{problem.code
+												? `${problem.code} — `
+												: ''}{problem.description ??
+												m.mo_clinical_problem_unspecified()}
+										</div>
+										<div class="text-xs opacity-60">
+											{problem.diagnosisType ??
+												m.mo_clinical_diagnosis_fallback()}
+											{#if problem.visitNo}
+												· {problem.visitNo}{/if}
+										</div>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</WashCardBody>
+				</WashCard>
 			</section>
-			<ObservationCardTable
-				title={m.observation_emr_diagnosis()}
-				rows={visitDiagnoses}
-				columns={diagnosisColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				emptyMessage={m.observation_emr_diagnosis_empty()}
-				enableColumnFilters={false}
-				bind:columnFilters={diagnosisColumnFilters}
-				on:add={openDiagnosisAdd}
-				on:refresh={reloadDiagnosesForVisit}
-				on:edit={(e) =>
-					openDiagnosisEdit(e.detail as DiagnosisWithType)}
-				on:delete={(e) =>
-					handleDiagnosisDelete(e.detail as DiagnosisWithType)}
-			/>
 
-			<ObservationCardTable
-				title={m.observation_emr_allergies()}
-				rows={allergies}
-				columns={allergyColumns}
-				masterFilterHospitalId={hospitalId}
-				isLoading={isLoadingGrid ||
-					isLoadingAllergies ||
-					isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				enableColumnFilters={true}
-				bind:columnFilters={allergyColumnFilters}
-				bind:pageSize={allergyPageSizeStr}
-				bind:currentPage={allergyCurrentPage}
-				totalRowCount={allergyTotal}
-				emptyMessage={m.observation_emr_allergy_empty()}
-				on:add={openAllergyAdd}
-				on:refresh={reloadAllergiesForVisit}
-				on:pageChange={() => {
-					void fetchAllergies({ force: true });
-				}}
-				on:pageSizeChange={() => {
-					if (allergyPageSizeStr === lastHandledAllergyPageSize) {
-						return;
-					}
-					lastHandledAllergyPageSize = allergyPageSizeStr;
-					allergyCurrentPage = 1;
-					void fetchAllergies({ force: true });
-				}}
-				on:filtersChange={(event) => {
-					const nextFilters = event.detail.filters;
-					if (areFiltersEqual(allergyColumnFilters, nextFilters)) {
-						return;
-					}
-					if (allergyFilterDebounceTimeout) {
-						clearTimeout(allergyFilterDebounceTimeout);
-					}
-					allergyColumnFilters = nextFilters;
-					allergyCurrentPage = 1;
-					allergyFilterDebounceTimeout = setTimeout(() => {
+			<!-- Row 2: Deep context & safety -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title="History of present illness"
+					rows={hpiEntries}
+					columns={formEntryColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={() => openFormEntryAdd('hpi')}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					emptyMessage="No HPI entries."
+					on:refresh={reloadFormEntriesForVisit}
+					on:edit={(e) =>
+						openFormEntryEdit(
+							e.detail as PatientFormEntryWithRelations
+						)}
+					on:delete={(e) =>
+						handleFormEntryDelete(
+							e.detail as PatientFormEntryWithRelations
+						)}
+				/>
+			</div>
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_allergies()}
+					rows={allergies}
+					columns={allergyColumns}
+					masterFilterHospitalId={hospitalId}
+					isLoading={isLoadingGrid ||
+						isLoadingAllergies ||
+						isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={openAllergyAdd}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={true}
+					bind:columnFilters={allergyColumnFilters}
+					bind:pageSize={allergyPageSizeStr}
+					bind:currentPage={allergyCurrentPage}
+					totalRowCount={allergyTotal}
+					emptyMessage={m.observation_emr_allergy_empty()}
+					on:refresh={reloadAllergiesForVisit}
+					on:pageChange={() => {
 						void fetchAllergies({ force: true });
-					}, 350);
-				}}
-				on:edit={(e) =>
-					openAllergyEdit(e.detail as PatientAllergyWithRelations)}
-				on:delete={(e) =>
-					handleAllergyDelete(
-						e.detail as PatientAllergyWithRelations
-					)}
-			/>
+					}}
+					on:pageSizeChange={() => {
+						if (allergyPageSizeStr === lastHandledAllergyPageSize) {
+							return;
+						}
+						lastHandledAllergyPageSize = allergyPageSizeStr;
+						allergyCurrentPage = 1;
+						void fetchAllergies({ force: true });
+					}}
+					on:filtersChange={(event) => {
+						const nextFilters = event.detail.filters;
+						if (areFiltersEqual(allergyColumnFilters, nextFilters)) {
+							return;
+						}
+						if (allergyFilterDebounceTimeout) {
+							clearTimeout(allergyFilterDebounceTimeout);
+						}
+						allergyColumnFilters = nextFilters;
+						allergyCurrentPage = 1;
+						allergyFilterDebounceTimeout = setTimeout(() => {
+							void fetchAllergies({ force: true });
+						}, 350);
+					}}
+					on:edit={(e) =>
+						openAllergyEdit(e.detail as PatientAllergyWithRelations)}
+					on:delete={(e) =>
+						handleAllergyDelete(
+							e.detail as PatientAllergyWithRelations
+						)}
+				/>
+			</div>
 
-			<ObservationCardTable
-				title={m.observation_emr_vitals()}
-				cardClassName="observation-emr-span-2"
-				tableWrapClassName="max-h-96 min-h-0"
-				rows={vitals}
-				columns={vitalColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				emptyMessage="No vitals for this visit."
-				enableColumnFilters={false}
-				bind:columnFilters={vitalColumnFilters}
-				on:add={openVitalAdd}
-				on:refresh={reloadVitalsForVisit}
-				on:edit={(e) =>
-					openVitalEdit(e.detail as PatientDiagnosisListRow)}
-				on:delete={(e) =>
-					handleVitalDelete(e.detail as PatientDiagnosisListRow)}
-			/>
+			<!-- Row 3: Objective data -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title="Physical examination"
+					rows={physicalExamEntries}
+					columns={formEntryColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={() => openFormEntryAdd('physical_exam')}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					emptyMessage="No physical exam entries."
+					on:refresh={reloadFormEntriesForVisit}
+					on:edit={(e) =>
+						openFormEntryEdit(
+							e.detail as PatientFormEntryWithRelations
+						)}
+					on:delete={(e) =>
+						handleFormEntryDelete(
+							e.detail as PatientFormEntryWithRelations
+						)}
+				/>
+			</div>
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_vitals()}
+					rows={vitals}
+					columns={vitalColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={openVitalAdd}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					bind:columnFilters={vitalColumnFilters}
+					emptyMessage="No vitals for this visit."
+					on:refresh={reloadVitalsForVisit}
+					on:edit={(e) =>
+						openVitalEdit(e.detail as PatientDiagnosisListRow)}
+					on:delete={(e) =>
+						handleVitalDelete(e.detail as PatientDiagnosisListRow)}
+				/>
+			</div>
 
-			<ObservationCardTable
-				title={m.observation_emr_order_history()}
-				rows={orderLines}
-				columns={orderColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRowActions={true}
-				crudEditDisabled={(row) =>
-					Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
-				crudDeleteDisabled={(row) =>
-					Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
-				addButtonVariant="redirect"
-				redirectHref={cpoeOrderRedirectHref}
-				redirectButtonText={m.observation_emr_order_history()}
-				showRefreshButton={true}
-				emptyMessage="No order lines for this visit."
-				enableColumnFilters={true}
-				bind:columnFilters={orderColumnFilters}
-				on:refresh={reloadOrdersForVisit}
-				on:edit={(e) =>
-					openOrderLineEdit(e.detail as OrderDetailVisitRow)}
-				on:delete={(e) =>
-					handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
-			/>
-			<ObservationCardTable
-				title={m.observation_emr_casesheet()}
-				rows={planOfCareRows}
-				columns={planOfCareColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				emptyMessage={m.observation_emr_plan_of_care_empty()}
-				enableColumnFilters={false}
-				bind:columnFilters={planOfCareColumnFilters}
-				on:add={openPlanOfCareAdd}
-				on:refresh={reloadPlanOfCareForVisit}
-				on:edit={(e) =>
-					openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
-				on:delete={(e) =>
-					handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
-			/>
-			<ObservationCardTable
-				title={m.observation_emr_progress_note()}
-				rows={progressNoteRows}
-				columns={progressNoteColumns}
-				isLoading={isLoadingGrid || isLoadingVisit}
-				crudShowView={false}
-				showRefreshButton={true}
-				emptyMessage={m.observation_emr_progress_note_empty()}
-				enableColumnFilters={false}
-				bind:columnFilters={progressNoteColumnFilters}
-				on:add={openProgressNoteAdd}
-				on:refresh={reloadProgressNoteForVisit}
-				on:edit={(e) =>
-					openProgressNoteEdit(e.detail as ProgressNoteListRow)}
-				on:delete={(e) =>
-					handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
-			/>
+			<!-- Row 4: Assessment -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={msg.observation_emr_specialty_case_sheet()}
+					rows={filteredSpecialtyEntries}
+					columns={specialtyColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={() => openFormEntryAdd('specialty')}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={true}
+					bind:columnFilters={specialtyColumnFilters}
+					emptyMessage={msg.observation_emr_specialty_empty()}
+					on:refresh={reloadFormEntriesForVisit}
+					on:filtersChange={(event) => {
+						specialtyColumnFilters = event.detail.filters;
+					}}
+					on:edit={(e) =>
+						openFormEntryEdit(
+							e.detail as PatientFormEntryWithRelations
+						)}
+					on:delete={(e) =>
+						handleFormEntryDelete(
+							e.detail as PatientFormEntryWithRelations
+						)}
+				/>
+			</div>
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_diagnosis()}
+					rows={visitDiagnoses}
+					columns={diagnosisColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={openDiagnosisAdd}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					bind:columnFilters={diagnosisColumnFilters}
+					emptyMessage={m.observation_emr_diagnosis_empty()}
+					on:refresh={reloadDiagnosesForVisit}
+					on:edit={(e) =>
+						openDiagnosisEdit(e.detail as DiagnosisWithType)}
+					on:delete={(e) =>
+						handleDiagnosisDelete(e.detail as DiagnosisWithType)}
+				/>
+			</div>
+
+			<!-- Row 5: Management -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_casesheet()}
+					rows={planOfCareRows}
+					columns={planOfCareColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={openPlanOfCareAdd}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					bind:columnFilters={planOfCareColumnFilters}
+					emptyMessage={m.observation_emr_plan_of_care_empty()}
+					on:refresh={reloadPlanOfCareForVisit}
+					on:edit={(e) =>
+						openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
+					on:delete={(e) =>
+						handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
+				/>
+			</div>
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_patient_condition()}
+					rows={patientConditionEntries}
+					columns={patientConditionColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={() => openFormEntryAdd('patient_condition')}
+					showRefreshButton={true}
+					showRowActions={true}
+					actionsVariant="none"
+					crudShowView={false}
+					enableColumnFilters={false}
+					emptyMessage="No patient condition entries."
+					on:refresh={reloadFormEntriesForVisit}
+				>
+					{#snippet rowActions(row)}
+						{@render formEntryMoveRowActions(
+							row,
+							m.observation_emr_chief_complaint(),
+							'chief_complaint',
+							'up'
+						)}
+					{/snippet}
+				</MenziesTable>
+			</div>
+
+			<!-- Row 6: Action & notes -->
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_progress_note()}
+					rows={progressNoteRows}
+					columns={progressNoteColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={true}
+					addLabel="Add"
+					onAdd={openProgressNoteAdd}
+					showRefreshButton={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					enableColumnFilters={false}
+					bind:columnFilters={progressNoteColumnFilters}
+					emptyMessage={m.observation_emr_progress_note_empty()}
+					on:refresh={reloadProgressNoteForVisit}
+					on:edit={(e) =>
+						openProgressNoteEdit(e.detail as ProgressNoteListRow)}
+					on:delete={(e) =>
+						handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
+				/>
+			</div>
+			<div class={TableEnum.EMR_TABLES_HEIGHT}>
+				<MenziesTable
+					title={m.observation_emr_order_history()}
+					rows={orderLines}
+					columns={orderColumns}
+					isLoading={isLoadingGrid || isLoadingVisit}
+					fillParent={true}
+					showAddButton={false}
+					showRefreshButton={true}
+					showRowActions={true}
+					actionsVariant="crud"
+					crudShowView={false}
+					crudEditDisabled={(row) =>
+						Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
+					crudDeleteDisabled={(row) =>
+						Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
+					enableColumnFilters={true}
+					bind:columnFilters={orderColumnFilters}
+					emptyMessage="No order lines for this visit."
+					on:refresh={reloadOrdersForVisit}
+					on:edit={(e) =>
+						openOrderLineEdit(e.detail as OrderDetailVisitRow)}
+					on:delete={(e) =>
+						handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
+				>
+					{#snippet headerActions()}
+						<WashButton
+							className="btn-ghost btn-xs btn-square"
+							disabled={!cpoeOrderRedirectHref}
+							onClick={() => {
+								if (!cpoeOrderRedirectHref) return;
+								void goto(resolve(cpoeOrderRedirectHref));
+							}}
+						>
+							<LucidePlus className="size-3.5" />
+						</WashButton>
+					{/snippet}
+				</MenziesTable>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -2236,24 +2458,18 @@
 		display: grid;
 		gap: 1rem;
 		grid-template-columns: 1fr;
+		align-items: stretch;
 	}
 
 	.observation-emr-grid > :global(*) {
 		min-height: 0;
 		min-width: 0;
+		width: 100%;
 	}
 
-	:global(.observation-emr-grid .observation-bento-card) {
-		min-height: 12rem;
-	}
-
-	@media (min-width: 1280px) {
+	@media (min-width: 1024px) {
 		.observation-emr-grid {
-			grid-template-columns: repeat(3, 1fr);
-		}
-
-		:global(.observation-emr-grid .observation-emr-span-2) {
-			grid-column: span 2;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 </style>
