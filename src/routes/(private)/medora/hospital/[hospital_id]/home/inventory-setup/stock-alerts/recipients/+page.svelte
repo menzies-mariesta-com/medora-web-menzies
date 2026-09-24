@@ -327,7 +327,7 @@
 
 <div class="space-y-6">
 	{#if bundleError}
-		<div class="alert alert-error">
+		<div class="alert alert-dash alert-error">
 			<span>{bundleError}</span>
 		</div>
 	{/if}

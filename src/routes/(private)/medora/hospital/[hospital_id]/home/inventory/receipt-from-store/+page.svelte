@@ -284,7 +284,7 @@
 </script>
 
 {#if fromStoreId == null}
-	<div class="mb-3 alert text-sm alert-warning" role="status">
+	<div class="mb-3 alert alert-dash text-sm alert-warning" role="status">
 		{m.inv_receipt_from_store_select_store_hint()}
 	</div>
 {/if}
