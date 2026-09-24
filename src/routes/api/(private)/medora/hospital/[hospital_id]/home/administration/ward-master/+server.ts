@@ -35,6 +35,12 @@ export async function GET(event: RequestEvent) {
 	const code = event.url.searchParams.get('code') ?? undefined;
 	const branchId =
 		event.url.searchParams.get('branchId') ?? undefined;
+	const wardCategoryIdRaw =
+		event.url.searchParams.get('wardCategoryId');
+	const wardCategoryId =
+		wardCategoryIdRaw != null && wardCategoryIdRaw !== ''
+			? Number(wardCategoryIdRaw)
+			: undefined;
 	const statusIdRaw = event.url.searchParams.get('statusId');
 	const statusId =
 		statusIdRaw != null && statusIdRaw !== ''
@@ -49,6 +55,9 @@ export async function GET(event: RequestEvent) {
 			name,
 			code,
 			branchId,
+			wardCategoryId: Number.isFinite(wardCategoryId as number)
+				? wardCategoryId
+				: undefined,
 			statusId: Number.isFinite(statusId as number)
 				? statusId
 				: undefined
@@ -64,10 +73,15 @@ export async function POST(event: RequestEvent) {
 	if (!branchId) throw error(400, 'Branch is required');
 	const name = String(body.name ?? '').trim();
 	if (!name) throw error(400, 'Ward name is required');
+	const wardCategoryId = Number(body.wardCategoryId);
+	if (!Number.isFinite(wardCategoryId) || wardCategoryId <= 0) {
+		throw error(400, 'Ward category is required');
+	}
 	return json(
 		await ward.createWard({
 			hospitalId,
 			branchId,
+			wardCategoryId,
 			name,
 			code: body.code ? String(body.code).trim() : null,
 			statusId:
@@ -92,6 +106,16 @@ export async function PUT(event: RequestEvent) {
 	if (branchId !== undefined && !branchId) {
 		throw error(400, 'Branch is required');
 	}
+	const wardCategoryId =
+		body.wardCategoryId !== undefined
+			? Number(body.wardCategoryId)
+			: undefined;
+	if (
+		wardCategoryId !== undefined &&
+		(!Number.isFinite(wardCategoryId) || wardCategoryId <= 0)
+	) {
+		throw error(400, 'Ward category is required');
+	}
 	return json(
 		await ward.updateWard({
 			id,
@@ -104,6 +128,7 @@ export async function PUT(event: RequestEvent) {
 						: null
 					: undefined,
 			branchId,
+			wardCategoryId,
 			statusId:
 				body.statusId !== undefined ? Number(body.statusId) : undefined
 		})

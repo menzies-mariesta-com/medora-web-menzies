@@ -58,10 +58,15 @@ import type {
 	serviceOrderTable,
 	serviceOrderDetailTable,
 	referHistoryTable,
+	wardCategoryTable,
 	wardTable,
+	roomCategoryTable,
+	roomTable,
 	bedTable,
 	ipdAdmissionTable,
 	ipdBedHistoryTable,
+	ipdBedStaySegmentTable,
+	ipdAccommodationBillingPolicyTable,
 	ipBillingTable,
 	ipBillingLineTable,
 	diagnosisCodeTable,
@@ -526,9 +531,31 @@ export type ReferHistorySchemaInsert = InferInsertModel<
 export type ReferHistorySchemaUpdate =
 	Partial<ReferHistorySchemaInsert>;
 
+export type WardCategorySchema = InferSelectModel<
+	typeof wardCategoryTable
+>;
+export type WardCategorySchemaInsert = InferInsertModel<
+	typeof wardCategoryTable
+>;
+export type WardCategorySchemaUpdate =
+	Partial<WardCategorySchemaInsert>;
+
+export type RoomCategorySchema = InferSelectModel<
+	typeof roomCategoryTable
+>;
+export type RoomCategorySchemaInsert = InferInsertModel<
+	typeof roomCategoryTable
+>;
+export type RoomCategorySchemaUpdate =
+	Partial<RoomCategorySchemaInsert>;
+
 export type WardSchema = InferSelectModel<typeof wardTable>;
 export type WardSchemaInsert = InferInsertModel<typeof wardTable>;
 export type WardSchemaUpdate = Partial<WardSchemaInsert>;
+
+export type RoomSchema = InferSelectModel<typeof roomTable>;
+export type RoomSchemaInsert = InferInsertModel<typeof roomTable>;
+export type RoomSchemaUpdate = Partial<RoomSchemaInsert>;
 
 export type BedSchema = InferSelectModel<typeof bedTable>;
 export type BedSchemaInsert = InferInsertModel<typeof bedTable>;
@@ -551,6 +578,23 @@ export type IpdBedHistorySchemaInsert = InferInsertModel<
 >;
 export type IpdBedHistorySchemaUpdate =
 	Partial<IpdBedHistorySchemaInsert>;
+
+export type IpdBedStaySegmentSchema = InferSelectModel<
+	typeof ipdBedStaySegmentTable
+>;
+export type IpdBedStaySegmentSchemaInsert = InferInsertModel<
+	typeof ipdBedStaySegmentTable
+>;
+export type IpdBedStaySegmentSchemaUpdate =
+	Partial<IpdBedStaySegmentSchemaInsert>;
+
+export type IpdAccommodationBillingPolicySchema = InferSelectModel<
+	typeof ipdAccommodationBillingPolicyTable
+>;
+export type IpdAccommodationBillingPolicySchemaInsert =
+	InferInsertModel<typeof ipdAccommodationBillingPolicyTable>;
+export type IpdAccommodationBillingPolicySchemaUpdate =
+	Partial<IpdAccommodationBillingPolicySchemaInsert>;
 
 export type IpBillingSchema = InferSelectModel<typeof ipBillingTable>;
 export type IpBillingSchemaInsert = InferInsertModel<

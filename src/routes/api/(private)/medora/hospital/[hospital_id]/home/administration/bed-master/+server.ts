@@ -23,10 +23,29 @@ export async function GET(event: RequestEvent) {
 	}
 
 	if (event.url.searchParams.get('free') === '1') {
-		const wardId = Number(event.url.searchParams.get('wardId'));
-		if (!Number.isFinite(wardId) || wardId <= 0)
-			throw error(400, 'wardId is required');
-		return json(await bed.listFreeBeds({ hospitalId, wardId }));
+		const wardIdRaw = event.url.searchParams.get('wardId');
+		const roomIdRaw = event.url.searchParams.get('roomId');
+		const wardId =
+			wardIdRaw != null && wardIdRaw !== ''
+				? Number(wardIdRaw)
+				: undefined;
+		const roomId =
+			roomIdRaw != null && roomIdRaw !== ''
+				? Number(roomIdRaw)
+				: undefined;
+		if (
+			!Number.isFinite(wardId as number) &&
+			!Number.isFinite(roomId as number)
+		) {
+			throw error(400, 'wardId or roomId is required');
+		}
+		return json(
+			await bed.listFreeBeds({
+				hospitalId,
+				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
+				roomId: Number.isFinite(roomId as number) ? roomId : undefined
+			})
+		);
 	}
 
 	const page = Number(event.url.searchParams.get('page') ?? '1');
@@ -39,6 +58,11 @@ export async function GET(event: RequestEvent) {
 	const wardId =
 		wardIdRaw != null && wardIdRaw !== ''
 			? Number(wardIdRaw)
+			: undefined;
+	const roomIdRaw = event.url.searchParams.get('roomId');
+	const roomId =
+		roomIdRaw != null && roomIdRaw !== ''
+			? Number(roomIdRaw)
 			: undefined;
 	const bedStatusRaw = event.url.searchParams.get('bedStatus');
 	const bedStatus =
@@ -59,6 +83,7 @@ export async function GET(event: RequestEvent) {
 			name,
 			code,
 			wardId: Number.isFinite(wardId as number) ? wardId : undefined,
+			roomId: Number.isFinite(roomId as number) ? roomId : undefined,
 			bedStatus: Number.isFinite(bedStatus as number)
 				? bedStatus
 				: undefined,
@@ -73,15 +98,26 @@ export async function POST(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 	const body = await event.request.json();
-	const wardId = Number(body.wardId);
-	if (!Number.isFinite(wardId) || wardId <= 0)
-		throw error(400, 'wardId is required');
+
+	if (body.action === 'markAvailable') {
+		const id = Number(body.id);
+		if (!Number.isFinite(id) || id <= 0)
+			throw error(400, 'id is required');
+		return json(await bed.markBedAvailable({ id, hospitalId }));
+	}
+
+	const roomId = Number(body.roomId);
+	if (!Number.isFinite(roomId) || roomId <= 0)
+		throw error(400, 'Room is required');
+	const name = String(body.name ?? '').trim();
+	if (!name) throw error(400, 'Bed name is required');
 	return json(
 		await bed.createBed({
 			hospitalId,
-			wardId,
-			name: String(body.name ?? '').trim(),
+			roomId,
+			name,
 			code: body.code ? String(body.code).trim() : null,
+			basePrice: String(body.basePrice ?? '0'),
 			bedStatus:
 				typeof body.bedStatus === 'number'
 					? body.bedStatus
@@ -104,14 +140,19 @@ export async function PUT(event: RequestEvent) {
 	return json(
 		await bed.updateBed({
 			id,
-			wardId:
-				body.wardId !== undefined ? Number(body.wardId) : undefined,
+			hospitalId,
+			roomId:
+				body.roomId !== undefined ? Number(body.roomId) : undefined,
 			name: body.name != null ? String(body.name).trim() : undefined,
 			code:
 				body.code !== undefined
 					? body.code
 						? String(body.code).trim()
 						: null
+					: undefined,
+			basePrice:
+				body.basePrice !== undefined
+					? String(body.basePrice)
 					: undefined,
 			bedStatus:
 				body.bedStatus !== undefined

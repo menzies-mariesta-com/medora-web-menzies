@@ -22,6 +22,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import {
 	IpdAdmissionStatusEnum,
+	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
 	StatusEnum,
 	YesNoEnum
@@ -1779,7 +1780,77 @@ export const referHistoryTable = pgTable('refer_history', {
 	...timestamps
 });
 
-/** IPD ward master (per hospital; optional branch scope). */
+/**
+ * Care-tier / pricing category for wards (e.g. General, ICU, HDU).
+ * Holds the ward-level markup % used in daily tariff.
+ */
+export const wardCategoryTable = pgTable(
+	'ward_category',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Care-intensity markup % applied on bed base (after room markup):
+		 * daily = base × (1 + room%/100) × (1 + category%/100).
+		 */
+		wardMarkup: decimal('ward_markup', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ward_category_hospital_id_idx').on(table.hospitalId),
+		index('ward_category_status_id_idx').on(table.statusId)
+	]
+);
+
+/**
+ * Privacy / amenity category for rooms (e.g. Shared, Private, Suite).
+ * Holds the room-level markup % used in daily tariff.
+ */
+export const roomCategoryTable = pgTable(
+	'room_category',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Room markup % applied on bed base before ward-category markup:
+		 * daily = base × (1 + room%/100) × (1 + ward%/100).
+		 */
+		roomMarkup: decimal('room_markup', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('room_category_hospital_id_idx').on(table.hospitalId),
+		index('room_category_status_id_idx').on(table.statusId)
+	]
+);
+
+/** IPD ward master (Hospital → Branch → Ward → Room → Bed). */
 export const wardTable = pgTable(
 	'ward',
 	{
@@ -1787,11 +1858,16 @@ export const wardTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		/** Ward belongs to a branch (Hospital → Branch → Ward → Bed). */
+		/** Ward belongs to a branch. */
 		branchId: uuid('branch_id')
 			.notNull()
 			.references(() => hospitalBranchTable.id, {
 				onDelete: 'cascade'
+			}),
+		wardCategoryId: integer('ward_category_id')
+			.notNull()
+			.references(() => wardCategoryTable.id, {
+				onDelete: 'restrict'
 			}),
 		name: varchar('name', { length: 512 }).notNull(),
 		code: varchar('code', { length: 64 }),
@@ -1804,23 +1880,73 @@ export const wardTable = pgTable(
 	(table) => [
 		index('ward_hospital_id_idx').on(table.hospitalId),
 		index('ward_branch_id_idx').on(table.branchId),
+		index('ward_category_id_idx').on(table.wardCategoryId),
 		index('ward_status_id_idx').on(table.statusId)
 	]
 );
 
-/** IPD bed master (belongs to ward). */
+/**
+ * IPD room master (belongs to ward). A room holds many beds (1:N).
+ * Markup % comes from room category.
+ */
+export const roomTable = pgTable(
+	'room',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		wardId: integer('ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'cascade' }),
+		roomCategoryId: integer('room_category_id')
+			.notNull()
+			.references(() => roomCategoryTable.id, {
+				onDelete: 'restrict'
+			}),
+		name: varchar('name', { length: 512 }).notNull(),
+		code: varchar('code', { length: 64 }),
+		/**
+		 * Derived bed count for this room (synced when beds are assigned/removed).
+		 * Not set manually — capacity = number of non-deleted beds.
+		 */
+		capacity: integer('capacity').notNull().default(0),
+		/** Optional amenity / privacy notes (e.g. Ensuite, Isolation). */
+		amenities: text('amenities'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('room_hospital_id_idx').on(table.hospitalId),
+		index('room_ward_id_idx').on(table.wardId),
+		index('room_category_id_idx').on(table.roomCategoryId),
+		index('room_status_id_idx').on(table.statusId)
+	]
+);
+
+/** IPD bed master (belongs to room; ward resolved via room). */
 export const bedTable = pgTable(
 	'bed',
 	{
 		id: serial('id').primaryKey(),
-		wardId: integer('ward_id')
+		roomId: integer('room_id')
 			.notNull()
-			.references(() => wardTable.id, { onDelete: 'cascade' }),
+			.references(() => roomTable.id, { onDelete: 'cascade' }),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
 		name: varchar('name', { length: 512 }).notNull(),
 		code: varchar('code', { length: 64 }),
+		/** Foundational daily bed asset cost in additive tariff. */
+		basePrice: decimal('base_price', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
 		/** {@link IpdBedStatusEnum} */
 		bedStatus: integer('bed_status')
 			.notNull()
@@ -1832,7 +1958,7 @@ export const bedTable = pgTable(
 		...timestamps
 	},
 	(table) => [
-		index('bed_ward_id_idx').on(table.wardId),
+		index('bed_room_id_idx').on(table.roomId),
 		index('bed_hospital_id_idx').on(table.hospitalId),
 		index('bed_bed_status_idx').on(table.bedStatus),
 		index('bed_status_id_idx').on(table.statusId)
@@ -1842,6 +1968,7 @@ export const bedTable = pgTable(
 /**
  * IPD admission for a patient visit (same visit converted from OPD).
  * At most one active (non-cancelled) admission per visit.
+ * Current location: ward + room + bed (denormalized for census; bed is source of truth).
  */
 export const ipdAdmissionTable = pgTable(
 	'ipd_admission',
@@ -1864,6 +1991,9 @@ export const ipdAdmissionTable = pgTable(
 		wardId: integer('ward_id')
 			.notNull()
 			.references(() => wardTable.id, { onDelete: 'restrict' }),
+		roomId: integer('room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
 		bedId: integer('bed_id')
 			.notNull()
 			.references(() => bedTable.id, { onDelete: 'restrict' }),
@@ -1882,6 +2012,15 @@ export const ipdAdmissionTable = pgTable(
 			mode: 'string'
 		}),
 		reasonNotes: text('reason_notes'),
+		/**
+		 * Temporary leave (OT / Recovery): bed stays OCCUPIED; not a transfer.
+		 * Null when patient is on the assigned bed.
+		 */
+		otHoldLocation: varchar('ot_hold_location', { length: 256 }),
+		otHoldAt: timestamp('ot_hold_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
 		/** {@link IpdAdmissionStatusEnum} */
 		admissionStatus: integer('admission_status')
 			.notNull()
@@ -1896,6 +2035,7 @@ export const ipdAdmissionTable = pgTable(
 		index('ipd_admission_visit_id_idx').on(table.visitId),
 		index('ipd_admission_hospital_id_idx').on(table.hospitalId),
 		index('ipd_admission_ward_id_idx').on(table.wardId),
+		index('ipd_admission_room_id_idx').on(table.roomId),
 		index('ipd_admission_bed_id_idx').on(table.bedId),
 		index('ipd_admission_admission_status_idx').on(
 			table.admissionStatus
@@ -1924,6 +2064,13 @@ export const ipdBedHistoryTable = pgTable(
 		toBedId: integer('to_bed_id')
 			.notNull()
 			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		fromRoomId: integer('from_room_id').references(
+			() => roomTable.id,
+			{ onDelete: 'set null' }
+		),
+		toRoomId: integer('to_room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
 		fromWardId: integer('from_ward_id').references(
 			() => wardTable.id,
 			{ onDelete: 'set null' }
@@ -1946,7 +2093,144 @@ export const ipdBedHistoryTable = pgTable(
 	},
 	(table) => [
 		index('ipd_bed_history_admission_id_idx').on(table.admissionId),
-		index('ipd_bed_history_to_bed_id_idx').on(table.toBedId)
+		index('ipd_bed_history_to_bed_id_idx').on(table.toBedId),
+		index('ipd_bed_history_to_room_id_idx').on(table.toRoomId)
+	]
+);
+
+/**
+ * Billable bed-stay segment with immutable price snapshot.
+ * Closed on transfer/discharge; new segment opens on admit/transfer.
+ */
+export const ipdBedStaySegmentTable = pgTable(
+	'ipd_bed_stay_segment',
+	{
+		id: serial('id').primaryKey(),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		wardId: integer('ward_id')
+			.notNull()
+			.references(() => wardTable.id, { onDelete: 'restrict' }),
+		roomId: integer('room_id')
+			.notNull()
+			.references(() => roomTable.id, { onDelete: 'restrict' }),
+		bedId: integer('bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		wardNameSnapshot: varchar('ward_name_snapshot', {
+			length: 512
+		}),
+		roomNameSnapshot: varchar('room_name_snapshot', {
+			length: 512
+		}),
+		bedNameSnapshot: varchar('bed_name_snapshot', { length: 512 }),
+		bedBasePriceSnapshot: decimal('bed_base_price_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		roomMarkupSnapshot: decimal('room_markup_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		wardMarkupSnapshot: decimal('ward_markup_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		dailyTariffSnapshot: decimal('daily_tariff_snapshot', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		startedAt: timestamp('started_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		endedAt: timestamp('ended_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		index('ipd_bed_stay_segment_admission_id_idx').on(
+			table.admissionId
+		),
+		index('ipd_bed_stay_segment_hospital_id_idx').on(
+			table.hospitalId
+		),
+		index('ipd_bed_stay_segment_open_idx')
+			.on(table.admissionId)
+			.where(sql`${table.endedAt} IS NULL`)
+	]
+);
+
+/**
+ * Hospital policy for how stay segments convert to accommodation charges.
+ * One row per hospital (upserted on first use).
+ */
+export const ipdAccommodationBillingPolicyTable = pgTable(
+	'ipd_accommodation_billing_policy',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		/** {@link IpdAccommodationBillingMethodEnum} */
+		billingMethod: integer('billing_method')
+			.notNull()
+			.default(IpdAccommodationBillingMethodEnum.BLOCK_24H),
+		/** Minutes after cut-off / block end with no extra day (grace). */
+		graceMinutes: integer('grace_minutes').notNull().default(0),
+		/** Minimum billable days (e.g. 0.5); null = no floor. */
+		minimumDays: decimal('minimum_days', {
+			precision: 8,
+			scale: 4
+		}),
+		/**
+		 * Cut-off time for CALENDAR_DAY method as HH:mm (local hospital).
+		 * Default midnight = 00:00.
+		 */
+		cutoffTime: varchar('cutoff_time', { length: 8 })
+			.notNull()
+			.default('00:00'),
+		/**
+		 * Optional service item used when posting accommodation lines
+		 * into ip_billing_line.
+		 */
+		accommodationServiceItemId: integer(
+			'accommodation_service_item_id'
+		).references(() => serviceItemTable.id, {
+			onDelete: 'set null'
+		}),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(table) => [
+		uniqueIndex('ipd_accommodation_billing_policy_hospital_uidx').on(
+			table.hospitalId
+		)
 	]
 );
 
