@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import WashCard from '$lib/component/wash/card/WashCard.svelte';
-	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -32,8 +28,11 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import LNursingEmrOrderHistoryDialog from '$lib/component/own/local/private/medora/nursing-workbench/emr/order/LNursingEmrOrderHistoryDialog.svelte';
+	import LServiceOrderPendingLineDialogContent, {
+		type ServiceOrderPendingLineFilter,
+		type ServiceOrderPendingLineResult
+	} from '$lib/component/own/local/private/medora/order/LServiceOrderPendingLineDialogContent.svelte';
 	import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { uiLogger } from '$lib/logger';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -143,29 +142,12 @@
 		)
 	);
 
-	let serviceFilter = $state<
-		'all' | 'radiology' | 'laboratory' | 'nursing'
-	>('all');
-	type ServiceFilterType =
-		| 'all'
-		| 'radiology'
-		| 'laboratory'
-		| 'nursing';
 	/** Maps `service_item.sub_category_id` → `sub_category.category_id` (Radiology=1, Nursing=2, Laboratory=5). */
 	let subCategoryIdToCategoryId = $state<Map<number, number>>(
 		new Map()
 	);
 	let serviceFilterSubCategoryPromise: Promise<void> | null = null;
 
-	let detailServiceIdInput = $state('');
-	let detailAdvisingDoctorIdInput = $state('');
-	let detailServiceAmountInput = $state('');
-	let detailServiceTaxAmountInput = $state('');
-	let detailServiceUnitInput = $state('1');
-	let detailInstructionInput = $state('');
-	let detailIsUrgentInput = $state(false);
-	let editingDetailId = $state<number | null>(null);
-	let detailAmountEditable = $state(true);
 	let lastLoadedVisitId = $state<number | null>(null);
 
 	let historyItems = $state<HistoryItem[]>([]);
@@ -259,18 +241,6 @@
 		mounted = false;
 	});
 
-	function resetDetailForm() {
-		editingDetailId = null;
-		detailServiceIdInput = '';
-		detailAdvisingDoctorIdInput = '';
-		detailServiceAmountInput = '';
-		detailServiceTaxAmountInput = '';
-		detailServiceUnitInput = '1';
-		detailInstructionInput = '';
-		detailIsUrgentInput = false;
-		detailAmountEditable = true;
-	}
-
 	async function fetchBranchServices(
 		hospitalIdForVisit: string,
 		branchIdForVisit: string
@@ -340,12 +310,16 @@
 		return StringUtil.doctorOptionDisplayName(staff);
 	}
 
-	async function searchServices(
-		query: string
+	async function searchServicesForDialog(
+		query: string,
+		ctx: {
+			orderDate: string;
+			serviceFilter: ServiceOrderPendingLineFilter;
+		}
 	): Promise<{ label: string; value: string }[]> {
 		await ensureServiceFilterSubCategoryIdsLoaded();
 		const effectiveServiceIds = effectiveServiceIdsForOrderDate(
-			orderDateInput || todayDateString()
+			ctx.orderDate || todayDateString()
 		);
 		const paged = await apiGet<{ data: ServiceItemListRow[] }>(
 			'serviceItem.paginated',
@@ -360,7 +334,7 @@
 			.filter(
 				(service) =>
 					effectiveServiceIds.has(service.id) &&
-					serviceMatchesFilter(service, serviceFilter)
+					serviceMatchesFilter(service, ctx.serviceFilter)
 			)
 			.map((service) => ({
 				label: StringUtil.serviceOptionDisplayName(service),
@@ -483,7 +457,7 @@
 
 	function serviceMatchesFilter(
 		service: ServiceItemListRow,
-		filter: ServiceFilterType
+		filter: ServiceOrderPendingLineFilter
 	): boolean {
 		if (filter === 'all') return true;
 		const subCategoryId = Number(service.subCategoryId);
@@ -502,132 +476,135 @@
 		return true;
 	}
 
-	const filteredBranchServices = $derived(
-		branchServices.filter((s) =>
-			serviceMatchesFilter(s, serviceFilter)
-		)
-	);
-
-	async function applyPricingForSelectedService() {
+	async function loadPricingForDialog(
+		serviceId: string,
+		orderDate: string
+	): Promise<{
+		serviceAmount: string;
+		serviceTaxAmount: string;
+		amountEditable: boolean;
+	}> {
+		const empty = {
+			serviceAmount: '',
+			serviceTaxAmount: '',
+			amountEditable: true
+		};
 		const branchIdForVisit = visit?.branchId;
-		if (!branchIdForVisit) return;
-		const serviceId = parseNumberOrNull(detailServiceIdInput);
-		if (!serviceId) return;
+		if (!branchIdForVisit) return empty;
+		const sid = parseNumberOrNull(serviceId);
+		if (!sid) return empty;
 		try {
 			const taggings = await apiGet<ServiceTaggingListRow[]>(
 				'serviceTagging.list',
 				{
 					branchId: branchIdForVisit,
-					serviceId: String(serviceId)
+					serviceId: String(sid)
 				}
 			);
-			const t = pickEffectiveTagging(taggings, orderDateInput);
-			if (!t) {
-				detailServiceAmountInput = '';
-				detailServiceTaxAmountInput = '';
-				detailAmountEditable = true;
-				return;
-			}
-			detailServiceAmountInput =
-				t.serviceAmount != null ? String(t.serviceAmount) : '';
-			detailServiceTaxAmountInput =
-				t.serviceTaxAmount != null ? String(t.serviceTaxAmount) : '';
-			detailAmountEditable = t.allowEdit ?? true;
+			const t = pickEffectiveTagging(taggings, orderDate);
+			if (!t) return empty;
+			return {
+				serviceAmount:
+					t.serviceAmount != null ? String(t.serviceAmount) : '',
+				serviceTaxAmount:
+					t.serviceTaxAmount != null
+						? String(t.serviceTaxAmount)
+						: '',
+				amountEditable: t.allowEdit ?? true
+			};
 		} catch (err) {
 			uiLogger.error(
 				'Failed to load pricing for service',
 				err instanceof Error ? err : undefined
 			);
-			detailAmountEditable = true;
+			return empty;
 		}
 	}
 
-	function buildPendingItem(
-		serviceIdValue: string
-	): Omit<
-		PendingItem,
-		'id' | 'advisingDoctorName' | 'serviceName'
-	> | null {
-		const serviceId = parseNumberOrNull(serviceIdValue);
-		if (!serviceId) {
-			toastService.addToast(
-				'Service is required.',
-				StatusColorEnum.ERROR
-			);
-			return null;
-		}
-		const serviceAmount = parseDecimalOrNull(
-			detailServiceAmountInput
-		);
-		const serviceTaxAmount = parseDecimalOrNull(
-			detailServiceTaxAmountInput
-		);
-		const serviceUnit = parseNumberOrNull(detailServiceUnitInput);
-		if (!serviceUnit || serviceUnit < 1) {
-			toastService.addToast(
-				'Unit must be at least 1.',
-				StatusColorEnum.ERROR
-			);
-			return null;
-		}
+	async function openPendingLineDialog(editRow?: PendingItem) {
+		const result = await dialogService.open({
+			title: editRow
+				? msg.cpoe_order_edit_item_title()
+				: msg.cpoe_order_add_item_title(),
+			modalClassName: 'max-w-4xl',
+			component: LServiceOrderPendingLineDialogContent,
+			props: {
+				orderDate: orderDateInput,
+				orderTime: orderTimeInput,
+				isEdit: Boolean(editRow),
+				initial: editRow
+					? {
+							serviceId: String(editRow.serviceId),
+							advisingDoctorId: editRow.advisingDoctorId ?? '',
+							serviceAmount: editRow.serviceAmount ?? '',
+							serviceTaxAmount: editRow.serviceTaxAmount ?? '',
+							serviceUnit: String(editRow.serviceUnit),
+							instruction: editRow.instruction ?? '',
+							isUrgent: editRow.isUrgent
+						}
+					: null,
+				searchServices: (
+					query: string,
+					ctx: {
+						orderDate: string;
+						serviceFilter: ServiceOrderPendingLineFilter;
+					}
+				) => searchServicesForDialog(query, ctx),
+				getServiceLabelForValue,
+				searchDoctors,
+				getDoctorLabelForValue,
+				loadPricing: loadPricingForDialog
+			}
+		});
+		if (!result.confirmed || !result.data) return;
+		const data = result.data as ServiceOrderPendingLineResult;
+		orderDateInput = data.orderDate;
+		orderTimeInput = data.orderTime;
 
-		const item = {
-			serviceId,
-			advisingDoctorId: detailAdvisingDoctorIdInput.trim() || null,
-			serviceAmount,
-			serviceTaxAmount,
-			serviceUnit,
-			instruction: detailInstructionInput.trim() || null,
-			isUrgent: detailIsUrgentInput
-		};
-		return item;
-	}
-
-	async function handleAddToList() {
 		try {
-			const singleServiceId = detailServiceIdInput;
-			if (singleServiceId) {
-				const built = buildPendingItem(singleServiceId);
-				if (!built) return;
-
-				let doctorName: string | null = null;
-				if (built.advisingDoctorId) {
-					doctorName = await getDoctorLabelForValue(
-						built.advisingDoctorId
-					);
-				}
-
-				let serviceName =
-					await getServiceLabelForValue(singleServiceId);
-
-				// Assign a local incremental id
-				const nextId =
-					pendingItems.length === 0
-						? 1
-						: Math.max(...pendingItems.map((p) => p.id)) + 1;
-				const newItem: PendingItem = {
-					...built,
-					id: nextId,
-					advisingDoctorName: doctorName,
-					serviceName
-				};
-
-				if (editingDetailId) {
-					pendingItems = pendingItems.map((item) =>
-						item.id === editingDetailId ? newItem : item
-					);
-				} else {
-					pendingItems = [...pendingItems, newItem];
-				}
-			} else {
+			const serviceId = parseNumberOrNull(data.serviceId);
+			if (!serviceId) {
 				toastService.addToast(
-					'Please choose a service.',
+					'Service is required.',
 					StatusColorEnum.ERROR
 				);
 				return;
 			}
-
-			resetDetailForm();
+			const serviceUnit = parseNumberOrNull(data.serviceUnit);
+			if (!serviceUnit || serviceUnit < 1) {
+				toastService.addToast(
+					'Unit must be at least 1.',
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			const serviceAmount = parseDecimalOrNull(data.serviceAmount);
+			const serviceTaxAmount = parseDecimalOrNull(
+				data.serviceTaxAmount
+			);
+			const nextId =
+				pendingItems.length === 0
+					? 1
+					: Math.max(...pendingItems.map((p) => p.id)) + 1;
+			const newItem: PendingItem = {
+				id: editRow?.id ?? nextId,
+				serviceId,
+				serviceName: data.serviceName,
+				advisingDoctorId: data.advisingDoctorId.trim() || null,
+				advisingDoctorName: data.advisingDoctorName,
+				serviceAmount,
+				serviceTaxAmount,
+				serviceUnit,
+				instruction: data.instruction.trim() || null,
+				isUrgent: data.isUrgent
+			};
+			if (editRow) {
+				pendingItems = pendingItems.map((item) =>
+					item.id === editRow.id ? newItem : item
+				);
+			} else {
+				pendingItems = [...pendingItems, newItem];
+			}
 			toastInfo(
 				toastService,
 				m.entity_order_draft_line(),
@@ -640,23 +617,6 @@
 				err
 			);
 		}
-	}
-
-	function startEditDetail(row: PendingItem) {
-		editingDetailId = row.id;
-		detailServiceIdInput = String(row.serviceId ?? '');
-		detailAdvisingDoctorIdInput = row.advisingDoctorId ?? '';
-		detailServiceAmountInput = row.serviceAmount
-			? String(row.serviceAmount)
-			: '';
-		detailServiceTaxAmountInput = row.serviceTaxAmount
-			? String(row.serviceTaxAmount)
-			: '';
-		detailServiceUnitInput = row.serviceUnit
-			? String(row.serviceUnit)
-			: '';
-		detailInstructionInput = row.instruction ?? '';
-		detailIsUrgentInput = Boolean(row.isUrgent);
 	}
 
 	async function handleDeleteDetail(row: PendingItem) {
@@ -835,7 +795,6 @@
 			);
 
 			pendingItems = [];
-			resetDetailForm();
 			toastSuccess(
 				toastService,
 				m.entity_medication_order(),
@@ -1028,7 +987,9 @@
 					message="Visit not found."
 				/>
 			{:else if !visit}
-				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
+				<div
+					class={TableEnum.HEIGHT}
+				>
 					<MenziesTable
 						title="Order"
 						rows={[]}
@@ -1044,238 +1005,57 @@
 					/>
 				</div>
 			{:else}
-				<WashCard>
-					<WashCardBody>
-						<div class="mb-5 flex flex-col gap-4">
-							<div
-								class="flex flex-wrap items-center justify-between gap-3"
-							>
-								<WashCardBodyTitle className="mb-0">
-									Order
-								</WashCardBodyTitle>
-								<WashButton
-									className="btn-outline btn-sm"
-									onClick={handleShowHistory}
-								>
-									Order history
-								</WashButton>
-							</div>
+				<div
+					class="flex flex-wrap items-center justify-end gap-2"
+				>
+					<WashButton
+						className="btn-outline btn-sm"
+						onClick={handleShowHistory}
+					>
+						Order history
+					</WashButton>
+					<WashButton
+						className="btn-primary btn-sm px-8"
+						onClick={handleSaveOrder}
+					>
+						Save
+					</WashButton>
+				</div>
 
-							<div class="flex flex-col gap-4 border-b pb-4">
-								<!-- Order date & time -->
-								<div class="flex flex-wrap items-end gap-4 text-sm">
-									<label class="flex flex-col gap-1">
-										<span class="font-medium">Order Date</span>
-										<WashInputField
-											bind:value={orderDateInput}
-											inputType="date"
-											min={todayDateString()}
-											className="input-sm w-40"
-										/>
-									</label>
-									<label class="flex flex-col gap-1">
-										<span class="font-medium">Order Time</span>
-										<input
-											type="time"
-											class="input-bordered input input-sm w-32"
-											bind:value={orderTimeInput}
-										/>
-									</label>
-								</div>
-
-								<!-- Service type radios -->
-								<div
-									class="mt-2 flex flex-wrap items-center gap-6 text-sm"
-								>
-									<div class="font-medium">Service Type</div>
-									<div class="flex flex-wrap gap-6">
-										<label class="inline-flex items-center gap-2">
-											<input
-												type="radio"
-												name="serviceType"
-												class="radio radio-sm"
-												value="all"
-												bind:group={serviceFilter}
-											/>
-											<span>All Services</span>
-										</label>
-										<label class="inline-flex items-center gap-2">
-											<input
-												type="radio"
-												name="serviceType"
-												class="radio radio-sm"
-												value="radiology"
-												bind:group={serviceFilter}
-											/>
-											<span>Radiology</span>
-										</label>
-										<label class="inline-flex items-center gap-2">
-											<input
-												type="radio"
-												name="serviceType"
-												class="radio radio-sm"
-												value="laboratory"
-												bind:group={serviceFilter}
-											/>
-											<span>Laboratory</span>
-										</label>
-										<label class="inline-flex items-center gap-2">
-											<input
-												type="radio"
-												name="serviceType"
-												class="radio radio-sm"
-												value="nursing"
-												bind:group={serviceFilter}
-											/>
-											<span>Nursing</span>
-										</label>
-									</div>
-								</div>
-							</div>
-
-							<div
-								class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-							>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Service Name
-									<SearchSelect
-										bind:value={detailServiceIdInput}
-										placeholder="Select service"
-										searchFn={searchServices}
-										getLabelForValue={getServiceLabelForValue}
-										invalidateKey={serviceFilter}
-										minSearchLength={0}
-										onChange={async () => {
-											detailServiceAmountInput = '';
-											detailServiceTaxAmountInput = '';
-											detailServiceUnitInput = '1';
-											await applyPricingForSelectedService();
-										}}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Order by (Adv Dr.)
-									<SearchSelect
-										bind:value={detailAdvisingDoctorIdInput}
-										placeholder="Select doctor"
-										className="w-full"
-										searchFn={searchDoctors}
-										getLabelForValue={getDoctorLabelForValue}
-										minSearchLength={0}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Unit
-									<input
-										type="number"
-										step="1"
-										min="1"
-										class="input-bordered input w-full"
-										bind:value={detailServiceUnitInput}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Service Amount
-									<input
-										type="number"
-										step="0.01"
-										class="input-bordered input w-full"
-										bind:value={detailServiceAmountInput}
-										disabled={!detailAmountEditable}
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									Tax Amount
-									<input
-										type="number"
-										step="0.01"
-										class="input-bordered input w-full"
-										bind:value={detailServiceTaxAmountInput}
-										disabled
-									/>
-								</label>
-							</div>
-
-							<div
-								class="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12"
-							>
-								<label
-									class="flex min-w-0 flex-col gap-1 text-sm xl:col-span-7"
-								>
-									Order Instruction
-									<textarea
-										class="textarea-bordered textarea w-full"
-										rows="2"
-										bind:value={detailInstructionInput}
-									></textarea>
-								</label>
-								<div class="flex items-end xl:col-span-2">
-									<label class="flex items-center gap-2 pb-2 text-sm">
-										<input
-											type="checkbox"
-											class="checkbox"
-											bind:checked={detailIsUrgentInput}
-										/>
-										<span>Urgent</span>
-									</label>
-								</div>
-								<div
-									class="flex flex-wrap items-end gap-3 xl:col-span-3 xl:justify-end"
-								>
-									<WashButton
-										className="btn-primary btn-sm px-8"
-										onClick={handleSaveOrder}
-									>
-										Save
-									</WashButton>
-									{#if editingDetailId}
-										<WashButton
-											className="btn-ghost btn-sm"
-											onClick={resetDetailForm}
-										>
-											Cancel
-										</WashButton>
-									{/if}
-								</div>
-							</div>
-						</div>
-
-						<div
-							class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}"
-						>
-							<MenziesTable
-								title="Order items (pending list)"
-								description={pendingItems.length === 0
-									? msg.cpoe_order_pending_empty()
-									: ''}
-								rows={pagedPendingItems}
-								columns={detailColumns}
-								isLoading={false}
-								bind:pageSize={detailPageSizeStr}
-								bind:currentPage={currentDetailPage}
-								totalRowCount={pendingItems.length}
-								showRefreshButton={false}
-								emptyMessage="No items."
-								showRowActions={true}
-								actionsHeader="Actions"
-								actionsVariant="none"
-								enableColumnFilters={false}
-								showAddButton={true}
-								addLabel={msg.cpoe_order_add_to_list()}
-								onAdd={handleAddToList}
-							>
-								{#snippet rowActions(row, rowIndex)}
-									<MenziesTableEditDeleteActions
-										onEdit={() =>
-											startEditDetail(row as PendingItem)}
-										onDelete={() =>
-											handleDeleteDetail(row as PendingItem)}
-									/>
-								{/snippet}
-							</MenziesTable>
-						</div>
-					</WashCardBody>
-				</WashCard>
+				<div
+					class={TableEnum.HEIGHT}
+				>
+					<MenziesTable
+						title="Order items (pending list)"
+						description={pendingItems.length === 0
+							? msg.cpoe_order_pending_empty()
+							: ''}
+						rows={pagedPendingItems}
+						columns={detailColumns}
+						isLoading={false}
+						bind:pageSize={detailPageSizeStr}
+						bind:currentPage={currentDetailPage}
+						totalRowCount={pendingItems.length}
+						showRefreshButton={false}
+						emptyMessage="No items."
+						showRowActions={true}
+						actionsHeader="Actions"
+						actionsVariant="none"
+						enableColumnFilters={false}
+						showAddButton={true}
+						addLabel={msg.cpoe_order_add_to_list()}
+						onAdd={openPendingLineDialog}
+					>
+						{#snippet rowActions(row, rowIndex)}
+							<MenziesTableEditDeleteActions
+								onEdit={() =>
+									openPendingLineDialog(row as PendingItem)}
+								onDelete={() =>
+									handleDeleteDetail(row as PendingItem)}
+							/>
+						{/snippet}
+					</MenziesTable>
+				</div>
 
 				<LNursingEmrOrderHistoryDialog
 					open={showHistory}

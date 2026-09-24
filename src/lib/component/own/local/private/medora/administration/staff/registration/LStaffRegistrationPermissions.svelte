@@ -70,7 +70,7 @@
 		</label>
 
 		<div
-			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-2"
+			class="flex max-h-32 flex-wrap gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3"
 		>
 			{#each branchData as data (data.id)}
 				{@const isChecked = selectedBranchIds.includes(data.id)}
@@ -86,7 +86,7 @@
 
 				<WashButton
 					type="button"
-					className="cursor-pointer flex justify-start"
+					className="w-fit max-w-full cursor-pointer justify-start whitespace-nowrap"
 					onClick={toggleBranch}
 				>
 					<WashCheckbox checked={isChecked} />
@@ -103,7 +103,7 @@
 		</label>
 
 		<div
-			class="grid max-h-32 grid-cols-1 gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3 lg:grid-cols-3 xl:grid-cols-4"
+			class="flex max-h-32 flex-wrap gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3"
 		>
 			{#each userGroupData as data (data.id)}
 				{@const isChecked = selectedUserGroups.includes(data.id)}
@@ -119,7 +119,7 @@
 
 				<WashButton
 					type="button"
-					className="cursor-pointer flex justify-start"
+					className="w-fit max-w-full cursor-pointer justify-start whitespace-nowrap"
 					onClick={toggleUserGroup}
 				>
 					<WashCheckbox checked={isChecked} />

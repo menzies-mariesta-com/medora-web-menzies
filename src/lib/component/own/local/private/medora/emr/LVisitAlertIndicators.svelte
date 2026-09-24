@@ -16,7 +16,7 @@
 				tooltipText="Abnormal vital signs"
 				className=""
 			>
-				<LucideTriangleAlert className="size-8 text-warning" />
+				<LucideTriangleAlert className="size-4.5 text-warning" />
 			</WashTooltip>
 		{/if}
 		{#if hasAllergyAlert}
@@ -24,7 +24,7 @@
 				tooltipText="Allergy alert"
 				className=""
 			>
-				<SvgRepoAllergyAlert className="size-8 text-error" />
+				<SvgRepoAllergyAlert className="size-4.5 text-error" />
 			</WashTooltip>
 		{/if}
 	</div>

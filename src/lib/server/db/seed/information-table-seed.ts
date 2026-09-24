@@ -155,6 +155,17 @@ export async function seedInformationTables() {
 			(800007, 'Order', 4, 1, 8, '/medora/home/nursing-workbench/emr/order', 6),
 			(800008, 'Patient Visit History Dashboard', 4, 1, 8, '/medora/home/nursing-workbench/emr/patient-visit-history-dashboard', 7),
 
+			-- Nursing IPD (ids 44 / 1900001+ — avoid inventory-setup 19–21 collision)
+			(44, 'Nursing IPD', 4, 1, null, '/medora/home/nursing-workbench/ipd', 2),
+			(1900001, 'IPD Census', 4, 1, 44, '/medora/home/nursing-workbench/ipd/census', 1),
+			(1900002, 'Vital', 4, 1, 44, '/medora/home/nursing-workbench/ipd/vital', 2),
+			(1900003, 'Allergy', 4, 1, 44, '/medora/home/nursing-workbench/ipd/allergy', 3),
+			(1900004, 'Patient Attachment', 4, 1, 44, '/medora/home/nursing-workbench/ipd/patient-attachment', 4),
+			(1900005, 'Clinical Document', 4, 1, 44, '/medora/home/nursing-workbench/ipd/clinical-document', 5),
+			(1900006, 'Case Sheet', 4, 1, 44, '/medora/home/nursing-workbench/ipd/case-sheet', 6),
+			(1900007, 'Order', 4, 1, 44, '/medora/home/nursing-workbench/ipd/order', 7),
+			(1900008, 'Nursing Complete', 4, 1, 44, '/medora/home/nursing-workbench/ipd/nursing-complete', 8),
+
 			-- Consultation Module
 			(13, 'EMR', 6, 1, null, '/medora/home/consultation/emr', 1),
 			(1500001, 'CPOE', 6, 1, null, '/medora/home/consultation/cpoe', 2),
@@ -163,9 +174,14 @@ export async function seedInformationTables() {
 			(14, 'Refer', 6, 1, 1500001, '/medora/home/consultation/cpoe/refer', 3),
 			(1400001, 'Refer Doctor', 6, 1, 14, '/medora/home/consultation/cpoe/refer/doctor', 1),
 			(1400002, 'Referral History', 6, 1, 14, '/medora/home/consultation/cpoe/refer/history', 2),
+			(48, 'Results', 6, 1, null, '/medora/home/consultation/results', 3),
+			(49, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
+			(50, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
+			(51, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
 
 			-- Billing Module
 			(15, 'OP Billing', 8, 1, null, '/medora/home/billing/op-billing', 1),
+			(150001, 'IP Billing', 8, 1, null, '/medora/home/billing/ip-billing', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -173,6 +189,15 @@ export async function seedInformationTables() {
 
 			-- master department catalog; store per branch linked to user group XOR department
 			(18, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
+
+			-- IPD masters
+			(45, 'Ward Master', 1, 1, null, '/medora/home/administration/ward-master', 13),
+			(450001, 'Ward Category', 1, 1, 45, '/medora/home/administration/ward-master/ward-category', 1),
+			(450002, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 2),
+			(47, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14),
+			(470001, 'Room Category', 1, 1, 47, '/medora/home/administration/room-master/room-category', 1),
+			(470002, 'Room', 1, 1, 47, '/medora/home/administration/room-master/room', 2),
+			(46, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 15),
 
 			(35, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
 			(350001, 'Frequency', 1, 1, 35, '/medora/home/administration/medication-order-setup/frequency', 1),
@@ -222,6 +247,46 @@ export async function seedInformationTables() {
 		`);
 	seedLogger.info('Seeded: page');
 
+	await db.execute(sql`
+		INSERT INTO diagnosis_code (code, system, description, status_id)
+		VALUES
+			('I10', 'ICD10', 'Essential (primary) hypertension', 1),
+			('E11.9', 'ICD10', 'Type 2 diabetes mellitus without complications', 1),
+			('E78.5', 'ICD10', 'Hyperlipidemia, unspecified', 1),
+			('J06.9', 'ICD10', 'Acute upper respiratory infection, unspecified', 1),
+			('J18.9', 'ICD10', 'Pneumonia, unspecified organism', 1),
+			('J44.9', 'ICD10', 'Chronic obstructive pulmonary disease, unspecified', 1),
+			('J45.909', 'ICD10', 'Unspecified asthma, uncomplicated', 1),
+			('K21.9', 'ICD10', 'Gastro-esophageal reflux disease without esophagitis', 1),
+			('K52.9', 'ICD10', 'Noninfective gastroenteritis and colitis, unspecified', 1),
+			('N39.0', 'ICD10', 'Urinary tract infection, site not specified', 1),
+			('N18.9', 'ICD10', 'Chronic kidney disease, unspecified', 1),
+			('I25.10', 'ICD10', 'Atherosclerotic heart disease without angina', 1),
+			('I50.9', 'ICD10', 'Heart failure, unspecified', 1),
+			('I48.91', 'ICD10', 'Unspecified atrial fibrillation', 1),
+			('I63.9', 'ICD10', 'Cerebral infarction, unspecified', 1),
+			('D64.9', 'ICD10', 'Anemia, unspecified', 1),
+			('R50.9', 'ICD10', 'Fever, unspecified', 1),
+			('R51.9', 'ICD10', 'Headache, unspecified', 1),
+			('R07.9', 'ICD10', 'Chest pain, unspecified', 1),
+			('R10.9', 'ICD10', 'Unspecified abdominal pain', 1),
+			('R11.2', 'ICD10', 'Nausea with vomiting, unspecified', 1),
+			('R42', 'ICD10', 'Dizziness and giddiness', 1),
+			('M54.5', 'ICD10', 'Low back pain', 1),
+			('M19.90', 'ICD10', 'Osteoarthritis, unspecified site', 1),
+			('G43.909', 'ICD10', 'Migraine, unspecified, not intractable', 1),
+			('F41.9', 'ICD10', 'Anxiety disorder, unspecified', 1),
+			('F32.A', 'ICD10', 'Depression, unspecified', 1),
+			('L03.90', 'ICD10', 'Cellulitis, unspecified', 1),
+			('A09', 'ICD10', 'Infectious gastroenteritis and colitis, unspecified', 1),
+			('U07.1', 'ICD10', 'COVID-19', 1)
+		ON CONFLICT (system, code) DO UPDATE SET
+			description = EXCLUDED.description,
+			status_id = EXCLUDED.status_id,
+			updated_at = now();
+	`);
+	seedLogger.info('Seeded: diagnosis_code');
+
 	// 5. Role
 	await db.execute(sql`
 		INSERT INTO role (id, name, status_id)
@@ -267,7 +332,9 @@ export async function seedInformationTables() {
 			(5, 'Open', 'open', 1, 2),
 			(6, 'Vital', 'vital', 2, 2),
 			(7, 'Seen', 'seen', 3, 2),
-			(8, 'Closed', 'closed', 4, 2),
+			(8, 'Closed', 'closed', 6, 2),
+			(54, 'Admitted', 'admitted', 4, 2),
+			(55, 'Discharged', 'discharged', 5, 2),
 
 			-- Purchase Requisition (ids 9–13; StatusTaggingTypeEnum.INV_PURCHASE_REQUISITION)
 			(9, 'Draft', 'draft', 1, 3),
@@ -453,6 +520,15 @@ export async function seedInformationTables() {
 				1
 			),
 			(
+				90007,
+				2,
+				'IP_BILL_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>IP Bill No: {{document.number}} | Date: {{document.date}}<br/>Patient: {{patient.name}} ({{patient.code}})</header><dl class="meta"><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div><div><dt>{{print.label_branch}}</dt><dd>{{visit.department}}</dd></div></dl>{{print.body_html}}',
+				'IP Bill',
+				5,
+				1
+			),
+			(
 				90003,
 				2,
 				'VISIT_LABEL_PRINT',
@@ -500,10 +576,9 @@ export async function seedInformationTables() {
 
 	// 9b. Blank clinical forms (pen-fill; EMR clinical document page)
 	const clinicalFormValues = CLINICAL_FORM_SEED_ROWS.map((row) => {
-		const documentText = buildClinicalFormDocumentText(row.code).replace(
-			/'/g,
-			"''"
-		);
+		const documentText = buildClinicalFormDocumentText(
+			row.code
+		).replace(/'/g, "''");
 		const documentNumber = row.documentNumber.replace(/'/g, "''");
 		return `(${row.id}, ${row.documentTypeId}, '${row.code}', '${documentText}', '${documentNumber}', 5, 1)`;
 	}).join(',\n\t\t\t');

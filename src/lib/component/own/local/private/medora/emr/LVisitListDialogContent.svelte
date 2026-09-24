@@ -15,6 +15,7 @@
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { VisitTypeEnum } from '$lib/model/enum/db-link';
 
 	const VISIT_LIST_DEFAULT_PAGE_SIZE = 20;
 
@@ -29,13 +30,39 @@
 			: undefined
 	);
 
+	const initialPath =
+		typeof page.url.pathname === 'string' ? page.url.pathname : '';
+	const urlVisitType = page.url.searchParams.get('visitType')?.trim();
+	const urlVisitStatus = page.url.searchParams.get('visitStatus')?.trim();
+	const ipdContext =
+		page.url.searchParams.get('ipdContext') === '1' ||
+		initialPath.includes('/nursing-workbench/ipd');
+	const initialFilters: Record<string, string> = (() => {
+		if (ipdContext) {
+			return {
+				visitType: urlVisitType || String(VisitTypeEnum.IPD),
+				visitStatus: urlVisitStatus || 'admitted'
+			};
+		}
+		if (initialPath.includes('/billing/ip-billing')) {
+			return {
+				visitType: urlVisitType || String(VisitTypeEnum.IPD),
+				...(urlVisitStatus ? { visitStatus: urlVisitStatus } : {})
+			};
+		}
+		const filters: Record<string, string> = {};
+		if (urlVisitType) filters.visitType = urlVisitType;
+		if (urlVisitStatus) filters.visitStatus = urlVisitStatus;
+		return filters;
+	})();
+
 	let result = $state<PaginatedResult<PatientVisitForEmrList> | null>(
 		null
 	);
 	let currentPage = $state(1);
 	let pageSizeStr = $state(`${VISIT_LIST_DEFAULT_PAGE_SIZE}`);
 	let isLoading = $state(false);
-	let tableFilters = $state<Record<string, string>>({});
+	let tableFilters = $state<Record<string, string>>(initialFilters);
 	let isConfirming = $state(false);
 	let activeAllergyPatientIds = $state<Set<string>>(new Set());
 	let abnormalVitalVisitIds = $state<Set<number>>(new Set());
@@ -57,6 +84,8 @@
 		{ value: 'open', label: 'Open' },
 		{ value: 'vital', label: 'Vital' },
 		{ value: 'seen', label: 'Seen' },
+		{ value: 'admitted', label: 'Admitted' },
+		{ value: 'discharged', label: 'Discharged' },
 		{ value: 'closed', label: 'Closed' }
 	];
 
@@ -315,8 +344,12 @@
 			? StringUtil.patientDisplayName(patient as any)
 			: '';
 		try {
-			// Doctor explicitly selecting a visit should mark it as "Seen".
-			if (endpointBase) {
+			// Doctor selecting OPD visits marks Seen; do not overwrite IPD lifecycle.
+			const preserveStatus =
+				v.visitStatus === 'admitted' ||
+				v.visitStatus === 'discharged' ||
+				v.visitStatus === 'closed';
+			if (endpointBase && !preserveStatus) {
 				const res = await fetch(endpointBase, {
 					method: 'POST',
 					headers: { 'content-type': 'application/json' },

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MenziesNrcField from '$lib/component/own/library/menzies/nrc/MenziesNrcField.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
@@ -8,13 +9,15 @@
 		PatientRegTitleRow
 	} from '$lib/model/type/medora/patient-reg-master.type';
 	import { m } from '$lib/paraglide/messages';
+	import {
+		isNrcIdentityType,
+		parseNrc
+	} from '$lib/tool/identity/myanmar-nrc.util';
 
 	let {
 		titleData,
 		countryData,
 		identityTypeData,
-		selectedPhoneCountryId = $bindable(),
-		selectedPhone = $bindable(),
 		selectedPhoneSecondaryCountryId = $bindable(),
 		selectedPhoneSecondary = $bindable(),
 		selectedFatherTitleId = $bindable(),
@@ -31,8 +34,6 @@
 		titleData: PatientRegTitleRow[];
 		countryData: PatientRegCountryRow[];
 		identityTypeData: PatientRegIdentityTypeRow[];
-		selectedPhoneCountryId?: string;
-		selectedPhone?: string;
 		selectedPhoneSecondaryCountryId?: string;
 		selectedPhoneSecondary?: string;
 		selectedFatherTitleId?: string;
@@ -51,6 +52,24 @@
 	let ageMonth = $state('');
 	let ageDay = $state('');
 	let skipNextDobToAgeSync = $state(false);
+
+	const selectedIdentityType = $derived(
+		identityTypeData.find(
+			(t: PatientRegIdentityTypeRow) =>
+				String(t.id) === String(selectedIdentityTypeId)
+		) ?? null
+	);
+	const isNrcType = $derived(
+		isNrcIdentityType({
+			id: selectedIdentityType?.id,
+			name: selectedIdentityType?.name
+		})
+	);
+	/** Structured NRC UI unless existing value is a non-parseable legacy string. */
+	const useStructuredNrc = $derived(
+		isNrcType &&
+			(!(identityNo ?? '').trim() || parseNrc(identityNo) != null)
+	);
 
 	function getAgeFromBirthDate(dob: string): {
 		years: number;
@@ -153,20 +172,6 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
-		<label for="phone-primary" class="shrink-0 sm:w-36 font-bold">Primary Phone</label>
-		<div class="max-w-80 flex-1">
-			<MenziesPhoneField
-				id="phone-primary"
-				bind:countryId={selectedPhoneCountryId}
-				bind:phone={selectedPhone}
-				countries={countryData}
-				optionHeader={m.select_country_code()}
-			/>
-		</div>
-	</div>
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-	>
 		<label for="phone-secondary" class="shrink-0 sm:w-36">Secondary Phone</label>
 		<div class="max-w-80 flex-1">
 			<MenziesPhoneField
@@ -181,25 +186,37 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
-		<label for="identity" class="shrink-0 sm:w-36 font-bold">Identity</label>
+		<label for="identity-type" class="shrink-0 sm:w-36 font-bold"
+			>{m.identity()}</label
+		>
 		<div class="max-w-80 flex-1">
-			<div class="join flex">
-				<WashSelect
-					bind:value={selectedIdentityTypeId}
-					optionHeader="Select an identity type ..."
-					className="join-item"
-				>
-					{#each identityTypeData as data (data.id)}
-						<option value={String(data.id)}>{data.name}</option>
-					{/each}
-				</WashSelect>
-				<WashInputField
-					bind:value={identityNo}
-					inputType="text"
-					className="join-item"
-				/>
-			</div>
+			<WashSelect
+				id="identity-type"
+				bind:value={selectedIdentityTypeId}
+				optionHeader="Select an identity type ..."
+			>
+				{#each identityTypeData as data (data.id)}
+					<option value={String(data.id)}>{data.name}</option>
+				{/each}
+			</WashSelect>
 		</div>
+	</div>
+	<!--
+		Identity no spans label + control (2 columns), but right edge matches
+		other fields: sm:w-36 + gap-3 + max-w-80.
+	-->
+	<div class="w-full min-w-0 sm:max-w-[calc(9rem+0.75rem+20rem)]">
+		{#if useStructuredNrc}
+			<MenziesNrcField bind:value={identityNo} id="identity-nrc" />
+		{:else}
+			<WashInputField
+				id="identity-no"
+				bind:value={identityNo}
+				inputPlaceholderText='Identity No'
+				inputType="text"
+				className="w-full"
+			/>
+		{/if}
 	</div>
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"

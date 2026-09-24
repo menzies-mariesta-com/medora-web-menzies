@@ -8,12 +8,10 @@
 	let {
 		visitId = '',
 		hospitalId = '',
-		title = m.selected_visit(),
 		emptyLabel = m.no_visit_selected()
 	} = $props<{
 		visitId?: string;
 		hospitalId?: string;
-		title?: string;
 		emptyLabel?: string;
 	}>();
 
@@ -145,10 +143,10 @@
 	);
 </script>
 
-<div class="flex min-w-0 items-center gap-4">
+<div class="flex min-w-0 items-center gap-2.5">
 	{#if visit && patientName}
 		<div
-			class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/60 sm:size-18"
+			class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/60 sm:size-9"
 			aria-hidden="true"
 		>
 			{#if patientPhotoUrl}
@@ -165,25 +163,23 @@
 		</div>
 	{/if}
 
-	<div class="flex min-w-0 flex-col gap-2">
-		<div
-			class="text-xs font-semibold tracking-wide text-base-content/70 uppercase"
-		>
-			{title}
-		</div>
-
+	<div class="flex min-w-0 flex-col gap-0.5">
 		{#if isLoading}
-			<div class="text-sm text-base-content/60">Loading…</div>
+			<div class="text-xs leading-tight text-base-content/60">
+				Loading…
+			</div>
 		{:else if !visit}
-			<div class="text-sm text-base-content/60">{emptyLabel}</div>
+			<div class="text-xs leading-tight text-base-content/60">
+				{emptyLabel}
+			</div>
 		{:else}
 			<div
-				class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm"
+				class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm leading-tight"
 			>
 				{#if visitNo || visitTypeName}
 					<div class="flex flex-wrap items-center gap-1">
-						<span class="font-normal text-base-content/60"
-							>Visit:</span
+						<span class="font-normal text-base-content/80"
+							>Selected Visit:</span
 						>
 						<span class="font-medium text-primary">
 							{#if visitNo}{visitNo}{/if}{#if visitTypeName}

@@ -304,7 +304,7 @@
 
 <div class="space-y-4">
 	{#if loadError}
-		<div class="alert alert-error">
+		<div class="alert alert-dash alert-error">
 			<span>{loadError}</span>
 		</div>
 	{/if}

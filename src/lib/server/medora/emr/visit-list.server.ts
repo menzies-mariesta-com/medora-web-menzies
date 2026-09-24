@@ -44,6 +44,8 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 	openId: number | null;
 	vitalId: number | null;
 	seenId: number | null;
+	admittedId: number | null;
+	dischargedId: number | null;
 	closedId: number | null;
 }> {
 	const rows = await db
@@ -70,6 +72,8 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 		openId: byCode.get('open') ?? null,
 		vitalId: byCode.get('vital') ?? null,
 		seenId: byCode.get('seen') ?? null,
+		admittedId: byCode.get('admitted') ?? null,
+		dischargedId: byCode.get('discharged') ?? null,
 		closedId: byCode.get('closed') ?? null
 	};
 }
@@ -104,6 +108,16 @@ function resolveVisitStatusCode(params: {
 		params.statusTaggingId === params.tagging.closedId
 	)
 		return 'closed';
+	if (
+		params.tagging.dischargedId != null &&
+		params.statusTaggingId === params.tagging.dischargedId
+	)
+		return 'discharged';
+	if (
+		params.tagging.admittedId != null &&
+		params.statusTaggingId === params.tagging.admittedId
+	)
+		return 'admitted';
 	if (
 		params.tagging.seenId != null &&
 		params.statusTaggingId === params.tagging.seenId
@@ -260,6 +274,16 @@ export async function markPatientVisitSeenOnDoctorSelect(
 	if (
 		visitStatusTagging.closedId != null &&
 		current.statusTaggingId === visitStatusTagging.closedId
+	)
+		return;
+	if (
+		visitStatusTagging.admittedId != null &&
+		current.statusTaggingId === visitStatusTagging.admittedId
+	)
+		return;
+	if (
+		visitStatusTagging.dischargedId != null &&
+		current.statusTaggingId === visitStatusTagging.dischargedId
 	)
 		return;
 	if (current.statusTaggingId === visitStatusTagging.seenId) return;
@@ -476,6 +500,28 @@ export async function getPatientVisitPaginatedForEmr(
 							eq(
 								table.patientVisitTable.statusTaggingId,
 								tagging.closedId
+							)
+						)
+					: and(whereExpr, sql`1=0` as any);
+		} else if (visitStatus === 'admitted') {
+			whereExpr =
+				tagging.admittedId != null
+					? and(
+							whereExpr,
+							eq(
+								table.patientVisitTable.statusTaggingId,
+								tagging.admittedId
+							)
+						)
+					: and(whereExpr, sql`1=0` as any);
+		} else if (visitStatus === 'discharged') {
+			whereExpr =
+				tagging.dischargedId != null
+					? and(
+							whereExpr,
+							eq(
+								table.patientVisitTable.statusTaggingId,
+								tagging.dischargedId
 							)
 						)
 					: and(whereExpr, sql`1=0` as any);
