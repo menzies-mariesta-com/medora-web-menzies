@@ -57,6 +57,18 @@
 	const editId = $derived(page.url.searchParams.get('edit'));
 	const currentPatientId = $derived(viewId || editId);
 	const isViewMode = $derived(!!viewId);
+	const hospitalDefaultCountryId = $derived(
+		page.data.currentHospitalCountryId != null
+			? String(page.data.currentHospitalCountryId)
+			: ''
+	);
+
+	function applyHospitalCountryDefaults() {
+		if (!hospitalDefaultCountryId) return;
+		selectedCountryId = hospitalDefaultCountryId;
+		selectedPhoneCountryId = hospitalDefaultCountryId;
+		selectedPhoneSecondaryCountryId = hospitalDefaultCountryId;
+	}
 	const stagedAttachmentCount = $derived(
 		PatientAttachmentDialogState.stagedAttachments.length
 	);
@@ -530,6 +542,9 @@
 
 	lifeCycleUtil.onMount(() => {
 		fetchInitialFieldData();
+		if (!viewId && !editId) {
+			applyHospitalCountryDefaults();
+		}
 	});
 
 	$effect(() => {
@@ -1096,15 +1111,14 @@
 		middleName = '';
 		lastName = '';
 		email = '';
-		selectedPhoneCountryId = '';
 		selectedPhone = '';
-		selectedPhoneSecondaryCountryId = '';
 		selectedPhoneSecondary = '';
 		selectedFatherTitleId = '';
 		selectedGuardianTitleId = '';
 		selectedGuardianPhoneCountryId = '';
 		identityNo = '';
 		dateOfBirth = '';
+		fatherName = '';
 		guardianName = '';
 		guardianPhone = '';
 		address = '';
@@ -1114,7 +1128,6 @@
 		selectedMaritalStatusId = '';
 		selectedIdentityTypeId = '';
 		selectedBloodTypeId = '';
-		selectedCountryId = '';
 		selectedStateId = '';
 		selectedCityId = '';
 		selectedPostalCodeId = '';
@@ -1127,6 +1140,12 @@
 		removePhotoRequested = false;
 		if (photoInputEl) photoInputEl.value = '';
 		PatientAttachmentDialogState.stagedAttachments = [];
+		applyHospitalCountryDefaults();
+		if (!hospitalDefaultCountryId) {
+			selectedCountryId = '';
+			selectedPhoneCountryId = '';
+			selectedPhoneSecondaryCountryId = '';
+		}
 	}
 </script>
 
@@ -1236,6 +1255,7 @@
 							{titleData}
 							{genderData}
 							{maritalStatusData}
+							{countryData}
 							bind:patientCode
 							bind:selectedTitleId
 							bind:firstName
@@ -1244,13 +1264,13 @@
 							bind:email
 							bind:selectedGenderId
 							bind:selectedMaritalStatusId
+							bind:selectedPhoneCountryId
+							bind:selectedPhone
 						/>
 						<LPatientRegistrationSecondColumn
 							{titleData}
 							{countryData}
 							{identityTypeData}
-							bind:selectedPhoneCountryId
-							bind:selectedPhone
 							bind:selectedPhoneSecondaryCountryId
 							bind:selectedPhoneSecondary
 							bind:selectedFatherTitleId
