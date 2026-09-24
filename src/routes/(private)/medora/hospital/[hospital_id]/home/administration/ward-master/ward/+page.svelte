@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import BedFormModal from '$lib/component/own/local/private/medora/administration/bed/BedFormModal.svelte';
+	import WardFormModal from '$lib/component/own/local/private/medora/administration/ward/WardFormModal.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -8,17 +8,14 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import {
-		IpdBedStatusEnum,
-		StatusEnum
-	} from '$lib/model/enum/db-link';
+	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
-	import type { BedRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import type { WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { BedModalState } from '$lib/state/bed-modal.state.svelte';
+	import { WardModalState } from '$lib/state/ward-modal.state.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
@@ -30,13 +27,13 @@
 			? page.params.hospital_id
 			: ''
 	);
-	const bedApi = $derived(
+	const wardApi = $derived(
 		hospitalId
-			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master`
+			? `/api/medora/hospital/${hospitalId}/home/administration/ward-master`
 			: ''
 	);
 
-	let rows = $state<BedRow[]>([]);
+	let rows = $state<WardRow[]>([]);
 	let total = $state(0);
 	let totalPages = $state(1);
 	let currentPage = $state(1);
@@ -46,14 +43,7 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	const bedStatusLabels: Record<number, string> = {
-		[IpdBedStatusEnum.FREE]: 'Free',
-		[IpdBedStatusEnum.OCCUPIED]: 'Occupied',
-		[IpdBedStatusEnum.BLOCKED]: 'Blocked',
-		[IpdBedStatusEnum.CLEANING]: 'Cleaning'
-	};
-
-	const bedColumns: MenziesTableColumn<BedRow>[] = [
+	const wardColumns: MenziesTableColumn<WardRow>[] = [
 		{
 			id: 'id',
 			header: m.id(),
@@ -61,72 +51,44 @@
 			filterable: false
 		},
 		{
-			id: 'wardName',
-			header: 'Ward',
-			widthClass: 'w-44 min-w-[10rem]',
-			filterable: false,
-			format: (_value, row) => row.wardName ?? row.wardCode ?? '—'
-		},
-		{
-			id: 'roomName',
-			header: 'Room',
-			widthClass: 'w-44 min-w-[10rem]',
-			filterable: false,
-			format: (_value, row) => row.roomName ?? row.roomCode ?? '—'
-		},
-		{
 			id: 'name',
 			header: m.name(),
-			widthClass: 'w-40 min-w-[9rem]',
+			widthClass: 'w-56 min-w-[12rem]',
 			filterable: true,
 			field: 'name'
 		},
 		{
 			id: 'code',
 			header: m.code(),
-			widthClass: 'w-28 min-w-[6rem]',
+			widthClass: 'w-36 min-w-[8rem]',
 			filterable: true,
 			field: 'code'
 		},
 		{
-			id: 'basePrice',
-			header: 'Base',
-			widthClass: 'w-24 min-w-[5rem]',
+			id: 'branchName',
+			header: m.branches(),
+			widthClass: 'w-48 min-w-[10rem]',
 			filterable: false,
-			format: (_v, row) => row.basePrice ?? '0'
+			format: (_v, row) => row.branchName?.trim() || '—'
 		},
 		{
-			id: 'dailyTariff',
-			header: 'Daily tariff',
-			widthClass: 'w-28 min-w-[6rem]',
+			id: 'wardCategoryName',
+			header: 'Ward category',
+			widthClass: 'w-48 min-w-[10rem]',
 			filterable: false,
-			format: (_v, row) => row.dailyTariff ?? '—'
+			format: (_v, row) => row.wardCategoryName?.trim() || '—'
 		},
 		{
-			id: 'bedStatus',
-			header: 'Bed Status',
+			id: 'wardMarkup',
+			header: 'Ward markup (%)',
 			widthClass: 'w-36 min-w-[8rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Free', value: String(IpdBedStatusEnum.FREE) },
-				{
-					label: 'Occupied',
-					value: String(IpdBedStatusEnum.OCCUPIED)
-				},
-				{ label: 'Blocked', value: String(IpdBedStatusEnum.BLOCKED) },
-				{
-					label: 'Cleaning',
-					value: String(IpdBedStatusEnum.CLEANING)
-				}
-			],
-			format: (_value, row) =>
-				bedStatusLabels[row.bedStatus] ?? String(row.bedStatus)
+			filterable: false,
+			format: (_v, row) => `${row.wardMarkup ?? '0'}%`
 		},
 		{
 			id: 'status',
 			header: m.status(),
-			widthClass: 'w-32 min-w-[8rem]',
+			widthClass: 'w-40 min-w-[10rem]',
 			filterable: true,
 			filterType: 'select',
 			filterOptions: [
@@ -140,7 +102,7 @@
 	];
 
 	async function fetchRows() {
-		if (!bedApi) return;
+		if (!wardApi) return;
 		isLoading = true;
 		try {
 			const query = new SvelteURLSearchParams({
@@ -149,18 +111,14 @@
 			});
 			const name = tableFilters.name?.trim();
 			const code = tableFilters.code?.trim();
-			const bedStatus = Number(tableFilters.bedStatus);
 			const statusId = Number(tableFilters.status);
 			if (name) query.set('name', name);
 			if (code) query.set('code', code);
-			if (Number.isFinite(bedStatus) && bedStatus > 0) {
-				query.set('bedStatus', String(bedStatus));
-			}
 			if (Number.isFinite(statusId) && statusId > 0) {
 				query.set('statusId', String(statusId));
 			}
 
-			const response = await fetch(`${bedApi}?${query.toString()}`, {
+			const response = await fetch(`${wardApi}?${query.toString()}`, {
 				credentials: 'include',
 				cache: 'no-store'
 			});
@@ -169,7 +127,7 @@
 				throw new Error(text || `Load failed: ${response.status}`);
 			}
 			const result = (await response.json()) as {
-				data: BedRow[];
+				data: WardRow[];
 				total: number;
 				totalPages: number;
 			};
@@ -180,7 +138,7 @@
 			toastService.addToast(
 				error instanceof Error
 					? error.message
-					: 'Unable to load beds',
+					: 'Unable to load wards',
 				StatusColorEnum.ERROR
 			);
 		} finally {
@@ -196,80 +154,49 @@
 	lifeCycleUtil.onMount(fetchRows);
 
 	async function openCreate() {
-		BedModalState.mode = 'create';
-		BedModalState.editBed = null;
+		WardModalState.mode = 'create';
+		WardModalState.editWard = null;
 		const result = await dialogService.open({
-			title: 'New Bed',
-			component: BedFormModal
+			title: 'New Ward',
+			component: WardFormModal
 		});
 		if (result.confirmed) fetchRows();
 	}
 
-	async function openEdit(row: BedRow) {
-		BedModalState.mode = 'edit';
-		BedModalState.editBed = row;
+	async function openEdit(row: WardRow) {
+		WardModalState.mode = 'edit';
+		WardModalState.editWard = row;
 		const result = await dialogService.open({
-			title: 'Edit Bed',
-			component: BedFormModal
+			title: 'Edit Ward',
+			component: WardFormModal
 		});
 		if (result.confirmed) fetchRows();
 	}
 
-	async function handleDelete(row: BedRow) {
+	async function handleDelete(row: WardRow) {
 		const result = await dialogService.open({
-			title: 'Delete Bed',
-			message: `Delete "${row.name || row.code || `Bed ${row.id}`}"?`,
+			title: 'Delete Ward',
+			message: `Delete "${row.name || row.code || `Ward ${row.id}`}"?`,
 			variant: DialogVariantEnum.CONFIRM
 		});
-		if (!result.confirmed || !bedApi) return;
+		if (!result.confirmed || !wardApi) return;
 
 		try {
 			const response = await fetch(
-				`${bedApi}?id=${encodeURIComponent(String(row.id))}`,
+				`${wardApi}?id=${encodeURIComponent(String(row.id))}`,
 				{ method: 'DELETE', credentials: 'include' }
 			);
 			if (!response.ok) {
 				const text = await response.text().catch(() => '');
 				throw new Error(text || `Delete failed: ${response.status}`);
 			}
-			toastService.addToast('Bed deleted', StatusColorEnum.SUCCESS);
+			toastService.addToast('Ward deleted', StatusColorEnum.SUCCESS);
 			fetchRows();
 		} catch (error) {
 			toastService.addToast(
 				error instanceof Error
 					? error.message
-					: 'Unable to delete bed',
-				StatusColorEnum.ERROR
-			);
-		}
-	}
-
-	async function markAvailable(row: BedRow) {
-		if (!bedApi) return;
-		try {
-			const response = await fetch(bedApi, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({
-					action: 'markAvailable',
-					id: row.id
-				})
-			});
-			if (!response.ok) {
-				const text = await response.text().catch(() => '');
-				throw new Error(text || `Update failed: ${response.status}`);
-			}
-			toastService.addToast(
-				'Bed marked available',
-				StatusColorEnum.SUCCESS
-			);
-			fetchRows();
-		} catch (error) {
-			toastService.addToast(
-				error instanceof Error
-					? error.message
-					: 'Unable to mark bed available',
+					: 'Unable to delete ward',
 				StatusColorEnum.ERROR
 			);
 		}
@@ -279,22 +206,22 @@
 <div class="space-y-4">
 	<div class={TableEnum.HEIGHT}>
 		<MenziesTable
-			title="Beds"
+			title="Wards"
 			{rows}
-			columns={bedColumns}
+			columns={wardColumns}
 			{isLoading}
 			bind:pageSize={pageSizeStr}
 			bind:currentPage
 			totalRowCount={total}
 			showRefreshButton={true}
 			refreshTooltip={m.refresh_data()}
-			emptyMessage="No beds found"
+			emptyMessage="No wards found"
 			showRowActions={true}
 			actionsHeader={m.actions()}
 			actionsVariant="none"
 			enableColumnFilters={true}
 			showAddButton={true}
-			addLabel="New Bed"
+			addLabel="New Ward"
 			onAdd={openCreate}
 			on:refresh={() => fetchRows()}
 			on:pageSizeChange={() => {
@@ -311,20 +238,10 @@
 			}}
 		>
 			{#snippet rowActions(row)}
-				<div class="flex items-center gap-1">
-					{#if row.bedStatus === IpdBedStatusEnum.CLEANING || row.bedStatus === IpdBedStatusEnum.BLOCKED}
-						<WashButton
-							className="btn-ghost btn-xs"
-							onClick={() => markAvailable(row)}
-						>
-							Available
-						</WashButton>
-					{/if}
-					<MenziesTableEditDeleteActions
-						onEdit={() => openEdit(row)}
-						onDelete={() => handleDelete(row)}
-					/>
-				</div>
+				<MenziesTableEditDeleteActions
+					onEdit={() => openEdit(row)}
+					onDelete={() => handleDelete(row)}
+				/>
 			{/snippet}
 		</MenziesTable>
 	</div>

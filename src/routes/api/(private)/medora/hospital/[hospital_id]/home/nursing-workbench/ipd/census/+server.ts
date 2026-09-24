@@ -58,13 +58,15 @@ export async function POST(event: RequestEvent) {
 
 	if (action === 'admit') {
 		const visitId = Number(body.visitId);
-		const wardId = Number(body.wardId);
 		const bedId = Number(body.bedId);
 		const branchId = String(body.branchId ?? '');
+		const wardIdRaw = body.wardId;
+		const wardId =
+			wardIdRaw != null && wardIdRaw !== ''
+				? Number(wardIdRaw)
+				: undefined;
 		if (!Number.isFinite(visitId) || visitId <= 0)
 			throw error(400, 'visitId is required');
-		if (!Number.isFinite(wardId) || wardId <= 0)
-			throw error(400, 'wardId is required');
 		if (!Number.isFinite(bedId) || bedId <= 0)
 			throw error(400, 'bedId is required');
 		if (!branchId) throw error(400, 'branchId is required');
@@ -72,9 +74,9 @@ export async function POST(event: RequestEvent) {
 			await admission.admitVisitToIpd({
 				hospitalId,
 				visitId,
-				wardId,
 				bedId,
 				branchId,
+				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				admittingDoctorId: body.admittingDoctorId ?? null,
 				reasonNotes: body.reasonNotes ?? null,
 				actorStaffId: actorStaffId(event)
@@ -84,22 +86,42 @@ export async function POST(event: RequestEvent) {
 
 	if (action === 'transfer') {
 		const admissionId = Number(body.admissionId);
-		const toWardId = Number(body.toWardId);
 		const toBedId = Number(body.toBedId);
+		const toWardIdRaw = body.toWardId;
+		const toWardId =
+			toWardIdRaw != null && toWardIdRaw !== ''
+				? Number(toWardIdRaw)
+				: undefined;
 		if (!Number.isFinite(admissionId) || admissionId <= 0)
 			throw error(400, 'admissionId is required');
-		if (!Number.isFinite(toWardId) || toWardId <= 0)
-			throw error(400, 'toWardId is required');
 		if (!Number.isFinite(toBedId) || toBedId <= 0)
 			throw error(400, 'toBedId is required');
 		return json(
 			await admission.transferBed({
 				hospitalId,
 				admissionId,
-				toWardId,
 				toBedId,
+				toWardId: Number.isFinite(toWardId as number)
+					? toWardId
+					: undefined,
 				remark: body.remark ?? null,
 				actorStaffId: actorStaffId(event)
+			})
+		);
+	}
+
+	if (action === 'otHold') {
+		const admissionId = Number(body.admissionId);
+		if (!Number.isFinite(admissionId) || admissionId <= 0)
+			throw error(400, 'admissionId is required');
+		return json(
+			await admission.setOtHold({
+				hospitalId,
+				admissionId,
+				otHoldLocation:
+					body.otHoldLocation != null
+						? String(body.otHoldLocation)
+						: null
 			})
 		);
 	}

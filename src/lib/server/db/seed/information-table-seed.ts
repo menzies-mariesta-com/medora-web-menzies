@@ -190,9 +190,14 @@ export async function seedInformationTables() {
 			-- master department catalog; store per branch linked to user group XOR department
 			(18, 'Departments', 1, 1, null, '/medora/home/administration/departments', 10),
 
-			-- IPD masters (ids 45–46 — avoid inventory-setup page id collision)
+			-- IPD masters
 			(45, 'Ward Master', 1, 1, null, '/medora/home/administration/ward-master', 13),
-			(46, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 14),
+			(450001, 'Ward Category', 1, 1, 45, '/medora/home/administration/ward-master/ward-category', 1),
+			(450002, 'Ward', 1, 1, 45, '/medora/home/administration/ward-master/ward', 2),
+			(47, 'Room Master', 1, 1, null, '/medora/home/administration/room-master', 14),
+			(470001, 'Room Category', 1, 1, 47, '/medora/home/administration/room-master/room-category', 1),
+			(470002, 'Room', 1, 1, 47, '/medora/home/administration/room-master/room', 2),
+			(46, 'Bed Master', 1, 1, null, '/medora/home/administration/bed-master', 15),
 
 			(35, 'Medication Order Setup', 1, 1, null, '/medora/home/administration/medication-order-setup', 12),
 			(350001, 'Frequency', 1, 1, 35, '/medora/home/administration/medication-order-setup/frequency', 1),

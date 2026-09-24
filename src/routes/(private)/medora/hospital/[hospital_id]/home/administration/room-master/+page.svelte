@@ -5,8 +5,8 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 
-	const WARD_MASTER_INDEX_PATH =
-		'/medora/home/administration/ward-master';
+	const ROOM_MASTER_INDEX_PATH =
+		'/medora/home/administration/room-master';
 
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -14,7 +14,7 @@
 
 	// Fallback when server didn't redirect (e.g. client nav): redirect to first sub-page
 	lifeCycleUtil.onMount(() => {
-		const first = getSubPagesForPageUrl(WARD_MASTER_INDEX_PATH)[0];
+		const first = getSubPagesForPageUrl(ROOM_MASTER_INDEX_PATH)[0];
 		if (first?.pageUrl && hospitalId)
 			routerUtil.replaceRoute(
 				medoraHospitalPageUrl(hospitalId, first.pageUrl)
