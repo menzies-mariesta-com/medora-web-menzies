@@ -6,7 +6,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { DischargeSummaryRow } from '$lib/model/type/medora/clinical.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
-	import { onMount } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
@@ -113,7 +112,8 @@
 		}
 	}
 
-	onMount(() => {
+	$effect(() => {
+		void visitId;
 		void loadSummary();
 	});
 </script>
