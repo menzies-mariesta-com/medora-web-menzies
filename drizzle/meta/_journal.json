@@ -22,6 +22,34 @@
       "when": 1790154000000,
       "tag": "0002_mo_clinical",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790241600000,
+      "tag": "0003_ipd_ward_room_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790245200000,
+      "tag": "0004_ward_category_room_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790248800000,
+      "tag": "0005_room_capacity_from_beds",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790252400000,
+      "tag": "0006_room_category",
+      "breakpoints": true
     }
   ]
 }

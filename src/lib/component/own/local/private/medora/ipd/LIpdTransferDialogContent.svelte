@@ -43,7 +43,13 @@
 		wards.map((w) => ({ value: String(w.id), label: w.name }))
 	);
 	const bedOptions = $derived(
-		beds.map((b) => ({ value: String(b.id), label: b.name }))
+		beds.map((b) => {
+			const base = b.name;
+			const room = b.roomName ? ` · ${b.roomName}` : '';
+			const tariff =
+				b.dailyTariff != null ? ` · ${b.dailyTariff}/day` : '';
+			return { value: String(b.id), label: `${base}${room}${tariff}` };
+		})
 	);
 
 	$effect(() => {

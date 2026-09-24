@@ -52,10 +52,13 @@
 		}))
 	);
 	const bedOptions = $derived(
-		beds.map((b) => ({
-			value: String(b.id),
-			label: b.code ? `${b.name} (${b.code})` : b.name
-		}))
+		beds.map((b) => {
+			const base = b.code ? `${b.name} (${b.code})` : b.name;
+			const room = b.roomName ? ` · ${b.roomName}` : '';
+			const tariff =
+				b.dailyTariff != null ? ` · ${b.dailyTariff}/day` : '';
+			return { value: String(b.id), label: `${base}${room}${tariff}` };
+		})
 	);
 
 	async function loadWards() {
