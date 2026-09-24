@@ -146,7 +146,7 @@
 	</div>
 
 	{#if bundleError}
-		<div class="alert alert-error">
+		<div class="alert alert-dash alert-error">
 			<span>{bundleError}</span>
 		</div>
 	{/if}

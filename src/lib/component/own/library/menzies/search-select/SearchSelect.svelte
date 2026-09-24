@@ -9,6 +9,7 @@
 	 * `display: contents` so the trigger is the bordered control.
 	 * @see https://design-menzies.netlify.app/ (Select search)
 	 */
+	import LucideChevronsUpDown from '$lib/component/own/library/lucide/LucideChevronsUpDown.svelte';
 	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
 	import OverflowText from '$lib/component/own/library/menzies/overflow-marquee/OverflowText.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
@@ -62,10 +63,10 @@
 	 * so Design portal marquee never fires on options.
 	 */
 	const LIST_CLASS =
-		'menzies-ss-list flex w-full min-w-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto p-0';
+		'menzies-ss-list flex w-full min-w-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto p-0 text-sm';
 
 	const OPTION_BTN_CLASS =
-		'flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-[var(--radius-field)] px-3 py-1.5 text-start transition-colors hover:bg-base-200';
+		'flex w-full min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-[var(--radius-field)] px-3 py-1.5 text-start text-sm transition-colors hover:bg-base-200';
 
 	function matchesFilter(query: string, text: string): boolean {
 		return text.toLowerCase().includes(query.trim().toLowerCase());
@@ -192,9 +193,9 @@
 	);
 	const triggerBtnClass = $derived(
 		[
-			joinItem
-				? 'select wash-select--icon inline-flex min-w-0 cursor-pointer items-center justify-between gap-2 border-ink-border text-start font-normal'
-				: 'btn flex w-full min-w-0 justify-between border-ink-border font-normal cursor-pointer',
+			// Match WashSelect trigger (`.select`), join or standalone — not `.btn`.
+			'select wash-select--icon inline-flex min-w-0 cursor-pointer items-center justify-between gap-2 border-ink-border text-start font-normal',
+			joinItem ? '' : 'w-full',
 			disabled ? 'cursor-not-allowed opacity-60' : '',
 			joinItem ? className : '',
 			triggerClassName
@@ -406,24 +407,10 @@
 				className="min-w-0 flex-1 {displayLabel ? '' : 'text-base-content/50'}"
 				text={displayLabel || placeholder}
 			/>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="size-4 shrink-0 opacity-60"
-				aria-hidden="true"
-			>
-				{#if joinItem}
-					<path d="m6 9 6 6 6-6"></path>
-				{:else}
-					<path d="m7 15 5 5 5-5"></path>
-					<path d="m7 9 5-5 5 5"></path>
-				{/if}
-			</svg>
+			<LucideChevronsUpDown
+				className="size-5 shrink-0 opacity-60 {disabled ? 'opacity-40' : ''}"
+				strokeWidth={1.75}
+			/>
 		</button>
 		{#if required}
 			<input
@@ -466,20 +453,10 @@
 					className="min-w-0 flex-1 {displayLabel ? '' : 'text-base-content/50'}"
 					text={displayLabel || placeholder}
 				/>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					class="size-4 shrink-0 opacity-60"
-					aria-hidden="true"
-				>
-					<path d="m7 15 5 5 5-5"></path>
-					<path d="m7 9 5-5 5 5"></path>
-				</svg>
+				<LucideChevronsUpDown
+					className="size-5 shrink-0 opacity-60 {disabled ? 'opacity-40' : ''}"
+					strokeWidth={1.75}
+				/>
 			</button>
 			{#if required}
 				<input

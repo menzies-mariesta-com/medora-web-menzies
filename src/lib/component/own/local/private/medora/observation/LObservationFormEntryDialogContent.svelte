@@ -13,6 +13,9 @@
 	const toastService = new ToastService();
 	let { confirm, cancel }: DialogSlotProps = $props();
 
+	/** Paraglide `m` typings can lag behind `messages/*.json`; messages exist at runtime. */
+	const msg = m as Record<string, (inputs?: object) => string>;
+
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	const entryId = $derived(ObservationFormEntryDialogState.entryId);
@@ -21,11 +24,17 @@
 	const patientId = $derived(
 		ObservationFormEntryDialogState.patientId
 	);
-	const formCode = $derived(ObservationFormEntryDialogState.formCode);
+	const formCodeOptions = $derived(
+		ObservationFormEntryDialogState.formCodeOptions
+	);
 	const isEdit = $derived(entryId != null);
+	const showFormCodePicker = $derived(
+		!isEdit && (formCodeOptions?.length ?? 0) > 0
+	);
 
 	let description = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
+	let selectedFormCode = $state('');
 	let isSubmitting = $state(false);
 	let loadSeq = 0;
 
@@ -76,11 +85,17 @@
 
 	$effect(() => {
 		const id = entryId;
+		const options = formCodeOptions;
+		const seeded = ObservationFormEntryDialogState.formCode ?? '';
 		if (!id) {
 			description = '';
 			statusIdStr = String(StatusEnum.ACTIVE);
+			selectedFormCode =
+				seeded ||
+				(options?.length === 1 ? (options[0]?.value ?? '') : '');
 			return;
 		}
+		selectedFormCode = seeded;
 		const seq = ++loadSeq;
 		void apiGet<FormEntryRow | null>('formEntry.get', {
 			id: String(id)
@@ -114,10 +129,21 @@
 		const vid = visitId;
 		const bid = branchId;
 		const pid = patientId;
-		const fcode = formCode?.trim() ?? '';
-		if (!vid || !bid || !pid || !fcode) {
+		const fcode = showFormCodePicker
+			? selectedFormCode.trim()
+			: (ObservationFormEntryDialogState.formCode?.trim() ?? '');
+		if (!vid || !bid || !pid) {
 			toastService.addToast(
 				m.observation_emr_visit_missing(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		if (!fcode) {
+			toastService.addToast(
+				showFormCodePicker
+					? msg.observation_emr_specialty_type_required()
+					: m.observation_emr_visit_missing(),
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -168,6 +194,24 @@
 </script>
 
 <div class="flex flex-col gap-4">
+	{#if showFormCodePicker && formCodeOptions}
+		<div class="flex flex-col gap-1">
+			<label for="form-entry-specialty">
+				{msg.observation_emr_specialty_type()}
+				<span class="text-error">*</span>
+			</label>
+			<WashSelect
+				id="form-entry-specialty"
+				name="form-entry-specialty"
+				className="select-bordered w-full"
+				bind:value={selectedFormCode}
+				placeholder={msg.observation_emr_specialty_type_required()}
+				disabled={isSubmitting}
+				options={formCodeOptions}
+			/>
+		</div>
+	{/if}
+
 	<div class="flex flex-col gap-1">
 		<label for="form-entry-description">
 			{m.observation_emr_instruction()}

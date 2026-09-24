@@ -1203,7 +1203,7 @@
 									/>
 									{#if selectedInventoryFromStoreId == null}
 										<div
-											class="mt-2 alert text-sm alert-warning"
+											class="mt-2 alert alert-dash text-sm alert-warning"
 											role="status"
 										>
 											{m.inv_inventory_from_store_topbar_hint()}
@@ -1316,7 +1316,7 @@
 						from the requisition, or choose a different PR.
 					</div>
 				{:else}
-					<div class="alert text-sm alert-warning" role="status">
+					<div class="alert alert-dash text-sm alert-warning" role="status">
 						{m.inv_po_new_lines_need_pr_hint()}
 					</div>
 				{/if}

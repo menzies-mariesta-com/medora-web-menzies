@@ -26,22 +26,22 @@
 </script>
 
 <div
-	class="mb-2 flex items-center justify-between gap-4 rounded-box border-l-4 border-primary/50 bg-base-200 p-4 shadow-sm {className}"
+	class="mb-1.5 flex items-center justify-between gap-2 rounded-box border-l-4 border-primary/50 bg-base-200 px-3 py-1.5 shadow-sm {className}"
 >
-	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
+	<div class="flex min-w-0 flex-1 flex-col">
 		<LVisitInfoDisplay {visitId} {hospitalId} />
 	</div>
-	<div class="flex shrink-0 items-center gap-2">
+	<div class="flex shrink-0 items-center gap-1.5">
 		{#if hasVisit}
 			<WashTooltip
 				tooltipText="Reset selected visit"
 				className=""
 			>
 				<WashButton
-					className="btn-ghost btn-sm btn-circle"
+					className="btn-ghost btn-xs btn-circle"
 					onClick={onVisitReset}
 				>
-					<LucideX className="size-5" />
+					<LucideX className="size-3.5" />
 				</WashButton>
 			</WashTooltip>
 		{/if}

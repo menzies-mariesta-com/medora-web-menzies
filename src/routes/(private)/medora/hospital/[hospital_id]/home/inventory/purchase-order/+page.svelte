@@ -239,7 +239,7 @@
 </script>
 
 {#if selectedInventoryFromStoreId == null}
-	<div class="mb-3 alert text-sm alert-warning" role="status">
+	<div class="mb-3 alert alert-dash text-sm alert-warning" role="status">
 		{m.inv_po_list_select_store_hint()}
 	</div>
 {/if}
