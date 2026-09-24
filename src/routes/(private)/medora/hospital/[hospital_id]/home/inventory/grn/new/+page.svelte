@@ -1545,7 +1545,7 @@
 										/>
 										{#if receivingStoreHint}
 											<div
-												class="mt-2 alert text-sm alert-warning"
+												class="mt-2 alert alert-dash text-sm alert-warning"
 												role="status"
 											>
 												{receivingStoreHint}
@@ -1596,7 +1596,7 @@
 										/>
 										{#if selectedInventoryFromStoreId == null}
 											<div
-												class="mt-2 alert text-sm alert-warning"
+												class="mt-2 alert alert-dash text-sm alert-warning"
 												role="status"
 											>
 												{m.inv_inventory_from_store_topbar_hint()}

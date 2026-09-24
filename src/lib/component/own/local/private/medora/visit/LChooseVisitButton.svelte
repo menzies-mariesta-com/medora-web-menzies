@@ -2,6 +2,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
+	import LucideAppWindow from '$lib/component/own/library/lucide/LucideAppWindow.svelte';
 	import LVisitListDialogContent from '$lib/component/own/local/private/medora/emr/LVisitListDialogContent.svelte';
 
 	let {
@@ -35,10 +37,12 @@
 	}
 </script>
 
-<WashButton
-	className="btn-primary btn-sm {className}"
-	onClick={handleClick}
-	disabled={!hospitalId}
->
-	{label}
-</WashButton>
+<WashTooltip tooltipText={label} className="">
+	<WashButton
+		className="btn-primary btn-xs btn-circle {className}"
+		onClick={handleClick}
+		disabled={!hospitalId}
+	>
+		<LucideAppWindow className="size-3.5" />
+	</WashButton>
+</WashTooltip>

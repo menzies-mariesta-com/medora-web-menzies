@@ -33,17 +33,10 @@
 	} = $props();
 
 	const typeClassMap: Record<StatusColorEnum, string> = {
-		[StatusColorEnum.SUCCESS]: 'alert-success',
-		[StatusColorEnum.INFO]: 'alert-info',
-		[StatusColorEnum.WARNING]: 'alert-warning',
-		[StatusColorEnum.ERROR]: 'alert-error'
-	};
-
-	const toneClassMap: Record<StatusColorEnum, string> = {
-		[StatusColorEnum.SUCCESS]: 'text-success-content',
-		[StatusColorEnum.INFO]: 'text-info-content',
-		[StatusColorEnum.WARNING]: 'text-warning-content',
-		[StatusColorEnum.ERROR]: 'text-error-content'
+		[StatusColorEnum.SUCCESS]: 'alert-dash alert-success',
+		[StatusColorEnum.INFO]: 'alert-dash alert-info',
+		[StatusColorEnum.WARNING]: 'alert-dash alert-warning',
+		[StatusColorEnum.ERROR]: 'alert-dash alert-error'
 	};
 
 	const iconMap: Record<StatusColorEnum, Component> = {
@@ -54,7 +47,7 @@
 	};
 
 	const alertClass = $derived(
-		`alert ${typeClassMap[type]} ${toneClassMap[type]} ${className ?? ''}`.trim()
+		`alert ${typeClassMap[type]} ${className ?? ''}`.trim()
 	);
 	const IconComponent = $derived(iconMap[type]);
 	const hasDetail = $derived(Boolean(detail?.trim()));
@@ -77,7 +70,7 @@
 
 <div
 	role="alert"
-	class="{alertClass} flex flex-row items-center gap-3 shadow-lg"
+	class="{alertClass} flex flex-row items-center gap-3"
 >
 	<span
 		class="inline-flex shrink-0 text-[currentColor]"

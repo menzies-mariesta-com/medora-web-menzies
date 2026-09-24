@@ -292,7 +292,7 @@
 
 {#if detail && !detailLoading}
 	{#if detail.statusTaggingId === InvDepartmentIndentStatusTaggingEnum.PENDING_CENTRAL && selectedInventoryFromStoreId != null && detail.toStoreId === selectedInventoryFromStoreId}
-		<div class="mb-4 alert text-sm alert-info" role="status">
+		<div class="mb-4 alert alert-dash text-sm alert-info" role="status">
 			{m.inv_di_pending_central_fulfill_hint()}
 			<WashButton
 				type="button"
