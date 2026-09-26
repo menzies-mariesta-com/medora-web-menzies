@@ -11,7 +11,7 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, asc, eq, isNull, ne } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 import { StatusEnum } from '$lib/model/enum/db-link';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
@@ -30,6 +30,13 @@ type DiscountActionBody = {
 	discountPercent?: number | null;
 	discountAmount?: number | null;
 };
+
+/** Fixed lock class for `pg_advisory_xact_lock(class, visitId)`. */
+const OP_BILLING_SYNC_LOCK_CLASS = 87231401;
+
+type Tx = Parameters<
+	Parameters<ReturnType<typeof ensureDb>['transaction']>[0]
+>[0];
 
 function computeLineTotal(row: PendingDetailRow): number {
 	const amount = Number(row?.serviceAmount ?? 0) || 0;
@@ -58,11 +65,32 @@ function postActionFromBody(body: unknown): unknown {
 	return (body as { action?: unknown }).action;
 }
 
-async function listOpenOpBillings(opts: {
-	visitId: number;
-	hospitalId: string;
-}): Promise<OpBillingSchema[]> {
-	return ensureDb().query.opBillingTable.findMany({
+/** One row per clinical/pharmacy source id (defensive against race / join fan-out). */
+function dedupePendingRows(
+	rows: PendingDetailRow[]
+): PendingDetailRow[] {
+	const seen = new Set<string>();
+	const out: PendingDetailRow[] = [];
+	for (const r of rows) {
+		const key =
+			r.lineSource === 'medication_order_line'
+				? `med:${r.medicationOrderLineId}`
+				: `svc:${r.id}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.push(r);
+	}
+	return out;
+}
+
+async function listOpenOpBillings(
+	db: Tx | ReturnType<typeof ensureDb>,
+	opts: {
+		visitId: number;
+		hospitalId: string;
+	}
+): Promise<OpBillingSchema[]> {
+	return db.query.opBillingTable.findMany({
 		where: and(
 			eq(table.opBillingTable.visitId, opts.visitId),
 			eq(table.opBillingTable.hospitalId, opts.hospitalId),
@@ -73,15 +101,18 @@ async function listOpenOpBillings(opts: {
 	});
 }
 
-async function softDeleteOpBillingHeader(opts: {
-	billingId: number;
-	userId: string;
-	nowIso: string;
-}): Promise<void> {
-	await ensureDb()
+async function softDeleteOpBillingHeader(
+	db: Tx | ReturnType<typeof ensureDb>,
+	opts: {
+		billingId: number;
+		userId: string;
+		nowIso: string;
+	}
+): Promise<void> {
+	await db
 		.delete(table.opBillingLineTable)
 		.where(eq(table.opBillingLineTable.opBillingId, opts.billingId));
-	await ensureDb()
+	await db
 		.update(table.opBillingTable)
 		.set({
 			statusId: StatusEnum.DELETED,
@@ -94,19 +125,22 @@ async function softDeleteOpBillingHeader(opts: {
 }
 
 /** At most one open bill per visit; older stray drafts are removed. */
-async function consolidateOpenOpBillings(opts: {
-	visitId: number;
-	hospitalId: string;
-	userId: string;
-	nowIso: string;
-}): Promise<OpBillingSchema | null> {
-	const open = await listOpenOpBillings(opts);
+async function consolidateOpenOpBillings(
+	db: Tx | ReturnType<typeof ensureDb>,
+	opts: {
+		visitId: number;
+		hospitalId: string;
+		userId: string;
+		nowIso: string;
+	}
+): Promise<OpBillingSchema | null> {
+	const open = await listOpenOpBillings(db, opts);
 	if (open.length === 0) return null;
 	if (open.length === 1) return open[0]!;
 
 	const keep = open[open.length - 1]!;
 	for (const b of open.slice(0, -1)) {
-		await softDeleteOpBillingHeader({
+		await softDeleteOpBillingHeader(db, {
 			billingId: b.id,
 			userId: opts.userId,
 			nowIso: opts.nowIso
@@ -118,6 +152,9 @@ async function consolidateOpenOpBillings(opts: {
 /**
  * Syncs the single open OP bill for the visit to nursing-complete lines that are
  * not yet on any closed bill. When nothing is pending, the open draft is removed.
+ *
+ * Serialized per visit (advisory xact lock) so concurrent GET/POST cannot
+ * interleave delete+insert and duplicate `op_billing_line` rows.
  */
 async function syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
@@ -134,153 +171,159 @@ async function syncOpenOpBillingForVisit(opts: {
 	totalAmount: number;
 	pendingRows: PendingDetailRow[];
 }> {
-	const db = ensureDb();
-	const pendingRows =
+	const pendingRows = dedupePendingRows(
 		await getPendingOpBillingServiceDetailRowsForVisit({
 			visitId: opts.visitId,
 			hospitalId: opts.hospitalId,
 			branchId: opts.branchId
+		})
+	);
+
+	return ensureDb().transaction(async (tx) => {
+		await tx.execute(
+			sql`SELECT pg_advisory_xact_lock(${OP_BILLING_SYNC_LOCK_CLASS}, ${opts.visitId})`
+		);
+
+		let openBill = await consolidateOpenOpBillings(tx, {
+			visitId: opts.visitId,
+			hospitalId: opts.hospitalId,
+			userId: opts.userId,
+			nowIso: opts.nowIso
 		});
 
-	let openBill = await consolidateOpenOpBillings({
-		visitId: opts.visitId,
-		hospitalId: opts.hospitalId,
-		userId: opts.userId,
-		nowIso: opts.nowIso
-	});
-
-	if (pendingRows.length === 0) {
-		if (openBill) {
-			await softDeleteOpBillingHeader({
-				billingId: openBill.id,
-				userId: opts.userId,
-				nowIso: opts.nowIso
-			});
+		if (pendingRows.length === 0) {
+			if (openBill) {
+				await softDeleteOpBillingHeader(tx, {
+					billingId: openBill.id,
+					userId: opts.userId,
+					nowIso: opts.nowIso
+				});
+			}
+			return {
+				billingId: null,
+				billingRow: null,
+				linesSubtotal: 0,
+				discountAmount: 0,
+				totalAmount: 0,
+				pendingRows: []
+			};
 		}
-		return {
-			billingId: null,
-			billingRow: null,
-			linesSubtotal: 0,
-			discountAmount: 0,
-			totalAmount: 0,
-			pendingRows: []
-		};
-	}
 
-	if (!openBill) {
-		const [inserted] = await db
-			.insert(table.opBillingTable)
-			.values({
-				visitId: opts.visitId,
-				hospitalId: opts.hospitalId,
+		if (!openBill) {
+			const [inserted] = await tx
+				.insert(table.opBillingTable)
+				.values({
+					visitId: opts.visitId,
+					hospitalId: opts.hospitalId,
+					branchId: opts.branchId,
+					linesSubtotal: '0',
+					discountTypeId: BillingDiscountTypeEnum.NONE,
+					discountAmount: '0',
+					totalAmount: '0',
+					createdAt: opts.nowIso,
+					updatedAt: opts.nowIso,
+					createdBy: opts.userId,
+					updatedBy: opts.userId
+				})
+				.returning();
+			openBill = inserted!;
+		}
+
+		const billingId = openBill.id;
+		const linesSubtotal = pendingRows.reduce(
+			(sum: number, r: PendingDetailRow) => sum + computeLineTotal(r),
+			0
+		);
+
+		const discountTypeId =
+			(openBill.discountTypeId as number | null | undefined) ??
+			BillingDiscountTypeEnum.NONE;
+		const discountPercent = Number(openBill.discountPercent ?? 0) || 0;
+		const discountAmountExisting =
+			Number(openBill.discountAmount ?? 0) || 0;
+
+		let discountAmount = 0;
+		if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
+			const pct = clamp(discountPercent, 0, 100);
+			discountAmount = Math.min(
+				linesSubtotal,
+				(linesSubtotal * pct) / 100
+			);
+		} else if (
+			discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT
+		) {
+			discountAmount = Math.min(
+				linesSubtotal,
+				Math.max(0, discountAmountExisting)
+			);
+		}
+
+		const totalAmount = Math.max(0, linesSubtotal - discountAmount);
+
+		await tx
+			.delete(table.opBillingLineTable)
+			.where(eq(table.opBillingLineTable.opBillingId, billingId));
+
+		await tx.insert(table.opBillingLineTable).values(
+			pendingRows.map((r: PendingDetailRow, idx: number) => {
+				const serviceOrderDetailId =
+					r.lineSource === 'service_order_detail' ? r.id : null;
+				const medicationOrderLineId =
+					r.lineSource === 'medication_order_line'
+						? r.medicationOrderLineId
+						: null;
+				return {
+					opBillingId: billingId,
+					lineIndex: idx + 1,
+					serviceOrderDetailId,
+					medicationOrderLineId,
+					serviceId: r.serviceId,
+					serviceNameSnapshot: r.serviceName ?? null,
+					subCategoryId: r.subCategoryId ?? null,
+					subCategoryNameSnapshot: r.subCategoryName ?? null,
+					orderNoSnapshot: r.orderNo ?? null,
+					discount: r.discount ?? null,
+					serviceAmount: r.serviceAmount ?? null,
+					serviceTaxAmount: r.serviceTaxAmount ?? null,
+					serviceUnit: r.serviceUnit ?? null,
+					lineTotal: computeLineTotal(r).toFixed(2),
+					createdAt: opts.nowIso,
+					updatedAt: opts.nowIso,
+					createdBy: opts.userId,
+					updatedBy: opts.userId
+				};
+			})
+		);
+
+		await tx
+			.update(table.opBillingTable)
+			.set({
 				branchId: opts.branchId,
-				linesSubtotal: '0',
-				discountTypeId: BillingDiscountTypeEnum.NONE,
-				discountAmount: '0',
-				totalAmount: '0',
-				createdAt: opts.nowIso,
+				linesSubtotal: linesSubtotal.toFixed(2),
+				discountAmount: discountAmount.toFixed(2),
+				totalAmount: totalAmount.toFixed(2),
 				updatedAt: opts.nowIso,
-				createdBy: opts.userId,
 				updatedBy: opts.userId
 			})
-			.returning();
-		openBill = inserted!;
-	}
+			.where(eq(table.opBillingTable.id, billingId));
 
-	const billingId = openBill.id;
-	const linesSubtotal = pendingRows.reduce(
-		(sum: number, r: PendingDetailRow) => sum + computeLineTotal(r),
-		0
-	);
+		const billingRow = (await tx.query.opBillingTable.findFirst({
+			where: eq(table.opBillingTable.id, billingId),
+			with: {
+				discountedByStaff: { with: { title: true } },
+				printedByStaff: { with: { title: true } }
+			}
+		})) as OpBillingWithAuditStaff | null;
 
-	const discountTypeId =
-		(openBill.discountTypeId as number | null | undefined) ??
-		BillingDiscountTypeEnum.NONE;
-	const discountPercent = Number(openBill.discountPercent ?? 0) || 0;
-	const discountAmountExisting =
-		Number(openBill.discountAmount ?? 0) || 0;
-
-	let discountAmount = 0;
-	if (discountTypeId === BillingDiscountTypeEnum.PERCENT) {
-		const pct = clamp(discountPercent, 0, 100);
-		discountAmount = Math.min(
+		return {
+			billingId,
+			billingRow,
 			linesSubtotal,
-			(linesSubtotal * pct) / 100
-		);
-	} else if (
-		discountTypeId === BillingDiscountTypeEnum.FIXED_AMOUNT
-	) {
-		discountAmount = Math.min(
-			linesSubtotal,
-			Math.max(0, discountAmountExisting)
-		);
-	}
-
-	const totalAmount = Math.max(0, linesSubtotal - discountAmount);
-
-	await db
-		.delete(table.opBillingLineTable)
-		.where(eq(table.opBillingLineTable.opBillingId, billingId));
-
-	await db.insert(table.opBillingLineTable).values(
-		pendingRows.map((r: PendingDetailRow, idx: number) => {
-			const serviceOrderDetailId =
-				r.lineSource === 'service_order_detail' ? r.id : null;
-			const medicationOrderLineId =
-				r.lineSource === 'medication_order_line'
-					? r.medicationOrderLineId
-					: null;
-			return {
-				opBillingId: billingId,
-				lineIndex: idx + 1,
-				serviceOrderDetailId,
-				medicationOrderLineId,
-				serviceId: r.serviceId,
-				serviceNameSnapshot: r.serviceName ?? null,
-				subCategoryId: r.subCategoryId ?? null,
-				subCategoryNameSnapshot: r.subCategoryName ?? null,
-				orderNoSnapshot: r.orderNo ?? null,
-				discount: r.discount ?? null,
-				serviceAmount: r.serviceAmount ?? null,
-				serviceTaxAmount: r.serviceTaxAmount ?? null,
-				serviceUnit: r.serviceUnit ?? null,
-				lineTotal: computeLineTotal(r).toFixed(2),
-				createdAt: opts.nowIso,
-				updatedAt: opts.nowIso,
-				createdBy: opts.userId,
-				updatedBy: opts.userId
-			};
-		})
-	);
-
-	await db
-		.update(table.opBillingTable)
-		.set({
-			branchId: opts.branchId,
-			linesSubtotal: linesSubtotal.toFixed(2),
-			discountAmount: discountAmount.toFixed(2),
-			totalAmount: totalAmount.toFixed(2),
-			updatedAt: opts.nowIso,
-			updatedBy: opts.userId
-		})
-		.where(eq(table.opBillingTable.id, billingId));
-
-	const billingRow = (await db.query.opBillingTable.findFirst({
-		where: eq(table.opBillingTable.id, billingId),
-		with: {
-			discountedByStaff: { with: { title: true } },
-			printedByStaff: { with: { title: true } }
-		}
-	})) as OpBillingWithAuditStaff | null;
-
-	return {
-		billingId,
-		billingRow,
-		linesSubtotal,
-		discountAmount,
-		totalAmount,
-		pendingRows
-	};
+			discountAmount,
+			totalAmount,
+			pendingRows
+		};
+	});
 }
 
 export const GET: RequestHandler = async (event) => {
