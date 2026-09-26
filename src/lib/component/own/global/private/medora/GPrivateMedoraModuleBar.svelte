@@ -442,6 +442,13 @@
 	let branchForm: HTMLFormElement | undefined = $state();
 	let inventoryFromStoreForm: HTMLFormElement | undefined = $state();
 
+	async function submitNavSelectForm(
+		form: HTMLFormElement | undefined
+	): Promise<void> {
+		await tick();
+		form?.requestSubmit();
+	}
+
 	/** Soft chrome outline — avoid thick high-contrast primary rings. */
 	const navBarControlBorder =
 		'border border-base-300 hover:border-primary/40';
@@ -477,7 +484,7 @@
 						disabled={branchSelectDisabled}
 						className="select min-w-36 {navBarControlBorder}"
 						name="branchId"
-						onChange={() => branchForm?.requestSubmit()}
+						onChange={() => submitNavSelectForm(branchForm)}
 					>
 						{#each staffBranchesForNav as b, i (`${b.id}-${i}`)}
 							<option value={b.id}>{b.name ?? ''}</option>
@@ -498,7 +505,7 @@
 						disabled={userGroupSelectDisabled}
 						className="select min-w-36 {navBarControlBorder}"
 						name="userGroupId"
-						onChange={() => userGroupForm?.requestSubmit()}
+						onChange={() => submitNavSelectForm(userGroupForm)}
 					>
 						{#each staffUserGroupsForNav as ug, i (`ug-${ug.id}-${i}`)}
 							<option value={String(ug.id)}>{ug.name ?? ''}</option>
@@ -519,7 +526,9 @@
 						disabled={inventoryFromStoreSelectDisabled}
 						className="select min-w-40 max-w-[14rem] {navBarControlBorder}"
 						name="storeId"
-						onChange={() => inventoryFromStoreForm?.requestSubmit()}
+						onChange={() =>
+							submitNavSelectForm(inventoryFromStoreForm)
+						}
 					>
 						{#each inventoryFromStoresForNav as s, i (`ifs-${s.id}-${i}`)}
 							<option value={String(s.id)}

@@ -89,6 +89,8 @@
 	let isLoading = $state(false);
 	let loadError = $state('');
 	let groups = $state<BillingGroup[]>([]);
+	/** Ignore stale overlapping visit-lines fetches. */
+	let billingLinesLoadSeq = 0;
 	let grandTotal = $state(0);
 	let visitSummary = $state<VisitSummary | null>(null);
 	let billingMeta = $state<BillingMeta | null>(null);
@@ -272,12 +274,14 @@
 			return;
 		}
 
+		const requestSeq = ++billingLinesLoadSeq;
 		isLoading = true;
 		loadError = '';
 		try {
 			const res = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/billing/op-billing/visit-lines?visitId=${visitNumeric}`
 			);
+			if (requestSeq !== billingLinesLoadSeq) return;
 			if (!res.ok) {
 				groups = [];
 				grandTotal = 0;
@@ -291,6 +295,7 @@
 				return;
 			}
 			const data = (await res.json()) as OpBillingVisitLinesGetResponse;
+			if (requestSeq !== billingLinesLoadSeq) return;
 			const lines = (data.items ?? []).map((row) => ({
 				...row
 			}));
@@ -324,6 +329,7 @@
 					Number.isFinite(amt) && amt > 0 ? String(amt) : '';
 			}
 		} catch (err) {
+			if (requestSeq !== billingLinesLoadSeq) return;
 			console.error(err);
 			groups = [];
 			grandTotal = 0;
@@ -335,7 +341,9 @@
 				'Failed to load billing lines.'
 			);
 		} finally {
-			isLoading = false;
+			if (requestSeq === billingLinesLoadSeq) {
+				isLoading = false;
+			}
 		}
 	}
 
