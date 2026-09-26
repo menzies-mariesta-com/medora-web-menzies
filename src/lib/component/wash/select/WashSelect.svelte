@@ -153,6 +153,7 @@
 	let triggerEl = $state<HTMLButtonElement | null>(null);
 	let panelEl = $state<HTMLDivElement | null>(null);
 	let mirrorEl = $state<HTMLSelectElement | null>(null);
+	let namedFieldEl = $state<HTMLInputElement | null>(null);
 	let childOptions = $state<WashSelectOption[]>([]);
 	let triggerWidthPx = $state<number | null>(null);
 	let placement = $state<DropdownPlacement>({ ...DEFAULT_PLACEMENT });
@@ -298,6 +299,14 @@
 
 	function commit(next: string) {
 		value = next;
+		/**
+		 * Named field is a one-way `value={…}` binding. Flush it before
+		 * `onChange` so parents that `requestSubmit()` in the same turn
+		 * (nav branch / user-group / from-store) POST the new selection.
+		 */
+		if (namedFieldEl) {
+			namedFieldEl.value = next;
+		}
 		onChange?.(next);
 		setOpen(false);
 	}
@@ -426,6 +435,7 @@
 
 		{#if name || required}
 			<input
+				bind:this={namedFieldEl}
 				type="text"
 				class="sr-only"
 				tabindex="-1"
