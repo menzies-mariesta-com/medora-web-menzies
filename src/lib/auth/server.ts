@@ -20,7 +20,7 @@ import { env } from '$env/dynamic/private';
 import { authLogger } from '$lib/logger';
 
 const passwordHashUtil = new PasswordHashUtil();
-const baseURL = env.BETTER_AUTH_BASE_URL || 'http://localhost:5173';
+const baseURL = env.BETTER_AUTH_BASE_URL || 'http://localhost:4002';
 
 function normalizeOrigin(
 	value: string | null | undefined
