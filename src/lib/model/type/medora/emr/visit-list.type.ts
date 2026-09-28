@@ -2,9 +2,7 @@ export type VisitStatusCode =
 	| 'open'
 	| 'vital'
 	| 'seen'
-	| 'admitted'
-	| 'discharged'
-	| 'closed';
+	| 'closed_discharged';
 
 export type PatientVisitForEmrList = {
 	id: number;

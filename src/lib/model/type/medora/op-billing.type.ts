@@ -45,7 +45,10 @@ export type OpBillingMeta = {
 	totalAmount?: number | string | null;
 	discountedByStaff?: OpBillingStaffSummary | null;
 	discountedAt?: string | null;
+	/** Open / Closed workflow (`BillingStatusTaggingEnum`). */
+	statusTaggingId?: number | null;
 	printedByStaff?: OpBillingStaffSummary | null;
+	/** Close audit timestamp (not the closed flag; use `statusTaggingId`). */
 	printedAt?: string | null;
 };
 

@@ -569,11 +569,13 @@
 						}
 					});
 				} catch (e) {
-					// Do not block appointment creation if visit creation fails.
-					console.error(
-						'Failed to create patient visit for check-in:',
-						e
+					toastService.addToast(
+						e instanceof Error
+							? e.message
+							: 'Failed to create patient visit for check-in',
+						StatusColorEnum.ERROR
 					);
+					return;
 				}
 			}
 

@@ -138,36 +138,27 @@ async function closeOpenStaySegment(
 }
 
 export async function admitVisitToIpd(
+	event: import('@sveltejs/kit').RequestEvent,
 	payload: AdmitToIpdPayload & {
 		hospitalId: string;
 		actorStaffId?: string | null;
 	}
 ): Promise<IpdAdmissionSchema> {
 	const db = ensureDb();
-	const visitId = payload.visitId;
+	const patientId = String(payload.patientId ?? '').trim();
+	if (!patientId) throw error(400, 'patientId is required');
 
-	const [visit] = await db
-		.select()
-		.from(table.patientVisitTable)
+	const [patient] = await db
+		.select({ id: table.patientTable.id })
+		.from(table.patientTable)
 		.where(
 			and(
-				eq(table.patientVisitTable.id, visitId),
-				eq(table.patientVisitTable.hospitalId, payload.hospitalId),
-				ne(table.patientVisitTable.statusId, StatusEnum.DELETED)
+				eq(table.patientTable.id, patientId),
+				ne(table.patientTable.statusId, StatusEnum.DELETED)
 			)
 		)
 		.limit(1);
-	if (!visit) throw error(404, 'Visit not found');
-	if (visit.statusTaggingId === VisitStatusTaggingEnum.CLOSED) {
-		throw error(400, 'Cannot admit a closed visit');
-	}
-	if (visit.statusTaggingId === VisitStatusTaggingEnum.ADMITTED) {
-		throw error(400, 'Visit is already admitted');
-	}
-
-	const existing = await getActiveAdmissionByVisit({ visitId });
-	if (existing)
-		throw error(400, 'Visit already has an active admission');
+	if (!patient) throw error(404, 'Patient not found');
 
 	const ctx = await resolveBedTariffContext({
 		hospitalId: payload.hospitalId,
@@ -192,6 +183,18 @@ export async function admitVisitToIpd(
 		throw error(400, 'Bed is not free');
 	}
 
+	// Creates a new IPD visit; gate blocks if patient has unfinished visit / open bill.
+	const { createPatientVisitInHospital } = await import(
+		'$lib/server/medora/patient-visit/patient-visit.server'
+	);
+	const visit = await createPatientVisitInHospital(event, {
+		hospitalId: payload.hospitalId,
+		branchId: payload.branchId,
+		patientId,
+		visitTypeId: VisitTypeEnum.IPD,
+		doctorId: payload.admittingDoctorId ?? null
+	});
+
 	const admissionNo = await nextAdmissionNo({
 		hospitalId: payload.hospitalId,
 		branchId: payload.branchId
@@ -203,15 +206,14 @@ export async function admitVisitToIpd(
 		const [admission] = await tx
 			.insert(table.ipdAdmissionTable)
 			.values({
-				visitId,
+				visitId: visit.id,
 				hospitalId: payload.hospitalId,
 				branchId: payload.branchId,
 				admissionNo,
 				wardId: ctx.wardId,
 				roomId: ctx.roomId,
 				bedId: payload.bedId,
-				admittingDoctorId:
-					payload.admittingDoctorId ?? visit.doctorId ?? null,
+				admittingDoctorId: payload.admittingDoctorId ?? null,
 				reasonNotes: payload.reasonNotes ?? null,
 				admittedAt,
 				admissionStatus: IpdAdmissionStatusEnum.ADMITTED
@@ -243,15 +245,6 @@ export async function admitVisitToIpd(
 			ctx,
 			startedAt: admittedAt
 		});
-
-		await tx
-			.update(table.patientVisitTable)
-			.set({
-				visitTypeId: VisitTypeEnum.IPD,
-				statusTaggingId: VisitStatusTaggingEnum.ADMITTED,
-				branchId: payload.branchId
-			})
-			.where(eq(table.patientVisitTable.id, visitId));
 
 		return admission;
 	});
@@ -446,7 +439,7 @@ export async function dischargeAdmission(
 		await tx
 			.update(table.patientVisitTable)
 			.set({
-				statusTaggingId: VisitStatusTaggingEnum.DISCHARGED
+				statusTaggingId: VisitStatusTaggingEnum.CLOSED_DISCHARGED
 			})
 			.where(eq(table.patientVisitTable.id, admission.visitId));
 
@@ -454,7 +447,7 @@ export async function dischargeAdmission(
 	});
 }
 
-/** After IP bill print + pharmacy: close the visit (Exit). */
+/** After IP bill print + pharmacy: ensure visit is Closed / Discharged (idempotent). */
 export async function closeIpdVisit(input: {
 	visitId: number;
 	hospitalId: string;
@@ -471,12 +464,16 @@ export async function closeIpdVisit(input: {
 		)
 		.limit(1);
 	if (!visit) throw error(404, 'Visit not found');
-	if (visit.statusTaggingId !== VisitStatusTaggingEnum.DISCHARGED) {
-		throw error(400, 'Visit must be discharged before close');
+	if (
+		visit.statusTaggingId === VisitStatusTaggingEnum.CLOSED_DISCHARGED
+	) {
+		return;
 	}
 	await db
 		.update(table.patientVisitTable)
-		.set({ statusTaggingId: VisitStatusTaggingEnum.CLOSED })
+		.set({
+			statusTaggingId: VisitStatusTaggingEnum.CLOSED_DISCHARGED
+		})
 		.where(eq(table.patientVisitTable.id, input.visitId));
 }
 

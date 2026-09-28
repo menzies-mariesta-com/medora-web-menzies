@@ -15,7 +15,7 @@ export const VISIT_TYPE_PACKAGE = 5;
 
 export const VISIT_TYPE_CODES = ['O', 'I', 'E', 'DC', 'PK'] as const;
 
-/** Visit workflow status_tagging: open=5, vital=6, seen=7, closed=8 */
+/** Visit workflow status_tagging: open=5, vital=6, seen=7, closed_discharged=8 */
 export const VISIT_STATUS_OPEN = 5;
 export const VISIT_STATUS_SEEN = 7;
 export const VISIT_STATUS_CLOSED = 8;

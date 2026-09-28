@@ -10,6 +10,8 @@ export const VisitState = (() => {
 	let patientName = $state('');
 	/** ISO timestamp from `patient_visit.clinical_signed_at` when the selected visit is locked. */
 	let clinicalSignedAt = $state<string | null>(null);
+	/** Bumped on clinical sign/unsign so pages can reload visit status tagging. */
+	let clinicalSignRevision = $state(0);
 
 	if (typeof window !== 'undefined') {
 		const storedVisit = window.sessionStorage.getItem('heka_visitId');
@@ -42,11 +44,20 @@ export const VisitState = (() => {
 			return clinicalSignedAt;
 		},
 
+		get clinicalSignRevision() {
+			return clinicalSignRevision;
+		},
+
 		/** Call when `getPatientVisitByIdWithRelations` (or equivalent) loads the current visit row. */
 		setClinicalSignedAtFromVisit(iso: string | null | undefined) {
 			const next =
 				iso == null || String(iso).trim() === '' ? null : String(iso);
 			clinicalSignedAt = next;
+		},
+
+		/** Call after visit.sign / visit.unsign so dependents reload visit status. */
+		notifyClinicalSignChanged() {
+			clinicalSignRevision += 1;
 		},
 
 		get isClinicalVisitReadOnly() {
