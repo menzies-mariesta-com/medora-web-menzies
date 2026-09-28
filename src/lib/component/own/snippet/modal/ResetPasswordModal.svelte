@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { authClient } from '$lib/auth/client';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -19,7 +20,10 @@
 	async function handleConfirm() {
 		const trimmed = email.trim();
 		if (!trimmed) {
-			toastService.addToast(m.please_enter_email(), StatusColorEnum.ERROR);
+			toastService.addToast(
+				m.please_enter_email(),
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		isLoading = true;
@@ -37,7 +41,10 @@
 				return;
 			}
 
-			toastService.addToast(m.reset_email_sent(), StatusColorEnum.INFO);
+			toastService.addToast(
+				m.reset_email_sent(),
+				StatusColorEnum.INFO
+			);
 			await confirm({ email: trimmed });
 		} finally {
 			isLoading = false;
@@ -45,26 +52,32 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<fieldset class="fieldset">
-		<label class="label" for="modal-forgot-email">
-			<span class="label-text">{m.email()}</span>
-		</label>
-		<WashInputField
-			id="modal-forgot-email"
-			inputType="email"
-			inputPlaceholderText={m.email()}
-			nameText="email"
-			className="w-full"
-			bind:value={email}
-			disabled={isLoading}
-			required
-			ariaLabel={m.email()}
-		/>
-	</fieldset>
+<div class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<fieldset class="fieldset">
+			<label class="label" for="modal-forgot-email">
+				<span class="label-text">{m.email()}</span>
+			</label>
+			<WashInputField
+				id="modal-forgot-email"
+				inputType="email"
+				inputPlaceholderText={m.email()}
+				nameText="email"
+				className="w-full"
+				bind:value={email}
+				disabled={isLoading}
+				required
+				ariaLabel={m.email()}
+			/>
+		</fieldset>
+	</div>
 
-	<div class="modal-action">
-		<WashButton className="btn" onClick={() => cancel()} disabled={isLoading}>
+	<WashDialogFooter className="gap-2">
+		<WashButton
+			className="btn"
+			onClick={() => cancel()}
+			disabled={isLoading}
+		>
 			{m.cancel()}
 		</WashButton>
 		<WashButton
@@ -76,5 +89,5 @@
 		>
 			{m.send_reset_link()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </div>

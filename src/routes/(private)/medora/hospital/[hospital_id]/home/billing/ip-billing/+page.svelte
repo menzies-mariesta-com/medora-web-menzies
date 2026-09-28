@@ -6,6 +6,7 @@
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
@@ -142,7 +143,8 @@
 	});
 
 	const canCloseIpBill = $derived(
-		Boolean(billingReadiness?.canCloseBill) && !visitLevelDiscountLocked
+		Boolean(billingReadiness?.canCloseBill) &&
+			!visitLevelDiscountLocked
 	);
 
 	function closeBlockedTooltip(): string {
@@ -292,7 +294,8 @@
 				);
 				return;
 			}
-			const data = (await res.json()) as OpBillingVisitLinesGetResponse;
+			const data =
+				(await res.json()) as OpBillingVisitLinesGetResponse;
 			const lines = (data.items ?? []).map((row) => ({
 				...row
 			}));
@@ -487,7 +490,10 @@
 				order: tr(msg.ip_billing_print_order, 'Order'),
 				amount: tr(msg.ip_billing_print_amount, 'Amount'),
 				subtotal: tr(msg.ip_billing_print_subtotal, 'Subtotal'),
-				grandTotal: tr(msg.ip_billing_print_grand_total, 'Grand total'),
+				grandTotal: tr(
+					msg.ip_billing_print_grand_total,
+					'Grand total'
+				),
 				discount: tr(msg.ip_billing_print_discount, 'Discount'),
 				netTotal: tr(msg.ip_billing_print_net_total, 'Net total')
 			},
@@ -728,10 +734,7 @@
 
 {#if visitId}
 	<div class="mb-2 flex flex-wrap items-center justify-end gap-2">
-		<WashTooltip
-			tooltipText={tr(undefined, 'History')}
-			className=""
-		>
+		<WashTooltip tooltipText={tr(undefined, 'History')} className="">
 			<WashButton
 				className="btn-outline btn-sm"
 				onClick={() => {
@@ -748,9 +751,7 @@
 <WashCard>
 	<WashCardBody className="gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<WashCardBodyTitle
-				>{msg.ip_billing_title()}</WashCardBodyTitle
-			>
+			<WashCardBodyTitle>{msg.ip_billing_title()}</WashCardBodyTitle>
 			{#if visitId}
 				<div class="flex flex-wrap items-center gap-2">
 					<WashTooltip
@@ -885,7 +886,7 @@
 					{/if}
 
 					<div
-						class="divide-y divide-base-300 rounded-box border border-base-300"
+						class="rounded-box divide-y divide-base-300 border border-base-300"
 					>
 						{#each groups as group (group.subCategoryId ?? group.subCategoryName)}
 							<div class="collapse-arrow collapse bg-base-100">
@@ -905,7 +906,7 @@
 									<ul class="space-y-1 text-sm">
 										{#each group.lines as line (opBillingLineRowKey(line))}
 											<li
-												class="flex items-center justify-between gap-3 rounded-box bg-base-200/40 px-3 py-1.5"
+												class="rounded-box flex items-center justify-between gap-3 bg-base-200/40 px-3 py-1.5"
 											>
 												<div class="min-w-0">
 													<p class="truncate font-medium">
@@ -956,7 +957,8 @@
 		boxClassName="max-w-md"
 		showActions={false}
 	>
-			<div class="mt-1 space-y-3">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div class="space-y-3">
 				<label class="form-control w-full">
 					<div class="label">
 						<span class="label-text">
@@ -1058,25 +1060,26 @@
 					</div>
 				</div>
 			</div>
+		</div>
 
-			<div class="modal-action">
-				<WashButton
-					className="btn-ghost"
-					onClick={() => {
-						discountType = BillingDiscountTypeEnum.NONE;
-						discountInput = '';
-					}}
-				>
-					{tr(msg.ip_billing_discount_clear, 'Clear')}
-				</WashButton>
-				<WashButton
-					className="btn-primary"
-					disabled={visitLevelDiscountLocked}
-					onClick={() => void applyDiscount()}
-				>
-					{tr(msg.ip_billing_discount_apply, 'Apply')}
-				</WashButton>
-			</div>
+		<WashDialogFooter className="gap-2">
+			<WashButton
+				className="btn-ghost"
+				onClick={() => {
+					discountType = BillingDiscountTypeEnum.NONE;
+					discountInput = '';
+				}}
+			>
+				{tr(msg.ip_billing_discount_clear, 'Clear')}
+			</WashButton>
+			<WashButton
+				className="btn-primary"
+				disabled={visitLevelDiscountLocked}
+				onClick={() => void applyDiscount()}
+			>
+				{tr(msg.ip_billing_discount_apply, 'Apply')}
+			</WashButton>
+		</WashDialogFooter>
 	</WashDialog>
 {/if}
 
@@ -1093,6 +1096,7 @@
 		boxClassName="max-w-5xl"
 		showActions={false}
 	>
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 			<div class="flex items-start justify-end gap-4">
 				<WashButton
 					className="btn-outline btn-sm"
@@ -1108,7 +1112,7 @@
 			{/if}
 
 			<div class="mt-4 overflow-x-auto">
-				<table class="table w-full table-zebra text-sm">
+				<table class="table-zebra table w-full text-sm">
 					<thead>
 						<tr>
 							<th>{tr(undefined, 'Bill')}</th>
@@ -1200,14 +1204,15 @@
 					</tbody>
 				</table>
 			</div>
+		</div>
 
-			<div class="modal-action">
-				<WashButton
-					className="btn-primary"
-					onClick={() => (isHistoryModalOpen = false)}
-				>
-					{tr(undefined, 'Close')}
-				</WashButton>
-			</div>
+		<WashDialogFooter>
+			<WashButton
+				className="btn-primary"
+				onClick={() => (isHistoryModalOpen = false)}
+			>
+				{tr(undefined, 'Close')}
+			</WashButton>
+		</WashDialogFooter>
 	</WashDialog>
 {/if}

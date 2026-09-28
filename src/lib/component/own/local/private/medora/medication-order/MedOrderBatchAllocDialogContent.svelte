@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import InventoryBatchQtyPickTable from '$lib/component/own/local/private/medora/inventory/InventoryBatchQtyPickTable.svelte';
 	import type { ConsumptionBatchAllocationDraft } from '$lib/model/type/medora/department-consumption-detail.type';
 	import type { ConsumptionDraftLineIum } from '$lib/model/type/medora/department-consumption-detail.type';
@@ -126,26 +127,28 @@
 	}
 </script>
 
-<div class="mt-2 flex flex-col gap-3">
-	{#if itemLabel}
-		<p class="text-sm font-medium">{itemLabel}</p>
-	{/if}
-	<p class="text-xs opacity-70">{m.med_order_batch_pick_help()}</p>
-	{#if batchAllocations.length > 0 && iumFactors}
-		<InventoryBatchQtyPickTable
-			bind:allocations={batchAllocations}
-			factors={iumFactors}
-			purchaseUnitLabel={ium?.purchaseUnitName ?? ''}
-			issueUnitLabel={ium?.issueUnitName ?? ''}
-			{disabled}
-			showSalePrice={false}
-		/>
-	{:else}
-		<p class="text-sm opacity-60">{m.med_order_inventory_invalid()}</p>
-	{/if}
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-3">
+		{#if itemLabel}
+			<p class="text-sm font-medium">{itemLabel}</p>
+		{/if}
+		<p class="text-xs opacity-70">{m.med_order_batch_pick_help()}</p>
+		{#if batchAllocations.length > 0 && iumFactors}
+			<InventoryBatchQtyPickTable
+				bind:allocations={batchAllocations}
+				factors={iumFactors}
+				purchaseUnitLabel={ium?.purchaseUnitName ?? ''}
+				issueUnitLabel={ium?.issueUnitName ?? ''}
+				{disabled}
+				showSalePrice={false}
+			/>
+		{:else}
+			<p class="text-sm opacity-60">{m.med_order_inventory_invalid()}</p>
+		{/if}
+	</div>
 </div>
 
-<div class="modal-action mt-6">
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -162,4 +165,4 @@
 	>
 		{m.ok()}
 	</WashButton>
-</div>
+</WashDialogFooter>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -412,7 +413,7 @@
 				void selectPatient(event.detail as PatientVisitForEmrList)}
 		/>
 	</div>
-	<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+	<WashDialogFooter>
 		<WashButton variant="ghost" onClick={cancel}>{m.cancel()}</WashButton>
-	</div>
+	</WashDialogFooter>
 </div>

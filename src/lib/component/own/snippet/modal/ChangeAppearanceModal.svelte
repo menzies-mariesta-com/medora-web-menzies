@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { FontEnum } from '$lib/model/enum/font.enum';
@@ -82,60 +83,64 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<label class="label-ink text-sm font-medium" for="wash-pigment"
-		>{msg.appearance_pigment()}</label
-	>
-	<WashSelect
-		id="wash-pigment"
-		placeholder={msg.appearance_select_pigment()}
-		className="w-full"
-		options={pigmentOptions}
-		bind:value={currentPigment}
-		onChange={() => preview()}
-	/>
+<div class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
+			<label class="label-ink text-sm font-medium" for="wash-pigment"
+				>{msg.appearance_pigment()}</label
+			>
+			<WashSelect
+				id="wash-pigment"
+				placeholder={msg.appearance_select_pigment()}
+				className="w-full"
+				options={pigmentOptions}
+				bind:value={currentPigment}
+				onChange={() => preview()}
+			/>
 
-	<label class="label-ink text-sm font-medium" for="wash-mode"
-		>{msg.appearance_mode()}</label
-	>
-	<WashSelect
-		id="wash-mode"
-		placeholder={msg.appearance_select_mode()}
-		className="w-full"
-		options={modeOptions}
-		bind:value={currentMode}
-		onChange={() => preview()}
-	/>
+			<label class="label-ink text-sm font-medium" for="wash-mode"
+				>{msg.appearance_mode()}</label
+			>
+			<WashSelect
+				id="wash-mode"
+				placeholder={msg.appearance_select_mode()}
+				className="w-full"
+				options={modeOptions}
+				bind:value={currentMode}
+				onChange={() => preview()}
+			/>
 
-	<label class="label-ink text-sm font-medium" for="wash-font"
-		>{msg.appearance_font_style()}</label
-	>
-	<WashSelect
-		id="wash-font"
-		placeholder={msg.appearance_select_font_style()}
-		className="w-full"
-		options={fontOptions}
-		bind:value={currentFont}
-		onChange={() => preview()}
-	/>
+			<label class="label-ink text-sm font-medium" for="wash-font"
+				>{msg.appearance_font_style()}</label
+			>
+			<WashSelect
+				id="wash-font"
+				placeholder={msg.appearance_select_font_style()}
+				className="w-full"
+				options={fontOptions}
+				bind:value={currentFont}
+				onChange={() => preview()}
+			/>
 
-	<div class="flex flex-wrap gap-2 pt-1">
-		{#each pigments.slice(0, 12) as pigment (pigment.id)}
-			<button
-				type="button"
-				class="ripple size-7 cursor-pointer rounded-full border border-base-300"
-				style="background:{pigment.swatch}"
-				title={pigment.label}
-				aria-label={pigment.label}
-				onclick={() => {
-					currentPigment = pigment.id as WashPigmentEnum;
-					preview();
-				}}
-			></button>
-		{/each}
+			<div class="flex flex-wrap gap-2 pt-1">
+				{#each pigments.slice(0, 12) as pigment (pigment.id)}
+					<button
+						type="button"
+						class="ripple size-7 cursor-pointer rounded-full border border-base-300"
+						style="background:{pigment.swatch}"
+						title={pigment.label}
+						aria-label={pigment.label}
+						onclick={() => {
+							currentPigment = pigment.id as WashPigmentEnum;
+							preview();
+						}}
+					></button>
+				{/each}
+			</div>
+		</div>
 	</div>
 
-	<div class="modal-action mt-2">
+	<WashDialogFooter className="gap-2">
 		<WashButton
 			className="btn"
 			onClick={handleCancel}
@@ -151,5 +156,5 @@
 		>
 			{msg.ok()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </div>

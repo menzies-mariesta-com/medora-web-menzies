@@ -28,9 +28,10 @@ export class WashThemeTool {
 	/**
 	 * Boot Wash effects and restore stored pigment/mode.
 	 * `initWash({ enableEffects: true })` attaches document-level ripple,
-	 * smart tooltips, and overflow hover marquee (`.truncate` /
-	 * `line-clamp-*` / `data-overflow-marquee`). Do not call
-	 * `attachOverflowMarquee()` again — it is a singleton.
+	 * smart tooltips, overflow hover marquee (`.truncate` /
+	 * `line-clamp-*` / `data-overflow-marquee`), and details-dropdown hover
+	 * (`attachDetailsDropdowns`). Do not call those attach helpers again —
+	 * they are singletons.
 	 * Do not pass Mineral/Light as `default*` unless the caller truly wants
 	 * to override storage — `initWash` uses `defaultPigment ?? readStoredTheme()`,
 	 * so providing defaults overwrites the user's saved preference on every load.

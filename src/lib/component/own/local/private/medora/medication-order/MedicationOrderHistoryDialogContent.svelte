@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
@@ -233,11 +234,11 @@
 		</MenziesTable>
 	</div>
 
-	<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+	<WashDialogFooter>
 		<WashButton variant="ghost" onClick={cancel} disabled={busy}
 			>{m.cancel()}</WashButton
 		>
-	</div>
+	</WashDialogFooter>
 
 	{#if pendingConfirm}
 		<div
@@ -262,7 +263,7 @@
 				>
 					{confirmMessage}
 				</p>
-				<div class="modal-action">
+				<WashDialogFooter>
 					<WashButton
 						variant="ghost"
 						disabled={isActing}
@@ -277,7 +278,7 @@
 					>
 						{m.ok()}
 					</WashButton>
-				</div>
+				</WashDialogFooter>
 			</div>
 		</div>
 	{/if}

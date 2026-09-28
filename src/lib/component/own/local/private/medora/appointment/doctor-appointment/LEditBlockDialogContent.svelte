@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { EditBlockDialogState } from '$lib/state/edit-block-dialog.state.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -72,89 +73,89 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-	>
-		<label for="edit-block-date" class="shrink-0 sm:w-28">Date</label>
-		<WashInputField
-			id="edit-block-date"
-			bind:value={date}
-			inputType="date"
-			min={todayString}
-			className="input-sm max-w-80 flex-1"
-		/>
-	</div>
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-	>
-		<label for="edit-block-start" class="shrink-0 sm:w-28">From time</label>
-		<input
-			id="edit-block-start"
-			type="time"
-			bind:value={startTime}
-			class="input-bordered input input-sm max-w-80 flex-1"
-		/>
-	</div>
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-	>
-		<label for="edit-block-end" class="shrink-0 sm:w-28">To time</label>
-		<input
-			id="edit-block-end"
-			type="time"
-			bind:value={endTime}
-			class="input-bordered input input-sm max-w-80 flex-1"
-		/>
-	</div>
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-	>
-		<label for="edit-block-remark" class="shrink-0 sm:w-28">Remark</label>
-		<textarea
-			id="edit-block-remark"
-			bind:value={remark}
-			class="textarea-bordered textarea max-w-80 flex-1 textarea-sm"
-			rows="3"
-			placeholder="Why are you blocking this time?"
-		></textarea>
-	</div>
-	{#if isBlockStartInPast}
-		<p class="text-sm text-error">
-			Cannot set block time in the past.
-		</p>
-	{/if}
-	<div
-		class="modal-action flex justify-end gap-2 border-t border-base-300 pt-4"
-	>
-		<button
-			type="button"
-			class="btn"
-			onclick={() => cancel()}
-			disabled={isConfirming}
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			Cancel
-		</button>
-		<button
-			type="button"
-			class="btn btn-error"
-			onclick={() => handleConfirm()}
-			disabled={isConfirming ||
-				!date.trim() ||
-				!startTime ||
-				!endTime ||
-				!remark.trim() ||
-				toHHmm(endTime) <= toHHmm(startTime) ||
-				isBlockStartInPast}
+			<label for="edit-block-date" class="shrink-0 sm:w-28">Date</label>
+			<WashInputField
+				id="edit-block-date"
+				bind:value={date}
+				inputType="date"
+				min={todayString}
+				className="input-sm max-w-80 flex-1"
+			/>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			{#if isConfirming}
-				<span class="inline-flex items-center gap-2">
-					<span class="loading loading-spinner loading-sm"></span>
-					Loading…
-				</span>
-			{:else}
-				Save
-			{/if}
-		</button>
+			<label for="edit-block-start" class="shrink-0 sm:w-28">From time</label>
+			<input
+				id="edit-block-start"
+				type="time"
+				bind:value={startTime}
+				class="input-bordered input input-sm max-w-80 flex-1"
+			/>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+		>
+			<label for="edit-block-end" class="shrink-0 sm:w-28">To time</label>
+			<input
+				id="edit-block-end"
+				type="time"
+				bind:value={endTime}
+				class="input-bordered input input-sm max-w-80 flex-1"
+			/>
+		</div>
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<label for="edit-block-remark" class="shrink-0 sm:w-28">Remark</label>
+			<textarea
+				id="edit-block-remark"
+				bind:value={remark}
+				class="textarea-bordered textarea max-w-80 flex-1 textarea-sm"
+				rows="3"
+				placeholder="Why are you blocking this time?"
+			></textarea>
+		</div>
+		{#if isBlockStartInPast}
+			<p class="text-sm text-error">
+				Cannot set block time in the past.
+			</p>
+		{/if}
 	</div>
 </div>
+<WashDialogFooter>
+	<button
+		type="button"
+		class="btn"
+		onclick={() => cancel()}
+		disabled={isConfirming}
+	>
+		Cancel
+	</button>
+	<button
+		type="button"
+		class="btn btn-error"
+		onclick={() => handleConfirm()}
+		disabled={isConfirming ||
+			!date.trim() ||
+			!startTime ||
+			!endTime ||
+			!remark.trim() ||
+			toHHmm(endTime) <= toHHmm(startTime) ||
+			isBlockStartInPast}
+	>
+		{#if isConfirming}
+			<span class="inline-flex items-center gap-2">
+				<span class="loading loading-spinner loading-sm"></span>
+				Loading…
+			</span>
+		{:else}
+			Save
+		{/if}
+	</button>
+</WashDialogFooter>

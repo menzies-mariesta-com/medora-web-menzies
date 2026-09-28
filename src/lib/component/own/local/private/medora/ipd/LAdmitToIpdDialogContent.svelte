@@ -7,6 +7,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type { WardRow, BedRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -168,41 +169,45 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	{#if isLoading}
-		<p class="text-sm opacity-70">Loading wards…</p>
-	{/if}
-	<label class="label-ink text-sm font-medium" for="admit-ward"
-		>Ward</label
-	>
-	<WashSelect
-		id="admit-ward"
-		placeholder="Select ward"
-		className="w-full"
-		options={wardOptions}
-		bind:value={wardId}
-	/>
-	<label class="label-ink text-sm font-medium" for="admit-bed"
-		>Bed</label
-	>
-	<WashSelect
-		id="admit-bed"
-		placeholder="Select free bed"
-		className="w-full"
-		options={bedOptions}
-		bind:value={bedId}
-		disabled={!wardId || bedOptions.length === 0}
-	/>
-	<label class="label-ink text-sm font-medium" for="admit-notes"
-		>Reason / notes</label
-	>
-	<WashInputField
-		id="admit-notes"
-		bind:value={reasonNotes}
-		inputType="text"
-		inputPlaceholderText="Optional"
-	/>
-	<div class="modal-action mt-2 flex justify-end gap-2">
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
+			{#if isLoading}
+				<p class="text-sm opacity-70">Loading wards…</p>
+			{/if}
+			<label class="label-ink text-sm font-medium" for="admit-ward"
+				>Ward</label
+			>
+			<WashSelect
+				id="admit-ward"
+				placeholder="Select ward"
+				className="w-full"
+				options={wardOptions}
+				bind:value={wardId}
+			/>
+			<label class="label-ink text-sm font-medium" for="admit-bed"
+				>Bed</label
+			>
+			<WashSelect
+				id="admit-bed"
+				placeholder="Select free bed"
+				className="w-full"
+				options={bedOptions}
+				bind:value={bedId}
+				disabled={!wardId || bedOptions.length === 0}
+			/>
+			<label class="label-ink text-sm font-medium" for="admit-notes"
+				>Reason / notes</label
+			>
+			<WashInputField
+				id="admit-notes"
+				bind:value={reasonNotes}
+				inputType="text"
+				inputPlaceholderText="Optional"
+			/>
+		</div>
+	</div>
+	<WashDialogFooter>
 		<WashButton
 			type="button"
 			className="btn"
@@ -219,5 +224,5 @@
 		>
 			Admit
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

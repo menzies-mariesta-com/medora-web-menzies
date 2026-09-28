@@ -4,6 +4,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 
 	interface Props extends DialogSlotProps {
 		label: string;
@@ -51,27 +52,27 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-6">
-	<div
-		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-	>
-		<label for="refer-note" class="shrink-0 sm:w-32">
-			{label}
-			{#if required}<span class="text-error">*</span>{/if}
-		</label>
-		<div class="min-w-0 flex-1">
-			<WashTextarea
-				id="refer-note"
-				bind:value={note}
-				{placeholder}
-				className="w-full"
-			/>
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div
+			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+		>
+			<label for="refer-note" class="shrink-0 sm:w-32">
+				{label}
+				{#if required}<span class="text-error">*</span>{/if}
+			</label>
+			<div class="min-w-0 flex-1">
+				<WashTextarea
+					id="refer-note"
+					bind:value={note}
+					{placeholder}
+					className="w-full"
+				/>
+			</div>
 		</div>
 	</div>
 
-	<div
-		class="modal-action mt-0 flex justify-end gap-2 border-t border-base-300 pt-4"
-	>
+	<WashDialogFooter>
 		<WashButton
 			type="button"
 			className="btn-ghost"
@@ -87,5 +88,5 @@
 		>
 			{confirmLabel}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

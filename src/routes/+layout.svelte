@@ -13,10 +13,7 @@
 	import { DialogState } from '$lib/state/dialog.state.svelte';
 	import { ToastState } from '$lib/state/toast.state.svelte';
 	import { dismissToast } from '$lib/service/toast.service.svelte';
-	/* Wash base first; app Tailwind/Daisy utilities must load after so
-	   responsive variants (sm:flex-row, lg:grid-cols-*, …) override Wash’s
-	   unprefixed .flex-col / .grid-cols-* and restore original layouts. */
-	import '@menzies-mariesta-com/menzies-design-wash-ui/styles.css';
+	/* Wash styles.css is imported in layout.css under @layer components. */
 	import './layout.css';
 	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 	import GQuickTool from '$lib/component/own/global/GQuickTool.svelte';
@@ -62,14 +59,8 @@
 		return 'primary';
 	});
 
-	const dialogDescription = $derived(
-		DialogState.current?.description ??
-			(DialogState.current &&
-			!DialogState.current.component &&
-			!DialogState.current.children
-				? DialogState.current.message
-				: undefined)
-	);
+	/** Short subtitle only — confirm/alert copy uses `message` in the body. */
+	const dialogDescription = $derived(DialogState.current?.description);
 
 	const dialogOwnsActions = $derived(
 		Boolean(
@@ -163,6 +154,10 @@
 				confirm: (data: unknown) => dialogService.confirm(data),
 				cancel: () => dialogService.cancel()
 			})}
+		{:else if DialogState.current.message}
+			<p class="text-base-content text-sm leading-relaxed">
+				{DialogState.current.message}
+			</p>
 		{/if}
 
 		{#snippet actions()}

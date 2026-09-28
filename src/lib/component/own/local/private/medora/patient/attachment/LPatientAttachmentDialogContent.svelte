@@ -3,6 +3,7 @@
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
@@ -657,9 +658,9 @@
 			{/if}
 		</div>
 		{#if !embedded}
-			<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+			<WashDialogFooter>
 				<WashButton variant="ghost" onClick={cancel}>Close</WashButton>
-			</div>
+			</WashDialogFooter>
 		{/if}
 	</div>
 {/if}

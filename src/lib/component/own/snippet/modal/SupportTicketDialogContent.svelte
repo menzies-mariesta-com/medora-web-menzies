@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
@@ -398,43 +399,47 @@
 
 	{#if activeTab === 'new'}
 		<form
-			class="flex flex-1 flex-col gap-4 overflow-auto p-4"
+			class="flex min-h-0 flex-1 flex-col"
 			onsubmit={handleCreateTicket}
 		>
-			<div class="flex flex-col gap-1">
-				<label for="support-subject" class="font-semibold">
-					{m.support_subject()} <span class="text-error">*</span>
-				</label>
-				<WashInputField
-					id="support-subject"
-					className="w-full"
-					bind:value={newSubject}
-					inputPlaceholderText={m.support_subject()}
-				/>
+			<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+				<div class="flex flex-col gap-4">
+					<div class="flex flex-col gap-1">
+						<label for="support-subject" class="font-semibold">
+							{m.support_subject()} <span class="text-error">*</span>
+						</label>
+						<WashInputField
+							id="support-subject"
+							className="w-full"
+							bind:value={newSubject}
+							inputPlaceholderText={m.support_subject()}
+						/>
+					</div>
+					<div class="flex flex-col gap-1">
+						<label for="support-desc" class="font-semibold">
+							{m.support_description()}
+							<span class="text-error">*</span>
+						</label>
+						<WashTextarea
+							id="support-desc"
+							className="textarea-bordered min-h-32 w-full"
+							bind:value={newDescription}
+						/>
+					</div>
+					<div class="flex max-w-xs flex-col gap-1">
+						<label for="support-priority" class="font-semibold">
+							{m.support_priority()}
+						</label>
+						<WashSelect className="w-full" bind:value={newPriorityStr}>
+							<option value="1">{m.support_priority_1()}</option>
+							<option value="2">{m.support_priority_2()}</option>
+							<option value="3">{m.support_priority_3()}</option>
+							<option value="4">{m.support_priority_4()}</option>
+						</WashSelect>
+					</div>
+				</div>
 			</div>
-			<div class="flex flex-col gap-1">
-				<label for="support-desc" class="font-semibold">
-					{m.support_description()}
-					<span class="text-error">*</span>
-				</label>
-				<WashTextarea
-					id="support-desc"
-					className="textarea-bordered min-h-32 w-full"
-					bind:value={newDescription}
-				/>
-			</div>
-			<div class="flex max-w-xs flex-col gap-1">
-				<label for="support-priority" class="font-semibold">
-					{m.support_priority()}
-				</label>
-				<WashSelect className="w-full" bind:value={newPriorityStr}>
-					<option value="1">{m.support_priority_1()}</option>
-					<option value="2">{m.support_priority_2()}</option>
-					<option value="3">{m.support_priority_3()}</option>
-					<option value="4">{m.support_priority_4()}</option>
-				</WashSelect>
-			</div>
-			<div class="modal-action">
+			<WashDialogFooter>
 				<WashButton
 					type="button"
 					className="btn"
@@ -450,7 +455,7 @@
 				>
 					{m.support_submit_ticket()}
 				</WashButton>
-			</div>
+			</WashDialogFooter>
 		</form>
 	{:else}
 		<div

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
@@ -358,14 +359,18 @@
 	{title}
 	showActions={false}
 >
-		{#if !loaded}
+	{#if !loaded}
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 			<p class="py-4 text-base-content/70">Loading…</p>
-		{:else}
-			<div class="mt-4 flex flex-col gap-4">
+		</div>
+	{:else}
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div class="flex flex-col gap-4">
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-name" class="shrink-0 sm:w-36">Name</label>
+					<label for="refer-name" class="shrink-0 sm:w-36">Name</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-name">
@@ -404,7 +409,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label for="refer-address" class="shrink-0 sm:w-36">Address</label>
+					<label for="refer-address" class="shrink-0 sm:w-36"
+						>Address</label
+					>
 					{#if isView}
 						<span
 							id="refer-address"
@@ -423,7 +430,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-country" class="shrink-0 sm:w-36">Country</label>
+					<label for="refer-country" class="shrink-0 sm:w-36"
+						>Country</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-country">
@@ -444,7 +453,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-state" class="shrink-0 sm:w-36">State</label>
+					<label for="refer-state" class="shrink-0 sm:w-36"
+						>State</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-state">
@@ -466,7 +477,8 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-city" class="shrink-0 sm:w-36">City</label>
+					<label for="refer-city" class="shrink-0 sm:w-36">City</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-city">
@@ -488,7 +500,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-postalCode" class="shrink-0 sm:w-36">Postal Code</label>
+					<label for="refer-postalCode" class="shrink-0 sm:w-36"
+						>Postal Code</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-postalCode">
@@ -511,7 +525,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-phone" class="shrink-0 sm:w-36">Phone</label>
+					<label for="refer-phone" class="shrink-0 sm:w-36"
+						>Phone</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							{@const code = phoneCountryId
@@ -526,7 +542,7 @@
 								id="refer-phone"
 								bind:countryId={phoneCountryId}
 								bind:phone
-								countries={countries}
+								{countries}
 								optionHeader={m.select_country_code()}
 								placeholder="Number"
 							/>
@@ -536,7 +552,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-email" class="shrink-0 sm:w-36">Email</label>
+					<label for="refer-email" class="shrink-0 sm:w-36"
+						>Email</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-email">{email || '—'}</span>
@@ -552,7 +570,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="refer-status" class="shrink-0 sm:w-36">Status</label>
+					<label for="refer-status" class="shrink-0 sm:w-36"
+						>Status</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isView}
 							<span id="refer-status"
@@ -567,26 +587,27 @@
 					</div>
 				</div>
 			</div>
+		</div>
 
-			{#if !isView}
-				<div class="modal-action mt-4">
-					<WashButton className="btn" onClick={onClose}
-						>Cancel</WashButton
-					>
-					<WashButton
-						className="btn btn-primary"
-						disabled={isSubmitting}
-						onClick={handleSubmit}
-					>
-						{isSubmitting ? 'Saving…' : isCreate ? 'Create' : 'Save'}
-					</WashButton>
-				</div>
-			{:else}
-				<div class="modal-action mt-4">
-					<WashButton className="btn btn-primary" onClick={onClose}
-						>Close</WashButton
-					>
-				</div>
-			{/if}
+		{#if !isView}
+			<WashDialogFooter className="gap-2">
+				<WashButton className="btn" onClick={onClose}
+					>Cancel</WashButton
+				>
+				<WashButton
+					className="btn btn-primary"
+					disabled={isSubmitting}
+					onClick={handleSubmit}
+				>
+					{isSubmitting ? 'Saving…' : isCreate ? 'Create' : 'Save'}
+				</WashButton>
+			</WashDialogFooter>
+		{:else}
+			<WashDialogFooter>
+				<WashButton className="btn btn-primary" onClick={onClose}
+					>Close</WashButton
+				>
+			</WashDialogFooter>
 		{/if}
+	{/if}
 </WashDialog>

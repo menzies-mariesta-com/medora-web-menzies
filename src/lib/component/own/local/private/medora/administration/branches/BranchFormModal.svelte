@@ -3,6 +3,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { BranchModalState } from '$lib/state/branch-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -177,77 +178,87 @@
 		<span class="loading loading-lg loading-spinner"></span>
 	</div>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div class="flex flex-col gap-4">
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="branch-name" class="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></label>
-				<div class="max-w-80 flex-1">
-					<WashInputField
-						id="branch-name"
-						bind:value={name}
-						inputType="text"
-						inputPlaceholderText="Branch name"
-						required
-					/>
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div class="flex flex-col gap-4">
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="branch-name" class="shrink-0 font-bold sm:w-36"
+						>Name <span class="text-error">*</span></label
+					>
+					<div class="max-w-80 flex-1">
+						<WashInputField
+							id="branch-name"
+							bind:value={name}
+							inputType="text"
+							inputPlaceholderText="Branch name"
+							required
+						/>
+					</div>
 				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="branch-code" class="shrink-0 sm:w-36">Code</label>
-				<div class="max-w-80 flex-1">
-					<WashInputField
-						id="branch-code"
-						bind:value={code}
-						inputType="text"
-						inputPlaceholderText="e.g. BR01"
-					/>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="branch-code" class="shrink-0 sm:w-36"
+						>Code</label
+					>
+					<div class="max-w-80 flex-1">
+						<WashInputField
+							id="branch-code"
+							bind:value={code}
+							inputType="text"
+							inputPlaceholderText="e.g. BR01"
+						/>
+					</div>
 				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="branch-phone" class="shrink-0 sm:w-36">Phone</label>
-				<div class="max-w-80 flex-1">
-					<WashInputField
-						id="branch-phone"
-						bind:value={phone}
-						inputType="tel"
-						inputPlaceholderText="Branch phone"
-					/>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="branch-phone" class="shrink-0 sm:w-36"
+						>Phone</label
+					>
+					<div class="max-w-80 flex-1">
+						<WashInputField
+							id="branch-phone"
+							bind:value={phone}
+							inputType="tel"
+							inputPlaceholderText="Branch phone"
+						/>
+					</div>
 				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="branch-email" class="shrink-0 sm:w-36">Email</label>
-				<div class="max-w-80 flex-1">
-					<WashInputField
-						id="branch-email"
-						bind:value={email}
-						inputType="email"
-						inputPlaceholderText="branch@example.com"
-					/>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="branch-email" class="shrink-0 sm:w-36"
+						>Email</label
+					>
+					<div class="max-w-80 flex-1">
+						<WashInputField
+							id="branch-email"
+							bind:value={email}
+							inputType="email"
+							inputPlaceholderText="branch@example.com"
+						/>
+					</div>
 				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label for="branch-address" class="shrink-0 sm:w-36 pt-2">Address</label>
-				<div class="max-w-80 flex-1">
-					<WashTextarea
-						id="branch-address"
-						bind:value={address}
-						placeholder="Street, city, etc."
-					/>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label for="branch-address" class="shrink-0 pt-2 sm:w-36"
+						>Address</label
+					>
+					<div class="max-w-80 flex-1">
+						<WashTextarea
+							id="branch-address"
+							bind:value={address}
+							placeholder="Street, city, etc."
+						/>
+					</div>
 				</div>
 			</div>
 		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -262,6 +273,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}
