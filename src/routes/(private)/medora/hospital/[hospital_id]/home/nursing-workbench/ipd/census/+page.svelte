@@ -15,7 +15,9 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import LIpdTransferDialogContent from '$lib/component/own/local/private/medora/ipd/LIpdTransferDialogContent.svelte';
+	import LAdmitToIpdDialogContent from '$lib/component/own/local/private/medora/ipd/LAdmitToIpdDialogContent.svelte';
 	import { IpdTransferDialogState } from '$lib/state/ipd-transfer-dialog.state.svelte';
+	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import {
 		buildConsultationEmrUrl,
@@ -142,6 +144,17 @@
 		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
+	async function openAdmit() {
+		AdmitToIpdDialogState.patientId = null;
+		AdmitToIpdDialogState.branchId = null;
+		AdmitToIpdDialogState.admittingDoctorId = null;
+		const result = await dialogService.open({
+			title: 'Admit to IPD',
+			component: LAdmitToIpdDialogContent
+		});
+		if (result.confirmed) fetchRows();
+	}
+
 	async function openTransfer(row: IpdCensusRow) {
 		IpdTransferDialogState.admissionId = row.admissionId;
 		IpdTransferDialogState.branchId = row.branchId;
@@ -201,7 +214,7 @@
 		const qs = new URLSearchParams({
 			visitId: String(row.visitId),
 			visitType: String(VisitTypeEnum.IPD),
-			visitStatus: 'admitted'
+			hasActiveAdmission: '1'
 		});
 		void goto(
 			buildIpdNursingEmrUrl({
@@ -296,6 +309,9 @@
 			}}
 		>
 			Search
+		</WashButton>
+		<WashButton className="btn-secondary" onClick={() => openAdmit()}>
+			Admit
 		</WashButton>
 	</div>
 

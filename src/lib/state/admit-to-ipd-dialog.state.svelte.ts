@@ -1,10 +1,10 @@
-/** Set before opening Admit to IPD dialog. */
+/** Set before opening ATD Admit dialog (optional branch filter / doctor). */
 export const AdmitToIpdDialogState = $state<{
-	visitId: number | null;
+	patientId: string | null;
 	branchId: string | null;
 	admittingDoctorId: string | null;
 }>({
-	visitId: null,
+	patientId: null,
 	branchId: null,
 	admittingDoctorId: null
 });

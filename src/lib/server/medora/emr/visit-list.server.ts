@@ -4,6 +4,7 @@ import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import {
 	AllergyEnum,
+	IpdAdmissionStatusEnum,
 	StaffTypeEnum,
 	StatusEnum
 } from '$lib/model/enum/db-link';
@@ -44,9 +45,7 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 	openId: number | null;
 	vitalId: number | null;
 	seenId: number | null;
-	admittedId: number | null;
-	dischargedId: number | null;
-	closedId: number | null;
+	closedDischargedId: number | null;
 }> {
 	const rows = await db
 		.select({
@@ -72,9 +71,12 @@ async function getVisitStatusTaggingIds(db = ensureDb()): Promise<{
 		openId: byCode.get('open') ?? null,
 		vitalId: byCode.get('vital') ?? null,
 		seenId: byCode.get('seen') ?? null,
-		admittedId: byCode.get('admitted') ?? null,
-		dischargedId: byCode.get('discharged') ?? null,
-		closedId: byCode.get('closed') ?? null
+		// Prefer merged code; fall back to legacy closed/discharged ids during rollout.
+		closedDischargedId:
+			byCode.get('closed_discharged') ??
+			byCode.get('closed') ??
+			byCode.get('discharged') ??
+			null
 	};
 }
 
@@ -104,20 +106,10 @@ function resolveVisitStatusCode(params: {
 	tagging: Awaited<ReturnType<typeof getVisitStatusTaggingIds>>;
 }): VisitStatusCode {
 	if (
-		params.tagging.closedId != null &&
-		params.statusTaggingId === params.tagging.closedId
+		params.tagging.closedDischargedId != null &&
+		params.statusTaggingId === params.tagging.closedDischargedId
 	)
-		return 'closed';
-	if (
-		params.tagging.dischargedId != null &&
-		params.statusTaggingId === params.tagging.dischargedId
-	)
-		return 'discharged';
-	if (
-		params.tagging.admittedId != null &&
-		params.statusTaggingId === params.tagging.admittedId
-	)
-		return 'admitted';
+		return 'closed_discharged';
 	if (
 		params.tagging.seenId != null &&
 		params.statusTaggingId === params.tagging.seenId
@@ -272,18 +264,8 @@ export async function markPatientVisitSeenOnDoctorSelect(
 	if (!current) return;
 
 	if (
-		visitStatusTagging.closedId != null &&
-		current.statusTaggingId === visitStatusTagging.closedId
-	)
-		return;
-	if (
-		visitStatusTagging.admittedId != null &&
-		current.statusTaggingId === visitStatusTagging.admittedId
-	)
-		return;
-	if (
-		visitStatusTagging.dischargedId != null &&
-		current.statusTaggingId === visitStatusTagging.dischargedId
+		visitStatusTagging.closedDischargedId != null &&
+		current.statusTaggingId === visitStatusTagging.closedDischargedId
 	)
 		return;
 	if (current.statusTaggingId === visitStatusTagging.seenId) return;
@@ -333,7 +315,9 @@ export async function getPatientVisitPaginatedForEmr(
 		branchName?: string;
 		doctorName?: string;
 		visitTypeId?: number | null;
-		visitStatus?: VisitStatusCode;
+		visitStatus?: VisitStatusCode | 'closed' | 'discharged';
+		/** When true, only visits with an active IPD admission row. */
+		hasActiveAdmission?: boolean;
 	}
 ): Promise<PaginatedResult<PatientVisitForEmrList>> {
 	const { page, pageSize, limit, offset } =
@@ -466,8 +450,8 @@ export async function getPatientVisitPaginatedForEmr(
 				tagging.seenId != null
 					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.seenId}` as any)
 					: (sql`1=1` as any),
-				tagging.closedId != null
-					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedId}` as any)
+				tagging.closedDischargedId != null
+					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedDischargedId}` as any)
 					: (sql`1=1` as any),
 				sql`EXISTS (
 					SELECT 1 FROM patient_diagnosis pd
@@ -482,8 +466,8 @@ export async function getPatientVisitPaginatedForEmr(
 				tagging.seenId != null
 					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.seenId}` as any)
 					: (sql`1=1` as any),
-				tagging.closedId != null
-					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedId}` as any)
+				tagging.closedDischargedId != null
+					? (sql`${table.patientVisitTable.statusTaggingId} IS DISTINCT FROM ${tagging.closedDischargedId}` as any)
 					: (sql`1=1` as any),
 				sql`NOT EXISTS (
 					SELECT 1 FROM patient_diagnosis pd
@@ -492,40 +476,34 @@ export async function getPatientVisitPaginatedForEmr(
 					AND pd.status_id <> ${StatusEnum.DELETED}
 				)` as any
 			);
-		} else if (visitStatus === 'closed') {
+		} else if (
+			visitStatus === 'closed_discharged' ||
+			visitStatus === 'closed' ||
+			visitStatus === 'discharged'
+		) {
 			whereExpr =
-				tagging.closedId != null
+				tagging.closedDischargedId != null
 					? and(
 							whereExpr,
 							eq(
 								table.patientVisitTable.statusTaggingId,
-								tagging.closedId
-							)
-						)
-					: and(whereExpr, sql`1=0` as any);
-		} else if (visitStatus === 'admitted') {
-			whereExpr =
-				tagging.admittedId != null
-					? and(
-							whereExpr,
-							eq(
-								table.patientVisitTable.statusTaggingId,
-								tagging.admittedId
-							)
-						)
-					: and(whereExpr, sql`1=0` as any);
-		} else if (visitStatus === 'discharged') {
-			whereExpr =
-				tagging.dischargedId != null
-					? and(
-							whereExpr,
-							eq(
-								table.patientVisitTable.statusTaggingId,
-								tagging.dischargedId
+								tagging.closedDischargedId
 							)
 						)
 					: and(whereExpr, sql`1=0` as any);
 		}
+	}
+
+	if (params?.hasActiveAdmission) {
+		whereExpr = and(
+			whereExpr,
+			sql`EXISTS (
+				SELECT 1 FROM ipd_admission a
+				WHERE a.visit_id = ${table.patientVisitTable.id}
+				AND a.admission_status = ${IpdAdmissionStatusEnum.ADMITTED}
+				AND a.status_id <> ${StatusEnum.DELETED}
+			)` as any
+		);
 	}
 
 	const doctorScope = getDoctorEmrVisitScopeFilter(event);

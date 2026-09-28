@@ -45,9 +45,11 @@ export enum VisitStatusTaggingEnum {
 	OPEN = 5,
 	VITAL = 6,
 	SEEN = 7,
-	CLOSED = 8,
-	ADMITTED = 54,
-	DISCHARGED = 55
+	/**
+	 * Terminal visit status (clinical sign / Save as signed, and IPD discharge).
+	 * Display: "Closed / Discharged".
+	 */
+	CLOSED_DISCHARGED = 8
 }
 
 /** Bed occupancy for IPD ADT (stored on `bed.bed_status`). */
@@ -151,7 +153,18 @@ export enum StatusTaggingTypeEnum {
 	/** @see drizzle/0048_department_issue_tables_and_status.sql */
 	INV_DEPARTMENT_ISSUE = 9,
 	/** @see drizzle/0050_inv_department_consumption.sql */
-	INV_DEPARTMENT_CONSUMPTION = 10
+	INV_DEPARTMENT_CONSUMPTION = 10,
+	/** Shared OP/IP billing Open/Closed. @see information-table-seed / drizzle/0007 + 0010 */
+	BILLING = 11
+}
+
+/**
+ * `status_tagging.id` for billing header workflow (OP and IP share these).
+ * @see information-table-seed.ts
+ */
+export enum BillingStatusTaggingEnum {
+	OPEN = 56,
+	CLOSED = 57
 }
 
 /**

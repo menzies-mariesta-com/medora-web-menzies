@@ -24,6 +24,7 @@ import {
 	IpdAdmissionStatusEnum,
 	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
+	BillingStatusTaggingEnum,
 	StatusEnum,
 	YesNoEnum
 } from '../../../../model/enum/db-link';
@@ -951,7 +952,7 @@ export const patientVisitTable = pgTable('patient_visit', {
 	chiefComplaint: text('chief_complaint'),
 	patientCondition: text('patient_condition'),
 	diagnosisNotes: text('diagnosis_notes'),
-	/** Set once from Observation EMR “Save as signed”; locks visit-scoped clinical edits across Observation / Nursing / CPOE. */
+	/** Set from Observation EMR “Save as signed”; locks visit-scoped clinical edits and sets visit status tagging to Closed. Cleared on unsign (status returns to Seen). */
 	clinicalSignedAt: timestamp('clinical_signed_at', {
 		withTimezone: true,
 		mode: 'string'
@@ -1511,8 +1512,8 @@ export const serviceOrderDetailTable = pgTable(
 
 /**
  * OP billing header for a visit. Multiple rows per visit are allowed: each
- * closed bill (`printed_at` set) freezes its lines; a new open draft appears
- * when there are nursing-complete lines not yet on any closed bill.
+ * closed bill (`status_tagging_id` = CLOSED) freezes its lines; a new open
+ * draft appears when there are nursing-complete lines not yet on any closed bill.
  */
 export const opBillingTable = pgTable(
 	'op_billing',
@@ -1570,6 +1571,15 @@ export const opBillingTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
+		/** Workflow status (Open / Closed). Closing sets this to CLOSED. */
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(BillingStatusTaggingEnum.OPEN),
+		/**
+		 * Legacy close audit columns. Open vs closed is `status_tagging_id`
+		 * (`BillingStatusTaggingEnum`). New closes do not write these.
+		 */
 		printedByStaffId: uuid('printed_by_staff_id').references(
 			() => staffTable.id,
 			{ onDelete: 'set null' }
@@ -1591,6 +1601,7 @@ export const opBillingTable = pgTable(
 		index('op_billing_branch_id_idx').on(table.branchId),
 		index('op_billing_bill_no_idx').on(table.billNo),
 		index('op_billing_status_id_idx').on(table.statusId),
+		index('op_billing_status_tagging_id_idx').on(table.statusTaggingId),
 		index('op_billing_discount_type_id_idx').on(table.discountTypeId)
 	]
 );
@@ -2236,7 +2247,8 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 
 /**
  * IP billing header for an IPD visit (mirrors `op_billing`).
- * Multiple drafts/closed bills per visit allowed same as OP.
+ * Multiple drafts/closed bills per visit allowed same as OP; closed is
+ * `status_tagging_id` = CLOSED.
  */
 export const ipBillingTable = pgTable(
 	'ip_billing',
@@ -2294,6 +2306,15 @@ export const ipBillingTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
+		/** Workflow status (Open / Closed). Closing sets this to CLOSED. */
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(BillingStatusTaggingEnum.OPEN),
+		/**
+		 * Legacy close audit columns. Open vs closed is `status_tagging_id`
+		 * (`BillingStatusTaggingEnum`). New closes do not write these.
+		 */
 		printedByStaffId: uuid('printed_by_staff_id').references(
 			() => staffTable.id,
 			{ onDelete: 'set null' }
@@ -2315,7 +2336,8 @@ export const ipBillingTable = pgTable(
 		index('ip_billing_hospital_id_idx').on(table.hospitalId),
 		index('ip_billing_branch_id_idx').on(table.branchId),
 		index('ip_billing_bill_no_idx').on(table.billNo),
-		index('ip_billing_status_id_idx').on(table.statusId)
+		index('ip_billing_status_id_idx').on(table.statusId),
+		index('ip_billing_status_tagging_id_idx').on(table.statusTaggingId)
 	]
 );
 

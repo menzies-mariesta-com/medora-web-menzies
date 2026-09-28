@@ -1366,6 +1366,10 @@ export const opBillingTableRelations = relations(
 			fields: [opBillingTable.statusId],
 			references: [statusTable.id]
 		}),
+		statusTagging: one(statusTaggingTable, {
+			fields: [opBillingTable.statusTaggingId],
+			references: [statusTaggingTable.id]
+		}),
 		createdByUser: one(userTable, {
 			fields: [opBillingTable.createdBy],
 			references: [userTable.id]
@@ -1789,6 +1793,10 @@ export const ipBillingTableRelations = relations(
 		status: one(statusTable, {
 			fields: [ipBillingTable.statusId],
 			references: [statusTable.id]
+		}),
+		statusTagging: one(statusTaggingTable, {
+			fields: [ipBillingTable.statusTaggingId],
+			references: [statusTaggingTable.id]
 		}),
 		discountedByStaff: one(staffTable, {
 			fields: [ipBillingTable.discountedByStaffId],

@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Thin IPD nav wrapper: redirects to shared Nursing EMR screens with IPD
-	 * visit-picker context (visitType=IPD, status=admitted).
+	 * visit-picker context (visitType=IPD, active admission).
 	 */
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';

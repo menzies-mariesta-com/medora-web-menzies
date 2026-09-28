@@ -128,7 +128,8 @@ export async function getIpBillingReadiness(
 	let canCloseBill = false;
 
 	const discharged =
-		input.visitStatusTaggingId === VisitStatusTaggingEnum.DISCHARGED;
+		input.visitStatusTaggingId ===
+		VisitStatusTaggingEnum.CLOSED_DISCHARGED;
 
 	if (input.billAlreadyClosed) {
 		blockReasonKey = 'already_closed';

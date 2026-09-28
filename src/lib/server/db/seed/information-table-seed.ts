@@ -312,8 +312,16 @@ export async function seedInformationTables() {
 			(7, 'Stock Issue'),
 			(8, 'Department indent'),
 			(9, 'Department issue'),
-			(10, 'Department consumption')
+			(10, 'Department consumption'),
+			(11, 'Billing')
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	// Align Billing type name; drop obsolete IP Billing type if present.
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'Billing' WHERE id = 11
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging_type WHERE id = 12
 		`);
 	seedLogger.info('Seeded: status tagging type');
 
@@ -328,13 +336,11 @@ export async function seedInformationTables() {
 			(3, 'Check In', 'check_in', 3, 1),
 			(4, 'Cancelled', 'cancel', 4, 1),
 
-			-- Visit Status (order is important)
+			-- Visit Status (order is important): Open → Vital → Seen → Closed / Discharged
 			(5, 'Open', 'open', 1, 2),
 			(6, 'Vital', 'vital', 2, 2),
 			(7, 'Seen', 'seen', 3, 2),
-			(8, 'Closed', 'closed', 6, 2),
-			(54, 'Admitted', 'admitted', 4, 2),
-			(55, 'Discharged', 'discharged', 5, 2),
+			(8, 'Closed / Discharged', 'closed_discharged', 4, 2),
 
 			-- Purchase Requisition (ids 9–13; StatusTaggingTypeEnum.INV_PURCHASE_REQUISITION)
 			(9, 'Draft', 'draft', 1, 3),
@@ -387,9 +393,50 @@ export async function seedInformationTables() {
 			(50, 'Draft', 'draft', 1, 10),
 			(51, 'Pending', 'pending', 2, 10),
 			(52, 'Posted', 'posted', 3, 10),
-			(53, 'Cancelled', 'cancelled', 4, 10)
+			(53, 'Cancelled', 'cancelled', 4, 10),
+
+			-- Billing (56–57; type 11 — BillingStatusTaggingEnum; shared by OP + IP)
+			(56, 'Open', 'open', 1, 11),
+			(57, 'Closed', 'closed', 2, 11)
 
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	// Remap legacy IP-only billing tags (58/59) → shared Billing Open/Closed (56/57).
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging WHERE id IN (58, 59)
+		`);
+	// Align Visit terminal status (Closed / Discharged) for seed-without-migrate DBs.
+	await db.execute(sql`
+		UPDATE patient_visit
+		SET status_tagging_id = 8
+		WHERE status_tagging_id = 55
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging
+		SET name = 'Closed / Discharged',
+			code = 'closed_discharged',
+			sequence_no = 4
+		WHERE id = 8 AND status_tagging_type_id = 2
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging
+		WHERE id = 55 AND status_tagging_type_id = 2
 		`);
 	seedLogger.info('Seeded: status tagging');
 
