@@ -7,17 +7,24 @@ Manual and automated checks after migrating Medora UI from prefixed DaisyUI (`d-
 - **Components:** `src/lib/component/wash/**` (`Wash*`) — Svelte adapters that mirror [Menzies Design](https://design-menzies.netlify.app/) components (Wash CSS + `washRecipes`). Domain UI **reuses** these; do not invent a parallel `Medora*` UI kit.
 - Classes: unprefixed Wash tokens (`btn`, `input`, `modal`, …)
 - Layout: single root `washRecipes.washShell` only (no nested shells/panels on EMR layouts)
-- **No DaisyUI Tailwind plugin** — Wash `styles.css` ≥ **1.0.5** is gallery-complete.
+- **No DaisyUI Tailwind plugin** — Wash `styles.css` ≥ **1.3.0** is gallery-complete (import via `layout.css` `@layer components`).
 
 **Prerequisites**
 
-- `pnpm install` with GitHub Packages auth for `@menzies-mariesta-com/menzies-design-wash-ui`
-- `pnpm run dev` on `http://localhost:5173`
+- `pnpm install` with GitHub Packages auth for `@menzies-mariesta-com/menzies-design-wash-ui` **^1.3.0**
+- `pnpm run dev` on `http://localhost:4002`
 - Test user with hospital access (login + at least one branch)
 
 **API / routes note**
 
 - App slug is `/medora/...` (legacy `/heka/...` redirects via hooks).
+
+**1.3.0 chrome checklist**
+
+- Data tables (`MenziesTable`): Export / Refresh / Add in **header**; footer is Per page | Showing (`sm+`) | paginator right; Export is click/focus dropdown (`wash-dropdown-contained`)
+- Calendar: package `wash-calendar*` / `wash-time*` CSS only (no app-mirrored 1.2 calendar block); `includeTime` shows Design time footer
+- Boot: `initWash` also attaches details-dropdown hover — do not call `attachDetailsDropdowns` again
+- **Dialog / DialogTemplate:** `WashDialog` uses Design sectioned chrome (`p-0` header band → scroll body → `modal-action`). Slot aliases: `header`/`desc`/`contents` ↔ `title`/`description`/`children`. Shell confirm/alert `message` renders in the **body** (not header `description`). Content-owned footers use `WashDialogFooter`. Backdrop stays visual-only (no outside-click close — Medora exception).
 
 ---
 

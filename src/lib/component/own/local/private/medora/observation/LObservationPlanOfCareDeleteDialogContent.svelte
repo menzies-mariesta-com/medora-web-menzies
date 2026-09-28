@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -20,37 +21,39 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<p class="text-sm text-base-content/80">
-		{m.observation_emr_plan_of_care_delete_hint()}
-	</p>
-	<div class="flex flex-col gap-1">
-		<label for="plan-of-care-delete-remark" class="text-sm">
-			{m.observation_emr_plan_of_care_delete_remark_label()}
-		</label>
-		<WashTextarea
-			id="plan-of-care-delete-remark"
-			className="textarea-bordered min-h-20 w-full"
-			bind:value={deleteRemark}
-		/>
-	</div>
-	<div class="flex flex-wrap justify-end gap-2">
-		<WashButton
-			type="button"
-			className="btn-ghost"
-			disabled={isSubmitting}
-			onClick={cancel}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn btn-error"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={handleConfirm}
-		>
-			{m.observation_emr_plan_of_care_delete_confirm()}
-		</WashButton>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
+		<p class="text-sm text-base-content/80">
+			{m.observation_emr_plan_of_care_delete_hint()}
+		</p>
+		<div class="flex flex-col gap-1">
+			<label for="plan-of-care-delete-remark" class="text-sm">
+				{m.observation_emr_plan_of_care_delete_remark_label()}
+			</label>
+			<WashTextarea
+				id="plan-of-care-delete-remark"
+				className="textarea-bordered min-h-20 w-full"
+				bind:value={deleteRemark}
+			/>
+		</div>
 	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		type="button"
+		className="btn-ghost"
+		disabled={isSubmitting}
+		onClick={cancel}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		type="button"
+		className="btn btn-error"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={handleConfirm}
+	>
+		{m.observation_emr_plan_of_care_delete_confirm()}
+	</WashButton>
+</WashDialogFooter>

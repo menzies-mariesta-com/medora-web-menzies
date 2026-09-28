@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Wash in components layer so app Tailwind utilities keep cascade priority. */
+@import '@menzies-mariesta-com/menzies-design-wash-ui/styles.css' layer(components);
 
 /*
  * Wash sets --color-* on :root at runtime (pigment themes) but does not emit

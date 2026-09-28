@@ -5,6 +5,7 @@
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StoreModalState } from '$lib/state/store-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -255,149 +256,165 @@
 {#if isLoading}
 	<p class="text-sm opacity-70">{m.loading()}</p>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div class="flex flex-col gap-4">
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="store-branch" class="shrink-0 sm:w-40">{m.select_branch()}
-					<span class="text-error">*</span></label>
-				<div class="max-w-md flex-1">
-					<WashSelect
-						id="store-branch"
-						bind:value={branchId}
-						optionHeader=""
-					>
-						{#each branchRows as b (b.id)}
-							<option value={b.id}>{b.name ?? b.code ?? b.id}</option>
-						{/each}
-					</WashSelect>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="store-name" class="shrink-0 sm:w-40">{m.store_name()}
-					<span class="text-error">*</span></label>
-				<div class="max-w-md flex-1">
-					<WashInputField
-						id="store-name"
-						bind:value={storeName}
-						inputType="text"
-						inputPlaceholderText={m.store_name()}
-						required
-					/>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
-				<div class="max-w-md flex-1">
-					<WashTextarea bind:value={remark} />
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label class="shrink-0 sm:w-40">{m.inv_store_purchase_requisitable()}</label>
-				<div class="max-w-md flex-1">
-					<label class="flex cursor-pointer items-center gap-2">
-						<input
-							type="checkbox"
-							class="checkbox checkbox-sm"
-							bind:checked={isPurchaseRequisitable}
-						/>
-						<span class="text-sm opacity-80">{m.active_label()}</span>
-					</label>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label for="store-markup" class="shrink-0 pt-2 sm:w-40">{m.inv_store_markup_percent()}</label>
-				<div class="max-w-md flex-1">
-					<WashInputField
-						id="store-markup"
-						bind:value={storeMarkupPercentStr}
-						inputType="text"
-						inputPlaceholderText="0"
-						inputTitle={m.inv_store_markup_percent_invalid()}
-					/>
-					<p class="mt-1 text-xs text-base-content/60">
-						{m.inv_store_markup_percent_hint()}
-					</p>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label class="shrink-0 pt-2 sm:w-40">{m.user_groups()}</label>
-				<div class="flex max-w-md flex-1 flex-col gap-2">
-					{#if userGroups.length === 0}
-						<p class="text-xs opacity-70">{m.no_user_groups()}</p>
-					{:else}
-						<WashInputField
-							id="store-user-group-filter"
-							bind:value={userGroupFilter}
-							inputType="text"
-							inputPlaceholderText={m.inv_user_groups_search_placeholder()}
-							className="mb-2"
-						/>
-						<div
-							class="max-h-48 overflow-y-auto rounded-md border border-base-300 p-2"
-						>
-							{#if filteredUserGroups.length === 0}
-								<p class="px-1 py-1 text-xs opacity-70">
-									{m.inv_user_groups_no_filter_match()}
-								</p>
-							{:else}
-								<ul class="flex flex-col gap-1">
-									{#each filteredUserGroups as g (g.id)}
-										{@const checked = selectedUserGroupIds.includes(
-											g.id
-										)}
-										<li>
-											<label
-												class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-base-200"
-											>
-												<WashCheckbox
-													{checked}
-													onCheckedChange={() =>
-														toggleUserGroup(g.id)}
-												/>
-												<span class="text-sm"
-													>{g.name ?? `#${g.id}`}</span
-												>
-											</label>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</div>
-					{/if}
-					<p class="text-xs opacity-70">
-						{m.user_groups_optional_hint()}
-					</p>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label class="shrink-0 sm:w-40">{m.status()}</label>
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div class="flex flex-col gap-4">
 				<div
-					class="flex max-w-md flex-1 flex-wrap items-center gap-2"
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="flex cursor-pointer items-center gap-2">
-						<WashCheckbox bind:checked={formActive} />
-						<span class="text-sm opacity-80">{m.active_label()}</span>
-					</label>
+					<label for="store-branch" class="shrink-0 sm:w-40"
+						>{m.select_branch()}
+						<span class="text-error">*</span></label
+					>
+					<div class="max-w-md flex-1">
+						<WashSelect
+							id="store-branch"
+							bind:value={branchId}
+							optionHeader=""
+						>
+							{#each branchRows as b (b.id)}
+								<option value={b.id}
+									>{b.name ?? b.code ?? b.id}</option
+								>
+							{/each}
+						</WashSelect>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="store-name" class="shrink-0 sm:w-40"
+						>{m.store_name()}
+						<span class="text-error">*</span></label
+					>
+					<div class="max-w-md flex-1">
+						<WashInputField
+							id="store-name"
+							bind:value={storeName}
+							inputType="text"
+							inputPlaceholderText={m.store_name()}
+							required
+						/>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
+					<div class="max-w-md flex-1">
+						<WashTextarea bind:value={remark} />
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label class="shrink-0 sm:w-40"
+						>{m.inv_store_purchase_requisitable()}</label
+					>
+					<div class="max-w-md flex-1">
+						<label class="flex cursor-pointer items-center gap-2">
+							<input
+								type="checkbox"
+								class="checkbox checkbox-sm"
+								bind:checked={isPurchaseRequisitable}
+							/>
+							<span class="text-sm opacity-80"
+								>{m.active_label()}</span
+							>
+						</label>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label for="store-markup" class="shrink-0 pt-2 sm:w-40"
+						>{m.inv_store_markup_percent()}</label
+					>
+					<div class="max-w-md flex-1">
+						<WashInputField
+							id="store-markup"
+							bind:value={storeMarkupPercentStr}
+							inputType="text"
+							inputPlaceholderText="0"
+							inputTitle={m.inv_store_markup_percent_invalid()}
+						/>
+						<p class="mt-1 text-xs text-base-content/60">
+							{m.inv_store_markup_percent_hint()}
+						</p>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label class="shrink-0 pt-2 sm:w-40"
+						>{m.user_groups()}</label
+					>
+					<div class="flex max-w-md flex-1 flex-col gap-2">
+						{#if userGroups.length === 0}
+							<p class="text-xs opacity-70">{m.no_user_groups()}</p>
+						{:else}
+							<WashInputField
+								id="store-user-group-filter"
+								bind:value={userGroupFilter}
+								inputType="text"
+								inputPlaceholderText={m.inv_user_groups_search_placeholder()}
+								className="mb-2"
+							/>
+							<div
+								class="max-h-48 overflow-y-auto rounded-md border border-base-300 p-2"
+							>
+								{#if filteredUserGroups.length === 0}
+									<p class="px-1 py-1 text-xs opacity-70">
+										{m.inv_user_groups_no_filter_match()}
+									</p>
+								{:else}
+									<ul class="flex flex-col gap-1">
+										{#each filteredUserGroups as g (g.id)}
+											{@const checked = selectedUserGroupIds.includes(
+												g.id
+											)}
+											<li>
+												<label
+													class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-base-200"
+												>
+													<WashCheckbox
+														{checked}
+														onCheckedChange={() =>
+															toggleUserGroup(g.id)}
+													/>
+													<span class="text-sm"
+														>{g.name ?? `#${g.id}`}</span
+													>
+												</label>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</div>
+						{/if}
+						<p class="text-xs opacity-70">
+							{m.user_groups_optional_hint()}
+						</p>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label class="shrink-0 sm:w-40">{m.status()}</label>
+					<div
+						class="flex max-w-md flex-1 flex-wrap items-center gap-2"
+					>
+						<label class="flex cursor-pointer items-center gap-2">
+							<WashCheckbox bind:checked={formActive} />
+							<span class="text-sm opacity-80"
+								>{m.active_label()}</span
+							>
+						</label>
+					</div>
 				</div>
 			</div>
 		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -412,6 +429,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

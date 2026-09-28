@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import InventoryBatchQtyPickTable from '$lib/component/own/local/private/medora/inventory/InventoryBatchQtyPickTable.svelte';
 	import type {
@@ -204,51 +205,53 @@
 	}
 </script>
 
-<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<SearchSelect
-			value={draftLine.itemId ? String(draftLine.itemId) : ''}
-			searchFn={searchItemsWithStock}
-			invalidateKey={`${hospitalId}:${storeId ?? ''}`}
-			onChange={(v: string) => {
-				if (v) void onPickItem(Number(v));
-			}}
-			placeholder={m.inv_line_modal_search_item()}
-			className="w-full"
-		/>
-	</div>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="sm:col-span-2">
+			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect
+				value={draftLine.itemId ? String(draftLine.itemId) : ''}
+				searchFn={searchItemsWithStock}
+				invalidateKey={`${hospitalId}:${storeId ?? ''}`}
+				onChange={(v: string) => {
+					if (v) void onPickItem(Number(v));
+				}}
+				placeholder={m.inv_line_modal_search_item()}
+				className="w-full"
+			/>
+		</div>
 
-	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-		<input
-			type="text"
-			readonly
-			disabled
-			class="input-bordered input mt-1 w-full cursor-not-allowed opacity-90"
-			value={lockedUnitLabel || '—'}
-			title={lockedUnitLabel || undefined}
-			aria-label={m.inv_common_unit()}
-		/>
-	</div>
+		<div class="sm:col-span-2">
+			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
+			<input
+				type="text"
+				readonly
+				disabled
+				class="input-bordered input mt-1 w-full cursor-not-allowed opacity-90"
+				value={lockedUnitLabel || '—'}
+				title={lockedUnitLabel || undefined}
+				aria-label={m.inv_common_unit()}
+			/>
+		</div>
 
-	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_dc_batch()}</label>
-		<p class="mb-2 text-xs opacity-70">
-			{m.inv_dc_modal_batch_help()}
-		</p>
-		<InventoryBatchQtyPickTable
-			bind:allocations={draftLine.batchAllocations}
-			factors={iumFactors}
-			purchaseUnitLabel={chosenIum?.purchaseUnitName ?? ''}
-			issueUnitLabel={chosenIum?.issueUnitName ?? ''}
-			disabled={draftLine.itemId == null || storeId == null}
-			showSalePrice={false}
-		/>
+		<div class="sm:col-span-2">
+			<label class="text-xs opacity-80">{m.inv_dc_batch()}</label>
+			<p class="mb-2 text-xs opacity-70">
+				{m.inv_dc_modal_batch_help()}
+			</p>
+			<InventoryBatchQtyPickTable
+				bind:allocations={draftLine.batchAllocations}
+				factors={iumFactors}
+				purchaseUnitLabel={chosenIum?.purchaseUnitName ?? ''}
+				issueUnitLabel={chosenIum?.issueUnitName ?? ''}
+				disabled={draftLine.itemId == null || storeId == null}
+				showSalePrice={false}
+			/>
+		</div>
 	</div>
 </div>
 
-<div class="modal-action mt-6">
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -265,4 +268,4 @@
 	>
 		{m.save()}
 	</WashButton>
-</div>
+</WashDialogFooter>

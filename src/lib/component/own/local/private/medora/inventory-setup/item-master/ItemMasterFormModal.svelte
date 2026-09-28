@@ -6,6 +6,7 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { ItemMasterModalState } from '$lib/state/item-master-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -431,226 +432,246 @@
 {#if isLoading}
 	<p class="text-sm opacity-70">{m.loading()}</p>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div class="flex flex-col gap-4">
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="im-name" class="shrink-0 sm:w-40">{m.item_master_item_name()}
-					<span class="text-error">*</span></label>
-				<div class="max-w-lg flex-1">
-					<WashInputField
-						id="im-name"
-						bind:value={itemName}
-						inputType="text"
-						inputPlaceholderText={m.item_master_item_name_placeholder()}
-						required
-					/>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="im-cat" class="shrink-0 sm:w-40">{m.service_item_category_label()}
-					<span class="text-error">*</span></label>
-				<div class="max-w-lg flex-1">
-					<WashSelect
-						id="im-cat"
-						bind:value={categoryIdStr}
-						optionHeader=""
-					>
-						{#each categories as c (c.id)}
-							<option value={String(c.id)}
-								>{c.categoryName ?? c.id}</option
-							>
-						{/each}
-					</WashSelect>
-				</div>
-			</div>
-			{#if isPharmacySupplyCategory}
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div class="flex flex-col gap-4">
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="im-pharm-gen" class="shrink-0 sm:w-40">{m.item_master_pharmacy_generic()}
-						<span class="text-error">*</span></label>
+					<label for="im-name" class="shrink-0 sm:w-40"
+						>{m.item_master_item_name()}
+						<span class="text-error">*</span></label
+					>
 					<div class="max-w-lg flex-1">
-						<SearchSelect
-							inputId="im-pharm-gen"
-							bind:value={pharmacyGenericIdStr}
-							placeholder={m.item_master_pharmacy_generic_placeholder()}
-							searchFn={searchPharmacyGenerics}
-							getLabelForValue={getPharmacyGenericLabelForValue}
-							invalidateKey={`${hospitalId}-${categoryIdStr}`}
-							className="w-full"
+						<WashInputField
+							id="im-name"
+							bind:value={itemName}
+							inputType="text"
+							inputPlaceholderText={m.item_master_item_name_placeholder()}
+							required
 						/>
 					</div>
 				</div>
-			{/if}
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="im-mfr" class="shrink-0 sm:w-40">{m.item_master_manufacturer()}</label>
-				<div class="max-w-lg flex-1">
-					<WashInputField
-						id="im-mfr"
-						bind:value={manufacturerNameStr}
-						inputType="text"
-						inputPlaceholderText={m.item_master_manufacturer_placeholder()}
-					/>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label for="im-code" class="shrink-0 sm:w-40">{m.item_master_code()}</label>
-				<div class="max-w-lg flex-1">
-					<WashInputField
-						id="im-code"
-						bind:value={itemCode}
-						inputType="text"
-						inputPlaceholderText={m.item_master_code_placeholder()}
-					/>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label class="shrink-0 pt-2 sm:w-40">{m.item_master_description()}</label>
-				<div class="max-w-lg flex-1">
-					<WashTextarea bind:value={description} />
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
-				<div class="max-w-lg flex-1">
-					<WashTextarea bind:value={remark} />
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label for="im-expiry-lead" class="shrink-0 pt-2 sm:w-40">{m.item_master_expiry_alert_lead_days()}</label>
-				<div class="max-w-lg flex-1">
-					<WashInputField
-						id="im-expiry-lead"
-						bind:value={expiryAlertLeadDaysStr}
-						inputType="text"
-						minLength={0}
-						maxlength={4}
-						inputPlaceholderText={m.item_master_expiry_alert_lead_days_placeholder()}
-						inputTitle={m.item_master_expiry_alert_lead_days_invalid()}
-					/>
-					<p class="mt-1 text-xs text-base-content/60">
-						{m.item_master_expiry_alert_lead_days_hint()}
-					</p>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label for="im-item-markup" class="shrink-0 pt-2 sm:w-40">{m.item_master_item_markup_percent()}</label>
-				<div class="max-w-lg flex-1">
-					<WashInputField
-						id="im-item-markup"
-						bind:value={itemMarkupPercentStr}
-						inputType="text"
-						inputPlaceholderText="0"
-						inputTitle={m.item_master_item_markup_percent_invalid()}
-					/>
-					<p class="mt-1 text-xs text-base-content/60">
-						{m.item_master_item_markup_percent_hint()}
-					</p>
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
-			>
-				<label class="shrink-0 pt-1 sm:w-40">{m.item_master_unit_conversions()}</label>
-				<div class="max-w-lg min-w-0 flex-1">
-					{#if itemUnitMasters.length === 0}
-						<p class="text-sm opacity-70">—</p>
-					{:else}
-						<WashInputField
-							id="im-unit-filter"
-							bind:value={unitConversionFilter}
-							inputType="text"
-							inputPlaceholderText={m.item_master_unit_conversions_search_placeholder()}
-							className="mb-2"
-						/>
-						<div
-							class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2"
-						>
-							<div
-								class="grid grid-cols-[2.5rem_2.5rem_1fr] gap-x-2 border-b border-base-300/80 pb-1 text-xs font-medium text-base-content/70"
-							>
-								<span class="text-center"
-									>{m.item_master_unit_conversions_include()}</span
-								>
-								<span class="text-center"
-									>{m.item_master_unit_conversions_default()}</span
-								>
-								<span class="sr-only">Conversion</span>
-							</div>
-							{#if filteredItemUnitMasters.length === 0}
-								<p class="text-sm opacity-70">
-									{m.item_master_unit_conversions_no_filter_match()}
-								</p>
-							{/if}
-							{#each filteredItemUnitMasters as opt (opt.id)}
-								<div
-									class="grid grid-cols-[2.5rem_2.5rem_1fr] items-center gap-x-2 border-b border-dotted border-base-300/50 py-1.5 last:border-0"
-								>
-									<label class="flex cursor-pointer justify-center">
-										<WashCheckbox
-											checked={itemUnitMasterIdStrs.includes(
-												String(opt.id)
-											)}
-											onCheckedChange={() =>
-												toggleItemUnitMaster(opt.id)}
-										/>
-									</label>
-									<div class="flex justify-center">
-										<input
-											type="radio"
-											name={unitDefaultRadioName}
-											class="radio radio-sm"
-											value={String(opt.id)}
-											disabled={!itemUnitMasterIdStrs.includes(
-												String(opt.id)
-											)}
-											bind:group={defaultItemUnitMasterIdStr}
-										/>
-									</div>
-									<span
-										class="font-mono text-sm break-all"
-										title={opt.conversionDisplay}
-										>{opt.conversionDisplay}</span
-									>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			</div>
-			<div
-				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-			>
-				<label class="shrink-0 sm:w-40">{m.status()}</label>
 				<div
-					class="flex max-w-lg flex-1 flex-wrap items-center gap-2"
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="flex cursor-pointer items-center gap-2">
-						<WashCheckbox bind:checked={formActive} />
-						<span class="text-sm opacity-80">{m.active_label()}</span>
-					</label>
+					<label for="im-cat" class="shrink-0 sm:w-40"
+						>{m.service_item_category_label()}
+						<span class="text-error">*</span></label
+					>
+					<div class="max-w-lg flex-1">
+						<WashSelect
+							id="im-cat"
+							bind:value={categoryIdStr}
+							optionHeader=""
+						>
+							{#each categories as c (c.id)}
+								<option value={String(c.id)}
+									>{c.categoryName ?? c.id}</option
+								>
+							{/each}
+						</WashSelect>
+					</div>
+				</div>
+				{#if isPharmacySupplyCategory}
+					<div
+						class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					>
+						<label for="im-pharm-gen" class="shrink-0 sm:w-40"
+							>{m.item_master_pharmacy_generic()}
+							<span class="text-error">*</span></label
+						>
+						<div class="max-w-lg flex-1">
+							<SearchSelect
+								inputId="im-pharm-gen"
+								bind:value={pharmacyGenericIdStr}
+								placeholder={m.item_master_pharmacy_generic_placeholder()}
+								searchFn={searchPharmacyGenerics}
+								getLabelForValue={getPharmacyGenericLabelForValue}
+								invalidateKey={`${hospitalId}-${categoryIdStr}`}
+								className="w-full"
+							/>
+						</div>
+					</div>
+				{/if}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="im-mfr" class="shrink-0 sm:w-40"
+						>{m.item_master_manufacturer()}</label
+					>
+					<div class="max-w-lg flex-1">
+						<WashInputField
+							id="im-mfr"
+							bind:value={manufacturerNameStr}
+							inputType="text"
+							inputPlaceholderText={m.item_master_manufacturer_placeholder()}
+						/>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="im-code" class="shrink-0 sm:w-40"
+						>{m.item_master_code()}</label
+					>
+					<div class="max-w-lg flex-1">
+						<WashInputField
+							id="im-code"
+							bind:value={itemCode}
+							inputType="text"
+							inputPlaceholderText={m.item_master_code_placeholder()}
+						/>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label class="shrink-0 pt-2 sm:w-40"
+						>{m.item_master_description()}</label
+					>
+					<div class="max-w-lg flex-1">
+						<WashTextarea bind:value={description} />
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
+					<div class="max-w-lg flex-1">
+						<WashTextarea bind:value={remark} />
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label for="im-expiry-lead" class="shrink-0 pt-2 sm:w-40"
+						>{m.item_master_expiry_alert_lead_days()}</label
+					>
+					<div class="max-w-lg flex-1">
+						<WashInputField
+							id="im-expiry-lead"
+							bind:value={expiryAlertLeadDaysStr}
+							inputType="text"
+							minLength={0}
+							maxlength={4}
+							inputPlaceholderText={m.item_master_expiry_alert_lead_days_placeholder()}
+							inputTitle={m.item_master_expiry_alert_lead_days_invalid()}
+						/>
+						<p class="mt-1 text-xs text-base-content/60">
+							{m.item_master_expiry_alert_lead_days_hint()}
+						</p>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label for="im-item-markup" class="shrink-0 pt-2 sm:w-40"
+						>{m.item_master_item_markup_percent()}</label
+					>
+					<div class="max-w-lg flex-1">
+						<WashInputField
+							id="im-item-markup"
+							bind:value={itemMarkupPercentStr}
+							inputType="text"
+							inputPlaceholderText="0"
+							inputTitle={m.item_master_item_markup_percent_invalid()}
+						/>
+						<p class="mt-1 text-xs text-base-content/60">
+							{m.item_master_item_markup_percent_hint()}
+						</p>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+				>
+					<label class="shrink-0 pt-1 sm:w-40"
+						>{m.item_master_unit_conversions()}</label
+					>
+					<div class="max-w-lg min-w-0 flex-1">
+						{#if itemUnitMasters.length === 0}
+							<p class="text-sm opacity-70">—</p>
+						{:else}
+							<WashInputField
+								id="im-unit-filter"
+								bind:value={unitConversionFilter}
+								inputType="text"
+								inputPlaceholderText={m.item_master_unit_conversions_search_placeholder()}
+								className="mb-2"
+							/>
+							<div
+								class="max-h-44 overflow-auto rounded-lg border border-base-300 p-2"
+							>
+								<div
+									class="grid grid-cols-[2.5rem_2.5rem_1fr] gap-x-2 border-b border-base-300/80 pb-1 text-xs font-medium text-base-content/70"
+								>
+									<span class="text-center"
+										>{m.item_master_unit_conversions_include()}</span
+									>
+									<span class="text-center"
+										>{m.item_master_unit_conversions_default()}</span
+									>
+									<span class="sr-only">Conversion</span>
+								</div>
+								{#if filteredItemUnitMasters.length === 0}
+									<p class="text-sm opacity-70">
+										{m.item_master_unit_conversions_no_filter_match()}
+									</p>
+								{/if}
+								{#each filteredItemUnitMasters as opt (opt.id)}
+									<div
+										class="grid grid-cols-[2.5rem_2.5rem_1fr] items-center gap-x-2 border-b border-dotted border-base-300/50 py-1.5 last:border-0"
+									>
+										<label class="flex cursor-pointer justify-center">
+											<WashCheckbox
+												checked={itemUnitMasterIdStrs.includes(
+													String(opt.id)
+												)}
+												onCheckedChange={() =>
+													toggleItemUnitMaster(opt.id)}
+											/>
+										</label>
+										<div class="flex justify-center">
+											<input
+												type="radio"
+												name={unitDefaultRadioName}
+												class="radio radio-sm"
+												value={String(opt.id)}
+												disabled={!itemUnitMasterIdStrs.includes(
+													String(opt.id)
+												)}
+												bind:group={defaultItemUnitMasterIdStr}
+											/>
+										</div>
+										<span
+											class="font-mono text-sm break-all"
+											title={opt.conversionDisplay}
+											>{opt.conversionDisplay}</span
+										>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label class="shrink-0 sm:w-40">{m.status()}</label>
+					<div
+						class="flex max-w-lg flex-1 flex-wrap items-center gap-2"
+					>
+						<label class="flex cursor-pointer items-center gap-2">
+							<WashCheckbox bind:checked={formActive} />
+							<span class="text-sm opacity-80"
+								>{m.active_label()}</span
+							>
+						</label>
+					</div>
 				</div>
 			</div>
 		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -665,6 +686,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

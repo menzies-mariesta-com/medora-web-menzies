@@ -324,7 +324,8 @@
 	}
 
 	/**
-	 * Design Data table chrome: flex-col shell, single scroll body, shrink-0 footer.
+		 * Design Data table chrome (1.3): flex-col shell, header actions
+		 * (Export / Refresh / Add), single scroll body, shrink-0 footer.
 	 * App height = h-full (default) or flex-1 when fillParent — never a fixed demo height.
 	 */
 	const rootClass = $derived(
@@ -529,10 +530,18 @@
 		dispatch('rowClick', row);
 	}
 
+	const hasChromeActions = $derived(
+		exportEnabled ||
+			showRefreshButton ||
+			addAction != null ||
+			showAddButton
+	);
+
 	const hasHeader = $derived(
 		Boolean(title?.trim()) ||
 			Boolean(description?.trim()) ||
-			headerActions != null
+			headerActions != null ||
+			hasChromeActions
 	);
 
 	const showingSummary = $derived(
@@ -611,7 +620,7 @@
 
 <div class={rootClass}>
 	{#if hasHeader}
-		<!-- Design DataTableHeader -->
+		<!-- Design DataTableHeader (1.3: Export / Refresh / Add in actions) -->
 		<div
 			class="border-base-300 bg-base-100 flex shrink-0 items-start justify-between gap-3 border-b px-3 py-2.5"
 		>
@@ -625,9 +634,60 @@
 					<p class="text-ink-muted mt-0.5 text-xs">{description}</p>
 				{/if}
 			</div>
-			{#if headerActions}
+			{#if hasChromeActions || headerActions}
 				<div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-					{@render headerActions()}
+					{#if exportEnabled && exportConfig}
+						<MenziesTableExportToolbar
+							columns={exportConfig.columns}
+							title={exportConfig.title}
+							subtitle={exportConfig.subtitle}
+							filenameStem={exportConfig.filenameStem}
+							formats={exportConfig.formats}
+							disabled={isLoading || rows.length === 0}
+							getRows={resolveExportRows}
+						/>
+					{/if}
+					{#if showRefreshButton}
+						<WashTooltip
+							tooltipText={refreshTooltip}
+							className="tooltip-secondary"
+						>
+							<WashButton
+								type="button"
+								variant="ghost"
+								size="sm"
+								square={true}
+								className="btn-secondary cursor-pointer"
+								onClick={handleRefresh}
+								disabled={isLoading}
+								loading={isLoading}
+								loadingText=""
+								title={refreshTooltip}
+							>
+								<LucideRefreshCcw className="size-4" />
+							</WashButton>
+						</WashTooltip>
+					{/if}
+					{#if addAction}
+						{@render addAction()}
+					{:else if showAddButton}
+						<WashTooltip tooltipText={addLabel} className="tooltip-primary">
+							<WashButton
+								type="button"
+								variant="ghost"
+								size="sm"
+								square={true}
+								className="btn-primary cursor-pointer"
+								onClick={handleAdd}
+								disabled={isLoading || addDisabled}
+							>
+								<LucidePlus className="size-4" />
+							</WashButton>
+						</WashTooltip>
+					{/if}
+					{#if headerActions}
+						{@render headerActions()}
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -806,7 +866,7 @@
 		</WashTable>
 	</div>
 
-	<!-- Design DataTableFooterBar -->
+	<!-- Design DataTableFooterBar (1.3: per-page | Showing | paginator) -->
 	<div
 		class="border-base-300 bg-base-100 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-t px-3 py-2"
 	>
@@ -826,157 +886,55 @@
 					{/each}
 				</WashSelect>
 			</label>
-			<div class="hidden xl:block">
-				<div class="join">
-					<button
-						class="btn btn-sm join-item"
-						type="button"
-						onclick={() => goToPage(currentPage - 1)}
-						disabled={currentPage <= 1 || isLoading}
-						aria-label="Previous page"
-					>
-						<LucideChevronLeft className="size-4" />
-					</button>
-					{#each getVisiblePages() as item, i (item.type === 'page' ? `page-${item.page}` : `ellipsis-${i}`)}
-						{#if item.type === 'page'}
-							<button
-								class="btn join-item btn-sm {item.page === currentPage
-									? 'btn-active'
-									: ''}"
-								type="button"
-								onclick={() => item.page && goToPage(item.page)}
-							>
-								{item.page}
-							</button>
-						{:else}
-							<button
-								class="btn join-item btn-sm btn-disabled"
-								type="button"
-								disabled
-							>
-								…
-							</button>
-						{/if}
-					{/each}
-					<button
-						class="btn btn-sm join-item"
-						type="button"
-						onclick={() => goToPage(currentPage + 1)}
-						disabled={currentPage >= totalPages || isLoading}
-						aria-label="Next page"
-					>
-						<LucideChevronRight className="size-4" />
-					</button>
-				</div>
-			</div>
 		</div>
 
-		<div class="justify-self-center">
-			<div class="flex justify-center xl:hidden">
-				<div class="join">
-					<button
-						class="btn btn-sm join-item"
-						type="button"
-						onclick={() => goToPage(currentPage - 1)}
-						disabled={currentPage <= 1 || isLoading}
-						aria-label="Previous page"
-					>
-						<LucideChevronLeft className="size-4" />
-					</button>
-					{#each getVisiblePages() as item, i (item.type === 'page' ? `page-m-${item.page}` : `ellipsis-m-${i}`)}
-						{#if item.type === 'page'}
-							<button
-								class="btn join-item btn-sm {item.page === currentPage
-									? 'btn-active'
-									: ''}"
-								type="button"
-								onclick={() => item.page && goToPage(item.page)}
-							>
-								{item.page}
-							</button>
-						{:else}
-							<button
-								class="btn join-item btn-sm btn-disabled"
-								type="button"
-								disabled
-							>
-								…
-							</button>
-						{/if}
-					{/each}
-					<button
-						class="btn btn-sm join-item"
-						type="button"
-						onclick={() => goToPage(currentPage + 1)}
-						disabled={currentPage >= totalPages || isLoading}
-						aria-label="Next page"
-					>
-						<LucideChevronRight className="size-4" />
-					</button>
-				</div>
-			</div>
-			<p
-				class="text-ink-muted hidden text-center font-mono text-xs xl:block"
-			>
-				{showingSummary}
-			</p>
-		</div>
-
-		<div
-			class="flex min-w-0 flex-wrap items-center justify-end justify-self-end gap-2"
+		<p
+			class="text-ink-muted hidden justify-self-center text-center font-mono text-xs sm:block"
 		>
-			{#if exportEnabled && exportConfig}
-				<MenziesTableExportToolbar
-					columns={exportConfig.columns}
-					title={exportConfig.title}
-					subtitle={exportConfig.subtitle}
-					filenameStem={exportConfig.filenameStem}
-					formats={exportConfig.formats}
-					disabled={isLoading || rows.length === 0}
-					getRows={resolveExportRows}
-				/>
-			{/if}
+			{showingSummary}
+		</p>
 
-			<div class="flex shrink-0 items-center gap-1">
-				{#if showRefreshButton}
-					<WashTooltip
-						tooltipText={refreshTooltip}
-						className="tooltip-secondary"
-					>
-						<WashButton
+		<div class="justify-self-end">
+			<div class="join">
+				<button
+					class="btn btn-sm join-item"
+					type="button"
+					onclick={() => goToPage(currentPage - 1)}
+					disabled={currentPage <= 1 || isLoading}
+					aria-label="Previous page"
+				>
+					<LucideChevronLeft className="size-4" />
+				</button>
+				{#each getVisiblePages() as item, i (item.type === 'page' ? `page-${item.page}` : `ellipsis-${i}`)}
+					{#if item.type === 'page'}
+						<button
+							class="btn join-item btn-sm {item.page === currentPage
+								? 'btn-active'
+								: ''}"
 							type="button"
-							variant="ghost"
-							size="sm"
-							square={true}
-							className="btn-secondary cursor-pointer"
-							onClick={handleRefresh}
-							disabled={isLoading}
-							loading={isLoading}
-							loadingText=""
-							title={refreshTooltip}
+							onclick={() => item.page && goToPage(item.page)}
 						>
-							<LucideRefreshCcw className="size-4" />
-						</WashButton>
-					</WashTooltip>
-				{/if}
-
-				{#if addAction}
-					{@render addAction()}
-				{:else if showAddButton}
-					<WashTooltip tooltipText={addLabel} className="tooltip-primary">
-						<WashButton
+							{item.page}
+						</button>
+					{:else}
+						<button
+							class="btn join-item btn-sm btn-disabled"
 							type="button"
-							variant="ghost"
-							size="sm"
-							square={true}
-							className="btn-primary cursor-pointer"
-							onClick={handleAdd}
-							disabled={isLoading || addDisabled}
+							disabled
 						>
-							<LucidePlus className="size-4" />
-						</WashButton>
-					</WashTooltip>
-				{/if}
+							…
+						</button>
+					{/if}
+				{/each}
+				<button
+					class="btn btn-sm join-item"
+					type="button"
+					onclick={() => goToPage(currentPage + 1)}
+					disabled={currentPage >= totalPages || isLoading}
+					aria-label="Next page"
+				>
+					<LucideChevronRight className="size-4" />
+				</button>
 			</div>
 		</div>
 	</div>
