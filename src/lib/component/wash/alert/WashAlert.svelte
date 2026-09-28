@@ -33,10 +33,10 @@
 	} = $props();
 
 	const typeClassMap: Record<StatusColorEnum, string> = {
-		[StatusColorEnum.SUCCESS]: 'alert-dash alert-success',
-		[StatusColorEnum.INFO]: 'alert-dash alert-info',
-		[StatusColorEnum.WARNING]: 'alert-dash alert-warning',
-		[StatusColorEnum.ERROR]: 'alert-dash alert-error'
+		[StatusColorEnum.SUCCESS]: 'alert-success',
+		[StatusColorEnum.INFO]: 'alert-info',
+		[StatusColorEnum.WARNING]: 'alert-warning',
+		[StatusColorEnum.ERROR]: 'alert-error'
 	};
 
 	const iconMap: Record<StatusColorEnum, Component> = {
