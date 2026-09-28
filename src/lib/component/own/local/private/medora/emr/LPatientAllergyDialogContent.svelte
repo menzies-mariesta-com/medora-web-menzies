@@ -11,6 +11,7 @@
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LDeactivationRemarkDialogContent from './LDeactivationRemarkDialogContent.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -479,8 +480,9 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<div class="flex flex-col gap-4">
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
@@ -627,9 +629,10 @@
 				/>
 			</div>
 		</div>
+		</div>
 	</div>
 
-	<div class="flex flex-wrap justify-end gap-2">
+	<WashDialogFooter>
 		<WashButton
 			type="button"
 			className="btn-ghost"
@@ -645,5 +648,5 @@
 		>
 			{isEditMode ? m.update() : m.emr_allergy_submit_add()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

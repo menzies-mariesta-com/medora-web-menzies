@@ -3,6 +3,7 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { CreateAppointmentDialogState } from '$lib/state/create-appointment-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -595,6 +596,7 @@
 	}
 </script>
 
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 <div class="flex flex-col gap-5">
 	<!-- Date & time: from cell (read-only) or manual (required when opened from Plus) -->
 	<div class="flex flex-col gap-3 rounded-lg bg-base-200/50 p-3">
@@ -900,28 +902,27 @@
 			</p>
 		{/if}
 	</div>
-
-	<div
-		class="modal-action flex justify-end gap-2 border-t border-base-300 pt-4"
-	>
-		<button
-			type="button"
-			class="btn"
-			onclick={() => cancel()}
-			disabled={isSubmitting}
-		>
-			Cancel
-		</button>
-		<button
-			type="button"
-			class="btn btn-primary"
-			onclick={() => handleCreate()}
-			disabled={!effectiveDate ||
-				!effectiveFromTime ||
-				!toTime ||
-				isSubmitting}
-		>
-			{isSubmitting ? 'Creating…' : 'Create'}
-		</button>
-	</div>
 </div>
+</div>
+
+<WashDialogFooter>
+	<button
+		type="button"
+		class="btn"
+		onclick={() => cancel()}
+		disabled={isSubmitting}
+	>
+		Cancel
+	</button>
+	<button
+		type="button"
+		class="btn btn-primary"
+		onclick={() => handleCreate()}
+		disabled={!effectiveDate ||
+			!effectiveFromTime ||
+			!toTime ||
+			isSubmitting}
+	>
+		{isSubmitting ? 'Creating…' : 'Create'}
+	</button>
+</WashDialogFooter>

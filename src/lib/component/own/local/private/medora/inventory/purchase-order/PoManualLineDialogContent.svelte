@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- PO manual draft shape */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
@@ -60,92 +61,94 @@
 	}
 </script>
 
-<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<SearchSelect
-			value={draftManualLine?.itemId
-				? String(draftManualLine.itemId)
-				: ''}
-			searchFn={searchItemsFn}
-			onChange={async (v: string) => {
-				if (!v) return;
-				pickingItem = true;
-				try {
-					await onPickItem(Number(v));
-				} finally {
-					pickingItem = false;
-				}
-			}}
-			placeholder={m.inv_line_modal_search_item()}
-			className="w-full"
-		/>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="sm:col-span-2">
+			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect
+				value={draftManualLine?.itemId
+					? String(draftManualLine.itemId)
+					: ''}
+				searchFn={searchItemsFn}
+				onChange={async (v: string) => {
+					if (!v) return;
+					pickingItem = true;
+					try {
+						await onPickItem(Number(v));
+					} finally {
+						pickingItem = false;
+					}
+				}}
+				placeholder={m.inv_line_modal_search_item()}
+				className="w-full"
+			/>
+		</div>
+
+		<div>
+			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
+			<SearchSelect
+				value={draftManualLine?.itemUnitMasterId != null
+					? String(draftManualLine.itemUnitMasterId)
+					: ''}
+				options={(draftManualLine?.iumList ?? []).map((u: any) => ({
+					label: u.conversionDisplay,
+					value: String(u.id)
+				}))}
+				onChange={(v: string) => {
+					draftManualLine.itemUnitMasterId = v ? Number(v) : null;
+				}}
+				placeholder={m.inv_line_modal_select_conversion()}
+				className="w-full"
+				disabled={draftManualLine?.itemId == null || pickingItem}
+			/>
+		</div>
+
+		<div>
+			<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+			<input
+				type="number"
+				class="input-bordered input w-full"
+				value={draftManualLine.quantity == null ||
+				draftManualLine.quantity === ''
+					? ''
+					: String(draftManualLine.quantity)}
+				oninput={(e) => {
+					draftManualLine.quantity = e.currentTarget.value;
+				}}
+				step="1"
+				min="0"
+				disabled={draftManualLine?.itemId == null || pickingItem}
+				aria-label={m.inv_common_quantity()}
+			/>
+		</div>
+
+		<div>
+			<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
+			<input
+				type="number"
+				class="input-bordered input w-full"
+				value={draftManualLine.unitPrice == null ||
+				draftManualLine.unitPrice === ''
+					? ''
+					: String(draftManualLine.unitPrice)}
+				oninput={(e) => {
+					draftManualLine.unitPrice = e.currentTarget.value;
+				}}
+				step="0.01"
+				min="0"
+				disabled={draftManualLine?.itemId == null || pickingItem}
+				aria-label={m.inv_po_line_unit_price()}
+			/>
+		</div>
 	</div>
 
-	<div>
-		<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-		<SearchSelect
-			value={draftManualLine?.itemUnitMasterId != null
-				? String(draftManualLine.itemUnitMasterId)
-				: ''}
-			options={(draftManualLine?.iumList ?? []).map((u: any) => ({
-				label: u.conversionDisplay,
-				value: String(u.id)
-			}))}
-			onChange={(v: string) => {
-				draftManualLine.itemUnitMasterId = v ? Number(v) : null;
-			}}
-			placeholder={m.inv_line_modal_select_conversion()}
-			className="w-full"
-			disabled={draftManualLine?.itemId == null || pickingItem}
-		/>
-	</div>
-
-	<div>
-		<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
-		<input
-			type="number"
-			class="input-bordered input w-full"
-			value={draftManualLine.quantity == null ||
-			draftManualLine.quantity === ''
-				? ''
-				: String(draftManualLine.quantity)}
-			oninput={(e) => {
-				draftManualLine.quantity = e.currentTarget.value;
-			}}
-			step="1"
-			min="0"
-			disabled={draftManualLine?.itemId == null || pickingItem}
-			aria-label={m.inv_common_quantity()}
-		/>
-	</div>
-
-	<div>
-		<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
-		<input
-			type="number"
-			class="input-bordered input w-full"
-			value={draftManualLine.unitPrice == null ||
-			draftManualLine.unitPrice === ''
-				? ''
-				: String(draftManualLine.unitPrice)}
-			oninput={(e) => {
-				draftManualLine.unitPrice = e.currentTarget.value;
-			}}
-			step="0.01"
-			min="0"
-			disabled={draftManualLine?.itemId == null || pickingItem}
-			aria-label={m.inv_po_line_unit_price()}
-		/>
-	</div>
+	<InventoryLineItemMetricTiles
+		tiles={resolvedMetricTiles}
+		draftLine={draftManualLine}
+	/>
 </div>
 
-<InventoryLineItemMetricTiles
-	tiles={resolvedMetricTiles}
-	draftLine={draftManualLine}
-/>
-
-<div class="modal-action mt-6">
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -164,4 +167,4 @@
 	>
 		{m.save()}
 	</WashButton>
-</div>
+</WashDialogFooter>

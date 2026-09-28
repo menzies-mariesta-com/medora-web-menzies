@@ -1,14 +1,19 @@
 <script lang="ts">
 	/**
-	 * Svelte adapter for Menzies Design Wash Dialog.
+	 * Svelte adapter for Menzies Design Wash Dialog (web 1.3.0).
 	 * @see https://design-menzies.netlify.app/ — Components → Dialog
-	 * Mirrors `@menzies-mariesta-com/menzies-design-wash-ui` React Dialog markup:
-	 *   <dialog class="modal">
-	 *     <div class="modal-box border border-ink-border bg-base-100">…</div>
-	 *     <form|div class="modal-backdrop">…</form|div>
-	 *   </dialog>
-	 * Centering comes from daisyUI `.modal` grid (`items-center` / `justify-items-center`)
-	 * + `.modal-box` / `.modal-backdrop` sharing `col-start-1 row-start-1`.
+	 *
+	 * DialogTemplate slot mapping (Design recipe names → this adapter):
+	 *   header → title | header
+	 *   desc → description | desc
+	 *   contents → children | contents
+	 *   actions → actions
+	 *
+	 * Sectioned chrome matches Design Dialog:
+	 *   header band → separator → scroll body → separator → modal-action
+	 *
+	 * Medora exception: backdrop is visual-only (no outside-click close).
+	 * Design uses `<form method="dialog">` which closes on backdrop click.
 	 */
 	import { tick, type Snippet } from 'svelte';
 	import gsap from 'gsap';
@@ -26,15 +31,21 @@
 		onClose,
 		title,
 		description,
+		/** DialogTemplate alias for `title`. */
+		header,
+		/** DialogTemplate alias for `description`. */
+		desc,
 		tone = 'primary',
 		actions,
 		children,
+		/** DialogTemplate alias for `children`. */
+		contents,
 		/** Optional layer above the box (e.g. in-dialog toasts). */
 		layer,
 		className = '',
 		boxClassName = '',
 		layout = 'default',
-		/** When false, omit `.modal-action` (content owns its footer). */
+		/** When false, omit shell `.modal-action` (content owns footer via WashDialogFooter). */
 		showActions = true,
 		/** When true and `actions` is unset, render Design ghost Close. */
 		showDefaultClose = true,
@@ -44,9 +55,12 @@
 		onClose: () => void;
 		title?: string;
 		description?: string;
+		header?: string | Snippet;
+		desc?: string | Snippet;
 		tone?: DialogTone;
 		actions?: Snippet;
 		children?: Snippet;
+		contents?: Snippet;
 		layer?: Snippet;
 		className?: string;
 		boxClassName?: string;
@@ -65,6 +79,21 @@
 	const titleId = createWashId('dialog-title');
 	const descId = createWashId('dialog-desc');
 
+	const resolvedTitle = $derived(title ?? (typeof header === 'string' ? header : undefined));
+	const resolvedDescription = $derived(
+		description ?? (typeof desc === 'string' ? desc : undefined)
+	);
+	const headerSnippet = $derived(typeof header === 'function' ? header : null);
+	const descSnippet = $derived(typeof desc === 'function' ? desc : null);
+	const bodySnippet = $derived(contents ?? children);
+	const hasHeader = $derived(
+		Boolean(resolvedTitle) ||
+			headerSnippet != null ||
+			Boolean(resolvedDescription) ||
+			descSnippet != null
+	);
+	const hasBody = $derived(bodySnippet != null);
+
 	const titleToneClass = $derived(
 		tone === 'error'
 			? 'text-error'
@@ -73,10 +102,10 @@
 				: 'text-primary'
 	);
 
-	/** Match Design: `modal-box border border-ink-border bg-base-100` (+ app fullscreen). */
+	/** Match Design Dialog 1.3: flex column, p-0, capped height (+ app fullscreen). */
 	const resolvedBoxClass = $derived(
 		[
-			'modal-box border border-ink-border bg-base-100',
+			'modal-box flex max-h-[min(90vh,40rem)] flex-col border border-ink-border bg-base-100 p-0',
 			layout === 'fullscreen' ? 'wash-dialog-box--fullscreen' : '',
 			boxClassName
 		]
@@ -200,44 +229,63 @@
 	bind:this={dialogEl}
 	{id}
 	class={dialogClass}
-	aria-labelledby={title ? titleId : undefined}
-	aria-describedby={description ? descId : undefined}
+	aria-labelledby={hasHeader ? titleId : undefined}
+	aria-describedby={resolvedDescription || descSnippet ? descId : undefined}
 	onclose={handleClose}
 	oncancel={handleCancel}
 >
 	<div bind:this={boxEl} class={resolvedBoxClass} role="document">
-		{#if title}
-			<h2
-				id={titleId}
-				class="card-title font-bold {titleToneClass} {layout ===
-				'fullscreen'
-					? 'shrink-0 px-4 pt-4'
-					: ''}"
-			>
-				{title}
-			</h2>
+		{#if hasHeader}
+			<div class="shrink-0 px-4 pt-4 pb-3">
+				{#if resolvedTitle}
+					<h2 id={titleId} class="card-title font-bold {titleToneClass}">
+						{resolvedTitle}
+					</h2>
+				{:else if headerSnippet}
+					<h2 id={titleId} class="card-title font-bold {titleToneClass}">
+						{@render headerSnippet()}
+					</h2>
+				{/if}
+				{#if resolvedDescription}
+					<p id={descId} class="text-ink-muted mt-0.5 text-xs">
+						{resolvedDescription}
+					</p>
+				{:else if descSnippet}
+					<p id={descId} class="text-ink-muted mt-0.5 text-xs">
+						{@render descSnippet()}
+					</p>
+				{/if}
+			</div>
 		{/if}
-		{#if description}
-			<p
-				id={descId}
-				class="py-2 text-sm text-ink-muted {layout === 'fullscreen'
-					? 'shrink-0 px-4'
-					: ''}"
-			>
-				{description}
-			</p>
-		{/if}
-		{#if children}
-			{#if layout === 'fullscreen'}
-				<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-					{@render children()}
+
+		{#if hasBody && bodySnippet}
+			{#if showActions}
+				<!-- Design: separator + scroll body when shell owns actions -->
+				<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+				<div
+					class="min-h-0 flex-1 overflow-y-auto px-4 py-3 {layout ===
+					'fullscreen'
+						? 'flex flex-col overflow-hidden p-0'
+						: ''}"
+				>
+					{@render bodySnippet()}
 				</div>
 			{:else}
-				{@render children()}
+				<!-- Content owns footer: flex column so WashDialogFooter can stick -->
+				<div
+					class="border-base-300 flex min-h-0 flex-1 flex-col border-t {layout ===
+					'fullscreen'
+						? 'overflow-hidden'
+						: ''}"
+				>
+					{@render bodySnippet()}
+				</div>
 			{/if}
 		{/if}
+
 		{#if renderActions}
-			<div class="modal-action">
+			<div class="border-base-300 shrink-0 border-t" role="separator"></div>
+			<div class="modal-action mt-0 shrink-0 px-4 py-3">
 				{#if actions}
 					{@render actions()}
 				{:else}
@@ -246,7 +294,7 @@
 			</div>
 		{/if}
 	</div>
-	<!-- Visual dimmer only — do not close on outside click (Design uses form method=dialog). -->
+	<!-- Visual dimmer only — do not close on outside click (Medora exception vs Design form method=dialog). -->
 	<div class="modal-backdrop" aria-hidden="true"></div>
 	{#if layer}
 		<!-- Absolute overlay; not a grid item that can displace the box. -->

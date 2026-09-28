@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { m } from '$lib/paraglide/messages';
@@ -127,88 +128,89 @@
 	);
 </script>
 
-<div class="space-y-4">
-	<div class="space-y-1">
-		<label for="sar-store" class="font-semibold">
-			{m.inv_stock_alert_col_store()}
-		</label>
-		<SearchSelect
-			inputId="sar-store"
-			bind:value={storeIdStr}
-			options={storeSelectOptions}
-			disabled={mode === 'edit'}
-			placeholder={m.inv_stock_alert_store_placeholder()}
-			className="w-full"
-		/>
-		{#if touched && !storeValid}
-			<p class="text-sm text-error">{m.toast_field_required()}</p>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="space-y-4">
+		<div class="space-y-1">
+			<label for="sar-store" class="font-semibold">
+				{m.inv_stock_alert_col_store()}
+			</label>
+			<SearchSelect
+				inputId="sar-store"
+				bind:value={storeIdStr}
+				options={storeSelectOptions}
+				disabled={mode === 'edit'}
+				placeholder={m.inv_stock_alert_store_placeholder()}
+				className="w-full"
+			/>
+			{#if touched && !storeValid}
+				<p class="text-sm text-error">{m.toast_field_required()}</p>
+			{/if}
+		</div>
+
+		<div class="space-y-1">
+			<label for="sar-staff" class="font-semibold">
+				{m.inv_stock_alert_add_staff()}
+			</label>
+			<SearchSelect
+				inputId="sar-staff"
+				bind:value={staffIdStr}
+				options={staffSelectOptions}
+				disabled={mode === 'edit'}
+				placeholder={m.inv_stock_alert_staff_placeholder()}
+				className="w-full"
+			/>
+			{#if touched && !staffValid}
+				<p class="text-sm text-error">{m.toast_field_required()}</p>
+			{/if}
+		</div>
+
+		{#if touched && duplicatePair}
+			<p class="text-sm text-error">
+				{m.inv_stock_alert_recipient_exists()}
+			</p>
 		{/if}
-	</div>
 
-	<div class="space-y-1">
-		<label for="sar-staff" class="font-semibold">
-			{m.inv_stock_alert_add_staff()}
-		</label>
-		<SearchSelect
-			inputId="sar-staff"
-			bind:value={staffIdStr}
-			options={staffSelectOptions}
-			disabled={mode === 'edit'}
-			placeholder={m.inv_stock_alert_staff_placeholder()}
-			className="w-full"
-		/>
-		{#if touched && !staffValid}
-			<p class="text-sm text-error">{m.toast_field_required()}</p>
-		{/if}
-	</div>
-
-	{#if touched && duplicatePair}
-		<p class="text-sm text-error">
-			{m.inv_stock_alert_recipient_exists()}
-		</p>
-	{/if}
-
-	<div class="flex flex-col gap-2 pt-1">
-		<label class="flex cursor-pointer items-center gap-2">
-			<input
-				type="checkbox"
-				class="checkbox checkbox-sm"
-				bind:checked={notifyLowStock}
-			/>
-			<span class="text-sm">{m.inv_stock_alert_col_low()}</span>
-		</label>
-		<label class="flex cursor-pointer items-center gap-2">
-			<input
-				type="checkbox"
-				class="checkbox checkbox-sm"
-				bind:checked={notifyExpired}
-			/>
-			<span class="text-sm">{m.inv_stock_alert_col_expired()}</span>
-		</label>
-		<label class="flex cursor-pointer items-center gap-2">
-			<input
-				type="checkbox"
-				class="checkbox checkbox-sm"
-				bind:checked={notifyExpiringSoon}
-			/>
-			<span class="text-sm">{m.inv_stock_alert_col_soon()}</span>
-		</label>
-	</div>
-
-	<div class="modal-action flex justify-end gap-2 pt-2">
-		<WashButton
-			type="button"
-			className="btn-ghost"
-			onClick={() => cancel()}
-		>
-			{m.cancel()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn-primary"
-			onClick={handleSubmit}
-		>
-			{m.save()}
-		</WashButton>
+		<div class="flex flex-col gap-2 pt-1">
+			<label class="flex cursor-pointer items-center gap-2">
+				<input
+					type="checkbox"
+					class="checkbox checkbox-sm"
+					bind:checked={notifyLowStock}
+				/>
+				<span class="text-sm">{m.inv_stock_alert_col_low()}</span>
+			</label>
+			<label class="flex cursor-pointer items-center gap-2">
+				<input
+					type="checkbox"
+					class="checkbox checkbox-sm"
+					bind:checked={notifyExpired}
+				/>
+				<span class="text-sm">{m.inv_stock_alert_col_expired()}</span>
+			</label>
+			<label class="flex cursor-pointer items-center gap-2">
+				<input
+					type="checkbox"
+					class="checkbox checkbox-sm"
+					bind:checked={notifyExpiringSoon}
+				/>
+				<span class="text-sm">{m.inv_stock_alert_col_soon()}</span>
+			</label>
+		</div>
 	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		type="button"
+		className="btn-ghost"
+		onClick={() => cancel()}
+	>
+		{m.cancel()}
+	</WashButton>
+	<WashButton
+		type="button"
+		className="btn-primary"
+		onClick={handleSubmit}
+	>
+		{m.save()}
+	</WashButton>
+</WashDialogFooter>

@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashTable from '$lib/component/wash/table/WashTable.svelte';
 	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
 	import WashTableBody from '$lib/component/wash/table/body/WashTableBody.svelte';
@@ -90,7 +91,7 @@
 			</WashTableBody>
 		</WashTable>
 	</div>
-	<div class="modal-action shrink-0 border-t border-base-300 px-4 py-3">
+	<WashDialogFooter>
 		<WashButton variant="ghost" onClick={() => cancel()}>Close</WashButton>
-	</div>
+	</WashDialogFooter>
 </div>

@@ -3,6 +3,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { PharmacyGenericModalState } from '$lib/state/pharmacy-generic-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -123,49 +124,55 @@
 {#if isLoading}
 	<p class="text-sm opacity-70">{m.loading()}</p>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="pg-name" class="shrink-0 sm:w-40">{m.pharmacy_generic_name()}
-				<span class="text-error">*</span></label>
-			<div class="max-w-lg flex-1">
-				<WashInputField
-					id="pg-name"
-					bind:value={name}
-					inputType="text"
-					inputPlaceholderText={m.pharmacy_generic_name_placeholder()}
-					required
-				/>
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="pg-name" class="shrink-0 sm:w-40"
+					>{m.pharmacy_generic_name()}
+					<span class="text-error">*</span></label
+				>
+				<div class="max-w-lg flex-1">
+					<WashInputField
+						id="pg-name"
+						bind:value={name}
+						inputType="text"
+						inputPlaceholderText={m.pharmacy_generic_name_placeholder()}
+						required
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="pg-code" class="shrink-0 sm:w-40"
+					>{m.pharmacy_generic_code()}</label
+				>
+				<div class="max-w-lg flex-1">
+					<WashInputField
+						id="pg-code"
+						bind:value={code}
+						inputType="text"
+						inputPlaceholderText={m.pharmacy_generic_code_placeholder()}
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label class="shrink-0 sm:w-40">{m.status()}</label>
+				<div
+					class="flex max-w-lg flex-1 flex-wrap items-center gap-2"
+				>
+					<label class="flex cursor-pointer items-center gap-2">
+						<WashCheckbox bind:checked={formActive} />
+						<span class="text-sm opacity-80">{m.active_label()}</span>
+					</label>
+				</div>
 			</div>
 		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="pg-code" class="shrink-0 sm:w-40">{m.pharmacy_generic_code()}</label>
-			<div class="max-w-lg flex-1">
-				<WashInputField
-					id="pg-code"
-					bind:value={code}
-					inputType="text"
-					inputPlaceholderText={m.pharmacy_generic_code_placeholder()}
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label class="shrink-0 sm:w-40">{m.status()}</label>
-			<div class="flex max-w-lg flex-1 flex-wrap items-center gap-2">
-				<label class="flex cursor-pointer items-center gap-2">
-					<WashCheckbox bind:checked={formActive} />
-					<span class="text-sm opacity-80">{m.active_label()}</span>
-				</label>
-			</div>
-		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -180,6 +187,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

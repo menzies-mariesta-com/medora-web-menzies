@@ -4,7 +4,7 @@
  * - No `$lib/component/daisyui` / DaisyUi* / d-* prefixed classes
  * - No Medora* UI clone path (`own/library/menzies`)
  * - No daisyUI Tailwind plugin / package dependency
- * - Wash styles.css imported before app layout.css
+ * - Wash styles.css imported in layout.css under @layer components
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -54,14 +54,8 @@ for (const f of files) {
 const layoutPath = join('src', 'routes', '+layout.svelte');
 try {
 	const layout = readFileSync(layoutPath, 'utf8');
-	const washIdx = layout.indexOf('menzies-design-wash-ui/styles.css');
-	const appCssIdx = layout.indexOf('./layout.css');
-	if (washIdx === -1 || appCssIdx === -1) {
-		violations.push(`${layoutPath}: missing Wash styles.css and/or ./layout.css import`);
-	} else if (washIdx > appCssIdx) {
-		violations.push(
-			`${layoutPath}: import Wash styles.css BEFORE ./layout.css (Tailwind responsive variants must win)`
-		);
+	if (!layout.includes('./layout.css')) {
+		violations.push(`${layoutPath}: missing ./layout.css import`);
 	}
 	if (!/\$lib\/component\/wash\//.test(layout)) {
 		violations.push(
@@ -69,12 +63,21 @@ try {
 		);
 	}
 } catch {
-	violations.push(`${layoutPath}: could not read for CSS import-order check`);
+	violations.push(`${layoutPath}: could not read for CSS import check`);
 }
 
 const layoutCssPath = join('src', 'routes', 'layout.css');
 try {
 	const layoutCss = readFileSync(layoutCssPath, 'utf8');
+	const washLayer =
+		/@import\s+['"]@menzies-mariesta-com\/menzies-design-wash-ui\/styles\.css['"]\s+layer\(components\)/.test(
+			layoutCss
+		);
+	if (!washLayer) {
+		violations.push(
+			`${layoutCssPath}: import Wash styles.css with layer(components) after @import 'tailwindcss'`
+		);
+	}
 	if (/@plugin\s+['"]daisyui['"]/.test(layoutCss)) {
 		violations.push(
 			`${layoutCssPath}: remove @plugin 'daisyui' — use Wash styles.css only`
