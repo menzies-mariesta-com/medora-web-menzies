@@ -5,6 +5,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	const toastService = new ToastService();
@@ -46,42 +47,44 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<p class="text-sm text-base-content/80">
-		Retype the diagnosis description below to inactivate this
-		diagnosis.
-	</p>
-	<p class="rounded bg-base-200 p-2 text-sm font-medium">
-		{expectedDescription}
-	</p>
-	<div class="flex flex-col gap-1">
-		<label for="confirm-diagnosis-description">
-			{m.observation_emr_instruction()}
-		</label>
-		<WashInputField
-			id="confirm-diagnosis-description"
-			className="w-full"
-			inputPlaceholderText="Type exact description"
-			bind:value={typedDescription}
-		/>
-	</div>
-	<div class="flex flex-wrap justify-end gap-2">
-		<WashButton
-			type="button"
-			className="btn-ghost"
-			onClick={handleCancel}
-			disabled={isConfirming}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn btn-error"
-			onClick={handleConfirmDelete}
-			disabled={isConfirming}
-			loading={isConfirming}
-		>
-			Inactivate
-		</WashButton>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
+		<p class="text-sm text-base-content/80">
+			Retype the diagnosis description below to inactivate this
+			diagnosis.
+		</p>
+		<p class="rounded bg-base-200 p-2 text-sm font-medium">
+			{expectedDescription}
+		</p>
+		<div class="flex flex-col gap-1">
+			<label for="confirm-diagnosis-description">
+				{m.observation_emr_instruction()}
+			</label>
+			<WashInputField
+				id="confirm-diagnosis-description"
+				className="w-full"
+				inputPlaceholderText="Type exact description"
+				bind:value={typedDescription}
+			/>
+		</div>
 	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		type="button"
+		className="btn-ghost"
+		onClick={handleCancel}
+		disabled={isConfirming}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		type="button"
+		className="btn btn-error"
+		onClick={handleConfirmDelete}
+		disabled={isConfirming}
+		loading={isConfirming}
+	>
+		Inactivate
+	</WashButton>
+</WashDialogFooter>

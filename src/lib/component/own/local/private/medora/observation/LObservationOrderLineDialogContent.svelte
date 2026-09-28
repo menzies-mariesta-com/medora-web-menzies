@@ -13,6 +13,7 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
@@ -623,24 +624,24 @@
 		/>
 		{m.observation_emr_urgent()}
 	</label>
-	<div class="flex flex-wrap justify-end gap-2 pt-2">
-		<WashButton
-			className="btn-ghost"
-			onClick={() => {
-				if (isSubmitting) return;
-				cancel();
-			}}
-			disabled={isSubmitting}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			className="btn-primary"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={handleSave}
-		>
-			{m.observation_emr_save()}
-		</WashButton>
-	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		className="btn-ghost"
+		onClick={() => {
+			if (isSubmitting) return;
+			cancel();
+		}}
+		disabled={isSubmitting}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		className="btn-primary"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={handleSave}
+	>
+		{m.observation_emr_save()}
+	</WashButton>
+</WashDialogFooter>

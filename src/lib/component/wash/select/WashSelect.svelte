@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Menzies Design Wash Select (web 1.2.0).
+	 * Menzies Design Wash Select (web 1.3.0).
 	 * daisyUI-styled trigger + custom listbox (not the OS native picker).
 	 * Placement flips via `measureDropdownPlacement`; menu width defaults to trigger.
 	 * Menu is portaled to the nearest `<dialog>` (or `document.body`) with fixed

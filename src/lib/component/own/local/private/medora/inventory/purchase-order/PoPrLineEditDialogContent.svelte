@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- PO-from-PR line draft */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -38,45 +39,47 @@
 	}
 </script>
 
-{#if draftPoPrLine}
-	<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<div>
-			<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
-			<input
-				type="number"
-				class="input-bordered input w-full"
-				value={draftPoPrLine.quantity == null ||
-				draftPoPrLine.quantity === ''
-					? ''
-					: String(draftPoPrLine.quantity)}
-				oninput={(e) => {
-					draftPoPrLine.quantity = e.currentTarget.value;
-				}}
-				step="1"
-				min="0"
-				aria-label={m.inv_common_quantity()}
-			/>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	{#if draftPoPrLine}
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div>
+				<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+				<input
+					type="number"
+					class="input-bordered input w-full"
+					value={draftPoPrLine.quantity == null ||
+					draftPoPrLine.quantity === ''
+						? ''
+						: String(draftPoPrLine.quantity)}
+					oninput={(e) => {
+						draftPoPrLine.quantity = e.currentTarget.value;
+					}}
+					step="1"
+					min="0"
+					aria-label={m.inv_common_quantity()}
+				/>
+			</div>
+			<div>
+				<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
+				<input
+					type="number"
+					class="input-bordered input w-full"
+					value={draftPoPrLine.unitPrice == null ||
+					draftPoPrLine.unitPrice === ''
+						? ''
+						: String(draftPoPrLine.unitPrice)}
+					oninput={(e) => {
+						draftPoPrLine.unitPrice = e.currentTarget.value;
+					}}
+					step="0.01"
+					min="0"
+					aria-label={m.inv_po_line_unit_price()}
+				/>
+			</div>
 		</div>
-		<div>
-			<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
-			<input
-				type="number"
-				class="input-bordered input w-full"
-				value={draftPoPrLine.unitPrice == null ||
-				draftPoPrLine.unitPrice === ''
-					? ''
-					: String(draftPoPrLine.unitPrice)}
-				oninput={(e) => {
-					draftPoPrLine.unitPrice = e.currentTarget.value;
-				}}
-				step="0.01"
-				min="0"
-				aria-label={m.inv_po_line_unit_price()}
-			/>
-		</div>
-	</div>
-{/if}
-<div class="modal-action mt-6">
+	{/if}
+</div>
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -93,4 +96,4 @@
 	>
 		{m.save()}
 	</WashButton>
-</div>
+</WashDialogFooter>

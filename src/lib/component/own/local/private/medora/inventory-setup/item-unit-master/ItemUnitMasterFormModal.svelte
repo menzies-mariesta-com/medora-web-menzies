@@ -4,6 +4,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { ItemUnitMasterModalState } from '$lib/state/item-unit-master-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -163,80 +164,90 @@
 {#if isLoading}
 	<p class="text-sm opacity-70">{m.loading()}</p>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ium-pu" class="shrink-0 sm:w-48">{m.item_unit_master_purchase_unit()}
-				<span class="text-error">*</span></label>
-			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="ium-pu"
-					bind:value={purchaseUnitIdStr}
-					optionHeader={m.item_master_unit_none()}
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ium-pu" class="shrink-0 sm:w-48"
+					>{m.item_unit_master_purchase_unit()}
+					<span class="text-error">*</span></label
 				>
-					{#each units as u (u.id)}
-						<option value={String(u.id)}>{u.name ?? u.id}</option>
-					{/each}
-				</WashSelect>
+				<div class="max-w-lg flex-1">
+					<WashSelect
+						id="ium-pu"
+						bind:value={purchaseUnitIdStr}
+						optionHeader={m.item_master_unit_none()}
+					>
+						{#each units as u (u.id)}
+							<option value={String(u.id)}>{u.name ?? u.id}</option>
+						{/each}
+					</WashSelect>
+				</div>
 			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ium-pf" class="shrink-0 sm:w-48">{m.item_unit_master_purchase_factor()}
-				<span class="text-error">*</span></label>
-			<div class="max-w-lg flex-1">
-				<WashInputField
-					id="ium-pf"
-					bind:value={purchaseFactorStr}
-					inputType="text"
-					inputPlaceholderText="e.g. 100"
-					required
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ium-iu" class="shrink-0 sm:w-48">{m.item_unit_master_issue_unit()}
-				<span class="text-error">*</span></label>
-			<div class="max-w-lg flex-1">
-				<WashSelect
-					id="ium-iu"
-					bind:value={issueUnitIdStr}
-					optionHeader={m.item_master_unit_none()}
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ium-pf" class="shrink-0 sm:w-48"
+					>{m.item_unit_master_purchase_factor()}
+					<span class="text-error">*</span></label
 				>
-					{#each units as u (u.id)}
-						<option value={String(u.id)}>{u.name ?? u.id}</option>
-					{/each}
-				</WashSelect>
+				<div class="max-w-lg flex-1">
+					<WashInputField
+						id="ium-pf"
+						bind:value={purchaseFactorStr}
+						inputType="text"
+						inputPlaceholderText="e.g. 100"
+						required
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ium-iu" class="shrink-0 sm:w-48"
+					>{m.item_unit_master_issue_unit()}
+					<span class="text-error">*</span></label
+				>
+				<div class="max-w-lg flex-1">
+					<WashSelect
+						id="ium-iu"
+						bind:value={issueUnitIdStr}
+						optionHeader={m.item_master_unit_none()}
+					>
+						{#each units as u (u.id)}
+							<option value={String(u.id)}>{u.name ?? u.id}</option>
+						{/each}
+					</WashSelect>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ium-if" class="shrink-0 sm:w-48"
+					>{m.item_unit_master_issue_factor()}
+					<span class="text-error">*</span></label
+				>
+				<div class="max-w-lg flex-1">
+					<WashInputField
+						id="ium-if"
+						bind:value={issueFactorStr}
+						inputType="text"
+						inputPlaceholderText="e.g. 1"
+						required
+					/>
+				</div>
+			</div>
+			<div
+				class="rounded-lg border border-base-300 bg-base-200/40 p-3"
+			>
+				<p class="text-xs font-medium uppercase opacity-70">
+					{m.item_unit_master_preview()}
+				</p>
+				<p class="mt-1 font-mono text-sm">{previewLabel}</p>
 			</div>
 		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ium-if" class="shrink-0 sm:w-48">{m.item_unit_master_issue_factor()}
-				<span class="text-error">*</span></label>
-			<div class="max-w-lg flex-1">
-				<WashInputField
-					id="ium-if"
-					bind:value={issueFactorStr}
-					inputType="text"
-					inputPlaceholderText="e.g. 1"
-					required
-				/>
-			</div>
-		</div>
-		<div class="rounded-lg border border-base-300 bg-base-200/40 p-3">
-			<p class="text-xs font-medium uppercase opacity-70">
-				{m.item_unit_master_preview()}
-			</p>
-			<p class="mt-1 font-mono text-sm">{previewLabel}</p>
-		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -251,6 +262,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

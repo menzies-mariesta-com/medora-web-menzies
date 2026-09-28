@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -46,13 +47,15 @@
 	}
 </script>
 
-<textarea
-	class="textarea-bordered textarea mt-4 w-full"
-	rows="3"
-	bind:value={reason}
-	aria-label={textareaAriaLabel}
-></textarea>
-<div class="modal-action mt-4">
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<textarea
+		class="textarea-bordered textarea w-full"
+		rows="3"
+		bind:value={reason}
+		aria-label={textareaAriaLabel}
+	></textarea>
+</div>
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -69,4 +72,4 @@
 	>
 		{confirmLabel}
 	</WashButton>
-</div>
+</WashDialogFooter>

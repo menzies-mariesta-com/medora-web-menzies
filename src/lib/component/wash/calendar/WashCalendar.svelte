@@ -1,30 +1,37 @@
 <script lang="ts">
 	/**
-	 * Svelte adapter for Design WashCalendar (web 1.2.0).
+	 * Svelte adapter for Design WashCalendar (web 1.3.0).
 	 * Same props as Design studio: mode, value, min, max, showOutsideDays,
-	 * markedDates, size, bordered, aria-label, onChange.
+	 * markedDates, size, bordered, includeTime, aria-label, onChange.
 	 * Boot: app already calls `initWash` via WashThemeTool (see Design Svelte snippet).
-	 * Styles: Design `wash-calendar*` (mirrored in wash-app.style.css).
+	 * Styles: Design `wash-calendar*` / `wash-time*` from package styles.css.
 	 * @see https://design-menzies.netlify.app/ — Calendar
 	 */
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
+	import WashTimePicker from '$lib/component/wash/timepicker/WashTimePicker.svelte';
 	import {
+		DEFAULT_CALENDAR_TIME,
 		addMonths,
 		buildMonthCells,
 		clampISODate,
 		compareISODate,
+		currentTimeRounded,
 		daysInMonth,
+		formatDateTimeLocal,
 		formatMultiValue,
 		formatRangeValue,
 		isISOInRange,
 		monthOptions,
+		normalizeTime,
+		parseDateTimeLocal,
 		parseISODate,
 		parseMultiValue,
 		parseRangeValue,
 		shiftISODate,
 		startOfMonth,
 		toISODate,
+		toISODateFromDateTime,
 		weekdayLabels
 	} from '$lib/util/wash-calendar-date.util';
 	import {
@@ -60,6 +67,9 @@
 		maxYears = 50,
 		size = 'md',
 		bordered = true,
+		includeTime = false,
+		defaultTime = DEFAULT_CALENDAR_TIME,
+		timeStep = 300,
 		className = '',
 		id,
 		'aria-label': ariaLabel = 'Calendar'
@@ -80,6 +90,12 @@
 		maxYears?: number;
 		size?: 'md' | 'sm';
 		bordered?: boolean;
+		/** When true and `mode="single"`, show time footer and emit `YYYY-MM-DDTHH:mm:ss`. */
+		includeTime?: boolean;
+		/** Default `HH:mm` / `HH:mm:ss` when value is day-only or empty. */
+		defaultTime?: string;
+		/** Kept for API compatibility; analog clock ignores step. */
+		timeStep?: number;
 		className?: string;
 		id?: string;
 		'aria-label'?: string;
@@ -87,12 +103,17 @@
 
 	const generatedId = createWashId('wash-cal');
 	const rootId = $derived(id ?? generatedId);
+	const timeInputId = $derived(`${rootId}-time`);
 	const resolvedLocale = $derived(
 		locale ??
 			(typeof navigator !== 'undefined' ? navigator.language : 'en-US')
 	);
 	const todayISO = toISODate(new Date());
 	const compact = $derived(size === 'sm');
+	const withTime = $derived(includeTime && mode === 'single');
+	const resolvedDefaultTime = $derived(
+		normalizeTime(defaultTime) ?? '09:00:00'
+	);
 
 	function defaultViewISOFrom(
 		modeValue: WashCalendarMode,
@@ -104,7 +125,7 @@
 		if (modeValue === 'multi') {
 			return parseMultiValue(valueStr)[0] || todayISO;
 		}
-		return valueStr || todayISO;
+		return toISODateFromDateTime(valueStr) || valueStr || todayISO;
 	}
 
 	let internalViewISO = $state(todayISO);
@@ -126,18 +147,38 @@
 
 	$effect(() => {
 		if (viewDate) {
-			internalViewISO = viewDate;
+			internalViewISO = toISODateFromDateTime(viewDate) || viewDate;
 			return;
 		}
 		if (!didInitView) {
 			internalViewISO = defaultViewISOFrom(mode, value);
-			focusISO = clampISODate(internalViewISO, min, max);
+			focusISO = clampISODate(
+				toISODateFromDateTime(internalViewISO) || internalViewISO,
+				min,
+				max
+			);
 			didInitView = true;
 		}
 	});
 
 	const viewISO = $derived(viewDate ?? internalViewISO);
-	const viewMonth = $derived(startOfMonth(viewISO));
+	const viewMonth = $derived(
+		startOfMonth(toISODateFromDateTime(viewISO) || viewISO)
+	);
+	const selectedDay = $derived(
+		mode === 'range'
+			? parseRangeValue(value).start || ''
+			: mode === 'multi'
+				? parseMultiValue(value)[0] || ''
+				: withTime
+					? toISODateFromDateTime(value) || ''
+					: value || ''
+	);
+	const selectedTime = $derived(
+		withTime
+			? parseDateTimeLocal(value, resolvedDefaultTime).time
+			: resolvedDefaultTime
+	);
 	const months = $derived(monthOptions(resolvedLocale));
 	const weekdays = $derived(weekdayLabels(resolvedLocale, firstDayOfWeek));
 	const yearCenter = new Date().getFullYear();
@@ -166,6 +207,7 @@
 		[
 			'wash-calendar',
 			'no-overflow-marquee',
+			withTime ? 'wash-calendar--with-time' : '',
 			compact ? 'wash-calendar--sm' : '',
 			'rounded-box border bg-base-100',
 			bordered
@@ -205,7 +247,8 @@
 	function selectDay(iso: string, date: Date) {
 		if (isDisabled(iso, date)) return;
 		if (mode === 'single') {
-			setValue(iso);
+			if (withTime) setValue(formatDateTimeLocal(iso, selectedTime));
+			else setValue(iso);
 			focusISO = iso;
 			return;
 		}
@@ -228,10 +271,22 @@
 		focusISO = iso;
 	}
 
+	function setTimePart(time: string) {
+		if (!withTime) return;
+		const t = normalizeTime(time) ?? selectedTime;
+		const day = selectedDay || todayISO;
+		setValue(formatDateTimeLocal(day, t));
+		focusISO = day;
+	}
+
 	function goToday() {
 		const t = clampISODate(todayISO, min, max);
 		moveViewTo(t);
-		if (mode === 'single') setValue(t);
+		if (mode === 'single') {
+			if (withTime) {
+				setValue(formatDateTimeLocal(t, currentTimeRounded(timeStep)));
+			} else setValue(t);
+		}
 	}
 
 	function updateNavPlacement(
@@ -405,7 +460,10 @@
 				class="menu menu-sm dropdown-content wash-calendar__nav-menu {DROPDOWN_PANEL_Z} {DROPDOWN_PANEL_OVERFLOW} rounded-box border border-ink-border bg-base-100 shadow-[var(--shadow-paper-md)] {monthPlacement.top
 					? 'mb-1'
 					: 'mt-1'}"
-				style={dropdownPanelStyle(monthPlacement)}
+				style:max-height="{dropdownPanelStyle(monthPlacement).maxHeight}px"
+				style:--wash-dropdown-max-h={dropdownPanelStyle(monthPlacement)[
+					'--wash-dropdown-max-h'
+				]}
 				role="listbox"
 				aria-label="Month"
 				tabindex="-1"
@@ -478,7 +536,10 @@
 				class="menu menu-sm dropdown-content wash-calendar__nav-menu {DROPDOWN_PANEL_Z} {DROPDOWN_PANEL_OVERFLOW} rounded-box border border-ink-border bg-base-100 shadow-[var(--shadow-paper-md)] {yearPlacement.top
 					? 'mb-1'
 					: 'mt-1'}"
-				style={dropdownPanelStyle(yearPlacement)}
+				style:max-height="{dropdownPanelStyle(yearPlacement).maxHeight}px"
+				style:--wash-dropdown-max-h={dropdownPanelStyle(yearPlacement)[
+					'--wash-dropdown-max-h'
+				]}
 				role="listbox"
 				aria-label="Year"
 				tabindex="-1"
@@ -550,7 +611,8 @@
 					let selected = false;
 					let inRange = false;
 					let rangeEdge = false;
-					if (mode === 'single') selected = value === cell.iso;
+					if (mode === 'single')
+						selected = selectedDay === cell.iso;
 					else if (mode === 'multi' && multiSet)
 						selected = multiSet.has(cell.iso);
 					else if (mode === 'range' && rangeParsed) {
@@ -598,4 +660,20 @@
 			{/if}
 		{/each}
 	</div>
+
+	{#if withTime}
+		<div class="wash-calendar__time">
+			<span class="wash-calendar__time-label" id="{timeInputId}-label"
+				>Time</span
+			>
+			<WashTimePicker
+				id={timeInputId}
+				value={selectedTime}
+				onChange={setTimePart}
+				locale={resolvedLocale}
+				size={compact ? 'sm' : 'md'}
+				aria-label="Time"
+			/>
+		</div>
+	{/if}
 </div>

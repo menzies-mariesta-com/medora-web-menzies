@@ -9,6 +9,7 @@
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import {
@@ -292,7 +293,8 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
 	<div
 		class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3"
 	>
@@ -550,7 +552,9 @@
 		</div>
 	</div>
 
-	<div class="mt-4 flex flex-wrap gap-3">
+	</div>
+
+	<WashDialogFooter className="gap-3">
 		<WashButton
 			type="submit"
 			className="btn-primary btn-wide"
@@ -568,5 +572,5 @@
 		>
 			Cancel
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

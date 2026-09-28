@@ -6,6 +6,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -226,7 +227,8 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
 	<p class="text-sm font-medium">
 		{isEdit
 			? m.observation_emr_edit_document_link()
@@ -262,24 +264,25 @@
 			{/each}
 		</WashSelect>
 	</div>
-	<div class="flex flex-wrap justify-end gap-2">
-		<WashButton
-			className="btn-ghost"
-			onClick={() => {
-				if (isSubmitting) return;
-				cancel();
-			}}
-			disabled={isSubmitting}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			className="btn-primary"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={handleSave}
-		>
-			{m.observation_emr_save()}
-		</WashButton>
 	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		className="btn-ghost"
+		onClick={() => {
+			if (isSubmitting) return;
+			cancel();
+		}}
+		disabled={isSubmitting}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		className="btn-primary"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={handleSave}
+	>
+		{m.observation_emr_save()}
+	</WashButton>
+</WashDialogFooter>

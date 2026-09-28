@@ -4,6 +4,7 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { EditAppointmentDialogState } from '$lib/state/edit-appointment-dialog.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -785,6 +786,7 @@
 {:else if appointmentId == null}
 	<p class="text-base-content/70">No appointment selected.</p>
 {:else}
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 	<div class="flex flex-col gap-5">
 		<div class="flex flex-col gap-3 rounded-lg bg-base-200/50 p-3">
 			<div
@@ -1058,38 +1060,37 @@
 				</p>
 			{/if}
 		</div>
-
-		<div
-			class="modal-action flex flex-wrap justify-end gap-2 border-t border-base-300 pt-4"
-		>
-			<button
-				type="button"
-				class="btn btn-outline btn-error"
-				onclick={() => handleDelete()}
-				disabled={isSubmitting || isDeleting}
-			>
-				{isDeleting ? 'Deleting…' : 'Delete'}
-			</button>
-			<button
-				type="button"
-				class="btn"
-				onclick={() => cancel()}
-				disabled={isSubmitting || isDeleting}
-			>
-				Cancel
-			</button>
-			<button
-				type="button"
-				class="btn btn-primary"
-				onclick={() => handleUpdate()}
-				disabled={!manualAppointmentDate ||
-					!manualFromTime ||
-					!toTime ||
-					isSubmitting ||
-					isDeleting}
-			>
-				{isSubmitting ? 'Saving…' : 'Save'}
-			</button>
-		</div>
 	</div>
+	</div>
+
+	<WashDialogFooter>
+		<button
+			type="button"
+			class="btn btn-outline btn-error"
+			onclick={() => handleDelete()}
+			disabled={isSubmitting || isDeleting}
+		>
+			{isDeleting ? 'Deleting…' : 'Delete'}
+		</button>
+		<button
+			type="button"
+			class="btn"
+			onclick={() => cancel()}
+			disabled={isSubmitting || isDeleting}
+		>
+			Cancel
+		</button>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={() => handleUpdate()}
+			disabled={!manualAppointmentDate ||
+				!manualFromTime ||
+				!toTime ||
+				isSubmitting ||
+				isDeleting}
+		>
+			{isSubmitting ? 'Saving…' : 'Save'}
+		</button>
+	</WashDialogFooter>
 {/if}
