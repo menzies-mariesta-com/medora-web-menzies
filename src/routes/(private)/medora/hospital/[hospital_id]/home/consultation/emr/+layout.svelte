@@ -107,6 +107,7 @@
 		try {
 			await apiPost('visit.unsign', { visitId });
 			VisitState.setClinicalSignedAtFromVisit(null);
+			VisitState.notifyClinicalSignChanged();
 			toastService.addToast(
 				msg.clinical_visit_unsign_success(),
 				StatusColorEnum.SUCCESS

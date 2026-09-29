@@ -13,6 +13,7 @@
 	import OpBillingReadinessPanel from '$lib/component/own/local/private/medora/billing/OpBillingReadinessPanel.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
+	import { BillingStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import type {
 		OpBillingLine,
 		OpBillingMeta,
@@ -65,6 +66,8 @@
 		id: number;
 		billNo: string | null;
 		createdAt: string;
+		updatedAt: string | null;
+		statusTaggingId: number | null;
 		printedAt: string | null;
 		linesSubtotal: string | number | null;
 		discountAmount: string | number | null;
@@ -138,8 +141,9 @@
 
 	/** Bill was closed; discount is frozen for that bill. */
 	const visitLevelDiscountLocked = $derived.by(() => {
-		const p = billingMeta?.printedAt;
-		return p != null && String(p).trim() !== '';
+		return (
+			billingMeta?.statusTaggingId === BillingStatusTaggingEnum.CLOSED
+		);
 	});
 
 	const canCloseIpBill = $derived(
@@ -1154,7 +1158,13 @@
 										{formatPrintDate(b.createdAt)}
 									</td>
 									<td class="whitespace-nowrap">
-										{formatPrintDate(b.printedAt)}
+										{formatPrintDate(
+											b.printedAt ??
+												(b.statusTaggingId ===
+												BillingStatusTaggingEnum.CLOSED
+													? b.updatedAt
+													: null)
+										)}
 									</td>
 									<td
 										class="text-right font-mono whitespace-nowrap tabular-nums"
@@ -1178,7 +1188,8 @@
 										)}
 									</td>
 									<td class="whitespace-nowrap">
-										{#if b.printedAt}
+										{#if b.statusTaggingId ===
+											BillingStatusTaggingEnum.CLOSED}
 											<span class="badge badge-neutral">
 												{tr(undefined, 'Closed')}
 											</span>

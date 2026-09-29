@@ -15,7 +15,12 @@ import {
 	or,
 	sql
 } from 'drizzle-orm';
-import { StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
+import {
+	BillingStatusTaggingEnum,
+	StaffTypeEnum,
+	StatusEnum,
+	VisitStatusTaggingEnum
+} from '$lib/model/enum/db-link';
 import {
 	normalizePagination,
 	type PaginationParams
@@ -861,7 +866,10 @@ export async function signPatientVisitClinical(input: {
 	}
 	const [row] = await ensureDb()
 		.update(table.patientVisitTable)
-		.set({ clinicalSignedAt: new Date().toISOString() })
+		.set({
+			clinicalSignedAt: new Date().toISOString(),
+			statusTaggingId: VisitStatusTaggingEnum.CLOSED_DISCHARGED
+		})
 		.where(eq(table.patientVisitTable.id, input.visitId))
 		.returning();
 	if (!row) throw new Error('Update failed');
@@ -896,7 +904,10 @@ export async function unsignPatientVisitClinical(input: {
 
 	const [row] = await ensureDb()
 		.update(table.patientVisitTable)
-		.set({ clinicalSignedAt: null })
+		.set({
+			clinicalSignedAt: null,
+			statusTaggingId: VisitStatusTaggingEnum.SEEN
+		})
 		.where(eq(table.patientVisitTable.id, input.visitId))
 		.returning();
 	if (!row) throw new Error('Update failed');
@@ -1389,7 +1400,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 	return out;
 }
 
-/** Service order detail IDs already on a closed (`printed_at`) OP or IP bill for this visit. */
+/** Service order detail IDs already on a closed OP or IP bill for this visit. */
 export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
@@ -1409,7 +1420,10 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 			.where(
 				and(
 					eq(table.opBillingTable.visitId, input.visitId),
-					isNotNull(table.opBillingTable.printedAt),
+					eq(
+						table.opBillingTable.statusTaggingId,
+						BillingStatusTaggingEnum.CLOSED
+					),
 					ne(table.opBillingTable.statusId, StatusEnum.DELETED),
 					isNotNull(table.opBillingLineTable.serviceOrderDetailId)
 				)
@@ -1429,7 +1443,10 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 			.where(
 				and(
 					eq(table.ipBillingTable.visitId, input.visitId),
-					isNotNull(table.ipBillingTable.printedAt),
+					eq(
+						table.ipBillingTable.statusTaggingId,
+						BillingStatusTaggingEnum.CLOSED
+					),
 					ne(table.ipBillingTable.statusId, StatusEnum.DELETED),
 					isNotNull(table.ipBillingLineTable.serviceOrderDetailId)
 				)
@@ -1444,7 +1461,7 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 	return set;
 }
 
-/** Medication order line IDs already on a closed (`printed_at`) OP or IP bill for this visit. */
+/** Medication order line IDs already on a closed OP or IP bill for this visit. */
 export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 	visitId: number;
 }): Promise<Set<number>> {
@@ -1464,7 +1481,10 @@ export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 			.where(
 				and(
 					eq(table.opBillingTable.visitId, input.visitId),
-					isNotNull(table.opBillingTable.printedAt),
+					eq(
+						table.opBillingTable.statusTaggingId,
+						BillingStatusTaggingEnum.CLOSED
+					),
 					ne(table.opBillingTable.statusId, StatusEnum.DELETED),
 					isNotNull(table.opBillingLineTable.medicationOrderLineId)
 				)
@@ -1484,7 +1504,10 @@ export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
 			.where(
 				and(
 					eq(table.ipBillingTable.visitId, input.visitId),
-					isNotNull(table.ipBillingTable.printedAt),
+					eq(
+						table.ipBillingTable.statusTaggingId,
+						BillingStatusTaggingEnum.CLOSED
+					),
 					ne(table.ipBillingTable.statusId, StatusEnum.DELETED),
 					isNotNull(table.ipBillingLineTable.medicationOrderLineId)
 				)
@@ -1796,7 +1819,10 @@ export async function assertServiceOrderDetailNotLockedByClosedOpBill(
 		.where(
 			and(
 				eq(table.opBillingLineTable.serviceOrderDetailId, detailId),
-				isNotNull(table.opBillingTable.printedAt),
+				eq(
+					table.opBillingTable.statusTaggingId,
+					BillingStatusTaggingEnum.CLOSED
+				),
 				ne(table.opBillingTable.statusId, StatusEnum.DELETED)
 			)
 		)

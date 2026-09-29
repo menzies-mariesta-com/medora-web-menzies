@@ -24,6 +24,9 @@ import {
 	IpdAdmissionStatusEnum,
 	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
+	IpdBedBookingStatusTaggingEnum,
+	IpdBedTransferReqStatusTaggingEnum,
+	BillingStatusTaggingEnum,
 	StatusEnum,
 	YesNoEnum
 } from '../../../../model/enum/db-link';
@@ -951,7 +954,7 @@ export const patientVisitTable = pgTable('patient_visit', {
 	chiefComplaint: text('chief_complaint'),
 	patientCondition: text('patient_condition'),
 	diagnosisNotes: text('diagnosis_notes'),
-	/** Set once from Observation EMR “Save as signed”; locks visit-scoped clinical edits across Observation / Nursing / CPOE. */
+	/** Set from Observation EMR “Save as signed”; locks visit-scoped clinical edits and sets visit status tagging to Closed. Cleared on unsign (status returns to Seen). */
 	clinicalSignedAt: timestamp('clinical_signed_at', {
 		withTimezone: true,
 		mode: 'string'
@@ -1511,8 +1514,8 @@ export const serviceOrderDetailTable = pgTable(
 
 /**
  * OP billing header for a visit. Multiple rows per visit are allowed: each
- * closed bill (`printed_at` set) freezes its lines; a new open draft appears
- * when there are nursing-complete lines not yet on any closed bill.
+ * closed bill (`status_tagging_id` = CLOSED) freezes its lines; a new open
+ * draft appears when there are nursing-complete lines not yet on any closed bill.
  */
 export const opBillingTable = pgTable(
 	'op_billing',
@@ -1570,6 +1573,15 @@ export const opBillingTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
+		/** Workflow status (Open / Closed). Closing sets this to CLOSED. */
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(BillingStatusTaggingEnum.OPEN),
+		/**
+		 * Legacy close audit columns. Open vs closed is `status_tagging_id`
+		 * (`BillingStatusTaggingEnum`). New closes do not write these.
+		 */
 		printedByStaffId: uuid('printed_by_staff_id').references(
 			() => staffTable.id,
 			{ onDelete: 'set null' }
@@ -1591,6 +1603,7 @@ export const opBillingTable = pgTable(
 		index('op_billing_branch_id_idx').on(table.branchId),
 		index('op_billing_bill_no_idx').on(table.billNo),
 		index('op_billing_status_id_idx').on(table.statusId),
+		index('op_billing_status_tagging_id_idx').on(table.statusTaggingId),
 		index('op_billing_discount_type_id_idx').on(table.discountTypeId)
 	]
 );
@@ -1966,7 +1979,7 @@ export const bedTable = pgTable(
 );
 
 /**
- * IPD admission for a patient visit (same visit converted from OPD).
+ * IPD admission for a patient visit (created by ADT Admission as a new IPD visit).
  * At most one active (non-cancelled) admission per visit.
  * Current location: ward + room + bed (denormalized for census; bed is source of truth).
  */
@@ -2236,7 +2249,8 @@ export const ipdAccommodationBillingPolicyTable = pgTable(
 
 /**
  * IP billing header for an IPD visit (mirrors `op_billing`).
- * Multiple drafts/closed bills per visit allowed same as OP.
+ * Multiple drafts/closed bills per visit allowed same as OP; closed is
+ * `status_tagging_id` = CLOSED.
  */
 export const ipBillingTable = pgTable(
 	'ip_billing',
@@ -2294,6 +2308,15 @@ export const ipBillingTable = pgTable(
 			withTimezone: true,
 			mode: 'string'
 		}),
+		/** Workflow status (Open / Closed). Closing sets this to CLOSED. */
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(BillingStatusTaggingEnum.OPEN),
+		/**
+		 * Legacy close audit columns. Open vs closed is `status_tagging_id`
+		 * (`BillingStatusTaggingEnum`). New closes do not write these.
+		 */
 		printedByStaffId: uuid('printed_by_staff_id').references(
 			() => staffTable.id,
 			{ onDelete: 'set null' }
@@ -2315,7 +2338,8 @@ export const ipBillingTable = pgTable(
 		index('ip_billing_hospital_id_idx').on(table.hospitalId),
 		index('ip_billing_branch_id_idx').on(table.branchId),
 		index('ip_billing_bill_no_idx').on(table.billNo),
-		index('ip_billing_status_id_idx').on(table.statusId)
+		index('ip_billing_status_id_idx').on(table.statusId),
+		index('ip_billing_status_tagging_id_idx').on(table.statusTaggingId)
 	]
 );
 
@@ -2584,5 +2608,115 @@ export const operativeNoteTable = pgTable(
 	(t) => [
 		index('operative_note_visit_id_idx').on(t.visitId),
 		index('operative_note_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/**
+ * ADT bed booking — may be without a registered patient (Appointment-style guest fields).
+ * Does not create a visit; convert later via Admission after patient registration.
+ */
+export const ipdBedBookingTable = pgTable(
+	'ipd_bed_booking',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id').references(() => patientTable.id, {
+			onDelete: 'set null'
+		}),
+		patientTitleId: integer('patient_title_id').references(
+			() => titleTable.id
+		),
+		patientName: varchar('patient_name', { length: 512 }),
+		patientDateOfBirth: date('patient_date_of_birth'),
+		patientAgeYear: integer('patient_age_year'),
+		patientAgeMonth: integer('patient_age_month'),
+		patientAgeDay: integer('patient_age_day'),
+		phone: varchar('phone', { length: 128 }),
+		email: varchar('email', { length: 512 }),
+		preferredWardId: integer('preferred_ward_id').references(
+			() => wardTable.id,
+			{ onDelete: 'set null' }
+		),
+		preferredBedId: integer('preferred_bed_id').references(
+			() => bedTable.id,
+			{ onDelete: 'set null' }
+		),
+		expectedAdmitAt: timestamp('expected_admit_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		admittingDoctorId: uuid('admitting_doctor_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		remark: text('remark'),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(IpdBedBookingStatusTaggingEnum.BOOKED),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ipd_bed_booking_hospital_id_idx').on(t.hospitalId),
+		index('ipd_bed_booking_branch_id_idx').on(t.branchId),
+		index('ipd_bed_booking_patient_id_idx').on(t.patientId),
+		index('ipd_bed_booking_status_tagging_id_idx').on(t.statusTaggingId)
+	]
+);
+
+/**
+ * ADT bed transfer requisition — request workflow; complete calls transferBed.
+ */
+export const ipdBedTransferRequisitionTable = pgTable(
+	'ipd_bed_transfer_requisition',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		fromBedId: integer('from_bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		toBedId: integer('to_bed_id').references(() => bedTable.id, {
+			onDelete: 'restrict'
+		}),
+		toWardId: integer('to_ward_id').references(() => wardTable.id, {
+			onDelete: 'set null'
+		}),
+		requestedByStaffId: uuid('requested_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		remark: text('remark'),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(IpdBedTransferReqStatusTaggingEnum.DRAFT),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ipd_bed_xfer_req_hospital_id_idx').on(t.hospitalId),
+		index('ipd_bed_xfer_req_admission_id_idx').on(t.admissionId),
+		index('ipd_bed_xfer_req_status_tagging_id_idx').on(t.statusTaggingId)
 	]
 );
