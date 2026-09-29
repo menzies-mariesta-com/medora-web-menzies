@@ -1,17 +1,22 @@
 <script lang="ts">
 	/**
-	 * Admit current OPD visit to IPD (same visit convert).
-	 * Ward → free bed → optional notes; posts to nursing-workbench/ipd/census.
+	 * ATD Admission: pick patient + ward/bed → creates a new IPD visit + admission.
+	 * Does not convert an existing OPD visit.
 	 */
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type { WardRow, BedRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
+	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
+	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
@@ -37,14 +42,31 @@
 			? `/api/medora/hospital/${hospitalId}/home/administration/bed-master`
 			: ''
 	);
+	const patientApi = $derived(
+		hospitalId
+			? `/api/medora/hospital/${hospitalId}/home/registration/patient/list`
+			: ''
+	);
 
 	let wards = $state<WardRow[]>([]);
 	let beds = $state<BedRow[]>([]);
+	let selectedPatientId = $state(
+		AdmitToIpdDialogState.patientId?.trim() || ''
+	);
 	let wardId = $state('');
 	let bedId = $state('');
 	let reasonNotes = $state('');
 	let isSubmitting = $state(false);
 	let isLoading = $state(false);
+
+	const selectedWard = $derived(
+		wards.find((w) => String(w.id) === wardId) ?? null
+	);
+	const branchId = $derived(
+		AdmitToIpdDialogState.branchId ??
+			selectedWard?.branchId ??
+			null
+	);
 
 	const wardOptions = $derived(
 		wards.map((w) => ({
@@ -62,13 +84,45 @@
 		})
 	);
 
+	async function searchPatients(
+		query: string
+	): Promise<{ label: string; value: string }[]> {
+		if (!patientApi) return [];
+		const qs = new URLSearchParams({
+			page: '1',
+			pageSize: String(AppEnum.PAGE_SIZE_FOR_SEARCH_SELECT)
+		});
+		if (query.trim()) qs.set('search', query.trim());
+		const res = await fetch(`${patientApi}?${qs}`, {
+			credentials: 'include'
+		});
+		if (!res.ok) return [];
+		const result = (await res.json()) as PaginatedResult<PatientWithRelations>;
+		return (result.data ?? []).map((p) => ({
+			label: StringUtil.patientOptionDisplayName(p),
+			value: String(p.id)
+		}));
+	}
+
+	async function getPatientLabelForValue(id: string): Promise<string> {
+		if (!patientApi || !id) return '';
+		const res = await fetch(
+			`${patientApi}?id=${encodeURIComponent(id)}`,
+			{ credentials: 'include' }
+		);
+		if (!res.ok) return '';
+		const p = (await res.json()) as PatientWithRelations | null;
+		if (!p || typeof p !== 'object') return '';
+		return StringUtil.patientOptionDisplayName(p);
+	}
+
 	async function loadWards() {
 		if (!wardApi) return;
 		isLoading = true;
 		try {
-			const branchId = AdmitToIpdDialogState.branchId;
 			const qs = new URLSearchParams({ active: '1' });
-			if (branchId) qs.set('branchId', branchId);
+			if (AdmitToIpdDialogState.branchId)
+				qs.set('branchId', AdmitToIpdDialogState.branchId);
 			const res = await fetch(`${wardApi}?${qs}`, {
 				credentials: 'include'
 			});
@@ -114,11 +168,14 @@
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (isSubmitting) return;
-		const visitId = AdmitToIpdDialogState.visitId;
-		const branchId = AdmitToIpdDialogState.branchId;
-		if (!visitId || !branchId) {
+		const patientId = selectedPatientId.trim();
+		if (!patientId) {
+			toastService.addToast('Select a patient', StatusColorEnum.ERROR);
+			return;
+		}
+		if (!branchId) {
 			toastService.addToast(
-				'Visit / branch context missing',
+				'Branch could not be resolved from ward',
 				StatusColorEnum.ERROR
 			);
 			return;
@@ -141,7 +198,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					action: 'admit',
-					visitId,
+					patientId,
 					wardId: wid,
 					bedId: bid,
 					branchId,
@@ -154,7 +211,7 @@
 				throw new Error(t || `Admit failed: ${res.status}`);
 			}
 			toastService.addToast(
-				'Patient admitted to IPD',
+				'Patient admitted to IPD (new visit created)',
 				StatusColorEnum.SUCCESS
 			);
 			confirm(await res.json());
@@ -175,13 +232,23 @@
 			{#if isLoading}
 				<p class="text-sm opacity-70">Loading wards…</p>
 			{/if}
+			<label class="label-ink text-sm font-medium" for="admit-patient"
+				>Patient</label
+			>
+			<SearchSelect
+				bind:value={selectedPatientId}
+				placeholder="Search patient"
+				className="w-full"
+				searchFn={searchPatients}
+				getLabelForValue={getPatientLabelForValue}
+				minSearchLength={0}
+			/>
 			<label class="label-ink text-sm font-medium" for="admit-ward"
 				>Ward</label
 			>
 			<WashSelect
 				id="admit-ward"
 				placeholder="Select ward"
-				className="w-full"
 				options={wardOptions}
 				bind:value={wardId}
 			/>
@@ -190,37 +257,35 @@
 			>
 			<WashSelect
 				id="admit-bed"
-				placeholder="Select free bed"
-				className="w-full"
+				placeholder={wardId ? 'Select free bed' : 'Select ward first'}
 				options={bedOptions}
 				bind:value={bedId}
-				disabled={!wardId || bedOptions.length === 0}
+				disabled={!wardId}
 			/>
 			<label class="label-ink text-sm font-medium" for="admit-notes"
-				>Reason / notes</label
+				>Notes</label
 			>
 			<WashInputField
 				id="admit-notes"
 				bind:value={reasonNotes}
-				inputType="text"
-				inputPlaceholderText="Optional"
+				inputPlaceholderText="Optional reason / notes"
 			/>
 		</div>
 	</div>
 	<WashDialogFooter>
 		<WashButton
 			type="button"
-			className="btn"
-			onClick={() => cancel()}
+			variant="ghost"
 			disabled={isSubmitting}
+			onClick={() => cancel()}
 		>
 			Cancel
 		</WashButton>
 		<WashButton
 			type="submit"
-			className="btn btn-primary"
+			variant="primary"
+			disabled={isSubmitting}
 			loading={isSubmitting}
-			disabled={isSubmitting || !wardId || !bedId}
 		>
 			Admit
 		</WashButton>

@@ -105,7 +105,8 @@ export type IpdCensusRow = {
 };
 
 export type AdmitToIpdPayload = {
-	visitId: number;
+	/** Patient to admit — creates a new IPD visit (does not convert an OPD visit). */
+	patientId: string;
 	/** Preferred: assign by bed only; ward/room resolved from bed. */
 	bedId: number;
 	/** Optional UI filter; validated against resolved bed context when set. */

@@ -57,7 +57,7 @@ export async function POST(event: RequestEvent) {
 	const action = String(body.action ?? 'admit');
 
 	if (action === 'admit') {
-		const visitId = Number(body.visitId);
+		const patientId = String(body.patientId ?? '').trim();
 		const bedId = Number(body.bedId);
 		const branchId = String(body.branchId ?? '');
 		const wardIdRaw = body.wardId;
@@ -65,15 +65,14 @@ export async function POST(event: RequestEvent) {
 			wardIdRaw != null && wardIdRaw !== ''
 				? Number(wardIdRaw)
 				: undefined;
-		if (!Number.isFinite(visitId) || visitId <= 0)
-			throw error(400, 'visitId is required');
+		if (!patientId) throw error(400, 'patientId is required');
 		if (!Number.isFinite(bedId) || bedId <= 0)
 			throw error(400, 'bedId is required');
 		if (!branchId) throw error(400, 'branchId is required');
 		return json(
-			await admission.admitVisitToIpd({
+			await admission.admitVisitToIpd(event, {
 				hospitalId,
-				visitId,
+				patientId,
 				bedId,
 				branchId,
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,

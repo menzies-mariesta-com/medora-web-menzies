@@ -29,7 +29,8 @@ export function buildIpdNursingEmrUrl(input: {
 	);
 	qs.set(IPD_CONTEXT_QUERY, '1');
 	qs.set('visitType', String(VisitTypeEnum.IPD));
-	qs.set('visitStatus', 'admitted');
+	qs.set('hasActiveAdmission', '1');
+	qs.delete('visitStatus');
 	const q = qs.toString();
 	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/emr/${child}${q ? `?${q}` : ''}`;
 }

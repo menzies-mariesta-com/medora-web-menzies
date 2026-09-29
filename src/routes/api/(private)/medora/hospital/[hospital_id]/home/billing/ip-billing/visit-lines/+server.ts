@@ -11,9 +11,10 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 import {
+	BillingStatusTaggingEnum,
 	StatusEnum,
 	VisitTypeEnum
 } from '$lib/model/enum/db-link';
@@ -126,7 +127,10 @@ async function listOpenIpBillings(opts: {
 		where: and(
 			eq(table.ipBillingTable.visitId, opts.visitId),
 			eq(table.ipBillingTable.hospitalId, opts.hospitalId),
-			isNull(table.ipBillingTable.printedAt),
+			eq(
+				table.ipBillingTable.statusTaggingId,
+				BillingStatusTaggingEnum.OPEN
+			),
 			ne(table.ipBillingTable.statusId, StatusEnum.DELETED)
 		),
 		orderBy: [asc(table.ipBillingTable.id)]
@@ -240,6 +244,7 @@ async function syncOpenIpBillingForVisit(opts: {
 				discountTypeId: BillingDiscountTypeEnum.NONE,
 				discountAmount: '0',
 				totalAmount: '0',
+				statusTaggingId: BillingStatusTaggingEnum.OPEN,
 				createdAt: opts.nowIso,
 				updatedAt: opts.nowIso,
 				createdBy: opts.userId,
@@ -459,8 +464,8 @@ export const GET: RequestHandler = async (event) => {
 		visitId,
 		pendingBillLineCount: sync.pendingRows.length,
 		billAlreadyClosed:
-			sync.billingRow?.printedAt != null &&
-			String(sync.billingRow.printedAt).trim() !== '',
+			sync.billingRow?.statusTaggingId ===
+			BillingStatusTaggingEnum.CLOSED,
 		visitStatusTaggingId: visitRow.statusTaggingId
 	});
 
@@ -533,8 +538,8 @@ export const POST: RequestHandler = async (event) => {
 			visitId,
 			pendingBillLineCount: sync.pendingRows.length,
 			billAlreadyClosed:
-				sync.billingRow?.printedAt != null &&
-				String(sync.billingRow.printedAt).trim() !== '',
+				sync.billingRow?.statusTaggingId ===
+				BillingStatusTaggingEnum.CLOSED,
 			visitStatusTaggingId: visitRow.statusTaggingId
 		});
 
@@ -564,8 +569,7 @@ export const POST: RequestHandler = async (event) => {
 			.update(table.ipBillingTable)
 			.set({
 				billNo,
-				printedByStaffId: staffId,
-				printedAt: nowIso,
+				statusTaggingId: BillingStatusTaggingEnum.CLOSED,
 				updatedAt: nowIso,
 				updatedBy: locals.user.id
 			})
@@ -580,7 +584,8 @@ export const POST: RequestHandler = async (event) => {
 				'$lib/model/enum/db-link'
 			);
 			if (
-				visitRow.statusTaggingId === VisitStatusTaggingEnum.DISCHARGED
+				visitRow.statusTaggingId ===
+					VisitStatusTaggingEnum.CLOSED_DISCHARGED
 			) {
 				await closeIpdVisit({ hospitalId, visitId });
 			}

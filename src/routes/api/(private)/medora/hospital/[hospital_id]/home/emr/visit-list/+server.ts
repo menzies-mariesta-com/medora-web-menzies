@@ -75,6 +75,9 @@ export const GET: RequestHandler = async (event) => {
 					? visitStatusRaw
 					: undefined
 			) as VisitStatusCode | undefined;
+			const hasActiveAdmission =
+				event.url.searchParams.get('hasActiveAdmission') === '1' ||
+				event.url.searchParams.get('hasActiveAdmission') === 'true';
 
 			const result =
 				await emrVisitList.getPatientVisitPaginatedForEmr(event, {
@@ -88,7 +91,8 @@ export const GET: RequestHandler = async (event) => {
 					branchName,
 					doctorName,
 					visitTypeId,
-					visitStatus
+					visitStatus,
+					hasActiveAdmission: hasActiveAdmission || undefined
 				});
 
 			const patientIds = result.data

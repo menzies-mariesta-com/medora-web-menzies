@@ -8,13 +8,14 @@ import type {
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
+import { assertPatientCanOpenNewVisit } from '$lib/server/medora/patient-visit/assert-patient-can-open-new-visit.server';
 import { and, eq, sql } from 'drizzle-orm';
 
 async function getVisitStatusTaggingIds(): Promise<{
 	openId: number | null;
 	vitalId: number | null;
 	seenId: number | null;
-	closedId: number | null;
+	closedDischargedId: number | null;
 }> {
 	const rows = await ensureDb()
 		.select({
@@ -39,7 +40,11 @@ async function getVisitStatusTaggingIds(): Promise<{
 		openId: byCode.get('open') ?? null,
 		vitalId: byCode.get('vital') ?? null,
 		seenId: byCode.get('seen') ?? null,
-		closedId: byCode.get('closed') ?? null
+		closedDischargedId:
+			byCode.get('closed_discharged') ??
+			byCode.get('closed') ??
+			byCode.get('discharged') ??
+			null
 	};
 }
 
@@ -131,6 +136,15 @@ export async function createPatientVisitInHospital(
 	}
 
 	await ensureCanAccessHospital(event, payload.hospitalId);
+
+	if (!payload.patientId) {
+		throw error(400, 'Patient is required to create patient visit');
+	}
+
+	await assertPatientCanOpenNewVisit({
+		hospitalId: payload.hospitalId,
+		patientId: payload.patientId
+	});
 
 	const visitNo = await getNextVisitNo({
 		hospitalId: payload.hospitalId,

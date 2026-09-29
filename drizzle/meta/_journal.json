@@ -50,6 +50,41 @@
       "when": 1790252400000,
       "tag": "0006_room_category",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790256000000,
+      "tag": "0007_billing_status_tagging",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790259600000,
+      "tag": "0008_remove_visit_status_admitted",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790263200000,
+      "tag": "0009_merge_visit_closed_discharged",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790266800000,
+      "tag": "0010_unify_billing_status_tagging",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790270400000,
+      "tag": "0011_adt_booking_transfer_req",
+      "breakpoints": true
     }
   ]
 }

@@ -46,12 +46,6 @@
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import LAdmitToIpdDialogContent from '$lib/component/own/local/private/medora/ipd/LAdmitToIpdDialogContent.svelte';
-	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
-	import {
-		VisitTypeEnum,
-		VisitStatusTaggingEnum
-	} from '$lib/model/enum/db-link';
 	import type {
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
@@ -108,14 +102,6 @@
 
 	let visitRow = $state<PatientVisitRow | null>(null);
 
-	const canAdmitToIpd = $derived(
-		!!visitRow &&
-			!!visitId &&
-			visitRow.visitTypeId !== VisitTypeEnum.IPD &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.CLOSED &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.ADMITTED &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.DISCHARGED
-	);
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
 	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
@@ -704,6 +690,13 @@
 		})();
 	});
 
+	/** Reload visit status tagging after clinical sign/unsign from layout or page. */
+	$effect(() => {
+		const rev = VisitState.clinicalSignRevision;
+		if (!mounted || rev === 0 || !visitId) return;
+		void refreshAllForVisit();
+	});
+
 	async function handleSaveAsSigned() {
 		if (!visitId) return;
 		const result = await dialogService.open({
@@ -734,19 +727,6 @@
 		} finally {
 			isSigningClinical = false;
 		}
-	}
-
-	async function handleAdmitToIpd() {
-		if (!visitId || !visitRow?.branchId) return;
-		AdmitToIpdDialogState.visitId = visitId;
-		AdmitToIpdDialogState.branchId = visitRow.branchId;
-		AdmitToIpdDialogState.admittingDoctorId =
-			visitRow.doctorId ?? null;
-		const result = await dialogService.open({
-			title: 'Admit to IPD',
-			component: LAdmitToIpdDialogContent
-		});
-		if (result.confirmed) await refreshAllForVisit();
 	}
 
 	/** Client-side vitals status filter: values match formatted cell (lowercased). */
@@ -1996,26 +1976,15 @@
 			className="z-0"
 		/>
 	{:else}
-		{#if !clinicalVisitReadOnly || canAdmitToIpd}
+		{#if !clinicalVisitReadOnly}
 			<div class="flex justify-end gap-2">
-				{#if canAdmitToIpd}
-					<WashButton
-						className="btn-secondary btn-sm"
-						disabled={isLoadingVisit}
-						onClick={handleAdmitToIpd}
-					>
-						Admit to IPD
-					</WashButton>
-				{/if}
-				{#if !clinicalVisitReadOnly}
-					<WashButton
-						className="btn-primary btn-sm"
-						disabled={isSigningClinical || isLoadingVisit}
-						onClick={handleSaveAsSigned}
-					>
-						{isSigningClinical ? '…' : m.observation_save_as_signed()}
-					</WashButton>
-				{/if}
+				<WashButton
+					className="btn-primary btn-sm"
+					disabled={isSigningClinical || isLoadingVisit}
+					onClick={handleSaveAsSigned}
+				>
+					{isSigningClinical ? '…' : m.observation_save_as_signed()}
+				</WashButton>
 			</div>
 		{/if}
 		<div class="observation-emr-grid">

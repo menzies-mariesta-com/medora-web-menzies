@@ -11,9 +11,12 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
-import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	BillingStatusTaggingEnum,
+	StatusEnum
+} from '$lib/model/enum/db-link';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
 
 type PendingDetailRow = OpBillingPendingLineRow;
@@ -94,7 +97,10 @@ async function listOpenOpBillings(
 		where: and(
 			eq(table.opBillingTable.visitId, opts.visitId),
 			eq(table.opBillingTable.hospitalId, opts.hospitalId),
-			isNull(table.opBillingTable.printedAt),
+			eq(
+				table.opBillingTable.statusTaggingId,
+				BillingStatusTaggingEnum.OPEN
+			),
 			ne(table.opBillingTable.statusId, StatusEnum.DELETED)
 		),
 		orderBy: [asc(table.opBillingTable.id)]
@@ -220,6 +226,7 @@ async function syncOpenOpBillingForVisit(opts: {
 					discountTypeId: BillingDiscountTypeEnum.NONE,
 					discountAmount: '0',
 					totalAmount: '0',
+					statusTaggingId: BillingStatusTaggingEnum.OPEN,
 					createdAt: opts.nowIso,
 					updatedAt: opts.nowIso,
 					createdBy: opts.userId,
@@ -428,8 +435,8 @@ export const GET: RequestHandler = async (event) => {
 		visitId,
 		pendingBillLineCount: sync.pendingRows.length,
 		billAlreadyClosed:
-			sync.billingRow?.printedAt != null &&
-			String(sync.billingRow.printedAt).trim() !== ''
+			sync.billingRow?.statusTaggingId ===
+			BillingStatusTaggingEnum.CLOSED
 	});
 
 	return json(
@@ -500,8 +507,8 @@ export const POST: RequestHandler = async (event) => {
 			visitId,
 			pendingBillLineCount: sync.pendingRows.length,
 			billAlreadyClosed:
-				sync.billingRow?.printedAt != null &&
-				String(sync.billingRow.printedAt).trim() !== ''
+				sync.billingRow?.statusTaggingId ===
+				BillingStatusTaggingEnum.CLOSED
 		});
 
 		if (!readiness.canCloseBill) {
@@ -521,8 +528,7 @@ export const POST: RequestHandler = async (event) => {
 		await ensureDb()
 			.update(table.opBillingTable)
 			.set({
-				printedByStaffId: staffId,
-				printedAt: nowIso,
+				statusTaggingId: BillingStatusTaggingEnum.CLOSED,
 				updatedAt: nowIso,
 				updatedBy: locals.user.id
 			})
