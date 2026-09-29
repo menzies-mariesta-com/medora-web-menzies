@@ -155,7 +155,11 @@ export enum StatusTaggingTypeEnum {
 	/** @see drizzle/0050_inv_department_consumption.sql */
 	INV_DEPARTMENT_CONSUMPTION = 10,
 	/** Shared OP/IP billing Open/Closed. @see information-table-seed / drizzle/0007 + 0010 */
-	BILLING = 11
+	BILLING = 11,
+	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
+	IPD_BED_BOOKING = 12,
+	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
+	IPD_BED_TRANSFER_REQUISITION = 13
 }
 
 /**
@@ -165,6 +169,28 @@ export enum StatusTaggingTypeEnum {
 export enum BillingStatusTaggingEnum {
 	OPEN = 56,
 	CLOSED = 57
+}
+
+/**
+ * `status_tagging.id` for IPD bed booking workflow.
+ * @see information-table-seed.ts
+ */
+export enum IpdBedBookingStatusTaggingEnum {
+	BOOKED = 60,
+	CANCELLED = 61,
+	CONVERTED = 62
+}
+
+/**
+ * `status_tagging.id` for IPD bed transfer requisition workflow.
+ * @see information-table-seed.ts
+ */
+export enum IpdBedTransferReqStatusTaggingEnum {
+	DRAFT = 63,
+	PENDING = 64,
+	APPROVED = 65,
+	COMPLETED = 66,
+	CANCELLED = 67
 }
 
 /**

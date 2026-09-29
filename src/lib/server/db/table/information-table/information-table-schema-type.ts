@@ -74,7 +74,9 @@ import type {
 	labResultTable,
 	imagingResultTable,
 	clinicalProcedureTable,
-	operativeNoteTable
+	operativeNoteTable,
+	ipdBedBookingTable,
+	ipdBedTransferRequisitionTable
 } from './information-table';
 
 type OptionalAuditKeys =
@@ -661,3 +663,21 @@ export type OperativeNoteSchemaInsert = InferInsertModel<
 >;
 export type OperativeNoteSchemaUpdate =
 	Partial<OperativeNoteSchemaInsert>;
+
+export type IpdBedBookingSchema = InferSelectModel<
+	typeof ipdBedBookingTable
+>;
+export type IpdBedBookingSchemaInsert = InferInsertModel<
+	typeof ipdBedBookingTable
+>;
+export type IpdBedBookingSchemaUpdate =
+	Partial<IpdBedBookingSchemaInsert>;
+
+export type IpdBedTransferRequisitionSchema = InferSelectModel<
+	typeof ipdBedTransferRequisitionTable
+>;
+export type IpdBedTransferRequisitionSchemaInsert = InferInsertModel<
+	typeof ipdBedTransferRequisitionTable
+>;
+export type IpdBedTransferRequisitionSchemaUpdate =
+	Partial<IpdBedTransferRequisitionSchemaInsert>;

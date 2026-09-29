@@ -24,6 +24,8 @@ import {
 	IpdAdmissionStatusEnum,
 	IpdAccommodationBillingMethodEnum,
 	IpdBedStatusEnum,
+	IpdBedBookingStatusTaggingEnum,
+	IpdBedTransferReqStatusTaggingEnum,
 	BillingStatusTaggingEnum,
 	StatusEnum,
 	YesNoEnum
@@ -1977,7 +1979,7 @@ export const bedTable = pgTable(
 );
 
 /**
- * IPD admission for a patient visit (same visit converted from OPD).
+ * IPD admission for a patient visit (created by ADT Admission as a new IPD visit).
  * At most one active (non-cancelled) admission per visit.
  * Current location: ward + room + bed (denormalized for census; bed is source of truth).
  */
@@ -2606,5 +2608,115 @@ export const operativeNoteTable = pgTable(
 	(t) => [
 		index('operative_note_visit_id_idx').on(t.visitId),
 		index('operative_note_hospital_id_idx').on(t.hospitalId)
+	]
+);
+
+/**
+ * ADT bed booking — may be without a registered patient (Appointment-style guest fields).
+ * Does not create a visit; convert later via Admission after patient registration.
+ */
+export const ipdBedBookingTable = pgTable(
+	'ipd_bed_booking',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id').references(() => patientTable.id, {
+			onDelete: 'set null'
+		}),
+		patientTitleId: integer('patient_title_id').references(
+			() => titleTable.id
+		),
+		patientName: varchar('patient_name', { length: 512 }),
+		patientDateOfBirth: date('patient_date_of_birth'),
+		patientAgeYear: integer('patient_age_year'),
+		patientAgeMonth: integer('patient_age_month'),
+		patientAgeDay: integer('patient_age_day'),
+		phone: varchar('phone', { length: 128 }),
+		email: varchar('email', { length: 512 }),
+		preferredWardId: integer('preferred_ward_id').references(
+			() => wardTable.id,
+			{ onDelete: 'set null' }
+		),
+		preferredBedId: integer('preferred_bed_id').references(
+			() => bedTable.id,
+			{ onDelete: 'set null' }
+		),
+		expectedAdmitAt: timestamp('expected_admit_at', {
+			withTimezone: true,
+			mode: 'string'
+		}),
+		admittingDoctorId: uuid('admitting_doctor_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		remark: text('remark'),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(IpdBedBookingStatusTaggingEnum.BOOKED),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ipd_bed_booking_hospital_id_idx').on(t.hospitalId),
+		index('ipd_bed_booking_branch_id_idx').on(t.branchId),
+		index('ipd_bed_booking_patient_id_idx').on(t.patientId),
+		index('ipd_bed_booking_status_tagging_id_idx').on(t.statusTaggingId)
+	]
+);
+
+/**
+ * ADT bed transfer requisition — request workflow; complete calls transferBed.
+ */
+export const ipdBedTransferRequisitionTable = pgTable(
+	'ipd_bed_transfer_requisition',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		fromBedId: integer('from_bed_id')
+			.notNull()
+			.references(() => bedTable.id, { onDelete: 'restrict' }),
+		toBedId: integer('to_bed_id').references(() => bedTable.id, {
+			onDelete: 'restrict'
+		}),
+		toWardId: integer('to_ward_id').references(() => wardTable.id, {
+			onDelete: 'set null'
+		}),
+		requestedByStaffId: uuid('requested_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		remark: text('remark'),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(IpdBedTransferReqStatusTaggingEnum.DRAFT),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ipd_bed_xfer_req_hospital_id_idx').on(t.hospitalId),
+		index('ipd_bed_xfer_req_admission_id_idx').on(t.admissionId),
+		index('ipd_bed_xfer_req_status_tagging_id_idx').on(t.statusTaggingId)
 	]
 );

@@ -4,20 +4,14 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { IpdCensusRow, WardRow } from '$lib/model/type/medora/ipd/ipd.type';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import LIpdTransferDialogContent from '$lib/component/own/local/private/medora/ipd/LIpdTransferDialogContent.svelte';
-	import LAdmitToIpdDialogContent from '$lib/component/own/local/private/medora/ipd/LAdmitToIpdDialogContent.svelte';
-	import { IpdTransferDialogState } from '$lib/state/ipd-transfer-dialog.state.svelte';
-	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import {
 		buildConsultationEmrUrl,
@@ -144,67 +138,6 @@
 		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
-	async function openAdmit() {
-		AdmitToIpdDialogState.patientId = null;
-		AdmitToIpdDialogState.branchId = null;
-		AdmitToIpdDialogState.admittingDoctorId = null;
-		const result = await dialogService.open({
-			title: 'Admit to IPD',
-			component: LAdmitToIpdDialogContent
-		});
-		if (result.confirmed) fetchRows();
-	}
-
-	async function openTransfer(row: IpdCensusRow) {
-		IpdTransferDialogState.admissionId = row.admissionId;
-		IpdTransferDialogState.branchId = row.branchId;
-		IpdTransferDialogState.fromWardId = row.wardId;
-		IpdTransferDialogState.fromBedId = row.bedId;
-		const result = await dialogService.open({
-			title: 'Transfer bed',
-			component: LIpdTransferDialogContent
-		});
-		if (result.confirmed) fetchRows();
-	}
-
-	async function handleDischarge(row: IpdCensusRow) {
-		const result = await dialogService.open({
-			title: 'Discharge patient',
-			message: `Discharge ${row.patientName} (admission ${row.admissionNo ?? row.admissionId})?`,
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!result.confirmed || !censusApi) return;
-		try {
-			const res = await fetch(censusApi, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({
-					action: 'discharge',
-					admissionId: row.admissionId
-				})
-			});
-			if (!res.ok) throw new Error(await res.text());
-			toastService.addToast(
-				'Discharged — continue to pharmacy / IP billing',
-				StatusColorEnum.SUCCESS
-			);
-			VisitState.select({
-				visitId: row.visitId,
-				patientName: row.patientName ?? ''
-			});
-			await goto(
-				`/medora/hospital/${hospitalId}/home/billing/ip-billing?visitId=${row.visitId}`
-			);
-			fetchRows();
-		} catch (e) {
-			toastService.addToast(
-				e instanceof Error ? e.message : 'Discharge failed',
-				StatusColorEnum.ERROR
-			);
-		}
-	}
-
 	function openNursingChart(row: IpdCensusRow) {
 		if (!hospitalId) return;
 		VisitState.select({
@@ -310,9 +243,6 @@
 		>
 			Search
 		</WashButton>
-		<WashButton className="btn-secondary" onClick={() => openAdmit()}>
-			Admit
-		</WashButton>
 	</div>
 
 	<div class={TableEnum.HEIGHT}>
@@ -362,18 +292,6 @@
 						onClick={() => openPharmacy(row)}
 					>
 						Pharmacy
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => openTransfer(row)}
-					>
-						Transfer
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => handleDischarge(row)}
-					>
-						Discharge
 					</WashButton>
 				</div>
 			{/snippet}

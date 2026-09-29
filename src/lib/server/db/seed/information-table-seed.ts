@@ -67,6 +67,7 @@ export async function seedInformationTables() {
 			(4, 'Nursing Workbench', 4, 1, '/medora/home/nursing-workbench', 'heart-pulse'),
 			(5, 'Service Item', 5, 1, '/medora/home/service-item', 'clipboard-list'),
 			(6, 'Consultation', 6, 1, '/medora/home/consultation', 'stethoscope'),
+			(7, 'ADT', 7, 1, '/medora/home/adt', 'bed-double'),
 			(8, 'Billing', 8, 1, '/medora/home/billing', 'receipt-text'),
 			(9, 'Inventory Setup', 9, 1, '/medora/home/inventory-setup', 'warehouse'),
 			(10, 'Inventory', 10, 1, '/medora/home/inventory', 'package'),
@@ -178,6 +179,18 @@ export async function seedInformationTables() {
 			(49, 'Discharge Summary', 6, 1, null, '/medora/home/consultation/discharge-summary', 4),
 			(50, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
 			(51, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
+
+			-- ADT Module (ids 52–55 parents; 530001+/540001+/550001+ children; module 7)
+			(52, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
+			(53, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
+			(530001, 'New Admission', 7, 1, 53, '/medora/home/adt/admission/new', 1),
+			(530002, 'Admission List', 7, 1, 53, '/medora/home/adt/admission/list', 2),
+			(54, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
+			(540001, 'New Booking', 7, 1, 54, '/medora/home/adt/booking/new', 1),
+			(540002, 'Booking List', 7, 1, 54, '/medora/home/adt/booking/list', 2),
+			(55, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
+			(550001, 'New Requisition', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/new', 1),
+			(550002, 'Requisition List', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/list', 2),
 
 			-- Billing Module
 			(15, 'OP Billing', 8, 1, null, '/medora/home/billing/op-billing', 1),
@@ -313,7 +326,9 @@ export async function seedInformationTables() {
 			(8, 'Department indent'),
 			(9, 'Department issue'),
 			(10, 'Department consumption'),
-			(11, 'Billing')
+			(11, 'Billing'),
+			(12, 'IPD Bed Booking'),
+			(13, 'IPD Bed Transfer Requisition')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	// Align Billing type name; drop obsolete IP Billing type if present.
@@ -321,7 +336,10 @@ export async function seedInformationTables() {
 		UPDATE status_tagging_type SET name = 'Billing' WHERE id = 11
 		`);
 	await db.execute(sql`
-		DELETE FROM status_tagging_type WHERE id = 12
+		UPDATE status_tagging_type SET name = 'IPD Bed Booking' WHERE id = 12
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'IPD Bed Transfer Requisition' WHERE id = 13
 		`);
 	seedLogger.info('Seeded: status tagging type');
 
@@ -397,7 +415,19 @@ export async function seedInformationTables() {
 
 			-- Billing (56–57; type 11 — BillingStatusTaggingEnum; shared by OP + IP)
 			(56, 'Open', 'open', 1, 11),
-			(57, 'Closed', 'closed', 2, 11)
+			(57, 'Closed', 'closed', 2, 11),
+
+			-- IPD Bed Booking (60–62; type 12 — IpdBedBookingStatusTaggingEnum)
+			(60, 'Booked', 'booked', 1, 12),
+			(61, 'Cancelled', 'cancelled', 2, 12),
+			(62, 'Converted', 'converted', 3, 12),
+
+			-- IPD Bed Transfer Requisition (63–67; type 13 — IpdBedTransferReqStatusTaggingEnum)
+			(63, 'Draft', 'draft', 1, 13),
+			(64, 'Pending', 'pending', 2, 13),
+			(65, 'Approved', 'approved', 3, 13),
+			(66, 'Completed', 'completed', 4, 13),
+			(67, 'Cancelled', 'cancelled', 5, 13)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
