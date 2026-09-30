@@ -7,6 +7,8 @@ import type {
 	BedSchemaUpdate
 } from '$lib/server/db/schema-type';
 import {
+	BillingStatusTaggingEnum,
+	IpdAdmissionStatusEnum,
 	IpdBedStatusEnum,
 	StatusEnum
 } from '$lib/model/enum/db-link';
@@ -16,7 +18,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams
 } from '$lib/model/type/pagination.type';
-import { and, count, eq, ilike, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, ne, sql } from 'drizzle-orm';
 import { syncRoomCapacityFromBeds } from '$lib/server/medora/ipd/room.server';
 
 async function assertRoomInHospital(input: {
@@ -326,7 +328,8 @@ export async function markBedAvailable(input: {
 	id: number;
 	hospitalId: string;
 }): Promise<BedSchema> {
-	const [bed] = await ensureDb()
+	const db = ensureDb();
+	const [bed] = await db
 		.select()
 		.from(table.bedTable)
 		.where(
@@ -341,7 +344,61 @@ export async function markBedAvailable(input: {
 	if (bed.bedStatus === IpdBedStatusEnum.OCCUPIED) {
 		throw error(400, 'Cannot mark an occupied bed as available');
 	}
-	const [row] = await ensureDb()
+
+	// Clearance gate: last admission on this bed must be discharged and IP bill closed.
+	const [lastAdmission] = await db
+		.select({
+			id: table.ipdAdmissionTable.id,
+			visitId: table.ipdAdmissionTable.visitId,
+			admissionStatus: table.ipdAdmissionTable.admissionStatus
+		})
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.bedId, input.id),
+				eq(table.ipdAdmissionTable.hospitalId, input.hospitalId),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.orderBy(desc(table.ipdAdmissionTable.id))
+		.limit(1);
+
+	if (lastAdmission) {
+		if (
+			lastAdmission.admissionStatus !== IpdAdmissionStatusEnum.DISCHARGED
+		) {
+			throw error(
+				400,
+				'Bed cannot be freed until the admission is discharged'
+			);
+		}
+		const [ipBill] = await db
+			.select({
+				id: table.ipBillingTable.id,
+				statusTaggingId: table.ipBillingTable.statusTaggingId
+			})
+			.from(table.ipBillingTable)
+			.where(
+				and(
+					eq(table.ipBillingTable.visitId, lastAdmission.visitId),
+					eq(table.ipBillingTable.hospitalId, input.hospitalId),
+					ne(table.ipBillingTable.statusId, StatusEnum.DELETED)
+				)
+			)
+			.orderBy(desc(table.ipBillingTable.id))
+			.limit(1);
+		if (
+			!ipBill ||
+			ipBill.statusTaggingId !== BillingStatusTaggingEnum.CLOSED
+		) {
+			throw error(
+				400,
+				'Bed cannot be freed until the IP bill is closed (finance clearance)'
+			);
+		}
+	}
+
+	const [row] = await db
 		.update(table.bedTable)
 		.set({ bedStatus: IpdBedStatusEnum.FREE })
 		.where(eq(table.bedTable.id, input.id))

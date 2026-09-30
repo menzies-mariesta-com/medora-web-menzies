@@ -26,6 +26,9 @@ import {
 	IpdBedStatusEnum,
 	IpdBedBookingStatusTaggingEnum,
 	IpdBedTransferReqStatusTaggingEnum,
+	IpdAdmissionOrderStatusTaggingEnum,
+	IpdAdmissionCareLevelEnum,
+	IpdAdmissionUrgencyEnum,
 	BillingStatusTaggingEnum,
 	StatusEnum,
 	YesNoEnum
@@ -1992,6 +1995,13 @@ export const ipdAdmissionTable = pgTable(
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
 			}),
+		/**
+		 * OPD visit this admission was converted from (nullable for direct/walk-in IPD).
+		 */
+		sourceOpdVisitId: integer('source_opd_visit_id').references(
+			() => patientVisitTable.id,
+			{ onDelete: 'set null' }
+		),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -2046,6 +2056,9 @@ export const ipdAdmissionTable = pgTable(
 	},
 	(table) => [
 		index('ipd_admission_visit_id_idx').on(table.visitId),
+		index('ipd_admission_source_opd_visit_id_idx').on(
+			table.sourceOpdVisitId
+		),
 		index('ipd_admission_hospital_id_idx').on(table.hospitalId),
 		index('ipd_admission_ward_id_idx').on(table.wardId),
 		index('ipd_admission_room_id_idx').on(table.roomId),
@@ -2295,6 +2308,20 @@ export const ipBillingTable = pgTable(
 			.notNull()
 			.default('0'),
 		totalAmount: decimal('total_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		/** Sum of IP advance deposits applied when the bill is closed. */
+		advanceAppliedAmount: decimal('advance_applied_amount', {
+			precision: 14,
+			scale: 2
+		})
+			.notNull()
+			.default('0'),
+		/** Net collected at close (typically total − advance). */
+		amountPaid: decimal('amount_paid', {
 			precision: 14,
 			scale: 2
 		})
@@ -2718,5 +2745,123 @@ export const ipdBedTransferRequisitionTable = pgTable(
 		index('ipd_bed_xfer_req_hospital_id_idx').on(t.hospitalId),
 		index('ipd_bed_xfer_req_admission_id_idx').on(t.admissionId),
 		index('ipd_bed_xfer_req_status_tagging_id_idx').on(t.statusTaggingId)
+	]
+);
+
+/**
+ * Doctor-ordered IPD admission (Pending Admissions worklist).
+ * Fulfilled via admitVisitToIpd; does not occupy a bed while PENDING.
+ */
+export const ipdAdmissionOrderTable = pgTable(
+	'ipd_admission_order',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		branchId: uuid('branch_id')
+			.notNull()
+			.references(() => hospitalBranchTable.id, {
+				onDelete: 'cascade'
+			}),
+		sourceOpdVisitId: integer('source_opd_visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		patientId: uuid('patient_id')
+			.notNull()
+			.references(() => patientTable.id, { onDelete: 'cascade' }),
+		orderingDoctorId: uuid('ordering_doctor_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		/** {@link IpdAdmissionCareLevelEnum} */
+		careLevel: integer('care_level')
+			.notNull()
+			.default(IpdAdmissionCareLevelEnum.GENERAL),
+		/** {@link IpdAdmissionUrgencyEnum} */
+		urgency: integer('urgency')
+			.notNull()
+			.default(IpdAdmissionUrgencyEnum.ROUTINE),
+		preferredWardId: integer('preferred_ward_id').references(
+			() => wardTable.id,
+			{ onDelete: 'set null' }
+		),
+		notes: text('notes'),
+		admissionId: integer('admission_id').references(
+			() => ipdAdmissionTable.id,
+			{ onDelete: 'set null' }
+		),
+		statusTaggingId: integer('status_tagging_id')
+			.notNull()
+			.references(() => statusTaggingTable.id)
+			.default(IpdAdmissionOrderStatusTaggingEnum.PENDING),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ipd_admission_order_hospital_id_idx').on(t.hospitalId),
+		index('ipd_admission_order_patient_id_idx').on(t.patientId),
+		index('ipd_admission_order_source_opd_visit_id_idx').on(
+			t.sourceOpdVisitId
+		),
+		index('ipd_admission_order_status_tagging_id_idx').on(
+			t.statusTaggingId
+		),
+		uniqueIndex('ipd_admission_order_pending_source_opd_uidx')
+			.on(t.sourceOpdVisitId)
+			// Literal 68 = IpdAdmissionOrderStatusTaggingEnum.PENDING
+			.where(sql`${t.statusTaggingId} = 68`)
+	]
+);
+
+/** Advance / deposit payments collected against an IPD admission. */
+export const ipAdvanceDepositTable = pgTable(
+	'ip_advance_deposit',
+	{
+		id: serial('id').primaryKey(),
+		hospitalId: uuid('hospital_id')
+			.notNull()
+			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
+		admissionId: integer('admission_id')
+			.notNull()
+			.references(() => ipdAdmissionTable.id, {
+				onDelete: 'cascade'
+			}),
+		visitId: integer('visit_id')
+			.notNull()
+			.references(() => patientVisitTable.id, {
+				onDelete: 'cascade'
+			}),
+		amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+		paymentMethod: varchar('payment_method', { length: 64 })
+			.notNull()
+			.default('cash'),
+		receiptNo: varchar('receipt_no', { length: 128 }),
+		paidAt: timestamp('paid_at', {
+			withTimezone: true,
+			mode: 'string'
+		})
+			.notNull()
+			.defaultNow(),
+		paidByStaffId: uuid('paid_by_staff_id').references(
+			() => staffTable.id,
+			{ onDelete: 'set null' }
+		),
+		notes: text('notes'),
+		statusId: integer('status_id')
+			.references(() => statusTable.id)
+			.notNull()
+			.default(StatusEnum.ACTIVE),
+		...timestamps
+	},
+	(t) => [
+		index('ip_advance_deposit_hospital_id_idx').on(t.hospitalId),
+		index('ip_advance_deposit_admission_id_idx').on(t.admissionId),
+		index('ip_advance_deposit_visit_id_idx').on(t.visitId)
 	]
 );

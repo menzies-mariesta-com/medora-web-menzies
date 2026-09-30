@@ -119,6 +119,8 @@ export async function createPatientVisitInHospital(
 	payload: Omit<PatientVisitSchemaInsert, 'branchId' | 'visitNo'> & {
 		branchId?: string | null;
 		hospitalId: string;
+		/** ADT OPD→IPD: allow this unfinished OPD visit + its open OP bill */
+		convertFromOpdVisitId?: number;
 	}
 ): Promise<PatientVisitSchema> {
 	const branchId = payload.branchId ?? null;
@@ -141,9 +143,12 @@ export async function createPatientVisitInHospital(
 		throw error(400, 'Patient is required to create patient visit');
 	}
 
+	const { convertFromOpdVisitId, ...insertPayload } = payload;
+
 	await assertPatientCanOpenNewVisit({
 		hospitalId: payload.hospitalId,
-		patientId: payload.patientId
+		patientId: payload.patientId,
+		convertFromOpdVisitId
 	});
 
 	const visitNo = await getNextVisitNo({
@@ -157,7 +162,7 @@ export async function createPatientVisitInHospital(
 		payload.statusTaggingId ?? visitStatusTagging.openId;
 
 	const values: PatientVisitSchemaInsert = {
-		...payload,
+		...insertPayload,
 		branchId,
 		visitNo,
 		statusTaggingId

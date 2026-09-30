@@ -26,12 +26,9 @@ import {
 	type DemoPatientDef,
 	type VisitScenarioDef
 } from './visit-history-demo-catalog';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const db = drizzle(neon(process.env.DATABASE_URL));
+const db = drizzle(neon(ensureDatabaseUrl()));
 
 type QueryRows<T> = { rows: T[] };
 

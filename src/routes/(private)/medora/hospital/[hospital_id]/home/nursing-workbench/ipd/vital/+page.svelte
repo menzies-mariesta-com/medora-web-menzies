@@ -1,5 +1,8 @@
 <script lang="ts">
-	import IpdNursingEmrRedirect from '$lib/component/own/local/private/medora/ipd/IpdNursingEmrRedirect.svelte';
+	/**
+	 * Nursing IPD reuses the Nursing EMR screen UI under `/ipd/…` (no redirect).
+	 */
+	import EmrVitalPage from '../../emr/vital/+page.svelte';
 </script>
 
-<IpdNursingEmrRedirect emrChild="vital" />
+<EmrVitalPage />
