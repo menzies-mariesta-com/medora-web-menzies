@@ -15,6 +15,21 @@ function actorStaffId(event: RequestEvent): string | null {
 export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
+
+	const mode = event.url.searchParams.get('mode');
+	if (mode === 'source-opd') {
+		const patientId = String(
+			event.url.searchParams.get('patientId') ?? ''
+		).trim();
+		if (!patientId) throw error(400, 'patientId is required');
+		return json(
+			await admission.listEligibleSourceOpdVisits({
+				hospitalId,
+				patientId
+			})
+		);
+	}
+
 	const page = Number(event.url.searchParams.get('page') ?? '1');
 	const pageSize = Number(
 		event.url.searchParams.get('pageSize') ?? '10'
@@ -51,6 +66,14 @@ export async function POST(event: RequestEvent) {
 			wardIdRaw != null && wardIdRaw !== ''
 				? Number(wardIdRaw)
 				: undefined;
+		const sourceRaw = body.sourceOpdVisitId;
+		const sourceOpdVisitId =
+			sourceRaw != null && sourceRaw !== ''
+				? Number(sourceRaw)
+				: null;
+		const orderRaw = body.admissionOrderId;
+		const admissionOrderId =
+			orderRaw != null && orderRaw !== '' ? Number(orderRaw) : null;
 		if (!patientId) throw error(400, 'patientId is required');
 		if (!Number.isFinite(bedId) || bedId <= 0)
 			throw error(400, 'bedId is required');
@@ -64,6 +87,18 @@ export async function POST(event: RequestEvent) {
 				wardId: Number.isFinite(wardId as number) ? wardId : undefined,
 				admittingDoctorId: body.admittingDoctorId ?? null,
 				reasonNotes: body.reasonNotes ?? null,
+				sourceOpdVisitId:
+					sourceOpdVisitId != null &&
+					Number.isFinite(sourceOpdVisitId) &&
+					sourceOpdVisitId > 0
+						? sourceOpdVisitId
+						: null,
+				admissionOrderId:
+					admissionOrderId != null &&
+					Number.isFinite(admissionOrderId) &&
+					admissionOrderId > 0
+						? admissionOrderId
+						: null,
 				actorStaffId: actorStaffId(event)
 			})
 		);

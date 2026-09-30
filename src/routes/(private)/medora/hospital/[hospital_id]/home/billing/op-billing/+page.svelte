@@ -967,7 +967,7 @@
 		boxClassName="max-w-md"
 		showActions={false}
 	>
-		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="space-y-3">
 				<label class="form-control w-full">
 					<div class="label">
@@ -1106,7 +1106,7 @@
 		boxClassName="max-w-5xl"
 		showActions={false}
 	>
-		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="flex items-start justify-end gap-4">
 				<WashButton
 					className="btn-outline btn-sm"

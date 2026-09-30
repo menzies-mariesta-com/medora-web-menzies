@@ -3,12 +3,9 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const client = neon(process.env.DATABASE_URL);
+const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
 /**

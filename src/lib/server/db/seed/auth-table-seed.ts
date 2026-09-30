@@ -4,12 +4,9 @@ import { neon } from '@neondatabase/serverless';
 import { CountryCodeData } from '../../../model/data/country-code.data.ts';
 import { StringUtil } from '../../../util/string.util.svelte.ts';
 import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const client = neon(process.env.DATABASE_URL);
+const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
 /**
