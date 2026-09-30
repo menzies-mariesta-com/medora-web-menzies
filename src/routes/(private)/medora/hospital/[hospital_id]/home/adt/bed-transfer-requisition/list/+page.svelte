@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
+	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { IpdBedTransferReqStatusTaggingEnum } from '$lib/model/enum/db-link';
@@ -221,20 +224,28 @@
 	>
 		{#snippet rowActions(row)}
 			{#if row.statusTaggingId === IpdBedTransferReqStatusTaggingEnum.PENDING || row.statusTaggingId === IpdBedTransferReqStatusTaggingEnum.APPROVED || row.statusTaggingId === IpdBedTransferReqStatusTaggingEnum.DRAFT}
-				{#if row.toBedId != null}
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => postAction('complete', row.id)}
+				<MenziesTableRowActionGroup>
+					{#if row.toBedId != null}
+						<MenziesTableIconAction
+							tooltipText="Complete"
+							color="success"
+							onClick={() => postAction('complete', row.id)}
+						>
+							{#snippet icon()}
+								<LucideCircleCheck className="size-3.5" />
+							{/snippet}
+						</MenziesTableIconAction>
+					{/if}
+					<MenziesTableIconAction
+						tooltipText="Cancel"
+						color="error"
+						onClick={() => postAction('cancel', row.id)}
 					>
-						Complete
-					</WashButton>
-				{/if}
-				<WashButton
-					className="btn-ghost btn-xs"
-					onClick={() => postAction('cancel', row.id)}
-				>
-					Cancel
-				</WashButton>
+						{#snippet icon()}
+							<LucideBan className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
 			{/if}
 		{/snippet}
 	</MenziesTable>

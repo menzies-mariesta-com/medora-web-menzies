@@ -31,27 +31,10 @@
 			: undefined
 	);
 
-	const initialPath =
-		typeof page.url.pathname === 'string' ? page.url.pathname : '';
 	const urlVisitType = page.url.searchParams.get('visitType')?.trim();
 	const urlVisitStatus = page.url.searchParams.get('visitStatus')?.trim();
-	const ipdContext =
-		page.url.searchParams.get('ipdContext') === '1' ||
-		initialPath.includes('/nursing-workbench/ipd');
+	/** Optional URL hints only — no module-specific Visit Type / admission presets. */
 	const initialFilters: Record<string, string> = (() => {
-		if (ipdContext) {
-			return {
-				visitType: urlVisitType || String(VisitTypeEnum.IPD),
-				hasActiveAdmission: '1',
-				...(urlVisitStatus ? { visitStatus: urlVisitStatus } : {})
-			};
-		}
-		if (initialPath.includes('/billing/ip-billing')) {
-			return {
-				visitType: urlVisitType || String(VisitTypeEnum.IPD),
-				...(urlVisitStatus ? { visitStatus: urlVisitStatus } : {})
-			};
-		}
 		const filters: Record<string, string> = {};
 		if (urlVisitType) filters.visitType = urlVisitType;
 		if (urlVisitStatus) filters.visitStatus = urlVisitStatus;

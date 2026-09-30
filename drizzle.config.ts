@@ -1,7 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
+import { ensureDatabaseUrl } from './src/lib/server/db/ensure-database-url';
 
-if (!process.env.DATABASE_URL)
-	throw new Error('DATABASE_URL is not set');
+const databaseUrl = ensureDatabaseUrl();
 
 export default defineConfig({
 	schema: [
@@ -14,7 +14,7 @@ export default defineConfig({
 		'./src/lib/server/db/table/marketplace-table/marketplace-table.ts'
 	],
 	dialect: 'postgresql',
-	dbCredentials: { url: process.env.DATABASE_URL },
+	dbCredentials: { url: databaseUrl },
 	verbose: true,
 	strict: true
 });

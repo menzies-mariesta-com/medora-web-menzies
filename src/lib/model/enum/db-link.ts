@@ -159,7 +159,9 @@ export enum StatusTaggingTypeEnum {
 	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
 	IPD_BED_BOOKING = 12,
 	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
-	IPD_BED_TRANSFER_REQUISITION = 13
+	IPD_BED_TRANSFER_REQUISITION = 13,
+	/** @see information-table-seed / drizzle/0013_ipd_admission_order_deposit.sql */
+	IPD_ADMISSION_ORDER = 14
 }
 
 /**
@@ -191,6 +193,29 @@ export enum IpdBedTransferReqStatusTaggingEnum {
 	APPROVED = 65,
 	COMPLETED = 66,
 	CANCELLED = 67
+}
+
+/**
+ * `status_tagging.id` for doctor-ordered IPD admission (pending worklist).
+ * @see information-table-seed.ts / drizzle/0013_ipd_admission_order_deposit.sql
+ */
+export enum IpdAdmissionOrderStatusTaggingEnum {
+	PENDING = 68,
+	CANCELLED = 69,
+	ADMITTED = 70
+}
+
+/** Care level requested on an IPD admission order (not status_tagging). */
+export enum IpdAdmissionCareLevelEnum {
+	GENERAL = 1,
+	SEMI_PRIVATE = 2,
+	PRIVATE = 3
+}
+
+/** Urgency on an IPD admission order (not status_tagging). */
+export enum IpdAdmissionUrgencyEnum {
+	ROUTINE = 1,
+	URGENT = 2
 }
 
 /**

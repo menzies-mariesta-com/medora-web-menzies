@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 import {
 	CLINICAL_FORM_SEED_ROWS,
 	buildClinicalFormDocumentText
@@ -11,11 +12,7 @@ import {
 	seedEmrDemoSubCategories
 } from './emr-order-demo-seed';
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const client = neon(process.env.DATABASE_URL);
+const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
 /** Fixed UUID for seed staff so we can reference it in staff_hospital, staff_department, etc. */
@@ -185,6 +182,7 @@ export async function seedInformationTables() {
 			(53, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
 			(530001, 'New Admission', 7, 1, 53, '/medora/home/adt/admission/new', 1),
 			(530002, 'Admission List', 7, 1, 53, '/medora/home/adt/admission/list', 2),
+			(530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3),
 			(54, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
 			(540001, 'New Booking', 7, 1, 54, '/medora/home/adt/booking/new', 1),
 			(540002, 'Booking List', 7, 1, 54, '/medora/home/adt/booking/list', 2),
@@ -192,9 +190,11 @@ export async function seedInformationTables() {
 			(550001, 'New Requisition', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/new', 1),
 			(550002, 'Requisition List', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/list', 2),
 
-			-- Billing Module
+			-- Billing Module (150001 parent; 150003/150002 children)
 			(15, 'OP Billing', 8, 1, null, '/medora/home/billing/op-billing', 1),
 			(150001, 'IP Billing', 8, 1, null, '/medora/home/billing/ip-billing', 2),
+			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -257,6 +257,43 @@ export async function seedInformationTables() {
 			(410003, 'Movement log', 10, 1, 41, '/medora/home/inventory/reports/movement', 3)
 
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES (530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (VALUES (150002), (150003)) AS child(page_id)
+		WHERE ugp.page_id = 150001
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
 		`);
 	seedLogger.info('Seeded: page');
 
@@ -328,7 +365,8 @@ export async function seedInformationTables() {
 			(10, 'Department consumption'),
 			(11, 'Billing'),
 			(12, 'IPD Bed Booking'),
-			(13, 'IPD Bed Transfer Requisition')
+			(13, 'IPD Bed Transfer Requisition'),
+			(14, 'IPD Admission Order')
 		ON CONFLICT (id) DO NOTHING;
 		`);
 	// Align Billing type name; drop obsolete IP Billing type if present.
@@ -340,6 +378,9 @@ export async function seedInformationTables() {
 		`);
 	await db.execute(sql`
 		UPDATE status_tagging_type SET name = 'IPD Bed Transfer Requisition' WHERE id = 13
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'IPD Admission Order' WHERE id = 14
 		`);
 	seedLogger.info('Seeded: status tagging type');
 
@@ -427,7 +468,12 @@ export async function seedInformationTables() {
 			(64, 'Pending', 'pending', 2, 13),
 			(65, 'Approved', 'approved', 3, 13),
 			(66, 'Completed', 'completed', 4, 13),
-			(67, 'Cancelled', 'cancelled', 5, 13)
+			(67, 'Cancelled', 'cancelled', 5, 13),
+
+			-- IPD Admission Order (68–70; type 14 — IpdAdmissionOrderStatusTaggingEnum)
+			(68, 'Pending', 'pending', 1, 14),
+			(69, 'Cancelled', 'cancelled', 2, 14),
+			(70, 'Admitted', 'admitted', 3, 14)
 
 		ON CONFLICT (id) DO NOTHING;
 		`);
@@ -611,6 +657,15 @@ export async function seedInformationTables() {
 				'VISIT_LABEL_PRINT',
 				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
 				'Visit label',
+				7,
+				1
+			),
+			(
+				90008,
+				2,
+				'IPD_WRISTBAND_PRINT',
+				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>IPD Wristband</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">Admission</span><span class="v">{{document.number}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">Ward / Bed</span><span class="v">{{visit.department}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
+				'IPD Wristband',
 				7,
 				1
 			),
