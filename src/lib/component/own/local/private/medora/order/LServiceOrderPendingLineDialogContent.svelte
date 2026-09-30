@@ -194,7 +194,7 @@
 	}
 </script>
 
-<div class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1">
+<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-3">
 	<div class="flex flex-wrap items-end gap-4 text-sm">
 		<label class="flex flex-col gap-1">
 			<span class="font-medium">Order Date</span>

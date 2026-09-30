@@ -1,5 +1,5 @@
 <script lang="ts">
-	import IpdNursingEmrRedirect from '$lib/component/own/local/private/medora/ipd/IpdNursingEmrRedirect.svelte';
+	import EmrNursingCompletePage from '../../emr/nursing-complete/+page.svelte';
 </script>
 
-<IpdNursingEmrRedirect emrChild="nursing-complete" />
+<EmrNursingCompletePage />

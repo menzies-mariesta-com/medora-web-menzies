@@ -11,10 +11,11 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { BillingDiscountTypeEnum } from '$lib/model/enum/billing-discount-type.enum';
 import {
 	BillingStatusTaggingEnum,
+	IpdAdmissionStatusEnum,
 	StatusEnum,
 	VisitTypeEnum
 } from '$lib/model/enum/db-link';
@@ -469,12 +470,53 @@ export const GET: RequestHandler = async (event) => {
 		visitStatusTaggingId: visitRow.statusTaggingId
 	});
 
+	const {
+		sumIpAdvanceDepositsForVisit
+	} = await import(
+		'$lib/server/medora/billing/ip-advance-deposit.server'
+	);
+	const [admissionForDeposit] = await ensureDb()
+		.select({ id: table.ipdAdmissionTable.id })
+		.from(table.ipdAdmissionTable)
+		.where(
+			and(
+				eq(table.ipdAdmissionTable.visitId, visitId),
+				eq(table.ipdAdmissionTable.hospitalId, hospitalId),
+				ne(table.ipdAdmissionTable.statusId, StatusEnum.DELETED),
+				inArray(table.ipdAdmissionTable.admissionStatus, [
+					IpdAdmissionStatusEnum.ADMITTED,
+					IpdAdmissionStatusEnum.DISCHARGED
+				])
+			)
+		)
+		.orderBy(desc(table.ipdAdmissionTable.id))
+		.limit(1);
+	const advanceTotal = await sumIpAdvanceDepositsForVisit({
+		hospitalId,
+		visitId
+	});
+	const gross = Math.round(
+		Number(sync.billingRow?.totalAmount ?? 0) * 100
+	) / 100;
+	const advanceAppliedStored = Math.round(
+		Number(sync.billingRow?.advanceAppliedAmount ?? 0) * 100
+	) / 100;
+	const advanceCredit =
+		sync.billingRow?.statusTaggingId === BillingStatusTaggingEnum.CLOSED
+			? advanceAppliedStored
+			: Math.min(advanceTotal, Math.max(0, gross));
+	const balanceDue = Math.round((gross - advanceCredit) * 100) / 100;
+
 	return json(
 		{
 			items: sync.pendingRows,
 			visit,
 			billing: sync.billingRow,
-			readiness
+			readiness,
+			advanceTotal,
+			advanceCredit,
+			balanceDue,
+			admissionId: admissionForDeposit?.id ?? null
 		},
 		{ status: 200 }
 	);
@@ -565,11 +607,26 @@ export const POST: RequestHandler = async (event) => {
 			});
 		}
 
+		const {
+			sumIpAdvanceDepositsForVisit
+		} = await import(
+			'$lib/server/medora/billing/ip-advance-deposit.server'
+		);
+		const advanceTotal = await sumIpAdvanceDepositsForVisit({
+			hospitalId,
+			visitId
+		});
+		const gross = Math.round(Number(sync.billingRow.totalAmount) * 100) / 100;
+		const advanceApplied = Math.min(advanceTotal, Math.max(0, gross));
+		const amountPaid = Math.round((gross - advanceApplied) * 100) / 100;
+
 		await ensureDb()
 			.update(table.ipBillingTable)
 			.set({
 				billNo,
 				statusTaggingId: BillingStatusTaggingEnum.CLOSED,
+				advanceAppliedAmount: String(advanceApplied),
+				amountPaid: String(amountPaid),
 				updatedAt: nowIso,
 				updatedBy: locals.user.id
 			})
@@ -593,7 +650,13 @@ export const POST: RequestHandler = async (event) => {
 			/* discharge/close is best-effort after successful print */
 		}
 
-		return json({ ok: true, billNo });
+		return json({
+			ok: true,
+			billNo,
+			advanceAppliedAmount: advanceApplied,
+			amountPaid,
+			balanceDue: amountPaid
+		});
 	}
 
 	if (action !== 'discount') {

@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import {
 		medoraHospitalPageUrl,
 		WebRoutesEnum
@@ -15,6 +19,7 @@
 	import type { IpdCensusRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 
@@ -56,6 +61,13 @@
 			widthClass: 'w-36 min-w-[8rem]',
 			field: 'visitNo',
 			filterable: true
+		},
+		{
+			id: 'sourceOpdVisitNo',
+			header: 'From OPD',
+			widthClass: 'w-36 min-w-[8rem]',
+			filterable: false,
+			format: (_v, row) => row.sourceOpdVisitNo ?? '—'
 		},
 		{
 			id: 'patientName',
@@ -158,6 +170,71 @@
 		);
 	}
 
+	function wristbandBarcodeValue(row: IpdCensusRow): string {
+		const no = (row.admissionNo ?? '').trim();
+		if (no && /^[\x20-\x7F]+$/.test(no)) return no;
+		return `A-${row.admissionId}`;
+	}
+
+	async function printWristband(row: IpdCensusRow) {
+		if (!hospitalId) return;
+		const payload = wristbandBarcodeValue(row);
+		const wardBed = [row.wardName, row.bedName].filter(Boolean).join(' / ');
+		try {
+			await printFromDocumentMaster({
+				hospitalId,
+				documentCode: DOCUMENT_PRINT_CODE.IPD_WRISTBAND,
+				extraPlaceholders: {
+					'{{patient.name}}': row.patientName,
+					'{{patient.code}}': row.patientCode ?? '',
+					'{{patient.dob}}': '',
+					'{{visit.no}}': row.visitNo ?? '',
+					'{{visit.date}}': row.admittedAt
+						? new Date(row.admittedAt).toLocaleString()
+						: '',
+					'{{visit.department}}': wardBed,
+					'{{doctor.name}}': row.admittingDoctorName ?? '',
+					'{{document.number}}': row.admissionNo ?? `A-${row.admissionId}`,
+					'{{hospital.logo}}': '',
+					'{{print.label_patient}}': 'Patient',
+					'{{print.label_dob}}': 'DOB',
+					'{{print.label_patient_code}}': 'MRN',
+					'{{print.label_visit_no}}': 'Visit'
+				},
+				iframeId: 'ipd-wristband-print-iframe',
+				onIframeReady: async (doc) => {
+					const svg = doc.getElementById('visit-label-barcode');
+					if (!svg) return;
+					const { default: JsBarcode } = await import('jsbarcode');
+					try {
+						JsBarcode(svg, payload, {
+							format: 'CODE128',
+							width: 1.25,
+							height: 40,
+							displayValue: true,
+							fontSize: 9,
+							margin: 2
+						});
+					} catch {
+						JsBarcode(svg, `A-${row.admissionId}`, {
+							format: 'CODE128',
+							width: 1.25,
+							height: 40,
+							displayValue: true,
+							fontSize: 9,
+							margin: 2
+						});
+					}
+				}
+			});
+		} catch (e) {
+			toastService.addToast(
+				e instanceof Error ? e.message : 'Wristband print failed',
+				StatusColorEnum.ERROR
+			);
+		}
+	}
+
 	lifeCycleUtil.onMount(() => {
 		fetchRows();
 	});
@@ -201,12 +278,26 @@
 		}}
 	>
 		{#snippet rowActions(row)}
-			<WashButton
-				className="btn-ghost btn-xs"
-				onClick={() => handleDischarge(row)}
-			>
-				Discharge
-			</WashButton>
+			<MenziesTableRowActionGroup>
+				<MenziesTableIconAction
+					tooltipText="Wristband"
+					color="secondary"
+					onClick={() => void printWristband(row)}
+				>
+					{#snippet icon()}
+						<LucidePrinter className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
+				<MenziesTableIconAction
+					tooltipText="Discharge"
+					color="warning"
+					onClick={() => handleDischarge(row)}
+				>
+					{#snippet icon()}
+						<LucideLogOut className="size-3.5" />
+					{/snippet}
+				</MenziesTableIconAction>
+			</MenziesTableRowActionGroup>
 		{/snippet}
 	</MenziesTable>
 </div>

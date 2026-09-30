@@ -2,9 +2,12 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
@@ -210,12 +213,17 @@
 		>
 			{#snippet rowActions(row)}
 				{#if row.admissionId && row.bedStatus === IpdBedStatusEnum.OCCUPIED}
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => handleDischarge(row)}
-					>
-						Discharge
-					</WashButton>
+					<MenziesTableRowActionGroup>
+						<MenziesTableIconAction
+							tooltipText="Discharge"
+							color="warning"
+							onClick={() => handleDischarge(row)}
+						>
+							{#snippet icon()}
+								<LucideLogOut className="size-3.5" />
+							{/snippet}
+						</MenziesTableIconAction>
+					</MenziesTableRowActionGroup>
 				{/if}
 			{/snippet}
 		</MenziesTable>

@@ -360,11 +360,11 @@
 	showActions={false}
 >
 	{#if !loaded}
-		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="min-h-0 flex-1 overflow-y-auto">
 			<p class="py-4 text-base-content/70">Loading…</p>
 		</div>
 	{:else}
-		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="flex flex-col gap-4">
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
