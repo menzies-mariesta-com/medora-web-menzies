@@ -11,13 +11,19 @@ export enum WebRoutesEnum {
 	TWO_FACTOR = '/auth/two-factor',
 	TWO_FACTOR_SETUP = '/auth/two-factor/setup',
 	PLUGIN = '/plugin',
+	PRICING = '/pricing',
 
 	// private - medora
 	MEDORA = '/medora',
 	/** Hospital list / select (choose hospital before modules). */
 	MEDORA_HOSPITAL = '/medora/hospital',
-	/** System admin: owner management (SYSTEM_ADMIN only). */
+	/** System admin overview (SYSTEM_ADMIN only). */
+	MEDORA_ADMIN = '/medora/admin',
 	MEDORA_ADMIN_OWNERS = '/medora/admin/owners',
+	MEDORA_ADMIN_HOSPITALS = '/medora/admin/hospitals',
+	MEDORA_ADMIN_STAFF = '/medora/admin/staff',
+	MEDORA_ADMIN_MONITORING = '/medora/admin/monitoring',
+	MEDORA_ADMIN_TEAM = '/medora/admin/team',
 
 	// Legacy base paths (DB stores /medora/home/...; use medoraHospitalHome(hospitalId) + suffix for real URLs)
 	MEDORA_HOME = '/medora/home',

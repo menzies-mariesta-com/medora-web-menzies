@@ -9,6 +9,7 @@
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 	const toastService = new ToastService();
@@ -45,6 +46,7 @@
 				body: JSON.stringify({ name: n, email: em })
 			});
 			if (!res.ok) {
+				if (await redirectIfTwoFactorRequired(res)) return;
 				const t = await res.text().catch(() => '');
 				throw new Error(t || `Create failed: ${res.status}`);
 			}

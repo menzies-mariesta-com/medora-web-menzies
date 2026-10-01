@@ -5,6 +5,7 @@ import {
 	medoraHospitalHome
 } from '$lib/model/enum/routes.enum';
 import { RoleEnum } from '$lib/model/enum/db-link';
+import { hasAnyAdminViewPermission } from '$lib/server/medora/admin/admin-permission.server';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
@@ -14,12 +15,19 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			`${WebRoutesEnum.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`
 		);
 	}
-	// If session exists and we're on exactly /medora, redirect appropriately by role
 	if (
 		url.pathname === WebRoutesEnum.MEDORA ||
 		url.pathname === `${WebRoutesEnum.MEDORA}/`
 	) {
-		// Staff: go directly to their (first) assigned hospital home
+		if (locals.userRoleId === RoleEnum.SYSTEM_ADMIN) {
+			throw redirect(302, WebRoutesEnum.MEDORA_ADMIN);
+		}
+		if (
+			locals.userRoleId === RoleEnum.ADMIN_TEAM &&
+			hasAnyAdminViewPermission(locals.adminPermissions)
+		) {
+			throw redirect(302, WebRoutesEnum.MEDORA_ADMIN);
+		}
 		if (
 			locals.userRoleId === RoleEnum.STAFF &&
 			locals.allowedHospitalIds?.length
@@ -35,6 +43,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		user: locals.user,
 		staff: locals.staff ?? null,
 		userRoleId: locals.userRoleId ?? null,
-		allowedHospitalIds: locals.allowedHospitalIds ?? null
+		twoFactorEnabled: locals.twoFactorEnabled ?? false,
+		allowedHospitalIds: locals.allowedHospitalIds ?? null,
+		adminPermissions: locals.adminPermissions ?? undefined
 	};
 };

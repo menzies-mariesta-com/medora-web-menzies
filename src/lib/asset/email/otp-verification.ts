@@ -3,6 +3,7 @@
  * Used by better-auth emailOTP plugin.
  */
 import otpVerificationHtml from './otp-verification.html?raw';
+import { applyEmailBrandPlaceholders } from './email-brand';
 
 export type OtpEmailType =
 	| 'sign-in'
@@ -12,6 +13,8 @@ export type OtpEmailType =
 export interface OtpVerificationEmailParams {
 	otp: string;
 	type: OtpEmailType;
+	/** Absolute logo URL; defaults from BETTER_AUTH_BASE_URL / BETTER_AUTH_URL. */
+	logoUrl?: string;
 }
 
 function introForType(type: OtpEmailType): string {
@@ -45,11 +48,14 @@ export function renderOtpVerificationEmail(
 	plainText: string;
 	subject: string;
 } {
-	const { otp, type } = params;
+	const { otp, type, logoUrl } = params;
 	const intro = introForType(type);
-	const html = otpVerificationHtml
-		.replace(/\{\{otp\}\}/g, otp)
-		.replace(/\{\{intro\}\}/g, intro);
+	const html = applyEmailBrandPlaceholders(
+		otpVerificationHtml
+			.replace(/\{\{otp\}\}/g, otp)
+			.replace(/\{\{intro\}\}/g, intro),
+		{ logoUrl }
+	);
 	const plainText = `${intro}\n\nCode: ${otp}\n\nThis code expires in 10 minutes.`;
 	return { html, plainText, subject: subjectForType(type) };
 }

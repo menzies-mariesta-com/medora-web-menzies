@@ -76,7 +76,7 @@
 		placeholder={optionHeader || 'Code…'}
 		filterPlaceholder="Search code…"
 		{disabled}
-		className="w-1/2 min-w-0 rounded-none border-0 border-r border-ink-border shadow-none {selectClassName}"
+		className="w-24 max-w-[7rem] shrink-0 basis-24 rounded-none border-0 border-r border-ink-border shadow-none {selectClassName}"
 	/>
 	<WashInputField
 		id={inputId}
@@ -86,6 +86,6 @@
 		{required}
 		{nameText}
 		inputPlaceholderText={placeholder}
-		className="w-1/2 min-w-0 rounded-none border-0 shadow-none {inputClassName}"
+		className="min-w-0 flex-1 rounded-none border-0 shadow-none {inputClassName}"
 	/>
 </div>
