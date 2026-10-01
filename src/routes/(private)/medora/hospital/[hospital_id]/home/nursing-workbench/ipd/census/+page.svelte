@@ -3,25 +3,26 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
-	import type { IpdCensusRow, WardRow } from '$lib/model/type/medora/ipd/ipd.type';
-	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import { ToastService } from '$lib/service/toast.service.svelte';
-	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
+	import LucideClipboardList from '$lib/component/own/library/lucide/LucideClipboardList.svelte';
+	import LucideFileText from '$lib/component/own/library/lucide/LucideFileText.svelte';
+	import LucidePill from '$lib/component/own/library/lucide/LucidePill.svelte';
+	import LucideStethoscope from '$lib/component/own/library/lucide/LucideStethoscope.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
+	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
+	import type { IpdCensusRow, WardRow } from '$lib/model/type/medora/ipd/ipd.type';
+	import { ToastService } from '$lib/service/toast.service.svelte';
+	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
-	import LIpdTransferDialogContent from '$lib/component/own/local/private/medora/ipd/LIpdTransferDialogContent.svelte';
-	import { IpdTransferDialogState } from '$lib/state/ipd-transfer-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import {
 		buildConsultationEmrUrl,
-		buildIpdNursingEmrUrl
+		buildIpdNursingChartUrl
 	} from '$lib/tool/ipd/ipd-nursing-redirect.util';
-	import { VisitTypeEnum } from '$lib/model/enum/db-link';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -142,56 +143,6 @@
 		if (res.ok) wards = (await res.json()) as WardRow[];
 	}
 
-	async function openTransfer(row: IpdCensusRow) {
-		IpdTransferDialogState.admissionId = row.admissionId;
-		IpdTransferDialogState.branchId = row.branchId;
-		IpdTransferDialogState.fromWardId = row.wardId;
-		IpdTransferDialogState.fromBedId = row.bedId;
-		const result = await dialogService.open({
-			title: 'Transfer bed',
-			component: LIpdTransferDialogContent
-		});
-		if (result.confirmed) fetchRows();
-	}
-
-	async function handleDischarge(row: IpdCensusRow) {
-		const result = await dialogService.open({
-			title: 'Discharge patient',
-			message: `Discharge ${row.patientName} (admission ${row.admissionNo ?? row.admissionId})?`,
-			variant: DialogVariantEnum.CONFIRM
-		});
-		if (!result.confirmed || !censusApi) return;
-		try {
-			const res = await fetch(censusApi, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({
-					action: 'discharge',
-					admissionId: row.admissionId
-				})
-			});
-			if (!res.ok) throw new Error(await res.text());
-			toastService.addToast(
-				'Discharged — continue to pharmacy / IP billing',
-				StatusColorEnum.SUCCESS
-			);
-			VisitState.select({
-				visitId: row.visitId,
-				patientName: row.patientName ?? ''
-			});
-			await goto(
-				`/medora/hospital/${hospitalId}/home/billing/ip-billing?visitId=${row.visitId}`
-			);
-			fetchRows();
-		} catch (e) {
-			toastService.addToast(
-				e instanceof Error ? e.message : 'Discharge failed',
-				StatusColorEnum.ERROR
-			);
-		}
-	}
-
 	function openNursingChart(row: IpdCensusRow) {
 		if (!hospitalId) return;
 		VisitState.select({
@@ -199,12 +150,10 @@
 			patientName: row.patientName ?? ''
 		});
 		const qs = new URLSearchParams({
-			visitId: String(row.visitId),
-			visitType: String(VisitTypeEnum.IPD),
-			visitStatus: 'admitted'
+			visitId: String(row.visitId)
 		});
 		void goto(
-			buildIpdNursingEmrUrl({
+			buildIpdNursingChartUrl({
 				hospitalId,
 				emrChild: 'vital',
 				search: `?${qs}`
@@ -322,44 +271,44 @@
 			on:pageChange={() => fetchRows()}
 		>
 			{#snippet rowActions(row)}
-				<div class="flex flex-wrap gap-1">
-					<WashButton
-						className="btn-ghost btn-xs"
+				<MenziesTableRowActionGroup>
+					<MenziesTableIconAction
+						tooltipText="Nursing chart"
+						color="primary"
 						onClick={() => openNursingChart(row)}
 					>
-						Nursing chart
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
+						{#snippet icon()}
+							<LucideClipboardList className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText="Doctor EMR"
+						color="secondary"
 						onClick={() => openDoctorEmr(row)}
 					>
-						Doctor EMR
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
+						{#snippet icon()}
+							<LucideStethoscope className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText="Discharge summary"
+						color="accent"
 						onClick={() => openDischargeSummary(row)}
 					>
-						Discharge summary
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
+						{#snippet icon()}
+							<LucideFileText className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+					<MenziesTableIconAction
+						tooltipText="Pharmacy"
+						color="info"
 						onClick={() => openPharmacy(row)}
 					>
-						Pharmacy
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => openTransfer(row)}
-					>
-						Transfer
-					</WashButton>
-					<WashButton
-						className="btn-ghost btn-xs"
-						onClick={() => handleDischarge(row)}
-					>
-						Discharge
-					</WashButton>
-				</div>
+						{#snippet icon()}
+							<LucidePill className="size-3.5" />
+						{/snippet}
+					</MenziesTableIconAction>
+				</MenziesTableRowActionGroup>
 			{/snippet}
 		</MenziesTable>
 	</div>

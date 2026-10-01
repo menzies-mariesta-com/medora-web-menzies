@@ -61,9 +61,26 @@ export enum WebRoutesEnum {
 	MEDORA_HOME_CONSULTATION_CPOE_PRESCRIPTION = '/medora/home/consultation/cpoe/prescription',
 	MEDORA_HOME_CONSULTATION_CPOE_REFER = '/medora/home/consultation/cpoe/refer',
 
+	// ADT module
+	MEDORA_HOME_ADT = '/medora/home/adt',
+	MEDORA_HOME_ADT_BED_STATUS = '/medora/home/adt/bed-status',
+	MEDORA_HOME_ADT_ADMISSION = '/medora/home/adt/admission',
+	MEDORA_HOME_ADT_ADMISSION_NEW = '/medora/home/adt/admission/new',
+	MEDORA_HOME_ADT_ADMISSION_LIST = '/medora/home/adt/admission/list',
+	MEDORA_HOME_ADT_ADMISSION_PENDING = '/medora/home/adt/admission/pending',
+	MEDORA_HOME_ADT_BOOKING = '/medora/home/adt/booking',
+	MEDORA_HOME_ADT_BOOKING_NEW = '/medora/home/adt/booking/new',
+	MEDORA_HOME_ADT_BOOKING_LIST = '/medora/home/adt/booking/list',
+	MEDORA_HOME_ADT_BED_TRANSFER_REQUISITION = '/medora/home/adt/bed-transfer-requisition',
+	MEDORA_HOME_ADT_BED_TRANSFER_REQUISITION_NEW = '/medora/home/adt/bed-transfer-requisition/new',
+	MEDORA_HOME_ADT_BED_TRANSFER_REQUISITION_LIST = '/medora/home/adt/bed-transfer-requisition/list',
+
 	// Billing module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_BILLING = '/medora/home/billing',
 	MEDORA_HOME_BILLING_OP_BILLING = '/medora/home/billing/op-billing',
+	MEDORA_HOME_BILLING_IP_BILLING = '/medora/home/billing/ip-billing',
+	MEDORA_HOME_BILLING_IP_BILLING_BILL = '/medora/home/billing/ip-billing/bill',
+	MEDORA_HOME_BILLING_IP_ADVANCE_DEPOSIT = '/medora/home/billing/ip-billing/advance-deposit',
 
 	// Medication Order module (navbar auto-hides like nursing EMR)
 	MEDORA_HOME_MEDICATION_ORDER = '/medora/home/medication-order',

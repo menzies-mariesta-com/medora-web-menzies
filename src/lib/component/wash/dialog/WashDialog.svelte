@@ -194,7 +194,7 @@
 	$effect(() => {
 		if (!open || !boxEl) return;
 		const el = boxEl;
-		gsap.fromTo(
+		const tween = gsap.fromTo(
 			el,
 			{ opacity: 0, scale: 0.95 },
 			{
@@ -202,6 +202,7 @@
 				scale: 1,
 				duration: 0.25,
 				ease: 'power2.out',
+				overwrite: true,
 				onComplete: () => {
 					// Clear inline transform so CSS grid centering stays authoritative.
 					gsap.set(el, { clearProps: 'transform,scale,opacity' });
@@ -209,7 +210,8 @@
 			}
 		);
 		return () => {
-			gsap.killTweensOf(el);
+			tween.kill();
+			// Never leave opacity:0 after HMR / rapid remount.
 			gsap.set(el, { clearProps: 'transform,scale,opacity' });
 		};
 	});
@@ -271,11 +273,17 @@
 					{@render bodySnippet()}
 				</div>
 			{:else}
-				<!-- Content owns footer: flex column so WashDialogFooter can stick -->
+				<!--
+					Content owns footer (WashDialogFooter): pad the column so form
+					fields match header/footer insets. Keep overflow on the form
+					child (not this column) so WashDialogFooter stays pinned.
+					Footer uses -mx-4 for a full-bleed separator, then px-4 on actions.
+				-->
+				<div class="border-base-300 shrink-0 border-t" role="separator"></div>
 				<div
-					class="border-base-300 flex min-h-0 flex-1 flex-col border-t {layout ===
+					class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 {layout ===
 					'fullscreen'
-						? 'overflow-hidden'
+						? 'p-0'
 						: ''}"
 				>
 					{@render bodySnippet()}
