@@ -31,26 +31,10 @@
 			: undefined
 	);
 
-	const initialPath =
-		typeof page.url.pathname === 'string' ? page.url.pathname : '';
 	const urlVisitType = page.url.searchParams.get('visitType')?.trim();
 	const urlVisitStatus = page.url.searchParams.get('visitStatus')?.trim();
-	const ipdContext =
-		page.url.searchParams.get('ipdContext') === '1' ||
-		initialPath.includes('/nursing-workbench/ipd');
+	/** Optional URL hints only — no module-specific Visit Type / admission presets. */
 	const initialFilters: Record<string, string> = (() => {
-		if (ipdContext) {
-			return {
-				visitType: urlVisitType || String(VisitTypeEnum.IPD),
-				visitStatus: urlVisitStatus || 'admitted'
-			};
-		}
-		if (initialPath.includes('/billing/ip-billing')) {
-			return {
-				visitType: urlVisitType || String(VisitTypeEnum.IPD),
-				...(urlVisitStatus ? { visitStatus: urlVisitStatus } : {})
-			};
-		}
 		const filters: Record<string, string> = {};
 		if (urlVisitType) filters.visitType = urlVisitType;
 		if (urlVisitStatus) filters.visitStatus = urlVisitStatus;
@@ -85,9 +69,7 @@
 		{ value: 'open', label: 'Open' },
 		{ value: 'vital', label: 'Vital' },
 		{ value: 'seen', label: 'Seen' },
-		{ value: 'admitted', label: 'Admitted' },
-		{ value: 'discharged', label: 'Discharged' },
-		{ value: 'closed', label: 'Closed' }
+		{ value: 'closed_discharged', label: 'Closed / Discharged' }
 	];
 
 	function formatVisitStatus(
@@ -299,6 +281,9 @@
 			if (visitType) params.set('visitType', visitType);
 			const visitStatus = tableFilters.visitStatus?.trim();
 			if (visitStatus) params.set('visitStatus', visitStatus);
+			if (tableFilters.hasActiveAdmission === '1') {
+				params.set('hasActiveAdmission', '1');
+			}
 			if (opts?.bustCache) params.set('_t', String(Date.now()));
 
 			const res = await fetch(`${endpointBase}?${params.toString()}`);
@@ -345,11 +330,10 @@
 			? StringUtil.patientDisplayName(patient as any)
 			: '';
 		try {
-			// Doctor selecting OPD visits marks Seen; do not overwrite IPD lifecycle.
+			// Doctor selecting OPD visits marks Seen; do not overwrite terminal statuses.
 			const preserveStatus =
-				v.visitStatus === 'admitted' ||
-				v.visitStatus === 'discharged' ||
-				v.visitStatus === 'closed';
+				v.visitStatus === 'closed_discharged' ||
+				v.visitType?.id === VisitTypeEnum.IPD;
 			if (endpointBase && !preserveStatus) {
 				const res = await fetch(endpointBase, {
 					method: 'POST',

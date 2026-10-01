@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 import {
 	CLINICAL_FORM_SEED_ROWS,
 	buildClinicalFormDocumentText
@@ -11,11 +12,7 @@ import {
 	seedEmrDemoSubCategories
 } from './emr-order-demo-seed';
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const client = neon(process.env.DATABASE_URL);
+const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
 /** Fixed UUID for seed staff so we can reference it in staff_hospital, staff_department, etc. */
@@ -67,6 +64,7 @@ export async function seedInformationTables() {
 			(4, 'Nursing Workbench', 4, 1, '/medora/home/nursing-workbench', 'heart-pulse'),
 			(5, 'Service Item', 5, 1, '/medora/home/service-item', 'clipboard-list'),
 			(6, 'Consultation', 6, 1, '/medora/home/consultation', 'stethoscope'),
+			(7, 'ADT', 7, 1, '/medora/home/adt', 'bed-double'),
 			(8, 'Billing', 8, 1, '/medora/home/billing', 'receipt-text'),
 			(9, 'Inventory Setup', 9, 1, '/medora/home/inventory-setup', 'warehouse'),
 			(10, 'Inventory', 10, 1, '/medora/home/inventory', 'package'),
@@ -179,9 +177,24 @@ export async function seedInformationTables() {
 			(50, 'Procedures', 6, 1, null, '/medora/home/consultation/procedures', 5),
 			(51, 'Operative Notes', 6, 1, null, '/medora/home/consultation/operative-notes', 6),
 
-			-- Billing Module
+			-- ADT Module (ids 52–55 parents; 530001+/540001+/550001+ children; module 7)
+			(52, 'Bed Status', 7, 1, null, '/medora/home/adt/bed-status', 1),
+			(53, 'Admission', 7, 1, null, '/medora/home/adt/admission', 2),
+			(530001, 'New Admission', 7, 1, 53, '/medora/home/adt/admission/new', 1),
+			(530002, 'Admission List', 7, 1, 53, '/medora/home/adt/admission/list', 2),
+			(530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3),
+			(54, 'Booking', 7, 1, null, '/medora/home/adt/booking', 3),
+			(540001, 'New Booking', 7, 1, 54, '/medora/home/adt/booking/new', 1),
+			(540002, 'Booking List', 7, 1, 54, '/medora/home/adt/booking/list', 2),
+			(55, 'Bed Transfer Requisition', 7, 1, null, '/medora/home/adt/bed-transfer-requisition', 4),
+			(550001, 'New Requisition', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/new', 1),
+			(550002, 'Requisition List', 7, 1, 55, '/medora/home/adt/bed-transfer-requisition/list', 2),
+
+			-- Billing Module (150001 parent; 150003/150002 children)
 			(15, 'OP Billing', 8, 1, null, '/medora/home/billing/op-billing', 1),
 			(150001, 'IP Billing', 8, 1, null, '/medora/home/billing/ip-billing', 2),
+			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2),
 
 			-- Administration: Financial Year & Prefix Configuration
 			(16, 'Prefix Configuration', 1, 1, null, '/medora/home/administration/prefix-configuration', 9),
@@ -244,6 +257,43 @@ export async function seedInformationTables() {
 			(410003, 'Movement log', 10, 1, 41, '/medora/home/inventory/reports/movement', 3)
 
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES (530003, 'Pending Admissions', 7, 1, 53, '/medora/home/adt/admission/pending', 3)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO page (id, name, module_id, status_id, parent_id, page_url, sequence_no)
+		VALUES
+			(150003, 'Bill', 8, 1, 150001, '/medora/home/billing/ip-billing/bill', 1),
+			(150002, 'Advance Deposit', 8, 1, 150001, '/medora/home/billing/ip-billing/advance-deposit', 2)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			module_id = EXCLUDED.module_id,
+			status_id = EXCLUDED.status_id,
+			parent_id = EXCLUDED.parent_id,
+			page_url = EXCLUDED.page_url,
+			sequence_no = EXCLUDED.sequence_no;
+		`);
+	await db.execute(sql`
+		INSERT INTO user_group_page (user_group_id, page_id)
+		SELECT ugp.user_group_id, child.page_id
+		FROM user_group_page ugp
+		CROSS JOIN (VALUES (150002), (150003)) AS child(page_id)
+		WHERE ugp.page_id = 150001
+			AND NOT EXISTS (
+				SELECT 1
+				FROM user_group_page x
+				WHERE x.user_group_id = ugp.user_group_id
+					AND x.page_id = child.page_id
+			);
 		`);
 	seedLogger.info('Seeded: page');
 
@@ -314,8 +364,25 @@ export async function seedInformationTables() {
 			(7, 'Stock Issue'),
 			(8, 'Department indent'),
 			(9, 'Department issue'),
-			(10, 'Department consumption')
+			(10, 'Department consumption'),
+			(11, 'Billing'),
+			(12, 'IPD Bed Booking'),
+			(13, 'IPD Bed Transfer Requisition'),
+			(14, 'IPD Admission Order')
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	// Align Billing type name; drop obsolete IP Billing type if present.
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'Billing' WHERE id = 11
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'IPD Bed Booking' WHERE id = 12
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'IPD Bed Transfer Requisition' WHERE id = 13
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging_type SET name = 'IPD Admission Order' WHERE id = 14
 		`);
 	seedLogger.info('Seeded: status tagging type');
 
@@ -330,13 +397,11 @@ export async function seedInformationTables() {
 			(3, 'Check In', 'check_in', 3, 1),
 			(4, 'Cancelled', 'cancel', 4, 1),
 
-			-- Visit Status (order is important)
+			-- Visit Status (order is important): Open → Vital → Seen → Closed / Discharged
 			(5, 'Open', 'open', 1, 2),
 			(6, 'Vital', 'vital', 2, 2),
 			(7, 'Seen', 'seen', 3, 2),
-			(8, 'Closed', 'closed', 6, 2),
-			(54, 'Admitted', 'admitted', 4, 2),
-			(55, 'Discharged', 'discharged', 5, 2),
+			(8, 'Closed / Discharged', 'closed_discharged', 4, 2),
 
 			-- Purchase Requisition (ids 9–13; StatusTaggingTypeEnum.INV_PURCHASE_REQUISITION)
 			(9, 'Draft', 'draft', 1, 3),
@@ -389,9 +454,67 @@ export async function seedInformationTables() {
 			(50, 'Draft', 'draft', 1, 10),
 			(51, 'Pending', 'pending', 2, 10),
 			(52, 'Posted', 'posted', 3, 10),
-			(53, 'Cancelled', 'cancelled', 4, 10)
+			(53, 'Cancelled', 'cancelled', 4, 10),
+
+			-- Billing (56–57; type 11 — BillingStatusTaggingEnum; shared by OP + IP)
+			(56, 'Open', 'open', 1, 11),
+			(57, 'Closed', 'closed', 2, 11),
+
+			-- IPD Bed Booking (60–62; type 12 — IpdBedBookingStatusTaggingEnum)
+			(60, 'Booked', 'booked', 1, 12),
+			(61, 'Cancelled', 'cancelled', 2, 12),
+			(62, 'Converted', 'converted', 3, 12),
+
+			-- IPD Bed Transfer Requisition (63–67; type 13 — IpdBedTransferReqStatusTaggingEnum)
+			(63, 'Draft', 'draft', 1, 13),
+			(64, 'Pending', 'pending', 2, 13),
+			(65, 'Approved', 'approved', 3, 13),
+			(66, 'Completed', 'completed', 4, 13),
+			(67, 'Cancelled', 'cancelled', 5, 13),
+
+			-- IPD Admission Order (68–70; type 14 — IpdAdmissionOrderStatusTaggingEnum)
+			(68, 'Pending', 'pending', 1, 14),
+			(69, 'Cancelled', 'cancelled', 2, 14),
+			(70, 'Admitted', 'admitted', 3, 14)
 
 		ON CONFLICT (id) DO NOTHING;
+		`);
+	// Remap legacy IP-only billing tags (58/59) → shared Billing Open/Closed (56/57).
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE ip_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 56
+		WHERE status_tagging_id = 58
+		`);
+	await db.execute(sql`
+		UPDATE op_billing SET status_tagging_id = 57
+		WHERE status_tagging_id = 59
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging WHERE id IN (58, 59)
+		`);
+	// Align Visit terminal status (Closed / Discharged) for seed-without-migrate DBs.
+	await db.execute(sql`
+		UPDATE patient_visit
+		SET status_tagging_id = 8
+		WHERE status_tagging_id = 55
+		`);
+	await db.execute(sql`
+		UPDATE status_tagging
+		SET name = 'Closed / Discharged',
+			code = 'closed_discharged',
+			sequence_no = 4
+		WHERE id = 8 AND status_tagging_type_id = 2
+		`);
+	await db.execute(sql`
+		DELETE FROM status_tagging
+		WHERE id = 55 AND status_tagging_type_id = 2
 		`);
 	seedLogger.info('Seeded: status tagging');
 
@@ -536,6 +659,15 @@ export async function seedInformationTables() {
 				'VISIT_LABEL_PRINT',
 				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>{{print.label_heading}}</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">{{print.label_doctor}}</span><span class="v">{{doctor.name}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">{{print.label_visit_date}}</span><span class="v">{{visit.date}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
 				'Visit label',
+				7,
+				1
+			),
+			(
+				90008,
+				2,
+				'IPD_WRISTBAND_PRINT',
+				'<div class="label-header"><img class="label-logo" src="{{hospital.logo}}" alt="" /><h1>IPD Wristband</h1></div><div class="label-rows"><div class="label-row"><div class="pair"><span class="k">{{print.label_patient}}</span><span class="v">{{patient.name}}</span></div><div class="pair right"><span class="k">{{print.label_dob}}</span><span class="v">{{patient.dob}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_patient_code}}</span><span class="v">{{patient.code}}</span></div><div class="pair right"><span class="k">Admission</span><span class="v">{{document.number}}</span></div></div><div class="label-row"><div class="pair"><span class="k">{{print.label_visit_no}}</span><span class="v">{{visit.no}}</span></div><div class="pair right"><span class="k">Ward / Bed</span><span class="v">{{visit.department}}</span></div></div></div><div class="barcode-wrap"><svg id="visit-label-barcode"></svg></div>',
+				'IPD Wristband',
 				7,
 				1
 			),

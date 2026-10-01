@@ -63,9 +63,11 @@ export enum VisitStatusTaggingEnum {
 	OPEN = 5,
 	VITAL = 6,
 	SEEN = 7,
-	CLOSED = 8,
-	ADMITTED = 54,
-	DISCHARGED = 55
+	/**
+	 * Terminal visit status (clinical sign / Save as signed, and IPD discharge).
+	 * Display: "Closed / Discharged".
+	 */
+	CLOSED_DISCHARGED = 8
 }
 
 /** Bed occupancy for IPD ADT (stored on `bed.bed_status`). */
@@ -169,7 +171,69 @@ export enum StatusTaggingTypeEnum {
 	/** @see drizzle/0048_department_issue_tables_and_status.sql */
 	INV_DEPARTMENT_ISSUE = 9,
 	/** @see drizzle/0050_inv_department_consumption.sql */
-	INV_DEPARTMENT_CONSUMPTION = 10
+	INV_DEPARTMENT_CONSUMPTION = 10,
+	/** Shared OP/IP billing Open/Closed. @see information-table-seed / drizzle/0007 + 0010 */
+	BILLING = 11,
+	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
+	IPD_BED_BOOKING = 12,
+	/** @see information-table-seed / drizzle/0011_adt_booking_transfer_req.sql */
+	IPD_BED_TRANSFER_REQUISITION = 13,
+	/** @see information-table-seed / drizzle/0013_ipd_admission_order_deposit.sql */
+	IPD_ADMISSION_ORDER = 14
+}
+
+/**
+ * `status_tagging.id` for billing header workflow (OP and IP share these).
+ * @see information-table-seed.ts
+ */
+export enum BillingStatusTaggingEnum {
+	OPEN = 56,
+	CLOSED = 57
+}
+
+/**
+ * `status_tagging.id` for IPD bed booking workflow.
+ * @see information-table-seed.ts
+ */
+export enum IpdBedBookingStatusTaggingEnum {
+	BOOKED = 60,
+	CANCELLED = 61,
+	CONVERTED = 62
+}
+
+/**
+ * `status_tagging.id` for IPD bed transfer requisition workflow.
+ * @see information-table-seed.ts
+ */
+export enum IpdBedTransferReqStatusTaggingEnum {
+	DRAFT = 63,
+	PENDING = 64,
+	APPROVED = 65,
+	COMPLETED = 66,
+	CANCELLED = 67
+}
+
+/**
+ * `status_tagging.id` for doctor-ordered IPD admission (pending worklist).
+ * @see information-table-seed.ts / drizzle/0013_ipd_admission_order_deposit.sql
+ */
+export enum IpdAdmissionOrderStatusTaggingEnum {
+	PENDING = 68,
+	CANCELLED = 69,
+	ADMITTED = 70
+}
+
+/** Care level requested on an IPD admission order (not status_tagging). */
+export enum IpdAdmissionCareLevelEnum {
+	GENERAL = 1,
+	SEMI_PRIVATE = 2,
+	PRIVATE = 3
+}
+
+/** Urgency on an IPD admission order (not status_tagging). */
+export enum IpdAdmissionUrgencyEnum {
+	ROUTINE = 1,
+	URGENT = 2
 }
 
 /**

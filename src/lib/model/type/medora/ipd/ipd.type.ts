@@ -102,10 +102,21 @@ export type IpdCensusRow = {
 	admissionStatus: number;
 	otHoldLocation: string | null;
 	dailyTariff?: string | null;
+	/** OPD visit this IPD admission was converted from */
+	sourceOpdVisitId?: number | null;
+	sourceOpdVisitNo?: string | null;
+};
+
+/** Unfinished OPD visit eligible as ADT admission source */
+export type AdtSourceOpdVisitRow = {
+	visitId: number;
+	visitNo: string | null;
+	hasOpenOpBill: boolean;
 };
 
 export type AdmitToIpdPayload = {
-	visitId: number;
+	/** Patient to admit — creates a new IPD visit (does not convert an OPD visit). */
+	patientId: string;
 	/** Preferred: assign by bed only; ward/room resolved from bed. */
 	bedId: number;
 	/** Optional UI filter; validated against resolved bed context when set. */
@@ -113,6 +124,70 @@ export type AdmitToIpdPayload = {
 	admittingDoctorId?: string | null;
 	reasonNotes?: string | null;
 	branchId: string;
+	/**
+	 * When admitting from OPD: unfinished OPD visit id.
+	 * Softens the new-visit gate for that visit / its open OP bill.
+	 */
+	sourceOpdVisitId?: number | null;
+	/** When fulfilling a doctor admission order. */
+	admissionOrderId?: number | null;
+};
+
+export type IpdAdmissionOrderRow = {
+	id: number;
+	hospitalId: string;
+	branchId: string;
+	sourceOpdVisitId: number;
+	sourceOpdVisitNo: string | null;
+	patientId: string;
+	patientCode: string | null;
+	patientName: string;
+	orderingDoctorId: string | null;
+	orderingDoctorName: string | null;
+	careLevel: number;
+	urgency: number;
+	preferredWardId: number | null;
+	preferredWardName: string | null;
+	notes: string | null;
+	admissionId: number | null;
+	statusTaggingId: number;
+	createdAt: string;
+};
+
+export type CreateIpdAdmissionOrderPayload = {
+	sourceOpdVisitId: number;
+	careLevel: number;
+	urgency: number;
+	preferredWardId?: number | null;
+	notes?: string | null;
+	orderingDoctorId?: string | null;
+	branchId: string;
+};
+
+export type IpAdvanceDepositRow = {
+	id: number;
+	hospitalId: string;
+	admissionId: number;
+	visitId: number;
+	amount: string;
+	paymentMethod: string;
+	receiptNo: string | null;
+	paidAt: string;
+	notes: string | null;
+	paidByStaffId: string | null;
+	paidByStaffName: string | null;
+	visitNo: string | null;
+	admissionNo: string | null;
+	patientName: string | null;
+	patientCode: string | null;
+};
+
+export type CreateIpAdvanceDepositPayload = {
+	admissionId?: number;
+	visitId?: number;
+	amount: string;
+	paymentMethod?: string;
+	notes?: string | null;
 };
 
 export type TransferBedPayload = {

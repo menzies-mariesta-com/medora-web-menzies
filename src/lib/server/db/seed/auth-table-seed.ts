@@ -5,15 +5,13 @@ import argon2 from 'argon2';
 import { uuidv7 } from 'uuidv7';
 import { config as loadDotenv } from 'dotenv';
 import { seedLogger } from '$lib/logger';
+import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
-// Seed runs via tsx (outside SvelteKit); load .env so SEED_ADMIN_* and DATABASE_URL apply.
+// Seed runs via tsx (outside SvelteKit); load .env so SEED_ADMIN_* apply.
+// ensureDatabaseUrl also loads .env when DATABASE_URL is missing.
 loadDotenv({ quiet: true });
 
-if (!process.env.DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set');
-}
-
-const client = neon(process.env.DATABASE_URL);
+const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
 
 async function hashPassword(password: string): Promise<string> {
@@ -35,7 +33,7 @@ function rowsOf<T>(result: unknown): T[] {
 
 /**
  * Seed auth roles + optional SYSTEM_ADMIN from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.
- * Idempotent: roles ON CONFLICT DO NOTHING; admin upserts by email.
+ * Idempotent: roles upsert by id; admin upserts by email.
  */
 export async function seedAuthTables() {
 	seedLogger.info('Seeding auth tables...');
