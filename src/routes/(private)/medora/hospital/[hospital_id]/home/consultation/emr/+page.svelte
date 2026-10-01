@@ -29,9 +29,10 @@
 	import LObservationProgressNoteDeleteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationProgressNoteDeleteDialogContent.svelte';
 	import LVitalRecordDialogContent from '$lib/component/own/local/private/medora/emr/LVitalRecordDialogContent.svelte';
 	import LPatientAllergyDialogContent from '$lib/component/own/local/private/medora/emr/LPatientAllergyDialogContent.svelte';
+	import LOrderIpdAdmissionDialogContent from '$lib/component/own/local/private/medora/ipd/LOrderIpdAdmissionDialogContent.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
-	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { StatusEnum, VisitTypeEnum } from '$lib/model/enum/db-link';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -46,12 +47,6 @@
 	import { PatientAllergyDialogState } from '$lib/state/patient-allergy-dialog.state.svelte';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import LAdmitToIpdDialogContent from '$lib/component/own/local/private/medora/ipd/LAdmitToIpdDialogContent.svelte';
-	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
-	import {
-		VisitTypeEnum,
-		VisitStatusTaggingEnum
-	} from '$lib/model/enum/db-link';
 	import type {
 		PatientDiagnosisListRow,
 		ServiceOrderDetailListRow
@@ -107,15 +102,9 @@
 	);
 
 	let visitRow = $state<PatientVisitRow | null>(null);
+	/** Pending ADT admission order for this OPD visit (blocks re-order). */
+	let pendingAdmissionOrderId = $state<number | null>(null);
 
-	const canAdmitToIpd = $derived(
-		!!visitRow &&
-			!!visitId &&
-			visitRow.visitTypeId !== VisitTypeEnum.IPD &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.CLOSED &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.ADMITTED &&
-			visitRow.statusTaggingId !== VisitStatusTaggingEnum.DISCHARGED
-	);
 	let allergies = $state<PatientAllergyWithRelations[]>([]);
 	let vitals = $state<PatientDiagnosisListRow[]>([]);
 	let orderLines = $state<OrderDetailVisitRow[]>([]);
@@ -409,6 +398,7 @@
 				});
 			} catch {
 				visitRow = null;
+				pendingAdmissionOrderId = null;
 				allergies = [];
 				allergyTotal = 0;
 				vitals = [];
@@ -423,6 +413,7 @@
 			}
 			visitRow = v;
 			if (!v) {
+				pendingAdmissionOrderId = null;
 				allergies = [];
 				allergyTotal = 0;
 				vitals = [];
@@ -436,6 +427,34 @@
 				return;
 			}
 			await Promise.all([
+				(async () => {
+					if (
+						!hospitalId ||
+						v.visitTypeId !== VisitTypeEnum.OPD
+					) {
+						pendingAdmissionOrderId = null;
+						return;
+					}
+					try {
+						const res = await fetch(
+							`/api/medora/hospital/${hospitalId}/home/adt/admission-order?sourceOpdVisitId=${encodeURIComponent(String(visitId))}`,
+							{ credentials: 'include' }
+						);
+						if (!res.ok) {
+							pendingAdmissionOrderId = null;
+							return;
+						}
+						const pending = (await res.json()) as {
+							id?: number;
+						} | null;
+						pendingAdmissionOrderId =
+							pending?.id != null && Number.isFinite(pending.id)
+								? pending.id
+								: null;
+					} catch {
+						pendingAdmissionOrderId = null;
+					}
+				})(),
 				fetchAllergies({ force: true, skipRowLoading: true }),
 				(async () => {
 					vitals = await apiGet<PatientDiagnosisListRow[]>(
@@ -677,6 +696,7 @@
 		if (!mounted) return;
 		if (!visitId) {
 			visitRow = null;
+			pendingAdmissionOrderId = null;
 			allergies = [];
 			allergyTotal = 0;
 			allergyCurrentPage = 1;
@@ -702,6 +722,13 @@
 				isLoadingVisit = false;
 			}
 		})();
+	});
+
+	/** Reload visit status tagging after clinical sign/unsign from layout or page. */
+	$effect(() => {
+		const rev = VisitState.clinicalSignRevision;
+		if (!mounted || rev === 0 || !visitId) return;
+		void refreshAllForVisit();
 	});
 
 	async function handleSaveAsSigned() {
@@ -736,18 +763,66 @@
 		}
 	}
 
-	async function handleAdmitToIpd() {
-		if (!visitId || !visitRow?.branchId) return;
-		AdmitToIpdDialogState.visitId = visitId;
-		AdmitToIpdDialogState.branchId = visitRow.branchId;
-		AdmitToIpdDialogState.admittingDoctorId =
-			visitRow.doctorId ?? null;
+	async function openOrderIpdAdmission() {
+		if (!hospitalId || !visitId || !visitRow?.branchId) return;
+		if (visitRow.visitTypeId !== VisitTypeEnum.OPD) {
+			toastService.addToast(
+				'IPD admission can only be ordered from an OPD visit',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+		if (pendingAdmissionOrderId != null) {
+			toastService.addToast(
+				'A pending admission order already exists for this visit',
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
 		const result = await dialogService.open({
-			title: 'Admit to IPD',
-			component: LAdmitToIpdDialogContent
+			title: 'Order IPD Admission',
+			variant: DialogVariantEnum.ALERT,
+			modalClassName: 'max-w-lg',
+			component: LOrderIpdAdmissionDialogContent,
+			props: {
+				hospitalId,
+				sourceOpdVisitId: visitId,
+				branchId: visitRow.branchId,
+				orderingDoctorId: visitRow.doctorId ?? null
+			}
 		});
-		if (result.confirmed) await refreshAllForVisit();
+		if (result.confirmed) {
+			const data = result.data as { id?: number } | undefined;
+			if (data?.id != null && Number.isFinite(data.id)) {
+				pendingAdmissionOrderId = data.id;
+			} else {
+				try {
+					const res = await fetch(
+						`/api/medora/hospital/${hospitalId}/home/adt/admission-order?sourceOpdVisitId=${encodeURIComponent(String(visitId))}`,
+						{ credentials: 'include' }
+					);
+					if (res.ok) {
+						const pending = (await res.json()) as {
+							id?: number;
+						} | null;
+						pendingAdmissionOrderId =
+							pending?.id != null && Number.isFinite(pending.id)
+								? pending.id
+								: null;
+					}
+				} catch {
+					/* keep prior */
+				}
+			}
+		}
 	}
+
+	const canOrderIpdAdmission = $derived(
+		!!visitRow?.branchId &&
+			visitRow?.visitTypeId === VisitTypeEnum.OPD &&
+			pendingAdmissionOrderId == null &&
+			!isLoadingVisit
+	);
 
 	/** Client-side vitals status filter: values match formatted cell (lowercased). */
 	const statusFilterOptions = [
@@ -1996,26 +2071,31 @@
 			className="z-0"
 		/>
 	{:else}
-		{#if !clinicalVisitReadOnly || canAdmitToIpd}
+			{#if !clinicalVisitReadOnly}
 			<div class="flex justify-end gap-2">
-				{#if canAdmitToIpd}
-					<WashButton
-						className="btn-secondary btn-sm"
-						disabled={isLoadingVisit}
-						onClick={handleAdmitToIpd}
+				{#if visitRow?.visitTypeId === VisitTypeEnum.OPD}
+					<span
+						class="tooltip tooltip-left"
+						data-tip={pendingAdmissionOrderId != null
+							? 'Already on the pending admission list'
+							: 'Send to ADT pending admissions'}
 					>
-						Admit to IPD
-					</WashButton>
+						<WashButton
+							className="btn-outline btn-sm"
+							disabled={!canOrderIpdAdmission}
+							onClick={() => void openOrderIpdAdmission()}
+						>
+							Order IPD Admission
+						</WashButton>
+					</span>
 				{/if}
-				{#if !clinicalVisitReadOnly}
-					<WashButton
-						className="btn-primary btn-sm"
-						disabled={isSigningClinical || isLoadingVisit}
-						onClick={handleSaveAsSigned}
-					>
-						{isSigningClinical ? '…' : m.observation_save_as_signed()}
-					</WashButton>
-				{/if}
+				<WashButton
+					className="btn-primary btn-sm"
+					disabled={isSigningClinical || isLoadingVisit}
+					onClick={handleSaveAsSigned}
+				>
+					{isSigningClinical ? '…' : m.observation_save_as_signed()}
+				</WashButton>
 			</div>
 		{/if}
 		<div class="observation-emr-grid">

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import IpdNursingEmrRedirect from '$lib/component/own/local/private/medora/ipd/IpdNursingEmrRedirect.svelte';
+	import EmrPatientAttachmentPage from '../../emr/patient-attachment/+page.svelte';
 </script>
 
-<IpdNursingEmrRedirect emrChild="patient-attachment" />
+<EmrPatientAttachmentPage />

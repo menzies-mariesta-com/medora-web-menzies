@@ -1,8 +1,4 @@
-import { VisitTypeEnum } from '$lib/model/enum/db-link';
-
-/** Query flag so Nursing OPD screens keep IPD visit-picker defaults after redirect. */
-export const IPD_CONTEXT_QUERY = 'ipdContext';
-
+/** Map Nursing IPD chart children to shared EMR screen slugs (APIs stay under /emr). */
 const IPD_CHILD_TO_EMR: Record<string, string> = {
 	vital: 'vital',
 	allergy: 'allergy',
@@ -14,9 +10,9 @@ const IPD_CHILD_TO_EMR: Record<string, string> = {
 };
 
 /**
- * Build Nursing OPD EMR URL with IPD context preserved for visit picker filters.
+ * Build a Nursing IPD chart URL (stays under `/nursing-workbench/ipd/…`).
  */
-export function buildIpdNursingEmrUrl(input: {
+export function buildIpdNursingChartUrl(input: {
 	hospitalId: string;
 	emrChild: string;
 	search?: string;
@@ -27,11 +23,21 @@ export function buildIpdNursingEmrUrl(input: {
 			? input.search.slice(1)
 			: (input.search ?? '')
 	);
-	qs.set(IPD_CONTEXT_QUERY, '1');
-	qs.set('visitType', String(VisitTypeEnum.IPD));
-	qs.set('visitStatus', 'admitted');
+	qs.delete('visitType');
+	qs.delete('hasActiveAdmission');
+	qs.delete('visitStatus');
+	qs.delete('ipdContext');
 	const q = qs.toString();
-	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/emr/${child}${q ? `?${q}` : ''}`;
+	return `/medora/hospital/${input.hospitalId}/home/nursing-workbench/ipd/${child}${q ? `?${q}` : ''}`;
+}
+
+/** @deprecated Use {@link buildIpdNursingChartUrl}. */
+export function buildIpdNursingEmrUrl(input: {
+	hospitalId: string;
+	emrChild: string;
+	search?: string;
+}): string {
+	return buildIpdNursingChartUrl(input);
 }
 
 export function buildConsultationEmrUrl(input: {

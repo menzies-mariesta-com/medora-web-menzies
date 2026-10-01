@@ -1,7 +1,7 @@
 /**
  * Crawl every Medora page after login; assert Wash UI + original full-bleed layout.
  * Usage: node scripts/crawl-medora-pages.mjs
- * Requires: pnpm run dev on :5173, system Chrome (Playwright channel: chrome)
+ * Requires: pnpm run dev on :4002, system Chrome (Playwright channel: chrome)
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const base = process.env.MEDORA_BASE_URL ?? 'http://localhost:5173';
+const base = process.env.MEDORA_BASE_URL ?? 'http://localhost:4002';
 const hospitalId =
 	process.env.MEDORA_HOSPITAL_ID ??
 	'01a05ffb-aa1d-738a-9121-4bac865280a9';

@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -137,65 +138,72 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<div class="flex flex-col gap-4">
-		{#if !isEdit}
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
+			{#if !isEdit}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="sc-category" class="shrink-0 sm:w-36"
+						>Category <span class="text-error">*</span></label
+					>
+					<div class="max-w-80 flex-1">
+						<select
+							id="sc-category"
+							bind:value={formCategoryId}
+							class="select-bordered select select-sm w-full"
+							required
+						>
+							<option value="">Select category…</option>
+							{#if modalState.categoryOptions?.length}
+								{#each modalState.categoryOptions as cat (cat.id)}
+									<option value={cat.id}
+										>{cat.categoryName ??
+											`Category ${cat.id}`}</option
+									>
+								{/each}
+							{/if}
+						</select>
+					</div>
+				</div>
+			{/if}
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<label for="sc-category" class="shrink-0 sm:w-36">Category <span class="text-error">*</span></label>
+				<label for="sc-name" class="shrink-0 sm:w-36"
+					>{m.name()} <span class="text-error">*</span></label
+				>
 				<div class="max-w-80 flex-1">
-					<select
-						id="sc-category"
-						bind:value={formCategoryId}
-						class="select-bordered select w-full select-sm"
+					<WashInputField
+						id="sc-name"
+						bind:value={formSubCategoryName}
+						inputType="text"
+						inputPlaceholderText="Sub-category name"
 						required
-					>
-						<option value="">Select category…</option>
-						{#if modalState.categoryOptions?.length}
-							{#each modalState.categoryOptions as cat (cat.id)}
-								<option value={cat.id}
-									>{cat.categoryName ?? `Category ${cat.id}`}</option
-								>
-							{/each}
-						{/if}
-					</select>
+					/>
 				</div>
 			</div>
-		{/if}
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="sc-name" class="shrink-0 sm:w-36">{m.name()} <span class="text-error">*</span></label>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="sc-name"
-					bind:value={formSubCategoryName}
-					inputType="text"
-					inputPlaceholderText="Sub-category name"
-					required
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label class="shrink-0 sm:w-36">Active</label>
-			<div class="flex max-w-80 flex-1 flex-wrap items-center gap-2">
-				<label class="flex cursor-pointer items-center gap-2">
-					<input
-						type="checkbox"
-						bind:checked={formActive}
-						class="checkbox checkbox-sm"
-					/>
-					<span class="text-sm">Active</span>
-				</label>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label class="shrink-0 sm:w-36">Active</label>
+				<div
+					class="flex max-w-80 flex-1 flex-wrap items-center gap-2"
+				>
+					<label class="flex cursor-pointer items-center gap-2">
+						<input
+							type="checkbox"
+							bind:checked={formActive}
+							class="checkbox checkbox-sm"
+						/>
+						<span class="text-sm">Active</span>
+					</label>
+				</div>
 			</div>
 		</div>
 	</div>
-	<div
-		class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-	>
+	<WashDialogFooter className="gap-2">
 		<WashButton
 			type="button"
 			className="btn-ghost"
@@ -210,5 +218,5 @@
 		>
 			{isEdit ? m.update() : m.create()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

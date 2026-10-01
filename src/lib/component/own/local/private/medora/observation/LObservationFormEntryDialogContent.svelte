@@ -7,6 +7,7 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 
@@ -193,7 +194,8 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
 	{#if showFormCodePicker && formCodeOptions}
 		<div class="flex flex-col gap-1">
 			<label for="form-entry-specialty">
@@ -240,24 +242,25 @@
 			</WashSelect>
 		</div>
 	{/if}
-
-	<div class="flex flex-wrap justify-end gap-2 pt-2">
-		<WashButton
-			type="button"
-			className="btn btn-ghost"
-			disabled={isSubmitting}
-			onClick={() => cancel()}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn btn-primary"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={() => void handleSave()}
-		>
-			{m.observation_emr_save()}
-		</WashButton>
 	</div>
 </div>
+
+<WashDialogFooter>
+	<WashButton
+		type="button"
+		className="btn btn-ghost"
+		disabled={isSubmitting}
+		onClick={() => cancel()}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		type="button"
+		className="btn btn-primary"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={() => void handleSave()}
+	>
+		{m.observation_emr_save()}
+	</WashButton>
+</WashDialogFooter>

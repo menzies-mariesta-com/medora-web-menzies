@@ -74,7 +74,11 @@ import type {
 	labResultTable,
 	imagingResultTable,
 	clinicalProcedureTable,
-	operativeNoteTable
+	operativeNoteTable,
+	ipdBedBookingTable,
+	ipdBedTransferRequisitionTable,
+	ipdAdmissionOrderTable,
+	ipAdvanceDepositTable
 } from './information-table';
 
 type OptionalAuditKeys =
@@ -661,3 +665,39 @@ export type OperativeNoteSchemaInsert = InferInsertModel<
 >;
 export type OperativeNoteSchemaUpdate =
 	Partial<OperativeNoteSchemaInsert>;
+
+export type IpdBedBookingSchema = InferSelectModel<
+	typeof ipdBedBookingTable
+>;
+export type IpdBedBookingSchemaInsert = InferInsertModel<
+	typeof ipdBedBookingTable
+>;
+export type IpdBedBookingSchemaUpdate =
+	Partial<IpdBedBookingSchemaInsert>;
+
+export type IpdBedTransferRequisitionSchema = InferSelectModel<
+	typeof ipdBedTransferRequisitionTable
+>;
+export type IpdBedTransferRequisitionSchemaInsert = InferInsertModel<
+	typeof ipdBedTransferRequisitionTable
+>;
+export type IpdBedTransferRequisitionSchemaUpdate =
+	Partial<IpdBedTransferRequisitionSchemaInsert>;
+
+export type IpdAdmissionOrderSchema = InferSelectModel<
+	typeof ipdAdmissionOrderTable
+>;
+export type IpdAdmissionOrderSchemaInsert = InferInsertModel<
+	typeof ipdAdmissionOrderTable
+>;
+export type IpdAdmissionOrderSchemaUpdate =
+	Partial<IpdAdmissionOrderSchemaInsert>;
+
+export type IpAdvanceDepositSchema = InferSelectModel<
+	typeof ipAdvanceDepositTable
+>;
+export type IpAdvanceDepositSchemaInsert = InferInsertModel<
+	typeof ipAdvanceDepositTable
+>;
+export type IpAdvanceDepositSchemaUpdate =
+	Partial<IpAdvanceDepositSchemaInsert>;

@@ -1,15 +1,12 @@
 /**
- * Menzies Design studio typefaces
+ * Menzies Design Wash UI typefaces
  * (@see https://design-menzies.netlify.app/ — Assets → Fonts).
  *
- * - Maple Mono / Fraunces: bundled in Wash UI `styles.css`
- * - Adwaita Sans / Mono: Design asset catalog (local woff2 under `$lib/asset/font`)
+ * Fraunces + Maple Mono ship in `@menzies-mariesta-com/menzies-design-wash-ui/styles.css`.
  */
 export enum FontEnum {
 	MAPLE_MONO = 'maple-mono',
-	FRAUNCES = 'fraunces',
-	ADWAITA_SANS = 'adwaita-sans',
-	ADWAITA_MONO = 'adwaita-mono'
+	FRAUNCES = 'fraunces'
 }
 
 export type WashFontStyle = {
@@ -18,7 +15,7 @@ export type WashFontStyle = {
 	note: string;
 };
 
-/** Design Fonts catalog order: hero Maple/Fraunces, then Adwaita plates. */
+/** Wash UI faces only (studio default: Maple Mono body + Fraunces display). */
 export const WASH_FONT_STYLES: readonly WashFontStyle[] = [
 	{
 		id: FontEnum.MAPLE_MONO,
@@ -29,15 +26,5 @@ export const WASH_FONT_STYLES: readonly WashFontStyle[] = [
 		id: FontEnum.FRAUNCES,
 		label: 'Fraunces',
 		note: 'Display headings'
-	},
-	{
-		id: FontEnum.ADWAITA_SANS,
-		label: 'Adwaita Sans',
-		note: 'GNOME UI sans-serif'
-	},
-	{
-		id: FontEnum.ADWAITA_MONO,
-		label: 'Adwaita Mono',
-		note: 'GNOME UI monospace'
 	}
 ] as const;

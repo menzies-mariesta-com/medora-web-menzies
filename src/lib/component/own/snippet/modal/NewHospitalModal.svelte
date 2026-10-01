@@ -3,6 +3,7 @@
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
@@ -20,7 +21,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
-
+	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const toastService = new ToastService();
@@ -296,6 +297,7 @@
 					body: JSON.stringify({ id, ...body })
 				});
 				if (!res.ok) {
+					if (await redirectIfTwoFactorRequired(res)) return;
 					const t = await res.text();
 					throw new Error(t || 'Update failed');
 				}
@@ -311,6 +313,7 @@
 					body: JSON.stringify(body)
 				});
 				if (!res.ok) {
+					if (await redirectIfTwoFactorRequired(res)) return;
 					const t = await res.text();
 					throw new Error(t || 'Create failed');
 				}
@@ -350,7 +353,10 @@
 			} else {
 				name = '';
 				code = '';
-				ownerId = isOwnerUser ? currentUserId : '';
+				ownerId = isOwnerUser
+					? currentUserId
+					: (HospitalModalState.preselectedOwnerId ?? '');
+				HospitalModalState.preselectedOwnerId = null;
 				address = '';
 				phoneCountryId = '';
 				phone = '';
@@ -377,13 +383,17 @@
 		<span class="loading loading-lg loading-spinner"></span>
 	</div>
 {:else}
-	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-		<div class="max-h-[60vh] min-h-0 overflow-y-auto pr-1">
+	<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+		<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 			<div class="flex flex-col gap-4">
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-name" class="shrink-0 sm:w-36 font-bold">Name <span class="text-error">*</span></label>
+					<label
+						for="hospital-name"
+						class="shrink-0 font-bold sm:w-36"
+						>Name <span class="text-error">*</span></label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-name"
@@ -397,7 +407,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-code" class="shrink-0 sm:w-36">Code</label>
+					<label for="hospital-code" class="shrink-0 sm:w-36"
+						>Code</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-code"
@@ -410,7 +422,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-owner" class="shrink-0 sm:w-36">Owner</label>
+					<label for="hospital-owner" class="shrink-0 sm:w-36"
+						>Owner</label
+					>
 					<div class="max-w-80 flex-1">
 						{#if isOwnerUser}
 							<p
@@ -435,7 +449,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-country" class="shrink-0 sm:w-36">Country</label>
+					<label for="hospital-country" class="shrink-0 sm:w-36"
+						>Country</label
+					>
 					<div class="max-w-80 flex-1">
 						<SearchSelect
 							inputId="hospital-country"
@@ -449,7 +465,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-state" class="shrink-0 sm:w-36">State</label>
+					<label for="hospital-state" class="shrink-0 sm:w-36"
+						>State</label
+					>
 					<div class="max-w-80 flex-1">
 						<SearchSelect
 							inputId="hospital-state"
@@ -464,7 +482,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-city" class="shrink-0 sm:w-36">City</label>
+					<label for="hospital-city" class="shrink-0 sm:w-36"
+						>City</label
+					>
 					<div class="max-w-80 flex-1">
 						<SearchSelect
 							inputId="hospital-city"
@@ -479,7 +499,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-postal" class="shrink-0 sm:w-36">Postal Code</label>
+					<label for="hospital-postal" class="shrink-0 sm:w-36"
+						>Postal Code</label
+					>
 					<div class="max-w-80 flex-1">
 						<SearchSelect
 							inputId="hospital-postal"
@@ -494,13 +516,15 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-phone" class="shrink-0 sm:w-36">Phone</label>
+					<label for="hospital-phone" class="shrink-0 sm:w-36"
+						>Phone</label
+					>
 					<div class="max-w-80 flex-1">
 						<MenziesPhoneField
 							id="hospital-phone"
 							bind:countryId={phoneCountryId}
 							bind:phone
-							countries={countries}
+							{countries}
 							optionHeader={m.select_country_code()}
 							placeholder="Main phone"
 						/>
@@ -509,7 +533,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-email" class="shrink-0 sm:w-36">Email</label>
+					<label for="hospital-email" class="shrink-0 sm:w-36"
+						>Email</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-email"
@@ -522,7 +548,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-website" class="shrink-0 sm:w-36">Website</label>
+					<label for="hospital-website" class="shrink-0 sm:w-36"
+						>Website</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-website"
@@ -535,7 +563,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-established" class="shrink-0 sm:w-36">Established date</label>
+					<label for="hospital-established" class="shrink-0 sm:w-36"
+						>Established date</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-established"
@@ -547,7 +577,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label for="hospital-logo" class="shrink-0 sm:w-36">Logo URL</label>
+					<label for="hospital-logo" class="shrink-0 sm:w-36"
+						>Logo URL</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashInputField
 							id="hospital-logo"
@@ -560,7 +592,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label for="hospital-address" class="shrink-0 sm:w-36 pt-2">Address</label>
+					<label for="hospital-address" class="shrink-0 pt-2 sm:w-36"
+						>Address</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashTextarea
 							id="hospital-address"
@@ -572,7 +606,9 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label for="hospital-desc" class="shrink-0 sm:w-36 pt-2">Description</label>
+					<label for="hospital-desc" class="shrink-0 pt-2 sm:w-36"
+						>Description</label
+					>
 					<div class="max-w-80 flex-1">
 						<WashTextarea
 							id="hospital-desc"
@@ -583,9 +619,7 @@
 				</div>
 			</div>
 		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -600,6 +634,6 @@
 			>
 				{editId != null ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Wash in components layer so app Tailwind utilities keep cascade priority. */
+@import '@menzies-mariesta-com/menzies-design-wash-ui/styles.css' layer(components);
 
 /*
  * Wash sets --color-* on :root at runtime (pigment themes) but does not emit
@@ -10,6 +12,7 @@
 	/* Menzies Design Wash UI typefaces (from menzies-design-wash-ui/styles.css) */
 	--font-sans: "Maple Mono", ui-monospace, monospace;
 	--font-mono: "Maple Mono", ui-monospace, monospace;
+	--font-display: "Fraunces", ui-serif, Georgia, serif;
 
 	--color-base-100: var(--color-base-100);
 	--color-base-200: var(--color-base-200);
@@ -90,6 +93,7 @@ dialog.modal::backdrop {
 @import '../lib/asset/style/font.style.css';
 @import '../lib/asset/style/app-layout.style.css';
 @import '../lib/asset/style/wash-app.style.css';
+@import '../lib/asset/style/medora-marketing.style.css';
 
 /*
  * Wash atmosphere only — preserve original .my-app / .my-main full-bleed layout.

@@ -3,6 +3,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import type {
 		MedoraPageModuleRow,
@@ -381,7 +382,7 @@
 					class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
 				>
 					<ul
-						class="menu grid w-full max-w-full min-w-0 grid-cols-1 gap-3 rounded-box border border-base-300 bg-base-100 p-3 md:grid-cols-2"
+						class="menu rounded-box grid w-full max-w-full min-w-0 grid-cols-1 gap-3 border border-base-300 bg-base-100 p-3 md:grid-cols-2"
 					>
 						{#each filteredPages as p (p.id)}
 							{@const isChecked = pageSelected[p.id] ?? false}
@@ -399,7 +400,7 @@
 								>
 									<input
 										type="checkbox"
-										class="checkbox shrink-0 checkbox-sm"
+										class="checkbox checkbox-sm shrink-0"
 										checked={isChecked}
 										onchange={() => togglePage(p.id)}
 									/>
@@ -437,9 +438,7 @@
 				</div>
 			</WashCardBody>
 		</WashCard>
-		<div
-			class="modal-action flex shrink-0 !justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -456,6 +455,6 @@
 			>
 				{isSaving ? 'Saving…' : 'Save'}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	{/if}
 </div>

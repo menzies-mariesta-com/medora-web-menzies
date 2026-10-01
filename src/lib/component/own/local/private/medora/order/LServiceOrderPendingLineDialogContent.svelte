@@ -6,6 +6,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -193,7 +194,7 @@
 	}
 </script>
 
-<div class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1">
+<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-3">
 	<div class="flex flex-wrap items-end gap-4 text-sm">
 		<label class="flex flex-col gap-1">
 			<span class="font-medium">Order Date</span>
@@ -339,23 +340,23 @@
 		></textarea>
 	</label>
 
-	<div class="flex flex-wrap justify-end gap-2">
-		<WashButton
-			type="button"
-			className="btn-ghost"
-			disabled={isSubmitting}
-			onClick={cancel}
-		>
-			{m.cancel()}
-		</WashButton>
-		<WashButton
-			type="button"
-			className="btn-primary"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={handleConfirm}
-		>
-			{isEdit ? m.cpoe_order_update_in_list() : m.cpoe_order_add_to_list()}
-		</WashButton>
-	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		type="button"
+		className="btn-ghost"
+		disabled={isSubmitting}
+		onClick={cancel}
+	>
+		{m.cancel()}
+	</WashButton>
+	<WashButton
+		type="button"
+		className="btn-primary"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={handleConfirm}
+	>
+		{isEdit ? m.cpoe_order_update_in_list() : m.cpoe_order_add_to_list()}
+	</WashButton>
+</WashDialogFooter>
