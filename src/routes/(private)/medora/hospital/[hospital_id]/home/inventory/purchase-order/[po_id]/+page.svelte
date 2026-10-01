@@ -24,6 +24,7 @@
 		itemUnitMastersResponseToCatalog,
 		trimInventoryNumericDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import medoraLogo from '$lib/asset/image/medora-logo.svg';
 
 	const toastService = new ToastService();
 	const msg = m as unknown as Record<
@@ -356,7 +357,13 @@
 			<div id="po-print-sheet" class="print-only">
 				<div class="print-header">
 					<div class="print-brand">
-						<span class="print-logo font-[family-name:var(--font-display)] text-primary font-semibold">Menzies Medora</span>
+						<img
+							class="print-logo"
+							src={medoraLogo}
+							alt={m.menzies_medora()}
+							width="40"
+							height="40"
+						/>
 						<div class="print-titles">
 							<div class="print-hospital">
 								{hospitalName || 'Hospital'}
@@ -688,9 +695,11 @@
 	}
 
 	.print-logo {
-		width: 84px;
-		height: auto;
+		width: 40px;
+		height: 40px;
+		border-radius: 22%;
 		object-fit: contain;
+		flex-shrink: 0;
 	}
 
 	.print-hospital {

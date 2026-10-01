@@ -169,7 +169,7 @@
 			</WashButton>
 			<a
 				class="link link-secondary cursor-pointer text-center text-sm"
-				href={WebRoutesEnum.SIGNUP}
+				href={WebRoutesEnum.LOGIN}
 			>
 				{msg.auth_otp_different_email()}
 			</a>

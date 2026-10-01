@@ -7,12 +7,18 @@ import type {
 	HospitalSchemaInsert,
 	HospitalSchemaUpdate
 } from '$lib/server/db/schema-type';
-import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
+import {
+	AdminPageKeyEnum,
+	RoleEnum,
+	StatusEnum,
+	type AdminPermissionAction
+} from '$lib/model/enum/db-link';
 import type {
 	PaginatedResult,
 	PaginationParams
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
+import { requireAdminPagePermission } from '$lib/server/medora/admin/admin-permission.server';
 
 export type HospitalWithOwner = HospitalSchema & {
 	owner?: { id: string; name: string | null; email: string } | null;
@@ -29,9 +35,29 @@ function requireUser(event: RequestEvent): {
 	};
 }
 
-function assertCanManageHospitals(userRoleId: number | null): void {
-	if (userRoleId === RoleEnum.STAFF)
-		throw error(403, 'Staff cannot manage hospitals');
+async function assertCanManageHospitals(
+	event: RequestEvent,
+	action: AdminPermissionAction
+): Promise<void> {
+	const userRoleId = event.locals.userRoleId ?? null;
+	if (userRoleId === RoleEnum.OWNER) return;
+	if (userRoleId === RoleEnum.SYSTEM_ADMIN) {
+		await requireAdminPagePermission(
+			event,
+			AdminPageKeyEnum.HOSPITALS,
+			action
+		);
+		return;
+	}
+	if (userRoleId === RoleEnum.ADMIN_TEAM) {
+		await requireAdminPagePermission(
+			event,
+			AdminPageKeyEnum.HOSPITALS,
+			action
+		);
+		return;
+	}
+	throw error(403, 'Staff cannot manage hospitals');
 }
 
 function resolveEffectiveOwnerId(
@@ -49,6 +75,7 @@ export async function getHospitalsWithOwnerPaginated(
 	params?: PaginationParams & { ownerId?: string | null }
 ): Promise<PaginatedResult<HospitalWithOwner>> {
 	requireUser(event);
+	await assertCanManageHospitals(event, 'view');
 
 	const effectiveOwnerId = resolveEffectiveOwnerId(
 		event,
@@ -113,7 +140,7 @@ export async function createHospital(
 	input: HospitalSchemaInsert
 ): Promise<HospitalSchema> {
 	const { userId, userRoleId } = requireUser(event);
-	assertCanManageHospitals(userRoleId);
+	await assertCanManageHospitals(event, 'create');
 
 	const values = { ...input };
 	if (userRoleId === RoleEnum.OWNER) values.ownerId = userId;
@@ -131,7 +158,7 @@ export async function updateHospital(
 	payload: HospitalSchemaUpdate & { id: string }
 ): Promise<HospitalSchema> {
 	const { userId, userRoleId } = requireUser(event);
-	assertCanManageHospitals(userRoleId);
+	await assertCanManageHospitals(event, 'edit');
 
 	const { id, ...data } = payload;
 	if (!id) throw error(400, 'Hospital id is required');
@@ -161,7 +188,7 @@ export async function getHospitalById(
 	id: string
 ): Promise<HospitalWithOwner | null> {
 	const { userId, userRoleId } = requireUser(event);
-	assertCanManageHospitals(userRoleId);
+	await assertCanManageHospitals(event, 'view');
 	if (!id) throw error(400, 'Hospital id is required');
 
 	const row = await ensureDb().query.hospitalTable.findFirst({
@@ -182,7 +209,7 @@ export async function deleteHospital(
 	{ id }: { id: string }
 ): Promise<void> {
 	const { userId, userRoleId } = requireUser(event);
-	assertCanManageHospitals(userRoleId);
+	await assertCanManageHospitals(event, 'delete');
 	if (!id) throw error(400, 'Hospital id is required');
 
 	if (userRoleId === RoleEnum.OWNER) {

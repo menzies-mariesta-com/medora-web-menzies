@@ -19,14 +19,23 @@
 	const msg = m as Record<string, (inputs?: Record<string, string>) => string>;
 
 	function sanitizeRedirectTo(redirectTo: string | null) {
-		if (!redirectTo) return WebRoutesEnum.MEDORA_HOSPITAL;
+		/** Default `/medora` so layout routes SYSTEM_ADMIN → admin, others → hospital. */
+		if (!redirectTo) return WebRoutesEnum.MEDORA;
 		const value = redirectTo.trim();
 		const lower = value.toLowerCase();
 
-		if (!value.startsWith('/')) return WebRoutesEnum.MEDORA_HOSPITAL;
-		if (value.startsWith('//')) return WebRoutesEnum.MEDORA_HOSPITAL;
+		if (!value.startsWith('/')) return WebRoutesEnum.MEDORA;
+		if (value.startsWith('//')) return WebRoutesEnum.MEDORA;
 		if (lower.startsWith('http:') || lower.startsWith('https:'))
-			return WebRoutesEnum.MEDORA_HOSPITAL;
+			return WebRoutesEnum.MEDORA;
+
+		/** Hospital list is the generic post-login fallback; let `/medora` pick by role. */
+		if (
+			value === WebRoutesEnum.MEDORA_HOSPITAL ||
+			value === `${WebRoutesEnum.MEDORA_HOSPITAL}/`
+		) {
+			return WebRoutesEnum.MEDORA;
+		}
 
 		return value;
 	}
@@ -177,12 +186,6 @@
 				>
 					{msg.auth_sign_in_title()}
 				</WashButton>
-				<p class="text-center text-sm text-ink-muted">
-					{msg.auth_no_account_short()}
-					<a class="link link-secondary cursor-pointer" href={WebRoutesEnum.SIGNUP}>
-						{msg.auth_create_one()}
-					</a>
-				</p>
 			{/snippet}
 		</AuthTemplateCard>
 	</form>

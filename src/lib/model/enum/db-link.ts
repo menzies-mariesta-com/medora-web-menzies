@@ -9,8 +9,26 @@ export enum StatusEnum {
 export enum RoleEnum {
 	SYSTEM_ADMIN = 1,
 	OWNER = 2,
-	STAFF = 3
+	STAFF = 3,
+	/** Invited admin helpers with per-page CRUD grants (not full SYSTEM_ADMIN). */
+	ADMIN_TEAM = 4
 }
+
+/** Admin dashboard page keys for `admin_page_permission.page_key`. */
+export enum AdminPageKeyEnum {
+	OVERVIEW = 'overview',
+	OWNERS = 'owners',
+	HOSPITALS = 'hospitals',
+	STAFF = 'staff',
+	MONITORING = 'monitoring',
+	TEAM = 'team'
+}
+
+export type AdminPermissionAction =
+	| 'view'
+	| 'create'
+	| 'edit'
+	| 'delete';
 
 /** Matches `staff_type` master seed (e.g. NURSE=1, EMPLOYEE=2, DOCTOR=3). */
 export enum StaffTypeEnum {

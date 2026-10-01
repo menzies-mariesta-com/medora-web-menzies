@@ -5,4 +5,6 @@ export const HospitalModalState = $state<{
 	currentUserRoleId?: number;
 	/** Current user's id; when role is OWNER, ownerId is forced to this. */
 	currentUserId?: string;
+	/** SYSTEM_ADMIN: preselect this owner when creating a hospital (bind flow). */
+	preselectedOwnerId?: string | null;
 }>({ hospitalId: null });
