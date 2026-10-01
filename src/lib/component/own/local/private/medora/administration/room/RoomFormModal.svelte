@@ -4,6 +4,7 @@
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -129,7 +130,10 @@
 		if (isSubmitting || isLoading) return;
 		const wardId = Number(formWardId);
 		if (!Number.isFinite(wardId) || wardId <= 0) {
-			toastService.addToast('Ward is required', StatusColorEnum.ERROR);
+			toastService.addToast(
+				'Ward is required',
+				StatusColorEnum.ERROR
+			);
 			return;
 		}
 		const roomCategoryId = Number(formRoomCategoryId);
@@ -194,110 +198,112 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<div class="flex flex-col gap-4">
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="room-ward" class="shrink-0 sm:w-36">
-				Ward <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashSelect
-					id="room-ward"
-					bind:value={formWardId}
-					options={wardOptions}
-					placeholder="Select ward"
-					disabled={isLoading || wards.length === 0}
-					required
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="room-category" class="shrink-0 sm:w-36">
-				Room category <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashSelect
-					id="room-category"
-					bind:value={formRoomCategoryId}
-					options={categoryOptions}
-					placeholder="Select room category"
-					disabled={isLoading || categories.length === 0}
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="room-name" class="shrink-0 sm:w-36">
-				{m.name()} <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="room-name"
-					bind:value={formName}
-					inputType="text"
-					inputPlaceholderText={m.name()}
-					required
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="room-code" class="shrink-0 sm:w-36">{m.code()}</label>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="room-code"
-					bind:value={formCode}
-					inputType="text"
-					inputPlaceholderText={m.code()}
-				/>
-			</div>
-		</div>
-		{#if modalState.mode === 'edit'}
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<span class="shrink-0 sm:w-36">Beds</span>
-				<div class="max-w-80 flex-1 text-sm opacity-80">
-					{bedCount} (from Bed Master)
+				<label for="room-ward" class="shrink-0 sm:w-36">
+					Ward <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="room-ward"
+						bind:value={formWardId}
+						options={wardOptions}
+						placeholder="Select ward"
+						disabled={isLoading || wards.length === 0}
+						required
+					/>
 				</div>
 			</div>
-		{/if}
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="room-amenities" class="shrink-0 sm:w-36"
-				>Amenities</label
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="room-amenities"
-					bind:value={formAmenities}
-					inputType="text"
-					inputPlaceholderText="e.g. Ensuite, Isolation"
-				/>
+				<label for="room-category" class="shrink-0 sm:w-36">
+					Room category <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="room-category"
+						bind:value={formRoomCategoryId}
+						options={categoryOptions}
+						placeholder="Select room category"
+						disabled={isLoading || categories.length === 0}
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="room-name" class="shrink-0 sm:w-36">
+					{m.name()} <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashInputField
+						id="room-name"
+						bind:value={formName}
+						inputType="text"
+						inputPlaceholderText={m.name()}
+						required
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="room-code" class="shrink-0 sm:w-36"
+					>{m.code()}</label
+				>
+				<div class="max-w-80 flex-1">
+					<WashInputField
+						id="room-code"
+						bind:value={formCode}
+						inputType="text"
+						inputPlaceholderText={m.code()}
+					/>
+				</div>
+			</div>
+			{#if modalState.mode === 'edit'}
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<span class="shrink-0 sm:w-36">Beds</span>
+					<div class="max-w-80 flex-1 text-sm opacity-80">
+						{bedCount} (from Bed Master)
+					</div>
+				</div>
+			{/if}
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="room-amenities" class="shrink-0 sm:w-36"
+					>Amenities</label
+				>
+				<div class="max-w-80 flex-1">
+					<WashInputField
+						id="room-amenities"
+						bind:value={formAmenities}
+						inputType="text"
+						inputPlaceholderText="e.g. Ensuite, Isolation"
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">{m.status()}</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox bind:checked={formActive} />
+					<span class="text-sm opacity-80">{m.active_label()}</span>
+				</label>
 			</div>
 		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<span class="shrink-0 sm:w-36">{m.status()}</span>
-			<label
-				class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
-			>
-				<WashCheckbox bind:checked={formActive} />
-				<span class="text-sm opacity-80">{m.active_label()}</span>
-			</label>
-		</div>
 	</div>
-	<div
-		class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-	>
+	<WashDialogFooter className="gap-2">
 		<WashButton
 			type="button"
 			className="btn-ghost"
@@ -313,5 +319,5 @@
 		>
 			{m.ok()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

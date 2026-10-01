@@ -4,6 +4,7 @@
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import MenziesPhoneField from '$lib/component/own/library/menzies/phone/MenziesPhoneField.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { SupplierModalState } from '$lib/state/supplier-modal.state.svelte';
@@ -294,8 +295,10 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-name" class="shrink-0 sm:w-40">{m.supplier_name()}
-				<span class="text-error">*</span></label>
+			<label for="sup-name" class="shrink-0 sm:w-40"
+				>{m.supplier_name()}
+				<span class="text-error">*</span></label
+			>
 			<div class="max-w-lg flex-1">
 				<WashInputField
 					id="sup-name"
@@ -309,7 +312,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-code" class="shrink-0 sm:w-40">{m.supplier_code()}</label>
+			<label for="sup-code" class="shrink-0 sm:w-40"
+				>{m.supplier_code()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<WashInputField
 					id="sup-code"
@@ -322,7 +327,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 		>
-			<label for="sup-addr" class="shrink-0 sm:w-40">{m.address()}</label>
+			<label for="sup-addr" class="shrink-0 sm:w-40"
+				>{m.address()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<WashTextarea
 					id="sup-addr"
@@ -335,7 +342,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-country" class="shrink-0 sm:w-40">{m.country()}</label>
+			<label for="sup-country" class="shrink-0 sm:w-40"
+				>{m.country()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<SearchSelect
 					inputId="sup-country"
@@ -349,7 +358,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-state" class="shrink-0 sm:w-40">{m.state()}</label>
+			<label for="sup-state" class="shrink-0 sm:w-40"
+				>{m.state()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<SearchSelect
 					inputId="sup-state"
@@ -364,7 +375,8 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-city" class="shrink-0 sm:w-40">{m.city()}</label>
+			<label for="sup-city" class="shrink-0 sm:w-40">{m.city()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<SearchSelect
 					inputId="sup-city"
@@ -379,7 +391,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-postal" class="shrink-0 sm:w-40">{m.postal_code()}</label>
+			<label for="sup-postal" class="shrink-0 sm:w-40"
+				>{m.postal_code()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<SearchSelect
 					inputId="sup-postal"
@@ -394,7 +408,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-phone" class="shrink-0 sm:w-40">{m.phone()}</label>
+			<label for="sup-phone" class="shrink-0 sm:w-40"
+				>{m.phone()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<MenziesPhoneField
 					id="sup-phone"
@@ -409,7 +425,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label for="sup-email" class="shrink-0 sm:w-40">{m.email()}</label>
+			<label for="sup-email" class="shrink-0 sm:w-40"
+				>{m.email()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<WashInputField
 					id="sup-email"
@@ -422,7 +440,9 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 		>
-			<label for="sup-remark" class="shrink-0 sm:w-40">{m.inventory_party_remark()}</label>
+			<label for="sup-remark" class="shrink-0 sm:w-40"
+				>{m.inventory_party_remark()}</label
+			>
 			<div class="max-w-lg flex-1">
 				<WashTextarea
 					id="sup-remark"
@@ -443,9 +463,7 @@
 				</label>
 			</div>
 		</div>
-		<div
-			class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-		>
+		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
 				className="btn-ghost"
@@ -460,6 +478,6 @@
 			>
 				{isEdit ? m.update() : m.create()}
 			</WashButton>
-		</div>
+		</WashDialogFooter>
 	</form>
 {/if}

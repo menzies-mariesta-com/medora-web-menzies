@@ -6,6 +6,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
@@ -140,37 +141,39 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<p class="text-sm font-medium">{dialogTitle}</p>
-	<div class="flex flex-col gap-1">
-		<label for="obs-visit-text" class="text-sm">
-			{m.observation_emr_note_label()}
-		</label>
-		<WashTextarea
-			id="obs-visit-text"
-			bind:value={text}
-			className="textarea-bordered min-h-40 w-full"
-			placeholder={m.observation_emr_note_placeholder()}
-		/>
-	</div>
-	<div class="flex flex-wrap justify-end gap-2">
-		<WashButton
-			className="btn-ghost"
-			onClick={() => {
-				if (isSubmitting) return;
-				cancel();
-			}}
-			disabled={isSubmitting}
-		>
-			{m.observation_emr_cancel()}
-		</WashButton>
-		<WashButton
-			className="btn-primary"
-			disabled={isSubmitting}
-			loading={isSubmitting}
-			onClick={handleSave}
-		>
-			{m.observation_emr_save()}
-		</WashButton>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="flex flex-col gap-4">
+		<p class="text-sm font-medium">{dialogTitle}</p>
+		<div class="flex flex-col gap-1">
+			<label for="obs-visit-text" class="text-sm">
+				{m.observation_emr_note_label()}
+			</label>
+			<WashTextarea
+				id="obs-visit-text"
+				bind:value={text}
+				className="textarea-bordered min-h-40 w-full"
+				placeholder={m.observation_emr_note_placeholder()}
+			/>
+		</div>
 	</div>
 </div>
+<WashDialogFooter>
+	<WashButton
+		className="btn-ghost"
+		onClick={() => {
+			if (isSubmitting) return;
+			cancel();
+		}}
+		disabled={isSubmitting}
+	>
+		{m.observation_emr_cancel()}
+	</WashButton>
+	<WashButton
+		className="btn-primary"
+		disabled={isSubmitting}
+		loading={isSubmitting}
+		onClick={handleSave}
+	>
+		{m.observation_emr_save()}
+	</WashButton>
+</WashDialogFooter>

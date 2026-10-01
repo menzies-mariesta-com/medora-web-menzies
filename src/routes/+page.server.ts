@@ -1,7 +1,12 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { base } from '$app/paths';
+import { env } from '$env/dynamic/private';
 
 export const load: PageServerLoad = async () => {
-	throw redirect(302, `${base}/auth/login`);
+	const origin = (
+		env.BETTER_AUTH_BASE_URL ||
+		env.BETTER_AUTH_URL ||
+		'http://localhost:4002'
+	).replace(/\/$/, '');
+
+	return { origin };
 };

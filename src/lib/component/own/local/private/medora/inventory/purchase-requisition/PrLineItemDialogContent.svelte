@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- shared draft line shape across PR/DI/issue flows */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
@@ -202,79 +203,81 @@
 	}
 </script>
 
-<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-		<SearchSelect
-			value={draftLine?.itemId ? String(draftLine.itemId) : ''}
-			searchFn={stockEnrichment
-				? searchItemsWithStock
-				: searchItemsFn}
-			invalidateKey={stockEnrichment
-				? `${stockEnrichment.hospitalId}:${stockEnrichment.selectedStoreId ?? ''}:${
-						stockEnrichment.toStoreId ?? ''
-					}`
-				: undefined}
-			onChange={(v: string) => {
-				if (!v) return;
-				void (async () => {
-					pickingItem = true;
-					try {
-						await onPickItem(Number(v));
-					} finally {
-						pickingItem = false;
-					}
-				})();
-			}}
-			placeholder={m.inv_line_modal_search_item()}
-			className="w-full"
-		/>
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="sm:col-span-2">
+			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect
+				value={draftLine?.itemId ? String(draftLine.itemId) : ''}
+				searchFn={stockEnrichment
+					? searchItemsWithStock
+					: searchItemsFn}
+				invalidateKey={stockEnrichment
+					? `${stockEnrichment.hospitalId}:${stockEnrichment.selectedStoreId ?? ''}:${
+							stockEnrichment.toStoreId ?? ''
+						}`
+					: undefined}
+				onChange={(v: string) => {
+					if (!v) return;
+					void (async () => {
+						pickingItem = true;
+						try {
+							await onPickItem(Number(v));
+						} finally {
+							pickingItem = false;
+						}
+					})();
+				}}
+				placeholder={m.inv_line_modal_search_item()}
+				className="w-full"
+			/>
+		</div>
+
+		<div>
+			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
+			<SearchSelect
+				value={draftLine?.itemUnitMasterId != null
+					? String(draftLine.itemUnitMasterId)
+					: ''}
+				options={(draftLine?.iumList ?? []).map((u: any) => ({
+					label: u.conversionDisplay,
+					value: String(u.id)
+				}))}
+				onChange={(v: string) => {
+					draftLine.itemUnitMasterId = v ? Number(v) : null;
+				}}
+				placeholder={m.inv_line_modal_select_conversion()}
+				className="w-full"
+				disabled={draftLine?.itemId == null || pickingItem}
+			/>
+		</div>
+
+		<div>
+			<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+			<input
+				type="number"
+				class="input-bordered input w-full"
+				value={draftLine.quantity == null || draftLine.quantity === ''
+					? ''
+					: String(draftLine.quantity)}
+				oninput={(e) => {
+					draftLine.quantity = e.currentTarget.value;
+				}}
+				step="1"
+				min="0"
+				disabled={draftLine?.itemId == null || pickingItem}
+				aria-label={m.inv_common_quantity()}
+			/>
+		</div>
 	</div>
 
-	<div>
-		<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-		<SearchSelect
-			value={draftLine?.itemUnitMasterId != null
-				? String(draftLine.itemUnitMasterId)
-				: ''}
-			options={(draftLine?.iumList ?? []).map((u: any) => ({
-				label: u.conversionDisplay,
-				value: String(u.id)
-			}))}
-			onChange={(v: string) => {
-				draftLine.itemUnitMasterId = v ? Number(v) : null;
-			}}
-			placeholder={m.inv_line_modal_select_conversion()}
-			className="w-full"
-			disabled={draftLine?.itemId == null || pickingItem}
-		/>
-	</div>
-
-	<div>
-		<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
-		<input
-			type="number"
-			class="input-bordered input w-full"
-			value={draftLine.quantity == null || draftLine.quantity === ''
-				? ''
-				: String(draftLine.quantity)}
-			oninput={(e) => {
-				draftLine.quantity = e.currentTarget.value;
-			}}
-			step="1"
-			min="0"
-			disabled={draftLine?.itemId == null || pickingItem}
-			aria-label={m.inv_common_quantity()}
-		/>
-	</div>
+	<InventoryLineItemMetricTiles
+		tiles={computedMetricTiles ?? lineItemMetricTiles}
+		{draftLine}
+	/>
 </div>
 
-<InventoryLineItemMetricTiles
-	tiles={computedMetricTiles ?? lineItemMetricTiles}
-	{draftLine}
-/>
-
-<div class="modal-action mt-6">
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -291,4 +294,4 @@
 	>
 		{m.save()}
 	</WashButton>
-</div>
+</WashDialogFooter>

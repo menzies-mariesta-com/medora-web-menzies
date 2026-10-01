@@ -173,7 +173,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>${escapeHtml(title)}</title>
 	<style>
-		body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; color: #111827; }
+		body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif; padding: 24px; color: #111827; }
 		.card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; max-width: 720px; margin: 0 auto; }
 		h1 { font-size: 18px; margin: 0 0 16px; }
 		.header { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
@@ -260,133 +260,130 @@
 	title="Patient card"
 	boxClassName="max-w-2xl"
 >
-		<div class="p-1">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-10">
-					<span class="loading loading-spinner loading-lg"></span>
-				</div>
-			{:else if fetchError}
-				<p class="text-sm text-error">{fetchError}</p>
-			{:else if !patient}
-				<p class="text-sm text-base-content/70">Patient not found.</p>
-			{:else}
-				<WashCard animate={true}>
-					<WashCardBody className="p-4">
-						<div class="flex items-start gap-4">
-							<div class="relative shrink-0">
-								{#if patientPhotoUrl}
-									<img
-										src={patientPhotoUrl}
-										alt="Patient profile"
-										class="h-20 w-20 rounded-full border border-base-300 object-cover shadow-sm"
-									/>
-								{:else}
-									<div
-										class="flex h-20 w-20 items-center justify-center rounded-full border border-base-300 bg-base-200 shadow-sm"
-									>
-										<span
-											class="text-sm font-bold text-base-content/70"
-										>
-											{patientInitials}
-										</span>
-									</div>
-								{/if}
-							</div>
-
-							<div class="flex flex-col gap-2">
-								<WashCardBodyTitle className="text-base-content">
-									{patientFullName}
-								</WashCardBodyTitle>
-
-								<p class="text-sm text-base-content/70">
-									Patient code: <span class="font-semibold"
-										>{patientCode}</span
-									>
-								</p>
-
+	<div class="p-1">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-10">
+				<span class="loading loading-spinner loading-lg"></span>
+			</div>
+		{:else if fetchError}
+			<p class="text-sm text-error">{fetchError}</p>
+		{:else if !patient}
+			<p class="text-sm text-base-content/70">Patient not found.</p>
+		{:else}
+			<WashCard animate={true}>
+				<WashCardBody className="p-4">
+					<div class="flex items-start gap-4">
+						<div class="relative shrink-0">
+							{#if patientPhotoUrl}
+								<img
+									src={patientPhotoUrl}
+									alt="Patient profile"
+									class="h-20 w-20 rounded-full border border-base-300 object-cover shadow-sm"
+								/>
+							{:else}
 								<div
-									class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
+									class="flex h-20 w-20 items-center justify-center rounded-full border border-base-300 bg-base-200 shadow-sm"
 								>
-									<div class="field">
-										<div
-											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-										>
-											Identity
-										</div>
-										<div
-											class="value text-sm font-semibold break-words"
-										>
-											{identityDisplay}
-										</div>
-									</div>
-									<div class="field">
-										<div
-											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-										>
-											Gender
-										</div>
-										<div
-											class="value text-sm font-semibold break-words"
-										>
-											{genderDisplay}
-										</div>
-									</div>
-									<div class="field">
-										<div
-											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-										>
-											Date of birth
-										</div>
-										<div
-											class="value text-sm font-semibold break-words"
-										>
-											{dobDisplay}
-										</div>
-									</div>
-									<div class="field">
-										<div
-											class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
-										>
-											Phone primary
-										</div>
-										<div
-											class="value text-sm font-semibold break-words"
-										>
-											{phonePrimaryDisplay}
-										</div>
-									</div>
+									<span
+										class="text-sm font-bold text-base-content/70"
+									>
+										{patientInitials}
+									</span>
 								</div>
+							{/if}
+						</div>
 
-								<div class="mt-4">
+						<div class="flex flex-col gap-2">
+							<WashCardBodyTitle className="text-base-content">
+								{patientFullName}
+							</WashCardBodyTitle>
+
+							<p class="text-sm text-base-content/70">
+								Patient code: <span class="font-semibold"
+									>{patientCode}</span
+								>
+							</p>
+
+							<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<div class="field">
 									<div
 										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
 									>
-										Address
+										Identity
 									</div>
 									<div
-										class="value mt-1 text-sm font-semibold break-words"
+										class="value text-sm font-semibold break-words"
 									>
-										{addressDisplay}
+										{identityDisplay}
+									</div>
+								</div>
+								<div class="field">
+									<div
+										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+									>
+										Gender
+									</div>
+									<div
+										class="value text-sm font-semibold break-words"
+									>
+										{genderDisplay}
+									</div>
+								</div>
+								<div class="field">
+									<div
+										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+									>
+										Date of birth
+									</div>
+									<div
+										class="value text-sm font-semibold break-words"
+									>
+										{dobDisplay}
+									</div>
+								</div>
+								<div class="field">
+									<div
+										class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+									>
+										Phone primary
+									</div>
+									<div
+										class="value text-sm font-semibold break-words"
+									>
+										{phonePrimaryDisplay}
 									</div>
 								</div>
 							</div>
-						</div>
-					</WashCardBody>
-				</WashCard>
 
-				<div class="mt-4 flex justify-end gap-2">
-					<WashButton
-						type="button"
-						className="btn-primary btn-sm gap-2"
-						onClick={openPrintWindow}
-					>
-						<LucidePrinter className="size-5" />
-						Print
-					</WashButton>
-				</div>
-			{/if}
-		</div>
-		{#snippet actions()}
-			<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
-		{/snippet}
+							<div class="mt-4">
+								<div
+									class="label text-xs font-semibold tracking-wide text-base-content/60 uppercase"
+								>
+									Address
+								</div>
+								<div
+									class="value mt-1 text-sm font-semibold break-words"
+								>
+									{addressDisplay}
+								</div>
+							</div>
+						</div>
+					</div>
+				</WashCardBody>
+			</WashCard>
+		{/if}
+	</div>
+	{#snippet actions()}
+		{#if patient && !isLoading && !fetchError}
+			<WashButton
+				type="button"
+				className="btn-primary btn-sm gap-2"
+				onClick={openPrintWindow}
+			>
+				<LucidePrinter className="size-5" />
+				Print
+			</WashButton>
+		{/if}
+		<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
+	{/snippet}
 </WashDialog>

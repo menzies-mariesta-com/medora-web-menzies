@@ -85,8 +85,8 @@
 	>;
 	let activeStates = $state<ActiveStates>({});
 	let fontSize = $state(14);
-	// Default editor font to match UI expectation.
-	let fontFamily = $state('Adwaita-sans, sans-serif');
+	// Default editor font: Wash UI body face.
+	let fontFamily = $state("'Maple Mono', ui-monospace, monospace");
 	let textColor = $state('#000000');
 	let bgColor = $state('');
 	let isInTable = $state(false);

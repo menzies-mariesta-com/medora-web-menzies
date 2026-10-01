@@ -8,6 +8,8 @@ import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getStaffByUserIdWithRelations } from '$lib/server/medora/administration/staff.server';
 import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
 import { RoleEnum } from '$lib/model/enum/db-link';
+import { rejectMutatingMedoraApiWithoutTwoFactor } from '$lib/server/medora/auth/require-two-factor-for-mutation.server';
+import { loadAdminPagePermissions } from '$lib/server/medora/admin/admin-permission.server';
 import { redirect } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -28,34 +30,44 @@ export const handle: Handle = async ({ event, resolve }) => {
 			headers: event.request.headers
 		});
 	} catch (err) {
-		// If the DB is temporarily unreachable (DNS/network), Better Auth should not
-		// crash the whole request with a 500. Treat the user as logged out.
 		console.error('[auth] Failed to get session', err);
 		session = null;
 	}
 
-	// Expiry is enforced by Better Auth from the session row `expires_at` (including
-	// the one-time +30m extension in `/api/session/extend`). Do not cap by
-	// `created_at` or extensions would still log the user out at T+30m.
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
-		// User role (for STAFF vs OWNER/SYSTEM_ADMIN)
 		const [userRow] = await ensureDb()
-			.select({ roleId: userTable.roleId })
+			.select({
+				roleId: userTable.roleId,
+				twoFactorEnabled: userTable.twoFactorEnabled
+			})
 			.from(userTable)
 			.where(eq(userTable.id, session.user.id))
 			.limit(1);
 		event.locals.userRoleId = userRow?.roleId ?? null;
-		// Load staff linked to this user (1:1); for STAFF, derive allowed hospitals
+		event.locals.twoFactorEnabled = Boolean(
+			userRow?.twoFactorEnabled
+		);
+		if (event.locals.userRoleId === RoleEnum.ADMIN_TEAM) {
+			try {
+				event.locals.adminPermissions =
+					await loadAdminPagePermissions(session.user.id);
+			} catch (err) {
+				console.error('[admin] Failed to load page permissions', err);
+				event.locals.adminPermissions = [];
+			}
+		} else if (event.locals.userRoleId === RoleEnum.SYSTEM_ADMIN) {
+			event.locals.adminPermissions = null;
+		} else {
+			event.locals.adminPermissions = undefined;
+		}
 		let staff: Awaited<
 			ReturnType<typeof getStaffByUserIdWithRelations>
 		> | null = null;
 		try {
 			staff = await getStaffByUserIdWithRelations(session.user.id);
 		} catch (err) {
-			// Staff lookup should never take the whole request down (favicon, auth redirects, etc.)
-			// This can fail if seed data isn't present yet or DB connectivity is flaky.
 			console.error('[staff] Failed to load staff by user id', err);
 			staff = null;
 		}
@@ -72,6 +84,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	const twoFactorGate = rejectMutatingMedoraApiWithoutTwoFactor(event);
+	if (twoFactorGate) return twoFactorGate;
+
 	const basePath =
 		(auth as { options?: { basePath?: string } }).options?.basePath ??
 		'/api/auth';
@@ -79,10 +94,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		? basePath
 		: `${basePath}/`;
 
-	// Better Auth's `svelteKitHandler` checks request origin against `baseURL`.
-	// When you access the app via different hosts (e.g. `localhost` vs LAN IP),
-	// that origin check can fail and SvelteKit will return 404 for `/api/auth/*`.
-	// Here we route by pathname only to keep auth endpoints working as expected.
 	if (
 		!building &&
 		(pathname === basePath || pathname.startsWith(authPrefix))

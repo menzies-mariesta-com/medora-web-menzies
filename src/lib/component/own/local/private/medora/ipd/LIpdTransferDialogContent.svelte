@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import type { BedRow, WardRow } from '$lib/model/type/medora/ipd/ipd.type';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -115,29 +116,33 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<label class="label-ink text-sm font-medium" for="xfer-ward"
-		>To ward</label
-	>
-	<WashSelect
-		id="xfer-ward"
-		placeholder="Select ward"
-		options={wardOptions}
-		bind:value={wardId}
-		className="w-full"
-	/>
-	<label class="label-ink text-sm font-medium" for="xfer-bed"
-		>To bed</label
-	>
-	<WashSelect
-		id="xfer-bed"
-		placeholder="Select free bed"
-		options={bedOptions}
-		bind:value={bedId}
-		className="w-full"
-		disabled={!wardId || bedOptions.length === 0}
-	/>
-	<div class="modal-action flex justify-end gap-2">
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
+			<label class="label-ink text-sm font-medium" for="xfer-ward"
+				>To ward</label
+			>
+			<WashSelect
+				id="xfer-ward"
+				placeholder="Select ward"
+				options={wardOptions}
+				bind:value={wardId}
+				className="w-full"
+			/>
+			<label class="label-ink text-sm font-medium" for="xfer-bed"
+				>To bed</label
+			>
+			<WashSelect
+				id="xfer-bed"
+				placeholder="Select free bed"
+				options={bedOptions}
+				bind:value={bedId}
+				className="w-full"
+				disabled={!wardId || bedOptions.length === 0}
+			/>
+		</div>
+	</div>
+	<WashDialogFooter>
 		<WashButton type="button" className="btn" onClick={() => cancel()}
 			>Cancel</WashButton
 		>
@@ -148,5 +153,5 @@
 			disabled={!wardId || !bedId || isSubmitting}
 			>Transfer</WashButton
 		>
-	</div>
+	</WashDialogFooter>
 </form>

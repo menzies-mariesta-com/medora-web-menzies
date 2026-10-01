@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any -- GRN-from-PO draft */
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import GrnLineReceiptFields from './GrnLineReceiptFields.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -28,16 +29,16 @@
 	}
 </script>
 
-{#if draftGrnFromPoLine}
-	<div class="mt-4">
+<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+	{#if draftGrnFromPoLine}
 		<GrnLineReceiptFields
 			draft={draftGrnFromPoLine}
 			disableUnlessItem={false}
 			open={true}
 		/>
-	</div>
-{/if}
-<div class="modal-action mt-6">
+	{/if}
+</div>
+<WashDialogFooter>
 	<WashButton
 		type="button"
 		className="btn"
@@ -54,4 +55,4 @@
 	>
 		{m.save()}
 	</WashButton>
-</div>
+</WashDialogFooter>

@@ -4,6 +4,7 @@
 	import WashCheckbox from '$lib/component/wash/checkbox/WashCheckbox.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
@@ -84,7 +85,9 @@
 			cache: 'no-store'
 		});
 		if (!res.ok)
-			throw new Error(`Failed to load ward categories (${res.status})`);
+			throw new Error(
+				`Failed to load ward categories (${res.status})`
+			);
 		return (await res.json()) as WardCategoryRow[];
 	}
 
@@ -136,10 +139,7 @@
 			return;
 		}
 		if (!formBranchId) {
-			toastService.addToast(
-				m.select_branch(),
-				StatusColorEnum.ERROR
-			);
+			toastService.addToast(m.select_branch(), StatusColorEnum.ERROR);
 			return;
 		}
 		const wardCategoryId = Number(formWardCategoryId);
@@ -196,86 +196,86 @@
 	}
 </script>
 
-<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-	<div class="flex flex-col gap-4">
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ward-branch" class="shrink-0 sm:w-36">
-				{m.branches()} <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashSelect
-					id="ward-branch"
-					bind:value={formBranchId}
-					options={branchOptions}
-					placeholder={m.select_branch()}
-					disabled={isLoading || branches.length === 0}
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ward-category" class="shrink-0 sm:w-36">
-				Ward category <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashSelect
-					id="ward-category"
-					bind:value={formWardCategoryId}
-					options={categoryOptions}
-					placeholder="Select ward category"
-					disabled={isLoading || categories.length === 0}
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ward-name" class="shrink-0 sm:w-36">
-				{m.name()} <span class="text-error">*</span>
-			</label>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="ward-name"
-					bind:value={formName}
-					inputType="text"
-					inputPlaceholderText={m.name()}
-					required
-				/>
-			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<label for="ward-code" class="shrink-0 sm:w-36"
-				>{m.code()}</label
+<form onsubmit={handleSubmit} class="flex min-h-0 flex-1 flex-col">
+	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+		<div class="flex flex-col gap-4">
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-			<div class="max-w-80 flex-1">
-				<WashInputField
-					id="ward-code"
-					bind:value={formCode}
-					inputType="text"
-					inputPlaceholderText={m.code()}
-				/>
+				<label for="ward-branch" class="shrink-0 sm:w-36">
+					{m.branches()} <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="ward-branch"
+						bind:value={formBranchId}
+						options={branchOptions}
+						placeholder={m.select_branch()}
+						disabled={isLoading || branches.length === 0}
+					/>
+				</div>
 			</div>
-		</div>
-		<div
-			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
-		>
-			<span class="shrink-0 sm:w-36">{m.status()}</span>
-			<label
-				class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<WashCheckbox bind:checked={formActive} />
-				<span class="text-sm opacity-80">{m.active_label()}</span>
-			</label>
+				<label for="ward-category" class="shrink-0 sm:w-36">
+					Ward category <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashSelect
+						id="ward-category"
+						bind:value={formWardCategoryId}
+						options={categoryOptions}
+						placeholder="Select ward category"
+						disabled={isLoading || categories.length === 0}
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ward-name" class="shrink-0 sm:w-36">
+					{m.name()} <span class="text-error">*</span>
+				</label>
+				<div class="max-w-80 flex-1">
+					<WashInputField
+						id="ward-name"
+						bind:value={formName}
+						inputType="text"
+						inputPlaceholderText={m.name()}
+						required
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<label for="ward-code" class="shrink-0 sm:w-36"
+					>{m.code()}</label
+				>
+				<div class="max-w-80 flex-1">
+					<WashInputField
+						id="ward-code"
+						bind:value={formCode}
+						inputType="text"
+						inputPlaceholderText={m.code()}
+					/>
+				</div>
+			</div>
+			<div
+				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+			>
+				<span class="shrink-0 sm:w-36">{m.status()}</span>
+				<label
+					class="flex max-w-80 flex-1 cursor-pointer items-center gap-2"
+				>
+					<WashCheckbox bind:checked={formActive} />
+					<span class="text-sm opacity-80">{m.active_label()}</span>
+				</label>
+			</div>
 		</div>
 	</div>
-	<div
-		class="modal-action flex shrink-0 justify-end gap-2 border-t border-base-300 pt-4"
-	>
+	<WashDialogFooter className="gap-2">
 		<WashButton
 			type="button"
 			className="btn-ghost"
@@ -291,5 +291,5 @@
 		>
 			{m.ok()}
 		</WashButton>
-	</div>
+	</WashDialogFooter>
 </form>

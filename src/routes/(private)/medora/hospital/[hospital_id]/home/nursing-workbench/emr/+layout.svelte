@@ -35,8 +35,11 @@
 	function navUrl(pageUrl: string | null | undefined): string | null {
 		if (!pageUrl || !hospitalId) return pageUrl ?? null;
 		const base = medoraHospitalPageUrl(hospitalId, pageUrl);
+		const search = new URLSearchParams();
 		const vid = VisitState.visitId;
-		return vid ? `${base}?visitId=${vid}` : base;
+		if (vid) search.set('visitId', vid);
+		const q = search.toString();
+		return q ? `${base}?${q}` : base;
 	}
 
 	$effect(() => {
