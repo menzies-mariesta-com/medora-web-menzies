@@ -21,7 +21,10 @@
 	import { m } from '$lib/paraglide/messages';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-
+	import {
+		ensureTwoFactorForMutation,
+		redirectIfTwoFactorRequired
+	} from '$lib/util/two-factor-gate.util';
 	type HospitalWithOwner = {
 		id: string;
 		name: string | null;
@@ -185,12 +188,24 @@
 		routerUtil.goToRoute(medoraHospitalHome(hospitalId));
 	}
 
+	async function requireMutationTwoFactor(): Promise<boolean> {
+		return ensureTwoFactorForMutation({
+			userRoleId: data?.userRoleId ?? null,
+			twoFactorEnabled: Boolean(
+				(data as { twoFactorEnabled?: boolean } | undefined)
+					?.twoFactorEnabled
+			)
+		});
+	}
+
 	async function openEditHospitalModal(h: HospitalWithOwner) {
+		if (!(await requireMutationTwoFactor())) return;
 		HospitalModalState.hospitalId = h.id as string;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
 		HospitalModalState.currentUserId = data?.user
 			? (data.user as { id?: string }).id
 			: undefined;
+		HospitalModalState.preselectedOwnerId = null;
 		const result = await dialogService.open({
 			title: m.edit_hospital(),
 			component: NewHospitalModal
@@ -201,11 +216,13 @@
 	}
 
 	async function openNewHospitalModal() {
+		if (!(await requireMutationTwoFactor())) return;
 		HospitalModalState.hospitalId = null;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
 		HospitalModalState.currentUserId = data?.user
 			? (data.user as { id?: string }).id
 			: undefined;
+		HospitalModalState.preselectedOwnerId = null;
 		const result = await dialogService.open({
 			title: m.new_hospital(),
 			component: NewHospitalModal
@@ -216,6 +233,7 @@
 	}
 
 	async function handleDelete(h: HospitalWithOwner) {
+		if (!(await requireMutationTwoFactor())) return;
 		const result = await dialogService.open({
 			title: m.delete_hospital(),
 			message: `Delete="${h.name ?? h.code ?? m.hospitals()}"? This cannot be undone.`,
@@ -228,7 +246,10 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ id: h.id })
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) {
+				if (await redirectIfTwoFactorRequired(res)) return;
+				throw new Error(await res.text());
+			}
 			toastService.addToast(
 				m.hospital_deleted(),
 				StatusColorEnum.SUCCESS
@@ -290,7 +311,7 @@
 					<WashButton
 						className="btn-outline btn-sm"
 						onClick={() =>
-							routerUtil.goToRoute(WebRoutesEnum.MEDORA_ADMIN_OWNERS)}
+							routerUtil.goToRoute(WebRoutesEnum.MEDORA_ADMIN)}
 					>
 						<LucideUserCog className="size-4" />
 						{m.manage_owners()}

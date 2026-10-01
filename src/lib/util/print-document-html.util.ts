@@ -341,7 +341,7 @@ export function buildPrintDocumentHtml(params: {
 				<title>${escapeHtml(documentTitle)}</title>
 				<style>
 					body {
-						font-family: 'Roboto', Arial, sans-serif;
+						font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
 						margin: 0;
 						padding: ${paddingTop}mm ${paddingRight}mm ${paddingBottom}mm ${paddingLeft}mm;
 						line-height: 1.6;

@@ -287,15 +287,17 @@ export async function seedInformationTables() {
 	`);
 	seedLogger.info('Seeded: diagnosis_code');
 
-	// 5. Role
+	// 5. Role (must match RoleEnum / auth-table-seed; do not invent hospital job titles here)
 	await db.execute(sql`
 		INSERT INTO role (id, name, status_id)
 		VALUES
-			(1, 'Admin', 1),
-			(2, 'Doctor', 1),
-			(3, 'Nurse', 1),
-			(4, 'Receptionist', 1)
-		ON CONFLICT (id) DO NOTHING;
+			(1, 'System Admin', 1),
+			(2, 'Owner', 1),
+			(3, 'Staff', 1),
+			(4, 'Admin Team', 1)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			status_id = EXCLUDED.status_id;
 		`);
 	seedLogger.info('Seeded: role');
 

@@ -21,7 +21,7 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
-
+	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const toastService = new ToastService();
@@ -297,6 +297,7 @@
 					body: JSON.stringify({ id, ...body })
 				});
 				if (!res.ok) {
+					if (await redirectIfTwoFactorRequired(res)) return;
 					const t = await res.text();
 					throw new Error(t || 'Update failed');
 				}
@@ -312,6 +313,7 @@
 					body: JSON.stringify(body)
 				});
 				if (!res.ok) {
+					if (await redirectIfTwoFactorRequired(res)) return;
 					const t = await res.text();
 					throw new Error(t || 'Create failed');
 				}
@@ -351,7 +353,10 @@
 			} else {
 				name = '';
 				code = '';
-				ownerId = isOwnerUser ? currentUserId : '';
+				ownerId = isOwnerUser
+					? currentUserId
+					: (HospitalModalState.preselectedOwnerId ?? '');
+				HospitalModalState.preselectedOwnerId = null;
 				address = '';
 				phoneCountryId = '';
 				phone = '';

@@ -50,6 +50,20 @@
       "when": 1790252400000,
       "tag": "0006_room_category",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790400000000,
+      "tag": "0007_admin_team_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790403600000,
+      "tag": "0008_admin_team_role_name",
+      "breakpoints": true
     }
   ]
 }

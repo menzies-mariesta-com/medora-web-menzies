@@ -3,6 +3,7 @@
 
 	import { onMount } from 'svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { m } from '$lib/paraglide/messages';
@@ -28,12 +29,7 @@
 
 <div class="{washRecipes.navbar}">
 	<div class="navbar-start">
-		<WashButton
-			onClick={() => routerUtil.goToRoute(WebRoutesEnum.DEFAULT)}
-			className="my-ft-h3 btn-ghost font-[family-name:var(--font-display)]"
-		>
-			{m.menzies_medora()}
-		</WashButton>
+		<MedoraBrandWordmark className="text-xl" />
 	</div>
 
 	<div class="navbar-center">
@@ -53,11 +49,6 @@
 				>{m.log_out()}</WashButton
 			>
 		{:else}
-			<WashButton
-				onClick={() => routerUtil.goToRoute(WebRoutesEnum.SIGNUP)}
-			>
-				{m.sign_up()}
-			</WashButton>
 			<WashButton
 				onClick={() => routerUtil.goToRoute(WebRoutesEnum.LOGIN)}
 				className="btn-primary"

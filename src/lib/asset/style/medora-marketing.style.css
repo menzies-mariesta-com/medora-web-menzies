@@ -1,0 +1,105 @@
+/*
+ * Soft Wash marketing palette (same tokens as Loomline Soft Wash).
+ * Pricing tiers and public home share this look.
+ * Typefaces: Wash UI Fraunces (display) + Maple Mono (body) via --font-*.
+ */
+
+:root {
+	/* Soft Wash mineral marketing palette */
+	--medora-mint: #d8eee6;
+	--medora-mint-deep: #b8ddd0;
+	--medora-ink: #1c2a28;
+	--medora-coral: #e07a5f;
+	--medora-teal: #3d7a6f;
+	--medora-navy: #2c3e50;
+	--medora-cream: #f7f4ef;
+	/* Loomline-compatible aliases for identical tier class names */
+	--loom-mint: var(--medora-mint);
+	--loom-mint-deep: var(--medora-mint-deep);
+	--loom-ink: var(--medora-ink);
+	--loom-coral: var(--medora-coral);
+	--loom-teal: var(--medora-teal);
+	--loom-navy: var(--medora-navy);
+}
+
+[data-theme$='-dark'] {
+	--medora-ink: var(--color-base-content);
+	--medora-teal: color-mix(in oklab, var(--color-primary) 52%, #b8ddd0 48%);
+	--loom-ink: var(--medora-ink);
+	--loom-teal: var(--medora-teal);
+}
+
+.font-display {
+	font-family: var(--font-display);
+}
+
+.font-body {
+	font-family: var(--font-sans);
+}
+
+.medora-marketing {
+	font-family: var(--font-sans);
+	color: var(--medora-ink);
+}
+
+.medora-marketing h1,
+.medora-marketing h2,
+.medora-marketing h3 {
+	font-family: var(--font-display);
+	letter-spacing: -0.02em;
+	color: var(--medora-ink);
+}
+
+.medora-marketing .font-display {
+	font-family: var(--font-display);
+}
+
+/*
+ * Pricing tiers: equal-height Soft Wash columns (Loomline strip).
+ * Highlighted plan gets mint wash + teal leading edge.
+ */
+.medora-pricing-tiers {
+	display: flex;
+	flex-direction: column;
+	border-block: 1px solid color-mix(in oklab, var(--loom-ink) 10%, transparent);
+}
+
+.medora-pricing-tiers > article {
+	display: flex;
+	flex-direction: column;
+	padding: 2rem 0.25rem;
+	border-bottom: 1px solid color-mix(in oklab, var(--loom-ink) 10%, transparent);
+}
+
+.medora-pricing-tiers > article:last-child {
+	border-bottom: none;
+}
+
+.medora-pricing-tiers > article.medora-pricing-tier--highlight {
+	border-inline-start: 2px solid var(--loom-teal);
+	background: color-mix(in oklab, var(--loom-mint) 55%, transparent);
+}
+
+@media (min-width: 640px) {
+	.medora-pricing-tiers > article {
+		padding-inline: 1rem;
+	}
+}
+
+@media (min-width: 1024px) {
+	.medora-pricing-tiers {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		border-block: 1px solid color-mix(in oklab, var(--loom-ink) 10%, transparent);
+	}
+
+	.medora-pricing-tiers > article {
+		padding: 2.5rem 1.25rem;
+		border-bottom: none;
+		border-inline-end: 1px solid color-mix(in oklab, var(--loom-ink) 10%, transparent);
+	}
+
+	.medora-pricing-tiers > article:last-child {
+		border-inline-end: none;
+	}
+}

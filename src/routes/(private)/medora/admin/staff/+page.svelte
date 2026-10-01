@@ -1,0 +1,18 @@
+<script lang="ts">
+	import AdminStaffSection from '$lib/component/own/local/private/medora/admin/AdminStaffSection.svelte';
+	import { m } from '$lib/paraglide/messages';
+
+	const msg = m as unknown as Record<string, (inputs?: object) => string>;
+</script>
+
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-4">
+	<header class="flex min-w-0 flex-col gap-1">
+		<h1 class="text-2xl font-bold text-primary">
+			{msg.admin_staff_title()}
+		</h1>
+		<p class="text-sm text-base-content/70">
+			{msg.admin_staff_subtitle()}
+		</p>
+	</header>
+	<AdminStaffSection />
+</div>

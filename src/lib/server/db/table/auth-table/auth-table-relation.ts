@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
 	accountTable,
+	adminPagePermissionTable,
 	roleTable,
 	sessionTable,
 	twoFactorTable,
@@ -29,6 +30,7 @@ export const userTableRollbackRelations = relations(
 			fields: [userTable.roleId],
 			references: [roleTable.id]
 		}),
+		adminPagePermissions: many(adminPagePermissionTable),
 		supportTicketsRequested: many(supportTicketTable, {
 			relationName: 'support_ticket_requester'
 		}),
@@ -88,5 +90,15 @@ export const roleTableRelations = relations(
 			references: [statusTable.id]
 		}),
 		users: many(userTable)
+	})
+);
+
+export const adminPagePermissionTableRelations = relations(
+	adminPagePermissionTable,
+	({ one }) => ({
+		user: one(userTable, {
+			fields: [adminPagePermissionTable.userId],
+			references: [userTable.id]
+		})
 	})
 );
