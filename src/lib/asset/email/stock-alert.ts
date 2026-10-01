@@ -1,7 +1,8 @@
 /**
- * Stock / inventory alert emails — layout matches `reset-password.html` (Menzies Medora teal card).
+ * Stock / inventory alert emails: layout matches `reset-password.html` (Menzies Medora teal card).
  */
 import stockAlertHtml from './stock-alert.html?raw';
+import { applyEmailBrandPlaceholders } from './email-brand';
 
 function escapeHtml(s: string): string {
 	return s
@@ -18,6 +19,8 @@ export interface StockAlertEmailParams {
 	url: string;
 	ctaLabel: string;
 	footnote?: string;
+	/** Absolute logo URL; defaults from BETTER_AUTH_BASE_URL / BETTER_AUTH_URL. */
+	logoUrl?: string;
 }
 
 export function renderStockAlertEmail(
@@ -27,13 +30,16 @@ export function renderStockAlertEmail(
 		params.footnote ??
 		'You can change notification preferences in Menzies Medora under Inventory setup → Stock alerts.';
 
-	const html = stockAlertHtml
-		.replace(/\{\{metaTitle\}\}/g, escapeHtml(params.metaTitle))
-		.replace(/\{\{title\}\}/g, escapeHtml(params.title))
-		.replace(/\{\{body\}\}/g, escapeHtml(params.body))
-		.replace(/\{\{url\}\}/g, escapeHtml(params.url))
-		.replace(/\{\{ctaLabel\}\}/g, escapeHtml(params.ctaLabel))
-		.replace(/\{\{footnote\}\}/g, escapeHtml(footnote));
+	const html = applyEmailBrandPlaceholders(
+		stockAlertHtml
+			.replace(/\{\{metaTitle\}\}/g, escapeHtml(params.metaTitle))
+			.replace(/\{\{title\}\}/g, escapeHtml(params.title))
+			.replace(/\{\{body\}\}/g, escapeHtml(params.body))
+			.replace(/\{\{url\}\}/g, escapeHtml(params.url))
+			.replace(/\{\{ctaLabel\}\}/g, escapeHtml(params.ctaLabel))
+			.replace(/\{\{footnote\}\}/g, escapeHtml(footnote)),
+		{ logoUrl: params.logoUrl }
+	);
 
 	const plainText = `${params.title}\n\n${params.body}\n\n${params.ctaLabel}: ${params.url}`;
 	return { html, plainText };

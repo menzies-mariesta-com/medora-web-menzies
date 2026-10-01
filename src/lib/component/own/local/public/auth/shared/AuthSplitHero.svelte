@@ -8,17 +8,23 @@
 	let {
 		headline,
 		body,
+		formMaxWidthClass = 'max-w-sm',
+		contentMaxWidthClass = 'max-w-5xl',
 		children
 	}: {
 		headline: string;
 		body: string;
+		/** Form column width (login: max-w-sm; wider signup form: max-w-2xl). */
+		formMaxWidthClass?: string;
+		/** Overall hero content max width. */
+		contentMaxWidthClass?: string;
 		children: Snippet;
 	} = $props();
 </script>
 
 <div class="hero min-h-[min(32rem,80vh)] w-full rounded-box">
 	<div
-		class="hero-content w-full max-w-5xl flex-col gap-8 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
+		class="hero-content w-full {contentMaxWidthClass} flex-col gap-8 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
 	>
 		<div class="max-w-md text-center lg:text-left">
 			<p class="label-ink mb-2">
@@ -32,7 +38,7 @@
 			</p>
 		</div>
 
-		<div class="w-full max-w-sm shrink-0">
+		<div class="w-full {formMaxWidthClass} shrink-0">
 			{@render children()}
 		</div>
 	</div>

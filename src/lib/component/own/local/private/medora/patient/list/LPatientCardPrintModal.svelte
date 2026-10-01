@@ -173,7 +173,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>${escapeHtml(title)}</title>
 	<style>
-		body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px; color: #111827; }
+		body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif; padding: 24px; color: #111827; }
 		.card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; max-width: 720px; margin: 0 auto; }
 		h1 { font-size: 18px; margin: 0 0 16px; }
 		.header { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }

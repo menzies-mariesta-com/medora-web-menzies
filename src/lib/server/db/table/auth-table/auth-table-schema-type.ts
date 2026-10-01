@@ -5,7 +5,8 @@ import type {
 	accountTable,
 	verificationTable,
 	twoFactorTable,
-	roleTable
+	roleTable,
+	adminPagePermissionTable
 } from './auth-table';
 
 // Auth tables
@@ -44,3 +45,13 @@ export type TwoFactorSchemaUpdate = Partial<TwoFactorSchemaInsert>;
 export type RoleSchema = InferSelectModel<typeof roleTable>;
 export type RoleSchemaInsert = InferInsertModel<typeof roleTable>;
 export type RoleSchemaUpdate = Partial<RoleSchemaInsert>;
+
+export type AdminPagePermissionSchema = InferSelectModel<
+	typeof adminPagePermissionTable
+>;
+export type AdminPagePermissionSchemaInsert = InferInsertModel<
+	typeof adminPagePermissionTable
+>;
+export type AdminPagePermissionSchemaUpdate = Partial<
+	AdminPagePermissionSchemaInsert
+>;

@@ -6,6 +6,7 @@ import {
 	serial,
 	text,
 	timestamp,
+	unique,
 	varchar
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
@@ -124,11 +125,38 @@ export const roleTable = pgTable('role', {
 	...timestamps
 });
 
+/**
+ * Per-page CRUD grants for ADMIN_TEAM users on `/medora/admin/**`.
+ * SYSTEM_ADMIN bypasses this table (full access).
+ */
+export const adminPagePermissionTable = pgTable(
+	'admin_page_permission',
+	{
+		id: serial('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => userTable.id, { onDelete: 'cascade' }),
+		pageKey: varchar('page_key', { length: 64 }).notNull(),
+		canView: boolean('can_view').notNull().default(false),
+		canCreate: boolean('can_create').notNull().default(false),
+		canEdit: boolean('can_edit').notNull().default(false),
+		canDelete: boolean('can_delete').notNull().default(false),
+		...timestamps
+	},
+	(t) => [
+		unique('admin_page_permission_user_page_unique').on(
+			t.userId,
+			t.pageKey
+		)
+	]
+);
+
 export const authSchema = {
 	user: userTable,
 	session: sessionTable,
 	account: accountTable,
 	verification: verificationTable,
 	twoFactor: twoFactorTable,
-	role: roleTable
+	role: roleTable,
+	adminPagePermission: adminPagePermissionTable
 };

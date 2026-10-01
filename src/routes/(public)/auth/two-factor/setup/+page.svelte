@@ -12,6 +12,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { toastError, toastSuccess } from '$lib/util/toast-copy.util';
 	import { m } from '$lib/paraglide/messages';
+	import { page } from '$app/state';
 
 	/**
 	 * Menzies Design 2FA setup (Templates → Auth → 2FA setup):
@@ -25,6 +26,20 @@
 
 	type Step = 'password' | 'confirm' | 'backup';
 
+	function sanitizeRedirectTo(redirectTo: string | null) {
+		if (!redirectTo) return WebRoutesEnum.MEDORA_HOSPITAL;
+		const value = redirectTo.trim();
+		const lower = value.toLowerCase();
+		if (!value.startsWith('/')) return WebRoutesEnum.MEDORA_HOSPITAL;
+		if (value.startsWith('//')) return WebRoutesEnum.MEDORA_HOSPITAL;
+		if (lower.startsWith('http:') || lower.startsWith('https:'))
+			return WebRoutesEnum.MEDORA_HOSPITAL;
+		return value;
+	}
+
+	const redirectTarget = $derived(
+		sanitizeRedirectTo(page.url.searchParams.get('redirectTo'))
+	);
 	let step = $state<Step>('password');
 	let password = $state('');
 	let code = $state('');
@@ -183,7 +198,7 @@
 					</WashButton>
 					<a
 						class="link link-secondary cursor-pointer text-center text-sm"
-						href={WebRoutesEnum.MEDORA_HOSPITAL}
+						href={redirectTarget}
 					>
 						{m.cancel()}
 					</a>
@@ -278,7 +293,7 @@
 				{#snippet actions()}
 					<a
 						class="btn btn-primary w-full cursor-pointer"
-						href={WebRoutesEnum.MEDORA_HOSPITAL}
+						href={redirectTarget}
 					>
 						{msg.auth_2fa_setup_done()}
 					</a>

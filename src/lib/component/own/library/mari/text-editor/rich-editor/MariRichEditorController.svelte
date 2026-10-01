@@ -61,11 +61,8 @@
 	type ActiveStates = Partial<Record<CommandName, boolean>>;
 
 	const FONT_FAMILIES = [
-		{ label: 'Roboto', value: 'Roboto, sans-serif' },
-		{ label: 'Adwaita Sans', value: 'Adwaita-sans, sans-serif' },
-		{ label: 'Adwaita Mono', value: 'Adwaita-mono, monospace' },
-		{ label: 'Comic Relief', value: 'ComicRelief, sans-serif' },
-		{ label: 'Pangolin', value: 'Pangolin, sans-serif' }
+		{ label: 'Maple Mono', value: "'Maple Mono', ui-monospace, monospace" },
+		{ label: 'Fraunces', value: "'Fraunces', ui-serif, Georgia, serif" }
 	];
 
 	const TEXT_COLORS = [
@@ -95,8 +92,8 @@
 	let {
 		activeStates = {},
 		fontSize = 14,
-		// Default to Adwaita Sans to match expected editor behavior.
-		fontFamily = 'Adwaita-sans, sans-serif',
+		// Default to Wash UI body face.
+		fontFamily = "'Maple Mono', ui-monospace, monospace",
 		isInTable = false,
 		textColor = '#000000',
 		bgColor = ''

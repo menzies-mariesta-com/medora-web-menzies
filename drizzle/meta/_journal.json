@@ -106,6 +106,20 @@
       "when": 1790281200000,
       "tag": "0014_ipd_order_deposit_audit_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790400000000,
+      "tag": "0015_admin_team_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790403600000,
+      "tag": "0016_admin_team_role_name",
+      "breakpoints": true
     }
   ]
 }

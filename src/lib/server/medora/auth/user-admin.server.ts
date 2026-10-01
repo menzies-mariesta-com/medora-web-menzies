@@ -9,7 +9,7 @@ import type {
 	UserSchema,
 	UserSchemaUpdate
 } from '$lib/server/db/table/auth-table/auth-table-schema-type';
-import { RoleEnum } from '$lib/model/enum/db-link';
+import { AdminPageKeyEnum, RoleEnum } from '$lib/model/enum/db-link';
 import {
 	normalizePagination,
 	type PaginatedResult,
@@ -18,6 +18,7 @@ import {
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { and, count, eq, ilike } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
+import { requireAdminPagePermission } from '$lib/server/medora/admin/admin-permission.server';
 
 function generateRandomPassword(length = 16): string {
 	const charset =
@@ -35,10 +36,11 @@ export async function createOwner(
 	event: RequestEvent,
 	payload: { name: string; email: string }
 ): Promise<UserSchema> {
-	if (!event.locals.user) throw error(401, 'Unauthorized');
-	if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
-		throw error(403, 'Only system admin can create owners');
-	}
+	await requireAdminPagePermission(
+		event,
+		AdminPageKeyEnum.OWNERS,
+		'create'
+	);
 	const passwordHashUtil = new PasswordHashUtil();
 	const existing = await ensureDb()
 		.select()
@@ -79,8 +81,12 @@ export async function updateUser(
 ): Promise<UserSchema> {
 	if (!event.locals.user) throw error(401, 'Unauthorized');
 	const isSelf = event.locals.user.id === payload.id;
-	if (!isSelf && event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
-		throw error(403, 'Forbidden');
+	if (!isSelf) {
+		await requireAdminPagePermission(
+			event,
+			AdminPageKeyEnum.OWNERS,
+			'edit'
+		);
 	}
 	const { id, ...rest } = payload;
 	const [row] = await ensureDb()
@@ -101,10 +107,11 @@ export async function getUsersByRolePaginated(
 		statusId?: number | null;
 	}
 ): Promise<PaginatedResult<UserSchema>> {
-	if (!event.locals.user) throw error(401, 'Unauthorized');
-	if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
-		throw error(403, 'Forbidden');
-	}
+	await requireAdminPagePermission(
+		event,
+		AdminPageKeyEnum.OWNERS,
+		'view'
+	);
 	const { page, pageSize, limit, offset } =
 		normalizePagination(params);
 	let whereExpr = eq(table.userTable.roleId, params.roleId);
@@ -181,10 +188,11 @@ export async function listUsersByRole(
 	event: RequestEvent,
 	roleId: number
 ): Promise<UserSchema[]> {
-	if (!event.locals.user) throw error(401, 'Unauthorized');
-	if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
-		throw error(403, 'Forbidden');
-	}
+	await requireAdminPagePermission(
+		event,
+		AdminPageKeyEnum.OWNERS,
+		'view'
+	);
 	return ensureDb()
 		.select()
 		.from(table.userTable)
@@ -195,10 +203,11 @@ export async function deleteUserById(
 	event: RequestEvent,
 	id: string
 ): Promise<void> {
-	if (!event.locals.user) throw error(401, 'Unauthorized');
-	if (event.locals.userRoleId !== RoleEnum.SYSTEM_ADMIN) {
-		throw error(403, 'Only system admin can delete users');
-	}
+	await requireAdminPagePermission(
+		event,
+		AdminPageKeyEnum.OWNERS,
+		'delete'
+	);
 	await ensureDb()
 		.delete(table.userTable)
 		.where(eq(table.userTable.id, id));

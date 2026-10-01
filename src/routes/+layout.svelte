@@ -34,12 +34,13 @@
 		page.url.searchParams.get('embed') === '1'
 	);
 
+	/** FAB only in private medora app; hidden on marketing, auth, onboarding, pricing. */
+	const showQuickTool = $derived(
+		!isEmbed && page.url.pathname.startsWith('/medora')
+	);
+
 	/** Dynamic paths from Paraglide are `string`; widen for `resolve` typing. */
 	const resolvePathname = resolve as (pathname: string) => string;
-
-	const faviconSvg = `data:image/svg+xml,${encodeURIComponent(
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#276C8E"/><text x="32" y="40" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" fill="#fff">MM</text></svg>`
-	)}`;
 
 	lifeCycleUtil.onMount(() => {
 		washThemeTool.boot();
@@ -74,7 +75,8 @@
 	<title>
 		{m.menzies_medora()}
 	</title>
-	<link rel="icon" type="image/svg+xml" href={faviconSvg} />
+	<link rel="icon" type="image/svg+xml" href="/medora-logo.svg" />
+	<link rel="apple-touch-icon" href="/medora-logo.svg" />
 </svelte:head>
 
 <!-- Pure Wash: single shell only — never nest washShell / washPanel / page-wash below. -->
@@ -82,8 +84,8 @@
 	{@render children()}
 </div>
 
-<!-- Floating Action Button -->
-{#if !isEmbed}
+<!-- Floating Action Button (private medora only; still hidden when embed=1) -->
+{#if showQuickTool}
 	<GQuickTool />
 {/if}
 
