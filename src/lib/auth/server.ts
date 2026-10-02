@@ -108,7 +108,9 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		twoFactor({
-			issuer: 'Menzies Medora'
+			issuer: 'Menzies Medora',
+			/** Trusted-device cookie + verification row lifetime (3 days). */
+			trustDeviceMaxAge: 60 * 60 * 24 * 3
 		}),
 		emailOTP({
 			async sendVerificationOTP({ email, otp, type }) {

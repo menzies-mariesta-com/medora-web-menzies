@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
+	import WashDatePicker from '$lib/component/wash/datepicker/WashDatePicker.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
@@ -106,11 +107,10 @@
 	</div>
 	<div>
 		<label class="text-xs opacity-80">{m.inv_stock_col_expiry()}</label>
-		<input
-			type="date"
-			class="input-bordered input w-full"
+		<WashDatePicker
 			bind:value={draft.expiryDate}
 			disabled={itemLocked}
+			className="w-full"
 			aria-label={m.inv_stock_col_expiry()}
 		/>
 	</div>

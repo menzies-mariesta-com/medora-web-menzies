@@ -18,7 +18,11 @@ import type {
 	PaginationParams
 } from '$lib/model/type/pagination.type';
 import { normalizePagination } from '$lib/model/type/pagination.type';
-import { requireAdminPagePermission } from '$lib/server/medora/admin/admin-permission.server';
+import {
+	loadAdminPagePermissions,
+	permissionAllows,
+	requireAdminPagePermission
+} from '$lib/server/medora/admin/admin-permission.server';
 
 export type HospitalWithOwner = HospitalSchema & {
 	owner?: { id: string; name: string | null; email: string } | null;
@@ -58,6 +62,37 @@ async function assertCanManageHospitals(
 		return;
 	}
 	throw error(403, 'Staff cannot manage hospitals');
+}
+
+/** OWNER / SYSTEM_ADMIN, or ADMIN_TEAM with create or edit on Hospitals. */
+export async function assertCanUploadHospitalLogo(
+	event: RequestEvent
+): Promise<void> {
+	requireUser(event);
+	const userRoleId = event.locals.userRoleId ?? null;
+	if (userRoleId === RoleEnum.OWNER) return;
+	if (userRoleId === RoleEnum.SYSTEM_ADMIN) return;
+	if (userRoleId === RoleEnum.ADMIN_TEAM) {
+		let permissions = event.locals.adminPermissions ?? null;
+		if (permissions == null) {
+			permissions = await loadAdminPagePermissions(
+				event.locals.user!.id
+			);
+			event.locals.adminPermissions = permissions;
+		}
+		if (
+			permissionAllows(
+				permissions,
+				AdminPageKeyEnum.HOSPITALS,
+				'create'
+			) ||
+			permissionAllows(permissions, AdminPageKeyEnum.HOSPITALS, 'edit')
+		) {
+			return;
+		}
+		throw error(403, 'Missing create or edit permission for hospitals');
+	}
+	throw error(403, 'Staff cannot upload hospital logos');
 }
 
 function resolveEffectiveOwnerId(
@@ -139,11 +174,16 @@ export async function createHospital(
 	event: RequestEvent,
 	input: HospitalSchemaInsert
 ): Promise<HospitalSchema> {
-	const { userId, userRoleId } = requireUser(event);
+	const { userRoleId } = requireUser(event);
+	if (userRoleId === RoleEnum.OWNER) {
+		throw error(
+			403,
+			'Owners cannot create hospitals. Contact your administrator.'
+		);
+	}
 	await assertCanManageHospitals(event, 'create');
 
 	const values = { ...input };
-	if (userRoleId === RoleEnum.OWNER) values.ownerId = userId;
 
 	const [inserted] = await ensureDb()
 		.insert(table.hospitalTable)
@@ -208,20 +248,17 @@ export async function deleteHospital(
 	event: RequestEvent,
 	{ id }: { id: string }
 ): Promise<void> {
-	const { userId, userRoleId } = requireUser(event);
+	const { userRoleId } = requireUser(event);
+	if (userRoleId === RoleEnum.OWNER) {
+		throw error(
+			403,
+			'Owners cannot delete hospitals. Contact your administrator.'
+		);
+	}
 	await assertCanManageHospitals(event, 'delete');
 	if (!id) throw error(400, 'Hospital id is required');
 
-	if (userRoleId === RoleEnum.OWNER) {
-		const [hospital] = await ensureDb()
-			.select({ ownerId: table.hospitalTable.ownerId })
-			.from(table.hospitalTable)
-			.where(eq(table.hospitalTable.id, id))
-			.limit(1);
-		if (!hospital || hospital.ownerId !== userId)
-			throw error(403, 'You can only delete your own hospitals');
-	}
-
+	// Soft delete: keep the row, mark Inactive (status filter can list it again).
 	await ensureDb()
 		.update(table.hospitalTable)
 		.set({ statusId: StatusEnum.INACTIVE })

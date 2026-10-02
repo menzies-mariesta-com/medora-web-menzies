@@ -16,6 +16,7 @@
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		PREFIX_PURPOSES,
@@ -584,25 +585,34 @@
 												class="w-5 shrink-0 text-right text-[0.65rem] text-base-content/45 tabular-nums"
 												>{i + 1}</span
 											>
-											<select
-												class="select-bordered select h-7 min-h-7 max-w-[7.5rem] shrink-0 select-xs py-0 text-xs"
+											<WashSelect
+												className="select h-7 min-h-7 max-w-[7.5rem] shrink-0 select-xs py-0 text-xs"
 												value={part.kind}
-												onchange={(e) => {
-													const k = e.currentTarget
-														.value as UiFormatPart['kind'];
-													setPartKind(i, k);
+												options={[
+													{
+														value: 'literal',
+														label:
+															m.prefix_configuration_part_type_literal()
+													},
+													{
+														value: 'field',
+														label:
+															m.prefix_configuration_part_type_field()
+													},
+													{
+														value: 'sequence',
+														label:
+															m.prefix_configuration_part_type_sequence()
+													}
+												]}
+												onChange={(next) => {
+													if (next)
+														setPartKind(
+															i,
+															next as UiFormatPart['kind']
+														);
 												}}
-											>
-												<option value="literal"
-													>{m.prefix_configuration_part_type_literal()}</option
-												>
-												<option value="field"
-													>{m.prefix_configuration_part_type_field()}</option
-												>
-												<option value="sequence"
-													>{m.prefix_configuration_part_type_sequence()}</option
-												>
-											</select>
+											/>
 
 											<div
 												class="min-w-0 flex-1 basis-[12rem] sm:basis-0"
@@ -617,22 +627,23 @@
 														inputPlaceholderText={m.prefix_configuration_literal_placeholder()}
 													/>
 												{:else if part.kind === 'field'}
-													<select
-														class="select-bordered select h-7 min-h-7 w-full select-xs py-0 text-xs"
+													<WashSelect
+														className="select h-7 min-h-7 w-full select-xs py-0 text-xs"
 														value={part.path}
-														onchange={(e) =>
-															setFieldPath(
-																i,
-																e.currentTarget
-																	.value as PrefixFieldPath
-															)}
-													>
-														{#each fieldPathOptions as fp (fp)}
-															<option value={fp}
-																>{fieldPathLabel(fp)}</option
-															>
-														{/each}
-													</select>
+														options={fieldPathOptions.map(
+															(fp) => ({
+																value: fp,
+																label: fieldPathLabel(fp)
+															})
+														)}
+														onChange={(next) => {
+															if (next)
+																setFieldPath(
+																	i,
+																	next as PrefixFieldPath
+																);
+														}}
+													/>
 												{:else}
 													<div
 														class="flex flex-wrap items-center gap-x-2 gap-y-0.5"

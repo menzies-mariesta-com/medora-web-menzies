@@ -1,14 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { ensureDb } from '$lib/server/db';
-import { sessionTable } from '$lib/server/db/table/auth-table/auth-table';
-import { eq } from 'drizzle-orm/sql/expressions/conditions';
+import {
+	extendSessionWithPassword,
+	UI_ONLY_SESSION_EXTEND_HEADER
+} from '$lib/server/medora/auth/session-extend.server';
 
 /** Must not live under `/api/auth/*` — `hooks.server.ts` forwards that prefix to Better Auth only. */
-const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
-const EXTEND_SECONDS = 60 * 60 * 2;
-const UI_ONLY_HEADER = 'x-medora-ui-session-extend';
-
 export const POST: RequestHandler = async ({
 	request,
 	locals,
@@ -19,7 +16,7 @@ export const POST: RequestHandler = async ({
 
 	// Enforce that session extension is initiated by the UI button.
 	// This prevents non-UI code paths from extending session expiry.
-	const headerValue = request.headers.get(UI_ONLY_HEADER);
+	const headerValue = request.headers.get(UI_ONLY_SESSION_EXTEND_HEADER);
 	if (headerValue !== '1') {
 		throw error(403, 'Forbidden');
 	}
@@ -27,31 +24,23 @@ export const POST: RequestHandler = async ({
 	const sessionId = locals.session.id;
 	if (!sessionId) throw error(400, 'Missing session id');
 
-	const extendedFor = cookies.get(COOKIE_SESSION_EXTENDED_FOR);
-	if (extendedFor === sessionId) {
-		throw error(409, 'Session already extended once');
+	let body: { password?: unknown } = {};
+	try {
+		body = (await request.json()) as { password?: unknown };
+	} catch {
+		throw error(400, 'Invalid JSON body');
 	}
 
-	const newExpiresAt = new Date(
-		Date.now() + EXTEND_SECONDS * 1000
-	).toISOString();
+	const password =
+		typeof body.password === 'string' ? body.password : '';
 
-	await ensureDb()
-		.update(sessionTable)
-		.set({ expiresAt: newExpiresAt })
-		.where(eq(sessionTable.id, sessionId));
-
-	cookies.set(COOKIE_SESSION_EXTENDED_FOR, sessionId, {
-		path: '/',
-		httpOnly: true,
-		sameSite: 'lax',
-		secure: false,
-		maxAge: EXTEND_SECONDS * 2
-	});
-
-	return json({
+	const result = await extendSessionWithPassword({
+		cookies,
+		headers: request.headers,
+		userId: locals.user.id,
 		sessionId,
-		sessionExpiresAt: newExpiresAt,
-		extendedOnce: true
+		password
 	});
+
+	return json(result);
 };

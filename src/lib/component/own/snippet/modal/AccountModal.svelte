@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
@@ -23,13 +24,25 @@
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/medora/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastError, toastSuccess } from '$lib/util/toast-copy.util';
+	import type {
+		AccountProfileSeed,
+		AccountSettingsApiRow
+	} from '$lib/model/type/medora/account-settings.type';
 
-	let { open, onClose, hospitalId, userEmail, staffId } = $props<{
+	let {
+		open,
+		onClose,
+		hospitalId,
+		userEmail,
+		staffId,
+		initialProfile = null
+	} = $props<{
 		open: boolean;
 		onClose: () => void;
 		hospitalId: string | null;
 		userEmail: string | null;
 		staffId: string | null;
+		initialProfile?: AccountProfileSeed | null;
 	}>();
 
 	const toastService = new ToastService();
@@ -44,22 +57,6 @@
 
 	type LookupRow = { id: number; name: string | null };
 
-	type AccountSettingsApiRow = {
-		email?: string | null;
-		firstName?: string | null;
-		middleName?: string | null;
-		lastName?: string | null;
-		photoUrl?: string | null;
-		phonePrimary?: string | null;
-		address?: string | null;
-		dateOfBirth?: string | null;
-		genderId?: number | null;
-		licenseNo?: string | null;
-		licenseExpiryDate?: string | null;
-		signatureImageUrl?: string | null;
-		signatureText?: string | null;
-	};
-
 	const apiBase = $derived.by(() => {
 		const hid = hospitalId?.trim() ?? '';
 		return hid
@@ -68,6 +65,8 @@
 	});
 
 	let isLoading = $state(false);
+	/** True after seed and/or API has applied values for the current settings visit. */
+	let settingsReady = $state(false);
 	let isSaving = $state(false);
 	let photoUploading = $state(false);
 	let isSendingReset = $state(false);
@@ -119,17 +118,24 @@
 			isSendingReset ||
 			isTwoFactorBusy
 	);
-	const isDirty = $derived.by(() => {
-		if (!initialSnapshot) return false;
-		const current = JSON.stringify({
+	const currentSnapshot = $derived(
+		JSON.stringify({
 			...form,
 			licenseNo: selectedLicenseNo,
 			licenseExpiryDate: selectedLicenseExpiryDate,
 			signatureImageUrl: selectedSignatureImageUrl,
 			signatureText: selectedSignatureText
-		});
-		return current !== initialSnapshot;
-	});
+		})
+	);
+	const isDirty = $derived(
+		!!initialSnapshot && currentSnapshot !== initialSnapshot
+	);
+	const canSave = $derived(
+		settingsReady &&
+			!!form.firstName.trim() &&
+			!!form.lastName.trim() &&
+			isDirty
+	);
 
 	async function handleLogOut() {
 		onClose();
@@ -232,24 +238,43 @@
 		await runTwoFactorPasswordAction();
 	}
 
-	async function openAccountSetting() {
-		if (!canLoadSettings) {
-			toastService.addToast(
-				'Hospital context missing.',
-				StatusColorEnum.ERROR
-			);
-			return;
+	function toDateInputValue(
+		raw: string | Date | null | undefined
+	): string {
+		if (raw == null || raw === '') return '';
+		// Session / page.data may revive date columns as Date (devalue).
+		if (raw instanceof Date) {
+			if (Number.isNaN(raw.getTime())) return '';
+			return raw.toISOString().slice(0, 10);
 		}
-		screen = 'settings';
-		await Promise.all([loadAccountSettings(), loadTwoFactorStatus()]);
+		const s = String(raw).trim();
+		if (!s) return '';
+		// Already YYYY-MM-DD
+		if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+		// ISO / Date string → date part
+		const matched = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+		return matched?.[1] ?? '';
 	}
 
-	function showLicenseAndSignatureModal() {
-		licenseAndSignatureModalOpen = true;
+	function emptyNormalized() {
+		return {
+			firstName: '',
+			middleName: '',
+			lastName: '',
+			photoUrl: null as string | null,
+			phone: '',
+			address: '',
+			dateOfBirth: '',
+			genderIdStr: '',
+			licenseNo: '',
+			licenseExpiryDate: '',
+			signatureImageUrl: '',
+			signatureText: ''
+		};
 	}
 
 	function normalizeAccountSettings(
-		row: AccountSettingsApiRow | null | undefined
+		row: AccountSettingsApiRow | AccountProfileSeed | null | undefined
 	) {
 		return {
 			firstName: (row?.firstName ?? '').trim(),
@@ -258,13 +283,97 @@
 			photoUrl: row?.photoUrl ?? null,
 			phone: (row?.phonePrimary ?? '').trim(),
 			address: (row?.address ?? '').trim(),
-			dateOfBirth: (row?.dateOfBirth ?? '').trim(),
+			dateOfBirth: toDateInputValue(row?.dateOfBirth),
 			genderIdStr: row?.genderId != null ? String(row.genderId) : '',
 			licenseNo: (row?.licenseNo ?? '').trim(),
-			licenseExpiryDate: (row?.licenseExpiryDate ?? '').trim(),
+			licenseExpiryDate: toDateInputValue(row?.licenseExpiryDate),
 			signatureImageUrl: (row?.signatureImageUrl ?? '').trim(),
 			signatureText: (row?.signatureText ?? '').trim()
 		};
+	}
+
+	function applyNormalized(
+		normalized: ReturnType<typeof normalizeAccountSettings>
+	) {
+		form.firstName = normalized.firstName;
+		form.middleName = normalized.middleName;
+		form.lastName = normalized.lastName;
+		form.photoUrl = normalized.photoUrl;
+		form.phone = normalized.phone;
+		form.address = normalized.address;
+		form.dateOfBirth = normalized.dateOfBirth;
+		form.genderIdStr = normalized.genderIdStr;
+		selectedLicenseNo = normalized.licenseNo;
+		selectedLicenseExpiryDate = normalized.licenseExpiryDate;
+		selectedSignatureImageUrl = normalized.signatureImageUrl;
+		selectedSignatureText = normalized.signatureText;
+		signatureFile = null;
+		initialSnapshot = JSON.stringify(normalized);
+		settingsReady = true;
+	}
+
+	function resetSettingsForm() {
+		const empty = emptyNormalized();
+		form.firstName = empty.firstName;
+		form.middleName = empty.middleName;
+		form.lastName = empty.lastName;
+		form.photoUrl = empty.photoUrl;
+		form.phone = empty.phone;
+		form.address = empty.address;
+		form.dateOfBirth = empty.dateOfBirth;
+		form.genderIdStr = empty.genderIdStr;
+		selectedLicenseNo = empty.licenseNo;
+		selectedLicenseExpiryDate = empty.licenseExpiryDate;
+		selectedSignatureImageUrl = empty.signatureImageUrl;
+		selectedSignatureText = empty.signatureText;
+		signatureFile = null;
+		settingsReady = false;
+		initialSnapshot = '';
+	}
+
+	function seedFromInitialProfile() {
+		if (!initialProfile) return false;
+		try {
+			const normalized = normalizeAccountSettings(initialProfile);
+			const hasAny =
+				!!normalized.firstName ||
+				!!normalized.lastName ||
+				!!normalized.phone ||
+				!!normalized.address ||
+				!!normalized.dateOfBirth ||
+				!!normalized.genderIdStr ||
+				!!normalized.photoUrl ||
+				!!normalized.licenseNo ||
+				!!normalized.signatureImageUrl ||
+				!!normalized.signatureText;
+			if (!hasAny) return false;
+			applyNormalized(normalized);
+			return true;
+		} catch (err) {
+			console.error(err);
+			return false;
+		}
+	}
+
+	async function openAccountSetting() {
+		if (!canLoadSettings) {
+			toastService.addToast(
+				'Hospital context missing.',
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
+		resetSettingsForm();
+		seedFromInitialProfile();
+		// Avoid a blank-form flash: mark loading before switching to settings
+		// unless session seed already populated the fields.
+		if (!settingsReady) isLoading = true;
+		screen = 'settings';
+		await Promise.all([loadAccountSettings(), loadTwoFactorStatus()]);
+	}
+
+	function showLicenseAndSignatureModal() {
+		licenseAndSignatureModalOpen = true;
 	}
 
 	async function loadGenderOptions() {
@@ -306,29 +415,19 @@
 			const data = (await settingsRes
 				.json()
 				.catch(() => null)) as AccountSettingsApiRow | null;
-			const normalized = normalizeAccountSettings(data);
-			form = {
-				firstName: normalized.firstName,
-				middleName: normalized.middleName,
-				lastName: normalized.lastName,
-				photoUrl: normalized.photoUrl,
-				phone: normalized.phone,
-				address: normalized.address,
-				dateOfBirth: normalized.dateOfBirth,
-				genderIdStr: normalized.genderIdStr
-			};
-			selectedLicenseNo = normalized.licenseNo;
-			selectedLicenseExpiryDate = normalized.licenseExpiryDate;
-			selectedSignatureImageUrl = normalized.signatureImageUrl;
-			selectedSignatureText = normalized.signatureText;
-			signatureFile = null;
-			initialSnapshot = JSON.stringify(normalized);
+			applyNormalized(normalizeAccountSettings(data));
 		} catch (err) {
 			console.error(err);
-			toastService.addToast(
-				'Failed to load account settings.',
-				StatusColorEnum.ERROR
-			);
+			// Prefer session seed over a hard failure so the user can still edit/save.
+			if (!settingsReady) seedFromInitialProfile();
+			if (!settingsReady) {
+				toastService.addToast(
+					'Failed to load account settings.',
+					StatusColorEnum.ERROR
+				);
+				// Empty baseline so edits can make Save dirty (not stuck forever).
+				applyNormalized(emptyNormalized());
+			}
 		} finally {
 			isLoading = false;
 		}
@@ -416,6 +515,10 @@
 				signatureImageUrl: selectedSignatureImageUrl,
 				signatureText: selectedSignatureText
 			});
+			// Refresh layout loaders (`data.staff` / photo / name) so hospital
+			// chrome (module bar avatar + display name) updates without a
+			// full page reload. Keep isSaving until invalidate finishes.
+			await invalidateAll();
 		} catch (err) {
 			console.error(err);
 			toastService.addToast(
@@ -576,6 +679,10 @@
 
 	function handleClose() {
 		screen = 'menu';
+		resetSettingsForm();
+		licenseAndSignatureModalOpen = false;
+		twoFactorPasswordOpen = false;
+		backupCodesOpen = false;
 		onClose();
 	}
 
@@ -598,12 +705,18 @@
 	>
 		{#if screen === 'settings'}
 			<div class="flex flex-col gap-4">
-				{#if isLoading}
-					<div class="flex items-center gap-3">
+				{#if isLoading && !settingsReady}
+					<div class="flex items-center gap-3 py-6">
 						<span class="loading loading-sm loading-spinner"></span>
-						<span class="text-sm text-base-content/70">Loading…</span>
+						<span class="text-sm text-base-content/70">{m.loading()}</span>
 					</div>
-				{/if}
+				{:else}
+					{#if isLoading}
+						<div class="flex items-center gap-3">
+							<span class="loading loading-sm loading-spinner"></span>
+							<span class="text-sm text-base-content/70">{m.loading()}</span>
+						</div>
+					{/if}
 
 				<form onsubmit={handleSubmit}>
 					<fieldset disabled={isBusy} class="m-0 min-w-0 border-0 p-0">
@@ -628,7 +741,8 @@
 								/>
 								<button
 									type="button"
-									class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36"
+									class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 text-base-content/50 focus:ring-2 focus:ring-primary focus:outline-none sm:size-32 lg:size-36 cursor-pointer"
+									class:cursor-not-allowed={photoUploading || isBusy}
 									onclick={() => photoInputEl?.click()}
 									disabled={photoUploading || isBusy}
 									aria-label="Choose profile photo"
@@ -700,13 +814,17 @@
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
 									<label for="account-first-name" class="shrink-0 sm:w-36"
-										>First Name <span class="text-error">*</span></label
+										>First Name<span
+											class="text-error align-top text-sm leading-none"
+											aria-hidden="true">*</span
+										></label
 									>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											id="account-first-name"
 											bind:value={form.firstName}
 											inputType="text"
+											required
 										/>
 									</div>
 								</div>
@@ -728,13 +846,17 @@
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
 									<label for="account-last-name" class="shrink-0 sm:w-36"
-										>Last Name <span class="text-error">*</span></label
+										>Last Name<span
+											class="text-error align-top text-sm leading-none"
+											aria-hidden="true">*</span
+										></label
 									>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											id="account-last-name"
 											bind:value={form.lastName}
 											inputType="text"
+											required
 										/>
 									</div>
 								</div>
@@ -916,6 +1038,7 @@
 					<LucideUserX className="size-5" />
 					Deactivate account
 				</WashButton>
+				{/if}
 			</div>
 			<LStaffRegistrationLicenseAndSignatureModal
 				bind:open={licenseAndSignatureModalOpen}
@@ -963,7 +1086,7 @@
 				<WashButton
 					variant="primary"
 					onClick={handleSave}
-					disabled={isBusy || !isDirty}
+					disabled={isBusy || !canSave}
 					loading={isSaving}
 				>
 					Save

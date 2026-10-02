@@ -8,8 +8,7 @@ import {
 	isAdminShellRole,
 	permissionAllows
 } from '$lib/server/medora/admin/admin-permission.server';
-
-const COOKIE_SESSION_EXTENDED_FOR = 'heka_session_extended_for';
+import { COOKIE_SESSION_EXTENDED_FOR } from '$lib/server/medora/auth/session-extend.server';
 
 /** SYSTEM_ADMIN or ADMIN_TEAM (with page view) can access /medora/admin/* */
 export const load: LayoutServerLoad = async ({

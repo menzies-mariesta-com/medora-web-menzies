@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -363,14 +364,18 @@
 						{m.inv_list_scope_all_stores()}
 					</WashButton>
 				</div>
-				<select
-					class="select-bordered select select-sm w-44"
+				<WashSelect
+					className="select-bordered select select-sm w-44"
 					bind:value={lotsExpiryFilter}
-				>
-					<option value="all">All expiry</option>
-					<option value="expired">Expired</option>
-					<option value="expiringSoon">Expiring soon (≤ 30 days)</option>
-				</select>
+					options={[
+						{ value: 'all', label: 'All expiry' },
+						{ value: 'expired', label: 'Expired' },
+						{
+							value: 'expiringSoon',
+							label: 'Expiring soon (≤ 30 days)'
+						}
+					]}
+				/>
 			{/snippet}
 		</MenziesTable>
 	{/if}

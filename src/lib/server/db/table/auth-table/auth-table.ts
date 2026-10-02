@@ -95,9 +95,14 @@ export const verificationTable = pgTable('verification', {
 		.$defaultFn(() => uuidv7()),
 	identifier: text('identifier').notNull(),
 	value: text('value').notNull(),
+	/**
+	 * Must be `mode: 'date'` (Date), not string.
+	 * Better Auth trust-device / 2FA checks use `expiresAt > new Date()`;
+	 * a string expiry always fails that comparison and ignores trusted devices.
+	 */
 	expiresAt: timestamp('expires_at', {
 		withTimezone: true,
-		mode: 'string'
+		mode: 'date'
 	}).notNull(),
 	...timestamps
 });

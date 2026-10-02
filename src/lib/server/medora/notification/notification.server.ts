@@ -14,8 +14,7 @@ import {
 	eq,
 	isNotNull,
 	isNull,
-	ne,
-	sql
+	ne
 } from 'drizzle-orm';
 
 export type NotificationListItem = {

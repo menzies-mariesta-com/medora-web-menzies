@@ -227,6 +227,8 @@
 			await loadPendingIndents();
 			const result = await dialogService.open<PendingIndentRow>({
 				fullScreen: true,
+				title: '',
+				closeOnOutsideClick: true,
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_dept_issue_select_indent(),

@@ -12,7 +12,7 @@
 	import PrLineItemsCard from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemsCard.svelte';
 	import PrLineItemDialogContent from '$lib/component/own/local/private/medora/inventory/purchase-requisition/PrLineItemDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-	import MenziesTable, {
+	import {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { m } from '$lib/paraglide/messages';

@@ -22,7 +22,6 @@ import { normalizePagination } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { uuidv7 } from 'uuidv7';
 import {
-	assertStaffAssignedForModule,
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
 	listDcApproverStoreLevelsForStaff,

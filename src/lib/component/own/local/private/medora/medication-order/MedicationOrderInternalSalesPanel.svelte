@@ -879,10 +879,12 @@
 			return;
 		}
 		await dialogService.open({
-			title: m.med_order_int_history(),
+			title: '',
+			closeOnOutsideClick: true,
 			component: MedicationOrderHistoryDialogContent,
 			fullScreen: true,
 			props: {
+				title: m.med_order_int_history(),
 				apiRoot: apiRoot(),
 				visitId: visitIdNum,
 				enableColumnFilters: true,
@@ -1347,9 +1349,9 @@
 							<span class="text-sm font-medium"
 								>{m.med_order_int_start()}</span
 							>
-							<input
-								type="datetime-local"
-								class="input-bordered input w-full min-w-0"
+							<WashInputField
+								inputType="datetime-local"
+								className="w-full min-w-0"
 								bind:value={startAtLocal}
 								min={minStart}
 							/>

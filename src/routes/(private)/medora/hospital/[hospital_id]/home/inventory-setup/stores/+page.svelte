@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import type {
 		StoreListRow,

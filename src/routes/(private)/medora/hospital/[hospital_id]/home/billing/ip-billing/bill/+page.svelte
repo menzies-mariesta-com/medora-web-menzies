@@ -7,6 +7,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideStrikeThrough from '$lib/component/own/library/lucide/LucideStrikeThrough.svelte';
@@ -1019,36 +1020,36 @@
 							)}
 						</span>
 					</div>
-					<select
-						class="select-bordered select w-full"
+					<WashSelect
+						className="w-full"
 						value={String(discountType)}
-						onchange={(e) => {
-							const v = Number(
-								(e.currentTarget as HTMLSelectElement).value
-							);
+						options={[
+							{
+								value: String(BillingDiscountTypeEnum.NONE),
+								label: tr(msg.ip_billing_discount_type_none, 'None')
+							},
+							{
+								value: String(BillingDiscountTypeEnum.PERCENT),
+								label: tr(
+									msg.ip_billing_discount_type_percent,
+									'Percent (%)'
+								)
+							},
+							{
+								value: String(BillingDiscountTypeEnum.FIXED_AMOUNT),
+								label: tr(
+									msg.ip_billing_discount_type_fixed_amount,
+									'Fixed amount'
+								)
+							}
+						]}
+						onChange={(next) => {
+							const v = Number(next);
 							discountType = (
 								Number.isFinite(v) ? v : BillingDiscountTypeEnum.NONE
 							) as BillingDiscountTypeEnum;
 						}}
-					>
-						<option value={String(BillingDiscountTypeEnum.NONE)}>
-							{tr(msg.ip_billing_discount_type_none, 'None')}
-						</option>
-						<option value={String(BillingDiscountTypeEnum.PERCENT)}>
-							{tr(
-								msg.ip_billing_discount_type_percent,
-								'Percent (%)'
-							)}
-						</option>
-						<option
-							value={String(BillingDiscountTypeEnum.FIXED_AMOUNT)}
-						>
-							{tr(
-								msg.ip_billing_discount_type_fixed_amount,
-								'Fixed amount'
-							)}
-						</option>
-					</select>
+					/>
 				</label>
 
 				<label class="form-control w-full">

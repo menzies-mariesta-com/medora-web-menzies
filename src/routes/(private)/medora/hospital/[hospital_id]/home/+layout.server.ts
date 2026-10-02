@@ -120,6 +120,7 @@ export const load: LayoutServerLoad = async (event) => {
 			? await ensureDb()
 					.select({
 						name: table.hospitalTable.name,
+						logoUrl: table.hospitalTable.logoUrl,
 						countryId: table.hospitalTable.countryId
 					})
 					.from(table.hospitalTable)
@@ -127,6 +128,7 @@ export const load: LayoutServerLoad = async (event) => {
 					.limit(1)
 			: [];
 		const currentHospitalName = hospital?.name ?? null;
+		const currentHospitalLogoUrl = hospital?.logoUrl ?? null;
 		const currentHospitalCountryId = hospital?.countryId ?? null;
 
 		// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
@@ -179,6 +181,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: fullPages,
 				currentHospitalName,
+				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
@@ -219,6 +222,7 @@ export const load: LayoutServerLoad = async (event) => {
 				return {
 					pageData: [],
 					currentHospitalName,
+					currentHospitalLogoUrl,
 					currentHospitalCountryId,
 					currentUserId,
 					currentUserName,
@@ -412,6 +416,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: filtered,
 				currentHospitalName,
+				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
@@ -429,6 +434,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: fullPages,
 			currentHospitalName,
+			currentHospitalLogoUrl,
 			currentHospitalCountryId,
 			currentUserId,
 			currentUserName,
@@ -460,6 +466,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: [],
 			currentHospitalName: null,
+			currentHospitalLogoUrl: null,
 			currentHospitalCountryId: null,
 			currentUserId: null,
 			currentUserName: null,

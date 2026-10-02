@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import MenziesTable, {
-		type MenziesTableColumn
-	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
+	import WashCard from '$lib/component/wash/card/WashCard.svelte';
+	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { medoraHospitalHome } from '$lib/model/enum/routes.enum';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
@@ -18,13 +18,17 @@
 	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
+	import LucideHospital from '$lib/component/own/library/lucide/LucideHospital.svelte';
+	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
+	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import {
 		ensureTwoFactorForMutation,
 		redirectIfTwoFactorRequired
 	} from '$lib/util/two-factor-gate.util';
+	import { getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
+
 	type HospitalWithOwner = {
 		id: string;
 		name: string | null;
@@ -32,79 +36,12 @@
 		address: string | null;
 		phone: string | null;
 		email: string | null;
+		logoUrl: string | null;
 		statusId: number | null;
 		owner?: { id: string; name: string | null; email: string } | null;
 	};
 
-	const hospitalColumns: MenziesTableColumn<HospitalWithOwner>[] = [
-		{
-			id: 'name',
-			header: m.name(),
-			widthClass: 'w-48 min-w-[10rem]',
-			filterable: false,
-			field: 'name',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'code',
-			header: m.code(),
-			widthClass: 'w-28 min-w-[6rem]',
-			filterable: false,
-			field: 'code',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'owner',
-			header: m.owner(),
-			widthClass: 'w-40 min-w-[10rem]',
-			filterable: false,
-			format: (_v, row) => row.owner?.name ?? row.owner?.email ?? '—'
-		},
-		{
-			id: 'status',
-			header: m.status(),
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: [
-				{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-				{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-			],
-			defaultFilterValue: String(StatusEnum.ACTIVE),
-			format: (_v, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: row.statusId === StatusEnum.DELETED
-							? 'Deleted'
-							: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'phone',
-			header: m.phone(),
-			widthClass: 'w-36 min-w-[9rem]',
-			filterable: false,
-			field: 'phone',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'email',
-			header: m.email(),
-			widthClass: 'w-52 min-w-[12rem]',
-			filterable: false,
-			field: 'email',
-			format: (v) => v ?? '—'
-		},
-		{
-			id: 'address',
-			header: m.address(),
-			widthClass: 'w-80 min-w-[16rem]',
-			filterable: false,
-			format: (_v, row) => row.address ?? '—',
-			cellClass: 'max-w-[200px] truncate'
-		}
-	];
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	const data = $derived(page.data);
 	const isStaff = $derived(data?.userRoleId === RoleEnum.STAFF);
@@ -112,7 +49,11 @@
 		data?.userRoleId === RoleEnum.SYSTEM_ADMIN
 	);
 	const isOwner = $derived(data?.userRoleId === RoleEnum.OWNER);
+	/** Edit: OWNER and SYSTEM_ADMIN (and non-staff managers). */
 	const canManageHospitals = $derived(!isStaff);
+	/** Create / soft-delete: SYSTEM_ADMIN / admin team only. OWNER cannot. */
+	const canCreateHospital = $derived(canManageHospitals && !isOwner);
+	const canDeleteHospital = $derived(canManageHospitals && !isOwner);
 
 	const routerUtil = new RouterUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -121,18 +62,19 @@
 	let hospitalResult =
 		$state<PaginatedResult<HospitalWithOwner> | null>(null);
 	let currentPage = $state(1);
-	let pageSizeStr = $state(`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`);
+	let pageSizeStr = $state('24');
 	let isLoading = $state(true);
-	let tableFilters = $state<Record<string, string>>({});
+	let statusFilter = $state(String(StatusEnum.ACTIVE));
 
 	const hospitals = $derived(hospitalResult?.data ?? []);
 	const total = $derived(hospitalResult?.total ?? 0);
+	const totalPages = $derived(hospitalResult?.totalPages ?? 1);
 
 	$effect(() => {
 		const d = page.data;
 		if (d?.initialHospitals != null && hospitalResult == null) {
 			hospitalResult = {
-				data: d.initialHospitals,
+				data: d.initialHospitals as HospitalWithOwner[],
 				total: d.initialTotal ?? 0,
 				page: d.initialPage ?? 1,
 				pageSize:
@@ -140,12 +82,27 @@
 				totalPages: d.initialTotalPages ?? 1
 			};
 			currentPage = d.initialPage ?? 1;
-			pageSizeStr = String(
-				d.initialPageSize ?? AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE
-			);
 			isLoading = false;
 		}
 	});
+
+	function statusLabel(statusId: number | null | undefined): string {
+		if (statusId === StatusEnum.ACTIVE) return msg.active_label();
+		if (statusId === StatusEnum.INACTIVE) return msg.inactive_label();
+		return msg.status();
+	}
+
+	function statusBadgeClass(
+		statusId: number | null | undefined
+	): string {
+		if (statusId === StatusEnum.ACTIVE) return 'badge-success';
+		if (statusId === StatusEnum.INACTIVE) return 'badge-ghost';
+		return 'badge-neutral';
+	}
+
+	function hospitalDisplayName(h: HospitalWithOwner): string {
+		return h.name?.trim() || h.code?.trim() || msg.hospitals();
+	}
 
 	async function loadHospitals(forceRefresh = false) {
 		isLoading = true;
@@ -154,9 +111,9 @@
 				isOwner && data?.user
 					? (data.user as { id?: string }).id
 					: undefined;
-			const pageSize = Number(pageSizeStr) || 10;
-			const parsedStatusId = tableFilters.status
-				? Number(tableFilters.status)
+			const pageSize = Number(pageSizeStr) || 24;
+			const parsedStatusId = statusFilter
+				? Number(statusFilter)
 				: undefined;
 			const params = {
 				page: String(currentPage),
@@ -216,6 +173,7 @@
 	}
 
 	async function openNewHospitalModal() {
+		if (!canCreateHospital) return;
 		if (!(await requireMutationTwoFactor())) return;
 		HospitalModalState.hospitalId = null;
 		HospitalModalState.currentUserRoleId = data?.userRoleId;
@@ -233,6 +191,7 @@
 	}
 
 	async function handleDelete(h: HospitalWithOwner) {
+		if (!canDeleteHospital) return;
 		if (!(await requireMutationTwoFactor())) return;
 		const result = await dialogService.open({
 			title: m.delete_hospital(),
@@ -256,14 +215,31 @@
 			);
 			await loadHospitals(true);
 		} catch (err) {
-			const msg =
+			const errMsg =
 				err instanceof Error ? err.message : m.delete_failed();
-			toastService.addToast(msg, StatusColorEnum.ERROR);
+			toastService.addToast(errMsg, StatusColorEnum.ERROR);
 		}
 	}
 
+	function onStatusFilterChange(value: string) {
+		statusFilter = value;
+		currentPage = 1;
+		void loadHospitals(true);
+	}
+
+	function goPrevPage() {
+		if (currentPage <= 1) return;
+		currentPage -= 1;
+		void loadHospitals(true);
+	}
+
+	function goNextPage() {
+		if (currentPage >= totalPages) return;
+		currentPage += 1;
+		void loadHospitals(true);
+	}
+
 	lifeCycleUtil.onMount(() => {
-		// Fetch when we don't have server-loaded data
 		if (page.data?.initialHospitals == null) {
 			loadHospitals();
 		}
@@ -275,38 +251,56 @@
 		{m.no_hospital_assigned()}
 	</p>
 {:else}
-	<div class={TableEnum.HEIGHT}>
-		<MenziesTable
-			title={m.choose_hospital()}
-			showAddButton={canManageHospitals}
-			addLabel={m.new_hospital()}
-			onAdd={openNewHospitalModal}
-			rows={hospitals}
-			columns={hospitalColumns}
-			{isLoading}
-			bind:pageSize={pageSizeStr}
-			bind:currentPage
-			totalRowCount={total}
-			showRefreshButton={true}
-			refreshTooltip={m.refresh_data()}
-			emptyMessage={m.no_hospitals_yet()}
-			showRowActions={true}
-			actionsHeader={m.actions()}
-			actionsVariant="none"
-			enableColumnFilters={true}
-			on:refresh={() => loadHospitals(true)}
-			on:pageSizeChange={() => {
-				currentPage = 1;
-				loadHospitals(true);
-			}}
-			on:pageChange={() => loadHospitals(true)}
-			on:filtersChange={(e) => {
-				tableFilters = e.detail.filters;
-				currentPage = 1;
-				loadHospitals(true);
-			}}
+	<div class="flex h-full min-h-0 flex-col gap-4 p-4 sm:p-6">
+		<header
+			class="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
 		>
-			{#snippet headerActions()}
+			<div class="min-w-0">
+				<h1 class="text-primary text-xl font-bold sm:text-2xl">
+					{m.choose_hospital()}
+				</h1>
+			</div>
+			<div class="flex flex-wrap items-center gap-2">
+				<label class="form-control w-auto min-w-[9rem]">
+					<span class="sr-only">{m.status()}</span>
+					<WashSelect
+						className="select select-bordered select-sm min-w-[9rem] cursor-pointer"
+						menuWidth="9rem"
+						aria-label={m.status()}
+						value={statusFilter}
+						options={[
+							{
+								value: String(StatusEnum.ACTIVE),
+								label: msg.active_label()
+							},
+							{
+								value: String(StatusEnum.INACTIVE),
+								label: msg.inactive_label()
+							}
+						]}
+						onChange={(next) => {
+							if (next != null) onStatusFilterChange(next);
+						}}
+					/>
+				</label>
+				<div
+					class="tooltip tooltip-bottom tooltip-primary"
+					data-tip={m.refresh_data()}
+				>
+					<button
+						type="button"
+						class="btn btn-ghost btn-square btn-sm btn-primary cursor-pointer"
+						class:loading={isLoading}
+						disabled={isLoading}
+						class:cursor-not-allowed={isLoading}
+						aria-label={m.refresh_data()}
+						onclick={() => loadHospitals(true)}
+					>
+						{#if !isLoading}
+							<LucideRefreshCcw className="size-4" />
+						{/if}
+					</button>
+				</div>
 				{#if isSystemAdmin}
 					<WashButton
 						className="btn-outline btn-sm"
@@ -317,23 +311,139 @@
 						{m.manage_owners()}
 					</WashButton>
 				{/if}
-			{/snippet}
-			{#snippet rowActions(row, rowIndex)}
-				<div class="flex justify-end gap-2">
+				{#if canCreateHospital}
 					<WashButton
 						className="btn-primary btn-sm"
-						onClick={() => goToHospitalHome(row.id)}
+						onClick={openNewHospitalModal}
 					>
-						{m.enter()}
+						<LucidePlus className="size-4" />
+						{m.new_hospital()}
 					</WashButton>
-					{#if canManageHospitals}
-						<MenziesTableEditDeleteActions
-							onEdit={() => openEditHospitalModal(row)}
-							onDelete={() => handleDelete(row)}
-						/>
-					{/if}
+				{/if}
+			</div>
+		</header>
+
+		{#if isLoading && hospitals.length === 0}
+			<div class="flex flex-1 items-center justify-center py-16">
+				<span class="loading loading-spinner loading-lg text-primary"
+				></span>
+			</div>
+		{:else if hospitals.length === 0}
+			<p class="py-16 text-center text-base-content/70">
+				{isOwner ? msg.owner_no_hospitals_yet() : m.no_hospitals_yet()}
+			</p>
+		{:else}
+			<div
+				class="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+			>
+				{#each hospitals as h (h.id)}
+					{@const displayName = hospitalDisplayName(h)}
+					{@const logoSrc = getHospitalLogoDisplayUrl(h.logoUrl)}
+					<WashCard
+						className="h-full transition-shadow hover:shadow-lg"
+						animate={true}
+					>
+						<WashCardBody className="gap-4 p-4 sm:p-5">
+							<button
+								type="button"
+								class="flex w-full cursor-pointer items-start gap-3 rounded-box text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								aria-label={msg.hospital_chooser_enter_aria({
+									name: displayName
+								})}
+								onclick={() => goToHospitalHome(h.id)}
+							>
+								<div
+									class="bg-base-200 flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-box"
+								>
+									{#if logoSrc}
+										<img
+											src={logoSrc}
+											alt={m.hospital_logo_alt()}
+											class="size-full object-contain p-1"
+										/>
+									{:else}
+										<LucideHospital
+											className="size-7 text-base-content/40"
+										/>
+									{/if}
+								</div>
+								<div class="min-w-0 flex-1">
+									<h2
+										class="card-title text-base font-bold leading-snug sm:text-lg"
+									>
+										{displayName}
+									</h2>
+									{#if h.code}
+										<p class="mt-0.5 text-sm text-base-content/60">
+											{msg.hospital_code_label({ code: h.code })}
+										</p>
+									{/if}
+									<span
+										class="badge badge-sm mt-2 {statusBadgeClass(
+											h.statusId
+										)}"
+									>
+										{statusLabel(h.statusId)}
+									</span>
+								</div>
+							</button>
+
+							<div
+								class="card-actions mt-auto flex items-center justify-between gap-2"
+							>
+								{#if canManageHospitals}
+									<MenziesTableEditDeleteActions
+										onEdit={() => openEditHospitalModal(h)}
+										onDelete={() => handleDelete(h)}
+										showDelete={canDeleteHospital}
+									/>
+								{:else}
+									<span></span>
+								{/if}
+								<WashButton
+									className="btn-primary btn-sm"
+									onClick={() => goToHospitalHome(h.id)}
+								>
+									{m.enter()}
+								</WashButton>
+							</div>
+						</WashCardBody>
+					</WashCard>
+				{/each}
+			</div>
+
+			{#if totalPages > 1}
+				<div class="join shrink-0 self-center">
+					<button
+						type="button"
+						class="btn join-item btn-sm cursor-pointer"
+						class:btn-disabled={currentPage <= 1}
+						disabled={currentPage <= 1}
+						class:cursor-not-allowed={currentPage <= 1}
+						onclick={goPrevPage}
+					>
+						«
+					</button>
+					<button
+						type="button"
+						class="btn join-item btn-sm cursor-default"
+						disabled
+					>
+						{currentPage} / {totalPages}
+						<span class="sr-only">({total})</span>
+					</button>
+					<button
+						type="button"
+						class="btn join-item btn-sm cursor-pointer"
+						class:btn-disabled={currentPage >= totalPages}
+						disabled={currentPage >= totalPages}
+						class:cursor-not-allowed={currentPage >= totalPages}
+						onclick={goNextPage}
+					>
+						»
+					</button>
 				</div>
-			{/snippet}
-		</MenziesTable>
+			{/if}
+		{/if}
 	</div>
 {/if}

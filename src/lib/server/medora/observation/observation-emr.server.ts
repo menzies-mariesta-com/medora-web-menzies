@@ -10,7 +10,6 @@ import {
 	isNotNull,
 	isNull,
 	max,
-	min,
 	ne,
 	or,
 	sql
@@ -49,7 +48,6 @@ import type {
 	PlanOfCareSchemaUpdate,
 	ProgressNoteSchema,
 	ProgressNoteSchemaUpdate,
-	PatientVisitSchemaUpdate,
 	PatientVisitSchema,
 	ServiceItemSchema,
 	ServiceOrderDetailSchema,
