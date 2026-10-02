@@ -122,6 +122,7 @@
 		boxClassName={DialogState.current.modalClassName}
 		showActions={!dialogOwnsActions}
 		showDefaultClose={false}
+		closeOnOutsideClick={Boolean(DialogState.current.closeOnOutsideClick)}
 	>
 		{#snippet layer()}
 			{#if ToastState.length > 0}

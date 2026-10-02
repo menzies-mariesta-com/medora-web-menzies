@@ -4,6 +4,7 @@
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -865,10 +866,12 @@
 
 	async function openHistory() {
 		await dialogService.open({
-			title: m.med_order_int_history(),
+			title: '',
+			closeOnOutsideClick: true,
 			component: MedicationOrderHistoryDialogContent,
 			fullScreen: true,
 			props: {
+				title: m.med_order_int_history(),
 				apiRoot: apiRoot(),
 				enableColumnFilters: false,
 				onEdit: loadBatchForEdit,
@@ -1294,13 +1297,20 @@
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 					<div class="flex flex-col gap-1">
 						<label>{m.med_order_payment_method()}</label>
-						<select
-							class="select select-bordered w-full"
+						<WashSelect
+							className="w-full"
 							bind:value={paymentMethod}
-						>
-							<option value="cash">{m.med_order_payment_cash()}</option>
-							<option value="card">{m.med_order_payment_card()}</option>
-						</select>
+							options={[
+								{
+									value: 'cash',
+									label: m.med_order_payment_cash()
+								},
+								{
+									value: 'card',
+									label: m.med_order_payment_card()
+								}
+							]}
+						/>
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label>{m.med_order_amount_paid()}</label>

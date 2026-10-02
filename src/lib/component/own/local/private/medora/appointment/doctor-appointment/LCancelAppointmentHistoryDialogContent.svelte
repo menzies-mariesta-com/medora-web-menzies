@@ -1,6 +1,5 @@
 <script lang="ts">
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -10,6 +9,8 @@
 	import { StringUtil } from '$lib/util/string.util.svelte';
 
 	type CancelHistoryItem = AppointmentWithRelations;
+
+	const HISTORY_TITLE = 'Cancel appointment history';
 
 	const { open, onClose, items, isLoading } = $props<{
 		open: boolean;
@@ -82,31 +83,37 @@
 		id="cancel-appointment-history-modal"
 		open={true}
 		{onClose}
-		title="Cancel appointment history"
+		title=""
+		closeOnOutsideClick={true}
+		showActions={false}
 		boxClassName="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
 	>
-			{#snippet actions()}
-				<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
-			{/snippet}
-
-			{#if items.length === 0 && !isLoading}
+		{#if items.length === 0 && !isLoading}
+			<div class="flex h-full flex-col p-4">
+				<h2 class="card-title text-primary mb-3 font-bold">
+					{HISTORY_TITLE}
+				</h2>
 				<p class="text-sm text-base-content/70">
 					No cancelled appointments found.
 				</p>
-			{:else}
-				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-					<MenziesTable
-						rows={items}
-						{columns}
-						{isLoading}
-						showRefreshButton={false}
-						pageSize={String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)}
-						currentPage={1}
-						emptyMessage="No items."
-						showRowActions={false}
-						enableColumnFilters={false}
-					/>
-				</div>
-			{/if}
+			</div>
+		{:else}
+			<div class="flex h-full min-h-0 flex-1 flex-col {TableEnum.HEIGHT_SMALL}">
+				<MenziesTable
+					title={HISTORY_TITLE}
+					rows={items}
+					{columns}
+					{isLoading}
+					showRefreshButton={false}
+					pageSize={String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)}
+					currentPage={1}
+					emptyMessage="No items."
+					showRowActions={false}
+					enableColumnFilters={false}
+					fillParent={true}
+					embedded={true}
+				/>
+			</div>
+		{/if}
 	</WashDialog>
 {/if}

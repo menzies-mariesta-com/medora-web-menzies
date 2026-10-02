@@ -8,14 +8,18 @@
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { APP_VERSION } from '$lib/version';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import { dialogService } from '$lib/service/dialog.service.svelte';
+	import SessionExtendPasswordDialogContent, {
+		type SessionExtendDialogResult
+	} from '$lib/component/own/snippet/modal/SessionExtendPasswordDialogContent.svelte';
 
+	const msg = m as Record<string, (inputs?: object) => string>;
 	const dateTimeUtil = new DateTimeUtil();
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	let time = $state('');
 	let sessionLeft = $state('');
 	let isExtending = $state(false);
-	let extendError = $state<string | null>(null);
 	/** Until `invalidateAll` finishes, keep button disabled after a successful extend. */
 	let extendedLocally = $state(false);
 
@@ -47,7 +51,6 @@
 		void sessionId;
 		sessionExpiresAtOverride = null;
 		extendedLocally = false;
-		extendError = null;
 	});
 
 	function updateTime() {
@@ -88,36 +91,23 @@
 		return () => clearInterval(id);
 	});
 
-	async function extendSessionOnce() {
+	async function openExtendDialog() {
 		if (!sessionId || extendDisabled) return;
 		isExtending = true;
-		extendError = null;
 		try {
-			const res = await fetch('/api/session/extend', {
-				method: 'POST',
-				credentials: 'include',
-				headers: {
-					'content-type': 'application/json',
-					'x-medora-ui-session-extend': '1'
-				}
+			const result = await dialogService.open<SessionExtendDialogResult>({
+				title: msg.session_extend_title(),
+				description: msg.session_extend_description(),
+				component: SessionExtendPasswordDialogContent,
+				modalClassName: 'max-w-md w-[95vw]'
 			});
-			if (!res.ok) {
-				const text = await res.text().catch(() => '');
-				throw new Error(text || `Extend failed: ${res.status}`);
-			}
-			const data = (await res.json()) as {
-				sessionExpiresAt?: string;
-			};
-			if (data.sessionExpiresAt) {
-				sessionExpiresAtOverride = data.sessionExpiresAt;
-				recomputeSessionLeft(data.sessionExpiresAt);
-			}
+			if (!result.confirmed || !result.data?.sessionExpiresAt) return;
+
+			sessionExpiresAtOverride = result.data.sessionExpiresAt;
+			recomputeSessionLeft(result.data.sessionExpiresAt);
 			extendedLocally = true;
 			await invalidateAll();
 			sessionExpiresAtOverride = null;
-		} catch (e) {
-			extendError =
-				e instanceof Error ? e.message : 'Failed to extend session';
 		} finally {
 			isExtending = false;
 		}
@@ -151,7 +141,7 @@
 	<div id="time" class="flex flex-wrap items-center gap-x-12 gap-y-2">
 		<div class="flex items-center gap-2">
 			<span class="text-sm font-semibold text-base-content/70">
-				Clock:
+				{msg.session_extend_clock_label()}:
 			</span>
 			<span class="font-mono text-sm tabular-nums">{time}</span>
 		</div>
@@ -161,22 +151,19 @@
 				class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2"
 			>
 				<span class="text-sm font-semibold text-base-content/70">
-					Session left: <span class="font-mono tabular-nums"
-						>{sessionLeft || '—'}</span
+					{msg.session_extend_left_label()}:
+					<span class="font-mono tabular-nums"
+						>{sessionLeft || '-'}</span
 					>
 				</span>
 				<WashButton
-					className="btn btn-xs btn-outline"
+					className="btn btn-xs btn-outline cursor-pointer"
 					disabled={extendDisabled}
-					onClick={() => void extendSessionOnce()}
+					loading={isExtending}
+					onClick={() => void openExtendDialog()}
 				>
-					{isExtending ? 'Extending...' : 'Extend +2h'}
+					{msg.session_extend_button()}
 				</WashButton>
-				{#if extendError}
-					<span class="text-xs text-error" role="alert"
-						>{extendError}</span
-					>
-				{/if}
 			</div>
 		{/if}
 	</div>

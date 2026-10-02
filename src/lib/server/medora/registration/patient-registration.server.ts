@@ -15,10 +15,23 @@ import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
-import { and, eq, ilike, ne, sql } from 'drizzle-orm';
+import { and, eq, ilike, ne, or, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 
 const NO_EMAIL_SUFFIX = '@no-email.medora';
+
+/** Auth emails are globally unique; remapped so the same contact email can exist per hospital. */
+function hospitalScopedAuthEmail(
+	email: string,
+	hospitalId: string
+): string {
+	const at = email.lastIndexOf('@');
+	if (at <= 0) return `${uuidv7()}${NO_EMAIL_SUFFIX}`;
+	const local = email.slice(0, at);
+	const domain = email.slice(at + 1);
+	const tag = hospitalId.replace(/-/g, '').slice(0, 8);
+	return `${local}+h${tag}@${domain}`;
+}
 
 /** Registration view/edit: include the same relation edges as duplicate-check where the form uses FKs + lookups (avoids “empty” nested data vs duplicate flow). */
 const patientFormWith = {
@@ -157,16 +170,18 @@ export async function getDuplicatePatientsInHospital(
 		excludePatientId?: string | null;
 	}
 ) {
-	const { hospitalId } = params;
+	const hospitalId = params.hospitalId?.trim() ?? '';
+	if (!hospitalId) throw error(400, 'hospitalId is required');
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const conditions = [
-		ne(table.patientTable.statusId, StatusEnum.DELETED),
-		eq(table.patientTable.hospitalId, hospitalId)
+	/** Always scope duplicates to the hospital being registered into. */
+	const hospitalScope: SQL[] = [
+		eq(table.patientTable.hospitalId, hospitalId),
+		ne(table.patientTable.statusId, StatusEnum.DELETED)
 	];
 
 	if (params.excludePatientId?.trim()) {
-		conditions.push(
+		hospitalScope.push(
 			ne(table.patientTable.id, params.excludePatientId.trim())
 		);
 	}
@@ -178,12 +193,15 @@ export async function getDuplicatePatientsInHospital(
 	const phonePrimaryTrim = (params.phonePrimary ?? '').trim();
 	const identityNoTrim = (params.identityNo ?? '').trim();
 
+	/** Additional match filters (AND). Only applied when provided. */
+	const matchAll: SQL[] = [];
+
 	const fullNameSearch = [firstNameTrim, middleNameTrim, lastNameTrim]
 		.filter(Boolean)
 		.join(' ')
 		.trim();
 	if (fullNameSearch) {
-		conditions.push(
+		matchAll.push(
 			ilike(
 				sql`concat_ws(' ', ${table.patientTable.firstName}, ${table.patientTable.middleName}, ${table.patientTable.lastName})`,
 				`%${fullNameSearch}%`
@@ -192,39 +210,43 @@ export async function getDuplicatePatientsInHospital(
 	}
 
 	if (params.fatherTitleId != null) {
-		conditions.push(
+		matchAll.push(
 			eq(table.patientTable.fatherTitleId, params.fatherTitleId)
 		);
 	}
 	if (fatherNameTrim) {
-		conditions.push(
+		matchAll.push(
 			ilike(table.patientTable.fatherName, `%${fatherNameTrim}%`)
 		);
 	}
 
 	if (phonePrimaryTrim) {
-		conditions.push(
+		matchAll.push(
 			ilike(table.patientTable.phonePrimary, `%${phonePrimaryTrim}%`)
 		);
 	}
 
 	if (params.identityTypeId != null) {
-		conditions.push(
+		matchAll.push(
 			eq(table.patientTable.identityTypeId, params.identityTypeId)
 		);
 	}
 	if (identityNoTrim) {
-		conditions.push(
+		matchAll.push(
 			ilike(table.patientTable.identityNo, `%${identityNoTrim}%`)
 		);
 	}
 
-	if (conditions.length <= 2) {
+	// titleId is accepted for API compatibility but not used as a match signal alone.
+	void params.titleId;
+
+	// Require at least one match field beyond hospital scope.
+	if (matchAll.length === 0) {
 		return [];
 	}
 
 	return ensureDb().query.patientTable.findMany({
-		where: and(...conditions),
+		where: and(...hospitalScope, ...matchAll),
 		with: patientDuplicateWith
 	});
 }
@@ -365,6 +387,8 @@ export async function createPatientWithUserInHospital(
 	patient: PatientSchema;
 	userId: string;
 	generatedPassword: string;
+	authEmail: string;
+	emailRemapped: boolean;
 }> {
 	const passwordHashUtil = new PasswordHashUtil();
 
@@ -373,13 +397,92 @@ export async function createPatientWithUserInHospital(
 	}
 	await ensureCanAccessHospital(event, payload.hospitalId);
 
-	const existingUser = await ensureDb()
-		.select()
-		.from(userTable)
-		.where(eq(userTable.email, payload.email))
-		.limit(1);
-	if (existingUser.length > 0) {
-		throw error(400, 'Patient with this email already exists');
+	const hospitalId = payload.hospitalId;
+	const requestedEmail = (payload.email ?? '').trim();
+	const isPlaceholderEmail = requestedEmail.endsWith(NO_EMAIL_SUFFIX);
+	const normalizedEmail = isPlaceholderEmail
+		? requestedEmail
+		: requestedEmail.toLowerCase();
+
+	if (!normalizedEmail) {
+		throw error(400, 'Email is required to create a patient user.');
+	}
+
+	let authEmail = normalizedEmail;
+	let emailRemapped = false;
+
+	if (!isPlaceholderEmail) {
+		const remappedCandidate = hospitalScopedAuthEmail(
+			normalizedEmail,
+			hospitalId
+		);
+		const sameHospitalEmail = await ensureDb()
+			.select({ id: table.patientTable.id })
+			.from(table.patientTable)
+			.innerJoin(
+				userTable,
+				eq(table.patientTable.userId, userTable.id)
+			)
+			.where(
+				and(
+					eq(table.patientTable.hospitalId, hospitalId),
+					ne(table.patientTable.statusId, StatusEnum.DELETED),
+					or(
+						eq(userTable.email, normalizedEmail),
+						eq(userTable.email, remappedCandidate)
+					)
+				)
+			)
+			.limit(1);
+		if (sameHospitalEmail.length > 0) {
+			throw error(400, 'Patient with this email already exists');
+		}
+
+		const existingUser = await ensureDb()
+			.select({ id: userTable.id })
+			.from(userTable)
+			.where(eq(userTable.email, normalizedEmail))
+			.limit(1);
+		if (existingUser.length > 0) {
+			const linkedPatient =
+				await ensureDb().query.patientTable.findFirst({
+					where: and(
+						eq(table.patientTable.userId, existingUser[0].id),
+						ne(table.patientTable.statusId, StatusEnum.DELETED)
+					),
+					columns: { id: true, hospitalId: true }
+				});
+			if (
+				linkedPatient &&
+				linkedPatient.hospitalId !== hospitalId
+			) {
+				// Auth emails are globally unique; remap so create is not blocked
+				// by a patient registered at another hospital.
+				const remappedTaken = await ensureDb()
+					.select({ id: userTable.id })
+					.from(userTable)
+					.where(eq(userTable.email, remappedCandidate))
+					.limit(1);
+				authEmail =
+					remappedTaken.length > 0
+						? `${uuidv7()}${NO_EMAIL_SUFFIX}`
+						: remappedCandidate;
+				emailRemapped = true;
+			} else {
+				throw error(400, 'Email is already registered');
+			}
+		}
+	} else {
+		// Placeholder emails must still be unique on the user table.
+		const existingPlaceholder = await ensureDb()
+			.select({ id: userTable.id })
+			.from(userTable)
+			.where(eq(userTable.email, normalizedEmail))
+			.limit(1);
+		if (existingPlaceholder.length > 0) {
+			authEmail = `${uuidv7()}${NO_EMAIL_SUFFIX}`;
+			emailRemapped = true;
+		}
 	}
 
 	const generatedPassword = generateRandomPassword(16);
@@ -392,7 +495,7 @@ export async function createPatientWithUserInHospital(
 		.values({
 			id: userId,
 			name: payload.name,
-			email: payload.email,
+			email: authEmail,
 			emailVerified: false
 		})
 		.returning();
@@ -402,7 +505,7 @@ export async function createPatientWithUserInHospital(
 	await ensureDb().insert(accountTable).values({
 		id: uuidv7(),
 		userId: user.id,
-		accountId: payload.email,
+		accountId: authEmail,
 		providerId: 'credential',
 		password: hashedPassword
 	});
@@ -487,7 +590,7 @@ export async function createPatientWithUserInHospital(
 	if (!patient) throw error(400, 'Failed to create patient.');
 
 	// Normalize placeholder no-email into a stable patientId-based "no-email" value.
-	if (payload.email?.endsWith(NO_EMAIL_SUFFIX)) {
+	if (authEmail.endsWith(NO_EMAIL_SUFFIX)) {
 		const stableNoEmail = `${patient.id}${NO_EMAIL_SUFFIX}`;
 		await ensureDb()
 			.update(userTable)
@@ -497,7 +600,14 @@ export async function createPatientWithUserInHospital(
 			.update(accountTable)
 			.set({ accountId: stableNoEmail } as any)
 			.where(eq(accountTable.userId, user.id));
+		authEmail = stableNoEmail;
 	}
 
-	return { patient, userId: user.id, generatedPassword };
+	return {
+		patient,
+		userId: user.id,
+		generatedPassword,
+		authEmail,
+		emailRemapped
+	};
 }

@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -149,22 +150,20 @@
 						>Category <span class="text-error">*</span></label
 					>
 					<div class="max-w-80 flex-1">
-						<select
+						<WashSelect
 							id="sc-category"
 							bind:value={formCategoryId}
-							class="select-bordered select select-sm w-full"
+							className="select-sm w-full"
 							required
-						>
-							<option value="">Select category…</option>
-							{#if modalState.categoryOptions?.length}
-								{#each modalState.categoryOptions as cat (cat.id)}
-									<option value={cat.id}
-										>{cat.categoryName ??
-											`Category ${cat.id}`}</option
-									>
-								{/each}
-							{/if}
-						</select>
+							placeholder="Select category…"
+							options={(modalState.categoryOptions ?? []).map(
+								(cat) => ({
+									value: String(cat.id),
+									label:
+										cat.categoryName ?? `Category ${cat.id}`
+								})
+							)}
+						/>
 					</div>
 				</div>
 			{/if}

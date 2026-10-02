@@ -11,10 +11,7 @@ import {
 	desc,
 	eq,
 	ilike,
-	inArray,
 	isNull,
-	ne,
-	or,
 	sql
 } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';

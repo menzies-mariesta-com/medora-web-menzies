@@ -5,8 +5,7 @@ import {
 	desc,
 	eq,
 	ilike,
-	inArray,
-	ne
+	inArray
 } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';

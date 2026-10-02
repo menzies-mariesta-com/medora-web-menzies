@@ -3,7 +3,7 @@
 	import { formatLineItemMetricTileValue } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
 	export let tiles: LineItemMetricTile[] | null;
-	export let draftLine: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- page-local draft shapes
+	export let draftLine: any;  
 </script>
 
 {#if tiles != null && tiles.length > 0}

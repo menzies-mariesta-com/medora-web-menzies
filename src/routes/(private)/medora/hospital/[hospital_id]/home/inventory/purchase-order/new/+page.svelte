@@ -19,7 +19,6 @@
 		type MenziesTableColumn,
 		type MenziesTableColumnsInput
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
@@ -598,6 +597,8 @@
 			await loadApprovedPrs();
 			const result = await dialogService.open<ApprovedPrOptionRow>({
 				fullScreen: true,
+				title: '',
+				closeOnOutsideClick: true,
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_po_select_pr(),

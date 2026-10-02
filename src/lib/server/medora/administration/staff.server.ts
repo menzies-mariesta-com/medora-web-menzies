@@ -10,7 +10,6 @@ import {
 import {
 	and,
 	count,
-	desc,
 	ilike,
 	ne,
 	or,

@@ -84,7 +84,6 @@ import {
 	specializationTable,
 	staffEmploymentTypeTable,
 	bloodTypeTable,
-	staffShiftTypeTable,
 	staffTypeTable,
 	stateTable,
 	statusTable,

@@ -406,7 +406,7 @@
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the="Choose Visit" button above to add or view allergies.'}
+			message="Choose a visit using the=&quot;Choose Visit&quot; button above to add or view allergies."
 			className="z-0"
 		/>
 	{:else if !visit && !isLoadingVisit}
@@ -441,6 +441,7 @@
 				actionsVariant="none"
 				enableColumnFilters={true}
 				columnFilters={tableFilters}
+				wash={true}
 				on:refresh={() => {
 					if (visit?.patientId && visit?.hospitalId) {
 						fetchAllergies(visit.patientId, visit.hospitalId, {

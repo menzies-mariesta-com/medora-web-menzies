@@ -34,7 +34,6 @@ import type {
 	visitTypeTable,
 	weekdayTable
 } from './master-table';
-import type { Infer } from 'zod';
 
 type OptionalAuditKeys =
 	| 'createdBy'
