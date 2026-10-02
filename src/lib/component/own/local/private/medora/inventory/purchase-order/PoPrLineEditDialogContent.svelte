@@ -1,5 +1,5 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- PO-from-PR line draft */
+	 
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';

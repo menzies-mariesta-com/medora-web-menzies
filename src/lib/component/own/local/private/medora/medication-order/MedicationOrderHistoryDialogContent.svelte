@@ -18,9 +18,9 @@
 	const lifeCycleUtil = new LifeCycleUtil();
 
 	let {
-		cancel,
 		apiRoot,
 		visitId,
+		title = m.med_order_int_history(),
 		enableColumnFilters = true,
 		onEdit,
 		onReorder,
@@ -28,6 +28,7 @@
 	}: DialogSlotProps & {
 		apiRoot: string;
 		visitId?: number;
+		title?: string;
 		enableColumnFilters?: boolean;
 		onEdit: (batchId: number) => void | Promise<void>;
 		onReorder: (batchId: number) => void | Promise<boolean>;
@@ -168,9 +169,10 @@
 	);
 </script>
 
-<div class="relative flex h-full min-h-0 flex-col gap-0 overflow-hidden">
-	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
+<div class="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+	<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 		<MenziesTable
+			{title}
 			{rows}
 			columns={historyColumns}
 			bind:currentPage
@@ -185,6 +187,7 @@
 			{enableColumnFilters}
 			totalRowCount={rows.length}
 			fillParent={true}
+			embedded={true}
 			bind:columnFilters
 			on:refresh={() => void refresh()}
 		>
@@ -233,12 +236,6 @@
 			{/snippet}
 		</MenziesTable>
 	</div>
-
-	<WashDialogFooter>
-		<WashButton variant="ghost" onClick={cancel} disabled={busy}
-			>{m.cancel()}</WashButton
-		>
-	</WashDialogFooter>
 
 	{#if pendingConfirm}
 		<div

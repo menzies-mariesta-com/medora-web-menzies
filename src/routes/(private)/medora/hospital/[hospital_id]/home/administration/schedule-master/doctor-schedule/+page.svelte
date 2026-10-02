@@ -815,62 +815,62 @@
 									</td>
 									<td>
 										<div class="flex items-center gap-1">
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].fromHour}
-											>
-												{#each HOURS as h (h)}
-													<option value={h}>{h}</option>
-												{/each}
-											</select>
+												options={HOURS.map((h) => ({
+													value: h,
+													label: h
+												}))}
+											/>
 											<span>:</span>
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].fromMin}
-											>
-												{#each MINUTES as m (m)}
-													<option value={m}>{m}</option>
-												{/each}
-											</select>
+												options={MINUTES.map((min) => ({
+													value: min,
+													label: min
+												}))}
+											/>
 											<span>:</span>
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].fromAmPm}
-											>
-												{#each AM_PM as ap (ap)}
-													<option value={ap}>{ap}</option>
-												{/each}
-											</select>
+												options={AM_PM.map((ap) => ({
+													value: ap,
+													label: ap
+												}))}
+											/>
 										</div>
 									</td>
 									<td>
 										<div class="flex items-center gap-1">
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].toHour}
-											>
-												{#each HOURS as h (h)}
-													<option value={h}>{h}</option>
-												{/each}
-											</select>
+												options={HOURS.map((h) => ({
+													value: h,
+													label: h
+												}))}
+											/>
 											<span>:</span>
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].toMin}
-											>
-												{#each MINUTES as m (m)}
-													<option value={m}>{m}</option>
-												{/each}
-											</select>
+												options={MINUTES.map((min) => ({
+													value: min,
+													label: min
+												}))}
+											/>
 											<span>:</span>
-											<select
-												class="select w-16 select-sm"
+											<WashSelect
+												className="select w-16 select-sm"
 												bind:value={daySchedules[i].toAmPm}
-											>
-												{#each AM_PM as ap (ap)}
-													<option value={ap}>{ap}</option>
-												{/each}
-											</select>
+												options={AM_PM.map((ap) => ({
+													value: ap,
+													label: ap
+												}))}
+											/>
 										</div>
 									</td>
 								</tr>

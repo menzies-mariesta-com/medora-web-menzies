@@ -3,9 +3,6 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashTable from '$lib/component/wash/table/WashTable.svelte';
-	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
-	import WashTableBody from '$lib/component/wash/table/body/WashTableBody.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';

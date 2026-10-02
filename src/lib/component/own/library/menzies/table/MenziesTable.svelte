@@ -1,8 +1,11 @@
 <!--
-	MenziesTable — Design Data Table chrome (header / sticky thead / single scroll body / footer / legends).
+	MenziesTable: Design Data Table chrome (header / sticky thead / single scroll body / footer / legends).
 
 	Usage:
 	- Pass `title` / `description` for Design header chrome; optional `headerActions` / `addAction` snippets.
+	- Pass `embedded` inside dialogs so the shell has no card border/shadow (flush with WashDialog).
+	- Pass `wash` for Soft Wash glass chrome matching `washRecipes.navbar`
+	  (`bg-base-100/80 backdrop-blur-sm`). Opt-in only; default tables stay opaque.
 	- Column filters are backend-only: never filter `rows` here. When `enableColumnFilters` is on,
 	  filter changes update `columnFilters` and dispatch `filtersChange` for the parent API reload.
 	- Remote paging: set `totalRowCount` (and supply already-paged `rows`). Omit it only for
@@ -183,6 +186,16 @@
 		 * block scrolls vertically (use with a constrained wrapper, e.g. max-h-*).
 		 */
 		fillParent = false,
+		/**
+		 * When true, strip card border/shadow/hover lift so the table sits flush
+		 * inside a dialog shell (table-only pickers). Header/footer chrome stay.
+		 */
+		embedded = false,
+		/**
+		 * Soft Wash glass surface matching `washRecipes.navbar`
+		 * (`bg-base-100/80 backdrop-blur-sm`). Ignored when `embedded`.
+		 */
+		wash = false,
 		rowActions,
 		crudEditDisabled,
 		crudDeleteDisabled,
@@ -230,6 +243,9 @@
 		/** Optional row class generator. Useful for status color mapping with legend. */
 		rowClassGetter?: (row: any, rowIndex: number) => string;
 		fillParent?: boolean;
+		embedded?: boolean;
+		/** Soft Wash glass chrome (navbar surface). Opt-in; default opaque. */
+		wash?: boolean;
 		/** Custom actions cell when `actionsVariant` is `none` but the actions column is shown. */
 		rowActions?: Snippet<[any, number]>;
 		/** When true, the row’s edit control is disabled (e.g. OP billing lock). */
@@ -324,19 +340,39 @@
 	}
 
 	/**
-		 * Design Data table chrome (1.3): flex-col shell, header actions
-		 * (Export / Refresh / Add), single scroll body, shrink-0 footer.
+	 * Soft Wash glass matching `washRecipes.navbar` surface tokens
+	 * (`bg-base-100/80 backdrop-blur-sm`). Not the daisyUI `navbar` layout class.
+	 */
+	const washSurface = 'bg-base-100/80 backdrop-blur-sm';
+
+	/**
+	 * Design Data table chrome (1.3): flex-col shell, header actions
+	 * (Export / Refresh / Add), single scroll body, shrink-0 footer.
 	 * App height = h-full (default) or flex-1 when fillParent — never a fixed demo height.
+	 * `embedded`: plain shell for dialog pickers (no second card).
+	 * `wash`: navbar glass surface on shell + chrome (opt-in).
 	 */
 	const rootClass = $derived(
 		[
-			'wash-allow-dropdown-overflow menzies-table-shell border-base-300 rounded-box flex min-h-0 min-w-0 flex-col overflow-hidden border bg-base-100 shadow-sm transition-[box-shadow,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:-translate-y-0.5 focus-within:border-primary/40 focus-within:shadow-md',
+			'wash-allow-dropdown-overflow menzies-table-shell flex min-h-0 min-w-0 flex-col overflow-hidden',
+			embedded
+				? 'bg-transparent'
+				: wash
+					? `rounded-box border border-ink-border/80 ${washSurface} shadow-sm transition-[box-shadow,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:-translate-y-0.5 focus-within:border-primary/40 focus-within:shadow-md`
+					: 'border-base-300 rounded-box border bg-base-100 shadow-sm transition-[box-shadow,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:-translate-y-0.5 focus-within:border-primary/40 focus-within:shadow-md',
 			fillParent ? 'flex-1' : 'h-full'
 		].join(' ')
 	);
-	/** Design body scroll + opaque base so shell hover:bg-primary/5 does not tint rows */
-	const tableScrollClass =
-		'wash-allow-dropdown-overflow menzies-table-scroll bg-base-100 min-h-0 min-w-0 flex-1 overflow-auto';
+	/** Design body scroll. Opaque by default; transparent under wash so glass shows through. */
+	const tableScrollClass = $derived(
+		[
+			'wash-allow-dropdown-overflow menzies-table-scroll min-h-0 min-w-0 flex-1 overflow-auto',
+			wash && !embedded ? 'bg-transparent' : 'bg-base-100'
+		].join(' ')
+	);
+	const chromeSurfaceClass = $derived(
+		wash && !embedded ? washSurface : 'bg-base-100'
+	);
 
 	function getDefaultFilterValue(
 		column: MenziesTableColumn
@@ -594,12 +630,7 @@
 		return pages;
 	}
 
-	function handleFilterInputEvent(columnId: string, event: Event) {
-		const target = event.currentTarget as
-			| HTMLInputElement
-			| HTMLSelectElement
-			| null;
-		const value = target?.value ?? '';
+	function handleFilterChange(columnId: string, value: string) {
 		const newFilters: Record<string, string> = {
 			...columnFilters,
 			[columnId]: value
@@ -616,13 +647,18 @@
 			});
 		}
 	}
+
+	function handleFilterInputEvent(columnId: string, event: Event) {
+		const target = event.currentTarget as HTMLInputElement | null;
+		handleFilterChange(columnId, target?.value ?? '');
+	}
 </script>
 
 <div class={rootClass}>
 	{#if hasHeader}
 		<!-- Design DataTableHeader (1.3: Export / Refresh / Add in actions) -->
 		<div
-			class="border-base-300 bg-base-100 flex shrink-0 items-start justify-between gap-3 border-b px-3 py-2.5"
+			class="menzies-table-chrome-header border-base-300 flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2.5 {chromeSurfaceClass}"
 		>
 			<div class="min-w-0 flex-1">
 				{#if title?.trim()}
@@ -635,7 +671,9 @@
 				{/if}
 			</div>
 			{#if hasChromeActions || headerActions}
-				<div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+				<div
+					class="menzies-table-chrome-actions flex shrink-0 flex-wrap items-center justify-end gap-2"
+				>
 					{#if exportEnabled && exportConfig}
 						<MenziesTableExportToolbar
 							columns={exportConfig.columns}
@@ -698,60 +736,74 @@
 			useRecipe={false}
 			className="table table-zebra [&_tbody_tr]:hover:bg-primary/40 w-max min-w-full"
 		>
-			<WashTableHeader className="bg-base-100 sticky top-0 z-10">
+			<WashTableHeader className="{chromeSurfaceClass} sticky top-0 z-10">
 				<tr>
 					{#if hasActionsColumn}
-						<th class="menzies-table-actions-col text-left">
-							<span class="font-bold">{actionsHeader}</span>
+						<th class="menzies-table-actions-col text-center align-middle">
+							<span class="menzies-table-header-cell font-bold"
+								>{actionsHeader}</span
+							>
 						</th>
 					{/if}
 					{#each displayColumns as column (column.id)}
-						<th class={column.headerClass ?? column.widthClass}>
-							<span class="font-bold">{column.header}</span>
+						<th
+							class={`text-center align-middle ${column.headerClass ?? column.widthClass ?? ''}`.trim()}
+						>
+							<span class="menzies-table-header-cell font-bold"
+								>{column.header}</span
+							>
 						</th>
 					{/each}
 				</tr>
 				{#if enableColumnFilters}
 					<tr>
 						{#if hasActionsColumn}
-							<th class="menzies-table-actions-col"></th>
+							<th
+								class="menzies-table-actions-col text-center align-middle"
+							></th>
 						{/if}
 						{#each displayColumns as column (column.id)}
 							{@const isFilterable = column.filterable ?? true}
 							{@const filterType = column.filterType ?? 'text'}
 							{@const selectOptions = resolveSelectFilterOptions(column)}
-							<th class={column.headerClass ?? column.widthClass}>
+							<th
+								class={`text-center align-middle ${column.headerClass ?? column.widthClass ?? ''}`.trim()}
+							>
 								{#if isFilterable}
-									{#if filterType === 'select' && selectOptions}
-										<select
-											class="select select-xs select-bordered w-full max-w-[10rem] cursor-pointer"
-											aria-label="Filter by {column.header}"
-											value={columnFilters[column.id] ?? ''}
-											onchange={(event) =>
-												handleFilterInputEvent(column.id, event)}
-										>
-											{#if !selectOptionsIncludeEmpty(selectOptions)}
-												<option value="">
-													{selectFilterEmptyLabel(column)}
-												</option>
-											{/if}
-											{#each selectOptions as opt (opt.value)}
-												<option value={opt.value}>
-													{opt.label}
-												</option>
-											{/each}
-										</select>
-									{:else}
-										<input
-											class="input input-xs input-bordered w-full max-w-[10rem] cursor-text"
-											type="text"
-											placeholder="Filter…"
-											aria-label="Filter by {column.header}"
-											value={columnFilters[column.id] ?? ''}
-											oninput={(event) =>
-												handleFilterInputEvent(column.id, event)}
-										/>
-									{/if}
+									<div class="menzies-table-header-cell">
+										{#if filterType === 'select' && selectOptions}
+											{@const filterSelectOptions = [
+												...(!selectOptionsIncludeEmpty(selectOptions)
+													? [
+															{
+																value: '',
+																label: selectFilterEmptyLabel(column)
+															}
+														]
+													: []),
+												...selectOptions
+											]}
+											<WashSelect
+												className="select select-xs select-bordered w-full max-w-[10rem] cursor-pointer"
+												aria-label="Filter by {column.header}"
+												value={columnFilters[column.id] ?? ''}
+												options={filterSelectOptions}
+												placeholder={selectFilterEmptyLabel(column)}
+												onChange={(next) =>
+													handleFilterChange(column.id, next ?? '')}
+											/>
+										{:else}
+											<input
+												class="input input-xs input-bordered w-full max-w-[10rem] cursor-text"
+												type="text"
+												placeholder="Filter…"
+												aria-label="Filter by {column.header}"
+												value={columnFilters[column.id] ?? ''}
+												oninput={(event) =>
+													handleFilterInputEvent(column.id, event)}
+											/>
+										{/if}
+									</div>
 								{/if}
 							</th>
 						{/each}
@@ -868,7 +920,7 @@
 
 	<!-- Design DataTableFooterBar (1.3: per-page | Showing | paginator) -->
 	<div
-		class="border-base-300 bg-base-100 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-t px-3 py-2"
+		class="border-base-300 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-t px-3 py-2 {chromeSurfaceClass}"
 	>
 		<div
 			class="flex min-w-0 flex-wrap items-center justify-start justify-self-start gap-2"
@@ -942,7 +994,7 @@
 	{#if legendItems.length > 0}
 		<!-- Design DataTableLegendsRow -->
 		<div
-			class="border-base-300 bg-base-100 flex shrink-0 flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t px-3 pt-3 pb-2"
+			class="border-base-300 flex shrink-0 flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t px-3 pt-3 pb-2 {chromeSurfaceClass}"
 		>
 			{#if legendTitle?.trim()}
 				<span class="text-ink-muted text-xs font-semibold"

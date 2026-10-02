@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
-
-	import type {
+	
+import type {
 		MedoraPageModuleRow,
 		MedoraPageRow
 	} from '$lib/model/type/medora/page.type';
@@ -21,8 +20,9 @@
 		medoraHospitalPageUrl,
 		requestPathToDbPageUrl
 	} from '$lib/model/enum/routes.enum';
-	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
+	import { getStaffPhotoDisplayUrl, getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
+	import type { AccountProfileSeed } from '$lib/model/type/medora/account-settings.type';
 	import { RoleEnum } from '$lib/model/enum/db-link';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
@@ -43,6 +43,7 @@
 	let {
 		hospitalId = null,
 		hospitalName = null,
+		hospitalLogoUrl = null,
 		userEmail = null,
 		moduleList,
 		pageList,
@@ -50,6 +51,7 @@
 		staffPhotoUrl = null,
 		/** Shown next to the profile control (staff full name or user name/email). */
 		staffDisplayName = null,
+		initialProfile = null,
 		userRoleId = null,
 		staffUserGroupsForNav = [],
 		selectedUserGroupId = null,
@@ -63,12 +65,14 @@
 	}: {
 		hospitalId?: string | null;
 		hospitalName?: string | null;
+		hospitalLogoUrl?: string | null;
 		userEmail?: string | null;
 		moduleList: MedoraPageModuleRow[];
 		pageList: MedoraPageRow[];
 		staffId?: string | null;
 		staffPhotoUrl?: string | null;
 		staffDisplayName?: string | null;
+		initialProfile?: AccountProfileSeed | null;
 		userRoleId?: number | null;
 		staffUserGroupsForNav?: StaffUserGroupForNav[];
 		selectedUserGroupId?: number | null;
@@ -96,6 +100,17 @@
 		getStaffPhotoDisplayUrl(staffPhotoUrl)
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
+
+	/** Hospital chrome brand: name when set; logo only when name is set (else full Medora). */
+	const brandName = $derived(hospitalName?.trim() || null);
+	const brandLogoSrc = $derived(
+		brandName
+			? (getHospitalLogoDisplayUrl(hospitalLogoUrl) ?? null)
+			: null
+	);
+	const brandHref = $derived(
+		hospitalId ? medoraHospitalHome(hospitalId) : WebRoutesEnum.DEFAULT
+	);
 
 	let accountModalOpen = $state(false);
 
@@ -353,19 +368,15 @@
 	}
 
 	let pageLocator = $derived.by(() => {
-		const segments = StringUtil.parseUrlSegments(page.url.pathname);
-		const pageTitle = segments
+		// Drop app/hospital identity segments so crumbs start at Home (or deeper).
+		const structural = new Set(['medora', 'hospital']);
+		const pageTitle = StringUtil.parseUrlSegments(page.url.pathname)
 			.filter((segment) => !(hospitalId && segment === hospitalId))
+			.filter((segment) => !structural.has(segment))
 			.filter((segment) => !isIdLikeSegment(segment))
 			.slice(-2)
 			.map((segment) => StringUtil.segmentToLabel(segment))
 			.join(' / ');
-
-		if (hospitalName?.trim()) {
-			return pageTitle
-				? `${hospitalName} / ${pageTitle}`
-				: hospitalName;
-		}
 
 		return pageTitle;
 	});
@@ -457,7 +468,12 @@
 {#if isNavbarVisible}
 	<div class="flex w-full flex-wrap items-center gap-2 border-b border-base-300/80 px-2 py-2">
 		<div class="shrink-0">
-			<MedoraBrandWordmark className="text-xl" />
+			<MedoraBrandWordmark
+				className="text-xl"
+				href={brandHref}
+				brandName={brandName}
+				logoSrc={brandLogoSrc}
+			/>
 		</div>
 		<div
 			class="flex min-w-0 flex-1 basis-[min(100%,16rem)] justify-center px-1"
@@ -597,6 +613,7 @@
 	{hospitalId}
 	{userEmail}
 	{staffId}
+	{initialProfile}
 />
 
 <!-- navbar end -->

@@ -206,10 +206,10 @@
 		</label>
 		<label class="flex flex-col gap-1">
 			<span class="font-medium">Order Time</span>
-			<input
-				type="time"
-				class="input-bordered input input-sm w-32"
+			<WashInputField
 				bind:value={orderTimeInput}
+				inputType="time"
+				className="input-sm w-32"
 			/>
 		</label>
 	</div>

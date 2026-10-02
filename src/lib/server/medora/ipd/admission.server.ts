@@ -101,7 +101,7 @@ export async function getActiveAdmissionByVisit(input: {
 }
 
 async function openStaySegment(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	 
 	tx: any,
 	input: {
 		admissionId: number;
@@ -128,7 +128,7 @@ async function openStaySegment(
 }
 
 async function closeOpenStaySegment(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	 
 	tx: any,
 	admissionId: number,
 	endedAt: string

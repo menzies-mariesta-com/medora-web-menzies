@@ -11,7 +11,6 @@
 
 	let {
 		confirm,
-		cancel,
 		title,
 		isLoading = false,
 		columns,
@@ -34,49 +33,35 @@
 	}
 </script>
 
-<div
-	class="flex h-full min-h-0 flex-col gap-0 overflow-hidden p-4 sm:p-6"
->
-	<div
-		class="flex shrink-0 items-center justify-between gap-3 border-b border-base-300 pb-3"
+<div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+	<MenziesTable
+		{title}
+		bind:currentPage={pickerPage}
+		{columns}
+		{rows}
+		{isLoading}
+		{pageSize}
+		fillParent={true}
+		embedded={true}
+		showRefreshButton={false}
+		showRowActions={true}
+		actionsVariant="none"
+		actionsHeader={m.inv_common_btn_select()}
+		enableColumnFilters={false}
 	>
-		<h3 class="text-lg font-bold">{title}</h3>
-		<WashButton
-			type="button"
-			className="btn-sm"
-			onClick={() => cancel()}
-		>
-			{m.cancel()}
-		</WashButton>
-	</div>
-	<div class="flex min-h-0 flex-1 flex-col pt-3">
-		<MenziesTable
-			bind:currentPage={pickerPage}
-			{columns}
-			{rows}
-			{isLoading}
-			{pageSize}
-			fillParent={true}
-			showRefreshButton={false}
-			showRowActions={true}
-			actionsVariant="none"
-			actionsHeader={m.inv_common_btn_select()}
-			enableColumnFilters={false}
-		>
-			{#snippet rowActions(row, _index)}
-				<WashTooltip
-					tooltipText={m.inv_common_btn_select()}
-					className="tooltip-primary"
+		{#snippet rowActions(row, _index)}
+			<WashTooltip
+				tooltipText={m.inv_common_btn_select()}
+				className="tooltip-primary"
+			>
+				<WashButton
+					type="button"
+					className="btn-primary btn-sm btn-ghost"
+					onClick={() => handleSelect(row)}
 				>
-					<WashButton
-						type="button"
-						className="btn-primary btn-sm btn-ghost"
-						onClick={() => handleSelect(row)}
-					>
-						<LucideCircleCheck className="size-3.5" />
-					</WashButton>
-				</WashTooltip>
-			{/snippet}
-		</MenziesTable>
-	</div>
+					<LucideCircleCheck className="size-3.5" />
+				</WashButton>
+			</WashTooltip>
+		{/snippet}
+	</MenziesTable>
 </div>

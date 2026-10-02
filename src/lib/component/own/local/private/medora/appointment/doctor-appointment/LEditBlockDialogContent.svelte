@@ -91,22 +91,22 @@
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
 			<label for="edit-block-start" class="shrink-0 sm:w-28">From time</label>
-			<input
+			<WashInputField
 				id="edit-block-start"
-				type="time"
 				bind:value={startTime}
-				class="input-bordered input input-sm max-w-80 flex-1"
+				inputType="time"
+				className="input-sm max-w-80 flex-1"
 			/>
 		</div>
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
 			<label for="edit-block-end" class="shrink-0 sm:w-28">To time</label>
-			<input
+			<WashInputField
 				id="edit-block-end"
-				type="time"
 				bind:value={endTime}
-				class="input-bordered input input-sm max-w-80 flex-1"
+				inputType="time"
+				className="input-sm max-w-80 flex-1"
 			/>
 		</div>
 		<div

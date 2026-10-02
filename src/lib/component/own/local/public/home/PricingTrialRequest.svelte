@@ -3,6 +3,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 	import { TRIAL_DURATION_OPTIONS } from '$lib/tool/pricing';
 	import { m } from '$lib/paraglide/messages';
@@ -168,20 +169,15 @@
 							aria-hidden="true">*</span
 						>
 					</span>
-					<select
+					<WashSelect
 						id="trial-duration"
 						name="duration"
-						class="select select-bordered w-full cursor-pointer"
+						className="w-full cursor-pointer"
 						bind:value={duration}
 						required
-					>
-						<option value="" disabled
-							>{m.pricing_trial_duration_placeholder()}</option
-						>
-						{#each TRIAL_DURATION_OPTIONS as opt (opt.value)}
-							<option value={opt.value}>{opt.label}</option>
-						{/each}
-					</select>
+						placeholder={m.pricing_trial_duration_placeholder()}
+						options={[...TRIAL_DURATION_OPTIONS]}
+					/>
 				</label>
 
 				<label

@@ -14,8 +14,7 @@ import {
 	ilike,
 	ne,
 	or,
-	sql,
-	desc
+	sql
 } from 'drizzle-orm';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 

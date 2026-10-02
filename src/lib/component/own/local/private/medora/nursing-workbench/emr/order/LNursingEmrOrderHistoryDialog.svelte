@@ -1,6 +1,5 @@
 <script lang="ts">
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -18,6 +17,8 @@
 		serviceName: string;
 		subCategoryName: string;
 	};
+
+	const HISTORY_TITLE = 'Order history (this visit)';
 
 	const { open, onClose, items, isLoading, pageSizeStr, onDelete } =
 		$props<{
@@ -120,45 +121,52 @@
 		id="order-history-modal"
 		open={true}
 		{onClose}
-		title="Order history (this visit)"
+		title=""
+		closeOnOutsideClick={true}
+		showActions={false}
 		boxClassName="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
 	>
-			{#snippet actions()}
-				<WashButton variant="ghost" onClick={onClose}>Close</WashButton>
-			{/snippet}
-			{#if items.length === 0 && !isLoading}
+		{#if items.length === 0 && !isLoading}
+			<div class="flex h-full flex-col p-4">
+				<h2 class="card-title text-primary mb-3 font-bold">
+					{HISTORY_TITLE}
+				</h2>
 				<p class="text-sm text-base-content/70">
 					No service items for this visit yet.
 				</p>
-			{:else}
-				<div class="flex flex-col gap-3 {TableEnum.HEIGHT_SMALL}">
-					<MenziesTable
-						rows={items}
-						{columns}
-						{isLoading}
-						pageSize={pageSizeStr}
-						currentPage={1}
-						showRefreshButton={false}
-						emptyMessage="No items."
-						showRowActions={true}
-						actionsHeader="Actions"
-						actionsVariant="none"
-						enableColumnFilters={false}
-					>
-						{#snippet rowActions(row, rowIndex)}
-							<MenziesTableIconAction
-								tooltipText={m.menzies_table_tooltip_delete()}
-								color="error"
-								disabled={Boolean(row.lockedByClosedOpBill)}
-								onClick={() => onDelete(row)}
-							>
-								{#snippet icon()}
-									<LucideTrash2 className="size-4" />
-								{/snippet}
-							</MenziesTableIconAction>
-						{/snippet}
-					</MenziesTable>
-				</div>
-			{/if}
+			</div>
+		{:else}
+			<div class="flex h-full min-h-0 flex-1 flex-col {TableEnum.HEIGHT_SMALL}">
+				<MenziesTable
+					title={HISTORY_TITLE}
+					rows={items}
+					{columns}
+					{isLoading}
+					pageSize={pageSizeStr}
+					currentPage={1}
+					showRefreshButton={false}
+					emptyMessage="No items."
+					showRowActions={true}
+					actionsHeader="Actions"
+					actionsVariant="none"
+					enableColumnFilters={false}
+					fillParent={true}
+					embedded={true}
+				>
+					{#snippet rowActions(row, _rowIndex)}
+						<MenziesTableIconAction
+							tooltipText={m.menzies_table_tooltip_delete()}
+							color="error"
+							disabled={Boolean(row.lockedByClosedOpBill)}
+							onClick={() => onDelete(row)}
+						>
+							{#snippet icon()}
+								<LucideTrash2 className="size-4" />
+							{/snippet}
+						</MenziesTableIconAction>
+					{/snippet}
+				</MenziesTable>
+			</div>
+		{/if}
 	</WashDialog>
 {/if}

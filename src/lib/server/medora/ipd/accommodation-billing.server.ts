@@ -6,8 +6,7 @@ import type {
 	IpdBedStaySegmentSchema
 } from '$lib/server/db/schema-type';
 import {
-	IpdAccommodationBillingMethodEnum,
-	StatusEnum
+	IpdAccommodationBillingMethodEnum
 } from '$lib/model/enum/db-link';
 import type {
 	AccommodationChargeLine,

@@ -4,6 +4,7 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import WashFileInput from '$lib/component/wash/fileinput/WashFileInput.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
@@ -19,13 +20,16 @@
 	} from '$lib/model/type/medora/patient-reg-master.type';
 	import type { UserListRow } from '$lib/model/type/medora/ui-rows.type';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
+	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
 	let { confirm, cancel }: DialogSlotProps = $props();
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	let name = $state('');
 	let code = $state('');
@@ -39,11 +43,17 @@
 	let stateId = $state<string>('');
 	let countryId = $state<string>('');
 	let logoUrl = $state('');
+	let logoUploading = $state(false);
+	let logoInputEl: HTMLInputElement | undefined = $state();
 	let description = $state('');
 	let establishedDate = $state('');
 	let isSubmitting = $state(false);
 	let isLoading = $state(false);
 	let editId = $state<string | null>(null);
+
+	const logoDisplayUrl = $derived(getHospitalLogoDisplayUrl(logoUrl));
+	const hasLogo = $derived(Boolean(logoUrl.trim()));
+	const formBusy = $derived(isSubmitting || logoUploading);
 
 	let countries = $state<PatientRegCountryRow[]>([]);
 	let states = $state<PatientRegStateRow[]>([]);
@@ -97,14 +107,14 @@
 			label: c.name ?? String(c.id)
 		}))
 	);
-	const postalCodeOptions = $derived(
-		filteredPostalCodes.map((p) => ({
-			value: String(p.id),
-			label: String(p.value)
-		}))
-	);
+	const postalCodeDisplay = $derived.by(() => {
+		const row = filteredPostalCodes.find(
+			(p) => String(p.id) === postalCodeId
+		);
+		return row?.value != null ? String(row.value) : '';
+	});
 
-	/** When parent selection changes, clear child selections. */
+	/** When parent selection changes, clear children / auto-fill postal. */
 	let prevCountryId = $state('');
 	let prevStateId = $state('');
 	let prevCityId = $state('');
@@ -129,7 +139,9 @@
 	$effect(() => {
 		if (cityId !== prevCityId) {
 			prevCityId = cityId;
-			postalCodeId = '';
+			postalCodeId = cityId
+				? pickPostalCodeIdForCity(postalCodes, Number(cityId))
+				: '';
 		}
 	});
 
@@ -191,10 +203,14 @@
 		address = (h.address as string | null | undefined) ?? '';
 		email = (h.email as string | null | undefined) ?? '';
 		website = (h.website as string | null | undefined) ?? '';
-		postalCodeId = loadedPostalCodeId;
 		cityId = loadedCityId;
 		stateId = loadedStateId;
 		countryId = loadedCountryId;
+		// Derive postal from city (locked field); fall back to stored id if no master row.
+		postalCodeId = loadedCityId
+			? pickPostalCodeIdForCity(postalCodes, Number(loadedCityId)) ||
+				loadedPostalCodeId
+			: '';
 		ownerId = isOwnerUser
 			? currentUserId
 			: String((h.ownerId as string | null | undefined) ?? '');
@@ -241,9 +257,79 @@
 		return Number.isNaN(n) ? undefined : n;
 	}
 
+	async function handleLogoPicked(e: Event) {
+		const input = e.currentTarget as HTMLInputElement | null;
+		const file = input?.files?.[0];
+		if (!file) return;
+
+		const allowed = [
+			'image/jpeg',
+			'image/png',
+			'image/webp',
+			'image/gif'
+		];
+		if (!allowed.includes(file.type)) {
+			toastService.addToast(
+				msg.hospital_logo_invalid_type(),
+				StatusColorEnum.ERROR
+			);
+			if (input) input.value = '';
+			return;
+		}
+		if (file.size > 5 * 1024 * 1024) {
+			toastService.addToast(
+				msg.hospital_logo_too_large(),
+				StatusColorEnum.ERROR
+			);
+			if (input) input.value = '';
+			return;
+		}
+
+		logoUploading = true;
+		try {
+			const fd = new FormData();
+			fd.set('logo', file);
+			const res = await fetch('/api/upload/hospital-logo', {
+				method: 'POST',
+				body: fd
+			});
+			if (await redirectIfTwoFactorRequired(res)) return;
+			const data = (await res.json().catch(() => ({}))) as {
+				url?: string;
+				error?: string;
+			};
+			if (!res.ok) {
+				toastService.addToast(
+					data.error ?? msg.hospital_logo_upload_failed(),
+					StatusColorEnum.ERROR
+				);
+				return;
+			}
+			if (data.url) {
+				logoUrl = data.url;
+				toastService.addToast(
+					msg.hospital_logo_uploaded_hint(),
+					StatusColorEnum.INFO
+				);
+			}
+		} finally {
+			logoUploading = false;
+			if (input) input.value = '';
+		}
+	}
+
+	function handleRemoveLogo() {
+		logoUrl = '';
+		if (logoInputEl) logoInputEl.value = '';
+		toastService.addToast(
+			msg.hospital_logo_removed_hint(),
+			StatusColorEnum.INFO
+		);
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		if (isSubmitting) return;
+		if (formBusy) return;
 		const n = name.trim();
 		if (!n) {
 			toastService.addToast(
@@ -268,6 +354,13 @@
 		}
 
 		const id = editId;
+		if (id == null && isOwnerUser) {
+			toastService.addToast(
+				msg.owner_no_hospitals_yet(),
+				StatusColorEnum.ERROR
+			);
+			return;
+		}
 		const effectiveOwnerId = isOwnerUser
 			? currentUserId
 			: ownerId.trim() || undefined;
@@ -286,7 +379,7 @@
 				cityId: num(cityId),
 				stateId: num(stateId),
 				countryId: num(countryId),
-				logoUrl: logoUrl.trim() || undefined,
+				logoUrl: logoUrl.trim() || null,
 				description: description.trim() || undefined,
 				establishedDate: establishedDate.trim() || undefined
 			};
@@ -326,13 +419,13 @@
 			HospitalModalState.hospitalId = null;
 			confirm();
 		} catch (err) {
-			const msg =
+			const msgErr =
 				err instanceof Error
 					? err.message
 					: id != null
 						? 'Update failed'
 						: 'Create failed';
-			toastService.addToast(msg, StatusColorEnum.ERROR);
+			toastService.addToast(msgErr, StatusColorEnum.ERROR);
 		} finally {
 			isSubmitting = false;
 		}
@@ -500,16 +593,16 @@
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
 					<label for="hospital-postal" class="shrink-0 sm:w-36"
-						>Postal Code</label
+						>{msg.postal_code()}</label
 					>
 					<div class="max-w-80 flex-1">
-						<SearchSelect
-							inputId="hospital-postal"
-							bind:value={postalCodeId}
-							options={postalCodeOptions}
-							placeholder="Select a postal code ..."
-							filterPlaceholder="Search postal code…"
-							disabled={!cityId}
+						<WashInputField
+							id="hospital-postal"
+							value={postalCodeDisplay}
+							inputPlaceholderText={msg.postal_code()}
+							ariaLabel={msg.postal_code()}
+							disabled={true}
+							className="cursor-not-allowed"
 						/>
 					</div>
 				</div>
@@ -575,18 +668,70 @@
 					</div>
 				</div>
 				<div
-					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label for="hospital-logo" class="shrink-0 sm:w-36"
-						>Logo URL</label
-					>
-					<div class="max-w-80 flex-1">
-						<WashInputField
+					<span class="shrink-0 pt-2 sm:w-36">{msg.hospital_logo()}</span>
+					<div class="flex max-w-80 flex-1 flex-col gap-3">
+						<WashFileInput
 							id="hospital-logo"
-							bind:value={logoUrl}
-							inputType="url"
-							inputPlaceholderText="https://..."
+							accept="image/jpeg,image/png,image/webp,image/gif"
+							className="hidden"
+							bind:inputEl={logoInputEl}
+							onchange={handleLogoPicked}
+							disabled={formBusy}
 						/>
+						<div class="flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-box border border-base-300 bg-base-200 text-base-content/50 focus:outline-none focus:ring-2 focus:ring-primary"
+								class:cursor-pointer={!formBusy}
+								class:cursor-not-allowed={formBusy && !logoUploading}
+								class:cursor-wait={logoUploading}
+								onclick={() => logoInputEl?.click()}
+								disabled={formBusy}
+								aria-label={hasLogo
+									? msg.hospital_logo_change()
+									: msg.hospital_logo_choose()}
+							>
+								{#if logoUploading}
+									<span class="loading loading-spinner loading-sm"></span>
+								{:else if logoDisplayUrl}
+									<img
+										src={logoDisplayUrl}
+										alt={msg.hospital_logo_alt()}
+										class="size-full object-contain p-1"
+									/>
+								{:else}
+									<span class="px-1 text-center text-xs"
+										>{msg.hospital_logo_none()}</span
+									>
+								{/if}
+							</button>
+							<div class="flex flex-col gap-2">
+								<WashButton
+									type="button"
+									className="btn-primary btn-sm cursor-pointer"
+									onClick={() => logoInputEl?.click()}
+									disabled={formBusy}
+									loading={logoUploading}
+									loadingText={msg.hospital_logo_uploading()}
+								>
+									{hasLogo
+										? msg.hospital_logo_change()
+										: msg.hospital_logo_choose()}
+								</WashButton>
+								{#if hasLogo}
+									<WashButton
+										type="button"
+										className="btn-error btn-sm cursor-pointer"
+										onClick={handleRemoveLogo}
+										disabled={formBusy}
+									>
+										{msg.hospital_logo_remove()}
+									</WashButton>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 				<div
@@ -622,15 +767,17 @@
 		<WashDialogFooter className="gap-2">
 			<WashButton
 				type="button"
-				className="btn-ghost"
+				className="btn-ghost cursor-pointer"
 				onClick={handleCancel}
+				disabled={formBusy}
 			>
 				{m.cancel()}
 			</WashButton>
 			<WashButton
 				type="submit"
-				className="btn-primary"
+				className="btn-primary cursor-pointer"
 				loading={isSubmitting}
+				disabled={formBusy}
 			>
 				{editId != null ? m.update() : m.create()}
 			</WashButton>

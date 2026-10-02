@@ -1,15 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
-	import LucideRefreshCcw from '$lib/component/own/library/lucide/LucideRefreshCcw.svelte';
-	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
-	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LExternalReferMasterModal from '$lib/component/own/local/private/medora/administration/external-refer-master/LExternalReferMasterModal.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';

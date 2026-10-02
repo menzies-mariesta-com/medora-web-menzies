@@ -47,6 +47,7 @@
 	import LPatientCardPrintModal from '$lib/component/own/local/private/medora/patient/list/LPatientCardPrintModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -185,6 +186,8 @@
 			patient: { id: string; code?: string | null };
 			userId: string;
 			generatedPassword: string;
+			authEmail?: string;
+			emailRemapped?: boolean;
 		}>;
 	}
 
@@ -266,11 +269,6 @@
 		cityData.find((c) => String(c.id) === selectedCityId) ??
 			({} as PatientRegCityRow)
 	);
-	let selectedPostalCode = $derived(
-		postalCodeData.find(
-			(p) => String(p.id) === selectedPostalCodeId
-		) ?? ({} as PatientRegPostalCodeRow)
-	);
 	let filteredStateData = $derived(
 		selectedCountry?.id
 			? stateData.filter((s) => s.countryId === selectedCountry.id)
@@ -289,38 +287,47 @@
 
 	// Reset dependent location fields when parent changes (staff-style)
 	$effect(() => {
-		if (selectedCountryId) {
-			if (
-				!selectedCountry?.id ||
-				(selectedStateId &&
-					selectedState?.countryId !== selectedCountry.id)
-			) {
-				selectedStateId = '';
-				selectedCityId = '';
-				selectedPostalCodeId = '';
-			}
+		if (!selectedCountryId) {
+			if (selectedStateId) selectedStateId = '';
+			if (selectedCityId) selectedCityId = '';
+			if (selectedPostalCodeId) selectedPostalCodeId = '';
+			return;
+		}
+		if (
+			!selectedCountry?.id ||
+			(selectedStateId &&
+				selectedState?.countryId !== selectedCountry.id)
+		) {
+			selectedStateId = '';
+			selectedCityId = '';
+			selectedPostalCodeId = '';
 		}
 	});
 	$effect(() => {
-		if (selectedStateId) {
-			if (
-				!selectedState?.id ||
-				(selectedCityId && selectedCity?.stateId !== selectedState.id)
-			) {
-				selectedCityId = '';
-				selectedPostalCodeId = '';
-			}
+		if (!selectedStateId) {
+			if (selectedCityId) selectedCityId = '';
+			return;
+		}
+		if (
+			!selectedState?.id ||
+			(selectedCityId && selectedCity?.stateId !== selectedState.id)
+		) {
+			selectedCityId = '';
+			selectedPostalCodeId = '';
 		}
 	});
+	// Auto-fill postal from city (township): lowest ACTIVE id for that city.
 	$effect(() => {
-		if (selectedCityId) {
-			if (
-				!selectedCity?.id ||
-				(selectedPostalCodeId &&
-					selectedPostalCode?.cityId !== selectedCity.id)
-			) {
-				selectedPostalCodeId = '';
-			}
+		if (!selectedCityId || !selectedCity?.id) {
+			if (selectedPostalCodeId) selectedPostalCodeId = '';
+			return;
+		}
+		const next = pickPostalCodeIdForCity(
+			postalCodeData,
+			selectedCity.id
+		);
+		if (selectedPostalCodeId !== next) {
+			selectedPostalCodeId = next;
 		}
 	});
 
@@ -642,6 +649,7 @@
 				const result = await dialogService.open({
 					title: 'Duplicate patients found',
 					fullScreen: true,
+					closeOnOutsideClick: true,
 					component: LPatientCheckDuplicateDialogContent
 				});
 				if (result.confirmed && result.data) {
@@ -1058,20 +1066,35 @@
 				);
 
 				if (emailValue) {
-					const { error } = await authClient.requestPasswordReset({
-						email: emailValue,
-						redirectTo: routerUtil.getResetRedirectUrl()
-					});
-					if (error) {
+					const remapped = result.emailRemapped === true;
+					const authEmail =
+						typeof result.authEmail === 'string'
+							? result.authEmail.trim()
+							: '';
+					const resetTarget = remapped
+						? authEmail
+						: emailValue;
+					if (remapped && StringUtil.isNoEmail(resetTarget)) {
 						toastService.addToast(
-							error.message ?? 'Failed to send reset link.',
-							StatusColorEnum.ERROR
+							'Patient created. That email is already used at another hospital, so patient login email was not set.',
+							StatusColorEnum.WARNING
 						);
-					} else {
-						toastService.addToast(
-							'Reset password email has been sent to the patient.',
-							StatusColorEnum.INFO
-						);
+					} else if (resetTarget && !StringUtil.isNoEmail(resetTarget)) {
+						const { error } = await authClient.requestPasswordReset({
+							email: resetTarget,
+							redirectTo: routerUtil.getResetRedirectUrl()
+						});
+						if (error) {
+							toastService.addToast(
+								error.message ?? 'Failed to send reset link.',
+								StatusColorEnum.ERROR
+							);
+						} else {
+							toastService.addToast(
+								'Reset password email has been sent to the patient.',
+								StatusColorEnum.INFO
+							);
+						}
 					}
 				}
 				disableCreateSave = true;
@@ -1287,9 +1310,6 @@
 						<LPatientRegistrationThirdColumn
 							{countryData}
 							{bloodTypeData}
-							{stateData}
-							{cityData}
-							{postalCodeData}
 							{nationalityData}
 							{religionData}
 							{filteredStateData}
@@ -1297,7 +1317,6 @@
 							{filteredPostalCodeData}
 							{selectedCountry}
 							{selectedState}
-							{selectedCity}
 							bind:selectedCountryId
 							bind:selectedBloodTypeId
 							bind:selectedStateId

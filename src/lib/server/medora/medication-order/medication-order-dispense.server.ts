@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { ensureDb } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
-import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
+import { CategoryEnum } from '$lib/model/enum/db-link';
 import { addDeltaToInvStock } from '$lib/server/medora/inventory/item-batch.server';
 import { computeSalePriceAtTransactionDb } from '$lib/server/medora/inventory/sale-price.server';
 import type { InvPricingModuleCode } from '$lib/model/type/medora/inv-pricing-module.type';
