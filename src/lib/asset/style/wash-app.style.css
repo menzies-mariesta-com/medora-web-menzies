@@ -144,6 +144,34 @@ details.dropdown:not([open]) > .dropdown-content {
 }
 
 
+/*
+ * MenziesTable card chrome header: title left, refresh/add/headerActions right.
+ * Vertically middle-align (not top-align) so icon buttons sit with the title.
+ */
+.menzies-table-shell > .menzies-table-chrome-header {
+	align-items: center;
+}
+.menzies-table-shell > .menzies-table-chrome-header .menzies-table-chrome-actions {
+	align-items: center;
+}
+
+/*
+ * MenziesTable column headers: center title + filter controls (Actions / No. included).
+ * Sticky thead / dropdown edge logic stay on the component; this only sets alignment.
+ */
+.menzies-table-shell thead th {
+	text-align: center;
+	vertical-align: middle;
+}
+
+.menzies-table-shell thead th > .menzies-table-header-cell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-width: 0;
+}
+
 /* MenziesTable actions: hug content (do not reserve empty width).
  * `width: 1%` + nowrap is the classic “fit column to buttons” table trick. */
 .menzies-table-actions-col {

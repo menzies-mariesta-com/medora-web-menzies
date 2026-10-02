@@ -3,6 +3,7 @@
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
+	import WashDatePicker from '$lib/component/wash/datepicker/WashDatePicker.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -298,22 +299,24 @@
 		<div class="flex flex-wrap items-end gap-4">
 			<div>
 				<label class="text-xs opacity-80">{m.inv_report_filter_date_from()}</label>
-				<input
-					type="date"
-					class="input-bordered input input-sm mt-1 w-full min-w-[10rem]"
-					class:input-error={dateRangeInvalid}
+				<WashDatePicker
+					className="mt-1 w-full min-w-[10rem]"
+					triggerClassName={dateRangeInvalid ? 'input-error' : ''}
 					max={filterDateTo.trim() || undefined}
 					bind:value={filterDateFrom}
+					size="sm"
+					aria-label={m.inv_report_filter_date_from()}
 				/>
 			</div>
 			<div>
 				<label class="text-xs opacity-80">{m.inv_report_filter_date_to()}</label>
-				<input
-					type="date"
-					class="input-bordered input input-sm mt-1 w-full min-w-[10rem]"
-					class:input-error={dateRangeInvalid}
+				<WashDatePicker
+					className="mt-1 w-full min-w-[10rem]"
+					triggerClassName={dateRangeInvalid ? 'input-error' : ''}
 					min={filterDateFrom.trim() || undefined}
 					bind:value={filterDateTo}
+					size="sm"
+					aria-label={m.inv_report_filter_date_to()}
 				/>
 			</div>
 		</div>

@@ -1,9 +1,12 @@
 <script lang="ts">
 	/**
-	 * Design DataTableExportMenu (web 1.3.0): click/focus opens formats.
-	 * `dropdown-no-hover` + `wash-dropdown-contained` so tooltips work while closed.
+	 * Design DataTableExportMenu (web 1.3.0): WashDropdown opens formats.
+	 * Outside click + Escape close via WashDropdown.
 	 */
 	import LucideDownload from '$lib/component/own/library/lucide/LucideDownload.svelte';
+	import WashDropdown from '$lib/component/wash/dropdown/WashDropdown.svelte';
+	import WashDropdownButton from '$lib/component/wash/dropdown/button/WashDropdownButton.svelte';
+	import WashDropdownContent from '$lib/component/wash/dropdown/content/WashDropdownContent.svelte';
 	import type { MenziesTableExportFormat } from '$lib/model/type/menzies-table-export.type';
 	import {
 		clientExportColumnsToPdfColumns,
@@ -138,44 +141,30 @@
 		}
 	}
 
-	function blurActive() {
-		if (document.activeElement instanceof HTMLElement) {
-			document.activeElement.blur();
-		}
-	}
-
 	async function runExport(run: () => Promise<void>) {
 		await run();
-		blurActive();
 	}
 </script>
 
 {#if menuItems.length > 0}
-	<div
-		class="dropdown dropdown-end dropdown-bottom dropdown-no-hover wash-dropdown-contained"
+	<WashDropdown
+		className="dropdown-end dropdown-bottom dropdown-no-hover wash-dropdown-contained"
 	>
 		<div class="tooltip tooltip-secondary" data-tip="Export">
-			<div
-				tabindex={busy ? -1 : 0}
-				role="button"
-				class="btn btn-ghost btn-square btn-sm btn-secondary {busy
-					? 'btn-disabled cursor-not-allowed'
+			<WashDropdownButton
+				className="btn-ghost btn-square btn-sm btn-secondary {busy
+					? 'btn-disabled cursor-not-allowed pointer-events-none'
 					: 'cursor-pointer'} {exporting ? 'loading' : ''}"
-				aria-label="Export"
-				aria-haspopup="menu"
-				aria-busy={exporting || undefined}
-				aria-disabled={busy || undefined}
 			>
+				<span class="sr-only">Export</span>
 				{#if !exporting}
 					<LucideDownload className="size-4" />
 				{/if}
-			</div>
+			</WashDropdownButton>
 		</div>
 		{#if !busy}
-			<ul
-				tabindex="-1"
-				role="menu"
-				class="menu dropdown-content {DROPDOWN_PANEL_Z} mt-1 w-40 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)] {DROPDOWN_PANEL_OVERFLOW}"
+			<WashDropdownContent
+				className="{DROPDOWN_PANEL_Z} mt-1 w-40 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)] {DROPDOWN_PANEL_OVERFLOW}"
 			>
 				{#each menuItems as item (item.format)}
 					<li role="none">
@@ -189,7 +178,7 @@
 						</button>
 					</li>
 				{/each}
-			</ul>
+			</WashDropdownContent>
 		{/if}
-	</div>
+	</WashDropdown>
 {/if}

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { createActionLock } from '$lib/util/action-lock.util.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -11,7 +9,6 @@
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import type { StaffWithRelations } from '$lib/model/type/medora/staff.type';
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import LStaffListViewEditModal from '$lib/component/own/local/private/medora/administration/staff/list/LStaffListViewEditModal.svelte';

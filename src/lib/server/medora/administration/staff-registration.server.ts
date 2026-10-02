@@ -114,7 +114,7 @@ async function ensureCanRegisterStaff(
 function toDateOnlyString(input?: string): string | undefined {
 	if (!input?.trim()) return undefined;
 	const trimmed = input.trim();
-	// Prefer already-valid YYYY-MM-DD (Cally / <input type="date">).
+	// Prefer already-valid YYYY-MM-DD (WashDatePicker / calendar day).
 	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 	const parsed = new Date(trimmed);
 	if (Number.isNaN(parsed.getTime())) return undefined;

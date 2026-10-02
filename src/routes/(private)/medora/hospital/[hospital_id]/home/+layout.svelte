@@ -73,14 +73,8 @@
 			?.email ?? null) as string | null
 	);
 
-	/** Display name in module bar: `user.name` (auth `user` table) first, then staff legal name, then email. */
+	/** Display name in module bar: staff legal name first (fresh after account save invalidate), then `user.name`, then email. */
 	const staffDisplayName = $derived.by(() => {
-		const u = (
-			data as {
-				user?: { name?: string | null; email?: string | null } | null;
-			}
-		)?.user;
-		if (u?.name?.trim()) return u.name.trim();
 		const s = data?.staff as StaffWithRelations | null | undefined;
 		if (s) {
 			const name = StringUtil.fullNameWithTitle(
@@ -91,8 +85,62 @@
 			).trim();
 			if (name) return name;
 		}
+		const u = (
+			data as {
+				user?: { name?: string | null; email?: string | null } | null;
+			}
+		)?.user;
+		if (u?.name?.trim()) return u.name.trim();
 		if (u?.email?.trim()) return u.email.trim();
 		return null;
+	});
+
+	/** Seed Account settings from session staff already on `page.data` (instant prefill). */
+	const accountInitialProfile = $derived.by(() => {
+		const s = data?.staff as
+			| (StaffWithRelations & {
+					photoUrl?: string | null;
+					address?: string | null;
+					genderId?: number | null;
+					staffDetail?: {
+						licenseNo?: string | null;
+						licenseExpiryDate?: string | Date | null;
+						signatureImageUrl?: string | null;
+						signatureText?: string | null;
+					} | null;
+				})
+			| null
+			| undefined;
+		if (!s?.id) return null;
+
+		const toDateSeed = (v: string | Date | null | undefined) => {
+			if (v == null || v === '') return null;
+			if (v instanceof Date) {
+				if (Number.isNaN(v.getTime())) return null;
+				return v.toISOString().slice(0, 10);
+			}
+			const s = String(v).trim();
+			if (!s) return null;
+			const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+			return m?.[1] ?? s;
+		};
+
+		return {
+			firstName: s.firstName ?? null,
+			middleName: s.middleName ?? null,
+			lastName: s.lastName ?? null,
+			photoUrl: s.photoUrl ?? null,
+			phonePrimary: s.phonePrimary ?? null,
+			address: s.address ?? null,
+			dateOfBirth: toDateSeed(
+				s.dateOfBirth as string | Date | null | undefined
+			),
+			genderId: s.genderId ?? s.gender?.id ?? null,
+			licenseNo: s.staffDetail?.licenseNo ?? null,
+			licenseExpiryDate: toDateSeed(s.staffDetail?.licenseExpiryDate),
+			signatureImageUrl: s.staffDetail?.signatureImageUrl ?? null,
+			signatureText: s.staffDetail?.signatureText ?? null
+		};
 	});
 </script>
 
@@ -104,11 +152,16 @@
 				{hospitalId}
 				{userEmail}
 				hospitalName={data?.currentHospitalName ?? null}
+				hospitalLogoUrl={
+					(data as { currentHospitalLogoUrl?: string | null })
+						?.currentHospitalLogoUrl ?? null
+				}
 				moduleList={uniqueModuleData}
 				pageList={pageData}
 				staffId={currentStaffId}
 				staffPhotoUrl={currentStaffPhotoUrl}
 				{staffDisplayName}
+				initialProfile={accountInitialProfile}
 				userRoleId={data?.userRoleId ?? null}
 				staffUserGroupsForNav={(data as any)?.staffUserGroupsForNav ??
 					[]}

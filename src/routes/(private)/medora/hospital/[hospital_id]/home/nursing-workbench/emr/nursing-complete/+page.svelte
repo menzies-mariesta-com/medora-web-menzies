@@ -637,7 +637,7 @@
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the="Choose Visit" button above to view nursing complete items.'}
+			message="Choose a visit using the=&quot;Choose Visit&quot; button above to view nursing complete items."
 			className="z-0"
 		/>
 	{:else if !visit && !isLoading}

@@ -1,11 +1,10 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- shared draft line shape across PR/DI/issue flows */
+	 
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
-	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import InventoryLineItemMetricTiles from '../InventoryLineItemMetricTiles.svelte';

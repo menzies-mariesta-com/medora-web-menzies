@@ -19,6 +19,11 @@ export interface DialogOpenOptions<T = unknown> {
 	fullScreen?: boolean;
 	/** Tailwind classes for the modal box (e.g. max-w-4xl max-h-[90vh]) */
 	modalClassName?: string;
+	/**
+	 * When true, backdrop click dismisses (table-only pickers).
+	 * Default false: Medora keeps forms from closing on outside click.
+	 */
+	closeOnOutsideClick?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;
@@ -36,6 +41,7 @@ export interface DialogInterface {
 	tone?: DialogTone;
 	fullScreen?: boolean;
 	modalClassName?: string;
+	closeOnOutsideClick?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;

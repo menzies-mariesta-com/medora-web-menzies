@@ -22,7 +22,6 @@
 		type MenziesTableColumn,
 		type MenziesTableColumnsInput
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import {
@@ -781,6 +780,8 @@
 			await loadEligiblePos();
 			const result = await dialogService.open<PoRowLite>({
 				fullScreen: true,
+				title: '',
+				closeOnOutsideClick: true,
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_grn_select_po(),

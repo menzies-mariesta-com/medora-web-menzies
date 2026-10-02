@@ -5,8 +5,6 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideArrowLeft from '$lib/component/own/library/lucide/LucideArrowLeft.svelte';
-	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
-	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import MenziesTable, {
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
@@ -19,7 +17,6 @@
 		DepartmentIndentDetailLine
 	} from '$lib/model/type/medora/department-indent-detail.type';
 	import {
-		InvApprovalActionEnum,
 		InvDepartmentIndentStatusTaggingEnum
 	} from '$lib/model/enum/db-link';
 	import { formatPurchaseQtyCellForDetailLine } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';

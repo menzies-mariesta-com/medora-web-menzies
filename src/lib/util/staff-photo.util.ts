@@ -83,3 +83,32 @@ export function getPatientAttachmentDisplayUrl(
 	}
 	return u;
 }
+
+/**
+ * Returns a URL suitable for displaying a hospital logo (e.g. in img src).
+ * Tigris URLs under hospital-logos/ are rewritten to the hospital-logo proxy.
+ * External http(s) URLs are returned unchanged so legacy logos still display.
+ */
+export function getHospitalLogoDisplayUrl(
+	url: string | null | undefined
+): string | undefined {
+	if (!url?.trim()) return undefined;
+	const u = url.trim();
+	if (u.startsWith('/')) return u;
+	try {
+		if (u.includes('t3.storage.dev')) {
+			const pathname = new URL(u).pathname;
+			if (!pathname) return u;
+			if (
+				pathname.includes('hospital-logos/') ||
+				pathname.startsWith('/hospital-logos/')
+			) {
+				return `/api/hospital-logo${pathname}`;
+			}
+			return u;
+		}
+	} catch {
+		// ignore invalid URL
+	}
+	return u;
+}
