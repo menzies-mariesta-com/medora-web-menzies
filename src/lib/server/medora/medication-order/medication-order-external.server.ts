@@ -48,6 +48,7 @@ export async function listExternalBatches(
 	const uCreat = alias(table.userTable, 'mob_ext_created_by');
 	const uUpd = alias(table.userTable, 'mob_ext_updated_by');
 	const pv = table.patientVisitTable;
+	const pay = table.medicationOrderBatchPaymentTable;
 	const lineCounts = db
 		.select({
 			batchId: table.medicationOrderLineTable.batchId,
@@ -81,13 +82,19 @@ export async function listExternalBatches(
 			lineCount:
 				sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(
 					Number
-				)
+				),
+			isPaid: sql<boolean>`(${pay.id} is not null)`.mapWith(Boolean),
+			receiptNo: pay.receiptNo
 		})
 		.from(b)
 		.leftJoin(pv, eq(b.visitId, pv.id))
 		.leftJoin(uCreat, eq(b.createdBy, uCreat.id))
 		.leftJoin(uUpd, eq(b.updatedBy, uUpd.id))
 		.leftJoin(lineCounts, eq(b.id, lineCounts.batchId))
+		.leftJoin(
+			pay,
+			and(eq(pay.batchId, b.id), isNull(pay.deletedAt))
+		)
 		.where(
 			and(
 				eq(b.hospitalId, hospitalId),
@@ -133,8 +140,8 @@ export async function reorderFromHistoryBatchExternal(
 	if (!srcBatch) throw error(404, 'Batch not found');
 	const extCustomerName = (srcBatch.extCustomerName ?? '').trim();
 	const advisingDoctor = (srcBatch.advisingDoctor ?? '').trim();
-	if (!extCustomerName || !advisingDoctor) {
-		throw error(400, 'Source batch is missing customer or doctor');
+	if (!extCustomerName) {
+		throw error(400, 'Source batch is missing customer name');
 	}
 
 	const [firstLine] = await db
@@ -275,11 +282,8 @@ export async function saveMedicationOrderBatchExternal(
 	const extCustomerName = input.extCustomerName.trim();
 	const advisingDoctor = input.advisingDoctor.trim();
 	await ensureCanAccessHospital(event, hospitalId);
-	if (extCustomerName.length === 0 || advisingDoctor.length === 0) {
-		throw error(
-			400,
-			'Customer name and advising doctor are required'
-		);
+	if (extCustomerName.length === 0) {
+		throw error(400, 'Customer name is required');
 	}
 	if (extCustomerName.length > 512 || advisingDoctor.length > 512) {
 		throw error(400, 'Name or doctor is too long');
@@ -339,7 +343,7 @@ export async function saveMedicationOrderBatchExternal(
 				storeId,
 				batchNo,
 				extCustomerName,
-				advisingDoctor,
+				advisingDoctor: advisingDoctor.length > 0 ? advisingDoctor : null,
 				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId

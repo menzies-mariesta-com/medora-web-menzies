@@ -335,6 +335,24 @@ export async function seedInformationTables() {
 			status_id = EXCLUDED.status_id,
 			updated_at = now();
 	`);
+	await db.execute(sql`
+		INSERT INTO diagnosis_code (code, system, description, status_id)
+		VALUES
+			('BA00', 'ICD11', 'Essential hypertension', 1),
+			('5A11', 'ICD11', 'Type 2 diabetes mellitus', 1),
+			('CA40', 'ICD11', 'Pneumonia', 1),
+			('CA23', 'ICD11', 'Asthma', 1),
+			('MD81', 'ICD11', 'Abdominal or pelvic pain', 1),
+			('MG22', 'ICD11', 'Fever of other or unknown origin', 1),
+			('8A80', 'ICD11', 'Migraine', 1),
+			('MB24', 'ICD11', 'Dizziness or giddiness', 1),
+			('1A40', 'ICD11', 'Gastroenteritis or colitis of infectious origin', 1),
+			('RA01', 'ICD11', 'COVID-19', 1)
+		ON CONFLICT (system, code) DO UPDATE SET
+			description = EXCLUDED.description,
+			status_id = EXCLUDED.status_id,
+			updated_at = now();
+	`);
 	seedLogger.info('Seeded: diagnosis_code');
 
 	// 5. Role (must match RoleEnum / auth-table-seed; do not invent hospital job titles here)

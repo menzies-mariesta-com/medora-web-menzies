@@ -162,6 +162,13 @@ export const hospitalTable = pgTable('hospital', {
 	logoUrl: text('logo_url'),
 	description: text('description'),
 	establishedDate: date('established_date'),
+	/**
+	 * Bound diagnosis coding standard (ICD10 | ICD11).
+	 * Global catalogs live in `diagnosis_code`; search filters by this value.
+	 */
+	codingSystem: varchar('coding_system', { length: 32 })
+		.notNull()
+		.default('ICD10'),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()
@@ -2425,7 +2432,7 @@ export const ipBillingLineTable = pgTable(
 	]
 );
 
-/** ICD / coding master for visit diagnoses. */
+/** ICD / coding master for visit diagnoses (global; hospital binds via hospital.coding_system). */
 export const diagnosisCodeTable = pgTable(
 	'diagnosis_code',
 	{
@@ -2435,6 +2442,8 @@ export const diagnosisCodeTable = pgTable(
 			.notNull()
 			.default('ICD10'),
 		description: text('description').notNull(),
+		/** WHO release / linearization id used at import time (optional). */
+		releaseId: varchar('release_id', { length: 128 }),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -2446,7 +2455,39 @@ export const diagnosisCodeTable = pgTable(
 			t.system,
 			t.code
 		),
-		index('diagnosis_code_status_id_idx').on(t.statusId)
+		index('diagnosis_code_status_id_idx').on(t.statusId),
+		index('diagnosis_code_system_status_idx').on(t.system, t.statusId)
+	]
+);
+
+/**
+ * Import metadata for WHO ICD catalog loads (one row per system + release).
+ * Runtime EMR search uses `diagnosis_code` only; this table is for ops/admin.
+ */
+export const diagnosisCodeReleaseTable = pgTable(
+	'diagnosis_code_release',
+	{
+		id: serial('id').primaryKey(),
+		system: varchar('system', { length: 32 }).notNull(),
+		releaseId: varchar('release_id', { length: 128 }).notNull(),
+		source: varchar('source', { length: 64 })
+			.notNull()
+			.default('WHO_ICD_API'),
+		titleCount: integer('title_count').notNull().default(0),
+		importedAt: timestamp('imported_at', {
+			withTimezone: true,
+			mode: 'date'
+		})
+			.notNull()
+			.defaultNow(),
+		notes: text('notes'),
+		...timestamps
+	},
+	(t) => [
+		uniqueIndex('diagnosis_code_release_system_release_uidx').on(
+			t.system,
+			t.releaseId
+		)
 	]
 );
 

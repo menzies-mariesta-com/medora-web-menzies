@@ -106,6 +106,7 @@ export const GET: RequestHandler = async (event) => {
 		case 'diagnosisCode.search': {
 			return json(
 				await searchDiagnosisCodes({
+					hospitalId,
 					search: event.url.searchParams.get('search') ?? '',
 					limit: Number(event.url.searchParams.get('limit') ?? '30')
 				})

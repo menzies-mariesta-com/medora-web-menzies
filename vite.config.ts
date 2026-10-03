@@ -1,4 +1,3 @@
-import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
@@ -13,6 +12,16 @@ const pkg = JSON.parse(
 	readFileSync(join(__dirname, 'package.json'), 'utf-8')
 ) as { version: string };
 
+/**
+ * Paraglide is compiled by CLI only (`pnpm run paraglide` / `paraglide:watch`).
+ *
+ * Do not re-enable `paraglideVitePlugin` without pinning
+ * `outputStructure: 'message-modules'` and `cleanOutdir: false`.
+ * The plugin's dev default (`locale-modules` + clean outdir) deletes
+ * `src/lib/paraglide` and rewrites to `messages/<locale>.js`, which races
+ * Vite import analysis after expanding to ~200 locales and causes:
+ * "Failed to parse source for import analysis" / missing `./en.js`.
+ */
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
@@ -20,15 +29,7 @@ export default defineConfig({
 	server: {
 		allowedHosts: ['host.docker.internal']
 	},
-	plugins: [
-		tailwindcss(),
-		sveltekit(),
-		devtoolsJson(),
-		paraglideVitePlugin({
-			project: './project.inlang',
-			outdir: './src/lib/paraglide'
-		})
-	],
+	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

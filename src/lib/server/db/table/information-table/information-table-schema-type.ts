@@ -70,6 +70,7 @@ import type {
 	ipBillingTable,
 	ipBillingLineTable,
 	diagnosisCodeTable,
+	diagnosisCodeReleaseTable,
 	dischargeSummaryTable,
 	labResultTable,
 	imagingResultTable,
@@ -623,6 +624,15 @@ export type DiagnosisCodeSchemaInsert = InferInsertModel<
 >;
 export type DiagnosisCodeSchemaUpdate =
 	Partial<DiagnosisCodeSchemaInsert>;
+
+export type DiagnosisCodeReleaseSchema = InferSelectModel<
+	typeof diagnosisCodeReleaseTable
+>;
+export type DiagnosisCodeReleaseSchemaInsert = InferInsertModel<
+	typeof diagnosisCodeReleaseTable
+>;
+export type DiagnosisCodeReleaseSchemaUpdate =
+	Partial<DiagnosisCodeReleaseSchemaInsert>;
 
 export type DischargeSummarySchema = InferSelectModel<
 	typeof dischargeSummaryTable
