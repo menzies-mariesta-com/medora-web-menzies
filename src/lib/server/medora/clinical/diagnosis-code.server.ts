@@ -1,5 +1,9 @@
 import { and, desc, eq, ilike, ne, or } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import {
+	DiagnosisCodingSystemEnum,
+	parseDiagnosisCodingSystem
+} from '$lib/model/enum/diagnosis-coding-system.enum';
 import type {
 	DiagnosisCodeOption,
 	ProblemListRow
@@ -7,20 +11,55 @@ import type {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 
+export async function getHospitalCodingSystem(
+	hospitalId: string
+): Promise<string> {
+	const [row] = await ensureDb()
+		.select({ codingSystem: table.hospitalTable.codingSystem })
+		.from(table.hospitalTable)
+		.where(eq(table.hospitalTable.id, hospitalId))
+		.limit(1);
+	return parseDiagnosisCodingSystem(
+		row?.codingSystem,
+		DiagnosisCodingSystemEnum.ICD10
+	);
+}
+
+export async function getLatestDiagnosisCodeRelease(system: string) {
+	const [row] = await ensureDb()
+		.select({
+			system: table.diagnosisCodeReleaseTable.system,
+			releaseId: table.diagnosisCodeReleaseTable.releaseId,
+			titleCount: table.diagnosisCodeReleaseTable.titleCount,
+			importedAt: table.diagnosisCodeReleaseTable.importedAt
+		})
+		.from(table.diagnosisCodeReleaseTable)
+		.where(eq(table.diagnosisCodeReleaseTable.system, system))
+		.orderBy(desc(table.diagnosisCodeReleaseTable.importedAt))
+		.limit(1);
+	return row ?? null;
+}
+
 export async function searchDiagnosisCodes(input: {
+	hospitalId: string;
 	search?: string;
 	limit?: number;
 }): Promise<DiagnosisCodeOption[]> {
+	const system = await getHospitalCodingSystem(input.hospitalId);
 	const query = input.search?.trim();
 	const filter = query
 		? and(
 				eq(table.diagnosisCodeTable.statusId, StatusEnum.ACTIVE),
+				eq(table.diagnosisCodeTable.system, system),
 				or(
 					ilike(table.diagnosisCodeTable.code, `%${query}%`),
 					ilike(table.diagnosisCodeTable.description, `%${query}%`)
 				)
 			)
-		: eq(table.diagnosisCodeTable.statusId, StatusEnum.ACTIVE);
+		: and(
+				eq(table.diagnosisCodeTable.statusId, StatusEnum.ACTIVE),
+				eq(table.diagnosisCodeTable.system, system)
+			);
 	return ensureDb()
 		.select({
 			id: table.diagnosisCodeTable.id,

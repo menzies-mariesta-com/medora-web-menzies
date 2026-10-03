@@ -1,5 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import {
+	DiagnosisCodingSystemEnum,
+	isDiagnosisCodingSystem
+} from '$lib/model/enum/diagnosis-coding-system.enum';
 import {
 	createHospital,
 	deleteHospital,
@@ -7,6 +11,13 @@ import {
 	getHospitalsWithOwnerPaginated,
 	updateHospital
 } from '$lib/server/medora/hospital.server';
+
+function requireCodingSystem(value: unknown): string {
+	if (!isDiagnosisCodingSystem(value)) {
+		throw error(400, 'codingSystem must be ICD10 or ICD11');
+	}
+	return value;
+}
 
 export const GET: RequestHandler = async (event) => {
 	const id = event.url.searchParams.get('id');
@@ -64,7 +75,11 @@ export const POST: RequestHandler = async (event) => {
 		establishedDate:
 			body.establishedDate != null
 				? String(body.establishedDate)
-				: null
+				: null,
+		codingSystem:
+			body.codingSystem == null || body.codingSystem === ''
+				? DiagnosisCodingSystemEnum.ICD10
+				: requireCodingSystem(body.codingSystem)
 	});
 	return json(created);
 };
@@ -171,7 +186,11 @@ export const PUT: RequestHandler = async (event) => {
 				? undefined
 				: body.establishedDate != null
 					? String(body.establishedDate)
-					: null
+					: null,
+		codingSystem:
+			body.codingSystem === undefined
+				? undefined
+				: requireCodingSystem(body.codingSystem)
 	});
 	return json(updated);
 };

@@ -38,8 +38,14 @@
 		email: string | null;
 		logoUrl: string | null;
 		statusId: number | null;
+		codingSystem?: string | null;
 		owner?: { id: string; name: string | null; email: string } | null;
 	};
+
+	function codingSystemLabel(system: string | null | undefined): string {
+		if (system === 'ICD11') return msg.hospital_coding_system_icd11();
+		return msg.hospital_coding_system_icd10();
+	}
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 
@@ -378,6 +384,11 @@
 											{msg.hospital_code_label({ code: h.code })}
 										</p>
 									{/if}
+									<p class="mt-0.5 text-sm text-base-content/60">
+										{msg.hospital_coding_system_label({
+											system: codingSystemLabel(h.codingSystem)
+										})}
+									</p>
 									<span
 										class="badge badge-sm mt-2 {statusBadgeClass(
 											h.statusId

@@ -71,6 +71,9 @@ export type MedicationOrderBatchHistoryRow = {
 	createdByName: string | null;
 	updatedByName: string | null;
 	lineCount: number;
+	/** Present on external sales list when payment row exists. */
+	isPaid?: boolean;
+	receiptNo?: string | null;
 };
 
 export type ItemNamePriceRow = {

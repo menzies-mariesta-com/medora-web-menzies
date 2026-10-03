@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, desc, eq, isNotNull, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -13,6 +13,10 @@ import {
 	StatusEnum,
 	type AdminPermissionAction
 } from '$lib/model/enum/db-link';
+import {
+	DiagnosisCodingSystemEnum,
+	parseDiagnosisCodingSystem
+} from '$lib/model/enum/diagnosis-coding-system.enum';
 import type {
 	PaginatedResult,
 	PaginationParams
@@ -26,6 +30,10 @@ import {
 
 export type HospitalWithOwner = HospitalSchema & {
 	owner?: { id: string; name: string | null; email: string } | null;
+	/** True when coded diagnoses exist; UI should lock coding_system. */
+	codingSystemLocked?: boolean;
+	/** Latest WHO import line for the hospital's coding system (admin display). */
+	codingReleaseLine?: string | null;
 };
 
 function requireUser(event: RequestEvent): {
@@ -170,6 +178,26 @@ export async function getHospitalsWithOwnerPaginated(
 	};
 }
 
+async function countCodedDiagnosesForHospital(
+	hospitalId: string
+): Promise<number> {
+	const [row] = await ensureDb()
+		.select({ count: count() })
+		.from(table.diagnosisTable)
+		.innerJoin(
+			table.patientVisitTable,
+			eq(table.diagnosisTable.visitId, table.patientVisitTable.id)
+		)
+		.where(
+			and(
+				eq(table.patientVisitTable.hospitalId, hospitalId),
+				ne(table.diagnosisTable.statusId, StatusEnum.DELETED),
+				isNotNull(table.diagnosisTable.diagnosisCodeId)
+			)
+		);
+	return Number(row?.count ?? 0);
+}
+
 export async function createHospital(
 	event: RequestEvent,
 	input: HospitalSchemaInsert
@@ -183,7 +211,11 @@ export async function createHospital(
 	}
 	await assertCanManageHospitals(event, 'create');
 
-	const values = { ...input };
+	const codingSystem = parseDiagnosisCodingSystem(
+		input.codingSystem,
+		DiagnosisCodingSystemEnum.ICD10
+	);
+	const values = { ...input, codingSystem };
 
 	const [inserted] = await ensureDb()
 		.insert(table.hospitalTable)
@@ -214,6 +246,26 @@ export async function updateHospital(
 		data.ownerId = userId;
 	}
 
+	if (data.codingSystem !== undefined) {
+		const nextSystem = parseDiagnosisCodingSystem(data.codingSystem);
+		data.codingSystem = nextSystem;
+		const [current] = await ensureDb()
+			.select({ codingSystem: table.hospitalTable.codingSystem })
+			.from(table.hospitalTable)
+			.where(eq(table.hospitalTable.id, id))
+			.limit(1);
+		if (!current) throw error(404, 'Hospital not found');
+		if (current.codingSystem !== nextSystem) {
+			const codedCount = await countCodedDiagnosesForHospital(id);
+			if (codedCount > 0) {
+				throw error(
+					409,
+					'Cannot change coding system after coded diagnoses exist for this hospital.'
+				);
+			}
+		}
+	}
+
 	const [updated] = await ensureDb()
 		.update(table.hospitalTable)
 		.set(data)
@@ -241,7 +293,26 @@ export async function getHospitalById(
 	if (userRoleId === RoleEnum.OWNER && row.ownerId !== userId) {
 		throw error(403, 'You can only view your own hospitals');
 	}
-	return row as HospitalWithOwner;
+	const codedCount = await countCodedDiagnosesForHospital(id);
+	const [release] = await ensureDb()
+		.select({
+			system: table.diagnosisCodeReleaseTable.system,
+			releaseId: table.diagnosisCodeReleaseTable.releaseId,
+			titleCount: table.diagnosisCodeReleaseTable.titleCount,
+			importedAt: table.diagnosisCodeReleaseTable.importedAt
+		})
+		.from(table.diagnosisCodeReleaseTable)
+		.where(eq(table.diagnosisCodeReleaseTable.system, row.codingSystem))
+		.orderBy(desc(table.diagnosisCodeReleaseTable.importedAt))
+		.limit(1);
+	const codingReleaseLine = release
+		? `${release.system} release ${release.releaseId} (${release.titleCount} codes, imported ${String(release.importedAt)})`
+		: null;
+	return {
+		...(row as HospitalWithOwner),
+		codingSystemLocked: codedCount > 0,
+		codingReleaseLine
+	};
 }
 
 export async function deleteHospital(
