@@ -33,6 +33,7 @@
 		"db:seed:master": "npx tsx --env-file=.env src/lib/server/db/seed/master-table-seed.ts",
 		"db:seed:information": "npx tsx --env-file=.env src/lib/server/db/seed/information-table-seed.ts",
 		"db:seed:marketplace": "npx tsx --env-file=.env src/lib/server/db/seed/marketplace-table-seed.ts",
+		"db:import:icd": "node --env-file=.env scripts/import-icd-codes.mjs",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "pnpm run build && changeset publish"

@@ -9,6 +9,10 @@
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
 	import { RoleEnum } from '$lib/model/enum/db-link';
+	import {
+		DiagnosisCodingSystemEnum,
+		parseDiagnosisCodingSystem
+	} from '$lib/model/enum/diagnosis-coding-system.enum';
 	import { HospitalModalState } from '$lib/state/hospital-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
@@ -47,6 +51,9 @@
 	let logoInputEl: HTMLInputElement | undefined = $state();
 	let description = $state('');
 	let establishedDate = $state('');
+	let codingSystem = $state<string>(DiagnosisCodingSystemEnum.ICD10);
+	let codingSystemLocked = $state(false);
+	let codingReleaseLine = $state('');
 	let isSubmitting = $state(false);
 	let isLoading = $state(false);
 	let editId = $state<string | null>(null);
@@ -218,6 +225,12 @@
 		description = (h.description as string | null | undefined) ?? '';
 		establishedDate =
 			(h.establishedDate as string | null | undefined) ?? '';
+		codingSystem = parseDiagnosisCodingSystem(h.codingSystem);
+		codingSystemLocked = Boolean(h.codingSystemLocked);
+		codingReleaseLine =
+			typeof h.codingReleaseLine === 'string'
+				? h.codingReleaseLine
+				: '';
 		const phoneCountryIdRaw = h.phoneCountryId as
 			| number
 			| null
@@ -381,7 +394,8 @@
 				countryId: num(countryId),
 				logoUrl: logoUrl.trim() || null,
 				description: description.trim() || undefined,
-				establishedDate: establishedDate.trim() || undefined
+				establishedDate: establishedDate.trim() || undefined,
+				codingSystem: parseDiagnosisCodingSystem(codingSystem)
 			};
 			if (id != null) {
 				const res = await fetch('/api/medora/hospital', {
@@ -465,6 +479,9 @@
 				logoUrl = '';
 				description = '';
 				establishedDate = '';
+				codingSystem = DiagnosisCodingSystemEnum.ICD10;
+				codingSystemLocked = false;
+				codingReleaseLine = '';
 			}
 			isLoading = false;
 		});
@@ -510,6 +527,47 @@
 							inputType="text"
 							inputPlaceholderText="e.g. H001"
 						/>
+					</div>
+				</div>
+				<div
+					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
+				>
+					<label for="hospital-coding-system" class="shrink-0 sm:w-36">
+						{msg.hospital_coding_system()}<span
+							class="text-error align-top text-sm leading-none"
+							aria-hidden="true">*</span
+						>
+					</label>
+					<div class="max-w-80 flex-1">
+						<WashSelect
+							id="hospital-coding-system"
+							bind:value={codingSystem}
+							optionHeader={msg.hospital_coding_system()}
+							disabled={codingSystemLocked}
+						>
+							<option value={DiagnosisCodingSystemEnum.ICD10}
+								>{msg.hospital_coding_system_icd10()}</option
+							>
+							<option value={DiagnosisCodingSystemEnum.ICD11}
+								>{msg.hospital_coding_system_icd11()}</option
+							>
+						</WashSelect>
+						<p class="mt-1 text-xs text-base-content/70">
+							{#if codingSystemLocked}
+								{msg.hospital_coding_system_locked()}
+							{:else}
+								{msg.hospital_coding_system_help()}
+							{/if}
+						</p>
+						{#if codingReleaseLine}
+							<p class="mt-1 text-xs text-base-content/70">
+								{codingReleaseLine}
+							</p>
+						{:else if editId != null}
+							<p class="mt-1 text-xs text-base-content/70">
+								{msg.hospital_coding_release_unknown()}
+							</p>
+						{/if}
 					</div>
 				</div>
 				<div

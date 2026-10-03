@@ -8,7 +8,7 @@
 	import LucidePalette from '../library/lucide/LucidePalette.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import ChangeLanguageModal from '$lib/component/own/snippet/modal/ChangeLanguageModal.svelte';
-	import { LanguageEnum } from '$lib/model/enum/language.enum';
+	import type { AppLocale } from '$lib/model/enum/language.enum';
 	import { LanguageTool } from '$lib/tool/language.tool.svelte';
 	import ChangeAppearanceModal from '../snippet/modal/ChangeAppearanceModal.svelte';
 	import SupportTicketDialogContent from '../snippet/modal/SupportTicketDialogContent.svelte';
@@ -32,7 +32,7 @@
 		dialogService.open({
 			title: m.change_language(),
 			component: ChangeLanguageModal,
-			onConfirm: (data?: { language: LanguageEnum }) => {
+			onConfirm: (data?: { language: AppLocale }) => {
 				if (data?.language)
 					languageTool.changeLanguage(data.language);
 			}

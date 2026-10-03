@@ -12,6 +12,8 @@ export enum WebRoutesEnum {
 	TWO_FACTOR_SETUP = '/auth/two-factor/setup',
 	PLUGIN = '/plugin',
 	PRICING = '/pricing',
+	/** Public documentation shell (opens from Help in a new tab). */
+	DOCS = '/docs',
 
 	// private - medora
 	MEDORA = '/medora',

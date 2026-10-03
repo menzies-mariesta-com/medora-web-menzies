@@ -2,10 +2,14 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
 	import LucideUser from '$lib/component/own/library/lucide/LucideUser.svelte';
+	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
+	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { resolve } from '$app/paths';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		title = 'Hospitals',
@@ -26,6 +30,7 @@
 	);
 	const hasProfilePhoto = $derived(!!profilePhotoDisplayUrl);
 	const titleText = $derived(title?.trim() || 'Hospitals');
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	let accountModalOpen = $state(false);
 
@@ -59,6 +64,20 @@
 			className="overflow-visible z-10"
 		>
 			<MedoraNotifications />
+		</WashTooltip>
+		<WashTooltip
+			tooltipText={msg.nav_help()}
+			className="tooltip-primary"
+		>
+			<a
+				href={resolve(WebRoutesEnum.DOCS)}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="btn btn-circle btn-ghost cursor-pointer"
+				aria-label={msg.nav_help()}
+			>
+				<LucideCircleQuestionMark className="size-6" />
+			</a>
 		</WashTooltip>
 		<WashTooltip tooltipText="Account" className="">
 			<WashButton

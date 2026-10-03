@@ -31,6 +31,8 @@ import type {
 	import { tick } from 'svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 	import MedoraModuleIcon from './MedoraModuleIcon.svelte';
+	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -305,6 +307,7 @@ import type {
 	});
 
 	const routerUtil = new RouterUtil();
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	// Map current pathname -> DB page URL (/medora/home/...) for highlighting.
 	const activeDbPageUrl = $derived.by(() => {
@@ -564,6 +567,20 @@ import type {
 					{hospitalId}
 					triggerClassName={navBarControlBorder}
 				/>
+			</WashTooltip>
+			<WashTooltip
+				tooltipText={msg.nav_help()}
+				className="tooltip-primary"
+			>
+				<a
+					href={resolve(WebRoutesEnum.DOCS)}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn btn-circle btn-ghost cursor-pointer {navBarControlBorder}"
+					aria-label={msg.nav_help()}
+				>
+					<LucideCircleQuestionMark className="size-6" />
+				</a>
 			</WashTooltip>
 			<WashTooltip
 				tooltipText="Account"
