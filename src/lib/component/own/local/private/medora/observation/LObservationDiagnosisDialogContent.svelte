@@ -121,7 +121,7 @@
 		diagnosisCodeOptions = rows;
 		return rows.map((row) => ({
 			value: String(row.id),
-			label: `${row.code} — ${row.description}`
+			label: `${row.code}: ${row.description}`
 		}));
 	}
 
@@ -133,7 +133,7 @@
 		);
 		if (row) {
 			description = row.description;
-			return `${row.code} — ${row.description}`;
+			return `${row.code}: ${row.description}`;
 		}
 		return description || value;
 	}

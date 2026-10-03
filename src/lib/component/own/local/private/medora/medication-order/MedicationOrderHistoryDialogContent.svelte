@@ -2,6 +2,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
+	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
 	import LucideShoppingBasket from '$lib/component/own/library/lucide/LucideShoppingBasket.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
 	import MenziesTable, {
@@ -24,7 +25,8 @@
 		enableColumnFilters = true,
 		onEdit,
 		onReorder,
-		onDelete
+		onDelete,
+		onPrintReceipt
 	}: DialogSlotProps & {
 		apiRoot: string;
 		visitId?: number;
@@ -33,6 +35,7 @@
 		onEdit: (batchId: number) => void | Promise<void>;
 		onReorder: (batchId: number) => void | Promise<boolean>;
 		onDelete: (batchId: number) => void | Promise<boolean>;
+		onPrintReceipt?: (batchId: number) => void | Promise<void>;
 	} = $props();
 
 	let rows = $state<MedicationOrderBatchHistoryRow[]>([]);
@@ -119,6 +122,16 @@
 		}
 	}
 
+	async function handlePrintReceipt(batchId: number) {
+		if (isActing || !onPrintReceipt) return;
+		isActing = true;
+		try {
+			await onPrintReceipt(batchId);
+		} finally {
+			isActing = false;
+		}
+	}
+
 	function requestReorder(batchId: number) {
 		if (busy) return;
 		pendingConfirm = { type: 'reorder', batchId };
@@ -191,16 +204,26 @@
 			bind:columnFilters
 			on:refresh={() => void refresh()}
 		>
-			{#snippet rowActions(row, _localIdx)}
+			{#snippet rowActions(row)}
+				{@const histRow = row as MedicationOrderBatchHistoryRow}
 				<MenziesTableRowActionGroup>
+					{#if onPrintReceipt && histRow.isPaid}
+						<MenziesTableIconAction
+							tooltipText={m.med_order_receipt_print()}
+							color="primary"
+							disabled={busy}
+							onClick={() => void handlePrintReceipt(histRow.id)}
+						>
+							{#snippet icon()}
+								<LucidePrinter className="size-4" />
+							{/snippet}
+						</MenziesTableIconAction>
+					{/if}
 					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_edit()}
 						color="accent"
 						disabled={busy}
-						onClick={() =>
-							void handleEdit(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						onClick={() => void handleEdit(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucidePencil className="size-4" />
@@ -210,10 +233,7 @@
 						tooltipText={m.med_order_int_tooltip_reorder()}
 						color="primary"
 						disabled={busy}
-						onClick={() =>
-							requestReorder(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						onClick={() => requestReorder(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucideShoppingBasket className="size-4" />
@@ -222,11 +242,8 @@
 					<MenziesTableIconAction
 						tooltipText={m.med_order_int_tooltip_delete()}
 						color="error"
-						disabled={busy}
-						onClick={() =>
-							requestDelete(
-								(row as MedicationOrderBatchHistoryRow).id
-							)}
+						disabled={busy || Boolean(histRow.isPaid)}
+						onClick={() => requestDelete(histRow.id)}
 					>
 						{#snippet icon()}
 							<LucideTrash2 className="size-4" />

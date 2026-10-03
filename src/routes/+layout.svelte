@@ -50,6 +50,7 @@
 		FontState.font = fontTool.getFont();
 	});
 	lifeCycleUtil.onDestroy(() => {
+		fontTool.destroy();
 		washThemeTool.destroy();
 	});
 
