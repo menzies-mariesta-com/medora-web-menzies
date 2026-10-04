@@ -256,12 +256,19 @@
 
 	{#if pendingConfirm}
 		<div
-			class="absolute inset-0 z-10 flex items-center justify-center bg-base-300/60 p-4"
+			class="absolute inset-0 z-10 flex items-center justify-center bg-base-300/60 p-4 cursor-pointer"
 			role="presentation"
+			onclick={(e) => {
+				if (e.target === e.currentTarget) dismissConfirm();
+			}}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') dismissConfirm();
+			}}
 		>
 			<div
-				class="modal-box flex w-full max-w-md flex-col gap-4 border border-ink-border bg-base-100 p-6 shadow-lg"
+				class="modal-box flex w-full max-w-md flex-col gap-4 border border-ink-border bg-base-100 p-6 shadow-lg cursor-default"
 				role="alertdialog"
+				tabindex="-1"
 				aria-labelledby="med-order-history-confirm-title"
 				aria-describedby="med-order-history-confirm-message"
 			>

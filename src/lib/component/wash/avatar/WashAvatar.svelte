@@ -1,7 +1,7 @@
 <script lang="ts">
 	let {
 		src,
-		alt,
+		alt = '',
 		shape = 'rounded-full', // "rounded-full", "rounded-xl", or any custom class
 		size = 'w-12', // tailwind size class
 		placeholder,
@@ -19,7 +19,7 @@
 {#if src}
 	<div class="avatar {className}">
 		<div class="{size} {shape}">
-			<img {src} {alt} />
+			<img {src} alt={alt} />
 		</div>
 	</div>
 {:else if placeholder}

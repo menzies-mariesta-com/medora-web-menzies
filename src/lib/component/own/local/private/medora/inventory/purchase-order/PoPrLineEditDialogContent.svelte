@@ -43,7 +43,7 @@
 	{#if draftPoPrLine}
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div>
-				<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+				<label class="text-xs opacity-80" for="a11y-poprlineeditdialogconten-20f0ef">{m.inv_common_quantity()}</label>
 				<input
 					type="number"
 					class="input-bordered input w-full"
@@ -57,10 +57,10 @@
 					step="1"
 					min="0"
 					aria-label={m.inv_common_quantity()}
-				/>
+				id="a11y-poprlineeditdialogconten-20f0ef" />
 			</div>
 			<div>
-				<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
+				<label class="text-xs opacity-80" for="a11y-poprlineeditdialogconten-521a71">{m.inv_po_line_unit_price()}</label>
 				<input
 					type="number"
 					class="input-bordered input w-full"
@@ -74,7 +74,7 @@
 					step="0.01"
 					min="0"
 					aria-label={m.inv_po_line_unit_price()}
-				/>
+				id="a11y-poprlineeditdialogconten-521a71" />
 			</div>
 		</div>
 	{/if}

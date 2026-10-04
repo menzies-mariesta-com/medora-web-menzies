@@ -196,22 +196,14 @@
 
 <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-3">
 	<div class="flex flex-wrap items-end gap-4 text-sm">
-		<label class="flex flex-col gap-1">
-			<span class="font-medium">Order Date</span>
-			<WashInputField
+		<div  class="flex flex-col gap-1"><label for="a11y-lserviceorderpendingline-b38846"><span class="font-medium">Order Date</span></label> <WashInputField
 				bind:value={orderDateInput}
 				inputType="date"
-				className="input-sm w-40"
-			/>
-		</label>
-		<label class="flex flex-col gap-1">
-			<span class="font-medium">Order Time</span>
-			<WashInputField
+				className="input-sm w-40" id="a11y-lserviceorderpendingline-b38846" /></div>
+		<div  class="flex flex-col gap-1"><label for="a11y-lserviceorderpendingline-089ab1"><span class="font-medium">Order Time</span></label> <WashInputField
 				bind:value={orderTimeInput}
 				inputType="time"
-				className="input-sm w-32"
-			/>
-		</label>
+				className="input-sm w-32" id="a11y-lserviceorderpendingline-089ab1" /></div>
 	</div>
 
 	<div class="flex flex-wrap items-center gap-6">
@@ -261,9 +253,7 @@
 	<div
 		class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
 	>
-		<label class="flex min-w-0 flex-col gap-1 text-sm">
-			Service Name
-			<SearchSelect
+		<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lserviceorderpendingline-5cf4a9">Service Name</label> <SearchSelect inputId="a11y-lserviceorderpendingline-5cf4a9"
 				bind:value={detailServiceIdInput}
 				placeholder="Select service"
 				searchFn={searchServicesBound}
@@ -276,19 +266,14 @@
 					detailServiceUnitInput = '1';
 					await applyPricing();
 				}}
-			/>
-		</label>
-		<label class="flex min-w-0 flex-col gap-1 text-sm">
-			Order by (Adv Dr.)
-			<SearchSelect
+			/></div>
+		<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lserviceorderpendingline-0def0a">Order by (Adv Dr.)</label> <SearchSelect
 				bind:value={detailAdvisingDoctorIdInput}
 				placeholder="Select doctor"
 				className="w-full"
 				searchFn={searchDoctors}
 				getLabelForValue={getDoctorLabelForValue}
-				minSearchLength={0}
-			/>
-		</label>
+				minSearchLength={0} inputId="a11y-lserviceorderpendingline-0def0a" /></div>
 		<label class="flex min-w-0 flex-col gap-1 text-sm">
 			Unit
 			<input

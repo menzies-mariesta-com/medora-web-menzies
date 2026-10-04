@@ -20,6 +20,7 @@
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 
@@ -57,7 +58,7 @@
 				'content-type': 'application/json'
 			}
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

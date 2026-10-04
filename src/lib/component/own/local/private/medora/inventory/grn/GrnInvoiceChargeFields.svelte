@@ -34,11 +34,15 @@
 		label={discountMode === 'amount'
 			? m.inv_grn_invoice_discount_amount()
 			: m.inv_grn_invoice_discount_percent()}
+		controlId={discountMode === 'amount'
+			? 'grn-invoice-discount-amount'
+			: 'grn-invoice-discount-percent'}
 	>
 		<div class="flex items-center gap-3">
 			<div class="min-w-0 flex-1">
 				{#if discountMode === 'amount'}
 					<input
+						id="grn-invoice-discount-amount"
 						type="number"
 						class="input-bordered input w-full"
 						value={invoiceDiscountAmount === '' ||
@@ -54,6 +58,7 @@
 					/>
 				{:else}
 					<input
+						id="grn-invoice-discount-percent"
 						type="number"
 						class="input-bordered input w-full"
 						value={invoiceDiscountPercent === '' ||
@@ -90,11 +95,15 @@
 		label={taxMode === 'amount'
 			? m.inv_grn_invoice_tax_amount()
 			: m.inv_grn_invoice_tax_percent()}
+		controlId={taxMode === 'amount'
+			? 'grn-invoice-tax-amount'
+			: 'grn-invoice-tax-percent'}
 	>
 		<div class="flex items-center gap-3">
 			<div class="min-w-0 flex-1">
 				{#if taxMode === 'amount'}
 					<input
+						id="grn-invoice-tax-amount"
 						type="number"
 						class="input-bordered input w-full"
 						value={invoiceTaxAmount === '' || invoiceTaxAmount === '0'
@@ -109,6 +118,7 @@
 					/>
 				{:else}
 					<input
+						id="grn-invoice-tax-percent"
 						type="number"
 						class="input-bordered input w-full"
 						value={invoiceTaxPercent === '' || invoiceTaxPercent === '0'

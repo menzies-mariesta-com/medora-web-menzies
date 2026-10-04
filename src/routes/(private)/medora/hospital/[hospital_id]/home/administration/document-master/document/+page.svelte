@@ -23,6 +23,7 @@
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -109,7 +110,7 @@
 				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			documentResult =
 				(await res.json()) as PaginatedResult<DocumentWithRelations>;
 		} finally {
@@ -124,7 +125,7 @@
 				`/api/medora/hospital/${hospitalId}/home/administration/document-master/document-type`,
 				{ method: 'GET' }
 			);
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			documentTypes = (await res.json()) as DocumentTypeRow[];
 		} catch (err) {
 			console.error('Failed to load document types', err);
@@ -144,7 +145,7 @@
 			url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const result =
 				(await res.json()) as PaginatedResult<DocumentSettingWithRelations>;
 			documentSettings = result.data ?? [];
@@ -241,7 +242,7 @@
 					headers: { 'content-type': 'application/json' },
 					body: JSON.stringify({ id: editingId, ...payload })
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_document(),
@@ -253,7 +254,7 @@
 					headers: { 'content-type': 'application/json' },
 					body: JSON.stringify(payload)
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_document(),
@@ -288,7 +289,7 @@
 						body: JSON.stringify({ id })
 					}
 				);
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				await fetchData({ bustCache: true });
 				toastSuccess(
 					toastService,

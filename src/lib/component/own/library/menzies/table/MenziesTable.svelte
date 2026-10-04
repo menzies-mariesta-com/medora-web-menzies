@@ -925,19 +925,16 @@
 		<div
 			class="flex min-w-0 flex-wrap items-center justify-start justify-self-start gap-2"
 		>
-			<label class="text-ink-muted flex items-center gap-1.5 text-xs">
-				<span class="whitespace-nowrap">Per page</span>
-				<WashSelect
+			<div  class="text-ink-muted flex items-center gap-1.5 text-xs"><label for="a11y-menziestable-5752bc"><span class="whitespace-nowrap">Per page</span></label> <WashSelect
 					className="select select-sm select-bordered w-auto min-w-[4.5rem] cursor-pointer"
 					bind:value={pageSize}
 					onChange={handlePageSizeChange}
 					disabled={isLoading}
-				>
+				 id="a11y-menziestable-5752bc">
 					{#each pageSizeOptions as size (size)}
 						<option value={String(size)}>{size}</option>
 					{/each}
-				</WashSelect>
-			</label>
+				</WashSelect></div>
 		</div>
 
 		<p

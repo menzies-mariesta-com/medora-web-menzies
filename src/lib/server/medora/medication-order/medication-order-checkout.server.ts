@@ -48,7 +48,7 @@ export async function checkoutMedicationOrderBatchExternal(
 	await ensureCanAccessHospital(event, hospitalId);
 
 	if (!amountPaid || !Number.isFinite(Number(amountPaid))) {
-		throw error(400, 'amountPaid is required');
+		throw error(400, 'Enter the amount paid');
 	}
 
 	const db = ensureDb();

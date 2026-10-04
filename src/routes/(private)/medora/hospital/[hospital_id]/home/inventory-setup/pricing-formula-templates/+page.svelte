@@ -342,35 +342,29 @@
 						</div>
 					</div>
 					<div class="flex flex-col gap-1">
-						<label>{m.remark()}</label>
+						<label for="a11y-page-8f476f">{m.remark()}</label>
 						<WashInputField
 							bind:value={description}
-							inputType="text"
-						/>
+							inputType="text" id="a11y-page-8f476f" />
 					</div>
 					<fieldset class="rounded-md border border-base-300 p-3">
 						<legend class="px-1 text-sm font-medium"
 							>{m.inv_pricing_template_cost_basis()}</legend
 						>
 						<div class="flex flex-col gap-2">
-							<label class="flex items-center gap-2 text-sm">
-								<WashCheckbox bind:checked={includeDiscount} />
+							<label class="flex items-center gap-2 text-sm" for="a11y-page-2afdfe"><WashCheckbox bind:checked={includeDiscount} id="a11y-page-2afdfe" />
 								{m.inv_pricing_config_include_discount()}
 							</label>
-							<label class="flex items-center gap-2 text-sm">
-								<WashCheckbox bind:checked={includeTax} />
+							<label class="flex items-center gap-2 text-sm" for="a11y-page-3777ba"><WashCheckbox bind:checked={includeTax} id="a11y-page-3777ba" />
 								{m.inv_pricing_config_include_tax()}
 							</label>
-							<label class="flex items-center gap-2 text-sm">
-								<WashCheckbox bind:checked={includeFreeQty} />
+							<label class="flex items-center gap-2 text-sm" for="a11y-page-746dbf"><WashCheckbox bind:checked={includeFreeQty} id="a11y-page-746dbf" />
 								{m.inv_pricing_config_include_free_qty()}
 							</label>
-							<label class="flex items-center gap-2 text-sm">
-								<WashCheckbox bind:checked={includeItemMarkup} />
+							<label class="flex items-center gap-2 text-sm" for="a11y-page-4d4be6"><WashCheckbox bind:checked={includeItemMarkup} id="a11y-page-4d4be6" />
 								{m.inv_pricing_template_include_item_markup()}
 							</label>
-							<label class="flex items-center gap-2 text-sm">
-								<WashCheckbox bind:checked={includeStoreMarkup} />
+							<label class="flex items-center gap-2 text-sm" for="a11y-page-3a8739"><WashCheckbox bind:checked={includeStoreMarkup} id="a11y-page-3a8739" />
 								{m.inv_pricing_template_include_store_markup()}
 							</label>
 						</div>

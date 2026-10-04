@@ -27,6 +27,7 @@
 		itemUnitMastersResponseToCatalog,
 		trimInventoryNumericDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 
@@ -217,11 +218,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}
@@ -259,11 +259,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}
@@ -291,11 +290,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}
@@ -540,12 +538,12 @@
 						>
 					</div>
 					<div class="space-y-1">
-						<label>{m.inv_common_remarks()}</label>
+						<label for="a11y-page-5f5a39">{m.inv_common_remarks()}</label>
 						<textarea
 							class="textarea textarea-bordered h-[88px] w-full resize-none"
 							bind:value={remarks}
 							placeholder="Optional approval remarks..."
-						></textarea>
+						 id="a11y-page-5f5a39"></textarea>
 					</div>
 				</div>
 			</div>

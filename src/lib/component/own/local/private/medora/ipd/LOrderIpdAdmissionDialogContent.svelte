@@ -14,6 +14,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 
@@ -94,7 +95,7 @@
 					})
 				}
 			);
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const data = await res.json();
 			toastService.addToast(
 				'IPD admission ordered — pending at ADT desk',
@@ -117,21 +118,11 @@
 		Creates a pending admission for the ADT desk (care level and urgency).
 		Bed assignment happens when ADT admits the patient.
 	</p>
-	<label class="flex min-w-0 flex-col gap-1 text-sm">
-		Care level
-		<WashSelect bind:value={careLevel} options={careLevelOptions} />
-	</label>
-	<label class="flex min-w-0 flex-col gap-1 text-sm">
-		Urgency
-		<WashSelect bind:value={urgency} options={urgencyOptions} />
-	</label>
-	<label class="flex min-w-0 flex-col gap-1 text-sm">
-		Preferred ward (optional)
-		<WashSelect
+	<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lorderipdadmissiondialog-15e3dd">Care level</label> <WashSelect bind:value={careLevel} options={careLevelOptions} id="a11y-lorderipdadmissiondialog-15e3dd" /></div>
+	<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lorderipdadmissiondialog-4339fa">Urgency</label> <WashSelect bind:value={urgency} options={urgencyOptions} id="a11y-lorderipdadmissiondialog-4339fa" /></div>
+	<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-lorderipdadmissiondialog-0022dd">Preferred ward (optional)</label> <WashSelect
 			bind:value={preferredWardId}
-			options={wardOptions}
-		/>
-	</label>
+			options={wardOptions} id="a11y-lorderipdadmissiondialog-0022dd" /></div>
 	<label class="flex min-w-0 flex-col gap-1 text-sm">
 		Notes
 		<textarea

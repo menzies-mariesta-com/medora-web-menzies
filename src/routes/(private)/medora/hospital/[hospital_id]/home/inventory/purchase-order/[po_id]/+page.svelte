@@ -25,8 +25,8 @@
 		trimInventoryNumericDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import medoraLogo from '$lib/asset/image/medora-logo.svg';
-
-	const toastService = new ToastService();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const toastService = new ToastService();
 	const msg = m as unknown as Record<
 		string,
 		(() => string) | undefined
@@ -191,11 +191,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}
@@ -223,11 +222,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}

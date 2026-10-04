@@ -29,7 +29,6 @@
 		}>({
 			// Title lives on MenziesTable inside the picker (no double header).
 			title: '',
-			closeOnOutsideClick: true,
 			component: LVisitListDialogContent,
 			fullScreen: true,
 			props: { title: m.choose_visit() }

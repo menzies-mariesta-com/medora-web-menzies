@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
@@ -8,12 +9,13 @@
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashTextarea from '$lib/component/wash/textarea/WashTextarea.svelte';
+	import LucideHospital from '$lib/component/own/library/lucide/LucideHospital.svelte';
 	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
 	import LucideUserX from '$lib/component/own/library/lucide/LucideUserX.svelte';
 	import { authClient } from '$lib/auth/client';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
-	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -24,6 +26,7 @@
 	import LStaffRegistrationLicenseAndSignatureModal from '$lib/component/own/local/private/medora/administration/staff/registration/modal/LStaffRegistrationLicenseAndSignatureModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastError, toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import type {
 		AccountProfileSeed,
 		AccountSettingsApiRow
@@ -51,6 +54,16 @@
 		string,
 		(inputs?: Record<string, string>) => string
 	>;
+
+	const isOwner = $derived(
+		(page.data as { userRoleId?: number | null })?.userRoleId ===
+			RoleEnum.OWNER
+	);
+	const isOnHospitalsList = $derived(
+		page.url.pathname === WebRoutesEnum.MEDORA_HOSPITAL ||
+			page.url.pathname === `${WebRoutesEnum.MEDORA_HOSPITAL}/`
+	);
+	const showBackToHospitals = $derived(isOwner && !isOnHospitalsList);
 
 	type Screen = 'menu' | 'settings';
 	let screen = $state<Screen>('menu');
@@ -141,6 +154,11 @@
 		onClose();
 		await authClient.signOut();
 		routerUtil.goToRoute(WebRoutesEnum.LOGIN);
+	}
+
+	function goToHospitalsList() {
+		handleClose();
+		routerUtil.goToRoute(WebRoutesEnum.MEDORA_HOSPITAL);
 	}
 
 	async function loadTwoFactorStatus() {
@@ -379,9 +397,7 @@
 	async function loadGenderOptions() {
 		try {
 			const r = await fetch('/api/medora/master/lookup?kind=gender');
-			if (!r.ok) {
-				throw new Error((await r.text()) || 'Failed to load genders');
-			}
+			if (!r.ok) await throwUserFacingHttpError(r);
 			genderOptions = (await r.json()) as LookupRow[];
 		} catch (err) {
 			console.error(err);
@@ -615,9 +631,10 @@
 				redirectTo: routerUtil.getResetRedirectUrl()
 			});
 			if (error) {
-				toastService.addToast(
-					error.message ?? 'Failed to send reset link.',
-					StatusColorEnum.ERROR
+				console.error(error);
+				toastService.addErrorToast(
+					m.failed_send_reset_link(),
+					error
 				);
 				return;
 			}
@@ -655,10 +672,7 @@
 						statusId: StatusEnum.INACTIVE
 					})
 				});
-				if (!res.ok) {
-					const t = await res.text().catch(() => '');
-					throw new Error(t || `Update failed: ${res.status}`);
-				}
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_account(),
@@ -1052,6 +1066,19 @@
 		{:else}
 			<div class="flex flex-col gap-4">
 				<div class="flex flex-col gap-2">
+					{#if showBackToHospitals}
+						<WashButton
+							type="button"
+							soft
+							variant="primary"
+							className="w-full justify-start gap-2 cursor-pointer"
+							onClick={goToHospitalsList}
+							disabled={isBusy}
+						>
+							<LucideHospital className="size-5" />
+							{msg.back_to_hospitals()}
+						</WashButton>
+					{/if}
 					<WashButton
 						type="button"
 						className="btn-ghost w-full justify-start gap-2"

@@ -9,6 +9,7 @@
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 
@@ -47,7 +48,7 @@
 			}
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -65,7 +66,7 @@
 				})
 			}
 		);
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

@@ -84,7 +84,6 @@
 		open={true}
 		{onClose}
 		title=""
-		closeOnOutsideClick={true}
 		showActions={false}
 		boxClassName="h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none"
 	>

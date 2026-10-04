@@ -8,8 +8,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
-
-	const msg = m as Record<string, (inputs?: object) => string>;
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
 
 	export type SessionExtendDialogResult = {
@@ -50,7 +50,7 @@
 			});
 
 			if (!res.ok) {
-				const text = await res.text().catch(() => '');
+				const text = await userFacingDetailFromResponse(res).catch(() => '');
 				if (res.status === 401) {
 					toastService.addToast(
 						msg.session_extend_password_invalid(),

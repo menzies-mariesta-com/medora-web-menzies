@@ -8,6 +8,7 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	let rows = $state<ConsultationWorkspaceRow[]>([]);
@@ -26,7 +27,7 @@
 			const response = await fetch(
 				`/api/medora/hospital/${hospitalId}/home/consultation`
 			);
-			if (!response.ok) throw new Error(await response.text());
+			if (!response.ok) await throwUserFacingHttpError(response);
 			rows = (await response.json()) as ConsultationWorkspaceRow[];
 		} catch (error) {
 			errorMessage =

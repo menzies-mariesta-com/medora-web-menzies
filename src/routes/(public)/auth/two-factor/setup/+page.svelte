@@ -23,6 +23,9 @@
 		string,
 		(inputs?: Record<string, string>) => string
 	>;
+	const pageTitle = $derived(
+		`${msg.auth_2fa_setup_title()} | ${m.menzies_medora()}`
+	);
 
 	type Step = 'password' | 'confirm' | 'backup';
 
@@ -150,6 +153,11 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	<title>{pageTitle}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 {#if sessionChecked}
 	{#if step === 'password'}

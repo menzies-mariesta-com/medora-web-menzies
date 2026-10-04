@@ -35,6 +35,7 @@
 		itemUnitMastersResponseToCatalog,
 		trimInventoryNumericDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 
 	let { data } = $props();
 	const selectedInventoryFromStoreId = $derived(
@@ -598,7 +599,6 @@
 			const result = await dialogService.open<ApprovedPrOptionRow>({
 				fullScreen: true,
 				title: '',
-				closeOnOutsideClick: true,
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_po_select_pr(),
@@ -818,7 +818,7 @@
 			if (!res.ok) {
 				toastService.addErrorToast(
 					'Could not create purchase order',
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -911,7 +911,7 @@
 			if (!res.ok) {
 				toastService.addErrorToast(
 					'Could not create purchase order',
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -1112,7 +1112,7 @@
 							<div
 								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 							>
-								<label class="shrink-0 sm:w-36">{m.inv_po_select_pr()}</label>
+								<label class="shrink-0 sm:w-36" for="a11y-page-ed4887">{m.inv_po_select_pr()}</label>
 								<div
 									class="flex max-w-80 min-w-0 flex-1 flex-wrap items-stretch gap-2 sm:flex-nowrap"
 								>
@@ -1122,8 +1122,7 @@
 										disabled
 										class="input-bordered input min-w-0 flex-1 text-sm"
 										value={selectedPrSummary || '—'}
-										aria-label={m.inv_po_select_pr()}
-									/>
+										aria-label={m.inv_po_select_pr()} id="a11y-page-ed4887" />
 									<WashButton
 										type="button"
 										className="btn-outline shrink-0"
@@ -1139,9 +1138,9 @@
 							<div
 								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 							>
-								<label class="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</label>
+								<label class="shrink-0 sm:w-36" for="a11y-page-975e16">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<SearchSelect
+									<SearchSelect inputId="a11y-page-975e16"
 										value={supplierId != null
 											? String(supplierId)
 											: ''}
@@ -1192,7 +1191,7 @@
 							<div
 								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 							>
-								<label class="shrink-0 sm:w-36">{m.inv_nav_from_store()}</label>
+								<label class="shrink-0 sm:w-36" for="a11y-page-c8e3a4">{m.inv_nav_from_store()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
 									<input
 										type="text"
@@ -1200,8 +1199,7 @@
 										disabled
 										class="input-bordered input w-full text-sm"
 										value={navFromStoreLabel}
-										aria-label={m.inv_nav_from_store()}
-									/>
+										aria-label={m.inv_nav_from_store()} id="a11y-page-c8e3a4" />
 									{#if selectedInventoryFromStoreId == null}
 										<div
 											class="mt-2 alert text-sm alert-warning"
@@ -1215,9 +1213,9 @@
 							<div
 								class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 							>
-								<label class="shrink-0 sm:w-36">{m.inv_po_supplier_search()}</label>
+								<label class="shrink-0 sm:w-36" for="a11y-page-d93e2c">{m.inv_po_supplier_search()}</label>
 								<div class="max-w-80 min-w-0 flex-1">
-									<SearchSelect
+									<SearchSelect inputId="a11y-page-d93e2c"
 										value={supplierId != null
 											? String(supplierId)
 											: ''}

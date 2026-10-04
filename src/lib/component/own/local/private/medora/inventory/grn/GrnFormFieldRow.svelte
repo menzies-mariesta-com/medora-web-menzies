@@ -4,10 +4,13 @@
 	let {
 		label,
 		alignStart = false,
+		controlId,
 		children
 	}: {
 		label: string;
 		alignStart?: boolean;
+		/** When set, left column uses label for=controlId. Otherwise a span. */
+		controlId?: string;
 		children: Snippet;
 	} = $props();
 </script>
@@ -17,9 +20,16 @@
 		? 'sm:items-start'
 		: 'sm:items-center'}"
 >
-	<label class="shrink-0 sm:w-40 {alignStart ? 'sm:pt-2' : ''}">
-		{label}
-	</label>
+	{#if controlId}
+		<label
+			for={controlId}
+			class="shrink-0 sm:w-40 {alignStart ? 'sm:pt-2' : ''}"
+		>
+			{label}
+		</label>
+	{:else}
+		<span class="shrink-0 sm:w-40 {alignStart ? 'sm:pt-2' : ''}">{label}</span>
+	{/if}
 	<div class="min-w-0 flex-1">
 		{@render children()}
 	</div>

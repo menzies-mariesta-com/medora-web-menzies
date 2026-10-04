@@ -22,6 +22,9 @@
 		string,
 		(inputs?: Record<string, string>) => string
 	>;
+	const pageTitle = $derived(
+		`${msg.auth_2fa_title()} | ${m.menzies_medora()}`
+	);
 
 	function sanitizeRedirectTo(redirectTo: string | null) {
 		if (!redirectTo) return WebRoutesEnum.MEDORA_HOSPITAL;
@@ -104,6 +107,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{pageTitle}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <form class="mx-auto w-full max-w-sm" onsubmit={handleVerify} novalidate>
 	<AuthTemplateCard
 		title={msg.auth_2fa_title()}
@@ -155,8 +163,7 @@
 			</fieldset>
 		{/if}
 
-		<label class="label cursor-pointer justify-start gap-2 py-0">
-			<WashCheckbox className="checkbox-sm" bind:checked={trustDevice} />
+		<label class="label cursor-pointer justify-start gap-2 py-0" for="a11y-page-a2274b"><WashCheckbox className="checkbox-sm" bind:checked={trustDevice} id="a11y-page-a2274b" />
 			<span class="label-text text-sm">{msg.auth_2fa_trust_device()}</span>
 		</label>
 

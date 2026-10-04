@@ -71,6 +71,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	/** Paraglide `m` typings can lag behind `messages/*.json`; messages exist at runtime. */
 	const msg = m as Record<string, (inputs?: object) => string>;
@@ -257,7 +258,7 @@
 				url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -270,7 +271,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...payload })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

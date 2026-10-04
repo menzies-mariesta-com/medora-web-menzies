@@ -262,35 +262,32 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">Code</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-7eac4f">Code</label>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											bind:value={codeInput}
 											inputType="text"
-											inputPlaceholderText="FY24-25"
-										/>
+											inputPlaceholderText="FY24-25" id="a11y-page-7eac4f" />
 									</div>
 								</div>
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">Start Date</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-911ed0">Start Date</label>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											inputType="date"
-											bind:value={startDateInput}
-										/>
+											bind:value={startDateInput} id="a11y-page-911ed0" />
 									</div>
 								</div>
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">End Date</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-1e3b9e">End Date</label>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											inputType="date"
-											bind:value={endDateInput}
-										/>
+											bind:value={endDateInput} id="a11y-page-1e3b9e" />
 									</div>
 								</div>
 							</div>

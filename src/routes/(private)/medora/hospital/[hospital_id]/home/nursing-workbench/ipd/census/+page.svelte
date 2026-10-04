@@ -23,6 +23,7 @@
 		buildConsultationEmrUrl,
 		buildIpdNursingChartUrl
 	} from '$lib/tool/ipd/ipd-nursing-redirect.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -118,7 +119,7 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const result = (await res.json()) as {
 				data: IpdCensusRow[];
 				total: number;

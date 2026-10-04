@@ -8,6 +8,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { IpdTransferDialogState } from '$lib/state/ipd-transfer-dialog.state.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 	const toastService = new ToastService();
@@ -102,7 +103,7 @@
 					remark: remark.trim() || null
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast('Transferred', StatusColorEnum.SUCCESS);
 			confirm(await res.json());
 		} catch (err) {

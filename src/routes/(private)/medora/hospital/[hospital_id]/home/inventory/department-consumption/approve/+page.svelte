@@ -24,8 +24,8 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-
-	const toast = new ToastService();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const toast = new ToastService();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -162,11 +162,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toast.addToast(
 					'Action failed',
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}
@@ -200,13 +199,12 @@
 		</div>
 
 		<div class="mb-4 max-w-xl">
-			<label>{m.inv_common_remarks()}</label>
+			<label for="a11y-page-60a4a4">{m.inv_common_remarks()}</label>
 			<input
 				class="input-bordered input mt-1 w-full text-sm"
 				type="text"
 				bind:value={remarks}
-				placeholder="Optional approval remarks..."
-			/>
+				placeholder="Optional approval remarks..." id="a11y-page-60a4a4" />
 		</div>
 
 		<div class={TableEnum.HEIGHT}>

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import LucidePrinter from '$lib/component/own/library/lucide/LucidePrinter.svelte';
+	import LucideSave from '$lib/component/own/library/lucide/LucideSave.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import type { CaseSheetGetResponse } from '$lib/model/type/medora/case-sheet.type';
@@ -420,37 +420,6 @@
 </script>
 
 <div class="case-sheet-root px-2 py-4 md:px-4">
-	<div
-		class="no-print mb-4 flex flex-wrap items-center justify-between gap-2"
-	>
-		<h1 class="text-xl font-semibold text-base-content">
-			{m.nursing_case_sheet_title()}
-		</h1>
-		{#if visitId && visitRow}
-			<div class="flex flex-wrap gap-2">
-				<WashButton
-					type="button"
-					className="btn-outline btn-sm gap-2"
-					onClick={saveCaseSheet}
-					disabled={isSaving || isPrinting}
-					loading={isSaving}
-				>
-					{m.save()}
-				</WashButton>
-				<WashButton
-					type="button"
-					className="btn-primary btn-sm gap-2"
-					onClick={printCaseSheet}
-					disabled={isSaving || isPrinting}
-					loading={isPrinting}
-				>
-					<LucidePrinter className="size-4" />
-					{m.nursing_case_sheet_print()}
-				</WashButton>
-			</div>
-		{/if}
-	</div>
-
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
@@ -477,9 +446,51 @@
 		{#if visitRow}
 			<article class="case-sheet-document">
 				<header class="case-sheet-header">
-					<h2 class="case-sheet-doc-title">
-						{m.nursing_case_sheet_title()}
-					</h2>
+					<div
+						class="case-sheet-title-row flex items-center justify-between gap-2"
+					>
+						<h2 class="case-sheet-doc-title">
+							{m.nursing_case_sheet_title()}
+						</h2>
+						<div class="no-print flex shrink-0 items-center gap-1">
+							<div
+								class="tooltip tooltip-primary"
+								data-tip={m.save()}
+							>
+								<button
+									type="button"
+									class="btn btn-ghost btn-square btn-primary"
+									class:cursor-pointer={!isSaving && !isPrinting}
+									class:cursor-not-allowed={isSaving || isPrinting}
+									class:loading={isSaving}
+									disabled={isSaving || isPrinting}
+									aria-busy={isSaving}
+									aria-label={m.save()}
+									onclick={saveCaseSheet}
+								>
+									<LucideSave className="size-4" />
+								</button>
+							</div>
+							<div
+								class="tooltip tooltip-secondary"
+								data-tip={m.nursing_case_sheet_print()}
+							>
+								<button
+									type="button"
+									class="btn btn-ghost btn-square btn-secondary"
+									class:cursor-pointer={!isSaving && !isPrinting}
+									class:cursor-not-allowed={isSaving || isPrinting}
+									class:loading={isPrinting}
+									disabled={isSaving || isPrinting}
+									aria-busy={isPrinting}
+									aria-label={m.nursing_case_sheet_print()}
+									onclick={printCaseSheet}
+								>
+									<LucidePrinter className="size-4" />
+								</button>
+							</div>
+						</div>
+					</div>
 					<dl class="case-sheet-meta">
 						<div>
 							<dt>{m.visit_history_visit_label_visit_no()}</dt>
@@ -808,10 +819,14 @@
 			color-mix(in oklab, currentColor 18%, transparent);
 	}
 
+	.case-sheet-title-row {
+		margin: 0 0 0.75rem;
+	}
+
 	.case-sheet-doc-title {
 		font-size: 1.35rem;
 		font-weight: 700;
-		margin: 0 0 0.75rem;
+		margin: 0;
 		letter-spacing: 0.02em;
 	}
 

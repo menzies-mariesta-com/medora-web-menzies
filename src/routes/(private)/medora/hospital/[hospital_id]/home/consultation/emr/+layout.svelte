@@ -17,6 +17,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { toastError } from '$lib/util/toast-copy.util';
 	import { untrack } from 'svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { children } = $props();
 
@@ -89,7 +90,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...payload })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
