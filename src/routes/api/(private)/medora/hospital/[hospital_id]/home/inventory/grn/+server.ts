@@ -19,7 +19,7 @@ export const GET: RequestHandler = async (event) => {
 				? Number(storeIdStr)
 				: NaN;
 		if (!Number.isFinite(storeId) || storeId <= 0) {
-			return json({ error: 'storeId required' }, { status: 400 });
+			return json({ error: 'Select a store' }, { status: 400 });
 		}
 		const canPost = await canCurrentStaffPostGrn(event, {
 			hospitalId,
@@ -30,7 +30,7 @@ export const GET: RequestHandler = async (event) => {
 	if (mode === 'receivingStoreForPo') {
 		const poId = event.url.searchParams.get('poId');
 		if (!poId) {
-			return json({ error: 'poId required' }, { status: 400 });
+			return json({ error: 'Select a purchase order' }, { status: 400 });
 		}
 		const row = await getReceivingStoreForPurchaseOrder(event, {
 			hospitalId,

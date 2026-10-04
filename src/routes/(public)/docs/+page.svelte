@@ -2,8 +2,10 @@
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import LucideMenu from '$lib/component/own/library/lucide/LucideMenu.svelte';
 	import LucideX from '$lib/component/own/library/lucide/LucideX.svelte';
+	import SeoHead from '$lib/component/own/snippet/seo/SeoHead.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { m } from '$lib/paraglide/messages';
+	import { absoluteAssetUrl, absoluteUrl } from '$lib/util/seo.util';
 
 	let { data } = $props();
 
@@ -11,8 +13,9 @@
 
 	const title = $derived(msg.docs_seo_title());
 	const description = $derived(msg.docs_seo_description());
-	const canonical = $derived(`${data.origin.replace(/\/$/, '')}/docs`);
-	const ogImage = $derived(`${data.origin.replace(/\/$/, '')}/og-medora.svg`);
+	const siteName = $derived(m.menzies_medora());
+	const canonical = $derived(absoluteUrl(data.origin, '/docs'));
+	const ogImage = $derived(absoluteAssetUrl(data.origin));
 
 	type DocsNavItem = { id: string; labelKey: string };
 
@@ -37,38 +40,28 @@
 		return msg[key]?.() ?? key;
 	}
 
-	const jsonLd = $derived(
-		JSON.stringify({
-			'@context': 'https://schema.org',
-			'@type': 'WebPage',
-			name: title,
-			description,
-			url: canonical,
-			isPartOf: {
-				'@type': 'WebSite',
-				name: m.menzies_medora(),
-				url: data.origin.replace(/\/$/, '')
-			}
-		})
-	);
+	const jsonLd = $derived({
+		'@context': 'https://schema.org',
+		'@type': 'WebPage',
+		name: title,
+		description,
+		url: canonical,
+		isPartOf: {
+			'@type': 'WebSite',
+			name: siteName,
+			url: absoluteUrl(data.origin, '/')
+		}
+	});
 </script>
 
-<svelte:head>
-	<title>{title}</title>
-	<meta name="description" content={description} />
-	<link rel="canonical" href={canonical} />
-	<meta property="og:title" content={title} />
-	<meta property="og:description" content={description} />
-	<meta property="og:url" content={canonical} />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content={m.menzies_medora()} />
-	<meta property="og:image" content={ogImage} />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content={title} />
-	<meta name="twitter:description" content={description} />
-	<meta name="twitter:image" content={ogImage} />
-	{@html `<script type="application/ld+json">${jsonLd}</script>`}
-</svelte:head>
+<SeoHead
+	{title}
+	{description}
+	{canonical}
+	{ogImage}
+	{siteName}
+	{jsonLd}
+/>
 
 <div class="flex min-h-screen flex-col bg-base-100">
 	<header

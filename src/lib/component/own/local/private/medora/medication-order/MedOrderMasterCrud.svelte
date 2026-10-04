@@ -11,8 +11,8 @@
 		type MenziesTableColumn
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import { toastError, toastLine } from '$lib/util/toast-copy.util';
-
-	const lifeCycleUtil = new LifeCycleUtil();
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	let {
@@ -197,7 +197,7 @@
 				credentials: 'include',
 				body: JSON.stringify({ id, statusId })
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			// Keep UI consistent with server response
 			list = list.map((r) =>
 				Number(r.id) === id ? { ...r, statusId } : r
@@ -235,7 +235,7 @@
 				if (t) url.searchParams.set(k, t);
 			}
 			const res = await fetch(url, { credentials: 'include' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const pack = (await res.json()) as {
 				data: Row[];
 				total: number;

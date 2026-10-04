@@ -20,6 +20,9 @@
 		string,
 		(inputs?: Record<string, string>) => string
 	>;
+	const pageTitle = $derived(
+		`${msg.auth_otp_title()} | ${m.menzies_medora()}`
+	);
 
 	const email = $derived(
 		page.url.searchParams.get('email')?.trim() || ''
@@ -115,6 +118,11 @@
 		}
 	}
 </script>
+
+<svelte:head>
+	<title>{pageTitle}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <form class="mx-auto w-full max-w-sm" onsubmit={handleVerify} novalidate>
 	<AuthTemplateCard

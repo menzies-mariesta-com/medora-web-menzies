@@ -23,6 +23,7 @@
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type PatientVitalWithVisit = PatientDiagnosisListRow & {
 		visit?: { id: number; visitNo: string | null } | null;
@@ -173,7 +174,7 @@
 				method: 'DELETE'
 			});
 			if (!res.ok)
-				throw new Error(await res.text().catch(() => res.statusText));
+				await throwUserFacingHttpError(res);
 			toastSuccess(
 				toastService,
 				m.entity_patient_vital(),

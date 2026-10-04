@@ -64,8 +64,8 @@
 <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-pomanuallinedialogconten-831a99">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect inputId="a11y-pomanuallinedialogconten-831a99"
 				value={draftManualLine?.itemId
 					? String(draftManualLine.itemId)
 					: ''}
@@ -85,8 +85,8 @@
 		</div>
 
 		<div>
-			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-pomanuallinedialogconten-e4bed9">{m.inv_common_unit()}</label>
+			<SearchSelect inputId="a11y-pomanuallinedialogconten-e4bed9"
 				value={draftManualLine?.itemUnitMasterId != null
 					? String(draftManualLine.itemUnitMasterId)
 					: ''}
@@ -104,7 +104,7 @@
 		</div>
 
 		<div>
-			<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+			<label class="text-xs opacity-80" for="a11y-pomanuallinedialogconten-9d1211">{m.inv_common_quantity()}</label>
 			<input
 				type="number"
 				class="input-bordered input w-full"
@@ -119,11 +119,11 @@
 				min="0"
 				disabled={draftManualLine?.itemId == null || pickingItem}
 				aria-label={m.inv_common_quantity()}
-			/>
+			id="a11y-pomanuallinedialogconten-9d1211" />
 		</div>
 
 		<div>
-			<label class="text-xs opacity-80">{m.inv_po_line_unit_price()}</label>
+			<label class="text-xs opacity-80" for="a11y-pomanuallinedialogconten-6239c2">{m.inv_po_line_unit_price()}</label>
 			<input
 				type="number"
 				class="input-bordered input w-full"
@@ -138,7 +138,7 @@
 				min="0"
 				disabled={draftManualLine?.itemId == null || pickingItem}
 				aria-label={m.inv_po_line_unit_price()}
-			/>
+			id="a11y-pomanuallinedialogconten-6239c2" />
 		</div>
 	</div>
 

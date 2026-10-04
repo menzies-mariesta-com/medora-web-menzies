@@ -238,30 +238,105 @@
 	}
 </script>
 
-{#snippet documentActions(doc: ClinicalDocumentRow, accentClass: string)}
+{#snippet documentActions(
+	doc: ClinicalDocumentRow,
+	accentClass: string,
+	accentTooltip: string
+)}
 	<div class="flex shrink-0 items-center gap-1">
 		<WashButton
 			type="button"
-			className="btn-outline btn-xs {accentClass}"
+			size="sm"
+			className="btn-outline {accentClass}"
 			onClick={() => saveDocument(doc)}
 			disabled={!canAct}
 			loading={isSavingDoc(doc)}
 		>
 			{m.save()}
 		</WashButton>
-		<button
-			type="button"
-			class="btn btn-ghost btn-xs {accentClass}"
-			onclick={() => printDocument(doc)}
-			title={m.nursing_case_sheet_print()}
-			disabled={!canAct}
+		<div
+			class="tooltip tooltip-left {accentTooltip}"
+			data-tip={m.nursing_case_sheet_print()}
 		>
-			<LucidePrinter className="w-4 h-4" />
-		</button>
+			<button
+				type="button"
+				class="btn btn-ghost btn-sm btn-square {accentClass}"
+				class:cursor-pointer={canAct}
+				class:cursor-not-allowed={!canAct}
+				onclick={() => printDocument(doc)}
+				aria-label={m.nursing_case_sheet_print()}
+				disabled={!canAct}
+			>
+				<LucidePrinter className="w-4 h-4" />
+			</button>
+		</div>
 	</div>
 {/snippet}
 
-<div class="relative flex flex-col gap-4 p-4">
+{#snippet documentList(
+	docs: ClinicalDocumentRow[],
+	emptyLabel: string,
+	fallbackPrefix: string,
+	accentClass: string,
+	accentTooltip: string
+)}
+	<ul class="flex flex-col gap-0.5 p-2">
+		{#if docs.length === 0}
+			<li class="min-w-0 px-2 py-2">
+				<span class="text-sm text-base-content/50">{emptyLabel}</span>
+			</li>
+		{:else}
+			{#each docs as doc (doc.id)}
+				{@const rowTitle =
+					doc.documentNumber || `${fallbackPrefix} #${doc.id}`}
+				<li class="min-w-0">
+					<div
+						class="flex min-w-0 w-full items-center gap-2 px-2 py-2"
+					>
+						<span
+							class="min-w-0 flex-1 truncate text-sm"
+							title={rowTitle}
+						>
+							{rowTitle}
+						</span>
+						{@render documentActions(doc, accentClass, accentTooltip)}
+					</div>
+				</li>
+			{/each}
+		{/if}
+	</ul>
+{/snippet}
+
+{#snippet documentCard(
+	heading: string,
+	docs: ClinicalDocumentRow[],
+	iconClass: string,
+	emptyLabel: string,
+	fallbackPrefix: string,
+	accentClass: string,
+	accentTooltip: string
+)}
+	<WashCard className="min-w-0 overflow-hidden bg-base-100">
+		<div class="border-b border-base-300 p-4">
+			<h3 class="flex items-center gap-2 text-lg font-semibold">
+				<LucideFileText className="w-5 h-5 {iconClass}" />
+				{heading}
+			</h3>
+			<p class="mt-1 text-sm text-base-content/60">
+				{docs.length} document{docs.length !== 1 ? 's' : ''} available
+			</p>
+		</div>
+		{@render documentList(
+			docs,
+			emptyLabel,
+			fallbackPrefix,
+			accentClass,
+			accentTooltip
+		)}
+	</WashCard>
+{/snippet}
+
+<div class="relative flex min-w-0 flex-col gap-4 p-3 sm:p-4">
 	{#if isPrinting}
 		<div
 			class="print-loading-overlay"
@@ -276,7 +351,7 @@
 		</div>
 	{/if}
 	{#if !visitId}
-		<WashCard className="p-6">
+		<WashCard className="min-w-0 p-6">
 			<div class="text-center text-base-content/70">
 				<LucideFileText
 					className="w-12 h-12 mx-auto mb-4 opacity-50"
@@ -288,129 +363,46 @@
 		</WashCard>
 	{:else}
 		<div
-			class="grid grid-cols-1 gap-4 lg:grid-cols-3"
+			class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
 			class:opacity-60={isLoading}
 			class:pointer-events-none={isLoading}
 			aria-busy={isLoading}
 		>
 			{#if isLoading}
 				<div
-					class="no-print flex items-center gap-2 text-sm text-base-content/70 lg:col-span-3"
+					class="no-print col-span-full flex items-center gap-2 text-sm text-base-content/70"
 				>
 					<span class="loading loading-spinner loading-sm"></span>
 					Loading documents…
 				</div>
 			{/if}
-			<WashCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-primary" />
-						Consent Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{consentDocuments.length} document{consentDocuments.length !==
-						1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="menu p-2">
-					{#if consentDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No consent forms available</span
-							>
-						</li>
-					{:else}
-						{#each consentDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between gap-2 py-2"
-								>
-									<span class="min-w-0 flex-1 truncate text-sm">
-										{doc.documentNumber || `Consent #${doc.id}`}
-									</span>
-									{@render documentActions(doc, 'text-primary')}
-								</div>
-							</li>
-						{/each}
-					{/if}
-				</ul>
-			</WashCard>
-
-			<WashCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-info" />
-						Instruction Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{instructionDocuments.length} document{instructionDocuments.length !==
-						1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="menu p-2">
-					{#if instructionDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No instruction forms available</span
-							>
-						</li>
-					{:else}
-						{#each instructionDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between gap-2 py-2"
-								>
-									<span class="min-w-0 flex-1 truncate text-sm">
-										{doc.documentNumber ||
-											`Instruction #${doc.id}`}
-									</span>
-									{@render documentActions(doc, 'text-info')}
-								</div>
-							</li>
-						{/each}
-					{/if}
-				</ul>
-			</WashCard>
-
-			<WashCard className="bg-base-100">
-				<div class="border-b border-base-300 p-4">
-					<h3 class="flex items-center gap-2 text-lg font-semibold">
-						<LucideFileText className="w-5 h-5 text-success" />
-						Forms
-					</h3>
-					<p class="mt-1 text-sm text-base-content/60">
-						{formDocuments.length} document{formDocuments.length !== 1
-							? 's'
-							: ''} available
-					</p>
-				</div>
-				<ul class="menu p-2">
-					{#if formDocuments.length === 0}
-						<li class="d-disabled">
-							<span class="text-sm text-base-content/50"
-								>No forms available</span
-							>
-						</li>
-					{:else}
-						{#each formDocuments as doc (doc.id)}
-							<li>
-								<div
-									class="flex w-full items-center justify-between gap-2 py-2"
-								>
-									<span class="min-w-0 flex-1 truncate text-sm">
-										{doc.documentNumber || `Form #${doc.id}`}
-									</span>
-									{@render documentActions(doc, 'text-success')}
-								</div>
-							</li>
-						{/each}
-					{/if}
-				</ul>
-			</WashCard>
+			{@render documentCard(
+				'Consent Forms',
+				consentDocuments,
+				'text-primary',
+				'No consent forms available',
+				'Consent',
+				'text-primary',
+				'tooltip-primary'
+			)}
+			{@render documentCard(
+				'Instruction Forms',
+				instructionDocuments,
+				'text-info',
+				'No instruction forms available',
+				'Instruction',
+				'text-info',
+				'tooltip-info'
+			)}
+			{@render documentCard(
+				'Forms',
+				formDocuments,
+				'text-success',
+				'No forms available',
+				'Form',
+				'text-success',
+				'tooltip-success'
+			)}
 		</div>
 	{/if}
 </div>

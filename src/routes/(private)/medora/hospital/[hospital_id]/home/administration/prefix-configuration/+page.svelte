@@ -466,7 +466,7 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">{m.prefix_configuration_internal_key_label()}</label>
+									<span  class="shrink-0 sm:w-36">{m.prefix_configuration_internal_key_label()}</span>
 									<code
 										class="rounded bg-base-200 px-2 py-1.5 font-mono text-sm"
 										>{editingPurpose.storageKey}</code
@@ -478,19 +478,18 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">{m.prefix_configuration_description_label()}</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-654252">{m.prefix_configuration_description_label()}</label>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											bind:value={descriptionInput}
 											inputType="text"
-											inputPlaceholderText={m.prefix_configuration_description_placeholder()}
-										/>
+											inputPlaceholderText={m.prefix_configuration_description_placeholder()} id="a11y-page-654252" />
 									</div>
 								</div>
 								<div
 									class="rounded-md border border-base-200 bg-base-200/20 px-3 py-2"
 								>
-									<label class="text-sm font-medium">{m.prefix_configuration_counter_scope_title()}</label>
+									<span  class="text-sm font-medium">{m.prefix_configuration_counter_scope_title()}</span>
 									<p
 										class="mt-1 mb-2 text-xs leading-snug text-base-content/60"
 									>
@@ -554,7 +553,7 @@
 								<div
 									class="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2"
 								>
-									<label class="text-sm font-medium leading-tight">{m.prefix_configuration_format_title()}</label>
+									<span  class="text-sm font-medium leading-tight">{m.prefix_configuration_format_title()}</span>
 									<p
 										class="text-xs leading-snug text-base-content/60"
 									>

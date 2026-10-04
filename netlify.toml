@@ -18,3 +18,24 @@
 	command = "npm run dev"
 	targetPort = 5173
 	framework = "#custom"
+
+# Fingerprinted Vite assets: long-cache immutable (adapter also sets related headers).
+[[headers]]
+	for = "/_app/immutable/*"
+	[headers.values]
+	Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+	for = "/og-medora.png"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/og-medora.svg"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/medora-logo.svg"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"

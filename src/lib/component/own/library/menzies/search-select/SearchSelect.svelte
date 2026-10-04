@@ -424,7 +424,7 @@
 			/>
 		{/if}
 	{:else}
-		<label class={fieldClass}>
+		<div class={fieldClass}>
 			{#if label}
 				<span class="label">
 					<span class="label-text" id={labelTextId}>
@@ -469,7 +469,7 @@
 					oninput={() => {}}
 				/>
 			{/if}
-		</label>
+		</div>
 	{/if}
 
 	{#if isOpen}

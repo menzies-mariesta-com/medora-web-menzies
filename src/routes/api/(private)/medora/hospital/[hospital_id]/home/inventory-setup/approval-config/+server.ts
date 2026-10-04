@@ -34,7 +34,7 @@ export const GET: RequestHandler = async (event) => {
 		return json({ error: 'Invalid module' }, { status: 400 });
 	}
 	if (!storeIdStr) {
-		return json({ error: 'storeId required' }, { status: 400 });
+		return json({ error: 'Select a store' }, { status: 400 });
 	}
 	const storeId = Number(storeIdStr);
 	const data = await listApprovalLevelsForStore(event, {

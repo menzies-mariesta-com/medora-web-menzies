@@ -18,8 +18,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-
-	const hospitalId = $derived(
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
 			? page.params.hospital_id
 			: ''
@@ -266,7 +266,7 @@
 				toastService.addToast(
 					'View PR',
 					StatusColorEnum.ERROR,
-					await res.text().catch(() => String(res.status))
+					await userFacingDetailFromResponse(res)
 				);
 				await goto(resolve(prListPath as any));
 				return;
@@ -433,7 +433,7 @@
 				toastService.addToast(
 					'Action failed',
 					StatusColorEnum.ERROR,
-					await res.text().catch(() => String(res.status))
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -509,18 +509,17 @@
 				>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_nav_from_store()}</label>
+						<label class="text-xs opacity-80" for="a11y-page-ce3711">{m.inv_nav_from_store()}</label>
 						<input
 							type="text"
 							readonly
 							disabled
 							class="input-bordered input w-full text-sm"
 							value={fromStoreNavLabel}
-							aria-label={m.inv_nav_from_store()}
-						/>
+							aria-label={m.inv_nav_from_store()} id="a11y-page-ce3711" />
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_transfer_to_store()}</label>
+						<span  class="text-xs opacity-80">{m.inv_transfer_to_store()}</span>
 						<div
 							class="rounded-box border border-base-200 bg-base-200/30 px-3 py-2 text-sm"
 						>
@@ -539,14 +538,14 @@
 					>Requisition Remarks</WashCardBodyTitle
 				>
 				<div class="flex min-w-0 flex-col gap-2">
-					<label class="text-xs opacity-80">{m.inv_common_remarks()}</label>
+					<label class="text-xs opacity-80" for="a11y-page-ddbf4f">{m.inv_common_remarks()}</label>
 					<textarea
 						class="textarea-bordered textarea w-full opacity-80"
 						value={createRemarks}
 						readonly
 						rows="3"
 						aria-label={m.inv_common_remarks()}
-					></textarea>
+					 id="a11y-page-ddbf4f"></textarea>
 				</div>
 			</WashCardBody>
 		</WashCard>

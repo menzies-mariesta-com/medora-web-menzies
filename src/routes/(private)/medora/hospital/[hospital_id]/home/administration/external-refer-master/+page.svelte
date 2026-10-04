@@ -14,6 +14,7 @@
 	import MenziesTableViewEditDeleteActions from '$lib/component/own/library/menzies/table/MenziesTableViewEditDeleteActions.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import { AppEnum } from '$lib/model/enum/app.enum';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -81,7 +82,7 @@
 				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			referResult =
 				(await res.json()) as PaginatedResult<ExternalReferWithRelations>;
 		} finally {
@@ -129,7 +130,7 @@
 						body: JSON.stringify({ id: referId })
 					}
 				);
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				await fetchRefer();
 				toastService.addToast(
 					m.external_refer_deleted(),

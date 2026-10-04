@@ -11,6 +11,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -43,7 +44,7 @@
 				'content-type': 'application/json'
 			}
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -186,7 +187,7 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<label class="shrink-0 sm:w-36">Active</label>
+				<span class="shrink-0 sm:w-36">Active</span>
 				<div
 					class="flex max-w-80 flex-1 flex-wrap items-center gap-2"
 				>

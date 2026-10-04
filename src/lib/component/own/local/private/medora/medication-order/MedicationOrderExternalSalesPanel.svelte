@@ -53,8 +53,8 @@
 		medOrderMinStartDateTimeLocal
 	} from '$lib/tool/medication-order/med-order-start-date.util';
 	import { tick, untrack } from 'svelte';
-
-	const lifeCycleUtil = new LifeCycleUtil();
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
@@ -824,7 +824,7 @@
 						lines
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastService.addToast(
 					m.med_order_int_updated(),
 					StatusColorEnum.SUCCESS
@@ -846,7 +846,7 @@
 						lines
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				const saved = (await res.json()) as {
 					batch?: { id?: number };
 				};
@@ -897,7 +897,7 @@
 					amountPaid: amountPaid.trim()
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			await res.json();
 			batchIsPaid = true;
 			toastService.addToast(
@@ -1014,7 +1014,6 @@
 	async function openHistory() {
 		await dialogService.open({
 			title: '',
-			closeOnOutsideClick: true,
 			component: MedicationOrderHistoryDialogContent,
 			fullScreen: true,
 			props: {
@@ -1202,7 +1201,7 @@
 					sourceBatchId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			void (await res.json());
 			toastService.addToast(
 				m.med_order_int_reorder_line_appended(),
@@ -1226,7 +1225,7 @@
 					batchId: id
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
@@ -1260,7 +1259,7 @@
 					batchId: editingBatchId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
@@ -1318,7 +1317,7 @@
 				<div class="flex flex-col gap-3">
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<div class="flex min-w-0 flex-col gap-1.5">
-							<label class="shrink-0 text-sm font-medium">{m.med_order_int_store()}</label>
+							<label class="shrink-0 text-sm font-medium" for="ext-sales-store">{m.med_order_int_store()}</label>
 							<SearchSelect
 								bind:value={storeIdStr}
 								searchFn={searchStoresForSelect}
@@ -1333,18 +1332,17 @@
 							/>
 						</div>
 						<div class="flex min-w-0 flex-col gap-1.5">
-							<label class="shrink-0 text-sm font-medium">{m.med_order_int_pharmacy_generic()}</label>
+							<label class="shrink-0 text-sm font-medium" for="a11y-medicationorderexternals-e79522">{m.med_order_int_pharmacy_generic()}</label>
 							<SearchSelect
 								bind:value={pharmacyGenericId}
 								options={genericOptions}
 								placeholder={m.med_order_int_all_generics()}
 								className="w-full"
-								disabled={batchIsPaid}
-							/>
+								disabled={batchIsPaid} inputId="a11y-medicationorderexternals-e79522" />
 						</div>
 					</div>
 					<div class="flex min-w-0 flex-col gap-1.5">
-						<label class="shrink-0 text-sm font-medium">{m.med_order_int_item()}</label>
+						<label class="shrink-0 text-sm font-medium" for="ext-sales-item">{m.med_order_int_item()}</label>
 						<SearchSelect
 							bind:value={itemValueStr}
 							searchFn={searchItemsFromMaster}
@@ -1393,38 +1391,35 @@
 						</summary>
 						<div class="grid grid-cols-1 gap-3 border-t border-base-300 p-3 sm:grid-cols-2 lg:grid-cols-3">
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_dose()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-f8d9f8">{m.med_order_int_dose()}</label>
 								<WashInputField
 									nameText="ext-dose"
 									bind:value={dose}
 									inputType="text"
 									className="w-full"
 									minLength={0}
-									disabled={batchIsPaid}
-								/>
+									disabled={batchIsPaid} id="a11y-medicationorderexternals-f8d9f8" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_dose_unit()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-aaa5ab">{m.med_order_int_dose_unit()}</label>
 								<SearchSelect
 									bind:value={doseUnitIdStr}
 									options={doseUnitOptions}
 									placeholder="—"
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-aaa5ab" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_frequency()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-55f8c6">{m.med_order_int_frequency()}</label>
 								<SearchSelect
 									bind:value={frequencyIdStr}
 									options={frequencyOptions}
 									placeholder={m.med_order_int_frequency_filter()}
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-55f8c6" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_duration()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-f42413">{m.med_order_int_duration()}</label>
 								<div class="flex min-w-0 flex-col gap-2 sm:flex-row">
 									<WashInputField
 										nameText="ext-dv"
@@ -1432,8 +1427,7 @@
 										inputType="text"
 										className="w-full max-w-24 shrink-0"
 										minLength={0}
-										disabled={batchIsPaid}
-									/>
+										disabled={batchIsPaid} id="a11y-medicationorderexternals-f42413" />
 									<div class="min-w-0 flex-1">
 										<SearchSelect
 											bind:value={durationUnitIdStr}
@@ -1446,44 +1440,40 @@
 								</div>
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_form()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-a738ad">{m.med_order_int_form()}</label>
 								<SearchSelect
 									bind:value={formId}
 									options={formOptions}
 									placeholder={m.med_order_int_not_applicable()}
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-a738ad" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_route()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-fe0dda">{m.med_order_int_route()}</label>
 								<SearchSelect
 									bind:value={routeId}
 									options={routeOptions}
 									placeholder={m.med_order_int_not_applicable()}
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-fe0dda" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_order_type()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-51b6fb">{m.med_order_int_order_type()}</label>
 								<SearchSelect
 									bind:value={orderTypeId}
 									options={orderTypeOptions}
 									placeholder={m.med_order_int_not_applicable()}
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-51b6fb" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
-								<label class="text-sm font-medium">{m.med_order_int_food_relation()}</label>
+								<label class="text-sm font-medium" for="a11y-medicationorderexternals-79500e">{m.med_order_int_food_relation()}</label>
 								<SearchSelect
 									bind:value={foodRelationId}
 									options={foodRelOptions}
 									placeholder={m.med_order_int_not_applicable()}
 									disabled={!masters || batchIsPaid}
-									className="w-full"
-								/>
+									className="w-full" inputId="a11y-medicationorderexternals-79500e" />
 							</div>
 							<div class="flex min-w-0 flex-col gap-1.5">
 								<span class="text-sm font-medium">{m.med_order_int_start()}</span>
@@ -1701,8 +1691,9 @@
 						</WashButton>
 					{:else}
 						<div class="flex flex-col gap-1">
-							<label class="text-sm font-medium">{m.med_order_payment_method()}</label>
+							<label class="text-sm font-medium" for="mo-ext-payment-method">{m.med_order_payment_method()}</label>
 							<WashSelect
+								id="mo-ext-payment-method"
 								className="w-full"
 								bind:value={paymentMethod}
 								options={[
@@ -1712,14 +1703,13 @@
 							/>
 						</div>
 						<div class="flex flex-col gap-1">
-							<label class="text-sm font-medium">{m.med_order_amount_paid()}</label>
+							<label class="text-sm font-medium" for="a11y-medicationorderexternals-1f59d3">{m.med_order_amount_paid()}</label>
 							<WashInputField
 								nameText="amountPaid"
 								bind:value={amountPaid}
 								inputType="text"
 								className="w-full"
-								minLength={0}
-							/>
+								minLength={0} id="a11y-medicationorderexternals-1f59d3" />
 						</div>
 						<WashButton
 							className="btn btn-primary btn-lg w-full cursor-pointer"

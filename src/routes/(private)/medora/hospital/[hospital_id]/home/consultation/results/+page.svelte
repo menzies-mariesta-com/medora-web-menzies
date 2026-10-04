@@ -11,6 +11,7 @@
 	} from '$lib/model/type/medora/clinical.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
@@ -36,7 +37,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!response.ok) throw new Error(await response.text());
+		if (!response.ok) await throwUserFacingHttpError(response);
 	}
 
 	async function loadResults() {
@@ -45,7 +46,7 @@
 		errorMessage = '';
 		try {
 			const response = await fetch(`${apiBase}?visitId=${visitId}`);
-			if (!response.ok) throw new Error(await response.text());
+			if (!response.ok) await throwUserFacingHttpError(response);
 			const result = (await response.json()) as {
 				labs: LabResultRow[];
 				imaging: ImagingResultRow[];
