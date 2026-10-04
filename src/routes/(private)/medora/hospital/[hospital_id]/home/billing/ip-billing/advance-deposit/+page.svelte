@@ -18,6 +18,7 @@
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -173,7 +174,7 @@
 			const res = await fetch(`${api}?${qs.toString()}`, {
 				credentials: 'include'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const data = (await res.json()) as {
 				items?: IpAdvanceDepositRow[];
 				admissionId?: number | null;
@@ -222,7 +223,7 @@
 					notes: depositNotes.trim() || null
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				'Advance deposit recorded',
 				StatusColorEnum.SUCCESS
@@ -333,30 +334,20 @@
 		showActions={false}
 	>
 		<div class="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
-			<label class="flex min-w-0 flex-col gap-1 text-sm">
-				Amount
-				<WashInputField
+			<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="ip-adv-dep-amount">Amount</label> <WashInputField
 					id="ip-adv-dep-amount"
 					bind:value={depositAmount}
 					inputType="number"
 					inputPlaceholderText="0.00"
-				/>
-			</label>
-			<label class="flex min-w-0 flex-col gap-1 text-sm">
-				Payment method
-				<WashSelect
+				/></div>
+			<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="a11y-page-69068b">Payment method</label> <WashSelect
 					bind:value={paymentMethod}
-					options={paymentMethodOptions}
-				/>
-			</label>
-			<label class="flex min-w-0 flex-col gap-1 text-sm">
-				Notes (optional)
-				<WashInputField
+					options={paymentMethodOptions} id="a11y-page-69068b" /></div>
+			<div  class="flex min-w-0 flex-col gap-1 text-sm"><label for="ip-adv-dep-notes">Notes (optional)</label> <WashInputField
 					id="ip-adv-dep-notes"
 					bind:value={depositNotes}
 					inputPlaceholderText="Optional"
-				/>
-			</label>
+				/></div>
 		</div>
 		<WashDialogFooter>
 			<WashButton

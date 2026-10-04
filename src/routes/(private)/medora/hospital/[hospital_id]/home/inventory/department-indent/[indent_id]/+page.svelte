@@ -24,8 +24,8 @@
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
-
-	const toastService = new ToastService();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const toastService = new ToastService();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -212,7 +212,7 @@
 			toastService.addToast(
 				m.inv_di_cancel(),
 				StatusColorEnum.ERROR,
-				await res.text()
+				await userFacingDetailFromResponse(res)
 			);
 			throw new Error('cancel_failed');
 		}
@@ -243,7 +243,7 @@
 				toastService.addToast(
 					m.inv_dept_indent_approve(),
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}

@@ -65,9 +65,9 @@
 >
 	<!-- Branch -->
 	<div class="min-w-0 flex-1 md:min-w-56">
-		<label class="mb-2 block">
+		<span  class="mb-2 block">
 			Branch <span class="text-error">*</span>
-		</label>
+		</span>
 
 		<div
 			class="flex max-h-32 flex-wrap gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3"
@@ -98,9 +98,9 @@
 
 	<!-- User Group -->
 	<div class="min-w-0 flex-1 md:min-w-56">
-		<label class="mb-2 block">
+		<span  class="mb-2 block">
 			User Group <span class="text-error">*</span>
-		</label>
+		</span>
 
 		<div
 			class="flex max-h-32 flex-wrap gap-2 overflow-auto rounded-lg border-2 border-base-300 bg-base-200/30 p-3"
@@ -134,21 +134,19 @@
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label class="shrink-0 sm:w-36">Join Date</label>
+			<label class="shrink-0 sm:w-36" for="a11y-lstaffregistrationpermis-9fc718">Join Date</label>
 			<WashInputField
 				bind:value={selectedJoinDate}
-				inputType="date"
-			/>
+				inputType="date" id="a11y-lstaffregistrationpermis-9fc718" />
 		</div>
 
 		<div
 			class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
-			<label class="shrink-0 sm:w-36">Resign Date</label>
+			<label class="shrink-0 sm:w-36" for="a11y-lstaffregistrationpermis-85f4cb">Resign Date</label>
 			<WashInputField
 				bind:value={selectedResignDate}
-				inputType="date"
-			/>
+				inputType="date" id="a11y-lstaffregistrationpermis-85f4cb" />
 		</div>
 	</div>
 

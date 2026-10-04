@@ -65,7 +65,12 @@
 						tabindex="0"
 						class="z-0 cursor-pointer hover:bg-info/30"
 						onclick={() => handleSelect(p)}
-						onkeydown={(e) => e.key === 'Enter' && handleSelect(p)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleSelect(p);
+							}
+						}}
 					>
 						<td class="w-32 min-w-[8rem]">{p.code ?? '—'}</td>
 						<td class="w-64 min-w-[16rem]">{fullName(p)}</td>

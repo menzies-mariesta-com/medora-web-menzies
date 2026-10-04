@@ -30,6 +30,7 @@
 		MedicationOrderMastersResponse,
 		StoreSearchRow
 	} from '$lib/model/type/medora/medication-order.type';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
@@ -122,7 +123,7 @@
 			url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -135,7 +136,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...body })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -407,19 +408,15 @@
 				/>
 			{:else}
 				<div class="grid gap-3 md:grid-cols-2">
-					<label class="flex flex-col gap-1 text-sm">
-						<span>
+					<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-0ccee6"><span>
 							{msg.mo_clinical_dispensing_store()}
 							<span class="text-error">*</span>
-						</span>
-						<SearchSelect
+						</span></label> <SearchSelect
 							bind:value={storeId}
 							placeholder={msg.mo_clinical_search_store()}
 							searchFn={searchStores}
 							minSearchLength={0}
-							disabled={readOnly || isSavingDraft}
-						/>
-					</label>
+							disabled={readOnly || isSavingDraft} inputId="a11y-page-0ccee6" /></div>
 				</div>
 
 				<div class="flex flex-col gap-3">
@@ -443,60 +440,47 @@
 								</WashButton>
 							</div>
 							<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-								<label
+								<div 
 									class="flex flex-col gap-1 text-sm md:col-span-2"
-								>
-									<span>
+								><label for="a11y-page-114776"><span>
 										{msg.mo_clinical_item()}
 										<span class="text-error">*</span>
-									</span>
-									<SearchSelect
+									</span></label> <SearchSelect
 										bind:value={line.itemMasterId}
 										placeholder={msg.mo_clinical_search_medication()}
 										searchFn={searchMedicationItems}
 										minSearchLength={0}
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} inputId="a11y-page-114776" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-cf3b2d"><span>
 										{msg.mo_clinical_dose()}
 										<span class="text-error">*</span>
-									</span>
-									<WashInputField
+									</span></label> <WashInputField
 										bind:value={line.dose}
 										inputType="text"
 										inputPlaceholderText={msg.mo_clinical_dose_placeholder()}
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} id="a11y-page-cf3b2d" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-6dcd71"><span>
 										{msg.mo_clinical_dose_unit()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.doseUnitId}
 										placeholder={msg.mo_clinical_choose_unit()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-6dcd71">
 										{#each masters?.doseUnits ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-f88662"><span>
 										{msg.mo_clinical_frequency()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.frequencyId}
 										placeholder={msg.mo_clinical_choose_frequency()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-f88662">
 										{#each masters?.freqs ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.label ??
@@ -504,108 +488,80 @@
 													'–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-ce2777"><span>
 										{msg.mo_clinical_duration()}
 										<span class="text-error">*</span>
-									</span>
-									<WashInputField
+									</span></label> <WashInputField
 										bind:value={line.durationValue}
 										inputType="number"
 										inputPlaceholderText={msg.mo_clinical_duration()}
 										min="1"
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} id="a11y-page-ce2777" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-2fdfd3"><span>
 										{msg.mo_clinical_duration_unit()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.durationUnitId}
 										placeholder={msg.mo_clinical_choose_unit()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-2fdfd3">
 										{#each masters?.durUnits ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? option.code}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_start()}</span>
-									<WashInputField
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-e365a5"><span>{msg.mo_clinical_start()}</span></label> <WashInputField
 										bind:value={line.startAt}
 										inputType="datetime-local"
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_form()}</span>
-									<WashSelect
+										disabled={readOnly || isSavingDraft} id="a11y-page-e365a5" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-5a3b39"><span>{msg.mo_clinical_form()}</span></label> <WashSelect
 										bind:value={line.formId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-5a3b39">
 										{#each masters?.forms ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_route()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-60413d"><span>{msg.mo_clinical_route()}</span></label> <WashSelect
 										bind:value={line.routeId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-60413d">
 										{#each masters?.routes ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_order_type()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-def32a"><span>{msg.mo_clinical_order_type()}</span></label> <WashSelect
 										bind:value={line.orderTypeId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-def32a">
 										{#each masters?.orderTypes ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_food_relation()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-064288"><span>{msg.mo_clinical_food_relation()}</span></label> <WashSelect
 										bind:value={line.foodRelationId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-064288">
 										{#each masters?.foodRels ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label
+									</WashSelect></div>
+								<div 
 									class="flex flex-col gap-1 text-sm md:col-span-2"
-								>
-									<span>{msg.mo_clinical_remarks()}</span>
-									<WashInputField
+								><label for="a11y-page-7bb2a3"><span>{msg.mo_clinical_remarks()}</span></label> <WashInputField
 										bind:value={line.lineRemarks}
 										inputType="text"
-										inputPlaceholderText={msg.mo_clinical_optional_instructions()}
-									/>
-								</label>
+										inputPlaceholderText={msg.mo_clinical_optional_instructions()} id="a11y-page-7bb2a3" /></div>
 							</div>
 						</fieldset>
 					{/each}

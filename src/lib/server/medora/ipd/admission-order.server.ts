@@ -48,10 +48,10 @@ export async function createAdmissionOrder(
 	const db = ensureDb();
 	const sourceOpdVisitId = Number(payload.sourceOpdVisitId);
 	if (!Number.isFinite(sourceOpdVisitId) || sourceOpdVisitId <= 0) {
-		throw error(400, 'sourceOpdVisitId is required');
+		throw error(400, 'Select the OPD visit to admit from');
 	}
 	const branchId = String(payload.branchId ?? '').trim();
-	if (!branchId) throw error(400, 'branchId is required');
+	if (!branchId) throw error(400, 'Select a branch');
 
 	const careLevel = Number(payload.careLevel);
 	if (

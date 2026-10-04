@@ -27,8 +27,8 @@
 		type LineItemMetricTile
 	} from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-
-	const hospitalId = $derived(
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
 			? page.params.hospital_id
 			: ''
@@ -519,7 +519,7 @@
 				toastService.addToast(
 					m.inv_pr_edit(),
 					StatusColorEnum.ERROR,
-					await res.text().catch(() => String(res.status))
+					await userFacingDetailFromResponse(res)
 				);
 				await goto(resolve(prListPath as any));
 				return;
@@ -614,11 +614,10 @@
 				}
 			);
 			if (!res.ok) {
-				const text = await res.text().catch(() => '');
+				const text = await userFacingDetailFromResponse(res).catch(() => '');
 				toastService.addToast(
 					'Could not update PR',
-					StatusColorEnum.ERROR,
-					text || res.statusText
+					StatusColorEnum.ERROR, text || undefined
 				);
 				return;
 			}
@@ -782,19 +781,18 @@
 				>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_nav_from_store()}</label>
+						<label class="text-xs opacity-80" for="a11y-page-b16787">{m.inv_nav_from_store()}</label>
 						<input
 							type="text"
 							readonly
 							disabled
 							class="input-bordered input w-full text-sm"
 							value={fromStoreLabel}
-							aria-label={m.inv_nav_from_store()}
-						/>
+							aria-label={m.inv_nav_from_store()} id="a11y-page-b16787" />
 					</div>
 					<div class="flex min-w-0 flex-col gap-2">
-						<label class="text-xs opacity-80">{m.inv_transfer_to_store()}</label>
-						<SearchSelect
+						<label class="text-xs opacity-80" for="a11y-page-097276">{m.inv_transfer_to_store()}</label>
+						<SearchSelect inputId="a11y-page-097276"
 							value={createToStoreId != null
 								? String(createToStoreId)
 								: ''}
@@ -819,13 +817,13 @@
 					>Requisition Remarks</WashCardBodyTitle
 				>
 				<div class="flex min-w-0 flex-col gap-2">
-					<label class="text-xs opacity-80">{m.inv_common_remarks()}</label>
+					<label class="text-xs opacity-80" for="a11y-page-a947c6">{m.inv_common_remarks()}</label>
 					<textarea
 						class="textarea-bordered textarea w-full"
 						bind:value={createRemarks}
 						rows="3"
 						aria-label={m.inv_common_remarks()}
-					></textarea>
+					 id="a11y-page-a947c6"></textarea>
 				</div>
 			</WashCardBody>
 		</WashCard>

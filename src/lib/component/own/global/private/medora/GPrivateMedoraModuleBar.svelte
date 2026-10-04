@@ -693,30 +693,40 @@ import type {
 				>
 					{#if isActiveModule}
 						<div class="aura aura-dual text-primary">
-							<div
-								tabindex="0"
-								role="button"
+							<button
+								type="button"
 								class="btn {navBarControlBorder} cursor-pointer gap-2"
+								aria-haspopup="menu"
+								aria-expanded={hoveredModuleId === m.id}
+								onfocus={(e) =>
+									openModuleMenu(m.id, e.currentTarget)}
+								onclick={(e) =>
+									openModuleMenu(m.id, e.currentTarget)}
 							>
 								<MedoraModuleIcon
 									name={m.imageUrl}
 									className="size-4 shrink-0"
 								/>
 								<span class="whitespace-nowrap">{m?.name}</span>
-							</div>
+							</button>
 						</div>
 					{:else}
-						<div
-							tabindex="0"
-							role="button"
+						<button
+							type="button"
 							class="btn {navBarControlBorder} cursor-pointer gap-2"
+							aria-haspopup="menu"
+							aria-expanded={hoveredModuleId === m.id}
+							onfocus={(e) =>
+								openModuleMenu(m.id, e.currentTarget)}
+							onclick={(e) =>
+								openModuleMenu(m.id, e.currentTarget)}
 						>
 							<MedoraModuleIcon
 								name={m.imageUrl}
 								className="size-4 shrink-0"
 							/>
 							<span class="whitespace-nowrap">{m?.name}</span>
-						</div>
+						</button>
 					{/if}
 				</div>
 			{/each}

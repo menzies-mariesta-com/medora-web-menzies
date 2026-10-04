@@ -18,6 +18,7 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -110,7 +111,7 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			rows = (await res.json()) as AdtBedStatusRow[];
 		} catch (e) {
 			toastService.addToast(
@@ -146,7 +147,7 @@
 					admissionId: row.admissionId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast('Discharged', StatusColorEnum.SUCCESS);
 			load();
 		} catch (e) {

@@ -7,8 +7,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { StringUtil } from '$lib/util/string.util.svelte';
-
-	let {
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+let {
 		hospitalId,
 		visitId,
 		apiRoot
@@ -48,7 +48,7 @@
 			url.searchParams.set('mode', 'prescriptionNote.list');
 			url.searchParams.set('visitId', String(visitId));
 			const res = await fetch(url.toString(), { credentials: 'include' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const rows = (await res.json()) as CpoePrescriptionNoteListRow[];
 			if (seq !== loadSeq) return;
 			notes = rows;

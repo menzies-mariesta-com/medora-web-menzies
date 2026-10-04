@@ -184,7 +184,6 @@
 			(display ? `Date: ${display}` : emptyHint)}
 		aria-haspopup="dialog"
 		aria-disabled={disabled || undefined}
-		aria-required={required || undefined}
 	>
 		<span
 			class="min-w-0 truncate font-mono text-sm tabular-nums {display

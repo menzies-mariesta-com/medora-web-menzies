@@ -277,7 +277,7 @@
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#if patientMode === 'existing'}
 						<div>
-							<label class="label-ink mb-1 block text-sm">Patient</label>
+							<label class="label-ink mb-1 block text-sm" for="bk-patient">Patient</label>
 							<SearchSelect
 								bind:value={patientId}
 								placeholder="Search patient"
@@ -285,26 +285,28 @@
 								searchFn={searchPatients}
 								getLabelForValue={getPatientLabelForValue}
 								minSearchLength={0}
+								inputId="bk-patient"
 							/>
 						</div>
 					{:else}
 						<div>
-							<label class="label-ink mb-1 block text-sm"
+							<label class="label-ink mb-1 block text-sm" for="bk-patient-name"
 								>Patient name <span class="text-error">*</span></label
 							>
-							<WashInputField bind:value={patientName} />
+							<WashInputField id="bk-patient-name" bind:value={patientName} />
 						</div>
 						<div>
-							<label class="label-ink mb-1 block text-sm">Date of birth</label>
+							<label class="label-ink mb-1 block text-sm" for="bk-dob">Date of birth</label>
 							<WashInputField
+								id="bk-dob"
 								bind:value={patientDateOfBirth}
 								inputType="date"
 							/>
 						</div>
 					{/if}
 					<div>
-						<label class="label-ink mb-1 block text-sm">Phone</label>
-						<WashInputField bind:value={appointmentPhone} />
+						<label class="label-ink mb-1 block text-sm" for="bk-phone">Phone</label>
+						<WashInputField id="bk-phone" bind:value={appointmentPhone} />
 					</div>
 					<div>
 						<label class="label-ink mb-1 block text-sm" for="bk-branch"
@@ -341,10 +343,11 @@
 						/>
 					</div>
 					<div>
-						<label class="label-ink mb-1 block text-sm"
+						<label class="label-ink mb-1 block text-sm" for="bk-expected-admit"
 							>Expected admit</label
 						>
 						<WashInputField
+							id="bk-expected-admit"
 							bind:value={expectedAdmitAt}
 							inputType="datetime-local"
 						/>

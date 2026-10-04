@@ -715,6 +715,15 @@ export async function seedInformationTables() {
 				'Nursing case sheet',
 				5,
 				1
+			),
+			(
+				90009,
+				2,
+				'DISCHARGE_SUMMARY_PRINT',
+				'<header class="print-doc-header"><strong>{{hospital.name}}</strong><br/>{{hospital.address}}</header><h2 class="case-sheet-doc-title">{{print.label_title}}</h2><dl class="meta case-sheet-meta-print"><div><dt>{{print.label_visit_no}}</dt><dd>{{visit.no}}</dd></div><div><dt>{{print.label_patient}}</dt><dd>{{patient.name}}</dd></div><div><dt>{{print.label_patient_code}}</dt><dd>{{patient.code}}</dd></div><div><dt>{{print.label_visit_date}}</dt><dd>{{visit.date}}</dd></div><div><dt>{{print.label_doctor}}</dt><dd>{{doctor.name}}</dd></div></dl>{{print.body_html}}',
+				'Discharge summary',
+				5,
+				1
 			)
 		ON CONFLICT (id) DO UPDATE SET
 			document_type_id = EXCLUDED.document_type_id,

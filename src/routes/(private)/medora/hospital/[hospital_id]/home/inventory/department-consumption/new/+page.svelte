@@ -21,6 +21,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toast = new ToastService();
 
@@ -316,7 +317,7 @@
 					})
 				}
 			);
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const row = (await res.json()) as { id: string };
 			await goto(
 				`/medora/hospital/${hospitalId}/home/inventory/department-consumption/${encodeURIComponent(row.id)}`
@@ -350,9 +351,9 @@
 		<WashCardBodyTitle>{m.inv_dc_store()}</WashCardBodyTitle>
 		<div class="flex flex-col gap-6 sm:flex-row sm:items-start">
 			<div class="min-w-0 flex-1">
-				<label class="text-xs">{m.inv_nav_from_store()}</label>
+				<label class="text-xs" for="a11y-page-f0f221">{m.inv_nav_from_store()}</label>
 				<input
-					type="text"
+					id="a11y-page-f0f221" type="text"
 					readonly
 					disabled
 					class="input-bordered input mt-1 w-full text-sm"
@@ -374,13 +375,12 @@
 			</div>
 
 			<div class="min-w-0 flex-1">
-				<label class="text-xs">{m.inv_dept_indent_remarks()}</label>
+				<label class="text-xs" for="a11y-page-d3607a">{m.inv_dept_indent_remarks()}</label>
 				<input
 					type="text"
 					class="input-bordered input mt-1 w-full text-sm"
 					placeholder={m.inv_dept_indent_remarks()}
-					bind:value={remarks}
-				/>
+					bind:value={remarks} id="a11y-page-d3607a" />
 			</div>
 		</div>
 	</WashCardBody>

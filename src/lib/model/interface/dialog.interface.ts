@@ -20,8 +20,8 @@ export interface DialogOpenOptions<T = unknown> {
 	/** Tailwind classes for the modal box (e.g. max-w-4xl max-h-[90vh]) */
 	modalClassName?: string;
 	/**
-	 * When true, backdrop click dismisses (table-only pickers).
-	 * Default false: Medora keeps forms from closing on outside click.
+	 * When true (default), backdrop click dismisses as cancel (not confirm).
+	 * Escape also dismisses via the WashDialog shell. Set false only to lock the dimmer.
 	 */
 	closeOnOutsideClick?: boolean;
 	children?: Snippet<[DialogSlotProps]>;

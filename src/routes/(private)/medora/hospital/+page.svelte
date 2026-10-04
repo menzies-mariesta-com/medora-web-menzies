@@ -28,6 +28,7 @@
 		redirectIfTwoFactorRequired
 	} from '$lib/util/two-factor-gate.util';
 	import { getHospitalLogoDisplayUrl } from '$lib/util/staff-photo.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type HospitalWithOwner = {
 		id: string;
@@ -139,7 +140,7 @@
 				url.searchParams.set(k, v);
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			hospitalResult =
 				(await res.json()) as PaginatedResult<HospitalWithOwner>;
 		} finally {
@@ -213,7 +214,7 @@
 			});
 			if (!res.ok) {
 				if (await redirectIfTwoFactorRequired(res)) return;
-				throw new Error(await res.text());
+				await throwUserFacingHttpError(res);
 			}
 			toastService.addToast(
 				m.hospital_deleted(),
@@ -267,9 +268,10 @@
 				</h1>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				<label class="form-control w-auto min-w-[9rem]">
-					<span class="sr-only">{m.status()}</span>
+				<div class="form-control w-auto min-w-[9rem]">
+					<label for="a11y-page-477885" class="sr-only">{m.status()}</label>
 					<WashSelect
+						id="a11y-page-477885"
 						className="select select-bordered select-sm min-w-[9rem] cursor-pointer"
 						menuWidth="9rem"
 						aria-label={m.status()}
@@ -288,7 +290,7 @@
 							if (next != null) onStatusFilterChange(next);
 						}}
 					/>
-				</label>
+				</div>
 				<div
 					class="tooltip tooltip-bottom tooltip-primary"
 					data-tip={m.refresh_data()}

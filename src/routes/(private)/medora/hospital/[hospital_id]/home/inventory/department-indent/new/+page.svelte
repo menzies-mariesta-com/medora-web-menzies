@@ -22,8 +22,8 @@
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import { formatPurchaseQtyCellWithIssueEquivalent } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
-
-	const lifeCycle = new LifeCycleUtil();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const lifeCycle = new LifeCycleUtil();
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
@@ -545,7 +545,7 @@
 				toast.addToast(
 					'Indent',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -589,9 +589,9 @@
 				<div class="min-w-0 flex-1">
 					<div class="flex h-full flex-col justify-between gap-3">
 						<div>
-							<label class="text-xs">{m.inv_nav_from_store()}</label>
+							<label class="text-xs" for="a11y-page-330e62">{m.inv_nav_from_store()}</label>
 							<input
-								type="text"
+								id="a11y-page-330e62" type="text"
 								readonly
 								disabled
 								class="input-bordered input mt-1 w-full text-sm"
@@ -635,12 +635,12 @@
 					</div>
 				</div>
 				<div class="flex min-w-0 flex-1 flex-col">
-					<label class="text-xs">{m.inv_dept_indent_remarks()}</label>
+					<label class="text-xs" for="a11y-page-87ef6c">{m.inv_dept_indent_remarks()}</label>
 					<textarea
 						class="textarea-bordered textarea mt-1 w-full flex-1"
 						rows="2"
 						bind:value={remarks}
-					></textarea>
+					 id="a11y-page-87ef6c"></textarea>
 				</div>
 			</div>
 		</WashCardBody>

@@ -25,7 +25,8 @@ export class DialogService {
 				tone: options.tone,
 				fullScreen: options.fullScreen,
 				modalClassName: options.modalClassName,
-				closeOnOutsideClick: options.closeOnOutsideClick,
+				// Default ON: backdrop / Escape dismiss = cancel, never confirm.
+				closeOnOutsideClick: options.closeOnOutsideClick ?? true,
 				children: options.children,
 				component: options.component,
 				props: options.props,

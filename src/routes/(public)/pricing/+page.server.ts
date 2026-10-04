@@ -2,16 +2,14 @@ import type { Actions, PageServerLoad } from './$types';
 import { fail } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
+import { getSiteOrigin } from '$lib/server/seo/site-origin.server';
 import { isTrialDuration } from '$lib/tool/pricing';
 
-export const load: PageServerLoad = async () => {
-	const origin = (
-		env.BETTER_AUTH_BASE_URL ||
-		env.BETTER_AUTH_URL ||
-		'http://localhost:4002'
-	).replace(/\/$/, '');
+/** Prerender HTML; trial form actions still hit the serverless endpoint. */
+export const prerender = true;
 
-	return { origin };
+export const load: PageServerLoad = async () => {
+	return { origin: getSiteOrigin() };
 };
 
 export const actions: Actions = {

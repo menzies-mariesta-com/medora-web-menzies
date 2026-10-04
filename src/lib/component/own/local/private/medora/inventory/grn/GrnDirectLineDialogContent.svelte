@@ -41,8 +41,8 @@
 <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-grndirectlinedialogconte-59c8a9">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect inputId="a11y-grndirectlinedialogconte-59c8a9"
 				value={draftDirectLine?.itemId != null
 					? String(draftDirectLine.itemId)
 					: ''}
@@ -55,8 +55,8 @@
 			/>
 		</div>
 		<div>
-			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-grndirectlinedialogconte-0feae4">{m.inv_common_unit()}</label>
+			<SearchSelect inputId="a11y-grndirectlinedialogconte-0feae4"
 				value={draftDirectLine?.itemUnitMasterId != null
 					? String(draftDirectLine.itemUnitMasterId)
 					: ''}
