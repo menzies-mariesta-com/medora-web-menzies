@@ -35,7 +35,8 @@
 		ConsumptionDraftLineIum
 	} from '$lib/model/type/medora/department-consumption-detail.type';
 	import { purchaseQtyToIssueQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
-	const lifeCycle = new LifeCycleUtil();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const lifeCycle = new LifeCycleUtil();
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
@@ -228,7 +229,6 @@
 			const result = await dialogService.open<PendingIndentRow>({
 				fullScreen: true,
 				title: '',
-				closeOnOutsideClick: true,
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_dept_issue_select_indent(),
@@ -788,7 +788,7 @@
 				toast.addToast(
 					'Issue',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -841,7 +841,7 @@
 				toast.addToast(
 					'Issue',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -911,15 +911,14 @@
 										class="flex h-full flex-col justify-between gap-3"
 									>
 										<div class="flex min-w-0 flex-col gap-2">
-											<label class="text-xs">{m.inv_nav_from_store()}</label>
+											<label class="text-xs" for="a11y-page-968e1e">{m.inv_nav_from_store()}</label>
 											<input
 												type="text"
 												readonly
 												disabled
 												class="input-bordered input w-full text-sm"
 												value={navFromStoreLabel}
-												aria-label={m.inv_nav_from_store()}
-											/>
+												aria-label={m.inv_nav_from_store()} id="a11y-page-968e1e" />
 										</div>
 										<div class="flex min-w-0 flex-col gap-2">
 											<label for="di-issue-to-store" class="text-xs">{m.inv_dept_indent_to()}</label>
@@ -943,12 +942,12 @@
 								</div>
 
 								<div class="flex min-w-0 flex-1 flex-col">
-									<label class="text-xs">{m.inv_dept_indent_remarks()}</label>
+									<label class="text-xs" for="a11y-page-5b7d29">{m.inv_dept_indent_remarks()}</label>
 									<textarea
 										class="textarea-bordered textarea mt-1 w-full flex-1"
 										rows="2"
 										bind:value={remarks}
-									></textarea>
+									 id="a11y-page-5b7d29"></textarea>
 								</div>
 							</div>
 						</div>

@@ -56,6 +56,7 @@
 	);
 
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type Weekday = { id: number; name: string | null };
 	type DoctorStaff = StaffWithRelations & {
@@ -91,7 +92,7 @@
 		const res = await fetch(`${apiBase}?${sp.toString()}`, {
 			method: 'GET'
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -104,7 +105,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...(body ?? {}) })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -645,10 +646,8 @@
 									className="w-full"
 									disabled={noEndDate}
 								/>
-								<label
-									class="flex w-fit cursor-pointer items-center gap-2"
-								>
-									<WashCheckbox bind:checked={noEndDate} />
+								<label class="flex w-fit cursor-pointer items-center gap-2"
+								 for="a11y-page-76188d"><WashCheckbox bind:checked={noEndDate} id="a11y-page-76188d" />
 									<span>No End Date</span>
 								</label>
 							</div>
@@ -804,12 +803,9 @@
 							{#each DAYS as day, i (day.id)}
 								<tr>
 									<td>
-										<label
-											class="flex cursor-pointer items-center gap-2"
-										>
-											<WashCheckbox
-												bind:checked={daySchedules[i].checked}
-											/>
+										<label class="flex cursor-pointer items-center gap-2"
+										 for="a11y-page-aacabb"><WashCheckbox
+												bind:checked={daySchedules[i].checked} id="a11y-page-aacabb" />
 											<span>{day.name}</span>
 										</label>
 									</td>

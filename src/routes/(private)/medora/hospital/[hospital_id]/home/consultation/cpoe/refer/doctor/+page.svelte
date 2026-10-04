@@ -299,8 +299,7 @@
 			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
 			<label for="is-urgent" class="shrink-0 sm:w-40">Urgent</label>
-			<label class="flex cursor-pointer items-center gap-2">
-				<WashCheckbox id="is-urgent" bind:checked={isUrgent} />
+			<label class="flex cursor-pointer items-center gap-2" for="is-urgent"><WashCheckbox id="is-urgent" bind:checked={isUrgent} />
 				<span class="text-sm">High Priority</span>
 			</label>
 		</div>

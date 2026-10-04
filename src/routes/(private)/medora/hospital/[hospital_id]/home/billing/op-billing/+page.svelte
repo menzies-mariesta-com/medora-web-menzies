@@ -28,6 +28,7 @@
 	import { buildOpBillingPrintBodyHtml } from '$lib/util/op-billing-print-table.util';
 	import { formatMoneyAmount } from '$lib/util/number-display.util';
 	import { VisitState } from '$lib/state/visit.state.svelte';
+	import { sanitizeUserFacingErrorText } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<
 		string,
@@ -402,7 +403,10 @@
 					try {
 						const j = (await res.json()) as { message?: string };
 						loadError =
-							(typeof j?.message === 'string' && j.message.trim()) ||
+							sanitizeUserFacingErrorText(
+								typeof j?.message === 'string' ? j.message : undefined,
+								{ status: res.status }
+							) ||
 							tr(
 								msg.op_billing_discount_locked_after_print,
 								'This bill was printed; the visit-level discount cannot be changed.'
@@ -449,8 +453,10 @@
 			if (!res.ok) {
 				try {
 					const j = (await res.json()) as { message?: string };
-					const serverMsg =
-						typeof j?.message === 'string' ? j.message.trim() : '';
+					const serverMsg = sanitizeUserFacingErrorText(
+						typeof j?.message === 'string' ? j.message : undefined,
+						{ status: res.status }
+					);
 					loadError =
 						serverMsg ||
 						(res.status === 400
@@ -970,16 +976,17 @@
 	>
 		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="space-y-3">
-				<label class="form-control w-full">
-					<div class="label">
+				<div class="form-control w-full">
+					<label for="a11y-page-c9753b" class="label">
 						<span class="label-text">
 							{tr(
 								msg.op_billing_discount_type_label,
 								'Discount type'
 							)}
 						</span>
-					</div>
+					</label>
 					<WashSelect
+						id="a11y-page-c9753b"
 						className="w-full"
 						value={String(discountType)}
 						options={[
@@ -1009,7 +1016,7 @@
 							) as BillingDiscountTypeEnum;
 						}}
 					/>
-				</label>
+				</div>
 
 				<label class="form-control w-full">
 					<div class="label">

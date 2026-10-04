@@ -200,7 +200,7 @@
 	<WashCard className="mb-4">
 		<WashCardBody className="grid gap-3 sm:grid-cols-2">
 			<div>
-				<label class="text-xs">{m.inv_nav_from_store()}</label>
+				<label class="text-xs" for="a11y-departmentissuedetailvie-a03556">{m.inv_nav_from_store()}</label>
 				<input
 					type="text"
 					readonly
@@ -209,11 +209,10 @@
 					value={detail.fromStoreName?.trim()
 						? detail.fromStoreName
 						: '—'}
-					aria-label={m.inv_nav_from_store()}
-				/>
+					aria-label={m.inv_nav_from_store()} id="a11y-departmentissuedetailvie-a03556" />
 			</div>
 			<div>
-				<label class="text-xs">{m.inv_dept_indent_to()}</label>
+				<label class="text-xs" for="a11y-departmentissuedetailvie-157eae">{m.inv_dept_indent_to()}</label>
 				<input
 					type="text"
 					readonly
@@ -222,31 +221,28 @@
 					value={detail.toStoreName?.trim()
 						? detail.toStoreName
 						: '—'}
-					aria-label={m.inv_dept_indent_to()}
-				/>
+					aria-label={m.inv_dept_indent_to()} id="a11y-departmentissuedetailvie-157eae" />
 			</div>
 			<div class="sm:col-span-2">
-				<label class="text-xs">{m.status()}</label>
+				<label class="text-xs" for="a11y-departmentissuedetailvie-82e34a">{m.status()}</label>
 				<input
 					type="text"
 					readonly
 					disabled
 					class="input-bordered input mt-1 w-full text-sm"
 					value={detail.statusName ?? '—'}
-					aria-label={m.status()}
-				/>
+					aria-label={m.status()} id="a11y-departmentissuedetailvie-82e34a" />
 			</div>
 			{#if detail.sourceIndentNo?.trim()}
 				<div class="sm:col-span-2">
-					<label class="text-xs">{m.inv_di_from_indent()}</label>
+					<label class="text-xs" for="a11y-departmentissuedetailvie-d9e834">{m.inv_di_from_indent()}</label>
 					<input
 						type="text"
 						readonly
 						disabled
 						class="input-bordered input mt-1 w-full text-sm"
 						value={detail.sourceIndentNo}
-						aria-label={m.inv_di_from_indent()}
-					/>
+						aria-label={m.inv_di_from_indent()} id="a11y-departmentissuedetailvie-d9e834" />
 				</div>
 			{/if}
 		</WashCardBody>

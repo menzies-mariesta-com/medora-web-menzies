@@ -18,6 +18,7 @@ export type ProblemListRow = {
 export type DischargeSummaryRow = {
 	id: number;
 	visitId: number;
+	patientId?: string | null;
 	hospitalCourse: string;
 	dischargeMedications: string;
 	followUp: string;

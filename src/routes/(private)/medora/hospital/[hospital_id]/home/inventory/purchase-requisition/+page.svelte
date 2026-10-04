@@ -22,8 +22,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { InvPrStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import { toastError } from '$lib/util/toast-copy.util';
-
-	const dt = new DateTimeUtil();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -204,11 +204,10 @@
 			}
 		);
 		if (!res.ok) {
-			const t = await res.text();
+			const t = await userFacingDetailFromResponse(res);
 			toastService.addToast(
 				m.inv_pr_cancel(),
-				StatusColorEnum.ERROR,
-				t || String(res.status)
+				StatusColorEnum.ERROR, t
 			);
 			throw new Error('cancel_failed');
 		}

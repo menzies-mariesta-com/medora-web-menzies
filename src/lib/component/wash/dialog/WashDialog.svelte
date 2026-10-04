@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Svelte adapter for Menzies Design Wash Dialog (web 1.3.0).
-	 * @see https://design-menzies.netlify.app/ — Components → Dialog
+	 * @see https://design-menzies.netlify.app/ (Components, Dialog)
 	 *
 	 * DialogTemplate slot mapping (Design recipe names → this adapter):
 	 *   header → title | header
@@ -12,8 +12,8 @@
 	 * Sectioned chrome matches Design Dialog:
 	 *   header band → separator → scroll body → separator → modal-action
 	 *
-	 * Medora default: backdrop is visual-only (no outside-click close).
-	 * Pass `closeOnOutsideClick` for table-only pickers (Design form method=dialog).
+	 * Default: backdrop click and Escape dismiss (cancel), never confirm.
+	 * Pass `closeOnOutsideClick={false}` only to force a visual-only dimmer.
 	 */
 	import { tick, type Snippet } from 'svelte';
 	import gsap from 'gsap';
@@ -49,8 +49,8 @@
 		showActions = true,
 		/** When true and `actions` is unset, render Design ghost Close. */
 		showDefaultClose = true,
-		/** When true, backdrop click dismisses (table pickers). Default: Medora visual-only. */
-		closeOnOutsideClick = false,
+		/** When true (default), backdrop click dismisses as cancel. */
+		closeOnOutsideClick = true,
 		id
 	}: {
 		open?: boolean;
@@ -310,14 +310,14 @@
 		{/if}
 	</div>
 	{#if closeOnOutsideClick}
-		<!-- Design: backdrop form closes on outside click -->
+		<!-- daisyUI: method=dialog backdrop dismisses (cancel), not confirm -->
 		<form method="dialog" class="modal-backdrop">
 			<button type="submit" class="cursor-default" aria-label="Close">
 				close
 			</button>
 		</form>
 	{:else}
-		<!-- Visual dimmer only — do not close on outside click (Medora default). -->
+		<!-- Visual dimmer only: outside click does not dismiss. -->
 		<div class="modal-backdrop" aria-hidden="true"></div>
 	{/if}
 	{#if layer}

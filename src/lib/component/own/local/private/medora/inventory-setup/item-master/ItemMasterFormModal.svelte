@@ -527,19 +527,19 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label class="shrink-0 pt-2 sm:w-40"
+					<label for="im-description" class="shrink-0 pt-2 sm:w-40"
 						>{m.item_master_description()}</label
 					>
 					<div class="max-w-lg flex-1">
-						<WashTextarea bind:value={description} />
+						<WashTextarea id="im-description" bind:value={description} />
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
+					<label for="im-remark" class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
 					<div class="max-w-lg flex-1">
-						<WashTextarea bind:value={remark} />
+						<WashTextarea id="im-remark" bind:value={remark} />
 					</div>
 				</div>
 				<div
@@ -585,8 +585,8 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label class="shrink-0 pt-1 sm:w-40"
-						>{m.item_master_unit_conversions()}</label
+					<span class="shrink-0 pt-1 sm:w-40"
+						>{m.item_master_unit_conversions()}</span
 					>
 					<div class="max-w-lg min-w-0 flex-1">
 						{#if itemUnitMasters.length === 0}
@@ -657,12 +657,11 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="shrink-0 sm:w-40">{m.status()}</label>
+					<span  class="shrink-0 sm:w-40">{m.status()}</span>
 					<div
 						class="flex max-w-lg flex-1 flex-wrap items-center gap-2"
 					>
-						<label class="flex cursor-pointer items-center gap-2">
-							<WashCheckbox bind:checked={formActive} />
+						<label class="flex cursor-pointer items-center gap-2" for="a11y-itemmasterformmodal-03a373"><WashCheckbox bind:checked={formActive} id="a11y-itemmasterformmodal-03a373" />
 							<span class="text-sm opacity-80"
 								>{m.active_label()}</span
 							>

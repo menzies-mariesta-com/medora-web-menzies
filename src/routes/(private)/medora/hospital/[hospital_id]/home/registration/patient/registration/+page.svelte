@@ -47,6 +47,7 @@
 	import LPatientCardPrintModal from '$lib/component/own/local/private/medora/patient/list/LPatientCardPrintModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -123,9 +124,7 @@
 
 	async function fetchMasterLookup<T>(kind: string): Promise<T[]> {
 		const r = await fetch(`/api/medora/master/lookup?kind=${kind}`);
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Lookup failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 
@@ -135,9 +134,7 @@
 		const base = registrationPatientApiBase();
 		if (!base) return null;
 		const r = await fetch(`${base}?id=${encodeURIComponent(id)}`);
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Failed to load patient');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return (await r.json()) as any | null;
 	}
 
@@ -163,9 +160,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Patient update failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 
@@ -179,9 +174,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ mode: 'create', ...body })
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Create patient failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json() as Promise<{
 			patient: { id: string; code?: string | null };
 			userId: string;
@@ -201,9 +194,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ mode: 'duplicates', ...payload })
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Duplicate check failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		const j = (await r.json()) as { data: unknown[] };
 		return j.data;
 	}
@@ -220,9 +211,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Attachment save failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 	let selectedTitleId: string = $state('');
@@ -649,7 +638,6 @@
 				const result = await dialogService.open({
 					title: 'Duplicate patients found',
 					fullScreen: true,
-					closeOnOutsideClick: true,
 					component: LPatientCheckDuplicateDialogContent
 				});
 				if (result.confirmed && result.data) {

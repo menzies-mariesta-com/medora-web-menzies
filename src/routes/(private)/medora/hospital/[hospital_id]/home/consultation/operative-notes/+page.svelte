@@ -8,6 +8,7 @@
 	import type { OperativeNoteRow } from '$lib/model/type/medora/clinical.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
@@ -55,7 +56,7 @@
 		errorMessage = '';
 		try {
 			const response = await fetch(`${apiBase}?visitId=${visitId}`);
-			if (!response.ok) throw new Error(await response.text());
+			if (!response.ok) await throwUserFacingHttpError(response);
 			rows = (await response.json()) as OperativeNoteRow[];
 		} catch (error) {
 			errorMessage =
@@ -73,7 +74,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!response.ok) throw new Error(await response.text());
+		if (!response.ok) await throwUserFacingHttpError(response);
 	}
 
 	async function save() {
@@ -144,37 +145,47 @@
 			/>{/if}
 		<section class="card border border-base-300">
 			<div class="card-body grid gap-3 p-4 md:grid-cols-2">
-				<label class="flex flex-col gap-1 text-sm"
-					><span>{m.mo_clinical_pre_op_diagnosis()}</span
-					><WashTextarea bind:value={preOp} /></label
-				>
-				<label class="flex flex-col gap-1 text-sm"
-					><span>{m.mo_clinical_post_op_diagnosis()}</span
-					><WashTextarea bind:value={postOp} /></label
-				>
-				<label class="flex flex-col gap-1 text-sm"
-					><span>{m.mo_clinical_findings()}</span><WashTextarea
-						bind:value={findings}
-					/></label
-				>
-				<label class="flex flex-col gap-1 text-sm"
-					><span>{m.mo_clinical_technique()}</span><WashTextarea
-						bind:value={technique}
-					/></label
-				>
-				<label class="flex flex-col gap-1 text-sm"
-					><span>{m.mo_clinical_specimens()}</span><WashTextarea
-						bind:value={specimens}
-					/></label
-				>
-				<label class="flex flex-col gap-1 text-sm">
-					<span>{m.mo_clinical_blood_loss()}</span>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-page-5824fe"
+						><span>{m.mo_clinical_pre_op_diagnosis()}</span></label
+					>
+					<WashTextarea bind:value={preOp} id="a11y-page-5824fe" />
+				</div>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-opnotes-postop"
+						><span>{m.mo_clinical_post_op_diagnosis()}</span></label
+					>
+					<WashTextarea bind:value={postOp} id="a11y-opnotes-postop" />
+				</div>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-opnotes-findings"
+						><span>{m.mo_clinical_findings()}</span></label
+					>
+					<WashTextarea bind:value={findings} id="a11y-opnotes-findings" />
+				</div>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-opnotes-technique"
+						><span>{m.mo_clinical_technique()}</span></label
+					>
+					<WashTextarea bind:value={technique} id="a11y-opnotes-technique" />
+				</div>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-opnotes-specimens"
+						><span>{m.mo_clinical_specimens()}</span></label
+					>
+					<WashTextarea bind:value={specimens} id="a11y-opnotes-specimens" />
+				</div>
+				<div class="flex flex-col gap-1 text-sm">
+					<label for="a11y-opnotes-blood"
+						><span>{m.mo_clinical_blood_loss()}</span></label
+					>
 					<WashInputField
+						id="a11y-opnotes-blood"
 						bind:value={bloodLoss}
 						inputType="text"
 						inputPlaceholderText={m.mo_clinical_optional()}
 					/>
-				</label>
+				</div>
 				<div class="flex justify-end gap-2 md:col-span-2">
 					{#if editingId}<WashButton
 							className="btn-ghost"

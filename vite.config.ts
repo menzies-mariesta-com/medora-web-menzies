@@ -15,6 +15,11 @@ const pkg = JSON.parse(
 /**
  * Paraglide is compiled by CLI only (`pnpm run paraglide` / `paraglide:watch`).
  *
+ * Keep `@inlang/paraglide-js` pinned to 2.9.1 (exact). Newer 2.25.x pulls
+ * `@lix-js/sdk` 0.17+ which fails compile with LIX_READ_RESOURCE_EXHAUSTED
+ * ("buffered read result exceeds its byte or row budget") at ~195 locales
+ * / ~30MB of messages. No documented env budget override.
+ *
  * Do not re-enable `paraglideVitePlugin` without pinning
  * `outputStructure: 'message-modules'` and `cleanOutdir: false`.
  * The plugin's dev default (`locale-modules` + clean outdir) deletes

@@ -10,6 +10,10 @@
 	import { m } from '$lib/paraglide/messages';
 	import type { ClientReportExportColumn } from '$lib/tool/inventory/report-export-client.util';
 	import { appendMenziesTableColumnFilters } from '$lib/tool/menzies/menzies-table-query.util';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail
+	} from '$lib/util/user-facing-error.util';
 	import { untrack } from 'svelte';
 
 	const hospitalId = $derived(
@@ -64,15 +68,12 @@
 				method: 'GET',
 				cache: 'no-store'
 			});
-			if (!res.ok) {
-				throw new Error(
-					`Request failed (${res.status} ${res.statusText || 'Error'})`
-				);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			rows = mapRows((await res.json()) as Record<string, unknown>[]);
 		} catch (e) {
+			console.error(e);
 			errorMessage =
-				e instanceof Error ? e.message : 'Failed to load';
+				toUserFacingErrorDetail(e) ?? m.error_load_failed();
 			rows = [];
 		} finally {
 			loading = false;
@@ -85,11 +86,7 @@
 			method: 'GET',
 			cache: 'no-store'
 		});
-		if (!res.ok) {
-			throw new Error(
-				`Export failed (${res.status} ${res.statusText || 'Error'})`
-			);
-		}
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return mapRows(
 			(await res.json()) as Record<string, unknown>[]
 		) as Record<string, unknown>[];
