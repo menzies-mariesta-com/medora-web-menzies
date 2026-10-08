@@ -6,6 +6,7 @@ import {
 	getReferHistoryPaginated,
 	rejectReferHistory
 } from '$lib/server/medora/cpoe/refer-history.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -23,7 +24,7 @@ export async function GET(event: RequestEvent) {
 		case 'referHistory.paginated': {
 			const visitIdRaw = event.url.searchParams.get('visitId') ?? '';
 			const visitId =
-				visitIdRaw.trim() !== '' ? Number(visitIdRaw) : undefined;
+				parseUuid(visitIdRaw) ?? undefined;
 			const page = Number(event.url.searchParams.get('page') ?? '1');
 			const pageSize = Number(
 				event.url.searchParams.get('pageSize') ?? '25'
@@ -42,7 +43,7 @@ export async function GET(event: RequestEvent) {
 			return json(
 				await getReferHistoryPaginated({
 					visitId:
-						visitId && Number.isFinite(visitId) && visitId > 0
+						Boolean(visitId)
 							? visitId
 							: undefined,
 					page,

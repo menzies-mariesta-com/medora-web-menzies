@@ -6,6 +6,7 @@ import { and, inArray, ne } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -21,27 +22,21 @@ export async function GET(event: RequestEvent) {
 
 	switch (mode) {
 		case 'visit.get': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getPatientVisitById({ id: visitId, hospitalId })
 			);
 		}
 		case 'serviceOrder.list': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.getServiceOrder({ visitId }));
 		}
 		case 'orderLine.list': {
-			const visitIdForLock = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
+			const visitIdForLock = parseUuid(event.url.searchParams.get('visitId'));
 			const serviceOrderIdsRaw =
 				event.url.searchParams.getAll('serviceOrderIds');
 			const serviceOrderIds = serviceOrderIdsRaw
@@ -66,7 +61,7 @@ export async function GET(event: RequestEvent) {
 				)
 				.orderBy(table.serviceOrderDetailTable.id);
 			const lockedIds =
-				Number.isFinite(visitIdForLock) && visitIdForLock > 0
+				Boolean(visitIdForLock)
 					? await obs.getServiceOrderDetailIdsOnClosedOpBillsForVisit(
 							{
 								visitId: visitIdForLock

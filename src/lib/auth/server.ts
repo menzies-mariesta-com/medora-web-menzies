@@ -4,7 +4,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { emailOTP, twoFactor } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	accountTable,
 	sessionTable,
@@ -62,7 +62,7 @@ function resolveBetterAuthSecret(): string {
 }
 
 export const auth = betterAuth({
-	appName: 'Menzies Medora',
+	appName: 'Medora',
 	secret: resolveBetterAuthSecret(),
 	baseURL,
 	trustedOrigins,
@@ -103,12 +103,12 @@ export const auth = betterAuth({
 	advanced: {
 		database: {
 			// Use UUIDv7 for Better Auth ids (stored as text).
-			generateId: () => uuidv7()
+			generateId: () => uuidV7()
 		}
 	},
 	plugins: [
 		twoFactor({
-			issuer: 'Menzies Medora',
+			issuer: 'Medora',
 			/** Trusted-device cookie + verification row lifetime (3 days). */
 			trustDeviceMaxAge: 60 * 60 * 24 * 3
 		}),

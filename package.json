@@ -34,7 +34,7 @@
 		"db:seed:master": "npx tsx --env-file=.env src/lib/server/db/seed/master-table-seed.ts",
 		"db:seed:information": "npx tsx --env-file=.env src/lib/server/db/seed/information-table-seed.ts",
 		"db:seed:marketplace": "npx tsx --env-file=.env src/lib/server/db/seed/marketplace-table-seed.ts",
-		"db:import:icd": "node --env-file=.env scripts/import-icd-codes.mjs",
+		"db:import:icd": "npx tsx --env-file=.env scripts/import-icd-codes.ts",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "pnpm run build && changeset publish"
@@ -89,6 +89,7 @@
 		"argon2": "^0.44.0",
 		"better-auth": "1.4.18",
 		"d3": "^7.9.0",
+		"fflate": "0.8.2",
 		"gsap": "^3.14.2",
 		"html2canvas": "^1.4.1",
 		"jsbarcode": "^3.12.3",

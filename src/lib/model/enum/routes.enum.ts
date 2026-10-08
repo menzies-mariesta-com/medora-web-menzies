@@ -25,6 +25,7 @@ export enum WebRoutesEnum {
 	MEDORA_ADMIN_HOSPITALS = '/medora/admin/hospitals',
 	MEDORA_ADMIN_STAFF = '/medora/admin/staff',
 	MEDORA_ADMIN_MONITORING = '/medora/admin/monitoring',
+	MEDORA_ADMIN_ICD = '/medora/admin/icd',
 	MEDORA_ADMIN_TEAM = '/medora/admin/team',
 
 	// Legacy base paths (DB stores /medora/home/...; use medoraHospitalHome(hospitalId) + suffix for real URLs)

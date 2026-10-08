@@ -668,7 +668,7 @@ async function dispatchStoreScopedStockAlerts(params: {
 				try {
 					const reportUrl = toAbsoluteAppUrl(a.link);
 					const { html, plainText } = renderStockAlertEmail({
-						metaTitle: `${a.title} · Menzies Medora`,
+						metaTitle: `${a.title} · Medora`,
 						title: a.title,
 						body: a.message,
 						url: reportUrl,
@@ -680,7 +680,7 @@ async function dispatchStoreScopedStockAlerts(params: {
 						storeId: sid,
 						eventType: a.eventType,
 						minGapMinutes: settings.emailMinGapMinutes,
-						subject: `[Menzies Medora] ${a.title}`,
+						subject: `[Medora] ${a.title}`,
 						text: plainText,
 						html
 					});

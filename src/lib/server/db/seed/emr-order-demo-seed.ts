@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import argon2 from 'argon2';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { seedLogger } from '$lib/logger';
 import { RoleEnum, StaffTypeEnum, StatusEnum } from '$lib/model/enum/db-link';
 import {
@@ -313,9 +313,9 @@ async function seedDoctorsForHospital(
 		const lastName =
 			DOCTOR_LAST_NAMES[(seq - 1) % DOCTOR_LAST_NAMES.length] ?? 'Doctor';
 		const fullName = `${firstName} ${lastName}`;
-		const userId = uuidv7();
-		const accountId = uuidv7();
-		const staffId = uuidv7();
+		const userId = uuidV7();
+		const accountId = uuidV7();
+		const staffId = uuidV7();
 		const specializationId =
 			specializationIds[(seq - 1) % specializationIds.length] ?? 1;
 		const genderId = ((seq - 1) % 2) + 1;

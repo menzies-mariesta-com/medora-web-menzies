@@ -45,6 +45,7 @@
 
 	function codingSystemLabel(system: string | null | undefined): string {
 		if (system === 'ICD11') return msg.hospital_coding_system_icd11();
+		if (system === 'ICD10_CM') return msg.hospital_coding_system_icd10_cm();
 		return msg.hospital_coding_system_icd10();
 	}
 

@@ -81,7 +81,7 @@ async function nextAdmissionNo(params: {
 }
 
 export async function getActiveAdmissionByVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<IpdAdmissionSchema | null> {
 	const [row] = await ensureDb()
 		.select()
@@ -245,10 +245,9 @@ export async function admitVisitToIpd(
 
 	const sourceOpdVisitIdRaw = payload.sourceOpdVisitId;
 	const sourceOpdVisitId =
-		typeof sourceOpdVisitIdRaw === 'number' &&
-		Number.isFinite(sourceOpdVisitIdRaw) &&
-		sourceOpdVisitIdRaw > 0
-			? sourceOpdVisitIdRaw
+		typeof sourceOpdVisitIdRaw === 'string' &&
+		sourceOpdVisitIdRaw.trim() !== ''
+			? sourceOpdVisitIdRaw.trim()
 			: null;
 
 	const orderIdRaw = payload.admissionOrderId;
@@ -614,7 +613,7 @@ export async function dischargeAdmission(
 
 /** After IP bill print + pharmacy: ensure visit is Closed / Discharged (idempotent). */
 export async function closeIpdVisit(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }): Promise<void> {
 	const db = ensureDb();

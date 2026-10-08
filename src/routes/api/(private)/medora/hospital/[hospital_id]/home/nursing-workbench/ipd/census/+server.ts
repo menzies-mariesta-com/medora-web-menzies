@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as admission from '$lib/server/medora/ipd/admission.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -18,8 +19,8 @@ export async function GET(event: RequestEvent) {
 
 	const visitIdRaw = event.url.searchParams.get('visitId');
 	if (visitIdRaw) {
-		const visitId = Number(visitIdRaw);
-		if (!Number.isFinite(visitId)) throw error(400, 'Invalid visitId');
+		const visitId = parseUuid(visitIdRaw);
+		if (!visitId) throw error(400, 'Invalid visitId');
 		return json(
 			await admission.getActiveAdmissionByVisit({ visitId })
 		);
@@ -138,8 +139,8 @@ export async function POST(event: RequestEvent) {
 	}
 
 	if (action === 'close') {
-		const visitId = Number(body.visitId);
-		if (!Number.isFinite(visitId) || visitId <= 0)
+		const visitId = parseUuid(body.visitId);
+		if (!visitId)
 			throw error(400, 'visitId is required');
 		await admission.closeIpdVisit({ hospitalId, visitId });
 		return json({ ok: true });

@@ -13,6 +13,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { parseUuid } from '$lib/util/id.util';
 
 export type {
 	GeneratePrefixContext,
@@ -169,7 +170,7 @@ async function resolveField(
 		financialYearId?: number | null;
 		visitTypeId?: number;
 		orderDate?: string;
-		visitId?: number;
+		visitId?: string;
 		visitNo?: string | null;
 	}
 ): Promise<string> {
@@ -183,7 +184,7 @@ async function resolveField(
 		case 'visit.order_key': {
 			const no = (params.visitNo ?? '').trim();
 			if (no) return no;
-			if (params.visitId != null && Number.isFinite(params.visitId)) {
+			if (params.visitId != null && params.visitId !== '') {
 				return String(params.visitId);
 			}
 			return '';
@@ -246,7 +247,7 @@ export async function generatePrefix(
 		visitIdForScope:
 			scope.includeVisit &&
 			visitIdCtx != null &&
-			Number.isFinite(visitIdCtx)
+			Boolean(visitIdCtx)
 				? visitIdCtx
 				: null
 	});

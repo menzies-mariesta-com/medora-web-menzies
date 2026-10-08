@@ -7,7 +7,7 @@ export type DiagnosisCodeOption = {
 
 export type ProblemListRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	visitNo: string | null;
 	diagnosisType: string | null;
 	code: string | null;
@@ -17,7 +17,7 @@ export type ProblemListRow = {
 
 export type DischargeSummaryRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	patientId?: string | null;
 	hospitalCourse: string;
 	dischargeMedications: string;
@@ -30,7 +30,7 @@ export type DischargeSummaryRow = {
 
 export type LabResultRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	serviceOrderDetailId: number | null;
 	resultText: string;
 	resultJson: string | null;
@@ -42,7 +42,7 @@ export type LabResultRow = {
 
 export type ImagingResultRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	serviceOrderDetailId: number | null;
 	findings: string;
 	attachmentUrl: string | null;
@@ -53,7 +53,7 @@ export type ImagingResultRow = {
 
 export type ClinicalProcedureRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	procedureType: string;
 	notes: string;
 	performedAt: string | null;
@@ -62,7 +62,7 @@ export type ClinicalProcedureRow = {
 
 export type OperativeNoteRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	preOp: string;
 	findings: string;
 	technique: string;
@@ -74,7 +74,7 @@ export type OperativeNoteRow = {
 
 export type ConsultationWorkspaceRow = {
 	admissionId: number;
-	visitId: number;
+	visitId: string;
 	visitNo: string | null;
 	patientId: string;
 	patientName: string;

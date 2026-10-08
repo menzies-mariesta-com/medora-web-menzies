@@ -54,7 +54,7 @@ export type ServiceOrderListRow = PatientRegMasterTimestamps & {
 	orderDate: string | null;
 	orderTime: string | null;
 	orderNo: string | null;
-	visitId: number;
+	visitId: string;
 	statusId: number;
 };
 
@@ -84,7 +84,7 @@ export type PatientDiagnosisListRow = PatientRegMasterTimestamps & {
 	id: number;
 	patientId: string;
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	statusId: number;
 	height: string | null;
 	heightUnitId: number | null;

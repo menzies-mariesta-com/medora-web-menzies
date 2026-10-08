@@ -2,6 +2,7 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as admissionOrder from '$lib/server/medora/ipd/admission-order.server';
 import { IpdAdmissionOrderStatusTaggingEnum } from '$lib/model/enum/db-link';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -27,8 +28,8 @@ export async function GET(event: RequestEvent) {
 
 	const sourceOpdRaw = event.url.searchParams.get('sourceOpdVisitId');
 	if (sourceOpdRaw != null && sourceOpdRaw !== '') {
-		const sourceOpdVisitId = Number(sourceOpdRaw);
-		if (!Number.isFinite(sourceOpdVisitId) || sourceOpdVisitId <= 0) {
+		const sourceOpdVisitId = parseUuid(sourceOpdRaw);
+		if (!sourceOpdVisitId) {
 			throw error(400, 'sourceOpdVisitId is invalid');
 		}
 		const statusRaw = event.url.searchParams.get('statusTaggingId');
@@ -92,7 +93,7 @@ export async function POST(event: RequestEvent) {
 		return json(
 			await admissionOrder.createAdmissionOrder({
 				hospitalId,
-				sourceOpdVisitId: Number(body.sourceOpdVisitId),
+				sourceOpdVisitId: parseUuid(body.sourceOpdVisitId) ?? '',
 				careLevel: Number(body.careLevel),
 				urgency: Number(body.urgency),
 				preferredWardId:

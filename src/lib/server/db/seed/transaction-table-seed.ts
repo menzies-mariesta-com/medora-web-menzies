@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
 
@@ -174,8 +174,8 @@ async function ensureSeedPatients(hospitalId: string): Promise<PatientRow[]> {
 		seedLogger.info(`Creating ${need} seed patients…`);
 		for (let i = 0; i < need; i++) {
 			const seq = seedMarked.length + i + 1;
-			const userId = uuidv7();
-			const patientId = uuidv7();
+			const userId = uuidV7();
+			const patientId = uuidV7();
 			const email = `seed-patient-${hospitalId.slice(0, 8)}-${seq}@heka-dev.local`;
 			const code = `SEED-${String(seq).padStart(5, '0')}`;
 			const firstName = `Seed Patient ${seq}`;

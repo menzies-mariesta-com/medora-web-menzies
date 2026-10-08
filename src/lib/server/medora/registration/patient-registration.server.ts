@@ -16,7 +16,7 @@ import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.serve
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { and, eq, ilike, ne, or, sql, type SQL } from 'drizzle-orm';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 
 const NO_EMAIL_SUFFIX = '@no-email.medora';
 
@@ -26,7 +26,7 @@ function hospitalScopedAuthEmail(
 	hospitalId: string
 ): string {
 	const at = email.lastIndexOf('@');
-	if (at <= 0) return `${uuidv7()}${NO_EMAIL_SUFFIX}`;
+	if (at <= 0) return `${uuidV7()}${NO_EMAIL_SUFFIX}`;
 	const local = email.slice(0, at);
 	const domain = email.slice(at + 1);
 	const tag = hospitalId.replace(/-/g, '').slice(0, 8);
@@ -465,7 +465,7 @@ export async function createPatientWithUserInHospital(
 					.limit(1);
 				authEmail =
 					remappedTaken.length > 0
-						? `${uuidv7()}${NO_EMAIL_SUFFIX}`
+						? `${uuidV7()}${NO_EMAIL_SUFFIX}`
 						: remappedCandidate;
 				emailRemapped = true;
 			} else {
@@ -480,7 +480,7 @@ export async function createPatientWithUserInHospital(
 			.where(eq(userTable.email, normalizedEmail))
 			.limit(1);
 		if (existingPlaceholder.length > 0) {
-			authEmail = `${uuidv7()}${NO_EMAIL_SUFFIX}`;
+			authEmail = `${uuidV7()}${NO_EMAIL_SUFFIX}`;
 			emailRemapped = true;
 		}
 	}
@@ -489,7 +489,7 @@ export async function createPatientWithUserInHospital(
 	const hashedPassword =
 		await passwordHashUtil.hash(generatedPassword);
 
-	const userId = uuidv7();
+	const userId = uuidV7();
 	const [user] = await ensureDb()
 		.insert(userTable)
 		.values({
@@ -503,7 +503,7 @@ export async function createPatientWithUserInHospital(
 	if (!user) throw error(400, 'Failed to create patient user.');
 
 	await ensureDb().insert(accountTable).values({
-		id: uuidv7(),
+		id: uuidV7(),
 		userId: user.id,
 		accountId: authEmail,
 		providerId: 'credential',

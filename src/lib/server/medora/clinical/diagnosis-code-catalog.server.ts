@@ -20,7 +20,7 @@ export type DiagnosisCodeCatalogMeta = {
 		titleCount: number;
 		importedAt: string;
 	} | null;
-	attribution: 'WHO_ICD';
+	attribution: 'WHO_ICD' | 'CDC_ICD10_CM';
 };
 
 export async function getHospitalDiagnosisCatalogMeta(
@@ -38,7 +38,10 @@ export async function getHospitalDiagnosisCatalogMeta(
 					importedAt: String(release.importedAt)
 				}
 			: null,
-		attribution: 'WHO_ICD'
+		attribution:
+			codingSystem === DiagnosisCodingSystemEnum.ICD10_CM
+				? 'CDC_ICD10_CM'
+				: 'WHO_ICD'
 	};
 }
 
@@ -106,7 +109,11 @@ export function defaultCodingSystemLabel(system: string): string {
 		system,
 		DiagnosisCodingSystemEnum.ICD10
 	);
-	return parsed === DiagnosisCodingSystemEnum.ICD11
-		? 'ICD-11 MMS (WHO)'
-		: 'ICD-10 (WHO)';
+	if (parsed === DiagnosisCodingSystemEnum.ICD11) {
+		return 'ICD-11 MMS (WHO)';
+	}
+	if (parsed === DiagnosisCodingSystemEnum.ICD10_CM) {
+		return 'ICD-10-CM (US)';
+	}
+	return 'ICD-10 (WHO)';
 }

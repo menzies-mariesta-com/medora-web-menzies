@@ -9,7 +9,7 @@ import {
 	unique,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { statusTable } from '../master-table/master-table';
 import { StatusEnum } from '../../../../model/enum/db-link';
 
@@ -34,7 +34,7 @@ const timestamps = {
 export const userTable = pgTable('user', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
@@ -50,7 +50,7 @@ export const userTable = pgTable('user', {
 export const sessionTable = pgTable('session', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
@@ -67,7 +67,7 @@ export const sessionTable = pgTable('session', {
 export const accountTable = pgTable('account', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),
@@ -92,7 +92,7 @@ export const accountTable = pgTable('account', {
 export const verificationTable = pgTable('verification', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	identifier: text('identifier').notNull(),
 	value: text('value').notNull(),
 	/**
@@ -111,7 +111,7 @@ export const verificationTable = pgTable('verification', {
 export const twoFactorTable = pgTable('two_factor', {
 	id: text('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	userId: text('user_id')
 		.notNull()
 		.references(() => userTable.id, { onDelete: 'cascade' }),

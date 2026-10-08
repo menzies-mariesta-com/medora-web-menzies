@@ -134,7 +134,7 @@
 		<div class="flex items-center">
 			<LucideCopyright />
 			{dateTimeUtil.getCurrentYear()}
-			{m.menzies_medora()}. {m.all_rights_reserved()}
+			{m.menzies_medora()}. {msg.brand_care_software_by_menzies()}
 		</div>
 	</div>
 

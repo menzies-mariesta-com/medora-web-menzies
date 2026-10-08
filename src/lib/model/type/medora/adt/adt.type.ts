@@ -12,7 +12,7 @@ export type AdtBedStatusRow = {
 	dailyTariff?: string | null;
 	/** When occupied — active admission if any */
 	admissionId?: number | null;
-	visitId?: number | null;
+	visitId?: string | null;
 	patientName?: string | null;
 };
 

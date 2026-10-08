@@ -4,7 +4,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 
-async function visitContext(hospitalId: string, visitId: number) {
+async function visitContext(hospitalId: string, visitId: string) {
 	const [visit] = await ensureDb()
 		.select({
 			branchId: table.patientVisitTable.branchId,
@@ -24,7 +24,7 @@ async function visitContext(hospitalId: string, visitId: number) {
 
 export async function listClinicalProcedures(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }) {
 	return ensureDb()
 		.select()
@@ -42,7 +42,7 @@ export async function listClinicalProcedures(input: {
 export async function saveClinicalProcedure(input: {
 	id?: number;
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	procedureType: string;
 	notes: string;
 	performedAt?: string | null;
@@ -96,7 +96,7 @@ export async function deleteClinicalProcedure(input: {
 
 export async function listOperativeNotes(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }) {
 	return ensureDb()
 		.select()
@@ -114,7 +114,7 @@ export async function listOperativeNotes(input: {
 export async function saveOperativeNote(input: {
 	id?: number;
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	preOp: string;
 	findings: string;
 	technique: string;

@@ -32,7 +32,7 @@ export type MedicationOrderBatchSaveResponse = {
 	batch: {
 		id: number;
 		batchNo: string;
-		visitId: number | null;
+		visitId: string | null;
 		storeId: number;
 	};
 	batchNo: string;
@@ -58,7 +58,7 @@ export type StoreSearchRow = { id: number; storeName: string | null };
 export type MedicationOrderBatchHistoryRow = {
 	id: number;
 	hospitalId: string;
-	visitId: number | null;
+	visitId: string | null;
 	visitNo: string | null;
 	storeId: number;
 	extCustomerName: string | null;

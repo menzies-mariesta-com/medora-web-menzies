@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
@@ -26,13 +27,13 @@
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	type PatientVitalWithVisit = PatientDiagnosisListRow & {
-		visit?: { id: number; visitNo: string | null } | null;
+		visit?: { id: string; visitNo: string | null } | null;
 	};
 
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id

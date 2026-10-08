@@ -15,7 +15,7 @@ import { getNursingIncompleteLineCountForVisit } from '$lib/server/medora/emr/nu
 
 async function getTotalActiveServiceLineCountForVisit(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }): Promise<number> {
 	const orders = await ensureDb()
 		.select({ id: table.serviceOrderTable.id })
@@ -49,7 +49,7 @@ async function getTotalActiveServiceLineCountForVisit(input: {
 
 async function getSavedMedicationLineCountForVisit(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }): Promise<number> {
 	const rows = await ensureDb()
 		.select({ n: count() })
@@ -94,7 +94,7 @@ export async function getIpBillingReadiness(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		pendingBillLineCount: number;
 		billAlreadyClosed: boolean;
 		/** When set, close is blocked unless visit is discharged. */

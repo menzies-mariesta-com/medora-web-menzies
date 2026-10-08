@@ -106,7 +106,7 @@ export async function getDiagnosisById(input: {
 }
 
 export async function getDiagnosesByVisitId(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<DiagnosisWithType[]> {
 	const rows = await ensureDb().query.diagnosisTable.findMany({
 		where: (t, { and, eq, ne }) =>
@@ -205,7 +205,7 @@ export async function deleteDiagnosis(input: {
 }
 
 export async function getPlanOfCareRowsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }) {
 	const visit = await getPatientVisitById({
@@ -253,7 +253,7 @@ export async function getPlanOfCareById(input: {
 export async function createPlanOfCare(
 	hospitalId: string,
 	payload: {
-		visitId: number;
+		visitId: string;
 		note: string;
 		doctorId?: string | null;
 		statusId?: number;
@@ -348,7 +348,7 @@ export async function deletePlanOfCare(input: {
 }
 
 export async function getProgressNoteRowsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }) {
 	const visit = await getPatientVisitById({
@@ -396,7 +396,7 @@ export async function getProgressNoteById(input: {
 export async function createProgressNote(
 	hospitalId: string,
 	payload: {
-		visitId: number;
+		visitId: string;
 		note: string;
 		subjective?: string | null;
 		objective?: string | null;
@@ -565,7 +565,7 @@ export async function getPatientFormEntryById(input: {
 }
 
 export async function getPatientFormEntriesByVisitIdAndFormCode(input: {
-	visitId: number;
+	visitId: string;
 	formCode: string;
 }): Promise<PatientFormEntryWithRelations[]> {
 	const code = input.formCode.trim();
@@ -650,7 +650,7 @@ async function ensureFormNameIdByCode(code: string): Promise<number> {
 export async function createPatientFormEntry(payload: {
 	branchId: string;
 	patientId: string;
-	visitId: number;
+	visitId: string;
 	description: string;
 	statusId: number;
 	formCode: string;
@@ -736,7 +736,7 @@ export async function getDocumentsWithRelations(): Promise<
 }
 
 export async function getPatientDocumentsByVisitIdWithRelations(input: {
-	visitId: number;
+	visitId: string;
 }) {
 	return ensureDb().query.patientDocumentTable.findMany({
 		where: (t, { and, eq, ne }) =>
@@ -804,7 +804,7 @@ export async function updatePatientDocument(
 }
 
 export async function getPatientVisitById(input: {
-	id: number;
+	id: string;
 	hospitalId: string;
 }): Promise<PatientVisitSchema | null> {
 	const row = await ensureDb().query.patientVisitTable.findFirst({
@@ -845,7 +845,7 @@ export async function updatePatientVisit(input: {
 }
 
 export async function signPatientVisitClinical(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientVisitSchema> {
 	// Delegate to existing logic by reproducing minimal checks.
 	const [cur] = await ensureDb()
@@ -875,7 +875,7 @@ export async function signPatientVisitClinical(input: {
 }
 
 export async function unsignPatientVisitClinical(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientVisitSchema> {
 	const [cur] = await ensureDb()
 		.select({
@@ -1287,7 +1287,7 @@ export async function updatePatientAllergyRecord(
 }
 
 export async function getPatientVitalsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<PatientDiagnosisSchema[]> {
 	return ensureDb()
 		.select()
@@ -1322,7 +1322,7 @@ export async function deletePatientVital(input: {
  * OP billing and other consumers use this as-is so charges can be captured before nursing marks lines complete.
  */
 export async function getServiceOrderDetailRowsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<
 	(ServiceOrderDetailSchema & {
 		orderNo: string | null;
@@ -1400,7 +1400,7 @@ export async function getServiceOrderDetailRowsForVisit(input: {
 
 /** Service order detail IDs already on a closed OP or IP bill for this visit. */
 export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<Set<number>> {
 	const [opRows, ipRows] = await Promise.all([
 		ensureDb()
@@ -1461,7 +1461,7 @@ export async function getServiceOrderDetailIdsOnClosedOpBillsForVisit(input: {
 
 /** Medication order line IDs already on a closed OP or IP bill for this visit. */
 export async function getMedicationOrderLineIdsOnClosedOpBillsForVisit(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<Set<number>> {
 	const [opRows, ipRows] = await Promise.all([
 		ensureDb()
@@ -1609,7 +1609,7 @@ async function getDefaultServiceItemForPharmacyOpBilling(input: {
 }
 
 async function getPendingMedicationOrderRowsForOpBilling(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 	branchId: string;
 }): Promise<OpBillingPendingMedicationLineRow[]> {
@@ -1774,7 +1774,7 @@ function isNursingCompleteTimeSet(
  * appear when saved for the visit until billed on a closed print.
  */
 export async function getPendingOpBillingServiceDetailRowsForVisit(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 	branchId: string;
 }): Promise<OpBillingPendingLineRow[]> {
@@ -1933,7 +1933,7 @@ export async function deleteServiceOrderDetail(input: {
 }
 
 export async function getServiceOrder(input: {
-	visitId: number;
+	visitId: string;
 }): Promise<ServiceOrderSchema[]> {
 	return ensureDb()
 		.select()
@@ -1979,7 +1979,7 @@ export async function createServiceOrder(
 	event: RequestEvent,
 	payload: {
 		branchId: string;
-		visitId: number;
+		visitId: string;
 		orderDate: string;
 		orderTime: string;
 		/** Ignored; order number is always allocated server-side from prefix configuration. */
@@ -2245,7 +2245,7 @@ function formatPrintDateTime(
 
 /** Service order lines for EMR print placeholders (nursing complete / clinical document). */
 export async function getVisitServiceLinePrintRows(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }): Promise<VisitServiceLinePrintRow[]> {
 	const orders = await getServiceOrder({ visitId: input.visitId });

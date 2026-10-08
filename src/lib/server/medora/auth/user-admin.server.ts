@@ -17,7 +17,7 @@ import {
 } from '$lib/model/type/pagination.type';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { and, count, eq, ilike } from 'drizzle-orm';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { requireAdminPagePermission } from '$lib/server/medora/admin/admin-permission.server';
 
 function generateRandomPassword(length = 16): string {
@@ -53,7 +53,7 @@ export async function createOwner(
 	const generatedPassword = generateRandomPassword(16);
 	const hashedPassword =
 		await passwordHashUtil.hash(generatedPassword);
-	const userId = uuidv7();
+	const userId = uuidV7();
 	const [user] = await ensureDb()
 		.insert(userTable)
 		.values({
@@ -66,7 +66,7 @@ export async function createOwner(
 		.returning();
 	if (!user) throw error(400, 'Failed to create owner.');
 	await ensureDb().insert(accountTable).values({
-		id: uuidv7(),
+		id: uuidV7(),
 		userId: user.id,
 		accountId: payload.email.trim(),
 		providerId: 'credential',

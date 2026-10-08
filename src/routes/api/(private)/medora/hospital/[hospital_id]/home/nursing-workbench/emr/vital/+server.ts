@@ -8,6 +8,7 @@ import {
 	getVisitBasicsForVital,
 	updatePatientVital
 } from '$lib/server/medora/emr/patient-vital.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -19,8 +20,7 @@ export async function GET(event: RequestEvent) {
 	const action = event.url.searchParams.get('action') ?? 'list';
 
 	if (action === 'visitBasics') {
-		const visitId = Number(
-			event.url.searchParams.get('visitId') ?? 0
+		const visitId = parseUuid(event.url.searchParams.get('visitId') ?? 0
 		);
 		const data = await getVisitBasicsForVital(event, {
 			hospitalId,
@@ -64,7 +64,7 @@ export async function GET(event: RequestEvent) {
 
 const createSchema = z.object({
 	patientId: z.string().min(1),
-	visitId: z.number().int().positive(),
+	visitId: z.string().uuid(),
 	height: z.string().optional(),
 	heightUnitId: z.number().optional(),
 	weight: z.string().optional(),

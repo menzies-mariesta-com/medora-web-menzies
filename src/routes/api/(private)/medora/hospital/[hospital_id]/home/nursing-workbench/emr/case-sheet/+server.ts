@@ -7,6 +7,7 @@ import type {
 	PatientDiagnosisSchema,
 	ServiceOrderDetailSchema
 } from '$lib/server/db/schema-type';
+import { parseUuid } from '$lib/util/id.util';
 
 function collectAuditUserIds(rows: unknown[]): string[] {
 	const ids: string[] = [];
@@ -39,10 +40,8 @@ export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const visitId = Number(
-		event.url.searchParams.get('visitId') ?? '0'
-	);
-	if (!Number.isFinite(visitId) || visitId <= 0)
+	const visitId = parseUuid(event.url.searchParams.get('visitId'));
+	if (!visitId)
 		throw error(400, 'visitId is required');
 
 	const visitRow = await obs.getPatientVisitById({
