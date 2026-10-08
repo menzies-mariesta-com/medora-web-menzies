@@ -66,7 +66,7 @@ export async function createDraftMedicationOrder(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		storeId: number;
 		lines: DraftMedicationLine[];
 	}

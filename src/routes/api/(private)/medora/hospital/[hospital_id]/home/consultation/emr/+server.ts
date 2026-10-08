@@ -7,6 +7,7 @@ import {
 	searchDiagnosisCodes
 } from '$lib/server/medora/clinical/diagnosis-code.server';
 import { requireConsultant } from '$lib/server/medora/clinical/clinical-authority.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function requireSessionStaffId(event: {
 	locals: { staff?: { id?: string } | null };
@@ -28,9 +29,7 @@ export const GET: RequestHandler = async (event) => {
 	await ensureCanAccessHospital(event, hospitalId);
 
 	const mode = event.url.searchParams.get('mode') ?? '';
-	const visitId = Number(
-		event.url.searchParams.get('visitId') ?? '0'
-	);
+	const visitId = parseUuid(event.url.searchParams.get('visitId'));
 
 	if (!mode) {
 		throw error(400, 'mode is required');
@@ -38,7 +37,7 @@ export const GET: RequestHandler = async (event) => {
 
 	switch (mode) {
 		case 'visit.get': {
-			if (!Number.isFinite(visitId) || visitId <= 0) {
+			if (!visitId) {
 				throw error(400, 'visitId is required');
 			}
 			const data = await obs.getPatientVisitById({
@@ -85,7 +84,7 @@ export const GET: RequestHandler = async (event) => {
 			);
 		}
 		case 'vital.listByVisit': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.getPatientVitalsByVisitId({ visitId }));
 		}
@@ -93,7 +92,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getDiagnosisTypes());
 		}
 		case 'diagnosis.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.getDiagnosesByVisitId({ visitId }));
 		}
@@ -118,7 +117,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await listProblemList({ hospitalId, patientId }));
 		}
 		case 'planOfCare.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getPlanOfCareRowsByVisitId({ visitId, hospitalId })
@@ -131,7 +130,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getPlanOfCareById({ id, hospitalId }));
 		}
 		case 'progressNote.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getProgressNoteRowsByVisitId({
@@ -147,7 +146,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getProgressNoteById({ id, hospitalId }));
 		}
 		case 'formEntry.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			const formCode = event.url.searchParams.get('formCode') ?? '';
 			return json(
@@ -178,7 +177,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getPatientFormEntryById({ id }));
 		}
 		case 'patientDocument.visitList': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getPatientDocumentsByVisitIdWithRelations({
@@ -196,7 +195,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getDocumentsWithRelations());
 		}
 		case 'orderLine.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			const rows = await obs.getServiceOrderDetailRowsForVisit({
 				visitId
@@ -219,7 +218,7 @@ export const GET: RequestHandler = async (event) => {
 			return json(await obs.getServiceOrderDetailById({ id }));
 		}
 		case 'serviceOrder.list': {
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.getServiceOrder({ visitId }));
 		}
@@ -355,14 +354,14 @@ export const POST: RequestHandler = async (event) => {
 
 	switch (mode) {
 		case 'visit.sign': {
-			const visitId = Number(body['visitId'] ?? 0);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(body['visitId']);
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.signPatientVisitClinical({ visitId }));
 		}
 		case 'visit.unsign': {
-			const visitId = Number(body?.visitId ?? 0);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(body?.visitId);
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.unsignPatientVisitClinical({ visitId }));
 		}
@@ -395,8 +394,8 @@ export const POST: RequestHandler = async (event) => {
 			return json({ ok: true });
 		}
 		case 'planOfCare.create': {
-			const visitIdCreate = Number(body['visitId'] ?? 0);
-			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
+			const visitIdCreate = parseUuid(body['visitId']);
+			if (!visitIdCreate) {
 				throw error(400, 'visitId is required');
 			}
 			const doctorStaffId = requireSessionStaffId(event);
@@ -439,8 +438,8 @@ export const POST: RequestHandler = async (event) => {
 			return json({ ok: true });
 		}
 		case 'progressNote.create': {
-			const visitIdCreate = Number(body['visitId'] ?? 0);
-			if (!Number.isFinite(visitIdCreate) || visitIdCreate <= 0) {
+			const visitIdCreate = parseUuid(body['visitId']);
+			if (!visitIdCreate) {
 				throw error(400, 'visitId is required');
 			}
 			return json(
@@ -567,11 +566,11 @@ export const POST: RequestHandler = async (event) => {
 			return json(await obs.createAllergyMaster({ name }));
 		}
 		case 'patientAllergy.create': {
-			const visitId = Number(body['visitId']);
+			const visitId = parseUuid(body['visitId']);
 			const patientId = String(body['patientId'] ?? '').trim();
 			const allergyId = Number(body['allergyId']);
 			const severityId = Number(body['severityId']);
-			if (!Number.isFinite(visitId) || visitId <= 0) {
+			if (!visitId) {
 				throw error(400, 'visitId is required');
 			}
 			if (!patientId) throw error(400, 'patientId is required');

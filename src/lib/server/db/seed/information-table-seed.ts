@@ -11,6 +11,11 @@ import {
 	seedEmrDemoForAllHospitals,
 	seedEmrDemoSubCategories
 } from './emr-order-demo-seed';
+import {
+	importWhoIcdSystems,
+	isWhoIcdSeedSkipped,
+	WhoIcdCredentialsError
+} from '$lib/server/medora/clinical/who-icd-import.server';
 
 const client = neon(ensureDatabaseUrl());
 const db = drizzle(client);
@@ -22,6 +27,11 @@ const db = drizzle(client);
  * Seed information/business tables with sample data.
  *
  * Run after master-table-seed. Inserts in FK-safe order.
+ *
+ * **ICD-10 / ICD-11:** imports the full WHO coded catalogues via the ICD-API
+ * (`WHO_ICD_CLIENT_ID` + `WHO_ICD_CLIENT_SECRET` required). Set
+ * `WHO_ICD_SKIP_SEED=1` only to skip (catalogue will not be complete).
+ * Same importer as `pnpm db:import:icd` and admin Reseed.
  *
  * Per-hospital **`item_master`** catalog rows are **not** seeded here (created via the app).
  * Migration **`0074_item_master_drop_barcode_batch_required`** removes legacy **`barcode`** /
@@ -297,63 +307,31 @@ export async function seedInformationTables() {
 		`);
 	seedLogger.info('Seeded: page');
 
-	await db.execute(sql`
-		INSERT INTO diagnosis_code (code, system, description, status_id)
-		VALUES
-			('I10', 'ICD10', 'Essential (primary) hypertension', 1),
-			('E11.9', 'ICD10', 'Type 2 diabetes mellitus without complications', 1),
-			('E78.5', 'ICD10', 'Hyperlipidemia, unspecified', 1),
-			('J06.9', 'ICD10', 'Acute upper respiratory infection, unspecified', 1),
-			('J18.9', 'ICD10', 'Pneumonia, unspecified organism', 1),
-			('J44.9', 'ICD10', 'Chronic obstructive pulmonary disease, unspecified', 1),
-			('J45.909', 'ICD10', 'Unspecified asthma, uncomplicated', 1),
-			('K21.9', 'ICD10', 'Gastro-esophageal reflux disease without esophagitis', 1),
-			('K52.9', 'ICD10', 'Noninfective gastroenteritis and colitis, unspecified', 1),
-			('N39.0', 'ICD10', 'Urinary tract infection, site not specified', 1),
-			('N18.9', 'ICD10', 'Chronic kidney disease, unspecified', 1),
-			('I25.10', 'ICD10', 'Atherosclerotic heart disease without angina', 1),
-			('I50.9', 'ICD10', 'Heart failure, unspecified', 1),
-			('I48.91', 'ICD10', 'Unspecified atrial fibrillation', 1),
-			('I63.9', 'ICD10', 'Cerebral infarction, unspecified', 1),
-			('D64.9', 'ICD10', 'Anemia, unspecified', 1),
-			('R50.9', 'ICD10', 'Fever, unspecified', 1),
-			('R51.9', 'ICD10', 'Headache, unspecified', 1),
-			('R07.9', 'ICD10', 'Chest pain, unspecified', 1),
-			('R10.9', 'ICD10', 'Unspecified abdominal pain', 1),
-			('R11.2', 'ICD10', 'Nausea with vomiting, unspecified', 1),
-			('R42', 'ICD10', 'Dizziness and giddiness', 1),
-			('M54.5', 'ICD10', 'Low back pain', 1),
-			('M19.90', 'ICD10', 'Osteoarthritis, unspecified site', 1),
-			('G43.909', 'ICD10', 'Migraine, unspecified, not intractable', 1),
-			('F41.9', 'ICD10', 'Anxiety disorder, unspecified', 1),
-			('F32.A', 'ICD10', 'Depression, unspecified', 1),
-			('L03.90', 'ICD10', 'Cellulitis, unspecified', 1),
-			('A09', 'ICD10', 'Infectious gastroenteritis and colitis, unspecified', 1),
-			('U07.1', 'ICD10', 'COVID-19', 1)
-		ON CONFLICT (system, code) DO UPDATE SET
-			description = EXCLUDED.description,
-			status_id = EXCLUDED.status_id,
-			updated_at = now();
-	`);
-	await db.execute(sql`
-		INSERT INTO diagnosis_code (code, system, description, status_id)
-		VALUES
-			('BA00', 'ICD11', 'Essential hypertension', 1),
-			('5A11', 'ICD11', 'Type 2 diabetes mellitus', 1),
-			('CA40', 'ICD11', 'Pneumonia', 1),
-			('CA23', 'ICD11', 'Asthma', 1),
-			('MD81', 'ICD11', 'Abdominal or pelvic pain', 1),
-			('MG22', 'ICD11', 'Fever of other or unknown origin', 1),
-			('8A80', 'ICD11', 'Migraine', 1),
-			('MB24', 'ICD11', 'Dizziness or giddiness', 1),
-			('1A40', 'ICD11', 'Gastroenteritis or colitis of infectious origin', 1),
-			('RA01', 'ICD11', 'COVID-19', 1)
-		ON CONFLICT (system, code) DO UPDATE SET
-			description = EXCLUDED.description,
-			status_id = EXCLUDED.status_id,
-			updated_at = now();
-	`);
-	seedLogger.info('Seeded: diagnosis_code');
+	// Full WHO ICD-10 + ICD-11 (every coded entity). Requires WHO_ICD_* keys.
+	// Set WHO_ICD_SKIP_SEED=1 only for CI/local escape hatches (leaves catalog empty/unchanged).
+	if (isWhoIcdSeedSkipped()) {
+		seedLogger.warn(
+			'Skipped diagnosis_code WHO import (WHO_ICD_SKIP_SEED is set). Catalogue will not be complete.'
+		);
+	} else {
+		try {
+			const icdResult = await importWhoIcdSystems({
+				systems: 'BOTH',
+				notesPrefix: 'Seeded by information-table-seed (WHO ICD-API)',
+				log: (m) => seedLogger.info(m)
+			});
+			seedLogger.info(
+				`Seeded: diagnosis_code (WHO ICD-API) inserted=${icdResult.inserted} updated=${icdResult.updated} total=${icdResult.total}`
+			);
+		} catch (err) {
+			if (err instanceof WhoIcdCredentialsError) {
+				throw new Error(
+					`${err.message} Or set WHO_ICD_SKIP_SEED=1 to skip ICD during information seed (not recommended for real hospitals).`
+				);
+			}
+			throw err;
+		}
+	}
 
 	// 5. Role (must match RoleEnum / auth-table-seed; do not invent hospital job titles here)
 	await db.execute(sql`

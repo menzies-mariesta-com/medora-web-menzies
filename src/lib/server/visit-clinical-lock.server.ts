@@ -1,14 +1,15 @@
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { parseUuid } from '$lib/util/id.util';
 
 const LOCKED_MESSAGE =
 	'This visit has been saved as signed and cannot be edited.';
 
 export async function assertVisitNotClinicallySigned(
-	visitId: number | null | undefined
+	visitId: string | null | undefined
 ): Promise<void> {
-	if (visitId == null || !Number.isFinite(visitId)) return;
+	if (visitId == null || visitId === '') return;
 	const [row] = await ensureDb()
 		.select({
 			clinicalSignedAt: table.patientVisitTable.clinicalSignedAt

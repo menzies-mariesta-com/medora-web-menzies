@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -216,7 +217,7 @@
 				headers: { 'content-type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					visitId: Number(visitId),
+					visitId: parseUuid(visitId) ?? '',
 					admissionId,
 					amount: String(amt),
 					paymentMethod,

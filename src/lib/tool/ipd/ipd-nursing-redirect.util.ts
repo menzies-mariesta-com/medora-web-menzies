@@ -42,7 +42,7 @@ export function buildIpdNursingEmrUrl(input: {
 
 export function buildConsultationEmrUrl(input: {
 	hospitalId: string;
-	visitId: number | string;
+	visitId: string;
 }): string {
 	return `/medora/hospital/${input.hospitalId}/home/consultation/emr?visitId=${encodeURIComponent(String(input.visitId))}`;
 }

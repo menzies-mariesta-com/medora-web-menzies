@@ -40,7 +40,7 @@ export async function sendEmailServer(payload: {
 	try {
 		const transporter = createTransporter();
 		await transporter.sendMail({
-			from: `"Menzies Medora" <${user}>`,
+			from: `"Medora" <${user}>`,
 			to: payload.to,
 			subject: payload.subject,
 			text: payload.message,

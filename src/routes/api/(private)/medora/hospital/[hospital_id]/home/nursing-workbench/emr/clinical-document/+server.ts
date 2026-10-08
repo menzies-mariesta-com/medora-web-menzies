@@ -3,6 +3,7 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { getClinicalFormDocuments } from '$lib/server/medora/document-master/document.server';
 import { getDocumentSettingsForPrint } from '$lib/server/medora/document-master/document-print.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -13,15 +14,13 @@ export async function GET(event: RequestEvent) {
 	const hospitalId = hospitalIdFrom(event);
 	await ensureCanAccessHospital(event, hospitalId);
 
-	const visitId = Number(
-		event.url.searchParams.get('visitId') ?? '0'
-	);
+	const visitId = parseUuid(event.url.searchParams.get('visitId'));
 	const mode = event.url.searchParams.get('mode') ?? 'bootstrap';
 
 	if (mode !== 'bootstrap') throw error(400, `Unknown mode: ${mode}`);
 
 	const [visit, documents, documentSettings] = await Promise.all([
-		visitId && Number.isFinite(visitId)
+		Boolean(visitId)
 			? obs.getPatientVisitById({ id: visitId, hospitalId })
 			: Promise.resolve(null),
 		getClinicalFormDocuments(event, { hospitalId }),

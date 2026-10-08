@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -55,7 +56,7 @@
 
 	function newLine(): ConsumptionDraftLine {
 		return {
-			key: crypto.randomUUID(),
+			key: uuidV7(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,

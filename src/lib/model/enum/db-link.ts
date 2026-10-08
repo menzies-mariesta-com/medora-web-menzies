@@ -21,6 +21,7 @@ export enum AdminPageKeyEnum {
 	HOSPITALS = 'hospitals',
 	STAFF = 'staff',
 	MONITORING = 'monitoring',
+	ICD = 'icd',
 	TEAM = 'team'
 }
 

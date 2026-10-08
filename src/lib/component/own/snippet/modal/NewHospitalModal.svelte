@@ -548,6 +548,9 @@
 							<option value={DiagnosisCodingSystemEnum.ICD10}
 								>{msg.hospital_coding_system_icd10()}</option
 							>
+							<option value={DiagnosisCodingSystemEnum.ICD10_CM}
+								>{msg.hospital_coding_system_icd10_cm()}</option
+							>
 							<option value={DiagnosisCodingSystemEnum.ICD11}
 								>{msg.hospital_coding_system_icd11()}</option
 							>

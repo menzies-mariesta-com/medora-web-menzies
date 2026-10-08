@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -134,7 +135,7 @@ const hospitalId = $derived(
 
 	function newLine(): PrLineForm {
 		return {
-			key: crypto.randomUUID(),
+			key: uuidV7(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,

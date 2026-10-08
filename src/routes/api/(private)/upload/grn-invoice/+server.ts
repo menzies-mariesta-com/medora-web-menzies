@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { TigrisUtil } from '$lib/util/tigris.util.svelte';
+import { uuidV7 } from '$lib/util/id.util';
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -64,7 +65,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const ext = getExt(file);
-		const path = `grn-invoices/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+		const path = `grn-invoices/${Date.now()}-${uuidV7().slice(0, 8)}.${ext}`;
 		await TigrisUtil.upload(path, file, {
 			contentType: type,
 			access: 'public'

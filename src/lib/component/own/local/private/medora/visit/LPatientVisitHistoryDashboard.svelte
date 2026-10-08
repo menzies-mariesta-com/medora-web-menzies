@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import type {
@@ -39,7 +40,7 @@
 
 	type VisitTableRow = {
 		id: number;
-		visitId: number;
+		visitId: string;
 		visitNo: string;
 		visitDateLabel: string;
 		doctorName: string;
@@ -67,7 +68,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	let visitRow = $state<PatientVisitWithRelationsLite | null>(null);

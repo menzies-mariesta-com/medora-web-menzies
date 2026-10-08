@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -9,13 +10,7 @@
 	import LucideChevronLeft from '$lib/component/own/library/lucide/LucideChevronLeft.svelte';
 	import LucideChevronRight from '$lib/component/own/library/lucide/LucideChevronRight.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
-	import LucidePlus from '$lib/component/own/library/lucide/LucidePlus.svelte';
 	import LucideTrash2 from '$lib/component/own/library/lucide/LucideTrash2.svelte';
-	import MenziesTable, {
-		type MenziesTableColumn
-	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import MenziesTableIconAction from '$lib/component/own/library/menzies/table/MenziesTableIconAction.svelte';
-	import MenziesTableRowActionGroup from '$lib/component/own/library/menzies/table/MenziesTableRowActionGroup.svelte';
 	import LObservationOrderLineDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDialogContent.svelte';
 	import LObservationDiagnosisDialogContent from '$lib/component/own/local/private/medora/observation/LObservationDiagnosisDialogContent.svelte';
 	import LObservationFormEntryDialogContent from '$lib/component/own/local/private/medora/observation/LObservationFormEntryDialogContent.svelte';
@@ -27,6 +22,8 @@
 	import LObservationOrderLineDeleteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationOrderLineDeleteDialogContent.svelte';
 	import LObservationProgressNoteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationProgressNoteDialogContent.svelte';
 	import LObservationProgressNoteDeleteDialogContent from '$lib/component/own/local/private/medora/observation/LObservationProgressNoteDeleteDialogContent.svelte';
+	import LEmrComplaintConditionTransfer from '$lib/component/own/local/private/medora/observation/LEmrComplaintConditionTransfer.svelte';
+	import LEmrGlanceCardPanel from '$lib/component/own/local/private/medora/observation/LEmrGlanceCardPanel.svelte';
 	import LVitalRecordDialogContent from '$lib/component/own/local/private/medora/emr/LVitalRecordDialogContent.svelte';
 	import LPatientAllergyDialogContent from '$lib/component/own/local/private/medora/emr/LPatientAllergyDialogContent.svelte';
 	import LOrderIpdAdmissionDialogContent from '$lib/component/own/local/private/medora/ipd/LOrderIpdAdmissionDialogContent.svelte';
@@ -60,16 +57,11 @@
 		ObservationEmrPatientAllergyRow,
 		ObservationEmrPatientVisitRow
 	} from '$lib/model/type/medora/observation-emr.type';
-	import {
-		vitalTextClass,
-		type VitalKey
-	} from '$lib/config/vital.config';
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { AppEnum } from '$lib/model/enum/app.enum';
-	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
@@ -84,7 +76,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
@@ -196,6 +188,7 @@
 
 	let isLoadingVisit = $state(false);
 	let isLoadingGrid = $state(false);
+	let isTransferringFormEntries = $state(false);
 	let isSigningClinical = $state(false);
 	/** Loading only the allergy table (nursing OPD–style patient-wide list). */
 	let isLoadingAllergies = $state(false);
@@ -226,12 +219,6 @@
 	let allergyCurrentPage = $state(1);
 	let allergyTotal = $state(0);
 	let lastAllergiesFetchKey = $state('');
-	let lastHandledAllergyPageSize = $state(
-		`${AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE}`
-	);
-	let allergyFilterDebounceTimeout: ReturnType<
-		typeof setTimeout
-	> | null = null;
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -275,25 +262,11 @@
 		return (await res.json()) as T;
 	}
 
-	function areFiltersEqual(
-		a: Record<string, string>,
-		b: Record<string, string>
-	): boolean {
-		const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-		for (const k of keys) {
-			if ((a[k] ?? '') !== (b[k] ?? '')) return false;
-		}
-		return true;
-	}
-
 	lifeCycleUtil.onMount(() => {
 		mounted = true;
 	});
 	lifeCycleUtil.onDestroy(() => {
 		mounted = false;
-		if (allergyFilterDebounceTimeout) {
-			clearTimeout(allergyFilterDebounceTimeout);
-		}
 	});
 
 	function formatVital(value: unknown): string {
@@ -825,477 +798,75 @@
 			!isLoadingVisit
 	);
 
-	/** Client-side vitals status filter: values match formatted cell (lowercased). */
-	const statusFilterOptions = [
-		{ label: 'Active', value: 'active' },
-		{ label: 'Inactive', value: 'inactive' }
-	];
+	const allergyPageCount = $derived(
+		Math.max(1, Math.ceil(allergyTotal / (Number(allergyPageSizeStr) || 10)))
+	);
 
-	/** Allergy table (remote filters): same `statusId` values as nursing OPD allergy. */
-	const allergyStatusFilterOptions = [
-		{ label: 'Active', value: String(StatusEnum.ACTIVE) },
-		{ label: 'Inactive', value: String(StatusEnum.INACTIVE) }
-	];
+	const filteredVitals = $derived.by(() => {
+		const statusFilter = vitalColumnFilters.status?.trim() ?? '';
+		if (!statusFilter) return vitals;
+		return vitals.filter((row) => {
+			if (statusFilter === 'active') return row.statusId === StatusEnum.ACTIVE;
+			if (statusFilter === 'inactive') return row.statusId === StatusEnum.INACTIVE;
+			return true;
+		});
+	});
 
-	const allergyColumns: MenziesTableColumn<PatientAllergyWithRelations>[] =
-		[
-			{
-				id: 'visitNo',
-				header: 'Visit No',
-				widthClass: TableRowEnum.VISIT_NO_WIDTH,
-				filterable: true,
-				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
-			},
-			{
-				id: 'allergyName',
-				header: 'Allergy',
-				widthClass: 'min-w-[8rem]',
-				filterable: false,
-				format: (_value, row) => formatText(row.allergy?.name ?? null)
-			},
-			{
-				id: 'status',
-				header: 'Status',
-				widthClass: 'w-28',
-				filterable: true,
-				filterType: 'select',
-				filterOptions: allergyStatusFilterOptions,
-				defaultFilterValue: String(StatusEnum.ACTIVE),
-				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE
-						? 'Active'
-						: row.statusId === StatusEnum.INACTIVE
-							? 'Inactive'
-							: `Status ${row.statusId ?? 'Unknown'}`
-			},
-			{
-				id: 'severity',
-				header: 'Severity',
-				widthClass: 'w-30',
-				filterable: true,
-				filterType: 'select',
-				filterMasterKey: 'severity',
-				format: (_value, row) =>
-					formatText(row.severity?.name ?? null)
-			},
-			{
-				id: 'reaction',
-				header: 'Reaction',
-				widthClass: 'min-w-32',
-				filterable: false,
-				format: (_value, row) => formatText(row.reaction),
-				cellClass: 'max-w-48 truncate'
-			},
-			{
-				id: 'remark',
-				header: 'Remark',
-				widthClass: 'min-w-32',
-				filterable: false,
-				format: (_value, row) => formatText(row.remark),
-				cellClass: 'max-w-48 truncate'
-			},
-			{
-				id: 'deactivationRemark',
-				header: 'Deactivation remark',
-				widthClass: 'min-w-32',
-				filterable: false,
-				format: (_value, row) => formatText(row.deactivationRemark),
-				cellClass: 'max-w-48 truncate'
-			},
-			{
-				id: 'createdAt',
-				header: 'Created',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) => formatDateTime(row.createdAt ?? null)
-			},
-			{
-				id: 'updatedAt',
-				header: 'Updated',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) => formatDateTime(row.updatedAt ?? null)
-			}
-		];
+	const filteredDiagnoses = $derived.by(() => {
+		const statusFilter = diagnosisColumnFilters.status?.trim() ?? '';
+		if (!statusFilter) return visitDiagnoses;
+		return visitDiagnoses.filter((row) => {
+			if (statusFilter === 'active') return row.statusId === StatusEnum.ACTIVE;
+			if (statusFilter === 'inactive') return row.statusId === StatusEnum.INACTIVE;
+			return true;
+		});
+	});
 
-	const vitalColumns: MenziesTableColumn<PatientDiagnosisListRow>[] =
-		[
-			{
-				id: 'status',
-				header: 'Status',
-				widthClass: 'w-28 min-w-[7rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptions: statusFilterOptions,
-				defaultFilterValue: 'active',
-				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE
-						? 'Active'
-						: row.statusId === StatusEnum.INACTIVE
-							? 'Inactive'
-							: `Status ${row.statusId ?? 'Unknown'}`
-			},
-			{
-				id: 'date',
-				header: 'Date',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) =>
-					formatDateTime(getVitalDisplayDate(row) ?? null)
-			},
-			{
-				id: 'height',
-				header: 'Height (cm)',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.height)
-			},
-			{
-				id: 'weight',
-				header: 'Weight (kg)',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.weight)
-			},
-			{
-				id: 'bmi',
-				header: m.emr_vital_bmi(),
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.bmi),
-				cellClassGetter: (row) =>
-					vitalTextClass(row.bmi, 'bmi' as VitalKey)
-			},
-			{
-				id: 'bp',
-				header: 'BP (mmHg)',
-				widthClass: 'w-24 min-w-[6rem]',
-				filterable: false,
-				format: (_value, row) =>
-					`${formatVital(row.bpSystolic)}/${formatVital(
-						row.bpDiastolic
-					)}`,
-				cellClassGetter: (row) =>
-					vitalTextClass(row.bpSystolic, 'bpSystolic' as VitalKey) ||
-					vitalTextClass(row.bpDiastolic, 'bpDiastolic' as VitalKey)
-			},
-			{
-				id: 'pulse',
-				header: 'P (bpm)',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.pulse),
-				cellClassGetter: (row) =>
-					vitalTextClass(row.pulse, 'pulse' as VitalKey)
-			},
-			{
-				id: 'temperature',
-				header: 'T (°C)',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.temperature),
-				cellClassGetter: (row) =>
-					vitalTextClass(row.temperature, 'temperature' as VitalKey)
-			},
-			{
-				id: 'spO2',
-				header: 'SpO₂ (%)',
-				widthClass: 'w-20 min-w-[5rem]',
-				filterable: false,
-				format: (_value, row) => formatVital(row.spO2),
-				cellClassGetter: (row) =>
-					vitalTextClass(row.spO2, 'spO2' as VitalKey)
-			},
-			{
-				id: 'symptom',
-				header: 'Symptom',
-				widthClass: 'min-w-32',
-				filterable: false,
-				format: (_value, row) => formatVital(row.symptom),
-				cellClass: 'max-w-48 truncate'
-			}
-		];
+	const filteredPlanOfCare = $derived.by(() => {
+		const statusFilter = planOfCareColumnFilters.status?.trim() ?? '';
+		if (!statusFilter) return planOfCareRows;
+		return planOfCareRows.filter((row) => {
+			if (statusFilter === 'active') return row.statusId === StatusEnum.ACTIVE;
+			if (statusFilter === 'inactive') return row.statusId === StatusEnum.INACTIVE;
+			return true;
+		});
+	});
 
-	const orderColumns: MenziesTableColumn<OrderDetailVisitRow>[] = [
-		{
-			id: 'orderNo',
-			header: 'Order No',
-			widthClass: 'w-32',
-			filterable: false,
-			format: (_value, row) => formatText(row.orderNo)
-		},
-		{
-			id: 'serviceName',
-			header: 'Service',
-			widthClass: 'min-w-[8rem]',
-			filterable: false,
-			format: (_value, row) =>
-				formatText(row.serviceName ?? `Service ${row.serviceId}`)
-		},
-		{
-			id: 'instruction',
-			header: 'Description',
-			widthClass: 'w-48',
-			filterable: false,
-			format: (_value, row) => formatText(row.instruction)
-		},
-		{
-			id: 'serviceAmount',
-			header: 'Amount',
-			widthClass: 'w-24',
-			filterable: false,
-			format: (_value, row) => formatNumberDisplay(row.serviceAmount)
-		},
-		{
-			id: 'serviceUnit',
-			header: 'Unit',
-			widthClass: 'w-16',
-			filterable: false,
-			format: (_value, row) =>
-				row.serviceUnit != null ? String(row.serviceUnit) : '–'
-		},
-		{
-			id: 'isUrgent',
-			header: 'Urgent',
-			widthClass: 'w-20',
-			filterable: false,
-			format: (_value, row) => (row.isUrgent ? 'Yes' : 'No')
-		},
-		{
-			id: 'lineStatus',
-			header: 'Status',
-			widthClass: 'w-24',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: '–'
-		}
-	];
+	const filteredProgressNotes = $derived.by(() => {
+		const statusFilter = progressNoteColumnFilters.status?.trim() ?? '';
+		if (!statusFilter) return progressNoteRows;
+		return progressNoteRows.filter((row) => {
+			if (statusFilter === 'active') return row.statusId === StatusEnum.ACTIVE;
+			if (statusFilter === 'inactive') return row.statusId === StatusEnum.INACTIVE;
+			return true;
+		});
+	});
 
-	const diagnosisColumns: MenziesTableColumn<DiagnosisWithType>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'diagnosisType',
-			header: m.observation_emr_diagnosis_type_label(),
-			widthClass: 'min-w-[8rem]',
-			filterable: false,
-			format: (_value, row) =>
-				formatText(row.diagnosisType?.name ?? null)
-		},
-		{
-			id: 'description',
-			header: 'Description',
-			widthClass: 'min-w-[12rem]',
-			filterable: false,
-			format: (_value, row) => formatText(row.description),
-			cellClass: 'max-w-64 truncate'
-		},
-		{
-			id: 'createdAt',
-			header: 'Created',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.createdAt ?? null)
-		},
-		{
-			id: 'updatedAt',
-			header: 'Updated',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.updatedAt ?? null)
-		}
-	];
+	const filteredOrderLines = $derived.by(() => {
+		const statusFilter = orderColumnFilters.lineStatus?.trim() ?? '';
+		if (!statusFilter) return orderLines;
+		return orderLines.filter((row) => {
+			if (statusFilter === 'active') return row.statusId === StatusEnum.ACTIVE;
+			if (statusFilter === 'inactive') return row.statusId === StatusEnum.INACTIVE;
+			return true;
+		});
+	});
 
-	function planOfCareNotePreview(
-		note: string | null | undefined
-	): string {
-		const t = (note ?? '').trim();
-		if (!t) return '–';
-		const max = 120;
-		return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+	function vitalCardSummary(row: PatientDiagnosisListRow): string {
+		const bp = `${formatVital(row.bpSystolic)}/${formatVital(row.bpDiastolic)}`;
+		return msg.observation_emr_vital_summary({
+			bp,
+			pulse: formatVital(row.pulse),
+			temp: formatVital(row.temperature),
+			spo2: formatVital(row.spO2)
+		});
 	}
 
-	const planOfCareColumns: MenziesTableColumn<PlanOfCareListRow>[] = [
-		{
-			id: 'status',
-			header: 'Status',
-			widthClass: 'w-28 min-w-[7rem]',
-			filterable: true,
-			filterType: 'select',
-			filterOptions: statusFilterOptions,
-			defaultFilterValue: 'active',
-			format: (_value, row) =>
-				row.statusId === StatusEnum.ACTIVE
-					? 'Active'
-					: row.statusId === StatusEnum.INACTIVE
-						? 'Inactive'
-						: `Status ${row.statusId ?? 'Unknown'}`
-		},
-		{
-			id: 'note',
-			header: m.observation_emr_plan_of_care_column_note(),
-			widthClass: 'min-w-[12rem]',
-			filterable: false,
-			format: (_value, row) => planOfCareNotePreview(row.note),
-			cellClass: 'max-w-80 whitespace-normal'
-		},
-		{
-			id: 'doctor',
-			header: m.observation_emr_advising_doctor(),
-			widthClass: 'min-w-[10rem]',
-			filterable: false,
-			format: (_value, row) =>
-				row.doctor
-					? StringUtil.doctorOptionDisplayName(row.doctor)
-					: '–'
-		},
-		{
-			id: 'createdAt',
-			header: 'Created',
-			widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-			filterable: false,
-			format: (_value, row) => formatDateTime(row.createdAt ?? null)
-		}
-	];
-
-	const progressNoteColumns: MenziesTableColumn<ProgressNoteListRow>[] =
-		[
-			{
-				id: 'status',
-				header: 'Status',
-				widthClass: 'w-28 min-w-[7rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptions: statusFilterOptions,
-				defaultFilterValue: 'active',
-				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE
-						? 'Active'
-						: row.statusId === StatusEnum.INACTIVE
-							? 'Inactive'
-							: `Status ${row.statusId ?? 'Unknown'}`
-			},
-			{
-				id: 'note',
-				header: m.observation_emr_progress_note_column_note(),
-				widthClass: 'min-w-[12rem]',
-				filterable: false,
-				format: (_value, row) => planOfCareNotePreview(row.note),
-				cellClass: 'max-w-80 whitespace-normal'
-			},
-			{
-				id: 'doctor',
-				header: m.observation_emr_advising_doctor(),
-				widthClass: 'min-w-[10rem]',
-				filterable: false,
-				format: (_value, row) =>
-					row.doctor
-						? StringUtil.doctorOptionDisplayName(row.doctor)
-						: '–'
-			},
-			{
-				id: 'createdAt',
-				header: 'Created',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) => formatDateTime(row.createdAt ?? null)
-			}
-		];
-
-	const formEntryColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
-		[
-			{
-				id: 'status',
-				header: 'Status',
-				widthClass: 'w-28 min-w-[7rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptions: statusFilterOptions,
-				defaultFilterValue: 'active',
-				format: (_value, row) =>
-					row.statusId === StatusEnum.ACTIVE
-						? 'Active'
-						: row.statusId === StatusEnum.INACTIVE
-							? 'Inactive'
-							: `Status ${row.statusId ?? 'Unknown'}`
-			},
-			{
-				id: 'description',
-				header: 'Description',
-				widthClass: 'min-w-[12rem]',
-				filterable: false,
-				format: (_value, row) => formatText(row.description),
-				cellClass: 'max-w-80 truncate'
-			},
-			{
-				id: 'createdAt',
-				header: 'Created',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) => formatDateTime(row.createdAt ?? null)
-			}
-		];
-
-	const specialtyColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
-		[
-			{
-				id: 'specialtyType',
-				header: msg.observation_emr_specialty_type(),
-				widthClass: 'min-w-[9rem]',
-				filterable: true,
-				filterType: 'select',
-				filterOptions: [
-					{ value: '', label: 'All' },
-					...SPECIALTY_FORM_CODES.map((code) => ({
-						value: code,
-						label: specialtyFormCodeLabel(code)
-					}))
-				],
-				format: (_value, row) =>
-					specialtyFormCodeLabel(row.formName?.code)
-			},
-			...formEntryColumns
-		];
-
-	const patientConditionColumns: MenziesTableColumn<PatientFormEntryWithRelations>[] =
-		[
-			{
-				id: 'visitNo',
-				header: 'Visit No',
-				widthClass: TableRowEnum.VISIT_NO_WIDTH,
-				filterable: false,
-				format: (_value, row) => row.visit?.visitNo?.trim() ?? '–'
-			},
-			{
-				id: 'visitDate',
-				header: 'Visit date',
-				widthClass: 'w-36 min-w-[9rem] whitespace-nowrap',
-				filterable: false,
-				format: (_value, row) =>
-					formatDateTime(row.visit?.createdAt ?? null)
-			},
-			...formEntryColumns
-		];
+	function entryStatusLabel(statusId: number | null | undefined): string {
+		if (statusId === StatusEnum.ACTIVE) return msg.observation_emr_status_active();
+		if (statusId === StatusEnum.INACTIVE) return msg.observation_emr_status_inactive();
+		return '';
+	}
 
 	async function openAllergyAdd() {
 		if (!visitRow?.patientId || !visitId) return;
@@ -1815,8 +1386,8 @@
 		const titles: Record<string, string> = {
 			chief_complaint: m.observation_emr_chief_complaint(),
 			patient_condition: m.observation_emr_patient_condition(),
-			hpi: 'History of present illness',
-			physical_exam: 'Physical examination',
+			hpi: msg.observation_emr_hpi(),
+			physical_exam: msg.observation_emr_physical_exam(),
 			specialty: msg.observation_emr_specialty_case_sheet()
 		};
 		try {
@@ -1863,9 +1434,9 @@
 				: code === 'patient_condition'
 					? m.observation_emr_patient_condition()
 					: code === 'hpi'
-						? 'History of present illness'
+						? msg.observation_emr_hpi()
 						: code === 'physical_exam'
-							? 'Physical examination'
+							? msg.observation_emr_physical_exam()
 							: code.startsWith('specialty_')
 								? specialtyTitle
 								: code;
@@ -1931,37 +1502,30 @@
 		}
 	}
 
-	async function handleFormEntryMove(detail: {
-		row: PatientFormEntryWithRelations;
-		toFormCode: string;
-	}) {
-		const { row, toFormCode } = detail;
-		const allowedFormCodes = new Set([
-			'chief_complaint',
-			'patient_condition'
-		]);
-		if (!allowedFormCodes.has(toFormCode)) return;
+	async function handleFormEntriesMove(
+		rows: PatientFormEntryWithRelations[],
+		toFormCode: 'chief_complaint' | 'patient_condition'
+	) {
+		if (rows.length === 0 || clinicalVisitReadOnly) return;
+		const toMove = rows.filter((row) => row.formName?.code !== toFormCode);
+		if (toMove.length === 0) return;
 
-		const targetFormCode = toFormCode as
-			| 'chief_complaint'
-			| 'patient_condition';
-
-		const currentCode = row.formName?.code;
-		if (currentCode === targetFormCode) return;
-
+		isTransferringFormEntries = true;
 		try {
 			// Soft-delete from the source list, then recreate under the target form code.
-			await apiPost('formEntry.delete', { id: row.id });
-			await apiPost('formEntry.create', {
-				payload: {
-					branchId: row.branchId,
-					patientId: row.patientId,
-					visitId: row.visitId,
-					description: row.description ?? null,
-					statusId: row.statusId,
-					formCode: targetFormCode
-				}
-			});
+			for (const row of toMove) {
+				await apiPost('formEntry.delete', { id: row.id });
+				await apiPost('formEntry.create', {
+					payload: {
+						branchId: row.branchId,
+						patientId: row.patientId,
+						visitId: row.visitId,
+						description: row.description ?? null,
+						statusId: row.statusId,
+						formCode: toFormCode
+					}
+				});
+			}
 			toastSuccess(
 				toastService,
 				m.entity_emr_entry(),
@@ -1969,11 +1533,13 @@
 			);
 			await reloadFormEntriesForVisit();
 		} catch (err) {
-			const msg =
+			const errMsg =
 				err instanceof Error
 					? err.message
 					: m.observation_emr_delete_failed();
-			toastService.addToast(msg as string, StatusColorEnum.ERROR);
+			toastService.addToast(errMsg as string, StatusColorEnum.ERROR);
+		} finally {
+			isTransferringFormEntries = false;
 		}
 	}
 
@@ -2052,13 +1618,20 @@
 			);
 		}
 	}
+
+	function scrollToEmrSection(sectionId: string) {
+		const el = document.getElementById(sectionId);
+		if (!el) return;
+		el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 </script>
 
 <svelte:head>
-	<title>Observation EMR</title>
+	<title>{msg.observation_emr_page_title()}</title>
 </svelte:head>
 
-<div class="flex flex-col gap-2">
+<div class="emr-workspace flex flex-col gap-3">
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
@@ -2072,485 +1645,755 @@
 			className="z-0"
 		/>
 	{:else}
-			{#if !clinicalVisitReadOnly}
-			<div class="flex justify-end gap-2">
-				{#if visitRow?.visitTypeId === VisitTypeEnum.OPD}
-					<span
-						class="tooltip tooltip-left"
-						data-tip={pendingAdmissionOrderId != null
-							? 'Already on the pending admission list'
-							: 'Send to ADT pending admissions'}
-					>
-						<WashButton
-							className="btn-outline btn-sm"
-							disabled={!canOrderIpdAdmission}
-							onClick={() => void openOrderIpdAdmission()}
-						>
-							Order IPD Admission
-						</WashButton>
-					</span>
-				{/if}
-				<WashButton
-					className="btn-primary btn-sm"
-					disabled={isSigningClinical || isLoadingVisit}
-					onClick={handleSaveAsSigned}
+		<header
+			class="emr-workspace-toolbar sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 rounded-box border border-base-300/60 bg-base-100/90 px-3 py-2 shadow-sm backdrop-blur-md"
+		>
+			<nav
+				class="flex flex-wrap items-center gap-1"
+				aria-label={msg.observation_emr_nav_aria()}
+			>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs cursor-pointer"
+					onclick={() => scrollToEmrSection('emr-col-context')}
 				>
-					{isSigningClinical ? '…' : m.observation_save_as_signed()}
-				</WashButton>
-			</div>
-		{/if}
-		<div class="observation-emr-grid">
-			{#snippet formEntryMoveRowActions(
-				row,
-				moveToLabel,
-				moveToFormCode,
-				moveDirection
-			)}
-				<MenziesTableRowActionGroup>
-					<MenziesTableIconAction
-						tooltipText={m.menzies_table_tooltip_edit()}
-						color="accent"
-						onClick={() =>
-							openFormEntryEdit(row as PatientFormEntryWithRelations)}
+					{msg.observation_emr_nav_context()}
+				</button>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs cursor-pointer"
+					onclick={() => scrollToEmrSection('emr-col-clinical')}
+				>
+					{msg.observation_emr_nav_clinical()}
+				</button>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs cursor-pointer"
+					onclick={() => scrollToEmrSection('emr-col-plan')}
+				>
+					{msg.observation_emr_nav_plan()}
+				</button>
+			</nav>
+			{#if !clinicalVisitReadOnly}
+				<div
+					class="flex flex-wrap items-center justify-end gap-2"
+					aria-label={msg.observation_emr_workspace_actions()}
+				>
+					{#if visitRow?.visitTypeId === VisitTypeEnum.OPD}
+						<span
+							class="tooltip tooltip-left"
+							data-tip={pendingAdmissionOrderId != null
+								? msg.observation_emr_order_ipd_pending_tip()
+								: msg.observation_emr_order_ipd_send_tip()}
+						>
+							<WashButton
+								className="btn-outline btn-sm"
+								disabled={!canOrderIpdAdmission}
+								onClick={() => void openOrderIpdAdmission()}
+							>
+								{msg.observation_emr_order_ipd_admission()}
+							</WashButton>
+						</span>
+					{/if}
+					<WashButton
+						className="btn-primary btn-sm"
+						disabled={isSigningClinical || isLoadingVisit}
+						loading={isSigningClinical}
+						loadingText=""
+						onClick={handleSaveAsSigned}
 					>
-						{#snippet icon()}
-							<LucidePencil className="size-4" />
-						{/snippet}
-					</MenziesTableIconAction>
-					<MenziesTableIconAction
-						tooltipText={m.menzies_table_crud_inactivate_tooltip()}
-						color="error"
-						onClick={() =>
-							handleFormEntryDelete(
-								row as PatientFormEntryWithRelations
-							)}
+						{m.observation_save_as_signed()}
+					</WashButton>
+				</div>
+			{/if}
+		</header>
+
+		<div class="emr-workspace-grid">
+			{#snippet glanceRowActions(onEdit, onDelete, editDisabled, deleteDisabled)}
+				<div
+					class="flex shrink-0 items-center gap-0.5"
+					role="group"
+					aria-label={msg.observation_emr_row_actions()}
+				>
+					<div
+						class="tooltip tooltip-left tooltip-accent"
+						data-tip={m.menzies_table_tooltip_edit()}
 					>
-						{#snippet icon()}
-							<LucideTrash2 className="size-4" />
-						{/snippet}
-					</MenziesTableIconAction>
-					<MenziesTableIconAction
-						tooltipText={`move to ${moveToLabel}`.trim()}
-						color="info"
-						onClick={() =>
-							void handleFormEntryMove({
-								row: row as PatientFormEntryWithRelations,
-								toFormCode: moveToFormCode
-							})}
+						<button
+							type="button"
+							class="btn btn-ghost btn-square btn-xs btn-accent"
+							class:cursor-pointer={!editDisabled}
+							class:cursor-not-allowed={editDisabled}
+							class:btn-disabled={editDisabled}
+							disabled={editDisabled}
+							aria-label={m.menzies_table_tooltip_edit()}
+							onclick={onEdit}
+						>
+							<LucidePencil className="size-3.5" />
+						</button>
+					</div>
+					<div
+						class="tooltip tooltip-left tooltip-error"
+						data-tip={m.menzies_table_crud_inactivate_tooltip()}
 					>
-						{#snippet icon()}
-							{#if moveDirection === 'up'}
-								<LucideChevronLeft className="size-4" />
-							{:else}
-								<LucideChevronRight className="size-4" />
-							{/if}
-						{/snippet}
-					</MenziesTableIconAction>
-				</MenziesTableRowActionGroup>
+						<button
+							type="button"
+							class="btn btn-ghost btn-square btn-xs btn-error"
+							class:cursor-pointer={!deleteDisabled}
+							class:cursor-not-allowed={deleteDisabled}
+							class:btn-disabled={deleteDisabled}
+							disabled={deleteDisabled}
+							aria-label={m.menzies_table_crud_inactivate_tooltip()}
+							onclick={onDelete}
+						>
+							<LucideTrash2 className="size-3.5" />
+						</button>
+					</div>
+				</div>
 			{/snippet}
 
-			<!-- Row 1: Immediate context -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_chief_complaint()}
-					rows={chiefComplaintEntries}
-					columns={formEntryColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={() => openFormEntryAdd('chief_complaint')}
-					showRefreshButton={true}
-					showRowActions={true}
-					actionsVariant="none"
-					crudShowView={false}
-					enableColumnFilters={false}
-					emptyMessage="No chief complaint entries."
-					on:refresh={reloadFormEntriesForVisit}
-				>
-					{#snippet rowActions(row)}
-						{@render formEntryMoveRowActions(
-							row,
-							m.observation_emr_patient_condition(),
-							'patient_condition',
-							'down'
-						)}
-					{/snippet}
-				</MenziesTable>
-			</div>
-			<section class={TableEnum.EMR_TABLES_HEIGHT}>
-				<WashCard
-					className="flex h-full min-h-0 flex-col overflow-hidden"
-				>
-					<WashCardBody
-						className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4"
+			<!-- Left: safety / patient context -->
+			<section
+				id="emr-col-context"
+				class="emr-col emr-col-context"
+				aria-label={msg.observation_emr_col_context_label()}
+			>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_allergies()}
+						count={allergyTotal}
+						isLoading={isLoadingGrid || isLoadingAllergies || isLoadingVisit}
+						isEmpty={allergies.length === 0}
+						emptyMessage={m.observation_emr_allergy_empty()}
+						onAdd={openAllergyAdd}
+						onRefresh={() => void reloadAllergiesForVisit()}
 					>
-						<WashCardBodyTitle
-							className="shrink-0 text-base font-semibold"
-						>
-							{m.mo_clinical_problem_list_title()}
-						</WashCardBodyTitle>
-						{#if isLoadingGrid || isLoadingVisit}
-							<p class="text-sm opacity-60">{m.loading()}</p>
-						{:else if problemListRows.length === 0}
-							<p class="text-sm opacity-60">
-								{m.mo_clinical_problem_list_empty()}
-							</p>
-						{:else}
-							<ul
-								class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto"
+						{#snippet headerExtra()}
+							<label class="sr-only" for="emr-allergy-status">{msg.observation_emr_status()}</label>
+							<select
+								id="emr-allergy-status"
+								class="select select-bordered select-xs w-24 cursor-pointer border-ink-border"
+								value={allergyColumnFilters.status ?? ''}
+								onchange={(e) => {
+									allergyColumnFilters = {
+										...allergyColumnFilters,
+										status: (e.currentTarget as HTMLSelectElement).value
+									};
+									allergyCurrentPage = 1;
+									void fetchAllergies({ force: true });
+								}}
 							>
-								{#each problemListRows as problem (problem.id)}
-									<li
-										class="rounded-box bg-base-200/60 px-3 py-2 text-sm"
-									>
+								<option value={String(StatusEnum.ACTIVE)}
+									>{msg.observation_emr_status_active()}</option
+								>
+								<option value={String(StatusEnum.INACTIVE)}
+									>{msg.observation_emr_status_inactive()}</option
+								>
+								<option value="">{msg.observation_emr_status()}</option>
+							</select>
+						{/snippet}
+						{#each allergies as allergy (allergy.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
 										<div class="font-medium">
-											{problem.code
-												? `${problem.code} — `
-												: ''}{problem.description ??
-												m.mo_clinical_problem_unspecified()}
+											{formatText(allergy.allergy?.name ?? null)}
 										</div>
-										<div class="text-xs opacity-60">
-											{problem.diagnosisType ??
-												m.mo_clinical_diagnosis_fallback()}
-											{#if problem.visitNo}
-												· {problem.visitNo}{/if}
+										<div class="text-ink-muted text-xs">
+											{#if allergy.severity?.name}
+												{msg.observation_emr_allergy_severity()}: {allergy.severity.name}
+											{/if}
+											{#if allergy.reaction}
+												{#if allergy.severity?.name} · {/if}{allergy.reaction}
+											{/if}
+											{#if allergy.visit?.visitNo}
+												 · {allergy.visit.visitNo}
+											{/if}
 										</div>
-									</li>
-								{/each}
-							</ul>
-						{/if}
-					</WashCardBody>
-				</WashCard>
+									</div>
+									{@render glanceRowActions(
+										() => void openAllergyEdit(allergy),
+										() => void handleAllergyDelete(allergy)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+						{#snippet footer()}
+							{#if allergyPageCount > 1}
+								<div class="flex items-center justify-between gap-2">
+									<button
+										type="button"
+										class="btn btn-ghost btn-xs"
+										class:cursor-pointer={allergyCurrentPage > 1}
+										class:cursor-not-allowed={allergyCurrentPage <= 1}
+										disabled={allergyCurrentPage <= 1}
+										aria-label={msg.observation_emr_prev_page()}
+										onclick={() => {
+											allergyCurrentPage = Math.max(1, allergyCurrentPage - 1);
+											void fetchAllergies({ force: true });
+										}}
+									>
+										<LucideChevronLeft className="size-3.5" />
+									</button>
+									<span class="text-ink-muted text-xs">
+										{msg.observation_emr_page_of({
+											page: allergyCurrentPage,
+											pages: allergyPageCount
+										})}
+									</span>
+									<button
+										type="button"
+										class="btn btn-ghost btn-xs"
+										class:cursor-pointer={allergyCurrentPage < allergyPageCount}
+										class:cursor-not-allowed={allergyCurrentPage >= allergyPageCount}
+										disabled={allergyCurrentPage >= allergyPageCount}
+										aria-label={msg.observation_emr_next_page()}
+										onclick={() => {
+											allergyCurrentPage = Math.min(
+												allergyPageCount,
+												allergyCurrentPage + 1
+											);
+											void fetchAllergies({ force: true });
+										}}
+									>
+										<LucideChevronRight className="size-3.5" />
+									</button>
+								</div>
+							{/if}
+						{/snippet}
+					</LEmrGlanceCardPanel>
+				</div>
+
+				<section class={TableEnum.EMR_PANEL_HEIGHT}>
+					<WashCard
+						className="flex h-full min-h-0 flex-col overflow-hidden border border-ink-border"
+					>
+						<WashCardBody
+							className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3"
+						>
+							<WashCardBodyTitle className="shrink-0 text-base font-semibold">
+								{m.mo_clinical_problem_list_title()}
+							</WashCardBodyTitle>
+							{#if isLoadingGrid || isLoadingVisit}
+								<p class="text-ink-muted text-sm">{m.loading()}</p>
+							{:else if problemListRows.length === 0}
+								<p class="text-ink-muted text-sm">
+									{m.mo_clinical_problem_list_empty()}
+								</p>
+							{:else}
+								<ul class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
+									{#each problemListRows as problem (problem.id)}
+										<li class="rounded-box bg-base-200/60 px-3 py-2 text-sm">
+											<div class="font-medium">
+												{problem.code
+													? `${problem.code}: `
+													: ''}{problem.description ??
+													m.mo_clinical_problem_unspecified()}
+											</div>
+											<div class="text-ink-muted text-xs">
+												{problem.diagnosisType ??
+													m.mo_clinical_diagnosis_fallback()}
+												{#if problem.visitNo}
+													· {problem.visitNo}{/if}
+											</div>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</WashCardBody>
+					</WashCard>
+				</section>
+
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_vitals()}
+						count={filteredVitals.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredVitals.length === 0}
+						emptyMessage={msg.observation_emr_vitals_empty()}
+						onAdd={openVitalAdd}
+						onRefresh={() => void reloadVitalsForVisit()}
+					>
+						{#snippet headerExtra()}
+							<label class="sr-only" for="emr-vital-status">{msg.observation_emr_status()}</label>
+							<select
+								id="emr-vital-status"
+								class="select select-bordered select-xs w-24 cursor-pointer border-ink-border"
+								value={vitalColumnFilters.status ?? 'active'}
+								onchange={(e) => {
+									vitalColumnFilters = {
+										...vitalColumnFilters,
+										status: (e.currentTarget as HTMLSelectElement).value
+									};
+								}}
+							>
+								<option value="active">{msg.observation_emr_status_active()}</option>
+								<option value="inactive">{msg.observation_emr_status_inactive()}</option>
+								<option value="">{msg.observation_emr_status()}</option>
+							</select>
+						{/snippet}
+						{#each filteredVitals as vital (vital.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium">
+											{formatDateTime(getVitalDisplayDate(vital))}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{vitalCardSummary(vital)}
+										</div>
+										{#if vital.symptom}
+											<div class="mt-0.5 text-xs">{vital.symptom}</div>
+										{/if}
+									</div>
+									{@render glanceRowActions(
+										() => void openVitalEdit(vital),
+										() => void handleVitalDelete(vital)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
 			</section>
 
-			<!-- Row 2: Deep context & safety -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title="History of present illness"
-					rows={hpiEntries}
-					columns={formEntryColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={() => openFormEntryAdd('hpi')}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					emptyMessage="No HPI entries."
-					on:refresh={reloadFormEntriesForVisit}
-					on:edit={(e) =>
-						openFormEntryEdit(
-							e.detail as PatientFormEntryWithRelations
-						)}
-					on:delete={(e) =>
-						handleFormEntryDelete(
-							e.detail as PatientFormEntryWithRelations
-						)}
-				/>
-			</div>
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_allergies()}
-					rows={allergies}
-					columns={allergyColumns}
-					masterFilterHospitalId={hospitalId}
-					isLoading={isLoadingGrid ||
-						isLoadingAllergies ||
-						isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={openAllergyAdd}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={true}
-					bind:columnFilters={allergyColumnFilters}
-					bind:pageSize={allergyPageSizeStr}
-					bind:currentPage={allergyCurrentPage}
-					totalRowCount={allergyTotal}
-					emptyMessage={m.observation_emr_allergy_empty()}
-					on:refresh={reloadAllergiesForVisit}
-					on:pageChange={() => {
-						void fetchAllergies({ force: true });
-					}}
-					on:pageSizeChange={() => {
-						if (allergyPageSizeStr === lastHandledAllergyPageSize) {
-							return;
-						}
-						lastHandledAllergyPageSize = allergyPageSizeStr;
-						allergyCurrentPage = 1;
-						void fetchAllergies({ force: true });
-					}}
-					on:filtersChange={(event) => {
-						const nextFilters = event.detail.filters;
-						if (areFiltersEqual(allergyColumnFilters, nextFilters)) {
-							return;
-						}
-						if (allergyFilterDebounceTimeout) {
-							clearTimeout(allergyFilterDebounceTimeout);
-						}
-						allergyColumnFilters = nextFilters;
-						allergyCurrentPage = 1;
-						allergyFilterDebounceTimeout = setTimeout(() => {
-							void fetchAllergies({ force: true });
-						}, 350);
-					}}
-					on:edit={(e) =>
-						openAllergyEdit(e.detail as PatientAllergyWithRelations)}
-					on:delete={(e) =>
-						handleAllergyDelete(
-							e.detail as PatientAllergyWithRelations
-						)}
-				/>
-			</div>
+			<!-- Center: clinical narrative / workbench -->
+			<section
+				id="emr-col-clinical"
+				class="emr-col emr-col-clinical"
+				aria-label={msg.observation_emr_col_clinical_label()}
+			>
+				<div class="emr-transfer-panel min-h-64">
+					<div
+						class="rounded-box border border-ink-border bg-base-100/80 p-3 shadow-sm"
+					>
+						<LEmrComplaintConditionTransfer
+							chiefComplaintEntries={chiefComplaintEntries}
+							patientConditionEntries={patientConditionEntries}
+							isLoading={isLoadingGrid || isLoadingVisit}
+							transferring={isTransferringFormEntries}
+							readOnly={clinicalVisitReadOnly}
+							onMove={handleFormEntriesMove}
+							onAddComplaint={() => openFormEntryAdd('chief_complaint')}
+							onAddCondition={() => openFormEntryAdd('patient_condition')}
+							onEdit={(row) => void openFormEntryEdit(row)}
+							onDelete={(row) => void handleFormEntryDelete(row)}
+							onRefresh={() => void reloadFormEntriesForVisit()}
+						/>
+					</div>
+				</div>
 
-			<!-- Row 3: Objective data -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title="Physical examination"
-					rows={physicalExamEntries}
-					columns={formEntryColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={() => openFormEntryAdd('physical_exam')}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					emptyMessage="No physical exam entries."
-					on:refresh={reloadFormEntriesForVisit}
-					on:edit={(e) =>
-						openFormEntryEdit(
-							e.detail as PatientFormEntryWithRelations
-						)}
-					on:delete={(e) =>
-						handleFormEntryDelete(
-							e.detail as PatientFormEntryWithRelations
-						)}
-				/>
-			</div>
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_vitals()}
-					rows={vitals}
-					columns={vitalColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={openVitalAdd}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					bind:columnFilters={vitalColumnFilters}
-					emptyMessage="No vitals for this visit."
-					on:refresh={reloadVitalsForVisit}
-					on:edit={(e) =>
-						openVitalEdit(e.detail as PatientDiagnosisListRow)}
-					on:delete={(e) =>
-						handleVitalDelete(e.detail as PatientDiagnosisListRow)}
-				/>
-			</div>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={msg.observation_emr_hpi()}
+						count={hpiEntries.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={hpiEntries.length === 0}
+						emptyMessage={msg.observation_emr_hpi_empty()}
+						onAdd={() => openFormEntryAdd('hpi')}
+						onRefresh={() => void reloadFormEntriesForVisit()}
+					>
+						{#each hpiEntries as row (row.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium break-words">
+											{formatText(row.description)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{entryStatusLabel(row.statusId)}
+											{#if row.createdAt}
+												 · {formatDateTime(row.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openFormEntryEdit(row),
+										() => void handleFormEntryDelete(row)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
 
-			<!-- Row 4: Assessment -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={msg.observation_emr_specialty_case_sheet()}
-					rows={filteredSpecialtyEntries}
-					columns={specialtyColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={() => openFormEntryAdd('specialty')}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={true}
-					bind:columnFilters={specialtyColumnFilters}
-					emptyMessage={msg.observation_emr_specialty_empty()}
-					on:refresh={reloadFormEntriesForVisit}
-					on:filtersChange={(event) => {
-						specialtyColumnFilters = event.detail.filters;
-					}}
-					on:edit={(e) =>
-						openFormEntryEdit(
-							e.detail as PatientFormEntryWithRelations
-						)}
-					on:delete={(e) =>
-						handleFormEntryDelete(
-							e.detail as PatientFormEntryWithRelations
-						)}
-				/>
-			</div>
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_diagnosis()}
-					rows={visitDiagnoses}
-					columns={diagnosisColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={openDiagnosisAdd}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					bind:columnFilters={diagnosisColumnFilters}
-					emptyMessage={m.observation_emr_diagnosis_empty()}
-					on:refresh={reloadDiagnosesForVisit}
-					on:edit={(e) =>
-						openDiagnosisEdit(e.detail as DiagnosisWithType)}
-					on:delete={(e) =>
-						handleDiagnosisDelete(e.detail as DiagnosisWithType)}
-				/>
-			</div>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={msg.observation_emr_physical_exam()}
+						count={physicalExamEntries.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={physicalExamEntries.length === 0}
+						emptyMessage={msg.observation_emr_physical_exam_empty()}
+						onAdd={() => openFormEntryAdd('physical_exam')}
+						onRefresh={() => void reloadFormEntriesForVisit()}
+					>
+						{#each physicalExamEntries as row (row.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium break-words">
+											{formatText(row.description)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{entryStatusLabel(row.statusId)}
+											{#if row.createdAt}
+												 · {formatDateTime(row.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openFormEntryEdit(row),
+										() => void handleFormEntryDelete(row)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
 
-			<!-- Row 5: Management -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_casesheet()}
-					rows={planOfCareRows}
-					columns={planOfCareColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={openPlanOfCareAdd}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					bind:columnFilters={planOfCareColumnFilters}
-					emptyMessage={m.observation_emr_plan_of_care_empty()}
-					on:refresh={reloadPlanOfCareForVisit}
-					on:edit={(e) =>
-						openPlanOfCareEdit(e.detail as PlanOfCareListRow)}
-					on:delete={(e) =>
-						handlePlanOfCareDelete(e.detail as PlanOfCareListRow)}
-				/>
-			</div>
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_patient_condition()}
-					rows={patientConditionEntries}
-					columns={patientConditionColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={() => openFormEntryAdd('patient_condition')}
-					showRefreshButton={true}
-					showRowActions={true}
-					actionsVariant="none"
-					crudShowView={false}
-					enableColumnFilters={false}
-					emptyMessage="No patient condition entries."
-					on:refresh={reloadFormEntriesForVisit}
-				>
-					{#snippet rowActions(row)}
-						{@render formEntryMoveRowActions(
-							row,
-							m.observation_emr_chief_complaint(),
-							'chief_complaint',
-							'up'
-						)}
-					{/snippet}
-				</MenziesTable>
-			</div>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={msg.observation_emr_specialty_case_sheet()}
+						count={filteredSpecialtyEntries.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredSpecialtyEntries.length === 0}
+						emptyMessage={msg.observation_emr_specialty_empty()}
+						onAdd={() => openFormEntryAdd('specialty')}
+						onRefresh={() => void reloadFormEntriesForVisit()}
+					>
+						{#snippet headerExtra()}
+							<label class="sr-only" for="emr-specialty-type"
+								>{msg.observation_emr_specialty_type()}</label
+							>
+							<select
+								id="emr-specialty-type"
+								class="select select-bordered select-xs max-w-[9rem] cursor-pointer border-ink-border"
+								value={specialtyColumnFilters.specialtyType ?? ''}
+								onchange={(e) => {
+									specialtyColumnFilters = {
+										...specialtyColumnFilters,
+										specialtyType: (e.currentTarget as HTMLSelectElement)
+											.value
+									};
+								}}
+							>
+								<option value="">{msg.observation_emr_specialty_type()}</option>
+								{#each SPECIALTY_FORM_CODES as code (code)}
+									<option value={code}>{specialtyFormCodeLabel(code)}</option>
+								{/each}
+							</select>
+						{/snippet}
+						{#each filteredSpecialtyEntries as row (row.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="text-ink-muted text-xs font-medium">
+											{specialtyFormCodeLabel(row.formName?.code)}
+										</div>
+										<div class="font-medium break-words">
+											{formatText(row.description)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{entryStatusLabel(row.statusId)}
+											{#if row.createdAt}
+												 · {formatDateTime(row.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openFormEntryEdit(row),
+										() => void handleFormEntryDelete(row)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
 
-			<!-- Row 6: Action & notes -->
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_progress_note()}
-					rows={progressNoteRows}
-					columns={progressNoteColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={true}
-					addLabel="Add"
-					onAdd={openProgressNoteAdd}
-					showRefreshButton={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					enableColumnFilters={false}
-					bind:columnFilters={progressNoteColumnFilters}
-					emptyMessage={m.observation_emr_progress_note_empty()}
-					on:refresh={reloadProgressNoteForVisit}
-					on:edit={(e) =>
-						openProgressNoteEdit(e.detail as ProgressNoteListRow)}
-					on:delete={(e) =>
-						handleProgressNoteDelete(e.detail as ProgressNoteListRow)}
-				/>
-			</div>
-			<div class={TableEnum.EMR_TABLES_HEIGHT}>
-				<MenziesTable
-					title={m.observation_emr_order_history()}
-					rows={orderLines}
-					columns={orderColumns}
-					isLoading={isLoadingGrid || isLoadingVisit}
-					fillParent={true}
-					showAddButton={false}
-					showRefreshButton={true}
-					showRowActions={true}
-					actionsVariant="crud"
-					crudShowView={false}
-					crudEditDisabled={(row) =>
-						Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
-					crudDeleteDisabled={(row) =>
-						Boolean((row as OrderDetailVisitRow).lockedByClosedOpBill)}
-					enableColumnFilters={true}
-					bind:columnFilters={orderColumnFilters}
-					emptyMessage="No order lines for this visit."
-					on:refresh={reloadOrdersForVisit}
-					on:edit={(e) =>
-						openOrderLineEdit(e.detail as OrderDetailVisitRow)}
-					on:delete={(e) =>
-						handleOrderLineDelete(e.detail as OrderDetailVisitRow)}
-				>
-					{#snippet headerActions()}
-						<WashButton
-							className="btn-ghost btn-xs btn-square"
-							disabled={!cpoeOrderRedirectHref}
-							onClick={() => {
-								if (!cpoeOrderRedirectHref) return;
-								void goto(resolve(cpoeOrderRedirectHref));
-							}}
-						>
-							<LucidePlus className="size-3.5" />
-						</WashButton>
-					{/snippet}
-				</MenziesTable>
-			</div>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_diagnosis()}
+						count={filteredDiagnoses.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredDiagnoses.length === 0}
+						emptyMessage={m.observation_emr_diagnosis_empty()}
+						onAdd={openDiagnosisAdd}
+						onRefresh={() => void reloadDiagnosesForVisit()}
+					>
+						{#snippet headerExtra()}
+							<label class="sr-only" for="emr-dx-status">{msg.observation_emr_status()}</label>
+							<select
+								id="emr-dx-status"
+								class="select select-bordered select-xs w-24 cursor-pointer border-ink-border"
+								value={diagnosisColumnFilters.status ?? 'active'}
+								onchange={(e) => {
+									diagnosisColumnFilters = {
+										...diagnosisColumnFilters,
+										status: (e.currentTarget as HTMLSelectElement).value
+									};
+								}}
+							>
+								<option value="active">{msg.observation_emr_status_active()}</option>
+								<option value="inactive">{msg.observation_emr_status_inactive()}</option>
+								<option value="">{msg.observation_emr_status()}</option>
+							</select>
+						{/snippet}
+						{#each filteredDiagnoses as dx (dx.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium break-words">
+											{formatText(dx.description)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{dx.diagnosisType?.name ??
+												m.mo_clinical_diagnosis_fallback()}
+											 · {entryStatusLabel(dx.statusId)}
+											{#if dx.createdAt}
+												 · {formatDateTime(dx.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openDiagnosisEdit(dx),
+										() => void handleDiagnosisDelete(dx)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
+			</section>
+
+			<!-- Right: plan / actions -->
+			<section
+				id="emr-col-plan"
+				class="emr-col emr-col-plan"
+				aria-label={msg.observation_emr_col_plan_label()}
+			>
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_casesheet()}
+						count={filteredPlanOfCare.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredPlanOfCare.length === 0}
+						emptyMessage={m.observation_emr_plan_of_care_empty()}
+						onAdd={openPlanOfCareAdd}
+						onRefresh={() => void reloadPlanOfCareForVisit()}
+					>
+						{#each filteredPlanOfCare as row (row.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium break-words">
+											{formatText(row.note)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{entryStatusLabel(row.statusId)}
+											{#if row.createdAt}
+												 · {formatDateTime(row.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openPlanOfCareEdit(row),
+										() => void handlePlanOfCareDelete(row)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
+
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_progress_note()}
+						count={filteredProgressNotes.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredProgressNotes.length === 0}
+						emptyMessage={m.observation_emr_progress_note_empty()}
+						onAdd={openProgressNoteAdd}
+						onRefresh={() => void reloadProgressNoteForVisit()}
+					>
+						{#each filteredProgressNotes as row (row.id)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="font-medium break-words">
+											{formatText(row.note)}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{entryStatusLabel(row.statusId)}
+											{#if row.createdAt}
+												 · {formatDateTime(row.createdAt)}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => void openProgressNoteEdit(row),
+										() => void handleProgressNoteDelete(row)
+									, false, false)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
+
+				<div class={TableEnum.EMR_PANEL_HEIGHT}>
+					<LEmrGlanceCardPanel
+						title={m.observation_emr_order_history()}
+						count={filteredOrderLines.length}
+						isLoading={isLoadingGrid || isLoadingVisit}
+						isEmpty={filteredOrderLines.length === 0}
+						emptyMessage={msg.observation_emr_orders_empty()}
+						showAdd={true}
+						addAriaLabel={msg.observation_emr_add_order_aria()}
+						addDisabled={!cpoeOrderRedirectHref}
+						onAdd={() => {
+							if (!cpoeOrderRedirectHref) return;
+							void goto(resolve(cpoeOrderRedirectHref));
+						}}
+						onRefresh={() => void reloadOrdersForVisit()}
+					>
+						{#snippet headerExtra()}
+							<label class="sr-only" for="emr-order-status">{msg.observation_emr_status()}</label>
+							<select
+								id="emr-order-status"
+								class="select select-bordered select-xs w-24 cursor-pointer border-ink-border"
+								value={orderColumnFilters.lineStatus ?? 'active'}
+								onchange={(e) => {
+									orderColumnFilters = {
+										...orderColumnFilters,
+										lineStatus: (e.currentTarget as HTMLSelectElement).value
+									};
+								}}
+							>
+								<option value="active">{msg.observation_emr_status_active()}</option>
+								<option value="inactive">{msg.observation_emr_status_inactive()}</option>
+								<option value="">{msg.observation_emr_status()}</option>
+							</select>
+						{/snippet}
+						{#each filteredOrderLines as line (line.id)}
+							{@const locked = Boolean(line.lockedByClosedOpBill)}
+							<div
+								class="rounded-box border border-ink-border/60 bg-base-200/50 px-3 py-2"
+							>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-center gap-1.5">
+											<span class="font-medium">
+												{formatText(
+													line.serviceName ?? `Service ${line.serviceId}`
+												)}
+											</span>
+											{#if line.isUrgent}
+												<span class="badge badge-warning badge-xs">
+													{msg.observation_emr_order_urgent_badge()}
+												</span>
+											{/if}
+										</div>
+										<div class="text-ink-muted text-xs">
+											{#if line.orderNo}{line.orderNo} · {/if}
+											{formatNumberDisplay(line.serviceAmount)}
+											{#if line.instruction}
+												 · {line.instruction}{/if}
+										</div>
+									</div>
+									{@render glanceRowActions(
+										() => openOrderLineEdit(line),
+										() => void handleOrderLineDelete(line),
+										locked,
+										locked
+									)}
+								</div>
+							</div>
+						{/each}
+					</LEmrGlanceCardPanel>
+				</div>
+			</section>
 		</div>
 	{/if}
 </div>
 
 <style>
-	.observation-emr-grid {
+	.emr-workspace {
+		min-width: 0;
+	}
+
+	.emr-workspace-toolbar {
+		scroll-margin-top: 0.5rem;
+	}
+
+	.emr-workspace-grid {
 		display: grid;
 		gap: 1rem;
 		grid-template-columns: 1fr;
-		align-items: stretch;
+		align-items: start;
 	}
 
-	.observation-emr-grid > :global(*) {
+	.emr-col {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 1rem;
+		scroll-margin-top: 4.5rem;
+	}
+
+	.emr-col > :global(*) {
 		min-height: 0;
 		min-width: 0;
 		width: 100%;
 	}
 
+	/* Tablet: clinical | plan side by side; transfer list keeps complaint left of condition */
+	@media (min-width: 768px) {
+		.emr-workspace-grid {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		}
+
+		.emr-col-context {
+			grid-column: 1 / -1;
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 1rem;
+		}
+	}
+
+	/* Large: true 3-column doctor workspace */
 	@media (min-width: 1024px) {
-		.observation-emr-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+		.emr-workspace-grid {
+			grid-template-columns:
+				minmax(0, 0.9fr) minmax(0, 1.15fr) minmax(0, 1.1fr);
+		}
+
+		.emr-col-context {
+			grid-column: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+		}
+	}
+
+	.emr-transfer-panel {
+		min-width: 0;
+		width: 100%;
+	}
+
+	@media (max-width: 767.98px) {
+		.emr-col-context {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
 		}
 	}
 </style>

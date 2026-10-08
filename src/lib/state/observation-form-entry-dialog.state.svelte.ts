@@ -1,6 +1,6 @@
 export const ObservationFormEntryDialogState = $state<{
 	entryId: number | null;
-	visitId: number | null;
+	visitId: string | null;
 	branchId: string | null;
 	patientId: string | null;
 	formCode: string | null;

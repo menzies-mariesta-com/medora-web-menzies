@@ -23,7 +23,7 @@ function serviceOrderDetailStatusFilter(statusId?: number) {
 
 export async function getNursingIncompleteLineCountForVisit(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number; statusId?: number }
+	input: { hospitalId: string; visitId: string; statusId?: number }
 ): Promise<number> {
 	requireUser(event);
 	await ensureCanAccessHospital(event, input.hospitalId);
@@ -151,7 +151,7 @@ export async function markServiceOrderDetailNursingCompleteBatch(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		batchSize: number;
 		statusId?: number;
 	}

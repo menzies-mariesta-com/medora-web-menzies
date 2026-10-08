@@ -3,7 +3,7 @@ import type { StaffWithRelations } from './staff.type';
 /** Row from GET `prescriptionNote.list` (visit-scoped CPOE prescription notes). */
 export type CpoePrescriptionNoteListRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	note: string | null;
 	deleteRemark: string | null;
 	statusId: number | null;
