@@ -1,5 +1,5 @@
 export const ObservationProgressNoteDialogState = $state<{
-	visitId: number | null;
+	visitId: string | null;
 	hospitalId: string | null;
 	patientId: string | null;
 	progressNoteId: number | null;

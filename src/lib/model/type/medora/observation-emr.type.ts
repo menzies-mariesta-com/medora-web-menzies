@@ -17,7 +17,7 @@ export type ObservationEmrPatientVisitRow = {
 
 export type ObservationEmrPatientAllergyRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	statusId: number | null;
 	reaction: string | null;
 	remark: string | null;
@@ -42,7 +42,7 @@ export type ObservationEmrFormEntryRow = {
 	id: number;
 	branchId: string;
 	patientId: string;
-	visitId: number;
+	visitId: string;
 	statusId: number | null;
 	description: string | null;
 	createdAt?: string | null;

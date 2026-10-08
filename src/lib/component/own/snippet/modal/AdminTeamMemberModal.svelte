@@ -7,7 +7,6 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
-	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { redirectIfTwoFactorRequired } from '$lib/util/two-factor-gate.util';
 	import { AdminPageKeyEnum } from '$lib/model/enum/db-link';
@@ -17,11 +16,15 @@
 	} from '$lib/util/admin-permission.util';
 	import type { AdminPagePermissionFlags } from '$lib/model/type/medora/admin-team.type';
 	import { AdminTeamModalState } from '$lib/state/admin-team-modal.state.svelte';
+	import {
+		paraglideMessages,
+		paraglideMsg
+	} from '$lib/util/paraglide-msg.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 	const toastService = new ToastService();
 	const routerUtil = new RouterUtil();
-	const msg = m as unknown as Record<string, (inputs?: object) => string>;
+	const msg = paraglideMessages();
 
 	const editing = $derived(AdminTeamModalState.member);
 	const isEdit = $derived(!!editing);
@@ -56,17 +59,19 @@
 	function pageLabel(pageKey: string): string {
 		switch (pageKey) {
 			case AdminPageKeyEnum.OVERVIEW:
-				return msg.admin_overview_title();
+				return paraglideMsg('admin_overview_title', 'Overview');
 			case AdminPageKeyEnum.OWNERS:
-				return msg.admin_overview_owners();
+				return paraglideMsg('admin_overview_owners', 'Owners');
 			case AdminPageKeyEnum.HOSPITALS:
-				return msg.admin_overview_hospitals();
+				return paraglideMsg('admin_overview_hospitals', 'Hospitals');
 			case AdminPageKeyEnum.STAFF:
-				return msg.admin_overview_staff();
+				return paraglideMsg('admin_overview_staff', 'Staff');
 			case AdminPageKeyEnum.MONITORING:
-				return msg.admin_nav_monitoring();
+				return paraglideMsg('admin_nav_monitoring', 'Monitoring');
+			case AdminPageKeyEnum.ICD:
+				return paraglideMsg('admin_nav_icd', 'ICD codes');
 			case AdminPageKeyEnum.TEAM:
-				return msg.admin_nav_team();
+				return paraglideMsg('admin_nav_team', 'Team');
 			default:
 				return pageKey;
 		}
@@ -163,7 +168,7 @@
 				toastSuccess(
 					toastService,
 					msg.admin_team_member(),
-					m.toast_action_updated()
+					msg.toast_action_updated()
 				);
 			} else {
 				const res = await fetch('/api/medora/admin/team', {
@@ -184,7 +189,7 @@
 				toastSuccess(
 					toastService,
 					msg.admin_team_member(),
-					m.toast_action_created()
+					msg.toast_action_created()
 				);
 				const { error } = await authClient.requestPasswordReset({
 					email: em,
@@ -220,7 +225,7 @@
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
 				<label for="team-name" class="shrink-0 font-bold sm:w-36">
-					{m.name()}<span
+					{msg.name()}<span
 						class="text-error align-top text-sm leading-none"
 						aria-hidden="true">*</span
 					>
@@ -240,7 +245,7 @@
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
 					<label for="team-email" class="shrink-0 font-bold sm:w-36">
-						{m.email()}<span
+						{msg.email()}<span
 							class="text-error align-top text-sm leading-none"
 							aria-hidden="true">*</span
 						>
@@ -262,7 +267,7 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<span class="shrink-0 font-bold sm:w-36">{m.email()}</span>
+					<span class="shrink-0 font-bold sm:w-36">{msg.email()}</span>
 					<span class="text-sm text-base-content/80">{email}</span>
 				</div>
 			{/if}
@@ -364,14 +369,14 @@
 			className="btn-ghost"
 			onClick={() => cancel()}
 		>
-			{m.cancel()}
+			{msg.cancel()}
 		</WashButton>
 		<WashButton
 			type="submit"
 			className="btn-primary"
 			loading={isSubmitting}
 		>
-			{isEdit ? m.save() : msg.admin_team_invite()}
+			{isEdit ? msg.save() : msg.admin_team_invite()}
 		</WashButton>
 	</WashDialogFooter>
 </form>

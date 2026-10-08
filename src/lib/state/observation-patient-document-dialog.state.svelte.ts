@@ -1,5 +1,5 @@
 export const ObservationPatientDocumentDialogState = $state<{
-	visitId: number | null;
+	visitId: string | null;
 	patientId: string | null;
 	patientDocumentId: number | null;
 	onSaved: (() => void) | null;

@@ -14,7 +14,7 @@ let {
 		apiRoot
 	}: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		apiRoot: string;
 	} = $props();
 

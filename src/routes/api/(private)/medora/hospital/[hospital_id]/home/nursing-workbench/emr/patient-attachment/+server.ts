@@ -7,6 +7,7 @@ import {
 	getPatientDisplayName,
 	getVisitBasicsForPatientAttachment
 } from '$lib/server/medora/patient/patient-attachment.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -18,8 +19,7 @@ export async function GET(event: RequestEvent) {
 	const action = event.url.searchParams.get('action') ?? 'list';
 
 	if (action === 'visitBasics') {
-		const visitId = Number(
-			event.url.searchParams.get('visitId') ?? 0
+		const visitId = parseUuid(event.url.searchParams.get('visitId') ?? 0
 		);
 		const data = await getVisitBasicsForPatientAttachment(event, {
 			hospitalId,

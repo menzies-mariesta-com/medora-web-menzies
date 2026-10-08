@@ -16,7 +16,8 @@
 
 [dev]
 	command = "npm run dev"
-	targetPort = 5173
+	# package.json `dev` binds Vite to 4002 (not Vite's default 5173)
+	targetPort = 4002
 	framework = "#custom"
 
 # Fingerprinted Vite assets: long-cache immutable (adapter also sets related headers).

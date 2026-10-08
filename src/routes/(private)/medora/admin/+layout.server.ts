@@ -55,9 +55,11 @@ export const load: LayoutServerLoad = async ({
 						? WebRoutesEnum.MEDORA_ADMIN_STAFF
 						: firstViewable === 'monitoring'
 							? WebRoutesEnum.MEDORA_ADMIN_MONITORING
-							: firstViewable === 'team'
-								? WebRoutesEnum.MEDORA_ADMIN_TEAM
-								: WebRoutesEnum.MEDORA_ADMIN;
+							: firstViewable === 'icd'
+								? WebRoutesEnum.MEDORA_ADMIN_ICD
+								: firstViewable === 'team'
+									? WebRoutesEnum.MEDORA_ADMIN_TEAM
+									: WebRoutesEnum.MEDORA_ADMIN;
 		throw redirect(302, fallback);
 	}
 

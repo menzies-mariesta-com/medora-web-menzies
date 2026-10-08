@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as deposit from '$lib/server/medora/billing/ip-advance-deposit.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -13,10 +14,10 @@ export async function GET(event: RequestEvent) {
 	const admissionId = Number(
 		event.url.searchParams.get('admissionId') ?? ''
 	);
-	const visitId = Number(event.url.searchParams.get('visitId') ?? '');
+	const visitId = parseUuid(event.url.searchParams.get('visitId'));
 	if (
 		(!Number.isFinite(admissionId) || admissionId <= 0) &&
-		(!Number.isFinite(visitId) || visitId <= 0)
+		(!visitId)
 	) {
 		throw error(400, 'visitId or admissionId is required');
 	}
@@ -28,7 +29,7 @@ export async function GET(event: RequestEvent) {
 					? admissionId
 					: undefined,
 			visitId:
-				Number.isFinite(visitId) && visitId > 0 ? visitId : undefined
+				Boolean(visitId) ? visitId : undefined
 		})
 	);
 }
@@ -47,7 +48,7 @@ export async function POST(event: RequestEvent) {
 					: undefined,
 			visitId:
 				body.visitId != null && body.visitId !== ''
-					? Number(body.visitId)
+					? parseUuid(body.visitId)
 					: undefined,
 			amount: String(body.amount ?? ''),
 			paymentMethod: body.paymentMethod ?? 'cash',

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -380,7 +381,7 @@ const lifeCycle = new LifeCycleUtil();
 								}
 							: null;
 					return {
-						key: crypto.randomUUID(),
+						key: uuidV7(),
 						itemSearch: ln.itemName ?? '',
 						hits: [],
 						itemId: ln.itemId,
@@ -450,7 +451,7 @@ const lifeCycle = new LifeCycleUtil();
 
 	function newLine(): IssueDraftLine {
 		return {
-			key: crypto.randomUUID(),
+			key: uuidV7(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,

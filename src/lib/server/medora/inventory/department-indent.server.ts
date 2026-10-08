@@ -22,7 +22,7 @@ import {
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	assertStaffCanApproveLevel,
 	getMaxApprovalLevel,
@@ -645,7 +645,7 @@ export async function createDepartmentIndent(
 	}
 
 	const id = await ensureDb().transaction(async (tx) => {
-		const newId = uuidv7();
+		const newId = uuidV7();
 		await tx.insert(table.invDepartmentIndentTable).values({
 			id: newId,
 			hospitalId: input.hospitalId,

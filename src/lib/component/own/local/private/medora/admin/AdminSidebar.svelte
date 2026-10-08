@@ -2,6 +2,7 @@
 	import MedoraBrandWordmark from '$lib/component/own/global/MedoraBrandWordmark.svelte';
 	import LucideActivity from '$lib/component/own/library/lucide/LucideActivity.svelte';
 	import LucideAppWindow from '$lib/component/own/library/lucide/LucideAppWindow.svelte';
+	import LucideBookMarked from '$lib/component/own/library/lucide/LucideBookMarked.svelte';
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
 	import LucideLogOut from '$lib/component/own/library/lucide/LucideLogOut.svelte';
 	import LucideUserCog from '$lib/component/own/library/lucide/LucideUserCog.svelte';
@@ -15,7 +16,7 @@
 	import { adminPermissionAllows } from '$lib/util/admin-permission.util';
 	import type { AdminPagePermissionFlags } from '$lib/model/type/medora/admin-team.type';
 	import { page } from '$app/state';
-	import { m } from '$lib/paraglide/messages';
+	import { paraglideMsg } from '$lib/util/paraglide-msg.util';
 
 	let {
 		userName = null,
@@ -26,12 +27,13 @@
 	} = $props();
 
 	const routerUtil = new RouterUtil();
-	const msg = m as unknown as Record<string, (inputs?: object) => string>;
 
 	let signingOut = $state(false);
 
 	const displayName = $derived(
-		(userName?.trim() || userEmail?.trim() || msg.system_admin()) as string
+		(userName?.trim() ||
+			userEmail?.trim() ||
+			paraglideMsg('system_admin', 'System admin')) as string
 	);
 
 	const userRoleId = $derived(
@@ -52,14 +54,14 @@
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN,
 			pageKey: AdminPageKeyEnum.OVERVIEW,
-			label: () => msg.admin_overview_title(),
+			label: () => paraglideMsg('admin_overview_title', 'Overview'),
 			icon: LucideAppWindow,
 			match: (pathname) => pathname === WebRoutesEnum.MEDORA_ADMIN
 		},
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_OWNERS,
 			pageKey: AdminPageKeyEnum.OWNERS,
-			label: () => msg.admin_overview_owners(),
+			label: () => paraglideMsg('admin_overview_owners', 'Owners'),
 			icon: LucideUserCog,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_OWNERS)
@@ -67,7 +69,7 @@
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_HOSPITALS,
 			pageKey: AdminPageKeyEnum.HOSPITALS,
-			label: () => msg.admin_overview_hospitals(),
+			label: () => paraglideMsg('admin_overview_hospitals', 'Hospitals'),
 			icon: LucideHouse,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_HOSPITALS)
@@ -75,7 +77,7 @@
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_STAFF,
 			pageKey: AdminPageKeyEnum.STAFF,
-			label: () => msg.admin_overview_staff(),
+			label: () => paraglideMsg('admin_overview_staff', 'Staff'),
 			icon: LucideUsersRound,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_STAFF)
@@ -83,15 +85,23 @@
 		{
 			href: WebRoutesEnum.MEDORA_ADMIN_MONITORING,
 			pageKey: AdminPageKeyEnum.MONITORING,
-			label: () => msg.admin_nav_monitoring(),
+			label: () => paraglideMsg('admin_nav_monitoring', 'Monitoring'),
 			icon: LucideActivity,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_MONITORING)
 		},
 		{
+			href: WebRoutesEnum.MEDORA_ADMIN_ICD,
+			pageKey: AdminPageKeyEnum.ICD,
+			label: () => paraglideMsg('admin_nav_icd', 'ICD codes'),
+			icon: LucideBookMarked,
+			match: (pathname) =>
+				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_ICD)
+		},
+		{
 			href: WebRoutesEnum.MEDORA_ADMIN_TEAM,
 			pageKey: AdminPageKeyEnum.TEAM,
-			label: () => msg.admin_nav_team(),
+			label: () => paraglideMsg('admin_nav_team', 'Team'),
 			icon: LucideUsers,
 			match: (pathname) =>
 				pathname.startsWith(WebRoutesEnum.MEDORA_ADMIN_TEAM)
@@ -127,7 +137,7 @@
 
 <aside
 	class="flex min-h-full h-full w-72 flex-col border-r border-ink-border bg-base-200"
-	aria-label={msg.admin_nav_aria()}
+	aria-label={paraglideMsg('admin_nav_aria', 'Admin navigation')}
 >
 	<div class="shrink-0 border-b border-ink-border px-4 py-4">
 		<MedoraBrandWordmark
@@ -135,7 +145,7 @@
 			className="text-base"
 		/>
 		<p class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/50">
-			{msg.system_admin()}
+			{paraglideMsg('system_admin', 'System admin')}
 		</p>
 	</div>
 
@@ -187,7 +197,7 @@
 			{#if !signingOut}
 				<LucideLogOut className="size-4 shrink-0" />
 			{/if}
-			{msg.log_out()}
+			{paraglideMsg('log_out', 'Log out')}
 		</button>
 	</div>
 </aside>

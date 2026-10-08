@@ -19,7 +19,7 @@ import {
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	IpdAdmissionStatusEnum,
 	IpdAccommodationBillingMethodEnum,
@@ -141,7 +141,7 @@ const junctionTimestamps = {
 export const hospitalTable = pgTable('hospital', {
 	id: uuid('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	name: varchar('name', { length: 512 }),
 	code: varchar('code', { length: 128 }),
 	address: text('address'),
@@ -164,7 +164,8 @@ export const hospitalTable = pgTable('hospital', {
 	establishedDate: date('established_date'),
 	/**
 	 * Bound diagnosis coding standard (ICD10 | ICD11).
-	 * Global catalogs live in `diagnosis_code`; search filters by this value.
+	 * Global catalogs live in `diagnosis_code` (ICD10 | ICD10_CM | ICD11);
+	 * search filters by this value.
 	 */
 	codingSystem: varchar('coding_system', { length: 32 })
 		.notNull()
@@ -180,7 +181,7 @@ export const hospitalTable = pgTable('hospital', {
 export const hospitalBranchTable = pgTable('hospital_branch', {
 	id: uuid('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -422,7 +423,7 @@ export const staffBranchTable = pgTable(
 export const staffTable = pgTable('staff', {
 	id: uuid('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	/** Links this staff to Better Auth user (1:1). */
 	userId: text('user_id')
 		.unique()
@@ -557,7 +558,7 @@ export const userGroupTable = pgTable('user_group', {
 export const patientTable = pgTable('patient', {
 	id: uuid('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id),
@@ -644,7 +645,7 @@ export const patientAttachmentTable = pgTable('patient_attachment', {
 export const insuranceTable = pgTable('insurance_table', {
 	id: uuid('id')
 		.primaryKey()
-		.$defaultFn(() => uuidv7()),
+		.$defaultFn(() => uuidV7()),
 	name: varchar('name', { length: 512 }),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
@@ -666,7 +667,7 @@ export const patientInsurance = pgTable('patient_insurance', {
 
 export const patientAllergyTable = pgTable('patient_allergy', {
 	id: serial('id').primaryKey(),
-	visitId: integer('visit_id')
+	visitId: uuid('visit_id')
 		.notNull()
 		.references(() => patientVisitTable.id),
 	patientId: uuid('patient_id')
@@ -788,7 +789,7 @@ export const patientDocumentTable = pgTable(
 	'patient_document',
 	{
 		id: serial('id').primaryKey(),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		patientId: uuid('patient_id')
@@ -935,7 +936,9 @@ export const appointmentBlockTable = pgTable('appointment_block', {
 
 /** Patient visit to a hospital/branch; may be linked to an appointment and doctor. */
 export const patientVisitTable = pgTable('patient_visit', {
-	id: serial('id').primaryKey(),
+	id: uuid('id')
+		.primaryKey()
+		.$defaultFn(() => uuidV7()),
 	patientId: uuid('patient_id')
 		.notNull()
 		.references(() => patientTable.id),
@@ -981,7 +984,7 @@ export const patientDiagnosisTable = pgTable('patient_diagnosis', {
 	hospitalId: uuid('hospital_id')
 		.notNull()
 		.references(() => hospitalTable.id),
-	visitId: integer('visit_id')
+	visitId: uuid('visit_id')
 		.notNull()
 		.references(() => patientVisitTable.id),
 	statusId: integer('status_id')
@@ -1038,7 +1041,7 @@ export const diagnosisTable = pgTable(
 		patientId: uuid('patient_id')
 			.notNull()
 			.references(() => patientTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		diagnosisTypeId: integer('diagnosis_type_id')
@@ -1074,7 +1077,7 @@ export const patientFormEntryTable = pgTable(
 		patientId: uuid('patient_id')
 			.notNull()
 			.references(() => patientTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		formNameId: integer('form_name_id')
@@ -1107,7 +1110,7 @@ export const planOfCareTable = pgTable(
 		patientId: uuid('patient_id')
 			.notNull()
 			.references(() => patientTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		note: text('note').notNull().default(''),
@@ -1139,7 +1142,7 @@ export const cpoePrescriptionNoteTable = pgTable(
 		patientId: uuid('patient_id')
 			.notNull()
 			.references(() => patientTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		note: text('note').notNull().default(''),
@@ -1173,7 +1176,7 @@ export const progressNoteTable = pgTable(
 		patientId: uuid('patient_id')
 			.notNull()
 			.references(() => patientTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id),
 		note: text('note').notNull().default(''),
@@ -1466,7 +1469,7 @@ export const serviceOrderTable = pgTable('service_order', {
 	orderDate: date('order_date'),
 	orderTime: time('order_time'),
 	orderNo: varchar('order_no', { length: 128 }),
-	visitId: integer('visit_id')
+	visitId: uuid('visit_id')
 		.notNull()
 		.references(() => patientVisitTable.id, {
 			onDelete: 'cascade'
@@ -1531,7 +1534,7 @@ export const opBillingTable = pgTable(
 	'op_billing',
 	{
 		id: serial('id').primaryKey(),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -1763,7 +1766,7 @@ export const allergyTable = pgTable('allergy', {
 
 export const referHistoryTable = pgTable('refer_history', {
 	id: serial('id').primaryKey(),
-	visitId: integer('visit_id')
+	visitId: uuid('visit_id')
 		.notNull()
 		.references(() => patientVisitTable.id),
 	referAt: timestamp('refer_at', {
@@ -1997,7 +2000,7 @@ export const ipdAdmissionTable = pgTable(
 	'ipd_admission',
 	{
 		id: serial('id').primaryKey(),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2005,7 +2008,7 @@ export const ipdAdmissionTable = pgTable(
 		/**
 		 * OPD visit this admission was converted from (nullable for direct/walk-in IPD).
 		 */
-		sourceOpdVisitId: integer('source_opd_visit_id').references(
+		sourceOpdVisitId: uuid('source_opd_visit_id').references(
 			() => patientVisitTable.id,
 			{ onDelete: 'set null' }
 		),
@@ -2276,7 +2279,7 @@ export const ipBillingTable = pgTable(
 	'ip_billing',
 	{
 		id: serial('id').primaryKey(),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2496,7 +2499,7 @@ export const dischargeSummaryTable = pgTable(
 	'discharge_summary',
 	{
 		id: serial('id').primaryKey(),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2541,7 +2544,7 @@ export const labResultTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2577,7 +2580,7 @@ export const imagingResultTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2615,7 +2618,7 @@ export const clinicalProcedureTable = pgTable(
 		branchId: uuid('branch_id')
 			.notNull()
 			.references(() => hospitalBranchTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2652,7 +2655,7 @@ export const operativeNoteTable = pgTable(
 		branchId: uuid('branch_id')
 			.notNull()
 			.references(() => hospitalBranchTable.id),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2805,7 +2808,7 @@ export const ipdAdmissionOrderTable = pgTable(
 			.references(() => hospitalBranchTable.id, {
 				onDelete: 'cascade'
 			}),
-		sourceOpdVisitId: integer('source_opd_visit_id')
+		sourceOpdVisitId: uuid('source_opd_visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'
@@ -2873,7 +2876,7 @@ export const ipAdvanceDepositTable = pgTable(
 			.references(() => ipdAdmissionTable.id, {
 				onDelete: 'cascade'
 			}),
-		visitId: integer('visit_id')
+		visitId: uuid('visit_id')
 			.notNull()
 			.references(() => patientVisitTable.id, {
 				onDelete: 'cascade'

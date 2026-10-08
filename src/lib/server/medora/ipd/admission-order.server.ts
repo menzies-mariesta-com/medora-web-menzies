@@ -46,8 +46,8 @@ export async function createAdmissionOrder(
 	payload: CreateIpdAdmissionOrderPayload & { hospitalId: string }
 ): Promise<IpdAdmissionOrderRow> {
 	const db = ensureDb();
-	const sourceOpdVisitId = Number(payload.sourceOpdVisitId);
-	if (!Number.isFinite(sourceOpdVisitId) || sourceOpdVisitId <= 0) {
+	const sourceOpdVisitId = String(payload.sourceOpdVisitId ?? '').trim();
+	if (!sourceOpdVisitId) {
 		throw error(400, 'Select the OPD visit to admit from');
 	}
 	const branchId = String(payload.branchId ?? '').trim();
@@ -165,7 +165,7 @@ export async function createAdmissionOrder(
 
 export async function getPendingAdmissionOrderBySourceOpdVisit(input: {
 	hospitalId: string;
-	sourceOpdVisitId: number;
+	sourceOpdVisitId: string;
 }): Promise<IpdAdmissionOrderRow | null> {
 	const rows = await listAdmissionOrdersPaginated({
 		hospitalId: input.hospitalId,
@@ -196,7 +196,7 @@ export async function listAdmissionOrdersPaginated(
 		search?: string;
 		statusTaggingId?: number;
 		id?: number;
-		sourceOpdVisitId?: number;
+		sourceOpdVisitId?: string;
 	}
 ): Promise<PaginatedResult<IpdAdmissionOrderRow>> {
 	const { page, pageSize, limit, offset } = normalizePagination(params);
@@ -209,7 +209,7 @@ export async function listAdmissionOrdersPaginated(
 	}
 	if (
 		typeof params.sourceOpdVisitId === 'number' &&
-		Number.isFinite(params.sourceOpdVisitId) &&
+		Boolean(params.sourceOpdVisitId) &&
 		params.sourceOpdVisitId > 0
 	) {
 		conditions.push(

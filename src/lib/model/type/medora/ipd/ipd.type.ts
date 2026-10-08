@@ -85,7 +85,7 @@ export type BedTariffContext = {
 export type IpdCensusRow = {
 	admissionId: number;
 	admissionNo: string | null;
-	visitId: number;
+	visitId: string;
 	visitNo: string | null;
 	patientId: string;
 	patientCode: string | null;
@@ -103,13 +103,13 @@ export type IpdCensusRow = {
 	otHoldLocation: string | null;
 	dailyTariff?: string | null;
 	/** OPD visit this IPD admission was converted from */
-	sourceOpdVisitId?: number | null;
+	sourceOpdVisitId?: string | null;
 	sourceOpdVisitNo?: string | null;
 };
 
 /** Unfinished OPD visit eligible as ADT admission source */
 export type AdtSourceOpdVisitRow = {
-	visitId: number;
+	visitId: string;
 	visitNo: string | null;
 	hasOpenOpBill: boolean;
 };
@@ -128,7 +128,7 @@ export type AdmitToIpdPayload = {
 	 * When admitting from OPD: unfinished OPD visit id.
 	 * Softens the new-visit gate for that visit / its open OP bill.
 	 */
-	sourceOpdVisitId?: number | null;
+	sourceOpdVisitId?: string | null;
 	/** When fulfilling a doctor admission order. */
 	admissionOrderId?: number | null;
 };
@@ -137,7 +137,7 @@ export type IpdAdmissionOrderRow = {
 	id: number;
 	hospitalId: string;
 	branchId: string;
-	sourceOpdVisitId: number;
+	sourceOpdVisitId: string;
 	sourceOpdVisitNo: string | null;
 	patientId: string;
 	patientCode: string | null;
@@ -155,7 +155,7 @@ export type IpdAdmissionOrderRow = {
 };
 
 export type CreateIpdAdmissionOrderPayload = {
-	sourceOpdVisitId: number;
+	sourceOpdVisitId: string;
 	careLevel: number;
 	urgency: number;
 	preferredWardId?: number | null;
@@ -168,7 +168,7 @@ export type IpAdvanceDepositRow = {
 	id: number;
 	hospitalId: string;
 	admissionId: number;
-	visitId: number;
+	visitId: string;
 	amount: string;
 	paymentMethod: string;
 	receiptNo: string | null;
@@ -184,7 +184,7 @@ export type IpAdvanceDepositRow = {
 
 export type CreateIpAdvanceDepositPayload = {
 	admissionId?: number;
-	visitId?: number;
+	visitId?: string;
 	amount: string;
 	paymentMethod?: string;
 	notes?: string | null;

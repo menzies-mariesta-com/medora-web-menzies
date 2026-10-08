@@ -120,7 +120,7 @@ export async function createPatientVisitInHospital(
 		branchId?: string | null;
 		hospitalId: string;
 		/** ADT OPD→IPD: allow this unfinished OPD visit + its open OP bill */
-		convertFromOpdVisitId?: number;
+		convertFromOpdVisitId?: string;
 	}
 ): Promise<PatientVisitSchema> {
 	const branchId = payload.branchId ?? null;

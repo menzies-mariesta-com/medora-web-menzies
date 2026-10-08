@@ -20,7 +20,7 @@
 
 	type ReferHistoryWithRelations = {
 		id: number;
-		visitId: number;
+		visitId: string;
 		referAt: string | null;
 		subject: string | null;
 		fromBranch: { name?: string | null } | null;

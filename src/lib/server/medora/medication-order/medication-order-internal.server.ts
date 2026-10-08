@@ -177,7 +177,7 @@ export async function saveMedicationOrderBatch(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		storeId: number;
 		lines: MedicationOrderLineSaveInput[];
 	}
@@ -287,13 +287,13 @@ export async function reorderFromHistoryBatch(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		sourceBatchId: number;
 	}
 ) {
 	const { hospitalId, visitId, sourceBatchId } = input;
 	await ensureCanAccessHospital(event, hospitalId);
-	if (!Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		throw error(400, 'visitId is required');
 	}
 	if (!Number.isFinite(sourceBatchId) || sourceBatchId <= 0) {
@@ -443,10 +443,10 @@ export async function reorderFromHistoryBatch(
 export async function listBatchesByVisit(
 	event: RequestEvent,
 	hospitalId: string,
-	visitId: number
+	visitId: string
 ) {
 	await ensureCanAccessHospital(event, hospitalId);
-	if (!Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		throw error(400, 'visitId is required');
 	}
 	const db = ensureDb();

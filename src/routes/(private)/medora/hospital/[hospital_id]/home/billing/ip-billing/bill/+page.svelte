@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -274,11 +275,9 @@
 			return;
 		}
 
-		const visitNumeric = Number(currentVisitId);
+		const visitNumeric = parseUuid(currentVisitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		) {
 			groups = [];
 			grandTotal = 0;
@@ -373,11 +372,9 @@
 		if (!visitId) return;
 		if (!billingMeta) return;
 		if (visitLevelDiscountLocked) return;
-		const visitNumeric = Number(visitId);
+		const visitNumeric = parseUuid(visitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		)
 			return;
 
@@ -451,11 +448,9 @@
 
 	async function closeOpBill() {
 		if (!visitId || !canCloseIpBill) return;
-		const visitNumeric = Number(visitId);
+		const visitNumeric = parseUuid(visitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		)
 			return;
 		try {
@@ -601,11 +596,9 @@
 			return;
 		}
 
-		const visitNumeric = Number(currentVisitId);
+		const visitNumeric = parseUuid(currentVisitId) ?? '';
 		if (
-			!visitNumeric ||
-			!Number.isFinite(visitNumeric) ||
-			visitNumeric <= 0
+			!visitNumeric
 		) {
 			historyBills = [];
 			historyError = '';
@@ -714,7 +707,7 @@
 			const hasDisc = discountAmt > 0;
 
 			const v: VisitSummary = {
-				id: bill.visit?.id ?? (Number(visitId ?? 0) || 0),
+				id: bill.visit?.id ?? (parseUuid(visitId) ?? ''),
 				visitNo:
 					bill.visit?.visitNo?.trim() ||
 					(bill.visit?.id ? String(bill.visit.id) : String(bill.id)),

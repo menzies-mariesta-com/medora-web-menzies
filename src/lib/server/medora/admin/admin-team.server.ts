@@ -18,7 +18,7 @@ import type {
 	AdminTeamUpdatePayload
 } from '$lib/model/type/medora/admin-team.type';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	loadAdminPagePermissions,
 	normalizePermissionRows,
@@ -168,7 +168,7 @@ export async function inviteAdminTeamMember(
 	const hashedPassword = await passwordHashUtil.hash(
 		generateRandomPassword(16)
 	);
-	const userId = uuidv7();
+	const userId = uuidV7();
 
 	const [user] = await ensureDb()
 		.insert(userTable)
@@ -183,7 +183,7 @@ export async function inviteAdminTeamMember(
 	if (!user) throw error(400, 'Failed to create admin team member.');
 
 	await ensureDb().insert(accountTable).values({
-		id: uuidv7(),
+		id: uuidV7(),
 		userId: user.id,
 		accountId: email,
 		providerId: 'credential',

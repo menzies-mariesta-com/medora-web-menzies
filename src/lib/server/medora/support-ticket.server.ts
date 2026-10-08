@@ -107,7 +107,7 @@ export async function createSupportTicket(
 		].filter(Boolean);
 		void sendEmailServer({
 			to: supportTo,
-			subject: `[Menzies Medora Support] #${row.id} ${row.subject}`,
+			subject: `[Medora Support] #${row.id} ${row.subject}`,
 			message: lines.join('\n')
 		});
 	}

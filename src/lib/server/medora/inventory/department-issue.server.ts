@@ -21,7 +21,7 @@ import {
 import { normalizePagination } from '$lib/model/type/pagination.type';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	assertStaffAssignedForModule,
 	assertStaffCanApproveLevel,
@@ -651,7 +651,7 @@ export async function createDepartmentIssue(
 	});
 
 	const id = await ensureDb().transaction(async (tx) => {
-		const newId = uuidv7();
+		const newId = uuidV7();
 		await tx.insert(table.invDepartmentIssueTable).values({
 			id: newId,
 			hospitalId: input.hospitalId,
@@ -836,7 +836,7 @@ export async function createDepartmentIssueFromIndent(
 	}
 
 	const newId = await ensureDb().transaction(async (tx) => {
-		const issueId = uuidv7();
+		const issueId = uuidV7();
 		await tx.insert(table.invDepartmentIssueTable).values({
 			id: issueId,
 			hospitalId: input.hospitalId,

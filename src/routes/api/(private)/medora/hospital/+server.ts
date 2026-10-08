@@ -14,7 +14,7 @@ import {
 
 function requireCodingSystem(value: unknown): string {
 	if (!isDiagnosisCodingSystem(value)) {
-		throw error(400, 'codingSystem must be ICD10 or ICD11');
+		throw error(400, 'codingSystem must be ICD10, ICD10_CM, or ICD11');
 	}
 	return value;
 }

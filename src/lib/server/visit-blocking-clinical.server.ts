@@ -10,7 +10,7 @@ import { and, count, eq, isNull, ne } from 'drizzle-orm';
  * Kept outside `*.remote.ts` (not a SvelteKit remote export).
  */
 export async function visitHasBlockingClinicalData(
-	visitId: number
+	visitId: string
 ): Promise<boolean> {
 	const db = ensureDb();
 	const t = table;

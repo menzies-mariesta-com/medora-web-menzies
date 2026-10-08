@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LucidePencil from '$lib/component/own/library/lucide/LucidePencil.svelte';
@@ -29,7 +30,7 @@
 		onPrintReceipt
 	}: DialogSlotProps & {
 		apiRoot: string;
-		visitId?: number;
+		visitId?: string;
 		title?: string;
 		enableColumnFilters?: boolean;
 		onEdit: (batchId: number) => void | Promise<void>;
@@ -89,7 +90,7 @@
 		try {
 			const u = new URL(apiRoot, window.location.origin);
 			u.searchParams.set('mode', 'batch.list');
-			if (visitId != null && Number.isFinite(visitId) && visitId > 0) {
+			if (visitId != null && Boolean(visitId)) {
 				u.searchParams.set('visitId', String(visitId));
 			}
 			const res = await fetch(u, { credentials: 'include' });
