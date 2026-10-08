@@ -69,7 +69,7 @@
 	const selectedVisitId = $derived(VisitState.visitId);
 
 	function handleVisitSelected(data: {
-		visitId: number;
+		visitId: string;
 		patientName: string;
 	}) {
 		const search = new URLSearchParams(page.url.search);

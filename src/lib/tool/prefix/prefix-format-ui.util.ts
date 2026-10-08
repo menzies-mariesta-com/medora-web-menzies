@@ -3,6 +3,7 @@ import type {
 	PrefixFormatPart,
 	PrefixFormatSpec
 } from '$lib/model/type/medora/prefix-format.type';
+import { uuidV7 } from '$lib/util/id.util';
 
 const KNOWN_FIELD_PATHS: readonly PrefixFieldPath[] = [
 	'financial_year.code',
@@ -26,7 +27,7 @@ export const PREFIX_FIELD_PATHS: readonly PrefixFieldPath[] =
 	KNOWN_FIELD_PATHS;
 
 export function newPartId(): string {
-	return crypto.randomUUID();
+	return uuidV7();
 }
 
 export function defaultFormatParts(): UiFormatPart[] {

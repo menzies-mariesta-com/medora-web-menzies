@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
@@ -909,7 +910,7 @@
 				const result = await apiCreatePatientWithUser({
 					email:
 						emailValue ||
-						`${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`,
+						`${uuidV7()}${StringUtil.NO_EMAIL_SUFFIX}`,
 					name: fullName,
 					hospitalId: hospitalIdFromUrl ?? '',
 					titleId: selectedTitleId

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -44,7 +45,7 @@
 			: ''
 	);
 	const visitIdStr = $derived(VisitState.visitId);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const readOnly = $derived(VisitState.isClinicalVisitReadOnly);
 	const apiBase = $derived(
 		hospitalId

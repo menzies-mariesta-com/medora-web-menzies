@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	/**
 	 * When the selected visit is not IPD, shows only a warning alert (no children).
 	 * Keep the visit bar outside this component so the user can pick another visit.
@@ -31,7 +32,7 @@
 	);
 
 	$effect(() => {
-		const id = visitId ? Number(visitId) : 0;
+		const id = parseUuid(visitId) ?? '';
 		const hid =
 			typeof hospitalId === 'string' && hospitalId.trim() !== ''
 				? hospitalId.trim()

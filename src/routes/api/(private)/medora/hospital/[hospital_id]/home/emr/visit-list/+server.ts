@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as emrVisitList from '$lib/server/medora/emr/visit-list.server';
 import type { VisitStatusCode } from '$lib/model/type/medora/emr/visit-list.type';
+import { parseUuid } from '$lib/util/id.util';
 
 export const GET: RequestHandler = async (event) => {
 	const hospitalId = event.params.hospital_id;
@@ -16,10 +17,8 @@ export const GET: RequestHandler = async (event) => {
 			return json(await emrVisitList.getVisitTypes());
 		}
 		case 'visit.bar': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0) {
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId) {
 				throw error(400, 'visitId is required');
 			}
 			const visit = await emrVisitList.getPatientVisitByIdForDisplay(
@@ -134,8 +133,8 @@ export const POST: RequestHandler = async (event) => {
 
 	switch (mode) {
 		case 'visit.markSeen': {
-			const visitId = Number(body?.visitId ?? 0);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(body?.visitId);
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			await emrVisitList.markPatientVisitSeenOnDoctorSelect(event, {
 				visitId

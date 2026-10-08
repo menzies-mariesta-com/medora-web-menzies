@@ -127,6 +127,13 @@
       "when": 1790500000000,
       "tag": "0017_hospital_coding_system_icd",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790600000000,
+      "tag": "0018_patient_visit_id_uuidv7",
+      "breakpoints": true
     }
   ]
 }

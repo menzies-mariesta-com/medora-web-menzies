@@ -299,7 +299,7 @@
 					bedId: Number(bedId),
 					reasonNotes: reasonNotes.trim() || null,
 					sourceOpdVisitId: sourceOpdVisitId
-						? Number(sourceOpdVisitId)
+						? sourceOpdVisitId
 						: null,
 					admissionOrderId,
 					admittingDoctorId: orderingDoctorId

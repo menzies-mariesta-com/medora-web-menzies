@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -30,7 +31,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id

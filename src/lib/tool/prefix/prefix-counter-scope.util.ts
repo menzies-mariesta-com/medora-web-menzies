@@ -110,7 +110,7 @@ export function buildPrefixCounterScopeKey(params: {
 	if (
 		params.scope.includeVisit &&
 		params.visitIdForScope != null &&
-		Number.isFinite(params.visitIdForScope)
+		Boolean(params.visitIdForScope)
 	) {
 		parts.push(String(params.visitIdForScope));
 	}

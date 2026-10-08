@@ -12,6 +12,7 @@ import {
 	getDocumentsWithRelations
 } from '$lib/server/medora/document-master/document.server';
 import { getDocumentSettingsForPrint } from '$lib/server/medora/document-master/document-print.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -27,20 +28,16 @@ export async function GET(event: RequestEvent) {
 
 	switch (mode) {
 		case 'visit.get': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getPatientVisitById({ id: visitId, hospitalId })
 			);
 		}
 		case 'serviceOrder.list': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(await obs.getServiceOrder({ visitId }));
 		}
@@ -71,10 +68,8 @@ export async function GET(event: RequestEvent) {
 			);
 		}
 		case 'nursingIncomplete.count': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			const statusIdRaw = event.url.searchParams.get('statusId');
 			const statusId =
@@ -126,14 +121,14 @@ export async function POST(event: RequestEvent) {
 			);
 		}
 		case 'nursingComplete.markBatch': {
-			const visitId = Number(body?.visitId ?? 0);
+			const visitId = parseUuid(body?.visitId);
 			const batchSize = Number(body?.batchSize ?? 0);
 			const statusIdRaw = body?.statusId;
 			const statusId =
 				statusIdRaw != null && String(statusIdRaw).trim() !== ''
 					? Number(statusIdRaw)
 					: undefined;
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			if (!Number.isFinite(batchSize) || batchSize <= 0)
 				throw error(400, 'batchSize is required');

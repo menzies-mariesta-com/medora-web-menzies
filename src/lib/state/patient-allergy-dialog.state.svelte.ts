@@ -1,6 +1,6 @@
 export const PatientAllergyDialogState = $state<{
 	patientId: string | null;
-	visitId: number | null;
+	visitId: string | null;
 	/** Hospital scope for `/api/medora/hospital/.../consultation/emr` */
 	hospitalId: string | null;
 	/** When set, open in edit mode with existing patient allergy record */

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
@@ -38,7 +39,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
@@ -96,10 +97,10 @@
 		return (await res.json()) as T;
 	}
 
-	const getPatientVisitById = ({ id }: { id: number }) =>
+	const getPatientVisitById = ({ id }: { id: string }) =>
 		apiGet<any>({ mode: 'visit.get', visitId: id });
 
-	const getServiceOrder = ({ visitId }: { visitId: number }) =>
+	const getServiceOrder = ({ visitId }: { visitId: string }) =>
 		apiGet<any[]>({ mode: 'serviceOrder.list', visitId });
 
 	const createServiceOrder = (payload: any) =>
@@ -109,7 +110,7 @@
 		visitId: vid,
 		serviceOrderIds
 	}: {
-		visitId: number;
+		visitId: string;
 		serviceOrderIds: number[];
 	}) => {
 		const qs = new URLSearchParams({

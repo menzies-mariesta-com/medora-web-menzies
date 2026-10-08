@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import type { StaffRegHospitalBranchRow } from '$lib/model/type/medora/staff-reg-ui.type';
@@ -190,7 +191,7 @@
 				body: JSON.stringify({
 					mode: 'referHistory.create',
 					payload: {
-						visitId: parseInt(visitId, 10),
+						visitId: parseUuid(visitId) ?? '',
 						referAt: new Date().toISOString(),
 						toBranchId: toBranchId.trim(),
 						toReferDoctorId: toReferDoctorId.trim(),

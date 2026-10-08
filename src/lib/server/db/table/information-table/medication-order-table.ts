@@ -527,7 +527,7 @@ export const medicationOrderBatchTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		visitId: integer('visit_id').references(
+		visitId: uuid('visit_id').references(
 			() => patientVisitTable.id,
 			{
 				onDelete: 'restrict'

@@ -35,7 +35,7 @@ export interface GeneratePrefixContext {
 	/** Service order: `YYYY-MM-DD` for {@link PrefixFieldPath} `order_date.year_2digit`. */
 	orderDate?: string;
 	/** Service order: splits counter per visit (legacy behaviour). */
-	visitId?: number;
+	visitId?: string;
 	visitNo?: string | null;
 }
 

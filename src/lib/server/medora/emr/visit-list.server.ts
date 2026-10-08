@@ -246,7 +246,7 @@ export async function getAbnormalVitalVisitIdsByVisitIds(params: {
 
 export async function markPatientVisitSeenOnDoctorSelect(
 	event: RequestEvent,
-	params: { visitId: number }
+	params: { visitId: string }
 ): Promise<void> {
 	const staff = event.locals.staff;
 	if (!staff || staff.staffTypeId !== StaffTypeEnum.DOCTOR) return;
@@ -278,7 +278,7 @@ export async function markPatientVisitSeenOnDoctorSelect(
 
 export async function getPatientVisitByIdForDisplay(
 	event: RequestEvent,
-	params: { hospitalId: string; visitId: number }
+	params: { hospitalId: string; visitId: string }
 ) {
 	await ensureCanAccessHospital(event, params.hospitalId);
 	return ensureDb().query.patientVisitTable.findFirst({

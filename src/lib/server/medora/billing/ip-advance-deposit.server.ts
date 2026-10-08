@@ -38,7 +38,7 @@ function mapJoinedRow(r: {
 	id: number;
 	hospitalId: string;
 	admissionId: number;
-	visitId: number;
+	visitId: string;
 	amount: string;
 	paymentMethod: string;
 	receiptNo: string | null;
@@ -139,7 +139,7 @@ async function getDepositRowById(input: {
 
 export async function resolveAdmissionIdForVisit(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }): Promise<number | null> {
 	const [admission] = await ensureDb()
 		.select({ id: table.ipdAdmissionTable.id })
@@ -170,7 +170,7 @@ export async function createIpAdvanceDeposit(
 	payload: CreateIpAdvanceDepositPayload & {
 		hospitalId: string;
 		paidByStaffId?: string | null;
-		visitId?: number | null;
+		visitId?: string | null;
 	}
 ): Promise<IpAdvanceDepositRow> {
 	const db = ensureDb();
@@ -178,8 +178,8 @@ export async function createIpAdvanceDeposit(
 	if (
 		(!Number.isFinite(admissionId) || admissionId <= 0) &&
 		typeof payload.visitId === 'number' &&
-		Number.isFinite(payload.visitId) &&
-		payload.visitId > 0
+		Boolean(payload.visitId) &&
+		payload.Boolean(visitId)
 	) {
 		const resolved = await resolveAdmissionIdForVisit({
 			hospitalId: payload.hospitalId,
@@ -249,7 +249,7 @@ export async function createIpAdvanceDeposit(
 export async function listIpAdvanceDeposits(input: {
 	hospitalId: string;
 	admissionId?: number;
-	visitId?: number;
+	visitId?: string;
 	search?: string;
 }): Promise<IpAdvanceDepositRow[]> {
 	const conditions = [
@@ -267,8 +267,8 @@ export async function listIpAdvanceDeposits(input: {
 	}
 	if (
 		typeof input.visitId === 'number' &&
-		Number.isFinite(input.visitId) &&
-		input.visitId > 0
+		Boolean(input.visitId) &&
+		input.Boolean(visitId)
 	) {
 		conditions.push(eq(table.ipAdvanceDepositTable.visitId, input.visitId));
 	}
@@ -360,7 +360,7 @@ export async function sumIpAdvanceDepositsForAdmission(input: {
 
 export async function sumIpAdvanceDepositsForVisit(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }): Promise<number> {
 	const [row] = await ensureDb()
 		.select({

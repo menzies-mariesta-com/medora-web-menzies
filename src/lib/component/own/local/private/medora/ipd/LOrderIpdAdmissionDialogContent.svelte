@@ -27,7 +27,7 @@
 		orderingDoctorId = null
 	}: DialogSlotProps & {
 		hospitalId: string;
-		sourceOpdVisitId: number;
+		sourceOpdVisitId: string;
 		branchId: string;
 		orderingDoctorId?: string | null;
 	} = $props();

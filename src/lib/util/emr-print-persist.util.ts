@@ -7,7 +7,7 @@ import { StatusEnum } from '$lib/model/enum/db-link';
 export async function persistEmrPrintPdf(params: {
 	hospitalId: string;
 	patientId: string;
-	visitId: number;
+	visitId: string;
 	documentId: number;
 	fileUrl: string;
 	attachmentDescription: string;

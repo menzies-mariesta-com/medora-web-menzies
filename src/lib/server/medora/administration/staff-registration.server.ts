@@ -1,6 +1,6 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
@@ -369,8 +369,8 @@ export async function createStaffRegistration(
 	const hashedPassword =
 		await passwordHashUtil.hash(generatedPassword);
 
-	const userId = uuidv7();
-	const staffId = uuidv7();
+	const userId = uuidV7();
+	const staffId = uuidV7();
 
 	let created: StaffSchema;
 	try {
@@ -388,7 +388,7 @@ export async function createStaffRegistration(
 			if (!user) throw error(400, 'Failed to create staff.');
 
 			await tx.insert(table.accountTable).values({
-				id: uuidv7(),
+				id: uuidV7(),
 				userId: user.id,
 				accountId: trimmedEmail,
 				providerId: 'credential',

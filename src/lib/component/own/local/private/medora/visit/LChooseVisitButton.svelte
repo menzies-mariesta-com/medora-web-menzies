@@ -14,7 +14,7 @@
 	} = $props<{
 		hospitalId: string | undefined;
 		onVisitSelected: (data: {
-			visitId: number;
+			visitId: string;
 			patientName: string;
 		}) => void;
 		label?: string;
@@ -24,7 +24,7 @@
 	async function handleClick() {
 		if (!hospitalId) return;
 		const result = await dialogService.open<{
-			visitId: number;
+			visitId: string;
 			patientName: string;
 		}>({
 			// Title lives on MenziesTable inside the picker (no double header).

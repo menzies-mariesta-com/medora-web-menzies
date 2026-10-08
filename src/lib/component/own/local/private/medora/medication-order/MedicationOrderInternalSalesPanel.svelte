@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -65,7 +66,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 	);
 
 	const visitIdNum = $derived(
-		VisitState.visitId ? Number(VisitState.visitId) : 0
+		(parseUuid(VisitState.visitId) ?? '')
 	);
 
 	function apiRoot() {
