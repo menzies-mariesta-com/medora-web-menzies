@@ -1,3 +1,4 @@
+import type { PrefixPurposeStorageKey } from '$lib/model/const/prefix-purpose.const';
 import type {
 	PrefixFieldPath,
 	PrefixFormatPart,
@@ -36,18 +37,7 @@ export function defaultFormatParts(): UiFormatPart[] {
 
 /** Default template when saving a purpose for the first time. */
 export function defaultFormatPartsForStorageKey(
-	storageKey:
-		| 'PATIENT_CODE'
-		| 'VISIT_NO'
-		| 'ORDER_NO'
-		| 'PURCHASE_REQUISITION_NO'
-		| 'PURCHASE_ORDER_NO'
-		| 'DEPARTMENT_INDENT_NO'
-		| 'DEPARTMENT_ISSUE_NO'
-		| 'DEPARTMENT_CONSUMPTION_NO'
-		| 'MEDICATION_ORDER_BATCH_NO'
-		| 'IPD_ADMISSION_NO'
-		| 'IP_BILL_NO'
+	storageKey: PrefixPurposeStorageKey | string
 ): UiFormatPart[] {
 	if (
 		storageKey === 'PURCHASE_REQUISITION_NO' ||
@@ -95,6 +85,14 @@ export function defaultFormatPartsForStorageKey(
 			{ id: newPartId(), kind: 'sequence', padStart: 5 }
 		];
 	}
+	if (storageKey === 'EXTERNAL_PATIENT_CODE') {
+		return [
+			{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
+			{ id: newPartId(), kind: 'field', path: 'hospital.code' },
+			{ id: newPartId(), kind: 'literal', value: '/EP/' },
+			{ id: newPartId(), kind: 'sequence', padStart: 6 }
+		];
+	}
 	return [
 		{ id: newPartId(), kind: 'field', path: 'financial_year.code' },
 		{ id: newPartId(), kind: 'field', path: 'hospital.code' },
@@ -110,22 +108,12 @@ const FIELD_PATHS_PATIENT: readonly PrefixFieldPath[] = [
 
 /** Field dropdown options; patient omits visit type by default (optional via format). */
 export function fieldPathsForEdit(
-	storageKey:
-		| 'PATIENT_CODE'
-		| 'VISIT_NO'
-		| 'ORDER_NO'
-		| 'PURCHASE_REQUISITION_NO'
-		| 'PURCHASE_ORDER_NO'
-		| 'DEPARTMENT_INDENT_NO'
-		| 'DEPARTMENT_ISSUE_NO'
-		| 'DEPARTMENT_CONSUMPTION_NO'
-		| 'MEDICATION_ORDER_BATCH_NO'
-		| 'IPD_ADMISSION_NO'
-		| 'IP_BILL_NO',
+	storageKey: PrefixPurposeStorageKey | string,
 	currentParts: UiFormatPart[]
 ): readonly PrefixFieldPath[] {
 	const base =
-		storageKey === 'PATIENT_CODE'
+		storageKey === 'PATIENT_CODE' ||
+		storageKey === 'EXTERNAL_PATIENT_CODE'
 			? FIELD_PATHS_PATIENT
 			: KNOWN_FIELD_PATHS;
 	const used = new Set(

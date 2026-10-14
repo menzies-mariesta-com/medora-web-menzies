@@ -121,6 +121,8 @@
 	function purposeLabel(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient')
 			return m.prefix_configuration_purpose_patient();
+		if (p.id === 'external_patient')
+			return m.prefix_configuration_purpose_external_patient();
 		if (p.id === 'visit')
 			return m.prefix_configuration_purpose_visit();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
@@ -139,6 +141,9 @@
 	function purposeHelp(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') {
 			return m.prefix_configuration_purpose_patient_help();
+		}
+		if (p.id === 'external_patient') {
+			return m.prefix_configuration_purpose_external_patient_help();
 		}
 		if (p.id === 'visit') {
 			return m.prefix_configuration_purpose_visit_help();
@@ -170,6 +175,8 @@
 	function editTitle(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient')
 			return m.prefix_configuration_edit_patient_title();
+		if (p.id === 'external_patient')
+			return m.prefix_configuration_edit_external_patient_title();
 		if (p.id === 'visit')
 			return m.prefix_configuration_edit_visit_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();

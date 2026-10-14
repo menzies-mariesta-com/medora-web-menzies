@@ -4,6 +4,11 @@
  */
 export const PREFIX_PURPOSE_STORAGE = {
 	PATIENT_CODE: 'PATIENT_CODE',
+	/**
+	 * Optional separate HRN for External Sales / walk-in patients.
+	 * When not configured, registration falls back to {@link PATIENT_CODE}.
+	 */
+	EXTERNAL_PATIENT_CODE: 'EXTERNAL_PATIENT_CODE',
 	VISIT_NO: 'VISIT_NO',
 	ORDER_NO: 'ORDER_NO',
 	PURCHASE_REQUISITION_NO: 'PURCHASE_REQUISITION_NO',
@@ -26,6 +31,7 @@ export type PrefixPurposeStorageKey =
 
 export type PrefixPurposeId =
 	| 'patient'
+	| 'external_patient'
 	| 'visit'
 	| 'order'
 	| 'pr'
@@ -45,6 +51,10 @@ export interface PrefixPurposeDefinition {
 
 export const PREFIX_PURPOSES: readonly PrefixPurposeDefinition[] = [
 	{ id: 'patient', storageKey: PREFIX_PURPOSE_STORAGE.PATIENT_CODE },
+	{
+		id: 'external_patient',
+		storageKey: PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE
+	},
 	{ id: 'visit', storageKey: PREFIX_PURPOSE_STORAGE.VISIT_NO },
 	{ id: 'order', storageKey: PREFIX_PURPOSE_STORAGE.ORDER_NO },
 	{

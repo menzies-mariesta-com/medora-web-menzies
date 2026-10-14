@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import LucideListOrdered from '$lib/component/own/library/lucide/LucideListOrdered.svelte';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
@@ -20,15 +19,8 @@
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import { m } from '$lib/paraglide/messages';
-	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
-	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
-	import {
-		buildMedOrderReceiptBodyHtml,
-		type MedOrderReceiptPrintLabels
-	} from '$lib/util/op-billing-print-table.util';
 	import type {
 		ItemNamePriceRow,
-		MedicationOrderCheckoutResponse,
 		MedicationOrderMastersResponse,
 		MedicationOrderLineInput
 	} from '$lib/model/type/medora/medication-order.type';
@@ -54,8 +46,12 @@
 	} from '$lib/tool/medication-order/med-order-start-date.util';
 	import { tick, untrack } from 'svelte';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { VisitState } from '$lib/state/visit.state.svelte';
+	import { medoraHospitalPageUrl, WebRoutesEnum } from '$lib/model/enum/routes.enum';
+	import { RouterUtil } from '$lib/util/router.util.svelte';
 const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
+	const routerUtil = new RouterUtil();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -68,9 +64,16 @@ const lifeCycleUtil = new LifeCycleUtil();
 		return `/api/medora/hospital/${hospitalId}/home/medication-order/external-sales`;
 	}
 
-	/** Walk-in: plain text, not linked to a patient/visit */
-	let customerName = $state('');
+	/** Quick-register fields → patient + OP visit */
+	let firstName = $state('');
+	let lastName = $state('');
+	let phonePrimary = $state('');
 	let advisingDoctor = $state('');
+	let patientId = $state('');
+	let patientCode = $state('');
+	let visitId = $state('');
+	let visitNo = $state('');
+	let displayCustomerName = $state('');
 
 	function toDateTimeLocalValue(d: Date): string {
 		const y = d.getFullYear();
@@ -133,8 +136,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 	let batchAllocations = $state<ConsumptionBatchAllocationDraft[]>([]);
 	let iumList = $state<ConsumptionDraftLineIum[]>([]);
 
-	let paymentMethod = $state('cash');
-	let amountPaid = $state('');
+	/** Locked when legacy MO payment exists or OP bill is closed */
 	let batchIsPaid = $state(false);
 
 	let isBusy = $state(false);
@@ -228,7 +230,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 	);
 
 	const partyReady = $derived(
-		Boolean(editingBatchId) || customerName.trim().length > 0
+		Boolean(editingBatchId) || (visitId.trim().length > 0 && displayCustomerName.trim().length > 0)
 	);
 	const minStart = $derived.by(() => medOrderMinStartDateTimeLocal());
 
@@ -620,9 +622,89 @@ const lifeCycleUtil = new LifeCycleUtil();
 		editingBatchId = 0;
 		draftLines = [];
 		batchIsPaid = false;
-		amountPaid = '';
 		showRxDetails = false;
 		resetNewLineForm();
+	}
+
+	function resetParty() {
+		firstName = '';
+		lastName = '';
+		phonePrimary = '';
+		advisingDoctor = '';
+		patientId = '';
+		patientCode = '';
+		visitId = '';
+		visitNo = '';
+		displayCustomerName = '';
+		VisitState.reset();
+	}
+
+	async function registerAndOpenVisit() {
+		if (!hospitalId) return;
+		if (!storeId) {
+			toastService.addToast(
+				m.med_order_ext_need_store(),
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+		if (!firstName.trim()) {
+			toastService.addToast(
+				m.med_order_ext_no_party(),
+				StatusColorEnum.WARNING
+			);
+			return;
+		}
+		isBusy = true;
+		try {
+			const res = await fetch(apiRoot(), {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					mode: 'party.registerAndOpenVisit',
+					storeId,
+					firstName: firstName.trim(),
+					lastName: lastName.trim(),
+					phonePrimary: phonePrimary.trim(),
+					advisingDoctor: advisingDoctor.trim()
+				})
+			});
+			if (!res.ok) await throwUserFacingHttpError(res);
+			const pack = (await res.json()) as {
+				patient: { id: string; code: string | null };
+				visit: { id: string; visitNo: string | null };
+				displayName: string;
+				advisingDoctor: string | null;
+			};
+			patientId = pack.patient.id;
+			patientCode = pack.patient.code ?? '';
+			visitId = pack.visit.id;
+			visitNo = pack.visit.visitNo ?? '';
+			displayCustomerName = pack.displayName;
+			if (pack.advisingDoctor) advisingDoctor = pack.advisingDoctor;
+			VisitState.select({
+				visitId: pack.visit.id,
+				patientName: pack.displayName
+			});
+			toastService.addToast(
+				m.med_order_ext_register_success(),
+				StatusColorEnum.SUCCESS
+			);
+		} catch (e) {
+			toastService.addErrorToast(m.med_order_ext_register_failed(), e);
+		} finally {
+			isBusy = false;
+		}
+	}
+
+	function openOpBilling() {
+		if (!hospitalId || !visitId) return;
+		const base = medoraHospitalPageUrl(
+			hospitalId,
+			WebRoutesEnum.MEDORA_HOME_BILLING_OP_BILLING
+		);
+		routerUtil.replaceRoute(`${base}?visitId=${encodeURIComponent(visitId)}`);
 	}
 
 	function addDraft() {
@@ -829,11 +911,16 @@ const lifeCycleUtil = new LifeCycleUtil();
 					m.med_order_int_updated(),
 					StatusColorEnum.SUCCESS
 				);
-				amountPaid = draftTotal;
 				resetNewLineForm();
 				await reloadDraftLinesFromSavedBatch(editingBatchId);
-				amountPaid = draftTotal;
 			} else {
+				if (!visitId) {
+					toastService.addToast(
+						m.med_order_ext_no_party(),
+						StatusColorEnum.WARNING
+					);
+					return;
+				}
 				const res = await fetch(apiRoot(), {
 					method: 'POST',
 					credentials: 'include',
@@ -841,7 +928,8 @@ const lifeCycleUtil = new LifeCycleUtil();
 					body: JSON.stringify({
 						mode: 'batch.save',
 						storeId,
-						extCustomerName: customerName.trim(),
+						visitId,
+						extCustomerName: displayCustomerName.trim(),
 						advisingDoctor: advisingDoctor.trim(),
 						lines
 					})
@@ -861,7 +949,6 @@ const lifeCycleUtil = new LifeCycleUtil();
 				if (editingBatchId) {
 					await reloadDraftLinesFromSavedBatch(editingBatchId);
 				}
-				amountPaid = draftTotal;
 			}
 		} catch (e) {
 			toastService.addErrorToast(
@@ -875,142 +962,6 @@ const lifeCycleUtil = new LifeCycleUtil();
 		}
 	}
 
-	async function checkoutBatch() {
-		if (!editingBatchId || batchIsPaid) return;
-		if (!amountPaid.trim()) {
-			toastService.addToast(
-				m.med_order_amount_paid(),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		isBusy = true;
-		try {
-			const res = await fetch(apiRoot(), {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					mode: 'batch.checkout',
-					batchId: editingBatchId,
-					paymentMethod,
-					amountPaid: amountPaid.trim()
-				})
-			});
-			if (!res.ok) await throwUserFacingHttpError(res);
-			await res.json();
-			batchIsPaid = true;
-			toastService.addToast(
-				m.med_order_checkout_success(),
-				StatusColorEnum.SUCCESS
-			);
-			await openHistory();
-		} catch (e) {
-			toastService.addErrorToast(m.med_order_checkout_failed(), e);
-		} finally {
-			isBusy = false;
-		}
-	}
-
-	async function printReceiptFromPack(r: MedicationOrderCheckoutResponse) {
-		if (!hospitalId) return;
-		const labels: MedOrderReceiptPrintLabels = {
-			item: 'Item',
-			qty: 'Qty',
-			price: 'Price',
-			total: 'Total',
-			amountDue: m.med_order_amount_due(),
-			amountPaid: m.med_order_amount_paid()
-		};
-		const bodyHtml = buildMedOrderReceiptBodyHtml({
-			lines: r.lines,
-			amountDue: r.amountDue,
-			amountPaid: r.amountPaid,
-			labels
-		});
-
-		await printFromDocumentMaster({
-			hospitalId,
-			documentCode: DOCUMENT_PRINT_CODE.MED_ORDER_RECEIPT,
-			document: { documentNumber: r.receiptNo },
-			extraPlaceholders: {
-				'{{print.body_html}}': bodyHtml,
-				'{{print.label_title}}': m.med_order_receipt_print(),
-				'{{document.number}}': r.receiptNo,
-				'{{print.customer}}': r.batch.extCustomerName ?? '',
-				'{{print.doctor}}': r.batch.advisingDoctor ?? ''
-			},
-			iframeId: 'med-order-receipt-print-iframe'
-		});
-	}
-
-	async function printReceiptForBatchId(batchId: number) {
-		const u = new URL(apiRoot(), window.location.origin);
-		u.searchParams.set('mode', 'batch.get');
-		u.searchParams.set('batchId', String(batchId));
-		const res = await fetch(u, { credentials: 'include' });
-		if (!res.ok) {
-			toastService.addToast(
-				m.med_order_int_load_failed(),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		const pack = (await res.json()) as {
-			batch: {
-				id: number;
-				storeId: number;
-				batchNo: string;
-				extCustomerName: string | null;
-				advisingDoctor: string | null;
-			};
-			lines: Record<string, unknown>[];
-			payment: {
-				receiptNo: string;
-				amountDue: string;
-				amountPaid: string;
-				paymentMethod: string;
-				paidAt: string;
-			} | null;
-		};
-		if (!pack.payment) {
-			toastService.addToast(
-				m.med_order_ext_receipt_unavailable(),
-				StatusColorEnum.ERROR
-			);
-			return;
-		}
-		const lines = await Promise.all(
-			pack.lines.map(async (ln) => {
-				const qtyOut = String(ln.qtyOut ?? '1');
-				const unitSalePrice = String(ln.unitSalePrice ?? '0');
-				return {
-					itemName: await fetchItemDisplayName(
-						Number(ln.itemMasterId)
-					),
-					qtyOut,
-					unitSalePrice,
-					lineTotal: lineTotal(qtyOut, unitSalePrice).toFixed(2)
-				};
-			})
-		);
-		await printReceiptFromPack({
-			receiptNo: pack.payment.receiptNo,
-			amountDue: pack.payment.amountDue,
-			amountPaid: pack.payment.amountPaid,
-			paymentMethod: pack.payment.paymentMethod,
-			paidAt: pack.payment.paidAt,
-			batch: {
-				id: pack.batch.id,
-				batchNo: pack.batch.batchNo,
-				extCustomerName: pack.batch.extCustomerName,
-				advisingDoctor: pack.batch.advisingDoctor,
-				storeId: pack.batch.storeId
-			},
-			lines
-		});
-	}
-
 	async function openHistory() {
 		await dialogService.open({
 			title: '',
@@ -1022,8 +973,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 				enableColumnFilters: false,
 				onEdit: loadBatchForEdit,
 				onReorder: reorderBatchById,
-				onDelete: deleteBatchById,
-				onPrintReceipt: printReceiptForBatchId
+				onDelete: deleteBatchById
 			}
 		});
 	}
@@ -1145,6 +1095,7 @@ const lifeCycleUtil = new LifeCycleUtil();
 				id: number;
 				storeId: number;
 				batchNo: string;
+				visitId: string | null;
 				extCustomerName: string | null;
 				advisingDoctor: string | null;
 			};
@@ -1156,22 +1107,35 @@ const lifeCycleUtil = new LifeCycleUtil();
 				batchNo: string | null;
 				expiryDate: string | null;
 			}[];
-			payment: {
-				amountPaid: string;
-				amountDue: string;
-				receiptNo: string;
-				paymentMethod: string;
-				paidAt: string;
-			} | null;
+			payment: { id: number } | null;
+			billingLocked?: boolean;
+			opBillClosed?: boolean;
+			visitNo?: string | null;
+			patientId?: string | null;
+			patientCode?: string | null;
 		};
 		if (!masters) await loadMasters();
 		editingBatchId = id;
 		const sid = String(pack.batch.storeId);
 		storeIdStr = sid;
-		customerName = pack.batch.extCustomerName ?? '';
+		displayCustomerName = pack.batch.extCustomerName ?? '';
+		firstName = displayCustomerName;
+		lastName = '';
 		advisingDoctor = pack.batch.advisingDoctor ?? '';
-		batchIsPaid = pack.payment != null;
-		amountPaid = pack.payment?.amountPaid ?? draftTotal;
+		visitId = pack.batch.visitId ?? '';
+		visitNo = pack.visitNo ?? '';
+		patientId = pack.patientId ?? '';
+		patientCode = pack.patientCode ?? '';
+		if (visitId) {
+			VisitState.select({
+				visitId,
+				patientName: displayCustomerName
+			});
+		}
+		batchIsPaid = Boolean(
+			pack.billingLocked ??
+				(pack.payment != null || pack.opBillClosed)
+		);
 		storeLabel =
 			storeNameById[pack.batch.storeId] ??
 			(await resolveStoreLabelForId(sid));
@@ -1614,41 +1578,102 @@ const lifeCycleUtil = new LifeCycleUtil();
 			</section>
 		</div>
 
-		<!-- RIGHT: sticky party + totals + pay -->
+		<!-- RIGHT: sticky party + totals + OP bill -->
 		<aside
 			class="sticky top-2 flex min-w-0 flex-col gap-4 rounded-box border border-base-300 bg-base-100 p-4 shadow-md lg:self-start"
 		>
 			<section class="flex flex-col gap-3" aria-label={m.med_order_ext_party_title()}>
 				<h2 class="text-base font-bold text-primary">{m.med_order_ext_party_title()}</h2>
-				<div class="flex min-w-0 flex-col gap-1.5">
-					<label class="text-sm font-medium" for="ext-cust">
-						{m.med_order_ext_customer_name()}<span
-							class="align-top text-sm leading-none text-error"
-							aria-hidden="true">*</span
+				{#if visitId}
+					<div class="rounded-box bg-base-200/60 p-3 text-sm space-y-1">
+						{#if patientCode}
+							<div class="flex justify-between gap-2">
+								<span class="opacity-70">{m.med_order_ext_hrn()}</span>
+								<strong class="font-mono">{patientCode}</strong>
+							</div>
+						{/if}
+						<div class="flex justify-between gap-2">
+							<span class="opacity-70">{m.med_order_ext_visit_no()}</span>
+							<strong class="font-mono">{visitNo || visitId}</strong>
+						</div>
+						<div class="flex justify-between gap-2">
+							<span class="opacity-70">{m.med_order_ext_history_customer()}</span>
+							<strong>{displayCustomerName}</strong>
+						</div>
+					</div>
+					{#if !editingBatchId && !batchIsPaid}
+						<WashButton
+							className="btn btn-ghost btn-sm w-full"
+							onClick={resetParty}
 						>
-					</label>
-					<WashInputField
-						nameText="ext-cust"
-						bind:value={customerName}
-						inputPlaceholderText={m.med_order_ext_customer_placeholder()}
-						className="w-full"
-						minLength={0}
-						disabled={editingBatchId > 0 || batchIsPaid}
-					/>
-				</div>
-				<div class="flex min-w-0 flex-col gap-1.5">
-					<label class="text-sm font-medium" for="ext-doc"
-						>{m.med_order_ext_advising_doctor()}</label
+							{m.med_order_ext_new_patient()}
+						</WashButton>
+					{/if}
+				{:else}
+					<div class="flex min-w-0 flex-col gap-1.5">
+						<label class="text-sm font-medium" for="ext-first">
+							{m.med_order_ext_customer_name()}<span
+								class="align-top text-sm leading-none text-error"
+								aria-hidden="true">*</span
+							>
+						</label>
+						<WashInputField
+							nameText="ext-first"
+							bind:value={firstName}
+							inputPlaceholderText={m.med_order_ext_customer_placeholder()}
+							className="w-full"
+							minLength={0}
+							disabled={batchIsPaid}
+						/>
+					</div>
+					<div class="flex min-w-0 flex-col gap-1.5">
+						<label class="text-sm font-medium" for="ext-last"
+							>{m.med_order_ext_last_name()}</label
+						>
+						<WashInputField
+							nameText="ext-last"
+							bind:value={lastName}
+							inputPlaceholderText={m.med_order_ext_last_name_placeholder()}
+							className="w-full"
+							minLength={0}
+							disabled={batchIsPaid}
+						/>
+					</div>
+					<div class="flex min-w-0 flex-col gap-1.5">
+						<label class="text-sm font-medium" for="ext-phone"
+							>{m.med_order_ext_phone()}</label
+						>
+						<WashInputField
+							nameText="ext-phone"
+							bind:value={phonePrimary}
+							inputPlaceholderText={m.med_order_ext_phone_placeholder()}
+							className="w-full"
+							minLength={0}
+							disabled={batchIsPaid}
+						/>
+					</div>
+					<div class="flex min-w-0 flex-col gap-1.5">
+						<label class="text-sm font-medium" for="ext-doc"
+							>{m.med_order_ext_advising_doctor()}</label
+						>
+						<WashInputField
+							nameText="ext-doc"
+							bind:value={advisingDoctor}
+							inputPlaceholderText={m.med_order_ext_advising_doctor_placeholder()}
+							className="w-full"
+							minLength={0}
+							disabled={batchIsPaid}
+						/>
+					</div>
+					<WashButton
+						className="btn btn-primary w-full cursor-pointer"
+						onClick={() => void registerAndOpenVisit()}
+						disabled={isBusy || !storeId || !firstName.trim()}
+						loading={isBusy}
 					>
-					<WashInputField
-						nameText="ext-doc"
-						bind:value={advisingDoctor}
-						inputPlaceholderText={m.med_order_ext_advising_doctor_placeholder()}
-						className="w-full"
-						minLength={0}
-						disabled={editingBatchId > 0 || batchIsPaid}
-					/>
-				</div>
+						{m.med_order_ext_register_visit()}
+					</WashButton>
+				{/if}
 			</section>
 
 			<section class="flex flex-col gap-3 border-t border-base-300 pt-3">
@@ -1678,50 +1703,19 @@ const lifeCycleUtil = new LifeCycleUtil();
 				</WashButton>
 			</section>
 
-			{#if editingBatchId && draftLines.length > 0}
-				<section class="flex flex-col gap-3 border-t border-base-300 pt-3">
-					<h2 class="text-base font-bold text-primary">{m.med_order_checkout_title()}</h2>
-					{#if batchIsPaid}
-						<p class="text-sm text-success">{m.med_order_paid_locked()}</p>
-						<WashButton
-							className="btn btn-primary w-full cursor-pointer"
-							onClick={() => void printReceiptForBatchId(editingBatchId)}
-						>
-							{m.med_order_receipt_print()}
-						</WashButton>
-					{:else}
-						<div class="flex flex-col gap-1">
-							<label class="text-sm font-medium" for="mo-ext-payment-method">{m.med_order_payment_method()}</label>
-							<WashSelect
-								id="mo-ext-payment-method"
-								className="w-full"
-								bind:value={paymentMethod}
-								options={[
-									{ value: 'cash', label: m.med_order_payment_cash() },
-									{ value: 'card', label: m.med_order_payment_card() }
-								]}
-							/>
-						</div>
-						<div class="flex flex-col gap-1">
-							<label class="text-sm font-medium" for="a11y-medicationorderexternals-1f59d3">{m.med_order_amount_paid()}</label>
-							<WashInputField
-								nameText="amountPaid"
-								bind:value={amountPaid}
-								inputType="text"
-								className="w-full"
-								minLength={0} id="a11y-medicationorderexternals-1f59d3" />
-						</div>
-						<WashButton
-							className="btn btn-primary btn-lg w-full cursor-pointer"
-							onClick={checkoutBatch}
-							disabled={isBusy}
-							loading={isBusy}
-						>
-							{m.med_order_pay_now()}
-						</WashButton>
-					{/if}
-				</section>
-			{/if}
+			<section class="flex flex-col gap-3 border-t border-base-300 pt-3">
+				<p class="text-sm text-base-content/70">{m.med_order_ext_bill_hint()}</p>
+				{#if batchIsPaid}
+					<p class="text-sm text-success">{m.med_order_ext_bill_locked()}</p>
+				{/if}
+				<WashButton
+					className="btn btn-primary w-full cursor-pointer"
+					onClick={openOpBilling}
+					disabled={!visitId}
+				>
+					{m.med_order_ext_open_op_billing()}
+				</WashButton>
+			</section>
 		</aside>
 	</div>
 </div>

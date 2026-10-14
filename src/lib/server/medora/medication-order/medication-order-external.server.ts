@@ -5,6 +5,7 @@ import {
 	desc,
 	eq,
 	inArray,
+	isNotNull,
 	isNull,
 	sql
 } from 'drizzle-orm';
@@ -14,9 +15,17 @@ import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
+import {
+	BillingStatusTaggingEnum,
+	StatusEnum,
+	VisitTypeEnum
+} from '$lib/model/enum/db-link';
 import { EXTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/medora/inv-pricing-module.type';
 import { isMedOrderStartBeforeToday } from '$lib/tool/medication-order/med-order-start-date.util';
 import { addDurationToStart } from '$lib/util/med-order-stagger.util';
+import { uuidV7 } from '$lib/util/id.util';
+import { createPatientWithUserInHospital } from '$lib/server/medora/registration/patient-registration.server';
+import { createPatientVisitInHospital } from '$lib/server/medora/patient-visit/patient-visit.server';
 import {
 	getFinancialYearIdToday,
 	updateMedicationOrderBatch,
@@ -27,6 +36,7 @@ import {
 	assertBatchNotPaid,
 	validateMedicationOrderLinesForDispense,
 	insertMedicationOrderLineWithAllocations,
+	isVisitOpBillClosed,
 	loadAllocationsForLineIds
 } from './medication-order-dispense.server';
 
@@ -37,6 +47,115 @@ export {
 } from './medication-order-internal.server';
 
 export { getBatchWithLines } from './medication-order-internal.server';
+
+const NO_EMAIL_SUFFIX = '@no-email.medora';
+
+function patientDisplayName(parts: {
+	firstName?: string | null;
+	middleName?: string | null;
+	lastName?: string | null;
+}): string {
+	return [parts.firstName, parts.middleName, parts.lastName]
+		.map((p) => (p ?? '').trim())
+		.filter(Boolean)
+		.join(' ')
+		.trim();
+}
+
+/**
+ * Quick-register an external patient (HRN) and open a manual OPD visit.
+ * Branch is taken from the selected pharmacy store.
+ */
+export async function registerExternalPatientAndOpenOpVisit(
+	event: RequestEvent,
+	input: {
+		hospitalId: string;
+		storeId: number;
+		firstName: string;
+		lastName?: string;
+		phonePrimary?: string;
+		genderId?: number | null;
+		advisingDoctor?: string;
+	}
+) {
+	const hospitalId = input.hospitalId;
+	await ensureCanAccessHospital(event, hospitalId);
+
+	const firstName = input.firstName.trim();
+	const lastName = (input.lastName ?? '').trim();
+	const phonePrimary = (input.phonePrimary ?? '').trim();
+	if (!firstName) throw error(400, 'Patient first name is required');
+
+	const db = ensureDb();
+	const branches = await db
+		.select({ id: table.hospitalBranchTable.id })
+		.from(table.hospitalBranchTable)
+		.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
+	const branchIds = branches.map((b) => b.id);
+	if (branchIds.length === 0) {
+		throw error(400, 'No branch configured for this hospital');
+	}
+
+	const [st] = await db
+		.select({
+			id: table.storeTable.id,
+			branchId: table.storeTable.branchId
+		})
+		.from(table.storeTable)
+		.where(
+			and(
+				eq(table.storeTable.id, input.storeId),
+				inArray(table.storeTable.branchId, branchIds),
+				eq(table.storeTable.statusId, StatusEnum.ACTIVE)
+			)
+		)
+		.limit(1);
+	if (!st) throw error(400, 'Invalid store');
+
+	const displayName =
+		patientDisplayName({ firstName, lastName }) || firstName;
+
+	const created = await createPatientWithUserInHospital(event, {
+		hospitalId,
+		branchId: st.branchId,
+		email: `${uuidV7()}${NO_EMAIL_SUFFIX}`,
+		name: displayName,
+		firstName,
+		lastName: lastName || undefined,
+		phonePrimary: phonePrimary || undefined,
+		genderId:
+			input.genderId != null && Number.isFinite(input.genderId)
+				? Number(input.genderId)
+				: undefined,
+		isExternal: true,
+		remark: 'Created from External Sales (pharmacy walk-in)'
+	});
+
+	const visit = await createPatientVisitInHospital(event, {
+		hospitalId,
+		patientId: created.patient.id,
+		branchId: st.branchId,
+		visitTypeId: VisitTypeEnum.OPD,
+		statusId: StatusEnum.ACTIVE
+	});
+
+	return {
+		patient: {
+			id: created.patient.id,
+			code: created.patient.code,
+			firstName: created.patient.firstName,
+			lastName: created.patient.lastName,
+			isExternal: true as const
+		},
+		visit: {
+			id: visit.id,
+			visitNo: visit.visitNo,
+			visitTypeId: visit.visitTypeId
+		},
+		displayName,
+		advisingDoctor: (input.advisingDoctor ?? '').trim() || null
+	};
+}
 
 export async function listExternalBatches(
 	event: RequestEvent,
@@ -59,7 +178,24 @@ export async function listExternalBatches(
 		.groupBy(table.medicationOrderLineTable.batchId)
 		.as('mob_ext_line_counts');
 
-	return await db
+	const closedOp = db
+		.select({
+			visitId: table.opBillingTable.visitId,
+			closed: sql<boolean>`true`.as('closed')
+		})
+		.from(table.opBillingTable)
+		.where(
+			and(
+				eq(
+					table.opBillingTable.statusTaggingId,
+					BillingStatusTaggingEnum.CLOSED
+				),
+				sql`${table.opBillingTable.statusId} <> ${StatusEnum.DELETED}`
+			)
+		)
+		.as('mob_ext_closed_op');
+
+	const rows = await db
 		.select({
 			id: b.id,
 			hospitalId: b.hospitalId,
@@ -83,7 +219,12 @@ export async function listExternalBatches(
 				sql<number>`coalesce(${lineCounts.lineCount}, 0)`.mapWith(
 					Number
 				),
-			isPaid: sql<boolean>`(${pay.id} is not null)`.mapWith(Boolean),
+			legacyPaid: sql<boolean>`(${pay.id} is not null)`.mapWith(
+				Boolean
+			),
+			opBillClosed: sql<boolean>`(${closedOp.closed} is true)`.mapWith(
+				Boolean
+			),
 			receiptNo: pay.receiptNo
 		})
 		.from(b)
@@ -95,21 +236,40 @@ export async function listExternalBatches(
 			pay,
 			and(eq(pay.batchId, b.id), isNull(pay.deletedAt))
 		)
+		.leftJoin(closedOp, eq(closedOp.visitId, b.visitId))
 		.where(
 			and(
 				eq(b.hospitalId, hospitalId),
-				isNull(b.visitId),
+				isNotNull(b.extCustomerName),
 				isNull(b.deletedAt)
 			)
 		)
 		.orderBy(desc(b.id))
 		.limit(200);
+
+	return rows.map((r) => ({
+		id: r.id,
+		hospitalId: r.hospitalId,
+		visitId: r.visitId,
+		visitNo: r.visitNo,
+		storeId: r.storeId,
+		extCustomerName: r.extCustomerName,
+		advisingDoctor: r.advisingDoctor,
+		batchNo: r.batchNo,
+		createdAt: r.createdAt,
+		updatedAt: r.updatedAt,
+		createdBy: r.createdBy,
+		updatedBy: r.updatedBy,
+		createdByName: r.createdByName,
+		updatedByName: r.updatedByName,
+		lineCount: r.lineCount,
+		isPaid: r.legacyPaid || r.opBillClosed,
+		receiptNo: r.receiptNo
+	}));
 }
 
 /**
- * Same idea as `reorderFromHistoryBatch` in internal, but for walk-in (visitId null) batches:
- * new batch uses first line of the source; start time is after the latest end among all
- * external (non-visit) lines for the hospital. Customer / doctor are copied from the source batch.
+ * Reorder from an external-origin history batch onto the same visit when present.
  */
 export async function reorderFromHistoryBatchExternal(
 	event: RequestEvent,
@@ -132,16 +292,23 @@ export async function reorderFromHistoryBatchExternal(
 			and(
 				eq(mob.id, sourceBatchId),
 				eq(mob.hospitalId, hospitalId),
-				isNull(mob.visitId),
+				isNotNull(mob.extCustomerName),
 				isNull(mob.deletedAt)
 			)
 		)
 		.limit(1);
-	if (!srcBatch) throw error(404, 'Batch not found');
+	if (!srcBatch) throw error(404, 'Source batch not found');
+	if (!srcBatch.visitId) {
+		throw error(
+			400,
+			'Legacy walk-in batch has no visit. Register a new OP visit and create a fresh order.'
+		);
+	}
+
 	const extCustomerName = (srcBatch.extCustomerName ?? '').trim();
 	const advisingDoctor = (srcBatch.advisingDoctor ?? '').trim();
 	if (!extCustomerName) {
-		throw error(400, 'Source batch is missing customer name');
+		throw error(400, 'Source batch has no customer name');
 	}
 
 	const [firstLine] = await db
@@ -150,7 +317,7 @@ export async function reorderFromHistoryBatchExternal(
 		.where(and(eq(mol.batchId, sourceBatchId), isNull(mol.deletedAt)))
 		.orderBy(mol.lineNo)
 		.limit(1);
-	if (!firstLine) throw error(400, 'Batch has no lines');
+	if (!firstLine) throw error(400, 'Source batch has no lines');
 
 	const durUnits = await db
 		.select({
@@ -188,7 +355,7 @@ export async function reorderFromHistoryBatchExternal(
 		);
 	}
 
-	const externalLines = await db
+	const visitLines = await db
 		.select({
 			startAt: mol.startAt,
 			durationValue: mol.durationValue,
@@ -199,21 +366,14 @@ export async function reorderFromHistoryBatchExternal(
 		.where(
 			and(
 				eq(mob.hospitalId, hospitalId),
-				isNull(mob.visitId),
+				eq(mob.visitId, srcBatch.visitId),
 				isNull(mob.deletedAt),
 				isNull(mol.deletedAt)
 			)
 		);
 
-	if (externalLines.length === 0) {
-		throw error(
-			500,
-			'No medication order lines found for external sales'
-		);
-	}
-
 	let maxEndMs = 0;
-	for (const row of externalLines) {
+	for (const row of visitLines) {
 		const end = addDurationToStart(
 			new Date(row.startAt),
 			String(row.durationValue),
@@ -261,6 +421,7 @@ export async function reorderFromHistoryBatchExternal(
 
 	return await saveMedicationOrderBatchExternal(event, {
 		hospitalId,
+		visitId: srcBatch.visitId,
 		storeId: srcBatch.storeId,
 		extCustomerName,
 		advisingDoctor,
@@ -272,16 +433,18 @@ export async function saveMedicationOrderBatchExternal(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
+		visitId: string;
 		storeId: number;
 		extCustomerName: string;
 		advisingDoctor: string;
 		lines: MedicationOrderLineSaveInput[];
 	}
 ) {
-	const { hospitalId, storeId, lines } = input;
+	const { hospitalId, visitId, storeId, lines } = input;
 	const extCustomerName = input.extCustomerName.trim();
 	const advisingDoctor = input.advisingDoctor.trim();
 	await ensureCanAccessHospital(event, hospitalId);
+	if (!visitId) throw error(400, 'visitId is required');
 	if (extCustomerName.length === 0) {
 		throw error(400, 'Customer name is required');
 	}
@@ -295,6 +458,27 @@ export async function saveMedicationOrderBatchExternal(
 	const userId = event.locals.user?.id ?? null;
 	const db = ensureDb();
 	const now = new Date();
+
+	const [v] = await db
+		.select()
+		.from(table.patientVisitTable)
+		.where(
+			and(
+				eq(table.patientVisitTable.id, visitId),
+				eq(table.patientVisitTable.hospitalId, hospitalId)
+			)
+		)
+		.limit(1);
+	if (!v) throw error(400, 'Visit not found for this hospital');
+	if (v.visitTypeId !== VisitTypeEnum.OPD) {
+		throw error(400, 'External sales require an OPD visit');
+	}
+	if (await isVisitOpBillClosed(hospitalId, visitId)) {
+		throw error(
+			400,
+			'OP bill for this visit is closed; cannot add medication orders'
+		);
+	}
 
 	const branches = await db
 		.select({ id: table.hospitalBranchTable.id })
@@ -339,11 +523,12 @@ export async function saveMedicationOrderBatchExternal(
 			.insert(table.medicationOrderBatchTable)
 			.values({
 				hospitalId,
-				visitId: null,
+				visitId,
 				storeId,
 				batchNo,
 				extCustomerName,
-				advisingDoctor: advisingDoctor.length > 0 ? advisingDoctor : null,
+				advisingDoctor:
+					advisingDoctor.length > 0 ? advisingDoctor : null,
 				batchRemarks: null,
 				createdBy: userId,
 				updatedBy: userId
@@ -369,6 +554,15 @@ export async function saveMedicationOrderBatchExternal(
 	});
 }
 
+function assertExternalOriginBatch(b: {
+	extCustomerName: string | null;
+	visitId: string | null;
+}) {
+	if (!(b.extCustomerName ?? '').trim()) {
+		throw error(400, 'This batch is not an external sale order');
+	}
+}
+
 export async function updateMedicationOrderBatchExternal(
 	event: RequestEvent,
 	input: Parameters<typeof updateMedicationOrderBatch>[1]
@@ -388,11 +582,12 @@ export async function updateMedicationOrderBatchExternal(
 			)
 		);
 	if (!b) throw error(404, 'Batch not found');
-	if (b.visitId != null) {
-		throw error(400, 'This batch is not an external sale order');
-	}
+	assertExternalOriginBatch(b);
 	await assertBatchNotPaid(input.hospitalId, input.batchId);
-	return updateMedicationOrderBatch(event, input);
+	return updateMedicationOrderBatch(event, {
+		...input,
+		pricingModule: EXTERNAL_SALES_PRICING_MODULE
+	});
 }
 
 export async function deleteMedicationOrderBatchExternal(
@@ -411,9 +606,7 @@ export async function deleteMedicationOrderBatchExternal(
 			)
 		);
 	if (!b) throw error(404, 'Not found');
-	if (b.visitId != null) {
-		throw error(400, 'This batch is not an external sale order');
-	}
+	assertExternalOriginBatch(b);
 	await assertBatchNotPaid(hospitalId, batchId);
 	return deleteMedicationOrderBatch(event, hospitalId, batchId);
 }
