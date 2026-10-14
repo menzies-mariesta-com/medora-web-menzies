@@ -54,11 +54,10 @@ function clamp(n: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-function visitIdFromJsonBody(body: unknown): number {
-	if (typeof body !== 'object' || body === null) return 0;
+function visitIdFromJsonBody(body: unknown): string | null {
+	if (typeof body !== 'object' || body === null) return null;
 	const v = (body as { visitId?: unknown }).visitId;
-	const n = Number(v ?? 0);
-	return n;
+	return parseUuid(v);
 }
 
 function postActionFromBody(body: unknown): unknown {
