@@ -101,6 +101,23 @@ function defaultFormatSpecForKey(
 			]
 		};
 	}
+	if (
+		prefixKey === PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE
+	) {
+		return {
+			parts: [
+				{ type: 'field', path: 'financial_year.code' },
+				{ type: 'field', path: 'hospital.code' },
+				{ type: 'literal', value: '/EP/' },
+				{
+					type: 'sequence',
+					source: 'prefix_counter.last_no',
+					op: 'inc',
+					padStart: 6
+				}
+			]
+		};
+	}
 	return {
 		parts: [
 			{ type: 'field', path: 'financial_year.code' },
@@ -113,6 +130,26 @@ function defaultFormatSpecForKey(
 			}
 		]
 	};
+}
+
+/** True when the hospital has a saved (non-deleted) format row for this key. */
+export async function isPrefixFormatConfigured(
+	hospitalId: string,
+	prefixKey: string
+): Promise<boolean> {
+	const db = ensureDb();
+	const [row] = await db
+		.select({ id: table.prefixFormatTable.id })
+		.from(table.prefixFormatTable)
+		.where(
+			and(
+				eq(table.prefixFormatTable.hospitalId, hospitalId),
+				eq(table.prefixFormatTable.key, prefixKey),
+				isNull(table.prefixFormatTable.deletedAt)
+			)
+		)
+		.limit(1);
+	return row != null;
 }
 
 async function loadFormatAndScopeFromDb(

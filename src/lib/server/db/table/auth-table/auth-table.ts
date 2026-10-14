@@ -9,7 +9,7 @@ import {
 	unique,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidV7 } from '$lib/util/id.util';
+import { uuidV7 } from '../../../../util/id.util';
 import { statusTable } from '../master-table/master-table';
 import { StatusEnum } from '../../../../model/enum/db-link';
 

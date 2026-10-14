@@ -16,7 +16,10 @@ import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-ho
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
 import { StatusEnum } from '$lib/model/enum/db-link';
-import { INTERNAL_SALES_PRICING_MODULE } from '$lib/model/type/medora/inv-pricing-module.type';
+import {
+	EXTERNAL_SALES_PRICING_MODULE,
+	INTERNAL_SALES_PRICING_MODULE
+} from '$lib/model/type/medora/inv-pricing-module.type';
 import {
 	isMedOrderStartBeforeToday,
 	medOrderStartOfLocalDay
@@ -28,6 +31,7 @@ import {
 	assertBatchNotPaid,
 	buildMedOrderItemSearchCategoryFilter,
 	insertMedicationOrderLineWithAllocations,
+	isVisitOpBillClosed,
 	loadAllocationsForLineIds,
 	reverseStockForBatch,
 	validateMedicationOrderLinesForDispense,
@@ -544,7 +548,46 @@ export async function getBatchWithLines(
 			)
 		)
 		.limit(1);
-	return { batch, lines, allocations, payment: payment ?? null };
+	const opBillClosed = batch.visitId
+		? await isVisitOpBillClosed(hospitalId, batch.visitId)
+		: false;
+
+	let visitNo: string | null = null;
+	let patientCode: string | null = null;
+	let patientId: string | null = null;
+	if (batch.visitId) {
+		const [visitRow] = await db
+			.select({
+				visitNo: table.patientVisitTable.visitNo,
+				patientId: table.patientVisitTable.patientId,
+				patientCode: table.patientTable.code
+			})
+			.from(table.patientVisitTable)
+			.leftJoin(
+				table.patientTable,
+				eq(
+					table.patientTable.id,
+					table.patientVisitTable.patientId
+				)
+			)
+			.where(eq(table.patientVisitTable.id, batch.visitId))
+			.limit(1);
+		visitNo = visitRow?.visitNo ?? null;
+		patientId = visitRow?.patientId ?? null;
+		patientCode = visitRow?.patientCode ?? null;
+	}
+
+	return {
+		batch,
+		lines,
+		allocations,
+		payment: payment ?? null,
+		opBillClosed,
+		billingLocked: payment != null || opBillClosed,
+		visitNo,
+		patientId,
+		patientCode
+	};
 }
 
 export async function updateMedicationOrderBatch(
@@ -553,9 +596,12 @@ export async function updateMedicationOrderBatch(
 		hospitalId: string;
 		batchId: number;
 		lines: MedicationOrderLineSaveInput[];
+		pricingModule?: typeof INTERNAL_SALES_PRICING_MODULE | typeof EXTERNAL_SALES_PRICING_MODULE;
 	}
 ) {
 	const { hospitalId, batchId, lines } = input;
+	const pricingModule =
+		input.pricingModule ?? INTERNAL_SALES_PRICING_MODULE;
 	await ensureCanAccessHospital(event, hospitalId);
 	if (!Array.isArray(lines) || lines.length === 0) {
 		throw error(400, 'At least one line is required');
@@ -619,7 +665,7 @@ export async function updateMedicationOrderBatch(
 				lineNo: lineNo++,
 				line: ln,
 				userId,
-				pricingModule: INTERNAL_SALES_PRICING_MODULE
+				pricingModule
 			});
 		}
 		await tx
