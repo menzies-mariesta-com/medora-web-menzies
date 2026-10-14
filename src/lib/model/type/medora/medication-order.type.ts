@@ -121,27 +121,11 @@ export type MedicationOrderBatchDetailResponse = {
 	lines: Record<string, unknown>[];
 	allocations: MedicationOrderLineAllocationRow[];
 	payment: MedicationOrderBatchPaymentRow | null;
-};
-
-export type MedicationOrderCheckoutResponse = {
-	receiptNo: string;
-	amountDue: string;
-	amountPaid: string;
-	paymentMethod: string;
-	paidAt: string;
-	batch: {
-		id: number;
-		batchNo: string;
-		extCustomerName: string | null;
-		advisingDoctor: string | null;
-		storeId: number;
-	};
-	lines: Array<{
-		itemName: string | null;
-		qtyOut: string;
-		unitSalePrice: string;
-		lineTotal: string;
-	}>;
+	opBillClosed?: boolean;
+	billingLocked?: boolean;
+	visitNo?: string | null;
+	patientId?: string | null;
+	patientCode?: string | null;
 };
 
 /** UI draft line extensions for sale workspace */

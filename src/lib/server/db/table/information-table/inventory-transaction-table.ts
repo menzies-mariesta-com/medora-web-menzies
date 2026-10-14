@@ -16,7 +16,7 @@ import {
 	index,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidV7 } from '$lib/util/id.util';
+import { uuidV7 } from '../../../../util/id.util';
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
 import { statusTable, unitTable } from '../master-table/master-table';

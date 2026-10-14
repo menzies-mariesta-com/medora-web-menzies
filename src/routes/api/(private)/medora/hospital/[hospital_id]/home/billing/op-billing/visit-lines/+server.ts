@@ -7,6 +7,7 @@ import {
 	getOpBillingReadiness,
 	opBillingCloseBlockedMessage
 } from '$lib/server/medora/billing/op-billing-readiness.server';
+import { closeExternalSaleVisitOnOpBillClosed } from '$lib/server/medora/billing/op-billing-external-visit.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
@@ -35,7 +36,10 @@ type DiscountActionBody = {
 	discountAmount?: number | null;
 };
 
-/** Fixed lock class for `pg_advisory_xact_lock(class, visitId)`. */
+/**
+ * Fixed lock class for `pg_advisory_xact_lock(class, hashtext(visitId))`.
+ * Visit ids are UUIDs; Postgres advisory locks only accept int keys.
+ */
 const OP_BILLING_SYNC_LOCK_CLASS = 87231401;
 
 type Tx = Parameters<
@@ -57,11 +61,10 @@ function clamp(n: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-function visitIdFromJsonBody(body: unknown): number {
-	if (typeof body !== 'object' || body === null) return 0;
+function visitIdFromJsonBody(body: unknown): string | null {
+	if (typeof body !== 'object' || body === null) return null;
 	const v = (body as { visitId?: unknown }).visitId;
-	const n = Number(v ?? 0);
-	return n;
+	return parseUuid(v);
 }
 
 function postActionFromBody(body: unknown): unknown {
@@ -188,7 +191,7 @@ async function syncOpenOpBillingForVisit(opts: {
 
 	return ensureDb().transaction(async (tx) => {
 		await tx.execute(
-			sql`SELECT pg_advisory_xact_lock(${OP_BILLING_SYNC_LOCK_CLASS}, ${opts.visitId})`
+			sql`SELECT pg_advisory_xact_lock(${OP_BILLING_SYNC_LOCK_CLASS}, hashtext(${opts.visitId}::text))`
 		);
 
 		let openBill = await consolidateOpenOpBillings(tx, {
@@ -526,14 +529,24 @@ export const POST: RequestHandler = async (event) => {
 			);
 		}
 
-		await ensureDb()
-			.update(table.opBillingTable)
-			.set({
-				statusTaggingId: BillingStatusTaggingEnum.CLOSED,
-				updatedAt: nowIso,
-				updatedBy: locals.user.id
-			})
-			.where(eq(table.opBillingTable.id, sync.billingId));
+		const db = ensureDb();
+		await db.transaction(async (tx) => {
+			await tx
+				.update(table.opBillingTable)
+				.set({
+					statusTaggingId: BillingStatusTaggingEnum.CLOSED,
+					updatedAt: nowIso,
+					updatedBy: locals.user.id
+				})
+				.where(eq(table.opBillingTable.id, sync.billingId));
+
+			await closeExternalSaleVisitOnOpBillClosed(tx, {
+				hospitalId,
+				visitId,
+				userId: locals.user.id,
+				nowIso
+			});
+		});
 		return json({ ok: true });
 	}
 

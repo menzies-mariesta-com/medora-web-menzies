@@ -19,7 +19,7 @@ import {
 	time,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidV7 } from '$lib/util/id.util';
+import { uuidV7 } from '../../../../util/id.util';
 import {
 	IpdAdmissionStatusEnum,
 	IpdAccommodationBillingMethodEnum,
@@ -621,6 +621,11 @@ export const patientTable = pgTable('patient', {
 	religionId: integer('religion_id').references(
 		() => religionTable.id
 	),
+	/**
+	 * Walk-in / pharmacy external sale patients (quick register).
+	 * Still a real patient with HRN; used to filter clinical queues if needed.
+	 */
+	isExternal: boolean('is_external').notNull().default(false),
 	statusId: integer('status_id')
 		.references(() => statusTable.id)
 		.notNull()

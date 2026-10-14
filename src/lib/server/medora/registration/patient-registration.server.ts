@@ -12,7 +12,10 @@ import {
 } from '$lib/server/db/table/auth-table/auth-table';
 import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
-import { generatePrefix } from '$lib/server/medora/prefix/prefix-generator.server';
+import {
+	generatePrefix,
+	isPrefixFormatConfigured
+} from '$lib/server/medora/prefix/prefix-generator.server';
 import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { and, eq, ilike, ne, or, sql, type SQL } from 'drizzle-orm';
@@ -98,7 +101,8 @@ export type PatientRegistrationFormRow = NonNullable<
 
 export async function getNextPatientCode(
 	event: RequestEvent,
-	hospitalId: string
+	hospitalId: string,
+	options?: { isExternal?: boolean }
 ): Promise<string> {
 	await ensureCanAccessHospital(event, hospitalId);
 	const db = ensureDb();
@@ -127,11 +131,22 @@ export async function getNextPatientCode(
 		);
 	}
 
+	let prefixKey: string = PREFIX_PURPOSE_STORAGE.PATIENT_CODE;
+	if (options?.isExternal === true) {
+		const separateExternal = await isPrefixFormatConfigured(
+			hospitalId,
+			PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE
+		);
+		if (separateExternal) {
+			prefixKey = PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE;
+		}
+	}
+
 	return generatePrefix({
 		hospitalId,
 		branchId: null,
 		financialYearId: financialYear.id,
-		prefixKey: PREFIX_PURPOSE_STORAGE.PATIENT_CODE,
+		prefixKey,
 		context: {}
 	});
 }
@@ -382,6 +397,8 @@ export async function createPatientWithUserInHospital(
 		religionId?: number;
 		isActive?: boolean;
 		nameMasking?: boolean;
+		/** Pharmacy / walk-in quick register */
+		isExternal?: boolean;
 	}
 ): Promise<{
 	patient: PatientSchema;
@@ -512,7 +529,8 @@ export async function createPatientWithUserInHospital(
 
 	const generatedCode = await getNextPatientCode(
 		event,
-		payload.hospitalId
+		payload.hospitalId,
+		{ isExternal: payload.isExternal === true }
 	);
 
 	const patientPayload: PatientSchemaInsert = {
@@ -579,7 +597,8 @@ export async function createPatientWithUserInHospital(
 				? StatusEnum.INACTIVE
 				: StatusEnum.ACTIVE,
 		nameMasking:
-			payload.nameMasking === true ? YesNoEnum.YES : YesNoEnum.NO
+			payload.nameMasking === true ? YesNoEnum.YES : YesNoEnum.NO,
+		isExternal: payload.isExternal === true
 	};
 
 	const [patient] = await ensureDb()
