@@ -34,5 +34,13 @@ run('paraglide:ci', process.execPath, [
 	paraglideScript
 ]);
 
+run('check:prerender-links', process.execPath, [
+	join(scriptsDir, 'check-prerender-links.mjs')
+]);
+
+run('check:kit-prerender', process.execPath, [
+	join(scriptsDir, 'check-kit-prerender.mjs')
+]);
+
 // 16 GiB V8 heap — SSR alone exceeded 10 GiB on ubuntu-latest (see log.md).
 run('vite build', process.execPath, ['--max-old-space-size=16384', viteBin, 'build']);
