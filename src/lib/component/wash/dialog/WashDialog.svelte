@@ -270,7 +270,7 @@
 					<div class="border-base-300 shrink-0 border-t" role="separator"></div>
 				{/if}
 				<div
-					class="min-h-0 flex-1 overflow-y-auto px-4 py-3 {layout ===
+					class="wash-dialog-scroll-body min-h-0 flex-1 overflow-y-auto {layout ===
 					'fullscreen'
 						? 'flex flex-col overflow-hidden p-0'
 						: ''}"
@@ -288,7 +288,7 @@
 					<div class="border-base-300 shrink-0 border-t" role="separator"></div>
 				{/if}
 				<div
-					class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-3 {layout ===
+					class="wash-dialog-form-column flex min-h-0 flex-1 flex-col overflow-hidden {layout ===
 					'fullscreen'
 						? 'p-0'
 						: ''}"

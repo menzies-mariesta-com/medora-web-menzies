@@ -17,7 +17,7 @@ import type {
 	AdminTeamMember,
 	AdminTeamUpdatePayload
 } from '$lib/model/type/medora/admin-team.type';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { uuidV7 } from '$lib/util/id.util';
 import {
 	loadAdminPagePermissions,

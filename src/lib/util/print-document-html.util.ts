@@ -171,6 +171,25 @@ export const PRINT_DOCUMENT_UTILITY_CSS = `
 		vertical-align: top;
 	}
 	.case-sheet-table th { font-weight: 600; }
+	.catalog-section-title {
+		margin: 14px 0 8px;
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		border-bottom: 1px solid #000;
+		padding-bottom: 4px;
+	}
+	.catalog-print-footer {
+		margin-top: 18px;
+		padding-top: 8px;
+		border-top: 1px solid #ccc;
+		font-size: 9px;
+		color: #333;
+		display: flex;
+		justify-content: space-between;
+	}
+	.catalog-finance-table { margin-top: 12px; }
 	.clinical-form-title {
 		margin: 0 0 10px;
 		font-size: 15px;

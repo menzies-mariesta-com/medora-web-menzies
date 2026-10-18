@@ -32,10 +32,8 @@
 		page.url.searchParams.get('embed') === '1'
 	);
 
-	/** FAB only in private medora app; hidden on marketing, auth, onboarding, pricing. */
-	const showQuickTool = $derived(
-		!isEmbed && page.url.pathname.startsWith('/medora')
-	);
+	/** Quick tools on every shell; hidden only for embedded views. */
+	const showQuickTool = $derived(!isEmbed);
 
 	lifeCycleUtil.onMount(() => {
 		washThemeTool.boot();
@@ -80,7 +78,7 @@
 	{@render children()}
 </div>
 
-<!-- Floating Action Button (private medora only; still hidden when embed=1) -->
+<!-- Floating Action Button (hidden when embed=1) -->
 {#if showQuickTool}
 	<GQuickTool />
 {/if}

@@ -86,21 +86,17 @@
 
 	const toastService = new ToastService();
 
-	let orderDateInput = $state(orderDateProp);
-	let orderTimeInput = $state(orderTimeProp);
+	let orderDateInput = $state('');
+	let orderTimeInput = $state('');
 	let serviceFilter = $state<ServiceOrderPendingLineFilter>('all');
-	let detailServiceIdInput = $state(initial?.serviceId ?? '');
-	let detailAdvisingDoctorIdInput = $state(
-		initial?.advisingDoctorId ?? ''
-	);
-	let detailServiceAmountInput = $state(initial?.serviceAmount ?? '');
-	let detailServiceTaxAmountInput = $state(
-		initial?.serviceTaxAmount ?? ''
-	);
-	let detailServiceUnitInput = $state(initial?.serviceUnit ?? '1');
-	let detailInstructionInput = $state(initial?.instruction ?? '');
-	let detailIsUrgentInput = $state(initial?.isUrgent ?? false);
-	let detailAmountEditable = $state(initial?.amountEditable ?? true);
+	let detailServiceIdInput = $state('');
+	let detailAdvisingDoctorIdInput = $state('');
+	let detailServiceAmountInput = $state('');
+	let detailServiceTaxAmountInput = $state('');
+	let detailServiceUnitInput = $state('1');
+	let detailInstructionInput = $state('');
+	let detailIsUrgentInput = $state(false);
+	let detailAmountEditable = $state(true);
 	let isSubmitting = $state(false);
 	/** Skip clear on first bind of serviceFilter. */
 	let serviceFilterReady = $state(false);
@@ -115,6 +111,20 @@
 		detailIsUrgentInput = false;
 		detailAmountEditable = true;
 	}
+
+	$effect(() => {
+		orderDateInput = orderDateProp;
+		orderTimeInput = orderTimeProp;
+		const init = initial;
+		detailServiceIdInput = init?.serviceId ?? '';
+		detailAdvisingDoctorIdInput = init?.advisingDoctorId ?? '';
+		detailServiceAmountInput = init?.serviceAmount ?? '';
+		detailServiceTaxAmountInput = init?.serviceTaxAmount ?? '';
+		detailServiceUnitInput = init?.serviceUnit ?? '1';
+		detailInstructionInput = init?.instruction ?? '';
+		detailIsUrgentInput = init?.isUrgent ?? false;
+		detailAmountEditable = init?.amountEditable ?? true;
+	});
 
 	$effect(() => {
 		void serviceFilter;

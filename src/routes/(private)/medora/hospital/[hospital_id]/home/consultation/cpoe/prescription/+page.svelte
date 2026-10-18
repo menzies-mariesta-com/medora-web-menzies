@@ -31,6 +31,11 @@
 		MedicationOrderMastersResponse,
 		StoreSearchRow
 	} from '$lib/model/type/medora/medication-order.type';
+	import type {
+		ClinicalOrderSetRow,
+		CdsScreenResult,
+		PrescribingAlertRow
+	} from '$lib/model/type/medora/clinical-platform.type';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
@@ -102,6 +107,12 @@
 	}
 
 	let medicationLines = $state<DraftLine[]>([blankLine()]);
+	let orderSets = $state<ClinicalOrderSetRow[]>([]);
+	let selectedOrderSetId = $state('');
+	let pendingCds = $state<CdsScreenResult | null>(null);
+	let pendingBatchId = $state<number | null>(null);
+	let cdsOverrideReason = $state('');
+	let isOverridingCds = $state(false);
 
 	const activeNotes = $derived(
 		notes.filter(
@@ -181,6 +192,64 @@
 			'medication.masters',
 			{}
 		);
+		orderSets = await apiGet<ClinicalOrderSetRow[]>('orderSet.list', {});
+	}
+
+	async function applyOrderSet() {
+		const id = Number(selectedOrderSetId);
+		if (!Number.isFinite(id) || id <= 0) return;
+		const detail = await apiGet<{
+			lines: { lineType: string; payloadJson: Record<string, unknown> }[];
+		}>('orderSet.get', { id: String(id) });
+		const medLines = detail.lines.filter((l) => l.lineType === 'medication');
+		for (const l of medLines) {
+			const p = l.payloadJson;
+			medicationLines = [
+				...medicationLines.filter((x) => x.itemMasterId),
+				{
+					...blankLine(),
+					itemMasterId: String(p.itemMasterId ?? ''),
+					dose: String(p.dose ?? ''),
+					doseUnitId: String(p.doseUnitId ?? ''),
+					frequencyId: String(p.frequencyId ?? ''),
+					durationValue: String(p.durationValue ?? ''),
+					durationUnitId: String(p.durationUnitId ?? ''),
+					formId: String(p.formId ?? ''),
+					routeId: String(p.routeId ?? ''),
+					orderTypeId: String(p.orderTypeId ?? ''),
+					foodRelationId: String(p.foodRelationId ?? ''),
+					lineRemarks: String(p.lineRemarks ?? '')
+				}
+			];
+		}
+		if (medicationLines.length === 0) medicationLines = [blankLine()];
+		toastService.addToast(
+			msg.clinical_apply_order_set(),
+			StatusColorEnum.SUCCESS
+		);
+	}
+
+	async function confirmCdsOverride() {
+		if (!pendingCds || pendingBatchId == null) return;
+		isOverridingCds = true;
+		try {
+			await apiPost('medication.overrideAlerts', {
+				alertIds: pendingCds.alerts.map((a: PrescribingAlertRow) => a.id),
+				reasonCode: 'clinical_judgment',
+				remark: cdsOverrideReason.trim()
+			});
+			pendingCds = null;
+			pendingBatchId = null;
+			cdsOverrideReason = '';
+			medicationLines = [blankLine()];
+			toastSuccess(
+				toastService,
+				msg.clinical_cds_alerts_title(),
+				msg.clinical_cds_override()
+			);
+		} finally {
+			isOverridingCds = false;
+		}
 	}
 
 	async function searchStores(query: string) {
@@ -232,7 +301,10 @@
 		}
 		isSavingDraft = true;
 		try {
-			await apiPost('medication.createDraft', {
+			const batch = await apiPost<{
+				id: number;
+				cds?: CdsScreenResult;
+			}>('medication.createDraft', {
 				visitId,
 				storeId: Number(storeId),
 				lines: medicationLines.map((line) => ({
@@ -256,6 +328,15 @@
 					lineRemarks: line.lineRemarks.trim() || null
 				}))
 			});
+			if (batch.cds?.hasBlocking) {
+				pendingCds = batch.cds;
+				pendingBatchId = batch.id;
+				toastService.addToast(
+					msg.clinical_cds_alerts_title(),
+					StatusColorEnum.WARNING
+				);
+				return;
+			}
 			medicationLines = [blankLine()];
 			toastService.addToast(
 				msg.mo_clinical_medication_created(),
@@ -408,6 +489,61 @@
 					message={m.no_visit_selected()}
 				/>
 			{:else}
+				{#if orderSets.length}
+					<div class="flex flex-wrap items-end gap-2">
+						<div class="min-w-[12rem] flex-1">
+							<label class="text-sm" for="order-set-select"
+								>{msg.clinical_apply_order_set()}</label
+							>
+							<WashSelect
+								id="order-set-select"
+								className="select-sm w-full"
+								placeholder={msg.clinical_apply_order_set()}
+								options={orderSets.map((o) => ({
+									value: String(o.id),
+									label: o.name
+								}))}
+								value={selectedOrderSetId}
+								onChange={(v) => (selectedOrderSetId = v ?? '')}
+								disabled={readOnly}
+							/>
+						</div>
+						<WashButton
+							type="button"
+							className="btn-sm btn-secondary cursor-pointer"
+							disabled={readOnly || !selectedOrderSetId}
+							onclick={() => void applyOrderSet()}
+						>
+							{msg.clinical_apply_order_set()}
+						</WashButton>
+					</div>
+				{/if}
+				{#if pendingCds?.alerts?.length}
+					<div class="alert alert-warning">
+						<div class="flex w-full flex-col gap-2">
+							<p class="font-bold">{msg.clinical_cds_alerts_title()}</p>
+							<ul class="list-inside list-disc text-sm">
+								{#each pendingCds.alerts as alert (alert.id)}
+									<li>{alert.message}</li>
+								{/each}
+							</ul>
+							<WashTextarea
+								className="textarea-sm"
+								placeholder={msg.clinical_cds_override()}
+								bind:value={cdsOverrideReason}
+							/>
+							<WashButton
+								type="button"
+								className="btn-sm btn-primary cursor-pointer"
+								loading={isOverridingCds}
+								disabled={isOverridingCds || !cdsOverrideReason.trim()}
+								onclick={() => void confirmCdsOverride()}
+							>
+								{msg.clinical_cds_override()}
+							</WashButton>
+						</div>
+					</div>
+				{/if}
 				<div class="grid gap-3 md:grid-cols-2">
 					<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-0ccee6"><span>
 							{msg.mo_clinical_dispensing_store()}

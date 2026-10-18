@@ -2,6 +2,8 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { requireClinicalStaff } from '$lib/server/medora/clinical/clinical-authority.server';
 import * as results from '$lib/server/medora/clinical/results.server';
+import { listReleasedResultsForVisit } from '$lib/server/medora/diagnostics/lab-result.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function positiveInt(value: unknown, name: string): number {
 	const id = Number(value);
@@ -13,15 +15,13 @@ function positiveInt(value: unknown, name: string): number {
 export async function GET(event: RequestEvent) {
 	const hospitalId = event.params.hospital_id ?? '';
 	await ensureCanAccessHospital(event, hospitalId);
-	return json(
-		await results.listResults({
-			hospitalId,
-			visitId: positiveInt(
-				event.url.searchParams.get('visitId'),
-				'visitId'
-			)
-		})
-	);
+	const visitId = parseUuid(event.url.searchParams.get('visitId'));
+	if (!visitId) throw error(400, 'visitId is required');
+	const [legacy, structured] = await Promise.all([
+		results.listResults({ hospitalId, visitId }),
+		listReleasedResultsForVisit({ hospitalId, visitId })
+	]);
+	return json({ ...legacy, structured });
 }
 
 export async function POST(event: RequestEvent) {
@@ -51,7 +51,8 @@ export async function POST(event: RequestEvent) {
 		});
 		return json({ ok: true });
 	}
-	const visitId = positiveInt(body.visitId, 'visitId');
+	const visitId = parseUuid(body.visitId);
+	if (!visitId) throw error(400, 'visitId is required');
 	const id = body.id ? positiveInt(body.id, 'id') : undefined;
 	const serviceOrderDetailId = body.serviceOrderDetailId
 		? positiveInt(body.serviceOrderDetailId, 'serviceOrderDetailId')

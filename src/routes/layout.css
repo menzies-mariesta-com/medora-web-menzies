@@ -93,6 +93,7 @@ dialog.modal::backdrop {
 @import '../lib/asset/style/font.style.css';
 @import '../lib/asset/style/app-layout.style.css';
 @import '../lib/asset/style/wash-app.style.css';
+@import '../lib/asset/style/interaction-safe-space.css';
 @import '../lib/asset/style/medora-marketing.style.css';
 
 /*

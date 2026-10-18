@@ -82,7 +82,9 @@ function dedupePendingRows(
 		const key =
 			r.lineSource === 'medication_order_line'
 				? `med:${r.medicationOrderLineId}`
-				: `svc:${r.id}`;
+				: r.lineSource === 'department_consumption_line'
+					? `dc:${r.departmentConsumptionLineId}`
+					: `svc:${r.id}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(r);
@@ -283,11 +285,16 @@ async function syncOpenOpBillingForVisit(opts: {
 					r.lineSource === 'medication_order_line'
 						? r.medicationOrderLineId
 						: null;
+				const departmentConsumptionLineId =
+					r.lineSource === 'department_consumption_line'
+						? r.departmentConsumptionLineId
+						: null;
 				return {
 					opBillingId: billingId,
 					lineIndex: idx + 1,
 					serviceOrderDetailId,
 					medicationOrderLineId,
+					departmentConsumptionLineId,
 					serviceId: r.serviceId,
 					serviceNameSnapshot: r.serviceName ?? null,
 					subCategoryId: r.subCategoryId ?? null,

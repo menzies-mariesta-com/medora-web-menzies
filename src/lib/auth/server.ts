@@ -15,7 +15,7 @@ import {
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
 import { renderOtpVerificationEmail } from '$lib/asset/email/otp-verification';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { env } from '$env/dynamic/private';
 import { authLogger } from '$lib/logger';
 

@@ -28,11 +28,16 @@ import type {
 	import LucideHouse from '$lib/component/own/library/lucide/LucideHouse.svelte';
 	import LucideSearch from '$lib/component/own/library/lucide/LucideSearch.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
+	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { tick } from 'svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
 	import MedoraModuleIcon from './MedoraModuleIcon.svelte';
 	import LucideCircleQuestionMark from '$lib/component/own/library/lucide/LucideCircleQuestionMark.svelte';
+	import MedoraEcosystemNavLink from '$lib/component/own/local/private/medora/MedoraEcosystemNavLink.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { medoraPageUrlToDocsHref } from '$lib/util/docs-help.util';
+	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
 
 	type StaffUserGroupForNav = { id: number; name: string | null };
 	type StaffBranchForNav = { id: string; name: string | null };
@@ -86,6 +91,13 @@ import type {
 		onToggleNavbar?: () => void;
 	} = $props();
 
+	const docsHelpHref = $derived.by(() => {
+		const hid = hospitalId ?? page.params.hospital_id ?? '';
+		if (!hid) return resolve(WebRoutesEnum.DOCS);
+		const dbUrl = requestPathToDbPageUrl(page.url.pathname, hid);
+		return medoraPageUrlToDocsHref(dbUrl) ?? resolve(WebRoutesEnum.DOCS);
+	});
+
 	const orderedModuleList = $derived.by(() =>
 		[...moduleList].sort(
 			(a, b) => (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
@@ -125,21 +137,19 @@ import type {
 	}
 
 	let searchDialogOpen = $state(false);
-	let searchQuery = $state('');
-	let searchInputEl = $state<HTMLInputElement | null>(null);
+	let selectedPageId = $state('');
 
 	function openSearchDialog() {
-		searchQuery = '';
+		selectedPageId = '';
 		searchDialogOpen = true;
-		tick().then(() => searchInputEl?.focus());
+		tick().then(() => {
+			document.getElementById('medora-page-search')?.click();
+		});
 	}
 
 	function closeSearchDialog() {
 		searchDialogOpen = false;
 	}
-
-	// Search results: include all allowed pages (parent + sub-pages), with module name.
-	type SearchEntry = { page: MedoraPageRow; moduleName: string };
 
 	function parentChainLabel(p: MedoraPageRow): string {
 		const chain: string[] = [];
@@ -155,24 +165,31 @@ import type {
 		return chain.join(' / ');
 	}
 
-	const searchEntries = $derived.by(() => {
-		const q = searchQuery.trim().toLowerCase();
-		const entries: SearchEntry[] = [];
-		for (const p of orderedPageList) {
+	const pageSearchOptions = $derived.by(() =>
+		orderedPageList.map((p) => {
 			const mod = moduleList.find((m) => m.id === p.moduleId);
-			entries.push({ page: p, moduleName: mod?.name ?? '' });
-		}
-		if (!q) return entries.slice(0, 30);
-		return entries
-			.filter(
-				(e) =>
-					(e.page.name ?? '').toLowerCase().includes(q) ||
-					(e.page.pageUrl ?? '').toLowerCase().includes(q) ||
-					e.moduleName.toLowerCase().includes(q) ||
-					parentChainLabel(e.page).toLowerCase().includes(q)
-			)
-			.slice(0, 30);
-	});
+			const moduleName = mod?.name ?? '';
+			const parent = parentChainLabel(p);
+			const pageName = p.name ?? p.pageUrl ?? '';
+			const labelParts = [
+				pageName,
+				moduleName,
+				parent,
+				p.pageUrl ?? ''
+			].filter((part) => part.length > 0);
+			return {
+				value: String(p.id),
+				label: labelParts.join(' · ')
+			};
+		})
+	);
+
+	function handleCommandSearchPick(value: string) {
+		const id = Number(value);
+		if (!Number.isFinite(id)) return;
+		const p = orderedPageList.find((row) => row.id === id);
+		if (p) goToPage(p);
+	}
 
 	const currentSearch = $derived(page.url.search);
 
@@ -297,7 +314,7 @@ import type {
 	// Ctrl+K opens search dialog.
 	$effect(() => {
 		function onKeyDown(e: KeyboardEvent) {
-			if (e.ctrlKey && e.key === 'k') {
+			if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
 				e.preventDefault();
 				openSearchDialog();
 			}
@@ -568,12 +585,16 @@ import type {
 					triggerClassName={navBarControlBorder}
 				/>
 			</WashTooltip>
+			<MedoraEcosystemNavLink
+				{hospitalId}
+				className={navBarControlBorder}
+			/>
 			<WashTooltip
 				tooltipText={msg.nav_help()}
 				className="tooltip-primary"
 			>
 				<a
-					href={resolve(WebRoutesEnum.DOCS)}
+					href={`${docsHelpHref}?from=app`}
 					target="_blank"
 					rel="noopener noreferrer"
 					class="btn btn-circle btn-ghost cursor-pointer {navBarControlBorder}"
@@ -705,6 +726,7 @@ import type {
 							>
 								<MedoraModuleIcon
 									name={m.imageUrl}
+									moduleUrl={m.moduleUrl}
 									className="size-4 shrink-0"
 								/>
 								<span class="whitespace-nowrap">{m?.name}</span>
@@ -723,6 +745,7 @@ import type {
 						>
 							<MedoraModuleIcon
 								name={m.imageUrl}
+								moduleUrl={m.moduleUrl}
 								className="size-4 shrink-0"
 							/>
 							<span class="whitespace-nowrap">{m?.name}</span>
@@ -789,7 +812,10 @@ import type {
 	</div>
 	<div class="shrink-0">
 		<WashTooltip
-			tooltipText="Search (Ctrl+K)"
+			tooltipText={paraglideMsg(
+				'medora_command_search_shortcut',
+				'Search (Ctrl+K)'
+			)}
 			className="tooltip-secondary"
 		>
 			<WashButton
@@ -807,47 +833,41 @@ import type {
 	className="modal-middle"
 	open={searchDialogOpen}
 	onClose={closeSearchDialog}
-	title="Search modules & pages"
-	boxClassName="flex max-h-[80vh] flex-col gap-3"
+	title={paraglideMsg(
+		'medora_command_search_title',
+		'Search modules and pages'
+	)}
+	showActions={false}
+	boxClassName="max-w-lg"
 >
-		<input
-			bind:this={searchInputEl}
-			bind:value={searchQuery}
-			type="text"
-			placeholder="Type to search..."
-			class="input-bordered input w-full"
-			aria-label="Search"
+	<div class="flex min-h-0 flex-1 flex-col px-4 py-3">
+		<SearchSelect
+			inputId="medora-page-search"
+			label={paraglideMsg(
+				'medora_command_search_select',
+				'Go to page'
+			)}
+			placeholder={paraglideMsg(
+				'medora_command_search_select',
+				'Go to page'
+			)}
+			filterPlaceholder={paraglideMsg(
+				'medora_command_search_filter',
+				'Search by page or module'
+			)}
+			emptyMessage={paraglideMsg(
+				'medora_command_search_empty',
+				'No pages match your search.'
+			)}
+			className="w-full"
+			options={pageSearchOptions}
+			bind:value={selectedPageId}
+			onChange={handleCommandSearchPick}
 		/>
-		<ul class="flex max-h-80 flex-col gap-1 overflow-y-auto">
-			{#each searchEntries as entry (entry.page.id)}
-				{@const parentPath = parentChainLabel(entry.page)}
-				<li>
-					<button
-						type="button"
-						class="btn w-full justify-start text-left btn-ghost"
-						onclick={() => goToPage(entry.page)}
-					>
-						<span class="font-medium"
-							>{entry.page.name ?? entry.page.pageUrl ?? ''}</span
-						>
-						{#if entry.moduleName}
-							<span class="text-sm text-base-content/60">
-								— {entry.moduleName}</span
-							>
-						{/if}
-						{#if parentPath}
-							<span class="text-xs text-base-content/50">
-								({parentPath})
-							</span>
-						{/if}
-					</button>
-				</li>
-			{/each}
-		</ul>
-		{#if searchEntries.length === 0}
-			<p class="text-sm text-base-content/60">No matches.</p>
-		{/if}
-		{#snippet actions()}
-			<WashButton variant="ghost" onClick={closeSearchDialog}>Close</WashButton>
-		{/snippet}
+	</div>
+	<WashDialogFooter className="gap-2">
+		<WashButton className="btn" onClick={closeSearchDialog}>
+			{m.cancel()}
+		</WashButton>
+	</WashDialogFooter>
 </WashDialog>

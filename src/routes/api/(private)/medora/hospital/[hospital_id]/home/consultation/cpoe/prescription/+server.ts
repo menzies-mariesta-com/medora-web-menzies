@@ -2,6 +2,10 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as prescriptionNote from '$lib/server/medora/consultation/cpoe-prescription-note.server';
 import * as medication from '$lib/server/medora/clinical/cpoe-medication-order.server';
+import * as cds from '$lib/server/medora/clinical/prescribing-cds.server';
+import * as formulary from '$lib/server/medora/clinical/formulary.server';
+import * as orderSet from '$lib/server/medora/clinical/order-set.server';
+import { requireClinicalStaff } from '$lib/server/medora/clinical/clinical-authority.server';
 import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
@@ -36,6 +40,25 @@ export async function GET(event: RequestEvent) {
 					search: event.url.searchParams.get('search') ?? undefined
 				})
 			);
+		case 'orderSet.list':
+			return json(await orderSet.listOrderSets(hospitalId));
+		case 'orderSet.get': {
+			const id = Number(event.url.searchParams.get('id') ?? 0);
+			return json(
+				await orderSet.getOrderSetWithLines({ hospitalId, orderSetId: id })
+			);
+		}
+		case 'formulary.tier': {
+			const itemMasterId = Number(
+				event.url.searchParams.get('itemMasterId') ?? 0
+			);
+			return json({
+				tier: await formulary.getFormularyTierForItem({
+					hospitalId,
+					itemMasterId
+				})
+			});
+		}
 		case 'prescriptionNote.list': {
 			const visitId = parseUuid(event.url.searchParams.get('visitId'));
 			if (!visitId)
@@ -70,6 +93,32 @@ export async function POST(event: RequestEvent) {
 					batchId: Number(body?.batchId ?? 0)
 				})
 			);
+		case 'medication.overrideAlerts': {
+			const staff = requireClinicalStaff(event);
+			await cds.overridePrescribingAlerts({
+				hospitalId,
+				alertIds: (body?.alertIds as number[]) ?? [],
+				reasonCode: String(body?.reasonCode ?? ''),
+				remark: String(body?.remark ?? ''),
+				staffId: staff.id
+			});
+			return json({ ok: true });
+		}
+		case 'medication.screenDraft': {
+			const visitId = parseUuid(body?.visitId);
+			const staff = requireClinicalStaff(event);
+			if (!visitId) throw error(400, 'visitId is required');
+			const lines = (body?.lines as { itemMasterId: number }[]) ?? [];
+			return json(
+				await cds.screenDraftMedicationOrder({
+					hospitalId,
+					visitId,
+					itemMasterIds: lines.map((l) => l.itemMasterId),
+					staffId: staff.id,
+					batchId: body?.batchId != null ? Number(body.batchId) : null
+				})
+			);
+		}
 		case 'medication.createDraft': {
 			const visitId = parseUuid(body?.visitId);
 			const storeId = Number(body?.storeId ?? 0);

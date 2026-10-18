@@ -7,6 +7,7 @@
 	import { getStaffPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import AccountModal from '$lib/component/own/snippet/modal/AccountModal.svelte';
 	import MedoraNotifications from './MedoraNotifications.svelte';
+	import MedoraEcosystemNavLink from '$lib/component/own/local/private/medora/MedoraEcosystemNavLink.svelte';
 	import { WebRoutesEnum } from '$lib/model/enum/routes.enum';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages';
@@ -65,6 +66,7 @@
 		>
 			<MedoraNotifications />
 		</WashTooltip>
+		<MedoraEcosystemNavLink {hospitalId} />
 		<WashTooltip
 			tooltipText={msg.nav_help()}
 			className="tooltip-primary"
