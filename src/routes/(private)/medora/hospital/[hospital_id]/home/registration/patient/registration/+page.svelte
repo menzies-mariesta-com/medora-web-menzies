@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
@@ -32,7 +33,6 @@
 		PatientRegTitleRow
 	} from '$lib/model/type/medora/patient-reg-master.type';
 
-	import { authClient } from '$lib/auth/client';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
 	import { StringUtil } from '$lib/util/string.util.svelte';
@@ -47,6 +47,13 @@
 	import LPatientCardPrintModal from '$lib/component/own/local/private/medora/patient/list/LPatientCardPrintModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
+	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
+
+	let { edRegistrationMode = false }: { edRegistrationMode?: boolean } =
+		$props();
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -122,9 +129,7 @@
 
 	async function fetchMasterLookup<T>(kind: string): Promise<T[]> {
 		const r = await fetch(`/api/medora/master/lookup?kind=${kind}`);
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Lookup failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 
@@ -134,9 +139,7 @@
 		const base = registrationPatientApiBase();
 		if (!base) return null;
 		const r = await fetch(`${base}?id=${encodeURIComponent(id)}`);
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Failed to load patient');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return (await r.json()) as any | null;
 	}
 
@@ -162,9 +165,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Patient update failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 
@@ -178,13 +179,13 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ mode: 'create', ...body })
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Create patient failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json() as Promise<{
 			patient: { id: string; code?: string | null };
 			userId: string;
 			generatedPassword: string;
+			authEmail?: string;
+			emailRemapped?: boolean;
 		}>;
 	}
 
@@ -198,9 +199,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ mode: 'duplicates', ...payload })
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Duplicate check failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		const j = (await r.json()) as { data: unknown[] };
 		return j.data;
 	}
@@ -217,9 +216,7 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!r.ok) {
-			throw new Error((await r.text()) || 'Attachment save failed');
-		}
+		if (!r.ok) await throwUserFacingHttpError(r);
 		return r.json();
 	}
 	let selectedTitleId: string = $state('');
@@ -266,11 +263,6 @@
 		cityData.find((c) => String(c.id) === selectedCityId) ??
 			({} as PatientRegCityRow)
 	);
-	let selectedPostalCode = $derived(
-		postalCodeData.find(
-			(p) => String(p.id) === selectedPostalCodeId
-		) ?? ({} as PatientRegPostalCodeRow)
-	);
 	let filteredStateData = $derived(
 		selectedCountry?.id
 			? stateData.filter((s) => s.countryId === selectedCountry.id)
@@ -289,38 +281,47 @@
 
 	// Reset dependent location fields when parent changes (staff-style)
 	$effect(() => {
-		if (selectedCountryId) {
-			if (
-				!selectedCountry?.id ||
-				(selectedStateId &&
-					selectedState?.countryId !== selectedCountry.id)
-			) {
-				selectedStateId = '';
-				selectedCityId = '';
-				selectedPostalCodeId = '';
-			}
+		if (!selectedCountryId) {
+			if (selectedStateId) selectedStateId = '';
+			if (selectedCityId) selectedCityId = '';
+			if (selectedPostalCodeId) selectedPostalCodeId = '';
+			return;
+		}
+		if (
+			!selectedCountry?.id ||
+			(selectedStateId &&
+				selectedState?.countryId !== selectedCountry.id)
+		) {
+			selectedStateId = '';
+			selectedCityId = '';
+			selectedPostalCodeId = '';
 		}
 	});
 	$effect(() => {
-		if (selectedStateId) {
-			if (
-				!selectedState?.id ||
-				(selectedCityId && selectedCity?.stateId !== selectedState.id)
-			) {
-				selectedCityId = '';
-				selectedPostalCodeId = '';
-			}
+		if (!selectedStateId) {
+			if (selectedCityId) selectedCityId = '';
+			return;
+		}
+		if (
+			!selectedState?.id ||
+			(selectedCityId && selectedCity?.stateId !== selectedState.id)
+		) {
+			selectedCityId = '';
+			selectedPostalCodeId = '';
 		}
 	});
+	// Auto-fill postal from city (township): lowest ACTIVE id for that city.
 	$effect(() => {
-		if (selectedCityId) {
-			if (
-				!selectedCity?.id ||
-				(selectedPostalCodeId &&
-					selectedPostalCode?.cityId !== selectedCity.id)
-			) {
-				selectedPostalCodeId = '';
-			}
+		if (!selectedCityId || !selectedCity?.id) {
+			if (selectedPostalCodeId) selectedPostalCodeId = '';
+			return;
+		}
+		const next = pickPostalCodeIdForCity(
+			postalCodeData,
+			selectedCity.id
+		);
+		if (selectedPostalCodeId !== next) {
+			selectedPostalCodeId = next;
 		}
 	});
 
@@ -761,18 +762,10 @@
 				const previousName = previousUser.user?.name ?? '';
 				const trimmedNewName = fullName.trim();
 				const trimmedNewEmail = email.trim();
-				let shouldSendResetForEmailChange = false;
-				let resetEmailTarget: string | null = null;
 				const userNameUpdate =
 					trimmedNewName && trimmedNewName !== previousName
 						? trimmedNewName
 						: undefined;
-				if (trimmedNewEmail && trimmedNewEmail !== previousEmail) {
-					if (StringUtil.isNoEmail(previousEmail)) {
-						shouldSendResetForEmailChange = true;
-						resetEmailTarget = trimmedNewEmail;
-					}
-				}
 				const userEmailUpdate =
 					trimmedNewEmail && trimmedNewEmail !== previousEmail
 						? trimmedNewEmail
@@ -886,24 +879,6 @@
 					m.toast_action_updated()
 				);
 				removePhotoRequested = false;
-
-				if (shouldSendResetForEmailChange && resetEmailTarget) {
-					const { error } = await authClient.requestPasswordReset({
-						email: resetEmailTarget,
-						redirectTo: routerUtil.getResetRedirectUrl()
-					});
-					if (error) {
-						toastService.addToast(
-							error.message ?? 'Failed to send reset password email.',
-							StatusColorEnum.ERROR
-						);
-					} else {
-						toastService.addToast(
-							'Reset password email has been sent to the patient.',
-							StatusColorEnum.INFO
-						);
-					}
-				}
 			} else {
 				// Create: new patient (code is generated on backend from route hospital).
 				// Email is optional, but account creation still requires a unique email, so we
@@ -913,7 +888,7 @@
 				const result = await apiCreatePatientWithUser({
 					email:
 						emailValue ||
-						`${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`,
+						`${uuidV7()}${StringUtil.NO_EMAIL_SUFFIX}`,
 					name: fullName,
 					hospitalId: hospitalIdFromUrl ?? '',
 					titleId: selectedTitleId
@@ -1057,23 +1032,20 @@
 					patientCode
 				);
 
-				if (emailValue) {
-					const { error } = await authClient.requestPasswordReset({
-						email: emailValue,
-						redirectTo: routerUtil.getResetRedirectUrl()
-					});
-					if (error) {
-						toastService.addToast(
-							error.message ?? 'Failed to send reset link.',
-							StatusColorEnum.ERROR
-						);
-					} else {
-						toastService.addToast(
-							'Reset password email has been sent to the patient.',
-							StatusColorEnum.INFO
-						);
-					}
+				if (edRegistrationMode && hospitalIdFromUrl) {
+					routerUtil.replaceRoute(
+						`${medoraHospitalPageUrl(
+							hospitalIdFromUrl,
+							'/medora/home/emergency/admission/new'
+						)}?patientId=${encodeURIComponent(patient.id)}`
+					);
+					return;
 				}
+
+				toastService.addToast(
+					`Patient created. Mobile login: patient code or phone with default password = patient code (${patientCode}).`,
+					StatusColorEnum.INFO
+				);
 				disableCreateSave = true;
 			}
 		} catch (error: unknown) {
@@ -1287,9 +1259,6 @@
 						<LPatientRegistrationThirdColumn
 							{countryData}
 							{bloodTypeData}
-							{stateData}
-							{cityData}
-							{postalCodeData}
 							{nationalityData}
 							{religionData}
 							{filteredStateData}
@@ -1297,7 +1266,6 @@
 							{filteredPostalCodeData}
 							{selectedCountry}
 							{selectedState}
-							{selectedCity}
 							bind:selectedCountryId
 							bind:selectedBloodTypeId
 							bind:selectedStateId
@@ -1323,11 +1291,17 @@
 				{#if !isViewMode}
 					<WashButton
 						type="submit"
-						className="btn-primary btn-wide"
+						className="btn-primary btn-wide cursor-pointer"
 						loading={isLoading}
 						disabled={disableCreateSave}
+						aria-busy={isLoading}
 					>
-						Save
+						{edRegistrationMode && !currentPatientId
+							? paraglideMsg(
+									'ed_admission_new_patient_save_continue',
+									'Save and continue to ER visit'
+								)
+							: 'Save'}
 					</WashButton>
 					{#if disableCreateSave}
 						<WashButton

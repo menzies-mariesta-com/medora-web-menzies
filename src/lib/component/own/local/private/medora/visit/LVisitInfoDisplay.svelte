@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { m } from '$lib/paraglide/messages';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { getPatientPhotoDisplayUrl } from '$lib/util/staff-photo.util';
@@ -21,15 +22,15 @@
 	let hasAbnormalVital = $state(false);
 	const showAlerts = $derived(hasActiveAllergies || hasAbnormalVital);
 
-	const visitIdNum = $derived(visitId ? Number(visitId) : 0);
+	const visitIdParsed = $derived(parseUuid(visitId) ?? '');
 
 	$effect(() => {
-		const id = visitIdNum;
+		const id = visitIdParsed;
 		const hid =
 			typeof hospitalId === 'string' && hospitalId.trim() !== ''
 				? hospitalId.trim()
 				: '';
-		if (!id || Number.isNaN(id) || !hid) {
+		if (!id || !hid) {
 			visit = null;
 			return;
 		}

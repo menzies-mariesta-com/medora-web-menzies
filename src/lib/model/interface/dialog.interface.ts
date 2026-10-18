@@ -19,6 +19,11 @@ export interface DialogOpenOptions<T = unknown> {
 	fullScreen?: boolean;
 	/** Tailwind classes for the modal box (e.g. max-w-4xl max-h-[90vh]) */
 	modalClassName?: string;
+	/**
+	 * When true (default), backdrop click dismisses as cancel (not confirm).
+	 * Escape also dismisses via the WashDialog shell. Set false only to lock the dimmer.
+	 */
+	closeOnOutsideClick?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;
@@ -36,6 +41,7 @@ export interface DialogInterface {
 	tone?: DialogTone;
 	fullScreen?: boolean;
 	modalClassName?: string;
+	closeOnOutsideClick?: boolean;
 	children?: Snippet<[DialogSlotProps]>;
 	component?: Component<DialogSlotProps & any>;
 	props?: Record<string, any>;

@@ -163,35 +163,33 @@
 	<WashCard className="mb-4">
 		<WashCardBody className="grid gap-3 sm:grid-cols-2">
 			<div class="sm:col-span-2">
-				<label class="text-xs">{m.status()}</label>
+				<label class="text-xs" for="a11y-departmentconsumptiondet-0bb54c">{m.status()}</label>
 				<input
 					type="text"
 					readonly
 					disabled
 					class="input-bordered input mt-1 w-full text-sm"
-					value={detail.statusName ?? '—'}
-				/>
+					value={detail.statusName ?? '—'} id="a11y-departmentconsumptiondet-0bb54c" />
 			</div>
 			<div class="sm:col-span-2">
-				<label class="text-xs">{m.inv_dc_store()}</label>
+				<label class="text-xs" for="a11y-departmentconsumptiondet-79817b">{m.inv_dc_store()}</label>
 				<input
 					type="text"
 					readonly
 					disabled
 					class="input-bordered input mt-1 w-full text-sm"
-					value={detail.storeName ?? '—'}
-				/>
+					value={detail.storeName ?? '—'} id="a11y-departmentconsumptiondet-79817b" />
 			</div>
 			{#if detail.remarks?.trim()}
 				<div class="sm:col-span-2">
-					<label class="text-xs">{m.inv_dept_indent_remarks()}</label>
+					<label class="text-xs" for="a11y-departmentconsumptiondet-307953">{m.inv_dept_indent_remarks()}</label>
 					<textarea
 						class="textarea-bordered textarea mt-1 w-full text-sm"
 						rows="2"
 						readonly
 						disabled
 						value={detail.remarks}
-					></textarea>
+					 id="a11y-departmentconsumptiondet-307953"></textarea>
 				</div>
 			{/if}
 		</WashCardBody>

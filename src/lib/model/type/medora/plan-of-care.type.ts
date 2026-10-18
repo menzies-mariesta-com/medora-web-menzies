@@ -3,7 +3,7 @@ import type { StaffWithRelations } from './staff.type';
 /** Row from GET `planOfCare.list` (visit-scoped plan of care + doctor). */
 export type PlanOfCareListRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	note: string | null;
 	deleteRemark: string | null;
 	statusId: number | null;

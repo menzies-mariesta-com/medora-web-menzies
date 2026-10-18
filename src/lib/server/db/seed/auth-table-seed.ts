@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import argon2 from 'argon2';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import { config as loadDotenv } from 'dotenv';
 import { seedLogger } from '$lib/logger';
 import { ensureDatabaseUrl } from '$lib/server/db/ensure-database-url';
@@ -44,7 +44,8 @@ export async function seedAuthTables() {
 			(1, 'System Admin', 1),
 			(2, 'Owner', 1),
 			(3, 'Staff', 1),
-			(4, 'Admin Team', 1)
+			(4, 'Admin Team', 1),
+			(5, 'Patient', 1)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			status_id = EXCLUDED.status_id;
@@ -96,7 +97,7 @@ export async function seedAuthTables() {
 			`)
 		);
 		if (accounts.length === 0) {
-			const accountId = uuidv7();
+			const accountId = uuidV7();
 			await db.execute(sql`
 				INSERT INTO account (
 					id, user_id, account_id, provider_id, password, created_at, updated_at
@@ -107,8 +108,8 @@ export async function seedAuthTables() {
 		}
 		seedLogger.info(`Updated SYSTEM_ADMIN user: ${email}`);
 	} else {
-		userId = uuidv7();
-		const accountId = uuidv7();
+		userId = uuidV7();
+		const accountId = uuidV7();
 		await db.execute(sql`
 			INSERT INTO "user" (
 				id, name, email, email_verified, role_id, two_factor_enabled, created_at, updated_at

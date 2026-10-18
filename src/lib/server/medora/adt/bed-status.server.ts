@@ -47,7 +47,7 @@ export async function listBedsForAdtStatus(input: {
 	const bedIds = beds.map((b) => b.id);
 	const admissionByBed = new Map<
 		number,
-		{ admissionId: number; visitId: number; patientName: string | null }
+		{ admissionId: number; visitId: string; patientName: string | null }
 	>();
 
 	if (bedIds.length > 0) {

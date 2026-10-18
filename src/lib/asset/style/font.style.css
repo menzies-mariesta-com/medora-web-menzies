@@ -2,19 +2,27 @@
  * Menzies Design Wash UI typefaces.
  * Fraunces + Maple Mono: @font-face in Wash UI `styles.css`.
  * Runtime switch: `html[data-font]` via FontTool.
+ *
+ * Attribute selectors beat Wash `@layer theme` :root defaults so the chosen
+ * face stays applied for every `data-theme` pigment (light and dark).
  */
 
-/* Design default — Studio Wash (Maple body + Fraunces display). */
-html[data-font='maple-mono'] {
+html[data-font='maple-mono'],
+html[data-font='maple-mono'][data-theme] {
 	--font-sans: 'Maple Mono', ui-monospace, monospace;
 	--font-mono: 'Maple Mono', ui-monospace, monospace;
 	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+	--default-font-family: var(--font-sans);
+	--default-mono-font-family: var(--font-mono);
 }
 
-html[data-font='fraunces'] {
+html[data-font='fraunces'],
+html[data-font='fraunces'][data-theme] {
 	--font-sans: 'Fraunces', ui-serif, Georgia, serif;
 	--font-mono: 'Maple Mono', ui-monospace, monospace;
 	--font-display: 'Fraunces', ui-serif, Georgia, serif;
+	--default-font-family: var(--font-sans);
+	--default-mono-font-family: var(--font-mono);
 }
 
 /* Typography scale helpers (sizes only; typefaces from --font-*). */

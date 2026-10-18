@@ -23,8 +23,8 @@
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import InventoryCancelReasonDialogContent from '$lib/component/own/local/private/medora/inventory/InventoryCancelReasonDialogContent.svelte';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
-
-	const dt = new DateTimeUtil();
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const dt = new DateTimeUtil();
 	const toast = new ToastService();
 
 	const hospitalId = $derived(
@@ -192,7 +192,7 @@
 				toast.addToast(
 					m.inv_dc_approve_title(),
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -239,7 +239,7 @@
 			toast.addToast(
 				m.inv_dc_cancel_doc(),
 				StatusColorEnum.ERROR,
-				await res.text()
+				await userFacingDetailFromResponse(res)
 			);
 			throw new Error('cancel_failed');
 		}

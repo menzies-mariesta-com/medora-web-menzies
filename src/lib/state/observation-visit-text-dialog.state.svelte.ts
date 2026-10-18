@@ -4,7 +4,7 @@ export type ObservationVisitTextField =
 	| 'diagnosisNotes';
 
 export const ObservationVisitTextDialogState = $state<{
-	visitId: number | null;
+	visitId: string | null;
 	field: ObservationVisitTextField | null;
 	onSaved: (() => void) | null;
 }>({

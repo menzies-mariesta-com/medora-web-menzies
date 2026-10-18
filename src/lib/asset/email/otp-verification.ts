@@ -32,12 +32,12 @@ function introForType(type: OtpEmailType): string {
 function subjectForType(type: OtpEmailType): string {
 	switch (type) {
 		case 'sign-in':
-			return 'Your sign-in code · Menzies Medora';
+			return 'Your sign-in code · Medora';
 		case 'forget-password':
-			return 'Your password reset code · Menzies Medora';
+			return 'Your password reset code · Medora';
 		case 'email-verification':
 		default:
-			return 'Your verification code · Menzies Medora';
+			return 'Your verification code · Medora';
 	}
 }
 

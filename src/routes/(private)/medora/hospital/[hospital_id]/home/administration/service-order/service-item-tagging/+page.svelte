@@ -28,6 +28,7 @@
 	import { StringUtil } from '$lib/util/string.util.svelte.js';
 	import { formatNumberDisplay } from '$lib/util/number-display.util';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 	const lifeCycleUtil = new LifeCycleUtil();
@@ -190,7 +191,7 @@
 				'content-type': 'application/json'
 			}
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

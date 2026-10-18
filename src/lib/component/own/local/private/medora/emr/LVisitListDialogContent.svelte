@@ -1,6 +1,4 @@
 <script lang="ts">
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import LVisitAlertIndicators from '$lib/component/own/local/private/medora/emr/LVisitAlertIndicators.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -22,7 +20,10 @@
 
 	const lifeCycleUtil = new LifeCycleUtil();
 
-	let { confirm, cancel }: DialogSlotProps = $props();
+	let {
+		confirm,
+		title = m.choose_visit()
+	}: DialogSlotProps & { title?: string } = $props();
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
@@ -53,7 +54,6 @@
 	let abnormalVitalVisitIds = $state<Set<number>>(new Set());
 
 	const visits = $derived(result?.data ?? []);
-	const totalPages = $derived(result?.totalPages ?? 1);
 	const total = $derived(result?.total ?? 0);
 
 	const endpointBase = $derived(
@@ -317,11 +317,6 @@
 	let filterDebounceTimeout: ReturnType<typeof setTimeout> | null =
 		null;
 
-	function handleFilterChange() {
-		currentPage = 1;
-		fetchPatients({ bustCache: true });
-	}
-
 	async function selectPatient(v: PatientVisitForEmrList) {
 		if (isConfirming) return;
 		isConfirming = true;
@@ -358,46 +353,43 @@
 	}
 </script>
 
-<div class="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden">
-	<div class="flex min-h-0 flex-1 flex-col px-4 py-2">
-		<MenziesTable
-			rows={visits}
-			columns={visitColumns}
-			masterFilterHospitalId={hospitalId}
-			isLoading={isLoading || isConfirming}
-			bind:pageSize={pageSizeStr}
-			pageSizeOptions={[10, 20, 25, 50, 100]}
-			bind:currentPage
-			totalRowCount={total}
-			fillParent={true}
-			showRefreshButton={true}
-			refreshTooltip="Refresh visits"
-			emptyMessage="No visits found."
-			showRowActions={true}
-			actionsHeader="Actions"
-			actionsVariant="select"
-			enableColumnFilters={true}
-			on:refresh={() => fetchPatients({ bustCache: true })}
-			on:pageSizeChange={() => {
-				currentPage = 1;
-				fetchPatients();
-			}}
-			on:pageChange={() => fetchPatients()}
-			on:filtersChange={(event) => {
-				if (filterDebounceTimeout) {
-					clearTimeout(filterDebounceTimeout);
-				}
-				tableFilters = event.detail.filters;
-				currentPage = 1;
-				filterDebounceTimeout = setTimeout(() => {
-					fetchPatients({ bustCache: true });
-				}, 350);
-			}}
-			on:select={(event) =>
-				void selectPatient(event.detail as PatientVisitForEmrList)}
-		/>
-	</div>
-	<WashDialogFooter>
-		<WashButton variant="ghost" onClick={cancel}>{m.cancel()}</WashButton>
-	</WashDialogFooter>
+<div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+	<MenziesTable
+		{title}
+		rows={visits}
+		columns={visitColumns}
+		masterFilterHospitalId={hospitalId}
+		isLoading={isLoading || isConfirming}
+		bind:pageSize={pageSizeStr}
+		pageSizeOptions={[10, 20, 25, 50, 100]}
+		bind:currentPage
+		totalRowCount={total}
+		fillParent={true}
+		embedded={true}
+		showRefreshButton={true}
+		refreshTooltip="Refresh visits"
+		emptyMessage="No visits found."
+		showRowActions={true}
+		actionsHeader="Actions"
+		actionsVariant="select"
+		enableColumnFilters={true}
+		on:refresh={() => fetchPatients({ bustCache: true })}
+		on:pageSizeChange={() => {
+			currentPage = 1;
+			fetchPatients();
+		}}
+		on:pageChange={() => fetchPatients()}
+		on:filtersChange={(event) => {
+			if (filterDebounceTimeout) {
+				clearTimeout(filterDebounceTimeout);
+			}
+			tableFilters = event.detail.filters;
+			currentPage = 1;
+			filterDebounceTimeout = setTimeout(() => {
+				fetchPatients({ bustCache: true });
+			}, 350);
+		}}
+		on:select={(event) =>
+			void selectPatient(event.detail as PatientVisitForEmrList)}
+	/>
 </div>

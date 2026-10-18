@@ -15,6 +15,9 @@
 
 	const toastService = new ToastService();
 	const msg = m as Record<string, (inputs?: Record<string, string>) => string>;
+	const pageTitle = $derived(
+		`${msg.auth_forgot_title?.() ?? m.reset_password()} | ${m.menzies_medora()}`
+	);
 
 	const token = $derived(page.url.searchParams.get('token'));
 	const errorFromUrl = $derived(page.url.searchParams.get('error'));
@@ -90,6 +93,11 @@
 		isPasswordVisible = !isPasswordVisible;
 	}
 </script>
+
+<svelte:head>
+	<title>{pageTitle}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <div class="mx-auto flex w-full max-w-sm flex-col gap-4">
 	{#if errorFromUrl === 'INVALID_TOKEN'}

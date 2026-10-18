@@ -10,7 +10,7 @@ export const POST: RequestHandler = async (event) => {
 	>;
 	const grnId = String(body.grnId ?? '');
 	if (!grnId) {
-		return json({ error: 'grnId required' }, { status: 400 });
+		return json({ error: 'Select a GRN to transfer' }, { status: 400 });
 	}
 	const data = await transferGrnToRequestingStore(event, {
 		hospitalId,

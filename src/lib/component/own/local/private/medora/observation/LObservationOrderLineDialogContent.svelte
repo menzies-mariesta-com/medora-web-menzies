@@ -17,6 +17,7 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
 
@@ -84,7 +85,7 @@
 				url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -102,7 +103,7 @@
 				})
 			}
 		);
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -553,7 +554,7 @@
 		</div>
 	{/if}
 	<div class="flex flex-col gap-1">
-		<label class="text-sm">
+		<label class="text-sm" for="a11y-lobservationorderlinedia-a6ee24">
 			{m.observation_emr_service()}
 		</label>
 		<SearchSelect
@@ -561,11 +562,10 @@
 			bind:value={detailServiceIdInput}
 			searchFn={searchServices}
 			getLabelForValue={getServiceLabelForValue}
-			placeholder={m.observation_emr_search_service()}
-		/>
+			placeholder={m.observation_emr_search_service()} inputId="a11y-lobservationorderlinedia-a6ee24" />
 	</div>
 	<div class="flex flex-col gap-1">
-		<label class="text-sm">
+		<label class="text-sm" for="a11y-lobservationorderlinedia-5ed4d9">
 			{m.observation_emr_advising_doctor()}
 		</label>
 		<SearchSelect
@@ -573,47 +573,42 @@
 			bind:value={detailAdvisingDoctorIdInput}
 			searchFn={searchDoctors}
 			getLabelForValue={getDoctorLabelForValue}
-			placeholder={m.observation_emr_search_doctor()}
-		/>
+			placeholder={m.observation_emr_search_doctor()} inputId="a11y-lobservationorderlinedia-5ed4d9" />
 	</div>
 	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 		<div class="flex flex-col gap-1">
-			<label class="text-sm">
+			<label class="text-sm" for="a11y-lobservationorderlinedia-1838fc">
 				{m.observation_emr_service_amount()}
 			</label>
 			<WashInputField
 				inputType="text"
 				bind:value={detailServiceAmountInput}
-				disabled={!detailAmountEditable && !isEdit}
-			/>
+				disabled={!detailAmountEditable && !isEdit} id="a11y-lobservationorderlinedia-1838fc" />
 		</div>
 		<div class="flex flex-col gap-1">
-			<label class="text-sm">
+			<label class="text-sm" for="a11y-lobservationorderlinedia-9f3211">
 				{m.observation_emr_tax_amount()}
 			</label>
 			<WashInputField
 				inputType="text"
 				bind:value={detailServiceTaxAmountInput}
-				disabled={!detailAmountEditable && !isEdit}
-			/>
+				disabled={!detailAmountEditable && !isEdit} id="a11y-lobservationorderlinedia-9f3211" />
 		</div>
 		<div class="flex flex-col gap-1">
-			<label class="text-sm">
+			<label class="text-sm" for="a11y-lobservationorderlinedia-491d41">
 				{m.observation_emr_units()}
 			</label>
 			<WashInputField
 				inputType="text"
-				bind:value={detailServiceUnitInput}
-			/>
+				bind:value={detailServiceUnitInput} id="a11y-lobservationorderlinedia-491d41" />
 		</div>
 		<div class="flex flex-col gap-1 sm:col-span-2">
-			<label class="text-sm">
+			<label class="text-sm" for="a11y-lobservationorderlinedia-dcb745">
 				{m.observation_emr_instruction()}
 			</label>
 			<WashInputField
 				inputType="text"
-				bind:value={detailInstructionInput}
-			/>
+				bind:value={detailInstructionInput} id="a11y-lobservationorderlinedia-dcb745" />
 		</div>
 	</div>
 	<label class="flex cursor-pointer items-center gap-2 text-sm">

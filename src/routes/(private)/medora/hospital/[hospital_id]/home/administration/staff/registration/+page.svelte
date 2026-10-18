@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDivider from '$lib/component/wash/divider/WashDivider.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
@@ -891,7 +892,7 @@
 			const usingDefaultEmailForCreate = !trimmedEmailForCreate;
 			const emailForCreate = trimmedEmailForCreate
 				? trimmedEmailForCreate
-				: `${crypto.randomUUID()}${StringUtil.NO_EMAIL_SUFFIX}`;
+				: `${uuidV7()}${StringUtil.NO_EMAIL_SUFFIX}`;
 			if (!urlHospitalId) throw new Error('Hospital is required');
 
 			const result = await getJson<{

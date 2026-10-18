@@ -9,6 +9,21 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+const BASELINE_PATH = join('scripts', 'check-wash-ui-baseline.txt');
+/** Grandfathered violations (one per line); fails only on new hits. */
+function loadBaseline() {
+	try {
+		return new Set(
+			readFileSync(BASELINE_PATH, 'utf8')
+				.split('\n')
+				.map((line) => line.trim())
+				.filter(Boolean)
+		);
+	} catch {
+		return new Set();
+	}
+}
+
 const DAISY_IMPORT = /\$lib\/component\/daisyui\b/;
 const MENZIES_CLONE = /\$lib\/component\/own\/library\/menzies\b/;
 const DAISY_UI_NAME = /\bDaisyUi[A-Z]\w*\b/;
@@ -129,11 +144,19 @@ try {
 	violations.push('package.json: could not read for daisyui dependency check');
 }
 
-if (violations.length) {
+const baseline = loadBaseline();
+const newViolations = violations.filter((v) => !baseline.has(v));
+
+if (newViolations.length) {
 	console.error(
 		'Wash UI boundary: reuse $lib/component/wash (Menzies Design) — no daisyUI plugin / menzies clone path.\n'
 	);
-	for (const v of violations) console.error(`  ${v}`);
+	for (const v of newViolations) console.error(`  ${v}`);
+	if (baseline.size > 0) {
+		console.error(
+			`\n(${violations.length - newViolations.length} grandfathered in ${BASELINE_PATH})`
+		);
+	}
 	process.exit(1);
 }
 

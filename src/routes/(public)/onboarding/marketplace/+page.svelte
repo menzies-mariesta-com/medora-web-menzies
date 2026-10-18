@@ -9,12 +9,20 @@
 	lifeCycle.onMount(async () => {
 		console.log('onMount');
 	});
+
+	const pageTitle = $derived(`${m.marketplace()} | ${m.menzies_medora()}`);
 </script>
+
+<!-- Soft-404 / empty list: noindex (also set on onboarding layout). -->
+<svelte:head>
+	<title>{pageTitle}</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
 
 <div class="flex flex-col gap-4">
 	<h1 class="text-2xl font-bold">{m.marketplace()}</h1>
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-		{#each store as item}
+		{#each store as item (item.id)}
 			<div class="card">
 				<div class="card-body">
 					<h2 class="card-title">{item.name}</h2>

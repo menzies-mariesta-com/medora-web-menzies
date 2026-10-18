@@ -15,6 +15,11 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { trimMetricQtyDisplay } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import { issueQtyToPurchaseQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail,
+		userFacingDetailFromResponse
+	} from '$lib/util/user-facing-error.util';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	type ReorderLevelRow = {
@@ -93,14 +98,12 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Load failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			lookups = (await res.json()) as Lookups;
 		} catch (err) {
+			console.error(err);
 			lookupsError =
-				err instanceof Error ? err.message : 'Failed to load lookups';
+				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 			lookups = { stores: [], items: [] };
 		} finally {
 			lookupsLoading = false;
@@ -142,10 +145,9 @@
 						})
 					});
 					if (!res.ok) {
-						const t = await res.text().catch(() => '');
-						const msg = t || `Create failed (${res.status})`;
-						toastService.addToast(msg, StatusColorEnum.ERROR);
-						throw new Error(msg);
+						const detail = await userFacingDetailFromResponse(res);
+						toastService.addErrorToast(m.error_save_failed(), detail);
+						throw new Error(detail);
 					}
 					toastService.addToast(
 						m.inv_reorder_level_created(),
@@ -196,10 +198,9 @@
 						})
 					});
 					if (!res.ok) {
-						const t = await res.text().catch(() => '');
-						const msg = t || `Save failed (${res.status})`;
-						toastService.addToast(msg, StatusColorEnum.ERROR);
-						throw new Error(msg);
+						const detail = await userFacingDetailFromResponse(res);
+						toastService.addErrorToast(m.error_save_failed(), detail);
+						throw new Error(detail);
 					}
 					toastService.addToast(
 						m.inv_reorder_level_updated(),
@@ -230,13 +231,12 @@
 					cache: 'no-store'
 				}
 			);
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Load failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			rows = (await res.json()) as ReorderLevelRow[];
 		} catch (err) {
-			loadError = err instanceof Error ? err.message : 'Load failed';
+			console.error(err);
+			loadError =
+				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 			rows = [];
 		} finally {
 			isLoading = false;
@@ -253,15 +253,11 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ id: row.id })
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Delete failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			rows = rows.filter((r) => r.id !== row.id);
 		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : 'Delete failed';
-			toastService.addToast(msg, StatusColorEnum.ERROR);
+			console.error(err);
+			toastService.addErrorToast(m.error_action_failed(), err);
 		} finally {
 			const next = { ...deletingById };
 			delete next[row.id];

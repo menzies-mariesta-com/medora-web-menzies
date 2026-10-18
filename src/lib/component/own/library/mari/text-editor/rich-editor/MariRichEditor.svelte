@@ -2,6 +2,9 @@
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashDropdown from '$lib/component/wash/dropdown/WashDropdown.svelte';
+	import WashDropdownButton from '$lib/component/wash/dropdown/button/WashDropdownButton.svelte';
+	import WashDropdownContent from '$lib/component/wash/dropdown/content/WashDropdownContent.svelte';
 	import MariRichEditorController from './MariRichEditorController.svelte';
 	import MariRichEditorPreview from './MariRichEditorPreview.svelte';
 
@@ -33,7 +36,6 @@
 
 	let editorElement: HTMLDivElement;
 	let lastEditorRange: Range | null = null;
-	let activeMenu: string | null = $state(null);
 
 	type ToolbarCommandDetail = {
 		name:
@@ -191,20 +193,12 @@
 		}
 	}
 
-	function handleClickOutside(e: MouseEvent) {
-		const target = e.target as HTMLElement;
-		if (activeMenu && !target.closest('.relative')) {
-			activeMenu = null;
-		}
-	}
-
 	onMount(() => {
 		if (editorElement) {
 			editorElement.innerHTML = value ?? '';
 		}
 		if (typeof document !== 'undefined') {
 			document.addEventListener('selectionchange', onSelectionChange);
-			document.addEventListener('click', handleClickOutside);
 			editorElement?.addEventListener(
 				'focus',
 				syncActiveStatesFromDocument
@@ -218,7 +212,6 @@
 				'selectionchange',
 				onSelectionChange
 			);
-			document.removeEventListener('click', handleClickOutside);
 			editorElement?.removeEventListener(
 				'focus',
 				syncActiveStatesFromDocument
@@ -929,14 +922,12 @@ ${content}
 		const content = getFullHtmlDocument(value);
 		downloadFile(content, `${documentTitle}.html`, 'text/html');
 		dispatch('export', { format: 'html', content });
-		activeMenu = null;
 	}
 
 	function exportAsMarkdown() {
 		const content = htmlToMarkdown(value);
 		downloadFile(content, `${documentTitle}.md`, 'text/markdown');
 		dispatch('export', { format: 'md', content });
-		activeMenu = null;
 	}
 
 	function exportAsPdf() {
@@ -952,19 +943,16 @@ ${content}
 			printWindow.onafterprint = () => printWindow.close();
 		};
 		dispatch('export', { format: 'pdf', content: value });
-		activeMenu = null;
 	}
 
 	function handleUndo() {
 		document.execCommand('undo', false);
 		syncFromDom();
-		activeMenu = null;
 	}
 
 	function handleRedo() {
 		document.execCommand('redo', false);
 		syncFromDom();
-		activeMenu = null;
 	}
 
 	function handleSelectAll() {
@@ -975,21 +963,6 @@ ${content}
 		const sel = window.getSelection();
 		sel?.removeAllRanges();
 		sel?.addRange(range);
-		activeMenu = null;
-	}
-
-	function toggleMenu(menu: string) {
-		activeMenu = activeMenu === menu ? null : menu;
-	}
-
-	function closeMenus() {
-		activeMenu = null;
-	}
-
-	function handleMenuKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			activeMenu = null;
-		}
 	}
 
 	function handleEditorShortcuts(e: KeyboardEvent) {
@@ -1032,7 +1005,6 @@ ${content}
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="flex flex-col gap-2 {className}"
-	onkeydown={handleMenuKeydown}
 	style={`font-family:${fontFamily};`}
 >
 	{#if showMenuBar}
@@ -1040,165 +1012,166 @@ ${content}
 		<div
 			class="flex items-center gap-0 border-b border-base-300 bg-base-200 text-sm"
 		>
-			<!-- File Menu -->
-			<div class="relative">
-				<button
-					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'file'
-						? 'bg-base-300'
-						: ''}"
-					onclick={() => toggleMenu('file')}
+			<WashDropdown className="dropdown-bottom">
+				<WashDropdownButton
+					className="btn-ghost rounded-none border-0 px-4 py-2 cursor-pointer"
 				>
 					File
-				</button>
-				{#if activeMenu === 'file'}
-					<div
-						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
-					>
+				</WashDropdownButton>
+				<WashDropdownContent
+					className="z-50 mt-0 min-w-48 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]"
+				>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={exportAsPdf}
 						>
-							<span class="w-4">📄</span>
-							<span>Export as PDF</span>
+							Export as PDF
 							<span class="ml-auto text-xs text-base-content/50"
 								>Ctrl+P</span
 							>
 						</button>
+					</li>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={exportAsHtml}
 						>
-							<span class="w-4">🌐</span>
-							<span>Export as HTML</span>
+							Export as HTML
 						</button>
+					</li>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={exportAsMarkdown}
 						>
-							<span class="w-4">📝</span>
-							<span>Export as Markdown</span>
+							Export as Markdown
 						</button>
-					</div>
-				{/if}
-			</div>
+					</li>
+				</WashDropdownContent>
+			</WashDropdown>
 
-			<!-- Edit Menu -->
-			<div class="relative">
-				<button
-					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'edit'
-						? 'bg-base-300'
-						: ''}"
-					onclick={() => toggleMenu('edit')}
+			<WashDropdown className="dropdown-bottom">
+				<WashDropdownButton
+					className="btn-ghost rounded-none border-0 px-4 py-2 cursor-pointer"
 				>
 					Edit
-				</button>
-				{#if activeMenu === 'edit'}
-					<div
-						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
-					>
+				</WashDropdownButton>
+				<WashDropdownContent
+					className="z-50 mt-0 min-w-48 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]"
+				>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={handleUndo}
 						>
-							<span class="w-4">↩️</span>
-							<span>Undo</span>
+							Undo
 							<span class="ml-auto text-xs text-base-content/50"
 								>Ctrl+Z</span
 							>
 						</button>
+					</li>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={handleRedo}
 						>
-							<span class="w-4">↪️</span>
-							<span>Redo</span>
+							Redo
 							<span class="ml-auto text-xs text-base-content/50"
 								>Ctrl+Y</span
 							>
 						</button>
-						<div class="my-1 border-t border-base-300"></div>
+					</li>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={handleSelectAll}
 						>
-							<span class="w-4">📋</span>
-							<span>Select All</span>
+							Select All
 							<span class="ml-auto text-xs text-base-content/50"
 								>Ctrl+A</span
 							>
 						</button>
-					</div>
-				{/if}
-			</div>
+					</li>
+				</WashDropdownContent>
+			</WashDropdown>
 
-			<!-- View Menu -->
-			<div class="relative">
-				<button
-					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'view'
-						? 'bg-base-300'
-						: ''}"
-					onclick={() => toggleMenu('view')}
+			<WashDropdown className="dropdown-bottom">
+				<WashDropdownButton
+					className="btn-ghost rounded-none border-0 px-4 py-2 cursor-pointer"
 				>
 					View
-				</button>
-				{#if activeMenu === 'view'}
-					<div
-						class="absolute top-full left-0 z-50 min-w-48 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
-					>
+				</WashDropdownButton>
+				<WashDropdownContent
+					className="z-50 mt-0 min-w-48 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]"
+				>
+					<li>
 						<button
 							type="button"
-							class="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-base-200"
+							class="cursor-pointer"
 							onclick={() => {
 								showPreview = !showPreview;
-								activeMenu = null;
 							}}
 						>
-							<span class="w-4">{showPreview ? '✓' : ''}</span>
-							<span>Show Preview</span>
+							{showPreview ? 'Hide Preview' : 'Show Preview'}
 						</button>
-					</div>
-				{/if}
-			</div>
+					</li>
+				</WashDropdownContent>
+			</WashDropdown>
 
-			<!-- Help Menu -->
-			<div class="relative">
-				<button
-					type="button"
-					class="px-4 py-2 hover:bg-base-300 {activeMenu === 'help'
-						? 'bg-base-300'
-						: ''}"
-					onclick={() => toggleMenu('help')}
+			<WashDropdown className="dropdown-bottom">
+				<WashDropdownButton
+					className="btn-ghost rounded-none border-0 px-4 py-2 cursor-pointer"
 				>
 					Help
-				</button>
-				{#if activeMenu === 'help'}
-					<div
-						class="absolute top-full left-0 z-50 min-w-56 rounded-b-lg border border-base-300 bg-base-100 shadow-lg"
-					>
-						<div class="px-4 py-2 text-base-content/70">
-							<p class="font-semibold">Keyboard Shortcuts</p>
-							<div class="mt-2 space-y-1 text-xs">
-								<p><kbd class="kbd kbd-xs">Ctrl+B</kbd> Bold</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+I</kbd> Italic</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+U</kbd> Underline</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+Z</kbd> Undo</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+Y</kbd> Redo</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+A</kbd> Select All</p>
-								<p><kbd class="kbd kbd-xs">Ctrl+P</kbd> Print/PDF</p>
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
+				</WashDropdownButton>
+				<WashDropdownContent
+					className="z-50 mt-0 min-w-56 rounded-box border border-ink-border bg-base-100 p-2 shadow-[var(--shadow-paper-md)]"
+				>
+					<li class="menu-title">Keyboard Shortcuts</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+B</kbd> Bold</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+I</kbd> Italic</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+U</kbd> Underline</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+Z</kbd> Undo</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+Y</kbd> Redo</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+A</kbd> Select All</span
+						>
+					</li>
+					<li class="disabled">
+						<span class="text-xs"
+							><kbd class="kbd kbd-xs">Ctrl+P</kbd> Print/PDF</span
+						>
+					</li>
+				</WashDropdownContent>
+			</WashDropdown>
 		</div>
 	{/if}
 
@@ -1216,10 +1189,7 @@ ${content}
 
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- Editor surface styled to match preview (.prose inside a rounded, bordered card) -->
-	<div
-		class="mt-2 rounded-box border border-base-300 bg-base-100 p-4"
-		onclick={closeMenus}
-	>
+	<div class="mt-2 rounded-box border border-base-300 bg-base-100 p-4">
 		<div
 			class="prose max-w-none focus:outline-none {editorClassName} {disabled
 				? 'cursor-not-allowed opacity-70'

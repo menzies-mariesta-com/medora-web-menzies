@@ -7,15 +7,25 @@
 		href = WebRoutesEnum.DEFAULT,
 		className = '',
 		asLink = true,
-		showLabel = true
+		showLabel = true,
+		/** Override wordmark text (e.g. hospital name). Falls back to Medora. */
+		brandName = null,
+		/** Override logo image src. Falls back to Medora mark. */
+		logoSrc = null
 	}: {
 		href?: string;
 		className?: string;
 		asLink?: boolean;
 		/** When false, logo only (favicon-style mark). */
 		showLabel?: boolean;
+		brandName?: string | null;
+		logoSrc?: string | null;
 	} = $props();
 
+	const displayName = $derived(
+		brandName?.trim() || m.menzies_medora()
+	);
+	const displayLogoSrc = $derived(logoSrc?.trim() || medoraLogo);
 	const shellClass = $derived(
 		[
 			'inline-flex items-center gap-2',
@@ -28,15 +38,17 @@
 
 {#snippet brandMark()}
 	<img
-		src={medoraLogo}
+		src={displayLogoSrc}
 		alt=""
 		width="32"
 		height="32"
-		class="size-8 shrink-0 rounded-[22%]"
+		class="size-8 shrink-0 rounded-[22%] object-cover"
 		decoding="async"
 	/>
 	{#if showLabel}
-		<span>{m.menzies_medora()}</span>
+		<span class="max-w-[12rem] truncate sm:max-w-[16rem] md:max-w-[20rem]"
+			>{displayName}</span
+		>
 	{/if}
 {/snippet}
 
@@ -44,7 +56,7 @@
 	<a
 		class={`${shellClass} ${className}`.trim()}
 		{href}
-		aria-label={m.menzies_medora()}
+		aria-label={displayName}
 	>
 		{@render brandMark()}
 	</a>
@@ -52,7 +64,7 @@
 	<span
 		class={`${shellClass} ${className}`.trim()}
 		role="img"
-		aria-label={m.menzies_medora()}
+		aria-label={displayName}
 	>
 		{@render brandMark()}
 	</span>

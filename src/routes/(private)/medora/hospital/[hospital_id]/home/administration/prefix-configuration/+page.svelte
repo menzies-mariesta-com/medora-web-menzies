@@ -16,6 +16,7 @@
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
 	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashCardBodyAction from '$lib/component/wash/card/body/action/WashCardBodyAction.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { TableEnum } from '$lib/model/enum/table.enum';
 	import {
 		PREFIX_PURPOSES,
@@ -120,6 +121,8 @@
 	function purposeLabel(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient')
 			return m.prefix_configuration_purpose_patient();
+		if (p.id === 'external_patient')
+			return m.prefix_configuration_purpose_external_patient();
 		if (p.id === 'visit')
 			return m.prefix_configuration_purpose_visit();
 		if (p.id === 'pr') return m.prefix_configuration_purpose_pr();
@@ -138,6 +141,9 @@
 	function purposeHelp(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient') {
 			return m.prefix_configuration_purpose_patient_help();
+		}
+		if (p.id === 'external_patient') {
+			return m.prefix_configuration_purpose_external_patient_help();
 		}
 		if (p.id === 'visit') {
 			return m.prefix_configuration_purpose_visit_help();
@@ -169,6 +175,8 @@
 	function editTitle(p: PrefixPurposeDefinition): string {
 		if (p.id === 'patient')
 			return m.prefix_configuration_edit_patient_title();
+		if (p.id === 'external_patient')
+			return m.prefix_configuration_edit_external_patient_title();
 		if (p.id === 'visit')
 			return m.prefix_configuration_edit_visit_title();
 		if (p.id === 'pr') return m.prefix_configuration_edit_pr_title();
@@ -465,7 +473,7 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">{m.prefix_configuration_internal_key_label()}</label>
+									<span  class="shrink-0 sm:w-36">{m.prefix_configuration_internal_key_label()}</span>
 									<code
 										class="rounded bg-base-200 px-2 py-1.5 font-mono text-sm"
 										>{editingPurpose.storageKey}</code
@@ -477,19 +485,18 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">{m.prefix_configuration_description_label()}</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-654252">{m.prefix_configuration_description_label()}</label>
 									<div class="max-w-80 flex-1">
 										<WashInputField
 											bind:value={descriptionInput}
 											inputType="text"
-											inputPlaceholderText={m.prefix_configuration_description_placeholder()}
-										/>
+											inputPlaceholderText={m.prefix_configuration_description_placeholder()} id="a11y-page-654252" />
 									</div>
 								</div>
 								<div
 									class="rounded-md border border-base-200 bg-base-200/20 px-3 py-2"
 								>
-									<label class="text-sm font-medium">{m.prefix_configuration_counter_scope_title()}</label>
+									<span  class="text-sm font-medium">{m.prefix_configuration_counter_scope_title()}</span>
 									<p
 										class="mt-1 mb-2 text-xs leading-snug text-base-content/60"
 									>
@@ -553,7 +560,7 @@
 								<div
 									class="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2"
 								>
-									<label class="text-sm font-medium leading-tight">{m.prefix_configuration_format_title()}</label>
+									<span  class="text-sm font-medium leading-tight">{m.prefix_configuration_format_title()}</span>
 									<p
 										class="text-xs leading-snug text-base-content/60"
 									>
@@ -584,25 +591,34 @@
 												class="w-5 shrink-0 text-right text-[0.65rem] text-base-content/45 tabular-nums"
 												>{i + 1}</span
 											>
-											<select
-												class="select-bordered select h-7 min-h-7 max-w-[7.5rem] shrink-0 select-xs py-0 text-xs"
+											<WashSelect
+												className="select h-7 min-h-7 max-w-[7.5rem] shrink-0 select-xs py-0 text-xs"
 												value={part.kind}
-												onchange={(e) => {
-													const k = e.currentTarget
-														.value as UiFormatPart['kind'];
-													setPartKind(i, k);
+												options={[
+													{
+														value: 'literal',
+														label:
+															m.prefix_configuration_part_type_literal()
+													},
+													{
+														value: 'field',
+														label:
+															m.prefix_configuration_part_type_field()
+													},
+													{
+														value: 'sequence',
+														label:
+															m.prefix_configuration_part_type_sequence()
+													}
+												]}
+												onChange={(next) => {
+													if (next)
+														setPartKind(
+															i,
+															next as UiFormatPart['kind']
+														);
 												}}
-											>
-												<option value="literal"
-													>{m.prefix_configuration_part_type_literal()}</option
-												>
-												<option value="field"
-													>{m.prefix_configuration_part_type_field()}</option
-												>
-												<option value="sequence"
-													>{m.prefix_configuration_part_type_sequence()}</option
-												>
-											</select>
+											/>
 
 											<div
 												class="min-w-0 flex-1 basis-[12rem] sm:basis-0"
@@ -617,22 +633,23 @@
 														inputPlaceholderText={m.prefix_configuration_literal_placeholder()}
 													/>
 												{:else if part.kind === 'field'}
-													<select
-														class="select-bordered select h-7 min-h-7 w-full select-xs py-0 text-xs"
+													<WashSelect
+														className="select h-7 min-h-7 w-full select-xs py-0 text-xs"
 														value={part.path}
-														onchange={(e) =>
-															setFieldPath(
-																i,
-																e.currentTarget
-																	.value as PrefixFieldPath
-															)}
-													>
-														{#each fieldPathOptions as fp (fp)}
-															<option value={fp}
-																>{fieldPathLabel(fp)}</option
-															>
-														{/each}
-													</select>
+														options={fieldPathOptions.map(
+															(fp) => ({
+																value: fp,
+																label: fieldPathLabel(fp)
+															})
+														)}
+														onChange={(next) => {
+															if (next)
+																setFieldPath(
+																	i,
+																	next as PrefixFieldPath
+																);
+														}}
+													/>
 												{:else}
 													<div
 														class="flex flex-wrap items-center gap-x-2 gap-y-0.5"

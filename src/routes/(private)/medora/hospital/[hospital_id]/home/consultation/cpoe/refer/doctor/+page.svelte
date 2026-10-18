@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import type { StaffRegHospitalBranchRow } from '$lib/model/type/medora/staff-reg-ui.type';
@@ -190,7 +191,7 @@
 				body: JSON.stringify({
 					mode: 'referHistory.create',
 					payload: {
-						visitId: parseInt(visitId, 10),
+						visitId: parseUuid(visitId) ?? '',
 						referAt: new Date().toISOString(),
 						toBranchId: toBranchId.trim(),
 						toReferDoctorId: toReferDoctorId.trim(),
@@ -299,8 +300,7 @@
 			class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 		>
 			<label for="is-urgent" class="shrink-0 sm:w-40">Urgent</label>
-			<label class="flex cursor-pointer items-center gap-2">
-				<WashCheckbox id="is-urgent" bind:checked={isUrgent} />
+			<label class="flex cursor-pointer items-center gap-2" for="is-urgent"><WashCheckbox id="is-urgent" bind:checked={isUrgent} />
 				<span class="text-sm">High Priority</span>
 			</label>
 		</div>

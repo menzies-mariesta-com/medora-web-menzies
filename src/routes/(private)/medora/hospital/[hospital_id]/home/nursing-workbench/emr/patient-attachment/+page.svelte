@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
 	import WashCardBody from '$lib/component/wash/card/body/WashCardBody.svelte';
-	import WashCardBodyTitle from '$lib/component/wash/card/body/title/WashCardBodyTitle.svelte';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import LPatientAttachmentDialogContent from '$lib/component/own/local/private/medora/patient/attachment/LPatientAttachmentDialogContent.svelte';
 	import { PatientAttachmentDialogState } from '$lib/state/patient-attachment.dialog.state.svelte';
@@ -12,7 +12,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string' &&
 			page.params.hospital_id
@@ -105,7 +105,7 @@
 	{#if !visitId}
 		<WashAlert
 			type={StatusColorEnum.INFO}
-			message={'Choose a visit using the="Choose Visit" bar above to manage patient attachments.'}
+			message="Choose a visit using the=&quot;Choose Visit&quot; bar above to manage patient attachments."
 		/>
 	{:else if !visit && !isLoadingVisit}
 		<WashAlert

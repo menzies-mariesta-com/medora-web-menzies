@@ -18,6 +18,7 @@
 		DoctorListStaffRow,
 		StaffWithRelations
 	} from '$lib/model/type/medora/staff.type';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let {
 		doctorList,
@@ -66,7 +67,7 @@
 		const res = await fetch(`${apiBase}?${sp.toString()}`, {
 			method: 'GET'
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

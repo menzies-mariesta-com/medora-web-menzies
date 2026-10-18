@@ -1,0 +1,17 @@
+diff --git a/dist/processor.js b/dist/processor.js
+index a00170c281f96684d45901c471cf84c1e6edd8ea..6f72831daa98d62d4228026deea6c83ff1ec5a5c 100644
+--- a/dist/processor.js
++++ b/dist/processor.js
+@@ -50,7 +50,11 @@ var Processor = /*#__PURE__*/function () {
+       options = {};
+     }
+ 
+-    var parser = new _parser["default"](rule, this._parseOptions(options));
++    var ParserCtor = _parser["default"];
++    if (ParserCtor && typeof ParserCtor !== "function" && ParserCtor.default) {
++      ParserCtor = ParserCtor.default;
++    }
++    var parser = new ParserCtor(rule, this._parseOptions(options));
+     return parser.root;
+   };
+ 

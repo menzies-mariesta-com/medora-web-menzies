@@ -1,11 +1,10 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- shared draft line shape across PR/DI/issue flows */
+	 
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { fetchStockLabelsForItemsAtStore } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
-	import { enrichItemSearchOptionsWithStock } from '$lib/tool/inventory/fetch-stock-on-hand-for-items.util';
 	import type { LineItemMetricTile } from '$lib/tool/inventory/line-item-metric-tiles.util';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 	import InventoryLineItemMetricTiles from '../InventoryLineItemMetricTiles.svelte';
@@ -206,8 +205,8 @@
 <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-prlineitemdialogcontent-efdf37">{m.inv_pr_line_item_search()}</label>
+			<SearchSelect inputId="a11y-prlineitemdialogcontent-efdf37"
 				value={draftLine?.itemId ? String(draftLine.itemId) : ''}
 				searchFn={stockEnrichment
 					? searchItemsWithStock
@@ -234,8 +233,8 @@
 		</div>
 
 		<div>
-			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
-			<SearchSelect
+			<label class="text-xs opacity-80" for="a11y-prlineitemdialogcontent-e4cbdd">{m.inv_common_unit()}</label>
+			<SearchSelect inputId="a11y-prlineitemdialogcontent-e4cbdd"
 				value={draftLine?.itemUnitMasterId != null
 					? String(draftLine.itemUnitMasterId)
 					: ''}
@@ -253,7 +252,7 @@
 		</div>
 
 		<div>
-			<label class="text-xs opacity-80">{m.inv_common_quantity()}</label>
+			<label class="text-xs opacity-80" for="a11y-prlineitemdialogcontent-300bb3">{m.inv_common_quantity()}</label>
 			<input
 				type="number"
 				class="input-bordered input w-full"
@@ -267,7 +266,7 @@
 				min="0"
 				disabled={draftLine?.itemId == null || pickingItem}
 				aria-label={m.inv_common_quantity()}
-			/>
+			id="a11y-prlineitemdialogcontent-300bb3" />
 		</div>
 	</div>
 

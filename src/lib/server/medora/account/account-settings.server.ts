@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
@@ -22,33 +22,16 @@ export type SelfAccountSettings = {
 	signatureText: string | null;
 };
 
-async function ensureStaffInHospital(
-	staffId: string,
-	hospitalId: string
-) {
-	const [row] = await ensureDb()
-		.select({ id: table.staffHospitalTable.id })
-		.from(table.staffHospitalTable)
-		.where(
-			and(
-				eq(table.staffHospitalTable.staffId, staffId),
-				eq(table.staffHospitalTable.hospitalId, hospitalId)
-			)
-		)
-		.limit(1);
-	if (!row)
-		throw error(403, 'Staff is not assigned to this hospital');
-}
-
 export async function getSelfAccountSettings(
 	event: RequestEvent,
 	input: { hospitalId: string }
 ): Promise<SelfAccountSettings> {
+	// Hospital access is enough for self-edit. OWNER / SYSTEM_ADMIN often have a
+	// staff row linked to the user but no `staff_hospital` assignment.
 	await ensureCanAccessHospital(event, input.hospitalId);
 	const staffId = event.locals.staff?.id ?? null;
 	if (!staffId)
 		throw error(400, 'No staff profile linked to this account');
-	await ensureStaffInHospital(staffId, input.hospitalId);
 
 	const [staff] = await ensureDb()
 		.select({
@@ -150,7 +133,6 @@ export async function updateSelfAccountSettings(
 	const staffId = event.locals.staff?.id ?? null;
 	if (!staffId)
 		throw error(400, 'No staff profile linked to this account');
-	await ensureStaffInHospital(staffId, input.hospitalId);
 
 	const setObj: Partial<typeof table.staffTable.$inferInsert> = {};
 
@@ -270,6 +252,39 @@ export async function updateSelfAccountSettings(
 				updatedBy: event.locals.user?.id ?? null
 			})
 			.where(eq(table.staffDetailTable.id, staffDetailId));
+	}
+
+	// Keep auth `user.name` aligned with staff name (navbar prefers staff
+	// legal name from `data.staff`, refreshed via invalidateAll after save).
+	const nameTouched =
+		firstName !== undefined ||
+		middleName !== undefined ||
+		lastName !== undefined;
+	const userId = event.locals.user?.id ?? null;
+	if (nameTouched && userId) {
+		const [latest] = await db
+			.select({
+				firstName: table.staffTable.firstName,
+				middleName: table.staffTable.middleName,
+				lastName: table.staffTable.lastName
+			})
+			.from(table.staffTable)
+			.where(eq(table.staffTable.id, staffId))
+			.limit(1);
+		const displayName = [
+			latest?.firstName,
+			latest?.middleName,
+			latest?.lastName
+		]
+			.map((p) => (p ?? '').trim())
+			.filter(Boolean)
+			.join(' ');
+		if (displayName) {
+			await db
+				.update(table.userTable)
+				.set({ name: displayName })
+				.where(eq(table.userTable.id, userId));
+		}
 	}
 
 	return { ok: true };

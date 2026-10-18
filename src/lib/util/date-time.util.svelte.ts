@@ -251,7 +251,7 @@ export class DateTimeUtil {
 	}
 
 	/**
-	 * Returns today's date in `YYYY-MM-DD` format, suitable for `<input type="date">`.
+	 * Returns today's date in `YYYY-MM-DD` format (WashDatePicker / calendar day).
 	 */
 	getTodayDateString(): string {
 		const today = new SvelteDate();

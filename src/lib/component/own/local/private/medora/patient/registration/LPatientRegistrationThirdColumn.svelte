@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
+	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
 	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type {
 		PatientRegBloodTypeRow,
@@ -11,13 +12,11 @@
 		PatientRegReligionRow,
 		PatientRegStateRow
 	} from '$lib/model/type/medora/patient-reg-master.type';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		countryData,
 		bloodTypeData,
-		stateData,
-		cityData,
-		postalCodeData,
 		nationalityData,
 		religionData,
 		filteredStateData,
@@ -25,7 +24,6 @@
 		filteredPostalCodeData,
 		selectedCountry,
 		selectedState,
-		selectedCity,
 		selectedCountryId = $bindable(),
 		selectedBloodTypeId = $bindable(),
 		selectedStateId = $bindable(),
@@ -39,9 +37,6 @@
 	} = $props<{
 		countryData: PatientRegCountryRow[];
 		bloodTypeData: PatientRegBloodTypeRow[];
-		stateData: PatientRegStateRow[];
-		cityData: PatientRegCityRow[];
-		postalCodeData: PatientRegPostalCodeRow[];
 		nationalityData: PatientRegNationalityRow[];
 		religionData: PatientRegReligionRow[];
 		filteredStateData: PatientRegStateRow[];
@@ -49,7 +44,6 @@
 		filteredPostalCodeData: PatientRegPostalCodeRow[];
 		selectedCountry: PatientRegCountryRow;
 		selectedState: PatientRegStateRow;
-		selectedCity: PatientRegCityRow;
 		selectedCountryId?: string;
 		selectedBloodTypeId?: string;
 		selectedStateId?: string;
@@ -61,6 +55,8 @@
 		showCheckDuplicate?: boolean;
 		onCheckDuplicate?: () => void;
 	}>();
+
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	const countryOptions = $derived(
 		countryData.map((d) => ({
@@ -80,12 +76,12 @@
 			label: d.name ?? String(d.id)
 		}))
 	);
-	const postalCodeOptions = $derived(
-		filteredPostalCodeData.map((d) => ({
-			value: String(d.id),
-			label: String(d.value)
-		}))
-	);
+	const postalCodeDisplay = $derived.by(() => {
+		const row = filteredPostalCodeData.find(
+			(d) => String(d.id) === selectedPostalCodeId
+		);
+		return row?.value != null ? String(row.value) : '';
+	});
 </script>
 
 <div class="flex flex-col gap-4">
@@ -136,7 +132,7 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
-		<label for="city" class="shrink-0 sm:w-36">City</label>
+		<label for="city" class="shrink-0 sm:w-36">{msg.city()}</label>
 		<div class="max-w-80 flex-1">
 			<SearchSelect
 				inputId="city"
@@ -151,15 +147,17 @@
 	<div
 		class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 	>
-		<label for="postal-code" class="shrink-0 sm:w-36">Postal Code</label>
+		<label for="postal-code" class="shrink-0 sm:w-36"
+			>{msg.postal_code()}</label
+		>
 		<div class="max-w-80 flex-1">
-			<SearchSelect
-				inputId="postal-code"
-				bind:value={selectedPostalCodeId}
-				options={postalCodeOptions}
-				placeholder="Select a postal code ..."
-				filterPlaceholder="Search postal code…"
-				disabled={!selectedCity?.id}
+			<WashInputField
+				id="postal-code"
+				value={postalCodeDisplay}
+				inputPlaceholderText={msg.postal_code()}
+				ariaLabel={msg.postal_code()}
+				disabled={true}
+				className="cursor-not-allowed"
 			/>
 		</div>
 	</div>

@@ -1,10 +1,10 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { emailOTP, twoFactor } from 'better-auth/plugins';
+import { bearer, emailOTP, twoFactor } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '$lib/util/id.util';
 import {
 	accountTable,
 	sessionTable,
@@ -15,7 +15,7 @@ import {
 import { renderResetPasswordEmail } from '$lib/asset/email/reset-password';
 import { renderOtpVerificationEmail } from '$lib/asset/email/otp-verification';
 import { sendEmailServer } from '$lib/server/util/mailer.server';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { env } from '$env/dynamic/private';
 import { authLogger } from '$lib/logger';
 
@@ -62,7 +62,7 @@ function resolveBetterAuthSecret(): string {
 }
 
 export const auth = betterAuth({
-	appName: 'Menzies Medora',
+	appName: 'Medora',
 	secret: resolveBetterAuthSecret(),
 	baseURL,
 	trustedOrigins,
@@ -103,12 +103,15 @@ export const auth = betterAuth({
 	advanced: {
 		database: {
 			// Use UUIDv7 for Better Auth ids (stored as text).
-			generateId: () => uuidv7()
+			generateId: () => uuidV7()
 		}
 	},
 	plugins: [
+		bearer(),
 		twoFactor({
-			issuer: 'Menzies Medora'
+			issuer: 'Medora',
+			/** Trusted-device cookie + verification row lifetime (3 days). */
+			trustDeviceMaxAge: 60 * 60 * 24 * 3
 		}),
 		emailOTP({
 			async sendVerificationOTP({ email, otp, type }) {

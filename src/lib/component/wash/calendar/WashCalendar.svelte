@@ -393,11 +393,13 @@
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
+<!-- Keyboard grid: focusable shell for arrow-key month navigation. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	id={rootId}
 	class={shellClass}
-	role="application"
+	role="group"
 	tabindex="0"
 	aria-label={ariaLabel}
 	onkeydown={onKeyDown}

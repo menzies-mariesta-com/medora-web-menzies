@@ -25,7 +25,7 @@
 		createdAt: string;
 		readAt: string | null;
 		hospitalId: string | null;
-		visitId: number | null;
+		visitId: string | null;
 		referHistoryId: number | null;
 		link: string | null;
 	};

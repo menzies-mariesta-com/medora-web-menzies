@@ -75,7 +75,7 @@ export const notificationTable = pgTable('notification', {
 	link: text('link'),
 
 	// Optional references for UI routing
-	visitId: integer('visit_id').references(() => patientVisitTable.id),
+	visitId: uuid('visit_id').references(() => patientVisitTable.id),
 	referHistoryId: integer('refer_history_id').references(
 		() => referHistoryTable.id
 	),

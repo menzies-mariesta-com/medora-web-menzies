@@ -2,6 +2,10 @@ import { StatusColorEnum } from '$lib/model/enum/color.enum';
 import type { ToastInterface } from '$lib/model/interface/toast.interface';
 import { ToastState } from '$lib/state/toast.state.svelte';
 import { toastErrorParts } from '$lib/util/toast-message.util';
+import {
+	sanitizeErrorToastMessage,
+	sanitizeUserFacingErrorText
+} from '$lib/util/user-facing-error.util';
 
 let nextToastId = 1;
 
@@ -20,15 +24,28 @@ export class ToastService {
 	 * @param detail Optional second line (e.g. API message, field hint). Longer toasts stay visible slightly longer.
 	 */
 	addToast(message: string, type: StatusColorEnum, detail?: string) {
+		const isError = type === StatusColorEnum.ERROR;
+		const safeMessage = isError
+			? sanitizeErrorToastMessage(message)
+			: message;
+		const safeDetail = isError
+			? sanitizeUserFacingErrorText(detail) ?? undefined
+			: detail?.trim()
+				? detail.trim()
+				: undefined;
+		// Drop detail when it only repeats the title (common after sanitizing HTML/JSON bodies).
+		const detailOut =
+			safeDetail && safeDetail !== safeMessage ? safeDetail : undefined;
+
 		const newToast: ToastInterface = {
 			id: nextToastId++,
-			message,
+			message: safeMessage,
 			type,
-			...(detail?.trim() ? { detail: detail.trim() } : {})
+			...(detailOut ? { detail: detailOut } : {})
 		};
 		ToastState.push(newToast);
 
-		const ms = detail?.trim() ? 8000 : 5000;
+		const ms = detailOut ? 8000 : 5000;
 		setTimeout(() => this.removeToast(newToast.id), ms);
 	}
 

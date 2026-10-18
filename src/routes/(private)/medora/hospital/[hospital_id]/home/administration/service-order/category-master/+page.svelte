@@ -9,6 +9,7 @@
 	import type { CategoryListRow } from '$lib/model/type/medora/ui-rows.type';
 	import type { PaginatedResult } from '$lib/model/type/pagination.type';
 	import { StatusEnum } from '$lib/model/enum/db-link';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { data } = $props();
 
@@ -43,7 +44,7 @@
 				'content-type': 'application/json'
 			}
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

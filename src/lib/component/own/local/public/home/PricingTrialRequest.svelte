@@ -1,36 +1,53 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import type { SubmitFunction } from '@sveltejs/kit';
 	import LucideCircleCheck from '$lib/component/own/library/lucide/LucideCircleCheck.svelte';
 	import LucideCircleX from '$lib/component/own/library/lucide/LucideCircleX.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { washRecipes } from '@menzies-mariesta-com/menzies-design-wash-ui/core';
 	import { TRIAL_DURATION_OPTIONS } from '$lib/tool/pricing';
 	import { m } from '$lib/paraglide/messages';
 
 	type FormState = {
-		success?: boolean;
-		message?: string;
+		success: boolean;
+		message: string;
 	} | null;
-
-	let { form = null }: { form?: FormState } = $props();
 
 	let submitting = $state(false);
 	let toastGone = $state(false);
 	let duration = $state('7d');
+	let formResult = $state<FormState>(null);
+	let formEl = $state<HTMLFormElement | null>(null);
 
-	const onEnhance: SubmitFunction = () => {
+	async function onSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		if (!formEl || submitting) return;
+
 		submitting = true;
-		return async ({ update }) => {
-			try {
-				await update();
-			} finally {
-				submitting = false;
-			}
-		};
-	};
+		try {
+			const res = await fetch('/api/pricing/trial-request', {
+				method: 'POST',
+				body: new FormData(formEl)
+			});
+			const data = (await res.json()) as {
+				success?: boolean;
+				message?: string;
+			};
+			formResult = {
+				success: Boolean(data.success),
+				message: data.message ?? m.error_action_failed()
+			};
+			if (formResult.success) formEl.reset();
+		} catch {
+			formResult = {
+				success: false,
+				message: m.error_network()
+			};
+		} finally {
+			submitting = false;
+		}
+	}
 
 	$effect(() => {
-		if (form?.message) toastGone = false;
+		if (formResult?.message) toastGone = false;
 	});
 </script>
 
@@ -51,19 +68,19 @@
 				{m.pricing_trial_lead()}
 			</p>
 
-			{#if form?.message && !toastGone}
+			{#if formResult?.message && !toastGone}
 				<div class="toast toast-end toast-bottom z-[100]">
 					<div
 						class="alert shadow-lg"
-						class:alert-success={form.success}
-						class:alert-error={!form.success}
+						class:alert-success={formResult.success}
+						class:alert-error={!formResult.success}
 					>
-						{#if form.success}
+						{#if formResult.success}
 							<LucideCircleCheck className="h-5 w-5 shrink-0" />
 						{:else}
 							<LucideCircleX className="h-5 w-5 shrink-0" />
 						{/if}
-						<span>{form.message}</span>
+						<span>{formResult.message}</span>
 						<button
 							type="button"
 							class="btn btn-ghost btn-xs cursor-pointer"
@@ -77,10 +94,9 @@
 			{/if}
 
 			<form
-				method="POST"
-				action="?/requestTrial"
+				bind:this={formEl}
 				class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2"
-				use:enhance={onEnhance}
+				onsubmit={onSubmit}
 			>
 				<label class="form-control flex w-full flex-col" for="trial-first-name">
 					<span class="label-text mb-1">
@@ -168,20 +184,15 @@
 							aria-hidden="true">*</span
 						>
 					</span>
-					<select
+					<WashSelect
 						id="trial-duration"
 						name="duration"
-						class="select select-bordered w-full cursor-pointer"
+						className="w-full cursor-pointer"
 						bind:value={duration}
 						required
-					>
-						<option value="" disabled
-							>{m.pricing_trial_duration_placeholder()}</option
-						>
-						{#each TRIAL_DURATION_OPTIONS as opt (opt.value)}
-							<option value={opt.value}>{opt.label}</option>
-						{/each}
-					</select>
+						placeholder={m.pricing_trial_duration_placeholder()}
+						options={[...TRIAL_DURATION_OPTIONS]}
+					/>
 				</label>
 
 				<label

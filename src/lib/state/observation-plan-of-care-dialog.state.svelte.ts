@@ -1,5 +1,5 @@
 export const ObservationPlanOfCareDialogState = $state<{
-	visitId: number | null;
+	visitId: string | null;
 	hospitalId: string | null;
 	patientId: string | null;
 	planOfCareId: number | null;

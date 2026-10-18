@@ -64,7 +64,7 @@ export const VisitState = (() => {
 			return clinicalSignedAt != null && clinicalSignedAt !== '';
 		},
 
-		select(data: { visitId: number | string; patientName: string }) {
+		select(data: { visitId: string; patientName: string }) {
 			visitId = String(data.visitId);
 			patientName = data.patientName;
 			if (typeof window !== 'undefined') {

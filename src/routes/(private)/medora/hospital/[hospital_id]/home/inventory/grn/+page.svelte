@@ -19,8 +19,8 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
 	import { InvGrnStatusTaggingEnum } from '$lib/model/enum/db-link';
-
-	const msg = m as Record<string, (inputs?: object) => string>;
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
+const msg = m as Record<string, (inputs?: object) => string>;
 	const dt = new DateTimeUtil();
 
 	const hospitalId = $derived(
@@ -212,11 +212,10 @@
 				}
 			);
 			if (!res.ok) {
-				const t = await res.text();
+				const t = await userFacingDetailFromResponse(res);
 				toastService.addToast(
 					m.inv_grn_transfer_to_requesting(),
-					StatusColorEnum.ERROR,
-					t || String(res.status)
+					StatusColorEnum.ERROR, t
 				);
 				return;
 			}

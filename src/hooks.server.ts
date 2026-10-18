@@ -1,19 +1,36 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { auth } from '$lib/auth/server';
 import { ensureDb } from '$lib/server/db';
 import { userTable } from '$lib/server/db/table/auth-table/auth-table';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { getStaffByUserIdWithRelations } from '$lib/server/medora/administration/staff.server';
+import { getStaffByUserIdWithRelationsCached } from '$lib/server/medora/staff-session-cache.server';
 import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
 import { RoleEnum } from '$lib/model/enum/db-link';
 import { rejectMutatingMedoraApiWithoutTwoFactor } from '$lib/server/medora/auth/require-two-factor-for-mutation.server';
 import { loadAdminPagePermissions } from '$lib/server/medora/admin/admin-permission.server';
 import { redirect } from '@sveltejs/kit';
+import { applySecurityHeaders } from '$lib/server/http/security-headers.server';
+import {
+	applyCorsToResponse,
+	optionsPreflightResponse
+} from '$lib/server/http/cors-patient-api.server';
+import { getPatientByUserId } from '$lib/server/medora/patient-portal/patient-session.server';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
+
+	if (
+		event.request.method === 'OPTIONS' &&
+		(pathname.startsWith('/api/patient/') ||
+			pathname.startsWith('/api/auth'))
+	) {
+		return applySecurityHeaders(
+			optionsPreflightResponse(event.request),
+			event
+		);
+	}
 	if (pathname === '/heka' || pathname.startsWith('/heka/')) {
 		const rest = pathname === '/heka' ? '' : pathname.slice('/heka'.length);
 		throw redirect(302, `/medora${rest}${event.url.search}`);
@@ -40,7 +57,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const [userRow] = await ensureDb()
 			.select({
 				roleId: userTable.roleId,
-				twoFactorEnabled: userTable.twoFactorEnabled
+				twoFactorEnabled: userTable.twoFactorEnabled,
+				mustChangePassword: userTable.mustChangePassword
 			})
 			.from(userTable)
 			.where(eq(userTable.id, session.user.id))
@@ -48,6 +66,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		event.locals.twoFactorEnabled = Boolean(
 			userRow?.twoFactorEnabled
+		);
+		event.locals.mustChangePassword = Boolean(
+			userRow?.mustChangePassword
 		);
 		if (event.locals.userRoleId === RoleEnum.ADMIN_TEAM) {
 			try {
@@ -63,10 +84,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.adminPermissions = undefined;
 		}
 		let staff: Awaited<
-			ReturnType<typeof getStaffByUserIdWithRelations>
+			ReturnType<typeof getStaffByUserIdWithRelationsCached>
 		> | null = null;
 		try {
-			staff = await getStaffByUserIdWithRelations(session.user.id);
+			staff = await getStaffByUserIdWithRelationsCached(
+				session.user.id
+			);
 		} catch (err) {
 			console.error('[staff] Failed to load staff by user id', err);
 			staff = null;
@@ -82,10 +105,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} else {
 			event.locals.allowedHospitalIds = null;
 		}
+
+		if (
+			event.locals.userRoleId === RoleEnum.PATIENT ||
+			!event.locals.staff
+		) {
+			try {
+				event.locals.patient =
+					(await getPatientByUserId(session.user.id)) ?? null;
+			} catch (err) {
+				console.error('[patient] Failed to load patient by user id', err);
+				event.locals.patient = null;
+			}
+		} else {
+			event.locals.patient = null;
+		}
 	}
 
 	const twoFactorGate = rejectMutatingMedoraApiWithoutTwoFactor(event);
-	if (twoFactorGate) return twoFactorGate;
+	if (twoFactorGate) return applySecurityHeaders(twoFactorGate, event);
 
 	const basePath =
 		(auth as { options?: { basePath?: string } }).options?.basePath ??
@@ -98,7 +136,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		!building &&
 		(pathname === basePath || pathname.startsWith(authPrefix))
 	) {
-		return auth.handler(event.request);
+		const authResponse = await auth.handler(event.request);
+		const withCors = applyCorsToResponse(authResponse, event.request);
+		return applySecurityHeaders(withCors, event);
 	}
 
 	return paraglideMiddleware(
@@ -114,7 +154,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 			return resolve(event, {
 				transformPageChunk: ({ html }) =>
 					html.replace('%paraglide.lang%', locale)
-			});
+			}).then((response) => applySecurityHeaders(response, event));
 		}
 	);
+};
+
+export const handleError: HandleServerError = ({
+	error,
+	event,
+	status,
+	message
+}) => {
+	console.error('[handleError]', {
+		url: event.url.pathname,
+		status,
+		message,
+		error
+	});
+	return { message: message || 'Unexpected error' };
 };

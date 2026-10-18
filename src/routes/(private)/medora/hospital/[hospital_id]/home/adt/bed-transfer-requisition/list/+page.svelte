@@ -20,6 +20,7 @@
 	import { ToastService } from '$lib/service/toast.service.svelte';
 	import { LifeCycleUtil } from '$lib/util/life-cycle.util.svelte';
 	import { RouterUtil } from '$lib/util/router.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -121,7 +122,7 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const result =
 				(await res.json()) as PaginatedResult<AdtTransferReqRow>;
 			let data = result.data ?? [];
@@ -156,7 +157,7 @@
 				credentials: 'include',
 				body: JSON.stringify({ action, id })
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				action === 'complete' ? 'Transfer completed' : 'Cancelled',
 				StatusColorEnum.SUCCESS

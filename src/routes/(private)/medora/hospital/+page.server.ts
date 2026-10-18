@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
-import { AppEnum } from '$lib/model/enum/app.enum';
+
+const CHOOSER_PAGE_SIZE = 24;
 
 export const load: PageServerLoad = async ({ locals, fetch }) => {
 	const userRoleId = locals.userRoleId ?? null;
@@ -10,10 +11,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
 	const url = new URL('/api/medora/hospital', 'http://internal');
 	url.searchParams.set('page', '1');
-	url.searchParams.set(
-		'pageSize',
-		String(AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE)
-	);
+	url.searchParams.set('pageSize', String(CHOOSER_PAGE_SIZE));
 	url.searchParams.set('statusId', String(StatusEnum.ACTIVE));
 	if (ownerId != null) url.searchParams.set('ownerId', ownerId);
 
@@ -23,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 			initialHospitals: [],
 			initialTotal: 0,
 			initialPage: 1,
-			initialPageSize: AppEnum.DEFAULT_PAGE_SIZE_FOR_TABLE,
+			initialPageSize: CHOOSER_PAGE_SIZE,
 			initialTotalPages: 1
 		};
 	}

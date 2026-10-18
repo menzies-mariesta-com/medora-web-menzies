@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as obs from '$lib/server/medora/observation/observation-emr.server';
+import { parseUuid } from '$lib/util/id.util';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -16,10 +17,8 @@ export async function GET(event: RequestEvent) {
 
 	switch (mode) {
 		case 'visit.get': {
-			const visitId = Number(
-				event.url.searchParams.get('visitId') ?? '0'
-			);
-			if (!Number.isFinite(visitId) || visitId <= 0)
+			const visitId = parseUuid(event.url.searchParams.get('visitId'));
+			if (!visitId)
 				throw error(400, 'visitId is required');
 			return json(
 				await obs.getPatientVisitById({ id: visitId, hospitalId })
@@ -95,11 +94,11 @@ export async function POST(event: RequestEvent) {
 			return json(await obs.createAllergyMaster({ name }));
 		}
 		case 'patientAllergy.create': {
-			const visitId = Number(body?.visitId);
+			const visitId = parseUuid(body?.visitId);
 			const patientId = String(body?.patientId ?? '').trim();
 			const allergyId = Number(body?.allergyId);
 			const severityId = Number(body?.severityId);
-			if (!Number.isFinite(visitId) || visitId <= 0) {
+			if (!visitId) {
 				throw error(400, 'visitId is required');
 			}
 			if (!patientId) throw error(400, 'patientId is required');

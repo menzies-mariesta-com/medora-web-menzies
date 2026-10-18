@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialog from '$lib/component/wash/dialog/WashDialog.svelte';
 	import WashToast from '$lib/component/wash/toast/WashToast.svelte';
 	import { gsapAnimate } from '$lib/action/gsap.action.svelte';
-	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import { DialogVariantEnum } from '$lib/model/enum/dialog.enum';
 	import type { DialogTone } from '$lib/model/interface/dialog.interface';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
@@ -34,13 +32,8 @@
 		page.url.searchParams.get('embed') === '1'
 	);
 
-	/** FAB only in private medora app; hidden on marketing, auth, onboarding, pricing. */
-	const showQuickTool = $derived(
-		!isEmbed && page.url.pathname.startsWith('/medora')
-	);
-
-	/** Dynamic paths from Paraglide are `string`; widen for `resolve` typing. */
-	const resolvePathname = resolve as (pathname: string) => string;
+	/** Quick tools on every shell; hidden only for embedded views. */
+	const showQuickTool = $derived(!isEmbed);
 
 	lifeCycleUtil.onMount(() => {
 		washThemeTool.boot();
@@ -50,6 +43,7 @@
 		FontState.font = fontTool.getFont();
 	});
 	lifeCycleUtil.onDestroy(() => {
+		fontTool.destroy();
 		washThemeTool.destroy();
 	});
 
@@ -84,7 +78,7 @@
 	{@render children()}
 </div>
 
-<!-- Floating Action Button (private medora only; still hidden when embed=1) -->
+<!-- Floating Action Button (hidden when embed=1) -->
 {#if showQuickTool}
 	<GQuickTool />
 {/if}
@@ -122,6 +116,7 @@
 		boxClassName={DialogState.current.modalClassName}
 		showActions={!dialogOwnsActions}
 		showDefaultClose={false}
+		closeOnOutsideClick={DialogState.current.closeOnOutsideClick !== false}
 	>
 		{#snippet layer()}
 			{#if ToastState.length > 0}
@@ -194,16 +189,3 @@
 		{/snippet}
 	</WashDialog>
 {/if}
-
-<!-- Language -->
-<div style="display:none">
-	{#each locales as locale (locale)}
-		<a
-			href={resolvePathname(
-				localizeHref(page.url.pathname, { locale })
-			)}
-		>
-			{locale}
-		</a>
-	{/each}
-</div>

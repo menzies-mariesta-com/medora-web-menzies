@@ -12,25 +12,25 @@
 >
 	<nav>
 		<h6 class="footer-title">{m.services()}</h6>
-		<a class="link-hover" href="#">{m.branding()}</a>
-		<a class="link-hover" href="#">{m.design()}</a>
-		<a class="link-hover" href="#">{m.marketing()}</a>
-		<a class="link-hover" href="#">{m.advertisement()}</a>
+		<span class="link-hover">{m.branding()}</span>
+		<span class="link-hover">{m.design()}</span>
+		<span class="link-hover">{m.marketing()}</span>
+		<span class="link-hover">{m.advertisement()}</span>
 	</nav>
 
 	<nav>
 		<h6 class="footer-title">{m.services()}</h6>
-		<a class="link-hover" href="#">{m.branding()}</a>
-		<a class="link-hover" href="#">{m.design()}</a>
-		<a class="link-hover" href="#">{m.marketing()}</a>
-		<a class="link-hover" href="#">{m.advertisement()}</a>
+		<span class="link-hover">{m.branding()}</span>
+		<span class="link-hover">{m.design()}</span>
+		<span class="link-hover">{m.marketing()}</span>
+		<span class="link-hover">{m.advertisement()}</span>
 	</nav>
 	<nav>
 		<h6 class="footer-title">{m.services()}</h6>
-		<a class="link-hover" href="#">{m.branding()}</a>
-		<a class="link-hover" href="#">{m.design()}</a>
-		<a class="link-hover" href="#">{m.marketing()}</a>
-		<a class="link-hover" href="#">{m.advertisement()}</a>
+		<span class="link-hover">{m.branding()}</span>
+		<span class="link-hover">{m.design()}</span>
+		<span class="link-hover">{m.marketing()}</span>
+		<span class="link-hover">{m.advertisement()}</span>
 	</nav>
 </WashFooter>
 

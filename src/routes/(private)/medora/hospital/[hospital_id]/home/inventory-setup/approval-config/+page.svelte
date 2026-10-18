@@ -300,23 +300,31 @@
 			actionsVariant="none"
 		>
 			{#snippet headerActions()}
-				<label class="form-control w-full max-w-xs">
-					<div class="label py-0">
+				<div class="form-control w-full max-w-xs">
+					<label for="a11y-page-e19402" class="label py-0">
 						<span class="label-text text-xs">{m.inv_common_store()}</span>
-					</div>
-					<WashSelect className="select-sm" bind:value={storeId}>
+					</label>
+					<WashSelect
+						className="select-sm"
+						bind:value={storeId}
+						id="a11y-page-e19402"
+					>
 						{#each stores as s (s.id)}
 							<option value={s.id}>{s.storeName ?? s.id}</option>
 						{/each}
 					</WashSelect>
-				</label>
-				<label class="form-control w-full max-w-sm min-w-48">
-					<div class="label py-0">
+				</div>
+				<div class="form-control w-full max-w-sm min-w-48">
+					<label for="a11y-page-4f4461" class="label py-0">
 						<span class="label-text text-xs"
 							>{m.inv_approval_config_module_label()}</span
 						>
-					</div>
-					<WashSelect className="select-sm" bind:value={module}>
+					</label>
+					<WashSelect
+						className="select-sm"
+						bind:value={module}
+						id="a11y-page-4f4461"
+					>
 						<option value="PR"
 							>{m.inv_approval_config_module_pr()}</option
 						>
@@ -339,7 +347,7 @@
 							>{m.inv_approval_config_module_dc()}</option
 						>
 					</WashSelect>
-				</label>
+				</div>
 			{/snippet}
 			{#snippet rowActions(row, rowIndex)}
 				<div data-row-index={rowIndex}>
@@ -380,9 +388,9 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">Is Required</label>
+									<label class="shrink-0 sm:w-36" for="a11y-page-7ceaaf">Is Required</label>
 									<div class="flex max-w-80 flex-1 items-center">
-										<WashCheckbox bind:checked={isRequiredInput} />
+										<WashCheckbox bind:checked={isRequiredInput} id="a11y-page-7ceaaf" />
 									</div>
 								</div>
 							</div>
@@ -414,8 +422,8 @@
 								</div>
 
 								<div class="mt-2">
-									<label class="text-xs mb-1.5 opacity-70">Add Assignee</label>
-									<SearchSelect
+									<label class="text-xs mb-1.5 opacity-70" for="a11y-page-631cc2">Add Assignee</label>
+									<SearchSelect inputId="a11y-page-631cc2"
 										placeholder="Search staff by name or code..."
 										className="input-sm w-full"
 										searchFn={async (q) => {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { StatusEnum } from '$lib/model/enum/db-link';
@@ -30,6 +31,12 @@
 		MedicationOrderMastersResponse,
 		StoreSearchRow
 	} from '$lib/model/type/medora/medication-order.type';
+	import type {
+		ClinicalOrderSetRow,
+		CdsScreenResult,
+		PrescribingAlertRow
+	} from '$lib/model/type/medora/clinical-platform.type';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const msg = m as Record<string, (inputs?: object) => string>;
 	const toastService = new ToastService();
@@ -43,7 +50,7 @@
 			: ''
 	);
 	const visitIdStr = $derived(VisitState.visitId);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const readOnly = $derived(VisitState.isClinicalVisitReadOnly);
 	const apiBase = $derived(
 		hospitalId
@@ -100,6 +107,12 @@
 	}
 
 	let medicationLines = $state<DraftLine[]>([blankLine()]);
+	let orderSets = $state<ClinicalOrderSetRow[]>([]);
+	let selectedOrderSetId = $state('');
+	let pendingCds = $state<CdsScreenResult | null>(null);
+	let pendingBatchId = $state<number | null>(null);
+	let cdsOverrideReason = $state('');
+	let isOverridingCds = $state(false);
 
 	const activeNotes = $derived(
 		notes.filter(
@@ -122,7 +135,7 @@
 			url.searchParams.set(k, v);
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -135,7 +148,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...body })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -179,6 +192,64 @@
 			'medication.masters',
 			{}
 		);
+		orderSets = await apiGet<ClinicalOrderSetRow[]>('orderSet.list', {});
+	}
+
+	async function applyOrderSet() {
+		const id = Number(selectedOrderSetId);
+		if (!Number.isFinite(id) || id <= 0) return;
+		const detail = await apiGet<{
+			lines: { lineType: string; payloadJson: Record<string, unknown> }[];
+		}>('orderSet.get', { id: String(id) });
+		const medLines = detail.lines.filter((l) => l.lineType === 'medication');
+		for (const l of medLines) {
+			const p = l.payloadJson;
+			medicationLines = [
+				...medicationLines.filter((x) => x.itemMasterId),
+				{
+					...blankLine(),
+					itemMasterId: String(p.itemMasterId ?? ''),
+					dose: String(p.dose ?? ''),
+					doseUnitId: String(p.doseUnitId ?? ''),
+					frequencyId: String(p.frequencyId ?? ''),
+					durationValue: String(p.durationValue ?? ''),
+					durationUnitId: String(p.durationUnitId ?? ''),
+					formId: String(p.formId ?? ''),
+					routeId: String(p.routeId ?? ''),
+					orderTypeId: String(p.orderTypeId ?? ''),
+					foodRelationId: String(p.foodRelationId ?? ''),
+					lineRemarks: String(p.lineRemarks ?? '')
+				}
+			];
+		}
+		if (medicationLines.length === 0) medicationLines = [blankLine()];
+		toastService.addToast(
+			msg.clinical_apply_order_set(),
+			StatusColorEnum.SUCCESS
+		);
+	}
+
+	async function confirmCdsOverride() {
+		if (!pendingCds || pendingBatchId == null) return;
+		isOverridingCds = true;
+		try {
+			await apiPost('medication.overrideAlerts', {
+				alertIds: pendingCds.alerts.map((a: PrescribingAlertRow) => a.id),
+				reasonCode: 'clinical_judgment',
+				remark: cdsOverrideReason.trim()
+			});
+			pendingCds = null;
+			pendingBatchId = null;
+			cdsOverrideReason = '';
+			medicationLines = [blankLine()];
+			toastSuccess(
+				toastService,
+				msg.clinical_cds_alerts_title(),
+				msg.clinical_cds_override()
+			);
+		} finally {
+			isOverridingCds = false;
+		}
 	}
 
 	async function searchStores(query: string) {
@@ -230,7 +301,10 @@
 		}
 		isSavingDraft = true;
 		try {
-			await apiPost('medication.createDraft', {
+			const batch = await apiPost<{
+				id: number;
+				cds?: CdsScreenResult;
+			}>('medication.createDraft', {
 				visitId,
 				storeId: Number(storeId),
 				lines: medicationLines.map((line) => ({
@@ -254,6 +328,15 @@
 					lineRemarks: line.lineRemarks.trim() || null
 				}))
 			});
+			if (batch.cds?.hasBlocking) {
+				pendingCds = batch.cds;
+				pendingBatchId = batch.id;
+				toastService.addToast(
+					msg.clinical_cds_alerts_title(),
+					StatusColorEnum.WARNING
+				);
+				return;
+			}
 			medicationLines = [blankLine()];
 			toastService.addToast(
 				msg.mo_clinical_medication_created(),
@@ -406,20 +489,71 @@
 					message={m.no_visit_selected()}
 				/>
 			{:else}
+				{#if orderSets.length}
+					<div class="flex flex-wrap items-end gap-2">
+						<div class="min-w-[12rem] flex-1">
+							<label class="text-sm" for="order-set-select"
+								>{msg.clinical_apply_order_set()}</label
+							>
+							<WashSelect
+								id="order-set-select"
+								className="select-sm w-full"
+								placeholder={msg.clinical_apply_order_set()}
+								options={orderSets.map((o) => ({
+									value: String(o.id),
+									label: o.name
+								}))}
+								value={selectedOrderSetId}
+								onChange={(v) => (selectedOrderSetId = v ?? '')}
+								disabled={readOnly}
+							/>
+						</div>
+						<WashButton
+							type="button"
+							className="btn-sm btn-secondary cursor-pointer"
+							disabled={readOnly || !selectedOrderSetId}
+							onclick={() => void applyOrderSet()}
+						>
+							{msg.clinical_apply_order_set()}
+						</WashButton>
+					</div>
+				{/if}
+				{#if pendingCds?.alerts?.length}
+					<div class="alert alert-warning">
+						<div class="flex w-full flex-col gap-2">
+							<p class="font-bold">{msg.clinical_cds_alerts_title()}</p>
+							<ul class="list-inside list-disc text-sm">
+								{#each pendingCds.alerts as alert (alert.id)}
+									<li>{alert.message}</li>
+								{/each}
+							</ul>
+							<WashTextarea
+								className="textarea-sm"
+								placeholder={msg.clinical_cds_override()}
+								bind:value={cdsOverrideReason}
+							/>
+							<WashButton
+								type="button"
+								className="btn-sm btn-primary cursor-pointer"
+								loading={isOverridingCds}
+								disabled={isOverridingCds || !cdsOverrideReason.trim()}
+								onclick={() => void confirmCdsOverride()}
+							>
+								{msg.clinical_cds_override()}
+							</WashButton>
+						</div>
+					</div>
+				{/if}
 				<div class="grid gap-3 md:grid-cols-2">
-					<label class="flex flex-col gap-1 text-sm">
-						<span>
+					<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-0ccee6"><span>
 							{msg.mo_clinical_dispensing_store()}
 							<span class="text-error">*</span>
-						</span>
-						<SearchSelect
+						</span></label> <SearchSelect
 							bind:value={storeId}
 							placeholder={msg.mo_clinical_search_store()}
 							searchFn={searchStores}
 							minSearchLength={0}
-							disabled={readOnly || isSavingDraft}
-						/>
-					</label>
+							disabled={readOnly || isSavingDraft} inputId="a11y-page-0ccee6" /></div>
 				</div>
 
 				<div class="flex flex-col gap-3">
@@ -443,60 +577,47 @@
 								</WashButton>
 							</div>
 							<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-								<label
+								<div 
 									class="flex flex-col gap-1 text-sm md:col-span-2"
-								>
-									<span>
+								><label for="a11y-page-114776"><span>
 										{msg.mo_clinical_item()}
 										<span class="text-error">*</span>
-									</span>
-									<SearchSelect
+									</span></label> <SearchSelect
 										bind:value={line.itemMasterId}
 										placeholder={msg.mo_clinical_search_medication()}
 										searchFn={searchMedicationItems}
 										minSearchLength={0}
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} inputId="a11y-page-114776" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-cf3b2d"><span>
 										{msg.mo_clinical_dose()}
 										<span class="text-error">*</span>
-									</span>
-									<WashInputField
+									</span></label> <WashInputField
 										bind:value={line.dose}
 										inputType="text"
 										inputPlaceholderText={msg.mo_clinical_dose_placeholder()}
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} id="a11y-page-cf3b2d" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-6dcd71"><span>
 										{msg.mo_clinical_dose_unit()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.doseUnitId}
 										placeholder={msg.mo_clinical_choose_unit()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-6dcd71">
 										{#each masters?.doseUnits ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-f88662"><span>
 										{msg.mo_clinical_frequency()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.frequencyId}
 										placeholder={msg.mo_clinical_choose_frequency()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-f88662">
 										{#each masters?.freqs ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.label ??
@@ -504,108 +625,80 @@
 													'–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-ce2777"><span>
 										{msg.mo_clinical_duration()}
 										<span class="text-error">*</span>
-									</span>
-									<WashInputField
+									</span></label> <WashInputField
 										bind:value={line.durationValue}
 										inputType="number"
 										inputPlaceholderText={msg.mo_clinical_duration()}
 										min="1"
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>
+										disabled={readOnly || isSavingDraft} id="a11y-page-ce2777" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-2fdfd3"><span>
 										{msg.mo_clinical_duration_unit()}
 										<span class="text-error">*</span>
-									</span>
-									<WashSelect
+									</span></label> <WashSelect
 										bind:value={line.durationUnitId}
 										placeholder={msg.mo_clinical_choose_unit()}
 										disabled={readOnly || isSavingDraft}
-									>
+									 id="a11y-page-2fdfd3">
 										{#each masters?.durUnits ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? option.code}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_start()}</span>
-									<WashInputField
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-e365a5"><span>{msg.mo_clinical_start()}</span></label> <WashInputField
 										bind:value={line.startAt}
 										inputType="datetime-local"
-										disabled={readOnly || isSavingDraft}
-									/>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_form()}</span>
-									<WashSelect
+										disabled={readOnly || isSavingDraft} id="a11y-page-e365a5" /></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-5a3b39"><span>{msg.mo_clinical_form()}</span></label> <WashSelect
 										bind:value={line.formId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-5a3b39">
 										{#each masters?.forms ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_route()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-60413d"><span>{msg.mo_clinical_route()}</span></label> <WashSelect
 										bind:value={line.routeId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-60413d">
 										{#each masters?.routes ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_order_type()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-def32a"><span>{msg.mo_clinical_order_type()}</span></label> <WashSelect
 										bind:value={line.orderTypeId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-def32a">
 										{#each masters?.orderTypes ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label class="flex flex-col gap-1 text-sm">
-									<span>{msg.mo_clinical_food_relation()}</span>
-									<WashSelect
+									</WashSelect></div>
+								<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-064288"><span>{msg.mo_clinical_food_relation()}</span></label> <WashSelect
 										bind:value={line.foodRelationId}
 										placeholder={msg.mo_clinical_optional()}
-									>
+									 id="a11y-page-064288">
 										{#each masters?.foodRels ?? [] as option (option.id)}
 											<option value={String(option.id)}
 												>{option.name ?? '–'}</option
 											>
 										{/each}
-									</WashSelect>
-								</label>
-								<label
+									</WashSelect></div>
+								<div 
 									class="flex flex-col gap-1 text-sm md:col-span-2"
-								>
-									<span>{msg.mo_clinical_remarks()}</span>
-									<WashInputField
+								><label for="a11y-page-7bb2a3"><span>{msg.mo_clinical_remarks()}</span></label> <WashInputField
 										bind:value={line.lineRemarks}
 										inputType="text"
-										inputPlaceholderText={msg.mo_clinical_optional_instructions()}
-									/>
-								</label>
+										inputPlaceholderText={msg.mo_clinical_optional_instructions()} id="a11y-page-7bb2a3" /></div>
 							</div>
 						</fieldset>
 					{/each}

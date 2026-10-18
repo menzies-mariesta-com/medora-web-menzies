@@ -21,14 +21,13 @@ export async function assertPatientCanOpenNewVisit(input: {
 	hospitalId: string;
 	patientId: string;
 	/** Unfinished OPD visit being converted to IPD via ADT Admission */
-	convertFromOpdVisitId?: number;
+	convertFromOpdVisitId?: string;
 }): Promise<void> {
 	const db = ensureDb();
 	const convertId =
-		typeof input.convertFromOpdVisitId === 'number' &&
-		Number.isFinite(input.convertFromOpdVisitId) &&
-		input.convertFromOpdVisitId > 0
-			? input.convertFromOpdVisitId
+		typeof input.convertFromOpdVisitId === 'string' &&
+		input.convertFromOpdVisitId.trim() !== ''
+			? input.convertFromOpdVisitId.trim()
 			: undefined;
 
 	if (convertId != null) {

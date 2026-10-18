@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashAlert from '$lib/component/wash/alert/WashAlert.svelte';
 	import type {
@@ -30,12 +31,16 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail
+	} from '$lib/util/user-facing-error.util';
 
 	let datetimeUtil = new DateTimeUtil();
 
 	type VisitTableRow = {
 		id: number;
-		visitId: number;
+		visitId: string;
 		visitNo: string;
 		visitDateLabel: string;
 		doctorName: string;
@@ -63,7 +68,7 @@
 	const visitIdStr = $derived(
 		page.url.searchParams.get('visitId') ?? ''
 	);
-	const visitId = $derived(visitIdStr ? Number(visitIdStr) : 0);
+	const visitId = $derived(parseUuid(visitIdStr) ?? '');
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 
 	let visitRow = $state<PatientVisitWithRelationsLite | null>(null);
@@ -219,31 +224,13 @@
 		}
 	}
 
-	function parseApiErrorMessage(text: string, status: number): string {
-		const trimmed = text.trim();
-		if (!trimmed) return resStatusFallback(status);
-		try {
-			const parsed = JSON.parse(trimmed) as { message?: string };
-			if (parsed.message?.trim()) return parsed.message.trim();
-		} catch {
-			// plain text body from SvelteKit error()
-		}
-		if (trimmed.length <= 200 && !trimmed.startsWith('<')) {
-			return trimmed;
-		}
-		return resStatusFallback(status);
-	}
-
-	function resStatusFallback(status: number): string {
-		if (status === 404) return m.observation_emr_visit_not_found();
-		return `Request failed (${status})`;
-	}
-
 	async function apiFetch<T>(url: string): Promise<T> {
 		const res = await fetch(url);
 		if (!res.ok) {
-			const text = await res.text().catch(() => '');
-			throw new Error(parseApiErrorMessage(text, res.status));
+			if (res.status === 404) {
+				throw new Error(m.observation_emr_visit_not_found());
+			}
+			await throwUserFacingHttpError(res);
 		}
 		return (await res.json()) as T;
 	}
@@ -340,10 +327,9 @@
 			});
 		} catch (err) {
 			if (seq !== loadSeq || visitIdValue !== visitId) return;
+			console.error(err);
 			loadError =
-				err instanceof Error
-					? err.message
-					: 'Failed to load dashboard.';
+				toUserFacingErrorDetail(err) ?? m.error_load_failed();
 		} finally {
 			if (seq === loadSeq) isLoading = false;
 		}

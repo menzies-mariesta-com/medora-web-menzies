@@ -14,7 +14,7 @@
 	} = $props<{
 		hospitalId: string | undefined;
 		onVisitSelected: (data: {
-			visitId: number;
+			visitId: string;
 			patientName: string;
 		}) => void;
 		label?: string;
@@ -24,12 +24,14 @@
 	async function handleClick() {
 		if (!hospitalId) return;
 		const result = await dialogService.open<{
-			visitId: number;
+			visitId: string;
 			patientName: string;
 		}>({
-			title: m.choose_visit(),
+			// Title lives on MenziesTable inside the picker (no double header).
+			title: '',
 			component: LVisitListDialogContent,
-			fullScreen: true
+			fullScreen: true,
+			props: { title: m.choose_visit() }
 		});
 		if (result?.confirmed && result.data) {
 			onVisitSelected(result.data);

@@ -2,6 +2,7 @@
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { ConsumptionDraftLineIum } from '$lib/model/type/medora/department-consumption-detail.type';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { issueQtyToPurchaseQtyNumber } from '$lib/tool/inventory/purchase-issue-qty-convert.util';
@@ -264,27 +265,24 @@
 			<label for="inv-reorder-level-ium" class="font-semibold">
 				{m.inv_common_unit()}
 			</label>
-			<select
+			<WashSelect
 				id="inv-reorder-level-ium"
-				class="select-bordered select w-full"
+				className="w-full"
 				disabled={iumsLoading ||
 					submitting ||
 					!itemValid ||
 					iumList.length === 0}
 				value={itemUnitMasterId != null ? String(itemUnitMasterId) : ''}
-				onchange={(e) => {
-					const v = (e.currentTarget as HTMLSelectElement).value;
+				placeholder={m.inv_common_unit()}
+				options={iumList.map((u) => ({
+					value: String(u.id),
+					label: u.conversionDisplay ?? `#${u.id}`
+				}))}
+				onChange={(v) => {
 					itemUnitMasterId = v ? Number(v) : null;
 					touched = true;
 				}}
-			>
-				<option value="">—</option>
-				{#each iumList as u (u.id)}
-					<option value={String(u.id)}
-						>{u.conversionDisplay ?? `#${u.id}`}</option
-					>
-				{/each}
-			</select>
+			/>
 			{#if touched && !iumValid && itemValid}
 				<p class="text-sm text-error">{m.toast_field_required()}</p>
 			{/if}

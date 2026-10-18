@@ -6,7 +6,7 @@ import * as table from '$lib/server/db/schema';
 
 async function assertVisitInHospital(
 	hospitalId: string,
-	visitId: number
+	visitId: string
 ): Promise<void> {
 	const [visit] = await ensureDb()
 		.select({ id: table.patientVisitTable.id })
@@ -23,7 +23,7 @@ async function assertVisitInHospital(
 
 export async function listResults(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }) {
 	const db = ensureDb();
 	const common = (
@@ -62,7 +62,7 @@ export async function listResults(input: {
 export async function saveLabResult(input: {
 	id?: number;
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	serviceOrderDetailId?: number | null;
 	resultText: string;
 	resultJson?: string | null;
@@ -96,7 +96,7 @@ export async function saveLabResult(input: {
 export async function saveImagingResult(input: {
 	id?: number;
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	serviceOrderDetailId?: number | null;
 	findings: string;
 	attachmentUrl?: string | null;

@@ -38,6 +38,15 @@ export function gsapAnimate(
 			? { type: params as GsapActionType }
 			: params;
 	if (opts?.enabled === false) return {};
+
+	/** Skip motion when the user prefers reduced motion. */
+	if (
+		typeof window !== 'undefined' &&
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches
+	) {
+		return {};
+	}
+
 	const type = opts?.type ?? 'fadeUp';
 	const duration = opts?.duration ?? GSAP_DURATION;
 	const delay = opts?.delay ?? 0;

@@ -32,7 +32,7 @@ export type MedicationOrderBatchSaveResponse = {
 	batch: {
 		id: number;
 		batchNo: string;
-		visitId: number | null;
+		visitId: string | null;
 		storeId: number;
 	};
 	batchNo: string;
@@ -58,7 +58,7 @@ export type StoreSearchRow = { id: number; storeName: string | null };
 export type MedicationOrderBatchHistoryRow = {
 	id: number;
 	hospitalId: string;
-	visitId: number | null;
+	visitId: string | null;
 	visitNo: string | null;
 	storeId: number;
 	extCustomerName: string | null;
@@ -71,6 +71,9 @@ export type MedicationOrderBatchHistoryRow = {
 	createdByName: string | null;
 	updatedByName: string | null;
 	lineCount: number;
+	/** Present on external sales list when payment row exists. */
+	isPaid?: boolean;
+	receiptNo?: string | null;
 };
 
 export type ItemNamePriceRow = {
@@ -118,27 +121,11 @@ export type MedicationOrderBatchDetailResponse = {
 	lines: Record<string, unknown>[];
 	allocations: MedicationOrderLineAllocationRow[];
 	payment: MedicationOrderBatchPaymentRow | null;
-};
-
-export type MedicationOrderCheckoutResponse = {
-	receiptNo: string;
-	amountDue: string;
-	amountPaid: string;
-	paymentMethod: string;
-	paidAt: string;
-	batch: {
-		id: number;
-		batchNo: string;
-		extCustomerName: string | null;
-		advisingDoctor: string | null;
-		storeId: number;
-	};
-	lines: Array<{
-		itemName: string | null;
-		qtyOut: string;
-		unitSalePrice: string;
-		lineTotal: string;
-	}>;
+	opBillClosed?: boolean;
+	billingLocked?: boolean;
+	visitNo?: string | null;
+	patientId?: string | null;
+	patientCode?: string | null;
 };
 
 /** UI draft line extensions for sale workspace */

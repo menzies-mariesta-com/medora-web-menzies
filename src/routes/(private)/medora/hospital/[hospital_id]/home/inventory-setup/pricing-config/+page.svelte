@@ -380,7 +380,7 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-				<label class="shrink-0 sm:w-40">{m.inv_pricing_config_branch()}</label>
+				<span  class="shrink-0 sm:w-40">{m.inv_pricing_config_branch()}</span>
 				<div class="max-w-md flex-1">
 					{#if branchSelectDisabled && lockedBranchLabel}
 						<p class="text-sm">{lockedBranchLabel}</p>
@@ -428,13 +428,12 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="shrink-0 sm:w-40">{m.inv_pricing_assignment_template()}</label>
+					<label class="shrink-0 sm:w-40" for="a11y-page-a5e39c">{m.inv_pricing_assignment_template()}</label>
 					<div class="max-w-lg flex-1">
 						<SearchSelect
 							bind:value={templateIdStr}
 							options={templateOptions}
-							placeholder={m.inv_pricing_assignment_template_placeholder()}
-						/>
+							placeholder={m.inv_pricing_assignment_template_placeholder()} inputId="a11y-page-a5e39c" />
 					</div>
 				</div>
 

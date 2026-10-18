@@ -18,6 +18,7 @@
 	import { AppEnum } from '$lib/model/enum/app.enum';
 	import { StringUtil } from '$lib/util/string.util.svelte';
 	import { AdmitToIpdDialogState } from '$lib/state/admit-to-ipd-dialog.state.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 	const toastService = new ToastService();
@@ -126,7 +127,7 @@
 			const res = await fetch(`${wardApi}?${qs}`, {
 				credentials: 'include'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			wards = (await res.json()) as WardRow[];
 		} catch (e) {
 			toastService.addToast(

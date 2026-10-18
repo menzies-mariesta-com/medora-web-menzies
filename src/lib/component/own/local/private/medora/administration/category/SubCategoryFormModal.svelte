@@ -2,6 +2,7 @@
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { SubCategoryModalState } from '$lib/state/sub-category-modal.state.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
@@ -10,6 +11,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -42,7 +44,7 @@
 				'content-type': 'application/json'
 			}
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -149,22 +151,20 @@
 						>Category <span class="text-error">*</span></label
 					>
 					<div class="max-w-80 flex-1">
-						<select
+						<WashSelect
 							id="sc-category"
 							bind:value={formCategoryId}
-							class="select-bordered select select-sm w-full"
+							className="select-sm w-full"
 							required
-						>
-							<option value="">Select category…</option>
-							{#if modalState.categoryOptions?.length}
-								{#each modalState.categoryOptions as cat (cat.id)}
-									<option value={cat.id}
-										>{cat.categoryName ??
-											`Category ${cat.id}`}</option
-									>
-								{/each}
-							{/if}
-						</select>
+							placeholder="Select category…"
+							options={(modalState.categoryOptions ?? []).map(
+								(cat) => ({
+									value: String(cat.id),
+									label:
+										cat.categoryName ?? `Category ${cat.id}`
+								})
+							)}
+						/>
 					</div>
 				</div>
 			{/if}
@@ -187,7 +187,7 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<label class="shrink-0 sm:w-36">Active</label>
+				<span class="shrink-0 sm:w-36">Active</span>
 				<div
 					class="flex max-w-80 flex-1 flex-wrap items-center gap-2"
 				>

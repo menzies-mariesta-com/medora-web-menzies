@@ -1,6 +1,7 @@
 <script lang="ts">
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashInputField from '$lib/component/wash/inputfield/WashInputField.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { kind = $bindable('prn'), summaryText = $bindable('') } =
@@ -91,21 +92,22 @@
 		<span class="text-sm font-medium"
 			>{m.med_order_freq_kind_label()}</span
 		>
-		<select
-			class="select-bordered select max-w-xs select-sm"
+		<WashSelect
+			className="select-bordered select max-w-xs select-sm"
 			value={kind}
-			onchange={(e) =>
-				applyKind((e.currentTarget as HTMLSelectElement).value)}
-		>
-			<option value="prn">{m.med_order_freq_kind_prn()}</option>
-			<option value="fixed_times"
-				>{m.med_order_freq_kind_fixed_times()}</option
-			>
-			<option value="interval"
-				>{m.med_order_freq_kind_interval()}</option
-			>
-			<option value="custom">{m.med_order_freq_kind_custom()}</option>
-		</select>
+			options={[
+				{ value: 'prn', label: m.med_order_freq_kind_prn() },
+				{
+					value: 'fixed_times',
+					label: m.med_order_freq_kind_fixed_times()
+				},
+				{ value: 'interval', label: m.med_order_freq_kind_interval() },
+				{ value: 'custom', label: m.med_order_freq_kind_custom() }
+			]}
+			onChange={(next) => {
+				if (next != null) applyKind(next);
+			}}
+		/>
 	</div>
 
 	<div class="flex flex-wrap gap-2">

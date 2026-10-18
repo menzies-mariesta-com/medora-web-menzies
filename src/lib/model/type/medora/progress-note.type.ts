@@ -3,7 +3,7 @@ import type { StaffWithRelations } from './staff.type';
 /** Row from GET `progressNote.list` (visit-scoped progress notes + doctor). */
 export type ProgressNoteListRow = {
 	id: number;
-	visitId: number;
+	visitId: string;
 	note: string | null;
 	subjective?: string | null;
 	objective?: string | null;
@@ -14,6 +14,8 @@ export type ProgressNoteListRow = {
 	doctorId: string | null;
 	cosignedAt?: string | null;
 	cosignedBy?: string | null;
+	signedAt?: string | null;
+	signedBy?: string | null;
 	sequenceNo: number | null;
 	createdAt?: string | null;
 	updatedAt?: string | null;

@@ -1,9 +1,13 @@
 import { error } from '@sveltejs/kit';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { ensureDb } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
-import { CategoryEnum, StatusEnum } from '$lib/model/enum/db-link';
+import {
+	BillingStatusTaggingEnum,
+	CategoryEnum,
+	StatusEnum
+} from '$lib/model/enum/db-link';
 import { addDeltaToInvStock } from '$lib/server/medora/inventory/item-batch.server';
 import { computeSalePriceAtTransactionDb } from '$lib/server/medora/inventory/sale-price.server';
 import type { InvPricingModuleCode } from '$lib/model/type/medora/inv-pricing-module.type';
@@ -480,7 +484,8 @@ export async function assertBatchNotPaid(
 	hospitalId: string,
 	batchId: number
 ): Promise<void> {
-	const [pay] = await ensureDb()
+	const db = ensureDb();
+	const [pay] = await db
 		.select({ id: schema.medicationOrderBatchPaymentTable.id })
 		.from(schema.medicationOrderBatchPaymentTable)
 		.where(
@@ -497,6 +502,54 @@ export async function assertBatchNotPaid(
 	if (pay) {
 		throw error(400, 'This order has been paid and cannot be changed');
 	}
+
+	const [batch] = await db
+		.select({ visitId: schema.medicationOrderBatchTable.visitId })
+		.from(schema.medicationOrderBatchTable)
+		.where(
+			and(
+				eq(schema.medicationOrderBatchTable.id, batchId),
+				eq(schema.medicationOrderBatchTable.hospitalId, hospitalId),
+				isNull(schema.medicationOrderBatchTable.deletedAt)
+			)
+		)
+		.limit(1);
+	if (batch?.visitId) {
+		const locked = await isVisitOpBillClosed(hospitalId, batch.visitId);
+		if (locked) {
+			throw error(
+				400,
+				'OP bill for this visit is closed; medication order cannot be changed'
+			);
+		}
+	}
+}
+
+/** True when the visit has a closed OP billing header (not deleted). */
+export async function isVisitOpBillClosed(
+	hospitalId: string,
+	visitId: string
+): Promise<boolean> {
+	const [row] = await ensureDb()
+		.select({ id: schema.opBillingTable.id })
+		.from(schema.opBillingTable)
+		.innerJoin(
+			schema.patientVisitTable,
+			eq(schema.opBillingTable.visitId, schema.patientVisitTable.id)
+		)
+		.where(
+			and(
+				eq(schema.opBillingTable.visitId, visitId),
+				eq(schema.patientVisitTable.hospitalId, hospitalId),
+				eq(
+					schema.opBillingTable.statusTaggingId,
+					BillingStatusTaggingEnum.CLOSED
+				),
+				ne(schema.opBillingTable.statusId, StatusEnum.DELETED)
+			)
+		)
+		.limit(1);
+	return Boolean(row);
 }
 
 /** Item search for med order: pharmacy + medical supply in stock at store. */

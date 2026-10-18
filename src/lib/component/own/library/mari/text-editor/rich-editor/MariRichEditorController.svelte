@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WashTooltip from '$lib/component/wash/tooltip/WashTooltip.svelte';
+	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import LucideAlignCenter from '$lib/component/own/library/lucide/LucideAlignCenter.svelte';
 	import LucideBold from '$lib/component/own/library/lucide/LucideBold.svelte';
 	import LucideImage from '$lib/component/own/library/lucide/LucideImage.svelte';
@@ -65,30 +66,6 @@
 		{ label: 'Fraunces', value: "'Fraunces', ui-serif, Georgia, serif" }
 	];
 
-	const TEXT_COLORS = [
-		{ label: 'Black', value: '#000000' },
-		{ label: 'Dark Gray', value: '#4a4a4a' },
-		{ label: 'Gray', value: '#808080' },
-		{ label: 'Red', value: '#e53935' },
-		{ label: 'Orange', value: '#fb8c00' },
-		{ label: 'Yellow', value: '#fdd835' },
-		{ label: 'Green', value: '#43a047' },
-		{ label: 'Blue', value: '#1e88e5' },
-		{ label: 'Purple', value: '#8e24aa' },
-		{ label: 'Pink', value: '#d81b60' }
-	];
-
-	const BG_COLORS = [
-		{ label: 'None', value: '' },
-		{ label: 'Yellow', value: '#fff59d' },
-		{ label: 'Green', value: '#c8e6c9' },
-		{ label: 'Blue', value: '#bbdefb' },
-		{ label: 'Pink', value: '#f8bbd9' },
-		{ label: 'Orange', value: '#ffe0b2' },
-		{ label: 'Purple', value: '#e1bee7' },
-		{ label: 'Gray', value: '#e0e0e0' }
-	];
-
 	let {
 		activeStates = {},
 		fontSize = 14,
@@ -122,11 +99,11 @@
 		dispatch('command', { name, stringValue });
 	}
 
-	function handleFontFamilyChange(e: Event) {
-		const target = e.currentTarget as HTMLSelectElement;
+	function handleFontFamilyChange(next?: string) {
+		if (!next) return;
 		dispatch('command', {
 			name: 'fontFamilySet',
-			stringValue: target.value
+			stringValue: next
 		});
 	}
 
@@ -146,160 +123,53 @@
 		});
 	}
 
-	let showHeadingDropdown = $state(false);
-	let showColorDropdown = $state(false);
+	const BLOCK_STYLE_OPTIONS = [
+		{ value: 'paragraph', label: 'Paragraph' },
+		{ value: 'heading1', label: 'Heading 1' },
+		{ value: 'heading2', label: 'Heading 2' },
+		{ value: 'heading3', label: 'Heading 3' },
+		{ value: 'heading4', label: 'Heading 4' },
+		{ value: 'heading5', label: 'Heading 5' },
+		{ value: 'heading6', label: 'Heading 6' },
+		{ value: 'code', label: 'Code Block' },
+		{ value: 'blockquote', label: 'Blockquote' }
+	] as const;
 
-	function getCurrentHeadingLabel(): string {
-		if (activeStates.heading1) return 'H1';
-		if (activeStates.heading2) return 'H2';
-		if (activeStates.heading3) return 'H3';
-		if (activeStates.heading4) return 'H4';
-		if (activeStates.heading5) return 'H5';
-		if (activeStates.heading6) return 'H6';
-		if (activeStates.paragraph) return 'P';
-		return 'P';
-	}
+	const blockStyleValue = $derived.by(() => {
+		if (activeStates.heading1) return 'heading1';
+		if (activeStates.heading2) return 'heading2';
+		if (activeStates.heading3) return 'heading3';
+		if (activeStates.heading4) return 'heading4';
+		if (activeStates.heading5) return 'heading5';
+		if (activeStates.heading6) return 'heading6';
+		if (activeStates.code) return 'code';
+		if (activeStates.blockquote) return 'blockquote';
+		return 'paragraph';
+	});
 </script>
 
 <div
 	class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2"
 >
 	<!-- Font family selector -->
-	<select
-		class="select-bordered select h-7 min-h-0 w-32 select-xs text-xs"
+	<WashSelect
+		className="select h-7 min-h-0 w-32 select-xs text-xs"
 		value={fontFamily}
-		onchange={handleFontFamilyChange}
-	>
-		{#each FONT_FAMILIES as font (font.value)}
-			<option value={font.value}>{font.label}</option>
-		{/each}
-	</select>
+		options={FONT_FAMILIES}
+		onChange={handleFontFamilyChange}
+		aria-label="Font family"
+	/>
 
-	<!-- Block level / heading dropdown -->
-	<div class="relative">
-		<button
-			type="button"
-			class="btn flex items-center gap-1 border border-base-300 px-2 btn-ghost btn-xs"
-			onclick={() => {
-				showHeadingDropdown = !showHeadingDropdown;
-				showColorDropdown = false;
-			}}
-		>
-			<span class="w-6 text-xs font-semibold"
-				>{getCurrentHeadingLabel()}</span
-			>
-			<svg
-				class="h-3 w-3"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M19 9l-7 7-7-7"
-				/>
-			</svg>
-		</button>
-		{#if showHeadingDropdown}
-			<div
-				class="absolute top-full left-0 z-50 mt-1 rounded border border-base-300 bg-base-100 shadow-lg"
-			>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-sm hover:bg-base-200 {activeStates.paragraph
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('paragraph');
-						showHeadingDropdown = false;
-					}}>Paragraph</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-lg font-bold hover:bg-base-200 {activeStates.heading1
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading1');
-						showHeadingDropdown = false;
-					}}>Heading 1</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-base font-bold hover:bg-base-200 {activeStates.heading2
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading2');
-						showHeadingDropdown = false;
-					}}>Heading 2</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-sm font-bold hover:bg-base-200 {activeStates.heading3
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading3');
-						showHeadingDropdown = false;
-					}}>Heading 3</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-sm font-semibold hover:bg-base-200 {activeStates.heading4
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading4');
-						showHeadingDropdown = false;
-					}}>Heading 4</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-xs font-semibold hover:bg-base-200 {activeStates.heading5
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading5');
-						showHeadingDropdown = false;
-					}}>Heading 5</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-xs hover:bg-base-200 {activeStates.heading6
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('heading6');
-						showHeadingDropdown = false;
-					}}>Heading 6</button
-				>
-				<div class="border-t border-base-300"></div>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left font-mono text-xs hover:bg-base-200 {activeStates.code
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('code');
-						showHeadingDropdown = false;
-					}}>Code Block</button
-				>
-				<button
-					type="button"
-					class="block w-full px-3 py-1 text-left text-xs italic hover:bg-base-200 {activeStates.blockquote
-						? 'bg-primary/20'
-						: ''}"
-					onclick={() => {
-						execute('blockquote');
-						showHeadingDropdown = false;
-					}}>Blockquote</button
-				>
-			</div>
-		{/if}
-	</div>
+	<!-- Block level / heading -->
+	<WashSelect
+		className="select h-7 min-h-0 w-36 select-xs text-xs"
+		value={blockStyleValue}
+		options={[...BLOCK_STYLE_OPTIONS]}
+		onChange={(next) => {
+			if (next) execute(next as CommandName);
+		}}
+		aria-label="Block style"
+	/>
 
 	<!-- Font size -->
 	<div class="flex items-center rounded border border-base-300">
@@ -782,14 +652,3 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Click outside to close dropdowns -->
-<svelte:window
-	onclick={(e) => {
-		const target = e.target as HTMLElement;
-		if (!target.closest('.relative')) {
-			showHeadingDropdown = false;
-			showColorDropdown = false;
-		}
-	}}
-/>

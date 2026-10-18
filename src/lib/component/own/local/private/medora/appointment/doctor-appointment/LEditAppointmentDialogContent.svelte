@@ -29,6 +29,7 @@
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 
 	import LCancelAppointmentRemarkDialogContent from '$lib/component/own/local/private/medora/appointment/doctor-appointment/LCancelAppointmentRemarkDialogContent.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -56,7 +57,7 @@
 		const res = await fetch(`${apiBase}?${sp.toString()}`, {
 			method: 'GET'
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 	async function apiPost<T>(
@@ -68,7 +69,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...(body ?? {}) })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 

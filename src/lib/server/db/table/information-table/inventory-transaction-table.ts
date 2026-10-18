@@ -16,13 +16,14 @@ import {
 	index,
 	varchar
 } from 'drizzle-orm/pg-core';
-import { uuidv7 } from 'uuidv7';
+import { uuidV7 } from '../../../../util/id.util';
 import { StatusEnum } from '../../../../model/enum/db-link';
 import { userTable } from '../auth-table/auth-table';
 import { statusTable, unitTable } from '../master-table/master-table';
 import {
 	hospitalBranchTable,
 	hospitalTable,
+	patientVisitTable,
 	itemMasterTable,
 	itemUnitMasterTable,
 	staffTable,
@@ -447,7 +448,7 @@ export const purchaseRequisitionTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		prNo: varchar('pr_no', { length: 128 }),
 		hospitalId: uuid('hospital_id')
 			.notNull()
@@ -538,7 +539,7 @@ export const purchaseOrderTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		poNo: varchar('po_no', { length: 128 }),
 		hospitalId: uuid('hospital_id')
 			.notNull()
@@ -661,6 +662,8 @@ export const itemBatchTable = pgTable(
 			(): AnyPgColumn => goodsReceiptLineTable.id,
 			{ onDelete: 'set null' }
 		),
+		udiDi: varchar('udi_di', { length: 128 }),
+		serialNo: varchar('serial_no', { length: 128 }),
 		createdAt: timestamp('created_at', {
 			withTimezone: true,
 			mode: 'string'
@@ -710,7 +713,7 @@ export const goodsReceiptNoteTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -862,7 +865,7 @@ export const invStoreTransferTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -945,7 +948,7 @@ export const invStockIssueTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -1009,7 +1012,7 @@ export const invDepartmentIndentTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -1144,7 +1147,7 @@ export const invDepartmentIssueTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -1283,7 +1286,7 @@ export const invDepartmentConsumptionTable = pgTable(
 	{
 		id: uuid('id')
 			.primaryKey()
-			.$defaultFn(() => uuidv7()),
+			.$defaultFn(() => uuidV7()),
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
@@ -1316,9 +1319,13 @@ export const invDepartmentConsumptionTable = pgTable(
 			mode: 'string'
 		}),
 		cancelReason: text('cancel_reason'),
+		visitId: uuid('visit_id').references(() => patientVisitTable.id, {
+			onDelete: 'set null'
+		}),
 		...invTimestamps
 	},
 	(t) => [
+		index('inv_department_consumption_visit_id_idx').on(t.visitId),
 		index('inv_department_consumption_hospital_store_idx').on(
 			t.hospitalId,
 			t.storeId

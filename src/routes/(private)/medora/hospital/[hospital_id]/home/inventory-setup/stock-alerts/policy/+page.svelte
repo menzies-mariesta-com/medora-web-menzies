@@ -7,6 +7,10 @@
 	import { StatusColorEnum } from '$lib/model/enum/color.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail
+	} from '$lib/util/user-facing-error.util';
 
 	type SettingsDto = {
 		hospitalId: string;
@@ -59,14 +63,13 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Load failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { settings: SettingsDto };
 			syncFormFromSettings(b.settings);
 		} catch (e) {
-			bundleError = e instanceof Error ? e.message : 'Load failed';
+			console.error(e);
+			bundleError =
+				toUserFacingErrorDetail(e) ?? m.error_load_failed();
 		} finally {
 			bundleLoading = false;
 		}
@@ -113,10 +116,7 @@
 					}
 				})
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Save failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { settings: SettingsDto };
 			syncFormFromSettings(b.settings);
 			toastService.addToast(
@@ -124,10 +124,8 @@
 				StatusColorEnum.SUCCESS
 			);
 		} catch (e) {
-			toastService.addToast(
-				e instanceof Error ? e.message : 'Save failed',
-				StatusColorEnum.ERROR
-			);
+			console.error(e);
+			toastService.addErrorToast(m.error_save_failed(), e);
 		} finally {
 			savingAll = false;
 		}

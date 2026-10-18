@@ -11,10 +11,7 @@ import {
 	desc,
 	eq,
 	ilike,
-	inArray,
 	isNull,
-	ne,
-	or,
 	sql
 } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
@@ -83,7 +80,7 @@ export type ReferHistoryWithRelations = Awaited<
 >[number];
 
 export async function getReferHistoryWithRelations(input?: {
-	visitId?: number;
+	visitId?: string;
 }): Promise<
 	Array<
 		ReferHistorySchema & {
@@ -430,7 +427,7 @@ export async function cancelReferHistory(
 }
 
 export async function getReferHistoryPaginated(input: {
-	visitId?: number;
+	visitId?: string;
 	page?: number;
 	pageSize?: number;
 	filters?: Record<string, string>;

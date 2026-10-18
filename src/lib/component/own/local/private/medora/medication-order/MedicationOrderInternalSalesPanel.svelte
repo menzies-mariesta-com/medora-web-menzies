@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseUuid } from '$lib/util/id.util';
 	import { page } from '$app/state';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashCard from '$lib/component/wash/card/WashCard.svelte';
@@ -53,8 +54,8 @@
 	import { formatMedOrderItemSearchLabel } from '$lib/tool/medication-order/format-med-order-item-search-label.util';
 	import { untrack, tick } from 'svelte';
 	import { applyStaggeredStartDates } from '$lib/util/med-order-stagger.util';
-
-	const lifeCycleUtil = new LifeCycleUtil();
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
+const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
 
 	const hospitalId = $derived(
@@ -65,7 +66,7 @@
 	);
 
 	const visitIdNum = $derived(
-		VisitState.visitId ? Number(VisitState.visitId) : 0
+		(parseUuid(VisitState.visitId) ?? '')
 	);
 
 	function apiRoot() {
@@ -833,7 +834,7 @@
 						lines
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastService.addToast(
 					m.med_order_int_updated(),
 					StatusColorEnum.SUCCESS
@@ -850,7 +851,7 @@
 						lines
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				void (await res.json());
 				toastService.addToast(
 					m.med_order_int_saved(),
@@ -879,10 +880,11 @@
 			return;
 		}
 		await dialogService.open({
-			title: m.med_order_int_history(),
+			title: '',
 			component: MedicationOrderHistoryDialogContent,
 			fullScreen: true,
 			props: {
+				title: m.med_order_int_history(),
 				apiRoot: apiRoot(),
 				visitId: visitIdNum,
 				enableColumnFilters: true,
@@ -1059,7 +1061,7 @@
 					sourceBatchId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			void (await res.json());
 			toastService.addToast(
 				m.med_order_int_reorder_line_appended(),
@@ -1083,7 +1085,7 @@
 					batchId: id
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
@@ -1117,7 +1119,7 @@
 					batchId: editingBatchId
 				})
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			toastService.addToast(
 				m.med_order_int_deleted(),
 				StatusColorEnum.SUCCESS
@@ -1206,7 +1208,7 @@
 				>
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_store()}</label>
+							<label class="shrink-0" for="int-sales-store">{m.med_order_int_store()}</label>
 							<SearchSelect
 								bind:value={storeIdStr}
 								searchFn={searchStoresForSelect}
@@ -1220,16 +1222,15 @@
 							/>
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_pharmacy_generic()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-d4e6ca">{m.med_order_int_pharmacy_generic()}</label>
 							<SearchSelect
 								bind:value={pharmacyGenericId}
 								options={genericOptions}
 								placeholder={m.med_order_int_all_generics()}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-d4e6ca" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_item()}</label>
+							<label class="shrink-0" for="int-sales-item">{m.med_order_int_item()}</label>
 							<SearchSelect
 								bind:value={itemValueStr}
 								searchFn={searchItemsFromMaster}
@@ -1248,37 +1249,34 @@
 
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_dose()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-989280">{m.med_order_int_dose()}</label>
 							<WashInputField
 								nameText="dose"
 								bind:value={dose}
 								inputType="text"
 								className="w-full"
-								minLength={0}
-							/>
+								minLength={0} id="a11y-medicationorderinternals-989280" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_dose_unit()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-72786e">{m.med_order_int_dose_unit()}</label>
 							<SearchSelect
 								bind:value={doseUnitIdStr}
 								options={doseUnitOptions}
 								placeholder="—"
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-72786e" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_frequency()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-d68f58">{m.med_order_int_frequency()}</label>
 							<SearchSelect
 								bind:value={frequencyIdStr}
 								options={frequencyOptions}
 								placeholder={m.med_order_int_frequency_filter()}
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-d68f58" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_duration()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-ef2770">{m.med_order_int_duration()}</label>
 							<div
 								class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start"
 							>
@@ -1287,8 +1285,7 @@
 									bind:value={durationValue}
 									inputType="text"
 									className="w-full max-w-24 shrink-0"
-									minLength={0}
-								/>
+									minLength={0} id="a11y-medicationorderinternals-ef2770" />
 								<div class="min-w-0 flex-1">
 									<SearchSelect
 										bind:value={durationUnitIdStr}
@@ -1301,55 +1298,51 @@
 							</div>
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_form()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-f583da">{m.med_order_int_form()}</label>
 							<SearchSelect
 								bind:value={formId}
 								options={formOptions}
 								placeholder={m.med_order_int_not_applicable()}
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-f583da" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_route()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-631e3f">{m.med_order_int_route()}</label>
 							<SearchSelect
 								bind:value={routeId}
 								options={routeOptions}
 								placeholder={m.med_order_int_not_applicable()}
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-631e3f" />
 						</div>
 					</div>
 
 					<div class="flex min-w-0 flex-col items-stretch gap-4">
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_order_type()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-ff73f9">{m.med_order_int_order_type()}</label>
 							<SearchSelect
 								bind:value={orderTypeId}
 								options={orderTypeOptions}
 								placeholder={m.med_order_int_not_applicable()}
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-ff73f9" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
-							<label class="shrink-0">{m.med_order_int_food_relation()}</label>
+							<label class="shrink-0" for="a11y-medicationorderinternals-5c1875">{m.med_order_int_food_relation()}</label>
 							<SearchSelect
 								bind:value={foodRelationId}
 								options={foodRelOptions}
 								placeholder={m.med_order_int_not_applicable()}
 								disabled={!masters}
-								className="w-full"
-							/>
+								className="w-full" inputId="a11y-medicationorderinternals-5c1875" />
 						</div>
 						<div class="flex w-full min-w-0 flex-col gap-1.5">
 							<span class="text-sm font-medium"
 								>{m.med_order_int_start()}</span
 							>
-							<input
-								type="datetime-local"
-								class="input-bordered input w-full min-w-0"
+							<WashInputField
+								inputType="datetime-local"
+								className="w-full min-w-0"
 								bind:value={startAtLocal}
 								min={minStart}
 							/>

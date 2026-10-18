@@ -13,6 +13,7 @@ import {
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { parseUuid } from '$lib/util/id.util';
 
 export type {
 	GeneratePrefixContext,
@@ -100,6 +101,23 @@ function defaultFormatSpecForKey(
 			]
 		};
 	}
+	if (
+		prefixKey === PREFIX_PURPOSE_STORAGE.EXTERNAL_PATIENT_CODE
+	) {
+		return {
+			parts: [
+				{ type: 'field', path: 'financial_year.code' },
+				{ type: 'field', path: 'hospital.code' },
+				{ type: 'literal', value: '/EP/' },
+				{
+					type: 'sequence',
+					source: 'prefix_counter.last_no',
+					op: 'inc',
+					padStart: 6
+				}
+			]
+		};
+	}
 	return {
 		parts: [
 			{ type: 'field', path: 'financial_year.code' },
@@ -112,6 +130,26 @@ function defaultFormatSpecForKey(
 			}
 		]
 	};
+}
+
+/** True when the hospital has a saved (non-deleted) format row for this key. */
+export async function isPrefixFormatConfigured(
+	hospitalId: string,
+	prefixKey: string
+): Promise<boolean> {
+	const db = ensureDb();
+	const [row] = await db
+		.select({ id: table.prefixFormatTable.id })
+		.from(table.prefixFormatTable)
+		.where(
+			and(
+				eq(table.prefixFormatTable.hospitalId, hospitalId),
+				eq(table.prefixFormatTable.key, prefixKey),
+				isNull(table.prefixFormatTable.deletedAt)
+			)
+		)
+		.limit(1);
+	return row != null;
 }
 
 async function loadFormatAndScopeFromDb(
@@ -169,7 +207,7 @@ async function resolveField(
 		financialYearId?: number | null;
 		visitTypeId?: number;
 		orderDate?: string;
-		visitId?: number;
+		visitId?: string;
 		visitNo?: string | null;
 	}
 ): Promise<string> {
@@ -183,7 +221,7 @@ async function resolveField(
 		case 'visit.order_key': {
 			const no = (params.visitNo ?? '').trim();
 			if (no) return no;
-			if (params.visitId != null && Number.isFinite(params.visitId)) {
+			if (params.visitId != null && params.visitId !== '') {
 				return String(params.visitId);
 			}
 			return '';
@@ -246,7 +284,7 @@ export async function generatePrefix(
 		visitIdForScope:
 			scope.includeVisit &&
 			visitIdCtx != null &&
-			Number.isFinite(visitIdCtx)
+			Boolean(visitIdCtx)
 				? visitIdCtx
 				: null
 	});

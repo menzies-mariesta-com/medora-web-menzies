@@ -153,12 +153,11 @@
 			<div
 				class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 			>
-				<label class="shrink-0 sm:w-36">{m.status()}</label>
+				<span class="shrink-0 sm:w-36">{m.status()}</span>
 				<div
 					class="flex max-w-80 flex-1 flex-wrap items-center gap-2"
 				>
-					<label class="flex cursor-pointer items-center gap-2">
-						<WashCheckbox bind:checked={formActive} />
+					<label class="flex cursor-pointer items-center gap-2" for="a11y-departmentformmodal-289819"><WashCheckbox bind:checked={formActive} id="a11y-departmentformmodal-289819" />
 						<span class="text-sm opacity-80">{m.active_label()}</span>
 					</label>
 				</div>

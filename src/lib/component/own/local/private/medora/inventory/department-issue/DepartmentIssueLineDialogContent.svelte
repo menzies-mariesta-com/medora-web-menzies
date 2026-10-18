@@ -278,7 +278,7 @@
 <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_pr_line_item_search()}</label>
+			<label class="text-xs opacity-80" for="a11y-departmentissuelinedialo-14889a">{m.inv_pr_line_item_search()}</label>
 			{#if draftLine.lockItem}
 				<input
 					type="text"
@@ -287,8 +287,7 @@
 					class="input-bordered input mt-1 w-full cursor-not-allowed opacity-90"
 					value={draftLine.itemLabel || '—'}
 					title={draftLine.itemLabel || undefined}
-					aria-label={m.inv_pr_line_item_search()}
-				/>
+					aria-label={m.inv_pr_line_item_search()} id="a11y-departmentissuelinedialo-14889a" />
 			{:else}
 				<SearchSelect
 					value={draftLine.itemId ? String(draftLine.itemId) : ''}
@@ -304,7 +303,7 @@
 		</div>
 
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_common_unit()}</label>
+			<label class="text-xs opacity-80" for="a11y-departmentissuelinedialo-c4c7a7">{m.inv_common_unit()}</label>
 			<input
 				type="text"
 				readonly
@@ -312,12 +311,11 @@
 				class="input-bordered input mt-1 w-full cursor-not-allowed opacity-90"
 				value={lockedUnitLabel || '—'}
 				title={lockedUnitLabel || undefined}
-				aria-label={m.inv_common_unit()}
-			/>
+				aria-label={m.inv_common_unit()} id="a11y-departmentissuelinedialo-c4c7a7" />
 		</div>
 
 		<div class="sm:col-span-2">
-			<label class="text-xs opacity-80">{m.inv_dc_batch()}</label>
+			<span  class="text-xs opacity-80">{m.inv_dc_batch()}</span>
 			<p class="mb-2 text-xs opacity-70">
 				{m.inv_dc_modal_batch_help()}
 			</p>

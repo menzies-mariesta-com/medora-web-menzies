@@ -10,6 +10,7 @@ import { RoleEnum } from '$lib/model/enum/db-link';
 import type { PageWithRelations } from '$lib/model/type/medora/page.type';
 import { and, eq, inArray } from 'drizzle-orm';
 import { listStoresForApprovalConfig } from '$lib/server/medora/inventory/approval-config.server';
+import { getMedoraPagesForNav } from '$lib/server/medora/page-nav-cache.server';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 
 const COOKIE_SELECTED_USER_GROUP_ID = 'heka_selected_user_group_id';
@@ -100,13 +101,7 @@ async function inventoryFromStoreNavContext(
 export const load: LayoutServerLoad = async (event) => {
 	const { locals, url, params, cookies } = event;
 	try {
-		const fullPages = (await ensureDb().query.pageTable.findMany({
-			with: {
-				module: true,
-				status: true
-			}
-		})) as unknown as PageWithRelations[];
-
+		const hospitalId = params.hospital_id ?? '';
 		const userRoleId = locals.userRoleId ?? null;
 		const currentUserId = locals.user?.id ?? null;
 		const currentUserName =
@@ -115,18 +110,24 @@ export const load: LayoutServerLoad = async (event) => {
 				? String(locals.user.name).trim()
 				: null;
 		const staffId = locals.staff?.id ?? null;
-		const hospitalId = params.hospital_id ?? '';
-		const [hospital] = hospitalId
-			? await ensureDb()
-					.select({
-						name: table.hospitalTable.name,
-						countryId: table.hospitalTable.countryId
-					})
-					.from(table.hospitalTable)
-					.where(eq(table.hospitalTable.id, hospitalId))
-					.limit(1)
-			: [];
+
+		const [fullPages, hospitalRow] = await Promise.all([
+			getMedoraPagesForNav(),
+			hospitalId
+				? ensureDb()
+						.select({
+							name: table.hospitalTable.name,
+							logoUrl: table.hospitalTable.logoUrl,
+							countryId: table.hospitalTable.countryId
+						})
+						.from(table.hospitalTable)
+						.where(eq(table.hospitalTable.id, hospitalId))
+						.limit(1)
+				: Promise.resolve([] as { name: string | null; logoUrl: string | null; countryId: number | null }[])
+		]);
+		const [hospital] = hospitalRow;
 		const currentHospitalName = hospital?.name ?? null;
+		const currentHospitalLogoUrl = hospital?.logoUrl ?? null;
 		const currentHospitalCountryId = hospital?.countryId ?? null;
 
 		// OWNER or SYSTEM_ADMIN: show all pages, all branches for this hospital
@@ -179,6 +180,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: fullPages,
 				currentHospitalName,
+				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
@@ -194,21 +196,64 @@ export const load: LayoutServerLoad = async (event) => {
 
 		// STAFF: filter by **selected** user group (cookie), enforce access for that group only
 		if (userRoleId === RoleEnum.STAFF && staffId) {
-			// 1. Staff's user group ids (all)
-			const staffUserGroups = await ensureDb()
-				.select({
-					userGroupId: table.staffUserGroupTable.userGroupId
-				})
-				.from(table.staffUserGroupTable)
-				.where(eq(table.staffUserGroupTable.staffId, staffId));
-			const userGroupIds = [
-				...new Set(
-					staffUserGroups
-						.map((r) => r.userGroupId)
-						.filter((id) => id != null)
-				)
-			];
-			if (userGroupIds.length === 0) {
+			const [
+				staffUserGroupsForNavRaw,
+				staffBranchesForNavRaw,
+				allHospitalBranches
+			] = await Promise.all([
+				ensureDb()
+					.select({
+						id: table.userGroupTable.id,
+						name: table.userGroupTable.name
+					})
+					.from(table.staffUserGroupTable)
+					.innerJoin(
+						table.userGroupTable,
+						eq(
+							table.staffUserGroupTable.userGroupId,
+							table.userGroupTable.id
+						)
+					)
+					.where(
+						and(
+							eq(table.staffUserGroupTable.staffId, staffId),
+							eq(table.userGroupTable.hospitalId, hospitalId)
+						)
+					)
+					.orderBy(table.userGroupTable.name),
+				ensureDb()
+					.select({
+						id: table.hospitalBranchTable.id,
+						name: table.hospitalBranchTable.name
+					})
+					.from(table.staffBranchTable)
+					.innerJoin(
+						table.hospitalBranchTable,
+						eq(
+							table.staffBranchTable.branchId,
+							table.hospitalBranchTable.id
+						)
+					)
+					.where(
+						and(
+							eq(table.staffBranchTable.staffId, staffId),
+							eq(table.hospitalBranchTable.hospitalId, hospitalId)
+						)
+					)
+					.orderBy(table.hospitalBranchTable.name),
+				ensureDb()
+					.select({ id: table.hospitalBranchTable.id })
+					.from(table.hospitalBranchTable)
+					.where(eq(table.hospitalBranchTable.hospitalId, hospitalId))
+			]);
+
+			const staffUserGroupsForNav = [
+				...new Map(
+					staffUserGroupsForNavRaw.map((g) => [g.id, g])
+				).values()
+			].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+			if (staffUserGroupsForNav.length === 0) {
 				const dbPageUrl = requestPathToDbPageUrl(
 					url.pathname,
 					hospitalId
@@ -219,6 +264,7 @@ export const load: LayoutServerLoad = async (event) => {
 				return {
 					pageData: [],
 					currentHospitalName,
+					currentHospitalLogoUrl,
 					currentHospitalCountryId,
 					currentUserId,
 					currentUserName,
@@ -232,34 +278,6 @@ export const load: LayoutServerLoad = async (event) => {
 				};
 			}
 
-			// Staff's user groups for this hospital (for navbar select)
-			// Deduplicate by id in case staff_user_group has duplicate entries
-			const staffUserGroupsForNavRaw = await ensureDb()
-				.select({
-					id: table.userGroupTable.id,
-					name: table.userGroupTable.name
-				})
-				.from(table.staffUserGroupTable)
-				.innerJoin(
-					table.userGroupTable,
-					eq(
-						table.staffUserGroupTable.userGroupId,
-						table.userGroupTable.id
-					)
-				)
-				.where(
-					and(
-						eq(table.staffUserGroupTable.staffId, staffId),
-						eq(table.userGroupTable.hospitalId, hospitalId)
-					)
-				)
-				.orderBy(table.userGroupTable.name);
-			const staffUserGroupsForNav = [
-				...new Map(
-					staffUserGroupsForNavRaw.map((g) => [g.id, g])
-				).values()
-			].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-
 			const navIds = staffUserGroupsForNav.map((g) => g.id);
 			// Resolve selected user group: cookie if valid, else first group
 			const cookieValue = cookies.get(COOKIE_SELECTED_USER_GROUP_ID);
@@ -268,37 +286,11 @@ export const load: LayoutServerLoad = async (event) => {
 					? Number(cookieValue)
 					: (navIds[0] ?? null);
 
-			// Staff branches for this hospital (for navbar select)
-			// Deduplicate by id in case staff_branch has duplicate entries
-			const staffBranchesForNavRaw = await ensureDb()
-				.select({
-					id: table.hospitalBranchTable.id,
-					name: table.hospitalBranchTable.name
-				})
-				.from(table.staffBranchTable)
-				.innerJoin(
-					table.hospitalBranchTable,
-					eq(
-						table.staffBranchTable.branchId,
-						table.hospitalBranchTable.id
-					)
-				)
-				.where(
-					and(
-						eq(table.staffBranchTable.staffId, staffId),
-						eq(table.hospitalBranchTable.hospitalId, hospitalId)
-					)
-				)
-				.orderBy(table.hospitalBranchTable.name);
 			const staffBranchesForNav = [
 				...new Map(
 					staffBranchesForNavRaw.map((b) => [b.id, b])
 				).values()
 			].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-			const allHospitalBranches = await ensureDb()
-				.select({ id: table.hospitalBranchTable.id })
-				.from(table.hospitalBranchTable)
-				.where(eq(table.hospitalBranchTable.hospitalId, hospitalId));
 			const allHospitalBranchIds = allHospitalBranches.map(
 				(b) => b.id
 			);
@@ -412,6 +404,7 @@ export const load: LayoutServerLoad = async (event) => {
 			return {
 				pageData: filtered,
 				currentHospitalName,
+				currentHospitalLogoUrl,
 				currentHospitalCountryId,
 				currentUserId,
 				currentUserName,
@@ -429,6 +422,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: fullPages,
 			currentHospitalName,
+			currentHospitalLogoUrl,
 			currentHospitalCountryId,
 			currentUserId,
 			currentUserName,
@@ -460,6 +454,7 @@ export const load: LayoutServerLoad = async (event) => {
 		return {
 			pageData: [],
 			currentHospitalName: null,
+			currentHospitalLogoUrl: null,
 			currentHospitalCountryId: null,
 			currentUserId: null,
 			currentUserName: null,

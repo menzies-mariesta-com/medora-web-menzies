@@ -2,7 +2,7 @@ import type { VisitServiceLinePrintRow } from '$lib/util/document-placeholder.ut
 
 /** All service order lines for a visit (non-deleted details), for print / placeholders. */
 export async function fetchVisitServiceLinePrintRows(params: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }): Promise<VisitServiceLinePrintRow[]> {
 	const { visitId, hospitalId } = params;

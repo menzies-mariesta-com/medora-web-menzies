@@ -10,7 +10,7 @@ import {
 
 export async function getDischargeSummary(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }) {
 	const [row] = await ensureDb()
 		.select()
@@ -30,7 +30,7 @@ export async function upsertDischargeSummary(
 	event: RequestEvent,
 	input: {
 		hospitalId: string;
-		visitId: number;
+		visitId: string;
 		hospitalCourse: string;
 		dischargeMedications: string;
 		followUp: string;
@@ -89,7 +89,7 @@ export async function upsertDischargeSummary(
 
 export async function signDischargeSummary(
 	event: RequestEvent,
-	input: { hospitalId: string; visitId: number }
+	input: { hospitalId: string; visitId: string }
 ) {
 	const consultantId = requireConsultant(event);
 	const existing = await getDischargeSummary(input);
@@ -114,7 +114,7 @@ export async function signDischargeSummary(
 
 export async function assertDischargeSummarySigned(input: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 }): Promise<void> {
 	const summary = await getDischargeSummary(input);
 	if (!summary?.signedAt) {

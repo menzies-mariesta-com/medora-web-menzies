@@ -4,7 +4,6 @@ import {
 	decimal,
 	index,
 	integer,
-	jsonb,
 	pgTable,
 	serial,
 	text,
@@ -528,7 +527,7 @@ export const medicationOrderBatchTable = pgTable(
 		hospitalId: uuid('hospital_id')
 			.notNull()
 			.references(() => hospitalTable.id, { onDelete: 'cascade' }),
-		visitId: integer('visit_id').references(
+		visitId: uuid('visit_id').references(
 			() => patientVisitTable.id,
 			{
 				onDelete: 'restrict'
@@ -537,7 +536,11 @@ export const medicationOrderBatchTable = pgTable(
 		storeId: integer('store_id')
 			.notNull()
 			.references(() => storeTable.id, { onDelete: 'restrict' }),
-		/** Walk-in / external sales: set when `visitId` is null (internal uses visit + nulls here) */
+		/**
+		 * External sales marker / display name (patient full name).
+		 * Set for external-origin batches even when `visitId` is present (OP visit + OP bill).
+		 * Internal sales keeps this null.
+		 */
 		extCustomerName: varchar('ext_customer_name', { length: 512 }),
 		advisingDoctor: varchar('advising_doctor', { length: 512 }),
 		orderingStaffId: uuid('ordering_staff_id').references(

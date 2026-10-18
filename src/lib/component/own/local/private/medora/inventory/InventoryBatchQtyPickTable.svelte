@@ -196,9 +196,9 @@
 		rowClassGetter={(row) => (exceedsStock(row) ? 'bg-error/10' : '')}
 	/>
 </div>
-<label class="mt-2 block text-xs opacity-70">
+<span  class="mt-2 block text-xs opacity-70">
 	{m.inv_dc_batch_table_qty_hint({ unit: purchaseUnitLabel || '—' })}
-</label>
+</span>
 
 <div class="mt-1 text-right text-sm">
 	<span class="opacity-70"

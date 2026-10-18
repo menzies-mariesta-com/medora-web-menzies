@@ -1,6 +1,7 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as deposit from '$lib/server/medora/billing/ip-advance-deposit.server';
+import { parseUuid } from '$lib/util/id.util';
 
 /**
  * @deprecated Prefer `/billing/ip-billing/advance-deposit`. Kept for compatibility.
@@ -22,16 +23,13 @@ export async function GET(event: RequestEvent) {
 			? Number(admissionRaw)
 			: undefined;
 	const visitId =
-		visitRaw != null && visitRaw !== '' ? Number(visitRaw) : undefined;
+		visitRaw != null && visitRaw !== '' ? (parseUuid(visitRaw) ?? undefined) : undefined;
 
 	const hasAdmission =
 		typeof admissionId === 'number' &&
 		Number.isFinite(admissionId) &&
 		admissionId > 0;
-	const hasVisit =
-		typeof visitId === 'number' &&
-		Number.isFinite(visitId) &&
-		visitId > 0;
+	const hasVisit = typeof visitId === 'string' && Boolean(visitId);
 
 	if (!hasAdmission && !hasVisit) {
 		throw error(400, 'visitId or admissionId is required');
@@ -50,7 +48,7 @@ export async function GET(event: RequestEvent) {
 	if (resolvedAdmissionId == null && hasVisit) {
 		resolvedAdmissionId = await deposit.resolveAdmissionIdForVisit({
 			hospitalId,
-			visitId: visitId as number
+			visitId: visitId as string
 		});
 	}
 
@@ -78,7 +76,7 @@ export async function POST(event: RequestEvent) {
 					: undefined,
 			visitId:
 				body.visitId != null && body.visitId !== ''
-					? Number(body.visitId)
+					? parseUuid(body.visitId)
 					: undefined,
 			amount: String(body.amount ?? ''),
 			paymentMethod: body.paymentMethod ?? 'cash',

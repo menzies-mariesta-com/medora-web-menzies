@@ -8,6 +8,7 @@
 	import type { ClinicalProcedureRow } from '$lib/model/type/medora/clinical.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
@@ -46,7 +47,7 @@
 		errorMessage = '';
 		try {
 			const response = await fetch(`${apiBase}?visitId=${visitId}`);
-			if (!response.ok) throw new Error(await response.text());
+			if (!response.ok) await throwUserFacingHttpError(response);
 			rows = (await response.json()) as ClinicalProcedureRow[];
 		} catch (error) {
 			errorMessage =
@@ -64,7 +65,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!response.ok) throw new Error(await response.text());
+		if (!response.ok) await throwUserFacingHttpError(response);
 	}
 
 	async function save() {
@@ -135,28 +136,17 @@
 			/>{/if}
 		<section class="card border border-base-300">
 			<div class="card-body grid gap-3 p-4 md:grid-cols-2">
-				<label class="flex flex-col gap-1 text-sm">
-					<span>
+				<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-c0a243"><span>
 						{m.mo_clinical_procedure_type()}
 						<span class="text-error">*</span>
-					</span>
-					<WashInputField
+					</span></label> <WashInputField
 						bind:value={procedureType}
 						inputType="text"
-						inputPlaceholderText={m.mo_clinical_procedure_placeholder()}
-					/>
-				</label>
-				<label class="flex flex-col gap-1 text-sm">
-					<span>{m.mo_clinical_performed_at()}</span>
-					<WashInputField
+						inputPlaceholderText={m.mo_clinical_procedure_placeholder()} id="a11y-page-c0a243" /></div>
+				<div  class="flex flex-col gap-1 text-sm"><label for="a11y-page-27f49d"><span>{m.mo_clinical_performed_at()}</span></label> <WashInputField
 						bind:value={performedAt}
-						inputType="datetime-local"
-					/>
-				</label>
-				<label class="flex flex-col gap-1 text-sm md:col-span-2">
-					<span>{m.mo_clinical_notes()}</span>
-					<WashTextarea bind:value={notes} className="min-h-24" />
-				</label>
+						inputType="datetime-local" id="a11y-page-27f49d" /></div>
+				<div  class="flex flex-col gap-1 text-sm md:col-span-2"><label for="a11y-page-1aec96"><span>{m.mo_clinical_notes()}</span></label> <WashTextarea bind:value={notes} className="min-h-24" id="a11y-page-1aec96" /></div>
 				<div class="flex justify-end gap-2 md:col-span-2">
 					{#if editingId}<WashButton
 							className="btn-ghost"

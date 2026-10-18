@@ -464,7 +464,7 @@
 			<div class="flex min-h-0 flex-col gap-2">
 				<div class="flex flex-wrap items-end gap-2">
 					<div class="min-w-[10rem] flex-1">
-						<label class="text-sm font-semibold">
+						<label class="text-sm font-semibold" for="a11y-supportticketdialogconte-efed7d">
 							{m.support_filter_status()}
 						</label>
 						<WashSelect
@@ -475,7 +475,7 @@
 								currentPage = 1;
 								void fetchList({ bustCache: true });
 							}}
-						>
+						 id="a11y-supportticketdialogconte-efed7d">
 							<option value={SupportTicketStatusEnum.OPEN}>
 								{m.support_status_open()}
 							</option>
@@ -568,14 +568,14 @@
 						{/if}
 					</dl>
 					<div class="flex flex-col gap-1">
-						<label class="font-semibold">{m.support_description()}</label>
+						<span  class="font-semibold">{m.support_description()}</span>
 						<p class="text-sm whitespace-pre-wrap">
 							{detail.description}
 						</p>
 					</div>
 					{#if detail.resolution && !isAdmin}
 						<div class="flex flex-col gap-1">
-							<label class="font-semibold">{m.support_resolution()}</label>
+							<span  class="font-semibold">{m.support_resolution()}</span>
 							<p class="text-sm whitespace-pre-wrap">
 								{detail.resolution}
 							</p>
@@ -604,7 +604,7 @@
 									{m.support_status_closed()}
 								</option>
 							</WashSelect>
-							<label class="font-semibold">
+							<label class="font-semibold" for="admin-assign">
 								{m.support_assigned_to()}
 							</label>
 							<WashInputField

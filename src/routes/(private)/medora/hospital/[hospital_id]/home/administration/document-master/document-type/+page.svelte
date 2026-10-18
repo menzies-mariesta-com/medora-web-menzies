@@ -20,6 +20,7 @@
 	import { page } from '$app/state';
 	import { StatusEnum } from '$lib/model/enum/db-link';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const toastService = new ToastService();
@@ -71,7 +72,7 @@
 				url.searchParams.set('_t', String(Date.now()));
 
 			const res = await fetch(url, { method: 'GET' });
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			docTypeResult =
 				(await res.json()) as PaginatedResult<DocumentTypeRow>;
 		} finally {
@@ -120,7 +121,7 @@
 						documentType: nameInput.trim()
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_document_type(),
@@ -134,7 +135,7 @@
 						documentType: nameInput.trim()
 					})
 				});
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_document_type(),
@@ -170,7 +171,7 @@
 						body: JSON.stringify({ id })
 					}
 				);
-				if (!res.ok) throw new Error(await res.text());
+				if (!res.ok) await throwUserFacingHttpError(res);
 				await fetchData({ bustCache: true });
 				toastSuccess(
 					toastService,

@@ -49,5 +49,6 @@ export function toastError(
 	actionFailed: string,
 	err?: unknown
 ) {
+	// addErrorToast sanitizes `err` so callers can pass raw Error / Response text safely.
 	toast.addErrorToast(toastLine(entity, actionFailed), err);
 }

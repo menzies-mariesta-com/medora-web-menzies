@@ -12,6 +12,7 @@
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import {
 		computeBmiFromCmKg,
 		getVitalPlaceholder,
@@ -97,10 +98,7 @@
 
 	async function apiGet<T>(url: string): Promise<T> {
 		const res = await fetch(url);
-		if (!res.ok) {
-			const text = await res.text().catch(() => '');
-			throw new Error(text || res.statusText);
-		}
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -250,10 +248,7 @@
 					headers: { 'content-type': 'application/json' },
 					body: JSON.stringify({ id: vitalId, ...vitalPayload })
 				});
-				if (!res.ok)
-					throw new Error(
-						await res.text().catch(() => res.statusText)
-					);
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_patient_vital(),
@@ -269,10 +264,7 @@
 						...vitalPayload
 					})
 				});
-				if (!res.ok)
-					throw new Error(
-						await res.text().catch(() => res.statusText)
-					);
+				if (!res.ok) await throwUserFacingHttpError(res);
 				toastSuccess(
 					toastService,
 					m.entity_patient_vital(),
@@ -281,12 +273,8 @@
 			}
 			await confirm({ saved: true });
 		} catch (err) {
-			toastService.addToast(
-				(err instanceof Error
-					? err.message
-					: 'Failed to save vitals.') as string,
-				StatusColorEnum.ERROR
-			);
+			console.error(err);
+			toastService.addErrorToast(m.error_save_failed(), err);
 		} finally {
 			isSubmitting = false;
 		}

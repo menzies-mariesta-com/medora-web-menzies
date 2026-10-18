@@ -11,6 +11,7 @@
 		disabled = false,
 		editDisabled = false,
 		deleteDisabled = false,
+		showDelete = true,
 		editLoading = false,
 		deleteLoading = false,
 		editTooltip = m.menzies_table_tooltip_edit(),
@@ -21,6 +22,8 @@
 		disabled?: boolean;
 		editDisabled?: boolean;
 		deleteDisabled?: boolean;
+		/** When false, only the edit action is shown. */
+		showDelete?: boolean;
 		editLoading?: boolean;
 		deleteLoading?: boolean;
 		editTooltip?: string;
@@ -41,16 +44,18 @@
 			<LucidePencil className="size-3.5" />
 		{/snippet}
 	</MenziesTableIconAction>
-	<MenziesTableIconAction
-		tooltipText={deleteTooltip}
-		color="error"
-		disabled={disabled || deleteDisabled}
-		loading={deleteLoading}
-		loadingText=""
-		onClick={onDelete}
-	>
-		{#snippet icon()}
-			<LucideTrash2 className="size-3.5" />
-		{/snippet}
-	</MenziesTableIconAction>
+	{#if showDelete}
+		<MenziesTableIconAction
+			tooltipText={deleteTooltip}
+			color="error"
+			disabled={disabled || deleteDisabled}
+			loading={deleteLoading}
+			loadingText=""
+			onClick={onDelete}
+		>
+			{#snippet icon()}
+				<LucideTrash2 className="size-3.5" />
+			{/snippet}
+		</MenziesTableIconAction>
+	{/if}
 </MenziesTableRowActionGroup>

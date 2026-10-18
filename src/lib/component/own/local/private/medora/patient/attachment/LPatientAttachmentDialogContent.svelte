@@ -20,6 +20,7 @@
 	import { DateTimeUtil } from '$lib/util/date-time.util.svelte';
 	import { browser } from '$app/environment';
 	import LucideEye from '$lib/component/own/library/lucide/LucideEye.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const dateTimeUtil = new DateTimeUtil();
 	function formatAttachmentDateTime(
@@ -322,7 +323,7 @@
 				method: 'DELETE'
 			});
 			if (!res.ok)
-				throw new Error(await res.text().catch(() => res.statusText));
+				await throwUserFacingHttpError(res);
 			existingAttachments = existingAttachments.filter(
 				(a) => a.id !== att.id
 			);
@@ -513,7 +514,7 @@
 								<div
 									class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 								>
-									<label class="shrink-0 sm:w-36">Patient</label>
+									<span  class="shrink-0 sm:w-36">Patient</span>
 									<div class="flex-1">
 										<p class="truncate text-sm font-medium">
 											{patientLabel || 'Patient'}

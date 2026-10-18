@@ -28,6 +28,7 @@
 	import LucideBan from '$lib/component/own/library/lucide/LucideBan.svelte';
 	import { DOCUMENT_PRINT_CODE } from '$lib/model/constant/document-print.constant';
 	import { printFromDocumentMaster } from '$lib/util/document-master-print.util.svelte';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	/** Slot shape: date (YYYY-MM-DD), startTime/endTime (HH:mm or HH:mm:ss). */
 	type ScheduleSlot = {
@@ -570,7 +571,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ mode, ...(body ?? {}) })
 		});
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -987,12 +988,20 @@
 									)} {getCellPastOutline(cell.dateString, timeSlot)}"
 									onclick={() =>
 										handleCellClick(cell.dateString, timeSlot)}
-									onkeydown={(e) =>
-										(canCreate ||
-											cellAptId != null ||
-											cellBlockId != null) &&
-										e.key === 'Enter' &&
-										handleCellClick(cell.dateString, timeSlot)}
+									onkeydown={(e) => {
+										if (
+											!(
+												canCreate ||
+												cellAptId != null ||
+												cellBlockId != null
+											)
+										)
+											return;
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											handleCellClick(cell.dateString, timeSlot);
+										}
+									}}
 								>
 									{#if cellLabel}
 										<div class="flex items-center gap-5">

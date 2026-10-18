@@ -7,6 +7,7 @@ import {
 	getOpBillingReadiness,
 	opBillingCloseBlockedMessage
 } from '$lib/server/medora/billing/op-billing-readiness.server';
+import { closeExternalSaleVisitOnOpBillClosed } from '$lib/server/medora/billing/op-billing-external-visit.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { StringUtil } from '$lib/util/string.util.svelte';
 import { ensureDb } from '$lib/server/db';
@@ -18,6 +19,7 @@ import {
 	StatusEnum
 } from '$lib/model/enum/db-link';
 import type { OpBillingSchema } from '$lib/server/db/table/information-table/information-table-schema-type';
+import { parseUuid } from '$lib/util/id.util';
 
 type PendingDetailRow = OpBillingPendingLineRow;
 
@@ -28,13 +30,16 @@ type OpBillingWithAuditStaff = OpBillingSchema & {
 
 type DiscountActionBody = {
 	action?: 'discount';
-	visitId?: number;
+	visitId?: string;
 	discountTypeId?: number;
 	discountPercent?: number | null;
 	discountAmount?: number | null;
 };
 
-/** Fixed lock class for `pg_advisory_xact_lock(class, visitId)`. */
+/**
+ * Fixed lock class for `pg_advisory_xact_lock(class, hashtext(visitId))`.
+ * Visit ids are UUIDs; Postgres advisory locks only accept int keys.
+ */
 const OP_BILLING_SYNC_LOCK_CLASS = 87231401;
 
 type Tx = Parameters<
@@ -56,11 +61,10 @@ function clamp(n: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, n));
 }
 
-function visitIdFromJsonBody(body: unknown): number {
-	if (typeof body !== 'object' || body === null) return 0;
+function visitIdFromJsonBody(body: unknown): string | null {
+	if (typeof body !== 'object' || body === null) return null;
 	const v = (body as { visitId?: unknown }).visitId;
-	const n = Number(v ?? 0);
-	return n;
+	return parseUuid(v);
 }
 
 function postActionFromBody(body: unknown): unknown {
@@ -78,7 +82,9 @@ function dedupePendingRows(
 		const key =
 			r.lineSource === 'medication_order_line'
 				? `med:${r.medicationOrderLineId}`
-				: `svc:${r.id}`;
+				: r.lineSource === 'department_consumption_line'
+					? `dc:${r.departmentConsumptionLineId}`
+					: `svc:${r.id}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(r);
@@ -89,7 +95,7 @@ function dedupePendingRows(
 async function listOpenOpBillings(
 	db: Tx | ReturnType<typeof ensureDb>,
 	opts: {
-		visitId: number;
+		visitId: string;
 		hospitalId: string;
 	}
 ): Promise<OpBillingSchema[]> {
@@ -134,7 +140,7 @@ async function softDeleteOpBillingHeader(
 async function consolidateOpenOpBillings(
 	db: Tx | ReturnType<typeof ensureDb>,
 	opts: {
-		visitId: number;
+		visitId: string;
 		hospitalId: string;
 		userId: string;
 		nowIso: string;
@@ -164,7 +170,7 @@ async function consolidateOpenOpBillings(
  */
 async function syncOpenOpBillingForVisit(opts: {
 	hospitalId: string;
-	visitId: number;
+	visitId: string;
 	branchId: string;
 	userId: string;
 	staffId: string | null;
@@ -187,7 +193,7 @@ async function syncOpenOpBillingForVisit(opts: {
 
 	return ensureDb().transaction(async (tx) => {
 		await tx.execute(
-			sql`SELECT pg_advisory_xact_lock(${OP_BILLING_SYNC_LOCK_CLASS}, ${opts.visitId})`
+			sql`SELECT pg_advisory_xact_lock(${OP_BILLING_SYNC_LOCK_CLASS}, hashtext(${opts.visitId}::text))`
 		);
 
 		let openBill = await consolidateOpenOpBillings(tx, {
@@ -279,11 +285,16 @@ async function syncOpenOpBillingForVisit(opts: {
 					r.lineSource === 'medication_order_line'
 						? r.medicationOrderLineId
 						: null;
+				const departmentConsumptionLineId =
+					r.lineSource === 'department_consumption_line'
+						? r.departmentConsumptionLineId
+						: null;
 				return {
 					opBillingId: billingId,
 					lineIndex: idx + 1,
 					serviceOrderDetailId,
 					medicationOrderLineId,
+					departmentConsumptionLineId,
 					serviceId: r.serviceId,
 					serviceNameSnapshot: r.serviceName ?? null,
 					subCategoryId: r.subCategoryId ?? null,
@@ -339,9 +350,9 @@ export const GET: RequestHandler = async (event) => {
 	const hospitalId = params.hospital_id ?? '';
 	await ensureCanAccessHospital(event, hospitalId);
 	const visitIdParam = url.searchParams.get('visitId');
-	const visitId = visitIdParam ? Number(visitIdParam) : 0;
+	const visitId = parseUuid(visitIdParam);
 
-	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		return json(
 			{
 				error: 'Invalid visitId',
@@ -461,7 +472,7 @@ export const POST: RequestHandler = async (event) => {
 	const body: unknown = await request.json().catch(() => ({}));
 
 	const visitId = visitIdFromJsonBody(body);
-	if (!visitId || !Number.isFinite(visitId) || visitId <= 0) {
+	if (!visitId) {
 		throw error(400, 'Invalid visitId');
 	}
 
@@ -525,14 +536,24 @@ export const POST: RequestHandler = async (event) => {
 			);
 		}
 
-		await ensureDb()
-			.update(table.opBillingTable)
-			.set({
-				statusTaggingId: BillingStatusTaggingEnum.CLOSED,
-				updatedAt: nowIso,
-				updatedBy: locals.user.id
-			})
-			.where(eq(table.opBillingTable.id, sync.billingId));
+		const db = ensureDb();
+		await db.transaction(async (tx) => {
+			await tx
+				.update(table.opBillingTable)
+				.set({
+					statusTaggingId: BillingStatusTaggingEnum.CLOSED,
+					updatedAt: nowIso,
+					updatedBy: locals.user.id
+				})
+				.where(eq(table.opBillingTable.id, sync.billingId));
+
+			await closeExternalSaleVisitOnOpBillClosed(tx, {
+				hospitalId,
+				visitId,
+				userId: locals.user.id,
+				nowIso
+			});
+		});
 		return json({ ok: true });
 	}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/* eslint-disable @typescript-eslint/no-explicit-any -- forwards to shared card with page-typed rows */
+	 
 	import InventoryLineItemsCard from '../InventoryLineItemsCard.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';

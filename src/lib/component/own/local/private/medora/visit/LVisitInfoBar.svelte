@@ -15,7 +15,7 @@
 		visitId?: string;
 		hospitalId: string | undefined;
 		onVisitSelected: (data: {
-			visitId: number;
+			visitId: string;
 			patientName: string;
 		}) => void;
 		onVisitReset: () => void;

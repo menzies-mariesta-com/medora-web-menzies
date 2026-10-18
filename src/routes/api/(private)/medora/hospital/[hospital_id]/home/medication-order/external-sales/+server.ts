@@ -2,7 +2,6 @@ import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import * as ex from '$lib/server/medora/medication-order/medication-order-external.server';
 import * as internal from '$lib/server/medora/medication-order/medication-order-internal.server';
-import { checkoutMedicationOrderBatchExternal } from '$lib/server/medora/medication-order/medication-order-checkout.server';
 
 function hospitalIdFrom(event: RequestEvent): string {
 	const hid = event.params.hospital_id;
@@ -66,7 +65,11 @@ export async function GET(event: RequestEvent) {
 			batchId
 		);
 		if (!pack) throw error(404, 'Not found');
-		if (pack.batch.visitId != null) {
+		const extName = String(
+			(pack.batch as { extCustomerName?: string | null })
+				.extCustomerName ?? ''
+		).trim();
+		if (!extName) {
 			throw error(400, 'Not an external sale batch');
 		}
 		return json(pack);
@@ -83,46 +86,66 @@ export async function POST(event: RequestEvent) {
 		typeof body === 'object' && body !== null
 			? String((body as { mode?: unknown }).mode ?? '')
 			: '';
+
+	if (mode === 'party.registerAndOpenVisit') {
+		const b = body as {
+			storeId?: unknown;
+			firstName?: unknown;
+			lastName?: unknown;
+			phonePrimary?: unknown;
+			genderId?: unknown;
+			advisingDoctor?: unknown;
+		};
+		const storeId = Number(b.storeId ?? 0);
+		if (!Number.isFinite(storeId) || storeId <= 0) {
+			throw error(400, 'storeId is required');
+		}
+		const genderRaw = b.genderId;
+		const genderId =
+			genderRaw === null || genderRaw === undefined || genderRaw === ''
+				? null
+				: Number(genderRaw);
+		return json(
+			await ex.registerExternalPatientAndOpenOpVisit(event, {
+				hospitalId,
+				storeId,
+				firstName: String(b.firstName ?? ''),
+				lastName: String(b.lastName ?? ''),
+				phonePrimary: String(b.phonePrimary ?? ''),
+				genderId:
+					genderId != null && Number.isFinite(genderId)
+						? genderId
+						: null,
+				advisingDoctor: String(b.advisingDoctor ?? '')
+			})
+		);
+	}
+
 	if (mode === 'batch.save') {
 		const b = body as {
 			storeId?: unknown;
+			visitId?: unknown;
 			lines?: unknown;
 			extCustomerName?: unknown;
 			advisingDoctor?: unknown;
 		};
 		const storeId = Number(b.storeId ?? 0);
+		const visitId = String(b.visitId ?? '').trim();
 		const extCustomerName = String(b.extCustomerName ?? '');
 		const advisingDoctor = String(b.advisingDoctor ?? '');
 		const lines = b.lines;
+		if (!visitId) throw error(400, 'visitId is required');
 		if (!Array.isArray(lines)) throw error(400, 'lines is required');
 		return json(
 			await ex.saveMedicationOrderBatchExternal(event, {
 				hospitalId,
+				visitId,
 				storeId,
 				extCustomerName,
 				advisingDoctor,
 				lines: lines as Parameters<
 					typeof ex.saveMedicationOrderBatchExternal
 				>[1]['lines']
-			})
-		);
-	}
-	if (mode === 'batch.checkout') {
-		const b = body as {
-			batchId?: unknown;
-			paymentMethod?: unknown;
-			amountPaid?: unknown;
-		};
-		const batchId = Number(b.batchId ?? 0);
-		if (!Number.isFinite(batchId) || batchId <= 0) {
-			throw error(400, 'batchId is required');
-		}
-		return json(
-			await checkoutMedicationOrderBatchExternal(event, {
-				hospitalId,
-				batchId,
-				paymentMethod: String(b.paymentMethod ?? 'cash'),
-				amountPaid: String(b.amountPaid ?? '')
 			})
 		);
 	}

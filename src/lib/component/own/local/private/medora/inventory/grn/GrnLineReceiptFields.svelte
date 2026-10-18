@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
+	import WashDatePicker from '$lib/component/wash/datepicker/WashDatePicker.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { trimInventoryDraftNumericFieldsInPlace } from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
 
@@ -78,7 +79,7 @@
 
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 	<div>
-		<label class="text-xs opacity-80">{m.inv_grn_line_purchased_qty()}</label>
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-005334">{m.inv_grn_line_purchased_qty()}</label>
 		<input
 			type="number"
 			class="input-bordered input w-full"
@@ -92,30 +93,27 @@
 			min="0"
 			disabled={itemLocked}
 			aria-label={m.inv_grn_line_purchased_qty()}
-		/>
+		id="a11y-grnlinereceiptfields-005334" />
 	</div>
 	<div>
-		<label class="text-xs opacity-80">{m.inv_stock_col_batch()}</label>
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-d0f851">{m.inv_stock_col_batch()}</label>
 		<input
 			type="text"
 			class="input-bordered input w-full"
 			bind:value={draft.batchNo}
 			disabled={itemLocked}
-			aria-label={m.inv_stock_col_batch()}
-		/>
+			aria-label={m.inv_stock_col_batch()} id="a11y-grnlinereceiptfields-d0f851" />
 	</div>
 	<div>
-		<label class="text-xs opacity-80">{m.inv_stock_col_expiry()}</label>
-		<input
-			type="date"
-			class="input-bordered input w-full"
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-7b2f69">{m.inv_stock_col_expiry()}</label>
+		<WashDatePicker
 			bind:value={draft.expiryDate}
 			disabled={itemLocked}
-			aria-label={m.inv_stock_col_expiry()}
-		/>
+			className="w-full"
+			aria-label={m.inv_stock_col_expiry()} id="a11y-grnlinereceiptfields-7b2f69" />
 	</div>
 	<div>
-		<label class="text-xs opacity-80">{m.inv_stock_col_price()}</label>
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-5e7b55">{m.inv_stock_col_price()}</label>
 		<input
 			type="number"
 			class="input-bordered input w-full"
@@ -129,10 +127,10 @@
 			min="0"
 			disabled={itemLocked}
 			aria-label={m.inv_stock_col_price()}
-		/>
+		id="a11y-grnlinereceiptfields-5e7b55" />
 	</div>
 	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">{m.inv_grn_free_qty()}</label>
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-02d48b">{m.inv_grn_free_qty()}</label>
 		<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 			<input
 				type="number"
@@ -147,7 +145,7 @@
 				min="0"
 				disabled={itemLocked}
 				aria-label={m.inv_grn_free_qty()}
-			/>
+			id="a11y-grnlinereceiptfields-02d48b" />
 			<SearchSelect
 				value={draft?.freeUnitIumId != null
 					? String(draft.freeUnitIumId)
@@ -175,7 +173,7 @@
 		</div>
 	</div>
 	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-cfa8ee">
 			{discountMode === 'amount'
 				? m.inv_grn_discount_amount()
 				: m.inv_grn_discount_percent()}
@@ -197,7 +195,7 @@
 						min="0"
 						disabled={itemLocked}
 						aria-label={m.inv_grn_discount_amount()}
-					/>
+					id="a11y-grnlinereceiptfields-cfa8ee" />
 				{:else}
 					<input
 						type="number"
@@ -237,7 +235,7 @@
 		</div>
 	</div>
 	<div class="sm:col-span-2">
-		<label class="text-xs opacity-80">
+		<label class="text-xs opacity-80" for="a11y-grnlinereceiptfields-f83fc3">
 			{taxMode === 'amount'
 				? m.inv_grn_tax_amount()
 				: m.inv_grn_tax_percent()}
@@ -258,7 +256,7 @@
 						min="0"
 						disabled={itemLocked}
 						aria-label={m.inv_grn_tax_amount()}
-					/>
+					id="a11y-grnlinereceiptfields-f83fc3" />
 				{:else}
 					<input
 						type="number"

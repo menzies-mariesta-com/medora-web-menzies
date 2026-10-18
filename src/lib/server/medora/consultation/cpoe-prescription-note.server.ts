@@ -10,7 +10,7 @@ import { assertVisitNotClinicallySigned } from '$lib/server/visit-clinical-lock.
 import { getPatientVisitById } from '$lib/server/medora/observation/observation-emr.server';
 
 export async function getCpoePrescriptionNoteRowsByVisitId(input: {
-	visitId: number;
+	visitId: string;
 	hospitalId: string;
 }) {
 	const visit = await getPatientVisitById({
@@ -58,7 +58,7 @@ export async function getCpoePrescriptionNoteById(input: {
 export async function createCpoePrescriptionNote(
 	hospitalId: string,
 	payload: {
-		visitId: number;
+		visitId: string;
 		note: string;
 		doctorId?: string | null;
 	}

@@ -16,5 +16,27 @@
 
 [dev]
 	command = "npm run dev"
-	targetPort = 5173
+	# package.json `dev` binds Vite to 4002 (not Vite's default 5173)
+	targetPort = 4002
 	framework = "#custom"
+
+# Fingerprinted Vite assets: long-cache immutable (adapter also sets related headers).
+[[headers]]
+	for = "/_app/immutable/*"
+	[headers.values]
+	Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+	for = "/og-medora.png"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/og-medora.svg"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+	for = "/medora-logo.svg"
+	[headers.values]
+	Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"

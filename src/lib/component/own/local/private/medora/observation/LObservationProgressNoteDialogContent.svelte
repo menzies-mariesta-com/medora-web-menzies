@@ -15,8 +15,10 @@
 	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toastSuccess } from '$lib/util/toast-copy.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const toastService = new ToastService();
+	const msg = m as Record<string, (inputs?: object) => string>;
 
 	let { confirm, cancel }: DialogSlotProps = $props();
 
@@ -43,6 +45,11 @@
 	let doctorIdInput = $state('');
 	let statusIdStr = $state(String(StatusEnum.ACTIVE));
 	let isSubmitting = $state(false);
+	let isSigning = $state(false);
+	let signedAt = $state<string | null>(null);
+	let addendumBody = $state('');
+	let addendumReason = $state('correction');
+	let isAddendumSubmitting = $state(false);
 	let loadSeq = 0;
 
 	type NoteRow = {
@@ -54,6 +61,7 @@
 		plan?: string | null;
 		doctorId: string | null;
 		statusId: number | null;
+		signedAt?: string | null;
 	};
 
 	function composeNote(): string {
@@ -83,7 +91,7 @@
 			}
 		}
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -101,7 +109,7 @@
 				})
 			}
 		);
-		if (!res.ok) throw new Error(await res.text());
+		if (!res.ok) await throwUserFacingHttpError(res);
 		return (await res.json()) as T;
 	}
 
@@ -161,6 +169,7 @@
 		}
 		doctorIdInput = row.doctorId?.trim() ? String(row.doctorId) : '';
 		statusIdStr = String(row.statusId ?? StatusEnum.ACTIVE);
+		signedAt = row.signedAt ?? null;
 	}
 
 	$effect(() => {
@@ -241,6 +250,53 @@
 			isSubmitting = false;
 		}
 	}
+
+	async function handleSign() {
+		const id = progressNoteId;
+		if (id == null) return;
+		isSigning = true;
+		try {
+			await apiPost('progressNote.sign', { id });
+			signedAt = new Date().toISOString();
+			toastSuccess(
+				toastService,
+				m.observation_emr_progress_note(),
+				msg.clinical_sign_progress_note()
+			);
+			ObservationProgressNoteDialogState.onSaved?.();
+		} catch (err) {
+			toastService.addErrorToast(
+				msg.clinical_sign_progress_note(),
+				err
+			);
+		} finally {
+			isSigning = false;
+		}
+	}
+
+	async function handleAddendum() {
+		const id = progressNoteId;
+		if (id == null || !addendumBody.trim()) return;
+		isAddendumSubmitting = true;
+		try {
+			await apiPost('progressNote.addendum.create', {
+				progressNoteId: id,
+				reasonCode: addendumReason,
+				body: addendumBody.trim()
+			});
+			addendumBody = '';
+			toastSuccess(
+				toastService,
+				m.observation_emr_progress_note(),
+				msg.clinical_addendum()
+			);
+			ObservationProgressNoteDialogState.onSaved?.();
+		} catch (err) {
+			toastService.addErrorToast(msg.clinical_addendum(), err);
+		} finally {
+			isAddendumSubmitting = false;
+		}
+	}
 </script>
 
 <div
@@ -317,7 +373,7 @@
 			disabled={isSubmitting}
 		/>
 	</div>
-	{#if isEdit}
+	{#if isEdit && !signedAt}
 		<div class="flex flex-col gap-1">
 			<label for="progress-note-status" class="text-sm">
 				{m.observation_emr_status()}
@@ -333,6 +389,17 @@
 			</WashSelect>
 		</div>
 	{/if}
+	{#if signedAt}
+		<p class="text-success text-sm">{msg.clinical_sign_progress_note()}: {signedAt}</p>
+		<div class="flex flex-col gap-1">
+			<label for="addendum-body" class="text-sm">{msg.clinical_addendum()}</label>
+			<WashTextarea
+				id="addendum-body"
+				className="textarea-bordered min-h-16 w-full"
+				bind:value={addendumBody}
+			/>
+		</div>
+	{/if}
 </div>
 <WashDialogFooter>
 	<WashButton
@@ -343,13 +410,36 @@
 	>
 		{m.observation_emr_cancel()}
 	</WashButton>
-	<WashButton
-		type="button"
-		className="btn btn-primary"
-		disabled={isSubmitting}
-		loading={isSubmitting}
-		onClick={handleSubmit}
-	>
-		{m.observation_emr_save()}
-	</WashButton>
+	{#if isEdit && !signedAt}
+		<WashButton
+			type="button"
+			className="btn btn-secondary cursor-pointer"
+			loading={isSigning}
+			disabled={isSubmitting || isSigning}
+			onClick={handleSign}
+		>
+			{msg.clinical_sign_progress_note()}
+		</WashButton>
+	{/if}
+	{#if signedAt}
+		<WashButton
+			type="button"
+			className="btn btn-primary cursor-pointer"
+			loading={isAddendumSubmitting}
+			disabled={isAddendumSubmitting || !addendumBody.trim()}
+			onClick={handleAddendum}
+		>
+			{msg.clinical_addendum()}
+		</WashButton>
+	{:else}
+		<WashButton
+			type="button"
+			className="btn btn-primary cursor-pointer"
+			loading={isSubmitting}
+			disabled={isSubmitting || isSigning}
+			onClick={handleSubmit}
+		>
+			{m.observation_emr_save()}
+		</WashButton>
+	{/if}
 </WashDialogFooter>

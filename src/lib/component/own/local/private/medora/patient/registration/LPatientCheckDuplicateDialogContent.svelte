@@ -1,14 +1,12 @@
 <script lang="ts">
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { PatientDuplicateModalState } from '$lib/state/patient-duplicate-modal.state.svelte';
-	import WashButton from '$lib/component/wash/button/WashButton.svelte';
-	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
 	import WashTable from '$lib/component/wash/table/WashTable.svelte';
 	import WashTableHeader from '$lib/component/wash/table/head/WashTableHeader.svelte';
 	import WashTableBody from '$lib/component/wash/table/body/WashTableBody.svelte';
 	import type { PatientWithRelations } from '$lib/model/type/medora/patient.type';
 
-	let { confirm, cancel }: DialogSlotProps = $props();
+	let { confirm }: DialogSlotProps = $props();
 
 	const duplicates = $derived(PatientDuplicateModalState.duplicates);
 
@@ -43,12 +41,12 @@
 	}
 </script>
 
-<div class="flex h-full min-h-0 flex-col overflow-hidden">
-	<div class="min-h-0 flex-1 overflow-auto p-4">
-		<p class="pb-4 text-sm text-ink-muted">
-			The following patients match the entered details. Click a row to
-			load that patient into the form.
-		</p>
+<div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-4">
+	<p class="shrink-0 pb-4 text-sm text-ink-muted">
+		The following patients in this hospital match the entered details.
+		Click a row to load that patient into the form.
+	</p>
+	<div class="min-h-0 flex-1 overflow-auto">
 		<WashTable className="table table-zebra table-sm">
 			<WashTableHeader>
 				<tr class="sticky top-0 z-3 bg-base-200">
@@ -67,7 +65,12 @@
 						tabindex="0"
 						class="z-0 cursor-pointer hover:bg-info/30"
 						onclick={() => handleSelect(p)}
-						onkeydown={(e) => e.key === 'Enter' && handleSelect(p)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleSelect(p);
+							}
+						}}
 					>
 						<td class="w-32 min-w-[8rem]">{p.code ?? '—'}</td>
 						<td class="w-64 min-w-[16rem]">{fullName(p)}</td>
@@ -91,7 +94,4 @@
 			</WashTableBody>
 		</WashTable>
 	</div>
-	<WashDialogFooter>
-		<WashButton variant="ghost" onClick={() => cancel()}>Close</WashButton>
-	</WashDialogFooter>
 </div>

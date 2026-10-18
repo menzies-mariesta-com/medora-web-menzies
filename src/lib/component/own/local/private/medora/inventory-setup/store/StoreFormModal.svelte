@@ -300,20 +300,21 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
+					<label for="store-remark" class="shrink-0 pt-2 sm:w-40">{m.remark()}</label>
 					<div class="max-w-md flex-1">
-						<WashTextarea bind:value={remark} />
+						<WashTextarea id="store-remark" bind:value={remark} />
 					</div>
 				</div>
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="shrink-0 sm:w-40"
-						>{m.inv_store_purchase_requisitable()}</label
+					<span class="shrink-0 sm:w-40"
+						>{m.inv_store_purchase_requisitable()}</span
 					>
 					<div class="max-w-md flex-1">
-						<label class="flex cursor-pointer items-center gap-2">
+						<label class="flex cursor-pointer items-center gap-2" for="store-purchase-requisitable">
 							<input
+								id="store-purchase-requisitable"
 								type="checkbox"
 								class="checkbox checkbox-sm"
 								bind:checked={isPurchaseRequisitable}
@@ -346,8 +347,8 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
 				>
-					<label class="shrink-0 pt-2 sm:w-40"
-						>{m.user_groups()}</label
+					<span class="shrink-0 pt-2 sm:w-40"
+						>{m.user_groups()}</span
 					>
 					<div class="flex max-w-md flex-1 flex-col gap-2">
 						{#if userGroups.length === 0}
@@ -400,12 +401,11 @@
 				<div
 					class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"
 				>
-					<label class="shrink-0 sm:w-40">{m.status()}</label>
+					<span  class="shrink-0 sm:w-40">{m.status()}</span>
 					<div
 						class="flex max-w-md flex-1 flex-wrap items-center gap-2"
 					>
-						<label class="flex cursor-pointer items-center gap-2">
-							<WashCheckbox bind:checked={formActive} />
+						<label class="flex cursor-pointer items-center gap-2" for="a11y-storeformmodal-6f2e85"><WashCheckbox bind:checked={formActive} id="a11y-storeformmodal-6f2e85" />
 							<span class="text-sm opacity-80"
 								>{m.active_label()}</span
 							>

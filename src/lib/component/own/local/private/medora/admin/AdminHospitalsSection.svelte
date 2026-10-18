@@ -23,6 +23,7 @@
 		ensureTwoFactorForMutation,
 		redirectIfTwoFactorRequired
 	} from '$lib/util/two-factor-gate.util';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	let {
 		onChanged,
 		refreshKey = 0
@@ -153,7 +154,7 @@
 				method: 'GET',
 				credentials: 'include'
 			});
-			if (!res.ok) throw new Error(await res.text());
+			if (!res.ok) await throwUserFacingHttpError(res);
 			hospitalResult =
 				(await res.json()) as PaginatedResult<HospitalWithOwner>;
 		} finally {
@@ -229,7 +230,7 @@
 			});
 			if (!res.ok) {
 				if (await redirectIfTwoFactorRequired(res)) return;
-				throw new Error(await res.text());
+				await throwUserFacingHttpError(res);
 			}
 			toastService.addToast(
 				m.hospital_deleted(),

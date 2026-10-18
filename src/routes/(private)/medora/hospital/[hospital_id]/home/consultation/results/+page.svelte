@@ -9,19 +9,21 @@
 		ImagingResultRow,
 		LabResultRow
 	} from '$lib/model/type/medora/clinical.type';
+	import type { LabReleasedResultRow } from '$lib/model/type/medora/diagnostics.type';
 	import { VisitState } from '$lib/state/visit.state.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(page.params.hospital_id ?? '');
 	const visitId = $derived(
-		Number(
-			page.url.searchParams.get('visitId') ?? VisitState.visitId ?? 0
-		)
+		page.url.searchParams.get('visitId') ??
+			(VisitState.visitId != null ? String(VisitState.visitId) : '')
 	);
 	const apiBase = $derived(
 		`/api/medora/hospital/${hospitalId}/home/consultation/results`
 	);
 	let labs = $state<LabResultRow[]>([]);
+	let structuredLabs = $state<LabReleasedResultRow[]>([]);
 	let imaging = $state<ImagingResultRow[]>([]);
 	let labText = $state('');
 	let labCritical = $state(false);
@@ -36,7 +38,7 @@
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body)
 		});
-		if (!response.ok) throw new Error(await response.text());
+		if (!response.ok) await throwUserFacingHttpError(response);
 	}
 
 	async function loadResults() {
@@ -45,12 +47,14 @@
 		errorMessage = '';
 		try {
 			const response = await fetch(`${apiBase}?visitId=${visitId}`);
-			if (!response.ok) throw new Error(await response.text());
+			if (!response.ok) await throwUserFacingHttpError(response);
 			const result = (await response.json()) as {
 				labs: LabResultRow[];
 				imaging: ImagingResultRow[];
+				structured?: LabReleasedResultRow[];
 			};
 			labs = result.labs;
+			structuredLabs = result.structured ?? [];
 			imaging = result.imaging;
 		} catch (error) {
 			errorMessage =
@@ -155,6 +159,46 @@
 					<h2 class="card-title text-base">
 						{m.mo_clinical_laboratory()}
 					</h2>
+					{#if structuredLabs.length}
+						<div class="flex flex-col gap-3">
+							{#each structuredLabs as block (block.accessionId)}
+								<div class="rounded-box border border-base-300 p-3 text-sm">
+									<p class="font-semibold text-primary">
+										{block.serviceName ?? block.accessionNo}
+									</p>
+									<table class="table table-xs mt-2">
+										<thead>
+											<tr>
+												<th>{m.diagnostics_col_test()}</th>
+												<th>{m.mo_clinical_result()}</th>
+												<th>{m.diagnostics_col_ref()}</th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each block.observations as obs (obs.id)}
+												<tr>
+													<td>{obs.testName}</td>
+													<td>
+														{obs.valueText ?? obs.valueNumeric ?? '–'}
+														{#if obs.unit}
+															{obs.unit}
+														{/if}
+														{#if obs.isCritical}
+															<span class="badge badge-error badge-xs ml-1"
+																>{m.mo_clinical_critical()}</span
+															>
+														{/if}
+													</td>
+													<td>{obs.refRangeText ?? '–'}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							{/each}
+						</div>
+					{/if}
+					<p class="text-xs text-base-content/70">{m.diagnostics_break_glass_lab()}</p>
 					<WashTextarea
 						bind:value={labText}
 						placeholder={m.mo_clinical_result()}

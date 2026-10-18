@@ -89,7 +89,7 @@ export async function POST(event: RequestEvent) {
 				reasonNotes: body.reasonNotes ?? null,
 				sourceOpdVisitId:
 					sourceOpdVisitId != null &&
-					Number.isFinite(sourceOpdVisitId) &&
+					Boolean(sourceOpdVisitId) &&
 					sourceOpdVisitId > 0
 						? sourceOpdVisitId
 						: null,

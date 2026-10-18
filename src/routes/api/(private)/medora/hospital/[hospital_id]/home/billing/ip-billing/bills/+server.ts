@@ -3,14 +3,15 @@ import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { StatusEnum } from '$lib/model/enum/db-link';
+import { parseUuid } from '$lib/util/id.util';
 
 export const GET: RequestHandler = async (event) => {
 	const { url, params, locals } = event;
 	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const hospitalId = params.hospital_id ?? '';
-	const visitId = Number(url.searchParams.get('visitId') ?? '0');
-	if (!Number.isFinite(visitId) || visitId <= 0) {
+	const visitId = parseUuid(url.searchParams.get('visitId'));
+	if (!visitId) {
 		throw error(400, 'visitId is required');
 	}
 

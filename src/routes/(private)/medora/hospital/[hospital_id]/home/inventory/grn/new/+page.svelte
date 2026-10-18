@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { uuidV7 } from '$lib/util/id.util';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -22,7 +23,6 @@
 		type MenziesTableColumn,
 		type MenziesTableColumnsInput
 	} from '$lib/component/own/library/menzies/table/MenziesTable.svelte';
-	import { TableRowEnum } from '$lib/model/enum/table-row.enum';
 	import { m } from '$lib/paraglide/messages';
 	import { InvPoStatusTaggingEnum } from '$lib/model/enum/db-link';
 	import {
@@ -38,6 +38,7 @@
 		trimInventoryNumericDisplay,
 		trimMetricQtyDisplay
 	} from '$lib/tool/inventory/format-line-item-metric-tile-value.util';
+	import { userFacingDetailFromResponse } from '$lib/util/user-facing-error.util';
 
 	const hospitalId = $derived(
 		typeof page.params.hospital_id === 'string'
@@ -249,7 +250,7 @@
 				toastService.addToast(
 					'Could not upload invoice file',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -347,7 +348,7 @@
 
 	function newDirectLine(): GrnDirectLine {
 		return {
-			key: crypto.randomUUID(),
+			key: uuidV7(),
 			itemSearch: '',
 			hits: [],
 			itemId: null,
@@ -781,6 +782,7 @@
 			await loadEligiblePos();
 			const result = await dialogService.open<PoRowLite>({
 				fullScreen: true,
+				title: '',
 				component: InventoryTablePickerDialogContent,
 				props: {
 					title: m.inv_grn_select_po(),
@@ -1072,7 +1074,7 @@
 				toastService.addToast(
 					'Could not post GRN',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -1205,7 +1207,7 @@
 				toastService.addToast(
 					'Could not post GRN',
 					StatusColorEnum.ERROR,
-					await res.text()
+					await userFacingDetailFromResponse(res)
 				);
 				return;
 			}
@@ -1365,16 +1367,34 @@
 
 			{#snippet invoiceReceivingFields()}
 				<div class={grnFieldsStack}>
-					<GrnFormFieldRow label={m.inv_grn_invoice_no()}>
-						<WashInputField inputType="text" bind:value={invoiceNo} />
-					</GrnFormFieldRow>
-
-					<GrnFormFieldRow label={m.inv_grn_invoice_date()}>
-						<WashInputField inputType="date" bind:value={invoiceDate} />
-					</GrnFormFieldRow>
-
-					<GrnFormFieldRow label={m.inv_grn_invoice_amount()}>
+					<GrnFormFieldRow
+						label={m.inv_grn_invoice_no()}
+						controlId="grn-invoice-no"
+					>
 						<WashInputField
+							id="grn-invoice-no"
+							inputType="text"
+							bind:value={invoiceNo}
+						/>
+					</GrnFormFieldRow>
+
+					<GrnFormFieldRow
+						label={m.inv_grn_invoice_date()}
+						controlId="grn-invoice-date"
+					>
+						<WashInputField
+							id="grn-invoice-date"
+							inputType="date"
+							bind:value={invoiceDate}
+						/>
+					</GrnFormFieldRow>
+
+					<GrnFormFieldRow
+						label={m.inv_grn_invoice_amount()}
+						controlId="grn-invoice-amount"
+					>
+						<WashInputField
+							id="grn-invoice-amount"
 							inputType="number"
 							step="0.01"
 							inputPlaceholderText="0.00"
@@ -1391,10 +1411,12 @@
 
 					<GrnFormFieldRow
 						label={m.inv_grn_invoice_file()}
+						controlId="grn-invoice-file"
 						alignStart={true}
 					>
 						<div>
 							<input
+								id="grn-invoice-file"
 								type="file"
 								class="file-input-bordered file-input w-full"
 								accept="image/*,application/pdf"
@@ -1503,15 +1525,23 @@
 									</div>
 								</GrnFormFieldRow>
 
-								<GrnFormFieldRow label={m.inv_grn_received_date()}>
+								<GrnFormFieldRow
+									label={m.inv_grn_received_date()}
+									controlId="grn-po-received-date"
+								>
 									<WashInputField
+										id="grn-po-received-date"
 										inputType="date"
 										bind:value={receivedDate}
 									/>
 								</GrnFormFieldRow>
 
-								<GrnFormFieldRow label={m.inv_common_received_by()}>
+								<GrnFormFieldRow
+									label={m.inv_common_received_by()}
+									controlId="grn-po-received-by"
+								>
 									<SearchSelect
+										inputId="grn-po-received-by"
 										value={receivedByUserId ?? ''}
 										searchFn={searchReceivedByUsers}
 										getLabelForValue={getReceivedByLabelForValue}
@@ -1524,9 +1554,13 @@
 									/>
 								</GrnFormFieldRow>
 
-								<GrnFormFieldRow label={m.inv_grn_receiving_store()}>
+								<GrnFormFieldRow
+									label={m.inv_grn_receiving_store()}
+									controlId="grn-po-receiving-store"
+								>
 									{#if receivingStore}
 										<input
+											id="grn-po-receiving-store"
 											type="text"
 											readonly
 											disabled
@@ -1536,6 +1570,7 @@
 										/>
 									{:else if selectedPoId}
 										<input
+											id="grn-po-receiving-store"
 											type="text"
 											readonly
 											disabled
@@ -1553,6 +1588,7 @@
 										{/if}
 									{:else}
 										<input
+											id="grn-po-receiving-store"
 											type="text"
 											readonly
 											disabled
@@ -1584,9 +1620,13 @@
 								{m.inv_grn_section_receipt()}
 							</p>
 							<div class={grnFieldsStack}>
-								<GrnFormFieldRow label={m.inv_grn_receiving_store()}>
+								<GrnFormFieldRow
+									label={m.inv_grn_receiving_store()}
+									controlId="grn-direct-receiving-store"
+								>
 									<div>
 										<input
+											id="grn-direct-receiving-store"
 											type="text"
 											readonly
 											disabled
@@ -1605,15 +1645,23 @@
 									</div>
 								</GrnFormFieldRow>
 
-								<GrnFormFieldRow label={m.inv_grn_received_date()}>
+								<GrnFormFieldRow
+									label={m.inv_grn_received_date()}
+									controlId="grn-direct-received-date"
+								>
 									<WashInputField
+										id="grn-direct-received-date"
 										inputType="date"
 										bind:value={receivedDate}
 									/>
 								</GrnFormFieldRow>
 
-								<GrnFormFieldRow label={m.inv_common_received_by()}>
+								<GrnFormFieldRow
+									label={m.inv_common_received_by()}
+									controlId="grn-direct-received-by"
+								>
 									<SearchSelect
+										inputId="grn-direct-received-by"
 										value={receivedByUserId ?? ''}
 										searchFn={searchReceivedByUsers}
 										getLabelForValue={getReceivedByLabelForValue}
@@ -1635,8 +1683,12 @@
 								{m.inv_po_supplier_search()}
 							</p>
 							<div class={grnFieldsStack}>
-								<GrnFormFieldRow label={m.inv_po_select_supplier()}>
+								<GrnFormFieldRow
+									label={m.inv_po_select_supplier()}
+									controlId="grn-direct-supplier"
+								>
 									<SearchSelect
+										inputId="grn-direct-supplier"
 										value={directSupplierId != null
 											? String(directSupplierId)
 											: ''}

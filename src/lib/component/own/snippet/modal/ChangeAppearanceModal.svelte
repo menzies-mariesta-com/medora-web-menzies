@@ -25,7 +25,8 @@
 	const pigmentOptions = $derived(
 		pigments.map((pigment) => ({
 			value: pigment.id,
-			label: `${pigment.label} — ${pigment.note}`
+			label: `${pigment.label}: ${pigment.note}`,
+			swatch: pigment.swatch
 		}))
 	);
 	const modeOptions = $derived([
@@ -41,7 +42,8 @@
 	const fontOptions = $derived(
 		fontStyles.map((style) => ({
 			value: style.id,
-			label: `${style.label} — ${style.note}`
+			label: `${style.label}: ${style.note}`,
+			fontFamily: style.stack
 		}))
 	);
 
@@ -53,6 +55,7 @@
 	let isConfirming = $state(false);
 
 	function preview() {
+		// Theme first, then font: font re-asserts typeface tokens for every pigment.
 		washThemeTool.apply(currentPigment, currentMode);
 		fontTool.apply(currentFont);
 	}
@@ -92,7 +95,7 @@
 			<WashSelect
 				id="wash-pigment"
 				placeholder={msg.appearance_select_pigment()}
-				className="w-full"
+				className="w-full cursor-pointer"
 				options={pigmentOptions}
 				bind:value={currentPigment}
 				onChange={() => preview()}
@@ -104,7 +107,7 @@
 			<WashSelect
 				id="wash-mode"
 				placeholder={msg.appearance_select_mode()}
-				className="w-full"
+				className="w-full cursor-pointer"
 				options={modeOptions}
 				bind:value={currentMode}
 				onChange={() => preview()}
@@ -116,27 +119,11 @@
 			<WashSelect
 				id="wash-font"
 				placeholder={msg.appearance_select_font_style()}
-				className="w-full"
+				className="w-full cursor-pointer"
 				options={fontOptions}
 				bind:value={currentFont}
 				onChange={() => preview()}
 			/>
-
-			<div class="flex flex-wrap gap-2 pt-1">
-				{#each pigments.slice(0, 12) as pigment (pigment.id)}
-					<button
-						type="button"
-						class="ripple size-7 cursor-pointer rounded-full border border-base-300"
-						style="background:{pigment.swatch}"
-						title={pigment.label}
-						aria-label={pigment.label}
-						onclick={() => {
-							currentPigment = pigment.id as WashPigmentEnum;
-							preview();
-						}}
-					></button>
-				{/each}
-			</div>
 		</div>
 	</div>
 

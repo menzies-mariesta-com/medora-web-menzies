@@ -15,6 +15,10 @@
 	import { m } from '$lib/paraglide/messages';
 	import { dialogService } from '$lib/service/dialog.service.svelte';
 	import { ToastService } from '$lib/service/toast.service.svelte';
+	import {
+		throwUserFacingHttpError,
+		toUserFacingErrorDetail
+	} from '$lib/util/user-facing-error.util';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	type RecipientDto = {
@@ -77,14 +81,13 @@
 				credentials: 'include',
 				cache: 'no-store'
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Load failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { recipients: RecipientDto[] };
 			recipients = [...b.recipients];
 		} catch (e) {
-			bundleError = e instanceof Error ? e.message : 'Load failed';
+			console.error(e);
+			bundleError =
+				toUserFacingErrorDetail(e) ?? m.error_load_failed();
 			recipients = [];
 		} finally {
 			bundleLoading = false;
@@ -181,10 +184,7 @@
 					}))
 				})
 			});
-			if (!res.ok) {
-				const t = await res.text().catch(() => '');
-				throw new Error(t || `Save failed (${res.status})`);
-			}
+			if (!res.ok) await throwUserFacingHttpError(res);
 			const b = (await res.json()) as { recipients: RecipientDto[] };
 			recipients = [...b.recipients];
 			toastService.addToast(
@@ -192,10 +192,8 @@
 				StatusColorEnum.SUCCESS
 			);
 		} catch (e) {
-			toastService.addToast(
-				e instanceof Error ? e.message : 'Save failed',
-				StatusColorEnum.ERROR
-			);
+			console.error(e);
+			toastService.addErrorToast(m.error_save_failed(), e);
 			await loadBundle();
 		} finally {
 			savingAll = false;
