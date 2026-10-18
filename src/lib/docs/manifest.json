@@ -4427,6 +4427,7 @@
   ],
   "prerenderPaths": [
     "/docs",
+    "/docs/workflows",
     "/docs/workflows/administration-staff",
     "/docs/workflows/administration-staff-registration",
     "/docs/workflows/administration-staff-list",

@@ -46,6 +46,13 @@ jobs:
         run: |
           free -h
           npm run build:github
+        env:
+          # Satisfy hooks/auth during prerender (values are not used for deploy secrets).
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
+          BETTER_AUTH_SECRET: github-actions-ci-build-placeholder-min-32-chars
+          BETTER_AUTH_URL: https://medora-menzies.netlify.app
+          BETTER_AUTH_BASE_URL: https://medora-menzies.netlify.app
+          PUBLIC_APP_URL: https://medora-menzies.netlify.app
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
