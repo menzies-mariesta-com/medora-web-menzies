@@ -54,10 +54,27 @@ jobs:
           BETTER_AUTH_BASE_URL: https://medora-menzies.netlify.app
           PUBLIC_APP_URL: https://medora-menzies.netlify.app
 
+      - name: Verify Netlify secrets
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::Repository secret NETLIFY_AUTH_TOKEN is missing. Netlify → User settings → Personal access tokens, then add the token under GitHub repo Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::error::Repository secret NETLIFY_SITE_ID is missing. Netlify → Site configuration → Site details → Site ID."
+            exit 1
+          fi
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: ./build
+          # SvelteKit adapter-netlify puts SSR/API in .netlify/functions-internal (not in build/).
+          functions-dir: .netlify/functions-internal
+          netlify-config-path: ./netlify.toml
           production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: 'Deploy from GitHub Actions'
