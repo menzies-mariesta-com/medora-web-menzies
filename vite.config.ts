@@ -92,9 +92,10 @@ export default defineConfig({
 	...(isNetlifyBuild
 		? {
 				build: {
+					sourcemap: false,
 					rollupOptions: {
-						// Reduce peak RSS during "rendering chunks" on memory-limited CI.
-						maxParallelFileOps: 2
+						// Reduce peak RSS during "rendering chunks" on memory-limited CI (~8GB).
+						maxParallelFileOps: 1
 					}
 				}
 			}
@@ -115,7 +116,7 @@ export default defineConfig({
 		paraglideMessageRuntimeResolve(),
 		tailwindcss(),
 		sveltekit(),
-		devtoolsJson()
+		...(isNetlifyBuild ? [] : [devtoolsJson()])
 	],
 	test: {
 		expect: { requireAssertions: true },

@@ -4,7 +4,8 @@
 [build]
 	# Netlify still auto-detects pnpm from pnpm-lock.yaml before this runs.
 	# We no-op that install (PNPM_FLAGS) and install with npm ourselves.
-	# build:netlify uses lower Node heap than local build to avoid OOM (exit 137) on Netlify.
+	# build:netlify → paraglide:ci + vite:build:ci (lower heap; do not use npm run paraglide — it forces 8192).
+	# If exit 137 persists, use .github/workflows/netlify-build.yml (GitHub runner RAM) or Netlify enhanced builds.
 	command = "npm ci && npm run build:netlify"
 	publish = "build"
 
