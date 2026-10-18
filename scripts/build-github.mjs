@@ -8,14 +8,15 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const root = dirname(fileURLToPath(new URL('.', import.meta.url)));
-const viteBin = join(root, '..', 'node_modules', 'vite', 'bin', 'vite.js');
-const paraglideScript = join(root, 'compile-paraglide.mjs');
+const scriptsDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(scriptsDir, '..');
+const viteBin = join(repoRoot, 'node_modules', 'vite', 'bin', 'vite.js');
+const paraglideScript = join(scriptsDir, 'compile-paraglide.mjs');
 
 function run(label, command, args, extraEnv = {}) {
 	console.log(`\n> ${label}`);
 	const result = spawnSync(command, args, {
-		cwd: join(root, '..'),
+		cwd: repoRoot,
 		stdio: 'inherit',
 		env: {
 			...process.env,
