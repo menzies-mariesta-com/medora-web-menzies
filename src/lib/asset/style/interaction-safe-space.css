@@ -1,0 +1,113 @@
+/*
+ * Interaction-safe space (Medora / Wash)
+ *
+ * Problem: overflow scrollers clip focus rings, thicker focus borders, hover lift,
+ * and box-shadow. Dropdowns should portal; rings and borders still need inset.
+ *
+ * Per-axis padding on any ancestor that clips (overflow not visible):
+ *
+ *   pad = max(R, L, S, B) + G + ε
+ *
+ *   R = outline-width + outline-offset
+ *   L = |translateY| on hover / focus-within (lift)
+ *   S = max box-shadow spread on hover / focus (visual footprint)
+ *   B = (borderWidth_focus - borderWidth_rest) / 2
+ *       Use 0 when resting controls keep the same border width (color-only focus).
+ *   G = gap reserved under an open dropdown trigger (panel uses portal; G still
+ *       separates stacked fields so the next row is not covered)
+ *   ε = 1px safety for subpixel rounding
+ *
+ * Stack gap between fields:
+ *
+ *   gap >= pad
+ *
+ * Scroll into view (keyboard focus):
+ *
+ *   scroll-padding >= R on scroll containers that clip fields.
+ *
+ * Defaults below match Wash dialog fields, daisyUI `.input` / `.select`, and
+ * table row hover lift (`hover:-translate-y-0.5` = 2px).
+ */
+
+:root {
+	--wash-outline-width: 2px;
+	--wash-outline-offset: 2px;
+	--wash-state-ring: calc(
+		var(--wash-outline-width) + var(--wash-outline-offset)
+	);
+	--wash-state-lift: 2px;
+	--wash-state-shadow: 6px;
+	--wash-state-border-half-delta: 0px;
+	--wash-dropdown-gap: 4px;
+	--wash-state-epsilon: 1px;
+	--wash-interaction-inset: calc(
+		max(
+				var(--wash-state-ring),
+				var(--wash-state-lift),
+				var(--wash-state-shadow),
+				var(--wash-state-border-half-delta)
+			) + var(--wash-dropdown-gap) + var(--wash-state-epsilon)
+	);
+}
+
+/* Dialog shell scroll bands (WashDialog) */
+.wash-dialog-scroll-body {
+	padding-inline: calc(1rem + var(--wash-state-ring));
+	padding-block: calc(0.75rem + var(--wash-state-ring));
+	scroll-padding: var(--wash-interaction-inset);
+}
+
+/* Component-owned footer: horizontal inset lives on the scrolling form child. */
+.wash-dialog-form-column {
+	padding-block-start: calc(0.75rem + var(--wash-state-ring));
+	padding-block-end: var(--wash-state-ring);
+}
+
+/* Vertical stacks of labels + controls */
+.wash-form-stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wash-interaction-inset);
+}
+
+/* Explicit opt-in for inner scroll areas (dialogs, drawers, cards) */
+.wash-interaction-scroll {
+	padding: var(--wash-interaction-inset);
+	scroll-padding: var(--wash-interaction-inset);
+}
+
+/*
+ * Auto: scroll regions that contain form controls gain inset unless opted out.
+ * Excludes table body scrollers (row hover uses separate tip placement).
+ */
+:where(.overflow-auto, .overflow-y-auto, .overflow-x-auto):has(
+		:where(
+			input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+			textarea,
+			select,
+			.input,
+			.select,
+			.textarea,
+			.wash-select--icon,
+			.menzies-ss-list,
+			[role='combobox']
+		)
+	):not(.menzies-table-scroll):not(.wash-interaction-scroll-opt-out) {
+	padding: var(--wash-interaction-inset);
+	scroll-padding: var(--wash-interaction-inset);
+}
+
+/*
+ * Stable border width on bordered fields so focus does not change layout (B = 0).
+ * Focus ring uses outline outside the border box.
+ */
+:where(.input-bordered, .textarea-bordered, .select) {
+	border-width: var(--border, 1px);
+}
+
+:where(.input-bordered, .textarea-bordered):focus,
+:where(.select):focus-within {
+	outline: var(--wash-outline-width) solid
+		color-mix(in oklab, var(--color-primary) 45%, transparent);
+	outline-offset: var(--wash-outline-offset);
+}

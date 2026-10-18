@@ -771,6 +771,11 @@ export const documentTable = pgTable(
 			.notNull()
 			.references(() => documentTypeTable.id),
 		code: varchar('code', { length: 128 }),
+		catalogCode: varchar('catalog_code', { length: 128 }),
+		isSystemCatalog: boolean('is_system_catalog').notNull().default(false),
+		hospitalId: uuid('hospital_id').references(() => hospitalTable.id, {
+			onDelete: 'cascade'
+		}),
 		documentText: text('document_text'),
 		documentNumber: varchar('document_number', { length: 128 }),
 		documentSettingId: integer('document_setting_id').references(
@@ -784,6 +789,8 @@ export const documentTable = pgTable(
 	},
 	(table) => [
 		index('document_code_idx').on(table.code),
+		index('document_catalog_code_idx').on(table.catalogCode),
+		index('document_hospital_id_idx').on(table.hospitalId),
 		index('document_document_type_id_idx').on(table.documentTypeId),
 		index('document_status_id_idx').on(table.statusId)
 	]
@@ -1197,6 +1204,8 @@ export const progressNoteTable = pgTable(
 		doctorId: uuid('doctor_id').references(() => staffTable.id),
 		cosignedAt: timestamp('cosigned_at', { withTimezone: true }),
 		cosignedBy: uuid('cosigned_by').references(() => staffTable.id),
+		signedAt: timestamp('signed_at', { withTimezone: true }),
+		signedBy: uuid('signed_by').references(() => staffTable.id),
 		sequenceNo: integer('sequence_no').notNull().default(0),
 		...timestamps
 	},
@@ -1317,6 +1326,7 @@ export const itemMasterTable = pgTable(
 			.default('0'),
 		/** When true, MO-authored med orders need Consultant cosign before pharmacy dispense. */
 		isHighRisk: boolean('is_high_risk').notNull().default(false),
+		rxnormRxcui: varchar('rxnorm_rxcui', { length: 16 }),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()
@@ -1642,6 +1652,7 @@ export const opBillingLineTable = pgTable(
 		}),
 		/** Set when the bill line is sourced from a saved medication (internal) order line. */
 		medicationOrderLineId: integer('medication_order_line_id'),
+		departmentConsumptionLineId: integer('department_consumption_line_id'),
 		serviceId: integer('service_id')
 			.notNull()
 			.references(() => serviceItemTable.id, {
@@ -2675,6 +2686,7 @@ export const operativeNoteTable = pgTable(
 		specimens: text('specimens').notNull().default(''),
 		postOp: text('post_op').notNull().default(''),
 		surgeonId: uuid('surgeon_id').references(() => staffTable.id),
+		surgicalCaseId: integer('surgical_case_id'),
 		statusId: integer('status_id')
 			.references(() => statusTable.id)
 			.notNull()

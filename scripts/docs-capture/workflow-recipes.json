@@ -1,0 +1,33 @@
+{
+	"overrides": {
+		"administration-staff-list": {
+			"waitApiPath": "/administration/staff/list",
+			"minTableRows": 1
+		},
+		"inventory-receipt-from-store": {
+			"waitApiPath": "/inventory/department-issue",
+			"minTableRows": 1
+		},
+		"inventory-department-consumption": {
+			"waitApiPath": "/inventory/department-consumption",
+			"minTableRows": 1
+		},
+		"inventory-reports": {
+			"waitApiPath": "/inventory/reports/low-stock",
+			"minTableRows": 1
+		},
+		"inventory-reports-low-stock": {
+			"waitApiPath": "/inventory/reports/low-stock",
+			"minTableRows": 1
+		},
+		"inventory-reports-expired": {
+			"waitApiPath": "/inventory/reports/expired",
+			"minTableRows": 1
+		},
+		"inventory-reports-movement": {
+			"waitApiPath": "/inventory/reports/movement",
+			"minTableRows": 1
+		}
+	},
+	"notes": "Per-slug: needsVisit, waitSelector, waitApiPath (GET API substring), minTableRows (default 1 for tables; use 0 to allow empty lists after load)."
+}

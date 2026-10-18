@@ -148,7 +148,18 @@ export async function createDraftMedicationOrder(
 				updatedBy: event.locals.user?.id ?? null
 			}))
 		);
-		return batch;
+		const batchResult = batch;
+		const { screenDraftMedicationOrder } = await import(
+			'$lib/server/medora/clinical/prescribing-cds.server'
+		);
+		const cds = await screenDraftMedicationOrder({
+			hospitalId: input.hospitalId,
+			visitId: input.visitId,
+			itemMasterIds: input.lines.map((l) => l.itemMasterId),
+			staffId: staff.id,
+			batchId: batchResult.id
+		});
+		return { ...batchResult, cds };
 	});
 }
 

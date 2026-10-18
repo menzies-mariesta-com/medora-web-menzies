@@ -54,7 +54,10 @@ export type OpBillingMeta = {
 
 export type OpBillingLine = {
 	id: number;
-	lineSource?: 'service_order_detail' | 'medication_order_line';
+	lineSource?:
+		| 'service_order_detail'
+		| 'medication_order_line'
+		| 'department_consumption_line';
 	serviceId: number;
 	serviceName: string | null;
 	orderNo: string | null;

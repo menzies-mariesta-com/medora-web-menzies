@@ -145,6 +145,14 @@ export const GET: RequestHandler = async (event) => {
 				throw error(400, 'id is required');
 			return json(await obs.getProgressNoteById({ id, hospitalId }));
 		}
+		case 'progressNote.addendum.list': {
+			const progressNoteId = Number(
+				event.url.searchParams.get('progressNoteId') ?? 0
+			);
+			return json(
+				await obs.listProgressNoteAddenda({ hospitalId, progressNoteId })
+			);
+		}
 		case 'formEntry.list': {
 			if (!visitId)
 				throw error(400, 'visitId is required');
@@ -476,6 +484,33 @@ export const POST: RequestHandler = async (event) => {
 						p['statusId'] != null && p['statusId'] !== ''
 							? Number(p['statusId'])
 							: undefined
+				})
+			);
+		}
+		case 'progressNote.sign': {
+			const id = Number(body['id'] ?? 0);
+			const staffId = event.locals.staff?.id;
+			if (!staffId) throw error(401, 'Staff required');
+			if (!Number.isFinite(id) || id <= 0)
+				throw error(400, 'id is required');
+			return json(
+				await obs.signProgressNote({
+					id,
+					hospitalId,
+					staffId: String(staffId)
+				})
+			);
+		}
+		case 'progressNote.addendum.create': {
+			const staffId = event.locals.staff?.id;
+			if (!staffId) throw error(401, 'Staff required');
+			return json(
+				await obs.addProgressNoteAddendum({
+					hospitalId,
+					progressNoteId: Number(body['progressNoteId'] ?? 0),
+					reasonCode: String(body['reasonCode'] ?? ''),
+					body: String(body['body'] ?? ''),
+					authorStaffId: String(staffId)
 				})
 			);
 		}

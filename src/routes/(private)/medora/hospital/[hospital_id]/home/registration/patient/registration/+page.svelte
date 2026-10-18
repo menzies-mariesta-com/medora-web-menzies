@@ -50,6 +50,11 @@
 	import { toastSuccess } from '$lib/util/toast-copy.util';
 	import { throwUserFacingHttpError } from '$lib/util/user-facing-error.util';
 	import { pickPostalCodeIdForCity } from '$lib/tool/geo/pick-postal-for-city.util';
+	import { medoraHospitalPageUrl } from '$lib/model/enum/routes.enum';
+	import { paraglideMsg } from '$lib/util/paraglide-fallback.util';
+
+	let { edRegistrationMode = false }: { edRegistrationMode?: boolean } =
+		$props();
 
 	const lifeCycleUtil = new LifeCycleUtil();
 	const dateTimeUtil = new DateTimeUtil();
@@ -1054,6 +1059,16 @@
 					patientCode
 				);
 
+				if (edRegistrationMode && hospitalIdFromUrl) {
+					routerUtil.replaceRoute(
+						`${medoraHospitalPageUrl(
+							hospitalIdFromUrl,
+							'/medora/home/emergency/admission/new'
+						)}?patientId=${encodeURIComponent(patient.id)}`
+					);
+					return;
+				}
+
 				if (emailValue) {
 					const remapped = result.emailRemapped === true;
 					const authEmail =
@@ -1331,11 +1346,17 @@
 				{#if !isViewMode}
 					<WashButton
 						type="submit"
-						className="btn-primary btn-wide"
+						className="btn-primary btn-wide cursor-pointer"
 						loading={isLoading}
 						disabled={disableCreateSave}
+						aria-busy={isLoading}
 					>
-						Save
+						{edRegistrationMode && !currentPatientId
+							? paraglideMsg(
+									'ed_admission_new_patient_save_continue',
+									'Save and continue to ER visit'
+								)
+							: 'Save'}
 					</WashButton>
 					{#if disableCreateSave}
 						<WashButton

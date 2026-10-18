@@ -281,7 +281,7 @@
 			return;
 		}
 		const result = await dialogService.open({
-			title: m.delete(),
+			title: m.menzies_table_tooltip_delete(),
 			message: row.name,
 			variant: DialogVariantEnum.CONFIRM
 		});

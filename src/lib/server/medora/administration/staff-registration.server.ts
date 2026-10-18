@@ -4,7 +4,7 @@ import { uuidV7 } from '$lib/util/id.util';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { RoleEnum, StatusEnum } from '$lib/model/enum/db-link';
 import type {
 	BloodTypeSchema,

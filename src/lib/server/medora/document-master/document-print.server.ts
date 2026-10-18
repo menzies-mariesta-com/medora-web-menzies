@@ -46,7 +46,7 @@ export async function getDocumentPrintBootstrap(
 	if (!trimmed) throw error(400, 'code is required');
 
 	const [document, documentSettings] = await Promise.all([
-		getDocumentByCode(event, trimmed),
+		getDocumentByCode(event, trimmed, { hospitalId }),
 		getDocumentSettingsForPrint(event, hospitalId)
 	]);
 
