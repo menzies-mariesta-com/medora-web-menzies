@@ -4,7 +4,8 @@
 [build]
 	# Netlify still auto-detects pnpm from pnpm-lock.yaml before this runs.
 	# We no-op that install (PNPM_FLAGS) and install with npm ourselves.
-	command = "npm ci && npm run build"
+	# build:netlify uses lower Node heap than local build to avoid OOM (exit 137) on Netlify.
+	command = "npm ci && npm run build:netlify"
 	publish = "build"
 
 [build.environment]

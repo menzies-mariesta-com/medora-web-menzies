@@ -83,10 +83,22 @@ function paraglideMessageRuntimeResolve(): Plugin {
 	};
 }
 
+const isNetlifyBuild = process.env.NETLIFY === 'true';
+
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
+	...(isNetlifyBuild
+		? {
+				build: {
+					rollupOptions: {
+						// Reduce peak RSS during "rendering chunks" on memory-limited CI.
+						maxParallelFileOps: 2
+					}
+				}
+			}
+		: {}),
 	server: {
 		allowedHosts: ['host.docker.internal'],
 		watch: {
