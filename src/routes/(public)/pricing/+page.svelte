@@ -12,7 +12,7 @@
 	} from '$lib/tool/pricing';
 	import { absoluteAssetUrl, absoluteUrl } from '$lib/util/seo.util';
 
-	let { data, form } = $props();
+	let { data } = $props();
 
 	const title = $derived(m.pricing_seo_title());
 	const description = $derived(m.pricing_seo_description());
@@ -100,7 +100,7 @@
 	<MedoraHomeNav />
 	<main>
 		<PricingPlans />
-		<PricingTrialRequest {form} />
+		<PricingTrialRequest />
 		<PricingAudienceFaq />
 	</main>
 	<MedoraHomeFooter />

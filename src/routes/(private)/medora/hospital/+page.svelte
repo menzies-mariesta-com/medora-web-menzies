@@ -293,7 +293,7 @@
 					/>
 				</div>
 				<div
-					class="tooltip tooltip-bottom tooltip-primary"
+					class="tooltip tooltip-primary"
 					data-tip={m.refresh_data()}
 				>
 					<button

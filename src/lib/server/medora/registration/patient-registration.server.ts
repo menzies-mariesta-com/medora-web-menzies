@@ -16,7 +16,7 @@ import {
 	generatePrefix,
 	isPrefixFormatConfigured
 } from '$lib/server/medora/prefix/prefix-generator.server';
-import { PasswordHashUtil } from '$lib/util/password-hash.util.svelte';
+import { PasswordHashUtil } from '$lib/server/auth/password-hash.server';
 import { ensureCanAccessHospital } from '$lib/server/medora/ensure-can-access-hospital.server';
 import { and, eq, ilike, ne, or, sql, type SQL } from 'drizzle-orm';
 import { uuidV7 } from '$lib/util/id.util';

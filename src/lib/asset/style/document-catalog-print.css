@@ -1,0 +1,13 @@
+/* Catalog print tokens; merged into PRINT_DOCUMENT_UTILITY_CSS via print-document-html.util.ts */
+.catalog-doc-title {
+	font-size: 1.125rem;
+	font-weight: 700;
+	margin: 0 0 0.75rem;
+}
+.catalog-doc-section {
+	margin: 1rem 0;
+}
+.catalog-doc-fine {
+	font-size: 0.6875rem;
+	line-height: 1.35;
+}

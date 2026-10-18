@@ -42,6 +42,11 @@
 	const stats = $derived(data.stats);
 	const visitsByDay = $derived(data.visitsByDay ?? []);
 	const filters = $derived(data.filters);
+	const showDashboardWarning = $derived(
+		Boolean(
+			data.dashboardLoadError || (data.partialErrors?.length ?? 0) > 0
+		)
+	);
 
 	let loading = $state(false);
 	let dateDraft = $state('');
@@ -276,6 +281,13 @@
 			</button>
 		</div>
 	</div>
+
+	{#if showDashboardWarning}
+		<div role="alert" class="alert alert-warning">
+			<LucideTriangleAlert className="size-5 shrink-0" />
+			<span>{msg.hospital_home_dashboard_partial_error()}</span>
+		</div>
+	{/if}
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 		<div

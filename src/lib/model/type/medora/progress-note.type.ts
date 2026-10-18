@@ -14,6 +14,8 @@ export type ProgressNoteListRow = {
 	doctorId: string | null;
 	cosignedAt?: string | null;
 	cosignedBy?: string | null;
+	signedAt?: string | null;
+	signedBy?: string | null;
 	sequenceNo: number | null;
 	createdAt?: string | null;
 	updatedAt?: string | null;

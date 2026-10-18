@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, ne, or } from 'drizzle-orm';
 import { ensureDb } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type {
@@ -57,6 +57,24 @@ export async function getClinicalFormDocuments(
 	if (opts?.hospitalId)
 		await ensureCanAccessHospital(event, opts.hospitalId);
 
+	if (opts?.hospitalId) {
+		const { listEnabledClinicalDocuments } = await import(
+			'$lib/server/medora/document-master/hospital-document-template.server'
+		);
+		const { documents } = await listEnabledClinicalDocuments(opts.hospitalId);
+		if (documents.length > 0) {
+			const ids = documents.map((d) => d.id);
+			return ensureDb().query.documentTable.findMany({
+				where: and(
+					inArray(table.documentTable.id, ids),
+					ne(table.documentTable.statusId, StatusEnum.DELETED)
+				),
+				with: documentWithRelationsWith,
+				orderBy: (t, { asc }) => [asc(t.documentNumber), asc(t.id)]
+			});
+		}
+	}
+
 	const clinicalTypeSet = new Set<string>(CLINICAL_DOCUMENT_TYPE_NAMES);
 	const rows = await ensureDb().query.documentTable.findMany({
 		where: ne(table.documentTable.statusId, StatusEnum.DELETED),
@@ -73,11 +91,32 @@ export async function getClinicalFormDocuments(
 
 export async function getDocumentByCode(
 	event: RequestEvent,
-	code: string
+	code: string,
+	opts?: { hospitalId?: string }
 ): Promise<DocumentWithRelations | null> {
 	requireUser(event);
 	const trimmed = code.trim();
 	if (!trimmed) return null;
+
+	if (opts?.hospitalId) {
+		const { resolveDocumentForHospital } = await import(
+			'$lib/server/medora/document-master/hospital-document-template.server'
+		);
+		const docId = await resolveDocumentForHospital({
+			hospitalId: opts.hospitalId,
+			code: trimmed
+		});
+		if (docId) {
+			const row = await ensureDb().query.documentTable.findFirst({
+				where: and(
+					eq(table.documentTable.id, docId),
+					ne(table.documentTable.statusId, StatusEnum.DELETED)
+				),
+				with: documentWithRelationsWith
+			});
+			if (row) return row;
+		}
+	}
 
 	const row = await ensureDb().query.documentTable.findFirst({
 		where: and(
@@ -110,10 +149,24 @@ export async function getDocumentsPaginatedWithRelations(
 		params?.statusId != null
 			? eq(table.documentTable.statusId, params.statusId)
 			: null;
-	const whereExpr =
-		statusFilter != null
-			? and(notDeletedFilter, statusFilter)
-			: notDeletedFilter;
+
+	/** Hospital Document Master: custom docs only (not system catalog or hospital forks). */
+	const hospitalCustomFilter = params?.hospitalId
+		? and(
+				eq(table.documentTable.isSystemCatalog, false),
+				isNull(table.documentTable.catalogCode),
+				or(
+					eq(table.documentTable.hospitalId, params.hospitalId),
+					isNull(table.documentTable.hospitalId)
+				)
+			)
+		: and(eq(table.documentTable.isSystemCatalog, false), isNull(table.documentTable.catalogCode));
+
+	const whereExpr = and(
+		notDeletedFilter,
+		hospitalCustomFilter,
+		statusFilter ?? undefined
+	);
 
 	const [data, countResult] = await Promise.all([
 		ensureDb().query.documentTable.findMany({
@@ -174,7 +227,13 @@ export async function createDocument(
 	);
 	const [row] = await ensureDb()
 		.insert(table.documentTable)
-		.values({ ...data, documentSettingId })
+		.values({
+			...data,
+			documentSettingId,
+			hospitalId: hospitalId ?? null,
+			isSystemCatalog: false,
+			catalogCode: null
+		})
 		.returning();
 	if (!row) throw error(500, 'Insert failed');
 	return row;
@@ -189,6 +248,20 @@ export async function updateDocument(
 		await ensureCanAccessHospital(event, payload.hospitalId);
 
 	const { id, hospitalId, ...rest } = payload;
+	const [existing] = await ensureDb()
+		.select({
+			isSystemCatalog: table.documentTable.isSystemCatalog,
+			catalogCode: table.documentTable.catalogCode
+		})
+		.from(table.documentTable)
+		.where(eq(table.documentTable.id, id))
+		.limit(1);
+	if (existing?.isSystemCatalog || existing?.catalogCode) {
+		throw error(
+			400,
+			'System and catalog templates are edited under Master Templates'
+		);
+	}
 	if (rest.documentSettingId !== undefined) {
 		rest.documentSettingId = await validateDocumentSettingId(
 			event,

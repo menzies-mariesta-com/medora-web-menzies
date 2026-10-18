@@ -1,12 +1,9 @@
 <script lang="ts">
+	import SearchSelect from '$lib/component/own/library/menzies/search-select/SearchSelect.svelte';
 	import WashButton from '$lib/component/wash/button/WashButton.svelte';
 	import WashDialogFooter from '$lib/component/wash/dialog/WashDialogFooter.svelte';
-	import WashSelect from '$lib/component/wash/select/WashSelect.svelte';
 	import type { AppLocale } from '$lib/model/enum/language.enum';
-	import {
-		filterLocaleSelectOptions,
-		localeSelectOptions
-	} from '$lib/model/const/locale-catalog.const';
+	import { localeSelectOptions } from '$lib/model/const/locale-catalog.const';
 	import type { DialogSlotProps } from '$lib/model/interface/dialog.interface';
 	import { LanguageTool } from '$lib/tool/language.tool.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -18,20 +15,15 @@
 	const allLanguageOptions = localeSelectOptions(locales);
 	const msg = m as Record<string, (inputs?: object) => string>;
 
-	let currentLanguage: AppLocale = $state(languageTool.getLanguage());
-	let searchQuery = $state('');
+	let currentLanguage = $state<string>(languageTool.getLanguage());
 	let isConfirming = $state(false);
-
-	const filteredLanguageOptions = $derived(
-		filterLocaleSelectOptions(allLanguageOptions, searchQuery)
-	);
 
 	async function handleConfirm() {
 		if (isConfirming) return;
 		isConfirming = true;
 		try {
 			await confirm({
-				language: currentLanguage
+				language: currentLanguage as AppLocale
 			});
 		} finally {
 			isConfirming = false;
@@ -41,38 +33,18 @@
 
 <div class="flex min-h-0 flex-1 flex-col">
 	<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-		<label class="form-control mb-3 w-full" for="language-search">
-			<span class="label py-1">
-				<span class="label-text cursor-default">{msg.search_language()}</span>
-			</span>
-			<input
-				id="language-search"
-				type="search"
-				class="input input-bordered w-full cursor-text"
-				placeholder={msg.search_language()}
-				bind:value={searchQuery}
-				autocomplete="off"
-				spellcheck="false"
-			/>
-		</label>
-		{#if filteredLanguageOptions.length === 0}
-			<p class="text-base-content/70 py-2 text-sm cursor-default">
-				{msg.no_languages_found()}
-			</p>
-		{:else}
-			<WashSelect
-				optionHeader={m.select_language()}
-				className="w-full cursor-pointer"
-				options={filteredLanguageOptions}
+		<div class="flex flex-col gap-2">
+			<SearchSelect
+				inputId="language-picker"
+				label={m.select_language()}
+				placeholder={m.select_language()}
+				filterPlaceholder={msg.search_language()}
+				emptyMessage={msg.no_languages_found()}
+				className="w-full"
+				options={allLanguageOptions}
 				bind:value={currentLanguage}
 			/>
-		{/if}
-		<p class="text-base-content/50 mt-2 text-xs cursor-default">
-			{msg.language_list_count({
-				filtered: String(filteredLanguageOptions.length),
-				total: String(allLanguageOptions.length)
-			})}
-		</p>
+		</div>
 	</div>
 
 	<WashDialogFooter className="gap-2">
@@ -86,7 +58,7 @@
 		<WashButton
 			onClick={() => handleConfirm()}
 			className="btn btn-primary"
-			disabled={isConfirming || filteredLanguageOptions.length === 0}
+			disabled={isConfirming || !currentLanguage?.trim()}
 			loading={isConfirming}
 		>
 			{m.ok()}
