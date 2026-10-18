@@ -1,6 +1,5 @@
-# Optional: build on GitHub (more RAM than default Netlify builders) and deploy artifacts only.
-# Enable by adding NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID repo secrets and disabling
-# auto-build on the Netlify site (Build & deploy → Continuous deployment → Stop builds).
+# Build on GitHub (swap + tuned heap), deploy ./build to Netlify (no Netlify-side build).
+# Secrets: NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID; optional NODE_AUTH_TOKEN for npm ci.
 name: Netlify production build
 
 on:
@@ -23,6 +22,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Standard runners ~7 GiB RAM; Vite/Rollup can exceed that. Swap avoids exit 134/137.
+      - name: Add swap for production build
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,9 +43,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
       - name: Build
-        run: npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
+        run: npm run build:github
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
@@ -48,4 +55,4 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 5
+        timeout-minutes: 10
