@@ -17,3 +17,4 @@ export * from './table/information-table/diagnostics-table';
 export * from './table/information-table/document-catalog-table';
 export * from './table/master-table/master-table-relation';
 export * from './table/marketplace-table/marketplace-table-relation';
+export * from './table/patient-portal-table/patient-portal-table';

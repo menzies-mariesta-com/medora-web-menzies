@@ -12,9 +12,25 @@ import { rejectMutatingMedoraApiWithoutTwoFactor } from '$lib/server/medora/auth
 import { loadAdminPagePermissions } from '$lib/server/medora/admin/admin-permission.server';
 import { redirect } from '@sveltejs/kit';
 import { applySecurityHeaders } from '$lib/server/http/security-headers.server';
+import {
+	applyCorsToResponse,
+	optionsPreflightResponse
+} from '$lib/server/http/cors-patient-api.server';
+import { getPatientByUserId } from '$lib/server/medora/patient-portal/patient-session.server';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
+
+	if (
+		event.request.method === 'OPTIONS' &&
+		(pathname.startsWith('/api/patient/') ||
+			pathname.startsWith('/api/auth'))
+	) {
+		return applySecurityHeaders(
+			optionsPreflightResponse(event.request),
+			event
+		);
+	}
 	if (pathname === '/heka' || pathname.startsWith('/heka/')) {
 		const rest = pathname === '/heka' ? '' : pathname.slice('/heka'.length);
 		throw redirect(302, `/medora${rest}${event.url.search}`);
@@ -41,7 +57,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const [userRow] = await ensureDb()
 			.select({
 				roleId: userTable.roleId,
-				twoFactorEnabled: userTable.twoFactorEnabled
+				twoFactorEnabled: userTable.twoFactorEnabled,
+				mustChangePassword: userTable.mustChangePassword
 			})
 			.from(userTable)
 			.where(eq(userTable.id, session.user.id))
@@ -49,6 +66,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.userRoleId = userRow?.roleId ?? null;
 		event.locals.twoFactorEnabled = Boolean(
 			userRow?.twoFactorEnabled
+		);
+		event.locals.mustChangePassword = Boolean(
+			userRow?.mustChangePassword
 		);
 		if (event.locals.userRoleId === RoleEnum.ADMIN_TEAM) {
 			try {
@@ -85,6 +105,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} else {
 			event.locals.allowedHospitalIds = null;
 		}
+
+		if (
+			event.locals.userRoleId === RoleEnum.PATIENT ||
+			!event.locals.staff
+		) {
+			try {
+				event.locals.patient =
+					(await getPatientByUserId(session.user.id)) ?? null;
+			} catch (err) {
+				console.error('[patient] Failed to load patient by user id', err);
+				event.locals.patient = null;
+			}
+		} else {
+			event.locals.patient = null;
+		}
 	}
 
 	const twoFactorGate = rejectMutatingMedoraApiWithoutTwoFactor(event);
@@ -102,7 +137,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		(pathname === basePath || pathname.startsWith(authPrefix))
 	) {
 		const authResponse = await auth.handler(event.request);
-		return applySecurityHeaders(authResponse, event);
+		const withCors = applyCorsToResponse(authResponse, event.request);
+		return applySecurityHeaders(withCors, event);
 	}
 
 	return paraglideMiddleware(

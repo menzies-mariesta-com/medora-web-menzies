@@ -44,6 +44,10 @@ export const userTable = pgTable('user', {
 	twoFactorEnabled: boolean('two_factor_enabled')
 		.notNull()
 		.default(false),
+	/** Patient portal: force password change after default (patient code) login. */
+	mustChangePassword: boolean('must_change_password')
+		.notNull()
+		.default(false),
 	...timestamps
 });
 

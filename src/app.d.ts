@@ -10,6 +10,7 @@ declare module '*?raw' {
 	export default text;
 }
 import type { StaffSessionRow } from '$lib/model/type/medora/staff.type';
+import type { PatientSessionRow } from '$lib/server/medora/patient-portal/patient-session.server';
 
 declare global {
 	/** Injected at build time by Vite from package.json (`vite.config` define). */
@@ -22,10 +23,14 @@ declare global {
 			user?: User | null;
 			/** Staff record linked to the logged-in user (1:1). */
 			staff?: StaffSessionRow | null;
+			/** Patient record linked to the logged-in user (patient portal / mobile). */
+			patient?: PatientSessionRow | null;
 			/** User's role id (from user.role_id). Used for STAFF vs OWNER/SYSTEM_ADMIN/ADMIN_TEAM. */
 			userRoleId?: number | null;
 			/** better-auth twoFactor plugin: user has enrolled 2FA. */
 			twoFactorEnabled?: boolean;
+			/** Patient portal: must set a new password before using other APIs. */
+			mustChangePassword?: boolean;
 			/** When user is STAFF, only these hospital ids (UUIDs) are allowed; else null = all. */
 			allowedHospitalIds?: string[] | null;
 			/**

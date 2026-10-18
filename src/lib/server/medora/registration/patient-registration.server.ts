@@ -10,7 +10,7 @@ import {
 	userTable,
 	accountTable
 } from '$lib/server/db/table/auth-table/auth-table';
-import { StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
+import { RoleEnum, StatusEnum, YesNoEnum } from '$lib/model/enum/db-link';
 import { PREFIX_PURPOSE_STORAGE } from '$lib/model/const/prefix-purpose.const';
 import {
 	generatePrefix,
@@ -415,20 +415,24 @@ export async function createPatientWithUserInHospital(
 	await ensureCanAccessHospital(event, payload.hospitalId);
 
 	const hospitalId = payload.hospitalId;
-	const requestedEmail = (payload.email ?? '').trim();
-	const isPlaceholderEmail = requestedEmail.endsWith(NO_EMAIL_SUFFIX);
-	const normalizedEmail = isPlaceholderEmail
-		? requestedEmail
-		: requestedEmail.toLowerCase();
 
-	if (!normalizedEmail) {
-		throw error(400, 'Email is required to create a patient user.');
-	}
+	const generatedCode = await getNextPatientCode(
+		event,
+		payload.hospitalId,
+		{ isExternal: payload.isExternal === true }
+	);
+
+	const requestedEmail = (payload.email ?? '').trim();
+	const isPlaceholderEmail =
+		!requestedEmail || requestedEmail.endsWith(NO_EMAIL_SUFFIX);
+	const normalizedEmail = isPlaceholderEmail
+		? requestedEmail || `${uuidV7()}${NO_EMAIL_SUFFIX}`
+		: requestedEmail.toLowerCase();
 
 	let authEmail = normalizedEmail;
 	let emailRemapped = false;
 
-	if (!isPlaceholderEmail) {
+	if (!isPlaceholderEmail && requestedEmail) {
 		const remappedCandidate = hospitalScopedAuthEmail(
 			normalizedEmail,
 			hospitalId
@@ -502,7 +506,8 @@ export async function createPatientWithUserInHospital(
 		}
 	}
 
-	const generatedPassword = generateRandomPassword(16);
+	/** Mobile default: first login uses patient code as password. */
+	const generatedPassword = generatedCode;
 	const hashedPassword =
 		await passwordHashUtil.hash(generatedPassword);
 
@@ -513,7 +518,9 @@ export async function createPatientWithUserInHospital(
 			id: userId,
 			name: payload.name,
 			email: authEmail,
-			emailVerified: false
+			emailVerified: false,
+			roleId: RoleEnum.PATIENT,
+			mustChangePassword: true
 		})
 		.returning();
 
@@ -526,12 +533,6 @@ export async function createPatientWithUserInHospital(
 		providerId: 'credential',
 		password: hashedPassword
 	});
-
-	const generatedCode = await getNextPatientCode(
-		event,
-		payload.hospitalId,
-		{ isExternal: payload.isExternal === true }
-	);
 
 	const patientPayload: PatientSchemaInsert = {
 		userId: user.id,

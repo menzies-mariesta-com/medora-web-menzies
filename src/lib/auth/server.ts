@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { emailOTP, twoFactor } from 'better-auth/plugins';
+import { bearer, emailOTP, twoFactor } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { uuidV7 } from '$lib/util/id.util';
@@ -107,6 +107,7 @@ export const auth = betterAuth({
 		}
 	},
 	plugins: [
+		bearer(),
 		twoFactor({
 			issuer: 'Medora',
 			/** Trusted-device cookie + verification row lifetime (3 days). */
