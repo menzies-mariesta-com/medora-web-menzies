@@ -96,6 +96,9 @@ export default defineConfig({
 					sourcemap: false,
 					reportCompressedSize: false,
 					modulePreload: false,
+					// esbuild minify is lighter than terser; explicit for CI clarity.
+					minify: 'esbuild',
+					cssMinify: 'esbuild',
 					rollupOptions: {
 						// Reduce peak RSS during "rendering chunks" on memory-limited CI (~8GB).
 						maxParallelFileOps: 1
