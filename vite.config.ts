@@ -94,6 +94,8 @@ export default defineConfig({
 		? {
 				build: {
 					sourcemap: false,
+					reportCompressedSize: false,
+					modulePreload: false,
 					rollupOptions: {
 						// Reduce peak RSS during "rendering chunks" on memory-limited CI (~8GB).
 						maxParallelFileOps: 1
