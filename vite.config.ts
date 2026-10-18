@@ -83,13 +83,14 @@ function paraglideMessageRuntimeResolve(): Plugin {
 	};
 }
 
-const isNetlifyBuild = process.env.NETLIFY === 'true';
+const isCiBuild =
+	process.env.NETLIFY === 'true' || process.env.GITHUB_ACTIONS === 'true';
 
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
-	...(isNetlifyBuild
+	...(isCiBuild
 		? {
 				build: {
 					sourcemap: false,
@@ -116,7 +117,7 @@ export default defineConfig({
 		paraglideMessageRuntimeResolve(),
 		tailwindcss(),
 		sveltekit(),
-		...(isNetlifyBuild ? [] : [devtoolsJson()])
+		...(isCiBuild ? [] : [devtoolsJson()])
 	],
 	test: {
 		expect: { requireAssertions: true },
