@@ -15,6 +15,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			`${WebRoutesEnum.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`
 		);
 	}
+	if (locals.userRoleId === RoleEnum.PATIENT) {
+		throw redirect(302, '/patient-app');
+	}
 	if (
 		url.pathname === WebRoutesEnum.MEDORA ||
 		url.pathname === `${WebRoutesEnum.MEDORA}/`

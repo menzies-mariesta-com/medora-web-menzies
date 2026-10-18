@@ -14,7 +14,7 @@ export function getMenziesEcosystemProductsPlaceholder(): MenziesEcosystemProduc
 		{
 			id: 'medora_patients',
 			purchased: false,
-			externalUrl: 'https://patients.medora.menzies.example'
+			externalUrl: 'medora-mobile://'
 		},
 		{
 			id: 'medora_doctors',

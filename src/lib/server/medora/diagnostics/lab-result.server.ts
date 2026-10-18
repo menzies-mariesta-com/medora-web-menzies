@@ -13,6 +13,7 @@ import * as table from '$lib/server/db/schema';
 import { getOrCreateHospitalLabSetting } from './hospital-lab-setting.server';
 import { writeLabAudit } from './lab-audit.server';
 import { ensureCriticalCallbackForObservation } from './lab-critical-callback.server';
+import { notifyPatientDevices } from '$lib/server/medora/patient-portal/push-notify.server';
 
 function parseNum(v: string | null | undefined): number | null {
 	if (v == null || v === '') return null;
@@ -409,6 +410,26 @@ export async function releaseReport(input: {
 		action: 'released',
 		staffId: input.staffId
 	});
+
+	if (acc.patientId) {
+		const patientRow = await ensureDb().query.patientTable.findFirst({
+			where: eq(table.patientTable.id, acc.patientId),
+			columns: { userId: true }
+		});
+		if (patientRow?.userId) {
+			void notifyPatientDevices({
+				userId: patientRow.userId,
+				patientId: acc.patientId,
+				hospitalId: input.hospitalId,
+				title: 'Lab results ready',
+				body: 'Your lab report has been released and is available in the app.',
+				data: {
+					type: 'lab_released',
+					entityId: String(input.accessionId)
+				}
+			});
+		}
+	}
 }
 
 export async function listReleasedResultsForVisit(input: {
